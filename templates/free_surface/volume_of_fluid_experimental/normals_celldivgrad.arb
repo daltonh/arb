@@ -1,3 +1,0 @@
-# calculate the normals using a celldivgrad rather than a cellgrad
-FACE_DERIVED <vof_phi_normal_f> "faceave(<vof_phi_normal>)" ON <all faces>
-INCLUDE "normals_cellgrad" R "cellgrad" W "celldivgrad" R "<vof_phi_normal>" W "<vof_phi_normal_f>"

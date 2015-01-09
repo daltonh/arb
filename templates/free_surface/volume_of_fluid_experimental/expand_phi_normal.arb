@@ -1,9 +1,0 @@
-# used an expanding (smoothing) convolution to find vof_phi_normal from vof_phi
-
-#GENERAL_REPLACEMENTS R "<<maxseparation>>" W "3,faceseparation"
-#GENERAL_REPLACEMENTS R "<<maxseparation>>" W "3"
-
-INCLUDE "convolve_variable_constant" R "<vof_variable_default>" W "<vof_phi_interface>" R "<vof_variable_convolve_constant>" W "<vof_phi_normal_expand_constant>" R "<vof_variable>" W "<vof_phi_interface>" R "<vof_variable_convolve>" W "<vof_phi_normal>" R "<vof_variable_mask>" W "<vof_interface_mask>" R "<vof_variable_convolve_mask" W "<vof_phi_normal_mask" R "<vof_variable_convolve" W "<vof_phi_normal_expand" R "<vof_variable" W "<vof_phi_normal"
-
-#NONE_CONSTANT <vof_phi_normal_expand_constant> 2.0d0
-NONE_CONSTANT <vof_phi_normal_expand_constant> "<<maxseparation>>-0.5d0"

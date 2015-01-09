@@ -1,8 +1,0 @@
-# use this convolution where the weighting (ie, denominator) is constant for all time
-
-INCLUDE "differentiate_variable_constant" R "CELL_CONSTANT <vof_variable_convolve_denominator" W "CELL_DERIVED <vof_variable_convolve_denominator"
-
-CELL_LOCAL <vof_variable_convolve_weight> "1.d0" # set this to how the convolving should be weighted
-CELL_DERIVED <vof_variable_convolve_denominator[l=<<diffdim>>]> "cellif(<vof_variable_convolve_mask>,cellsum[maxseparation=<<maxseparation>>](cellif(<vof_variable_mask>,<vof_variable_convolve_kernel[l=<<diffdim>>]>*<cellx[l=<<diffdim>>]>*<vof_variable_convolve_weight>,0.d0),region=<all cells>),0.d0)" ON <all cells> output
-# now defaults to unsmoothed variable where convolved mask isn't present
-CELL_DERIVED <vof_variable_convolve[l=<<diffdim>>]> "cellif(<vof_variable_convolve_mask>,cellsum[maxseparation=<<maxseparation>>](cellif(<vof_variable_mask>,<vof_variable>*<vof_variable_convolve_kernel[l=<<diffdim>>]>*<vof_variable_convolve_weight>,0.d0),region=<all cells>)/<vof_variable_convolve_denominator[l=<<diffdim>>]>,<vof_variable_default>)" ON <all cells> output

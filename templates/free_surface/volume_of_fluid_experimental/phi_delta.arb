@@ -1,2 +1,0 @@
-# set vof_phi_delta equal to vof_phi
-CELL_DERIVED <vof_phi_delta> "<vof_phi_interface>" ON <all cells>

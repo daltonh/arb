@@ -16,7 +16,6 @@
 !/src/
 !/templates/
 !/tmp/
-!/todo
 
 # object files
 *.[ao]
@@ -37,3 +36,7 @@ recent
 
 # include any gitignore files in any directories that are already included
 !.gitignore
+
+# include any readme and todo files
+!readme
+!todo
