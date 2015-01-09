@@ -58,6 +58,7 @@ v0.50 - nosey nodey
 * fixed potentially serious bug around faceave[adjacentcells|harmonic|etc] which may have caused an error when used as a demoninator (081214)
 * default kernel polynomialorder and polynomialaverageorder=2 now, and increase in minw with automaximumseparation has been dropped (131214)
 * <<radialdim>> and <<axialdim>> general replacement variables now for 2D cylindrical coordinates (161214)
+* adopting git distribution control (090115)
 
 -------------------------------
 LONG TERM DESIRABLES:
