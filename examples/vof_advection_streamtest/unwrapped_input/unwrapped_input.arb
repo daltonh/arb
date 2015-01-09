@@ -31,27 +31,27 @@ TIMESTEPMAX 5 # just compute 5 timesteps
 MSH_FILE "box.msh"
 #MSH_FILE "box_unstructured.msh"
 
-NONE_CONSTANT <phi_initial_tol> 1.d-3
+NONE_CONSTANT <vof_phi_initial_tol> 1.d-3
 # the cellvofphishape function takes two vectors, a size and centre, returning a volume fraction for each cell
 # the size of the object is determined by the maximum size that is consistent with all of the object's dimensions (defaults to huge), so for a sphere set one size to the sphere's diameter
 # the centre of the object is specified by the centre vector, defaulting to zero if a component is not specified
 # for 2D shapes choose a 3D shape that gives the correct intersection with the 2D plane (ie, sphere for circle, box for rectangle)
 OVERRIDE_OPTIONS noinput,output
 # circle
-CELL_CONSTANT <phi_initial> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>),1.d0),0.d0)"  input
-CELL_CONSTANT <phi_initial1> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>),1.d0),0.d0)" input
-CELL_CONSTANT <phi_final1> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>),1.d0),0.d0)"   input
-CELL_CONSTANT <phi_final2> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<phi_initial_tol>),1.d0),0.d0)"   input
+CELL_CONSTANT <vof_phi_initial_saved> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"  input
+CELL_CONSTANT <vof_phi_initial1> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)" input
+CELL_CONSTANT <vof_phi_final1> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
+CELL_CONSTANT <vof_phi_final2> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
 # square
-#CELL_CONSTANT <phi_initial> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>),1.d0),0.d0)"  input
-#CELL_CONSTANT <phi_initial1> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>),1.d0),0.d0)" input
-#CELL_CONSTANT <phi_final1> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<phi_initial_tol>),1.d0),0.d0)"   input
-#CELL_CONSTANT <phi_final2> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<phi_initial_tol>),1.d0),0.d0)"   input
+#CELL_CONSTANT <vof_phi_initial> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"  input
+#CELL_CONSTANT <vof_phi_initial1> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)" input
+#CELL_CONSTANT <vof_phi_final1> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
+#CELL_CONSTANT <vof_phi_final2> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
 # rotated square (not working yet)
-#CELL_CONSTANT <phi_initial>  "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<phi_initial_tol>),1.d0),0.d0)"  input
-#CELL_CONSTANT <phi_initial1> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<phi_initial_tol>),1.d0),0.d0)" input
-#CELL_CONSTANT <phi_final1>   "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<phi_initial_tol>),1.d0),0.d0)"   input
-#CELL_CONSTANT <phi_final2>   "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<phi_initial_tol>),1.d0),0.d0)"   input
+#CELL_CONSTANT <vof_phi_initial>  "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"  input
+#CELL_CONSTANT <vof_phi_initial1> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)" input
+#CELL_CONSTANT <vof_phi_final1>   "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
+#CELL_CONSTANT <vof_phi_final2>   "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
 OVERRIDE_OPTIONS
 
 # set up velocity field
@@ -80,13 +80,132 @@ NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true 
 #TIMESTEPMAX 1
 #TIMESTEPOUT 1
 
-CELL_LOCAL <phi_rounded> "cellif(<phi>-<vof_phi_tol>,cellif(1.d0-<vof_phi_tol>-<phi>,<phi>,1.d0),0.d0)"
-CELL_TRANSIENT <phi[r=1]> "<phi_initial>" "<phi_rounded>" output
-CONSTANT <vof_phi_tol> 1.d-8
-CELL_LOCAL <phi_lim> "cellmax(cellmin(<phi>,1.d0),0.d0)" ON <all cells>
-
 #INCLUDE_ROOT "free_surface/volume_of_fluid"
 # INFO: setting include root directory to free_surface/volume_of_fluid
 DEFAULT_OPTIONS noderivative
+
+# changed for v0.50 vof_development
+# use same structure as per interface_geometry, except that we don't need to calculate the curvature
+#INCLUDE "setup" R "CELL_UNKNOWN" W "#CELL_UNKNOWN"
+#INCLUDE "expand_phi_delta" R "<<maxseparation>>" W "1" # maxseparation controls thickness of delta region, and hence also magnitude of currents - smoothing constant is now linked to this parameter
+#INCLUDE "delta"
+#INCLUDE "normals_delta"
+#INCLUDE "expand_normals_angle"
+
+# pre v0.50 vof advection routines
+CELL_LOCAL <vof_phi_rounded> "cellif(<vof_phi>-<vof_phi_tol>,cellif(1.d0-<vof_phi_tol>-<vof_phi>,<vof_phi>,1.d0),0.d0)"
+CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_initial>" "<vof_phi_rounded>" output
+CONSTANT <vof_phi_tol> 1.d-8
+CELL_LOCAL <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells>
 # compute a smoothed phi, which is used in the surface tension calculation and later in the vof advection
-#INCLUDE "smooth_phi" R "<vof_phi" W "<phi"
+#INCLUDE "smooth_phi"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/free_surface/volume_of_fluid/smooth_phi.arb without any search/replace combinations
+# smoothing phi based on a single faceseparation loop
+
+# too much smoothing of [r=0] (used in surface tension) causes interface instability
+# too little smoothing of [r=0] (used in surface tension) results in large velocity errors (parasitic currents)
+# unstructured mesh results:
+# with vof_smoothing_power = 1 and vof_smoothing_constant = 1, interface is stable, but on single cell level has some osciallations
+# with vof_smoothing_power = 2 and vof_smoothing_constant = 1, interface is smooth and stable, but currents higher than the above
+# with vof_smoothing_power = 1, vof_smoothing_constant = 0.25 and maxseparation=3,faceseparation, seems to be stable with reasonably low currents
+# structured mesh results:
+# maxseparation=2,faceseparation is OK for KERNEL polynomialorder=1 (ie, the default) - for higher order need to expand maxseparation (although doesn't really improve accuracy much)
+# <vof_smoothing_constant> = 0.1 seems to be a good compromise between stability and accuracy on structured meshes using hyperbolic + sqrt kernel
+NONE_CONSTANT <vof_smoothing_power> 1.d0
+#NONE_CONSTANT <vof_smoothing_constant> 0.25d0 # a smaller number gives less smoothing
+#NONE_CONSTANT <vof_smoothing_constant> 0.125d0
+#NONE_CONSTANT <vof_smoothing_constant> 0.1d0
+NONE_CONSTANT <vof_smoothing_constant> 0.5d0
+
+# required for smoothing kernels based on distance
+# previous method based on uniform cell size
+#CELL_LOCAL <vof_smoothing_dist^2> "dot(<celltoseparationicellr[l=:]>,<celltoseparationicellr[l=:]>)"
+#NONE_CONSTANT <vof_smoothing_celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)"
+#NONE_CONSTANT <vof_smoothing_eps^2> "<vof_smoothing_celldxave>**2" # square of the radius of smoothing, here uniform throughout the domain
+
+# find normalised distance between cell in separation loop and cell centre
+# now varies locally
+CELL_LOCAL <vof_smoothing_dist^2> "dot(<celltoseparationicellr[l=:]>,<celltoseparationicellr[l=:]>)"
+CELL_CONSTANT <vof_smoothing_eps_centre^2> "cellmin(cellmin(<celldxmin>,region=<adjacentcellicells>),2.d0*<celldxkernel>)**2" ON <all cells>
+CELL_LOCAL <vof_smoothing_eps^2> "cellfromcellave[separationcentre](<vof_smoothing_eps_centre^2>)" ON <all cells>
+
+# define a smoothing kernel, which is also used in smooth_normals.arb
+# hyperbolic
+#CELL_LOCAL <vof_smoothing_kernel> "1.d0/(<vof_smoothing_dist^2>/<vof_smoothing_eps^2>+<vof_smoothing_constant>)"
+# hyperbolic + sqrt
+CELL_LOCAL <vof_smoothing_kernel> "1.d0/(sqrt(<vof_smoothing_dist^2>/<vof_smoothing_eps^2>)+<vof_smoothing_constant>)"
+# exponential
+#CELL_LOCAL <vof_smoothing_kernel> "exp(-<vof_smoothing_dist^2>/(<vof_smoothing_eps^2>*<vof_smoothing_constant>))"
+# hyperbolic based on separation rather than distance
+#CELL_LOCAL <vof_smoothing_kernel> "1.d0/((<separation>+<vof_smoothing_constant>)**<vof_smoothing_power>)"
+# with <vof_smoothing_constant> 0.125d0 stable, but currents could be smaller
+# with <vof_smoothing_constant> 0.25d0 interface is too jaggered
+#CELL_LOCAL <vof_smoothing_kernel> "1.d0/(<separation>+<vof_smoothing_constant>)"
+
+# now do the smoothing
+# looks like we need a minimum of maxseparation=3 to get enough valid normals (at the edge of the interface region) to avoid instabilities in the (curvature) surface tension calculation
+CELL_CONSTANT <vof_phi_smoothing_demoninator> "cellsum[maxseparation=3,faceseparation](<vof_smoothing_kernel>,region=<all cells>)" ON <all cells>
+CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=3,faceseparation](<vof_phi_lim>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
+
+# save the smoothed phi for later - necessary?
+#CELL_TRANSIENT <vof_phi_smoothed[r=1]> "" "<vof_phi_smoothed>" ON <all cells> output
+# INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/smooth_phi.arb
+#--------------------------------------------------------
+# include routines to calculate surface tension force
+#INCLUDE "smooth_normals" R "<vof_phigrad_unit" W "<vof_phigrad_expand_unit"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/free_surface/volume_of_fluid/smooth_normals.arb with the following search/replace combinations: replace <vof_phigrad_unit with <vof_phigrad_expand_unit
+# calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
+CELL_DERIVED <vof_phigrad[l=1]> "cellgrad[l=1](<vof_phi_smoothed>)" ON <all cells>
+CELL_DERIVED <vof_phigrad[l=2]> "cellgrad[l=2](<vof_phi_smoothed>)" ON <all cells>
+#CELL_DERIVED <vof_phigrad[l=3]> "cellgrad[l=3](<vof_phi_smoothed>)" ON <all cells>
+# same as normals.arb, but smoothing the normals once using the same smoothing kernel as used for phi
+CELL_DERIVED <vof_phigrad_smoothed[l=1]> "cellsum[maxseparation=3,faceseparation,](<vof_phigrad[l=1]>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
+CELL_DERIVED <vof_phigrad_smoothed[l=2]> "cellsum[maxseparation=3,faceseparation,](<vof_phigrad[l=2]>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
+#CELL_DERIVED <vof_phigrad_smoothed[l=3]> "cellsum[maxseparation=3,faceseparation,](<vof_phigrad[l=3]>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
+CELL_DERIVED <vof_phigrad_mag^2> "dot(<vof_phigrad_smoothed[l=:]>,<vof_phigrad_smoothed[l=:]>)" ON <all cells>
+CELL_DERIVED <vof_phigrad_mag> "sqrt(cellmax(<vof_phigrad_mag^2>,1.d-20))" ON <all cells>
+CELL_DERIVED <vof_phigrad_expand_unit[l=1]> "<vof_phigrad_smoothed[l=1]>/<vof_phigrad_mag>" ON <all cells>
+CELL_DERIVED <vof_phigrad_expand_unit[l=2]> "<vof_phigrad_smoothed[l=2]>/<vof_phigrad_mag>" ON <all cells>
+#CELL_DERIVED <vof_phigrad_expand_unit[l=3]> "<vof_phigrad_smoothed[l=3]>/<vof_phigrad_mag>" ON <all cells>
+# INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/smooth_normals.arb
+#--------------------------------------------------------
+
+DEFAULT_OPTIONS
+
+CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <all cells>
+
+# included routines are in terms of derived, so save these for current step
+CELL_TRANSIENT <vof_phigrad_expand_unit[l=1,r=1]> "0.d0" "<vof_phigrad_expand_unit[l=1]>" ON <all cells>
+CELL_TRANSIENT <vof_phigrad_expand_unit[l=2,r=1]> "0.d0" "<vof_phigrad_expand_unit[l=2]>" ON <all cells>
+
+CELL_TRANSIENT <vofd[r=1]> "0.d0" "cellvofd[noderivative,exact](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_expand_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_expand_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all cells> output
+
+# face centred advection phi can be worked out using routine in free_surface_functions.f90 (inbuilt), or using some template files
+# the latter is more accurate, but only works for transient, 2D problems
+# inbuilt routine
+FACE_TRANSIENT <vof_phi_f[r=1]> "0.d0" "facevofphi[linearone](phi=<vof_phi[r=1]>,d=<vofd[r=1]>,flux=<u_f>,normal[l=1]=<vof_phigrad_expand_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_expand_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all faces> output
+# templates routines
+#INCLUDE_ROOT "volume_of_fluid"
+#INCLUDE "facevofphi_linearone_2D" R "<facevofphi_n[l=" W "<vof_phigrad_expand_unit[r=1,l=" R "<facevofphi_d>" W "<vofd[r=1]>" R "<facevofphi_phi>" W "<vof_phi[r=1]>"
+#INCLUDE "facevofphi_linearone_2D_advected" R "<facevofphi_n[l=" W "<vof_phigrad_expand_unit[r=1,l=" R "<facevofphi_d>" W "<vofd[r=1]>" R "<facevofphi_phi>" W "<vof_phi[r=1]>" R "<facevofphi_f[r=1]>" W "<vof_phi_f[r=1]>"
+#INCLUDE "facevofphi_linearone_2D_advected_vector_explicit" R "<facevofphi_n[l=" W "<vof_phigrad_expand_unit[r=1,l=" R "<facevofphi_d>" W "<vofd[r=1]>" R "<facevofphi_phi>" W "<vof_phi[r=1]>" R "<facevofphi_f[r=1]>" W "<vof_phi_f[r=1]>" R "<facevofphi_phi>" W "<vof_phi[r=1]>" R "<facevofphi_phitol>" W "<vof_phi_tol>"
+
+VARIABLE <vof_phi_f[r=1]> output
+
+CELL_TRANSIENT <vof_phi_adjust[r=1]> "0.d0" "cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>)" ON <domain> output
+#CELL_CONSTANT <vof_phi_adjust[r=1]> 0.d0 ON <domain> output
+FACE_TRANSIENT <vof_phi_f_adjusted[r=1]> "0.d0" "faceif(facedelta(<domain faces>),facemax(facemin(<vof_phi_f[r=1]>+faceif(<u_f>,faceave[downcell](<vof_phi_adjust[r=1]>),faceave[upcell](<vof_phi_adjust[r=1]>)),1.d0),0.d0),0.d0)" ON <all faces> output
+
+CELL_TRANSIENT <vof_phi> "<vof_phi_initial>" "<vof_phi[r=1]>-<dt>*celldiv(<vof_phi_f_adjusted[r=1]>*<u_f>)" output
+
+NONE_OUTPUT <error_initial_initial1> "cellsum(abs(<vof_phi_initial>-<vof_phi_initial1>),region=<domain>)/cellsum(<vof_phi_initial1>,region=<domain>)"
+NONE_OUTPUT <error_final1> "cellsum(abs(<vof_phi>-<vof_phi_final1>),region=<domain>)/cellsum(<vof_phi>,region=<domain>)"
+NONE_OUTPUT <error_final2> "cellsum(abs(<vof_phi>-<vof_phi_final2>),region=<domain>)/cellsum(<vof_phi>,region=<domain>)"
+CELL_OUTPUT <icell_output> "<icell>"
+FACE_OUTPUT <jface_output> "<jface>"
+
+# INCLUDE FINISHED for ../vof_advection_streamtest.arb
+#--------------------------------------------------------
+##################################################################################

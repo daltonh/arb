@@ -61,7 +61,7 @@ logical, parameter :: boundary_cell_from_face_kernels = .false. ! (.false.) copy
 integer :: minimum_domain_separation = 1, minimum_boundary_separation = 1 ! (1,1, userable) these are the default separations for domain/boundary faces that specify the size of the kernels.  Large numbers produce large kernels.
 integer :: maximum_domain_separation = 3, maximum_boundary_separation = 3 ! (3,3, userable) these are the maximum separations for domain/boundary faces that specify the size of the kernels.  These are the maximum sizes that can be used if adaptive_mask_size is on.
 integer :: maximum_cell_domain_separation = 3, maximum_cell_boundary_separation = 3 ! (3,3, userable) these are the maximum separations for domain/boundary faces that specify the size of the kernels.  These are for the cell derivative kernels.
-logical :: auto_maximum_separation = .false. ! (.false., userable, changed default to false for v0.5) set the maximum_separations automatically based on polynomial_order.  Note, overwrites any previous maximum_separation specifications, but now (v0.50) does not alter minw
+logical :: auto_maximum_separation = .false. ! (.false., userable, changed default to false for v0.50) set the maximum_separations automatically based on polynomial_order.  Note, overwrites any previous maximum_separation specifications, but now (v0.50) does not alter minw
 logical :: limit_kernel_mask_to_shared_nodes = .false. ! (.false., userable) cells within kernel mask must share a node with the originating face or cell - this is a locality constraint that all cells in mask must share at least one node with the relevant face
 logical :: boundary_node_separations = .true. ! (.true., userable) boundary cells separated by nodes are considered to be adjacent to each other when calculating cell separations
 ! v0.50 trial increase in the default kernel order
@@ -75,7 +75,7 @@ logical, parameter :: conservative_weighting = .false. ! (.false.) use a conserv
 logical, parameter :: orientation_dependent_weights = .true. ! (.true.) the kernel weights are different depending on the direction of the kernel
 logical, parameter :: zero_nonoriented_weights = .false. ! (.false.) for the orientation_dependent_weights and face kernels, zero cell weights that do not have the highest weighting importance.  In effect this will compact face kernels, but may increase the number of negative elements.  Probably a good idea on structured meshes which generally have a high degree of symmetry.
 
-! partial_hyperbolic_kernel for v042 (040614)
+! partial_hyperbolic_kernel for v0.42 (040614)
 !logical :: partial_hyperbolic_kernel = .true. ! (.true., userable) use hyperbolic kernel for boundary elements, or averaging domain elements, but not for domain derivative kernels
 !double precision :: weight_separation_multiplier = 0.25d0 ! (0.3 for nonhyperbolic, 0.5d0 for hyperbolic, userable) for non-centred kernels this specifies the how the weights of each separation are related - the smaller the number, the tighter the kernel - use is slightly different for conservative and nonconservative weighting - for conservative_weighting this is the proportion of each cell weight that is fluxed to further away neighbours - now not used if radial_kernel_weighting on
 !logical :: shift_boundary_weight_centre = .true. ! (.false., userable) for the purposes of calculating the face kernel weights (only), shift the centre of the kernel to the mid point between the two adjacent cells (only affects nonhyperbolic kernels)
@@ -119,7 +119,7 @@ double precision :: weight_separation_multiplier = 0.2d0 ! (0.2d0, userable) for
 ! hyperbolic specific parameters: 
 ! introduced in late v0.42 to improve hyperbolic kernel performance.  Value decreased to 0.3d0 from 0.5d0 for v0.50
 double precision :: shift_hyperbolic_distance = 0.3d0 ! (0.3d0, userable) proportion of difference in distance between both sides of kernel to shift the derivative weighting function (set to <= to remove this feature)
-! changed from 0.5d0 in v0.42 to 0.3d0 in v0.5
+! changed from 0.5d0 in v0.42 to 0.3d0 in v0.50
 double precision :: hyperbolic_b = 0.3d0 ! (0.3d0, userable) for hyperbolic kernel, specify how compact the kernel is (the smaller b is, the more compact the kernel)
 ! nonhyperbolic specific parameters: 
 logical :: separation_multiplied_trial_kernels = .true. ! (.true., userable) for non-hyperbolic kernel, decide whether trial kernels are separation multiplied by weight_separation_multiplier (inverse of)
@@ -132,7 +132,7 @@ logical, parameter :: scaled_radial_kernel = .true. ! (.true.) the radial kernel
 double precision, parameter :: stretched_uniformity = 0.1d0 ! (0.1d0) stretched_uniformity controls the amount of kernel uniformity across the dimensions (for stretched_radial_kernel), stretched_uniformity = 0 gives no uniformity, stretched_uniformity = 1 makes the effective lengthscales approximately the same and equal to one in all dimensions
 logical, parameter :: uniform_cell_averaging_kernels = .false. ! (.false.) the face->cell and node->cell kernels are uniform - seems to happen anyway using a linear fit, but have not proven this generally
 logical :: check_minw = .true. ! (.true., userable) check that the minw value is large enough
-double precision :: minimum_minw = 0.5d0 ! (0.5d0, userable, changed default from 1.d0 to 0.5d0 for v0.5) minimum value of SVD minw allowed for mask to be acceptable when using adaptive_mask_size
+double precision :: minimum_minw = 0.5d0 ! (0.5d0, userable, changed default from 1.d0 to 0.5d0 for v0.50) minimum value of SVD minw allowed for mask to be acceptable when using adaptive_mask_size
 
 ! optimisation options:
 logical, parameter :: optimise_positise = .false. ! constrain kernel values in an attempt at getting positive kernels

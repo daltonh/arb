@@ -74,24 +74,23 @@ NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true 
 INCLUDE_ROOT "free_surface/volume_of_fluid"
 DEFAULT_OPTIONS noderivative
 
-# changed for v0.5
+# changed for v0.50 vof_development
 # use same structure as per interface_geometry, except that we don't need to calculate the curvature
-INCLUDE "setup" R "CELL_UNKNOWN" W "#CELL_UNKNOWN"
-INCLUDE "expand_phi_delta" R "<<maxseparation>>" W "1" # maxseparation controls thickness of delta region, and hence also magnitude of currents - smoothing constant is now linked to this parameter
-INCLUDE "delta"
-INCLUDE "normals_delta"
-INCLUDE "expand_normals_angle"
+#INCLUDE "setup" R "CELL_UNKNOWN" W "#CELL_UNKNOWN"
+#INCLUDE "expand_phi_delta" R "<<maxseparation>>" W "1" # maxseparation controls thickness of delta region, and hence also magnitude of currents - smoothing constant is now linked to this parameter
+#INCLUDE "delta"
+#INCLUDE "normals_delta"
+#INCLUDE "expand_normals_angle"
 
-# pre v0.5 vof advection routines
-#CELL_LOCAL <vof_phi_rounded> "cellif(<vof_phi>-<vof_phi_tol>,cellif(1.d0-<vof_phi_tol>-<vof_phi>,<vof_phi>,1.d0),0.d0)"
-#CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_initial>" "<vof_phi_rounded>" output
-#CONSTANT <vof_phi_tol> 1.d-8
-#CELL_LOCAL <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells>
-#INCLUDE_ROOT "free_surface/volume_of_fluid_pre_v0.50"
-## compute a smoothed phi, which is used in the surface tension calculation and later in the vof advection
-#INCLUDE "smooth_phi"
-## include routines to calculate surface tension force
-#INCLUDE "smooth_normals" R "<vof_phigrad_unit" W "<vof_phigrad_expand_unit"
+# pre v0.50 vof advection routines
+CELL_LOCAL <vof_phi_rounded> "cellif(<vof_phi>-<vof_phi_tol>,cellif(1.d0-<vof_phi_tol>-<vof_phi>,<vof_phi>,1.d0),0.d0)"
+CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_initial>" "<vof_phi_rounded>" output
+CONSTANT <vof_phi_tol> 1.d-8
+CELL_LOCAL <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells>
+# compute a smoothed phi, which is used in the surface tension calculation and later in the vof advection
+INCLUDE "smooth_phi"
+# include routines to calculate surface tension force
+INCLUDE "smooth_normals" R "<vof_phigrad_unit" W "<vof_phigrad_expand_unit"
 
 DEFAULT_OPTIONS
 
