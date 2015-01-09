@@ -1,0 +1,16 @@
+# uses a transient simulation to limit current turbulence values, enroute to steady-state solution
+TRANSIENT_SIMULATION
+TIMESTEPADDITIONAL 1 # on the first (restart or scratch) step there will be no difference between turb_k[r=0] and turb_k[r=1] so need to do atleast one step
+CELL_OUTPUT <turb_k_change> "<turb_k>-<turb_k[r=1]>" ON <domain> output
+CELL_DERIVED <turb_k_rel_change> "(<turb_k>-<turb_k[r=1]>)/cellmax(<turb_k>,<turb_k[r=1]>)" ON <domain> output
+NONE_DERIVED <turb_k_rel_change_min> "cellmin(<turb_k_rel_change>,region=<domain>)"
+NONE_DERIVED <turb_k_rel_change_max> "cellmax(<turb_k_rel_change>,region=<domain>)"
+NONE_DERIVED <turb_k_rel_change_abs> "nonemax(abs(<turb_k_rel_change_min>),abs(<turb_k_rel_change_max>))"
+CELL_OUTPUT <turb_omega_change> "<turb_omega>-<turb_omega[r=1]>" ON <domain> output
+CELL_DERIVED <turb_omega_rel_change> "(<turb_omega>-<turb_omega[r=1]>)/cellmax(<turb_omega>,<turb_omega[r=1]>)" ON <domain> output
+NONE_DERIVED <turb_omega_rel_change_min> "cellmin(<turb_omega_rel_change>,region=<domain>)"
+NONE_DERIVED <turb_omega_rel_change_max> "cellmax(<turb_omega_rel_change>,region=<domain>)"
+NONE_DERIVED <turb_omega_rel_change_abs> "nonemax(abs(<turb_omega_rel_change_min>),abs(<turb_omega_rel_change_max>))"
+NONE_DERIVED <rel_change> "nonemax(<turb_k_rel_change_abs>,<turb_omega_rel_change_abs>)"
+NONE_CONSTANT <rel_change_stop> 1.d-10 # controls relative change in both k and omega that signals convergence
+NONE_CONDITION <stop condition> "-<rel_change>+<rel_change_stop>" stopcondition

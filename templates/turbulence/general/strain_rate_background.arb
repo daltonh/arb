@@ -1,0 +1,2 @@
+# use this to overwrite the calculated strain rate everywhere
+FACE_DERIVED <turb_2SS> "<turb_2SS_background>" ON <all faces>

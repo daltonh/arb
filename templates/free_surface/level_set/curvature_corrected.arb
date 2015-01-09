@@ -1,0 +1,19 @@
+# within this file we calculate the curvature
+
+# Method 8 - as per method 1 but more smoothing (see curvature.arb for some alternatives)
+
+# in this file we apply a curvature correction to Method 8, so that the local curvature more closely reflects that at <ls>=0 rather than the local <ls>
+<<dim1comment>>FACE_LOCAL <ls_n_f[l=1]> "facegrad[l=1](<ls>)"
+<<dim2comment>>FACE_LOCAL <ls_n_f[l=2]> "facegrad[l=2](<ls>)"
+<<dim3comment>>FACE_LOCAL <ls_n_f[l=3]> "facegrad[l=3](<ls>)"
+FACE_LOCAL <ls_n_f mag> "sqrt(dot(<ls_n_f[l=:]>,<ls_n_f[l=:]>))" elementdata
+FACE_DERIVED <ls_n_f_scalar> "facegrad(<ls>)/<ls_n_f mag>" ON <all faces> nooutput
+#CELL_DERIVED <ls_kappa_c2> "-celldiv(facegrad(<ls>)/<ls_n_f mag>)" ON <all cells> output,elementdata
+#CELL_DERIVED <ls_kappa_c3> "-celldiv(<ls_n_f_scalar>)" ON <all cells> nooutput,elementdata
+# have to check this for cylindrical coordinates
+<<cylindricalcomment>>CELL_DERIVED <ls_kappa_c3> "-celldiv(<<radius_f>>*<ls_n_f_scalar>/faceave[lastcell](<<radius_c>>))" ON <all cells> nooutput,elementdata
+<<cartesiancomment>>CELL_DERIVED <ls_kappa_c3> "-celldiv(<ls_n_f_scalar>)" ON <all cells> nooutput,elementdata
+CELL_LOCAL <ls_sign_kappa> "signum(<ls_kappa_c3>)" ON <all cells>
+CELL_DERIVED <ls_kappa_c2> "<ls_sign_kappa>/cellmax(1.d0/cellmax(abs(<ls_kappa_c3>),<tinyish>)+<ls_sign_kappa>*<ls>,<ls_celldxmax>)" ON <all cells> elementdata
+FACE_DERIVED <ls_kappa_f> "<ls_kappa_c2>" ON <all faces>
+CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" ON <all cells> output,elementdata

@@ -1,0 +1,7 @@
+# zero equation adaption of the one equation prandtl model, by equating source terms to zero
+# http://www.cfd-online.com/Wiki/Prandtl%27s_one-equation_model
+CONSTANT <turb_sigma_k> 1.d0
+CONSTANT <turb_C_D> 0.08d0
+
+# for now this just cancels the general variable property replacements done in constants.arb
+GENERAL_REPLACEMENTS CANCEL "<mu_f>" # as viscosity now varies

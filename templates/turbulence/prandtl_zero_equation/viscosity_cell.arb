@@ -1,0 +1,27 @@
+# zero equation adaption of the one equation prandtl model, by equating source terms to zero
+# http://www.cfd-online.com/Wiki/Prandtl%27s_one-equation_model
+
+INCLUDE_ROOT "turbulence/general"
+INCLUDE "strain_rate_complete"
+INCLUDE_ROOT # reset back to present file's location (although there are no more includes in this file)
+
+# cell centred strain rate
+CELL_LOCAL <turb_2SS_c> "cellmax(<turb_2SS>,<turb_2SS_min>)" ON <all cells> # double limited, incase averaging kernels are very very poor
+CELL_DERIVED <turb_mu_t> "<rho>*<turb_l_prandtl2>*sqrt(<turb_2SS_c>/<turb_C_D>)" elementdata # turbulent viscosity, cell centred
+
+# interpolate viscosity from cell to face centres, noting that harmonic averaging can handle one zero value (on the boundary)
+#FACE_DERIVED <turb_mu_t_f> "faceave[harmonic](<turb_mu_t>)" # turbulent viscosity, face centred
+# or do more conservative weighting
+FACE_DERIVED <turb_mu_t_f> "faceif(facedelta(<walls>),faceave[adjacentcellsevenweighting](<turb_mu_t>),faceave[adjacentcells](<turb_mu_t>))" ON <all faces>
+
+# some diagnostics
+FACE_OUTPUT <turb_mu_t_f_direct> "<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS>/<turb_C_D>)" # turbulent viscosity, face centred, calculated directly from face centred strain rate, for comparison
+FACE_OUTPUT <turb_mu_t_f_difference> "abs(<turb_mu_t_f>-<turb_mu_t_f_direct>)" # difference between two methods
+
+# effective (total) viscosity, face centred, used in momentum equation
+FACE_DERIVED <turb_mu_u_f> "<mu>+<turb_mu_t_f>" output
+# effective (total) viscosity, cell centred, used in momentum equation
+CELL_LOCAL <turb_mu_u_c> "<mu>+<turb_mu_t>" elementdata
+
+# for display or reload purposes only
+CELL_OUTPUT <turb_k> "<turb_l_prandtl2>*<turb_2SS_c>/<turb_C_D>" ON <all cells>

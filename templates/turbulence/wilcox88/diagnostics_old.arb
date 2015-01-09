@@ -1,0 +1,16 @@
+# output some diagnostics on the limiting
+# if these are > 0 reduce <turb_k_rel_lower>
+CELL_OUTPUT <turb_k_small_lim_error> "cellmax(<turb_k_small>-<turb_k>,0.d0)" ON <all cells>
+NONE_OUTPUT <turb_k_small_lim_error_max> "cellmax(<turb_k_small_lim_error>,region=<all cells>)"
+NONE_OUTPUT <turb_k_small_lim_error_count> "cellsum(cellif(<turb_k_small_lim_error>-1.d-10,1.d0,0.0),region=<all cells>)"
+# if these are > 0 reduce <turb_omega_small>
+CELL_OUTPUT <turb_omega_small_lim_error> "cellmax(<turb_omega_small>-<turb_omega>,0.d0)" ON <all cells>
+NONE_OUTPUT <turb_omega_small_lim_error_max> "cellmax(<turb_omega_small_lim_error>,region=<all cells>)"
+NONE_OUTPUT <turb_omega_small_lim_error_count> "cellsum(cellif(<turb_omega_small_lim_error>-1.d-10,1.d0,0.0),region=<all cells>)"
+# maximum and minimum values
+NONE_OUTPUT <turb_k_min> "cellmin(<turb_k>,region=<all cells>)"
+NONE_OUTPUT <turb_k_max> "cellmax(<turb_k>,region=<all cells>)"
+NONE_OUTPUT <turb_omega_min> "cellmin(<turb_omega>,region=<all cells>)"
+NONE_OUTPUT <turb_omega_max> "cellmax(<turb_omega>,region=<all cells>)"
+# for reference output solution to prandtl k equation
+CELL_OUTPUT <turb_k_exact> "<turb_l_prandtl2>*<turb_2SS_c>/<turb_C_D>" ON <all cells>

@@ -1,0 +1,9 @@
+donest.f is a double precision edit of the sonest.f routine by higham (1988) described in the following publication:
+
+Nicholas J. Higham. 1988. FORTRAN codes for estimating the one-norm of a real or complex matrix, with applications to condition estimation. ACM Trans. Math. Softw. 14, 4 (December 1988), 381-396. DOI=10.1145/50063.214386 http://doi.acm.org/10.1145/50063.214386
+
+To create donest.f:
+
+1) type `make' from this directory.  The program curl must be installed.
+
+2) Next time arb is run donest.f will be compiled and the condition number estimator will be included in the arb fortran executable.  Set logical variable condition_number_estimate to true in solver_module.f90 to calculate the Jacobian matrix condition number estimate at each run.  Doing this will probably about double the time for a simulation to run.

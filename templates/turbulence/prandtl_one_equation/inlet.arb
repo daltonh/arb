@@ -1,0 +1,14 @@
+# set k at the inlet
+
+# based on some proportion of the average strain rate
+#CONSTANT <turb_2SS_inlet> "(<u_av>/<turb_l_wall_max>)^2"
+#FACE_LOCAL <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS_inlet>*<turb_l_prandtl2>/<turb_C_D>"
+# based on the local strain rate
+#FACE_LOCAL <turb_k_inlet> "<turb_l_prandtl2>*facemax(<turb_2SS>,<turb_2SS_c>)/<turb_C_D>"
+# set to zero
+#FACE_EQUATION <turb_k_inlet_equation> "<turb_k>" ON <inlet>
+
+#FACE_LOCAL <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS_background>*<turb_l_prandtl2_f>/<turb_C_D>"
+FACE_LOCAL <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS>*<turb_l_prandtl2_f>/<turb_C_D>"
+
+FACE_EQUATION <turb_k_inlet_equation> "<turb_k>-<turb_k_inlet>" ON <inlet>

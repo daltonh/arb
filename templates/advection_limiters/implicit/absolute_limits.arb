@@ -1,0 +1,6 @@
+# these are the absolute limits that phi will be bound between
+# to make one irrelevant, set it to +-<huge>
+CONSTANT <phi upper bound> 1.d0
+# CONSTANT <phi upper bound> "<huge>"
+CONSTANT <phi lower bound> 0.d0
+# CONSTANT <phi lower bound> "-<huge>"

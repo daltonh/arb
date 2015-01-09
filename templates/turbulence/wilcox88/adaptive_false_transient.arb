@@ -1,0 +1,26 @@
+# include this to use false timestepping with an adaptive timestep to approach a steady-state solution
+CONSTANT <dt max> 1.d2
+CONSTANT <dt min> 1.d-2
+CONSTANT <dt start> 1.d-2
+CONSTANT <dt multiplier> 2.d0
+NONE_UNKNOWN <dt> "<dt start>" input
+NONE_TRANSIENT <dt[r=1]> "" "<dt>" input
+NONE_TRANSIENT <t> "0.d0" "<t[r=1]>+<dt>"
+NONE_TRANSIENT <t[r=1]> "-<dt>" "<t>"
+TRANSIENT_SIMULATION
+TIMESTEPMIN 1
+CELL_OUTPUT <turb_k_change> "<turb_k>-<turb_k[r=1]>" ON <domain> output
+CELL_DERIVED <turb_k_rel_change> "(<turb_k>-<turb_k[r=1]>)/cellmax(<turb_k[r=1]>,<turb_k_background>)" ON <domain> output
+NONE_DERIVED <turb_k_rel_change_min> "cellmin(<turb_k_rel_change>,region=<domain>)"
+CELL_OUTPUT <turb_omega_change> "<turb_omega>-<turb_omega[r=1]>" ON <domain> output
+CELL_DERIVED <turb_omega_rel_change> "(<turb_omega>-<turb_omega[r=1]>)/cellmax(<turb_omega[r=1]>,<turb_omega_background>)" ON <domain> output
+NONE_DERIVED <turb_omega_rel_change_min> "cellmin(<turb_omega_rel_change>,region=<domain>)"
+#NONE_DERIVED <rel_change> "nonemin(<turb_k_rel_change_min>,<turb_omega_rel_change_min>)"
+NONE_DERIVED <rel_change> "<turb_k_rel_change_min>+<turb_omega_rel_change_min>"
+NONE_CONSTANT <target change> 0.2d0 # change that will recover minimum dt
+#NONE_DERIVED <dt target> "nonemax(<dt max>*(1.d0-<change>^2),<dt min>)"
+NONE_DERIVED <dt target unlimited> "<dt max>*((<dt max>/<dt min>)^(nonemax(<rel_change>/<target change>,-2.d0)))"
+NONE_DERIVED <dt target> "nonemin(<dt target unlimited>,<dt[r=1]>*<dt multiplier>)"
+NONE_EQUATION <dt equation> "<dt>-<dt target>"
+NONE_CONSTANT <rel_change_stop> 1.d-6
+NONE_CONDITION <stop condition> "<rel_change>+<rel_change_stop>" stopcondition

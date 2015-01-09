@@ -1,0 +1,56 @@
+# convolving (smoothing or taking derivative) of <vof_variable> based on a single separation loop
+# needs <vof_variable_mask> set and produces <vof_variable_convolve> and <vof_variable_convolve_mask[r=0 and 1]>
+# needs a local of <vof_variable_convolve_weight> set afterwards too if required (defaults to 1)
+
+# needs the following set:
+#GENERAL_REPLACEMENTS R "<<maxseparation>>" W "3" # which can also have other options such as 4,faceseparation
+#GENERAL_REPLACEMENTS R "<vof_variable" W "<vof_phi"
+#GENERAL_REPLACEMENTS R "<<dynamic_variable>>" W "DERIVED" or "CONSTANT" depending on whether weight function depends on unknowns or is constant
+#GENERAL_REPLACEMENTS R "<vof_variable_default>" W "0.d0" or give it a value - this is the value given to the <vof_variable_convolve> outside of the <vof_variable_convolve_mask>
+
+# general convolution setup, same for every
+# find normalised distance between cell in separation loop and cell centre
+#CELL_LOCAL <vof_convolve_dist^2> "dot(<celltoseparationicellr[l=:]>,<celltoseparationicellr[l=:]>)"
+CELL_LOCAL <vof_convolve_dist^2> "<celltoseparationicellrsquared>"
+#CELL_CONSTANT <vof_convolve_eps_centre^2> "cellmin(cellmin(<celldxmin>,region=<adjacentcellicells>),2.d0*<celldxkernel>)**2" ON <all cells>
+CELL_CONSTANT <vof_convolve_eps_centre^-2> "cellmin(cellmin(<celldxmin>,region=<adjacentcellicells>),2.d0*<celldxkernel>)**(-2)" ON <all cells>
+CELL_LOCAL <vof_convolve_eps^-2> "cellfromcellave[separationcentre](<vof_convolve_eps_centre^-2>)" ON <all cells>
+
+# define kernels here
+CELL_CONSTANT <cellvol_nonzero> "cellif(celldelta(<boundary cells>),cellave(faceave[downcell](<cellvol>)),<cellvol>)" ON <all cells> # this is the volume of the cell, unless the cell is a boundary cell, in which case it is the volume of the adjacent domain cell
+# hyperbolic
+#CELL_LOCAL <vof_phi_smooth_kernel> "1.d0/(<vof_smooth_dist^2>/<vof_smooth_eps^2>+<vof_phi_smooth_constant>)"
+#CELL_LOCAL <vof_variable_convolve_kernel> "1.d0/(<vof_convolve_dist^2>/<vof_convolve_eps^2>+<vof_variable_convolve_constant>/5.d0)*<cellvol_nonzero>"
+# hyperbolic + sqrt
+#CELL_LOCAL <vof_phi_smooth_kernel> "1.d0/(sqrt(<vof_smooth_dist^2>/<vof_smooth_eps^2>)+<vof_phi_smooth_constant>)"
+#CELL_LOCAL <vof_variable_convolve_kernel> "1.d0/(sqrt(<vof_convolve_dist^2>/<vof_convolve_eps^2>)+<vof_variable_convolve_constant>/5.d0)*<cellvol_nonzero>"
+# hyperbolic + squared
+#CELL_LOCAL <vof_variable_convolve_kernel> "1.d0/((<vof_convolve_dist^2>/<vof_convolve_eps^2>)^2+<vof_variable_convolve_constant>/2.d0)*<cellvol_nonzero>"
+#CELL_LOCAL <vof_variable_convolve_kernel> "<cellvol_nonzero>/((<vof_convolve_dist^2>/<vof_convolve_eps^2>+<vof_variable_convolve_constant>)**2)"
+CELL_LOCAL <vof_variable_convolve_kernel> "<cellvol_nonzero>/((<vof_convolve_dist^2>*<vof_convolve_eps^-2>+<vof_variable_convolve_constant>)**2)" # multiplication is usually faster than division
+# exponential (guassian)
+# use constant = 1
+#CELL_LOCAL <vof_phi_smooth_kernel> "exp(-<vof_smooth_dist^2>/(<vof_smooth_eps^2>*<vof_phi_smooth_constant>))"
+#CELL_LOCAL <vof_variable_convolve_kernel> "exp(-<vof_convolve_dist^2>/(<vof_convolve_eps^2>*<vof_variable_convolve_constant>))*<cellvol_nonzero>" # gaussian
+NONE_CONSTANT <vof_variable_convolve_constant> 1.0d0
+# exponential + sqrt
+# use constant = 1
+#CELL_LOCAL <vof_phi_smooth_kernel> "exp(-sqrt(<vof_smooth_dist^2>/<vof_smooth_eps^2>)/<vof_phi_smooth_constant>)"
+# hyperbolic based on separation rather than distance
+# requires constant ~ 0.1 for power = 1
+#CELL_LOCAL <vof_phi_smooth_kernel> "1.d0/((<separation>+<vof_phi_smooth_constant>)**<vof_phi_smooth_power>)"
+# with <vof_phi_smooth_constant> 0.125d0 stable, but currents could be smaller
+# with <vof_phi_smooth_constant> 0.25d0 interface is too jaggered
+#CELL_LOCAL <vof_phi_smooth_kernel> "1.d0/(<separation>+<vof_phi_smooth_constant>)"
+
+# a mask of where theta_expanded is defined, which is based on the previous timestep mask, but expanded a little
+# also define a mask of where variables are changed
+CELL_DERIVED <vof_variable_convolve_mask> "cellif(<vof_variable_convolve_mask_plus[r=1]>,cellmax[maxseparation=<<maxseparation>>](<vof_variable_mask>,region=<all cells>),0.d0)"
+# define a smoothing kernel, which is also used in smooth_normals.arb
+CELL_TRANSIENT <vof_variable_convolve_mask[r=1]> "1.d0" "<vof_variable_convolve_mask>" ON <all cells>
+CELL_TRANSIENT <vof_variable_convolve_mask_plus[r=1]> "" "cellmax(<vof_variable_convolve_mask[r=1]>,region=<adjacentcellicells>)" ON <all cells>
+
+# now do the convolving
+CELL_CONSTANT <vof_variable_convolve_denominator> "cellsum[maxseparation=<<maxseparation>>](<vof_variable_convolve_kernel>,region=<all cells>)" ON <all cells>
+# now defaults to unsmoothed variable where convolved mask isn't present
+CELL_DERIVED <vof_variable_convolve> "cellif(<vof_variable_convolve_mask>,cellsum[maxseparation=<<maxseparation>>](<vof_variable>*<vof_variable_convolve_kernel>,region=<all cells>)/<vof_variable_convolve_denominator>,<vof_variable_default>)" ON <all cells>

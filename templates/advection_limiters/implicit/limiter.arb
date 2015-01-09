@@ -1,0 +1,28 @@
+# vector from centre to face within each cell
+# these will need <<dim1comment>> etc replaced either with spaces or comments, depending on which dimensions are being solved for
+INCLUDE "centre_to_face_vector"
+
+# calculate <phi limiter kernel> which is only limited to ensure that the kernel components are below certain maximums
+INCLUDE "kernel_limiter"
+
+# calculate cell centred phi gradients
+INCLUDE "limiter_gradients"
+
+# <phi delta> is the change in phi from the lastcell to face centre, based on the unlimited gradient
+FACE_LOCAL <phi delta> "dot(<xc_to_xf[l=:]>,faceave[lastcell](<phi limiter grad[l=:]>))"
+
+# TODO: write order(<phi>) function to allow the following:
+#NONE_CONSTANT <phi magnitude> "nonemagnitude(<phi>)" # this function works except that the magnitudes haven't been calculated yet when this constant is evaluated - so in summary, this line doesn't work!
+NONE_CONSTANT <phi magnitude> "cellmax(abs(<phi>),region=<all cells>)"
+NONE_CONSTANT <phi eps> "<phi magnitude>*1.d-20" # a small phi value, used to guard against divide by zero
+
+# this is the maximum absolute <phi delta> value
+CELL_LOCAL <phi deltac> "facemax(abs(<phi delta>),default=0.d0,region=<celljfaces>)" ON <domain>
+CELL_LOCAL <phi diff> "cellmin(<phi upper bound>-<phi>,-(<phi lower bound>-<phi>))" ON <domain>
+CELL_LOCAL <phi diff bounded> "cellmax(<phi diff>,0.d0)" ON <domain>
+# these numbers control how aggressively the limiter limits and hence the diagonal dominance of the resulting jacobian matrix
+NONE_CONSTANT <phi a> 4.0d0 # determines the gradient of the limiter
+NONE_CONSTANT <phi b> 0.3d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)
+CELL_DERIVED <phi betar> "<phi diff bounded>/(<phi deltac>+<phi eps>)" ON <domain>
+CELL_LOCAL <phi limiter domain> "cellif(1.d0-<phi b>*<phi betar>,<phi betar>^2/(<phi betar>^2+<phi a>*(1.d0-<phi b>*<phi betar>)^2),1.d0)"
+CELL_DERIVED <phi limiter> "cellif(celldelta(<domain>),<phi limiter domain>,0.d0)" ON <all cells>

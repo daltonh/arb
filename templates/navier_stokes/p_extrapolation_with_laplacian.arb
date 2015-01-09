@@ -1,0 +1,12 @@
+# this isn't stable 
+# there is a coupling between the continuity and momentum equations which this doesn't represent - it is only based on the momentum equation that already has the incompressibility equation incorporate (ie, the viscous stress is a laplacian)
+# not worked out for reflection yet
+
+TODO - NOT WORKED OUT FOR REFLECTION YET - THIS WILL FLAG AN ERROR
+
+CELL_LOCAL <u_n> "dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>))"
+<<dim1comment>>CELL_LOCAL <d2u_ndx2[l=1]> "cellgrad[l=1](cellgrad[l=1](<u_n>))"
+<<dim2comment>>CELL_LOCAL <d2u_ndx2[l=2]> "cellgrad[l=2](cellgrad[l=2](<u_n>))"
+<<dim3comment>>CELL_LOCAL <d2u_ndx2[l=3]> "cellgrad[l=3](cellgrad[l=3](<u_n>))"
+CELL_LOCAL <laplacian u_n> "<d2u_ndx2[l=1]>+<d2u_ndx2[l=2]>+<d2u_ndx2[l=3]>"
+FACE_EQUATION <equation> "facegrad(<p>)-<laplacian u_n>*<mu>" ON <region> # set pressure gradient next to wall equal to second normal derivative component of viscous stress

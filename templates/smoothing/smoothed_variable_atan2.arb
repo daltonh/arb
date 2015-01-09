@@ -1,0 +1,20 @@
+# these now strictly non-dimensional distances
+# distance over which function moves from one gradient to zero
+#CONSTANT <variable_dl> 0.5d0
+#CONSTANT <variable_du> 0.5d0
+# distance below and above base point over which gradient stays one
+#CONSTANT <variable_el> 0.5d0
+#CONSTANT <variable_eu> 0.5d0
+CONSTANT <variable_dl> 2.d-1 # now all based on this parameter - setting this to 1 gives gentlest functions, and towards 0 gives steepest
+CONSTANT <variable_el> "(1.d0-<variable_dl>)*0.95d0" # keep it from going to zero by decreasing linear range a bit
+CONSTANT <variable_du> "1.d0/<variable_dl>"
+CONSTANT <variable_eu> "<variable_du>-1.d0"
+
+# keep turb_el + turb_dl < 1 for non-negative results
+CELL_LOCAL <variable_basel> "<variable_base>*(1.d0-<variable_el>)"
+CELL_LOCAL <variable_baseu> "<variable_base>*(1.d0+<variable_eu>)"
+CELL_LOCAL <variable_cl> "2.d0*<variable_base>*<variable_dl>/<pi>"
+CELL_LOCAL <variable_cu> "2.d0*<variable_base>*<variable_du>/<pi>"
+CELL_LOCAL <variable_smoothedl> "<variable_cl>*atan((<variable>-<variable_basel>)/<variable_cl>)+<variable_basel>"
+CELL_LOCAL <variable_smoothedu> "<variable_cu>*atan((<variable>-<variable_baseu>)/<variable_cu>)+<variable_baseu>"
+CELL_DERIVED <variable_smoothed> "cellif(<variable>-<variable_basel>,cellif(<variable>-<variable_baseu>,<variable_smoothedu>,<variable>),<variable_smoothedl>)" ON <all cells> output

@@ -1,0 +1,16 @@
+# boundary equations for walls
+# The most stable and forgiving equation to used on the walls is to set <ls> to a low (negative, continuous phase) value that is beyond anything that could affect the surface force calculation.
+# One advantage of this is that even if there is no fluid in the vicinity of the wall, the <ls> function is still conceptually defined
+# The disadvantage is that if the fluid gets too close to the wall, then the force will be in error - hence, the domain on which the <ls> function is calculated should be bigger than that over which the momentum equations are calculated
+# If using this boundary condition, then use <ls_background> as the starting point for <ls_initial>
+#FACE_EQUATION <ls_equation_walls> "<ls>-<ls_walls>" ON <walls>
+
+# Alternatively, a form of mod(grad(<ls>))=1 can be set on the walls, but this requires that the <ls> is well defined in the adjacent domain.
+# Again, errors will occur (although smaller than the above) if the fluid gets too close to the walls, so fluid and level set calcs should be performed on separate domains.
+# Like the last equation, this requires low order differencing near the walls, otherwise the jacobian matrix may become singular as when using higher order differencing, this equation could be almost identical to that solved within the adjacent cell
+# If using this boundary condition, do not use <ls_background> as the starting point for <ls_initial>, instead use the true <ls_initial> right up to the walls
+<<dim1comment>>FACE_LOCAL <ls_dlsdx[l=1]> "facegrad[l=1](<ls>)"
+<<dim2comment>>FACE_LOCAL <ls_dlsdx[l=2]> "facegrad[l=2](<ls>)"
+<<dim3comment>>FACE_LOCAL <ls_dlsdx[l=3]> "facegrad[l=3](<ls>)"
+FACE_EQUATION <ls_equation_walls> "dot(<ls_dlsdx[l=:]>,<ls_dlsdx[l=:]>)-1.d0" ON <walls>
+

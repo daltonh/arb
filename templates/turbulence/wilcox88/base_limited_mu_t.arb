@@ -1,0 +1,8 @@
+# limit the base_mu_t around which the smoothing is based to be a multiple of the background mu_t
+NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.4d0 # set this, which with this file, will be used throughout
+NONE_TRANSIENT <turb_mu_t_base_rel_limiter> "<turb_mu_t_base_rel_limiter_initial>" "<turb_mu_t_base_rel_limiter_initial>" # this transient is actually just constant here
+CELL_LOCAL <turb_mu_t_base> "cellmax(cellmax(<turb_mu_t[r=1]>,<turb_mu_t_small>),<turb_mu_t_base_rel_limiter>*<turb_mu_t_background>)" ON <all cells>
+# and some diagnostics
+CELL_OUTPUT <turb_mu_t/background> "<turb_mu_t>/<turb_mu_t_background>" ON <all cells>
+NONE_OUTPUT <turb_mu_t/background min> "cellmin(<turb_mu_t/background>,region=<all cells>)"
+NONE_OUTPUT <turb_mu_t/background max> "cellmax(<turb_mu_t/background>,region=<all cells>)"

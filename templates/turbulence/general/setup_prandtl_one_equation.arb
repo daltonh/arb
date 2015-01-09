@@ -1,0 +1,3 @@
+# commands to setup a prandtl one equation simulation
+INCLUDE "setup_none"
+GENERAL_REPLACEMENTS R "<<turbprandtl1comment>>" W ""

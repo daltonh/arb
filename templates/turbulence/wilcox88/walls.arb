@@ -1,0 +1,27 @@
+# boundary conditions on walls
+
+FACE_EQUATION <turb_k_walls_equation> "<turb_k>" ON <walls>
+
+# local velocities for use in boundary conditions etc
+#CELL_LOCAL <turb_u_n> "dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>))" # component of velocity normal to wall
+#CELL_LOCAL <turb_u_t1> "dot(<u[l=:]>,cellave[lastface](<facetang1[l=:]>))" # component of velocity tangential to wall
+#CELL_LOCAL <turb_u_t2> "dot(<u[l=:]>,cellave[lastface](<facetang2[l=:]>))" # component of velocity tangential to wall
+
+#FACE_LOCAL <turb_tau_w> "<mu>*sqrt(facegrad(<turb_u_t1>)**2+facegrad(<turb_u_t2>)**2)" ON <walls> # need to check this works OK in 2D with second gradient zero
+#FACE_DERIVED <turb_u_tau> "sqrt(<turb_tau_w>/<rho>)" ON <walls> output
+
+#FACE_EQUATION <turb_k_walls_equation> "facegrad(<k>)" ON <walls> # as suggested by hrenya95
+#FACE_EQUATION <turb_k_walls_equation> "<k>" ON <walls> # as suggested by wilcox93
+#FACE_EQUATION <turb_omega_walls_equation> "<omega>-<u_tau>**2*2.5d3*<rho>/<mu_eff_f>" ON <walls> # slightly rough surface boundary condition, Wilcox93, p278
+#FACE_DERIVED <turb_omega_walls> "<turb_u_tau>**2*2.5d3*<rho>/<mu>" ON <walls>
+#FACE_DERIVED <turb_omega_walls> "sqrt(<turb_2SS>/<turb_C_D>)" ON <walls> output # based on prandtl
+
+
+# static boundary condition on omega (anything based on <turb_2SS> seems to be unstable)
+CONSTANT <turb_2SS_rel_walls> 1.00d+0
+FACE_DERIVED <turb_omega_walls> "sqrt(<turb_2SS_rel_walls>*<turb_2SS_background>/<turb_C_D>)" ON <walls> # based on prandtl, but turb_C_D has been no redefined as <turb_beta>/<turb_gamma>
+#FACE_DERIVED <turb_omega_walls> "sqrt(<turb_2SS_rel_walls>*<turb_2SS_background>*<turb_gamma>/<turb_beta>)" ON <walls> # based on wilcox88 omega equation
+# more standard type of boundary condition
+#FACE_DERIVED <turb_omega_walls> "60.d0*<mu>/(<rho>*0.075d0*<facedx>**2)" ON <walls> output # based on prandtl
+
+FACE_EQUATION <turb_omega_walls_equation> "<turb_omega>-<turb_omega_walls>" ON <walls> # slightly rough surface boundary condition, Wilcox93, p278

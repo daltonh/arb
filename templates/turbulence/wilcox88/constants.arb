@@ -1,0 +1,48 @@
+# k-omega turbulence model constants for wilcox06 standard model
+# see http://turbmodels.larc.nasa.gov/wilcox.html
+# wilcox06 reference refers to 'Turbulence Modeling for CFD', by David C. Wilcox, 2nd edition, 2010, p126-7
+
+#CONSTANT <turb_sigma_k> 0.6d0 # constant in k versions of effective viscosity (\omega^* in wilcox06) 2006 version
+CONSTANT <turb_sigma_k> 0.5d0 # 1988 version
+CONSTANT <turb_sigma_omega> 0.5d0 # constant in omega versions of effective viscosity (\omega in wilcox06) 2006 and 1988
+CONSTANT <turb_beta_star> 0.09d0 # 2006 and 1988
+#CONSTANT <turb_gamma> "13.d0/25.d0" # (\alpha in wilcox06) 2006 version
+CONSTANT <turb_gamma> "5.d0/9.d0" # (\alpha in wilcox06) 1988 version
+CONSTANT <turb_beta> "3.d0/40.d0" # 1988 (2006 it varies)
+
+#CONSTANT <turb_C_D> 0.08d0 # prandtl model constant, used in limiter, initial and boundary conditions
+CONSTANT <turb_C_D> "<turb_beta>/<turb_gamma>" # prandtl model constant, used in limiter, initial and boundary conditions, but now defined in terms of wilcox88 constants
+
+# for now this just cancels the general variable property replacements done in constants.arb
+GENERAL_REPLACEMENTS CANCEL "<mu_f>" # as viscosity now varies
+
+# these are some numerical constants
+# proportion of uniform, steady-state solution (based on approximated strain rate) to use initially
+CONSTANT <turb_k_rel_initial> 1.d+0
+CONSTANT <turb_omega_rel_initial> 1.d+0
+CONSTANT <turb_2SS_rel_initial> 1.d+0
+# proportion of uniform, steady-state solution (based on approximated strain rate) to use at inlet
+CONSTANT <turb_k_rel_inlet> 1.d+0
+CONSTANT <turb_omega_rel_inlet> 1.d+0
+CONSTANT <turb_2SS_rel_inlet> 1.d+0
+# minimum strain rate squared to be used in production term, as a proportion of some order of magnitude of the strain rate squared within the domain
+CONSTANT <turb_2SS_rel_min> 1.d-2
+CONSTANT <turb_mu_t_small_rel> 1.d-2
+
+# omega cutoff, as an absolute number
+#CONSTANT <turb_omega_lower> 1.d-2
+#CONSTANT <turb_omega_lower> "1.d-6*nonemagnitude(<turb_omega>)"
+# k cutoff, as an absolute number
+#CONSTANT <turb_k_lower> 1.d-2
+#CONSTANT <turb_k_lower> "1.d-6*nonemagnitude(<turb_k>)"
+
+# how low k that is used in some of the equations is allowed to be, relative to the steady-state, uniform value
+# if <turb_k_lower_lim_error> > 0 this parameter needs to be reduced
+# 0 = no limit to how low k can be (ie, >0)
+# 1 = limit of guaranteed numerical stability
+# 3 = effective k is not allowed to fall below the local dissipation=generation amount
+CONSTANT <turb_k_rel_lower> 2.d-1
+# this specifies how much lower the k used in mu can be than k_lower.  In practive for small <k_rel_lower> this needs to be 1 for reliable convergence.
+CONSTANT <turb_mu_rel_limit> 1.0d0
+# advection limiter used in the turbulence equations
+CONSTANT <turb_adv_limiter> 0.d0

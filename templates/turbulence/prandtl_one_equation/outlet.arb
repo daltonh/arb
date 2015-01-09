@@ -1,0 +1,1 @@
+FACE_EQUATION <turb_k_outlet_equation> "<turb_k_facegrad>" ON <outlet>

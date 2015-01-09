@@ -1,0 +1,9 @@
+A number of stars have to align to be able to use this solver
+* On osx, it is only available using the gnu (gfortran) compiler
+* On linux, it is available for both gfortran and ifort (intel) compilers (although the iterative solver doesn't seem to work under gfortran on linux)
+You need to download a license file and the relevant library for your compiler and architecture from
+http://www.pardiso-project.org and place both of them in src/contributed/pardiso'
+
+Note: if you have the required pardiso libraries and license file within this directory for the architecture that you're on, you won't be able to use the intel MKL pardiso solver (which is much older) anymore (obviously with ifort).
+To get the use of the intel MKL pardiso library back again, move (say) the license file somewhere else (for safekeeping)
+Actually there is now an --no-pardiso option for arb

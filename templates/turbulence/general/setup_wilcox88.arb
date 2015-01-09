@@ -1,0 +1,3 @@
+# commands to setup a wilcox88 simulation
+INCLUDE "setup_none"
+GENERAL_REPLACEMENTS R "<<turbwilcox88comment>>" W ""

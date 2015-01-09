@@ -1,0 +1,21 @@
+# first set up some constants relating to the discretisation
+# all of these constants are in terms of `non-dimensional' ls values:  that is, the actual ls value divided by the <pf_celldxmax>.  For now <pf_celldxmax> is set to the maximum cell dimension (<celldxmax> = maximum node to node distance for each cell) within the domain.  For meshes with greatly varying cell sizes <pf_celldxmax> should vary with location.
+
+# this is the maximum <pf> value which is expected to affect the interface behaviour (ie, affect the calculation of the surface force).
+CONSTANT <pf_maximum_kernel_separation> 2.3d0 # take this from what is reported about the kernels (or used in kernel_module.f90), to work out an estimate for <pf_validity_max>
+
+CONSTANT <pf_extra_validity_spacing> 0.d0 # expand or contract <pf_validity_max> by cell size multiples
+CONSTANT <pf_validity_max> "4.d0+2*<pf_maximum_kernel_separation>+<pf_extra_validity_spacing>" # first 1 cell accounts for the difference between the explicit and implicit values of <pf>, <pf_phi_max> takes us to the edge of the constant <phi> region where <pf_kappa_c> is required, plus 1 cell to get to <pf_kappa_f>, plus 1 separation (averaging) to get to <pf_kappa_c2>, plus 1 cell to get to <pf_n_f>, plus 1 separation (derivative) to get to <pf>
+CONSTANT <pf_validity_max_extra> "<pf_validity_max>+<pf_maximum_kernel_separation>" # this is one kernel separation beyond where values for <pf> could conceivable be used
+
+CONSTANT <pf_phi_cutoff> 1.d-8 # cutoff value of phi
+CONSTANT <pf_eps_phi> 1.d+0 # kinetic constant
+CONSTANT <pf_eps_nondimensional> 1.d0 # lengthscale of diffuse interface region, in cell widths
+CONSTANT <pf_celldxmax> "cellmax(<celldxmax>,region=<domain>)" elementdata # otherwise for roughly uniformly-sized meshes this will do
+CONSTANT <pf_eps> "<pf_eps_nondimensional>*<pf_celldxmax>"
+
+# this is the level set function, defined on all cells
+CELL_UNKNOWN <pf_phi> [] "<pf_phi_initial>" ON <all cells> magnitude=1.d0
+CELL_TRANSIENT <pf_phi[r=1]> "<pf_phi>" "<pf_phi>" ON <all cells> nooutput
+
+CELL_LOCAL <pf_phi_initial> "0.d0" # default initial phi value - set this to something in the actual input file

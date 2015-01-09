@@ -1,0 +1,19 @@
+# these are variables that are used in both the transient and steady-state equations
+
+FACE_DERIVED <turb_k_rho_f> "faceave[advection](<turb_k>*<rho>,<u_f>,<turb_adv_limiter>)" ON <all faces>
+
+# interpolate the 2SS mu product directly from the faces to the cells to be used in the production term
+#FACE_LOCAL <turb_2SS_mu> "<turb_2SS>*<turb_mu_u_f>" ON <all faces>
+#FACE_LOCAL <turb_2SS_mu> "<turb_2SS>*<turb_mu_t_f>" ON <all faces>
+#CELL_DERIVED <turb_2SS_mu_c> "<turb_2SS_mu>" ON <all cells>
+
+# R_k now includes <rho>
+#CELL_DERIVED <turb_R_k> "<turb_2SS_mu_c>-<rho>*<turb_C_D>*sqrt(<turb_k_lim>)*<turb_k>/sqrt(<turb_l_prandtl2>)" ON <domain>
+CELL_DERIVED <turb_R_k> "<rho>*sqrt(<turb_k_lim>*<turb_l_prandtl2>)*(<turb_2SS_c>-<turb_C_D>*<turb_k>/<turb_l_prandtl2>)" ON <domain>
+#CELL_DERIVED <turb_R_k> "<turb_2SS_mu_c>-<rho>*<turb_C_D>*sqrt(<turb_k_pos>)*<turb_k>/sqrt(<turb_l_prandtl2>)" ON <domain>
+
+# choose method to use for the facegradient of k, used in the diffusion of k and the outlet boundary condition
+# need to use adjacentcells option on facegrad if the mesh is not super refined and/or structured, otherwise checkerboarding may result in areas of high gradients
+#FACE_LOCAL <turb_k_facegrad> "facegrad[adjacentcells](<turb_k>)"
+# alternative more accurate evaluation
+FACE_LOCAL <turb_k_facegrad> "facegrad(<turb_k>)"

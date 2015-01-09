@@ -1,0 +1,5 @@
+# include this file for the boundary conditions on <ls> if there is a centreline
+
+# At a centreline the gradient of <ls> should be set to zero, in a manner that is consistent with the mod(grad(<ls>)) calc
+# here high order differencing should be used right up to the boundary - so don't include the centreline in the <walls> region used in the calculation of <ls_reinitialisation_order_walls> 
+FACE_EQUATION <ls_equation_centreline> "faceif(<ls_sign>,<ls_u_pos>,<ls_u_neg>)" ON <centreline>

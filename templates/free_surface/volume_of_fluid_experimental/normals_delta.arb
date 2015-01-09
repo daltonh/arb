@@ -1,0 +1,9 @@
+# phigrad is the based normal orientation used to calculate curvature, and also to to advection
+# phigrad is only defined near the interface, within the <vof_phigrad_mask>
+
+# based on delta
+<<dim1comment>>CELL_DERIVED <vof_phigrad[l=1]> "<vof_delta[l=1]>" ON <all cells> output
+<<dim2comment>>CELL_DERIVED <vof_phigrad[l=2]> "<vof_delta[l=2]>" ON <all cells>
+<<dim3comment>>CELL_DERIVED <vof_phigrad[l=3]> "<vof_delta[l=3]>" ON <all cells>
+CELL_DERIVED <vof_phigrad_mag> "<vof_delta_mag>" ON <all cells>
+CELL_DERIVED <vof_phigrad_mask> "<vof_delta_mask>" ON <all cells>

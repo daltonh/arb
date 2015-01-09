@@ -1,0 +1,17 @@
+# these are variables that are used in both the transient and steady-state equations
+
+# face averaged advection components
+FACE_DERIVED <turb_k_rho_f> "faceave[advection](<turb_k>*<rho>,<u_f>,<turb_adv_limiter>)" ON <all faces>
+FACE_DERIVED <turb_omega_rho_f> "faceave[advection](<turb_omega>*<rho>,<u_f>,<turb_adv_limiter>)" ON <all faces>
+
+CELL_DERIVED <turb_R_k> "<turb_mu_t>*<turb_2SS_c>-<rho>*<turb_beta_star>*<turb_k_pos>*<turb_omega_pos>" ON <domain> output
+CELL_DERIVED <turb_R_omega> "<rho>*(<turb_gamma>*<turb_2SS_c> - <turb_beta>*<turb_omega_pos>^2)" ON <domain> output
+
+# choose method to use for the facegradient of k, used in the diffusion of k and the outlet boundary condition
+# need to use adjacentcells option on facegrad if the mesh is not super refined and/or structured, otherwise checkerboarding may result in areas of high gradients
+FACE_LOCAL <turb_k_facegrad> "facegrad[adjacentcells](<turb_k>)"
+FACE_LOCAL <turb_omega_facegrad> "facegrad[adjacentcells](<turb_omega>)"
+# alternative more accurate evaluation
+#FACE_LOCAL <turb_k_facegrad> "facegrad(<turb_k>)"
+#FACE_LOCAL <turb_omega_facegrad> "facegrad(<turb_omega>)"
+

@@ -1,0 +1,83 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the licence directory.
+#
+#-------------------------------------------------------------------
+# list of files to be included when archiving arb
+# daltonh, 300610
+- old/
+- recent
+- code_scraps
+- resources
+- .*
++ /*.in
++ /*.arb
++ /*.geo
++ /*.msh
++ /arb
++ /todo
++ /pack
++ /plot_step
++ /src/
++ /src/*.f90
++ /src/*.f
++ /src/*.pl
++ /src/makefile
++ /src/contributed/
++ /src/contributed/hsl_ma28d/
++ /src/contributed/hsl_ma28d/*_module.f90
++ /src/contributed/hsl_ma28d/readme
++ /src/contributed/hsl_ma48d/
++ /src/contributed/hsl_ma48d/*_module.f90
++ /src/contributed/hsl_ma48d/readme
++ /src/contributed/intel_pardiso/
++ /src/contributed/intel_pardiso/*_module.f90
++ /src/contributed/intel_pardiso/readme
++ /src/contributed/pardiso/
++ /src/contributed/pardiso/*_module.f90
++ /src/contributed/pardiso/readme
++ /src/contributed/lapack/
++ /src/contributed/lapack/*_module.f90
++ /src/contributed/lapack/readme
++ /src/contributed/numerical_recipes/
++ /src/contributed/numerical_recipes/*_module.f90
++ /src/contributed/numerical_recipes/readme
++ /src/contributed/suitesparse/
++ /src/contributed/suitesparse/*_module.f90
++ /src/contributed/suitesparse/readme
++ /src/contributed/suitesparse/makefile
++ /src/contributed/higham88_donest/
++ /src/contributed/higham88_donest/*_module.f90
++ /src/contributed/higham88_donest/donest_generator.pl
++ /src/contributed/higham88_donest/readme
++ /src/contributed/higham88_donest/makefile
++ /doc/
++ /doc/manual.pdf
++ /doc/manual/***
++ /build/
++ /build/makefile
+- /examples/other/*
+- /examples/gmsh/*
++ /examples/***
++ /examples/*/unwrapped_input/***
++ /examples/*/alternatives/***
++ /templates/***
++ /licence/
++ /licence/*.txt
++ /licence/*.pdf
++ /misc/
++ /misc/create_msh/***
++ /misc/filter/***
++ /misc/engridtoarb/***
++ /misc/maxima_OsX/***
++ /misc/plot_step/***
++ /misc/test_suite/***
++ /misc/batcher/
++ /misc/batcher/batcher.pl
++ /misc/batcher/steady_state_channel_flow_with_cylinder/
++ /misc/batcher/steady_state_channel_flow_with_cylinder/**
++ /misc/packer/***
++ /misc/vim_syntax/
++ /misc/vim_syntax/arb_vim_files/***
+- *

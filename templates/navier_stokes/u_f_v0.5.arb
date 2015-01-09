@@ -1,0 +1,34 @@
+# calculate the Rhie-Chow type velocity correction, only applied (nonzero) on the domain faces
+<<dim1comment>>FACE_LOCAL <u_f_vect[l=1]> "faceave[<<reflect=1>>](<u[l=1]>)"
+<<dim2comment>>FACE_LOCAL <u_f_vect[l=2]> "faceave[<<reflect=2>>](<u[l=2]>)"
+<<dim3comment>>FACE_LOCAL <u_f_vect[l=3]> "faceave[<<reflect=3>>](<u[l=3]>)"
+FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <all faces> # volume (velocity) transport
+FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domain faces>
+FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domain faces>
+
+# advection limiter
+# alternative v0.5 method based on average velocity magnitude
+#CELL_DERIVED <u_mag2> "dot(<u[l=:]>,<u[l=:]>)" ON <all cells>
+#FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <domain faces>
+#FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<rho_f>)" ON <domain faces>
+# pre v0.5 method based on component of velocity in direction of face normal
+FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domain faces>
+#FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho>)" ON <domain faces>
+
+# viscous limiter
+# this didn't seem to work
+#<<cartesiancomment>>FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu_f>" ON <domain faces>
+## additional contribution to velocity interpolation from cylindrical hoop-stress term
+#<<cylindricalcomment>>FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<mu_f>,<eps_p>*<<radius_f>>^2/(2.d0*<mu_f>))" ON <domain faces>
+FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu_f>" ON <domain faces>
+
+# combined limiter
+#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
+FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1./<u_mf_{adv}>+1./<u_mf_{vis}>)" ON <domain faces>
+#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
+#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <domain faces>
+
+# final face velocity
+FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
+
+#FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction

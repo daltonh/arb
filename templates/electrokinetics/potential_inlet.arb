@@ -1,0 +1,6 @@
+# these are similar to the outlet equations, except for setting level of potential
+
+INCLUDE "potential_outlet.arb" REPLACE "outlet" WITH "inlet"
+
+# replace potential setting condition with an equation specifying total current
+NONE_EQUATION <inlet centreline potential equation> "<I_total_calc>-<I_total>" 

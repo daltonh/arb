@@ -1,0 +1,225 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+VERSION 0.50 # the version of syntax used in this file
+
+# setup turbulence model variables first
+INCLUDE_ROOT "turbulence/general"
+# include one of the three models:
+# prandtl zero equation model:
+#INCLUDE "setup_prandtl_zero_equation"
+# prandtl one equation model:
+#INCLUDE "setup_prandtl_one_equation"
+# wilcox88 model:
+INCLUDE "setup_wilcox88"
+
+# the following strings describe the simulation and are passed to the output files
+INFO_TITLE "Steady state turbulent flow around a cylinder within a channel"
+INFO_DESCRIPTION "Very course mesh.  Turbulence model is"
+<<turbprandtl0comment>>INFO_DESCRIPTION+ ": prandtl zero equation model"
+<<turbprandtl1comment>>INFO_DESCRIPTION+ ": prandtl one equation model"
+<<turbwilcox88comment>>INFO_DESCRIPTION+ ": wilcox88 two equation model"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "28/11/14" # interpreted as the last modification date
+
+#-------------------------------------------------------------------
+# system constants
+
+# some kernel options
+#KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2 # setting order of kernel function for face derivatives
+#KERNEL_OPTIONS polynomialorder=3 # setting order of kernel function for face derivatives
+#KERNEL_OPTIONS checkminw=.true.,minimumminw=0.8d0 # reducing the minw a bit which will decrease the size of the kernels
+
+# frequency of output etc
+#NEWTSTEPSTART 1
+#NEWTSTEPMAX 60
+#NEWTSTEPOUT 1
+TIMESTEPOUT 1
+
+# solver options
+#SOLVER_OPTIONS lambdamin=0.2d0
+#SOLVER_OPTIONS lambdalimitfalseroot=.false.
+#SOLVER_OPTIONS lambdalimitfalserootfactor=1.d-2
+# puts an increase in weight on large errors in the newton residual, to guard against individual equations becoming worse at the expense of the average error
+#SOLVER_OPTIONS weightlargeequationerrors=.true.,weightlargeequationerrorsfactor=1.d+0
+# this controls how aggressive the increase in lambda is (the underrelaxation factor used in backstepping)
+SOLVER_OPTIONS stickylambdaincrease=2
+#-------------------------------------------------------------------
+# geometry
+
+# CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+# where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
+# where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+# where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
+# where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
+# where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
+# where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
+
+FACE_REGION <walls> "COMPOUND <boundaries>-<inlet>-<outlet>"
+FACE_REGION <inlet centreline> "AT 0.d0 0.5d0 0.d0 PART OF <inlet>"
+FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
+FACE_REGION <outlet centreline> "AT 100.d0 0.5d0 0.d0 PART OF <outlet>"
+FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
+
+# MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+# output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput,outputscale=N,outputinversescale=N
+# input options are: input,centringinput,meshinput,centringmeshinput,noinput,inputscale=N,inputinversescale=N
+# data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+# vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
+# dat file output options are: datoutput,centringdatoutput,meshdatoutput,centringmeshdatoutput,nodatoutput (nodatoutput is the default)
+MSH_FILE "turbulent_channel_containing_cylinder_2d_coarse.msh" inputscale=0.5d0 # make it a bit smaller by scaling the coordinates on read
+
+#-------------------------------------------------------------------
+# variable definition reference:
+# REGION_LIST <region_1> <region_2> ... <region_n> # comments: line has the ordered names of any regions
+# (CELL_|FACE_)REGION_CONSTANT <name> [multiplier*units] numerical_value_for_region_1 .. value_for_region_n options # comments: sets a constant that varies with region
+# (CELL_|FACE_|NONE_|)CONSTANT <name> [multiplier*units] numerical_value ON <region> options # comments: sets a constant specific to one region or no regions and has the form
+# (CELL_|FACE_|NONE|)CONSTANT <name> [units] "expression (involving only constants)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)TRANSIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)NEWTIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)DERIVED <name> [units] "expression" ON <region> options # comments
+# (CELL_|FACE_|NONE|)UNKNOWN <name> [units] "expression (initial value, optional)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)EQUATION <name> [units] "expression (equation equaling zero)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)OUTPUT <name> [units] "expression" ON <region> options # comments
+# (CELL_|FACE_|NONE|)CONDITION <name> [units] "expression" ON <region> options # comments
+# (CELL_|FACE_|NONE|)LOCAL <name> [units] "expression" ON <region> options # comments
+
+# options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
+#p  derivative/noderivative - for DERIVED, EQUATION, LOCAL : do or do not calculate Jacobian derivatives for this variable
+#p  positive/negative/nocheck - for DERIVED, UNKNOWN, EQUATION, LOCAL : check at each iteration that variable is positive/negative
+#f  output/nooutput - for ALL : output compound to msh files
+#f  componentoutput/nocomponentoutput - for ALL : output just this component to msh files
+#f  stepoutput/stepoutputnoupdate/nostepoutput - for ALL : output compound to step file.  The noupdate one does not update the variable when the step file is written (needed for recording when output occurred for example).
+#f  componentstepoutput/componentstepoutputnoupdate/nocomponentstepoutput - for ALL : output just this component to step files
+#f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
+#f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
+#f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component)
+#p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
+#f  magnitude=value - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
+#f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
+#f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
+#   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
+
+GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+
+# variables etc
+
+# use templates from the navier_stokes directory to build up problem
+INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE "constants" # specify physical and numerical constants
+
+# more turbulence setup
+<<turbwilcox88comment>>INCLUDE_ROOT "turbulence/wilcox88"
+<<turbprandtl1comment>>INCLUDE_ROOT "turbulence/prandtl_one_equation"
+<<turbprandtl0comment>>INCLUDE_ROOT "turbulence/prandtl_zero_equation"
+INCLUDE "constants" # common to all methods
+<<turbwilcox88comment>>INCLUDE "transients"
+INCLUDE "viscosity" # common to all methods
+
+# for prandtl zero equation
+#INCLUDE "viscosity_face" # this is the standard discretisation for the prandtl zero method, which is linked to viscosity there
+#INCLUDE "viscosity_cell" # a different discretisation of the turbulence equations, with cell centred mu_t as per the one/two equation models
+
+# for prandtl one equation
+
+# for wilcox88
+<<turbwilcox88comment>>INCLUDE "limited_transient"
+<<turbwilcox88comment>>INCLUDE "base_equals_background_limited_mu_t" # now base of mu_t smoothing function is set to be decreasing multiple of background mu_t
+# the following can be used to change the way the viscosity limiter decreases with timestep - these are the default values
+#NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.35d0
+#NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.75d0 # experience is that if this is set close to 1, simulations can push to lower rel_limiters
+#NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.01d0
+# following are used to speed up the test problem and should be commented out for a real problem
+<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.20d0
+<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.5d0
+<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.09d0
+# an alternative constant limiting of the turbulence viscosity
+#INCLUDE "base_limited_mu_t" # limit base_mu_t as a multiple of the background mu_t to avoid transient solutions etc
+#NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.4d0
+
+INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE "domain" R "<mu_f>" W "<turb_mu_u_f>" R "<mu>" W "<turb_mu_u_c>" # equations to be solved within the domain 
+
+INCLUDE_ROOT "turbulence/general"
+INCLUDE "u_f_turbulence" # the rhie-chow interpolation is given the same prandtl zero equation based viscosity, regardless of turbulence tehcnique
+
+<<turbprandtl1comment>>INCLUDE_ROOT "turbulence/prandtl_one_equation"
+<<turbprandtl1comment>>INCLUDE "domain_steady_state"
+<<turbprandtl1comment>>INCLUDE "inlet"
+<<turbprandtl1comment>>INCLUDE "outlet"
+<<turbprandtl1comment>>INCLUDE "walls"
+
+<<turbwilcox88comment>>INCLUDE_ROOT "turbulence/wilcox88"
+<<turbwilcox88comment>>INCLUDE "domain_steady_state"
+<<turbwilcox88comment>>INCLUDE "inlet"
+<<turbwilcox88comment>>INCLUDE "outlet"
+<<turbwilcox88comment>>INCLUDE "walls"
+
+INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE "outlet_p_set" # outlet BC
+INCLUDE "walls" # nonslip walls BC
+
+# inlet BCs have to be special cased a bit
+#INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure gradient to give <u_av>
+#INCLUDE "inlet_u_set" # flat velocity profile
+INCLUDE "inlet_u_fully_developed_uniform_p" # fully developed velocity profile, setting a uniform pressure to give <u_av>
+
+# overwrite previous properties with the following
+#CONSTANT <Re_pipe> 1.0d+5
+#CONSTANT <mu> [Pa.s] "1/<Re_pipe>" # viscosity of liquid
+#CONSTANT <rho> [kg/m^3] 1.d0 # density
+#CONSTANT <u_av> [m/s] 1.d0 # average inlet velocity
+
+# these numbers roughly correspond to hot air
+CONSTANT <rho> [kg/m^3] 0.664d0 output # density
+CONSTANT <mu> [Pa.s] 2.75d-5 output # viscosity of liquid
+CONSTANT <u_av> [m/s] 14.25d0 # average inlet velocity
+# decrease turbulence intensity in the inlet for all models that support this
+CONSTANT <turb_k_rel_inlet> 1.d-2
+CONSTANT <turb_omega_rel_inlet> 1.d-2
+
+# output a flag telling us which term limited the correction velocity
+FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+# and turn some outputs on using the generic VARIABLE statement that picks up the last type and centring
+VARIABLE <u_f_{correction}> output
+VARIABLE <u_f_{raw}> output
+VARIABLE <u_f> output
+VARIABLE <J_f[l=1]> output
+VARIABLE <tau[l=1,1]> output
+VARIABLE <turb_mu_t> output
+VARIABLE <turb_mu_t_f> output
+VARIABLE <turb_2SS_c> output
+VARIABLE <turb_mu_t> output
+VARIABLE <turb_mu_t_f> output
+VARIABLE <turb_l_prandtl2> output
+VARIABLE <turb_mu_u_correction_f> output
+VARIABLE <turb_2SS_background> output
+VARIABLE <turb_2SS> output
+
+# use low order upwinding in these tests
+CONSTANT <adv_limiter> [] 0.d0 # multiplier used to limit gradients when calculating advection fluxes
+
+# some diagnostics
+<<turbwilcox88comment>>INCLUDE_ROOT "turbulence/wilcox88"
+<<turbwilcox88comment>>INCLUDE "smoothed_mu_t_diagnostics"
+<<turbwilcox88comment>>INCLUDE "wall_diagnostics"
+
+# some debugging ideas
+#INCLUDE "explicit_mu_t"
+#INCLUDE "strain_rate_background"
+
+# output some info about the mesh
+#INCLUDE_ROOT "general"
+#INCLUDE "cell_aspect_ratio"
+#INCLUDE "element_indicies"
+
+# some statistics
+NONE_OUTPUT <p_av_inlet> "facesum(<p_f>*<facearea>,region=<inlet>)/facesum(<facearea>,region=<inlet>)"
+NONE_OUTPUT <p_av_outlet> "facesum(<p_f>*<facearea>,region=<outlet>)/facesum(<facearea>,region=<outlet>)"
+NONE_OUTPUT <p_centreline_inlet> "facesum(<p_f>,region=<inlet centreline>)"
+NONE_OUTPUT <p_centreline_outlet> "facesum(<p_f>,region=<outlet centreline>)"
+
+#-------------------------------------------------------------------

@@ -1,0 +1,13 @@
+The way that git handles directories isn't very good, so there are two workarounds for empty or private directories
+
+1) for a truly private directory (ie, the directory itself is not included in the git distribution) use a local .gitignore file in its parent to ignore it
+
+2) for a directory that needs to be empty in the git distribution but present, link to the accompanying gitignore_empty_directory file as a local .gitignore file within the directory
+
+The parent gitignore rules will ignore any directories with the following names:
+resources
+code_scraps
+old
+
+and any links/file with the following names:
+recent

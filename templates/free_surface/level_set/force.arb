@@ -1,0 +1,8 @@
+# within this file we calculate the cell centred surface force and face centred force used in the <u_f> interpolation
+
+<<dim1comment>>CELL_LOCAL <ls_F_c[l=1]> "<ls_kappa_c>*celldivgrad[l=1](<ls_phi>)" ON <all cells>
+<<dim2comment>>CELL_LOCAL <ls_F_c[l=2]> "<ls_kappa_c>*celldivgrad[l=2](<ls_phi>)" ON <all cells>
+<<dim3comment>>CELL_LOCAL <ls_F_c[l=3]> "<ls_kappa_c>*celldivgrad[l=3](<ls_phi>)" ON <all cells>
+
+# differencing type used here must match that in the p_error calc
+FACE_LOCAL <ls_F_f> "<ls_kappa_f>*facegrad[dxunit](<ls_phi>)" ON <all faces>

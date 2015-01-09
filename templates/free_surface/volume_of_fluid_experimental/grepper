@@ -1,0 +1,184 @@
+cancel_free_surface_replacements.arb:GENERAL_REPLACEMENTS CANCEL "<vof_phigrad"
+curvature_angle_based.arb:CELL_LOCAL <vof_kappa_cart_c> "-(cellgrad[l=1,reflect=1](<vof_phigrad_smoothed_unit[l=1]>)+cellgrad[l=2,reflect=2](<vof_phigrad_smoothed_unit[l=2]>)+cellgrad[l=3,reflect=3](<vof_phigrad_smoothed_unit[l=3]>))" ON <all cells>
+curvature_angle_based.arb:<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cyl_c> "-<vof_phigrad_unit[l=<<radialdim>>]>/<<radius_c>>" ON <all cells> # won't work on centreline, so instead use twice carteisan curvature there
+curvature_angle_celldiv_based.arb:#<<dim1comment>>FACE_LOCAL <vof_phigrad_unit_f[l=1]> "cos(<vof_theta_smoothed_f>)" ON <all faces>
+curvature_angle_celldiv_based.arb:#<<dim2comment>>FACE_LOCAL <vof_phigrad_unit_f[l=2]> "sin(<vof_theta_smoothed_f>)" ON <all faces>
+curvature_angle_celldiv_based.arb:<<dim1comment>>FACE_DERIVED <vof_phigrad_unit_f[l=1]> "faceif(<vof_theta_smoothed_f_mask>,cos(<vof_theta_smoothed_f>),0.d0)" ON <all faces> output
+curvature_angle_celldiv_based.arb:<<dim2comment>>FACE_DERIVED <vof_phigrad_unit_f[l=2]> "faceif(<vof_theta_smoothed_f_mask>,sin(<vof_theta_smoothed_f>),0.d0)" ON <all faces>
+curvature_angle_celldiv_based.arb:FACE_DERIVED <vof_phigrad_f_scalar> "faceif(<vof_theta_smoothed_f_mask>,dot(<vof_phigrad_unit_f[l=:]>,<facenorm[l=:]>),0.d0)" ON <all faces> output
+curvature_angle_celldiv_based.arb:<<cartesiancomment>>CELL_LOCAL <vof_kappa_c2> "-celldiv(<vof_phigrad_f_scalar>)" ON <all cells> output
+curvature_angle_celldiv_based.arb:<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cart_c> "-celldiv(<vof_phigrad_f_scalar>)" ON <all cells>
+curvature_angle_celldiv_based.arb:<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cyl_c> "-<vof_phigrad_unit[l=<<radialdim>>]>/<<radius_c>>" ON <all cells> # won't work on centreline, so instead use twice carteisan curvature there
+curvature_angle_facegrad_based.arb:FACE_LOCAL <vof_kappa_cart_f> "-(facegrad[l=1,reflect=1](<vof_phigrad_expand_unit[l=1]>)+facegrad[l=2,reflect=2](<vof_phigrad_expand_unit[l=2]>)+facegrad[l=3,reflect=3](<vof_phigrad_expand_unit[l=3]>))" ON <all faces>
+curvature_angle_facegrad_based.arb:#<<cylindricalcomment>>FACE_LOCAL <vof_kappa_cyl_f> "-faceave[reflect=<<radialdim>>](<vof_phigrad_expand_unit[l=<<radialdim>>]>)/<<radius_f>>" ON <all faces> # won't work on centreline, so instead use twice carteisan curvature there
+curvature_angle_facegrad_based.arb:<<cylindricalcomment>>FACE_LOCAL <vof_kappa_cyl_f> "-faceave(<vof_phigrad_expand_unit[l=<<radialdim>>]>/<<radius_c>>)" ON <all faces> # won't work on centreline, so instead use twice carteisan curvature there
+curvature_angle_facegrad_based.arb:#<<cylindricalcomment>>FACE_LOCAL <vof_kappa_totcyl_f> "-(facegrad[l=1](<vof_phigrad_expand_unit[l=1]>*<<radius_c>>)+facegrad[l=2,reflect=2](<vof_phigrad_expand_unit[l=2]>*<<radius_c>>)+facegrad[l=3,reflect=3](<vof_phigrad_expand_unit[l=3]>*<<radius_c>>))/<<radius_f>>" ON <all faces>
+curvature_angle_facegrad_based.arb:# now weight using <vof_delta_f> magnitude limited by minimum <vof_phigrad_tol>
+curvature_angle_facegrad_based.arb:CELL_DERIVED <vof_kappa_c> "cellif(<vof_delta_mask>,facesum(<vof_kappa_f>*facemax(abs(<vof_delta_f>),default=<vof_phigrad_tol>),region=<celljfaces>)/facesum(facemax(abs(<vof_delta_f>),default=<vof_phigrad_tol>),region=<celljfaces>),0.d0)" ON <all cells> output
+curvature_cell_based.arb:<<dim1comment>>FACE_LOCAL <vof_phigrad_f[l=1]> "facegrad[l=1](<vof_phi_smoothed>)" ON <all faces>
+curvature_cell_based.arb:<<dim2comment>>FACE_LOCAL <vof_phigrad_f[l=2]> "facegrad[l=2](<vof_phi_smoothed>)" ON <all faces>
+curvature_cell_based.arb:<<dim3comment>>FACE_LOCAL <vof_phigrad_f[l=3]> "facegrad[l=3](<vof_phi_smoothed>)" ON <all faces>
+curvature_cell_based.arb:FACE_LOCAL <vof_phigrad_f_mag> "sqrt(dot(<vof_phigrad_f[l=:]>,<vof_phigrad_f[l=:]>))" ON <all faces>
+curvature_cell_based.arb:FACE_DERIVED <vof_phigrad_f_scalar> "facegrad(<vof_phi_smoothed>)/facemax(<vof_phigrad_f_mag>,<vof_phi_tol>/<facedx>)" ON <all faces> nooutput
+curvature_cell_based.arb:<<cartesiancomment>>CELL_LOCAL <vof_kappa_c2> "-celldiv(<vof_phigrad_f_scalar>)" ON <all cells> output
+curvature_cell_based.arb:<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cart_c> "-celldiv(<vof_phigrad_f_scalar>)" ON <all cells>
+curvature_cell_based.arb:<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cyl_c> "-<vof_phigrad_unit[l=<<radialdim>>]>/<<radius_c>>" ON <all cells> # won't work on centreline, so instead use twice carteisan curvature there
+curvature_cell_based.arb:#<<cylindricalcomment>>CELL_DERIVED <vof_kappa_c2> "-celldiv(<<radius_f>>*<vof_phigrad_f_scalar>/faceave[lastcell](<<radius_c>>))" ON <all cells> nooutput,elementdata
+curvature_delta_weighted.arb:<<dim1comment>>FACE_LOCAL <vof_phigrad_f[l=1]> "facegrad[l=1](<vof_phi_normal>)" ON <all faces>
+curvature_delta_weighted.arb:<<dim2comment>>FACE_LOCAL <vof_phigrad_f[l=2]> "facegrad[l=2](<vof_phi_normal>)" ON <all faces>
+curvature_delta_weighted.arb:<<dim3comment>>FACE_LOCAL <vof_phigrad_f[l=3]> "facegrad[l=3](<vof_phi_normal>)" ON <all faces>
+curvature_delta_weighted.arb:FACE_LOCAL <vof_phigrad_f_mag> "sqrt(dot(<vof_phigrad_f[l=:]>,<vof_phigrad_f[l=:]>))" ON <all faces>
+curvature_delta_weighted.arb:FACE_DERIVED <vof_phigrad_f_scalar> "facegrad(<vof_phi_normal>)/facemax(<vof_phigrad_f_mag>,<vof_phi_tol>/<facedx>)" ON <all faces> nooutput
+curvature_delta_weighted.arb:<<cartesiancomment>>CELL_LOCAL <vof_kappa_c2> "-celldiv(<vof_phigrad_f_scalar>)" ON <all cells> output
+curvature_delta_weighted.arb:<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cart_c> "-celldiv(<vof_phigrad_f_scalar>)" ON <all cells>
+curvature_delta_weighted.arb:<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cyl_c> "-<vof_phigrad_unit[l=<<radialdim>>]>/<<radius_c>>" ON <all cells> # won't work on centreline, so instead use twice carteisan curvature there
+curvature_delta_weighted.arb:#<<cylindricalcomment>>CELL_DERIVED <vof_kappa_c2> "-celldiv(<<radius_f>>*<vof_phigrad_f_scalar>/faceave[lastcell](<<radius_c>>))" ON <all cells> nooutput,elementdata
+curvature_face_based.arb:<<cartesiancomment>>FACE_DERIVED <vof_kappa_f> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <all faces> output
+curvature_face_based.arb:<<cylindricalcomment>>FACE_LOCAL <vof_kappa_cart_f> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <all faces>
+curvature_face_based.arb:<<cylindricalcomment>>FACE_LOCAL <vof_kappa_cyl_f> "-faceave[reflect=<<radialdim>>](<vof_phigrad_unit[l=<<radialdim>>]>)/<<radius_f>>" ON <all faces> # won't work on centreline, so instead use twice carteisan curvature there
+curvature_face_based.arb:#FACE_DERIVED <vof_kappa_f2> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <all faces> output
+curvature_normal_based.arb:CELL_LOCAL <vof_kappa_cart_c> "cellgrad[l=1,reflect=1](<vof_phigrad_smoothed_unit[l=1]>)+cellgrad[l=2,reflect=2](<vof_phigrad_smoothed_unit[l=2]>)+cellgrad[l=3,reflect=3](<vof_phigrad_smoothed_unit[l=3]>)" ON <all cells>
+curvature_normal_based.arb:#<<cartesiancomment>>CELL_LOCAL <vof_kappa_c2> "-celldiv(<vof_phigrad_f_scalar>)" ON <all cells> output
+curvature_normal_based.arb:<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cyl_c> "-<vof_phigrad_unit[l=<<radialdim>>]>/<<radius_c>>" ON <all cells> # won't work on centreline, so instead use twice carteisan curvature there
+delta.arb:CELL_DERIVED <vof_delta_mask> "cellif(<vof_delta_mag>-<vof_phigrad_tol>,1.d0,0.d0)" ON <all cells>
+delta.arb:#CELL_DERIVED <vof_delta_mag> "cellmax(sqrt(dot(<vof_delta[l=:]>,<vof_delta[l=:]>)),<vof_phigrad_tol>)" ON <all cells>
+equation.arb:CELL_TRANSIENT <vof_phigrad_unit[l=1,r=1]> "0.d0" "<vof_phigrad_unit[l=1]>" ON <all cells>
+equation.arb:CELL_TRANSIENT <vof_phigrad_unit[l=2,r=1]> "0.d0" "<vof_phigrad_unit[l=2]>" ON <all cells>
+equation.arb:CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[exact](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all cells> output
+equation.arb:#CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[lineartwo](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all cells> output
+equation.arb:FACE_DERIVED <vof_phi_f[r=1]> "facevofphi[noderivative,linearone](phi=<vof_phi[r=1]>,d=<vof_d[r=1]>,flux=<u_f>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all faces> output
+equation.arb:#INCLUDE "facevofphi_linearone_2D_advected_vector_explicit" R "<facevofphi_n[l=" W "<vof_phigrad_unit[r=1,l=" R "<facevofphi_d>" W "<vof_d[r=1]>" R "<facevofphi_phi>" W "<phi[r=1]>" R "<facevofphi_f[r=1]>" W "<vof_phi_f[r=1]>" R "<facevofphi_phi>" W "<vof_phi[r=1]>" R "<facevofphi_phitol>" W "<vof_phi_tol>"
+expand_normals_angle.arb:# on the <vof_phigrad_mask>, calculate the angle on the interface, <vof_theta>
+expand_normals_angle.arb:CELL_DERIVED <vof_theta> "cellif(<vof_phigrad_mask>,atan2(<vof_phigrad_unit[l=2]>,<vof_phigrad_unit[l=1]>),0.d0)" ON <all cells> output
+expand_normals_angle.arb:#CELL_DERIVED <vof_theta> "cellif(<vof_phigrad_mask>,<pi>/4.d0,0.d0)" ON <all cells> output # test on reflection
+expand_normals_angle.arb:#INCLUDE "convolve_variable_dynamic" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_expand_constant>" R "<vof_variable>" W "<vof_theta_relative>" R "<vof_variable_convolve>" W "<vof_theta_relative_expand>"  R "<vof_variable_mask>" W "<vof_phigrad_mask>" R "<vof_variable_convolve" W "<vof_phigrad_expand" R "<vof_variable" W "<vof_phigrad"
+expand_normals_angle.arb:#CELL_LOCAL <vof_phigrad_expand_weight> "<vof_phigrad_mag>"
+expand_normals_angle.arb:INCLUDE "convolve_variable_dynamic" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_expand_constant>" R "<vof_variable>" W "<vof_theta_relative>" R "<vof_variable_convolve>" W "<vof_theta_relative_expand>"  R "<vof_variable_mask>" W "<vof_delta_mask>" R "<vof_variable_convolve" W "<vof_phigrad_expand" R "<vof_variable" W "<vof_phigrad"
+expand_normals_angle.arb:CELL_LOCAL <vof_phigrad_expand_weight> "<vof_delta_mag>"
+expand_normals_angle.arb:#INCLUDE "convolve_variable_dynamic" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_expand_constant>" R "<vof_variable>" W "<vof_theta_relative>" R "<vof_variable_convolve>" W "<vof_theta_relative_expand>"  R "<vof_variable_mask>" W "(<vof_delta_mask>*<vof_phigrad_mask>)" R "<vof_variable_convolve" W "<vof_phigrad_expand" R "<vof_variable" W "<vof_phigrad"
+expand_normals_angle.arb:#CELL_LOCAL <vof_phigrad_expand_weight> "<vof_delta_mag>*<vof_phigrad_mag>"
+expand_normals_angle.arb:#CELL_LOCAL <vof_phigrad_expand_weight> "sqrt(<vof_delta_mag>*<vof_phigrad_mag>)"
+expand_normals_angle.arb:NONE_CONSTANT <vof_phigrad_expand_constant> 2.0d0
+expand_normals_angle.arb:CELL_DERIVED <vof_theta_expand> "cellif(<vof_phigrad_expand_mask>,cellboundangle(<vof_theta_relative_expand>+<vof_theta_base>),0.d0)" ON <all cells>
+expand_normals_angle.arb:CELL_TRANSIENT <vof_theta_base> "<vof_theta_base_ave>" "cellif(<vof_phigrad_expand_mask[r=1]>,<vof_theta_expand[r=1]>,<vof_theta_base_ave>)" ON <all cells>
+expand_normals_angle.arb:CELL_LOCAL <vof_theta_base_ave_n[l=1]> "cellsum[reflect=1](cos(<vof_theta_expand[r=1]>)*<vof_phigrad_expand_mask[r=1]>,region=<cellicells>)/cellmax(cellsum(<vof_phigrad_expand_mask[r=1]>,region=<cellicells>),1.d0)"
+expand_normals_angle.arb:CELL_LOCAL <vof_theta_base_ave_n[l=2]> "cellsum[reflect=2](sin(<vof_theta_expand[r=1]>)*<vof_phigrad_expand_mask[r=1]>,region=<cellicells>)/cellmax(cellsum(<vof_phigrad_expand_mask[r=1]>,region=<cellicells>),1.d0)"
+expand_normals_angle.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad_expand_unit[l=1]> "cellif(<vof_phigrad_expand_mask>,cos(<vof_theta_expand>),0.d0)" ON <all cells> output
+expand_normals_angle.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad_expand_unit[l=2]> "cellif(<vof_phigrad_expand_mask>,sin(<vof_theta_expand>),0.d0)" ON <all cells>
+expand_normals_component.arb:<<dim1comment>>INCLUDE "convolve_variable_dynamic" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_expand_constant>" R "<vof_variable>" W "<vof_phigrad_unit[l=1]>" R "<vof_variable_convolve>" W "<vof_phigrad_expand[l=1]>" R "<vof_variable_mask>" W "<vof_delta_mask>" R "<vof_variable_convolve" W "<vof_phigrad_expand" R "<vof_variable" W "<vof_phigrad" R "<<reflect>>" W "1"
+expand_normals_component.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad_expand[l=1]> "cellif(<vof_phigrad_expand_mask>,cellsum[maxseparation=<<maxseparation>>,reflect=1](cellif(<vof_delta_mask>,<vof_phigrad_unit[l=1]>*<vof_phigrad_expand_kernel>*<vof_phigrad_expand_weight>,0.d0),region=<all cells>)/<vof_phigrad_expand_denominator>,0.d0)" ON <all cells> output
+expand_normals_component.arb:<<dim2comment>>INCLUDE "convolve_variable_dynamic" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_expand_constant>" R "<vof_variable>" W "<vof_phigrad_unit[l=2]>" R "<vof_variable_convolve>" W "<vof_phigrad_expand[l=2]>" R "<vof_variable_mask>" W "<vof_delta_mask>" R "<vof_variable_convolve" W "<vof_phigrad_expand" R "<vof_variable" W "<vof_phigrad" R "<<reflect>>" W "2"
+expand_normals_component.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad_expand[l=2]> "cellif(<vof_phigrad_expand_mask>,cellsum[maxseparation=<<maxseparation>>,reflect=2](cellif(<vof_delta_mask>,<vof_phigrad_unit[l=2]>*<vof_phigrad_expand_kernel>*<vof_phigrad_expand_weight>,0.d0),region=<all cells>)/<vof_phigrad_expand_denominator>,0.d0)" ON <all cells> output
+expand_normals_component.arb:<<dim3comment>>INCLUDE "convolve_variable_dynamic" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_expand_constant>" R "<vof_variable>" W "<vof_phigrad_unit[l=3]>" R "<vof_variable_convolve>" W "<vof_phigrad_expand[l=3]>" R "<vof_variable_mask>" W "<vof_delta_mask>" R "<vof_variable_convolve" W "<vof_phigrad_expand" R "<vof_variable" W "<vof_phigrad" R "<<reflect>>" W "3"
+expand_normals_component.arb:<<dim3comment>>CELL_DERIVED <vof_phigrad_expand[l=3]> "cellif(<vof_phigrad_expand_mask>,cellsum[maxseparation=<<maxseparation>>,reflect=3](cellif(<vof_delta_mask>,<vof_phigrad_unit[l=3]>*<vof_phigrad_expand_kernel>*<vof_phigrad_expand_weight>,0.d0),region=<all cells>)/<vof_phigrad_expand_denominator>,0.d0)" ON <all cells> output
+expand_normals_component.arb:CELL_LOCAL <vof_phigrad_expand_weight> "<vof_delta_mag>"
+expand_normals_component.arb:NONE_CONSTANT <vof_phigrad_expand_constant> 2.0d0
+expand_normals_component.arb:CELL_DERIVED <vof_phigrad_expand_mag> "sqrt(dot(<vof_phigrad_expand[l=:]>,<vof_phigrad_expand[l=:]>))" ON <all cells>
+expand_normals_component.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad_expand_unit[l=1]> "cellif(<vof_phigrad_expand_mask>,<vof_phigrad_expand[l=1]>/<vof_phigrad_expand_mag>,0.d0)" ON <all cells> output
+expand_normals_component.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad_expand_unit[l=2]> "cellif(<vof_phigrad_expand_mask>,<vof_phigrad_expand[l=2]>/<vof_phigrad_expand_mag>,0.d0)" ON <all cells>
+expand_normals_component.arb:<<dim3comment>>CELL_DERIVED <vof_phigrad_expand_unit[l=3]> "cellif(<vof_phigrad_expand_mask>,<vof_phigrad_expand[l=3]>/<vof_phigrad_expand_mag>,0.d0)" ON <all cells>
+free_surface_replacements.arb:GENERAL_REPLACEMENTS R "<vof_phigrad" W "<vof_fs_phigrad" 
+interface_geometry.arb:# now calculate <vof_phigrad[l=:]> which is used for both curvature calculation and (explicitly) for advection calculation
+interface_geometry.arb:# also create <vof_phigrad_mask> and <vof_phigrad_mag>
+interface_geometry.arb:# expand the normals (<vof_phigrad>) to enable curvature calculation
+interface_geometry.arb:# create <vof_phigrad_expand_unit[l=:]> and <vof_phigrad_expand_mask>, and also save explicit versions of both
+interface_geometry_2D.arb:# now calculate <vof_phigrad[l=:]> which is used for both curvature calculation and (explicitly) for advection calculation
+interface_geometry_2D.arb:# also create <vof_phigrad_mask> and <vof_phigrad_mag>
+interface_geometry_2D.arb:# expand the normals (<vof_phigrad>) to enable curvature calculation
+interface_geometry_2D.arb:# create <vof_phigrad_expand_unit[l=:]> and <vof_phigrad_expand_mask>, and also save explicit versions of both
+link_double_domain_variables.arb:# move free surface <vof_fs_phigrad_unit[l=:]> back to fluid region <vof_phigrad_unit[l=:]> 
+link_double_domain_variables.arb:<<dim1comment>>CELL_LOCAL <vof_phigrad_unit[l=1]> "cellif(celldelta(<fluid boundary cells>),celltofacelink(<vof_fs_phigrad_unit[l=1]>,localregion=<fluid boundary cells>,remoteregion=<free surface centre boundaries>),celltocelllink(<vof_fs_phigrad_unit[l=1]>,localregion=<fluid domain>,remoteregion=<free surface centre>))" ON <fluid all cells> output
+link_double_domain_variables.arb:<<dim2comment>>CELL_LOCAL <vof_phigrad_unit[l=2]> "cellif(celldelta(<fluid boundary cells>),celltofacelink(<vof_fs_phigrad_unit[l=2]>,localregion=<fluid boundary cells>,remoteregion=<free surface centre boundaries>),celltocelllink(<vof_fs_phigrad_unit[l=2]>,localregion=<fluid domain>,remoteregion=<free surface centre>))" ON <fluid all cells>
+link_double_domain_variables.arb:<<dim3comment>>CELL_LOCAL <vof_phigrad_unit[l=3]> "cellif(celldelta(<fluid boundary cells>),celltofacelink(<vof_fs_phigrad_unit[l=3]>,localregion=<fluid boundary cells>,remoteregion=<free surface centre boundaries>),celltocelllink(<vof_fs_phigrad_unit[l=3]>,localregion=<fluid domain>,remoteregion=<free surface centre>))" ON <fluid all cells>
+link_double_domain_variables.arb:<<dim1comment>>CELL_LOCAL <vof_phigrad[l=1]> "cellif(celldelta(<fluid boundary cells>),celltofacelink(<vof_fs_phigrad[l=1]>,localregion=<fluid boundary cells>,remoteregion=<free surface centre boundaries>),celltocelllink(<vof_fs_phigrad[l=1]>,localregion=<fluid domain>,remoteregion=<free surface centre>))" ON <fluid all cells> output
+link_double_domain_variables.arb:<<dim2comment>>CELL_LOCAL <vof_phigrad[l=2]> "cellif(celldelta(<fluid boundary cells>),celltofacelink(<vof_fs_phigrad[l=2]>,localregion=<fluid boundary cells>,remoteregion=<free surface centre boundaries>),celltocelllink(<vof_fs_phigrad[l=2]>,localregion=<fluid domain>,remoteregion=<free surface centre>))" ON <fluid all cells>
+link_double_domain_variables.arb:<<dim3comment>>CELL_LOCAL <vof_phigrad[l=3]> "cellif(celldelta(<fluid boundary cells>),celltofacelink(<vof_fs_phigrad[l=3]>,localregion=<fluid boundary cells>,remoteregion=<free surface centre boundaries>),celltocelllink(<vof_fs_phigrad[l=3]>,localregion=<fluid domain>,remoteregion=<free surface centre>))" ON <fluid all cells>
+normals_angle_based_delta.arb:<<dim1comment>>CELL_LOCAL <vof_phigrad[l=1]> "<vof_delta[l=1]>" ON <all cells> output
+normals_angle_based_delta.arb:<<dim2comment>>CELL_LOCAL <vof_phigrad[l=2]> "<vof_delta[l=2]>" ON <all cells>
+normals_angle_based_delta.arb:<<dim3comment>>CELL_LOCAL <vof_phigrad[l=3]> "<vof_delta[l=3]>" ON <all cells>
+normals_angle_based_delta.arb:CELL_DERIVED <vof_phigrad_mag> "<vof_delta_mag>" ON <all cells>
+normals_angle_based_delta.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad_unit[l=1]> "cellif(<vof_delta_mask>,<vof_delta[l=1]>/<vof_delta_mag>,0.d0)" ON <all cells> output
+normals_angle_based_delta.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad_unit[l=2]> "cellif(<vof_delta_mask>,<vof_delta[l=2]>/<vof_delta_mag>,0.d0)" ON <all cells>
+normals_angle_based_delta.arb:<<dim3comment>>CELL_DERIVED <vof_phigrad_unit[l=3]> "cellif(<vof_delta_mask>,<vof_delta[l=3]>/<vof_delta_mag>,0.d0)" ON <all cells>
+normals_angle_based_delta.arb:#<<dim1comment>>CELL_LOCAL <vof_phigrad[l=1]> "cellgrad[l=1](<vof_phi_lim>)" ON <all cells> output
+normals_angle_based_delta.arb:#<<dim2comment>>CELL_LOCAL <vof_phigrad[l=2]> "cellgrad[l=2](<vof_phi_lim>)" ON <all cells>
+normals_angle_based_delta.arb:#<<dim3comment>>CELL_LOCAL <vof_phigrad[l=3]> "cellgrad[l=3](<vof_phi_lim>)" ON <all cells>
+normals_angle_based_delta.arb:#CELL_LOCAL <vof_phigrad_mag^2> "dot(<vof_phigrad[l=:]>,<vof_phigrad[l=:]>)" ON <all cells>
+normals_angle_based_delta.arb:#CELL_DERIVED <vof_phigrad_mag> "sqrt(cellmax(<vof_phigrad_mag^2>,1.d-20))" ON <all cells>
+normals_angle_based_delta.arb:#<<dim1comment>>CELL_DERIVED <vof_phigrad_unit[l=1]> "<vof_phigrad[l=1]>/<vof_phigrad_mag>" ON <all cells> output
+normals_angle_based_delta.arb:#<<dim2comment>>CELL_DERIVED <vof_phigrad_unit[l=2]> "<vof_phigrad[l=2]>/<vof_phigrad_mag>" ON <all cells>
+normals_angle_based_delta.arb:#<<dim3comment>>CELL_DERIVED <vof_phigrad_unit[l=3]> "<vof_phigrad[l=3]>/<vof_phigrad_mag>" ON <all cells>
+normals_angle_based_delta.arb:CELL_DERIVED <vof_theta> "cellif(<vof_delta_mask>,atan2(<vof_phigrad[l=2]>,<vof_phigrad[l=1]>),0.d0)" ON <all cells> output
+normals_angle_based_delta.arb:CELL_TRANSIENT <vof_phigrad_theta_unit[l=1,r=1]> "cos(<vof_theta[r=1]>)" "<vof_phigrad_smoothed_unit[l=1]>" ON <all cells> output
+normals_angle_based_delta.arb:CELL_TRANSIENT <vof_phigrad_theta_unit[l=2,r=1]> "sin(<vof_theta[r=1]>)" "<vof_phigrad_smoothed_unit[l=2]>" ON <all cells> output
+normals_angle_based_delta.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad_smoothed_unit[l=1]> "cellif(<vof_theta_mask>,cos(<vof_theta_smoothed>),0.d0)" ON <all cells> output
+normals_angle_based_delta.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad_smoothed_unit[l=2]> "cellif(<vof_theta_mask>,sin(<vof_theta_smoothed>),0.d0)" ON <all cells>
+normals_angle_based_old.arb:# phigrad is only defined near the interface, within the <vof_phigrad_mask>
+normals_angle_based_old.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad[l=1]> "<vof_delta[l=1]>" ON <all cells> output
+normals_angle_based_old.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad[l=2]> "<vof_delta[l=2]>" ON <all cells>
+normals_angle_based_old.arb:<<dim3comment>>CELL_DERIVED <vof_phigrad[l=3]> "<vof_delta[l=3]>" ON <all cells>
+normals_angle_based_old.arb:CELL_DERIVED <vof_phigrad_mag> "<vof_delta_mag>" ON <all cells>
+normals_angle_based_old.arb:CELL_DERIVED <vof_phigrad_mask> "<vof_delta_mask>" ON <all cells>
+normals_angle_based_old.arb:#<<dim1comment>>CELL_DERIVED <vof_phigrad[l=1]> "cellgrad[l=1](<vof_phi_lim>)" ON <all cells> output
+normals_angle_based_old.arb:#<<dim2comment>>CELL_DERIVED <vof_phigrad[l=2]> "cellgrad[l=2](<vof_phi_lim>)" ON <all cells>
+normals_angle_based_old.arb:#<<dim3comment>>CELL_DERIVED <vof_phigrad[l=3]> "cellgrad[l=3](<vof_phi_lim>)" ON <all cells>
+normals_angle_based_old.arb:#CELL_DERIVED <vof_phigrad_mag> "sqrt(dot(<vof_phigrad[l=:]>,<vof_phigrad[l=:]>))" ON <all cells>
+normals_angle_based_old.arb:#CELL_DERIVED <vof_phigrad_mask> "cellif(<vof_phigrad_mag>-<vof_phigrad_tol>,1.d0,0.d0)" ON <all cells>
+normals_angle_based_old.arb:<<dim1comment>>CELL_LOCAL <vof_phigrad_unit[l=1]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=1]>/<vof_phigrad_mag>,0.d0)" ON <all cells> output
+normals_angle_based_old.arb:<<dim2comment>>CELL_LOCAL <vof_phigrad_unit[l=2]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=2]>/<vof_phigrad_mag>,0.d0)" ON <all cells>
+normals_angle_based_old.arb:<<dim3comment>>CELL_LOCAL <vof_phigrad_unit[l=3]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=3]>/<vof_phigrad_mag>,0.d0)" ON <all cells>
+normals_angle_based_old.arb:# on the <vof_phigrad_mask>, calculate the angle on the interface, <vof_theta>
+normals_angle_based_old.arb:CELL_DERIVED <vof_theta> "cellif(<vof_phigrad_mask>,atan2(<vof_phigrad_unit[l=2]>,<vof_phigrad_unit[l=1]>),0.d0)" ON <all cells> output
+normals_angle_based_old.arb:#CELL_DERIVED <vof_theta> "cellif(<vof_phigrad_mask>,<pi>/4.d0,0.d0)" ON <all cells> output # test on reflection
+normals_angle_based_old.arb:# setup expansion convolution, weighted by <vof_phigrad_mag>
+normals_angle_based_old.arb:CELL_DERIVED <vof_theta_expanded_mask> "cellif(<vof_theta_expanded_mask_plus[r=1]>,cellmax[maxseparation=<<maxseparation>>](<vof_phigrad_mask>,region=<all cells>),0.d0)"
+normals_angle_based_old.arb:CELL_DERIVED <vof_theta_expand_denominator> "cellif(<vof_theta_expanded_mask>,cellsum[maxseparation=<<maxseparation>>](cellif(<vof_phigrad_mask>,<vof_theta_expand_kernel>*<vof_phigrad_mag>,0.d0),region=<all cells>),0.d0)" ON <all cells> output
+normals_angle_based_old.arb:CELL_DERIVED <vof_theta_expanded> "cellif(<vof_theta_expanded_mask>,cellboundangle(cellsum[maxseparation=<<maxseparation>>](cellif(<vof_phigrad_mask>,<vof_theta_relative>*<vof_theta_expand_kernel>*<vof_phigrad_mag>,0.d0),region=<all cells>)/<vof_theta_expand_denominator>+<vof_theta_expanded[r=1]>),0.d0)" ON <all cells> output
+normals_angle_based_old.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad_expanded_unit[l=1]> "cellif(<vof_theta_expanded_mask>,cos(<vof_theta_expanded>),0.d0)" ON <all cells> output
+normals_angle_based_old.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad_expanded_unit[l=2]> "cellif(<vof_theta_expanded_mask>,sin(<vof_theta_expanded>),0.d0)" ON <all cells>
+normals_cellgrad.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad[l=1]> "cellgrad[l=1](<vof_phi_normal>)" ON <all cells> output
+normals_cellgrad.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad[l=2]> "cellgrad[l=2](<vof_phi_normal>)" ON <all cells>
+normals_cellgrad.arb:<<dim3comment>>CELL_DERIVED <vof_phigrad[l=3]> "cellgrad[l=3](<vof_phi_normal>)" ON <all cells>
+normals_cellgrad.arb:CELL_DERIVED <vof_phigrad_mag> "sqrt(dot(<vof_phigrad[l=:]>,<vof_phigrad[l=:]>))" ON <all cells>
+normals_cellgrad.arb:CELL_DERIVED <vof_phigrad_mask> "cellif(<vof_phigrad_mag>-<vof_phigrad_tol>,1.d0,0.d0)" ON <all cells>
+normals_convolution.arb:<<dim1comment>>INCLUDE "differentiate_variable_constant" R "<<diffdim>>" W "1" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_convolve_constant>" R "<vof_variable>" W "<vof_phi_normal>" R "<vof_variable_convolve" W "<vof_phigrad" R "<vof_variable_mask>" W "<vof_phi_normal_mask>" R "<vof_variable_convolve_mask" W "<vof_phigrad_mask"
+normals_convolution.arb:<<dim2comment>>INCLUDE "differentiate_variable_constant" R "<<diffdim>>" W "2" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_convolve_constant>" R "<vof_variable>" W "<vof_phi_normal>" R "<vof_variable_convolve" W "<vof_phigrad" R "<vof_variable_mask>" W "<vof_phi_normal_mask>" R "<vof_variable_convolve_mask" W "<vof_phigrad_mask"
+normals_convolution.arb:<<dim3comment>>INCLUDE "differentiate_variable_constant" R "<<diffdim>>" W "3" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_convolve_constant>" R "<vof_variable>" W "<vof_phi_normal>" R "<vof_variable_convolve" W "<vof_phigrad" R "<vof_variable_mask>" W "<vof_phi_normal_mask>" R "<vof_variable_convolve_mask" W "<vof_phigrad_mask"
+normals_convolution.arb:#NONE_CONSTANT <vof_phigrad_convolve_constant> "<<maxseparation>>+1.d0"
+normals_convolution.arb:NONE_CONSTANT <vof_phigrad_convolve_constant> "<<maxseparation>>"
+normals_convolution.arb:CELL_DERIVED <vof_phigrad_mag> "sqrt(dot(<vof_phigrad[l=:]>,<vof_phigrad[l=:]>))" ON <all cells>
+normals_convolution.arb:#CELL_DERIVED <vof_phigrad_mask> "cellif(<vof_phigrad_mag>-<vof_phigrad_tol>,1.d0,0.d0)" ON <all cells>
+normals_delta.arb:# phigrad is only defined near the interface, within the <vof_phigrad_mask>
+normals_delta.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad[l=1]> "<vof_delta[l=1]>" ON <all cells> output
+normals_delta.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad[l=2]> "<vof_delta[l=2]>" ON <all cells>
+normals_delta.arb:<<dim3comment>>CELL_DERIVED <vof_phigrad[l=3]> "<vof_delta[l=3]>" ON <all cells>
+normals_delta.arb:CELL_DERIVED <vof_phigrad_mag> "<vof_delta_mag>" ON <all cells>
+normals_delta.arb:CELL_DERIVED <vof_phigrad_mask> "<vof_delta_mask>" ON <all cells>
+normals_normal_based.arb:<<dim1comment>>CELL_LOCAL <vof_phigrad[l=1]> "<vof_delta[l=1]>" ON <all cells> output
+normals_normal_based.arb:<<dim2comment>>CELL_LOCAL <vof_phigrad[l=2]> "<vof_delta[l=2]>" ON <all cells>
+normals_normal_based.arb:<<dim3comment>>CELL_LOCAL <vof_phigrad[l=3]> "<vof_delta[l=3]>" ON <all cells>
+normals_normal_based.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad_unit[l=1]> "<vof_delta[l=1]>/cellmax(<vof_delta_mag>,1.d-20)" ON <all cells> output
+normals_normal_based.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad_unit[l=2]> "<vof_delta[l=2]>/cellmax(<vof_delta_mag>,1.d-20)" ON <all cells>
+normals_normal_based.arb:<<dim3comment>>CELL_DERIVED <vof_phigrad_unit[l=3]> "<vof_delta[l=3]>/cellmax(<vof_delta_mag>,1.d-20)" ON <all cells>
+normals_normal_based.arb:#<<dim1comment>>FACE_LOCAL <vof_phigrad_f[l=1]> "facegrad[l=1](<vof_phi_smoothed>)" ON <all faces>
+normals_normal_based.arb:#<<dim2comment>>FACE_LOCAL <vof_phigrad_f[l=2]> "facegrad[l=2](<vof_phi_smoothed>)" ON <all faces>
+normals_normal_based.arb:#<<dim3comment>>FACE_LOCAL <vof_phigrad_f[l=3]> "facegrad[l=3](<vof_phi_smoothed>)" ON <all faces>
+normals_normal_based.arb:#FACE_LOCAL <vof_phigrad_f_mag> "sqrt(dot(<vof_phigrad_f[l=:]>,<vof_phigrad_f[l=:]>))" ON <all faces>
+normals_normal_based.arb:#FACE_DERIVED <vof_phigrad_f_scalar> "facegrad(<vof_phi_smoothed>)/facemax(<vof_phigrad_f_mag>,<vof_phi_tol>/<facedx>)" ON <all faces> nooutput
+normals_normal_based.arb:#<<dim1comment>>CELL_DERIVED <vof_phigrad_unit[l=1]> "<vof_phigrad[l=1]>/<vof_phigrad_mag>" ON <all cells> output
+normals_normal_based.arb:#<<dim2comment>>CELL_DERIVED <vof_phigrad_unit[l=2]> "<vof_phigrad[l=2]>/<vof_phigrad_mag>" ON <all cells>
+normals_normal_based.arb:#<<dim3comment>>CELL_DERIVED <vof_phigrad_unit[l=3]> "<vof_phigrad[l=3]>/<vof_phigrad_mag>" ON <all cells>
+normals_normal_based.arb:NONE_CONSTANT <vof_phigrad_smoothing_constant> 0.5d0 # increased due to new exponential + sqrt smoothing function
+normals_normal_based.arb:CELL_LOCAL <vof_phigrad_smooth_kernel> "exp(-sqrt(<vof_smooth_dist^2>/<vof_smooth_eps^2>)/<vof_phigrad_smoothing_constant>)"
+normals_normal_based.arb:#CELL_CONSTANT <vof_phigrad_smooth_denominator> "cellsum[maxseparation=<<maxseparation>>,faceseparation](<vof_phigrad_smooth_kernel>*<vof_delta_mag>,region=<all cells>)" ON <all cells>
+normals_normal_based.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad_smoothed[l=1]> "cellsum[maxseparation=4,faceseparation,<<reflect=1>>](<vof_delta[l=1]>*<vof_phigrad_smooth_kernel>,region=<all cells>)" ON <all cells>
+normals_normal_based.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad_smoothed[l=2]> "cellsum[maxseparation=4,faceseparation,<<reflect=2>>](<vof_delta[l=2]>*<vof_phigrad_smooth_kernel>,region=<all cells>)" ON <all cells>
+normals_normal_based.arb:<<dim3comment>>CELL_DERIVED <vof_phigrad_smoothed[l=3]> "cellsum[maxseparation=4,faceseparation,<<reflect=3>>](<vof_delta[l=3]>*<vof_phigrad_smooth_kernel>,region=<all cells>)" ON <all cells>
+normals_normal_based.arb:CELL_DERIVED <vof_phigrad_smoothed_mag> "sqrt(cellmax(dot(<vof_phigrad_smoothed[l=:]>,<vof_phigrad_smoothed[l=:]>),1.d-20))" ON <all cells>
+normals_normal_based.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad_smoothed_unit[l=1]> "<vof_phigrad_smoothed[l=1]>/<vof_phigrad_smoothed_mag>" ON <all cells>
+normals_normal_based.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad_smoothed_unit[l=2]> "<vof_phigrad_smoothed[l=2]>/<vof_phigrad_smoothed_mag>" ON <all cells>
+normals_normal_based.arb:<<dim3comment>>CELL_DERIVED <vof_phigrad_smoothed_unit[l=3]> "<vof_phigrad_smoothed[l=3]>/<vof_phigrad_smoothed_mag>" ON <all cells>
+normals_unit.arb:<<dim1comment>>CELL_DERIVED <vof_phigrad_unit[l=1]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=1]>/<vof_phigrad_mag>,0.d0)" ON <all cells> output
+normals_unit.arb:<<dim2comment>>CELL_DERIVED <vof_phigrad_unit[l=2]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=2]>/<vof_phigrad_mag>,0.d0)" ON <all cells>
+normals_unit.arb:<<dim3comment>>CELL_DERIVED <vof_phigrad_unit[l=3]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=3]>/<vof_phigrad_mag>,0.d0)" ON <all cells>
+setup.arb:NONE_CONSTANT <vof_phigrad_tol> "<vof_phi_tol>/<celldxave>" # use this as a standard phigrad tolerance

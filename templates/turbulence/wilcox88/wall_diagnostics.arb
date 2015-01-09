@@ -1,0 +1,7 @@
+
+VARIABLE <turb_omega_walls> output
+FACE_OUTPUT <turb_omega_walls_standard_high_Re> "60.d0*<mu>/(<rho>*0.075d0*<facedx>**2)" ON <walls> # fairly standard high Re boundary condition
+FACE_OUTPUT <turb_omega_walls_standard_high_Re rel> "<turb_omega_walls_standard_high_Re>/<turb_omega_walls>" ON <walls>
+FACE_OUTPUT <turb_y> "<facedx>" ON <walls>
+FACE_OUTPUT <turb_y/turb_prandtl_viscous_layer_thickness> "<facedx>/<turb_prandtl_viscous_layer_thickness>" ON <walls>
+FACE_OUTPUT <turb_y+> "sqrt(<facedx>*<u_av>*<rho>/<mu>)" ON <walls>

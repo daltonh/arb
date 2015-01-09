@@ -1,0 +1,4 @@
+# here we replace all turbulence model comments with the comment character
+GENERAL_REPLACEMENTS R "<<turbwilcox88comment>>" W "#"
+GENERAL_REPLACEMENTS R "<<turbprandtl0comment>>" W "#"
+GENERAL_REPLACEMENTS R "<<turbprandtl1comment>>" W "#"

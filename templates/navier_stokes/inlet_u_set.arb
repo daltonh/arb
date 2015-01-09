@@ -1,0 +1,8 @@
+# boundary conditions on inlet - fully developed flow
+INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
+INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"
+
+# set velocity distribution corresponding to fully developed Cartesian flow
+#FACE_EQUATION <inlet flowrate equation> "<u_f>+6.d0*<u_av>*<cellx[l=2]>*(0.41d0-<cellx[l=2]>)/(0.41d0^2)" ON <inlet> # specified velocity distribution
+# set plug flow velocity directed inwards
+FACE_EQUATION <inlet flowrate equation> "<u_f>+<u_av>" ON <inlet> # specified velocity distribution

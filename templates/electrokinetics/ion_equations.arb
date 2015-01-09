@@ -1,0 +1,5 @@
+INCLUDE "ion_constants"
+INCLUDE "ion_domain"
+INCLUDE "ion_walls"
+INCLUDE "ion_fully_developed" REPLACE "<region>" WITH "<outlet>" REPLACE "<ion equation>" WITH "<ion outlet>"
+INCLUDE "ion_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<ion equation>" WITH "<ion inlet>"

@@ -1,0 +1,17 @@
+# here we just advect <pf>
+
+CELL_DERIVED <pf_advection_limiter> "celllimiter[lower](<pf_phi>,0.d0,celllimiter[upper](<pf_phi>,1.d0))" output
+FACE_DERIVED <pf_phi_f> "faceave[advection](<pf_phi>,<u_f>,<pf_advection_limiter>)" ON <all faces> nooutput
+#CELL_DERIVED <pf_advected> "<pf[r=1]>-<dt>*celldiv(<pf_f_advected>*<u_f>)" ON <all cells> nooutput
+# note: guarding against destabilising effects of non-zero divergence enroute to convergence
+#CELL_DERIVED <pf_phi_advected> "<pf_phi[r=1]>-<dt>*celldiv((<pf_phi_f>-faceave[lastcell](<pf_phi>))*<u_f>)" ON <all cells> nooutput
+
+#CELL_EQUATION <pf_equation_domain> "<pf_phi>-<pf_phi_advected>" ON <domain>
+
+CELL_LOCAL <pf_phi_lim> "cellmax(cellmin(<pf_phi>,1.d0),-1.d0)"
+CELL_EQUATION <pf_equation_domain> "(<pf_phi>-<pf_phi[r=1]>)/<dt>+celldiv(<pf_phi_f>*<u_f>)-(<pf_eps_phi>/<dt>)*(<pf_phi_lim>*(1.d0-<pf_phi_lim>^2)+<pf_eps>^2*celldiv(facegrad(<pf_phi>)))" ON <domain>
+#<<dim1comment>>CELL_LOCAL <pf_grad_phi[l=1]> "celldivgrad[l=1](<pf_phi>)"
+#<<dim2comment>>CELL_LOCAL <pf_grad_phi[l=2]> "celldivgrad[l=2](<pf_phi>)"
+#<<dim3comment>>CELL_LOCAL <pf_grad_phi[l=3]> "celldivgrad[l=3](<pf_phi>)"
+#CELL_DERIVED <pf_grad_phi_mag> "sqrt(dot(<pf_grad_phi[l=:]>,<pf_grad_phi[l=:]>))" ON <all cells> output
+#CELL_EQUATION <pf_equation_domain> "(<pf_phi>-<pf_phi[r=1]>)/<dt>+celldiv(<pf_phi_f>*<u_f>)-(<pf_eps_phi>/<dt>)*(<pf_phi_lim>*(1.d0-<pf_phi_lim>^2)+<pf_eps>^2*(celldiv(facegrad(<pf_phi>))+<pf_kappa_c>*<pf_grad_phi_mag>))" ON <domain>

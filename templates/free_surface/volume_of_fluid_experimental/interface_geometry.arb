@@ -1,0 +1,55 @@
+# create <vof_phi_delta> either by using local to link to <vof_phi_lim>
+#INCLUDE "phi_delta"
+# or convolving <vof_phi_lim> to create an expanded/smoothed <vof_phi_delta>
+INCLUDE "expand_phi_delta" R "<<maxseparation>>" W "1" # maxseparation controls thickness of delta region, and hence also magnitude of currents - smoothing constant is now linked to this parameter
+
+VARIABLE <vof_phi_delta> newtstepmax=10 # this will lock in all curvature terms after 10 newtonsteps
+
+# delta is discretised dirac delta function used in the surface tension force
+# create <vof_phi_delta_f>, <vof_delta> and associated mask from <vof_phi_delta>
+INCLUDE "delta"
+
+# now calculate <vof_phigrad[l=:]> which is used for both curvature calculation and (explicitly) for advection calculation
+# also create <vof_phigrad_mask> and <vof_phigrad_mag>
+# use the delta function normals directly
+INCLUDE "normals_delta"
+
+# otherwise first define <vof_phi_normal> using
+#INCLUDE "phi_normal" # to set it equal to <vof_phi_lim>
+# or
+#INCLUDE "phi_normal" R "<vof_phi_lim>" W "<vof_phi_delta>" R "<vof_phi_interface_mask>" W "<vof_phi_delta_mask>" # to set it equal to <vof_phi_delta>
+# or
+#INCLUDE "expand_phi_normal" # to create if using expansion of <vof_phi_lim>
+# and then calculate normals using
+#INCLUDE "normals_cellgrad"
+# or by differential convolution - NO NO NO
+#INCLUDE "normals_convolution" R "<<maxseparation>>" W "1" # maxseparation controls thickness of delta region, and hence also magnitude of currents - smoothing constant is now linked to this parameter
+
+
+# TODO
+# try calculating normals_delta here, with appropriate mask considerations - is this stable?
+# ALSO
+# does averaging by angle actually make the calculation more accurate?  Or more stable further away from interface?
+# should averaging by angle be used in kappa_cyl_f calculation?
+# are smoothing lengths large enough - should maximum length be limited by maximum distance that exists within kernel, but still same area to first separation level?
+
+# expand the normals (<vof_phigrad>) to enable curvature calculation
+# create <vof_phigrad_expand_unit[l=:]> and <vof_phigrad_expand_mask>, and also save explicit versions of both
+# for 2D only (right now), average the angle of the normals, so having to only do a single convolution
+#INCLUDE "expand_normals_angle"
+# alternatively, average each component of the normals, which is more expensive but also works in 3D
+INCLUDE "expand_normals_component"
+
+# calculate the curvature
+INCLUDE "curvature_angle_facegrad_based"
+
+#INCLUDE "setup_phi_angle_based"
+#INCLUDE "smooth_phi" R "<<maxseparation>>" W "3,faceseparation"
+#INCLUDE "normals_angle_based" R "<vof_phi_lim>" W "<vof_phi_smooth>"
+
+#INCLUDE "setup_phi"
+#INCLUDE "normals_normal_based"
+#INCLUDE "curvature_delta_weighted"
+#INCLUDE "curvature_angle_based"
+#INCLUDE "curvature_angle_celldiv_based"
+

@@ -1,0 +1,9 @@
+to use various numerical recipes subroutines dump the following files in this folder (non-free licence):
+dlubksb.f
+dludcmp.f
+dpythag.f
+dsimp1.f
+dsimp2.f
+dsimp3.f
+dsimplx.f
+dsvdcmp.f

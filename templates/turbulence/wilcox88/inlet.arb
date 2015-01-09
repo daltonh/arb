@@ -1,0 +1,29 @@
+# turbulent boundary conditions
+
+# based on turbulence intensity
+#CONSTANT <turb_inlet_intensity> 1.d-3 # turbulence intensity at the inlet
+#NONE_CONSTANT <turb_k_inlet> "2.d0/3.d0*(<u_av>*<turb_inlet_intensity>)**2" # inlet turbulence kinetic energy
+#FACE_CONSTANT <turb_omega_inlet> "sqrt(<turb_k_inlet>)/<turb_l_prandtl_max>" # inlet turbulence specific dissipation rate
+
+# based on some proportion of the average strain rate
+#CONSTANT <turb_2SS_inlet> "(<u_av>/<turb_l_wall_max>)^2"
+#FACE_CONSTANT <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS_inlet>*<turb_l_prandtl2>/<turb_C_D>" ON <inlet> # based on prandtl
+#NONE_CONSTANT <turb_omega_inlet> "sqrt(<turb_gamma>*<turb_2SS_min>/<turb_beta>)*<turb_omega_rel_inlet>" # inlet turbulence specific dissipation rate
+
+# hydrid of both
+#CONSTANT <turb_2SS_inlet> "(<u_av>/<turb_l_wall_max>)^2"
+#FACE_CONSTANT <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS_inlet>*<turb_l_prandtl2>/<turb_C_D>" ON <inlet> # based on prandtl
+#NONE_CONSTANT <turb_omega_inlet> "sqrt(<turb_2SS_inlet>/<turb_C_D>)" # inlet turbulence specific dissipation rate
+
+# based on prandtl zero equation and local turb_2SS
+#FACE_DERIVED <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS>*<turb_l_prandtl2_f>/<turb_C_D>" ON <inlet> # based on prandtl
+#FACE_DERIVED <turb_omega_inlet> "<turb_omega_rel_inlet>*sqrt(<turb_2SS>/<turb_C_D>)" ON <inlet> # based on prandtl
+
+# based on prandtl zero equation and background turb_2SS
+#FACE_DERIVED <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS_rel_inlet>*<turb_2SS_background>*<turb_l_prandtl2_f>/<turb_C_D>" ON <inlet> # based on prandtl
+#FACE_DERIVED <turb_omega_inlet> "<turb_omega_rel_inlet>*sqrt(<turb_2SS_rel_inlet>*<turb_2SS_background>/<turb_C_D>)" ON <inlet> # based on prandtl
+FACE_DERIVED <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS_rel_inlet>*<turb_k_background>" ON <inlet> # based on prandtl
+FACE_DERIVED <turb_omega_inlet> "<turb_omega_rel_inlet>*sqrt(<turb_2SS_rel_inlet>)*<turb_omega_background>" ON <inlet> # based on prandtl
+
+FACE_EQUATION <turb_k_inlet_equation> "<turb_k>-<turb_k_inlet>" ON <inlet>
+FACE_EQUATION <turb_omega_inlet_equation> "<turb_omega>-<turb_omega_inlet>" ON <inlet>

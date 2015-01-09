@@ -1,0 +1,21 @@
+# k equation
+
+# now for the equation to solve
+# just the source and dissipation terms only
+#CELL_EQUATION <turb_k_equation> "<turb_R_k>" ON <domain>
+# source, dissipation and diffusion
+#CELL_EQUATION <turb_k_equation> "(<turb_k>-<turb_k[r=1]>)/<dt>+celldiv(-<turb_mu_k_f>*<turb_k_facegrad>)-<turb_R_k>" ON <domain>
+# source, dissipation, diffusion and advection
+#CELL_EQUATION <turb_k_equation> "celldiv(<turb_k_rho_f>*<u_f>-<turb_mu_k_f>*<turb_k_facegrad>)-<turb_R_k>" ON <domain>
+CELL_EQUATION <turb_k_equation> "(<turb_k>-<turb_k[r=1]>)/<dt>+celldiv((<turb_k_rho_f>-faceave[lastcell](<turb_k>*<rho>))*<u_f>-<turb_mu_k_f>*<turb_k_facegrad>)-<turb_R_k>" ON <domain>
+
+# omega equation
+
+# now for the equation to solve
+# just the source and dissipation terms only
+#CELL_EQUATION <turb_omega_equation> "<turb_R_omega>" ON <domain>
+# source, dissipation and diffusion
+#CELL_EQUATION <turb_omega_equation> "(<turb_omega>-<turb_omega[r=1]>)/<dt>+celldiv(-<turb_mu_omega_f>*<turb_omega_facegrad>)-<turb_R_omega>" ON <domain>
+# source, dissipation, diffusion and advection
+CELL_EQUATION <turb_omega_equation> "(<turb_omega>-<turb_omega[r=1]>)/<dt>+celldiv((<turb_omega_rho_f>-faceave[lastcell](<turb_omega>*<rho>))*<u_f>-<turb_mu_omega_f>*<turb_omega_facegrad>)-<turb_R_omega>" ON <domain>
+

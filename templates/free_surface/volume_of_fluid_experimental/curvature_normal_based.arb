@@ -1,0 +1,23 @@
+# within this file we calculate the curvature
+# as cell centred curvature is calculated from face centred curvature, which is itself averaged from the cell centred curvature, makes sense to NOT smooth these normals (normals.arb) prior to calling this file
+
+# roughly a return of the old method 8
+
+# doing cartesian and cylindrical curvatures separately
+# but both require the cartesian form
+CELL_LOCAL <vof_kappa_cart_c> "cellgrad[l=1,reflect=1](<vof_phigrad_smoothed_unit[l=1]>)+cellgrad[l=2,reflect=2](<vof_phigrad_smoothed_unit[l=2]>)+cellgrad[l=3,reflect=3](<vof_phigrad_smoothed_unit[l=3]>)" ON <all cells>
+# cartesian
+#<<cartesiancomment>>CELL_LOCAL <vof_kappa_c2> "-celldiv(<vof_phigrad_f_scalar>)" ON <all cells> output
+<<cartesiancomment>>CELL_LOCAL <vof_kappa_c2> "<vof_kappa_cart_c>" ON <all cells> output
+# cylindrical
+<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cyl_c> "-<vof_phigrad_unit[l=<<radialdim>>]>/<<radius_c>>" ON <all cells> # won't work on centreline, so instead use twice carteisan curvature there
+<<cylindricalcomment>>CELL_DERIVED <vof_kappa_c2> "cellif(<vof_delta_mask>,cellif(<<radius_c>>-1.d-10,<vof_kappa_cart_c>+<vof_kappa_cyl_c>,2.d0*<vof_kappa_cart_c>),0.d0)" ON <all cells> output
+
+FACE_LOCAL <vof_delta_mask_f> "cellmax(<vof_delta_mask>,region=<adjacentfaceicells>)"
+FACE_DERIVED <vof_kappa_f> "faceif(<vof_delta_mask_f>,faceave[adjacentcells](<vof_kappa_c2>*<vof_delta_mag>)/faceave[adjacentcells](<vof_delta_mag>),0.d0)" ON <all faces> output
+#END_COMMENT
+
+# cell centred curvature is interpolated from face centred values
+#CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" ON <all cells> output,elementdata
+# cell centred curvature is taken directly from celldiv - NO
+CELL_DERIVED <vof_kappa_c> "<vof_kappa_c2>" ON <all cells> output,elementdata

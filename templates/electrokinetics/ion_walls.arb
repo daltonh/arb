@@ -1,0 +1,4 @@
+# ion wall boundary conditions for one specific ion species
+# all variables start with <ion so this can be replaced to make specific ions
+
+FACE_EQUATION <ion walls> "<ion J_f>" ON <walls> # no flux of ions through walls

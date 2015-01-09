@@ -1,0 +1,5 @@
+# link to this file (as .gitignore) locally in any directory that is to be kept in the git distribution, but empty in that distribution
+# ignore all files
+*
+# except this one
+!.gitignore

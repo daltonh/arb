@@ -1,0 +1,1 @@
+These can now be used for any combination of dimensions, but replacing the flags <<dim1flag>>, <<dim2flag>> and <<dim3flag>> either by a space (if the dimension is relevant) or a comment character # (if the dimension is not relevant)

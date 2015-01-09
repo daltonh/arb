@@ -1,0 +1,64 @@
+# here we calculate the expanded normals by averaging the angle of the normal, rather than its components
+
+# delta is the derivative of the phi function, calculated using the celldiv of phi
+INCLUDE "delta"
+
+# phigrad is the based normal orientation used to calculate curvature, and also to to advection
+# phigrad is only defined near the interface, within the <vof_phigrad_mask>
+
+# based on delta
+<<dim1comment>>CELL_DERIVED <vof_phigrad[l=1]> "<vof_delta[l=1]>" ON <all cells> output
+<<dim2comment>>CELL_DERIVED <vof_phigrad[l=2]> "<vof_delta[l=2]>" ON <all cells>
+<<dim3comment>>CELL_DERIVED <vof_phigrad[l=3]> "<vof_delta[l=3]>" ON <all cells>
+CELL_DERIVED <vof_phigrad_mag> "<vof_delta_mag>" ON <all cells>
+CELL_DERIVED <vof_phigrad_mask> "<vof_delta_mask>" ON <all cells>
+
+# based on cellgrad of phi
+#<<dim1comment>>CELL_DERIVED <vof_phigrad[l=1]> "cellgrad[l=1](<vof_phi_lim>)" ON <all cells> output
+#<<dim2comment>>CELL_DERIVED <vof_phigrad[l=2]> "cellgrad[l=2](<vof_phi_lim>)" ON <all cells>
+#<<dim3comment>>CELL_DERIVED <vof_phigrad[l=3]> "cellgrad[l=3](<vof_phi_lim>)" ON <all cells>
+#CELL_DERIVED <vof_phigrad_mag> "sqrt(dot(<vof_phigrad[l=:]>,<vof_phigrad[l=:]>))" ON <all cells>
+#CELL_DERIVED <vof_phigrad_mask> "cellif(<vof_phigrad_mag>-<vof_phigrad_tol>,1.d0,0.d0)" ON <all cells>
+
+# define unit normals (needed for advection in the next step only?)
+<<dim1comment>>CELL_LOCAL <vof_phigrad_unit[l=1]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=1]>/<vof_phigrad_mag>,0.d0)" ON <all cells> output
+<<dim2comment>>CELL_LOCAL <vof_phigrad_unit[l=2]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=2]>/<vof_phigrad_mag>,0.d0)" ON <all cells>
+<<dim3comment>>CELL_LOCAL <vof_phigrad_unit[l=3]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=3]>/<vof_phigrad_mag>,0.d0)" ON <all cells>
+
+# on the <vof_phigrad_mask>, calculate the angle on the interface, <vof_theta>
+# 2d only averaging
+CELL_DERIVED <vof_theta> "cellif(<vof_phigrad_mask>,atan2(<vof_phigrad_unit[l=2]>,<vof_phigrad_unit[l=1]>),0.d0)" ON <all cells> output
+#CELL_DERIVED <vof_theta> "cellif(<vof_phigrad_mask>,<pi>/4.d0,0.d0)" ON <all cells> output # test on reflection
+#CELL_DERIVED <vof_theta> "atan2(<cellx[l=2]>,<cellx[l=1]>)-<pi>" ON <all cells> output
+
+# now to expand theta using convolution
+
+#GENERAL_REPLACEMENTS R "<<maxseparation>>" W "3"
+#
+#INCLUDE "convolve_variable" R "<vof_variable_convolve_constant>" W "<vof_theta_expand_constant>" R "<vof_variable" W "<vof_theta"
+#NONE_CONSTANT <vof_theta_expand_constant> 2.0d0
+#CELL_LOCAL <vof_theta_convolve_weight> "
+
+# general convolution setup
+#CELL_LOCAL <vof_convolve_dist^2> "dot(<celltoseparationicellr[l=:]>,<celltoseparationicellr[l=:]>)"
+CELL_LOCAL <vof_convolve_dist^2> "<celltoseparationicellrsquared>"
+CELL_CONSTANT <vof_convolve_eps_centre^2> "cellmin(cellmin(<celldxmin>,region=<adjacentcellicells>),2.d0*<celldxkernel>)**2" ON <all cells>
+CELL_LOCAL <vof_convolve_eps^2> "cellfromcellave[separationcentre](<vof_convolve_eps_centre^2>)" ON <all cells>
+# setup expansion convolution, weighted by <vof_phigrad_mag>
+CELL_LOCAL <vof_theta_expand_kernel> "exp(-<vof_convolve_dist^2>/(<vof_convolve_eps^2>*<vof_theta_expand_constant>))" # gaussian
+# a mask of where theta_expanded is defined, which is based on the previous timestep mask, but expanded a little
+CELL_DERIVED <vof_theta_expanded_mask> "cellif(<vof_theta_expanded_mask_plus[r=1]>,cellmax[maxseparation=<<maxseparation>>](<vof_phigrad_mask>,region=<all cells>),0.d0)"
+CELL_DERIVED <vof_theta_expand_denominator> "cellif(<vof_theta_expanded_mask>,cellsum[maxseparation=<<maxseparation>>](cellif(<vof_phigrad_mask>,<vof_theta_expand_kernel>*<vof_phigrad_mag>,0.d0),region=<all cells>),0.d0)" ON <all cells> output
+# calculate theta in separation cell relative to previous theta in central cell, accounting for reflections
+CELL_LOCAL <vof_theta_relative> "cellboundangle(atan2(<celltoseparationicellreflect[l=2]>*sin(<vof_theta>),<celltoseparationicellreflect[l=1]>*cos(<vof_theta>))-cellfromcellave[separationcentre](<vof_theta_expanded[r=1]>))"
+# calculate expanded theta by averaging difference from central cell previous theta
+CELL_DERIVED <vof_theta_expanded> "cellif(<vof_theta_expanded_mask>,cellboundangle(cellsum[maxseparation=<<maxseparation>>](cellif(<vof_phigrad_mask>,<vof_theta_relative>*<vof_theta_expand_kernel>*<vof_phigrad_mag>,0.d0),region=<all cells>)/<vof_theta_expand_denominator>+<vof_theta_expanded[r=1]>),0.d0)" ON <all cells> output
+<<dim1comment>>CELL_DERIVED <vof_phigrad_expanded_unit[l=1]> "cellif(<vof_theta_expanded_mask>,cos(<vof_theta_expanded>),0.d0)" ON <all cells> output
+<<dim2comment>>CELL_DERIVED <vof_phigrad_expanded_unit[l=2]> "cellif(<vof_theta_expanded_mask>,sin(<vof_theta_expanded>),0.d0)" ON <all cells>
+# save the theta expanded mask, as well as a slightly bigger version (plus) and the angle, also expanded
+CELL_TRANSIENT <vof_theta_expanded_mask[r=1]> "1.d0" "<vof_theta_expanded_mask>" ON <all cells> output
+CELL_TRANSIENT <vof_theta_expanded_mask_plus[r=1]> "1.d0" "cellmax(<vof_theta_expanded_mask[r=1]>,region=<cellicells>)" ON <all cells> output
+CELL_LOCAL <vof_theta_expanded_ave_n[l=1]> "cellsum[reflect=1](cos(<vof_theta_expanded>)*<vof_theta_expanded_mask[r=1]>,region=<cellicells>)/cellsum(<vof_theta_expanded_mask[r=1]>,region=<cellicells>)"
+CELL_LOCAL <vof_theta_expanded_ave_n[l=2]> "cellsum[reflect=2](sin(<vof_theta_expanded>)*<vof_theta_expanded_mask[r=1]>,region=<cellicells>)/cellsum(<vof_theta_expanded_mask[r=1]>,region=<cellicells>)"
+CELL_LOCAL <vof_theta_expanded_ave> "atan2(<vof_theta_expanded_ave_n[l=2]>,<vof_theta_expanded_ave_n[l=1]>)"
+CELL_TRANSIENT <vof_theta_expanded[r=1]> "atan2(<cellx[l=2]>,<cellx[l=1]>)-<pi>" "cellif(<vof_theta_expanded_mask[r=1]>,<vof_theta_expanded>,cellif(<vof_theta_expanded_mask_plus[r=1]>,<vof_theta_expanded_ave>,0.d0))" ON <all cells> output

@@ -1,0 +1,25 @@
+# one equation prandtl model
+# http://www.cfd-online.com/Wiki/Prandtl%27s_one-equation_model
+CONSTANT <turb_sigma_k> 1.d0
+CONSTANT <turb_C_D> 0.08d0
+
+# these are some numerical constants
+# proportion of uniform, steady-state solution (based on approximated strain rate) to use initially
+CONSTANT <turb_k_rel_initial> 1.d+0
+# proportion of uniform, steady-state solution (based on approximated strain rate) to use at inlet
+CONSTANT <turb_k_rel_inlet> 1.d+0
+# minimum strain rate squared to be used in production term, as a proportion of some order of magnitude of the strain rate squared within the domain
+CONSTANT <turb_2SS_rel_min> 1.d-2
+# how low k that is used in some of the equations is allowed to be, relative to the steady-state, uniform value
+# if <turb_k_lower_lim_error> > 0 this parameter needs to be reduced
+# 0 = no limit to how low k can be (ie, >0)
+# 1 = limit of guaranteed numerical stability
+# 3 = effective k is not allowed to fall below the local dissipation=generation amount
+CONSTANT <turb_k_rel_lower> 2.d-1
+# this specifies how much lower the k used in mu can be than k_lower.  In practive for small <k_rel_lower> this needs to be 1 for reliable convergence.
+CONSTANT <turb_mu_rel_limit> 1.0d0
+# advection limiter used in the turbulence equations
+CONSTANT <turb_adv_limiter> 0.d0
+
+# for now this just cancels the general variable property replacements done in constants.arb
+GENERAL_REPLACEMENTS CANCEL "<mu_f>" # as viscosity now varies

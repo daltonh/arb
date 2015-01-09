@@ -1,0 +1,23 @@
+# find <turb_l_prandtl2> which is the square of the prandtl mixing length (also the maximum of the non-squared, <turb_l_prandtl_max>)
+# uses <turb_l_wall2> which is the minimum distance to any wall, and <turb_l_wall_max> which is the maximum of those minimum distances
+
+# this particular expression just grabbed from the following Nikuradse expression apparently for a pipe
+# http://web2.clarkson.edu/projects/fluidflow/courses/me639/downloads/32_Prandtl.pdf
+# obviously this has not been validated to be physically correct for all situations, but used here as an example
+CONSTANT <turb_l_prandtl_boundary_layer_thickness> "<turb_l_wall_max>" # by default this is set to the maximum distance from any wall within the domain, but can be overwritten to be (say) shorter representing a boundary layer that is thinner
+CELL_LOCAL <turb_l_wall> "sqrt(cellmax(<turb_l_wall2>,0.d0))"
+CELL_LOCAL <turb_l_wall_nd> "cellmin(cellmax(1.d0-<turb_l_wall>/<turb_l_prandtl_boundary_layer_thickness>,0.d0),1.d0)"
+# these need fixing, as to how these are scaled when <turb_l_wall_max> /= <turb_l_prandtl_boundary_layer_thickness>
+#CELL_LOCAL <turb_l_prandtl> "cellmax(<turb_l_prandtl_boundary_layer_thickness>*(0.14d0-0.08d0*<turb_l_wall_nd>^2-0.06d0*<turb_l_wall_nd>^4),0.d0)"
+CELL_LOCAL <turb_l_prandtl> "cellmax(<turb_l_wall_max>*(0.14d0-0.08d0*<turb_l_wall_nd>^2-0.06d0*<turb_l_wall_nd>^4),0.d0)"
+CELL_CONSTANT <turb_l_prandtl2> "<turb_l_prandtl>^2" ON <all cells>
+FACE_CONSTANT <turb_l_prandtl2_f> "faceave[adjacentcells](<turb_l_prandtl2>)" ON <all faces>
+NONE_CONSTANT <turb_l_prandtl_max> "cellmax(<turb_l_prandtl>,region=<all cells>)"
+
+# set viscous sublayer thickness, used in the background shear stress calculation
+#CONSTANT <turb_prandtl_viscous_layer_thickness> "1.d-2*<turb_l_wall_max>" # constant multiple of the geometry dimension
+#CONSTANT <turb_prandtl_viscous_layer_thickness> "<mu>/(<u_av>*<rho>)"
+# now setting approximately to y+=30
+#CONSTANT <turb_prandtl_viscous_layer_thickness> "(30.d0^2)*<mu>/(<u_av>*<rho>)"
+# now setting approximately to y+=5
+CONSTANT <turb_prandtl_viscous_layer_thickness> "(5.d0^2)*<mu>/(<u_av>*<rho>)"

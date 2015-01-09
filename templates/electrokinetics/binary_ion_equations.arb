@@ -1,0 +1,23 @@
+# equations required for the transport of a binary univalent electrolyte
+# include statements for binary combinations should be included earlier before p_error calculation (binary_ion_combinations)
+
+# include positive ion transport equations
+INCLUDE "ion_equations" REPLACE "<ion initial>" WITH "<average ion n>" REPLACE "<ion" WITH "<ion+"
+# include negative ion transport equations, correcting valency to be negative
+INCLUDE "ion_equations" REPLACE "<ion initial>" WITH "<average ion n>" REPLACE "<ion" WITH "<ion-"
+CONSTANT <ion- z> [1] "-<average ion z>" # valency of ion-
+
+# calculate currents crossing into domain over inlet, most probably used in potential boundary conditions
+# cartesian
+<<cartesiancomment>>NONE_DERIVED <I+> "-<e>*<ion+ z>*facesum(<ion+ J_f>*<facearea>,<inlet>)"
+<<cartesiancomment>>NONE_DERIVED <I-> "-<e>*<ion- z>*facesum(<ion- J_f>*<facearea>,<inlet>)"
+# cylindrical
+<<cylindricalcomment>>NONE_DERIVED <I+> "-<e>*<ion+ z>*facesum(<ion+ J_f>*<facearea>*<<radius_f>>,<inlet>)*2.d0*<pi>"
+<<cylindricalcomment>>NONE_DERIVED <I-> "-<e>*<ion- z>*facesum(<ion- J_f>*<facearea>*<<radius_f>>,<inlet>)*2.d0*<pi>"
+NONE_DERIVED <I_total_calc> "<I+>+<I->"
+
+# overwrite inlet conditions to set concentration and a concentration gradient
+FACE_EQUATION <ion+ inlet> "<n_0^2 signed>-<average ion n>^2"
+#FACE_EQUATION <ion- inlet> "facegrad(<ion+ n>)^2+facegrad(<ion- n>)^2" # (if combined is difficult to converge then use only one species)
+#FACE_EQUATION <ion- inlet> "facegrad(<ion+ n>)" # this should be more stable for a negative surface charge
+FACE_EQUATION <ion- inlet> "faceif(<S>,facegrad(<ion- n>),facegrad(<ion+ n>))" # boundary condition is applied on the major ion species

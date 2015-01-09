@@ -1,0 +1,13 @@
+# include this after the navier-stokes u_f file
+
+# based on the average flowrate and maximum wall distance, this calculates a viscosity magnitude to use in the face centred velocity interpolation
+# setting this above one will increase the viscosity, decrease u_f_{viscous} and so short-circuit the correction, leading to checkerboarding
+# setting this too low will decrease the viscosity, increase u_v_{viscous} and eventually cause the advective term to limit the correction - not bad necessarily, but making convergence slower
+CONSTANT <turb_mu_u_correction_rel> 1.d0
+# based on an average strain rate
+#FACE_CONSTANT <turb_mu_u_correction_f> "<turb_mu_u_correction_rel>*<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_average>/<turb_C_D>)+<mu>" ON <domain faces> # turbulent viscosity, face centred
+# based on the background local strain rate which is calculated using a prandtl viscous length assumption
+FACE_CONSTANT <turb_mu_u_correction_f> "<turb_mu_u_correction_rel>*<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_background>/<turb_C_D>)+<mu>" ON <domain faces> # turbulent viscosity, face centred
+
+# finally overwrite the correction expression
+FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<turb_mu_u_correction_f>" ON <domain faces>

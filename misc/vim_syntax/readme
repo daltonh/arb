@@ -1,0 +1,12 @@
+these are some vim syntax files that were originally written by Christian (Biscombe).
+
+To set this up:
+1. Move the attached files to the appropriate subdirectories within ~/.vim/ (ftplugin and syntax, respectively; create these if they don't exist)
+2. Make sure you have 'filetype plugin on' in your .vimrc
+3. Append the following line to the end of your arb input file (NB spaces are significant):
+# vim: ft=arb
+
+OR
+
+use the following in your .vimrc file 'autocmd BufRead,BufNewFile *.arb set filetype=arb'
+4. Restart vim and hey presto!

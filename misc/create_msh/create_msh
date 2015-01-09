@@ -1,0 +1,56 @@
+#!/bin/bash
+# little script to create .msh file from any .geo file in working directory
+#
+# run from the arb working directory
+# usage: create_msh [element_scale_factor] [geometry_file.geo]
+
+echo "create_mesh, an arb misc accessory that creates a gmsh .msh file from a .geo file";
+echo "USAGE: call from working directory using ./misc/create_mesh/create_mesh [element_scale_factor] [geometry_file.geo]";
+echo "OPTIONS: if element_scale_factor is omitted then an element_scale_factor of 1 will be used";
+echo "OPTIONS: if geometry_file.geo is omitted then all .geo files in the working directory will be processed";
+
+lsscale="1"; # default scale parameter
+unset files; # clear array (it shouldn't need though anyway?)
+
+for i in $*
+do
+  case $i in
+    "-h"|"--help") exit 0;;
+    *".geo") echo "INFO: will attempt to run with geo file $i"; files[${#files[@]}]=$i;;
+    *) echo "INFO: found lsscale parameter $i"; lsscale=$i;;
+  esac
+done ;
+
+if [ -z "$files" ] ; then
+  files=( "*.geo" );
+  echo "INFO: will attempt to run with all geo files in the current directory: " *.geo;
+fi ;
+
+if [ ! -d tmp/gmsh ] ; then mkdir -p tmp/gmsh ; fi ;
+
+for i in $files; do
+
+  if [ ! -e $i ] ;
+    then
+    echo "ERROR: file $i is not found";
+    exit 1;
+  fi
+
+# find dimensions of geometry based on maximum dimensions of physical entities
+  options="";
+  if grep -Fq "Physical Volume" $i ; then
+    dimensions=3 ;
+    options="-optimize "
+  elif grep -Fq "Physical Surface" $i ; then
+    dimensions=2 ;
+  else
+    dimensions=1 ;
+  fi ;
+
+  echo "INFO: creating mesh from file $i using scaling parameter $lsscale and dimensions $dimensions";
+  cd tmp/gmsh
+  gmsh -$dimensions -clscale $lsscale $options../../$i
+  cd ../..
+done
+
+exit 0;

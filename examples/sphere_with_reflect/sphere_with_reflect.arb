@@ -1,0 +1,111 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+VERSION 0.42
+#-------------------------------------------------------------------
+# system constants
+
+KERNEL_OPTIONS polynomialorder=2,kernelmethod=optimisation # setting order of kernel function and kernel method
+#KERNEL_OPTIONS checkminw=.true.,minimumminw=0.8d0 # setting parameters that determine the quality of each kernel mask
+
+#-------------------------------------------------------------------
+# geometry
+
+# CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+# where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
+# where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+# where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
+# where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
+# where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
+# where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
+
+GLUE_FACES <centreline> reflect=2
+FACE_REGION <inlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <inlet>"
+FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
+FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
+FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
+
+# MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+# output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+# input options are: input,centringinput,meshinput,centringmeshinput,noinput
+# data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+# vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
+# dat file output options are: datoutput,centringdatoutput,meshdatoutput,centringmeshdatoutput,nodatoutput (nodatoutput is the default)
+MSH_FILE "surface.msh"
+#MSH_FILE "output/output.msh" centringvtkoutput,datoutput
+
+#-------------------------------------------------------------------
+# variable definition reference:
+# REGION_LIST <region_1> <region_2> ... <region_n> # comments: line has the ordered names of any regions
+# (CELL_|FACE_)REGION_CONSTANT <name> [multiplier*units] numerical_value_for_region_1 .. value_for_region_n options # comments: sets a constant that varies with region
+# (CELL_|FACE_|NONE_|)CONSTANT <name> [multiplier*units] numerical_value ON <region> options # comments: sets a constant specific to one region or no regions and has the form
+# (CELL_|FACE_|NONE|)CONSTANT <name> [units] "expression (involving only constants)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)TRANSIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)NEWTIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)DERIVED <name> [units] "expression" ON <region> options # comments
+# (CELL_|FACE_|NONE|)UNKNOWN <name> [units] "expression (initial value, optional)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)EQUATION <name> [units] "expression (equation equaling zero)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)OUTPUT <name> [units] "expression" ON <region> options # comments
+# (CELL_|FACE_|NONE|)CONDITION <name> [units] "expression" ON <region> options # comments
+# (CELL_|FACE_|NONE|)LOCAL <name> [units] "expression" ON <region> options # comments
+
+# options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
+#p  derivative/noderivative - for DERIVED, EQUATION, LOCAL : do or do not calculate Jacobian derivatives for this variable
+#p  positive/negative/nocheck - for DERIVED, UNKNOWN, EQUATION, LOCAL : check at each iteration that variable is positive/negative
+#f  output/nooutput - for ALL : output compound to msh files
+#f  componentoutput/nocomponentoutput - for ALL : output just this component to msh files
+#f  stepoutput/stepoutputnoupdate/nostepoutput - for ALL : output compound to step file.  The noupdate one does not update the variable when the step file is written (needed for recording when output occurred for example).
+#f  componentstepoutput/componentstepoutputnoupdate/nocomponentstepoutput - for ALL : output just this component to step files
+#f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
+#f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
+#f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component)
+#p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
+#f  magnitude=value - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
+#f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
+#f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
+#   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
+
+INCLUDE_ROOT "general"
+INCLUDE "cylindrical_reflect_r2z1"
+
+# variables etc
+
+# use templates from the navier_stokes directory to build up problem
+INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE "nondimensional_constants" # specify physical and numerical constants
+INCLUDE "domain" # equations to be solved within the domain
+
+INCLUDE "outlet_p_set" # outlet BC
+INCLUDE "walls_noslip" R "<walls" W "<sphere" # nonslip walls BC, in this case called <sphere>.  Equations names that start with <walls also have to be modified
+INCLUDE "walls_slip" # slip walls BC
+
+# inlet BCs have to be special cased a bit
+INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure to give using <u_av>
+
+CONSTANT <Re> [1] 1.d-2 # Reynolds number
+
+# calculate drag and lift on object
+#NONE_OUTPUT <F_drag> [N] "facesum(<facearea>*dot(<facenorm[l=:]>,<tau[l=:,1]>),<sphere>)" # force on object in axial direction
+#NONE_OUTPUT <F_lift> [N] "facesum(<facearea>*dot(<facenorm[l=:]>,<tau[l=:,2]>),<sphere>)" # force on object in vertical direction
+#NONE_OUTPUT <C_drag> "2.d0*<F_drag>/(<rho>*<u_av>^2*0.1d0)" # drag coefficient
+#NONE_OUTPUT <C_lift> "2.d0*<F_lift>/(<rho>*<u_av>^2*0.1d0)" # lift coefficient
+
+# output a flag telling us which term limited the correction velocity
+FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+# and turn some outputs on
+VARIABLE <u_f_{correction}> output
+VARIABLE <u_f_{raw}> output
+VARIABLE <u_f> output
+VARIABLE <J_f[l=1]> output
+VARIABLE <tau[l=1,1]> output
+
+# output statistics
+#CELL_OUTPUT <velocity_1> "<u[l=1]>" output
+#NONE_OUTPUT <velocity_max> "facesum(<facearea>*<facex[l=2]>*<velocity_1>, <inlet>)/facesum(<facearea>*<facex[l=2]>, <inlet>)"
+#NONE_OUTPUT <F_drag> [N] "16.d0*facesum(<facearea>*<facex[l=2]>*dot(<facenorm[l=:]>,<stress[l=:,1]>),<sphere>)" # force on object in axial direction, expressed as a drag coefficient
+#NONE_OUTPUT <F_drag_theo> [N] "24.d0/<Re>" # 
+#NONE_OUTPUT <ERROR_PERCENTAGE> [%] "(<F_drag>-<F_drag_theo>)/<F_drag_theo>*1.d+2"
+#-------------------------------------------------------------------

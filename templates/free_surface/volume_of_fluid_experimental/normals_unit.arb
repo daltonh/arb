@@ -1,0 +1,5 @@
+# define unit normals (needed for advection in the next step only?)
+<<dim1comment>>CELL_DERIVED <vof_phigrad_unit[l=1]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=1]>/<vof_phigrad_mag>,0.d0)" ON <all cells> output
+<<dim2comment>>CELL_DERIVED <vof_phigrad_unit[l=2]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=2]>/<vof_phigrad_mag>,0.d0)" ON <all cells>
+<<dim3comment>>CELL_DERIVED <vof_phigrad_unit[l=3]> "cellif(<vof_phigrad_mask>,<vof_phigrad[l=3]>/<vof_phigrad_mag>,0.d0)" ON <all cells>
+

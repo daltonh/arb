@@ -1,0 +1,26 @@
+# here we create the delta function that is used to
+#  1) apply the surface tension force
+#  2) weighting in the kappa_f interpolation
+
+# interpolate to faces for use in creating delta function
+#FACE_DERIVED <vof_phi_delta_f> "faceave(<vof_phi_delta>)" ON <all faces> # double limited incase averaging kernels are a bit skewy (eg, on poor unstructured meshes)
+# for consistency with pressure discretisation must be interpolated the same way, except here also bounded
+FACE_DERIVED <vof_phi_delta_f> "facemax(facemin(faceave(<vof_phi_delta>),1.d0),0.d0)" ON <all faces> # double limited incase averaging kernels are a bit skewy (eg, on poor unstructured meshes)
+#FACE_DERIVED <vof_phi_delta_f> "faceave[adjacentcells](<vof_phi_delta>)" ON <all faces> # in theory, NO NO NO
+
+<<dim1comment>>CELL_DERIVED <vof_delta[l=1]> "celldivgrad[l=1](<vof_phi_delta_f>)" ON <all cells>
+<<dim2comment>>CELL_DERIVED <vof_delta[l=2]> "celldivgrad[l=2](<vof_phi_delta_f>)" ON <all cells>
+<<dim3comment>>CELL_DERIVED <vof_delta[l=3]> "celldivgrad[l=3](<vof_phi_delta_f>)" ON <all cells>
+
+CELL_DERIVED <vof_delta_mag> "sqrt(dot(<vof_delta[l=:]>,<vof_delta[l=:]>))" ON <all cells>
+# now precalculate a mask which defines where delta is nonzero, noting that delta is a gradient of phi
+CELL_DERIVED <vof_delta_mask> "cellif(<vof_delta_mag>-<vof_phigrad_tol>,1.d0,0.d0)" ON <all cells>
+
+# instead now define mask based on possible region of influence - nah
+#CELL_DERIVED <vof_delta_mag> "cellmax(sqrt(dot(<vof_delta[l=:]>,<vof_delta[l=:]>)),<vof_phigrad_tol>)" ON <all cells>
+#FACE_DERIVED <vof_phi_delta_f_mask> "cellmax(<vof_phi_delta_mask>,region=<facekernelregion[l=0]>)" ON <all faces>
+#CELL_DERIVED <vof_delta_mask> "facemax(<vof_phi_delta_f_mask>,region=<celljfaces>)" ON <all cells>
+
+
+FACE_LOCAL <vof_delta_f> "facegrad[dxunit](<vof_phi_delta>)" ON <all faces>
+FACE_LOCAL <vof_delta_mask_f> "cellmax(<vof_delta_mask>,region=<adjacentfaceicells>)" ON <all faces>

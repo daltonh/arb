@@ -1,0 +1,2 @@
+CELL_LOCAL <vof_phi_normal> "<vof_phi_interface>"
+CELL_LOCAL <vof_phi_normal_mask> "<vof_interface_mask>"

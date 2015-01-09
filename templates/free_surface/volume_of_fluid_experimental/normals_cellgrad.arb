@@ -1,0 +1,7 @@
+# calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
+# based on cellgrad of phi
+<<dim1comment>>CELL_DERIVED <vof_phigrad[l=1]> "cellgrad[l=1](<vof_phi_normal>)" ON <all cells> output
+<<dim2comment>>CELL_DERIVED <vof_phigrad[l=2]> "cellgrad[l=2](<vof_phi_normal>)" ON <all cells>
+<<dim3comment>>CELL_DERIVED <vof_phigrad[l=3]> "cellgrad[l=3](<vof_phi_normal>)" ON <all cells>
+CELL_DERIVED <vof_phigrad_mag> "sqrt(dot(<vof_phigrad[l=:]>,<vof_phigrad[l=:]>))" ON <all cells>
+CELL_DERIVED <vof_phigrad_mask> "cellif(<vof_phigrad_mag>-<vof_phigrad_tol>,1.d0,0.d0)" ON <all cells>

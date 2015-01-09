@@ -1,0 +1,17 @@
+# conservation equations solved over each domain cell (finite volume method)
+
+# cartesian
+<<cartesiancomment>>CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
+<<cartesiancomment>><<dim1comment>>CELL_EQUATION <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
+<<cartesiancomment>><<dim2comment>>CELL_EQUATION <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
+<<cartesiancomment>><<dim3comment>>CELL_EQUATION <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
+
+# cylindrical
+<<cylindricalcomment>>CELL_EQUATION <continuity> "celldiv(<<radius_f>>*<u_f>)/<<radius_c>>" ON <domain> # continuity
+#<<cylindricalcomment>><<dim1comment>>CELL_EQUATION <momentum[l=1]> "celldiv(<<radius_f>>*<J_f[l=1]>)/<<radius_c>>-<dynamic_force_c[l=1]>" ON <domain> # momentum component
+#<<cylindricalcomment>><<dim2comment>>CELL_EQUATION <momentum[l=2]> "celldiv(<<radius_f>>*<J_f[l=2]>)/<<radius_c>>-<dynamic_force_c[l=2]>" ON <domain> # momentum component
+#<<cylindricalcomment>><<dim3comment>>CELL_EQUATION <momentum[l=3]> "celldiv(<<radius_f>>*<J_f[l=3]>)/<<radius_c>>-<dynamic_force_c[l=3]>" ON <domain> # momentum component
+# these also include the hoop stress terms when <<radiusdim?flag>> is appropriately set
+<<cylindricalcomment>><<dim1comment>>CELL_EQUATION <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+celldiv(<<radius_f>>*<J_f[l=1]>)/<<radius_c>>-<dynamic_force_c[l=1]>+<<radiusdim1flag>>*2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)" ON <domain> # momentum component
+<<cylindricalcomment>><<dim2comment>>CELL_EQUATION <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+celldiv(<<radius_f>>*<J_f[l=2]>)/<<radius_c>>-<dynamic_force_c[l=2]>+<<radiusdim2flag>>*2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)" ON <domain> # momentum component
+<<cylindricalcomment>><<dim3comment>>CELL_EQUATION <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+celldiv(<<radius_f>>*<J_f[l=3]>)/<<radius_c>>-<dynamic_force_c[l=3]>+<<radiusdim3flag>>*2.d0*<u[l=3]>*<mu>/(<cellx[l=3]>**2)" ON <domain> # momentum component

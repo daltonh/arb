@@ -1,0 +1,209 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+# file equations.in
+VERSION 0.50
+
+INFO_TITLE "Fully-developed electrokinetic flow"
+INFO_DESCRIPTION "Now setup for electroviscous flow with zero total current"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "22/8/14" # interpreted as the last modification date
+
+# choose coordinate system
+# for cartesian slit flow include the following:
+GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centreline is horizontal need to include reflect=2 when differentiating of averaging any l=2 vector components
+INFO_DESCRIPTION+ ": cartesian slit flow"
+# for cylindrical pipe flow include the following:
+#INCLUDE_ROOT "general"
+#INCLUDE "cylindrical_reflect_r2z1"
+#INFO_DESCRIPTION+ ": cylindrical pipe flow (note, analytical expressions are not correct for this yet)"
+
+# for both coordinate systems the centreline is normal to the x_2 (ie, y) axis, so glue this back on itself while setting the reflection direction to use
+GLUE_FACES <centreline> reflect=2 # glue the centreline back on itself (while reflecting the y indicies of the mesh), creating a horizontal axis of symmetry along the bottom of the domain
+
+#----------------------------------------------------------------------------
+# solver options
+
+# for electrokinetic problems, higher order kernels give significantly better results
+KERNEL polynomialaverageorder=2,polynomialorder=2 # specifies that when averaging/differentiating quantities to/at faces, ensure that function fits a second order polynomial
+
+#-------------------------------------------------------------------
+# geometry
+
+# CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+# where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
+# where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+# where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
+# where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
+# where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
+# where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
+
+FACE_REGION <walls> "COMPOUND <boundaries>-<inlet>-<outlet>-<centreline>"
+FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
+FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
+FACE_REGION <inlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <inlet>"
+FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
+
+# MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+# output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+# input options are: input,centringinput,meshinput,centringmeshinput,noinput
+# data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+#MSH_FILE "electrokinetic_channel_structured.msh"
+MSH_FILE "electrokinetic_channel_structured_nonuniform.msh"
+#MSH_FILE "electrokinetic_channel_unstructured.msh"
+
+# use templates from the electrokinetics template directory to build up problem
+INCLUDE_ROOT "electrokinetics" # this is the base directory that will be appended to the following files
+# use these for a dimensional problem
+#INCLUDE "constants" # specify physical and numerical constants
+#INCLUDE "electrokinetic_constants" # and the same for the electrokinetic equations
+# or these for a nondimensional problem
+INCLUDE "nondimensional_constants" # specify physical and numerical constants
+INCLUDE "nondimensional_electrokinetic_constants" # and the same for the electrokinetic equations
+
+INCLUDE "binary_ion_combinations" # some concentrations and charges required in other equations
+INCLUDE "unknowns" # linked to navier-stokes template
+INCLUDE "total_stress" # linked to navier-stokes template
+INCLUDE "combined_fluxes" # this includes an electrokinetic term too and includes electrical terms in the dynamic force vector
+INCLUDE "conservation" # linked to navier-stokes template
+
+# the following wall bcs are linked to navier-stokes templates
+INCLUDE "walls_noslip" # nonslip walls BC
+INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure gradient to give using <u_av>
+INCLUDE "outlet_u_fully_developed" # fully developed velocity profile, setting pressure at centreline to zero and a uniform pressure gradient
+
+INCLUDE "binary_ion_equations" # transport of binary electrolyte (positive and negative ions), including boundary conditions
+INCLUDE "potential_equations" # electrical poisson equation for potential, including boundary conditions
+
+INCLUDE "estimate_initial_potential" # sets the initial potential using a very rough correlation.  Initial ion concentrations reference this potential.
+
+# correct some magnitudes
+CELL_UNKNOWN <p> magnitude=1.d+5
+# the following magnitudes are resonably well calculated from the initial potential estimate, so don't bother setting explicitly
+#CELL_UNKNOWN <U> magnitude=1.d+1
+#CELL_UNKNOWN <ion+ n> magnitude=1.d+4
+#CELL_UNKNOWN <ion- n> magnitude=1.d+0
+
+# set nondimensional constants (these are based on a previous test case)
+CONSTANT <Re>  0.28089888E-03
+CONSTANT <Sc>   445.00000    
+CONSTANT <B>  0.29522318E-03 
+CONSTANT <K>   2.6488688     
+CONSTANT <S>  -27.453590     
+CONSTANT <I_total> [1] 0.d0 # total current passing through domain
+
+# output a flag telling us which term limited the correction velocity
+#FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+# and turn some outputs on
+FACE_DERIVED <u_f_{correction}> output
+FACE_DERIVED <u_f_{raw}> output
+FACE_DERIVED <u_f> output
+FACE_DERIVED <J_f[l=1]> output
+FACE_LOCAL <tau[l=1,1]> output
+
+# putting in exact initial conditions
+CELL_UNKNOWN <u[l=1]> "0.d0"
+CELL_UNKNOWN <u[l=2]> "0.d0"
+CELL_UNKNOWN <p> "0.d0"
+FACE_DERIVED <p_error> output
+#CONSTANT <adv_limiter> 0.d0
+
+#-------------------------------------------------------------------
+# some alternative discretisations:
+
+# enforce uniform celldivgrads for p and U in cells next to the inlet/outlet, rather than on the boundaries themselves
+#INCLUDE "inlet_u_fully_developed_celldivgrad" # fully developed velocity profile, setting a uniform pressure gradient to give using <u_av>
+#INCLUDE "outlet_u_fully_developed_celldivgrad" # fully developed velocity profile, setting pressure at centreline to zero and a uniform pressure gradient
+#INCLUDE "potential_outlet_celldivgrad"
+#INCLUDE "potential_inlet_celldivgrad"
+
+# apply concentration condition on cells next to inlet, rather than on boundary cells
+#FACE_EQUATION <ion+ inlet> "faceave[downcell](<n_0^2 signed>)-<average ion n>^2"
+
+# apply concentration condition on outlet instead of minor species facegrad
+# only use if outlet concentration is known
+# marginally more accurate calculated pressure/potential gradients for fully developed flow
+#FACE_EQUATION <ion+ outlet> "<n_0^2 signed>-<average ion n>^2"
+#FACE_EQUATION <ion- outlet> "faceif(<S>,facegrad(<ion- n>),facegrad(<ion+ n>))" # boundary condition is applied on the major ion species
+
+# include conduction of ions in the advection velocity, calculating the advection concentrations appropriately using upwinding
+#INCLUDE "ion_domain_ionuf" R "<ion" W "<ion+"
+#INCLUDE "ion_domain_ionuf" R "<ion" W "<ion-"
+
+#-------------------------------------------------------------------
+# output statistics
+
+# -----------
+# compare pressure/potential gradients against exact 1D solution, calculated numerically
+# Accompaniment to paper, `Microfluidic circuit analysis - Flowrate and
+# ion current relationships for thin slits and pipes'
+# by Dalton J.E. Harvie, Christian J.C. Biscombe and Malcolm R. Davidson
+# outputs from the electrokinetic flow solver (ekfs), using jmax = 10002
+# -----------
+#   SETTING KKK TO 2.6488688
+#   SETTING SSS TO -27.453590
+#   SETTING DDD(+1) TO 1.0848474
+#   SETTING DDD(-1) TO 1.0848474
+# CREATING NONDIMENSIONAL FLOWRATE AND CURRENT EXPRESSIONS
+#     1      = [-0.3333333    ]xDELP + [-0.9525616    ]xDELPHI
+#     III(+1 = [ -1.104795    ]xDELPPP + [ -12.90186    ]xDELPHIPHI
+#     III(-1 = [ 0.1522337    ]xDELPPP + [ 0.9042310E-02]xDELPHIPHI
+#     III_TO = [-0.9525617    ]xDELPPP + [ -12.89281    ]xDELPHIPHI
+#     ELECTROVISCOUS CASE: DELPPP =  -3.8029309546    : DELPHIPHI =  0.28097253761    
+# -----------
+
+CONSTANT <ekfs_ppp> -3.8029309546    
+CONSTANT <ekfs_fff> 0.28097253761    
+CONSTANT <axial pressure gradient analytical> "<ekfs_ppp>/<Re>" # actually based on ekfs results
+CONSTANT <axial potential gradient analytical> "<ekfs_fff>*<Re>/(<K>^2*<B>)"
+
+NONE_CONSTANT <X max> "facemax(<facex[l=1]>,,<all faces>)"
+NONE_CONSTANT <X min> "facemin(<facex[l=1]>,,<all faces>)"
+NONE_CONSTANT <Y max> "facemax(<facex[l=2]>,,<all faces>)"
+NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<all faces>)"
+
+CELL_OUTPUT <axial pressure gradient> "celldivgrad[l=1](<p>)" elementdata
+CELL_OUTPUT <axial pressure gradient error> "abs(<axial pressure gradient>-<axial pressure gradient analytical>)" elementdata
+NONE_OUTPUT <axial pressure gradient L2 norm> "sqrt(cellsum(<axial pressure gradient error>^2,<domain>)/cellsum(1.d0,<domain>))"
+NONE_OUTPUT <axial pressure gradient L1 norm> "cellsum(<axial pressure gradient error>,<domain>)/cellsum(1.d0,<domain>)"
+NONE_OUTPUT <axial pressure gradient Linfty norm> "cellmax(<axial pressure gradient error>,region=<domain>)"
+NONE_OUTPUT <average inlet pressure> "facesum(<p>*<facearea>,<inlet>)/facesum(<facearea>,<inlet>)"
+NONE_OUTPUT <average outlet pressure> "facesum(<p>*<facearea>,<outlet>)/facesum(<facearea>,<outlet>)"
+NONE_OUTPUT <overall pressure difference error> "abs(1.d0 - (<average outlet pressure> - <average inlet pressure>)/(<axial pressure gradient analytical>*(<X max>-<X min>)))"
+NONE_OUTPUT <centreline inlet pressure> "facesum(<p>,region=<inlet centreline>)"
+NONE_OUTPUT <centreline outlet pressure> "facesum(<p>,region=<outlet centreline>)"
+NONE_OUTPUT <centreline pressure difference error> "abs(1.d0 - (<centreline outlet pressure> - <centreline inlet pressure>)/(<axial pressure gradient analytical>*(<X max>-<X min>)))"
+NONE_OUTPUT <centreline pressure gradient> "(<centreline outlet pressure> - <centreline inlet pressure>)/(<X max>-<X min>)"
+NONE_OUTPUT <average pressure gradient> "(<average outlet pressure> - <average inlet pressure>)/(<X max>-<X min>)"
+
+CELL_OUTPUT <axial potential gradient> "celldivgrad[l=1](<U>)" elementdata
+CELL_OUTPUT <axial potential gradient error> "abs(<axial potential gradient>-<axial potential gradient analytical>)" elementdata
+NONE_OUTPUT <axial potential gradient L2 norm> "sqrt(cellsum(<axial potential gradient error>^2,<domain>)/cellsum(1.d0,<domain>))"
+NONE_OUTPUT <axial potential gradient L1 norm> "cellsum(<axial potential gradient error>,<domain>)/cellsum(1.d0,<domain>)"
+NONE_OUTPUT <axial potential gradient Linfty norm> "cellmax(<axial potential gradient error>,region=<domain>)"
+NONE_OUTPUT <average inlet potential> "facesum(<U>*<facearea>,<inlet>)/facesum(<facearea>,<inlet>)"
+NONE_OUTPUT <average outlet potential> "facesum(<U>*<facearea>,<outlet>)/facesum(<facearea>,<outlet>)"
+NONE_OUTPUT <overall potential difference error> "abs(1.d0 - (<average outlet potential> - <average inlet potential>)/(<axial potential gradient analytical>*(<X max>-<X min>)))"
+NONE_OUTPUT <centreline inlet potential> "facesum(<U>,region=<inlet centreline>)"
+NONE_OUTPUT <centreline outlet potential> "facesum(<U>,region=<outlet centreline>)"
+NONE_OUTPUT <centreline potential difference error> "abs(1.d0 - (<centreline outlet potential> - <centreline inlet potential>)/(<axial potential gradient analytical>*(<X max>-<X min>)))"
+NONE_OUTPUT <centreline potential gradient> "(<centreline outlet potential> - <centreline inlet potential>)/(<X max>-<X min>)"
+NONE_OUTPUT <average potential gradient> "(<average outlet potential> - <average inlet potential>)/(<X max>-<X min>)"
+
+CELL_OUTPUT <icell output> "<icell>"
+FACE_OUTPUT <jface output> "<jface>"
+
+CELL_OUTPUT <n_0> "sqrt(cellmax(<ion+ n>*<ion- n>,0.d0))"
+CELL_OUTPUT <n_0^2 negative error> "-cellmin(<ion+ n>*<ion- n>,0.d0)"
+CELL_LOCAL <rho_e> ON <all cells> output
+
+CELL_OUTPUT <n_0 error> "abs(<n_0>-1.d0)" elementdata
+NONE_OUTPUT <n_0 L2 norm> "sqrt(cellsum(<n_0 error>^2,<domain>)/cellsum(1.d0,<domain>))"
+NONE_OUTPUT <n_0 L1 norm> "cellsum(<n_0 error>,<domain>)/cellsum(1.d0,<domain>)"
+NONE_OUTPUT <n_0 Linfty norm> "cellmax(<n_0 error>,region=<domain>)"
+
+#-------------------------------------------------------------------

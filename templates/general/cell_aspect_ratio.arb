@@ -1,0 +1,2 @@
+CELL_OUTPUT <cell aspect ratio> "facemax(<facearea>,region=<celljfaces>)/cellmax(facemin(<facearea>,region=<celljfaces>),<tinyish>)" ON <domain>
+NONE_OUTPUT <maximum cell aspect ratio> "cellmax(<cell aspect ratio>,region=<domain>)"

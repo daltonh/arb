@@ -1,0 +1,6 @@
+# potential equations
+CELL_UNKNOWN <U> "1.d0" ON <all cells> # electrical potential
+# cartesian only
+<<cartesiancomment>>CELL_EQUATION <U poisson equation> "<eps_o>*celldiv(<eps_fluid>*facegrad(<U>))+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
+# cylindrical and cartesian
+<<cylindricalcomment>>CELL_EQUATION <U poisson equation> "<eps_o>*celldiv(<<radius_f>>*<eps_fluid>*facegrad(<U>))/<<radius_c>>+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation

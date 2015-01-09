@@ -1,0 +1,11 @@
+# based on the nondimensional parameters <S>, <K> and <a_lengthscale>, roughly estimate the initial potential field
+# include this after the potential unknown equation
+
+# very rough estimate of the zeta potential based on correlations in dhjcis11, doi:10.1016/j.jcis.2011.07.076 
+CONSTANT <alpha_large_S> "(3.d0*abs(<S>)+<pi>^2+6.d0-sqrt(nonemax(3.d0*(3.d0*<S>^2+12.d0*abs(<S>)+4.d0*<pi>^2+12.d0),0.d0)))/(2.d0*<pi>)"
+CONSTANT <alpha_small_S> "sqrt(nonemax(-1.5d0+sqrt(2.25d0+1.5d0*abs(<S>)),0.d0))"
+CONSTANT <alpha> "nonemin(<alpha_large_S>,<alpha_small_S>)"
+CONSTANT <Z estimate> "signum(<S>)*nonemin(abs(<S>)*coth(<K>)/<K>,-2.d0*log(cos(<alpha>)))" # signed, nondimensional zeta potential, taken as minimum between low and high potential solutions
+
+CELL_CONSTANT <U initial> "cellif(1.d0/<K>-<ls_minimum_boundary_distance>/<a_lengthscale>,<Z estimate>*<K>*(1.d0/<K>-<ls_minimum_boundary_distance>/<a_lengthscale>),0.d0)/<e/kT>" ON <all cells> output
+CELL_UNKNOWN <U> "<U initial>" # adopts region etc from real definition on the unknown <U>

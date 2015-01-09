@@ -1,0 +1,8 @@
+# physical data
+CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
+# replace any references to the face centred fluid properties with the constant values
+# get rid of these replacements and define alternative statements for the face centred fluid properties if they do vary
+GENERAL_REPLACEMENTS REPLACE "<mu_f>" WITH "<mu>"
+
+# numerical data
+CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type pressure oscillation control

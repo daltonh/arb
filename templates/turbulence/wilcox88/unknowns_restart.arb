@@ -1,0 +1,13 @@
+# k unknown
+# initial value based on prandtl model
+CELL_UNKNOWN <turb_k> "<turb_2SS_c>*<turb_l_prandtl2>/<turb_C_D>" ON <all cells> elementdata
+
+# define limited ks
+CELL_LOCAL <turb_k_pos> "cellmax(<turb_k>,0.d0)"
+
+# omega unknown
+CELL_UNKNOWN <turb_omega> "sqrt(<turb_2SS_c>/<turb_C_D>)" ON <all cells> elementdata
+
+# define limited omegas
+CELL_LOCAL <turb_omega_pos> "cellmax(<turb_omega>,0.d0)"
+

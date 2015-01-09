@@ -1,0 +1,2 @@
+CELL_DERIVED <turb_mu_t> "<rho>*<turb_k_background>/<turb_omega_background>"
+CELL_DERIVED <turb_mu_k_omega> "<rho>*<turb_k_background>/<turb_omega_background>"

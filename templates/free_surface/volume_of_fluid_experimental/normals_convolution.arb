@@ -1,0 +1,12 @@
+# calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
+# based on cellgrad of phi
+<<dim1comment>>INCLUDE "differentiate_variable_constant" R "<<diffdim>>" W "1" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_convolve_constant>" R "<vof_variable>" W "<vof_phi_normal>" R "<vof_variable_convolve" W "<vof_phigrad" R "<vof_variable_mask>" W "<vof_phi_normal_mask>" R "<vof_variable_convolve_mask" W "<vof_phigrad_mask"
+<<dim2comment>>INCLUDE "differentiate_variable_constant" R "<<diffdim>>" W "2" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_convolve_constant>" R "<vof_variable>" W "<vof_phi_normal>" R "<vof_variable_convolve" W "<vof_phigrad" R "<vof_variable_mask>" W "<vof_phi_normal_mask>" R "<vof_variable_convolve_mask" W "<vof_phigrad_mask"
+<<dim3comment>>INCLUDE "differentiate_variable_constant" R "<<diffdim>>" W "3" R "<vof_variable_default>" W "0.d0" R "<vof_variable_convolve_constant>" W "<vof_phigrad_convolve_constant>" R "<vof_variable>" W "<vof_phi_normal>" R "<vof_variable_convolve" W "<vof_phigrad" R "<vof_variable_mask>" W "<vof_phi_normal_mask>" R "<vof_variable_convolve_mask" W "<vof_phigrad_mask"
+#NONE_CONSTANT <vof_phigrad_convolve_constant> "<<maxseparation>>+1.d0"
+NONE_CONSTANT <vof_phigrad_convolve_constant> "<<maxseparation>>"
+
+
+
+CELL_DERIVED <vof_phigrad_mag> "sqrt(dot(<vof_phigrad[l=:]>,<vof_phigrad[l=:]>))" ON <all cells>
+#CELL_DERIVED <vof_phigrad_mask> "cellif(<vof_phigrad_mag>-<vof_phigrad_tol>,1.d0,0.d0)" ON <all cells>

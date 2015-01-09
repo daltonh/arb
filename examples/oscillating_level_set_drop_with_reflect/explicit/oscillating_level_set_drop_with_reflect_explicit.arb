@@ -1,0 +1,223 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+# file equations.in
+VERSION 0.41
+#-------------------------------------------------------------------
+# user-defined constants
+
+#KERNEL_OPTIONS polynomialorder=2
+
+# setup basic cylindrical general replacements
+INCLUDE_ROOT "general"
+INCLUDE "cylindrical_reflect_r1z2"
+# or, setup basic cartesian reflect general replacements
+#GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+#GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
+
+# physical data, now for nondimensional uniform properties
+# set these
+CONSTANT <Re> 1.d+0
+CONSTANT <S> 1.d+3 # surface tension strength nondimensional number, see harvie 2004
+
+# calc these
+CONSTANT <We> "1.d0/(<S>*(1.d0+1.d0/<Re>))"
+CONSTANT <Ca> "<We>/<Re>"
+#CONSTANT <S> "1.d0/(<We>+<Ca>)"
+
+# bring in default physical and numerical constants
+INCLUDE_ROOT "navier_stokes"
+INCLUDE "constants"
+
+# setup nondimensional problem using dimensional equations
+CONSTANT <mu> [1] "1.d0/<Re>" # viscosity of liquid
+CONSTANT <rho> [1] 1.d0 # density
+CONSTANT <sigma> [1] "1.d0/<We>" # surface tension coefficient
+# remove influence of surface tension on force
+#CONSTANT <sigma> "0.d0" # surface tension coefficient
+
+#CONSTANT <t_end> [] 1.d+2 # time for simulation to stop
+CONSTANT <t_end> [] 1.d0 # time for simulation to stop
+#CONSTANT <t_end> [] 1.d-2 # time for simulation to stop
+CONSTANT <celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)" # average cell dimension
+CONSTANT <dt_initial> [] "1.d-3*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
+CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
+# dynamic timestep constants
+CONSTANT <dt_increase> 1.2d0
+#CONSTANT <dt_max> "<dt_initial>*1.d3"
+CONSTANT <dt_min> "<dt_initial>*1.d-3"
+CONSTANT <CFL_max> 0.25d0
+
+# explicit surface tension needs additional static timestep constraint
+CONSTANT <dt_max> "nonemin(<dt_initial>*1.d3,0.5d0*sqrt(0.5d0*<We>*<celldxave>^3/<pi>))"
+
+# for test simulation just do a few timesteps
+TIMESTEPOUT 2
+TIMESTEPMAX 4
+
+# MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+# output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+# input options are: input,centringinput,meshinput,centringmeshinput,noinput
+# data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+# vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
+# dat file output options are: dat_output,centringdat_output,meshdat_output,centringmeshdat_output,nodat_output (nodat_output is the default)
+MSH_FILE "surface.msh"
+
+#-------------------------------------------------------------------
+# geometry
+
+GLUE_FACES <fluid west> reflect=1
+GLUE_FACES <level set west> reflect=1
+GLUE_FACES <level set centre west> reflect=1
+
+# CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+# where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
+# where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+# where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
+# where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
+# where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
+# where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
+# where location string could be: "SURROUNDS <a region>" - faces/cells that surround <a region>, irrespective of whether they are boundary or domain elements - right now only works when <a region> is cell centred
+
+# regions specific to level set mesh
+CELL_REGION <level set domain> "COMPOUND <level set centre>+<level set edge>"
+CELL_REGION <level set all cells> "ASSOCIATED WITH <level set domain>"
+FACE_REGION <level set all faces> "ASSOCIATED WITH <level set domain>"
+FACE_REGION <level set boundaries> "BOUNDARY OF <level set domain>"
+FACE_REGION <level set centre domain faces> "DOMAIN OF <level set centre>"
+FACE_REGION <level set centre all faces> "ASSOCIATED WITH <level set centre>"
+FACE_REGION <level set walls> "COMPOUND <level set top>+<level set bottom>+<level set east>"
+FACE_REGION <level set centre boundaries> "SURROUNDS <level set centre>"
+
+# regions specific to fluid mesh
+CELL_REGION <fluid all cells> "ASSOCIATED WITH <fluid domain>"
+FACE_REGION <fluid boundaries> "BOUNDARY OF <fluid domain>"
+CELL_REGION <fluid boundary cells> "BOUNDARY OF <fluid domain>"
+FACE_REGION <fluid all faces> "ASSOCIATED WITH <fluid domain>"
+FACE_REGION <fluid domain faces> "DOMAIN OF <fluid domain>"
+FACE_REGION <fluid walls> "COMPOUND <fluid top>+<fluid bottom>+<fluid east>"
+FACE_REGION <one face> "AT 1.d+4 1.d+4 0.d0 PART OF <fluid walls>"
+FACE_REGION <walls sans one face> "COMPOUND <fluid walls>-<one face>"
+
+#-------------------------------------------------------------------
+
+# transient bits
+TRANSIENT_SIMULATION
+
+# dynamic timestep, next 2 lines
+NONE_TRANSIENT <CFL[r=1]> "<CFL>" "<CFL>" stepoutput # at this stage this will be the CFL from the last timestep, as it will be evaluated before any r=0 updates
+NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
+# constant timestep, next 1 line
+#NONE_CONSTANT <dt> "<dt_initial>"
+
+NONE_TRANSIENT <dt[r=1]> "<dt>" "<dt>" stepoutput
+NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
+NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
+NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition # this will be true (>0.) whenever we are <dt_out> from last output
+NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
+NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
+
+# unknown variables used for flow problems
+CELL_UNKNOWN <p> [] "(2.d0^<<cylindricalflag>>)*<ls_phi_fluid>/<We>" ON <fluid all cells> elementdata # pressure
+CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <fluid all cells> magnitude=1.d0 # velocity component
+CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <fluid all cells> magnitude=1.d0 # velocity component
+
+CELL_TRANSIENT <u[l=1,r=1]> "0.d0" "<u[l=1]>" ON <fluid all cells>
+CELL_TRANSIENT <u[l=2,r=1]> "0.d0" "<u[l=2]>" ON <fluid all cells>
+
+FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <fluid all faces>
+#FACE_TRANSIENT <u_f[r=1]> "0.d0" "0.d0" ON <fluid all faces>
+
+# CSF based levelset formulation with reinitialisation
+INCLUDE_ROOT "level_set"
+INCLUDE "setup" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>"
+
+# explicit
+CELL_TRANSIENT <ls_phi[r=1]> "<ls_phi>" "<ls_phi>" ON <level set all cells>
+
+CELL_LOCAL <ls_phi_fluid> "cellif(celldelta(<fluid domain>),celltocelllink(expression=<ls_phi>,localregion=<fluid domain>,remoteregion=<level set centre>),0.d0)+cellif(celldelta(<fluid boundary cells>),celltofacelink(expression=<ls_phi>,localregion=<fluid boundary cells>,remoteregion=<level set centre boundaries>),0.d0)" ON <fluid all cells> output,elementdata
+
+# define real initial ls conditions
+# circle (cylinder/sphere)
+#CONSTANT <radius1> 1.0d0
+#CELL_LOCAL <ls_initial1> "<radius1> - sqrt((<cellx[l=1]>)^2+(<cellx[l=2]>)^2)" # drop 1 centred at (0,0)
+#CELL_LOCAL <ls_initial1> "<radius1> - sqrt((<cellx[l=1]>+2.d0)^2+(<cellx[l=2]>)^2)" # drop 1 centred at (-2,0)
+# ellipse
+CONSTANT <radius_a> 0.7d0
+CONSTANT <radius_b> 1.4d0
+CELL_LOCAL <ls_initial1> "1.d0 - sqrt((<cellx[l=1]>/<radius_a>)^2+(<cellx[l=2]>/<radius_b>)^2)"
+# compounds
+CELL_LOCAL <ls_initial> "<ls_initial1>" ON <level set all cells> output
+
+# explicit treatment of surface tension force
+INCLUDE "curvature_explicit" R "<all cells>" W "<level set all cells>" R "<all faces>" W "<level set all faces>"
+INCLUDE "force_explicit" R "<all cells>" W "<level set all cells>" R "<domain faces>" W "<level set centre domain faces>"
+
+# create surface tension force on all fluid cells, including fluid boundary cells which grab their values from adjacent domain cells (as per celldivgrad(p))
+<<dim1comment>>CELL_LOCAL <ls_F_c_fluid_domain[l=1]> "celltocelllink(expression=<ls_F_c[l=1]>,localregion=<fluid domain>,remoteregion=<level set centre>)" ON <fluid domain>
+<<dim2comment>>CELL_LOCAL <ls_F_c_fluid_domain[l=2]> "celltocelllink(expression=<ls_F_c[l=2]>,localregion=<fluid domain>,remoteregion=<level set centre>)" ON <fluid domain>
+<<dim3comment>>CELL_LOCAL <ls_F_c_fluid_domain[l=3]> "celltocelllink(expression=<ls_F_c[l=3]>,localregion=<fluid domain>,remoteregion=<level set centre>)" ON <fluid domain>
+# for explicit force
+<<dim1comment>>CELL_TRANSIENT <ls_F_c_fluid[l=1]> "cellif(celldelta(<fluid domain>),<ls_F_c_fluid_domain[l=1]>,0.d0)+cellif(celldelta(<fluid boundary cells>),cellave[<<reflect=1>>](faceave[downcell,<<reflect=1>>](<ls_F_c_fluid_domain[l=1]>)),0.d0)" ON <fluid all cells> output
+<<dim2comment>>CELL_TRANSIENT <ls_F_c_fluid[l=2]> "cellif(celldelta(<fluid domain>),<ls_F_c_fluid_domain[l=2]>,0.d0)+cellif(celldelta(<fluid boundary cells>),cellave[<<reflect=2>>](faceave[downcell,<<reflect=2>>](<ls_F_c_fluid_domain[l=2]>)),0.d0)" ON <fluid all cells>
+<<dim3comment>>CELL_TRANSIENT <ls_F_c_fluid[l=3]> "cellif(celldelta(<fluid domain>),<ls_F_c_fluid_domain[l=3]>,0.d0)+cellif(celldelta(<fluid boundary cells>),cellave[<<reflect=3>>](faceave[downcell,<<reflect=3>>](<ls_F_c_fluid_domain[l=3]>)),0.d0)" ON <fluid all cells>
+
+# calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
+INCLUDE_ROOT "navier_stokes"
+INCLUDE "total_stress" R "<all faces>" W "<fluid all faces>"
+INCLUDE "p_error" R "<all cells>" W "<fluid all cells>" R "<domain faces>" W "<fluid domain faces>"
+# overwrite dynamic forces to include surface tension
+<<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)+<sigma>*<ls_F_c_fluid[l=1]>" ON <fluid all cells> output
+<<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)+<sigma>*<ls_F_c_fluid[l=2]>" ON <fluid all cells>
+<<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)+<sigma>*<ls_F_c_fluid[l=3]>" ON <fluid all cells>
+FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)+<sigma>*facetofacelink(expression=<ls_F_f>,localregion=<fluid domain faces>,remoteregion=<level set centre domain faces>)" ON <fluid domain faces>
+
+INCLUDE "fluxes" R "<all faces>" W "<fluid all faces>" R "<domain faces>" W "<fluid domain faces>"
+# additional hoop-type-stress contribution to rhie-chow velocity interpolation
+<<cylindricalcomment>>FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<mu>,<eps_p>*<<radius_f>>**2/(2.d0*<mu>))" ON <fluid domain faces>
+
+# conservation equations solved over each domain cell (finite volume method)
+CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <fluid domain> # continuity
+<<cartesiancomment>>CELL_EQUATION <momentum[l=1]> "(<u[l=1]>-<u[l=1,r=1]>)*<rho>/<dt>+celldiv(<J_f[l=1]>)-<sigma>*<ls_F_c_fluid_domain[l=1]>" ON <fluid domain> # momentum component
+<<cartesiancomment>>CELL_EQUATION <momentum[l=2]> "(<u[l=2]>-<u[l=2,r=1]>)*<rho>/<dt>+celldiv(<J_f[l=2]>)-<sigma>*<ls_F_c_fluid_domain[l=2]>" ON <fluid domain> # momentum component
+# the following will only be included for cylindrical problems (ie, pipe flow here), and include an additional hoop stress type term (and p outside of <J_f>)
+<<cylindricalcomment>>CELL_EQUATION <momentum[l=1]> "(<u[l=1]>-<u[l=1,r=1]>)*<rho>/<dt>+celldiv(<<radius_f>>*<J_f[l=1]>)/<<radius_c>>+celldivgrad[l=1](<p_f>)+2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)-<sigma>*<ls_F_c_fluid_domain[l=1]>" ON <fluid domain>
+<<cylindricalcomment>>CELL_EQUATION <momentum[l=2]> "(<u[l=2]>-<u[l=2,r=1]>)*<rho>/<dt>+celldiv(<<radius_f>>*<J_f[l=2]>)/<<radius_c>>+celldivgrad[l=2](<p_f>)-<sigma>*<ls_F_c_fluid_domain[l=2]>" ON <fluid domain>
+
+CELL_LOCAL <ls_F_c[l=1]> output
+
+INCLUDE_ROOT "level_set"
+# need to generalise this in the future to cope with slip walls by extrapolating <u_f> out into <level set edge region>
+FACE_LOCAL <ls_u_f> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
+FACE_LOCAL <ls_u_f[r=1]> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f[r=1]>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
+#INCLUDE "equation" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>" R "<u_f" W "<ls_u_f"
+# explicit treatment of ls advection
+INCLUDE "equation_explicit" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>" R "<u_f" W "<ls_u_f"
+
+# fluid boundary conditions on nonslip walls
+INCLUDE "walls_ls_grad_set" R "<walls>" W "<level set walls>"
+INCLUDE_ROOT "navier_stokes"
+INCLUDE "walls_p_set" R "<walls>" W "<fluid walls>"
+
+#-------------------------------------------------------------------
+NONE_OUTPUT <integrated volume> "cellsum(<ls_phi>*<cellvol>,<level set domain>)"
+
+CELL_LOCAL <u_mag> "sqrt(cellmax(dot(<u[l=:]>,<u[l=:]>),<tinyish>))"
+NONE_DERIVED <u_max> "cellmax(<u_mag>,region=<fluid domain>)" stepoutput
+NONE_DERIVED <CFL> "cellmax(<u_mag>*<dt>/<celldxkernel>,region=<fluid domain>)" stepoutput
+
+NONE_OUTPUT <centroid[l=1]> "cellsum(<cellvol>*<cellx[l=1]>*<ls_phi>,region=<level set domain>)/cellsum(<cellvol>*<ls_phi>,region=<level set domain>)"
+NONE_OUTPUT <centroid[l=2]> "cellsum(<cellvol>*<cellx[l=2]>*<ls_phi>,region=<level set domain>)/cellsum(<cellvol>*<ls_phi>,region=<level set domain>)"
+NONE_OUTPUT <stretch[l=1]> "sqrt(cellsum(<cellvol>*(<cellx[l=1]>-<centroid[l=1]>)^2*<ls_phi>,region=<level set domain>)/cellsum(<cellvol>*<ls_phi>,region=<level set domain>))"
+NONE_OUTPUT <stretch[l=2]> "sqrt(cellsum(<cellvol>*(<cellx[l=2]>-<centroid[l=2]>)^2*<ls_phi>,region=<level set domain>)/cellsum(<cellvol>*<ls_phi>,region=<level set domain>))"
+
+CELL_LOCAL <central flag> "cellif(celltocelllink(expression=<ls_normalised>-<ls_phi_max>,localregion=<fluid domain>,remoteregion=<level set domain>),1.d0,0.d0)"
+NONE_OUTPUT <p central> "cellsum(<central flag>*<cellvol>*<p>,region=<fluid domain>)/cellsum(<central flag>*<cellvol>,region=<fluid domain>)"
+NONE_OUTPUT <p central We> "<p central>*<We>*(2.d0^<<cylindricalflag>>)"
+NONE_OUTPUT <p central We err> "abs(<p central>*<We>-1.d0)"
+NONE_OUTPUT <u rms> "sqrt(cellsum(<cellvol>*<u_mag>^2,region=<fluid domain>)/cellsum(<cellvol>,region=<fluid domain>))"
+NONE_OUTPUT <minimum boundary ls> "facemin(-<ls>,region=<level set boundaries>)/<ls_celldxmax>"
+#-------------------------------------------------------------------

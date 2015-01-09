@@ -1,0 +1,51 @@
+# first set up some constants relating to the discretisation
+# all of these constants are in terms of `non-dimensional' ls values:  that is, the actual ls value divided by the <ls_celldxmax>.  For now <ls_celldxmax> is set to the maximum cell dimension (<celldxmax> = maximum node to node distance for each cell) within the domain.  For meshes with greatly varying cell sizes <ls_celldxmax> should vary with location.
+
+# the number of cells over which <ls_phi> will vary from 0 to 1 will be approximately twice this.  Smaller values give a tighter interface region, containing correspondingly larger surface tension forces
+CONSTANT <ls_phi_max> 1.0d0
+
+# these define the size of the weight region where the reinitialisation does not occur.  For <ls> < <ls_weight_min> no reinitialisation will occur, while for <ls> > <ls_weight_max> the <ls> function will be completely determined by the reinitialisation function.  Reinitialisation tends to decrease mass conservation, so making either of these numbers higher (especially <ls_weight_min>) will increase mass conservation.  Conversely, if reinitialisation is suppressed, the <ls> field may become inaccurate due to interface shearing and stretching, which could lead to surface tension calculation errors
+# if <ls_weight_min> is too small the reinitialisation mechanism may cause the interface to stick to particular (long) cells
+CONSTANT <ls_weight_min> 0.5d0
+CONSTANT <ls_weight_max> 1.5d0
+
+# when advecting the <ls> function, order of discretisation used (0 or 1)
+#CONSTANT <ls_advection_limiter> 1.0d0
+# now we look at the quality of the local kernels and base ls_advection_limiter on that - particularly important for poor quality meshes
+# the ideas come from the advection limiter templates
+# ideally these should sum to 0.5, but we should be able to go over a bit without convergence problems and so economise on mesh cells
+#NONE_CONSTANT <ls_limiter_crosskernel_max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
+NONE_CONSTANT <ls_limiter_crosskernel_max> 0.5d0 # the maximum multiplier for any cell value that is not the central cell
+NONE_CONSTANT <ls_limiter_centralkernel_max> 0.05d0 # the maximum multiplier for the central cell value
+CELL_LOCAL <ls_limiter_crosskernel> "cellif(<crosskernel>-<ls_limiter_crosskernel_max>,<ls_limiter_crosskernel_max>/<crosskernel>,1.d0)"
+CELL_LOCAL <ls_limiter_centralkernel> "cellif(<centralkernel>-<ls_limiter_centralkernel_max>,<ls_limiter_centralkernel_max>/<centralkernel>,1.d0)"
+CELL_CONSTANT <ls_advection_limiter> "cellmin(<ls_limiter_crosskernel>,<ls_limiter_centralkernel>)" ON <all cells> output,elementdata
+
+# this is the maximum <ls> value which is expected to affect the interface behaviour (ie, affect the calculation of the surface force).
+CONSTANT <ls_maximum_kernel_separation> 2.3d0 # take this from what is reported about the kernels (or used in kernel_module.f90), to work out an estimate for <ls_validity_max>
+
+CONSTANT <ls_extra_validity_spacing> 0.d0 # expand or contract <ls_validity_max> by cell size multiples
+CONSTANT <ls_validity_max> "3.d0+<ls_phi_max>+2*<ls_maximum_kernel_separation>+<ls_extra_validity_spacing>" # first 1 cell accounts for the difference between the explicit and implicit values of <ls>, <ls_phi_max> takes us to the edge of the constant <phi> region where <ls_kappa_c> is required, plus 1 cell to get to <ls_kappa_f>, plus 1 separation (averaging) to get to <ls_kappa_c2>, plus 1 cell to get to <ls_n_f>, plus 1 separation (derivative) to get to <ls>
+CONSTANT <ls_validity_max_extra> "<ls_validity_max>+<ls_maximum_kernel_separation>" # this is one kernel separation beyond where values for <ls> could conceivable be used
+
+# this is the level set function, defined on all cells
+CELL_UNKNOWN <ls> [] "<ls_initial>" ON <all cells> magnitude=1.d0,elementnodedata
+CELL_TRANSIENT <ls[r=1]> "<ls>" "<ls>" ON <all cells> nooutput,elementnodedata
+
+#CELL_CONSTANT <ls_celldxmax> "cellmax(<celldxmax>,region=<adjacentcellicells>)" elementdata # this is a possible basis for making this locally varying
+CONSTANT <ls_celldxmax> "cellmax(<celldxmax>,region=<domain>)" elementdata # otherwise for roughly uniformly-sized meshes this will do
+
+# define a background ls function upon which other initial conditions can be built
+# this function is the ls from each of the walls, plus the default wall ls value
+# the region <walls> specifically excludes centrelines, inlet/outlet ports, and wetted areas
+CONSTANT <ls_walls> "-<ls_validity_max_extra>*<ls_celldxmax>" # <ls> is set to this on the walls
+<<dim1comment>>FACE_LOCAL <ls_boundary_vector[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
+<<dim2comment>>FACE_LOCAL <ls_boundary_vector[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
+<<dim3comment>>FACE_LOCAL <ls_boundary_vector[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
+CELL_LOCAL <ls_minimum_boundary_distance> "sqrt(facemin(dot(<ls_boundary_vector[l=:]>,<ls_boundary_vector[l=:]>),region=<walls>))"
+CELL_LOCAL <ls_background> "<ls_walls>-<ls_minimum_boundary_distance>"
+CELL_LOCAL <ls_initial> "<ls_background>" # default initial condition for ls is the background function - real ls function should be defined in main problem file as the maximum of this and any real fluid <ls> functions (assuming <ls> > 0 for the disperse phase)
+
+# for reference a phi can be calculated from ls using a sinusoidal heaviside function
+CELL_LOCAL <ls_normalised> "<ls>/<ls_celldxmax>"
+CELL_DERIVED <ls_phi> "cellif(abs(<ls_normalised>)-<ls_phi_max>,cellif(<ls>,1.d0,0.d0),(sin(<ls_normalised>*<pi>/(2.d0*<ls_phi_max>))+1.d0)/2.d0)" ON <all cells> output

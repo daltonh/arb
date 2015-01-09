@@ -1,0 +1,1606 @@
+% file doc/manual/manual.tex
+%
+% Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+% 
+% This file is part of arb finite volume solver, referred to as `arb'.
+% 
+% arb is a software package designed to solve arbitrary partial
+% differential equations on unstructured meshes using the finite volume
+% method.  Primarily it consists of fortran source code, perl source
+% code and shell scripts.  arb replies on certain third party software
+% to run, most notably the computer algebra system maxima
+% <http://maxima.sourceforge.net/> which is released under the GNU GPL.
+% 
+% The copyright of arb is held by Dalton Harvie.
+% 
+% arb is released under the GNU GPL.  arb is free software: you can
+% redistribute it and/or modify it under the terms of the GNU General
+% Public License (version 3) as published by the Free Software Foundation.
+% You should have received a copy of the GNU General Public Licence
+% along with arb (see file licence/gpl.txt after unpacking).  If not,
+% see <http://www.gnu.org/licences/>.
+% 
+% arb is distributed in the hope that it will be useful, but WITHOUT
+% ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+% FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public Licence
+% for more details.
+% 
+% For full details of arb's licence see the licence directory.
+% 
+% The current homepage for the arb finite volume solver project is
+% <http://people.eng.unimelb.edu.au/daltonh/downloads/arb>.
+%
+%-------------------------------------------------------------------------
+% include some functions and stuff
+\input{setup}
+
+\begin{document}
+
+\title{arb\\[1ex]\large{code version 0.50}}
+\author{Dalton Harvie}
+
+\maketitle
+
+%\contents
+
+% \section{What's new?}
+
+% \begin{enumerate}
+% \item[19/4/13]  Include file functionality, case insensitivity, OMP under the intel compiler, advection limiter improvements and \code{.vtk} (for ParaView) and \code{.dat} (for Tecplot) output options.
+% \item[11/5/11]  Transient capability
+% \item[12/4/11]  Rewrite of mesh routines, allowing multiple meshes and data input.
+% \item[22/2/11]  Installation instructions have been improved.
+% \item[3/2/11]  Work has been done to make error messages more helpful.
+% \item[12/12/10]  The GNU GPL'd sparse linear solver \htmladdnormallink{UMFPACK}{http://www.cise.ufl.edu/research/sparse/umfpack/} written by Tim Davis is now interfaced to arb.  An easy download and setup script is included.
+% \item[25/11/10]  The run procedure has been simplified for version 0.24.  Basically you don't have to run \code{setup\_equations} separately anymore - all meta-programming, compilation and running is handled by the single command `./arb', run from the working directory. 
+% \end{enumerate}
+
+% \pagebreak
+\section{What is arb?}
+
+arb solves arbitrary partial differential equations on unstructured meshes using the finite volume method.  The code is written in fortran95, with some meta-programming done in perl with help from maxima.
+
+The primary strengths of arb are:
+%
+\begin{itemize}
+\item  All equations and variables are defined using `maths-type' expressions written by the user, and hence can be easily tailored to each application;
+\item  All equations are solved simultaneously using a Newton-Raphson method, so implicitly discretised equations can be solved efficiently; and
+\item  The unstructured mesh over which the equations are solved can be componsed of all sorts of convex polygons/polyhedrons.
+\end{itemize}
+ 
+arb requires a UNIX type environment to run, and has been tested on both the Apple OsX and ubuntu linux platforms.  Certain third party programs are used by arb:
+%
+\begin{itemize}
+\item  A fortran compiler; ifort and gfortran are supported;
+\item  The computer algebra system \htmladdnormallink{maxima}{http://maxima.sourceforge.net/};
+\item  A sparse matrix linear solver: \htmladdnormallink{UMFPACK}{http://www.cise.ufl.edu/research/sparse/umfpack/}, \htmladdnormallink{pardiso}{http://www.pardiso-project.org/} and (currently a single) Harwell Subroutine Library routines are supported; and
+%\item  Some general linear algebra routines: Lapack and the Numerical Recipes in Fortran Library are supported;
+\item  The mesh generator \htmladdnormallink{gmsh}{http://geuz.org/gmsh/}.
+%\item  The core unix routines \code{perl}, \code{tar}, \code{gzip}, \code{curl} and \code{rsync}.
+\end{itemize}
+%
+Further details about how to get and install this software are given in section \ref{sec:thirdparty}.
+
+arb is copyright Dalton Harvie (2009--2014), but released under the \htmladdnormallink{GNU General Public Licence (GPL)}{http://www.gnu.org/licenses/gpl.html}.  Further details of this licence can be found in the licence directory once the code has been unpacked.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\pagebreak
+\section{Installation}
+
+\subsection{No-nonsense setup on ubuntu 10.04 or 12.04:}
+ 
+\begin{enumerate}
+\item Install required packages via \code{apt-get}:
+\begin{verbatim}
+sudo apt-get install maxima maxima-share gfortran
+  liblapack-dev libblas-dev gmsh curl gnuplot paraview valgrind
+\end{verbatim}
+\item Download the arb files, unpack the archive, move to the working directory and create the directory structure (see section \ref{sec:installing_arb} for more detail)
+\begin{verbatim}
+wget http://people.eng.unimelb.edu.au/daltonh/
+  downloads/arb/code/latest.tar
+tar -xf latest.tar
+cd arb_*
+./unpack
+\end{verbatim}
+\item Download and compile the suitesparse solver (see section \ref{sec:umfpack} for more detail)
+\begin{verbatim}
+cd src/contributed/suitesparse/
+make
+cd ../../..
+\end{verbatim}
+\item Run a test simulation and view the results (see section \ref{sec:running_arb} for more detail)
+\begin{verbatim}
+./arb
+gmsh output/output.msh
+\end{verbatim}
+\end{enumerate}
+
+On ubuntu 8.04 the versions of \code{perl}, \code{gfortran} and \code{gmsh} in the standard repositories are too old to be installed via this method.
+
+\subsection{No-nonsense setup on OsX:}
+
+Installation on OsX is slightly more fiddly.  This procedure is known to work on OsX 10.6 and 10.8, and previously I had it working on OsX 10.4.
+
+\begin{enumerate}
+\item Install Apple's Xcode developer package.
+\item Install a gfortran binary package as per section \ref{sec:compiler}
+\item Install a maxima binary package as per section \ref{sec:maxima}
+\item Follow steps 2 and onwards from the ubuntu instructions.
+\end{enumerate}
+
+\subsection{Installing prerequisit software (in more detail)\label{sec:thirdparty}}
+
+\subsubsection{\htmladdnormallink{Maxima}{http://maxima.sourceforge.net/} \label{sec:maxima}}
+
+Equation generation is performed using the Maxima Computer Algebra system.  It is released under the \htmladdnormallink{GNU General Public Licence (GPL)}{http://www.gnu.org/licenses/gpl.html} and is available for free.  To check whether you have it installed already try typing \code{maxima}.  If the program is installed you will enter a symbolic maths environment.  Then check that the command \code{load(f90);} finds these libraries, and then quit using \code{quit();}.  If you need to install it:
+
+\heading{Installing \code{maxima} on ubuntu:}
+
+On ubuntu linux \code{maxima} and the f90 package can be installed using
+%
+\begin{verbatim}
+sudo apt-get install maxima maxima-share
+\end{verbatim}
+
+\heading{Installing \code{maxima} on OsX using a binary package:}
+
+A precompiled version of maxima for the mac is available from \htmladdnormallink{sourceforge}{http://sourceforge.net/projects/maxima/files/}.  This is a fastest way of getting things going.  Download the package and copy the application `Maxima.app' to your \code{\\Applications} directory as directed.  To make it available from the command line place the script \code{misc/maxima\_OsX/maxima} somewhere in your path (for example in a \code{bin} directory).
+
+\heading{Installing \code{maxima} on OsX using fink/macports:}
+
+On OsX \code{maxima} can be installed using either \htmladdnormallink{macports}{http://www.macports.org/} or \htmladdnormallink{fink}{http://www.finkproject.org/} package managers.  For fink enable the unstable branch and use
+%
+\begin{verbatim}
+sudo fink install maxima
+\end{verbatim}
+%
+For macports replace \code{fink} with \code{port} in the above.  Compilation will take some time.
+
+\subsubsection{A fortran compiler and the blas/lapack libraries \label{sec:compiler}}
+
+Two different compilers have been tested with arb: \code{ifort} (Intel) and \code{gfortran}.  The \htmladdnormallink{Intel Fortran compiler}{http://software.intel.com/en-us/intel-compilers/} \code{ifort} is probably the faster of the two as currently also supports OMP execution.  It also includes the Intel Maths Kernel library which itself includes the excellent Pardiso linear solver routines (see section \label{sec:pardiso} below):  however this compiler is not free except on linux and even then, only under specific non-commercial circumstances.  The GNU compiler \code{gfortran} is an easier option to get going, and is freely available on both the OsX and linux platforms.  It does not include the Pardiso routines but with the new interface to the UMFPACK routines this isn't a tremendous disadvantage (except for the OMP caveat).
+
+Compiler choice is made automatically when the \code{arb} script is run (defaulting to \code{ifort} if it exists, otherwise using \code{gfortran}).  These defaults can be overwritten with the \code{arb} options \code{--compiler-gnu} or \code{--compiler-intel}.
+
+\heading{Installing \code{ifort}:}
+
+The non-commercial download site for ifort on linux is \htmladdnormallink{here}{http://software.intel.com/en-us/articles/non-commercial-software-download/}.  For OsX the compiler must be bought.  Make sure you install both the compiler and MKL (Math Kernel Libraries).  \code{ifort} versions of 11.1.069 and newer (including Composer XE) have been tested on both linux (v12 and v13) and OsX (v12 only).
+%http://software.intel.com/en-us/articles/non-commercial-software-download/
+
+\heading{Installing \code{gfortran} on ubuntu:}
+
+On ubuntu linux \code{gfortran} and the lapack/blas libraries can be installed using
+%
+\begin{verbatim}
+sudo apt-get install gfortran liblapack-dev libblas-dev
+\end{verbatim}
+%
+\code{gfortran} version 4.2.4 on ubuntu 8.04 doesn't seem to work on some computers (internal compiler error) whereas version 4.4.3 on ubuntu 10.04 does.  The version on ubuntu 12.04 is fine too.  On ubuntu 8.04 you could try downloading a newer binary version of \code{gfortran} but I haven't tried this.
+
+\heading{Installing \code{gfortran} on OsX using a binary package:}
+
+The easiest way to install an up-to-date version of \code{gfortran} is via a precompiled package.  One that worked for me is found \htmladdnormallink{here}{http://gcc.gnu.org/wiki/GFortranBinariesMacOS} - currently (23/2/11) this is version 4.6.  Alternatively this \htmladdnormallink{hpc site}{http://hpc.sourceforge.net/} and this \htmladdnormallink{gcc site}{http://gcc.gnu.org/wiki/GFortranBinaries\#MacOS} gives information about other precompiled versions.  Check that once installed the \code{gfortran} executable is in your path - that is, typing \code{gfortran} at the command line should find the compiler.  Version 4.5 of \code{gfortran} should also work fine.
+%http://gcc.gnu.org/wiki/GFortranBinaries#MacOS
+
+\heading{Installing \code{gfortran} on OsX using fink/macports:}
+
+\code{gfortran} can also be installed by the package managers but there are some issues with this.  \code{gfortran} is included as part of fink's gcc packages (for example \code{gcc45}) but it will need to be installed as 64bit, otherwise there will be some compatibility problems with UMFPACK (unless this is modified).  With macports it is also part of gcc but needs to be specified as a variant:
+%
+\begin{verbatim}
+sudo port install gcc46 +gfortran
+\end{verbatim}
+%
+Again, compilation will take some time.  I have not tested this fully.
+
+\subsubsection{\htmladdnormallink{Pardiso}{http://www.pardiso-project.org/} \label{sec:pardiso}}
+
+The pardiso sparse linear matrix solver is included as part of the Intel Math Kernel Library which is packaged with the \htmladdnormallink{Intel Fortran compiler}{http://software.intel.com/en-us/intel-compilers/} (see above).
+
+If using the intel compiler then this solver will automatically become available (check the initial output when running \code{arb} to see if this has been found).  There is currently no interface to use this solver external to the Intel Math Kernel library.
+
+\subsubsection{\htmladdnormallink{UMFPACK}{http://www.cise.ufl.edu/research/sparse/umfpack/} \label{sec:umfpack}}
+
+The \htmladdnormallink{UMFPACK}{http://www.cise.ufl.edu/research/sparse/umfpack/} sparse linear solver is part of the suitesparse collection of sparse matrix routines written by Prof.~Tim Davis.  It is written in c and released under the GNU GPL (see \htmladdnormallink{conditions here}{http://www.cise.ufl.edu/research/sparse/umfpack/current/}).
+
+UMFPACK depends on \htmladdnormallink{`METIS - Serial Graph Partitioning and Fill-reducing Matrix Ordering'}{http://glaros.dtc.umn.edu/gkhome/metis/metis/overview}.  METIS is freely available but not free distributable.  For more details see the \htmladdnormallink{conditions here}{http://glaros.dtc.umn.edu/gkhome/metis/metis/faq?q=metis/metis/faq\#distribute}.
+
+The installation process for the UMFPACK/METIS combination has been automated so that it can be easily used with arb.  To install these packages and compile them in a form that is suitable for arb:
+%
+\begin{verbatim}
+cd src/contributed/suitesparse
+make
+\end{verbatim}
+
+The \code{make} command will download version 3.6.0 of UMFPACK and version 4.0.3 of METIS (using curl - install on ubuntu using \code{sudo apt-get install curl} if you don't have it already), and then compile these libraries using the gcc compiler.  A wrapper script for using UMFPACK from fortran (included with UMFPACK) will also be compiled.  The files will be placed in the src/contributed/suitesparse directory, so will not overwrite any alternative suitesparse or metis libraries already on your system.  You need to have \code{gcc} installed on your system to build these libraries.
+
+If all goes well the following files will be placed in src/contributed/suitesparse to be used by arb:
+\begin{verbatim}
+libamd.a
+libcamd.a
+libccolamd.a
+libcholmod.a
+libcolamd.a
+libmetis.a
+libumfpack.a
+umf4_f77wrapper.o
+\end{verbatim}
+All of these files are required for UMFPACK to successfully run.
+
+You also need to have a version of the blas libraries available for \code{arb} to use UMFPACK.  On OsX these should already be installed as part of Xcode (see section \ref{sec:compiler}).  On ubuntu linux they can be installed using \code{sudo apt-get install libblas-dev} if they're not already present.
+
+To remove the compiled libraries and files type
+%
+\begin{verbatim}
+make clean
+\end{verbatim}
+%
+from the \code{suitesparse} directory.  This will leave only the downloaded files (ready to be reused).  To remove the suitesparse and metis downloads as well, type
+%
+\begin{verbatim}
+make clean_all
+\end{verbatim}
+
+Note that UMFPACK library compilation is dependent on the type of machine architecture and the libraries will need to be remade if transferred from one machine to another - do a \code{make clean} and then a \code{make} again from within the \code{suitesparse} directory.
+
+arb has been tested with the following combinations of umfpack/suitesparse and metis:
+%
+\begin{itemize}
+\item UMFPACK.tar.gz  02-Jun-2010 11:46 and metis-4.0.tar.gz (4.0.1)
+\item SuiteSparse-3.6.0.tar.gz and metis-4.0.tar.gz (4.0.3)
+\end{itemize}
+
+\subsubsection{Perl}
+
+On ubuntu or OsX you should already have a version of perl installed.
+
+\subsubsection{\htmladdnormallink{Harwell Subroutine Library}{http://www.hsl.rl.ac.uk/} \label{sec:hsl}}
+
+An interface to the subroutine MA28D has been implemented.  With the availability of UMFPACK, there is no real reason to use this, except for development.  For more information see the \code{src/contributed/hsl\_ma28d} directory.  An interface to MA48D is under development (don't hold your breath though!).
+
+\subsubsection{\htmladdnormallink{Numerical Recipes in Fortran 77}{http://www.nr.com/}}
+
+These are an alternative to using some of the lapack routines.  There is no reason to use these, except for development.  For more information see the \code{src/contributed/numerical\_recipes} directory.
+
+\subsubsection{\htmladdnormallink{Gmsh}{http://geuz.org/gmsh/} \label{sec:gmsh}}
+
+While not integral to the arb code, the mesh and data format which arb uses is that developed for gmsh.  Gmsh is a mesh element generator which can be run using scripts or via a graphical interface and can be used for post-processing (visualisation) too.  Gmsh uses the \htmladdnormallink{GNU General Public Licence (GPL)}{http://www.gnu.org/licenses/gpl.html}.
+
+There is some great introductory material available on the \htmladdnormallink{gmsh website}{http://geuz.org/gmsh/} on the use of this program, particularly these online \htmladdnormallink{screencasts}{http://geuz.org/gmsh/screencasts/}.
+
+\heading{Installing \code{gmsh} on ubuntu 10.04/12.04:}
+
+\begin{verbatim}
+sudo apt-get install gmsh
+\end{verbatim}
+
+On earlier ubuntu versions the repository version is too old.
+
+\heading{Installing \code{gmsh} on anything else or getting the latest version on ubuntu:}
+
+Download a version from the \htmladdnormallink{gmsh website}{http://geuz.org/gmsh/}.  Version 2.4 is the minimum required for arb - most importantly the msh file format produced needs to be 2.1 or greater.  I have had no problems using development versions that are available.
+
+%\item  The core unix routines \code{tar}, \code{gzip} and \code{rsync} are required for the pack/unpack operations.
+
+%\item  \emph{Harwell Subroutine Library}:  Certain subroutines (contained in \code{linsp.f}) from this library \emph{may} be used as an alternate direct matrix inversion technique.  These subroutines were developed and maintained by staff at the Harwell Laboratory of the United Kingdom Atomic Energy Authority and their use is subject to certain conditions (as detailed in the file \code{linsp.f});
+%\item  \emph{Numerical Recipes in Fortran Library}:  Certain general subroutines (contained in \code{numrec.f}) from this library are used in \code{arb}.  These subroutines are the accompaniment to the book \emph{`Numerical Recipes in Fortran 77'}, 2nd ed.~(1992) which is available \htmladdnormallink{online}{http://www.nr.com/oldverswitcher.html}.
+
+\subsubsection{\htmladdnormallink{ParaView}{http://www.paraview.org/} \label{sec:paraview}}
+
+There is now capability to output in the \code{.vtk} format, used by (for example) ParaView.  To install ParaView on ubuntu use:
+%
+\begin{verbatim}
+sudo apt-get install paraview
+\end{verbatim}
+%
+On the mac there are binaries available.  Input of this file format is not supported.
+
+\subsubsection{\htmladdnormallink{Tecplot}{http://www.tecplot.com/} \label{sec:tecplot}}
+
+Tecplot is proprietary visualisation software.  \code{arb} can output to its \code{*.dat} asci format, but not input from this format.
+
+\subsection{Installing arb \label{sec:installing_arb}}
+
+As arb is distributed as source code that is compiled for each application, arb is not installed in the traditional sense.  Instead, for each new simulation a new self-contained copy of the source files is unpacked from a source tarball.  Once created arb is run from a working directory which contains a specific structure of files and subdirectories.  Two routines, \code{pack} and \code{unpack}, are provided to automate the process of managing this required file/subdirectory structure.
+
+\subsubsection{Unpacking the code}
+
+To create a new version of arb, a new working directory should be created or \htmladdnormallink{downloaded}{http://www.chemeng.unimelb.edu.au/people/staff/daltonh/downloads/arb/code/latest.tar} that contains the five files
+%
+\begin{verbatim}
+archive.tar.gz
+unpack
+readme
+licence
+version
+\end{verbatim}
+%
+Using the command
+%
+\begin{verbatim}
+./unpack
+\end{verbatim}
+%
+from within this directory will unpack the archive ready for use.
+
+The remainder of this section details the file structure and how to pack up the code again.
+
+\subsubsection{The working directory and file structure}
+
+Once the archive is unpacked the working directory will contain the following subdirectories and files/links:
+%
+\begin{itemize}
+\item \code{src} directory: contains the main fortran source code of arb, and the \code{makefile} necessary to build everything (except for the contributed libraries).  It also contains the meta-programming perl script \code{setup\_equations.pl} and a template file \code{equations\_module\_template.f90} which are used to create the fortran file \code{equations\_module.f90} within \code{build} which is specific to each problem.
+\item \code{src\_equations/contributed} directory:  This directory may/should/can contain contributed third party code that can be used by arb, along with associated interface modules --- for example, linear solver routines.  There is a separate subdirectory for each package.  Each directory contains error handling modules that handle runtime cases where the third party routines are not available, and also some brief installation instructions.  Most directories work on the drop-box principle --- if the required files are available then they will be included in the arb executable.
+\item \code{build} directory: all building is done within this directory.  Some notable files are \code{equations\_module.f90} which contains all of the fortran coding that is specific to the current problem, and \code{fortran\_input.arb} which is the only input file read by the executable fortran file.
+\item \code{tmp} directory: temporary files are stored within this directory.
+\item \code{tmp/setup} directory: includes files produced during the setup of the problem (running of \code{setup\_equations.pl}).  If you're having to debug a problem setup then this is the place to look.  The file \code{debugging\_info.txt} contains a lot of detail regarding the equation setup.  The file \code{unwrapped\_input.arb} is a completely unwrapped version of the last run input, in which any \code{INCLUDE}d files are unwrapped, with any relevant text strings substituted.  This file can be input directly to arb again if desired.
+\item \code{output} directory: output files from a simulation are placed in here.
+\item \code{misc} directory: contains miscellaneous files --- for example: a \code{create\_mesh} script which builds a \code{.msh} file from any \code{.geo} file in the working directory; a \code{batcher.pl} script which automates the running of consecutive arb runs; and a \code{test\_suite} script which runs all cases in the \code{examples} directory as a check.
+\item \code{doc} directory: contains documentation including this manual.
+\item \code{examples} directory: example problem-specific \code{*.arb} files with their associated geometry files (structure files with \code{.geo} extension, and mesh files with \code{.msh} extension) are stored here.  Looking through these examples is currently the best way to learn about the language syntax and generally understand how to run arb simulations.
+\item \code{templates} directory: New for version 0.4, this directory contains template \code{*.arb} files for doing common chunks of setup.  For example, there is a \code{navier\_stokes} directory which contains all of the code chunks necessary to run Navier-Stokes problems.  There are also directories to implement high-order limited advection in both two and three dimensions.  These pieces of template code can be used via the \code{INCLUDE\_ROOT} and \code{INCLUDE} commands.
+\item \code{pack} script: packs the directory for transportation to another location or computer.  This script has many useful options --- try \code{./pack --help}.
+\item \code{licence} directory: contains licence details, including the (GNU GPL) licence under which arb is released and the specific version of the code.  A history file within the directory \code{packer\_history.txt} records the distribution history of this particular code directory.
+\item \code{*.arb} files: these files and an associated \code{.msh} or \code{.geo} file contain all the problem-specific information required for a particular simulation.
+\item \code{arb} script: this shell script is a wrapper script for setting-up, making and running \code{arb}.  You can pass options to this script to control the compilation process --- for example choose between the gnu and intel compilers, whether using OMP or not, whether you are restarting a simulation or starting from scratch.  This script works out when the equation meta-programming has to be redone or not, and when recompilation is necessary, although with other options you can overwrite this behaviour.  To list the options type \code{arb --help}.
+\end{itemize}
+%
+\subsubsection{Packing the code}
+
+To pack a simulation ready to transport or backup, use the command
+%
+\begin{verbatim}
+./pack
+\end{verbatim}
+%
+from within the working directory.  This will create a subdirectory with a name of the form \code{arb\_v[version]\_[date]} which contains all files necessary to run arb.  Following the command with a name, as in
+%
+\begin{verbatim}
+./pack a_name
+\end{verbatim}
+%
+will create the archive in a subdirectory named \code{a\_name} instead of the default.
+
+The script \code{pack} accepts a number of options.  By default only files within the \code{examples} or \code{gmsh} directories that are specific to this manual are included in the archive.  The options \code{--example}, \code{--misc} or \code{--all} specify that all files within either the \code{example}, \code{misc} or both directories are contained within the archive.  By default only source code within the \code{src/contributed} directory that is not subject to a non-free third party licence is included in the archive.  Using the options \code{--contributed} or \code{--all} causes all files in these directories to be archived (including the build suitesparse libraries).  Using \code{--distribute} means that no third party software is included in the archive and example input files will be copied to the working directory.  The option \code{--build} means that all files in the build directory will be included in the archive.  This may be useful if you want to transport the simulation to another machine that may not have maxima installed (for example).
+
+Use \code{./pack --help} to list other options. 
+
+%TODO: code accessories like plot_step (requires gnuplot), create_msh, also pack?
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\pagebreak
+\section{Running simulations \label{sec:running_arb}}
+
+\subsection{A super-quick example:  A heat conduction simulation}
+
+Once the code is unpacked you should be left in the working directory.  If this version has been downloaded from the homepage then the three files
+%
+\begin{verbatim}
+heat_conduction_around_ellipse.arb
+surface.geo
+surface.msh
+\end{verbatim}
+%
+that exist in the working directory specify a simple heat conduction problem.  If they don't exist for whatever reason they can be copied from \code{examples/manual/heat\_conduction\_around\_ellipse} to the working directory.
+
+Now run the simulation using
+%
+\begin{verbatim}
+./arb
+\end{verbatim}
+%
+If all goes well the code will be metaprogrammed and compiled, the simulation will run and output will be produced in the directory \code{output}.  Note that if a specific \code{.arb} file is not passed to the \code{arb} script, as above, it will default to any \code{.arb} files that exist within the working directory.  The above code worked because only one \code{.arb} file should have been present in the working directory when the code is first unpacked.
+
+To view the output type 
+%
+\begin{verbatim}
+gmsh output/output.msh
+\end{verbatim}
+%
+You should see the temperature field around a heated ellipse.
+
+\subsection{Other examples:}
+
+Other example simulation files are included in the subdirectories of \code{examples}.  To run any of these first copy the relevant \code{*.arb} and \code{*.geo} or \code{*.msh} files to the working directory.  If only a \code{*.geo} file is included (or if you want to change the mesh resolution) create the \code{.msh} file via the included \code{create\_mesh} script:
+%
+\begin{verbatim}
+misc/create_msh/create_msh geo_file.geo
+\end{verbatim}
+%
+replacing `\code{geo\_file.geo}' with name of the file.  Note that an optional first numeric argument can be passed to the script to control the relative cell size --- the smaller the parameter, the smaller the mesh element size and greater the number (see \code{misc/create\_msh/create\_msh --help}).  Finally run arb using \code{./arb} and view the results.  
+
+Right now the examples include:
+\begin{itemize}
+\item \code{1d\_nonuniform\_diffusion}: diffusion along a line containing two diffusion coefficients (1D)
+\item \code{advection\_2d\_box\_test}: advection of scalar in two dimensions demonstrating high-order limited advection inclusions
+\item \code{bouncing\_ball}: a transient bouncing ball
+\item \code{cube\_laplacian\_dhctac10\_2012}: nonlinear laplacian in a 3D box, presented at the CTAC10 conference (and shown in associated paper \cite{dhctac10})
+\item \code{heat\_conduction\_around\_ellipse}: diffusion (nominally heat) around an ellipse within a box (2D)
+\item \code{heat\_conduction\_with\_linked\_regions}: similar to the above but demonstrating the use of linked regions (2D)
+\item \code{inviscid\_burgers\_equation}: 1D transient
+\item \code{laplacian\_in\_square}: comparison between the numerical and analytical solution for a laplacian problem (2D)
+\item \code{slit\_flow\_with\_structured\_mesh\_xy\_plane}: Navier-Stokes flow with structured mesh
+\item \code{slit\_flow\_with\_structured\_mesh\_xz\_plane}: Same but in different direction
+\item \code{steady\_state\_channel\_flow\_with\_cylinder}: CFD benchmark problem of fluid flow around a slightly offset cylinder at $\dnum{Re}=20$ (2D)
+\item \code{stokes\_flow\_through\_cylinder}: Stokes flow through a pipe in 3D
+\item \code{weiluns\_stokes\_sphere}: Flow around a sphere in cylindrical polar coordinates
+\end{itemize}
+
+\subsection{The \code{arb} run script:}
+
+This shell script handles the perl meta-programming, fortran compiling, linking and running of arb.  It uses a makefile (\code{src/makefile}) to determine when various components have to be remade.  All code building is done in the directory \code{build}.
+
+By default the \code{arb} script will try to do all that is necessary to run a simulation from scratch (except make the suitesparse libraries), however its behaviour can be altered by (at least) the following options:
+%
+\begin{itemize}
+\item \code{--clean}: remove all meta-programmed fortran source and executable objects before building again.
+\item \code{--clean-compile}: remove all executable objects before building again.  This may be handy if you want to run a simulation on a machine that has a fortran compiler, but not say maxima.
+\item \code{--clean-setup}: remove all meta-programmed fortran source before building again.
+\item \code{--setup}: create perl meta-programmed fortran source (default).
+\item \code{--no-setup}: do not recreate perl meta-programmed fortran source.
+\item \code{--compile}: create executable objects by compiling fortran source (default).
+\item \code{--no-compile}: do not recreate executable objects by compiling fortran source.  If both \code{--no-setup} and \code{--no-compile} are specified, the existing \code{arb} executable will be rerun regardless of changes to the \code{.in} files.
+\item \code{--run}: run the \code{arb} executable once it is built (default).
+\item \code{--no-run}: do not run the \code{arb} executable.
+\item \code{-q|--quiet}: send screen output to \code{output/output.scr}.
+\item \code{-c|--continue}: continue on from a previous simulation.  This is the not the default behaviour.  Unless this is specified the contents of \code{output} will be cleared out before each simulation.  Note that a copy of the previous output files are placed in \code{output/previous} so if you accidentally run \code{arb} without the continue flag (once) you can get the old files back from this directory.
+\item \code{-d|--debug}: compile the fortran using debug flags, and run the executable within the \code{gdb} environment.
+\item \code{--compiler-gnu}: compile the fortran using \code{gfortran} (default if \code{ifort} is not present).
+\item \code{--compiler-intel}: compile the fortran using \code{ifort} (default if \code{ifort} is present).
+\end{itemize}
+
+\subsection{A more detailed guide:  Newtonian fluid flow}
+
+To discuss the working method in more detail we use the example of the steady-state flow of a Newtonian fluid around a cylinder that is provided in \code{examples/steady\_state\_channel\_flow\_with\_cylinder}.
+
+There are 5 basic steps to setting up, running and debugging an arb simulation:
+%
+\begin{enumerate}
+\item  \textbf{Create a mesh:}  Geometry definition and mesh creation can be performed in gmsh.  The domain geometry details are stored in a \code{.geo} file, which can be created by hand (file editing) or with the help of the gmsh GUI.  Once a geometry (\code{.geo} file) has been created, gmsh can mesh this to produce a \code{.msh} file which is the file that is read in by arb.  You can either do this via the gmsh GUI, or via the simple \code{create\_mesh} script (mentioned above) which calls gmsh.  When creating a 3D mesh be sure to optimise the mesh after creation (greatly improves mesh quality - \code{create\_mesh} does this by default for 3D meshes).
+
+arb uses the concept of `regions' to locate various equations (for example boundary conditions, domain equations etc) and these should be defined in the \code{.geo} file prior to meshing (some regions are also created by arb).  Regions have names that are delimited by the \code{<} and \code{>} signs:  for example \code{<inlet>} and \code{<outlet>} (generally any user-defined names are delimited this way in arb).  Like variable names (discussed later) region names can contain any characters except for \code{"} and \code{\#}.  Region and variable names are case sensitive.
+
+In the example geometry file the boundary regions \code{<inlet>}, \code{<outlet>} and \code{<cylinder>} have all been defined as physical entities.  The area region of \code{<flow domain>} which contains all mesh cells within the flow domain has also been created.  This region is necessary as by default, gmsh does not write out mesh cells to a mesh file unless they are part of a physical entity.  Note that certain region names are reserved: see section \ref{sec:regions} for more details.
+
+
+\item  \textbf{Edit the \code{*.arb} input file}:  Aside from the mesh file, all information that is specific to a simulation is contained in this file.  Some commands/statements/options within this file will require the fortran to be recreated and the fortran executable to be recompiled, while other commands/statements/options within this file are passed directly to the fortran exectuable at run time (see \code{build/fortran\_input.arb}).
+
+Further details regarding the syntax of the \code{*.arb} file can be found in Sections \ref{sec:setup_reference} and \ref{sec:language}.  As these are not very complete, it is a good idea to look through the example files too.
+
+\item  \textbf{Run \code{arb}:} From the working directory
+%
+\begin{verbatim}
+./arb
+\end{verbatim}
+%
+will run arb.
+
+The first thing that happens is that the makefile checks what libraries/software are available and prints diagnostic messages to the screen.
+
+The perl script \code{setup\_equations.pl} is then called.  It reads any \code{*.arb} files that are present in the working directory, and using maxima, creates the fortran source code file \code{build/equations\_module.f90}.  The name of a specific \code{*.arb} file can also be given, as in
+%
+\begin{verbatim}
+./arb steady_state_channel_flow_with_cylinder.arb
+\end{verbatim}
+%
+to only run this one simulation.  \code{setup\_equations.pl} writes plenty of progress information to the screen - if all goes well this output will end with the statement `\code{SUCCESS}'.  Otherwise errors in the \code{*.arb} file will need to be found and corrected.  Aside from the screen output, more debugging information is written by \code{setup\_equations.pl} to the file \code{tmp/setup/debugging\_info.txt}.  Other files in the \code{tmp/setup} directory trace the interaction between the perl script and maxima.
+
+Next the fortran code is compiled.  If the debugging option has been requested (\code{./arb --debug}) the any error messages will be contained in \code{build/make.log}.
+
+If all goes well the resulting executable will run.  Alongside the \code{.msh} and \code{output.stat} (statistics) files written to the directory \code{output}, other files in this directory can be used to diagnose problems.  If these don't help, there are many \code{debug} and \code{debug\_sparse} logicals scattered through the code, and in \code{src/general\_module.f90} there are options to print out alternative output files.
+
+\item  \textbf{View results:}  arb produces a file \code{output/output.msh} which can be opened by gmsh for viewing.  The file \code{output/output\_step.csv} is also produced which contains (by default) mainly \code{none} centred variables, and can be easily graphed using the script \code{misc/plot\_step/plot\_step.pl}.
+
+\item  \textbf{Rerun the simulation:}  The \code{output/output.msh} file produced by \code{arb} includes both the mesh information as well as variable data, so can be passed back to arb as an input \code{.msh} file for subsequent simulations.  To do this replace the existing \code{MSH\_FILE} line in the \code{*.arb} file with
+%
+\begin{lstlisting}[caption=]
+MSH_FILE "output/output.msh" input
+\end{lstlisting}
+%
+and rerun arb, without first removing this file via
+%
+\begin{verbatim}
+./arb --continue
+\end{verbatim}
+%
+If you forget the \code{--continue} flag then you can recover the previous output files that are saved in \code{output/previous} for just this emergency.
+
+\end{enumerate}
+
+\pagebreak
+\section{Simulation setup reference \label{sec:setup_reference}}
+
+%------------------------------------
+% \subsection{Code structure}
+%TODO
+
+%------------------------------------
+\subsection{Meshes}
+
+% include picture
+
+arb uses an unstructured mesh composed of cell elements that are separated by face elements.  The dimension of each element is specified on a per-element basis, consistent with the particular computational domain that the element is within (that is, not globally).  Cell elements are classified as either boundary cells (that is, on the boundary of a domain) or domain cells (that is, contained within a domain).  Domain cells have a dimension that is equal to that of the domain they are in (ie, dimension 3/2/1 if the domain is a volume/surface/line, resp.).  Boundary cells have a dimension that is one less than that of the associated domain (ie, dimension 2/1/0 if the domain is a volume/surface/line, resp.).  Face elements are any elements that separate cell elements.  Face elements also have a dimension that is one less than that of the domain they are within.  Some face elements are specified explicitly within a \code{.msh} file (if they are part of a physical entity such as \code{<inlet>} for example), while the remainder are generated by arb when the mesh is read in.  Face elements are also classified as being either domain faces or boundary faces.  Each boundary face has the same geometry, and is conincident with, a boundary cell.  Hence, a mesh has the same number of boundary faces as boundary cells.
+
+Meshes are read in from \code{.msh} files, generally produced by the gmsh program.  Multiple \code{.msh} files can be read in by arb for each simulation.  arb has been coded to be able to handle any poly-sided first order elements supported by the gmsh file format.   It has been tested to date (v0.3) with tetrahedron, boxes and prisms in 3D, triangles and rectangles in 2D, lines in 1D and points in 0D.  Tetrahedron, triangles, lines and points are the default element geometries created by gmsh.
+
+Meshes and data are also exported by arb using the \code{.msh} format.  During every simulation all domains and all output-enabled data will be written by default to the \code{output/output.msh} file.  Other files may also be written, corresponding to any \code{.msh} files that are read in (with any associated output-enabled data).  Regions imported from \code{.msh} files as well as regions created by arb will be exported to any written \code{.msh} files, however note that as the physical entities handled by gmsh can only have a single dimension, elements that have a dimension that is less than any others within a region will not be associated with that region in any arb-created \code{.msh} files.  This is relevant for example when a compound region is created that contains both domain and boundary cells.  When this arb-written \code{.msh} file is displayed by gmsh it will only appear to contain the domain cells.
+
+\subsubsection{Cell and face element specification}
+
+The distinction between cell elements and face elements is not made by gmsh or contained explicitly in the \code{.msh} file, but rather must be made by arb when a \code{.msh} file is read in.  Gmsh's behaviour is to only write an element to a \code{.msh} file if it is a member of a physical entity.  Further, each physical entity has a single dimension.  So, to decide whether an element is either a face or cell element, arb does two things when reading in each \code{.msh} file:
+%
+\begin{enumerate}
+\item The maximum dimension of all physical entities with the \code{.msh} file is found.  This is stored as the dimension of the particular mesh;
+\item When an element is read in that has the same dimension as that of the mesh, it is regarded as a cell element.  If it has a dimension that is one less than that of the mesh, it is regarded as a face element.  If it has a dimension that is two or more less than that of the mesh, then the element is ignored.
+\end{enumerate}
+ 
+So what's the implication of all this?  Generally arb will be able to work out from each \code{.msh} file which elements within it are cell elements and which are face elements.  The only time it won't is when \emph{there are multiple domains having different dimensions contained within the one \code{.msh} file}.  For example, you have both a volume domain and a surface domain specified within a \code{.msh} file, on which you want separate (but possibly linked) sets of equations solved.
+
+If you do have multiple domains having different dimensions contained within the one file then the dimension of all regions (that is, physical entities) contained within the \code{.msh} file that belong to any domains that have a dimension that is \emph{less than} that of the \code{.msh} file need their centring explicitly specified.  For example, if a \code{.msh} file contains both a volume and a surface domain, then all regions associated with the surface domain must have their centring explicitly specified.  Statements for specifying this cell/face centring for particular regions (gmsh physical entities) are described in section \ref{sec:gmsh_regions}.  Alternatively, there is another way that may work for your simulation:  As arb can read multiple \code{.msh} files for each simulation, it may be easier to place domains of different dimensions in separate \code{.msh} files.  The cell/face specification will then be handled automatically without additional statements in the \code{constants.in} file  (If you want multiple domains to share common mesh features however this may be difficult to accomplish using gmsh).
+
+%To do this use the following commands within the \code{constants.in} file:
+
+
+%The only time that you need to provide more information regarding the cell and face element choice is when multiple domains having different dimensions are contained within a single \code{.msh} file.  
+
+
+
+%If you have a single domain then arb will be able to work out what elements are face and cells automatically.  If you have multiple domains that each have the same dimension (eg all volumes), either within the one \code{.msh} file or multiple \code{.msh} files, then again all with be handled automatically.  If you have multiple domains that have different dimensions (eg, one volume and one surface) but they are each contained in separate \code{.msh} files, then again, the face and cell elements will be allocated correctly.
+%Face elements have a dimension that is 1 less than that of the adjacent cell elements if the cell element is a domain cell element.  Cell elements that are not domain cell elements are boundary cell elements.  Boundary cell elements have a dimension that is 1 less than that of the domain cells, so have no volume/area/width in 3D/2D/1D, respectively.  Each boundary cell has the same geometry, and is conincident with, a boundary face.  Hence, a mesh has the same number of boundary faces as boundary cells.  Boundary cells are not stored in the \code{.msh} files but are created by arb after a mesh has been imported.  
+
+
+%So why is this important?  It is only important if a single \code{.msh} file contains multiple domains having different dimensions.
+
+%In this case the dimensions of some arb may require additional information to decide whether an element contained
+
+%, although the dimension of each element is stored.
+
+%concept of cell elements and face elements A \code{.msh} file created by gmsh contains only elements that are part of defined physical entities (a gmsh term).  Hence, the elements specified in a \code{.msh} file may have different dimensions.  arb specifies Gmsh does not distinguish between cell elements
+
+%Multiple \code{.msh} files may be read in.  \code{arb} can read in \code{.msh} files which have elements of the same dimension:  If multiple dimensions are required, separate \code{.msh} files should be used for input and output.    arb has been coded to be able to handle any poly-sided cells, however in practice it has only been tested to date (v0.25) with tetrahedron in 3D, triangles in 2D and lines in 1D:  these are the default element geometries created by gmsh.
+
+%Boundary cells are created by arb after a mesh has been imported.  They have a dimension that is 1 less than that of the domain cells, so have no volume/area/width in 3D/2D/1D, respectively.  Each boundary cell has the same geometry, and is conincident with, a boundary face.  Hence, a mesh has the same number of boundary faces as boundary cells.
+
+\subsubsection{Data and mesh file rereading}
+
+The \code{.msh} files written by \code{arb} can contain data.  Variables associated with cell elements can be written in either \code{ElementData} (a uniform value for each cell) or \code{ElementNodeData} (values vary linearly within each cell) gmsh formats.  Variables associated with face elements will only be written in \code{ElementData} format.  Variables which are \code{none} centred are written using a special \code{Data} format which gmsh won't display.  Note that face and cell boundary elements are not written separately to each \code{.msh} file by arb, but rather as a single element.  Hence both cell and face boundary data is associated with a single element in each \code{.msh} file.
+
+One purpose of exporting data to a \code{.msh} file is to provide initial conditions for another (or next) simulation.  In this case generally you just have to specify the \code{output/output.msh} file from the previous simulation as the mesh file to be read in for the next simulation.  Note that each arb-written \code{.msh} file contains all the information about a mesh that was originally contained in the mesh-only gmsh-written \code{.msh} file:  Hence, when starting a simulation from an arb-written datafile is it not necessary (nor does it make sense) to also read in the original gmsh \code{.msh} file.  Also note that data files that contain variable values can only refer to mesh elements that are specified in the same data file (unless some fancy \code{facelink} magic is worked in your equations).
+
+\subsubsection{Mesh read and write options}
+
+Mesh and data input and output is specified by \code{MSH\_FILE} statements within the \code{constants.in} file:
+%
+\begin{lstlisting}[caption=]
+MSH_FILE "msh_file_name_including_path" comma,separated,list,of,options # comments
+\end{lstlisting}
+%
+The file name refers to the read location.  Options for the default \code{output} file should be referred to by \code{output/output.msh} (which is the read location if it did exist).  If a \code{.msh} file is to be written it will always be written to the \code{output} directory.  As a result, all file basenames must be unique.
+
+Three types of options are available for each \code{.msh} file:
+
+\emph{Output options:}
+
+These options specify what information is to be written to the \code{.msh} file.
+\begin{itemize}
+\item \code{output}:  Both a mesh and all specified variables will be written.
+\item \code{centringoutput}:  Both a mesh and all specified variables will be written.  Output will be split between three files, each containing variables of only a single centring (cell, face and none).  This can be handy for gmsh compatibility when doing cutgrid and streamtrace operations for example.
+\item \code{centringmeshoutput}:  Only the mesh is written, split between three files as above.
+\item \code{meshoutput}:  Only the mesh is written.
+\item \code{nooutput}:  Neither the mesh or any data will be written.
+\item \code{vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput}:  Same as the \code{*.msh} file options, but for \code{*.vtk} output, compatible with ParaView (for example).  The default is \code{novtkoutput}.
+\item \code{datoutput,centringdatoutput,meshdatoutput,centringmeshdatoutput,nodatoutput}:  Same as the \code{*.msh} file options, but for \code{*.dat} output, compatible with Tecplot.  The default is \code{nodatoutput}.
+\end{itemize}
+
+By default all meshes have the \code{nooutput} option specified, with the exception of the \code{output/output.msh} mesh, which has option \code{output}.
+
+\emph{Input options:}
+
+These options specify what information is to be read from the \code{.msh} file.
+\begin{itemize}
+\item \code{input}:  Both a mesh and all relevant data will be read.
+\item \code{centringinput}:  Both a mesh and all relevant data will be read.  In this case the existing \code{.msh} is split into three, each containing variables of only a single centring (cell, face and none) as output from a previous simulation employing \code{centringoutput}.  In this case the filename should be specified without the centring, for example \code{output/output.msh} (rather than \code{output/output.cell.msh}).
+\item \code{centringmeshinput}:  Only the mesh is read, split between three files as above.
+\item \code{meshinput}:  Only the mesh is read.
+\item \code{noinput}:  Neither the mesh or any data will be read.
+\end{itemize}
+
+By default all meshes have the \code{input} option specified, with the exception of the \code{output/output.msh} mesh, which has option \code{noinput}.
+
+\emph{Data format options:}
+
+These options specify how cell centred data will be written to the \code{.msh} file.  These options overwrite any data format options specific to individual variables.
+\begin{itemize}
+\item \code{elementdata}:  All cell data will be written using the \code{ElementData} format.
+\item \code{elementnodedata}:  All cell data will be written using the \code{ElementNodeData} format.
+\item \code{elementnodelimiteddata}:  All cell data will be written using the \code{ElementNodeData} format, but with the gradients in each cell limited so that each vertex value is bounded by surrounding cell values.
+\end{itemize}
+
+By default all meshes have no data format options specified, the format instead being determined by the options contained in the individual variable definitions within input \code{.arb} file.
+
+%------------------------------------
+\subsection{Regions \label{sec:regions}}
+
+Regions are sets of elements that are used to locate user-defined variables and equations.  Each region may contain only mesh elements of the same centring (that is, either cell or face elements, but not both).  Regions may contain elements of different dimensions (see caveat in previous section regarding gmsh display of this though).  Regions can be defined by the user directly in gmsh when the mesh is generated, or via statements in the \code{.arb} file that are interpreted when \code{arb} is run.  There are also several generic system generated regions.  Region names must be delimited by the \code{<>} characters, and within these delimiters cannot contain the characters \code{<}, \code{>}, \code{\#} or \code{"}.  Apart from these four characters their names may contain any non-alphanumeric characters.
+
+\subsubsection{Defining regions via gmsh \label{sec:gmsh_regions}}
+
+Regions are specified in gmsh by defining and then naming physical entities.  To do this via the gmsh GUI:
+%
+\begin{itemize}
+\item Add a physical entity (under the physical groups tab) by selecting various elemental entities.
+\item Edit the geometry file (using the edit tab) and change the physical entity's name from the numerical name given by gmsh to the required \code{<>} delimited name suitable for arb.
+\item Save the \code{.geo} file.
+\item Reload the \code{.geo} file again (using the reload tab).  If you now check under the visibility menu that the physical entity is visible.
+\end{itemize}
+
+You can specify the cell or face designation of any gmsh element using the following commands within the \code{constants.in} file.  This is seldom necessary (although it doesn't hurt either), unless the \code{.msh} file it is contained within contains multiple domains, of differing dimensions (see discussion in previous section).
+%
+\begin{lstlisting}[caption=]
+CELL_REGION <gmsh_region_name> 
+FACE_REGION <gmsh_region_name>
+\end{lstlisting}
+
+\subsubsection{Defining regions within the \code{constants.in} file}
+
+There are several types of region specification statements that can be used in the \code{constants.in} file.  Regions specified by these statements will overwrite any regions defined in the \code{.msh} files, however a warning is issued (This allows \code{.msh} files to be reread without altering region definition statements).  The specification statements are:
+
+\emph{Compound region:}
+
+\begin{lstlisting}[caption=]
+CELL_REGION <name> "COMPOUND +<region1>+<region2>-<region3>" # comments
+FACE_REGION <name> "COMPOUND <region1>-<region2>" # comments
+\end{lstlisting}
+
+A compound region is defined using other existing regions.  All regions that are used in the definition (ie, \code{<region1>}, \code{<region2>} and \code{<region3>} in the above examples) must have the (same) centring that is specified by the \code{REGION} keyword.  If a \code{+} sign precedes a region name in the list of regions, then all the mesh elements that are in the following region are added to the new compound region, if they are not already members.  If a \code{-} sign precedes a region name in the list of regions, then all the mesh elements that are in the following region are removed from the new compound region, if they are (at that stage) members of the new compound region.  If no sign immediately precedes a region name in the defining list then a \code{+} sign is assumed.  When constructing a compound region \code{arb} deals with each region in the defining list sequentially; so whether a mesh element is included in the compound region or not may depend on the order that the regions are listed.
+
+\emph{At region:}
+\searchref{ref: AT region}{setup\_module.f90}
+
+\begin{lstlisting}[caption=]
+CELL_REGION <name> "AT x1 x2 x3" # comments
+CELL_REGION <name> "AT x1 x2 x3 PART OF <domain>" # comments
+FACE_REGION <name> "AT x1 x2 x3" # comments
+FACE_REGION <name> "AT x1 x2 x3 PART OF <inlet>" # comments
+\end{lstlisting}
+
+This statement defines a region that contains one cell or one face mesh element.  The element chosen lies closest to the point \code{(x1,x2,x3)}.  The values \code{x1}, \code{x2} and \code{x3} can be real or double precision floats.  An optional \code{PART OF <a region>} confines the choice of an element to those within \code{<a region>}.  In this case \code{<a region>} must have the same centring as the region statement.
+
+\emph{Within box region:}
+\searchref{ref: WITHIN region}{setup\_module.f90}
+
+\begin{lstlisting}[caption=]
+CELL_REGION <name> "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" # comments
+FACE_REGION <name> "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" # comments
+\end{lstlisting}
+
+This statement defines a region including all elements (cell or face) that lie within a box with faces orientated with the coordinate directions, and location defined by the two corner points having the minimum (\code{x1\_min x2\_min x3\_min}) and maximum (\code{x1\_max x2\_max x3\_max}) coordinate values.  An optional \code{PART OF} function is planned.
+
+\emph{Boundary of region:}
+
+\begin{lstlisting}[caption=]
+CELL_REGION <name> "BOUNDARY OF <region>" # comments
+FACE_REGION <name> "BOUNDARY OF <region>" # comments
+\end{lstlisting}
+
+This statement defines a region that contains \emph{only} the boundary elements (either cell or face) that border the region \code{<region>}.
+
+\emph{Domain of region:}
+
+\begin{lstlisting}[caption=]
+CELL_REGION <name> "DOMAIN OF <region>" # comments
+FACE_REGION <name> "DOMAIN OF <region>" # comments
+\end{lstlisting}
+
+This statement defines a region that contains \emph{only} the domain elements (either cell or face) that are associated with the region \code{<region>}.
+
+\emph{Associated with region:}
+
+\begin{lstlisting}[caption=]
+CELL_REGION <name> "ASSOCIATED WITH <region>" # comments
+FACE_REGION <name> "ASSOCIATED WITH <region>" # comments
+\end{lstlisting}
+
+This statement defines a region that contains \emph{both} the domain and boundary elements (either cell or face) that are associated with the region \code{<region>}.  Effectively this is a combination of the \code{BOUNDARY OF} and \code{DOMAIN OF} statements.
+
+\subsubsection{System generated regions}
+
+The following regions are generated by \code{arb} at the start of a simulation.  The names cannot be used for user-defined regions:
+
+%\begin{table}[H]
+\begin{center}
+\begin{supertabular}{lp{10cm}} \hline
+region name & description \\ \hline
+\code{<all cells>} & all cells \\
+\code{<domain>} & internal domain cells\\
+\code{<boundary cells>} & cells located on the boundary\\
+\code{<all faces>} & all faces \\
+\code{<domain faces>} & internal domain faces\\
+\code{<boundaries>} & faces located on the boundary\\ \hline
+\end{supertabular}
+\end{center}
+%\end{table}
+
+Additionally, there are a number of system regions which may be used in user-written expressions (see section \ref{sec:language}) which specify sets of mesh elements relative to the current position.  These names cannot be used for user-defined regions either:
+
+\begin{center}
+\begin{supertabular}{llp{8cm}} \hline
+region name & rel.~to& description \\ \hline
+\code{<celljfaces>} & cell & faces that surround the current cell \\
+\code{<nobcelljfaces>} & cell & faces that surround the current cell, unless the current cell is on a boundary. In that instance move to the neighbouring domain cell and then cycle around the surrounding face cells.\\
+\code{<cellicells>} & cell & cells that are local to the current cell (more than just the adjacent cells)\\
+\code{<faceicells>} & face & cells that are local to the current face (more than just the adjacent cells)\\
+\code{<adjacentcellicells>} & cell & cells that are strictly adjacent to the current cell\\
+\code{<adjacentfaceicells>} & face & cells that are strictly adjacent to the current face (always two)\\
+\code{<adjacentfaceupcell>} & face & cell that is adjacent to the current face in the direction of the normal\\
+\code{<adjacentfacedowncell>} & face & cell that is adjacent to the current face in the opposite direction to the normal\\
+\code{<upwindfaceicells>} & face & the cell that is upwind of the face, used when performing \code{faceave[advection]} averaging (see section \ref{sec:language}.  Not really a user region.\\
+\code{<downwindfaceicells>} & face & the cell that is downwind of the face, used when performing \code{faceave[advection]} averaging (see section \ref{sec:language}.  Not really a user region.\\
+\code{<cellkernelregion[l=0]>} & cell & surrounding faces used in a cell averaging kernel (see section \ref{sec:language}.  Not really a user region.\\
+\code{<cellkernelregion[l=1-3]>} & cell & surrounding cells used in cell derivative kernels (see section \ref{sec:language}.  Not really a user region.\\
+\code{<cellkernelregion[l=4]>} & cell & surrounding nodes used in a cell averaging kernels (see section \ref{sec:language}.  Not really a user region.\\
+\code{<facekernelregion[l=0-6]>} & face & surrounding cells used in face averaging and derivative kernels (see section \ref{sec:language}.  Not really a user region.\\
+\code{<noloop>} & face/cell & dummy region which specifies no elements, or the last element used in an operator's context.\\ \hline
+\end{supertabular}
+\end{center}
+
+%------------------------------------
+\subsection{Variables}
+
+{\color{red} This section needs some rewritting: there is only one input file now}
+
+There are eight types of user defined variables:  constant, transient, derived, unknown, equation, output, condition and local.  Each of these are stored in arb using the same general data structure (fortran type \code{var}).  Any of these variables can be defined by a user-written expression in \code{equations.in} which is read by \code{setup\_equations} and interpreted by maxima.  Additionally, the constant type may be defined in \code{constants.in} and there given (only) a numerical value.  Along with the user defined variables, there are also system defined variables which can be used in user-written expressions.
+
+All variables have an associated compound variable type (scalar, vector or tensor) which is used mainly for output purposes.
+
+Details of both the user and system defined variables are given in this section.
+
+%------------------
+\subsubsection{Constant type variable defined in \code{equations.in} \label{sec:equation_constants}}
+
+\emph{Synopsis:}
+
+Constant variables are evaluated once at the start of a simulation.  If defined in \code{equations.in} they are defined using an expression which may contain only system variables and other constants --- in the latter case the constants must have been defined in either the \code{constants.in} file or previously (above) in the \code{equations.in} file.
+
+\emph{Defining statements:}
+
+\begin{lstlisting}[caption=]
+CELL_CONSTANT <name> [multiplier*units] "expression" ON <region> options # comments
+FACE_CONSTANT <name> [multiplier*units] "expression" ON <region> options # comments
+NONE_CONSTANT <name> [multiplier*units] "expression" options # comments
+CONSTANT <name> [multiplier*units] "expression" options # comments
+\end{lstlisting}
+
+\emph{Statement components:}
+
+\begin{itemize}
+\item \code{(CELL\_|FACE\_|NONE\_|)CONSTANT} \emph{(required)}:  This keyword specifies the centring of the variable.  Constants that have cell or face centring vary over the simulation domain, and have values associated with each cell or face, respectively (subject to the \code{region} statement, below).  None centred constants have one value that is not linked to any spatial location.  If the centring specifier is omitted from the keyword (as in \code{CONSTANT}) then none centring is assumed (ie., keyword \code{CONSTANT} is equivalent to keyword \code{NONE\_CONSTANT}).
+\item \code{<name>} \emph{(required)}:  Each variable must have a unique name, delimited by the \code{<} and \code{>} characters.  Besides these characters, the variable may contain spaces and any other non-alphanumeric characters except for double quotation marks \code{"} (which demarcate the expression strings) and hash character \code{\#} (which indicates that a comment follows).  If the name ends with a direction index, as in \code{<u[l=1]>} or \code{<gradp [l=3]>}, then the variable is considered to be a component of a three dimensional vector compound.  Similarly, if the name ends with a double direction index, as in \code{<tau[l=1,3]>}, the variable is considered to be a component of a three by three tensor compound.  Components of compounds that are not explicitly defined are given a zero value (when used in dot and double dot products for example).  All defined components that are members of the same compound must be of the same variable type, have the same centring, be defined over the same region and have the same units and multiplier.  Certain names are reserved for system variables (see section \ref{sec:system_variables}).
+\item \code{multiplier} \emph{(optional)}:  When reading in numerical constants, each value is multiplied by this value.  At present not in use in \code{equations.in}.
+\item \code{units} \emph{(optional):}  A string which specifies the units for the variable.  At present this string is not interpreted by the code at all and the user must ensure that the units used are consistent.
+\item \code{"expression"} \emph{(required)}:  When a constant is defined in \code{equations.in}, this double-quoted expression is used to specify the value of the constant.  As they may contain system variables and also other constants, they may vary throughout the domain.  For more details regarding the syntax of these expressions, see section \ref{sec:language}.
+\item \code{ON <region>} \emph{(optional)}:  This part of the statement determines over what region the variable should be defined.  It is only applicable for cell and face centred variables, and must in these cases refer to a region that has the same centring as the variable.  If omitted then by default a cell centred constant will be defined on \code{<all cells>} and a face centred constant on \code{<all faces>}.  Note that referring to a variable value outside of its region of definition will produce an error when running \code{arb}.
+\item \code{options} \emph{(optional)}:  This is a comma separated list of options.  Options earlier in the list take precedence over later ones.  Valid options for the constant variable type include:
+%
+\begin{itemize}
+%
+\item \code{output}:  The compound variable that this component is a member of to be written to each applicable \code{.msh} file.  The opposite option \code{nooutput} exists.  Default is \code{output} for unknown variables, output variables, derived cell-centred variables, and transient variables that do not correspond to the oldest stored timestep (that is, $\code{rstep}<\code{rstepmax}$).  The default is \code{nooutput} for everything else.
+\searchref{ref: default output}{setup\_module.f90}
+%
+\item \code{stepoutput}:  The compound variable that this component is a member of is to be included in the \code{output.step} file.  The opposite option \code{nostepoutput} exists.  By default only this option is set only for unknown, output and transient non-centred variables that are at the current timestep (that is, $\code{rstep}=0$).  The option \code{stepoutputnoupdate} also exists which specifies that the variable should be included in the \code{output.step} file, but that its value is not updated before being printed.  This option is useful for outputing variables which should only be updated when a \code{.msh} file is actually written (for example, a variable that records the time when output occurs).
+\searchref{ref: default stepoutput}{setup\_module.f90}
+%
+\item \code{componentoutput}:  This component to be written to each applicable \code{.msh} file.  Default is \code{nocomponentoutput} for all variables.
+%
+\item \code{input}:  The compound variable that is component is a member will be read from each applicable \code{.msh} file.  The opposite option \code{noinput} exists.  Default is \code{input} for all unknown and transient variables and \code{noinput} for everything else.
+\searchref{ref: default input}{setup\_module.f90}
+%
+\item \code{componentinput}:  This component to be read from each applicable \code{.msh} file.  Default is \code{nocomponentinput} for all variables.
+%
+\item \code{elementdata}:  This compound will be written using the gmsh \code{ElementData} format.  Any data format options specified for each \code{.msh} file will overwrite this option.  Other options include \code{elementnodedata}, \code{elementnodelimiteddata}, \code{componentelementdata},  \code{componentelementnodedata} and \code{componentelementnodelimiteddata}.  Default is \code{elementnodedata} and \code{componentelementdata}.
+%
+\end{itemize}
+%
+\item \code{comments} \emph{(optional)}:  Anything written beyond the first \code{\#} appearing on each line of the input file is regarded as a comment.
+\end{itemize}
+
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+CELL_CONSTANT <test constant> "<cellx[l=1]>^2" ON <boundaries> # a test
+FACE_CONSTANT <test constant 2> [m] "<facex[l=2]>" # another test
+\end{lstlisting}
+
+%------------------
+\subsubsection{Constant type variable defined in \code{constants.in}}
+
+\emph{Synopsis:}
+
+Constant variables defined in \code{constants.in} are set to numerical values read directly by the \code{arb} executable, rather than expressions interpreted by maxima.
+
+\emph{Defining statements:}
+
+\begin{lstlisting}[caption=]
+CELL_CONSTANT <name> [multiplier*units] value ON <region> options # comments
+FACE_CONSTANT <name> [multiplier*units] value ON <region> options # comments
+NONE_CONSTANT <name> [multiplier*units] value options # comments
+CONSTANT <name> [multiplier*units] value options # comments
+\end{lstlisting}
+
+\emph{Statement components:}
+
+The components of these statements are the same as in section \ref{sec:equation_constants} with the exception of:
+\begin{itemize}
+\item \code{value} \emph{(required)}:  A numerical value of real or double precision type.
+\end{itemize}
+
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+CONSTANT <mu> [Pa.s] 1.0d-3 # fluid viscosity
+NONE_CONSTANT <rho> [997*kg/m^3] 1.0 # fluid density
+\end{lstlisting}
+
+%------------------
+\subsubsection{Constant type variable defined per region in \code{constants.in}}
+
+\emph{Synopsis:}
+
+This definition can be used in the \code{constants.in} file to assign different numerical values to either a cell or face centred constant in specific regions.  Two statements are required for this type of constant definition:  The first defines the list of regions where the next constant will be set (\code{REGION\_LIST}) and the second defines the constant and sets/lists the corresponding numerical values (\code{(CELL\_|FACE\_)REGION\_CONSTANT}).  The region names in the \code{REGION\_LIST} statement must have the same centring as the following \code{REGION\_CONSTANT} statement.  Furthermore, the \code{<region>} over which the constant is defined must include all of the regions listed within the previous \code{REGION\_LIST} statement.
+
+\emph{Defining statements:}
+
+\begin{lstlisting}[caption=]
+REGION_LIST <region1> <region2> ... <regionN> # comments
+CELL_REGION_CONSTANT <name> [multiplier*units] value1 value2 ... valueN ON <region> options # comments
+FACE_REGION_CONSTANT <name> [multiplier*units] value1 value2 ... valueN ON <region> options # comments
+\end{lstlisting}
+
+\emph{Statement components:}
+
+The components of these statements are the same as in section \ref{sec:equation_constants} with the exception of:
+\begin{itemize}
+\item \code{<region1>} \code{<region2>} ... \code{<regionN>} \emph{(required)}:  A list of regions that have the same centring as the following \code{REGION\_CONSTANT} statement.
+\item \code{value1} \code{value2} ... \code{valueN} \emph{(required)}:  A list of numerical values for the constant, corresponding in a one-to-one fashion with the list of regions given in the previous \code{REGION\_LIST} statement.
+\end{itemize}
+
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+REGION_LIST <inlet> <outlet> # some face regions
+FACE_REGION_CONSTANT <electric field> [V/m] 10 20. ON <boundaries> 
+\end{lstlisting}
+
+%------------------
+\subsubsection{Transient type variable defined in \code{equations.in}}
+
+\emph{Synopsis:}
+
+Transient variables are used only in transient simulations, and are evaluated at the start of each timestep.  Transient variables are typically used to store previous timestep values, or to provide constant data to a simulation that depends explicitly on the time.
+
+\emph{Defining statements:}
+
+\begin{lstlisting}[caption=]
+CELL_TRANSIENT <name> [multiplier*units] "initial expression" "expression" ON <region> options # comments
+FACE_TRANSIENT <name> [multiplier*units] "initial expression" "expression" ON <region> options # comments
+NONE_TRANSIENT <name> [multiplier*units] "initial expression" "expression" options # comments
+NONE_TRANSIENT <name> [multiplier*units] "" "expression" options # this will use the update expression as the initial expression
+NONE_TRANSIENT <name> [multiplier*units] "expression" options # the initial expression here depends on rstep
+\end{lstlisting}
+
+\emph{Statement components:}
+
+Along with the information presented in section \ref{sec:equation_constants}, the following applies to transient variables:
+
+\begin{itemize}
+\item \code{(CELL\_|FACE\_|NONE\_|)TRANSIENT} \emph{(required)}:  If no centring is specified then none centring is assumed.
+%
+\item \code{<name>} \emph{(required)}:  Along with the rules detailed in section \ref{sec:equation_constants}, transient variables are associated with particular relative timesteps.  Relative timesteps, described using the term \code{rstep} in this document, indicate how many timesteps previous to the current one the variable refers to.  The \code{rstep} value of a variable is defined in a similar manner to the direction of a variable, using an \code{r} index in square brackets at the end of the variable name:  For example, \code{<t[r=0]>} would be the time corresponding to the end of the current timestep, \code{<t[r=1]>} would be time from the previous timestep, \code{<t[r=2]>} the time from the (earlier) timestep before that one and so on.  If an \code{r} index is omitted from a definition, then \code{r=0} is assumed.  Actually, any type of variable can be associated with any particular relative timestep, but it is rare to do this with anything other than a transient variable.
+%
+\item \code{"initial expression"} \emph{(optional)}:  This expression is applied once (only) at the start of a simulation, and represents the variable's initial condition.  These initial expressions are applied in the order of increasing \code{rstep} (relative timestep), meaning that the current (latest) time value is calculated first, followed by the previous timestep value, and then one before etc.  This expression should not depend on any transient variables that have a higher \code{rstep} (an earlier timestep) or that are from the same timestep (equal \code{rstep}) but defined later in the input file.  If an initial expression is not given at all (no quotation marks present for this field), then the value of zero is assumed if the variable has \code{rstep=0}, or the update expression otherwise.  If the initial expression is not specified but quotation marks are present for this field, then the update expression is substituted for the initial expression - ie, a shorthand way of repeating the update expression.
+%
+\item \code{"expression"} \emph{(required)}:  This expression for the transient variable is applied once at the start of each timestep.  These expressions are applied in the order of decreasing \code{rstep} (relative timestep), meaning that the earliest time value is calculated first, followed by the next timestep value, until the current time ($\code{rstep}=0$) is reached.  Circular references are not allowed in the expression (in practice this is not limiting).
+%
+\item \code{ON <region>} \emph{(optional)}:  If ommitted then by default a cell centred transient will be defined on \code{<all cells>} and a face centred transient on \code{<all faces>}.
+\item \code{options} \emph{(optional)}:  This is a comma separated list of options.  Valid options for transient variables are the same as those for constants, as detailed in section \ref{sec:equation_constants})
+\end{itemize}
+
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt>" # current end-of-timestep time (r=0)
+NONE_TRANSIENT <t[r=1]> "<t>-<dt>" "<t>" # time at last step (r=1)
+NONE_TRANSIENT <t[r=2]> "<t[r=1]>-<dt>" "<t[r=1]>" # time at step before last step (r=2, assuming a constant dt)
+NONE_TRANSIENT <z[r=1]> [m] "<z>-<w_0>*<dt>" "<z_real>" # position of ball at last step (r=1)
+NONE_TRANSIENT <w[r=1]> [m/s] "<w>" "<w_real>" # velocity of ball at last step (r=1)
+\end{lstlisting}
+
+%------------------
+\subsubsection{Derived type variable defined in \code{equations.in} \label{sec:equation_deriveds}}
+
+\emph{Synopsis:}
+
+Derived variables depend on the unknown variables and other previously defined (ie, above in the file) derived variables.
+
+\emph{Defining statements:}
+
+\begin{lstlisting}[caption=]
+CELL_DERIVED <name> [multiplier*units] "expression" ON <region> options # comments
+FACE_DERIVED <name> [multiplier*units] "expression" ON <region> options # comments
+NONE_DERIVED <name> [multiplier*units] "expression" options # comments
+DERIVED <name> [multiplier*units] "expression" options # comments
+\end{lstlisting}
+
+\emph{Statement components:}
+
+Along with the information presented in section \ref{sec:equation_constants}, the following applies to derived variables:
+
+\begin{itemize}
+\item \code{(CELL\_|FACE\_|NONE\_|)DERIVED} \emph{(required)}:  If no centring is specified then none centring is assumed.
+\item \code{"expression"} \emph{(required)}:  This is an expression for the derived variable in terms of constant, transient, unknown, previously defined derived (appearing above in \code{equations.in}) and system variables.
+\item \code{ON <region>} \emph{(optional)}:  If ommitted then by default a cell centred derived will be defined on \code{<all cells>} and a face centred derived on \code{<all faces>}.
+\item \code{options} \emph{(optional)}:  This is a comma separated list of options.  Valid options for derived variables (as well as those given in section \ref{sec:equation_constants}) include:
+\begin{itemize}
+\item \code{noderivative}:  Normally the derivative of this variable's expression is calculated with respect to each unknown variable (the Jacobian) when performing the Newton-Raphson solution procedure.  Including this option sets this derivative to zero.  This may be required for functions for which the derivative cannot be calculated or for functions that undergo step changes (not continuous) which are not ammeniable to solution via the Newton-Raphson procedure.  Using this option will usually slow convergence.
+\item \code{positive/negative}:  Including one of these options causes the code to check the sign of the derived variable.  In theory this could be used for quantities like concentrations that are only physically meaningful when being positive.  By using an expression such as \code{"1-<con>"} and including the option \code{positive} an upper limit for a variable can also be enforced.  In practice using these types of limiting conditions to prevent equation singularities slows convergence to an unfeasibly slow rate.  It is usually better to choose the form of the equations so that they are stable even for small unphysical excursions, and then check once convergence has been achieved that the results are physical.
+\end{itemize}
+\end{itemize}
+
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+FACE_DERIVED <tau[l=1,1]> "<p> - <mu>*2.d0*facegrad[l=1](<u[l=1]>)" output
+CELL_DERIVED <graddivp[l=1]> "celldivgrad[l=1](<p>)" # divergence based pressure gradient
+\end{lstlisting}
+
+%------------------
+\subsubsection{Unknown type variable defined in \code{equations.in}}
+
+\emph{Synopsis:}
+
+Unknown variables are those upon which the equations and derived variables ultimately depend.
+
+\emph{Defining statements:}
+
+\begin{lstlisting}[caption=]
+CELL_UNKNOWN <name> [multiplier*units] magnitude "expression" ON <region> options # comments
+FACE_UNKNOWN <name> [multiplier*units] magnitude "expression" ON <region> options # comments
+NONE_UNKNOWN <name> [multiplier*units] magnitude "expression" options # comments
+UNKNOWN <name> [multiplier*units] magnitude "expression" ON <region> options # comments
+\end{lstlisting}
+
+\emph{Statement components:}
+
+Along with the information presented in section \ref{sec:equation_deriveds}, the following applies to unknown variables:
+
+\begin{itemize}
+\item \code{(CELL\_|FACE\_|NONE\_|)UNKNOWN} \emph{(required)}:  If no centring is specified then cell centring is assumed.
+\item \code{magnitude} \emph{(required)}:  An order of magnitude estimate (postive and greater than zero real or double precision value) must be specified for all unknown variables.  This magnitude is used when checking on the convergence of the solution.
+\item \code{"expression"} \emph{(required)}:  For an unknown variable the expression specifies the variable's initial value.  The expression may contain constant variables, derived variables, previously defined unknown variables, (initial) transient variables and system variables.
+\item \code{ON <region>} \emph{(optional)}:  If ommitted then by default a cell centred unknown will be defined on \code{<all cells>} and a face centred unknown on \code{<all faces>}.
+\item \code{options} \emph{(optional)}:  The \code{noderivative} option is not applicable for unknown variables.
+\end{itemize}
+
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+CELL_UNKNOWN <u[l=1]> 1.d0 "<u_av>" # a velocity component
+CELL_UNKNOWN <p> [] 1.d0 "1.d0-<cellx[l=1]>" # pressure
+NONE_UNKNOWN <p_in> [Pa] 1.d0 "1.d0" # the pressure at the inlet
+\end{lstlisting}
+
+%------------------
+\subsubsection{Equation type variable defined in \code{equations.in}}
+
+\emph{Synopsis:}
+
+Equation variables represent the equations to be satisfied.  The equation expressions should be formulated so that when the equation is satisfied, the expression equals zero.  The number of equations must equal the number of unknown variables.  Furthermore, for the system to be well posed the equations must be unknown (no single equation can be made from a combination of the other equations).
+
+\emph{Defining statements:}
+
+\begin{lstlisting}[caption=]
+CELL_EQUATION <name> [multiplier*units] "expression" ON <region> options # comments
+FACE_EQUATION <name> [multiplier*units] "expression" ON <region> options # comments
+NONE_EQUATION <name> [multiplier*units] "expression" options # comments
+EQUATION <name> [multiplier*units] "expression" options # comments
+\end{lstlisting}
+
+\emph{Statement components:}
+
+Along with the information presented in section \ref{sec:equation_deriveds}, the following applies to equation variables:
+
+\begin{itemize}
+\item \code{(CELL\_|FACE\_|NONE\_|)EQUATION} \emph{(required)}:  If no centring is specified then none centring is assumed.
+\item \code{"expression"} \emph{(required)}:  For an equation variable the expression should equal zero when the equation is satisfied.  The expression may contain constant, transient, derived, unknown and system variables.
+\item \code{ON <region>} \emph{(optional)}:  If ommitted then by default a cell centred equation will be defined on \code{<domain>} and a face centred equation on \code{<boundaries>}.
+\end{itemize}
+
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
+FACE_EQUATION <outlet noslip> "dot(<u[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to outlet
+NONE_EQUATION <p_in for flowrate> "<u_av_calc>-<u_av>" # set flowrate through inlet to give required average velocity
+\end{lstlisting}
+
+%------------------
+\subsubsection{Output type variable defined in \code{equations.in}}
+
+\emph{Synopsis:}
+
+Output variables are evaluated once convergence of the solution has been reached:  They are only for output purposes.
+
+\emph{Defining statements:}
+
+\begin{lstlisting}[caption=]
+CELL_OUTPUT <name> [multiplier*units] "expression" ON <region> options # comments
+FACE_OUTPUT <name> [multiplier*units] "expression" ON <region> options # comments
+NONE_OUTPUT <name> [multiplier*units] "expression" options # comments
+OUTPUT <name> [multiplier*units] "expression" options # comments
+\end{lstlisting}
+
+\emph{Statement components:}
+
+Along with the information presented in section \ref{sec:equation_deriveds}, the following applies to output variables:
+
+\begin{itemize}
+\item \code{(CELL\_|FACE\_|NONE\_|)OUTPUT} \emph{(required)}:  If no centring is specified then none centring is assumed.
+\item \code{"expression"} \emph{(required)}:  For an output variable the expression may contain constant, transient, derived, unknown, equation and system variables.
+\item \code{ON <region>} \emph{(optional)}:  If ommitted then by default a cell centred output variable will be defined on \code{<all cells>} and a face centred output variable on \code{<all faces>}.
+\item \code{options} \emph{(optional)}:  The \code{noderivative} option is not applicable for output variables (this option is implicitly set anyway for these variables).
+\end{itemize}
+
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+NONE_OUTPUT <F_drag> [N] "facesum(<facearea>*dot(<facenorm[l=:]>,<tau[l=:,1]>),<cylinder>)" # force on object in axial direction
+\end{lstlisting}
+
+%------------------
+\subsubsection{Condition type variable defined in \code{equations.in}}
+
+\emph{Synopsis:}
+
+Condition variables control the running of the simulation.  They can initiate the following actions:  output, stop, convergence and a bell.
+
+\emph{Defining statements:}
+
+\begin{lstlisting}[caption=]
+CELL_CONDITION <name> [multiplier*units] "expression" ON <region> options # comments
+FACE_CONDITION <name> [multiplier*units] "expression" ON <region> options # comments
+NONE_CONDITION <name> [multiplier*units] "expression" options # comments
+CONDITION <name> [multiplier*units] "expression" options # comments
+\end{lstlisting}
+
+\emph{Statement components:}
+
+Along with the information presented in section \ref{sec:equation_deriveds}, the following applies to condition variables:
+
+\begin{itemize}
+\item \code{(CELL\_|FACE\_|NONE\_|)OUTPUT} \emph{(required)}:  If no centring is specified then none centring is assumed.
+\item \code{"expression"} \emph{(required)}:  For a condition variable, if the evaluated expression is positive ($>0$) then the condition is satisfied and the corresponding action will take place.  Note that an action will take place if any of the condition variables that correspond to it are positive (in fact, after one positive value is found the remainder are not even evaluated).
+\item \code{ON <region>} \emph{(optional)}:  If ommitted then by default a cell centred condition variable will be defined on \code{<all cells>} and a face centred condition variable on \code{<all faces>}.
+\item \code{options} \emph{(optional)}:  In addition to the options discussed for the other variables, one or more of the following options may be applied to each condition variable to specify what action it corresponds to:
+\begin{itemize}
+\item \code{convergencecondition}:  For transient and steady-state simulations, indicates when the Newton loop has converged.  Is evaluated at the start of each Newton loop.
+\item \code{stopcondition}:  For a transient simulation, indicates when the simulation should finish.  Is evaluated at the end of each successful timestep.
+\item \code{outputcondition}:  For a transient simulation, indicates when the \code{.msh} output files should be written.  Is evaluated at the end of each successful timestep.
+\item \code{bellcondition}:  For a transient simulation, indicates when a noise should be made (this one's a bit silly).  Is evaluated at the end of each successful timestep.
+\end{itemize}
+\end{itemize}
+
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+NONE_CONDITION <time based stop condition> "<t>-<tend>" stopcondition # when this becomes true (>0.) the simulation stops
+NONE_CONDITION <bouncing bell> "noneif(<z>,-1.d0,1.d0)" bellcondition # is positive when <z> is negative at the end of a timestep
+NONE_CONDITION <output test> "<t>-<tout>-<dtout>" outputcondition # this will be true (>0.) whenever we are <dtout> from last output
+\end{lstlisting}
+
+%------------------
+\subsubsection{Local type variable defined in \code{equations.in}}
+
+\emph{Synopsis:}
+
+Local variables are like derived variables, except that they are not stored, but rather evaluated only when required.  Local variables may be used instead of derived variables to save memory.  This strategy makes sense if the variable is only going to be used once or twice at each location.  Local variables may also be used to split up an otherwise long expression into smaller (and possibly common) sub-statements, dependent on the local conditions.  For example, in the examples given below, local variables are used to calculate the second derivative of the normal velocity to a wall, in the normal direction to a wall.
+
+\emph{Defining statements:}
+
+\begin{lstlisting}[caption=]
+CELL_LOCAL <name> [multiplier*units] "expression" ON <region> options # comments
+FACE_LOCAL <name> [multiplier*units] "expression" ON <region> options # comments
+NONE_LOCAL <name> [multiplier*units] "expression" options # comments
+LOCAL <name> [multiplier*units] "expression" options # comments
+\end{lstlisting}
+
+\emph{Statement components:}
+
+Along with the information presented in section \ref{sec:equation_deriveds}, the following applies to condition variables:
+
+\begin{itemize}
+\item \code{(CELL\_|FACE\_|NONE\_|)OUTPUT} \emph{(required)}:  If no centring is specified then none centring is assumed.
+\item \code{"expression"} \emph{(required)}:  A local variable may depend on `local' variables which correspond to the locale of the calling statement:  For example, in the following examples we refer to the \code{<facenorm>} of the face on which the local variable \code{<u\_n>} is calculated.  Note that it would not make sense to output this \code{<u\_n>} separately over \code{<all cells>}, as the \code{<facenorm>} would be undefined.
+\item \code{ON <region>} \emph{(optional)}:  The output region for a local variable is only really used right now to specify what elements are output (should the \code{output} option be set).
+\end{itemize}
+
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+CELL_LOCAL <u_n> "dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>))"
+CELL_LOCAL <d u_n d x[l=1]> "cellgrad[l=1](<u_n>)"
+CELL_LOCAL <d u_n d x[l=2]> "cellgrad[l=2](<u_n>)"
+CELL_LOCAL <d u_n d x_n> "dot(<d u_n d x[l=:]>,cellave[lastface](<facenorm[l=:]>))"
+FACE_LOCAL <d^2 u_n d x_n^2> "facegrad(<d u_n d x_n>)" ON <boundaries> output
+\end{lstlisting}
+
+%------------------
+\subsubsection{System variables \label{sec:system_variables}}
+
+\searchref{ref: system variables}{setup\_equations.pl}
+
+\emph{TODO}
+%------------------------------------
+\subsection{Simulation options}
+
+\begin{itemize}
+\item \code{TRANSIENT SIMULATION|STEADYSTATE SIMULATION}: choose between the two types of simulation.
+\item \code{END}: end input
+\item \code{START\_SKIP|STOP\_SKIP}: ignore the text between these statements.
+\item \code{DEFAULT\_OPTIONS}: add the following options to every subsequent variable, until cleared again using a blank \code{DEFAULT\_OPTIONS} statement.  When listed in order, default options precede a variable's individually specified options - hence, in the case of conflicting option statements, individual options take precedence over default options (ie, the individual options have a higher priority).
+\item \code{OVERRIDE\_OPTIONS}: are the same as \code{DEFAULT\_OPTIONS}, except that they follow a variable's individually specified options, and so in the case of conflicting option statements, take precedence over the individual options (ie, the override options have a higher priority).
+\item \code{LINEAR\_SOLVER}: choose the type of linear solver to use.
+\end{itemize}
+
+%------------------------------------
+\subsection{Include statements and string replacements}
+
+Include statements allow other \code{.arb} input files to be included.  These files can be user written, or be from a library of template files within the \code{templates} directory.  String substitution that occurs as the file is read in allow these included files to be (basically) used as functions.  An `unwrapped' input file that is a handy reference as to how the include statements behaved (and can be used as an input file for subsequent runs) is placed at \code{tmp/setup/unwrapped\_input.arb} after every run setup.  The include statements are:
+
+\begin{itemize}
+\item \code{INCLUDE\_ROOT}: choose a template directory to look for any files included via any following \code{INCLUDE} statements.  If no string is specified, then the include root directory name is set equal to that of its parent (including) file.  If the blank string is specified, then \code{INCLUDE\_ROOT} is set to the blank string and all templates directories (up to two subdirectory levels) are searched for the following included files.  The \code{INCLUDE\_ROOT} definitions are hierarchical, in that the definition in a child file does not affect that of the parent.
+\searchref{ref: include root}{setup\_equations.pl}
+\item \code{INCLUDE}: command to include a file from the most recent \code{INCLUDE\_ROOT} directory (or subdirectory thereof), possibly also specifying file-specific string replacements using the syntax \code{REPLACE "a string" WITH "another string"} (or the shorter \code{R "a string" W "another string"}).  If an \code{INCLUDE\_ROOT} directory has not been specified (or cancelled with a blank \code{INCLUDE\_ROOT} statement) then the templates directories will be searched until a matching \code{INCLUDE} file is found (up to two subdirectory levels right now).
+\searchref{ref: include}{setup\_equations.pl}
+\item \code{INCLUDE\_WORKING}: include the following files from the working directory.  This command does not affect and is not influenced by the \code{INCLUDE\_ROOT} directory and is (basically) used to include sets of user-written statements (i.e., like a local a function).
+\searchref{ref: include working}{setup\_equations.pl}
+\end{itemize}
+
+Partnering the include file capability is the ability to read in multiple definitions for the same variable.  The ultimate position of a variable's definition is that of the first definition for that variable.  The ultimate expression used for a variable is that given (read in) last.  This functionality allows a variable's expression to be changed from what is used in (say) a template file by specifying a new definition lower in the file, after the template file include statement.  Options can also be added to previously specified options for a variable by including more definition statements (that may only contain options and not expressions) lower in the input file.  Similarly for units.
+
+\searchref{ref: general replacements}{setup\_equations.pl}
+
+There are two types of string replacements that occur when a line from an input file is parsed:  i) file-specific replacements, which occur recursively through `child' file inclusions, and ii) general replacements, which occur throughout all files from their point of definition onwards, until (possibly) cancelled.  The following demonstrates a general replacement statement specifying two general replacement strings, using a long and short form:
+
+\code{GENERAL\_REPLACEMENTS REPLACE "<a region>" WITH "<another region>" R "a string" W "another string"}
+
+There are certain system generated general replacements that occur automatically unless specifically changed by the user.  Use the search hint to find the list of these in \code{setup\_equations.pl}.
+
+\code{GENERAL\_REPLACEMENTS CANCEL "<a region>" C "a string"}
+
+The above demonstrates how to cancel a search string replacement, using either a long (\code{CANCEL}) or short (\code{C}) form.  Note that both general and file specific replacements do not occur on a line of an input file if the line is itself a general replacement definition line (specifically, it begins with the \code{GENERAL\_REPLACEMENTS} keyword), or is an include line for a file (begins with some type of \code{INCLUDE} keyword).
+
+%\subsection{Data visualisation}
+
+% Check that the file \code{constants.in} specifies your choice of linear solver.  If you are using the gnu compiler with the UMFPACK routines then this file should already contain the line
+% %
+% \begin{lstlisting}[caption=]
+% LINEAR_SOLVER "SUITESPARSE_UMF" # suitesparse umf solver (UMFPACK) by Timothy A. Davis
+% \end{lstlisting}
+% %
+% so you don't need to change anything.  If you are using the intel compiler with MKL libraries then change this line to
+% %
+% \begin{lstlisting}[caption=]
+% LINEAR_SOLVER "INTEL_PARDISO" # pardiso solver contained in intel mkl library
+% \end{lstlisting}
+
+%------------------------------------
+\subsection{Kernel options}
+
+\searchref{ref: kernel options}{kernel\_module.f90}
+
+There are many options that can be used to change the kernels used.  For example
+
+\code{KERNEL polynomialaverageorder=2,polynomialorder=2}
+
+specifies that when averaging/differentiating quantities to/at faces, ensure that a second order polynomial would be reproduced precisely.
+
+%------------------------------------
+\subsection{Glued boundaries}
+
+Used to implement periodic or reflection boundaries by glueing two boundary face regions together.  Boundary regions to be glued must have the same element structure (size and number).  Individual element matching between the boundaries is accomplished by matching the closest element locations, relative to the region centroids (much like the \code{facelink} and \code{celllink} operators).
+
+Example of a periodic boundary glueing the top and bottom boundaries of a domain:
+
+\code{GLUE\_FACES <south> <north>}
+
+Example of a reflection (axis of symmetry) boundary along the left side of a domain:
+
+\code{GLUE\_FACES <west> reflect=1}
+
+In the case of reflection, certain operators (eg, \code{facegrad}) need to be aware when they are operating on the component of a vector, that needs to be reflected over this reflection boundary.  See the \code{reflect=1} options for each operator.
+
+%------------------------------------
+\subsection{Simulation Info}
+
+The following strings can be used within an input file to help keep track of what the file contains.  These and other automatically generated info strings are included as comments in most of the output files.
+
+\code{INFO\_TITLE, INFO\_DESCRIPTION, INFO\_AUTHOR, INFO\_DATE, INFO\_VERSION}
+
+\pagebreak
+%-------------------------------------------------------------------------------
+\section{Expression language reference \label{sec:language}}
+
+\emph{There's lots missing in this section.  The examples files are currently the best guide as to the language syntax.}
+
+\subsection{Operators}
+%------------------
+
+\subsubsection{General Notes}
+
+Operators produce a single value from the arguments that are contained within their parentheses ().  They also accept options, contained within square brackets [].
+
+\code{operator[option1,option2,\ldots](<argument1>,<argument2>,\ldots)}
+
+The centring of an operator generally corresponds to the first syllable of the operator, however there are exceptions.   Following the rule is \code{celldiv}, which is the cell centred divergence of a face centred quantity.  This operator is cell centred and must be used in this context, hence its context centring is cell.  The content expression passed into \code{celldiv} (actually its first argument) is face centred however.  Similarly, \code{facegrad} is the gradient of a cell centred quantity evaluated at a face, so this operator is face (context) centred, but has cell content centring.  Exceptions to the rule include the loop-type operators, \code{max}, \code{min}, \code{sum} and \code{product}.  For example, \code{cellmax} loops through a region of cells finding the maximum value of an expression within those cells.  Hence, this operator produces a result which has no centring (none centred) so can be used in any centring context, but has cell content centring.  
+
+Each operator accepts a certain number of arguments, however if an argument is not specified then a default value may be used.  For example, \code{cellmax} uses three arguments:  an expression that is to evaluated in each cell (\code{<expression>}, here denoted by a single variable, but more usually an expression of variables), an initial, default expression for the operator (\code{<default>}), and the cell centred content region over which the maximum will be calculated (\code{<region>}).  Using implicit argument notation, operators expect the arguments in a specific order, so \code{cellmax} expects these three arguments in the manner
+ 
+\code{cellmax(<expression>,<default>,<region>)}
+ 
+If less than the required number of arguments are passed to an operator, then a default value for the omitted arguments will be assumed (or if no defaults are available or are sensible, an error will be flagged).  For example, using
+ 
+\code{cellmax(<expression>)}
+ 
+sets \code{<default>} to \code{-<huge>} (the largest negative double precision number that the processor can store) and \code{<region>} to \code{<noloop>} if (for example) the expression was being used in a cell centred context.  If in doubt about what the default value for an argument is, specify it!
+
+The alternative to the implicit argument notation is to specify the arguments explicitly (similar to argument passing in f90).  Using explicit notation the order of the arguments that are passed explicitly is irrelevant, however the order of any arguments that are not explicitly named (and hence specified implicitly) still is.  For example, the following will all produce the same result
+ 
+\code{cellmax(expression=<expression>,default=<default>,region=<region>)}\\
+\code{cellmax(<expression>,<default>,<region>)}\\
+\code{cellmax(region=<region>,default=<default>,expression=<expression>)}\\
+\code{cellmax(expression,region=<region>,default)}\\
+\code{cellmax(region=<region>,expression,default)}
+ 
+Note in the last case that although \code{<expression>} was the second argument in the operator, it was the first implicitly named operator, so would be read correctly.  Using a combination of the implicit and explicit passing is often convenient.  For example, for the \code{cellmax} operator, the following form that uses a default value of \code{-<huge>} but performs the maximum comparison over a specified region is handy
+ 
+\code{cellmax(<expression>,region=<region>)}
+
+Operator options are similar to variable options.  Some operators require a dimension, and this dimension (direction) is specified via the options.  For example, \code{celldivgrad} calculates a gradient in a certain direction dimension using the divergence of a face centred scalar.  To find this gradient in the second dimension you use the option \code{[l=2]}:
+
+\code{celldivgrad[l=2](<face centred expression>)}
+
+Some options are quite generic (eg, \code{noderivative}), however most are specific to the operator.  There is no restriction on the order that options are specified.
+
+Options and operators should be written in lowercase (I have started to make both of these case independent, but no guarantees yet).
+
+Details of individual operators follows.  Ultimate details of each operator (including argument order, options etc) can be found in the code file \code{src/setup\_equations.pl} which shows how they are expanded into working code.  Use search strings such as \code{ref:~celldiv} within the perl file to find the specific code.
+
+%------------------
+\subsubsection{\code{celldiv}: Divergence}
+
+\searchref{ref: celldiv}{setup\_equations.pl}
+
+\emph{Summary:} Uses Gauss' theorem to calculate the divergence of a face centred vector component around a cell.
+
+\emph{Statement:}
+
+\code{celldiv[options](expression=<expression>)} 
+
+\emph{Centring:}
+
+Operator is context cell centred, while \code{<expression>} is face centred.
+
+\emph{Details:}
+
+Using Gauss' theorem to evaluate divergences around cells is probably the defining characteristic of Finite Volume methods.  \code{celldiv} performs this operation.
+
+Specifically, to discretise the divergence of a face centred vector $\vect[j]{u}$ over a cell $i$ that sits within the domain, Gauss' theorem gives
+%
+\begin{equation*}
+\begin{aligned}
+\frac{1}{\scali[i]{V}} \int_{\scali[i]{V}} \vect{\nabla} \cdot \vect{u} dV & \Rightarrow \frac{1}{\scali[i]{V}} \sum_{j \in \scali[\text{nobcellfaces},i]{\mathbb{J}}} \frac{1}{\scali[j]{S}} \int_{\scali[j]{S}} \vecti[i,j]{N} \cdot \vecti[j]{u} \, dS \\
+& = \explain{\sum_{j \in \scali[\text{nobcellfaces},i]{\mathbb{J}}} \frac{\vecti[i,j]{N} \cdot \vecti[j]{n} }{\scali[i]{V}}}{\normalsize\code{celldiv}} \frac{1}{\scali[j]{S}} \int_{\scali[j]{S}} \vecti[j]{n} \cdot \vecti[j]{u} \, dS \nonumber \\
+%= \frac{1}{\scal[cell]{V}} \int_{\scal[cell]{S}} \vect[cell]{n} \cdot \vect{u} dS = \frac{1}{\scal[cell]{V}} \sum_j (\vect[cell]{n} \cdot \vecti[j]{n}) (\vect{u} \cdot \vecti[j]{n}) \scali[j]{S} \nonumber \\
+& \Rightarrow \code{celldiv(dot(<u[l=:]>,<facenorm[l=:]>))}
+\end{aligned}
+\end{equation*}
+%
+where $\scali[i]{V}$ and $\scali[j]{S}$ are the volume and total surface area of the cell $i$ and face $j$, respectively, $\vecti[i,j]{N}$ is a unit normal pointing outward from cell $i$ but located at face $j$, $\vecti[j]{n}$ is a normal associated with face $j$, and the sum is conducted over the set of all face elements that surround cell $i$, denoted by $\scali[\text{nobcellfaces},i]{\mathbb{J}}$.  In the equivalent coding the face centred vector $\vecti[j]{u}$ is represented by the three component variables \code{<u[l=1]>}, \code{<u[l=2]>} and \code{<u[l=3]>}, and the unit normal associated with the face $j$, $\vecti[j]{n}$, is given by the system component variables \code{<facenorm[l=1]>}, \code{<facenorm[l=2]>} and \code{<facenorm[l=3]>}.  Note that as the divergence of a vector results in a scalar, the above operation produces a scalar for each cell it is performed in.  
+
+The region used by arb in performing the above sum as represented by $\scali[\text{nobcellfaces},i]{\mathbb{J}}$ is \code{<nobcelljfaces>} (`no-boundary-cell-faces').  This relative region specifies all faces that surround a given cell, unless that cell is a boundary cell.  As boundary cells are not fully surrounded by faces Gauss' theorem can not be applied.  Hence, if the operator \code{celldiv} is used at a boundary cell then the region \code{<nobcelljfaces>} is taken relative (moved) to the closest domain cell that is adjacent the boundary cell, so this is where \code{celldiv} becomes evaluated.  Physically it is inadvisable to use an equation that involves a divergence at a boundary cell anyway.
+
+\emph{Options:}
+%
+\begin{itemize}
+\item \code{noderivative}:  No derivatives with respect to the unknown variables for the Newton-Raphson Jacobian are calculated for this operator (and its contents).
+\end{itemize}
+
+%\emph{Equivalent code:}
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity equation
+CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)" ON <domain> # momentum conservation in direction l=1
+CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)" ON <domain> # momentum conservation in direction l=2
+\end{lstlisting}
+
+%-------------------------------------------------------------------------------
+\subsubsection{\code{cellgrad} or \code{facegrad}: Gradient}
+
+\searchref{ref: cellgrad, ref: facegrad}{setup\_equations.pl}
+
+\emph{Summary:} Calculates a scalar component of a gradient over a cell or face.
+
+\emph{Statement:}
+
+\code{cellgrad[options](expression=<expression>)} \\
+\code{facegrad[options](expression=<expression>)}
+
+\emph{Centring:}
+
+\code{cellgrad} is context cell centred and \code{facegrad} is context face centred.  In both cases \code{<expression>} is cell centred.
+
+\emph{Details:}
+
+To calculate the gradient of a cell centred scalar $\scali[i]{\phi}$ in coodinate direction $2$ in cell $i$,
+%
+\begin{equation}
+\frac{1}{\scali[i]{V}} \int_{\scali[i]{V}} \vecti[2]{e} \cdot \vect{\nabla} \phi dV \Rightarrow \sum_{i' \in \scali[\text{cellcells},i]{\mathbb{I}}} \scali[i,i']{\cellcentred{k}^{(2)}} \scali[i']{\phi} \Rightarrow \code{cellgrad[l=2](phi)} \nonumber
+\end{equation}
+%
+where $\vecti[2]{e}$ is a unit vector in coordinate direction $2$, $\scali[i,i']{\cellcentred{k}^{(2)}}$ is a predetermined kernel for this operation, and  $\scali[\text{cellcells},i]{\mathbb{I}}$ is the set of all cells in the vicinity of cell $i$ that are used by this kernel.  Kernels to calculate the cell gradient in the other coordinate directions, that is $\scali[i,i']{\cellcentred{k}^{(1)}}$ and $\scali[i,i']{\cellcentred{k}^{(3)}}$ also exist.
+
+A gradient of a cell centred quantity evaluated at a face can be calculated similarly, for example
+%
+\begin{equation}
+\frac{1}{\scali[j]{S}} \int_{\scali[j]{S}} \vecti[3]{e} \cdot \vect{\nabla} \phi dS \Rightarrow \sum_{i \in \scali[\text{facecells},j]{\mathbb{I}}} \scali[j,i]{\facecentred{k}^{(3)}} \scali[i]{\phi} \Rightarrow \code{facegrad[l=3](phi)} \nonumber
+\end{equation}
+%
+Gradients taken in directions relative to the face orientation are also available using the \code{facegrad} operator.  Index $4$ gives the gradient relative to the face's normal, that is
+%
+\begin{equation}
+\frac{1}{\scali[j]{S}} \int_{\scali[j]{S}} \vecti[j]{n} \cdot \vect{\nabla} \phi dS \Rightarrow \sum_{i \in \scali[\text{facecells},j]{\mathbb{I}}} \scali[j,i]{\facecentred{k}^{(4)}} \scali[i]{\phi} \Rightarrow \code{facegrad[l=4](phi)} \nonumber
+\end{equation}
+%
+In computational terms the face normal is represented by (\code{<facenorm[l=1]>},\code{<facenorm[l=2]>}, \code{<facenorm[l=3]>}).  Indices $5$ and $6$ give gradients in the directions of the first and second tangents for each face, respectively, that is
+%
+\begin{equation}
+\frac{1}{\scali[j]{S}} \int_{\scali[j]{S}} \vecti[j]{t}^{(1)} \cdot \vect{\nabla} \phi dS \Rightarrow \sum_{i \in \scali[\text{facecells},j]{\mathbb{I}}} \scali[j,i]{\facecentred{k}^{(5)}} \scali[i]{\phi} \Rightarrow \code{facegrad[l=5](phi)} \nonumber
+\end{equation}
+%
+and
+%
+\begin{equation}
+\frac{1}{\scali[j]{S}} \int_{\scali[j]{S}} \vecti[j]{t}^{(2)} \cdot \vect{\nabla} \phi dS \Rightarrow \sum_{i \in \scali[\text{facecells},j]{\mathbb{I}}} \scali[j,i]{\facecentred{k}^{(6)}} \scali[i]{\phi} \Rightarrow \code{facegrad[l=6](phi)} \nonumber
+\end{equation}
+%
+Computationally $\vecti[j]{t}^{(1)}$ is represented by (\code{<facetang1[l=1]>},\code{<facetang1[l=2]>}, \code{<facetang1[l=3]>}) and $\vecti[j]{t}^{(2)}$ by (\code{<facetang2[l=1]>},\code{<facetang2[l=2]>}, \code{<facetang2[l=3]>}), respectively.  If the face has one dimension then $\vecti[j]{t}^{(1)}$ will be directed along the face, and $\vecti[j]{t}^{(2)}$ will be normal to both $\vecti[j]{t}^{(1)}$ and $vecti[j]{n}$.  If the face has no or two dimensions (a point or a plane) then there are no preferential directions for these tangents.  If no index is specified on the \code{facegrad} operator then \code{l=4} is assumed.
+
+
+%\begin{equation}
+%\code{facegrad} : \vecti[j]{n} \cdot \vect{\nabla} \rightarrow \frac{1}{\scali[j]{S}} \int_{\scali[j]{S}} \vecti[j]{n} \cdot \vect{\nabla} \, dS \rightarrow \sum_{i \in \scali[\text{facecells},j]{\mathbb{I}}} \scali[j,i]{\cellcentred{k}^{(1)}}
+%\end{equation}
+
+
+\emph{Options:}
+%
+\begin{itemize}
+\item \code{l=1}, \code{l=2}, etc:  This index specifies the direction that the gradient will be taken in.  For \code{cellgrad} this index represents the dimension the gradient is taken in and must be specified.  For \code{facegrad} if the index is specified and is $\le 3$, this specifies the dimension the gradient is taken in.  For an index $\ge 4$, the direction is taken relative to the face orientation.  \code{l=4} specifies a gradient taken in the direction of the face normal, \code{l=5} a gradient taken in the direction of the first tangent to the face and \code{l=6} in the direction of the second tangent to the face.  If the index is not specified for \code{facegrad} then \code{l=4} is assumed --- that is, a gradient taken normal to the face.
+
+\item \code{adjacentcells} for \code{facegrad} only:  Gradient is based on adjacent cells only, but attempts to be in the direction of the face normal (it is only an approximation, but should be accurate for structured meshes).  Note, only works for \code{l=4} direction --- that is, the direction of the face normal.
+\item \code{dxunit} for \code{facegrad} only:  Similar to option \code{adjacentcells} in that it is based on adjacent cells only, but now it is in the direction of \code{<dxunit[l=:]>}, which is a unit vector pointing from the centre of the cell immediate below the face (in the face's normal direction) to the centre of the cell immediately above the face.  Hence, for unstructured meshes, this gradient is not precisely in the same direction as the true \code{<facenorm[l=:]>}.
+\item \code{reflect=1}, \code{reflect=2}, etc:  This specifies that the contained expression is a component of a vector, and that over any glued reflection boundaries, must be reflected in this direction.  These options only need to be specified if the operator is going to be acting over (or next to) a glued, reflection boundary that is reflected in a direction that is the same as the vector's component direction.
+\item \code{noderivative}:  As previously.
+
+\end{itemize}
+
+%\emph{Equivalent code:}
+\emph{Examples:}
+
+\begin{lstlisting}[caption=]
+FACE_DERIVED <T flux> "-<D>*facegrad(<T>)" ON <all faces> # some type of heat flux occuring across each face
+CELL_DERIVED <dpdx[l=1]> "cellgrad[l=1](<p>)" # gradient of pressure in first dimension
+\end{lstlisting}
+
+%-------------------------------------------------------------------------------
+\subsubsection{\code{cellave}: Interpolation to cell centring}
+
+\searchref{ref: cellave}{setup\_equations.pl}
+
+\emph{Summary:} Interpolates or averages an expression from (mainly) face centring to cell centring.
+
+\emph{Statement:}
+
+\code{cellave[options](expression=<expression>)} \\
+
+\emph{Centring:}
+
+\code{cellave} is context cell centred and generally takes a face centred expression (see \code{othercell} option however).
+
+\emph{Details:}
+
+Without any options, predefined kernels are used to interpolate the face centred expression from the faces that surround a cell to the centroid of that cell.
+
+\emph{Options:}
+%
+\begin{itemize}
+\item \code{lastface}:  Evaluates \code{<expression>} at the last face that was referenced in the context of the operator's position, but treats the result as having cell centring.
+\item \code{lastfacenoglue}:  As above, but moves through glued boundaries to the actual last face that was used (if it was glued).
+\item \code{othercell}:  Evaluates \code{<expression>} at the cell that is adjacent to the last face that was referenced in the context of the operator's position.  In this (exception) case \code{<expression>} is cell centred.  For this case only \code{reflect=1} etc options may be used/necessary as the cell may be on the other side of a glued reflection boundary.
+\item \code{noderivative}:  As previously.
+
+\end{itemize}
+
+%-------------------------------------------------------------------------------
+\subsubsection{\code{faceave}: Interpolation}
+
+\searchref{ref: faceave}{setup\_equations.pl}
+
+\emph{Summary:} Interpolates or averages an expression from cell to face centring.
+
+\emph{Statement:}
+
+\code{faceave[options](expression=<expression>)}
+
+
+\code{faceave[advection,options](expression=<expression>,flux=<flux>,\\limiter=<limiter>)}
+
+\emph{Centring:}
+
+\code{faceave} has face context centring.  \code{<expression>} is cell centred.  \code{<flux>} is face centred.  \code{<limiter>} is cell centred.
+
+\emph{Details:}
+
+TODO
+
+\emph{Options:}
+%
+\begin{itemize}
+\item \code{harmonic}:
+\item \code{advection}:
+\item \code{\code{lastcell}}:
+\item \code{noderivative}:  As previously.
+\end{itemize}
+
+%-------------------------------------------------------------------------------
+\subsubsection{\code{cellsum} or \code{facesum}: Sum}
+
+\emph{Summary:} Performs a sum over a region of either cell or face elements.
+
+\emph{Statement:}
+
+\code{cellsum[options](cell\_centred\_expression)} \\
+\code{cellsum[options](cell\_centred\_expression,<cell\_centred\_region>)} \\
+\code{facesum[options](face\_centred\_expression)} \\
+\code{facesum[options](face\_centred\_expression,<face\_centred\_region>)} 
+%# if a sum|product
+%#   if one argument is present then default regions are applied depending on the operator
+%#   if a second argument is present then it is the region over which the sum|product is applied
+
+\emph{Centring:}
+
+Operators may be cell, face or none centred.  Contents of \code{cellsum} is cell centred, contents of \code{facesum} is face centred.
+
+\emph{Details:}
+
+This operator sums the contained expression over a region of cell or face elements.  If no region is specified, then default regions are applied, defined by:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ccc}
+Operator centring & Expression centring & Default region \\ \hline
+\code{cell} & \code{face} & \code{<celljfaces>} \\
+\code{cell} & \code{cell} & \code{<adjacentcellicells>} \\
+\code{face} & \code{cell} & \code{<adjacentfaceicells>} \\
+\multicolumn{2}{c}{all else}  & \code{<noloop>} \\
+\end{tabular}
+\end{table}
+
+\emph{Options:}
+%
+\begin{itemize}
+\item \code{noderivative}:  As previously.
+\end{itemize}
+
+%-------------------------------------------------------------------------------
+\subsubsection{\code{celldivgrad}: Gradient evaluated at a cell calculated via a divergence}
+\subsubsection{\code{celllimiter}: Gradient limiter for ensuring advection stability}
+\subsubsection{\code{cellif}, \code{faceif} or \code{noneif}: If conditional statement}
+\subsubsection{\code{cellproduct} or \code{faceproduct}: Product performed over a region of elements}
+\subsubsection{\code{cellmin/max}, \code{facemin/max} or \code{nonemin/max}: Picks the minimum/maximum from a region of elements}
+\subsubsection{\code{celldelta} or \code{facedelta}: A delta function to identify specific regions}
+\subsubsection{\code{celllink} or \code{facelink}: Link to other regions}
+
+%-------------------------------------------------------------------------------
+\pagebreak
+\section{Code structure \label{sec:code_structure}}
+
+% \small
+% \tikzstyle{mybox} = [draw=red, fill=blue, very thick,
+%     rectangle, rounded corners, inner sep=10pt, inner ysep=20pt]
+% \tikzstyle{fancytitle} =[fill=red, text=white]
+% \tikzstyle{decision} = [diamond, draw, fill=blue!20, 
+%     text width=4.5em, text badly centered, node distance=3cm, inner sep=0pt]
+% \tikzstyle{block} = [rectangle, draw, fill=blue!20, 
+%     text width=5em, text centered, rounded corners, minimum height=4em]
+% \tikzstyle{line} = [draw, -latex']
+% \tikzstyle{cloud} = [draw, ellipse,fill=red!20, node distance=3cm,
+%     minimum height=2em]
+
+% % example based on http://www.texample.net/tikz/examples/simple-flow-chart/
+% \begin{tikzpicture}[node distance = 2cm, auto]
+%     % Place nodes
+%     \node [cloud] (start) {start};
+%     \node [block, below of=start] (setup) {sub setup
+%       \begin{minipage}{5cm}
+% \begin{tikzpicture}[node distance = 2cm, auto]
+%     \node [cloud] (start2) {start2};
+% \end{tikzpicture}
+%       \end{minipage}
+%     };
+%     \path [line] (start) -- (setup);
+% \end{tikzpicture}
+
+% \begin{tikzpicture}[node distance = 2cm, auto]
+%     % Place nodes
+%     \node [block] (init) {initialize model};
+%     \node [cloud, left of=init] (expert) {expert};
+%     \node [cloud, right of=init] (system) {system};
+%     \node [block, below of=init] (identify) {identify candidate models};
+%     \node [block, below of=identify] (evaluate) {evaluate candidate models};
+%     \node [block, left of=evaluate, node distance=3cm] (update) {update model};
+%     \node [decision, below of=evaluate] (decide) {is best candidate better?};
+%     \node [block, below of=decide, node distance=3cm] (stop) {stop};
+%     % Draw edges
+%     \path [line] (init) -- (identify);
+%     \path [line] (identify) -- (evaluate);
+%     \path [line] (evaluate) -- (decide);
+%     \path [line] (decide) -| node [near start] {yes} (update);
+%     \path [line] (update) |- (identify);
+%     \path [line] (decide) -- node {no}(stop);
+%     \path [line,dashed] (expert) -- (init);
+%     \path [line,dashed] (system) -- (init);
+%     \path [line,dashed] (system) |- (evaluate);
+% \end{tikzpicture}
+
+% \begin{tikzpicture}
+% \node (box) {subroutine setup\_mesh};
+% %\node[mybox] (box) {Some text};
+% %\node[fancytitle, right=10pt] at (box.north west) {A fancy title};
+% %\node[fancytitle, rounded corners] at (box.east) {$\clubsuit$};
+% \end{tikzpicture}%
+% \normalsize
+%-------------------------------------------------------------------------------
+% \pagebreak
+% \section{Example applications \label{sec:examples}}
+
+% \subsection{Incompressible steady-state Newtonian flow through a 2D channel containing a cylinder with set inlet velocities \label{sec:channel_with_cylinder}}
+
+% \lstinputlisting{../../examples/manual/steady_state_channel_flow_with_cylinder/surface.geo}
+
+% \begin{figure}
+% %\def\svgwidth{\textwidth}
+% %\input{annotated_surface_2.pdf_tex}
+% %\includecombinedgraphics[width=\textwidth]{annotated_surface_2.pdf_tex}
+% %\includecombinedgraphics[width=\textwidth]{annotated_surface}
+% \resizebox{\textwidth}{!}{\input{annotated_surface_2.pdf_tex}}
+% %\scalebox{0.5}{\input{annotated_surface_2.pdf_tex}}
+% \caption{Geometry and resulting mesh from the \code{surface.geo} file for the flow through a 2d channel containing a cylinder problem.}
+% \end{figure}
+
+% \lstinputlisting{../../examples/manual/steady_state_channel_flow_with_cylinder/constants.in}
+
+% \lstinputlisting{../../examples/manual/steady_state_channel_flow_with_cylinder/equations.in}
+
+\bibliography{droplet,daltonh,suspend,microfluidics,viscoelastic,numerics}
+
+
+\end{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

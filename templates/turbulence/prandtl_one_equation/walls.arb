@@ -1,0 +1,2 @@
+# boundary conditions on walls
+FACE_EQUATION <turb_k_walls_equation> "<turb_k>" ON <walls>

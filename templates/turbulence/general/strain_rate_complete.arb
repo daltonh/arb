@@ -1,0 +1,23 @@
+# here both the real and background strain rates are calculated, with the latter requiring the prandtl viscous lengths
+
+# calculate all of the lengths
+INCLUDE "distance_to_wall"
+INCLUDE "prandtl_length"
+
+# this is a lower average strain rate
+NONE_CONSTANT <turb_2SS_average> "2.d0*(<u_av>/<turb_l_wall_max>)^2"
+NONE_CONSTANT <turb_2SS_min_relative> 1.d-8
+NONE_CONSTANT <turb_2SS_min> "<turb_2SS_min_relative>*<turb_2SS_average>"
+
+# the background strain rate is based on the average inlet velocity
+FACE_CONSTANT <turb_2SS_background_walls> "facemax(2.d0*(<u_av>/facemax(<facedx>,<turb_prandtl_viscous_layer_thickness>))**2,<turb_2SS_min>)" ON <walls>
+FACE_CONSTANT <turb_2SS_background> "facemax(facemin(facetofacelink(<turb_2SS_background_walls>,localregion=<all faces>,remoteregion=<walls>),2.d0*(<u_av>**2)/facemax(faceave[adjacentcells](<turb_l_wall2>),1.d-20)),<turb_2SS_min>)" ON <all faces>
+CELL_CONSTANT <turb_2SS_background_c> "cellmax(cellmin(celltofacelink(<turb_2SS_background_walls>,localregion=<all cells>,remoteregion=<walls>),2.d0*(<u_av>**2)/cellmax(<turb_l_wall2>,1.d-20)),<turb_2SS_min>)" ON <all cells>
+
+# calculate the local varying strain rate tensor and also its second invariant <turb_2SS>
+INCLUDE "strain_rate_raw"
+
+# overwrite <turb_2SS> with one stabilised on the inlet
+#FACE_DERIVED <turb_2SS> "faceif(facedelta(<inlet>),<turb_2SS_background>,facemax(<turb_2SS_raw>,<turb_2SS_min>))" ON <all faces>
+# now just make sure strain rate is greater than a small value
+FACE_DERIVED <turb_2SS> "facemax(<turb_2SS_raw>,<turb_2SS_min>)" ON <all faces>

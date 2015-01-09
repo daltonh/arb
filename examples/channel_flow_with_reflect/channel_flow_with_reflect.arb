@@ -1,0 +1,91 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+VERSION 0.42
+#----------------------------------------------------------------------------
+# solver options
+
+KERNEL polynomialorder=2
+#KERNEL polynomialaverageorder=2
+#KERNEL polynomialcellorder=2
+
+#-------------------------------------------------------------------
+# geometry
+
+# CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+# where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
+# where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+# where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
+# where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
+# where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
+# where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
+
+FACE_REGION <walls> "COMPOUND <boundaries>-<inlet>-<outlet>-<centreline>"
+GLUE_FACES <centreline> reflect=2
+FACE_REGION <inlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <inlet>"
+FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
+FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
+FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
+
+# MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+# output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+# input options are: input,centringinput,meshinput,centringmeshinput,noinput
+# data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+#MSH_FILE "structured.msh"
+MSH_FILE "unstructured.msh"
+
+NONE_CONSTANT <X max> "facemax(<facex[l=1]>,,<all faces>)"
+NONE_CONSTANT <X min> "facemin(<facex[l=1]>,,<all faces>)"
+NONE_CONSTANT <Y max> "facemax(<facex[l=2]>,,<all faces>)"
+NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<all faces>)"
+
+# for slit flow include the following:
+#GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+#GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
+
+# for pipe flow include the following, which deals with the number of dimensions and appropriate reflections
+INCLUDE_ROOT "general"
+INCLUDE "cylindrical_reflect_r2z1"
+
+# variables etc
+
+# use templates from the navier_stokes directory to build up problem
+INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE "nondimensional_constants" # specify physical and numerical constants
+INCLUDE "domain" # equations to be solved within the domain
+INCLUDE "outlet_p_set" # outlet BC, fully developed u, setting pressure along each outlet cell to zero
+#INCLUDE "outlet_u_fully_developed" # outlet BC, setting centreline pressure to zero and uniform pressure gradient across the other outlet cells
+INCLUDE "walls_noslip" # nonslip walls BC
+#INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure gradient across the inlet that achieves <u_av>
+INCLUDE "inlet_u_fully_developed_uniform_p" # fully developed velocity profile, setting a uniform pressure gradient across the inlet that achieves <u_av>
+
+CONSTANT <Re> [1] 1.d-4 # overwrite the Reynolds number value
+
+# output a flag telling us which term limited the correction velocity
+FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+# and turn some outputs on
+VARIABLE <u_f_{correction}> output
+VARIABLE <u_f_{raw}> output
+VARIABLE <u_f> output
+VARIABLE <J_f[l=1]> output
+VARIABLE <tau[l=1,1]> output
+
+#-------------------------------------------------------------------
+# output statistics
+
+<<cartesiancomment>>CELL_OUTPUT <u analytical> "1.5d0*<u_av>*(1.d0-(<cellx[l=2]>/<Y max>)^2)"
+<<cylindricalcomment>>CELL_OUTPUT <u analytical> "2.d0*<u_av>*(1.d0-(<cellx[l=2]>/<Y max>)^2)"
+CELL_OUTPUT <u error> "<u analytical> - <u[l=1]>" elementdata
+NONE_OUTPUT <u L2 norm> "sqrt(cellsum((<u error>^2)*<cellvol>,<domain>))/cellsum(<cellvol>,<domain>)"
+CELL_OUTPUT <axial pressure gradient> "cellgrad[l=1](<p>)" elementdata
+<<cartesiancomment>>NONE_OUTPUT <axial pressure gradient analytical> "-12.d0/<Re>"
+<<cylindricalcomment>>NONE_OUTPUT <axial pressure gradient analytical> "-32.d0/<Re>"
+CELL_OUTPUT <axial pressure gradient error> "<axial pressure gradient>-<axial pressure gradient analytical>" elementdata
+NONE_OUTPUT <axial pressure gradient L2 norm> "sqrt(cellsum((<axial pressure gradient error>^2)*<cellvol>,<domain>))/cellsum(<cellvol>,<domain>)"
+
+CELL_OUTPUT <icell output> "<icell>"
+FACE_OUTPUT <jface output> "<jface>"
+#-------------------------------------------------------------------

@@ -1,0 +1,14 @@
+# k equation
+
+# for transient problems, need to store old variables too
+CELL_TRANSIENT <turb_k[r=1]> "<turb_k>" "<turb_k>" ON <all cells>
+
+# now for the equation to solve
+# just the source and dissipation terms only
+#CELL_EQUATION <turb_k_equation> "<turb_R_k>" ON <domain>
+# source, dissipation and diffusion
+#CELL_EQUATION <turb_k_equation> "celldiv(-<turb_mu_k_f>*<turb_k_facegrad>)-<turb_R_k>" ON <domain>
+# source, dissipation, diffusion and advection
+#CELL_EQUATION <turb_k_equation> "celldiv(<turb_k_rho_f>*<u_f>-<turb_mu_k_f>*<turb_k_facegrad>)-<turb_R_k>" ON <domain>
+# transient
+CELL_EQUATION <turb_k_equation> "<rho>*(<turb_k>-<turb_k[r=1]>)/<dt>+celldiv(<turb_k_rho_f>*<u_f>-<turb_mu_k_f>*<turb_k_facegrad>)-<turb_R_k>" ON <domain>

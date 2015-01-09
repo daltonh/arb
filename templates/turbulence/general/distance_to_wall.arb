@@ -1,0 +1,24 @@
+# construct minimum distance to any wall
+
+# based on cell to face and cell to node vectors:
+# cell to face vectors
+<<dim1comment>>CELL_LOCAL <turb_l_wall_face_vect[l=1]> "celltofacelink(<facex[l=1]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=1]>"
+<<dim2comment>>CELL_LOCAL <turb_l_wall_face_vect[l=2]> "celltofacelink(<facex[l=2]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=2]>"
+<<dim3comment>>CELL_LOCAL <turb_l_wall_face_vect[l=3]> "celltofacelink(<facex[l=3]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=3]>"
+CELL_CONSTANT <turb_l_wall_face2> "dot(<turb_l_wall_face_vect[l=:]>,<turb_l_wall_face_vect[l=:]>)" ON <all cells>
+# cell to node vectors
+NODE_REGION <wall nodes> "ASSOCIATED WITH <walls>"
+<<dim1comment>>CELL_LOCAL <turb_l_wall_node_vect[l=1]> "celltonodelink(<nodex[l=1]>,localregion=<all cells>,remoteregion=<wall nodes>)-<cellx[l=1]>"
+<<dim2comment>>CELL_LOCAL <turb_l_wall_node_vect[l=2]> "celltonodelink(<nodex[l=2]>,localregion=<all cells>,remoteregion=<wall nodes>)-<cellx[l=2]>"
+<<dim3comment>>CELL_LOCAL <turb_l_wall_node_vect[l=3]> "celltonodelink(<nodex[l=3]>,localregion=<all cells>,remoteregion=<wall nodes>)-<cellx[l=3]>"
+CELL_CONSTANT <turb_l_wall_node2> "dot(<turb_l_wall_node_vect[l=:]>,<turb_l_wall_node_vect[l=:]>)" ON <all cells>
+CELL_CONSTANT <turb_l_wall2> "cellmin(<turb_l_wall_node2>,<turb_l_wall_face2> )" ON <all cells>
+
+# based on cell to face vectors only (may be inconsistent along inlets next to boundary layer meshes)
+#<<dim1comment>>CELL_LOCAL <turb_l_wall_vect[l=1]> "celltofacelink(<facex[l=1]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=1]>"
+#<<dim2comment>>CELL_LOCAL <turb_l_wall_vect[l=2]> "celltofacelink(<facex[l=2]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=2]>"
+#<<dim3comment>>CELL_LOCAL <turb_l_wall_vect[l=3]> "celltofacelink(<facex[l=3]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=3]>"
+#CELL_CONSTANT <turb_l_wall2> "dot(<turb_l_wall_vect[l=:]>,<turb_l_wall_vect[l=:]>)" ON <all cells> output
+
+# maximum distance within domain
+CONSTANT <turb_l_wall_max> "sqrt(cellmax(<turb_l_wall2>,region=<all cells>))"

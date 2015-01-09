@@ -1,0 +1,18 @@
+# base of mu_t smoothing function is set to be decreasing multiple of background mu_t
+NONE_CONDITION <stop condition> "-(<turb_mu_t_base_rel_limiter>-<turb_mu_t_base_rel_limiter_stop>)" stopcondition # overwrite previous stop condition
+INCLUDE "base_limited_mu_t"
+NONE_TRANSIENT <turb_mu_t_base_rel_limiter> "<turb_mu_t_base_rel_limiter_initial>/<turb_mu_t_base_rel_limiter_decrease>" "<turb_mu_t_base_rel_limiter[r=1]>*<turb_mu_t_base_rel_limiter_decrease>" output,input
+NONE_TRANSIENT <turb_mu_t_base_rel_limiter[r=1]> "<turb_mu_t_base_rel_limiter_initial>/<turb_mu_t_base_rel_limiter_decrease>" "<turb_mu_t_base_rel_limiter>" output,input
+NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.35d0
+NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.75d0 # experience is that if this is set close to 1, simulations can push to lower rel_limiters
+NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.01d0
+# and overwrite base equation
+CELL_LOCAL <turb_mu_t_base> "cellmax(<turb_mu_t_small>,<turb_mu_t_base_rel_limiter>*<turb_mu_t_background>)"
+
+# also need to remove higher smoothing range on mu_t
+VARIABLE <turb_mu_t_smoothedu> "<turb_mu_t_raw>"
+VARIABLE <turb_mu_t_baseu> "<hugeish>"
+VARIABLE <turb_mu_t_cu> "0.d0"
+VARIABLE <turb_mu_t_smoothed> "cellif(<turb_mu_t_raw>-<turb_mu_t_basel>,<turb_mu_t_raw>,<turb_mu_t_smoothedl>)"
+VARIABLE <turb_mu_t_du> "0.d0"
+VARIABLE <turb_mu_t_eu> "0.d0"

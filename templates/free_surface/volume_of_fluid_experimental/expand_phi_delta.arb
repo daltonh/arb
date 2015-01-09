@@ -1,0 +1,12 @@
+# used an expanding (smoothing) convolution to find vof_phi_delta from vof_phi
+
+#GENERAL_REPLACEMENTS R "<<maxseparation>>" W "2"
+
+INCLUDE "convolve_variable_constant" R "<vof_variable_default>" W "<vof_phi_interface>" R "<vof_variable_convolve_constant>" W "<vof_phi_delta_expand_constant>" R "<vof_variable>" W "<vof_phi_interface>" R "<vof_variable_convolve>" W "<vof_phi_delta>" R "<vof_variable_mask>" W "<vof_interface_mask>" R "<vof_variable_convolve_mask" W "<vof_phi_delta_mask" R "<vof_variable_convolve" W "<vof_phi_delta_expand" R "<vof_variable" W "<vof_phi_delta" R "cellif(<vof_phi_delta_mask>" W "cellif(<vof_phi_delta_mask>*celldelta(<domain>)"
+#NONE_CONSTANT <vof_phi_delta_expand_constant> 0.5d0
+
+# for structured uniform meshes, seems to be that <vof_phi_delta_expand_constant> can be approx equal to <<maxseparation>> (or even a bit larger) without significant limitation by maxseparation
+# if the constant becomes much larger than the maxseparation then the simulation becomes unstable
+# so use maxseparation to set constant here, and control size of delta region (and hence magnitude of errors) by maxseparation
+#NONE_CONSTANT <vof_phi_delta_expand_constant> "<<maxseparation>>+1.d0"
+NONE_CONSTANT <vof_phi_delta_expand_constant> "<<maxseparation>>-0.5d0"

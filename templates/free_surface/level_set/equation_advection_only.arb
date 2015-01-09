@@ -1,0 +1,11 @@
+# here we just advect <ls> without doing any reinitialisation - OK for short times and testing
+
+# <ls_advected> - here fully implicit
+FACE_DERIVED <ls_f_advected> "faceave[advection](<ls>,<u_f>,<ls_advection_limiter>)" ON <all faces> nooutput
+#CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv(<ls_f_advected>*<u_f>)" ON <all cells> nooutput
+# note: guarding against destabilising effects of non-zero divergence enroute to convergence
+CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv((<ls_f_advected>-faceave[lastcell](<ls>))*<u_f>)" ON <all cells> nooutput
+
+CELL_EQUATION <ls_equation_domain> "<ls>-<ls_advected>" ON <domain>
+
+# wall and boundary equations now done in separate template files

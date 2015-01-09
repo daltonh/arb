@@ -1,0 +1,274 @@
+% arb finite volume solver
+% Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+%
+% arb is released under the GNU GPL.  For full details see the license directory.
+%
+%-----------------------------------------------------------------
+% file setup.tex
+%
+% here we do all the setup of commonly used packages and structures
+
+\documentclass[12pt,a4paper]{article}
+%\documentclass[12pt,a4paper]{report}
+%\documentclass{elsart_modified}
+%\documentclass{elsart}
+
+%-------------------------------------------------------------------------------
+% Load packages
+
+% packages for PDF
+% use hyperref all the time as it also sets PDF up correctly
+    \usepackage[pdftex,
+              colorlinks=true,
+              urlcolor=blue,               % \href{...}{...}
+              filecolor=lightgrey,                 % \href*{...}
+              linkcolor=blue,             % \ref{...} and \pageref{...}
+              citecolor=notsodarkblue,
+              pdftitle={},
+              pdfauthor={Dalton Harvie},
+              pdfsubject={},
+              pdfkeywords={},
+              pdfborder={0 0 0},  %remove border from links
+%             pagebackref,  % put in page reference in bibliography to where paper is mentioned
+%             pdfpagemode=None,
+              pdfpagemode={UseThumbs},  % open with thumbnails
+%             pdfpagemode={PageWidth},
+%             pdfpagemode={FullScreen},  % start in full screen
+              bookmarks,
+              bookmarksopen=true,
+%             bookmarksopen,
+              bookmarksnumbered,
+              letterpaper,
+              raiselinks, 
+              breaklinks,  % this is the default anyway, but allows line breaks in links
+              linktocpage, % this allows nested links somehow
+              pdfstartview=FitH  % start with page expanded to fit width
+%             pdfstartview=FitB  % start with page expanded to fit I'm not sure what
+              ]{hyperref}
+  \pdfcompresslevel=9
+  \usepackage[pdftex]{graphicx}
+  \usepackage[pdftex]{color}
+% \usepackage{thumbpdf}
+
+% define some colours
+\definecolor{red}{rgb}{0.75,0,0}
+\definecolor{green}{rgb}{0,0.75,0}
+\definecolor{blue}{rgb}{0.24,0.12,0.74}
+\definecolor{darkblue}{rgb}{0.09,0.05,0.29}
+\definecolor{notsodarkblue}{rgb}{0.18,0.10,0.58}
+\definecolor{darkred}{rgb}{0.54,0.,0.}
+\definecolor{grey}{rgb}{0.32,0.32,0.32}
+\definecolor{lightgrey}{rgb}{0.44,0.44,0.44}
+\definecolor{lightlightgrey}{rgb}{0.95,0.95,0.95}
+\definecolor{purple}{rgb}{0.27,0.09,0.75}
+
+% ams maths packages
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+
+% use natbib package for bibliography
+%\usepackage[numbers,longnamesfirst]{natbib}
+\usepackage[numbers]{natbib}
+%\usepackage{natbib}
+
+% bibliography style
+%\bibliographystyle{plainnat}
+%\bibliographystyle{pcfd}
+%\bibliographystyle{apalike}
+%\bibliographystyle{abbrvnat}
+\bibliographystyle{elsart-harv}
+
+% use times font
+%\usepackage{times}
+
+% put floats at end of document --- doesn't seem to work with hyperref or rotating?
+%\usepackage{endfloat}
+
+% allow subfigures within figures
+%\usepackage{subfigure}
+%\renewcommand{\subfigtopskip}{0mm}
+%\renewcommand{\subfigcapskip}{0mm}
+%\renewcommand{\subfigbottomskip}{0mm}
+
+% use more flexible subfig package instead which allows split page figures
+\usepackage{subfig}
+
+% use nicer look'n tables
+\usepackage{booktabs}
+
+% line spacing package
+%\usepackage{setspace}
+
+% allow rotating environments
+\usepackage{rotating}
+
+% put in footer for document version
+%\usepackage{prelim2e}
+
+% fancy headings package for slide headings
+%\usepackage{fancyhdr}
+
+% different heading format
+%\usepackage[sc,medium,center]{titlesec}
+% use pacakge to add a dot after the number in section headings
+%\titlelabel{\thetitle.\quad}
+
+% environment supertabular which will split over page
+\usepackage{supertabular}
+
+% fix some stuff about floats in double column
+%\usepackage{fix2col}
+
+% more options for captions and correct width in double column
+% options don't seem to work right now
+%\usepackage[font=small,label=bf]{caption}
+%\usepackage{caption}
+%\captionsetup{font=small,label=bf}
+
+% put label names in the margin
+% seems to be buggy with other packages in use
+%\usepackage{showlabels}
+
+\usepackage{floatpag}
+\floatpagestyle{empty}
+
+% change default font to sanserif
+\renewcommand{\familydefault}{\sfdefault}
+
+% add spacing between paragraphs and remove indentation
+\setlength{\parskip}{10pt plus 1pt minus 1pt}
+\setlength{\parindent}{0in}
+
+% package for doing code listings
+\usepackage{listings}
+%\lstset{stringstyle=\ttfamily,frame=single}
+%\lstset{basicstyle=\ttfamily\scriptsize,frame=single,morecomment=[l]{\#},breaklines=true,aboveskip=2ex,belowskip=2ex,captionpos=t,caption={\lstname},commentstyle=\color{blue},backgroundcolor=\color{lightlightgrey}}
+\lstset{basicstyle=\ttfamily\small,frame=single,morecomment=[l]{\#},breaklines=true,aboveskip=2ex,belowskip=2ex,captionpos=t,caption={\lstname},commentstyle=\color{blue},backgroundcolor=\color{lightlightgrey}}
+
+%\usepackage{combinedgraphics}
+
+% package for doing flowcharts
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+%-------------------------------------------------------------------------------
+%define commonly used structures
+
+% scalar command \scal[]{} produces scalar #2 with optional subscript #1
+\newcommand{\scal}[2][]{#2_\mathrm{#1}}
+% vector command \vect[]{} produces vector #2 with optional subscript #1
+\newcommand{\vect}[2][]{\boldsymbol{#2}_\mathrm{#1}}
+% tensor command \tens[]{} produces tensor #2 with optional subscript #1
+\newcommand{\tens}[2][]{\mathsf{#2}_\mathrm{#1}}
+% total derivative command \DDt[]{} produces total derivative with subscript #1 operating on #2
+\newcommand{\DDt}[2][]{\cfrac{\mathrm{D}_\mathrm{#1} #2 }{\mathrm{D} t} }
+
+% scalari command \scali[]{} produces scalar #2 with optional italic subscript #1
+\newcommand{\scali}[2][]{#2_{#1}}
+% vectori command \vecti[]{} produces vector #2 with optional italic subscript #1
+\newcommand{\vecti}[2][]{\boldsymbol{#2}_{#1}}
+% tensori command \tensi[]{} produces tensor #2 with optional italic subscript #1
+\newcommand{\tensi}[2][]{\mathsf{#2}_{#1}}
+
+% same again but with \ast for dimensionless
+% scalar command \scal[]{} produces scalar #2 with optional subscript #1
+\newcommand{\scalnd}[2][]{{#2_\mathrm{#1}^\ast}}
+% vector command \vect[]{} produces vector #2 with optional subscript #1
+\newcommand{\vectnd}[2][]{{\boldsymbol{#2}_\mathrm{#1}^\ast}}
+% tensor command \tens[]{} produces tensor #2 with optional subscript #1
+\newcommand{\tensnd}[2][]{{\mathsf{#2}_\mathrm{#1}^\ast}}
+% total derivative command \DDt[]{} produces total derivative with subscript #1 operating on #2
+\newcommand{\DDtnd}[2][]{{\cfrac{\mathrm{D}_\mathrm{#1}^\ast #2 }{\mathrm{D} t^\ast} }}
+
+% average command \ave[]{} produces average with superscript #1 operating on #2
+\newcommand{\ave}[2][]{\left\langle{#2}\right\rangle^\mathrm{#1}}
+% dimensionless number command \dnum[]{} produces mathrm number with superscript #1 operating on #2
+\newcommand{\dnum}[2][]{\mbox{#2}_\mathrm{#1}}
+% same but subscript is a variable (eg a length)
+\newcommand{\dnumi}[2][]{\mbox{#2}_{#1}}
+% order command \order{} produces `order of #1'
+\newcommand{\order}[1]{\ensuremath{\mathrm{O}\left(#1\right)}}
+% cross command \cross produces cross for matrix multiplication
+\newcommand{\cross}{\boldsymbol\times}
+% new sign math operator
+\DeclareMathOperator{\sign}{sign}
+% error command \error{} produces `error order of #1'
+\newcommand{\error}[1]{\ensuremath{\varepsilon\left(#1\right)}}
+
+% makes units in text or maths mode with or without braces
+\newcommand{\unitb}[1]{\ensuremath{ ( \mathrm{#1} )}}
+\newcommand{\units}[1]{\ensuremath{ \, \mathrm{#1} }}
+\newcommand{\unit}[1]{\ensuremath{ \mathrm{#1} }}
+% generates an exponent
+\newcommand{\ee}[1]{\ensuremath{\times 10^{#1} }}
+% makes degrees
+\newcommand{\degrees}{\ensuremath{^\circ}}
+
+\newcommand{\leftsuper}[2]{{\vphantom{#2}}^{#1}{#2}}
+
+\newcommand{\trace}[1]{\ensuremath{\mathrm{tr}\left ( #1 \right )}}
+
+% creates inline frac in maths mode that has adequate spacing above and below
+\newcommand{\largetextfrac}[2]{\frac{\textstyle #1}{\textstyle #2}\rule[-1.5ex]{0ex}{4ex}}
+
+% makes chemical symbol with optional multiple (#1)
+\newcommand{\chem}[2][]{\ensuremath{ \mathrm{#2}_{#1} }}
+% adds optional phase (#1) to single or collection of chemical symbols
+\newcommand{\phase}[2][]{\ensuremath{ {#2}_\mathrm{(#1)} }}
+
+% fortran variable
+\newcommand{\fvar}[1]{\ensuremath{\mathtt{#1}}}
+
+\newlength{\explainwidth}
+%\newcommand{\explain}[2]{\settowidth{\explainwidth}{$#1$} \ensuremath{\underbrace{#1}_\text{\parbox{\explainwidth}{\begin{center}\small #2\end{center}}}}}
+% produces a centred text box below
+\newcommand{\explain}[2]{\settowidth{\explainwidth}{$#1$} \ensuremath{\underbrace{#1}_\text{\mbox{\centering \small #2}}}}
+% produces a text box in which the text wraps
+\newcommand{\explainp}[2]{\settowidth{\explainwidth}{$#1$} \ensuremath{\underbrace{#1}_\text{\parbox{\explainwidth}{\centering \small #2}}}}
+
+\newcommand{\facecentred}[1]{\overset{\circ}{#1}}
+\newcommand{\cellcentred}[1]{\overset{\bullet}{#1}}
+\newcommand{\norm}[2][]{\ensuremath{{\left \lVert #2 \right \rVert}_{\text{#1}}}}
+\newcommand{\normi}[2][]{\ensuremath{{\left \lVert #2 \right \rVert}_{#1}}}
+%-------------------------------------------------------------------------------
+% General Layout stuff
+
+%suppress bibliography name
+%\renewcommand{\refname}{\hspace*{-8cm}Bibliography}
+
+% figure layout dimensions that unrestrict too-large figure placement
+\renewcommand{\topfraction}{1.0}
+\renewcommand{\bottomfraction}{1.0}
+\renewcommand{\textfraction}{0.0}
+% this stops latex stopping page floats
+\renewcommand{\floatpagefraction}{0.4}
+
+%\renewcommand{\footrulewidth}{0.3mm}
+%\renewcommand{\headrulewidth}{0mm}
+%\renewcommand{\headwidth}{\textwidth}
+%\pagestyle{plain}
+
+%-------------------------------------------------------------------------------
+
+% define include type function for including xfig figures in the future
+
+%-------------------------------------------------------------------------------
+
+%\newcommand{\locate}[2]{\leftsuper{#1}{#2}}
+\newcommand{\locate}[2]{ {\left . #2 \right |}_{#1} }
+\newcommand{\locatemany}[2]{ {\left [ #2 \right ]}_{#1} }
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\heading}[1]{\textbf{#1}}
+
+\usepackage{pbox}
+%\reversemarginpar
+\usepackage{marginnote}
+\usepackage[top=3cm, bottom=3cm, left=3cm, right=3cm, heightrounded, marginparwidth=2cm, marginparsep=6mm]{geometry}
+%\newcommand{\searchref}[2]{\reversemarginpar{\begin{sideways}\pbox{20cm}{\footnotesize Search {\color{blue}#1} \newline in {\color{blue}\code{#2}}}\end{sideways}}}
+%\newcommand{\searchref}[2]{\reversemarginpar{\pbox{2cm}{\footnotesize Search {\color{blue}#1} \newline in {\color{blue}\code{#2}}}}}
+%\newcommand{\searchref}[2]{\marginnote{\footnotesize Search {\color{blue}#1} \newline in {\color{blue}\code{#2}}}}
+%\newcommand{\searchref}[2]{\marginnote{\begin{sideways}\footnotesize Search {\color{blue}#1} \newline in {\color{blue}\code{#2}}\end{sideways}}}
+%\newcommand{\searchref}[2]{\marginnote{\begin{sideways}\pbox{20cm}{\footnotesize Search {\color{blue}#1} \newline in {\color{blue}\code{#2}}}\end{sideways}}}
+\newcommand{\searchref}[2]{\marginnote{\begin{sideways}\parbox[b]{4cm}{\color{grey}\footnotesize Search {\color{violet}#1} \newline in {\color{violet}\code{#2}}}\end{sideways}}}
+%-------------------------------------------------------------------------------

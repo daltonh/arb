@@ -1,0 +1,35 @@
+# within this file we calculate the curvature
+# as cell centred curvature is calculated from face centred curvature, which is itself averaged from the cell centred curvature, makes sense to NOT smooth these normals (normals.arb) prior to calling this file
+
+# interpolate theta from cell centres to faces
+FACE_DERIVED <vof_theta_smoothed_f_mask> "cellmin(<vof_theta_mask>,region=<adjacentfaceicells>)" ON <all faces> output
+#FACE_DERIVED <vof_theta_smoothed_f_diff_raw> "faceave[upcell](<vof_theta_smoothed>)-faceave[downcell](<vof_theta_smoothed>)" output
+FACE_DERIVED <vof_theta_smoothed_f_diff_raw> "faceave[upcell](atan2(cellave[lastface](<facereflect[l=2]>)*sin(<vof_theta_smoothed>),cellave[lastface](<facereflect[l=1]>)*cos(<vof_theta_smoothed>)))-faceave[downcell](<vof_theta_smoothed>)" output
+#FACE_DERIVED <vof_theta_smoothed_f_diff> "atan2(sin(<vof_theta_smoothed_f_diff_raw>),cos(<vof_theta_smoothed_f_diff_raw>))" output
+FACE_DERIVED <vof_theta_smoothed_f_diff> "faceboundangle(<vof_theta_smoothed_f_diff_raw>)" output
+FACE_DERIVED <vof_theta_smoothed_f_raw> "faceave[downcell](<vof_theta_smoothed>)+<vof_theta_smoothed_f_diff>/2.d0" output
+FACE_DERIVED <vof_theta_smoothed_f> "faceif(<vof_theta_smoothed_f_mask>,faceboundangle(<vof_theta_smoothed_f_raw>),0.d0)" ON <all faces> output
+
+# roughly a return of the old method 8
+#<<dim1comment>>FACE_LOCAL <vof_phigrad_unit_f[l=1]> "cos(<vof_theta_smoothed_f>)" ON <all faces>
+#<<dim2comment>>FACE_LOCAL <vof_phigrad_unit_f[l=2]> "sin(<vof_theta_smoothed_f>)" ON <all faces>
+<<dim1comment>>FACE_DERIVED <vof_phigrad_unit_f[l=1]> "faceif(<vof_theta_smoothed_f_mask>,cos(<vof_theta_smoothed_f>),0.d0)" ON <all faces> output
+<<dim2comment>>FACE_DERIVED <vof_phigrad_unit_f[l=2]> "faceif(<vof_theta_smoothed_f_mask>,sin(<vof_theta_smoothed_f>),0.d0)" ON <all faces>
+FACE_DERIVED <vof_phigrad_f_scalar> "faceif(<vof_theta_smoothed_f_mask>,dot(<vof_phigrad_unit_f[l=:]>,<facenorm[l=:]>),0.d0)" ON <all faces> output
+
+# doing cartesian and cylindrical curvatures separately
+# cartesian
+<<cartesiancomment>>CELL_LOCAL <vof_kappa_c2> "-celldiv(<vof_phigrad_f_scalar>)" ON <all cells> output
+# cylindrical
+<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cart_c> "-celldiv(<vof_phigrad_f_scalar>)" ON <all cells>
+<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cyl_c> "-<vof_phigrad_unit[l=<<radialdim>>]>/<<radius_c>>" ON <all cells> # won't work on centreline, so instead use twice carteisan curvature there
+<<cylindricalcomment>>CELL_DERIVED <vof_kappa_c2> "cellif(<<radius_c>>-1.d-10,<vof_kappa_cart_c>+<vof_kappa_cyl_c>,2.d0*<vof_kappa_cart_c>)" ON <all cells> output
+# roughly a return of the old method 8
+
+VARIABLE <vof_kappa_c2> output
+
+FACE_LOCAL <vof_delta_mask_f> "cellmax(<vof_delta_mask>,region=<adjacentfaceicells>)" ON <all faces> output
+FACE_DERIVED <vof_kappa_f> "faceif(<vof_delta_mask_f>,faceave[adjacentcells](<vof_kappa_c2>*<vof_delta_mag>)/faceave[adjacentcells](<vof_delta_mag>),0.d0)" ON <all faces> output
+
+CELL_DERIVED <vof_kappa_c> "cellif(<vof_delta_mask>,<vof_kappa_f>,0.d0)" ON <all cells>
+#CELL_DERIVED <vof_kappa_c> "<vof_kappa_c2>" ON <all cells>

@@ -1,0 +1,7 @@
+# calculate the turbulence production term, divided by the viscosity
+
+# now using total stress as a template for this
+INCLUDE "total_stress" R "<tau" W "<turb_tau_nomu" R "<mu_f>" W "(-1.d0)"
+
+FACE_LOCAL <turb_2SS_raw> "ddot(<turb_tau_nomu[l=:,:]>,<ugrad_f[l=:,:]>)"
+FACE_DERIVED <turb_2SS> "<turb_2SS_raw>" ON <all faces>

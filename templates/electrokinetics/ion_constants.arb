@@ -1,0 +1,5 @@
+# ion constants for one specific ion species
+# all variables start with <ion so this can be replaced to make specific ions
+
+CONSTANT <ion z> [1] "<average ion z>" # valency of ion
+CONSTANT <ion D> [m^2/s] "<average ion D>" # diffusivity of ion

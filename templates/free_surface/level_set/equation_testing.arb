@@ -1,0 +1,70 @@
+# three types of end-of-timestep <ls> functions are referenced:
+# 1) <ls> is the fully implicit one, with reinitialisation applied away from the interface
+# 2) <ls_advected> is also implicit, but without any reinitialisation
+# 3) <ls_explicit> is explicitly calculated using <u_f[r=1]>, also without any reinitialisation.  It is used for some decision variables (<ls_weight>, <ls_sign>) as it does not change between newton loops
+
+# <ls_explicit>
+# these are transients as they are fully explicit
+FACE_TRANSIENT <ls_f_explicit[r=0]> "<ls[r=1]>" "faceave[advection](<ls[r=1]>,<u_f[r=1]>,<ls_advection_limiter>)" ON <all faces> nooutput
+#CELL_TRANSIENT <ls_explicit[r=0]> "<ls[r=1]>" "<ls[r=1]>-<dt>*celldiv(<ls_f_explicit>*<u_f[r=1]>)" ON <all cells> nooutput
+# note: guarding against destabilising effects of non-zero divergence after first timestep
+CELL_TRANSIENT <ls_explicit[r=0]> "<ls[r=1]>" "<ls[r=1]>-<dt>*celldiv((<ls_f_explicit>-faceave[lastcell](<ls[r=1]>))*<u_f[r=1]>)" ON <all cells> nooutput
+
+# <ls_advected> - here fully implicit
+FACE_DERIVED <ls_f_advected> "faceave[advection](<ls>,<u_f>,<ls_advection_limiter>)" ON <all faces> nooutput
+#CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv(<ls_f_advected>*<u_f>)" ON <all cells> nooutput
+# note: guarding against destabilising effects of non-zero divergence enroute to convergence
+CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv((<ls_f_advected>-faceave[lastcell](<ls>))*<u_f>)" ON <all cells> nooutput
+
+# <ls_advected> - here using explicit <ls>, implicit <u_f>
+#FACE_DERIVED <ls_f_advected> "faceave[advection](<ls[r=1]>,<u_f>,<ls_advection_limiter>)" ON <all faces> nooutput
+##CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv(<ls_f_advected>*<u_f>)" ON <all cells> nooutput
+## note: guarding against destabilising effects of non-zero divergence enroute to convergence
+#CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv((<ls_f_advected>-faceave[lastcell](<ls[r=1]>))*<u_f>)" ON <all cells> nooutput
+
+# <ls_advected> - here using crank-nicholson for both <ls> and <u_f>
+#FACE_DERIVED <ls_f_advected> "faceave[advection]((<ls[r=1]>+<ls>)*0.5d0,(<u_f>+<u_f[r=1]>)*0.5d0,<ls_advection_limiter>)" ON <all faces> nooutput
+##CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv(<ls_f_advected>*<u_f>)" ON <all cells> nooutput
+## note: guarding against destabilising effects of non-zero divergence enroute to convergence
+#CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv((<ls_f_advected>-faceave[lastcell](<ls[r=1]>+<ls>)*0.5d0)*(<u_f>+<u_f[r=1]>)*0.5d0)" ON <all cells> nooutput
+
+# <ls_advected> - completely explicit
+#CELL_LOCAL <ls_advected> "<ls_explicit[r=0]>"
+
+# the following depend only on <ls_explicit> and hence are constant for each timestep
+CELL_LOCAL <ls_sign> "cellif(<ls_explicit>,1.d0,-1.d0)"
+CELL_TRANSIENT <ls_explicit_normalised> "<ls_explicit>/<ls_celldxmax>" ON <all cells> nooutput
+# this weight variable determines whether the <ls> value will locally be reinitialised or not.  For <ls_weight> = 0, no reinitialisation will occur (typical of on or near the interface).  For <ls_weight> = 1, as much reinitialisation will occur as possible, but probably at the expense of mass conservation.  Overwriting this with 0 will stop the reinitialisation from occurring everywhere.
+CELL_TRANSIENT <ls_weight[r=0]> "cellif(abs(<ls_explicit_normalised>)-<ls_weight_max>,1.d0,cellif(abs(<ls_explicit_normalised>)-<ls_weight_min>,(1.d0-cos((abs(<ls_explicit_normalised>)-<ls_weight_min>)*<pi>/(<ls_weight_max>-<ls_weight_min>)))/2.d0,0.d0))" ON <all cells> elementdata # this will be initialised at timestep=0 as 0.d0
+
+# this section is concerned with calculating the mod of grad s, which should equal 1 for a level set function.  This is the basis for the reinitialisation proceedure
+# the mod(grad(<ls>)) is split into two cell divergences, using a pseudo advection velocity which is directed away from the interface
+# the order of discretisation for the calculation of this velocity, and the face averaged advection <ls> functions is important - high order must be used to get increasing accuracy of the surface tension force with increasing mesh refinement
+# however, near boundaries, high order discretisation can be hard to converge (often giving numerically singular matrices), depending on the boundary condition employed
+# as a solution, we use high order discretisations near the interface, and low order away from the interface and near any walls
+# this is the maximum discretisation order used (between 0 and 1, not the actual order, but a flag indicating high or low order)
+# if you're having problems with convergence, try setting this variable to 0.d0 to give the most forgiving formulation (then look at boundary conditions...)
+CONSTANT <ls_reinitialisation_order_max> 1.d0
+#CELL_CONSTANT <ls_reinitialisation_order_max> "<ls_advection_limiter>" ON <all cells>
+# this is a function which is 0 next to walls, and 1 otherwise
+CELL_CONSTANT <ls_reinitialisation_order_walls> "1.d0-facemax(facedelta(<walls>),region=<celljfaces>)" ON <all cells> elementdata
+CELL_LOCAL <ls_reinitialisation_order_small> "cellmin(cellif(abs(<ls_explicit_normalised>)-(<ls_validity_max>+1.d0),0.d0,<ls_reinitialisation_order_max>),<ls_reinitialisation_order_walls>)" elementdata
+# this determines the discretisation of the advection face centred values of <ls> will be calculated - from experience this must switch to low order before <ls_reinitialisation_order_f>, hence the wrapping of this function in a loop
+#CELL_TRANSIENT <ls_reinitialisation_order> "cellmin(cellmin(<ls_reinitialisation_order_small>,region=<cellicells>),region=<cellicells>)" ON <all cells> elementdata
+#CELL_TRANSIENT <ls_reinitialisation_order> "cellmin(<ls_reinitialisation_order_small>,region=<cellicells>)" ON <all cells> elementdata
+CELL_TRANSIENT <ls_reinitialisation_order> "cellmin(cellmin(<ls_reinitialisation_order_small>,region=<cellicells>),<ls_advection_limiter>)" ON <all cells> elementdata
+# this determines how the face centred pseudo advection velocity will be calculated
+FACE_TRANSIENT <ls_reinitialisation_order_f> "cellmin(<ls_reinitialisation_order_small>,region=<adjacentfaceicells>)" ON <all faces>
+
+# include the grad_ls dot products for both the positive and negative sides of the interface
+# the mod(grad(<ls>)) functions are calculated in these
+INCLUDE "ls_grad_dot_pos_testing" R "<<sign>>" W "+"
+INCLUDE "ls_grad_dot_pos_testing" R "<<sign>>" W "-" R "_pos" W "_neg"
+
+# domain equation
+# actual equation used to update ls - away from the interface (<ls_weight> = 1) mod(grad(<ls>)) = 1, while close to the interface (<ls_weight> = 0) mod(grad(<ls>)) = mod(grad(<ls_advected>))
+CELL_LOCAL <ls_grad_dot> "cellif(<ls_sign>,<ls_grad_dot_pos>,<ls_grad_dot_neg>)"
+CELL_LOCAL <ls_grad_dot_advected> "cellif(<ls_sign>,<ls_grad_dot_advected_pos>,<ls_grad_dot_advected_neg>)"
+CELL_EQUATION <ls_equation_domain> "<ls_grad_dot>-(<ls_weight>+(1.d0-<ls_weight>)*<ls_grad_dot_advected>)" ON <domain>
+
+# wall and boundary equations now done in separate template files

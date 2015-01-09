@@ -1,0 +1,110 @@
+# arb finite volume solver
+# Copyright 2009,2013 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#----------------------------------------------------------------------------
+VERSION 0.41
+#----------------------------------------------------------------------------
+
+MSH_FILE "surface.msh"
+
+# the GLUE_FACES command allows for reflection and periodic boundaries: GLUE_FACES <face1> [<face2>] [reflect=1|2|3,translate]
+#  - for a reflection boundary, give the face region name once (or equivalently twice as it is being glued back onto itself) and the coordinate dimension to be reflected as an option, ie, reflect=1
+#  - for a periodic boundary, give the two face region names to be glued
+# the translate option can be used for both boundary types and means that the closest face elements are equated based on their location relative to their own face region centre, rather than based on an absolute separation
+GLUE_FACES <west> reflect=1
+GLUE_FACES <south> reflect=2
+#GLUE_FACES <south> <north>
+
+# test function
+CELL_CONSTANT <ls> "sqrt(<cellx[l=1]>^2+<cellx[l=2]>^2)-0.5d0" output
+
+# some tests based upon the normal kernels
+CELL_OUTPUT <ls_grad_c[l=1]> "cellgrad[l=1](<ls>)" componentoutput
+CELL_OUTPUT <ls_grad_c[l=2]> "cellgrad[l=2](<ls>)" componentoutput
+CELL_OUTPUT <ls_grad_highorder_c[l=1]> "cellgrad[l=1,highorder](<ls>)" componentoutput
+CELL_OUTPUT <ls_grad_highorder_c[l=2]> "cellgrad[l=2,highorder](<ls>)" componentoutput
+FACE_OUTPUT <ls_grad_f[l=1]> "facegrad[l=1](<ls>)" componentoutput
+FACE_OUTPUT <ls_grad_f[l=2]> "facegrad[l=2](<ls>)" componentoutput
+CELL_OUTPUT <ls_celldiv_laplacian> "celldiv(facegrad(<ls>))" ON <domain>
+CELL_OUTPUT <ls_cellgrad^2_laplacian> "cellgrad[reflect=1,l=1](cellgrad[l=1](<ls>))+cellgrad[reflect=2,l=2](cellgrad[l=2](<ls>))" 
+FACE_OUTPUT <ls_facegradcellgrad_laplacian> "facegrad[reflect=1,l=1](cellgrad[l=1](<ls>))+facegrad[reflect=2,l=2](cellgrad[l=2](<ls>))" 
+
+# summary of error along the reflection boundaries
+NONE_OUTPUT <facegrad error> "facesum(<ls_grad_f[l=1]>,<west>)+facesum(<ls_grad_f[l=2]>,<south>)"
+
+# testing averaging operators
+FACE_OUTPUT <ls_faceave> "faceave(<ls>)" # for comparison
+FACE_OUTPUT <ls_faceave_adjacent> "faceave[adjacentcells](<ls>)"
+FACE_OUTPUT <ls_faceave_adjacent_even> "faceave[adjacentcellsevenweighting](<ls>)"
+FACE_OUTPUT <lsgrad1_faceave> "faceave[reflect=1](<ls_grad_c[l=1]>)" # for comparison
+FACE_OUTPUT <lsgrad1_faceave_adjacent> "faceave[adjacentcells,reflect=1](<ls_grad_c[l=1]>)"
+FACE_OUTPUT <lsgrad1_faceave_adjacent_even> "faceave[adjacentcellsevenweighting,reflect=1](<ls_grad_c[l=1]>)"
+FACE_OUTPUT <cellx1_faceave_adjacent_reflect> "faceave[adjacentcells,reflect=1](<cellx[l=1]>)"
+FACE_OUTPUT <cellx1_faceave_adjacent_noreflect> "faceave[adjacentcells](<cellx[l=1]>)"
+
+# testing face gradient operators
+FACE_OUTPUT <ls_facegrad> "facegrad(<ls>)" # for comparison
+FACE_OUTPUT <ls_facegrad_adjacent> "facegrad[adjacentcells](<ls>)"
+FACE_OUTPUT <ls_facegrad_dxunit> "facegrad[dxunit](<ls>)"
+FACE_OUTPUT <lsgrad1_facegrad> "facegrad[reflect=1](<ls_grad_c[l=1]>)" # for comparison
+FACE_OUTPUT <lsgrad1_facegrad_adjacent> "facegrad[adjacentcells,reflect=1](<ls_grad_c[l=1]>)"
+FACE_OUTPUT <lsgrad1_facegrad_dxunit> "facegrad[dxunit,reflect=1](<ls_grad_c[l=1]>)"
+
+# testing cell gradient operators
+CELL_OUTPUT <cellgrad_noreflect> "cellgrad[l=1](<cellx[l=1]>)"
+CELL_OUTPUT <cellgrad_highorder_noreflect> "cellgrad[l=1,highorder](<cellx[l=1]>)"
+CELL_OUTPUT <cellgrad_reflect> "cellgrad[l=1,reflect=1](<cellx[l=1]>)"
+CELL_OUTPUT <cellgrad_highorder_reflect> "cellgrad[l=1,reflect=1,highorder](<cellx[l=1]>)"
+
+# testing sums, products
+FACE_OUTPUT <cellx1_faceicells_sum_reflect> "cellsum[reflect=1](<cellx[l=1]>,region=<faceicells>)"
+FACE_OUTPUT <cellx1_faceicells_sum_noreflect> "cellsum(<cellx[l=1]>,region=<faceicells>)"
+FACE_OUTPUT <cellx1_faceicells_product_reflect> "cellproduct[reflect=1](<cellx[l=1]>,region=<faceicells>)"
+FACE_OUTPUT <cellx1_faceicells_product_noreflect> "cellproduct(<cellx[l=1]>,region=<faceicells>)"
+CELL_OUTPUT <cellx1_cellicells_sum_reflect> "cellsum[reflect=1](<cellx[l=1]>,region=<cellicells>)"
+CELL_OUTPUT <cellx1_cellicells_sum_noreflect> "cellsum(<cellx[l=1]>,region=<cellicells>)"
+CELL_OUTPUT <cellx1_cellicells_product_reflect> "cellproduct[reflect=1](<cellx[l=1]>,region=<cellicells>)"
+CELL_OUTPUT <cellx1_cellicells_product_noreflect> "cellproduct(<cellx[l=1]>,region=<cellicells>)"
+
+# testing the advection averaging
+NONE_CONSTANT <advection_limiter> 1.d0
+NONE_CONSTANT <u[l=1]> 1.d0
+NONE_CONSTANT <u[l=2]> 1.d0
+FACE_OUTPUT <u_f> "dot(<u[l=:]>,<facenorm[l=:]>)"
+FACE_OUTPUT <ls_advection_f> "faceave[advection](<ls>,<u_f>,<advection_limiter>)"
+FACE_OUTPUT <lsgrad1_advection_f> "faceave[advection,reflect=1](<ls_grad_c[l=1]>,<u_f>,<advection_limiter>)"
+FACE_OUTPUT <lsgrad1_advection_f_noreflect> "faceave[advection,reflect=0](<ls_grad_c[l=1]>,<u_f>,<advection_limiter>)"
+FACE_OUTPUT <ls_advection_f error> "<ls_advection_f>-<ls_faceave>"
+FACE_OUTPUT <lsgrad1_advection_f error> "<lsgrad1_advection_f>-faceave[reflect=1](<ls_grad_c[l=1]>)"
+FACE_OUTPUT <lsgrad1_advection_f_noreflect error> "<lsgrad1_advection_f_noreflect>-faceave[reflect=1](<ls_grad_c[l=1]>)"
+
+# cellave[othercell] test
+FACE_OUTPUT <othercell check> "faceave[upcell](cellave[othercell](<cellx[l=1]>))-faceave[downcell](<cellx[l=1]>)"
+FACE_OUTPUT <othercell check reflect> "faceave[upcell,reflect=1](cellave[othercell,reflect=1](<cellx[l=1]>))-faceave[downcell,reflect=1](<cellx[l=1]>)"
+
+# testing min/max
+CELL_OUTPUT <cellx min cellicells check> "cellmin(<cellx[l=1]>,region=<cellicells>)"
+CELL_OUTPUT <cellx min cellicells check reflect> "cellmin[reflect=1](<cellx[l=1]>,region=<cellicells>)"
+FACE_OUTPUT <cellx min faceicells check> "cellmin(<cellx[l=1]>,region=<faceicells>)"
+FACE_OUTPUT <cellx min faceicells check reflect> "cellmin[reflect=1](<cellx[l=1]>,region=<faceicells>)"
+CELL_OUTPUT <cellx max cellicells check> "cellmax(<cellx[l=1]>,region=<cellicells>)"
+CELL_OUTPUT <cellx max cellicells check reflect> "cellmax[reflect=1](<cellx[l=1]>,region=<cellicells>)"
+FACE_OUTPUT <cellx max faceicells check> "cellmax(<cellx[l=1]>,region=<faceicells>)"
+FACE_OUTPUT <cellx max faceicells check reflect> "cellmax[reflect=1](<cellx[l=1]>,region=<faceicells>)"
+
+# testing <facetoicellr> and <celltoicellr>
+CELL_OUTPUT <celltoicellr cellicells check> "cellsum(<celltoicellr[l=1]>,region=<cellicells>)"
+CELL_OUTPUT <celltoicellr cellicells check reflect> "cellsum[reflect=1](<celltoicellr[l=1]>,region=<cellicells>)"
+FACE_OUTPUT <facetoicellr faceicells check> "cellsum(<facetoicellr[l=1]>,region=<faceicells>)"
+FACE_OUTPUT <facetoicellr faceicells check reflect> "cellsum[reflect=1](<facetoicellr[l=1]>,region=<faceicells>)"
+# <celltoicellr> will only work in single nested context right now.  The following shows how it breaks:
+#CELL_OUTPUT <celltoicellr cellicells check noloop> "cellsum(cellsum(<celltoicellr[l=1]>,region=<noloop>),region=<cellicells>)"
+
+CELL_OUTPUT <number of cellicell elements> "cellsum(1.d0,<cellicells>)"
+FACE_OUTPUT <number of faceicell elements> "cellsum(1.d0,<faceicells>)"
+CELL_OUTPUT <icell output> "<icell>"
+FACE_OUTPUT <jface output> "<jface>"
+
+#-------------------------------------------------------------------

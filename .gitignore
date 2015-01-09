@@ -1,0 +1,39 @@
+# include file for git
+# has to be kept in line with misc/packer/packer.include
+# there are also many local .gitignore files scattered throughout the tree, especially in the contributed, build and misc directories
+
+# ignore everything in the root directory except for the distributable code files and directories
+/*
+!/arb
+!/build/
+!/doc/
+!/examples/
+!/licence/
+!/misc/
+!/output/
+!/pack
+!/plot_step
+!/src/
+!/templates/
+!/tmp/
+!/todo
+
+# object files
+*.[ao]
+
+# OS specific and generated files
+.DS_Store
+*.swp
+differ
+lser
+
+# ignore any code_scraps or resources directories completely
+code_scraps/
+resources/
+
+# and local backup files and link
+old/
+recent
+
+# include any gitignore files in any directories that are already included
+!.gitignore

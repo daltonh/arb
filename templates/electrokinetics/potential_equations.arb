@@ -1,0 +1,4 @@
+INCLUDE "potential_domain"
+INCLUDE "potential_charged_walls"
+INCLUDE "potential_outlet"
+INCLUDE "potential_inlet"
