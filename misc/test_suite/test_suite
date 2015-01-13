@@ -85,7 +85,9 @@ do
   esac
 done ;
 
-if [ -e $log_file ] ; then rm $log_file ; fi;
+if [ -e $log_file -a $REFRESH -eq 0 ] ; then rm $log_file ; fi;
+
+if [ -e $log_file -a $REFRESH -eq 1 ] ; then echo "INFO: restart of test_suite" >>$log_file ; fi;
 
 # check that examples are in the right location
 if [ ! -d $examples_dir ] ; then

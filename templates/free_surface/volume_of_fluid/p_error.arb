@@ -4,6 +4,7 @@
 <<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-(celldivgrad[l=2](<p_f>)-<sigma>*<vof_F_c[l=2]>)" ON <all cells>
 <<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "-(celldivgrad[l=3](<p_f>)-<sigma>*<vof_F_c[l=3]>)" ON <all cells>
 # differencing has to be consistent with that used for <vof_F_f>
-FACE_LOCAL <dynamic_force_f> "-(facegrad[dxunit](<p>)-<sigma>*<vof_F_f>)" ON <domain faces>
-#FACE_LOCAL <dynamic_force_f> "-(facegrad(<p>)-<sigma>*<vof_F_f>)" ON <domain faces>
+# now on all faces to allow use as a BC too
+FACE_LOCAL <dynamic_force_f> "-(facegrad[dxunit](<p>)-<sigma>*<vof_F_f>)" ON <all faces>
+#FACE_LOCAL <dynamic_force_f> "-(facegrad(<p>)-<sigma>*<vof_F_f>)" ON <all faces>
 

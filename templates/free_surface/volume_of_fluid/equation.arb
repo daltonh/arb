@@ -1,8 +1,8 @@
 # here we advect <vof> using the implicit <u_f> and explicit <vof_phi[r=1]>
 
 # these unit normals are carried over from the previous timestep curvature calculation
-CELL_TRANSIENT <vof_phigrad_unit[l=1,r=1]> "" "<vof_phigrad_unit[l=1]>" ON <all cells>
-CELL_TRANSIENT <vof_phigrad_unit[l=2,r=1]> "" "<vof_phigrad_unit[l=2]>" ON <all cells>
+CELL_TRANSIENT <vof_phigrad_unit[l=1,r=1]> "0.d0" "<vof_phigrad_unit[l=1]>" ON <all cells>
+CELL_TRANSIENT <vof_phigrad_unit[l=2,r=1]> "0.d0" "<vof_phigrad_unit[l=2]>" ON <all cells>
 
 # calculate the position of the interface in each cell, captured using the scalar d
 # exact matches area within polygon to phi value exactly and gives better results, but only works for 2D
@@ -17,6 +17,7 @@ CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[exact](phi=<vof_phi[r=1]>,normal[l=1]=<
 # although this is listed as a previous timestep variable [r=1], only partly true as also depends on current <u_f>
 FACE_DERIVED <vof_phi_f[r=1]> "facevofphi[noderivative,linearone](phi=<vof_phi[r=1]>,d=<vof_d[r=1]>,flux=<u_f>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all faces> output
 # option 2): or use more accurate (for 2D only though) templates solution
+# these files probably need updating as of 030714
 #INCLUDE "facevofphi_linearone_2D_advected_vector_explicit" R "<facevofphi_n[l=" W "<vof_phigrad_unit[r=1,l=" R "<facevofphi_d>" W "<vof_d[r=1]>" R "<facevofphi_phi>" W "<phi[r=1]>" R "<facevofphi_f[r=1]>" W "<vof_phi_f[r=1]>" R "<facevofphi_phi>" W "<vof_phi[r=1]>" R "<facevofphi_phitol>" W "<vof_phi_tol>"
 
 #CELL_DERIVED <vof_phi_adjust[r=1]> "cellvofphiadjust[noderivative](phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>)" ON <all cells> output
