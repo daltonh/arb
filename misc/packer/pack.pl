@@ -129,11 +129,11 @@ foreach $argument ( @ARGV )  # second loop looks for other options
 
 # the version number is stored in licence/version, and is either 'master' or the full version number
 open (VERSION_FILE, "<licence/version");
-my $master_version = <VERSION_FILE>;
-chomp($master_version);
+my $dated_version = <VERSION_FILE>;
+chomp($dated_version);
 close (VERSION_FILE);
-if ($master_version =~ /^master$/) { 
-  print "INFO: as this is the master code version, the new master version number will be created for the packed version\n";
+if ($dated_version =~ /^master$/) { 
+  print "INFO: as this is an un-distributed code version, a new dated version number will be created for the packed version\n";
   open(SRC, "<src/general_module.f90") or die "ERROR: problem opening src/general_module.f90 to find version number\n";
   while (<SRC>) {
     if (/version\s*=\s*(\S+)/) {
@@ -144,10 +144,17 @@ if ($master_version =~ /^master$/) {
   if (!($version)) { die "ERROR: version number not found in src/general_module.f90\n"; }
 # year month day hour min sec
   $date=sprintf("%04d%02d%02d%02d%02d%02d",(localtime)[5]+1900,(localtime)[4]+1,(localtime)[3],(localtime)[2],(localtime)[1],(localtime)[0]);
-  $master_version="v".$version."_".$date;
+  $dated_version="v".$version."_".$date;
+# now also check whether this is a git branch and if so, and not master, append branch name to generated backup name
+  $systemcall="git rev-parse --abbrev-ref HEAD";  
+  my $git_branch='';
+# print "systemcall = ",system("$systemcall >/dev/null 2>/dev/null"),"\n";
+  if (!(system("$systemcall >/dev/null 2>/dev/null"))) { print "INFO: finding branch name using git\n"; $git_branch=`$systemcall`; chompm($git_branch); print "INFO: found git_branch = $git_branch\n"; } else { print "INFO: git not found\n"; }
+  if ($git_branch && $git_branch ne "master") {$dated_version=$dated_version."_".$git_branch;}
+  print "INFO: dated_version = $dated_version\n";
 }
     
-if (!($archive_name)) { $archive_name = "arb_".$master_version; }
+if (!($archive_name)) { $archive_name = "arb_".$dated_version; }
 # remove archive_name that is empty
 if (-d $archive_name) {rmdir $archive_name;}
 # create new archive_name
@@ -182,7 +189,7 @@ $systemcall='echo "PACK operation completed on `hostname -f` by `whoami` on `dat
 (!(system($systemcall))) or die "ERROR: could not perform $systemcall\n";
 
 # if we are creating an archive from the master version, also record version number in the licence directory
-$systemcall="echo ".$master_version." >".$archive_root."licence/version";
+$systemcall="echo ".$dated_version." >".$archive_root."licence/version";
 (!(system($systemcall))) or die "ERROR: could not perform $systemcall\n";
 
 # if distribute, include example files in working directory
@@ -221,7 +228,7 @@ $systemcall="cp misc/packer/unpack_readme $archive_name/readme";
 (!(system($systemcall))) or die "ERROR: could not perform $systemcall\n";
 $systemcall="cp licence/arb_licence.txt $archive_name/licence";
 (!(system($systemcall))) or die "ERROR: could not perform $systemcall\n";
-$systemcall="echo $master_version >$archive_name/version";
+$systemcall="echo $dated_version >$archive_name/version";
 (!(system($systemcall))) or die "ERROR: could not perform $systemcall\n";
 
 if ($unpack) {
@@ -260,6 +267,15 @@ sub usage {
         " -u or --unpack = unpack straight away, ready to run (implies -nt)\n\n".
         "pack must be called from the root directory of a simulation\n";
   exit;
+}
+
+#*******************************************************************************
+# chomp and remove mac linefeads too if present
+
+sub chompm {
+  use strict;
+  chomp($_[0]);  # remove linefeed from end
+  $_[0]=~tr/\r//d; # remove control m from mac files
 }
 
 #*******************************************************************************
