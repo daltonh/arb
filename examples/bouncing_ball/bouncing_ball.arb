@@ -65,8 +65,8 @@ NONE_UNKNOWN <z> [m] "<z_0>" # position of ball
 NONE_TRANSIENT <z[r=1]> [m] "<z>-<w_0>*<dt>" "<z_real>" # position of ball at r=1
 NONE_DERIVED <w> [m/s] "(<z>-<z[r=1]>)/<dt>" # velocity of ball
 NONE_TRANSIENT <w[r=1]> [m/s] "<w>" "<w_real>" # velocity of ball at r=1
-NONE_DERIVED <w_real> [m/s] "noneif(<z>,<w>,-<coefficient of restitution>*<w>)" # real velocity of ball after possible bounce
-NONE_DERIVED <z_real> [m] "noneif(<z>,<z>,<z>*<w_real>/<w[r=1]>)" # real position of ball after possible bounce
+NONE_DERIVED <w_real> [m/s] "noneif(<z>,<w>,-<coefficient of restitution>*<w>)" output,input # real velocity of ball after possible bounce
+NONE_DERIVED <z_real> [m] "noneif(<z>,<z>,<z>*<w_real>/<w[r=1]>)" output,input # real position of ball after possible bounce
 
 # drag force
 NONE_DERIVED <Re_D> [] "<rho_g>*abs(<w>)*<D>/<mu_g>" # Reynolds number for ball

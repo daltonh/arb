@@ -2399,7 +2399,7 @@ if (transient_simulation) call update_and_check_initial_transients
 if (newtient_simulation) call update_and_check_initial_newtients
 
 ! run through setting initial derived and equation variables
-call update_and_check_derived_and_equations
+call update_and_check_derived_and_equations(setup=.true.)
 
 ! spray out some info about all the var variables
 if (debug_sparse) then

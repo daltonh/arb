@@ -1406,18 +1406,27 @@ end subroutine find_sensitive_equation
 
 !-----------------------------------------------------------------
 
-subroutine update_and_check_derived_and_equations(ierror)
+subroutine update_and_check_derived_and_equations(ierror,setup)
 
 ! this wrapper routine does both the update and checking of these variables
 ! if ierror is present then it will return with the error
 ! if ierror is not present, then any error will halt the simulation
+! if setup is present and true, then data will be read from a file if the individual variable option is specified (v0.50)
 
 use general_module
 use equations_module
+logical, optional :: setup
 integer, optional :: ierror
 integer :: ierrorl
+logical :: setupl ! local version of setup
 
-call update_derived_and_equations
+if (present(setup)) then
+  setupl = setup
+else
+  setupl = .false.
+end if
+
+call update_derived_and_equations(setupl)
 
 call check_variable_validity(type='derived',ierror=ierrorl)
 if (ierrorl /= 0) then

@@ -1115,6 +1115,7 @@ sub read_input_files {
         }
       }
 
+# ref: options, ref: componentoptions
 # options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
 #p  derivative/noderivative - for DERIVED, EQUATION, LOCAL : do or do not calculate Jacobian derivatives for this variable
 #p  positive/negative/nocheck - for DERIVED, UNKNOWN, EQUATION, LOCAL : check at each iteration that variable is positive/negative
@@ -1168,8 +1169,9 @@ sub read_input_files {
               $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$1$2";
             } else { print "WARNING: option $option specified for $variable{$type}[$mvar]{centring} $type $name is only relevant for cell centred variables and is ignored\n"; } }
           elsif ($option =~ /^(|no)component(input)$/i) {
-            if ($type eq "unknown" || $type eq "constant" || $type eq "transient" || $type eq "output") {
+            if ($type eq "unknown" || $type eq "constant" || $type eq "transient" || $type eq "output" || $type eq "derived" || $type eq "equation" ) { # allowing derived and equation now for v0.50
               $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$1$2";
+              if ($type eq "equation") { print "WARNING: are you sure that you want option $option specified for variable $name?\n"; }
             } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
           elsif ($option =~ /^(dynamic|static)magnitude$/i) {
             if ($type eq "unknown" || $type eq "equation") {
@@ -3338,6 +3340,7 @@ sub create_compounds {
 
 #-----------------
 # deal with compound related options, writing them to the fortran file
+# ref: options, ref: compoundoptions
 
   open(FORTRAN_INPUT, ">>$fortran_input_file");
 
@@ -3381,8 +3384,9 @@ sub create_compounds {
             $variable{"compound"}[$mvar2]{"options"} = $variable{"compound"}[$mvar2]{"options"}.",\L$1$3";
           } else { print "WARNING: option $option specified for $variable{compound}[$mvar2]{centring} compound $name is only relevant for cell centred variables and is ignored\n"; } }
         elsif ($option =~ /^(|no)(|compound)(input)$/i) {
-          if ($type eq "unknown" || $type eq "constant" || $type eq "transient" || $type eq "output") {
+          if ($type eq "unknown" || $type eq "constant" || $type eq "transient" || $type eq "output" || $type eq "derived" || $type eq "equation" ) { # allowing derived and equation now for v0.50
             $variable{"compound"}[$mvar2]{"options"} = $variable{"compound"}[$mvar2]{"options"}.",\L$1$3";
+            if ($type eq "equation") { print "WARNING: are you sure that you want option $option specified for compound $name?\n"; }
           } else { print "WARNING: option $option specified for compound $name is not relevant for this type of variable and is ignored\n"; }
         }
 # do not have to check other component options here as they were checked previously

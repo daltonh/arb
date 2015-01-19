@@ -106,12 +106,14 @@ end subroutine setup_external_functions
 
 !-----------------------------------------------------------------
 
-subroutine update_derived_and_equations
+subroutine update_derived_and_equations(setup)
 
 ! here we update all the deriveds and equations
 
 use general_module
+use gmesh_module
 !$ use omp_lib
+logical :: setup ! now needs to know whether we are in the setup phase or not - if so, posibly read in data
 integer :: nvar, m, ns, i, j, k
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -139,6 +141,9 @@ do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="deri
 !  <sub_string:derived>
 
   if (output_variable_update_times) call time_variable_update(thread,1,m)
+
+! read from data file only (possibly) during variable setup
+  if (setup) call read_gmesh(contents='data',var_number=m)
 
   if (debug) then
     formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
@@ -171,6 +176,9 @@ do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="equa
 !  <sub_string:equation>
 
   if (output_variable_update_times) call time_variable_update(thread,1,m)
+
+! read from data file only (possibly) during variable setup
+  if (setup) call read_gmesh(contents='data',var_number=m)
 
   if (debug) then
     formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
