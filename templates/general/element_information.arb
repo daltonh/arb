@@ -1,0 +1,5 @@
+# includes all element information files from general
+INCLUDE "element_coordinates.arb"
+INCLUDE "element_counts.arb"
+INCLUDE "element_dimensions.arb"
+INCLUDE "element_indicies.arb"
