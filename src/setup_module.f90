@@ -507,14 +507,14 @@ subroutine setup_mesh
 
 use general_module
 use gmesh_module
-integer :: i, ii, j, jj, k, kk, gmesh_number, n, ierror, i2, ii2, kk2, k2, jbase, jglue, l
+integer :: i, ii, j, jj, k, kk, ncell, gmesh_number, n, ierror, i2, ii2, kk2, k2, jbase, jglue, l
 type(cell_type) :: default_cell
 double precision, dimension(totaldimensions) :: tangc, normc
 double precision :: maximum_error_angle, error_angle ! a parameter that indicates face curvature (in radians) if any curved 2d geometries are found
 integer, dimension(:), allocatable :: separation_index
 character(len=1000) :: formatline, filename
-logical :: error
-integer, dimension(2), save :: new_size_2d
+logical :: error, push_this_cell
+integer, dimension(2) :: new_size_2d
 logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine setup_mesh'
@@ -938,6 +938,56 @@ do i = 1, itotal
 end do
 
 if (allocated(separation_index)) deallocate(separation_index)
+
+!-------------------------------------
+! run through nodes (re)setting icell (surrounding cells), cell%r and cell%reflect_multiplier for glued_nodes
+! node(k)%icell (and r and reflect_multiplier) needs to have a single entry for each real and glued cell (even to itself)
+! before this loop, glue_faces will have removed duplicate entries for node(k)%icells that are glued (reflected) to themselves through this node, so
+! if the node is glued, base the calculation on an adjacent face%icell that would already (above) have been correctly calculated via subroutine expand_mask
+
+do k = 1, ktotal
+
+  if (.not.node(k)%glue_present) then ! this is the simplest situation - use one allocation based on node(k)%icell size
+    node(k)%reflect_present = .false.
+    ncell = allocatable_integer_size(node(k)%icell)
+    new_size_2d = [totaldimensions,ncell]
+    call resize_integer_2d_array(array=node(k)%reflect_multiplier,new_size=new_size_2d,keep_data=.false.,default_value=1)
+    call resize_double_precision_2d_array(array=node(k)%r,new_size=new_size_2d,keep_data=.false.,default_value=0.d0)
+    do ii = 1, ncell
+      i = node(k)%icell(ii)
+      node(k)%r(:,ii) = cell(i)%x - node(k)%x ! location of cell centres relative to centre of kernel: first index is the dimension (1:3), second is the kernel element number
+    end do
+  else
+! remove icell, and use 'incrementation' to form icell, r and reflect_multiplier, as this will only be for a relatively small number of nodes
+! node(k)%jface only contains faces that are directly attached to node k, so pick any face (the first) on which to base the new node(k)%icell
+! the reflect multipliers from this face will directly translate to the node
+! the r vectors from this face will need to be adjusted for the change from face to node centre (nb, r is vector from node to cell centre here)
+    j = node(k)%jface(1)
+    deallocate(node(k)%icell)
+    do ii = 1, allocatable_integer_size(face(j)%icell)
+      i = face(j)%icell(ii)
+      push_this_cell = .false.
+! see if this cell has the relevant node, either the actual node, or its glued sister
+! do this in two separate statements to avoid second being evaluated if first is already true
+      if (location_in_list(array=cell(i)%knode,element=k) /= 0) then
+        push_this_cell = .true.
+      else if (has_elements_in_common(array1=node(k)%glue_knode,array2=cell(i)%knode)) then
+        push_this_cell = .true.
+      end if
+! cell is attached to node, so add to node(k)%icell array and copy over r (origin shifted) and reflect_multiplier from face(j)
+      if (push_this_cell) then
+        call push_integer_array(array=node(k)%icell,new_element=i)
+        ii2 = allocatable_integer_size(node(k)%icell)
+        new_size_2d = [totaldimensions,ii2]
+        call resize_integer_2d_array(array=node(k)%reflect_multiplier,new_size=new_size_2d,keep_data=.true.)
+        call resize_double_precision_2d_array(array=node(k)%r,new_size=new_size_2d,keep_data=.true.)
+        node(k)%reflect_multiplier(:,ii2) = face(j)%reflect_multiplier(:,ii)
+        node(k)%r(:,ii2) = face(j)%x - node(k)%x + face(j)%r(:,ii)
+      end if
+    end do
+    if (minval(node(k)%reflect_multiplier) /= 1) node(k)%reflect_present = .true.
+  end if
+end do
 
 !-------------------------------------
 ! run through faces and cells checking that number of components is consistent with dimensions

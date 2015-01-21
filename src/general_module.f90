@@ -56,10 +56,10 @@ type node_type
   integer :: type ! integer specifying whether node is within the domain (1) or on a boundary (2)
   double precision, dimension(totaldimensions) :: x ! location of node
   double precision :: dx_kernel ! characteristic dimension of mesh around this node to be used in kernel scaling - approximately equal to the equivalent radii of surrounding cells (not diameter)
-  integer, dimension(:), allocatable :: jface ! array storing j indicies of surrounding faces
-  integer, dimension(:), allocatable :: icell ! array storing i indicies of surrounding cells
+  integer, dimension(:), allocatable :: jface ! array storing j indicies of surrounding faces (directly connected, not via glue)
+  integer, dimension(:), allocatable :: icell ! array storing i indicies of surrounding cells (both directly connected and via glue)
   integer, dimension(:), allocatable :: region_list ! list of regions that the node is a member of
-  integer, dimension(:), allocatable :: glue_knode ! array storing k indicies of any coincident nodes (due to faces being glued together)
+  integer, dimension(:), allocatable :: glue_knode ! array storing k indicies of any coincident nodes (due to faces being glued together) - unallocated if no faces are glueds to this one
   logical :: glue_present ! signifies that some faces that are attached to this node are glued
   logical :: reflect_present ! signifies that some faces within the icells are not only glued, but also includes reflections (in practice means that reflect_multipliers should be allocated and have non-unity values)
   integer, dimension(:,:), allocatable :: reflect_multiplier ! reflect_multiplier for cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position
@@ -2307,8 +2307,6 @@ kk_loop: do kk = 1, ubound(knode,1)
     end do
   end if
   call push_integer_array(array=node(k)%jface,new_element=jface)
-! call resize_integer_array(array=node(k)%jface,change=1)
-! node(k)%jface(ubound(node(k)%jface,1)) = jface
 end do kk_loop
 
 end subroutine add_jface_to_nodes
@@ -2329,12 +2327,10 @@ kk_loop: do kk = 1, ubound(knode,1)
   if (allocated(node(k)%icell)) then
     do ii = 1, ubound(node(k)%icell,1)
       i = node(k)%icell(ii)
-      if (i == icell) cycle kk_loop ! face is already in list, so move on to next node
+      if (i == icell) cycle kk_loop ! cell is already in list, so move on to next node
     end do
   end if
   call push_integer_array(array=node(k)%icell,new_element=icell)
-! call resize_integer_array(array=node(k)%icell,change=1)
-! node(k)%icell(ubound(node(k)%icell,1)) = icell
 end do kk_loop
 
 end subroutine add_icell_to_nodes
@@ -2662,6 +2658,38 @@ end do
 if (debug) write(*,'(a/80(1h-))') 'function location_in_list_dummy'
 
 end function location_in_list_dummy
+
+!-----------------------------------------------------------------
+
+function has_elements_in_common(array1,array2)
+
+! returns true if the two allocatable arrays at least one element in common
+! NB, allows that either not be allocated (returning false)
+
+integer, dimension(:), allocatable :: array1, array2
+logical :: has_elements_in_common
+integer :: i1, i2
+logical, parameter :: debug = .false.
+
+if (debug) write(*,'(80(1h+)/a)') 'function has_elements_in_common'
+
+has_elements_in_common = .false.
+
+if (.not.allocated(array1)) return
+if (.not.allocated(array2)) return
+
+outer_loop: do i1 = 1, ubound(array1,1)
+  do i2 = 1, ubound(array2,1)
+    if (array1(i1) == array2(i2)) then
+      has_elements_in_common = .true.
+      exit outer_loop
+    end if
+  end do
+end do outer_loop
+
+if (debug) write(*,'(a/80(1h-))') 'function has_elements_in_common'
+
+end function has_elements_in_common
 
 !-----------------------------------------------------------------
 

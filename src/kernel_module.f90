@@ -621,18 +621,20 @@ do i = 1, itotal
 end do
 
 ! also deallocate face%reflect_multiplier, cell%reflect_multiplier, face%r and cell%r whenever there isn't any glue operations happening to save memory
+! same with nodes
 new_size_2d = [totaldimensions,2]
-if (.true.) then
-  do j = 1, jtotal
-    if (.not.face(j)%reflect_present) deallocate(face(j)%reflect_multiplier)
-    if (.not.face(j)%glue_present) call resize_double_precision_2d_array(array=face(j)%r,new_size=new_size_2d,keep_data=.true.) ! keep the first two elements for use as facedxup etc
-  end do
-end if
-
 if (.true.) then
   do i = 1, itotal
     if (.not.cell(i)%reflect_present) deallocate(cell(i)%reflect_multiplier)
     if (.not.cell(i)%glue_present) deallocate(cell(i)%r)
+  end do
+  do j = 1, jtotal
+    if (.not.face(j)%reflect_present) deallocate(face(j)%reflect_multiplier)
+    if (.not.face(j)%glue_present) call resize_double_precision_2d_array(array=face(j)%r,new_size=new_size_2d,keep_data=.true.) ! keep the first two elements for use as facedxup etc
+  end do
+  do k = 1, ktotal
+    if (.not.node(k)%reflect_present) deallocate(node(k)%reflect_multiplier)
+    if (.not.node(k)%glue_present) deallocate(node(k)%r)
   end do
 end if
 
