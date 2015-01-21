@@ -154,7 +154,7 @@ subroutine setup_kernels
 ! here we calculate the face and cell centred kernels
 
 use general_module
-integer :: i, j, l, ii, jj, ijk, ii2, i2, kk, ierror, n, kk2, l2, n2
+integer :: i, j, l, ii, jj, ijk, ii2, i2, kk, ierror, n, kk2, l2, n2, k
 integer :: n_domain_kernels, n_domain_elements, n_boundary_kernels, n_boundary_elements, n_elements, &
   min_location, max_location, maximum_separation, minimum_separation, separation, l_coor, i_kernel, local_polynomial_order, &
   total_masks, check_minw_increase, minimum_separation_before, check_minw_limited, total_mask_separations, jglue, nmax
@@ -1440,18 +1440,20 @@ do i = 1, itotal
 end do
 
 ! also deallocate face%reflect_multiplier, cell%reflect_multiplier, face%r and cell%r whenever there isn't any glue operations happening to save memory
+! same with nodes
 new_size_2d = [totaldimensions,2]
-if (.true.) then
-  do j = 1, jtotal
-    if (.not.face(j)%reflect_present) deallocate(face(j)%reflect_multiplier)
-    if (.not.face(j)%glue_present) call resize_double_precision_2d_array(array=face(j)%r,new_size=new_size_2d,keep_data=.true.) ! keep the first two elements for use as facedxup etc
-  end do
-end if
-
 if (.true.) then
   do i = 1, itotal
     if (.not.cell(i)%reflect_present) deallocate(cell(i)%reflect_multiplier)
     if (.not.cell(i)%glue_present) deallocate(cell(i)%r)
+  end do
+  do j = 1, jtotal
+    if (.not.face(j)%reflect_present) deallocate(face(j)%reflect_multiplier)
+    if (.not.face(j)%glue_present) call resize_double_precision_2d_array(array=face(j)%r,new_size=new_size_2d,keep_data=.true.) ! keep the first two elements for use as facedxup etc
+  end do
+  do k = 1, ktotal
+    if (.not.node(k)%reflect_present) deallocate(node(k)%reflect_multiplier)
+    if (.not.node(k)%glue_present) deallocate(node(k)%r)
   end do
 end if
 
