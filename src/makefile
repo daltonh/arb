@@ -243,7 +243,8 @@ ifeq "$(compiler)" "gnu"
   fcomp = gfortran
   cflags += -c -ffree-line-length-none -O$(opt)
 # cdebug += -c -g -Wall -ffree-line-length-none -fcheck=all
-  cdebug += -c -g -Wall -ffree-line-length-none -fbounds-check
+# cdebug += -c -g -Wall -ffree-line-length-none -fbounds-check
+  cdebug += -c -g -Wall -ffree-line-length-none -fbounds-check -Wunused
 # cdebug += -c -g -Wall -ffree-line-length-none
   lflags += -O$(opt)
 # ldebug += -g -Wall -fcheck=all

@@ -55,6 +55,7 @@ end type kernel_type
 type node_type
   integer :: type ! integer specifying whether node is within the domain (1) or on a boundary (2)
   double precision, dimension(totaldimensions) :: x ! location of node
+  double precision :: dx_kernel ! characteristic dimension of mesh around this node to be used in kernel scaling - approximately equal to the equivalent radii of surrounding cells (not diameter)
   integer, dimension(:), allocatable :: jface ! array storing j indicies of surrounding faces
   integer, dimension(:), allocatable :: icell ! array storing i indicies of surrounding cells
   integer, dimension(:), allocatable :: region_list ! list of regions that the node is a member of
@@ -63,6 +64,7 @@ type node_type
   logical :: reflect_present ! signifies that some faces within the icells are not only glued, but also includes reflections (in practice means that reflect_multipliers should be allocated and have non-unity values)
   integer, dimension(:,:), allocatable :: reflect_multiplier ! reflect_multiplier for cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position
   double precision, dimension(:,:), allocatable :: r ! relative position of cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position
+  type(kernel_type), dimension(0:3) :: kernel ! kernel(m) = kernel for the average (m=0) or derivative in the m'th coordinate direction, all based on cell data
 end type node_type
   
 ! this type specifies details of each cell face
@@ -354,8 +356,8 @@ logical, parameter :: output_timings = .true. ! (.true.) whether to time process
 logical, parameter :: output_detailed_timings = .false. ! (.false.) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
 logical, parameter :: output_variable_update_times = .true. ! (.true.) time how long it takes to update each variable (on average) and report in output.stat
 logical, parameter :: ignore_initial_update_times = .true. ! (.true.) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
-logical, parameter :: kernel_details_file = .false. ! (.false.) print out a text file (output/kernel_details.txt) with all the kernel details
-logical, parameter :: mesh_details_file = .false. ! (.false.) print out a text file (output/mesh_details.txt) with all the mesh details
+logical, parameter :: kernel_details_file = .true. ! (.false.) print out a text file (output/kernel_details.txt) with all the kernel details
+logical, parameter :: mesh_details_file = .true. ! (.false.) print out a text file (output/mesh_details.txt) with all the mesh details
 logical, parameter :: region_details_file = .false. ! (.false.) print out a text file (output/region_details.txt) with all the region details
 logical, parameter :: link_details_file = .false. ! (.false.) print out a text file (output/link_details.txt) with all the link details
 logical, parameter :: convergence_details_file = .true. ! (.true.) write some convergence debugging data to output/convergence_details.txt
@@ -4291,11 +4293,11 @@ separation_loop: do while (separation < maximum_separation_l.and.number_added > 
           if (.not.cell_shares_a_node(icentre=icentre,i=i2,reflect_multiplier=reflect_multiplier2,r=r2,dx=dx)) &
             cycle neighbour_loop
         else if (present(jcentre)) then
-            if (debug) write(83,'(a,i3,a,3(i2),a,3(g10.3))') &
-              'checking if face_shares_a_node: i2 = ',i2,': reflect_multiplier2 = ',reflect_multiplier2,': r2 = ',r2
+          if (debug) write(83,'(a,i3,a,3(i2),a,3(g10.3))') &
+            'checking if face_shares_a_node: i2 = ',i2,': reflect_multiplier2 = ',reflect_multiplier2,': r2 = ',r2
           if (.not.face_shares_a_node(jcentre=jcentre,i=i2,reflect_multiplier=reflect_multiplier2,r=r2,dx=dx)) &
             cycle neighbour_loop
-            if (debug) write(83,'(a)') '  it does'
+          if (debug) write(83,'(a)') '  it does'
         end if
       end if
 

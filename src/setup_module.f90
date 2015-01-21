@@ -137,8 +137,8 @@ subroutine read_input_file
 
 use general_module
 use gmesh_module
-integer :: ierror, cut, n, m, gmesh_number, array_size
-character(len=5000) :: textline, otextline, input_string
+integer :: ierror, n, m, gmesh_number, array_size
+character(len=5000) :: textline, otextline
 character(len=1000) :: keyword, name, formatline, region_name, location, options, filename
 character(len=1000), dimension(2) :: glue_region
 character(len=100) :: option_name
@@ -201,22 +201,10 @@ fileloop: do
 
   if (trim(keyword) == 'GLUE_FACES') then ! read in face regions to be glued together and any options
 ! glue_region(1)
-!   cut=scan(textline,'>') ! find end of name string
-!   if (textline(1:1) /= '<'.or.cut<2) call error_stop('first region name in '//trim(keyword)// &
-!     ' definition incorrectly specified on line:'//trim(otextline))
-!   glue_region(1) = textline(1:cut) ! name now includes <>
-!   textline=adjustl(textline(cut+1:len(textline)))
     glue_region(1) = extract_next_string(textline,error,empty=empty,delimiter="<")
     if (error.or.empty) call error_stop('first region name in '//trim(keyword)// &
       ' definition incorrectly specified on line:'//trim(otextline))
 ! glue_region(2)
-!   cut=scan(textline,'>') ! find end of name string
-!   if (textline(1:1) /= '<'.or.cut<2) then
-!     glue_region(2) = glue_region(1) ! assume that the region names are the same
-!   else
-!     glue_region(2) = textline(1:cut) ! name now includes <>
-!   end if
-!   textline=adjustl(textline(cut+1:len(textline)))
     glue_region(2) = extract_next_string(textline,error,empty=empty,delimiter="<")
     if (empty) then
       glue_region(2) = glue_region(1) ! assume that the region names are the same
@@ -432,11 +420,6 @@ fileloop: do
   if (trim(keyword) == 'VARIABLE_OPTIONS') then
     name = extract_next_string(textline,error,empty=empty,delimiter="<")
     if (error.or.empty) call error_stop('variable name in '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
-!   cut=scan(textline,'>') ! find end of name string
-!   if (textline(1:1) /= '<'.or.cut<2) call error_stop('variable name in '//trim(keyword)//' in input file incorrect on line:'// &
-!     trim(textline))
-!   name = textline(1:cut) ! name includes <>
-!   textline=adjustl(textline(cut+1:len(textline)))
 ! find number for this name
     m = var_number_from_name(name)
     if (m == 0) call error_stop('variable '//trim(name)//' specified in arb input file was not found')
@@ -457,11 +440,6 @@ fileloop: do
   if (trim(keyword) == 'COMPOUND_OPTIONS') then
     name = extract_next_string(textline,error,empty=empty,delimiter="<")
     if (error.or.empty) call error_stop('compound name in '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
-!   cut=scan(textline,'>') ! find end of name string
-!   if (textline(1:1) /= '<'.or.cut<2) call error_stop('compound name in '//trim(keyword)//' in input file incorrect on line:'// &
-!     trim(textline))
-!   name = textline(1:cut) ! name includes <>
-!   textline=adjustl(textline(cut+1:len(textline)))
 ! find number for this name
     m = compound_number_from_name(name)
     if (m == 0) call error_stop('compound '//trim(name)//' specified in arb input file was not found')
@@ -529,7 +507,7 @@ subroutine setup_mesh
 
 use general_module
 use gmesh_module
-integer :: i, ii, j, jj, k, kk, ncells, gmesh_number, n, ierror, i2, ii2, kk2, k2, jbase, jglue, l
+integer :: i, ii, j, jj, k, kk, gmesh_number, n, ierror, i2, ii2, kk2, k2, jbase, jglue, l
 type(cell_type) :: default_cell
 double precision, dimension(totaldimensions) :: tangc, normc
 double precision :: maximum_error_angle, error_angle ! a parameter that indicates face curvature (in radians) if any curved 2d geometries are found
@@ -2139,7 +2117,7 @@ subroutine setup_vars
 use general_module
 use equations_module
 use solver_module
-integer :: m, ns, n, mc, o, pptotal, mtype, ierror
+integer :: m, ns, n, mc, o, pptotal, mtype
 character(len=1000) :: formatline, component_list
 character(len=100) :: option_name
 logical :: existing, first, error

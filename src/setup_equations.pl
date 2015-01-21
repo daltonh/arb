@@ -1582,7 +1582,9 @@ sub mequation_interpolation {
 
         if ($from_centring eq "node") {
 # node from_centring: ref: cellfromnodegrad
-          $inbit[$nbits] = "cellkernel[i,".scalar($l+4).",ns]*(".$expression.')'.$reflect_multiplier_string;
+# don't think that reflect_multiplier_string is needed here
+#         $inbit[$nbits] = "cellkernel[i,".scalar($l+4).",ns]*(".$expression.')'.$reflect_multiplier_string;
+          $inbit[$nbits] = "cellkernel[i,".scalar($l+4).",ns]*(".$expression.')';
           $someregion = '<cellkernelregion[l='.scalar($l+4).']>';
           create_someloop($inbit[$nbits],"sum","node",$someregion,$deriv,$otype,$omvar);
 
