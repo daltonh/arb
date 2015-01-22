@@ -1,0 +1,14 @@
+# here we look at all surrounding cells to find bounds on phi
+#CELL_DERIVED <phi upper bound> "cellmax(<phi>,region=<cellicells>)" ON <domain>
+#CELL_DERIVED <phi lower bound> "cellmin(<phi>,region=<cellicells>)" ON <domain>
+# here we look to the cell that is directly upwind to find phi bounds
+# note: using newtstepmax = 5 on these
+# otherwise seems to be osciallations around very small residuals that prevent convergence - future investigation
+# obviously not a problem for transient simulations as there the low order values are used to limit
+CELL_DERIVED <phi upper bound> "facemax(faceif(<facefromcelldirection>*<u_f>,-<huge>,faceave[othercell](<phi>)),default=<phi>,region=<celljfaces>)" ON <domain> newtstepmax=5
+CELL_DERIVED <phi lower bound> "facemin(faceif(<facefromcelldirection>*<u_f>,<huge>,faceave[othercell](<phi>)),default=<phi>,region=<celljfaces>)" ON <domain> newtstepmax=5
+# here we look to the cell that is upwind and upwind of that to find phi bounds
+#CELL_DERIVED <phi upper bound local> "facemax(faceif(<facefromcelldirection>*<u_f>,-<huge>,faceave[othercell](<phi>)),default=<phi>,region=<celljfaces>)" ON <all cells>
+#CELL_DERIVED <phi lower bound local> "facemin(faceif(<facefromcelldirection>*<u_f>,<huge>,faceave[othercell](<phi>)),default=<phi>,region=<celljfaces>)" ON <all cells>
+#CELL_DERIVED <phi upper bound> "facemax(faceif(<facefromcelldirection>*<u_f>,-<huge>,faceave[othercell](<phi upper bound local>)),default=<phi upper bound local>,region=<celljfaces>)" ON <domain>
+#CELL_DERIVED <phi lower bound> "facemin(faceif(<facefromcelldirection>*<u_f>,<huge>,faceave[othercell](<phi lower bound local>)),default=<phi lower bound local>,region=<celljfaces>)" ON <domain>

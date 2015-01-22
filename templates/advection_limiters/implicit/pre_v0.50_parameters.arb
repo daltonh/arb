@@ -1,0 +1,5 @@
+# these are the parameters that are now standard (v0.50)
+NONE_CONSTANT <phi a> 4.0d0 # determines the gradient of the limiter
+NONE_CONSTANT <phi b> 0.3d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)
+NONE_CONSTANT <phi limiter crosskernel max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
+NONE_CONSTANT <phi limiter centralkernel max> 0.05d0 # the maximum multiplier for the central cell value
