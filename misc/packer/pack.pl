@@ -127,12 +127,15 @@ foreach $argument ( @ARGV )  # second loop looks for other options
   }
 }
 
-# the version number is stored in licence/version, and is either 'master' or the full version number
-open (VERSION_FILE, "<licence/version");
-my $dated_version = <VERSION_FILE>;
-chomp($dated_version);
-close (VERSION_FILE);
-if ($dated_version =~ /^master$/) { 
+# the version number is stored in licence/version, and is either 'master' or the full version number, or from a git version, may not even exist
+my $dated_version = 0;
+if (-e "licence/version") {
+  open (VERSION_FILE, "<licence/version");
+  $dated_version = <VERSION_FILE>;
+  chomp($dated_version);
+  close (VERSION_FILE);
+}
+if (!($dated_version) || $dated_version =~ /^master$/) { 
   print "INFO: as this is an un-distributed code version, a new dated version number will be created for the packed version\n";
   open(SRC, "<src/general_module.f90") or die "ERROR: problem opening src/general_module.f90 to find version number\n";
   while (<SRC>) {
