@@ -22,7 +22,10 @@ CELL_LOCAL <phi diff> "cellmin(<phi upper bound>-<phi>,-(<phi lower bound>-<phi>
 CELL_LOCAL <phi diff bounded> "cellmax(<phi diff>,0.d0)" ON <domain>
 # these numbers control how aggressively the limiter limits and hence the diagonal dominance of the resulting jacobian matrix
 NONE_CONSTANT <phi a> 4.0d0 # determines the gradient of the limiter
-NONE_CONSTANT <phi b> 0.3d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)
+NONE_CONSTANT <phi b> 0.25d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)
 CELL_DERIVED <phi betar> "<phi diff bounded>/(<phi deltac>+<phi eps>)" ON <domain>
 CELL_LOCAL <phi limiter domain> "cellif(1.d0-<phi b>*<phi betar>,<phi betar>^2/(<phi betar>^2+<phi a>*(1.d0-<phi b>*<phi betar>)^2),1.d0)"
 CELL_DERIVED <phi limiter> "cellif(celldelta(<domain>),<phi limiter domain>,0.d0)" ON <all cells>
+
+# overwrite various parameters that define how conservative (ie, stable) the limiter is
+INCLUDE "default_parameters"
