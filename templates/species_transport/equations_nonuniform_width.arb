@@ -1,0 +1,30 @@
+# transport equations for a generic species c
+CONSTANT <c_D> [1] 1.d0 # diffusivity of species
+CONSTANT <c_inlet_conc> [1] 1.d0 # inlet concentration of species
+
+CELL_UNKNOWN <c> [1] "0.d0" ON <all cells> magnitude=1.d0 # remember to put in characteristic magnitude later in the file if it isn't 1
+CELL_LOCAL <c_pos> "cellmax(<c>,0.d0)" # may be needed for reactions
+<<transientcomment>>CELL_TRANSIENT <c[r=1]> "<c>" "<c>" ON <all cells>
+
+INCLUDE_ROOT "advection_limiters/implicit"
+INCLUDE "relative_steady_state_limiter.arb" R "<phi" W "<c"
+#INCLUDE "conservative_parameters" R "<phi" W "<c"
+NONE_CONSTANT <c magnitude> 1.d0
+
+FACE_DERIVED <c_f> "faceave[advection](<c>,<u_f>,<c limiter>)" ON <all faces>
+FACE_DERIVED <c_j_f> "<c_f>*<u_f>-<c_D>*facegrad(<c>)" ON <all faces>
+CELL_DERIVED <c_source> "0.d0" ON <domain> # overwrite this with volume reactions from other species
+# implicit timestepping right now
+<<steadystatecomment>>CELL_EQUATION <c equation> "celldiv(<W_f>*<c_j_f>)/<W_c> - <c_source>" ON <domain>
+<<transientcomment>>CELL_EQUATION <c equation> "(<c>-<c[r=1]>)/<dt> + celldiv(<W_f>*<c_j_f>)/<W_c> - <c_source>" ON <domain>
+FACE_EQUATION <c walls> "<c_j_f>" ON <walls>
+# here are some ideas re how to change the inlet concentration with time
+#NONE_TRANSIENT <c_inlet> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc>,0.d0))" # injection of species
+#NONE_TRANSIENT <c_inlet> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc>,0.d0))" # injection of species
+FACE_EQUATION <c inlet> "<c>-<c_inlet_conc>" ON <inlet>
+FACE_EQUATION <c outlet> "faceif(<u_f>,facegrad(<c>),<c>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+
+NONE_OUTPUT <c bulk ave outlet> "abs(facesum(<c>*<facearea>*<W_f>*<u_f>,region=<outlet>))/nonemax(abs(facesum(<facearea>*<W_f>*<u_f>,region=<outlet>)),1.d-10)"
+NONE_OUTPUT <c bulk ave inlet> "abs(facesum(<c>*<facearea>*<W_f>*<u_f>,region=<inlet>))/nonemax(abs(facesum(<facearea>*<W_f>*<u_f>,region=<inlet>)),1.d-10)"
+NONE_OUTPUT <c maximum> "cellmax(<c>,region=<all cells>)"
+NONE_OUTPUT <c minimum> "cellmin(<c>,region=<all cells>)"
