@@ -5551,7 +5551,7 @@ sub extract_replacements {
   my $cancel = 0;
   my $default = 0;
 
-  if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT))\s+/i) { # found a replacement
+  if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement
     print DEBUG "found a replace statement specified as $1: $'\n";
     if (nonempty($3)) { $default=1; }
     $line = $';
