@@ -1,24 +1,24 @@
 // 2d_channel_with_cylinder
-// actually the same mesh as used for the turbulence problem, but without the boundary layers on the (now free-slip) walls
+// actually modified from the mesh used in the turbulence problem, but without the boundary layers on the (now free-slip) walls
 
 lc = 0.15;  // charateristic mesh length variable
 lcf = 0.01;  // finer mesh length
 lcbl = 0.005; // boundary layer finest cell thickness
 // centre and radius of cylinder
 xcylinder = 2.;
-ycylinder = 0.5;
+ycylinder = 0.0; // now on centreline
 rcylinder = 0.2;
 // size of housing box
 xbox = 5;
-ybox = 1;
+ybox = 2;
 
 // setup domain boundaries
-Point(1) = {0, 0, 0, lc};
-Point(15) = {xcylinder, 0, 0, lcf};
-Point(2) = {xbox, 0,  0, lc} ;
-Point(3) = {xbox,    ybox, 0, lc} ;
-Point(16) = {xcylinder, ybox, 0, lcf};
-Point(4) = {0,  ybox, 0, lc} ;
+Point(1) = {0, -ybox/2, 0, lc};
+Point(15) = {xcylinder, -ybox/2, 0, lc/2};
+Point(2) = {xbox, -ybox/2,  0, lc} ;
+Point(3) = {xbox,    ybox/2, 0, lc} ;
+Point(16) = {xcylinder, ybox/2, 0, lc/2};
+Point(4) = {0,  ybox/2, 0, lc} ;
 
 Line(1) = {1,15} ;
 Line(15) = {15,2} ;

@@ -10,6 +10,7 @@ VERSION 0.50 # the version of syntax used in this file
 INFO_TITLE "Transient flow around a sphere with species transient"
 INFO_DESCRIPTION "Demonstrates transient flow setup as well as transient species transport"
 INFO_DESCRIPTION+ ": parameters used in this demonstration file will result in a low accuracy simulation due to large timestep"
+INFO_DESCRIPTION+ ": by default low order upwinding is used here for momentum advection, and high order limited upwinding on species"
 INFO_AUTHOR "Dalton Harvie"
 INFO_DATE "28/1/15" # interpreted as the last modification date
 
@@ -38,7 +39,7 @@ FACE_REGION <inlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <inlet>"
 FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
 FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
 FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
-CELL_REGION <wake monitor> "AT 2.5d0 0.5d0 0.d0 PART OF <domain>"
+CELL_REGION <wake monitor> "AT 2.5d0 0.d0 0.d0 PART OF <domain>"
 
 # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
 # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
@@ -98,7 +99,7 @@ INCLUDE "walls_slip" R "<walls" W "<slip walls" # nonslip walls BC, do string re
 INCLUDE "inlet_u_set" # plug flow inlet velocity profile - for inertial problems setting velocity profile directly is more stable than using fully_developed templates
 
 # overwrite the default properties with the following
-NONE_CONSTANT <Re> 2.d+2 # this will be based on the cylinder diameter and plug flow velocity
+NONE_CONSTANT <Re> 5.d+2 # this will be based on the cylinder diameter and plug flow velocity
 CONSTANT <rho> [1] 1.d0 # density
 CONSTANT <u_av> [1] 1.0d0 # average inlet velocity
 CONSTANT <mu> [1] "<rho>*<u_av>*<cylinder size>/<Re>" # viscosity of liquid, NB, whole problem is nondimensional
@@ -119,6 +120,7 @@ VARIABLE <u[l=2]> magnitude=2.d0
 # some numerical values
 VARIABLE <adv_limiter> 0.d0 # this is the most stable - ie, first order upwinding on momentum advection
 CONSTANT <dt_initial> [] 1.d-1 # now taking huge timestep, overwriting the default timestep used in transient_constant_setup which is roughly based on a CFL number
+CONSTANT <dt_out> [] 3.d-1
 
 # some monitoring variables
 NONE_OUTPUT <centreline inlet p> "facesum(<p_f>,region=<inlet centreline>)"

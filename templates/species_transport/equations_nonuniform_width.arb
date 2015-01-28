@@ -1,4 +1,4 @@
-# transport equations for a generic species c
+# transport equations for a generic species c in a channel that may have nonuniform width
 
 # default is that high order advection is used unless these two strings are set upstream to be opposite
 GENERAL_REPLACEMENTS DEFAULT "<<specieshighorderadvectioncomment>>" W "" DEFAULT "<<speciesloworderadvectioncomment>>" W "#"
