@@ -3,22 +3,12 @@
 # user interface for visualising contents of output/output_step.csv
 # requires additional python libraries which can be installed following these steps
 
-
 # ubuntu:
-
-# sudo apt-get install python-pip 
-# sudo apt-get install python-dev 
-# sudo pip install --upgrade numpy 
-# sudo pip install --upgrade pandas 
-# sudo pip install --upgrade numexpr 
-# sudo apt-get install python-wxgtk2.8 python-wxtools wx2.8-doc wx2.8-examples wx2.8-headers wx2.8-i18n
-# sudo apt-get install python-matplotlib
+# run the script "misc/track/install_plot_dependencies_on_ubuntu.sh"
 
 # osx:
-
 # easiest method is to use a python install such as 
 # enthought canopy express (https://store.enthought.com/downloads/)
-
 
 # import required modules
 import time
