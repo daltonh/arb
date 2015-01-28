@@ -11,8 +11,8 @@ use File::Copy;
 use File::Path qw(make_path);
 
 
-my $help_mode = 1; # help mode gives hopefully-useful extra information
-my $debug_mode = 1; # everything still works in debug mode, just more output along the way
+my $help_mode = 0; # help mode gives hopefully-useful extra information
+my $debug_mode = 0; # everything still works in debug mode, just more output along the way
 
 # if $restore_write_permissions is false, linked items in the @disable array below will always be non-writable (this is just a safety feature in case you try to delete the archive itself)
 # if $restore_write_permissions is true, then only the links associated with any current current detached-mode checkout are likely to be protected
@@ -130,9 +130,6 @@ if (defined $ARGV[0]) {
   exit;
   }
 }
-
-
-
 close(IGNORE);
 
 
@@ -600,14 +597,15 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
     #
     # (behaviour 1)
     #       we want to check out this commit
-    #       if this commit is in the archive, we want to make links to the archive and remove user write permissions
-
+    #         if this commit is in the archive, we want to make links to the archive and remove user write permissions
 
     # check if a branch name was used as input
     my $branch_name_requested = '';
     my $heads_output = '';
     my @heads_hashes = ();
     my $checkout_argument_is_at_end_of_a_branch = '';
+    $heads_output = `git for-each-ref refs/heads/`;
+    @heads_hashes = split(/\n/, $heads_output);
 
     my $checkout_argument_is_a_branch_name=`git show-branch -g $checkout_argument 2>/dev/null`;
     if ($checkout_argument_is_a_branch_name) {
@@ -616,8 +614,6 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
     } else {
       # a hash was used as input
       # check if the hash is on the end of any branch
-      $heads_output = `git for-each-ref refs/heads/`;
-      @heads_hashes = split(/\n/, $heads_output);
       foreach my $item (@heads_hashes) {
         my @fields = split(/\s/, $item);
         $item = $fields[0];
@@ -632,6 +628,7 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
     if ($checkout_argument_is_a_branch_name) {
       $checkout_argument_is_at_end_of_a_branch = 'yes';
     }
+
 
 # see if we're already at where we want to go
     if (!($checkout_argument_is_a_branch_name)) {
@@ -666,6 +663,7 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
   my $stash_message = 'Auto-generated track stash';
   # want to know if $commit is at end of branch
   my $commit_was_at_end_of_branch = any { /$commit/ } @heads_hashes;  
+  
   if ($commit_was_at_end_of_branch) {
     # the commit from which `track checkout` was called is at the end of a known branch
     
@@ -957,3 +955,4 @@ sub get_thread_count {
     
   return $thread_count;
 }
+
