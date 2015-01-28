@@ -1,7 +1,10 @@
 #--------------------------------------------------------
-# set <phi upper bound> and <phi lower bound> based on surrounding cells
+# set <phi upper bound> and <phi lower bound> based on upwind surrounding cells
 
-INCLUDE "relative_steady_state_limits"
+# for a steady-state problem use upwinding to find limits on phi
+# note: using newtstepmax = 5 on these otherwise seems to be oscillations around very small residuals that prevent convergence - not surprising
+CELL_DERIVED <phi upper bound> "cellmax[maxseparation=<<upwindseparation>>,faceseparation](<phi>,default=<phi>,region=<all cells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> newtstepmax=5,nooutput
+CELL_DERIVED <phi lower bound> "cellmin[maxseparation=<<upwindseparation>>,faceseparation](<phi>,default=<phi>,region=<all cells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> newtstepmax=5,nooutput
 
 #--------------------------------------------------------
 # do all the limiter calcs
