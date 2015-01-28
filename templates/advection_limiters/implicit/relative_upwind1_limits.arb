@@ -1,6 +1,0 @@
-# calculate the upwind cell-centred phi which will be used to identify relative limits
-INCLUDE "upwind_phi"
-
-# here we look to the cell that is directly upwind to find phi bounds
-CELL_DERIVED <phi upper bound> "facemax(faceif(<facefromcelldirection>*<u_f>,-<huge>,faceave[othercell](<phi_c low order>)),default=<phi_c low order>,region=<celljfaces>)" ON <domain>
-CELL_DERIVED <phi lower bound> "facemin(faceif(<facefromcelldirection>*<u_f>,<huge>,faceave[othercell](<phi_c low order>)),default=<phi_c low order>,region=<celljfaces>)" ON <domain>

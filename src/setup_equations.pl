@@ -438,7 +438,7 @@ sub read_input_files {
   my ($file, $oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $region, $otype, $match, $tmp1, $tmp2,
     $handle, $try_dir, $n1, $n2, $search, $replace, $working, $comments, $error, $region_constant, $n,
-    $clearoptions, $condition, $option, $option_name, $key, $append, $cancel);
+    $clearoptions, $condition, $option, $option_name, $key, $append, $cancel, $default);
 
   my %region_list = (); # has containing the centring and list of regions most recently specified in the input file
   my $default_options = ""; # default options prepended to each statement read in
@@ -575,8 +575,9 @@ sub read_input_files {
         }
 # now extract replacements
         while (!($line=~/^\s*(|#.*)$/)) {
-          ($search,$replace,$cancel) = extract_replacements($line,$file,$oline);
+          ($search,$replace,$cancel,$default) = extract_replacements($line,$file,$oline);
           if ($cancel) { error_stop("string replacements for individual files cannot be cancelled:\nfile = $file :line = $oline"); }
+          if ($default) { error_stop("default string replacements for individual files are not implemented:\nfile = $file :line = $oline"); }
           if (nonempty($search)) {
             %{$input_files[$#input_files]{"replacements"}[$#{$input_files[$#input_files]{"replacements"}}+1]} = ( search => $search, replace => $replace );
           }
@@ -626,8 +627,19 @@ sub read_input_files {
         print "INFO: found GENERAL_REPLACEMENTS statement in file = $file\n";
         if ($2 =~ /#/) {$line = '';} else {$line = $';}
         while (!($line=~/^\s*$/ || $line =~ /^\s*#/)) {
-          ($search,$replace,$cancel) = extract_replacements($line,$file,$oline);
+          ($search,$replace,$cancel,$default) = extract_replacements($line,$file,$oline);
           if (nonempty($search)) {
+# if the replacement is a default replacement, first need to check whether string is part of an existing input file replacement
+            if ($default) {
+              foreach $n1 ( reverse( 0 .. $#input_files ) ) {
+                foreach $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
+                  if ($search eq $input_files[$n1]{"replacements"}[$n2]{"search"}) { # found search string in input file replacements
+                    print "INFO: general replacement (default) search string $search cancelled as the string is already present as an input file string replacement\n";
+                    last;
+                  }
+                }
+              }
+            }
 # v0.42 general replacements of each search string is unique
             for $n ( 0 .. $#general_replacements+1 ) {
               if ($n == $#general_replacements+1) {
@@ -641,6 +653,8 @@ sub read_input_files {
                 if ($cancel) {
                   splice(@general_replacements,$n,1);
                   print "INFO: cancelling previous general replacements search string: search = $search\n";
+                } elsif ($default) {
+                  print "INFO: general replacement (default) search string $search cancelled as the string is already present as a general string replacement\n";
                 } else {
                   %{$general_replacements[$n]} = ( search => $search, replace => $replace );
                   print "INFO: replaced general replacements search and replace pair: search = $search: replace = $replace\n";
@@ -752,7 +766,7 @@ sub read_input_files {
         next;
       }
 
-      elsif ( $line =~ /^\s*(((FACE|CELL|NODE)_REGION)|MSH_FILE|LINEAR_SOLVER|((KERNEL|SOLVER)(|S|_OPTION(|S)))|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES)($|\s)/i ) {
+      elsif ( $line =~ /^\s*(((FACE|CELL|NODE)_REGION)|MSH_FILE|((KERNEL|SOLVER)(|S|_OPTION(|S)))|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES)($|\s)/i ) {
 # these are commands that need to be transferred unaltered to the arb input file
         $keyword = "\U$1";
         $line = $'; $line =~ s/^\s*//;
@@ -778,6 +792,10 @@ sub read_input_files {
 
       elsif ( $line =~ /^\s*(READ_GMSH)($|\s)/i ) {
         error_stop("READ_GMSH keyword has been depreciated, use MSH_FILE instead.\nfile = $file: line = $oline\n");
+      }
+
+      elsif ( $line =~ /^\s*(LINEAR_SOLVER)($|\s)/i ) {
+        error_stop("LINEAR_SOLVER keyword has been depreciated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline\n");
       }
 
 # # read in glue_face
@@ -4757,8 +4775,8 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"name"} = "<facefromcelldirection>"; # this is positive if the normal points outwards from the last cell
   $variable{"system"}[$m{"system"}]{"centring"} = "face";
   $variable{"system"}[$m{"system"}]{"maxima"} = "facefromcelldirection[i,j]";
-  $variable{"system"}[$m{"system"}]{"fortran"} = "sign(1.d0,divop(i,j))";
-  $variable{"system"}[$m{"system"}]{"units"} = "$lengthunit^(-1)";
+# $variable{"system"}[$m{"system"}]{"fortran"} = "sign(1.d0,divop(i,j))"; # this doesn't work on a boundary cell, but the new function will
+  $variable{"system"}[$m{"system"}]{"fortran"} = "facefromcelldirection(i,j)";
   $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<facedivop>"; # this is positive if the normal points outwards from the last cell
   $variable{"system"}[$m{"system"}]{"centring"} = "face";
@@ -5520,6 +5538,7 @@ sub extract_replacements {
 # exit with two strings and a flag
 #  ( search, replace, cancel )
 # $_[3] = cancel = 0,1, indicates whether the CANCEL "string" was used
+# $_[4] = default = 0,1, indicates whether the REPLACE* or R* or DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
 # if search is empty then no string was found
 
   use strict;
@@ -5530,9 +5549,11 @@ sub extract_replacements {
   my $search = '';
   my $replace = '';
   my $cancel = 0;
+  my $default = 0;
 
-  if ($line =~ /^(R|REPLACE)\s+/i) { # found a replacement
-    print DEBUG "found a replace statement: $'\n";
+  if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT))\s+/i) { # found a replacement
+    print DEBUG "found a replace statement specified as $1: $'\n";
+    if (nonempty($3)) { $default=1; }
     $line = $';
     $search = extract_first($line,$error);
     if (!($search) || $error) {
@@ -5543,7 +5564,7 @@ sub extract_replacements {
       $replace = extract_first($line,$error);
       if ($error) { print "WARNING: possible replacement sequence skipped as replace string not identified from:\nfile = $file: line = $oline\n"; $search = ''; }
     }
-    print DEBUG "search = $search: replace = $replace\n";
+    print DEBUG "search = $search: replace = $replace: default = $default\n";
   } elsif ($line =~ /^(C|CANCEL)\s+/i) { # found a string to cancel
     print DEBUG "found a cancel statement: $'\n";
     $line = $';
@@ -5559,7 +5580,7 @@ sub extract_replacements {
   }
 
   $_[0] = $line;
-  return ($search,$replace,$cancel);
+  return ($search,$replace,$cancel,$default);
 
 }
 

@@ -5053,6 +5053,24 @@ end function facereflect
 
 !-----------------------------------------------------------------
 
+function facefromcelldirection(i,j)
+
+! this is positive if the normal points outwards from the last cell
+! this function does not check for out-of-bounds, and technically only checks whether cell i is the downcell for face j
+
+integer :: i,j
+double precision :: facefromcelldirection
+
+if (face(j)%icell(1) == i) then
+  facefromcelldirection = 1.d0
+else
+  facefromcelldirection = -1.d0
+end if
+
+end function facefromcelldirection
+
+!-----------------------------------------------------------------
+
 end module general_module
 
 !----------------------------------------------------------------------------

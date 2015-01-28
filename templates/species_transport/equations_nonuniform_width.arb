@@ -1,4 +1,8 @@
 # transport equations for a generic species c
+
+# default is that high order advection is used unless these two strings are set upstream to be opposite
+GENERAL_REPLACEMENTS DEFAULT "<<specieshighorderadvectioncomment>>" W "" DEFAULT "<<speciesloworderadvectioncomment>>" W "#"
+
 CONSTANT <c_D> [1] 1.d0 # diffusivity of species
 CONSTANT <c_inlet_conc> [1] 1.d0 # inlet concentration of species
 
@@ -6,15 +10,17 @@ CELL_UNKNOWN <c> [1] "0.d0" ON <all cells> magnitude=1.d0 # remember to put in c
 CELL_LOCAL <c_pos> "cellmax(<c>,0.d0)" # may be needed for reactions
 <<transientcomment>>CELL_TRANSIENT <c[r=1]> "<c>" "<c>" ON <all cells>
 
-INCLUDE_ROOT "advection_limiters/implicit"
-<<steadystatecomment>>INCLUDE "relative_steady_state_limiter.arb" R "<phi" W "<c"
-<<transientcomment>>INCLUDE "relative_transient_limiter.arb" R "<phi" W "<c"
-#INCLUDE "conservative_parameters" R "<phi" W "<c"
-NONE_CONSTANT <c magnitude> 1.d0
-# to use low order advection just include the following afterwards
-#CELL_DERIVED <c limiter> "0.d0" ON <all cells>
+<<specieshighorderadvectioncomment>>INCLUDE_ROOT "advection_limiters/implicit"
+<<specieshighorderadvectioncomment>><<steadystatecomment>>INCLUDE "relative_steady_state_limiter.arb" R "<phi" W "<c"
+<<specieshighorderadvectioncomment>><<transientcomment>>INCLUDE "relative_transient_limiter.arb" R "<phi" W "<c"
+<<specieshighorderadvectioncomment>>#INCLUDE "conservative_parameters" R "<phi" W "<c"
+<<specieshighorderadvectioncomment>>NONE_CONSTANT <c magnitude> 1.d0
+<<specieshighorderadvectioncomment>>FACE_DERIVED <c_f> "faceave[advection](<c>,<u_f>,<c limiter>,gradient[l=1]=<c limiter grad[l=1]>,gradient[l=2]=<c limiter grad[l=2]>,gradient[l=3]=<c limiter grad[l=3]>)" ON <all faces>
 
-FACE_DERIVED <c_f> "faceave[advection](<c>,<u_f>,<c limiter>)" ON <all faces>
+# to use low order (or non-limited high order) advection just include the following afterwards
+<<speciesloworderadvectioncomment>>NONE_CONSTANT <c limiter> 0.d0
+<<speciesloworderadvectioncomment>>FACE_DERIVED <c_f> "faceave[advection](<c>,<u_f>,<c limiter>)" ON <all faces>
+
 FACE_DERIVED <c_j_f> "<c_f>*<u_f>-<c_D>*facegrad(<c>)" ON <all faces>
 CELL_DERIVED <c_source> "0.d0" ON <domain> # overwrite this with volume reactions from other species
 # implicit timestepping right now
