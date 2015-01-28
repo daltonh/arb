@@ -578,6 +578,7 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
     my $test_existence = `git show $checkout_argument 2>/dev/null`;
     if (!($test_existence)) {
       print "ERROR: $checkout_argument is not in this repository\n";
+      exit;
     }
 
     # check if we're not in the repository root
