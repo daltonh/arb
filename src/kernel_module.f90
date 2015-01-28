@@ -3897,13 +3897,12 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 
 ! add elements to the kernel mask in increasing order of separation up to the maximum_separation
 ! now using stored reflect_multiplier and r arrays
-! TODO: are these set?
     allocate(node(k)%kernel(0)%reflect_multiplier(totaldimensions,nicell))
     node(k)%kernel(0)%reflect_multiplier = node(k)%reflect_multiplier(:,1:nicell)
     allocate(r(totaldimensions,nicell))
     r = node(k)%r(:,1:nicell)
-! TODO: fix this for nodes
-    call expand_mask(kcentre=k,have_icell=.true.,limit_mask_to_shared_nodes=limit_kernel_mask_to_shared_nodes, & 
+! already limited to the central nodes so don't use limit_mask_to_shared_nodes
+    call expand_mask(have_icell=.true.,limit_mask_to_shared_nodes=.false., & 
       include_adjacent_boundary_cells=boundary_node_separations,maximum_separation=maximum_separation,imask=node(k)%kernel(0)%ijk, &
       separation_index=separation_index,separation_array=separation_array, &
       reflect_multiplier=node(k)%kernel(0)%reflect_multiplier,r=r,dx=node(k)%dx)
