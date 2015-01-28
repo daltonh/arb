@@ -1,0 +1,6 @@
+# these lines just output the global CFL number for a transient simulation
+# replace nooutput with output to also output local CFL number
+# <facedivop> is positive if a face normal points outwards from the last cell, so these numbers are based on the total flowrate out of each cell
+<<cartesiancomment>>CELL_LOCAL <CFL local> "<dt>*facesum(faceif(<facedivop>*<u_f>,<facedivop>*<u_f>,0.d0),region=<celljfaces>)" ON <domain> nooutput
+<<cylindricalcomment>>CELL_LOCAL <CFL local> "<dt>*facesum(faceif(<facedivop>*<u_f>,<<radius_f>>*<facedivop>*<u_f>,0.d0),region=<celljfaces>)/<<radius_c>>" ON <domain> nooutput
+NONE_OUTPUT <CFL> "cellmax(<CFL local>,region=<domain>)"

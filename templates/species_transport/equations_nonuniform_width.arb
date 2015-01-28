@@ -7,9 +7,12 @@ CELL_LOCAL <c_pos> "cellmax(<c>,0.d0)" # may be needed for reactions
 <<transientcomment>>CELL_TRANSIENT <c[r=1]> "<c>" "<c>" ON <all cells>
 
 INCLUDE_ROOT "advection_limiters/implicit"
-INCLUDE "relative_steady_state_limiter.arb" R "<phi" W "<c"
+<<steadystatecomment>>INCLUDE "relative_steady_state_limiter.arb" R "<phi" W "<c"
+<<transientcomment>>INCLUDE "relative_upwind1_limiter.arb" R "<phi" W "<c"
 #INCLUDE "conservative_parameters" R "<phi" W "<c"
 NONE_CONSTANT <c magnitude> 1.d0
+# to use low order advection just include the following afterwards
+#CELL_DERIVED <c limiter> "0.d0" ON <all cells>
 
 FACE_DERIVED <c_f> "faceave[advection](<c>,<u_f>,<c limiter>)" ON <all faces>
 FACE_DERIVED <c_j_f> "<c_f>*<u_f>-<c_D>*facegrad(<c>)" ON <all faces>
