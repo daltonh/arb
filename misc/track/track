@@ -230,6 +230,15 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
   system("rm $repository_root/output/.gitignore");
   system("git rm $repository_root/output/.gitignore");
 
+  foreach my $type (@disable) {
+    print "INFO: removing $type/.gitignore\n";
+    system("rm $repository_root/$type/.gitignore");
+    system("git rm $repository_root/$type/.gitignore");
+  }
+
+  print "INFO: Appending \"build/makefile\" to $repository_root/.gitignore\n";
+  system("echo 'build/makefile' >> $repository_root/.gitignore");
+
   # commit the `track init` changes to the repository
   my $init_commit = "git add .gitignore; git commit -m 'init commit made by track' ";
   print "INFO: committing changes to .gitignore\n";
@@ -346,10 +355,10 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
 # prompt for note amendment and add to the commit
   
   # check if we're not in the repository root
-    if ($working_directory ne $repository_root) {
-      #go there
-      chdir($repository_root);
-    }
+  if ($working_directory ne $repository_root) {
+    #go there
+    chdir($repository_root);
+  }
 
 
   # ref: `track notes`
@@ -661,7 +670,7 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
     }
  
   my $stash_storage = '';
-  my $stash_message = 'Auto-generated track stash';
+  my $stash_message = "Auto-generated track stash for branch";
   # want to know if $commit is at end of branch
   my $commit_was_at_end_of_branch = any { /$commit/ } @heads_hashes;  
   
@@ -671,8 +680,8 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
     # request a stash
     print "INFO: we were at the latest commit on the branch $branch\n";
     print "INFO: seeing if a git stash needs to be made\n";
-    print "\trunning `git stash save '$stash_message' `\n";
-    system("git stash save '$stash_message'"); # use the same namespace as per notes
+    print "\trunning `git stash save '$stash_message $branch' `\n";
+    system("git stash save '$stash_message $branch'"); # use the same namespace as per notes
     system("git stash list") if $debug_mode;
 
     # now we'll work out what other special things need to be moved
@@ -732,6 +741,12 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
         system("rm -rf $item");
       }
     }
+
+    print "INFO: making a placeholder build/makefile link\n";
+    system("mkdir $repository_root/build");
+    chdir("$repository_root/build");
+    system("ln -s ../src/makefile makefile");
+    chdir($repository_root);
 
     print "INFO: seeing if any special things need to be synched to $stash_storage\n";
     print "INFO: moving special things\n" if (@special_things_to_move);
@@ -815,7 +830,9 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
       #go there
       chdir($repository_root);
     }
-    opendir(my $directory_handle, $run_archive);   
+
+    opendir(my $directory_handle, "$repository_root/$run_archive") or die ("cannot open $run_archive"); 
+
     my @archived_commit_hashes = grep {-d "$run_archive/$_" && ! /^\.{1,2}$/ && ! /^$stash_namespace/ } readdir($directory_handle);
     closedir($directory_handle);
 
@@ -874,6 +891,13 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
         if ( -d "$source_for_stash_retrival/output" and not -l 'output') {
           system("chmod -R u+w output") if ($restore_write_permissions); # make sure owner has write permissions
         }
+
+        # remove build/makefile link (we'll recreate it later)
+        if ( -d "$source_for_stash_retrival/build") {
+          print "INFO: removing makefile links in the archive\n";
+          system("chmod -R u+w $source_for_stash_retrival/build");
+          system("rm $source_for_stash_retrival/build/makefile");
+        }
         
         # remove any links 
         foreach my $item (@disable) {
@@ -884,10 +908,18 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
           }
         }
 
-        my $return_command = "rsync -a --links --force $source_for_stash_retrival/ $repository_root/"; # use interactive move here
+        my $return_command = "rsync -a $source_for_stash_retrival/ $repository_root/"; # use interactive move here
         print "INFO: moving untracked files back to repository root\n";
         print "INFO: running `$return_command`\n";
         system("$return_command");
+        
+        #if (-d 'build' and not -l 'build') {
+        #  print "INFO: creating link for makefile\n";
+        #  chdir("$repository_root/build/");
+        #  my $create_link = "ln -s ../src/makefile makefile";
+        #  system($create_link);
+        #  chdir($repository_root);
+        #}
 
         print "INFO: removing stash storage area in $run_archive\n";
         my $location = "$repository_root/$run_archive/$stash_namespace\_branch\_$branch_of_specified_commit\_commit\_$specified_commit_hash";
@@ -899,24 +931,26 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
         system($remove_stash_storage);
       } else {
         print "INFO: no stash storage directory exists for this commit\n";
-        print "      tried to look in \"$source_for_stash_retrival\"\n";
+        print "      (tried to look in \"$source_for_stash_retrival\")\n";
       }
 # Apply back the last saved stash that was auto-generated by track, then drop it
-      print "git stash list | grep $stash_message\n";
+      print "git stash list | grep '$stash_message $branch_of_specified_commit'\n";
       my $all_stashes_string = `git stash list`;
       if ($all_stashes_string) {
-        my $auto_stashes_string = `git stash list | grep '$stash_message'`;
-        my @auto_stashes = split(/\n/, $auto_stashes_string);
-        my $latest_stash = $auto_stashes[0];
-        (my $stash_id) = $latest_stash =~ m/(stash\@{\d+})/g;
-        my $apply_stash =  "git stash apply $stash_id";
-        my $drop_stash =  "git stash drop $stash_id";
-        print "INFO: applying stash by running `$apply_stash`\n";
-        system("$apply_stash");
-        print "INFO: dropping stash by running `$drop_stash`\n";
-        system("$drop_stash");
+        # here we only look for stashes that need to be apply to the specified branch
+        my $auto_stashes_string = `git stash list | grep '$stash_message $branch_of_specified_commit'`;
+        if ($auto_stashes_string) {
+          my @auto_stashes = split(/\n/, $auto_stashes_string);
+          my $latest_stash = $auto_stashes[0];
+          (my $stash_id) = $latest_stash =~ m/(stash\@{\d+})/g;
+          my $apply_stash =  "git stash apply $stash_id";
+          my $drop_stash =  "git stash drop $stash_id";
+          print "INFO: applying stash by running `$apply_stash`\n";
+          system("$apply_stash");
+          print "INFO: dropping stash by running `$drop_stash`\n";
+          system("$drop_stash");
+        }
       }
-
       print "INFO: you're now on the end of branch $branch_of_specified_commit\n";
     }
   }
