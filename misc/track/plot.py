@@ -19,6 +19,8 @@ import  wx.lib.mixins.listctrl  as  listmix
 import subprocess
 import re
 
+from cStringIO import StringIO
+
 from threading import Thread
 from wx.lib.pubsub import Publisher
 
@@ -86,26 +88,36 @@ class Data():
         self.process_data()
 
     def open_data(self):
-        if (os.path.isfile(self.step_file_path)):
+        global load_blank
+
+        if (load_blank):
+            self.step_file = blank_csv
+        elif (os.path.isfile(self.step_file_path)):
             self.step_file = open(self.step_file_path)
         else:
-            print "ERROR: output/output_step.csv does not exist"
+            print "ERROR: {} does not exist".format(self.step_file_path)
             print "Try running a with an archived simulation: `track plot <commit-id>`"
             print "or equivalently run `./misc/track/plot.py <commit-id>`"
             
-            print "Available archived simulations are"
             available = next(os.walk(run_archive))[1]
+            if (available):
+                print "Available archived simulations are"
+
             for entry in available:
                 if re.match(r'stash_storage', entry): #re.match matches from start of string
                     pass
                 else:
                     print "\t{}".format(entry)
-            
 
             sys.exit() 
         
     def process_data(self):
-        self.df=pd.read_csv(self.step_file, comment='#')[1:]
+        global load_blank
+        if (load_blank):
+            self.df=pd.read_csv(blank_csv, comment='#')[1:]
+        else:
+            self.df=pd.read_csv(self.step_file, comment='#')[1:]
+        load_blank = 0
         # convert all but header labels to float values
         self.df = self.df[1:].astype(float)
         self.step_file.close()
@@ -1017,9 +1029,11 @@ class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
         
 if __name__ == "__main__":
 
-    # process command line arguments
+    load_blank = 1
+    blank_csv = StringIO('click "Change dataset"') # the simplest csv file
+    
+    # process command line 'blank_csv'
     this_script = sys.argv[0]
-    specified_step_file = 'output/output_step.csv' # default step file
 
     if (len(sys.argv) > 2):
         print "ERROR: incorrect syntax for {}".format(this_script)
@@ -1027,13 +1041,15 @@ if __name__ == "__main__":
         print "\t\ttrack plot"
         print "\t\ttrack plot <commit-id>"
         sys.exit()
-    
+
     if (len(sys.argv) == 2):
+        load_blank = 0
         specified_commit = sys.argv[1]
         global_commit = specified_commit
         print "INFO: {} called using commit {}".format(this_script, specified_commit)
         specified_step_file = os.path.join(run_archive,specified_commit,'output','output_step.csv')
-
+    elif (len(sys.argv) == 1):
+        specified_step_file = 'blank_csv' # as a last resort
 
     data = Data(specified_step_file)
     app = wx.App(False)
