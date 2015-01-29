@@ -991,7 +991,7 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
       my $rsync_fetch = "rsync -a $source $repository_root";
       print "INFO: running `$rsync_fetch`\n";
       system("$rsync_fetch"); # replace with a copy of the actual
-      system("chmod u+w $item"); # restore write permissions
+      system("chmod -R u+w $item"); # restore write permissions
     }
   }
 
