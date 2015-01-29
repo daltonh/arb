@@ -132,7 +132,7 @@ logical, parameter :: scaled_radial_kernel = .true. ! (.true.) the radial kernel
 double precision, parameter :: stretched_uniformity = 0.1d0 ! (0.1d0) stretched_uniformity controls the amount of kernel uniformity across the dimensions (for stretched_radial_kernel), stretched_uniformity = 0 gives no uniformity, stretched_uniformity = 1 makes the effective lengthscales approximately the same and equal to one in all dimensions
 logical, parameter :: uniform_cell_averaging_kernels = .false. ! (.false.) the face->cell and node->cell kernels are uniform - seems to happen anyway using a linear fit, but have not proven this generally
 logical :: check_minw = .true. ! (.true., userable) check that the minw value is large enough
-double precision :: minimum_minw = 0.5d0 ! (0.5d0, userable, changed default from 1.d0 to 0.5d0 for v0.50) minimum value of SVD minw allowed for mask to be acceptable when using adaptive_mask_size
+double precision :: minimum_minw = 1.0d0 ! (1.0d0, userable, changed default from 1.d0 to 0.5d0, and then back to 1.d0 for v0.50) minimum value of SVD minw allowed for mask to be acceptable when using adaptive_mask_size
 
 ! optimisation options:
 logical, parameter :: optimise_positise = .false. ! constrain kernel values in an attempt at getting positive kernels
