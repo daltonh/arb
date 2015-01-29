@@ -91,6 +91,7 @@ class Data():
         else:
             print "ERROR: output/output_step.csv does not exist"
             print "Try running a with an archived simulation: `track plot <commit-id>`"
+            print "or equivalently run `./misc/track/plot.py <commit-id>`"
             
             print "Available archived simulations are"
             available = next(os.walk(run_archive))[1]
