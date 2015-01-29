@@ -86,12 +86,22 @@ class Data():
         self.process_data()
 
     def open_data(self):
-        try:
-           self.step_file = open(self.step_file_path)
-        except:
-            error_string = "ERROR: output/output_step.csv does not exist\n \
-            Try running a with a specific commit: `track plot <commit-id>`"
-            sys.exit(error_string) 
+        if (os.path.isfile(self.step_file_path)):
+            self.step_file = open(self.step_file_path)
+        else:
+            print "ERROR: output/output_step.csv does not exist"
+            print "Try running a with an archived simulation: `track plot <commit-id>`"
+            
+            print "Available archived simulations are"
+            available = next(os.walk(run_archive))[1]
+            for entry in available:
+                if re.match(r'stash_storage', entry): #re.match matches from start of string
+                    pass
+                else:
+                    print "\t{}".format(entry)
+            
+
+            sys.exit() 
         
     def process_data(self):
         self.df=pd.read_csv(self.step_file, comment='#')[1:]
@@ -838,6 +848,8 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
 
             path_scr = os.path.join(run_archive, simulation, 'output', 'output.scr')
             path_csv = os.path.join(run_archive, simulation, 'output', 'output_step.csv')
+
+            timestep_max = ''
             
             try:
 
