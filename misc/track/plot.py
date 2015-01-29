@@ -864,8 +864,7 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
 
             timestep_max = ''
             
-            try:
-
+            if (os.path.isfile(path_scr) and os.path.isfile(path_csv)):
                 tail_scr = os.popen(
                     "tail -10 {0}".format(path_scr)
                     ).read()
@@ -922,7 +921,7 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
                 if (timestep_present):
                     timestep_max = tail_csv.split(',')[0]
 
-            except:
+            else:
                 status = ''
                 wall_time_output = ''
                 cpu_time_output = ''
@@ -981,51 +980,56 @@ class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
 
     def on_activation(self, event):
         global global_commit
-
-
-# uncheck relevant items
-        for item in frame.x1.list.active:
-            frame.x1.list.CheckItem(data.inverted[item]-1, False)
-        for item in frame.y1.list.active:
-            frame.y1.list.CheckItem(data.inverted[item]-1, False)
-        for item in frame.y2.list.active:
-            frame.y2.list.CheckItem(data.inverted[item]-1, False)
-        
         index = event.GetIndex()
         item = frame.selector.available.list.GetItem(index,col=0) # col corresponds to the column where the commits ids are
+
         commit_string = item.GetText()
-        global_commit = commit_string
-
-        # change plot title
-
         path = os.path.join('.archive',commit_string,'output','output_step.csv')
-        data.change_dataset(path)
 
-# stop any refreshing
-        frame.force_stop_refresh()
-
-# clear the plot
-        frame.plot.axis.clear()
-        frame.plot.axis2.clear()
-        frame.plot.canvas.draw()
-
-# clear the old checkbox lists
-        frame.x1.list.clear()
-        frame.y1.list.clear()
-        frame.y2.list.clear()
-
-# make new ones
-        frame.x1.layout(data)
-        frame.y1.layout(data)
-        frame.y2.layout(data)
-
-# this will set the correct length for the list (needed if the total number of output variables changes between archived simulations)
-        frame.x1.run_set_count()
-        frame.y1.run_set_count()
-        frame.y2.run_set_count()
-        
-        # leave the frame open
-        #frame.selector.Destroy() 
+        if (not (os.path.isfile(path))):
+            wx.MessageBox('output_step.csv does not yet exist in {}'.format(path), 'Info', 
+            wx.OK | wx.ICON_INFORMATION)
+        else:
+    # uncheck relevant items
+            for item in frame.x1.list.active:
+                frame.x1.list.CheckItem(data.inverted[item]-1, False)
+            for item in frame.y1.list.active:
+                frame.y1.list.CheckItem(data.inverted[item]-1, False)
+            for item in frame.y2.list.active:
+                frame.y2.list.CheckItem(data.inverted[item]-1, False)
+            
+            
+            global_commit = commit_string
+    
+            # change plot title
+    
+            data.change_dataset(path)
+    
+    # stop any refreshing
+            frame.force_stop_refresh()
+    
+    # clear the plot
+            frame.plot.axis.clear()
+            frame.plot.axis2.clear()
+            frame.plot.canvas.draw()
+    
+    # clear the old checkbox lists
+            frame.x1.list.clear()
+            frame.y1.list.clear()
+            frame.y2.list.clear()
+    
+    # make new ones
+            frame.x1.layout(data)
+            frame.y1.layout(data)
+            frame.y2.layout(data)
+    
+    # this will set the correct length for the list (needed if the total number of output variables changes between archived simulations)
+            frame.x1.run_set_count()
+            frame.y1.run_set_count()
+            frame.y2.run_set_count()
+            
+            # leave the frame open
+            #frame.selector.Destroy() 
         
 if __name__ == "__main__":
 
