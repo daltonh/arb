@@ -810,6 +810,11 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
     def get_archive_data(self):
         available = next(os.walk(run_archive))[1]
 
+        # don't show stash storage in the dialogue box
+        for entry in available:
+            if re.match(r'stash_storage', entry): #re.match matches from start of string
+                available.remove(entry)
+
         # make the data array first
         for (i, simulation) in enumerate(available):
             
