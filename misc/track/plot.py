@@ -767,12 +767,13 @@ class FrameGenerator(wx.Frame):
         self.selector.Show()
     
     def OnQuit(self, event):
+        frame.selector.Destroy() 
         self.Close()
         self.Destroy()
 
 class DatasetSelection(wx.Frame):
      def __init__(self):
-          wx.Frame.__init__(self, None, title="Dataset selection", size=(1200,400))
+          wx.Frame.__init__(self, None, title="Dataset selection", size=(1350,400))
           if (len(frame.monitor_sizes) > 1):
               self.SetPosition((frame.frame_x_location, frame.frame_y_location))
           container_panel_left = wx.Panel(self, -1)
@@ -836,44 +837,85 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
 
 
             path_scr = os.path.join(run_archive, simulation, 'output', 'output.scr')
-            tail_scr = os.popen(
-                    "tail -2 {0}".format(path_scr)
+            path_csv = os.path.join(run_archive, simulation, 'output', 'output_step.csv')
+            
+            try:
+
+                tail_scr = os.popen(
+                    "tail -10 {0}".format(path_scr)
                     ).read()
-            tail_scr.rstrip()
+                tail_scr.rstrip()
 
-            head_scr = os.popen(
-                    "head -3 {0}".format(path_scr)
+                head_scr = os.popen(
+                        "head -3 {0}".format(path_scr)
+                        ).read()
+                head_scr.rstrip()
+
+                tail_csv = os.popen(
+                    "tail -1 {0}".format(path_csv)
                     ).read()
-            head_scr.rstrip()
+                tail_csv.rstrip()
+
+                head_csv = os.popen(
+                    "head -15 {0}".format(path_csv)
+                    ).read()
+                head_csv.rstrip()
+
+                match = re.search( r'WARNING: the simulation was stopped prematurely by the user using a stop file', tail_scr)
+                if (match):
+                    status = 'killed'
+                else:
+                    status = "--"
+
+                match = re.search( r'ERROR: there was an error in one of the solver routines', tail_scr)
+                if (match):
+                    status = 'convergence error'
+
+                match = re.search( r'SUCCESS: the simulation finished gracefully', tail_scr)
+                if (match):
+                    status = 'completed'
+
+                match = re.search( r'total wall time = (.*) : .*total cpu time = (.*)', tail_scr)
+                if (match):
+                    wall_time = match.group(1).lstrip().rstrip()
+                    cpu_time = match.group(2).lstrip().rstrip()
+                    wall_time_output = "{0:.2g}".format(float(wall_time)/60.0)
+                    cpu_time_output = "{0:.2g}".format(float(cpu_time)/60.0)
+                else:
+                    wall_time_output = "--"
+                    cpu_time_output = "--"
+                
+                match = re.search( r'(\d+) threads in use', head_scr)
+                if (match):
+                    threads = match.group(1)
+                    thread_count = threads
+                else:
+                    thread_count = "1"
 
 
-            match = re.search( r'total wall time = (.*) : .*total cpu time = (.*)', tail_scr)
-            if (match):
-                wall_time = match.group(1).lstrip().rstrip()
-                cpu_time = match.group(2).lstrip().rstrip()
-                wall_time_output = "{0:.2g}".format(float(wall_time)/60.0)
-                cpu_time_output = "{0:.2g}".format(float(cpu_time)/60.0)
-            else:
-                wall_time_output = "--"
-                cpu_time_output = "--"
+                timestep_present = re.search(r'<timestep>', head_csv)
+                if (timestep_present):
+                    timestep_max = tail_csv.split(',')[0]
 
-            match = re.search( r'(\d+) threads in use', head_scr)
-            if (match):
-                threads = match.group(1)
-                thread_count = threads
-            else:
-                thread_count = "1"
+            except:
+                status = ''
+                wall_time_output = ''
+                cpu_time_output = ''
+                thread_count = ''
+                timestep_max = ''
 
-            self.archive_data.update({i: (simulation, commit_message, note, relative_time, wall_time_output, cpu_time_output, thread_count)})
+            self.archive_data.update({i: (simulation, commit_message, note, relative_time, status, timestep_max, wall_time_output, cpu_time_output, thread_count)})
 
     def populateList(self):
         self.list.InsertColumn(0, 'commit id', width=150)
         self.list.InsertColumn(1, 'commit message', width=150)
         self.list.InsertColumn(2, 'track notes', width=150)
         self.list.InsertColumn(3, 'relative time', width=150)
-        self.list.InsertColumn(4, 'total wall time (min)', width=150)
-        self.list.InsertColumn(5, 'total cpu time (min)', width=150)
-        self.list.InsertColumn(6, 'threads', width=150)
+        self.list.InsertColumn(4, 'status', width=150)
+        self.list.InsertColumn(5, 'timestep max', width=150)
+        self.list.InsertColumn(6, 'total wall time (min)', width=150)
+        self.list.InsertColumn(7, 'total cpu time (min)', width=150)
+        self.list.InsertColumn(8, 'threads', width=150)
 
         items = self.archive_data.items()
 
@@ -886,9 +928,13 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
             self.list.SetStringItem(index, 4, data[4])
             self.list.SetStringItem(index, 5, data[5])
             self.list.SetStringItem(index, 6, data[6])
+            self.list.SetStringItem(index, 7, data[7])
+            self.list.SetStringItem(index, 8, data[8])
             self.list.SetItemData(index, key)
             index += 1
         self.list.SetColumnWidth( 0, wx.LIST_AUTOSIZE ) 
+        self.list.SetColumnWidth( 1, wx.LIST_AUTOSIZE ) 
+        self.list.SetColumnWidth( 4, wx.LIST_AUTOSIZE ) 
    
     def GetListCtrl(self):
         return self.list
@@ -952,8 +998,9 @@ class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
         frame.x1.run_set_count()
         frame.y1.run_set_count()
         frame.y2.run_set_count()
-
-        frame.selector.Destroy()
+        
+        # leave the frame open
+        #frame.selector.Destroy() 
         
 if __name__ == "__main__":
 
