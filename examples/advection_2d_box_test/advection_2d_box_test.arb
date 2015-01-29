@@ -74,10 +74,8 @@ INCLUDE "absolute_limiter" R "<phi" W "<foo"
 #--------------------
 # relative limiter
 
-#INCLUDE "relative_limiter" R "<phi" W "<foo" # local limits on phi are based on low order phi values that are adjacent to the cell
-#INCLUDE "relative_upwind1_limiter" R "<phi" W "<foo" # local limits are based on cells that are atmost 2 cells upwind of the local cell
-#INCLUDE "relative_upwind2_limiter" R "<phi" W "<foo" # local limits are based on cells that are atmost 2 cells upwind of the local cell
-#INCLUDE "relative_upwind3_limiter" R "<phi" W "<foo" # local limits are based on cells that are atmost 3 cells upwind of the local cell
+#INCLUDE "relative_surrounding_limiter" R "<phi" W "<foo" # local limits on phi are based on low order phi values that are adjacent to the cell
+#INCLUDE "relative_transient_limiter" R "<phi" W "<foo" R "<<limiterupwindseparation>>" W "3" # local limits are based on cells that are atmost 3 cells upwind of the local cell (2 is the default without string replacements)
 
 #CELL_DERIVED <foo_c low order> output
 #CELL_DERIVED <foo upper bound> output

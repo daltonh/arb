@@ -1,0 +1,46 @@
+# setup things needed for transient flow
+# this file works for either dynamic or constant timestepping, which must be set by string replacement from the calling file
+# designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
+
+# <dt_initial> is used to set the intial timestep during dynamic timestepping or constant timestep otherwise
+
+CONSTANT <t_end> [] 1.d2 # time for simulation to stop
+CONSTANT <celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)" # average cell dimension
+CONSTANT <CFL_initial> 1.d-2 # enter a CFL number to set the initial timestep (roughly) - depending on the geometry of cells and non-uniformity of mesh, this may significantly underestimate the actual CFL that results - ie, you may need to choose a smaller number 
+CONSTANT <dt_initial> [] "<CFL_initial>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
+CONSTANT <CFL_out> 10.d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity
+CONSTANT <dt_out> [] "<CFL_out>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
+#CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
+# dynamic timestep constants
+<<dynamictimestepcomment>>CONSTANT <dt_increase> 1.2d0
+<<dynamictimestepcomment>>CONSTANT <dt_max> "<dt_initial>*1.d4"
+<<dynamictimestepcomment>>CONSTANT <dt_min> "<dt_initial>*1.d-3"
+<<dynamictimestepcomment>>CONSTANT <CFL_max> 0.25d0
+
+# transient bits
+TRANSIENT_SIMULATION
+
+GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+
+# dynamic timestep, next 4 lines
+<<dynamictimestepcomment>>NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
+<<dynamictimestepcomment>>FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces>
+<<dynamictimestepcomment>><<cartesiancomment>>CELL_TRANSIENT <CFL local[r=1]> "" "<dt[r=1]>*facesum(faceif(<facedivop>*<u_f[r=1]>,<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)" ON <domain> output
+<<dynamictimestepcomment>><<cylindricalcomment>>CELL_TRANSIENT <CFL local[r=1]> "" "<dt[r=1]>*facesum(faceif(<facedivop>*<u_f[r=1]>,<<radius_f>>*<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)/<<radius_c>>" ON <domain> output
+<<dynamictimestepcomment>>NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
+<<dynamictimestepcomment>>#NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemin(nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>),<dt_surf>)" stepoutput,input
+<<dynamictimestepcomment>>NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+
+# constant timestep, next 1 line
+<<constanttimestepcomment>>NONE_CONSTANT <dt> "<dt_initial>"
+
+NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
+NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
+NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition # this will be true (>0.) whenever we are <dt_out> from last output
+NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
+NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
+
+<<dim1comment>>CELL_TRANSIENT <u[l=1,r=1]> "" "<u[l=1]>" ON <all cells>
+<<dim2comment>>CELL_TRANSIENT <u[l=2,r=1]> "" "<u[l=2]>" ON <all cells>
+<<dim3comment>>CELL_TRANSIENT <u[l=3,r=1]> "" "<u[l=3]>" ON <all cells>
+

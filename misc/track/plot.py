@@ -3,22 +3,12 @@
 # user interface for visualising contents of output/output_step.csv
 # requires additional python libraries which can be installed following these steps
 
-
 # ubuntu:
-
-# sudo apt-get install python-pip 
-# sudo apt-get install python-dev 
-# sudo pip install --upgrade numpy 
-# sudo pip install --upgrade pandas 
-# sudo pip install --upgrade numexpr 
-# sudo apt-get install python-wxgtk2.8 python-wxtools wx2.8-doc wx2.8-examples wx2.8-headers wx2.8-i18n
-# sudo apt-get install python-matplotlib
+# run the script "misc/track/install_plot_dependencies_on_ubuntu.sh"
 
 # osx:
-
 # easiest method is to use a python install such as 
 # enthought canopy express (https://store.enthought.com/downloads/)
-
 
 # import required modules
 import time
@@ -27,6 +17,9 @@ import sys
 import wx
 import  wx.lib.mixins.listctrl  as  listmix
 import subprocess
+import re
+
+from cStringIO import StringIO
 
 from threading import Thread
 from wx.lib.pubsub import Publisher
@@ -38,6 +31,10 @@ import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
+
+# directory storing simulation data
+# see misc/track/track_main.pl
+run_archive = '.archive'
 
 # flags for axis panels
 # setup like this in case future expansion, eg. might want to add x2 axis
@@ -73,32 +70,59 @@ list2 = [
 '#58FAAC',
 ]
 
-# font size for legend
+# font size for lege2e031096434d596ee63b17308aca892065edb44bnd
 legend_font_size=11
 
+# string for storing commit id of present dataset
+global_commit = ''
+
 class Data():
-    def __init__(self):
+    def __init__(self, step_file_path):
 
         # read output_step.csv into pandas data frame
         # ignore the row of dimension strings ([1:])
         # (in future, could use dimension strings to automatically show dimensions in plot labels)
-        
-        self.step_file_path = 'output/output_step.csv'
-        try:
-            self.step_file = open(self.step_file_path)
-        except:
-            sys.exit('ERROR: output/output_step.csv does not exist') 
+        #self.step_file_path = 'output/output_step.csv'
+        self.step_file_path = step_file_path
+        self.open_data()
+        self.process_data()
 
-        self.df=pd.read_csv(self.step_file, comment='#')[1:]
+    def open_data(self):
+        global load_blank
+
+        if (load_blank):
+            self.step_file = blank_csv
+        elif (os.path.isfile(self.step_file_path)):
+            self.step_file = open(self.step_file_path)
+        else:
+            print "ERROR: {} does not exist".format(self.step_file_path)
+            print "Try running a with an archived simulation: `track plot <commit-id>`"
+            print "or equivalently run `./misc/track/plot.py <commit-id>`"
+            
+            available = next(os.walk(run_archive))[1]
+            if (available):
+                print "Available archived simulations are"
+
+            for entry in available:
+                if re.match(r'stash_storage', entry): #re.match matches from start of string
+                    pass
+                else:
+                    print "\t{}".format(entry)
+
+            sys.exit() 
+        
+    def process_data(self):
+        global load_blank
+        if (load_blank):
+            self.df=pd.read_csv(blank_csv, comment='#')[1:]
+        else:
+            self.df=pd.read_csv(self.step_file, comment='#')[1:]
+        load_blank = 0
         # convert all but header labels to float values
         self.df = self.df[1:].astype(float)
         self.step_file.close()
-
-        self.df=pd.read_csv('output/output_step.csv', comment='#')[1:]
-        # convert all but header labels to float values
-        self.df = self.df[1:].astype(float)
-                            
-        # disctionaries needed for ColumnSorterMixin
+   
+        # dictionaries needed for ColumnSorterMixin
         self.variables = {}
         self.variables_stripped = {}
         for i, variable in enumerate(self.df.columns):
@@ -111,6 +135,14 @@ class Data():
         # store a reverse dictionary (possible as variable numbers are unique)
         # can use this to look up variable ID if variable name (eg "'<timestep>'") is known
         self.inverted = dict([[v,k] for k,v in self.variables.items()])
+
+    def change_dataset(self, path):
+        self.step_file_path = path
+        self.open_data()
+        self.process_data()
+    
+    def example_method(self):
+        print 'was called'
 
 class RefreshThread(Thread):
     def __init__(self):
@@ -150,7 +182,6 @@ class SortableListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin, listmix.Che
         self.update_ordered_variables()
         self.GetCheckedList()
         self.update_active()
-        #dump_info()
         frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
     
     def GetCheckedList(self):
@@ -173,6 +204,9 @@ class SortableListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin, listmix.Che
         self.active.sort()
         self.active_count = len(self.active)
 
+    def clear(self):
+        self.ClearAll()
+
 
 class AxisPanel(wx.Panel, listmix.ColumnSorterMixin):
 
@@ -180,24 +214,28 @@ class AxisPanel(wx.Panel, listmix.ColumnSorterMixin):
 
         wx.Panel.__init__( self, parent=parent, id=wx.ID_ANY )
         self.axis = axis
-        self.createAndLayout(data_object)
-        self.list.set_count()
-
-    def createAndLayout(self, data_object):
-        sizer = wx.BoxSizer( wx.VERTICAL )
+        self.create(data_object)
+        self.layout(data_object)
+        self.run_set_count()
+        
+    def create(self, data_object):
+        self.sizer = wx.BoxSizer( wx.VERTICAL )
         self.list = SortableListCtrl( self, wx.ID_ANY, axis=self.axis, style=wx.LC_REPORT
                              | wx.BORDER_NONE
                              | wx.LC_EDIT_LABELS
                              | wx.LC_SORT_ASCENDING, )
 
-        sizer.Add(self.list, 1, wx.EXPAND)
+        self.sizer.Add(self.list, 1, wx.EXPAND)
+
+    def layout(self, data_object):
         self.populateList(data_object)
-
         self.itemDataMap = data.variables_stripped # when sorting the list, use the stripped variables
-
         listmix.ColumnSorterMixin.__init__(self, numColumns=1)
-        self.SetSizer(sizer)
+        self.SetSizer(self.sizer)
         self.SetAutoLayout( True )
+
+    def run_set_count(self):
+        self.list.set_count()
 
     def populateList(self, data_object):
         self.list.InsertColumn(0, axis[self.axis], width=150)
@@ -211,11 +249,14 @@ class AxisPanel(wx.Panel, listmix.ColumnSorterMixin):
     def GetListCtrl(self) :
         return self.list
 
+
 class CanvasPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
         self.figure = Figure(facecolor='white')
         self.axis = self.figure.add_subplot(111)
+        self.axis.set_title(global_commit,fontdict={'fontsize': 8})
+        
         self.axis2 = self.axis.twinx()
         self.axis.ticklabel_format(useOffset=False)
         self.axis2.ticklabel_format(useOffset=False)
@@ -228,8 +269,11 @@ class CanvasPanel(wx.Panel):
         self.SetSizerAndFit(self.sizer)
 
     def update_plot(self,log_options, axis_limits):
+        global global_commit
+
         self.axis.clear()
         self.axis2.clear()
+
         self.legendEntries1=[]
         self.legendEntries2=[]
         self.legendText1=[]
@@ -353,8 +397,7 @@ class CanvasPanel(wx.Panel):
             y2_max = "{0:.3g}".format(y2_lims[1])
             frame.y2_max.SetValue(y2_max)
 
-
-
+        self.axis.set_title(global_commit,fontdict={'fontsize': 8})
         self.canvas.draw()
 
 class FrameGenerator(wx.Frame):
@@ -367,15 +410,16 @@ class FrameGenerator(wx.Frame):
         fitem = fileMenu.Append(wx.ID_EXIT, 'Quit', 'Quit application')
         self.SetMenuBar(menubar)
         self.Bind(wx.EVT_MENU, self.OnQuit, fitem)
+        self.block = 0 # use this to block any incoming subscribed-to messages
 
         # put frame on second screen (if it exists)
         monitors = (wx.Display(i) for i in range(wx.Display.GetCount()))
-        monitor_sizes = [monitor.GetGeometry().GetSize() for monitor in monitors]
-        if (len(monitor_sizes) > 1):
-            primary_monitor_width = monitor_sizes[0][0]
-            frame_x_location = primary_monitor_width + 50
-            frame_y_location = 100
-            self.SetPosition((frame_x_location, frame_y_location))
+        self.monitor_sizes = [monitor.GetGeometry().GetSize() for monitor in monitors]
+        if (len(self.monitor_sizes) > 1):
+            primary_monitor_width = self.monitor_sizes[0][0]
+            self.frame_x_location = primary_monitor_width + 50
+            self.frame_y_location = -50
+            self.SetPosition((self.frame_x_location, self.frame_y_location))
 
         self.data_object = data_object
        
@@ -392,6 +436,17 @@ class FrameGenerator(wx.Frame):
         container_panel_left.SetSizer(vbox_left)
 
         container_panel_options = wx.Panel(self, -1)
+
+
+# change dataset feature
+        change_dataset_box = wx.StaticBox(container_panel_options, label='Archive integration', pos=(5, 200), size=(-1, -1))
+        change_dataset_sizer = wx.StaticBoxSizer(change_dataset_box, wx.VERTICAL)
+        self.change_dataset_button = change_dataset_button = wx.Button(container_panel_options, -1, 'Change dataset', size=(140, -1))       
+        
+        change_dataset_button.Bind(wx.EVT_BUTTON, self.start_refresh)
+        change_dataset_sizer.Add(change_dataset_button, proportion=0, flag=wx.ALL, border=1)
+
+        change_dataset_button.Bind(wx.EVT_BUTTON, self.change_dataset)
 
 # log scale settings
         set_log = wx.StaticBox(container_panel_options, label='Set log scale', pos=(5, 5), size=(120, 100))
@@ -469,7 +524,6 @@ class FrameGenerator(wx.Frame):
         self.y2_min.Bind(wx.EVT_KILL_FOCUS, self.Ony2Min) 
         self.y2_max.Bind(wx.EVT_TEXT_ENTER, self.Ony2Max)
         self.y2_max.Bind(wx.EVT_KILL_FOCUS, self.Ony2Max)
-
 # plot_step.pl export settings
         plot_step_export = wx.StaticBox(container_panel_options, label='plot_step.pl export', pos=(5, 200), size=(-1, -1))
         plot_step_export_sizer = wx.StaticBoxSizer(plot_step_export, wx.VERTICAL)
@@ -509,7 +563,9 @@ class FrameGenerator(wx.Frame):
         start_refresh_button.Bind(wx.EVT_BUTTON, self.start_refresh)
         stop_refresh_button.Bind(wx.EVT_BUTTON, self.stop_refresh)
 
+
         vbox_options = wx.BoxSizer(wx.VERTICAL)
+        vbox_options.Add(change_dataset_sizer, proportion=0, flag=0, border=1)
         vbox_options.Add(set_log_sizer, proportion=0, flag=wx.TOP, border=1)
         vbox_options.Add(set_point_interval_sizer, proportion=0, flag=wx.TOP, border=1)
         vbox_options.Add(set_ranges_sizer, proportion=0, flag=wx.TOP, border=1)
@@ -539,10 +595,12 @@ class FrameGenerator(wx.Frame):
         # subscribe to "update"
         Publisher().subscribe(self.updateDisplay, "update")
 
+        self.selector = 0
+
     def SetLogx1(self, event):
         sender = event.GetEventObject()
         isChecked = sender.GetValue()
-        
+
         if isChecked:
             self.log_options[0] = 1
         else: 
@@ -623,6 +681,7 @@ class FrameGenerator(wx.Frame):
             subprocess.call(plot_step_string, shell=True)
 
     def start_refresh(self, event):
+        self.block = 0
         self.thread = RefreshThread()
         btn = event.GetEventObject()
         btn.Disable()
@@ -636,9 +695,18 @@ class FrameGenerator(wx.Frame):
         frame.start_refresh_button.Enable()
         self.refresh_plot_step_output = False
 
+    def force_stop_refresh(self):
+        frame.stop_refresh_button.Disable()
+        frame.start_refresh_button.Enable()
+        if 'frame.thread' in locals():
+            frame.thread.refresh_state = False
+        self.refresh_plot_step_output = False
+        self.block = 1
+
     def updateDisplay(self, msg):
+        global global_commit
         t = msg.data
-        if isinstance(t, int):
+        if (isinstance(t, int) and not self.block):
             # if we receive an integer message then reload
             # re-read the data
             try:
@@ -648,17 +716,20 @@ class FrameGenerator(wx.Frame):
                 self.data_object.df = self.data_object.df[1:].astype(float)
                 self.data_object.step_file.close()
 
-                self.data_object.df=pd.read_csv('output/output_step.csv', comment='#')[1:]
+                if (global_commit):
+                    path = os.path.join(run_archive,global_commit,'output','output_step.csv')
+                    self.data_object.df=pd.read_csv(path, comment='#')[1:]
+                else:
+                    self.data_object.df=pd.read_csv('output/output_step.csv', comment='#')[1:]
                 self.data_object.df = self.data_object.df[1:].astype(float)
                 self.call_plot_upate()
-
             except:
                 pass
                 #sys.exit('ERROR: output/output_step.csv does not exist') 
 
         else:
             # if we receive a non-integer message then refresh thread will have stopped
-            self.call_plot_upate()
+            #self.call_plot_upate()
             self.start_refresh_button.Enable()
  
     def call_plot_upate(self):
@@ -713,13 +784,278 @@ class FrameGenerator(wx.Frame):
         command = ' '.join(['./plot_step',combined_options,combined_list])
         
         return command
+
+    def change_dataset(self, event):
+        self.selector = DatasetSelection()
+        self.selector.Show()
     
     def OnQuit(self, event):
+        frame.selector.Destroy() 
         self.Close()
+        self.Destroy()
 
+class DatasetSelection(wx.Frame):
+     def __init__(self):
+          wx.Frame.__init__(self, None, title="Dataset selection", size=(1350,400))
+          if (len(frame.monitor_sizes) > 1):
+              self.SetPosition((frame.frame_x_location, frame.frame_y_location))
+          container_panel_left = wx.Panel(self, -1)
+          self.available = DataSelectPanel(container_panel_left, axis=0)
+          vbox_left = wx.BoxSizer(wx.VERTICAL)
+          vbox_left.Add(self.available, proportion=1, flag=wx.EXPAND, border=1)
+          container_panel_left.SetSizer(vbox_left)
+
+class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
+
+    def __init__(self, parent, axis):
+
+        wx.Panel.__init__( self, parent=parent, id=wx.ID_ANY )
+        self.archive_data = {}
+        self.axis = axis
+        self.create()
+        self.get_archive_data()
+        self.populateList()
+        self.itemDataMap = self.archive_data
+        listmix.ColumnSorterMixin.__init__(self, 7)
+        self.Bind(wx.EVT_LIST_COL_CLICK, self.OnColClick, self.list)
+        
+        self.SetSizer(self.sizer)
+        self.SetAutoLayout( True )
+
+    def create(self):
+        self.sizer = wx.BoxSizer( wx.VERTICAL )
+        self.list = SingleSelectListCtrl( self, wx.ID_ANY, axis=self.axis, style=wx.LC_REPORT
+                             | wx.BORDER_NONE
+                             | wx.LC_SINGLE_SEL
+                             | wx.LC_SORT_ASCENDING, )
+
+        self.sizer.Add(self.list, 1, wx.EXPAND)
+
+    def get_archive_data(self):
+        available = next(os.walk(run_archive))[1]
+
+        # don't show stash storage in the dialogue box
+        for entry in available:
+            if re.match(r'stash_storage', entry): #re.match matches from start of string
+                available.remove(entry)
+
+        # make the data array first
+        for (i, simulation) in enumerate(available):
+            
+            commit_message = os.popen(
+                    "git log --format=%B -n 1 {0} | head -1".format(simulation)
+                    ).read()
+            commit_message = commit_message.replace('\n','')
+           
+            note = os.popen(
+                    "git log --no-walk --oneline --show-notes=track {0} 2>/dev/null | awk '/Notes \(track\)/{{getline; print}}'".format(simulation)
+                    ).read()
+            note = note.replace('\n','')
+            note = note.lstrip()
+
+            relative_time = os.popen(
+                    "git show -s --format='%cr' {0}".format(simulation)
+                    ).read()
+            relative_time = relative_time.replace('\n','')
+
+
+            path_scr = os.path.join(run_archive, simulation, 'output', 'output.scr')
+            path_csv = os.path.join(run_archive, simulation, 'output', 'output_step.csv')
+
+            timestep_max = ''
+            
+            if (os.path.isfile(path_scr) and os.path.isfile(path_csv)):
+                tail_scr = os.popen(
+                    "tail -10 {0}".format(path_scr)
+                    ).read()
+                tail_scr.rstrip()
+
+                head_scr = os.popen(
+                        "head -3 {0}".format(path_scr)
+                        ).read()
+                head_scr.rstrip()
+
+                tail_csv = os.popen(
+                    "tail -1 {0}".format(path_csv)
+                    ).read()
+                tail_csv.rstrip()
+
+                head_csv = os.popen(
+                    "head -15 {0}".format(path_csv)
+                    ).read()
+                head_csv.rstrip()
+
+                match = re.search( r'WARNING: the simulation was stopped prematurely by the user using a stop file', tail_scr)
+                if (match):
+                    status = 'killed'
+                else:
+                    status = "--"
+
+                match = re.search( r'ERROR: there was an error in one of the solver routines', tail_scr)
+                if (match):
+                    status = 'convergence error'
+
+                match = re.search( r'SUCCESS: the simulation finished gracefully', tail_scr)
+                if (match):
+                    status = 'completed'
+
+                match = re.search( r'total wall time = (.*) : .*total cpu time = (.*)', tail_scr)
+                if (match):
+                    wall_time = match.group(1).lstrip().rstrip()
+                    cpu_time = match.group(2).lstrip().rstrip()
+                    wall_time_output = "{0:.2g}".format(float(wall_time)/60.0)
+                    cpu_time_output = "{0:.2g}".format(float(cpu_time)/60.0)
+                else:
+                    wall_time_output = "--"
+                    cpu_time_output = "--"
+                
+                match = re.search( r'(\d+) threads in use', head_scr)
+                if (match):
+                    threads = match.group(1)
+                    thread_count = threads
+                else:
+                    thread_count = "1"
+
+
+                timestep_present = re.search(r'<timestep>', head_csv)
+                if (timestep_present):
+                    timestep_max = tail_csv.split(',')[0]
+
+            else:
+                status = ''
+                wall_time_output = ''
+                cpu_time_output = ''
+                thread_count = ''
+                timestep_max = ''
+
+            self.archive_data.update({i: (simulation, commit_message, note, relative_time, status, timestep_max, wall_time_output, cpu_time_output, thread_count)})
+
+    def populateList(self):
+        self.list.InsertColumn(0, 'commit id', width=150)
+        self.list.InsertColumn(1, 'commit message', width=150)
+        self.list.InsertColumn(2, 'track notes', width=150)
+        self.list.InsertColumn(3, 'relative time', width=150)
+        self.list.InsertColumn(4, 'status', width=150)
+        self.list.InsertColumn(5, 'timestep max', width=150)
+        self.list.InsertColumn(6, 'total wall time (min)', width=150)
+        self.list.InsertColumn(7, 'total cpu time (min)', width=150)
+        self.list.InsertColumn(8, 'threads', width=150)
+
+        items = self.archive_data.items()
+
+        index = 0
+        for key, data in items:
+            self.list.InsertStringItem(index, data[0])           
+            self.list.SetStringItem(index, 1, data[1])
+            self.list.SetStringItem(index, 2, data[2])
+            self.list.SetStringItem(index, 3, data[3])
+            self.list.SetStringItem(index, 4, data[4])
+            self.list.SetStringItem(index, 5, data[5])
+            self.list.SetStringItem(index, 6, data[6])
+            self.list.SetStringItem(index, 7, data[7])
+            self.list.SetStringItem(index, 8, data[8])
+            self.list.SetItemData(index, key)
+            index += 1
+        self.list.SetColumnWidth( 0, wx.LIST_AUTOSIZE ) 
+        self.list.SetColumnWidth( 1, wx.LIST_AUTOSIZE ) 
+        self.list.SetColumnWidth( 4, wx.LIST_AUTOSIZE ) 
+   
+    def GetListCtrl(self):
+        return self.list
+    
+    def OnColClick(self, event):
+        event.Skip()
+        pass
+
+
+
+class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
+
+    def __init__( self, parent, ID, axis, pos=wx.DefaultPosition,
+              size=wx.DefaultSize, style=0 ) :
+        
+        wx.ListCtrl.__init__( self, parent, ID, pos, size, style )
+        listmix.ListCtrlAutoWidthMixin.__init__( self )
+        self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.on_activation)
+
+    def on_activation(self, event):
+        global global_commit
+        index = event.GetIndex()
+        item = frame.selector.available.list.GetItem(index,col=0) # col corresponds to the column where the commits ids are
+
+        commit_string = item.GetText()
+        path = os.path.join('.archive',commit_string,'output','output_step.csv')
+
+        if (not (os.path.isfile(path))):
+            wx.MessageBox('output_step.csv does not yet exist in {}'.format(path), 'Info', 
+            wx.OK | wx.ICON_INFORMATION)
+        else:
+    # uncheck relevant items
+            for item in frame.x1.list.active:
+                frame.x1.list.CheckItem(data.inverted[item]-1, False)
+            for item in frame.y1.list.active:
+                frame.y1.list.CheckItem(data.inverted[item]-1, False)
+            for item in frame.y2.list.active:
+                frame.y2.list.CheckItem(data.inverted[item]-1, False)
+            
+            
+            global_commit = commit_string
+    
+            # change plot title
+    
+            data.change_dataset(path)
+    
+    # stop any refreshing
+            frame.force_stop_refresh()
+    
+    # clear the plot
+            frame.plot.axis.clear()
+            frame.plot.axis2.clear()
+            frame.plot.canvas.draw()
+    
+    # clear the old checkbox lists
+            frame.x1.list.clear()
+            frame.y1.list.clear()
+            frame.y2.list.clear()
+    
+    # make new ones
+            frame.x1.layout(data)
+            frame.y1.layout(data)
+            frame.y2.layout(data)
+    
+    # this will set the correct length for the list (needed if the total number of output variables changes between archived simulations)
+            frame.x1.run_set_count()
+            frame.y1.run_set_count()
+            frame.y2.run_set_count()
+            
+            # leave the frame open
+            #frame.selector.Destroy() 
+        
 if __name__ == "__main__":
 
-    data = Data()
+    load_blank = 1
+    blank_csv = StringIO('click "Change dataset"') # the simplest csv file
+    
+    # process command line 'blank_csv'
+    this_script = sys.argv[0]
+
+    if (len(sys.argv) > 2):
+        print "ERROR: incorrect syntax for {}".format(this_script)
+        print "\tuse either"
+        print "\t\ttrack plot"
+        print "\t\ttrack plot <commit-id>"
+        sys.exit()
+
+    if (len(sys.argv) == 2):
+        load_blank = 0
+        specified_commit = sys.argv[1]
+        global_commit = specified_commit
+        print "INFO: {} called using commit {}".format(this_script, specified_commit)
+        specified_step_file = os.path.join(run_archive,specified_commit,'output','output_step.csv')
+    elif (len(sys.argv) == 1):
+        specified_step_file = 'blank_csv' # as a last resort
+
+    data = Data(specified_step_file)
     app = wx.App(False)
     
     directory_name = os.path.basename(os.getcwd())

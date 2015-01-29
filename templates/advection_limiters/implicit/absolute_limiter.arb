@@ -5,10 +5,14 @@
 # INCLUDE "absolute_limiter" R <phi W <foo
 # these will produce a CELL_DERIVED <foo limiter> on <all cells>
 # a byproduct is the CELL_DERIVED <foo limiter grad[l=:]> vectors which can also be reused in the advection calculation, ie
-# FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,<foo limiter>,gradient[l=1]=<foo limiter gradient[l=1]>,gradient[l=2]=<foo limiter gradient[l=2]>)"
+# FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,<foo limiter>,gradient[l=1]=<foo limiter grad[l=1]>,gradient[l=2]=<foo limiter grad[l=2]>,gradient[l=3]=<foo limiter grad[l=3]>)"
 
 # these statements reference the regions <domain>, <all cells> and <all faces> so if non-standard regions are being used these will also have to be replaced
 # the advective flux is assumed to be the face variable <u_f>, so again if this isn't used it will need to be replaced by an alternative velocity
+
+# finally, the magnitude of the <phi> variable needs to be stored in the NONE_CONSTANT <phi magnitude>
+# the default is that this is calculated based on the initial value for <phi>
+# if this won't work (say <phi> is initially 0.d0) then need to set this NONE_CONSTANT explicitly
 
 # the relative_limiter file is almost the same, except for the inclusion of the relative_limits.arb file
 
@@ -16,7 +20,12 @@
 #--------------------------------------------------------
 # set <phi upper bound> and <phi lower bound> using absolute limits
 
-INCLUDE "absolute_limits"
+# these are the absolute limits that phi will be bound between
+# to make one irrelevant, set it to +-<huge>
+CONSTANT <phi upper bound> 1.d0
+# CONSTANT <phi upper bound> "<huge>"
+CONSTANT <phi lower bound> 0.d0
+# CONSTANT <phi lower bound> "-<huge>"
 
 #--------------------------------------------------------
 # do all the limiter calcs
