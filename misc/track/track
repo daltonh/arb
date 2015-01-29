@@ -853,7 +853,8 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
         print "INFO: making new links to existing directories\n";
         print "\toutput -> $run_archive/$specified_commit_hash/output\n";
         # make the new link to archived output
-        system("ln -s $repository_root/$run_archive/$specified_commit_hash/output $repository_root/output");
+        #system("ln -s $repository_root/$run_archive/$specified_commit_hash/output $repository_root/output");
+        system("ln -s $run_archive/$specified_commit_hash/output $repository_root/output"); # use relative link
         # lock the archived version (note recursive chmod can't be applied to symbolic links)
         system("chmod -R u-w $repository_root/$run_archive/$specified_commit_hash/output"); # disable all write permissions
 
@@ -863,7 +864,8 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
           print "INFO: making new links to existing directories\n" if ($iteration==1);
           print "\$item -> $run_archive/$specified_commit_hash/$item\n";
           # make the new link to archived output
-          system("ln -s $repository_root/$run_archive/$specified_commit_hash/$item $repository_root/$item");
+          #system("ln -s $repository_root/$run_archive/$specified_commit_hash/$item $repository_root/$item");
+          system("ln -s $run_archive/$specified_commit_hash/$item $repository_root/$item"); # use relative link
           # lock the archived version (note recursive chmod can't be applied to symbolic links)
           system("chmod -R u-w $repository_root/$run_archive/$specified_commit_hash/$item"); # disable all write permissions
         }

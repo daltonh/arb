@@ -824,7 +824,7 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
             commit_message = commit_message.replace('\n','')
            
             note = os.popen(
-                    "git log --no-walk --oneline --show-notes=track {0} | awk '/Notes \(track\)/{{getline; print}}'".format(simulation)
+                    "git log --no-walk --oneline --show-notes=track {0} 2>/dev/null | awk '/Notes \(track\)/{{getline; print}}'".format(simulation)
                     ).read()
             note = note.replace('\n','')
             note = note.lstrip()
