@@ -339,6 +339,13 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
     print "      modifying requested command to `$job_string &`\n" if $help_mode;
   }
 
+# make sure the job is a "--quiet-make" job
+if ($job_string !~/--quiet-make/) {
+  $job_string = $job_string.' --quiet-make';
+  print "INFO: `track $mode` only supports --quiet-make option \n" if $help_mode;
+  print "      modifying requested command to `$job_string &`\n" if $help_mode;
+}
+
 # make sure there are no messages from nohup
 # i.e. don't keep nohup's stderr
   $job_string = $job_string.' 2>/dev/null &';
