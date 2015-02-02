@@ -16,12 +16,11 @@ EXTERNALS "src/free_surface_functions.f90"
 VERSION 0.50 # the version of syntax used in this file
 
 # the following strings describe the simulation and are passed to the output files
-INFO_TITLE "Transient flow around a sphere with species transient"
+INFO_TITLE "Transient flow around a cylinder with species transient"
 INFO_DESCRIPTION "Demonstrates transient flow setup as well as transient species transport"
-INFO_DESCRIPTION+ ": parameters used in this demonstration file will result in a low accuracy simulation due to large timestep"
-INFO_DESCRIPTION+ ": by default low order upwinding is used here for momentum advection, and high order limited upwinding on species"
+INFO_DESCRIPTION+ ": large timestep used in this simulation will result in low accuracy, but demonstrate high CFL number ability"
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "28/1/15" # interpreted as the last modification date
+INFO_DATE "29/1/15" # interpreted as the last modification date
 
 #-------------------------------------------------------------------
 # system constants
@@ -30,6 +29,9 @@ INFO_DATE "28/1/15" # interpreted as the last modification date
 #KERNEL_OPTIONS minimumminw=1.d0
 #KERNEL_OPTIONS checkminw=.true.,minimumminw=0.8d0 # reducing the minw a bit which will decrease the size of the kernels
 
+# include to examine kernel quality
+#INCLUDE_ROOT "general"
+#INCLUDE "kernel_parameters"
 #-------------------------------------------------------------------
 # geometry
 
@@ -48,7 +50,7 @@ FACE_REGION <inlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <inlet>"
 FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
 FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
 FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
-CELL_REGION <wake monitor> "AT 2.5d0 0.d0 0.d0 PART OF <domain>"
+CELL_REGION <wake monitor> "AT 2.0d0 0.d0 0.d0 PART OF <domain>"
 
 # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
 # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
@@ -528,8 +530,9 @@ VARIABLE <u[l=1]> magnitude=2.d0
 VARIABLE <u[l=2]> magnitude=2.d0
 
 # some numerical values
-VARIABLE <adv_limiter> 0.d0 # this is the most stable - ie, first order upwinding on momentum advection
-CONSTANT <dt_initial> [] 1.d-1 # now taking huge timestep, overwriting the default timestep used in transient_constant_setup which is roughly based on a CFL number
+#VARIABLE <adv_limiter> 0.d0 # this is the most stable - ie, first order upwinding on momentum advection
+VARIABLE <adv_limiter> 1.d0 # this is the least stable but quite accurate - ie, high order non-limited upwinding on momentum advection
+CONSTANT <dt_initial> [] 5.d-2 # now taking huge timestep, overwriting the default timestep used in transient_constant_setup which is roughly based on a CFL number
 CONSTANT <dt_out> [] 3.d-1
 
 # some monitoring variables
@@ -569,16 +572,18 @@ NONE_OUTPUT <CFL> "cellmax(<CFL local>,region=<domain>)"
 #INCLUDE_ROOT "species_transport"
 # INFO: setting include root directory to species_transport
 
-# the following implements low order (first order upwind) advection of <c>
+# the following implements non-limited advection of <c>
+# without any change to <c limiter> this results in first order upwinding of <c>, which is stable, produces bounded results, but is not accurate
 #INCLUDE "equations" R "<<speciesloworderadvectioncomment>>" W "" R "<<specieshighorderadvectioncomment>>" W "#"
-# the following implements high order limited advection of <c>, with limits on the gradient found from looking upwind 3 levels of separation
-#INCLUDE "equations" R "<<limiterupwindseparation>>" W "3" # 3 is overboard really, but demonstrates how to change this separation from the default of 2
+#VARIABLE <c limiter> "1.d0" # this will use high order non-limited upwinding, which will cause under and over shoots
+# the following implements high order limited advection of <c>, with limits on the gradient found by looking upwind 2 levels of separation from each cell
+#INCLUDE "equations" R "<<limiterupwindseparation>>" W "2" # 2 is the default, anymore is probably overboard, but it does demonstrates how to change this separation
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/species_transport/equations.arb with the following search/replace combinations: replace <<limiterupwindseparation>> with 3
+# the following is INCLUDED from ../templates/species_transport/equations.arb with the following search/replace combinations: replace <<limiterupwindseparation>> with 2
 #INCLUDE "equations_nonuniform_width" R "<W_f>" W "1.d0" R "<W_c>" W "1.d0"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/species_transport/equations_nonuniform_width.arb with the following search/replace combinations: replace <W_f> with 1.d0: replace <W_c> with 1.d0
-# transport equations for a generic species c
+# transport equations for a generic species c in a channel that may have nonuniform width
 
 # default is that high order advection is used unless these two strings are set upstream to be opposite
 #GENERAL_REPLACEMENTS DEFAULT "<<specieshighorderadvectioncomment>>" W "" DEFAULT "<<speciesloworderadvectioncomment>>" W "#"
@@ -616,8 +621,8 @@ CELL_DERIVED <c_c low order> "celldiv(faceif(-<facefromcelldirection>*<u_f>,-<u_
 #--------------------------------------------------------
 
 # now using a separation loop that employs the faceseparationflag to look a number of separation levels upwind of the current cell
-CELL_DERIVED <c upper bound> "cellmax[maxseparation=3,faceseparation](<c_c low order>,default=<c_c low order>,region=<all cells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> nooutput
-CELL_DERIVED <c lower bound> "cellmin[maxseparation=3,faceseparation](<c_c low order>,default=<c_c low order>,region=<all cells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> nooutput
+CELL_DERIVED <c upper bound> "cellmax[maxseparation=2,faceseparation](<c_c low order>,default=<c_c low order>,region=<all cells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> nooutput
+CELL_DERIVED <c lower bound> "cellmin[maxseparation=2,faceseparation](<c_c low order>,default=<c_c low order>,region=<all cells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> nooutput
 
 #--------------------------------------------------------
 # do all the limiter calcs
@@ -725,13 +730,26 @@ NONE_OUTPUT <c minimum> "cellmin(<c>,region=<all cells>)"
 #--------------------------------------------------------
 # INCLUDE FINISHED for ../templates/species_transport/equations.arb
 #--------------------------------------------------------
+# further, modify the parameters used in the advection limiting routine to be less conservative (less stable, but more accurate by doing less gradient limiting)
+#INCLUDE_ROOT "advection_limiters/implicit"
+# INFO: setting include root directory to advection_limiters/implicit
+#INCLUDE "extreme_parameters" R "<phi" W "<c" # set higher accuracy but lower stability advection parameters
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/advection_limiters/implicit/extreme_parameters.arb with the following search/replace combinations: replace <phi with <c
+# are are less conservative (ie, less stable) than the default parameters
+NONE_CONSTANT <c a> 1.5d0 # determines the gradient of the limiter
+NONE_CONSTANT <c b> 0.6d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)
+NONE_CONSTANT <c limiter crosskernel max> 0.5d0 # the maximum multiplier for any cell value that is not the central cell
+NONE_CONSTANT <c limiter centralkernel max> 0.05d0 # the maximum multiplier for the central cell value
+# INCLUDE FINISHED for ../templates/advection_limiters/implicit/extreme_parameters.arb
+#--------------------------------------------------------
+VARIABLE <c limiter> output
 
+# overwrite some species boundary conditions etc
 FACE_EQUATION <c walls> "<c>-1.d0" ON <walls> # <walls> is the cylinder surface, which has the set concentration
 FACE_EQUATION <c slip walls> "<c_j_f>" ON <slip walls> # whereas on the <slip walls> we use a zero flux condition
 VARIABLE <c_inlet_conc> 0.d0 # nothing coming in
 VARIABLE <c_D> 1.d-2 # small, nonzero diffusivities are the hardest to compute accurately using these boundary conditions, as mesh resolution in the concentration boundary layer becomes critical
-VARIABLE <c limiter> output
-#VARIABLE <c limiter> "0.d0" # low order first order upwind advection employed (remove this line to bring back limited high order advection used in templates files)
 
 # various outlet conditions:
 #FACE_EQUATION <c outlet> "faceif(<u_f>,facegrad[adjacentcells](<c>),<c>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
@@ -744,8 +762,6 @@ FACE_EQUATION <c outlet> "facegrad[adjacentcells](<c>)" ON <outlet> # the most s
 
 NONE_OUTPUT <c monitor> "cellsum(<c>,region=<wake monitor>)"
 
-#INCLUDE_ROOT "general"
-#INCLUDE "kernel_parameters"
 #-------------------------------------------------------------------
 # just for the example problem do a few steps only
 TIMESTEPOUT 2
