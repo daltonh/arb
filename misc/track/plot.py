@@ -1039,6 +1039,7 @@ if __name__ == "__main__":
     # process command line 'blank_csv'
     this_script = sys.argv[0]
 
+
     if (len(sys.argv) > 2):
         print "ERROR: incorrect syntax for {}".format(this_script)
         print "\tuse either"
@@ -1053,7 +1054,12 @@ if __name__ == "__main__":
         print "INFO: {} called using commit {}".format(this_script, specified_commit)
         specified_step_file = os.path.join(run_archive,specified_commit,'output','output_step.csv')
     elif (len(sys.argv) == 1):
-        specified_step_file = 'blank_csv' # as a last resort
+        default_data = 'output/output_step.csv'
+        if (os.path.isfile(default_data)):
+            load_blank = 0
+            specified_step_file = default_data
+        else:
+            specified_step_file = 'blank_csv' # as a last resort
 
     data = Data(specified_step_file)
     app = wx.App(False)
