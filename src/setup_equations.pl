@@ -1934,7 +1934,7 @@ sub mequation_interpolation {
 # nodeave is an operator that takes cell centred quantities and averages to nodes
       } elsif ($centring eq "node") {
 
-        $inbit[$nbits] = "nodekernel[i,0,ns]*(".$expression.")";
+        $inbit[$nbits] = "nodekernel[k,0,ns]*(".$expression.")";
         create_someloop($inbit[$nbits],"sum","cell","<nodekernelregion[l=0]>",$deriv,$otype,$omvar);
         if (@reflect) { @{$variable{"someloop"}[$m{"someloop"}]{"reflect"}} = @reflect; }
 
