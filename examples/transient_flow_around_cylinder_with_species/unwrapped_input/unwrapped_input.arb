@@ -144,9 +144,9 @@ CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/navier_stokes/transient_constant_setup.arb without any search/replace combinations
 # use this file to initial a transient Navier-Stokes simulation using constant timestepping
-#INCLUDE "transient_both_setup" R "<<dynamictimestepcomment>>" W "#" R "<<constanttimestepcomment>>" W ""
+#INCLUDE "transient_all_setup" R "<<dynamictimestepcomment>>" W "#" R "<<constanttimestepcomment>>" W ""
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/transient_both_setup.arb with the following search/replace combinations: replace <<dynamictimestepcomment>> with #: replace <<constanttimestepcomment>> with 
+# the following is INCLUDED from ../templates/navier_stokes/transient_all_setup.arb with the following search/replace combinations: replace <<dynamictimestepcomment>> with #: replace <<constanttimestepcomment>> with 
 # setup things needed for transient flow
 # this file works for either dynamic or constant timestepping, which must be set by string replacement from the calling file
 # designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
@@ -171,14 +171,33 @@ TRANSIENT_SIMULATION
 
 #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
 
-# dynamic timestep, next 4 lines
+# the default is for explicit timestepping, but implicit can also be enabled by reversing the following strings
+#GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+
+# dynamic timestepping
 #NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
 #FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces>
-#CELL_TRANSIENT <CFL local[r=1]> "" "<dt[r=1]>*facesum(faceif(<facedivop>*<u_f[r=1]>,<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)" ON <domain> output
-##CELL_TRANSIENT <CFL local[r=1]> "" "<dt[r=1]>*facesum(faceif(<facedivop>*<u_f[r=1]>,1.d0*<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)/1.d0" ON <domain> output
-#NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
-##NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemin(nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>),<dt_surf>)" stepoutput,input
+
+# explicit
+# use CFL_number template, but make the calculation explicit - ie, based on r=1 values
+#INCLUDE "CFL_number" R "<CFL local/dt>" W "<CFL local/dt[r=1]>" R "<u_f>" W "<u_f[r=1]>" R "<CFL local>" W "<CFL local[r=1]>" R "<dt>" W "<dt[r=1]>" R "NONE_OUTPUT <CFL>" W 'NONE_TRANSIENT <CFL[r=1]> ""'
+##NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
+#NONE_TRANSIENT <CFL[r=1]> output,stepoutput
 #NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+
+# implicit
+##INCLUDE "CFL_number"
+##NONE_UNKNOWN <dt[r=0]> "<dt_initial>" stepoutput,input
+# by default there is no explicit newtstep timestep limitation - to include it reverse the following string replacement
+#GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "#" DEFAULT "<<nonnewtsteptimestepcomment>>" W ""
+# without the explicit newtstep limitation
+##NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_increase>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
+# for dynamic and implicit timestepping, include the following to also include a constraint based on the previous number of newtsteps
+###NONE_CONSTANT <newtstepdecrease> 5.d0 # number of newtonsteps that take place before <newtstep> starts to limit <dt> (explicit)
+###NONE_CONSTANT <dt_decrease> 0.8d0 # amount to decrease timestep by if previous timestep newtstep was exceeded
+###NONE_TRANSIENT <newtstep[r=1]> "0.d0" "<newtstep>" # save previous newtstep
+###NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(noneif(<newtstep[r=1]>-<newtstepdecrease>,<dt_decrease>,<dt_increase>)*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<fluid domain>)),<dt_max>),<dt_min>)"
+##NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
 
 # constant timestep, next 1 line
 NONE_CONSTANT <dt> "<dt_initial>"
@@ -193,7 +212,7 @@ CELL_TRANSIENT <u[l=1,r=1]> "" "<u[l=1]>" ON <all cells>
 CELL_TRANSIENT <u[l=2,r=1]> "" "<u[l=2]>" ON <all cells>
 #CELL_TRANSIENT <u[l=3,r=1]> "" "<u[l=3]>" ON <all cells>
 
-# INCLUDE FINISHED for ../templates/navier_stokes/transient_both_setup.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/transient_all_setup.arb
 #--------------------------------------------------------
 # INCLUDE FINISHED for ../templates/navier_stokes/transient_constant_setup.arb
 #--------------------------------------------------------
@@ -560,8 +579,9 @@ FACE_OUTPUT <u_f_visualise[l=2]> "<u_f>*<facenorm[l=2]>" ON <all faces>
 # these lines just output the global CFL number for a transient simulation
 # replace nooutput with output to also output local CFL number
 # <facedivop> is positive if a face normal points outwards from the last cell, so these numbers are based on the total flowrate out of each cell
-CELL_LOCAL <CFL local> "<dt>*facesum(faceif(<facedivop>*<u_f>,<facedivop>*<u_f>,0.d0),region=<celljfaces>)" ON <domain> nooutput
-#CELL_LOCAL <CFL local> "<dt>*facesum(faceif(<facedivop>*<u_f>,1.d0*<facedivop>*<u_f>,0.d0),region=<celljfaces>)/1.d0" ON <domain> nooutput
+CELL_LOCAL <CFL local/dt> "facesum(faceif(<facedivop>*<u_f>,<facedivop>*<u_f>,0.d0),region=<celljfaces>)" ON <domain> nooutput
+#CELL_LOCAL <CFL local/dt> "facesum(faceif(<facedivop>*<u_f>,1.d0*<facedivop>*<u_f>,0.d0),region=<celljfaces>)/1.d0" ON <domain> nooutput
+CELL_LOCAL <CFL local> "<dt>*<CFL local/dt>" ON <domain> nooutput
 NONE_OUTPUT <CFL> "cellmax(<CFL local>,region=<domain>)"
 # INCLUDE FINISHED for ../templates/navier_stokes/CFL_number.arb
 #--------------------------------------------------------
