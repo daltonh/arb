@@ -13,7 +13,7 @@ INFO_DESCRIPTION "Oscillating 2D droplet calculated using the volume of fluid me
 INFO_DESCRIPTION+ ": Stationary droplet can be calculated using this but with circle instead of ellipse as initial phi"
 INFO_DESCRIPTION+ ": now works for cartesian or cylindrical"
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "05/7/14" # interpreted as the last modification date
+INFO_DATE "04/2/15" # interpreted as the last modification date
 
 # for a cylindrical droplet
 #GENERAL_REPLACEMENTS R "<<cylindricalcomment>>" W "" R "<<cartesiancomment>>" W "#"
@@ -66,6 +66,17 @@ GLUE_FACES <fluid south> reflect=2
 # where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
 # where location string could be: "SURROUNDS <a region>" - faces/cells that surround <a region>, irrespective of whether they are boundary or domain elements - right now only works when <a region> is cell centred
 
+#-------------------------------------------------------------------
+# numerical options
+NEWTSTEPMAX 100
+NEWTSTEPDEBUGOUT 90
+# for test simulation just do a few timesteps
+TIMESTEPOUT 2
+TIMESTEPMAX 4 # just compute the first 5 timesteps for this trial simulation
+
+#KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2
+#-------------------------------------------------------------------
+
 INCLUDE_ROOT "free_surface/volume_of_fluid"
 # commands to form the single mesh regions from the fluid msh file
 <<singledomaincomment>>INCLUDE "single_region_formation"
@@ -75,11 +86,6 @@ INCLUDE_ROOT "free_surface/volume_of_fluid"
 
 # commands to replace all generic regions with fluid msh equivalents
 <<doubledomaincomment>>INCLUDE "fluid_replacements"
-
-#-------------------------------------------------------------------
-# user-defined constants
-
-#KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2
 
 # setup basic cylindrical general replacements by including the following two lines
 <<cylindricalcomment>>INCLUDE_ROOT "general"
@@ -93,6 +99,20 @@ GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2"
 # bring in default physical and numerical constants
 INCLUDE_ROOT "navier_stokes"
 INCLUDE "nondimensional_constants"
+
+# v0.50 - now use transient setup files
+INCLUDE "transient_dynamic_setup" # a dynamic timestep to keep the CFL number at a specified level
+#INCLUDE "transient_constant_setup" # a constant timestep
+
+# overwrite some transient specifications
+CONSTANT <t_end> [] 1.d2 # time for simulation to stop
+CONSTANT <dt_initial> [] "1.d-4*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
+CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
+
+# include the following to also include an explicit surface tension based timestep - just a placeholder, not debugged
+#CONSTANT <dt_surf> "0.5d0*sqrt(0.5d0*<We>*<celldxave>^3/<pi>)"
+#NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+
 <<nonuniformcomment>>INCLUDE "nonuniform_properties" # this just cancels the previous general property replacements on <mu_f> and <rho_f>
 INCLUDE_ROOT "volume_of_fluid"
 INCLUDE "nondimensional_constants"
@@ -101,14 +121,6 @@ INCLUDE "nondimensional_constants"
 <<nonuniformcomment>>INCLUDE "parasitic_nonuniform_properties_mac2_correlation"
 # for nonuniform properties, define them
 <<nonuniformcomment>>INCLUDE "nondimensional_nonuniform_properties"
-
-#-------------------------------------------------------------------
-
-# for test simulation just do a few timesteps
-#TIMESTEPOUT 1
-TIMESTEPMAX 5 # just compute the first 5 timesteps for this trial simulation
-NEWTSTEPMAX 100
-NEWTSTEPDEBUGOUT 90
 
 # physical data, now for nondimensional uniform properties
 # set these
@@ -119,46 +131,9 @@ CONSTANT <S> 1.d+1 # surface tension strength nondimensional number, see harvie 
 <<nonuniformcomment>>CONSTANT <vof_rho_d_ratio> 1.d+1 # dimensional <rho_d>/<rho_c>
 <<nonuniformcomment>>CONSTANT <vof_mu_d_ratio> 1.d+1 # dimensional <mu_d>/<mu_c>
 
-#CONSTANT <t_end> [] 1.d+2 # time for simulation to stop
-CONSTANT <t_end> [] 1.d2 # time for simulation to stop
-#CONSTANT <t_end> [] 1.d-2 # time for simulation to stop
-CONSTANT <celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)" # average cell dimension
-CONSTANT <dt_initial> [] "1.d-4*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
-#CONSTANT <dt_out> [] 1.d-1 # time between output
-CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
-#CONSTANT <dt_surf> "0.5d0*sqrt(0.5d0*<We>*<celldxave>^3/<pi>)"
-CONSTANT <dt_surf> "huge"
-# dynamic timestep constants
-CONSTANT <dt_increase> 1.2d0
-CONSTANT <dt_max> "<dt_initial>*1.d4"
-CONSTANT <dt_min> "<dt_initial>*1.d-3"
-CONSTANT <CFL_max> 0.25d0
-
-# transient bits
-TRANSIENT_SIMULATION
-
-# dynamic timestep, next 4 lines
-NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
-FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces>
-<<cartesiancomment>>CELL_TRANSIENT <CFL local[r=1]> "" "<dt[r=1]>*facesum(faceif(<facedivop>*<u_f[r=1]>,<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)" ON <domain> output
-<<cylindricalcomment>>CELL_TRANSIENT <CFL local[r=1]> "" "<dt[r=1]>*facesum(faceif(<facedivop>*<u_f[r=1]>,<<radius_f>>*<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)/<<radius_c>>" ON <domain> output
-NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output
-NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemin(nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>),<dt_surf>)" stepoutput,input
-# constant timestep, next 1 line
-#NONE_CONSTANT <dt> "<dt_initial>"
-
-NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
-NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
-NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition # this will be true (>0.) whenever we are <dt_out> from last output
-NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
-NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
-
 CELL_UNKNOWN <p> [] "(2.d0^<<cylindricalflag>>)*<vof_phi>/<We>" ON <all cells> elementdata # pressure
 CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
 CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
-
-CELL_TRANSIENT <u[l=1,r=1]> "0.d0" "<u[l=1]>" ON <all cells>
-CELL_TRANSIENT <u[l=2,r=1]> "0.d0" "<u[l=2]>" ON <all cells>
 
 # CSF based levelset formulation with reinitialisation
 INCLUDE_ROOT "volume_of_fluid"
