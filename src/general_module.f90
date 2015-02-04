@@ -65,6 +65,7 @@ type node_type
   integer, dimension(:,:), allocatable :: reflect_multiplier ! reflect_multiplier for cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position
   double precision, dimension(:,:), allocatable :: r ! relative position of cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position
   type(kernel_type), dimension(0:3) :: kernel ! kernel(m) = kernel for the average (m=0) or derivative in the m'th coordinate direction, all based on cell data
+  integer :: domain_dimensions ! number of dimensions of adjacent domain
 end type node_type
   
 ! this type specifies details of each cell face

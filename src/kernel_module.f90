@@ -213,7 +213,7 @@ check_minw_limited = 0
 
 call setup_face_kernels
 call setup_cell_kernels ! has to go after setup_face_kernels as may use face kernels to construct cell kernels
-call setup_node_kernels
+call setup_node_kernels ! ditto to this one, that may also use face kernels
 
 !------------------------------------------
 ! checking on kernel health for advection bits
@@ -366,6 +366,43 @@ if (remove_small_elements) then
     end do
   end do
 
+!------------
+! node
+
+  do k = 1, ktotal
+    do l = 0, 3
+      n_elements = 0
+      dx_kernel = 1.d0
+! derivative kernels should have a size of order 1/dx_kernel
+      if (l >= 1.and.l <= 3) dx_kernel = node(k)%dx_kernel
+      do n = 1, ubound(node(k)%kernel(l)%ijk,1)
+        if (abs(node(k)%kernel(l)%v(n)*dx_kernel) >= small_element_minimum) then
+          n_elements = n_elements + 1
+          node(k)%kernel(l)%v(n_elements) = node(k)%kernel(l)%v(n)
+          node(k)%kernel(l)%ijk(n_elements) = node(k)%kernel(l)%ijk(n)
+          if (allocated(node(k)%kernel(l)%reflect_multiplier)) &
+            node(k)%kernel(l)%reflect_multiplier(:,n_elements) = node(k)%kernel(l)%reflect_multiplier(:,n)
+        end if
+      end do
+! resize kernel arrays (keeping data), unless the kernel is empty
+      if (n_elements == 0) then
+        deallocate(node(k)%kernel(l)%ijk)
+        allocate(node(k)%kernel(l)%ijk(0))
+        deallocate(node(k)%kernel(l)%v)
+        allocate(node(k)%kernel(l)%v(0))
+        if (allocated(node(k)%kernel(l)%reflect_multiplier)) deallocate(node(k)%kernel(l)%reflect_multiplier)
+      else
+        call resize_integer_array(keep_data=.true.,array=node(k)%kernel(l)%ijk,new_size=n_elements)
+        call resize_double_precision_array(keep_data=.true.,array=node(k)%kernel(l)%v,new_size=n_elements)
+        if (allocated(node(k)%kernel(l)%reflect_multiplier)) then
+          new_size_2d = [totaldimensions,n_elements]
+          call resize_integer_2d_array &
+            (keep_data=.true.,array=node(k)%kernel(l)%reflect_multiplier,new_size=new_size_2d)
+        end if
+      end if
+    end do
+  end do
+
 end if
 
 !---------------------------
@@ -409,6 +446,24 @@ do j = 1, jtotal
 end do
 if (n > 0) write(fwarn,fmt=formatline) &
   'WARNING: ',n,' negative face averaging kernel elements detected: minimum normalised kernel element = ',min_value,': at j = ', &
+  min_location
+
+n = 0
+min_value = 0.d0
+min_location = 0
+do k = 1, ktotal
+  if (allocatable_integer_size(node(k)%kernel(0)%ijk) == 0) cycle
+  value = minval(node(k)%kernel(0)%v)*node(k)%dx_kernel
+  if (value < -small_element_minimum) then
+    n = n + 1
+    if (value < min_value) then
+      min_value = value
+      min_location = k
+    end if
+  end if
+end do
+if (n > 0) write(fwarn,fmt=formatline) &
+  'WARNING: ',n,' negative node averaging kernel elements detected: minimum normalised kernel element = ',min_value,': at k = ', &
   min_location
 
 ! also run a check on the facenorm derivatives on the boundaries, looking for positive elements in all of them except for the 1st
@@ -472,6 +527,24 @@ do j = 1, jtotal
     formatline = '(a,'//trim(indexformat)//',a,i1,a,i1)'
     write(fwarn,fmt=formatline) 'ERROR: not enough derivative kernels have been constructed for face: j = ',j, &
       ': number constructed = ',n,': face dimensions = ',face(j)%dimensions
+    any_error = .true.
+  end if
+end do
+  
+do k = 1, ktotal
+  formatline = '(a,'//trim(indexformat)//')'
+  if (maxval(abs(node(k)%kernel(0)%v)) < small_element_minimum) then ! 
+    write(fwarn,fmt=formatline) 'ERROR: missing node averaging kernel for node: k = ',k
+    any_error = .true.
+  end if
+  n = 0
+  do l = 1, totaldimensions
+    if (maxval(abs(node(k)%kernel(l)%v))*node(k)%dx_kernel >= small_element_minimum) n = n + 1
+  end do
+  if (n < node(k)%domain_dimensions) then
+    formatline = '(a,'//trim(indexformat)//',a,i1,a,i1)'
+    write(fwarn,fmt=formatline) 'ERROR: not enough derivative kernels have been constructed for node: k = ',k, &
+      ': number constructed = ',n,': domain dimensions = ',node(k)%domain_dimensions
     any_error = .true.
   end if
 end do
@@ -577,6 +650,47 @@ do j = 1, jtotal
 end do
 deallocate(kernel_error)
   
+! node kernels
+allocate(kernel_error(1:4))
+nmax = 4
+if (allocated(glue_face)) nmax = 1 ! if there are glued faces present then we don't report errors for any first order components
+do k = 1, ktotal
+  do l = 0, 3
+    dx_kernel = 1.d0
+! derivative kernels should have a size of order 1/dx_kernel
+    if (l >= 1) dx_kernel = node(k)%dx_kernel
+    kernel_error = 0.d0
+    if (allocatable_integer_size(node(k)%kernel(l)%ijk) > 0.and. &
+      maxval(abs(node(k)%kernel(l)%v))*dx_kernel > small_element_minimum) then ! this identifies non-zero kernels
+      if (l == 0) then ! averaging kernel l = 0, cell centred
+        kernel_error(1) = sum(node(k)%kernel(l)%v) - 1.d0
+        do n = 1, 3
+          do ijk = 1, ubound(node(k)%kernel(l)%ijk,1)
+            kernel_error(n+1) = kernel_error(n+1) + node(k)%kernel(l)%v(ijk)*cell(node(k)%kernel(l)%ijk(ijk))%x(n)
+          end do
+          kernel_error(n+1) = kernel_error(n+1) - node(k)%x(n)
+        end do
+      else ! derivative kernels l = 1,2,3 cell centred
+        kernel_error(1) = sum(node(k)%kernel(l)%v)
+        do n = 1, 3
+          do ijk = 1, ubound(node(k)%kernel(l)%ijk,1)
+            kernel_error(n+1) = kernel_error(n+1) + node(k)%kernel(l)%v(ijk)*cell(node(k)%kernel(l)%ijk(ijk))%x(n)
+          end do
+          if (n == l) kernel_error(n+1) = kernel_error(n+1) - 1.d0
+        end do
+      end if
+      do n = 1, nmax
+        if (abs(kernel_error(n))*dx_kernel > 1.d-6) then
+          write(fwarn,fmt=formatline) 'ERROR: for node(',k,')%kernel(',l,') equation ', &
+            n,' is inconsistent: kernel_error(n) = ',kernel_error(n),': dx_kernel = ',dx_kernel
+          any_error = .true.
+        end if
+      end do
+    end if
+  end do
+end do
+deallocate(kernel_error)
+  
 !---------------------------
 ! run through all kernels setting the logical reflect and possibly deallocating any reflect_multiplier strings
 ! doing this after kernel checks, but before kernel counting
@@ -609,6 +723,22 @@ do i = 1, itotal
       end if
     else
       cell(i)%kernel(l)%reflect_present = .false.
+    end if
+  end do
+end do
+
+! nodes
+do k = 1, ktotal
+  do l = 0, 3
+    if (allocated(node(k)%kernel(l)%reflect_multiplier)) then
+      if (minval(node(k)%kernel(l)%reflect_multiplier) /= 1.and.l >= 1.and.l <= 3) then  ! the array only needs to be kept if a reflect_multiplier value is not 1 (ie, -1)
+        node(k)%kernel(l)%reflect_present = .true.
+      else
+        deallocate(node(k)%kernel(l)%reflect_multiplier)
+        node(k)%kernel(l)%reflect_present = .false.
+      end if
+    else
+      node(k)%kernel(l)%reflect_present = .false.
     end if
   end do
 end do
@@ -683,6 +813,29 @@ do l = 0, 4
     ': average number of elements = ',dble(n_boundary_elements)/dble(max(n_boundary_kernels,1))
 end do
 
+do l = 0, 3
+  n_boundary_kernels = 0
+  n_boundary_elements = 0
+  n_domain_kernels = 0
+  n_domain_elements = 0
+  do k = 1, ktotal
+    if (node(k)%type == 2) then
+      n_boundary_kernels = n_boundary_kernels + 1
+      n_boundary_elements = n_boundary_elements + allocatable_integer_size(node(k)%kernel(l)%ijk)
+    else
+      n_domain_kernels = n_domain_kernels + 1
+      n_domain_elements = n_domain_elements + allocatable_integer_size(node(k)%kernel(l)%ijk)
+    end if
+    n_elements = n_elements + allocatable_integer_size(node(k)%kernel(l)%ijk)
+  end do
+  write(fwarn,fmt=formatline) 'INFO: for node kernel ',l, &
+    ': number of node domain element kernels = ',n_domain_kernels, &
+    ': average number of elements = ',dble(n_domain_elements)/dble(max(n_domain_kernels,1))
+  write(fwarn,fmt=formatline) 'INFO: for node kernel ',l, &
+    ': number of node boundary element kernels = ',n_boundary_kernels, &
+    ': average number of elements = ',dble(n_boundary_elements)/dble(max(n_boundary_kernels,1))
+end do
+
 !if (debug) write(*,'(a,i10)') 'INFO: total number of kernel elements = ',n_kernels
 write(*,'(a,i10)') 'INFO: total number of kernel elements = ',n_elements
 write(fwarn,'(a,i10)') 'INFO: total number of kernel elements = ',n_elements
@@ -752,6 +905,19 @@ if (kernel_details_file) then
         ': centring = ',face(j)%kernel(l)%centring,': kernel v(ijk) =', &
         (' ',face(j)%kernel(l)%v(n),'(',face(j)%kernel(l)%ijk(n),')',n=1,ubound(face(j)%kernel(l)%ijk,1)), &
         trim(print_kernel_reflect(face(j)%kernel(l)))
+!     call flush(fdetail)
+    end do
+  end do
+  write(fdetail,'(a)') '-----------------------------------------------------------------------'
+  write(fdetail,'(a)') 'NODE KERNEL DETAILS:'
+  do k = 1, ktotal
+    do l = lbound(node(k)%kernel,1), ubound(node(k)%kernel,1)
+      formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i1,a,a,a'//repeat(',a,'//trim(floatformat)//',a,'// &
+        trim(indexformat)//',a',ubound(node(k)%kernel(l)%ijk,1))//',a)'
+      write(fdetail,fmt=formatline) ' i = ',i,'i: type = ',node(k)%type,': domain_dimensions = ',node(k)%domain_dimensions, &
+         ': l = ',l,': centring = ',node(k)%kernel(l)%centring,': kernel v(ijk) =', &
+        (' ',node(k)%kernel(l)%v(n),'(',node(k)%kernel(l)%ijk(n),')',n=1,ubound(node(k)%kernel(l)%ijk,1)), &
+        trim(print_kernel_reflect(node(k)%kernel(l)))
 !     call flush(fdetail)
     end do
   end do
@@ -1398,7 +1564,7 @@ logical :: hyperbolic_kernel_local, shift_local
 double precision, dimension(:), allocatable :: h_local ! average separation in each dimension
 double precision, dimension(:), allocatable :: s_local ! scaling length in each dimension, calculated from h_local if 
 double precision, dimension(:,:), allocatable :: rr_local ! local copy of rr that is scaled by h_local
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 
 if (debug) write(83,'(80(1h+)/a)') 'subroutine calc_weight'
 
@@ -2945,13 +3111,13 @@ subroutine setup_face_kernels
 
 use general_module
 integer :: i, j, ii, l, l2, separation, minimum_separation_before, maximum_separation, minimum_separation, &
-  local_polynomial_order, l_coor
-double precision :: dx_kernel, minw, value, dx1, dx2
+  local_polynomial_order, l_coor, sepd
+double precision :: dx_kernel, minw, value, dx1, dx2, maxvalue
 logical :: minw_error, hyperbolic_kernel_local, error
 double precision, dimension(:,:), allocatable :: r, norm, pp
 integer, dimension(:), allocatable :: separation_index, separation_array
-double precision, dimension(:,:), allocatable :: max_rel_face_kernel ! maximum of separation value / minimum of central values
-integer, dimension(:,:), allocatable :: max_rel_face_jface
+double precision, dimension(:,:), allocatable :: max_rel_kernel ! maximum kernel value in separation level / maximum kernel value in all separation levels
+integer, dimension(:,:), allocatable :: max_rel_ijk
 character(len=10000) :: formatline
 logical, parameter :: debug = .true.
 logical :: debug_sparse = .false.
@@ -2968,10 +3134,10 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
   hyperbolic_kernel_local = hyperbolic_kernel ! this only changes if partial_hyperbolic_kernel is on
 
 ! zero separation level specific kernel maximums
-  allocate(max_rel_face_jface(0:6,1:max(maximum_domain_separation,maximum_boundary_separation)))
-  allocate(max_rel_face_kernel(0:6,1:max(maximum_domain_separation,maximum_boundary_separation)))
-  max_rel_face_jface = 0
-  max_rel_face_kernel = 0.d0
+  allocate(max_rel_ijk(0:6,1:max(maximum_domain_separation,maximum_boundary_separation)))
+  allocate(max_rel_kernel(0:6,1:max(maximum_domain_separation,maximum_boundary_separation)))
+  max_rel_ijk = 0
+  max_rel_kernel = 0.d0
 
 ! temp &&&& for debugging single kernels
   do j = 1, jtotal
@@ -3215,30 +3381,26 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 
       end if
   
-    end do face_direction_loop
-
 ! rescale derivative kernels
-    do l = 1, 6
-      face(j)%kernel(l)%v=face(j)%kernel(l)%v/dx_kernel
-    end do
+      if (l /= 0) face(j)%kernel(l)%v=face(j)%kernel(l)%v/dx_kernel
 
 ! find maximum values for each separation level
-    do l = 0, 6
-      do separation = 1, ubound(separation_index,1)
+      maxvalue = maxval(abs(face(j)%kernel(l)%v)) ! this is the maximum kernel magnitude for this node and direction over any separation level
+      do separation = 1, allocatable_integer_size(separation_index)
         if (separation == 1) then
-          value = maxval(abs(face(j)%kernel(l)%v(1:2)))
+          sepd = 1
         else
-          value = maxval(abs(face(j)%kernel(l)%v(separation_index(separation-1)+1:separation_index(separation))))/ &
-            max_rel_face_kernel(l,1) 
+          sepd = separation_index(separation-1)+1
         end if
-! TODO: is this bugged?
-        if (value > max_rel_face_kernel(l,separation)) then
-          max_rel_face_kernel(l,separation) = value
-          max_rel_face_jface(l,separation) = j
+        value = maxval(abs(face(j)%kernel(l)%v(sepd:separation_index(separation))))/maxvalue
+        if (value > max_rel_kernel(l,separation)) then
+          max_rel_kernel(l,separation) = value
+          max_rel_ijk(l,separation) = j
         end if
       end do
-    end do
           
+    end do face_direction_loop
+
 ! print some debugging info about kernels
 
     if (debug_sparse) then
@@ -3288,16 +3450,18 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
   end do
 
 ! print out some summary statements for each kernel and separation level combo
-  if (.true..and.allocated(separation_index)) then
-    do l = 0, 6
-      do separation = 1, ubound(separation_index,1)
-        write(fwarn,'(a,i1,a,i1,a,g10.3,a,i8)') 'l = ',l,': separation = ',separation,': max_(rel)_face_kernel = ', &
-          max_rel_face_kernel(l,separation),': j = ',max_rel_face_jface(l,separation)
+  if (.true.) then
+    write(fwarn,'(a)') &
+      'FACE: maximum abs kernel values at each separation level normalised by maximum abs values over all separation levels:'
+    do l = 0, ubound(face(j)%kernel,1)
+      do separation = 1, ubound(max_rel_kernel,2)
+        write(fwarn,'(a,i1,a,i1,a,g10.3,a,i8)') 'l = ',l,': separation = ',separation,': max_rel_kernel = ', &
+          max_rel_kernel(l,separation),': j = ',max_rel_ijk(l,separation)
       end do
     end do
   end if
 
-  deallocate(max_rel_face_jface,max_rel_face_kernel)
+  deallocate(max_rel_ijk,max_rel_kernel)
 
 !----------------------
 ! ref: simple face kernels
@@ -3366,9 +3530,11 @@ subroutine setup_cell_kernels
 
 use general_module
 integer :: i, ii, j, jj, ii2, i2, l, n, minimum_separation_before, maximum_separation, minimum_separation, &
-  local_polynomial_order, l_coor, i_kernel 
-double precision :: dx_kernel, minw
+  local_polynomial_order, l_coor, i_kernel, sepd, separation
+double precision :: dx_kernel, minw, value, maxvalue
 logical :: minw_error, hyperbolic_kernel_local, error
+double precision, dimension(:,:), allocatable :: max_rel_kernel ! maximum kernel value in separation level / maximum kernel value in all separation levels
+integer, dimension(:,:), allocatable :: max_rel_ijk
 double precision, dimension(:,:), allocatable :: r, norm, pp
 integer, dimension(:), allocatable :: separation_index, separation_array
 integer, dimension(2) :: new_size_2d ! 2d array for passing to 2d array routines
@@ -3385,6 +3551,12 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 
   minw_error = .false.
   hyperbolic_kernel_local = hyperbolic_kernel ! this only changes if partial_hyperbolic_kernel is on
+
+! zero separation level specific kernel maximums
+  allocate(max_rel_ijk(0:4,1:max(maximum_domain_separation,maximum_boundary_separation)))
+  allocate(max_rel_kernel(0:4,1:max(maximum_domain_separation,maximum_boundary_separation)))
+  max_rel_ijk = 0
+  max_rel_kernel = 0.d0
 
   do i = 1, itotal
 
@@ -3736,6 +3908,21 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 
       if (l >= 1.and. l <= 3) cell(i)%kernel(l)%v=cell(i)%kernel(l)%v/dx_kernel
 
+! find maximum values for each separation level
+      maxvalue = maxval(abs(cell(i)%kernel(l)%v)) ! this is the maximum kernel magnitude for this node and direction over any separation level
+      do separation = 1, allocatable_integer_size(separation_index)
+        if (separation == 1) then
+          sepd = 1
+        else
+          sepd = separation_index(separation-1)+1
+        end if
+        value = maxval(abs(cell(i)%kernel(l)%v(sepd:separation_index(separation))))/maxvalue
+        if (value > max_rel_kernel(l,separation)) then
+          max_rel_kernel(l,separation) = value
+          max_rel_ijk(l,separation) = i
+        end if
+      end do
+
       if (allocated(r).and.(l == 0.or.l >= 3)) deallocate(r)
       if (allocated(norm).and.(l == 0.or.l >= 3)) deallocate(norm)
       if (allocated(separation_array).and.(l == 0.or.l >= 3)) deallocate(separation_array)
@@ -3749,6 +3936,20 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
     end if
 
   end do
+
+! print out some summary statements for each kernel and separation level combo
+  if (.true.) then
+    write(fwarn,'(a)') &
+      'CELL: maximum abs kernel values at each separation level normalised by maximum abs values over all separation levels:'
+    do l = 0, ubound(cell(i)%kernel,1)
+      do separation = 1, ubound(max_rel_kernel,2)
+        write(fwarn,'(a,i1,a,i1,a,g10.3,a,i8)') 'l = ',l,': separation = ',separation,': max_rel_kernel = ', &
+          max_rel_kernel(l,separation),': i = ',max_rel_ijk(l,separation)
+      end do
+    end do
+  end if
+
+  deallocate(max_rel_ijk,max_rel_kernel)
 
 else if (trim(kernel_method) == 'simple') then
 !----------------------
@@ -3842,13 +4043,13 @@ subroutine setup_node_kernels
 
 use general_module
 integer :: i, j, k, ii, l, l2, separation, minimum_separation_before, maximum_separation, minimum_separation, &
-  local_polynomial_order, l_coor, n, domain_dimension, nicell, sepd
-double precision :: dx_kernel, minw, value, dx1, dx2
+  local_polynomial_order, l_coor, n, nicell, sepd
+double precision :: dx_kernel, minw, value, dx1, dx2, maxvalue
 logical :: minw_error, hyperbolic_kernel_local, error
 double precision, dimension(:,:), allocatable :: r, norm, pp
 integer, dimension(:), allocatable :: separation_index, separation_array
-double precision, dimension(:,:), allocatable :: max_rel_node_kernel ! maximum of separation value / minimum of central values
-integer, dimension(:,:), allocatable :: max_rel_node_knode
+double precision, dimension(:,:), allocatable :: max_rel_kernel ! maximum kernel value in separation level / maximum kernel value in all separation levels
+integer, dimension(:,:), allocatable :: max_rel_ijk
 character(len=10000) :: formatline
 logical, parameter :: debug = .true.
 logical :: debug_sparse = .false.
@@ -3856,6 +4057,39 @@ logical :: debug_sparse = .false.
 if (debug) debug_sparse = .true.
 
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine setup_node_kernels'
+
+!--------------------------
+! find dx_kernel for each node which is independent of kernel mask and direction
+! also domain_dimensions now too
+! now for all methods
+if (debug_sparse) write(*,'(a)') 'INFO: calculating dx_kernel and domain_dimensions'
+
+do k = 1, ktotal
+! dx_kernel is now based on volume of surrounding domain-only cell elements
+  nicell = allocatable_integer_size(node(k)%icell)
+  if (nicell == 0) call error_stop('cannot calculate dx_kernel for a node as the node has no domain cell neighbours: '// &
+    trim(print_node(k)))
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i2)'
+  if (debug) write(83,fmt=formatline) 'NODE: k = ',k,'k: node type = ',node(k)%type,': number of surrounding cells = ',nicell
+  dx_kernel = 0.d0
+  n = 0
+  node(k)%domain_dimensions = 0
+  do ii = 1, nicell
+    i = node(k)%icell(ii)
+    if (cell(i)%type == 1) then
+      node(k)%domain_dimensions = cell(i)%dimensions
+      n = n + 1
+      dx_kernel = dx_kernel + cell(i)%vol
+    end if
+  end do
+  if (node(k)%domain_dimensions == 0) call error_stop('cannot calculate dx_kernel for a node as the node has no domain cell '// &
+    'neighbours: '//trim(print_node(k)))
+  dx_kernel = kernel_dx_multiplier*((dx_kernel/dble(n))**(1.d0/dble(node(k)%domain_dimensions)))/2.d0
+  node(k)%dx_kernel = dx_kernel ! save in node(k) object
+  if (debug) write(83,*) 'dx_kernel = ',dx_kernel,': domain_dimensions = ',node(k)%domain_dimensions
+end do
+!--------------------------
+
 if (debug_sparse.or..true.) write(*,'(a)') 'INFO: constructing node kernels using '//trim(kernel_method)//' method'
 
 ! mls and optimisation kernels
@@ -3865,39 +4099,18 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
   hyperbolic_kernel_local = hyperbolic_kernel ! this only changes if partial_hyperbolic_kernel is on
 
 ! zero separation level specific kernel maximums
-  allocate(max_rel_node_knode(0:3,1:max(maximum_domain_separation,maximum_boundary_separation)))
-  allocate(max_rel_node_kernel(0:3,1:max(maximum_domain_separation,maximum_boundary_separation)))
-  max_rel_node_knode = 0
-  max_rel_node_kernel = 0.d0
+  allocate(max_rel_ijk(0:3,1:max(maximum_domain_separation,maximum_boundary_separation)))
+  allocate(max_rel_kernel(0:3,1:max(maximum_domain_separation,maximum_boundary_separation)))
+  max_rel_ijk = 0
+  max_rel_kernel = 0.d0
 
 ! temp &&&& for debugging single kernels
   do k = 1, ktotal
 
     if (debug) write(83,*) '----------------------------'
     nicell = allocatable_integer_size(node(k)%icell)
-    if (nicell == 0) call error_stop('cannot calculate dx_kernel for a node as the node has no domain cell neighbours')
-    formatline = '(a,'//trim(indexformat)//',a,i1,a,i2)'
     if (debug) write(83,fmt=formatline) 'NODE: k = ',k,'k: node type = ',node(k)%type,': number of surrounding cells = ',nicell
-
-! find dx_kernel for this node which is independent of kernel mask and direction
-
-! dx_kernel is now based on volume of surrounding domain-only cell elements
-    dx_kernel = 0.d0
-    n = 0
-    domain_dimension = 0
-    do ii = 1, nicell
-      i = node(k)%icell(ii)
-      if (cell(i)%type == 1) then
-        domain_dimension = cell(i)%dimensions
-        n = n + 1
-        dx_kernel = dx_kernel + cell(i)%vol
-      end if
-    end do
-    if (domain_dimension == 0) call error_stop('cannot calculate dx_kernel for a node as the node has no domain cell '// &
-      'neighbours'//trim(print_node(k)))
-    dx_kernel = kernel_dx_multiplier*((dx_kernel/dble(n))**(1.d0/dble(domain_dimension)))/2.d0
-    node(k)%dx_kernel = dx_kernel ! save for use below in warnings and zeroing
-    if (debug) write(83,*) 'dx_kernel = ',dx_kernel,': domain_dimension = ',domain_dimension
+    dx_kernel = node(k)%dx_kernel
 
 ! set the (maximum) default separations
     if (node(k)%type == 2) then
@@ -3958,7 +4171,7 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 ! 1) an averaging boundary node, which has only a single kernel element = 1 for the coincident boundary cell
 ! 2) domain nodes if the relevant option is set, and
 ! 3) boundary nodes if the relevant option is set
-      if (domain_dimension == 1.and.( (l == 0.and.node(k)%type == 2).or. &
+      if (node(k)%domain_dimensions == 1.and.( (l == 0.and.node(k)%type == 2).or. &
         (domain_node_from_face_kernels.and.node(k)%type == 1).or. &
         (boundary_node_from_face_kernels.and.node(k)%type == 2) )) then
 
@@ -4073,81 +4286,25 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
         end if
         if (error) call error_stop('error in calculating a node '//trim(kernel_method)//' kernel')
 
-
-
-!       if (trim(kernel_method) == 'mls') then
-!         if (l == 0) then
-!           call mls_kernel(centring='node',ijk=k,l_kernel=0,l_coor=0,rr=r,pp=pp,kernel=node(k)%kernel(l)%v, &
-!             local_polynomial_order=local_polynomial_order,minimum_separation=minimum_separation,separation_array=separation_array, &
-!             separation_index=separation_index,error=error,hyperbolic_kernel_local=hyperbolic_kernel_local)
-!         else
-!           call mls_kernel(centring='node',ijk=k,l_kernel=l,l_coor=l,rr=r,norm=norm(:,l),pp=pp,kernel=node(k)%kernel(l)%v, &
-!             local_polynomial_order=local_polynomial_order,minimum_separation=minimum_separation,separation_array=separation_array, &
-!             separation_index=separation_index,error=error,hyperbolic_kernel_local=hyperbolic_kernel_local)
-!         end if
-!       else
-!         if (l == 0) then
-!           call optimisation_kernel(centring='node',ijk=k,l_kernel=0,l_coor=0,rr=r,pp=pp,kernel=node(k)%kernel(l)%v, &
-!             minimum_separation=minimum_separation,separation_array=separation_array, &
-!             separation_index=separation_index,error=error,hyperbolic_kernel_local=hyperbolic_kernel_local)
-!         else
-!           call optimisation_kernel(centring='node',ijk=k,l_kernel=0,l_coor=0,rr=r,norm=norm(:,l),pp=pp, &
-!             kernel=node(k)%kernel(l)%v,minimum_separation=minimum_separation, &
-!             separation_array=separation_array,separation_index=separation_index,error=error, &
-!             hyperbolic_kernel_local=hyperbolic_kernel_local)
-!         end if
-!       end if
-! UP TO HERE
-
-
-
-
-
-!       if (l == 0.and.face(j)%type == 2) then
-! ! for boundary cells averaging kernel don't do mls
-!         face(j)%kernel(0)%v(2) = 1.d0
-!         if (debug) write(83,*) 'boundary averaging kernel: type = ',face(j)%type
-
-! !     else if (l >= 1.and.vector_magnitude(norm(:,l)) < 1.d-10) then
-!       else if (l >= 1.and.vector_magnitude(norm(:,max(l,1))) < 1.d-10) then ! reference l=1 vector within norm for convienience here when l=0
-! ! if the norm is zero in this direction don't do either
-!         if (debug) then
-!           write(83,'(a)') 'norm component when expressed in basis is zero: skipping kernel construction'
-!           write(83,*) 'l = ',l,': norm(:,l) = ',norm(:,l),': vector_magnitude(norm(:,l)) = ',vector_magnitude(norm(:,l)) 
-!         end if
-
-!       else if (l >= 1.and.l <= 3) then ! NB, l loop direction is such that l >= 4 already calculated
-! ! construct these absolute kernels (1->3) from the relative ones calculated earlier (4->6)
-!         if (debug) write(83,*) 'constructing kernel from previous derivative kernels: l = ',l
-!         do ii = 1, ubound(face(j)%kernel(l)%ijk,1)
-!           do l2 = 4,6
-!             face(j)%kernel(l)%v(ii) = face(j)%kernel(l)%v(ii) + face(j)%norm(l,l2-3)*face(j)%kernel(l2)%v(ii)
-!           end do
-!         end do
-
-!       else
-
       end if
   
-    end do node_direction_loop
-
 ! find maximum values for each separation level
-    do l = 0, 3
-      do separation = 1, ubound(separation_index,1)
+      maxvalue = maxval(abs(node(k)%kernel(l)%v)) ! this is the maximum kernel magnitude for this node and direction over any separation level
+      do separation = 1, allocatable_integer_size(separation_index)
         if (separation == 1) then
           sepd = 1
         else
           sepd = separation_index(separation-1)+1
         end if
-        value = maxval(abs(node(k)%kernel(l)%v(sepd:separation_index(separation))))
-! TODO: does this work?
-        if (value > max_rel_node_kernel(l,separation)) then
-          max_rel_node_kernel(l,separation) = value
-          max_rel_node_knode(l,separation) = j
+        value = maxval(abs(node(k)%kernel(l)%v(sepd:separation_index(separation))))/maxvalue
+        if (value > max_rel_kernel(l,separation)) then
+          max_rel_kernel(l,separation) = value
+          max_rel_ijk(l,separation) = k
         end if
       end do
-    end do
           
+    end do node_direction_loop
+
 ! print some debugging info about kernels
 
     if (debug_sparse) then
@@ -4195,60 +4352,45 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
   end do
 
 ! print out some summary statements for each kernel and separation level combo
-  if (.true..and.allocated(separation_index)) then
-    do l = 0, 4
-      do separation = 1, ubound(separation_index,1)
-        write(fwarn,'(a,i1,a,i1,a,g10.3,a,i8)') 'l = ',l,': separation = ',separation,': max_(rel)_face_kernel = ', &
-          max_rel_node_kernel(l,separation),': j = ',max_rel_node_knode(l,separation)
+  if (.true.) then
+    write(fwarn,'(a)') &
+      'NODE: maximum abs kernel values at each separation level normalised by maximum abs values over all separation levels:'
+    do l = 0, ubound(node(k)%kernel,1)
+      do separation = 1, ubound(max_rel_kernel,2)
+        write(fwarn,'(a,i1,a,i1,a,g10.3,a,i8)') 'l = ',l,': separation = ',separation,': max_rel_kernel = ', &
+          max_rel_kernel(l,separation),': k = ',max_rel_ijk(l,separation)
       end do
     end do
   end if
 
-  deallocate(max_rel_node_knode,max_rel_node_kernel)
+  deallocate(max_rel_ijk,max_rel_kernel)
 
 !----------------------
-! ref: simple face kernels
-! uber simple masks suitable for 1D applications only
-! only 0 (average) and 4 (gradient in face direction) defined correctly
-! if the face is normal to one of the coordinate directions then that direction will also be defined correctly
-! anything else may have a value but will be nonsense
-else if (trim(kernel_method) == 'simple') then
-  do j = 1, jtotal
-    dx1 = abs(dot_product( face(j)%r(:,1) , face(j)%norm(:,1) ))
-    dx2 = abs(dot_product( face(j)%r(:,2) , face(j)%norm(:,1) ))
-    face(j)%dx_kernel = face(j)%dx/2.d0 ! this will be equal to (dx1+dx2)/2
-    face(j)%kernel(l)%centring = 'cell'
-    do l = 0, 6
-      allocate(face(j)%kernel(l)%ijk(2),face(j)%kernel(l)%v(2))
-      face(j)%kernel(l)%ijk = face(j)%icell(1:2)
-      face(j)%kernel(l)%v = 0.d0
-      allocate(face(j)%kernel(l)%reflect_multiplier(totaldimensions,2))
-      face(j)%kernel(l)%reflect_multiplier = 1
-! a glue_reflect will be nonzero only if the face is glued to another
-      if (face(j)%glue_reflect /= 0) face(j)%kernel(l)%reflect_multiplier(face(j)%glue_reflect,2) = -1
-      if (l == 0) then
-        face(j)%kernel(l)%v(1) = dx2/(dx1+dx2)
-        face(j)%kernel(l)%v(2) = dx1/(dx1+dx2)
-      else if (l == 4) then
-        face(j)%kernel(l)%v(1) = -1.d0/(dx1+dx2)
-        face(j)%kernel(l)%v(2) = 1.d0/(dx1+dx2)
-      else if (l >= 1.and.l <= 3) then ! quick-and-dirty to get 1d coordinate-aligned problems working
-        face(j)%kernel(l)%v(1) = -face(j)%norm(l,1)/(dx1+dx2)
-        face(j)%kernel(l)%v(2) = face(j)%norm(l,1)/(dx1+dx2)
+! ref: simple node kernels and just copies of adjacent face kernels, only works if adjacent face is 0 dimensional
+! ref: none node kernels are just zeroed
+else ! simple and none kernels treated within the same loop
+
+  do k = 1, ktotal
+    j = node(k)%jface(1) ! if the node and face are coincident then the face must be 0D
+    do l = 0, 3
+      if (node(k)%domain_dimensions == 1.and.trim(kernel_method) == 'simple') then
+        if (debug) write(83,*) '1D domain kernel being copied from coincident face kernel (simple): node type = ',node(k)%type, &
+          ': coincident j = ',j,': l = ',l
+! so just copy over this kernel
+        call copy_kernel(original=face(j)%kernel(l),copy=node(k)%kernel(l))
+      else
+        if (debug.and.trim(kernel_method) == 'simple') write(83,*) &
+          'simple kernel not possible as adjacent face is not 0D: node type = ',node(k)%type, &
+          ': coincident j = ',j,': l = ',l
+        allocate(node(k)%kernel(l)%ijk(0),node(k)%kernel(l)%v(0))
+        node(k)%kernel(l)%centring = 'cell'
+        node(k)%kernel(l)%v = 0.d0
+        node(k)%kernel(l)%ijk = 0
       end if
     end do
   end do
+
 !----------------------
-else ! none kernels, allocate to zero size
-  do j = 1, jtotal
-    face(j)%dx_kernel = face(j)%dx/2.d0 ! this will be equal to (dx1+dx2)/2
-    do l = 0, 6
-      allocate(face(j)%kernel(l)%ijk(0),face(j)%kernel(l)%v(0))
-      face(j)%kernel(l)%centring = 'cell'
-      face(j)%kernel(l)%v = 0.d0
-      face(j)%kernel(l)%ijk = 0
-    end do
-  end do
 end if
 
 if (allocated(r)) deallocate(r)
