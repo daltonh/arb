@@ -3379,11 +3379,11 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
         end if
         if (error) call error_stop('error in calculating a face '//trim(kernel_method)//' kernel')
 
+! rescale recently-formed derivative kernels
+        if (l >= 4.and.l <= 6) face(j)%kernel(l)%v=face(j)%kernel(l)%v/dx_kernel
+
       end if
   
-! rescale derivative kernels
-      if (l /= 0) face(j)%kernel(l)%v=face(j)%kernel(l)%v/dx_kernel
-
 ! find maximum values for each separation level
       maxvalue = maxval(abs(face(j)%kernel(l)%v)) ! this is the maximum kernel magnitude for this node and direction over any separation level
       do separation = 1, allocatable_integer_size(separation_index)

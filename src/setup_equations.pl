@@ -1599,6 +1599,7 @@ sub mequation_interpolation {
         if ( $l < 1 || $l > 3) { error_stop("$centring $operator_type operator has an incorrect or unspecified direction l=$l (should be 1|2|3) in $otype $variable{$otype}[$omvar]{name}"); }
 
         if ($from_centring eq "node") {
+          error_stop("cellfromnodegrad differencing has not been implemented in the fortran source (and may never be implemented... is it needed here?): found in $otype $variable{$otype}[$omvar]{name}");
 # node from_centring: ref: cellfromnodegrad
 # don't think that reflect_multiplier_string is needed here
 #         $inbit[$nbits] = "cellkernel[i,".scalar($l+4).",ns]*(".$expression.')'.$reflect_multiplier_string;
