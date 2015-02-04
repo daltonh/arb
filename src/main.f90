@@ -96,7 +96,6 @@ time_loop: do while ( &
   newtres = huge(1.d0)
 
   if (transient_simulation) then
-    newtstep = 0  ! only reset this for transient simulations, as may be required to carry-on from old newtstep for steady-state simulations
     timestep = timestep + 1
     formatline = "(a,"//trim(dindexformat(timestep))//",a)"
     write(*,fmt=formatline) repeat('+',timeline)//' timestep ',timestep,' starting '//repeat('+',totalline-timeline)
@@ -111,6 +110,7 @@ time_loop: do while ( &
       write(*,'(a)') 'ERROR: problem completing update_and_check_transients'
       exit time_loop
     end if
+    newtstep = 0  ! only reset this for transient simulations, as may be required to carry-on from old newtstep for steady-state simulations - now resetting is delayed to allow saving in a transient
     if (newtient_simulation) then
       call time_process
       call update_and_check_initial_newtients(ierror=ierror)

@@ -39,7 +39,16 @@ GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<expl
 # implicit
 <<dynamictimestepcomment>><<implicittimestepcomment>>INCLUDE "CFL_number"
 <<dynamictimestepcomment>><<implicittimestepcomment>>NONE_UNKNOWN <dt[r=0]> "<dt_initial>" stepoutput,input
-<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_EQUATION <dt implicit equation> "<dt>-nonemax(nonemin(nonemin(<dt_increase>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
+# by default there is no explicit newtstep timestep limitation - to include it reverse the following string replacement
+GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "#" DEFAULT "<<nonnewtsteptimestepcomment>>" W ""
+# without the explicit newtstep limitation
+<<nonnewtsteptimestepcomment>><<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_increase>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
+# for dynamic and implicit timestepping, include the following to also include a constraint based on the previous number of newtsteps
+<<newtsteptimestepcomment>><<dynamictimestepcomment>><<implicittimestepcomment>>NONE_CONSTANT <newtstepdecrease> 5.d0 # number of newtonsteps that take place before <newtstep> starts to limit <dt> (explicit)
+<<newtsteptimestepcomment>><<dynamictimestepcomment>><<implicittimestepcomment>>NONE_CONSTANT <dt_decrease> 0.8d0 # amount to decrease timestep by if previous timestep newtstep was exceeded
+<<newtsteptimestepcomment>><<dynamictimestepcomment>><<implicittimestepcomment>>NONE_TRANSIENT <newtstep[r=1]> "0.d0" "<newtstep>" # save previous newtstep
+<<newtsteptimestepcomment>><<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(noneif(<newtstep[r=1]>-<newtstepdecrease>,<dt_decrease>,<dt_increase>)*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<fluid domain>)),<dt_max>),<dt_min>)"
+<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
 
 # constant timestep, next 1 line
 <<constanttimestepcomment>>NONE_CONSTANT <dt> "<dt_initial>"
