@@ -102,6 +102,7 @@ INCLUDE "nondimensional_constants"
 
 # v0.50 - now use transient setup files
 INCLUDE "transient_dynamic_setup" # a dynamic timestep to keep the CFL number at a specified level
+#INCLUDE "transient_implicit_setup" # a dynamic timestep to keep the CFL number at a specified level
 #INCLUDE "transient_constant_setup" # a constant timestep
 
 # overwrite some transient specifications
@@ -233,7 +234,6 @@ NONE_TRANSIENT <u_f_max_min[r=1]> "" "<u_f_max_min>"
 # specify outputs for some variables
 
 VARIABLE <vof_F_c[l=1]> output
-VARIABLE <CFL[r=1]> stepoutput
 <<doubledomaincomment>>VARIABLE <vof_fs_phi_smoothed> output
 <<doubledomaincomment>>VARIABLE <vof_fs_phigrad_unit[l=1]> output
 

@@ -22,13 +22,24 @@ TRANSIENT_SIMULATION
 
 GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
 
-# dynamic timestep, next 4 lines
+# the default is for explicit timestepping, but implicit can also be enabled by reversing the following strings
+GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+
+# dynamic timestepping
 <<dynamictimestepcomment>>NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
 <<dynamictimestepcomment>>FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces>
-<<dynamictimestepcomment>><<cartesiancomment>>CELL_TRANSIENT <CFL local[r=1]> "" "<dt[r=1]>*facesum(faceif(<facedivop>*<u_f[r=1]>,<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)" ON <domain> output
-<<dynamictimestepcomment>><<cylindricalcomment>>CELL_TRANSIENT <CFL local[r=1]> "" "<dt[r=1]>*facesum(faceif(<facedivop>*<u_f[r=1]>,<<radius_f>>*<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)/<<radius_c>>" ON <domain> output
-<<dynamictimestepcomment>>NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
-<<dynamictimestepcomment>>NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+
+# explicit
+# use CFL_number template, but make the calculation explicit - ie, based on r=1 values
+<<dynamictimestepcomment>><<explicittimestepcomment>>INCLUDE "CFL_number" R "<CFL local/dt>" W "<CFL local/dt[r=1]>" R "<u_f>" W "<u_f[r=1]>" R "<CFL local>" W "<CFL local[r=1]>" R "<dt>" W "<dt[r=1]>" R "NONE_OUTPUT <CFL>" W 'NONE_TRANSIENT <CFL[r=1]> ""'
+#<<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
+<<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <CFL[r=1]> output,stepoutput
+<<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+
+# implicit
+<<dynamictimestepcomment>><<implicittimestepcomment>>INCLUDE "CFL_number"
+<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_UNKNOWN <dt[r=0]> "<dt_initial>" stepoutput,input
+<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_EQUATION <dt implicit equation> "<dt>-nonemax(nonemin(nonemin(<dt_increase>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
 
 # constant timestep, next 1 line
 <<constanttimestepcomment>>NONE_CONSTANT <dt> "<dt_initial>"
