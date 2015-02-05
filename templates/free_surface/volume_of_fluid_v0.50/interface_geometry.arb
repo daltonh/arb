@@ -6,10 +6,6 @@ INCLUDE "smooth_phi"
 #INCLUDE "nosmooth_phi" 
 # include routines to calculate surface tension force
 #INCLUDE "smooth_normals"
-#INCLUDE "normals"
-#INCLUDE "curvature"
+INCLUDE "normals"
+INCLUDE "curvature"
 
-INCLUDE "normals_node_based"
-INCLUDE "curvature_face_based"
-
-NONE_CONSTANT <vof_smoothing_constant> 0.1d0 # a small number gives less smoothing

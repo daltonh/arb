@@ -1,0 +1,3 @@
+# boundary equations for walls
+# here the continuous phase completely wets the wall (contact angle = 180degrees), disperse does not (contact angle = 0degrees)
+FACE_EQUATION <vof_equation_walls> "<vof_phi>" ON <walls>
