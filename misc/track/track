@@ -1,0 +1,1024 @@
+#!/usr/bin/perl -w
+
+use strict;
+use File::Basename;
+use Cwd;
+use List::MoreUtils 'any';
+use File::Glob ':glob';
+use File::Copy;
+use File::Path qw(make_path);
+
+
+my $help_mode = 1; # help mode gives hopefully-useful extra information
+my $debug_mode = 0; # everything still works in debug mode, just more output along the way
+
+# if $restore_write_permissions is false, linked items in the @disable array below will always be non-writable (this is just a safety feature in case you try to delete the archive itself)
+# if $restore_write_permissions is true, then only the links associated with any current current detached-mode checkout are likely to be protected
+my $restore_write_permissions = 0;  # default: 0
+
+# used when modifying .gitignore
+my $init_message = '# gitignore entries modified by track'; # don't ever change this message!
+
+# Enable tracking of these things by adding "!item" to .gitignore in repository root
+# generally these are small (diskspace wise) text files for which you want a full, tracked history
+my @enable = ('*.arb', '*.geo'); # default: ('*.arb', '*.geo')
+
+# Disable tracking of these things by adding "item" to .gitignore in repository root
+# generally these are things that can be regenerated, note they will be stored in 
+# the run archive instead of being tracked by git
+# symbolic links will be made to these items whenever `track checkout <commit-id>` is used 
+my @disable = ('output', 'build', 'tmp'); # default: ('output', 'build', 'tmp')
+
+
+# these will be directories that aren't tracked by git, but that we don't want automatically stashed by the auto-stash feature. i.e. they will be directories that we want ignored by both git and `track`. Generally these will be large directories that can easily be regenerated
+my @stash_disable_directories = ('suitesparse'); # default: ('suitesparse')
+
+my $this_script = basename($0); # store script name
+my $operating_system = `uname`;
+chomp($operating_system);
+my $namespace = 'track'; # used for note and stash namespaces
+my $stash_namespace = 'stash_storage'; # used when storing files associated with stashes
+
+# instructions
+sub usage_message {
+  print "INFO: usage message for $this_script\n";
+
+my $usage = <<"END";
+track --help|-h
+  show help message
+
+track init
+  initialise a git repository ready for track
+
+track new '<arb-command>'
+  start a new simulation running, and add it to the track archive
+  
+track checkout <commit-id>
+  runs `git checkout <commit-id>`, but also does some useful things:
+    any git un-added/un-committed changes will be git stashed automatically
+    any special files that aren't tracked by either git or track will be moved 
+    to a holding place in the archive
+
+track checkout <branch-name>
+  this returns to the head of any branch, but also does some useful things:
+    brings back any special files that were moved by any previous use of `track checkout <commit-id>`
+    applies any git stash that was created by any previous use of `track checkout <commit-id>`
+
+track notes
+  Shows a summary of all notes added using track
+
+track notes -e
+  Open notes summary in an editor
+
+track notes pending
+  Show simulations that are in the archive but do not have any notes
+
+track notes add
+  Add a new note to an existing archived simulation
+
+track running
+  Show information about simulations that are currently running
+
+track plot
+  Open a tool for visualising data from any archived simulation
+
+track links
+  Convert "output", "build" and "tmp" symbolic links to their actual content
+  (useful when branching off a previous archived simulation)
+END
+
+print "$usage";
+
+}
+
+sub input_syntax_error_message {
+  print "ERROR: incorrect input syntax for $this_script \n";
+  usage_message();
+}
+
+print "DEBUG INFO: \@ARGV is @ARGV\n" if $debug_mode;
+print "DEBUG INFO: \$\#ARGV from input is $#ARGV\n" if $debug_mode;
+
+# settings
+# log format default (used whenever ouptut from `git log` needs to be used)
+my $log_format_default="--graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %Creset' --no-abbrev";
+# log format for summary in the run archive
+my $log_format_for_summary_file=""; 
+
+# get the root directory of current repository
+my $repository_root = `git rev-parse --show-toplevel 2> /dev/null`;
+chomp($repository_root);
+
+# make sure we're somewhere within a repository
+if (not $repository_root) {
+  print "ERROR: `$this_script` must be called from a git repository\n";
+  exit;
+}
+
+# check that it's been intialised previously
+open(IGNORE,"<","$repository_root/.gitignore");
+my $not_there = 1;
+while (my $line=<IGNORE>) {
+  if ($line =~ /$init_message/) {
+    $not_there = 0;
+  }
+}
+
+if (defined $ARGV[0]) {
+  if ($not_there && $ARGV[0] ne 'init') {
+  print "ERROR: repository needs to be initialised for track\n";
+  print "       run `track init`\n";
+  exit;
+  }
+}
+close(IGNORE);
+
+
+# store where the script was called from
+my $working_directory = getcwd;
+my $working_directory_name = basename($working_directory);
+
+# get branch info
+my $branch=`git rev-parse --abbrev-ref HEAD`;
+if (not $branch) {
+  print "ERROR: no branches available in $repository_root\n";
+  exit;
+};
+chomp($branch);
+
+# get the currently checked-out commit id
+my $commit=`git rev-parse HEAD`;
+chomp($commit);
+
+my $run_archive = '.archive'; # this is where jobs will be run from and stored
+
+# notes details
+my $notes_summary = 'summary'; # name of notes file
+my $summary = "$run_archive/$notes_summary"; # location of where it will be kept
+
+# process the arguments
+# if no input arguments given
+if ($#ARGV == -1) {
+  usage_message();
+  exit;
+}
+
+# if help argument given
+my $n = 0;
+while ( $n <= $#ARGV ) {
+  if ($ARGV[$n] eq '-h' || $ARGV[$n] eq '--help') {
+      usage_message();
+      exit;
+  }
+  $n = $n + 1;
+}
+
+my $mode = '';
+if ($ARGV[0] eq 'init' and $#ARGV==0) {
+# ref: init mode
+  # ref: `track init`
+  $mode = 'init';
+  print "DEBUG INFO: running in $mode mode\n" if $debug_mode;
+
+  # make the local run archive if necessary
+  if (($working_directory eq $repository_root) and (not -d $run_archive) ) {
+    print "INFO: making $run_archive directory\n";
+    system("mkdir $run_archive");
+  }
+
+  my $status_command = 'git status -s';
+  my @status = `$status_command`;
+  if (@status) {
+    print "ERROR: `track init` must be called from a clean git repository\n";
+    print "       `git status -s` is not clean for \"$branch\" branch in repository root\n";
+    print "       This can be resolved by running `git add -A; git commit`\n";
+    print "INFO: `$status_command` returns\n";
+    print "@status";
+    exit;
+  }
+
+  if ($working_directory ne $repository_root ) {
+    chdir();
+  }
+
+  # check if `track init` has been used in the past
+  open(IGNORE,"<","$repository_root/.gitignore");
+  while (my $line=<IGNORE>) {
+    if ($line =~ /$init_message/) {
+      print "ERROR: `track init` has previously been run on this git repository\n";
+      exit;
+    }
+  }
+  close(IGNORE);
+
+  system("echo \"\\n$init_message\" >> $repository_root/.gitignore");
+  foreach my $type (@enable) {
+    print "INFO: Appending \"!$type\" to $repository_root/.gitignore\n";
+    system("echo '!$type' >> $repository_root/.gitignore");
+  }
+
+  foreach my $type (@disable) {
+    print "INFO: Appending \"$type\" to $repository_root/.gitignore\n";
+    system("echo '$type' >> $repository_root/.gitignore");
+  }
+
+  foreach my $type (@disable) {
+      print "INFO: Appending \"$type/.gitignore\" to $repository_root/.gitignore\n";
+    system("echo '$type/.gitignore' >> $repository_root/.gitignore");
+  }
+
+  print "INFO: removing output/.gitignore\n";
+  system("rm $repository_root/output/.gitignore");
+  system("git rm $repository_root/output/.gitignore");
+
+  foreach my $type (@disable) {
+    print "INFO: removing $type/.gitignore\n";
+    system("rm $repository_root/$type/.gitignore");
+    system("git rm $repository_root/$type/.gitignore");
+  }
+
+  print "INFO: Appending \"build/makefile\" to $repository_root/.gitignore\n";
+  system("echo 'build/makefile' >> $repository_root/.gitignore");
+
+  # commit the `track init` changes to the repository
+  my $init_commit = "git add .gitignore; git commit -m 'init commit made by track' ";
+  print "INFO: committing changes to .gitignore\n";
+  print "      running `$init_commit`\n";
+  system("$init_commit");
+  print "INFO: showing commit info\n";
+  system("git log --name-status HEAD^..HEAD");
+
+} elsif ($ARGV[0] eq 'new' and $#ARGV==1) {
+# ref: new mode
+  $mode = 'new';
+  # ref: `track new`
+  print "DEBUG INFO: running in $mode mode\n" if $debug_mode;
+  if ($working_directory ne $repository_root ) {
+    print "ERROR: \"track $mode\" must be run from repository root, i.e.\n";
+    print "       $repository_root\n";
+    exit;
+  }
+  if ($#ARGV != 1) {
+    print "ERROR: $mode mode takes one argument\n";
+    exit;
+  }
+  my $job_string = $ARGV[1];
+  my $original_job_string = $job_string; # keep a copy
+  print "DEBUG INFO: original requested command was '$job_string'\n" if $debug_mode;
+# force all tracked jobs to run in nohup mode
+  if ($job_string =~/>/) {
+    print "ERROR: $this_script does not support custom redirection of arb output\n";
+    print "       The requested command cannot contain \">\" redirection\n";
+    print "       Use --quiet option for arb\n";
+  }
+
+# check for clean git status
+  my $status_command = 'git status -s';
+  my @status = `$status_command`;
+  if (@status) {
+    print "ERROR: `git status -s` is not clean for \"$branch\" branch in repository root\n";
+    print "       `track $mode` needs to store files from $working_directory\n";
+    print "       in $run_archive/<commit-identity>\n";
+    print "       (If files have changed since the last git commit, then archived input files\n";
+    print "       will not be identical to those used to to generate the output files)\n";
+    print "       This can be resolved by running `git add -A; git commit`\n";
+
+    print "INFO: `$status_command` returns\n";
+    print "@status";
+    exit;
+  }
+
+# check if the current commit already exists in the archive directory
+  if (-d "$run_archive/$commit") {
+    print "ERROR: `track $mode` has previously been used to track this commit\n";
+    print "       You could delete the archived version of this commit in $run_archive\n";
+    print "       by running `rm -r $run_archive/$commit`\n";
+    print "       Be aware that all previous output data will be lost\n";
+    print "       NOTE: If you really want to track a duplicate then run `git commit --allow-empty`\n";
+    print "             and re-run `track new` for the duplicate commit\n";
+    exit;
+  } else {
+    print "INFO: making $run_archive/$commit\n";
+    mkdir("$run_archive/$commit");
+  }
+
+# copy over a snapshot of the current commit to the run archive
+  my @exclude = ('output', 'run_archive'); # exclude these from the copy
+  # "output" may contain previous testing output and we don't want it
+  # "run_archive" shouldn't be copied to itself
+  # make the exclude list ready for rsync
+  foreach my $item (@exclude) {
+    $item = '--exclude='.$item;
+  }
+  my $options = '-a';
+  $options = '-av' if $debug_mode;
+
+  my $rsync = "rsync $options @exclude $working_directory $run_archive/$commit";
+  print "INFO: running rsync with `$rsync`\n";
+  system("rsync $options @exclude $working_directory/* $run_archive/$commit");
+
+# do some processing on the requested command prior to submitting the job
+# remove any background request (temporarily)
+  if ($job_string =~/\&$/) {
+    chop($job_string);
+    $job_string =~ s/\s+$//;
+  }
+
+# make sure the job is a "nohup" job
+  if ($job_string !~/^nohup/) {
+    $job_string = 'nohup '.$job_string;
+    print "INFO: `track $mode` mode only supports nohup commands\n" if $help_mode;
+    print "      modifying requested command to `$job_string &`\n" if $help_mode;
+  }
+# make sure the job is a "--quiet" job
+  if ($job_string !~/--quiet/) {
+    $job_string = $job_string.' --quiet';
+    print "INFO: `track $mode` only supports --quiet option \n" if $help_mode;
+    print "      modifying requested command to `$job_string &`\n" if $help_mode;
+  }
+
+# make sure there are no messages from nohup
+# i.e. don't keep nohup's stderr
+  $job_string = $job_string.' 2>/dev/null &';
+
+# go to the run archive
+  chdir("$run_archive/$commit");
+  print "INFO: changing to $run_archive/$commit\n";
+  print "INFO: submitted background job is `$job_string`\n";
+
+# run the job
+  system($job_string);
+
+} elsif ($ARGV[0] eq 'notes') {
+# ref: notes mode
+  $mode = 'notes';
+  print "DEBUG INFO: running in $mode mode\n" if $debug_mode;
+# prompt for note amendment and add to the commit
+  
+  # check if we're not in the repository root
+  if ($working_directory ne $repository_root) {
+    #go there
+    chdir($repository_root);
+  }
+
+
+  # ref: `track notes`
+  if ($#ARGV == 0) { # show a short summary of all notes
+
+    opendir(my $directory_handle, $run_archive);
+    my @archived_commit_hashes = grep {-d "$run_archive/$_" && ! /^\.{1,2}$/ && ! /^$stash_namespace/ } readdir($directory_handle);
+    closedir($directory_handle);
+
+    my %container = ();
+    foreach my $hash (@archived_commit_hashes) {
+      my $timestamp =`git show -s --format='%at' $hash`;
+      $container{$hash} = $timestamp;
+    }
+
+    foreach my $time_sorted_hash (sort {$container{$a} <=> $container{$b}} keys %container) {
+      my $summary_output = `git log --no-walk --oneline --no-abbrev --show-notes=$namespace $time_sorted_hash 2>/dev/null`;
+      print "$summary_output";
+    }
+  } elsif 
+
+  # ref: `track notes -e`
+  ($#ARGV==1 and $ARGV[1] eq '-e') { # open the summary in editor
+    my $editor_present = $ENV{"EDITOR"};
+    my $editor;
+    if ($editor_present) {
+      $editor=$editor_present;
+      system("\$EDITOR $run_archive/$notes_summary"); # editor consitent with git
+    } else {
+      $editor = "vi";
+      system("$editor $run_archive/$notes_summary"); # fall back to vim
+    }
+    print "WARNING: Viewing $notes_summary with $editor was for convenience only\n";
+    print "         Any changes to the $run_archive/$notes_summary will be overwritten\n";
+    print "         the next time `track notes add` is used\n";
+    exit;
+  } elsif
+
+  # ref: `track notes add`
+  ($ARGV[1] eq 'add' and $#ARGV==1) { # add note to the currently checked-out commit
+    system("git notes --ref=$namespace add $commit");
+    print "INFO: note amendment made for commit $commit\n";
+    exit;
+  } elsif
+
+  # ref: `track notes pending`
+  ($ARGV[1] eq 'pending' and $#ARGV==1) { # show commits that don't have notes in $namespace
+    # TODO make this into a subroutine because it's duplicated elsewhere
+    # check if we're not in the repository root
+    if ($working_directory ne $repository_root) {
+      #go there
+      chdir($repository_root);
+    }
+    opendir(my $directory_handle, $run_archive);   
+    my @archived_commit_hashes = grep {-d "$run_archive/$_" && ! /^\.{1,2}$/ && ! /^$stash_namespace/ } readdir($directory_handle);
+        closedir($directory_handle);
+
+    my $archived_commits_with_notes = `git notes --ref=track | cut -d' ' -f2`;
+    $archived_commits_with_notes =~ s/\n/,/g;
+    my @archived_commits_with_notes = split(/,/, $archived_commits_with_notes);
+
+    my $found_at_least_one_pending_note = 0;
+    my $iteration=0;
+    foreach my $hash (@archived_commit_hashes) {
+      $iteration++;
+      print "INFO: following commits do not have associated notes (in their \"$namespace\" notes namespace)\n\n" if ($iteration==1);
+      # TODO order notes by relative time
+      print "      add a note using `track notes add <commit-id>`\n\n" if ($iteration==1 and $help_mode);
+      my $match = any { /$hash/ } @archived_commits_with_notes;
+      if (!($match)) { # we're looking for a case where the archived commit's hash does not match and of the existing note hashes
+        $found_at_least_one_pending_note = 1;
+        #system("git log --no-walk --oneline --no-abbrev $hash");
+        system("git log $log_format_default --no-walk $hash");
+        print "Respectively,\n"                                     if ($help_mode);
+        print " Run to inspect -->\n"                               if ($help_mode);
+        print " Run to checkout -->\n"                              if ($help_mode);
+        print " Run to add note to \"$namespace\" namespace -->\n"  if ($help_mode);
+        print "cd $run_archive/$hash\n"                             if ($help_mode);
+        print "track checkout $hash\n"                              if ($help_mode);
+        print "track notes add $hash\n"                             if ($help_mode);
+      }
+    }    
+  } elsif
+
+  # ref: `track notes add <commit-id>`
+  ($#ARGV == 2 and $ARGV[1] eq 'add') { # add note to a specified commit
+    my $specified_commit = $ARGV[2];
+      if (-d "$run_archive/$specified_commit") {
+        system("git notes --ref=$namespace add $specified_commit");
+        print "INFO: note amendment made for commit $specified_commit\n";
+      }
+  } else {
+    input_syntax_error_message();
+    usage_message();
+  }
+
+# keep an updated summary of all notes in the run archive directory
+  open(SUMMARY,">",$summary);
+
+  # git handling of "notes" is a bit lacking.
+  # this section will look at what is available in the archive,
+  # generate the relevant commit id information and make a summary
+  # that is ordered by timestamp
+  opendir(my $directory_handle, $run_archive);
+  my @archived_commit_hashes = grep {-d "$run_archive/$_" && ! /^\.{1,2}$/ && ! /^$stash_namespace/ } readdir($directory_handle);
+    closedir($directory_handle);
+
+  my %container = ();
+  foreach my $hash (@archived_commit_hashes) {
+    my $timestamp =`git show -s --format='%at' $hash`;
+    $container{$hash} = $timestamp;
+  }
+
+  foreach my $time_sorted_hash (sort {$container{$a} <=> $container{$b}} keys %container){
+    my $summary_output = `git log $log_format_for_summary_file --no-walk --show-notes=$namespace $time_sorted_hash`;
+    print SUMMARY "$summary_output\n";
+  }
+
+  close(SUMMARY);
+
+} elsif ($ARGV[0] eq 'running' and $#ARGV==0) {
+# ref: running mode
+  $mode = 'running';
+  # ref: `track running`
+  print "DEBUG INFO: running in $mode mode\n" if $debug_mode;
+
+  if ($operating_system eq 'Darwin') {
+    print "ERROR: `track running` does not support os x yet, only ubuntu\n";
+    exit;
+  }
+
+  # check if we're not in the repository root
+  if ($working_directory ne $repository_root) {
+    #go there
+    chdir($repository_root);
+  }
+  opendir(my $directory_handle, $run_archive);   
+  my @archived_commit_hashes = grep {-d "$run_archive/$_" && ! /^\.{1,2}$/ && ! /^$stash_namespace/ } readdir($directory_handle);
+  closedir($directory_handle);
+
+  my @pids = ();
+  
+  # check if any arb jobs are running
+  my $pid_list = `pidof arb`;
+  if ($pid_list) {
+    @pids = split(/\s/,$pid_list);
+    } else {
+    print "INFO: no arb jobs are currently running\n";
+    exit;
+  }
+  my %originating_paths = (); # path info, for this repository only
+  my %originating_commits = (); # commit info, for this repository only
+  my %other_paths = (); # path info, for possible arb jobs that are running and are not part of this repository
+  foreach my $pid (@pids) {
+    my $full_path = `pwdx $pid 2>/dev/null`;
+    $full_path =~ s/^.*:\s//g; # strip off the pid from the output
+    my $running_commit = basename($full_path);
+    chomp($running_commit);
+
+    # see if the running job is part of this repository's archive
+    my $match = any { /$running_commit/ } @archived_commit_hashes;
+
+    # check if the path is part of this repository
+    if ($match) { # won't matter if basename returns some other generic running arb directory
+      # running commit is part of this repository so keep a record of this
+      $originating_paths{$pid} = $full_path;
+      $originating_commits{$pid} = $running_commit;
+    } else { # running commit is not part of this repository so keep a record of this
+      $other_paths{$pid} = $full_path;
+    }
+  }
+  # give info about this repository's running jobs
+  print "INFO: these jobs are running as part of this repository\n";
+
+  # first sort the pids by their timestamps
+  my %timestamps = ();
+  foreach my $pid (keys %originating_commits) {
+    my $output_commit_hash = $originating_commits{$pid};
+    my $timestamp =`git show -s --format='%at' $output_commit_hash`;
+    $timestamps{$pid} = $timestamp;
+  }
+  foreach my $pid (sort {$timestamps{$a} <=> $timestamps{$b}} keys %timestamps){
+    my $output_commit_hash = $originating_commits{$pid};
+    my $msg = `git log $log_format_default --no-walk $output_commit_hash`;
+    chomp($msg);
+    printf("%-132s", $msg);
+    printf("%-10s", "pid $pid ");
+    print "threads ";
+    my $threads_in_use = get_thread_count("$run_archive/$output_commit_hash");
+    print "$threads_in_use\n";
+    print "\tTo kill nicely -->\n" if $help_mode;
+    print "\t\ttouch $repository_root/$run_archive/$output_commit_hash/kill\n" if $help_mode;
+    print "\tTo kill roughly -->\n" if $help_mode;
+    print "\t\tkill $pid\n" if $help_mode;
+    my $tail_src = `tail -5 "$repository_root/$run_archive/$output_commit_hash/output/output.scr"`;
+    chomp($tail_src);
+    my @tail_lines = split(/\n/,$tail_src);
+    print "\tTo follow -->\n" if $help_mode;
+    print "\t    tail -f $run_archive/$output_commit_hash/output/output.scr\n";
+    foreach my $line (@tail_lines) {
+      print "\t\t$line\n";
+    }
+  }
+  
+  # give info about other running jobs
+  if (%other_paths) {
+    print "\nINFO: there are additional background jobs that are not part of this repository\n";
+    foreach my $pid (keys %other_paths) {
+      my $path = $other_paths{$pid};
+      chomp($path);
+      $path =~ s/^.*:\s//g; # strip off the pid
+      my $thread_count = get_thread_count("$path");
+      printf("\t%-10s", "pid $pid ");
+      print "$path \t threads $thread_count\n";
+    }
+  }
+
+} elsif ($ARGV[0] eq 'checkout') {
+# ref: checkout mode
+  $mode = 'checkout';
+  # ref: `track checkout`
+  if ($#ARGV == 0 ) {
+    print "ERROR: `track $mode` requires a commit-id argument\n";
+    print "       run with `track $mode commit-id`\n";
+    exit;
+  }
+  if ($#ARGV == 1) {
+    # ref: `track checkout <commit-id>`
+    # ref: `track checkout <branch-name>`
+    #   both work
+    my $checkout_argument = $ARGV[1];
+    print "DEBUG INFO: running in $mode mode\n" if $debug_mode;
+
+    my $test_existence = `git show $checkout_argument 2>/dev/null`;
+    if (!($test_existence)) {
+      print "ERROR: $checkout_argument is not in this repository\n";
+      exit;
+    }
+
+    # check if we're not in the repository root
+    if ($working_directory ne $repository_root) {
+      #go there
+      chdir($repository_root);
+    }
+
+    my $behaviour = 0;
+    # (behaviour 0)
+    #       we want to checkout the end of this branch
+    #       we then want to synch any files stored in the archive stash store
+    #
+    # we want (behaviour 0) to occur if
+    #       `track checkout <branch-name>` has been called
+    #       `track checkout <commit-id>` has been called, and the <commit-id> is on the end of a branch
+    #
+    # (behaviour 1)
+    #       we want to check out this commit
+    #         if this commit is in the archive, we want to make links to the archive and remove user write permissions
+
+    # check if a branch name was used as input
+    my $branch_name_requested = '';
+    my $heads_output = '';
+    my @heads_hashes = ();
+    my $checkout_argument_is_at_end_of_a_branch = '';
+    $heads_output = `git for-each-ref refs/heads/`;
+    @heads_hashes = split(/\n/, $heads_output);
+
+    my $checkout_argument_is_a_branch_name=`git show-branch -g $checkout_argument 2>/dev/null`;
+    if ($checkout_argument_is_a_branch_name) {
+      # a branch name has been requested
+      $branch_name_requested = $checkout_argument;
+    } else {
+      # a hash was used as input
+      # check if the hash is on the end of any branch
+      foreach my $item (@heads_hashes) {
+        my @fields = split(/\s/, $item);
+        $item = $fields[0];
+      }
+      $checkout_argument_is_at_end_of_a_branch = any { /$checkout_argument/ } @heads_hashes;
+      if ($checkout_argument_is_at_end_of_a_branch) {
+        $behaviour = 0;
+      } else {
+        $behaviour = 1;
+      }
+    }
+    if ($checkout_argument_is_a_branch_name) {
+      $checkout_argument_is_at_end_of_a_branch = 'yes';
+    }
+
+
+# see if we're already at where we want to go
+    if (!($checkout_argument_is_a_branch_name)) {
+      # a hash will have been requested, check if we're already at that hash
+      if ($checkout_argument eq $commit) {
+        print "INFO: you're already there\n";
+        exit;
+      }
+    } elsif ($checkout_argument eq $branch) {
+      print "INFO: you're already there\n";
+      exit;
+    }
+
+# when on most recent commit of branch, and `git status -s` is not clean, do this:
+#   move special things to the archive
+#   (a special thing is something we want to end up in a run archive, but we don't want tracked by git)
+#conditions for moving output are: 
+#  we're on the end of a branch when `track checkout` is called
+#
+#we'll move files even if `git status` is clean, because special things may have changed
+  # check if we're on the end of a branch, i.e. most-recent commit has no children
+
+  foreach my $item (@stash_disable_directories) {
+      if ($working_directory =~ /$item/) {
+        print "ERROR: $this_script cannot be called from within \"$item\" or any of its sub-directories\n";
+        print "       likely \"$item\" is present in the \@stash_disable_directories array in $this_script\n";
+        exit;
+      }
+    }
+ 
+  my $stash_storage = '';
+  my $stash_message = "Auto-generated track stash for branch";
+  # want to know if $commit is at end of branch
+  my $commit_was_at_end_of_branch = any { /$commit/ } @heads_hashes;  
+  
+  if ($commit_was_at_end_of_branch) {
+    # the commit from which `track checkout` was called is at the end of a known branch
+    
+    # request a stash
+    print "INFO: we were at the latest commit on the branch $branch\n";
+    print "INFO: seeing if a git stash needs to be made\n";
+    print "\trunning `git stash save '$stash_message $branch' `\n";
+    system("git stash save '$stash_message $branch'"); # use the same namespace as per notes
+    system("git stash list") if $debug_mode;
+
+    # now we'll work out what other special things need to be moved
+    
+    my @placeholder_entries = ("^$run_archive");
+    foreach my $item (@disable) {
+      push(@placeholder_entries, "|^$item");
+    }
+    foreach my $item (@stash_disable_directories) {
+      push(@placeholder_entries, "|$item/");
+    }
+
+    my $placeholder = join('', @placeholder_entries);
+    my $git_identify_special = "git ls-files . --others | egrep -v '$placeholder'";
+    print "INFO: looking for special things (things other than \"output\", but not tracked by git)\n";
+    print "\trunning `$git_identify_special`\n";
+    my $special_things_output = `$git_identify_special`;
+    chomp($special_things_output);
+    my @special_things = split(/\n/, $special_things_output); # these were identified
+    my @special_things_to_move = (); # these will actually get moved
+
+    foreach my $item (@special_things) {
+      # special case .swp files
+      if ($item =~ /^.*.swp$/) {
+        print "\t\t$item was a swap file and will be removed\n";
+        system("rm -f $item");
+      } elsif ($item =~ /^.fuse_hidden/) {
+        system("rm -f $item"); # get rid of mac sshfs info
+      }
+      else {
+        print "\t\t$item\n";
+        push(@special_things_to_move, $item);
+      }
+    }
+    
+    unless(@special_things) {
+      print "INFO: no special things found\n"
+    };
+
+
+    my $directory_in_disable_exists = 0;
+    foreach my $item (@disable) {
+      if (-d "$repository_root/$item") {
+        $directory_in_disable_exists = 1;
+      }
+    }
+    
+    $stash_storage = "$run_archive/$stash_namespace\_branch_$branch\_commit_$commit";
+    if ($directory_in_disable_exists or @special_things_to_move) {
+      print "INFO: making directory $stash_storage\n";
+      make_path($stash_storage) unless (-d $stash_storage); # emulates mkdir -p, also make only if it doesn't already exist  
+    }
+
+    # we'll need to store anything in @disable
+    foreach my $item (@disable) {   
+      if (-d $item) { 
+        # directory exists (it might be link)
+        my $rsync = "rsync -a $item/ $stash_storage/$item";
+        print "INFO: running `$rsync`\n";
+        system("$rsync");
+        my $chmod = "chmod -R u+w $item";
+        print "INFO: running `$chmod`\n";
+        system($chmod);
+        print "INFO: running `rm -f $item`\n";
+        system("rm -rf $item");
+      }
+    }
+
+    print "INFO: seeing if any special things need to be synched to $stash_storage\n";
+    print "INFO: moving special things\n" if (@special_things_to_move);
+
+    # go into existing directories
+    foreach my $item (@special_things_to_move) {
+      my $basename = basename($item);
+      if ($item eq $basename) { # the file is just in the repository directory itself
+        my $rsync_transfer = "rsync -a $item $stash_storage/";
+        print "\trunning  `$rsync_transfer`\n";
+        system("$rsync_transfer");
+        my $remove_after_transfer = "rm -f $item";
+        print "running `$remove_after_transfer`\n";
+        system("$remove_after_transfer");
+      } else { # the file is within a directory that is itself within the repository directory
+        my $dirname = dirname($item);
+        if (!(-d "$stash_storage/$dirname")) {
+          make_path("$stash_storage/$dirname");
+        }
+        my $rsync_transfer_to_specific_directory = "rsync -a $item $stash_storage/$dirname";
+        print "\trunning  `$rsync_transfer_to_specific_directory`\n";
+        system("$rsync_transfer_to_specific_directory");
+        my $remove_after_transfer = "rm -f $item";
+        print "running `$remove_after_transfer`\n";
+        system("$remove_after_transfer");
+        # rmdir won't remove the directory if it's empty
+        # see http://perldoc.perl.org/functions/rmdir.html
+        # this means if a special file is in a git-tracked directory that has
+        # other git-tracked files, the directory won't be removed
+        rmdir($dirname);
+      }
+    }
+  } 
+
+
+# if you got to here you now know that for everything:
+          # git knows about it, or
+          # it's a symbolic link to something in the archive, or
+          # it's got uncommitted changes and has been put in run archive stash storage 
+
+# system here to prevent writing accidentally to the run archive's output directory
+# (i.e. "output" is really the only symblic link that needs locking here as
+# it points to an archived commit's output directory)
+# Whenever this commit is checked out, we want to be sure that the
+# that the archive never changes due to a possible manual re-running of arb (i.e. and having 
+# output directed through the new links)
+
+# restore links to any special things
+# restore execution permissions to previous links
+# (note, this will apply permission changes to the actual directory in the run archive)
+
+
+# deal with "output"
+    if ( -d 'output' and -l 'output') {
+      print "INFO: restoring write permissions for existing directories\n";
+      print "\toutput\n";
+      system('chmod -R u+w output'); # add back owner write permission to existing link
+      print "INFO: removing directory links\n";
+      print "\toutput\n";
+      system('rm output'); # remove the link (this won't affect the archived directory)
+    }
+
+# checkout the commit
+    my $git_checkout_command = "git checkout $checkout_argument";
+    print "INFO: about to try `$git_checkout_command`\n";
+    system("$git_checkout_command"); 
+    my $branch_of_specified_commit = `git rev-parse --abbrev-ref HEAD`;
+    chomp($branch_of_specified_commit);
+    my $get_branches = `git branch --contains`;
+    print "INFO: git branches containing this commit are:\n";
+    chomp($get_branches);
+    print "$get_branches\n";
+
+# make new links
+# though, we only want to make links if the commit is in the archive
+# (this enables use of `track checkout <branch>` if you want to go to the most
+# recent commit of the branch, but are yet run a simulation using `track new "<run-command>"`)
+
+    # check if we're not in the repository root
+    if ($working_directory ne $repository_root) {
+      #go there
+      chdir($repository_root);
+    }
+
+    opendir(my $directory_handle, "$repository_root/$run_archive") or die ("cannot open $run_archive"); 
+
+    my @archived_commit_hashes = grep {-d "$run_archive/$_" && ! /^\.{1,2}$/ && ! /^$stash_namespace/ } readdir($directory_handle);
+    closedir($directory_handle);
+
+    # get the commit id (need this, because $checkout_argument might be an alias string such as "develop", "master", etc.)
+    my $specified_commit_hash=`git rev-parse HEAD`;
+    chomp($specified_commit_hash);
+
+    if ($behaviour == 1) { # see the explanations about $behaviour above
+      # we're going to do some link making here
+      my $match = any { /$specified_commit_hash/ } @archived_commit_hashes;
+
+      if ($match) { # hash is in the archive, so start making some links
+        print "INFO: making new links to existing directories\n";
+        print "\toutput -> $run_archive/$specified_commit_hash/output\n";
+        # make the new link to archived output
+        #system("ln -s $repository_root/$run_archive/$specified_commit_hash/output $repository_root/output");
+        system("ln -s $run_archive/$specified_commit_hash/output $repository_root/output"); # use relative link
+        # lock the archived version (note recursive chmod can't be applied to symbolic links)
+        system("chmod -R u-w $repository_root/$run_archive/$specified_commit_hash/output"); # disable all write permissions
+
+        my $iteration = 0;
+        foreach my $item (@disable) {   
+          $iteration++;
+          print "INFO: making new links to existing directories\n" if ($iteration==1);
+          print "\$item -> $run_archive/$specified_commit_hash/$item\n";
+          # make the new link to archived output
+          #system("ln -s $repository_root/$run_archive/$specified_commit_hash/$item $repository_root/$item");
+          system("ln -s $run_archive/$specified_commit_hash/$item $repository_root/$item"); # use relative link
+          # lock the archived version (note recursive chmod can't be applied to symbolic links)
+          system("chmod -R u-w $repository_root/$run_archive/$specified_commit_hash/$item"); # disable all write permissions
+        }
+
+      } else {
+        print "INFO: no output is available in $run_archive for $checkout_argument\n";
+        print "INFO: as this commit was never used to archive a job using `track add '<arb-command>'`\n";
+        print "      the following directories are not available to inspect\n";
+        foreach my $item (@disable) {
+          print "\t\t$item\n";
+        }
+        exit;
+      }
+    }
+
+    if (!($checkout_argument_is_at_end_of_a_branch)) {
+      print "INFO: to return to the latest commit from a branch run `trackout checkout <branch-name>` (method i):\n" if $help_mode;
+      print "      Note `git checkout <branch-name>` can also be used (method ii), but if you haven't\n" if $help_mode;
+      print "      submitted a job via `track new` on the end of <branch-name>, untracked changes will not be restored\n" if $help_mode;
+      print "      Safety feature: you can still run method ii after running method i\n" if $help_mode;
+      print "SUGGESTION: to return to where you came from, run\n" if ($branch ne 'HEAD');
+      print "      track checkout $branch\n" if ($branch ne 'HEAD');
+      print "SUUGESTION: to convert to a new branch, run\n" if ($branch ne 'HEAD');
+      print "      git checkout -b new_name_goes_here\n" if ($branch ne 'HEAD');
+      print "      track links\n" if ($branch ne 'HEAD');
+
+    } 
+
+    # here we need to retrieve any special files from the stash storage
+    if ($checkout_argument_is_at_end_of_a_branch) {
+      # final step here is to bring back in any special files stashed in the store
+      my $source_for_stash_retrival = "$repository_root/$run_archive/$stash_namespace\_branch\_$branch_of_specified_commit\_commit\_$specified_commit_hash";
+      if (-d "$source_for_stash_retrival") {
+        if ( -d "$source_for_stash_retrival/output" and not -l 'output') {
+          system("chmod -R u+w output") if ($restore_write_permissions); # make sure owner has write permissions
+        }
+       
+        # remove any links 
+        foreach my $item (@disable) {
+          if ($item !~ /^output$/) {
+            if (-l "$repository_root/$item") {
+              system("rm -f $repository_root/$item");
+            }
+          }
+        }
+
+        my $return_command = "rsync -a $source_for_stash_retrival/ $repository_root/"; # use interactive move here
+        print "INFO: moving untracked files back to repository root\n";
+        print "INFO: running `$return_command`\n";
+        system("$return_command");
+        
+        print "INFO: removing stash storage area in $run_archive\n";
+        my $location = "$repository_root/$run_archive/$stash_namespace\_branch\_$branch_of_specified_commit\_commit\_$specified_commit_hash";
+        my $chmod = "chmod -R u+w $location";
+        print "INFO: running `$chmod`\n";
+        system($chmod);
+        my $remove_stash_storage = "rm -rfv $location";
+        print "INFO: running `$remove_stash_storage`\n";
+        system($remove_stash_storage);
+      } else {
+        print "INFO: no stash storage directory exists for this commit\n";
+        print "      (tried to look in \"$source_for_stash_retrival\")\n";
+
+
+      }
+
+# Apply back the last saved stash that was auto-generated by track, then drop it
+      print "git stash list | grep '$stash_message $branch_of_specified_commit'\n";
+      my $all_stashes_string = `git stash list`;
+      if ($all_stashes_string) {
+        # here we only look for stashes that need to be apply to the specified branch
+        my $auto_stashes_string = `git stash list | grep '$stash_message $branch_of_specified_commit'`;
+        if ($auto_stashes_string) {
+          my @auto_stashes = split(/\n/, $auto_stashes_string);
+          my $latest_stash = $auto_stashes[0];
+          (my $stash_id) = $latest_stash =~ m/(stash\@{\d+})/g;
+          my $apply_stash =  "git stash apply $stash_id";
+          my $drop_stash =  "git stash drop $stash_id";
+          print "INFO: applying stash by running `$apply_stash`\n";
+          system("$apply_stash");
+          print "INFO: dropping stash by running `$drop_stash`\n";
+          system("$drop_stash");
+        }
+      }
+      print "INFO: you're now on the end of branch $branch_of_specified_commit\n";
+     
+      my $issue_message=0;
+      foreach my $item (@disable) {
+        if ( !(-d $item) && ($item ne 'output') && ($item ne 'tmp') ) {
+          $issue_message++;
+          print "INFO: there's no copy of $item here\n" if ($issue_message == 1);
+          print "      if this branch is new, you might want to get some items from the branch $branch\n" if ($issue_message == 1);
+          print "      cp -r $run_archive/$stash_namespace\_branch\_$branch\_commit\_$commit/$item .\n";
+        }
+      }
+    }
+  }
+
+} elsif ($ARGV[0] eq 'plot') {
+  if ($#ARGV == 0) {
+#  ref: `track plot`
+    my $plot = "$repository_root/misc/track/plot.py";
+    print "INFO: running `$plot`\n";
+    system("$plot");
+  } elsif ($#ARGV == 1) {
+    my $specified_commit = $ARGV[1];
+    my $plot = "$repository_root/misc/track/plot.py $specified_commit";
+    print "INFO: running `$plot`\n";
+    system("$plot");
+  } else {
+    input_syntax_error_message();
+    usage_message();
+    exit;
+  }
+
+} elsif ($ARGV[0] eq 'links' and $#ARGV == 0) {
+#  ref: `track links`
+# Convert any symbolic links to actual directories
+  foreach my $item (@disable) {
+    if (-d $item and -l $item) {
+      my $source = readlink($item);
+      system("rm $item"); # remove the link
+      my $rsync_fetch = "rsync -a $source $repository_root";
+      print "INFO: running `$rsync_fetch`\n";
+      system("$rsync_fetch"); # replace with a copy of the actual
+      system("chmod -R u+w $item"); # restore write permissions
+    }
+  }
+
+} else {
+  input_syntax_error_message();
+  usage_message();
+  exit;
+}
+
+sub get_thread_count {
+  # return the thread count for a given archived commit hash
+  my $requested_directory = $_[0];
+  my $thread_count = 1;
+  # `track add new` only supports --quiet, so we're guaranteed to have an output.scr file
+  my $head = `head -2 $requested_directory/output/output.scr`;
+  if ($head =~ /(\d+) threads in use/) {
+    my $match = $1;
+    $thread_count = $match;
+  }
+    
+  return $thread_count;
+}
+
+

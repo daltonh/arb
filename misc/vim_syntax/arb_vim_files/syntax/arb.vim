@@ -1,8 +1,8 @@
 " Vim syntax file for arb finite volume solver
 " Language:     arb
-" Version:      0.30
+" Version:      0.50
 " URL:          http://www.chemeng.unimelb.edu.au/people/staff/daltonh/downloads/arb
-" Modified:     2012/06/24
+" Modified:     2015/01/28
 
 " For version 5.x: Clear all syntax items
 " For version 6.x: Quit if a syntax file is already loaded
@@ -25,10 +25,10 @@ syn match arbString ".*" contained
 syn match arbQuotedString /"[^"]*"/ contained
 
 " constants.in (some syntax common to equations.in)
-syn keyword arbStatement DEFAULT_OPTIONS OVERRIDE_OPTIONS END LINEAR_SOLVER MSH_FILE NEWTRESTOL NEWTSTEPMAX NEWTSTEPSTART ON TIMESTEPMAX TIMESTEPOUT TIMESTEPSTART VERSION NEWTSTEPDEBUGOUT TIMESTEPADDITIONAL
+syn keyword arbStatement DEFAULT_OPTIONS OVERRIDE_OPTIONS END MSH_FILE NEWTRESTOL NEWTSTEPMAX NEWTSTEPSTART NEWTSTEPOUT ON TIMESTEPMAX TIMESTEPOUT TIMESTEPSTART VERSION NEWTSTEPDEBUGOUT TIMESTEPADDITIONAL GENERAL_REPLACEMENTS KERNEL_OPTIONS SOLVER_OPTIONS INCLUDE INCLUDE_ROOT INCLUDE_WORKING
 syn keyword arbStatement MSH_FILE nextgroup=arbQuotedString skipwhite
-syn keyword arbDeprecated DIMENSIONS READ_GMSH
-syn keyword arbOption DEFAULT HSL_MA28 INTEL_PARDISO INTEL_PARDISO_OOC SUITESPARSE_UMF
+syn keyword arbDeprecated DIMENSIONS READ_GMSH LINEAR_SOLVER
+syn keyword arbOption default hslma28 intelpardiso intelpardisoooc suitesparseumf
 syn match arbLocationString "\<\(ASSOCIATED WITH\|AT\|BOUNDARY OF\|UNION\|INTERSECTION\|COMPOUND\|COMMON\|DOMAIN OF\|GMSH\|WITHIN BOX\|PART OF\)\>"
 
 " equations.in (some syntax common to constants.in)

@@ -83,10 +83,14 @@ CELL_CONSTANT <foo theory> "cellif(abs(<x_phi>)-0.25d0,0.d0,1.d0)"
 # INCLUDE "absolute_limiter" R <foo W <foo
 # these will produce a CELL_DERIVED <foo limiter> on <all cells>
 # a byproduct is the CELL_DERIVED <foo limiter grad[l=:]> vectors which can also be reused in the advection calculation, ie
-# FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,<foo limiter>,gradient[l=1]=<foo limiter gradient[l=1]>,gradient[l=2]=<foo limiter gradient[l=2]>)"
+# FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,<foo limiter>,gradient[l=1]=<foo limiter grad[l=1]>,gradient[l=2]=<foo limiter grad[l=2]>,gradient[l=3]=<foo limiter grad[l=3]>)"
 
 # these statements reference the regions <domain>, <all cells> and <all faces> so if non-standard regions are being used these will also have to be replaced
 # the advective flux is assumed to be the face variable <u_f>, so again if this isn't used it will need to be replaced by an alternative velocity
+
+# finally, the magnitude of the <foo> variable needs to be stored in the NONE_CONSTANT <foo magnitude>
+# the default is that this is calculated based on the initial value for <foo>
+# if this won't work (say <foo> is initially 0.d0) then need to set this NONE_CONSTANT explicitly
 
 # the relative_limiter file is almost the same, except for the inclusion of the relative_limits.arb file
 
@@ -94,17 +98,12 @@ CELL_CONSTANT <foo theory> "cellif(abs(<x_phi>)-0.25d0,0.d0,1.d0)"
 #--------------------------------------------------------
 # set <foo upper bound> and <foo lower bound> using absolute limits
 
-#INCLUDE "absolute_limits"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/advection_limiters/implicit/absolute_limits.arb without any search/replace combinations
 # these are the absolute limits that phi will be bound between
 # to make one irrelevant, set it to +-<huge>
 CONSTANT <foo upper bound> 1.d0
 # CONSTANT <foo upper bound> "<huge>"
 CONSTANT <foo lower bound> 0.d0
 # CONSTANT <foo lower bound> "-<huge>"
-# INCLUDE FINISHED for ../templates/advection_limiters/implicit/absolute_limits.arb
-#--------------------------------------------------------
 
 #--------------------------------------------------------
 # do all the limiter calcs
@@ -162,10 +161,22 @@ CELL_LOCAL <foo diff> "cellmin(<foo upper bound>-<foo>,-(<foo lower bound>-<foo>
 CELL_LOCAL <foo diff bounded> "cellmax(<foo diff>,0.d0)" ON <domain>
 # these numbers control how aggressively the limiter limits and hence the diagonal dominance of the resulting jacobian matrix
 NONE_CONSTANT <foo a> 4.0d0 # determines the gradient of the limiter
-NONE_CONSTANT <foo b> 0.3d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)
-CELL_DERIVED <foo betar> "<foo diff bounded>/(<foo deltac>+<foo eps>)" ON <domain>
+NONE_CONSTANT <foo b> 0.25d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)
+CELL_DERIVED <foo betar> "<foo diff bounded>/(<foo deltac>+<foo eps>)" ON <domain> nooutput
 CELL_LOCAL <foo limiter domain> "cellif(1.d0-<foo b>*<foo betar>,<foo betar>^2/(<foo betar>^2+<foo a>*(1.d0-<foo b>*<foo betar>)^2),1.d0)"
 CELL_DERIVED <foo limiter> "cellif(celldelta(<domain>),<foo limiter domain>,0.d0)" ON <all cells>
+
+# overwrite various parameters that define how conservative (ie, stable) the limiter is
+#INCLUDE "default_parameters"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/advection_limiters/implicit/default_parameters.arb without any search/replace combinations
+# these are the parameters that are now standard (v0.50), and included at the end of the limiter file now, overwriting those in limiter.arb and kernel_limiter.arb
+NONE_CONSTANT <foo a> 4.0d0 # determines the gradient of the limiter
+NONE_CONSTANT <foo b> 0.25d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)
+NONE_CONSTANT <foo limiter crosskernel max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
+NONE_CONSTANT <foo limiter centralkernel max> 0.05d0 # the maximum multiplier for the central cell value
+# INCLUDE FINISHED for ../templates/advection_limiters/implicit/default_parameters.arb
+#--------------------------------------------------------
 # INCLUDE FINISHED for ../templates/advection_limiters/implicit/limiter.arb
 #--------------------------------------------------------
 
@@ -182,10 +193,8 @@ CELL_DERIVED <foo limiter> "cellif(celldelta(<domain>),<foo limiter domain>,0.d0
 #--------------------
 # relative limiter
 
-#INCLUDE "relative_limiter" R "<phi" W "<foo" # local limits on phi are based on low order phi values that are adjacent to the cell
-#INCLUDE "relative_upwind1_limiter" R "<phi" W "<foo" # local limits are based on cells that are atmost 2 cells upwind of the local cell
-#INCLUDE "relative_upwind2_limiter" R "<phi" W "<foo" # local limits are based on cells that are atmost 2 cells upwind of the local cell
-#INCLUDE "relative_upwind3_limiter" R "<phi" W "<foo" # local limits are based on cells that are atmost 3 cells upwind of the local cell
+#INCLUDE "relative_surrounding_limiter" R "<phi" W "<foo" # local limits on phi are based on low order phi values that are adjacent to the cell
+#INCLUDE "relative_transient_limiter" R "<phi" W "<foo" R "<<limiterupwindseparation>>" W "3" # local limits are based on cells that are atmost 3 cells upwind of the local cell (2 is the default without string replacements)
 
 #CELL_DERIVED <foo_c low order> output
 #CELL_DERIVED <foo upper bound> output

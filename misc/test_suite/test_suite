@@ -47,14 +47,15 @@ usage () {
   echo "This script will run through all of the test problems within the examples directory";
   echo "Run from the working directory (as above)";
   echo "Alternatively, if any test_case's are specified, only they will be run";
+  echo "To stop this script cleanly, do touch test_suite_stop within the working directory (and touch stop after this to stop the current simulation asap)";
   echo
   echo "Possible options:";
-  echo "  --clean|-c: remove previous results and run all tests";
+  echo "  --clean|-c: remove previous results and run tests afresh";
   echo "  --refresh|r: only run the tests that were previously unsuccessful (default)";
-  echo "  --help|-h: display this HELP INFO";
   echo "  --compiler-gnu: use the gfortran compiler";
   echo "  --compiler-intel: use the intel compiler";
   echo "  --compiler-both: use both compilers sequentially (default)";
+  echo "  --help|-h: display this HELP INFO";
   echo;
   exit 1;
 }
@@ -71,12 +72,14 @@ REFRESH=1; # default is refresh is on
 COMPILER="both"; # both compilers used by default
 unset TESTCASES;
 
+if [ -e $stopfile ] ; then rm $stopfile ; fi;
+
 # check for any options
 for i in $*
 do
   case $i in
     "--refresh"|"-r") REFRESH=1;; # only runs that were unsuccessful on the last run are repeated (default behaviour)
-    "--clean"|"-c") REFRESH=0;; # rerun all simulations whether or not they were successful or not previously
+    "--clean"|"-c") REFRESH=0;; # rerun simulations whether or not they were successful or not previously
     "--compiler-gnu") COMPILER="gnu";;
     "--compiler-intel") COMPILER="intel";;
     "--compiler-both") COMPILER="both";;
@@ -98,20 +101,20 @@ fi;
 # if no test cases have been specifically given, set to all within the examples directory
 if [ -z "${TESTCASES[0]}" ] ; then
   cd $examples_dir;
-  TESTCASES=( "*" );
+  TESTCASES=( * );
   cd ..;
 fi;
-echo "INFO: attempting to run within the following directories (validity checked later): $TESTCASES" >>$log_file;
+echo "INFO: attempting to run within the following directories (validity checked later): ${TESTCASES[@]}" >>$log_file;
 
 # set compilers based on COMPILER option
 unset COMPILERS;
 if [ $COMPILER = "both" ] ; then
-  COMPILERS[0]="gnu";
-  COMPILERS[1]="intel";
+echo "compiler = both"
+  COMPILERS=( "gnu" "intel" );
 else
   COMPILERS[0]=$COMPILER;
 fi;
-echo "INFO: using the following compilers: $COMPILERS" >>$log_file;
+echo "INFO: using the following compilers: ${COMPILERS[@]}" >>$log_file;
 
 # check that suitesparse solver is in the right location
 if [ ! -d $suitesparse_dir ] ; then
@@ -154,7 +157,7 @@ rm output/*warnings.txt >/dev/null 2>/dev/null;
 rm output/*details.txt  >/dev/null 2>/dev/null;
 
 # run through each example problem
-for dir_name in $TESTCASES ; do
+for dir_name in ${TESTCASES[@]} ; do
   subdir=$examples_dir/$dir_name;
   if [ ! -d $subdir ] ; then
     echo "INFO: skipping directory $subdir as it does not exist";
@@ -166,7 +169,7 @@ for dir_name in $TESTCASES ; do
     echo "INFO: skipping directory $subdir as it is a link to another directory or does not contain an arb input file" >>$log_file;
     continue;
   fi # skip the directory if it doesn't contain an arb input file or is not a directory (could be a tutorial link for example)
-  for compiler in $COMPILERS ; do # run with the chosen compilers
+  for compiler in ${COMPILERS[@]} ; do # run with the chosen compilers
 # make results directory within examples directories and copy over all of the outputs
     results_dir=$subdir/resources/test_suite_results/$compiler;
     if [ ! -d $results_dir ] ; then mkdir -p $results_dir ; fi

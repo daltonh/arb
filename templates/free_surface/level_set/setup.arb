@@ -1,6 +1,10 @@
 # first set up some constants relating to the discretisation
 # all of these constants are in terms of `non-dimensional' ls values:  that is, the actual ls value divided by the <ls_celldxmax>.  For now <ls_celldxmax> is set to the maximum cell dimension (<celldxmax> = maximum node to node distance for each cell) within the domain.  For meshes with greatly varying cell sizes <ls_celldxmax> should vary with location.
 
+# need to specify first order kernels as the level-set method doesn't currently work consistently with higher order kernels
+# Note that as of v0.50 2nd order kernels are the default, hence this statement is now essential
+KERNEL_OPTIONS polynomialorder=1,polynomialaverageorder=1
+
 # the number of cells over which <ls_phi> will vary from 0 to 1 will be approximately twice this.  Smaller values give a tighter interface region, containing correspondingly larger surface tension forces
 CONSTANT <ls_phi_max> 1.0d0
 

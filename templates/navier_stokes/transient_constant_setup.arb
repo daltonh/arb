@@ -1,0 +1,2 @@
+# use this file to initial a transient Navier-Stokes simulation using constant timestepping
+INCLUDE "transient_all_setup" R "<<dynamictimestepcomment>>" W "#" R "<<constanttimestepcomment>>" W ""
