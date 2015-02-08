@@ -20,7 +20,7 @@ VERSION 0.50
 INFO_TITLE "Impacting vof droplet"
 INFO_DESCRIPTION "2D droplet moving down and impacting against a wall calculated using the volume of fluid method in a halfplane"
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "05/7/14" # interpreted as the last modification date
+INFO_DATE "04/2/15" # interpreted as the last modification date
 
 # for a cylindrical droplet
 #GENERAL_REPLACEMENTS R "<<cylindricalcomment>>" W "" R "<<cartesiancomment>>" W "#"
@@ -53,7 +53,7 @@ INFO_DESCRIPTION+ ": done on a double (fluid + free surface) domain"
 #MSH_FILE "free_surface_quadrant_structured.msh"
 MSH_FILE "free_surface_halfplane_extruded_structured_fluid.msh" nooutput
 MSH_FILE "free_surface_halfplane_extruded_structured_free_surface.msh" nooutput
-#MSH_FILE "restart.314.msh"
+#MSH_FILE "restart.39.msh" input
 #MSH_FILE "output/latest.output.msh" input
 
 #-------------------------------------------------------------------
@@ -131,8 +131,6 @@ FACE_REGION <walls sans one face> "COMPOUND <walls>-<one face>"
 #-------------------------------------------------------------------
 # user-defined constants
 
-#KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2
-
 # setup basic cylindrical general replacements by including the following two lines
 #INCLUDE_ROOT "general"
 # INFO: setting include root directory to general
@@ -209,6 +207,105 @@ CONSTANT <rho> 1.d0
 CONSTANT <u_av> 1.d0
 # INCLUDE FINISHED for ../templates/navier_stokes/nondimensional_constants.arb
 #--------------------------------------------------------
+
+# v0.50 - now use transient setup files
+# include the following to include a constraint based on the previous number of newtsteps
+#GENERAL_REPLACEMENTS REPLACE "<<newtsteptimestepcomment>>" W "" REPLACE "<<nonnewtsteptimestepcomment>>" W "#"
+#INCLUDE "transient_dynamic_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
+#INCLUDE "transient_implicit_setup" # a dynamic implicitly calculated timestep to keep the CFL number at a specified level
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/navier_stokes/transient_implicit_setup.arb without any search/replace combinations
+# use this file to initial a transient Navier-Stokes simulation using dynamic AND IMPLICIT timestepping
+#INCLUDE "transient_all_setup" R "<<dynamictimestepcomment>>" W "" R "<<constanttimestepcomment>>" W "#" R "<<implicittimestepcomment>>" W "" R "<<explicittimestepcomment>>" W "#"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/navier_stokes/transient_all_setup.arb with the following search/replace combinations: replace <<dynamictimestepcomment>> with : replace <<constanttimestepcomment>> with #: replace <<implicittimestepcomment>> with : replace <<explicittimestepcomment>> with #
+# setup things needed for transient flow
+# this file works for either dynamic or constant timestepping, which must be set by string replacement from the calling file
+# designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
+
+# <dt_initial> is used to set the intial timestep during dynamic timestepping or constant timestep otherwise
+
+CONSTANT <t_end> [] 1.d2 # time for simulation to stop
+CONSTANT <celldxave> "cellsum(<celldxmax>,region=<fluid domain>)/cellsum(1.d0,region=<fluid domain>)" # average cell dimension
+CONSTANT <CFL_initial> 1.d-2 # enter a CFL number to set the initial timestep (roughly) - depending on the geometry of cells and non-uniformity of mesh, this may significantly underestimate the actual CFL that results - ie, you may need to choose a smaller number 
+CONSTANT <dt_initial> [] "<CFL_initial>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
+CONSTANT <CFL_out> 10.d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity
+CONSTANT <dt_out> [] "<CFL_out>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
+#CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
+# dynamic timestep constants
+CONSTANT <dt_increase> 1.2d0
+CONSTANT <dt_max> "<dt_initial>*1.d4"
+CONSTANT <dt_min> "<dt_initial>*1.d-3"
+CONSTANT <CFL_max> 0.25d0
+
+# transient bits
+TRANSIENT_SIMULATION
+
+#GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+
+# the default is for explicit timestepping, but implicit can also be enabled by reversing the following strings
+#GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+
+# dynamic timestepping
+NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
+FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <fluid all faces>
+
+# explicit
+# use CFL_number template, but make the calculation explicit - ie, based on r=1 values
+#INCLUDE "CFL_number" R "<CFL local/dt>" W "<CFL local/dt[r=1]>" R "<u_f>" W "<u_f[r=1]>" R "<CFL local>" W "<CFL local[r=1]>" R "<dt>" W "<dt[r=1]>" R "NONE_OUTPUT <CFL>" W 'NONE_TRANSIENT <CFL[r=1]> ""'
+##NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<fluid domain>)" output,stepoutput
+#NONE_TRANSIENT <CFL[r=1]> output,stepoutput
+#NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+
+# implicit
+#INCLUDE "CFL_number"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/navier_stokes/CFL_number.arb without any search/replace combinations
+# these lines just output the global CFL number for a transient simulation
+# replace nooutput with output to also output local CFL number
+# <facedivop> is positive if a face normal points outwards from the last cell, so these numbers are based on the total flowrate out of each cell
+#CELL_LOCAL <CFL local/dt> "facesum(faceif(<facedivop>*<u_f>,<facedivop>*<u_f>,0.d0),region=<celljfaces>)" ON <fluid domain> nooutput
+CELL_LOCAL <CFL local/dt> "facesum(faceif(<facedivop>*<u_f>,<facex[l=1]>*<facedivop>*<u_f>,0.d0),region=<celljfaces>)/<cellx[l=1]>" ON <fluid domain> nooutput
+CELL_LOCAL <CFL local> "<dt>*<CFL local/dt>" ON <fluid domain> nooutput
+NONE_OUTPUT <CFL> "cellmax(<CFL local>,region=<fluid domain>)"
+# INCLUDE FINISHED for ../templates/navier_stokes/CFL_number.arb
+#--------------------------------------------------------
+NONE_UNKNOWN <dt[r=0]> "<dt_initial>" stepoutput,input
+# by default there is no explicit newtstep timestep limitation - to include it reverse the following string replacement
+#GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "#" DEFAULT "<<nonnewtsteptimestepcomment>>" W ""
+# without the explicit newtstep limitation
+NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_increase>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<fluid domain>)),<dt_max>),<dt_min>)"
+# for dynamic and implicit timestepping, include the following to also include a constraint based on the previous number of newtsteps
+#NONE_CONSTANT <newtstepdecrease> 5.d0 # number of newtonsteps that take place before <newtstep> starts to limit <dt> (explicit)
+#NONE_CONSTANT <dt_decrease> 0.8d0 # amount to decrease timestep by if previous timestep newtstep was exceeded
+#NONE_TRANSIENT <newtstep[r=1]> "0.d0" "<newtstep>" # save previous newtstep
+#NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(noneif(<newtstep[r=1]>-<newtstepdecrease>,<dt_decrease>,<dt_increase>)*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<fluid domain>)),<dt_max>),<dt_min>)"
+NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
+
+# constant timestep, next 1 line
+#NONE_CONSTANT <dt> "<dt_initial>"
+
+NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
+NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
+NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition # this will be true (>0.) whenever we are <dt_out> from last output
+NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
+NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
+
+CELL_TRANSIENT <u[l=1,r=1]> "" "<u[l=1]>" ON <fluid all cells>
+CELL_TRANSIENT <u[l=2,r=1]> "" "<u[l=2]>" ON <fluid all cells>
+#CELL_TRANSIENT <u[l=3,r=1]> "" "<u[l=3]>" ON <fluid all cells>
+
+# INCLUDE FINISHED for ../templates/navier_stokes/transient_all_setup.arb
+#--------------------------------------------------------
+# INCLUDE FINISHED for ../templates/navier_stokes/transient_implicit_setup.arb
+#--------------------------------------------------------
+#INCLUDE "transient_constant_setup" # a constant timestep
+
+# overwrite some transient specifications
+CONSTANT <t_end> [] 2.d1 # time for simulation to stop
+CONSTANT <dt_initial> [] "1.d-4*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
+CONSTANT <dt_out> [] 1.d-1 # time between output
+
 #INCLUDE "nonuniform_properties" # this just cancels the previous general property replacements on <mu> and <rho>
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/navier_stokes/nonuniform_properties.arb without any search/replace combinations
@@ -287,14 +384,6 @@ FACE_LOCAL <vof_mu_harmonic_f> "faceave[harmonic](<vof_mu_c>)" ON <fluid all fac
 # INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/nondimensional_nonuniform_properties.arb
 #--------------------------------------------------------
 
-#-------------------------------------------------------------------
-
-# for test simulation just do a few timesteps
-#TIMESTEPOUT 1
-TIMESTEPMAX 5 # just compute the first 5 timesteps for this trial simulation
-NEWTSTEPMAX 100
-NEWTSTEPDEBUGOUT 90
-
 # physical data, now for nondimensional uniform properties
 # set these
 #CONSTANT <Re> 1.d+2
@@ -304,39 +393,6 @@ CONSTANT <S> 1.d+1 # surface tension strength nondimensional number, see harvie 
 CONSTANT <vof_rho_d_ratio> 1.d+1 # dimensional <rho_d>/<rho_c>
 CONSTANT <vof_mu_d_ratio> 1.d+1 # dimensional <mu_d>/<mu_c>
 
-#CONSTANT <t_end> [] 1.d+2 # time for simulation to stop
-CONSTANT <t_end> [] 2.d1 # time for simulation to stop
-#CONSTANT <t_end> [] 1.d-2 # time for simulation to stop
-CONSTANT <celldxave> "cellsum(<celldxmax>,region=<fluid domain>)/cellsum(1.d0,region=<fluid domain>)" # average cell dimension
-CONSTANT <dt_initial> [] "1.d-4*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
-CONSTANT <dt_out> [] 1.d-1 # time between output
-#CONSTANT <dt_surf> "0.5d0*sqrt(0.5d0*<We>*<celldxave>^3/<pi>)"
-CONSTANT <dt_surf> "huge"
-# dynamic timestep constants
-CONSTANT <dt_increase> 1.2d0
-CONSTANT <dt_max> "<dt_initial>*1.d4"
-CONSTANT <dt_min> "<dt_initial>*1.d-3"
-CONSTANT <CFL_max> 0.25d0
-
-# transient bits
-TRANSIENT_SIMULATION
-
-# dynamic timestep, next 4 lines
-NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
-FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <fluid all faces>
-#CELL_TRANSIENT <CFL local[r=1]> "" "<dt[r=1]>*facesum(faceif(<facedivop>*<u_f[r=1]>,<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)" ON <fluid domain> output
-CELL_TRANSIENT <CFL local[r=1]> "" "<dt[r=1]>*facesum(faceif(<facedivop>*<u_f[r=1]>,<facex[l=1]>*<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)/<cellx[l=1]>" ON <fluid domain> output
-NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<fluid domain>)" output
-NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemin(nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>),<dt_surf>)" stepoutput,input
-# constant timestep, next 1 line
-#NONE_CONSTANT <dt> "<dt_initial>"
-
-NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
-NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
-NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition # this will be true (>0.) whenever we are <dt_out> from last output
-NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
-NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
-
 # unknown variables used for flow problems
 CONSTANT <u impact> 1.d0 # impact velocity
 
@@ -344,10 +400,11 @@ CELL_UNKNOWN <p> [] "(2.d0^1)*<vof_phi>/<We>" ON <fluid all cells> elementdata #
 CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <fluid all cells> magnitude=1.d0 # velocity component
 CELL_UNKNOWN <u[l=2]> [] "-<u impact>*<vof_phi>" ON <fluid all cells> magnitude=1.d0 # velocity component
 
+# overwrite initial velocities
 CELL_TRANSIENT <u[l=1,r=1]> "0.d0" "<u[l=1]>" ON <fluid all cells>
 CELL_TRANSIENT <u[l=2,r=1]> "-<u impact>*<vof_phi>" "<u[l=2]>" ON <fluid all cells>
 
-# CSF based levelset formulation with reinitialisation
+# vof based CSF
 #INCLUDE_ROOT "volume_of_fluid"
 # INFO: setting include root directory to volume_of_fluid
 #INCLUDE "setup"
@@ -731,16 +788,16 @@ FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<vof_mu_f>" ON <fluid domain faces>
 # transient limiter
 # this is the equivalent time that the limiter has been moving in the one direction
 # noting that the variables (<u_f_{correction}> and <eps>) here are previous timestep ones
-#FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <fluid domain faces>
+FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <fluid domain faces>
 # need to save previous pressure error sign
-#FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <fluid domain faces>
-#FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <fluid domain faces>
+FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <fluid domain faces>
+FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <fluid domain faces>
 
 # combined limiter
-##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <fluid domain faces>
+#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <fluid domain faces>
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <fluid domain faces>
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1./<u_mf_{transient}>+1./<u_mf_{adv}>+1./<u_mf_{vis}>)" ON <fluid domain faces>
-FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <fluid domain faces>
+FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1./<u_mf_{transient}>+1./<u_mf_{adv}>+1./<u_mf_{vis}>)" ON <fluid domain faces>
+#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <fluid domain faces>
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1./<u_mf_{adv}>+1./<u_mf_{vis}>)" ON <fluid domain faces>
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <fluid domain faces>
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <fluid domain faces>
@@ -951,7 +1008,6 @@ NONE_TRANSIENT <u_f_max_min[r=1]> "" "<u_f_max_min>"
 # specify outputs for some variables
 
 VARIABLE <vof_F_c[l=1]> output
-VARIABLE <CFL[r=1]> stepoutput
 VARIABLE <vof_fs_phi_smoothed> output
 VARIABLE <vof_fs_phigrad_unit[l=1]> output
 
@@ -966,6 +1022,15 @@ VARIABLE <vof_mu_f> output
 #VARIABLE <vof_phi_adjust[r=1]> newtstepmax=30
 #VARIABLE <vof_phi_lim> newtstepmax=50
 
+#-------------------------------------------------------------------
+# numerical options
+NEWTSTEPMAX 100
+NEWTSTEPDEBUGOUT 90
+# for test simulation just do a few timesteps
+TIMESTEPOUT 2
+TIMESTEPMAX 4 # just compute the first 5 timesteps for this trial simulation
+
+#KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2
 #-------------------------------------------------------------------
 # INCLUDE FINISHED for ../impacting_volume_of_fluid_drop_in_halfplane.arb
 #--------------------------------------------------------

@@ -1,11 +1,12 @@
 // 2d_channel_with_cylinder
 // actually modified from the mesh used in the turbulence problem, but without the boundary layers on the (now free-slip) walls
+// now using recombine to create unstructured quads outside of the cylinder's boundary layer
 
-lc = 0.15;  // charateristic mesh length variable
+lc = 0.1;  // charateristic mesh length variable
 lcf = 0.01;  // finer mesh length
 lcbl = 0.005; // boundary layer finest cell thickness
 // centre and radius of cylinder
-xcylinder = 2.;
+xcylinder = 1.; // now further upstream
 ycylinder = 0.0; // now on centreline
 rcylinder = 0.2;
 // size of housing box
@@ -67,4 +68,7 @@ Physical Line("<cylinder>") = {7, 8, 9, 10};
 
 // all of the flow domain must be included as a physical entity to be output under gmsh
 Plane Surface(12) = {5, 11};
+// using quads in unstructured section for a change
+Recombine Surface {12};
+
 Physical Surface("<flow domain>") = {12};
