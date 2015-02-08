@@ -27,10 +27,18 @@ from wx.lib.pubsub import Publisher
 import pandas as pd
 import numpy as np
 
+from distutils.version import LooseVersion
 import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
+
+grid_style = 0
+if (LooseVersion(matplotlib.__version__) >= LooseVersion("1.4.2")):
+    import matplotlib.style
+    matplotlib.style.use('ggplot')
+    grid_style = 1
+
 
 # directory storing simulation data
 # see misc/track/track_main.pl
@@ -60,15 +68,20 @@ list1 = [
 
 # HEX color cyle for y2 axis
 list2 = [
-'#5858FA',
-'#FA5858',
-'#D358F7',
-'#82FA58',
+'#58FAAC',
 '#FAAC58',
 '#848484',
+'#82FA58',
+'#D358F7',
+'#FA5858',
 '#FA5882',
-'#58FAAC',
+'#5858FA',
 ]
+
+# marker transparency
+y1_alpha = 0.7
+y2_alpha = 0.7
+
 
 # font size for lege2e031096434d596ee63b17308aca892065edb44bnd
 legend_font_size=11
@@ -205,7 +218,8 @@ class SortableListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin, listmix.Che
         self.active_count = len(self.active)
 
     def clear(self):
-        self.ClearAll()
+        #self.ClearAll()
+        self.DeleteAllItems()
 
 
 class AxisPanel(wx.Panel, listmix.ColumnSorterMixin):
@@ -226,6 +240,8 @@ class AxisPanel(wx.Panel, listmix.ColumnSorterMixin):
                              | wx.LC_SORT_ASCENDING, )
 
         self.sizer.Add(self.list, 1, wx.EXPAND)
+        self.list.InsertColumn(0, axis[self.axis], width=150)
+
 
     def layout(self, data_object):
         self.populateList(data_object)
@@ -236,9 +252,8 @@ class AxisPanel(wx.Panel, listmix.ColumnSorterMixin):
 
     def run_set_count(self):
         self.list.set_count()
-
+       
     def populateList(self, data_object):
-        self.list.InsertColumn(0, axis[self.axis], width=150)
         items = data_object.variables.items()
 
         for key, data in items:
@@ -298,6 +313,7 @@ class CanvasPanel(wx.Panel):
                             data.df[y1_var].values,
                             marker='o',
                             markevery=point_interval,
+                            alpha = y1_alpha
                             )
                     self.legendEntries1.append(current1)
                     self.legendText1.append(y1_var.replace("'",''))
@@ -316,7 +332,7 @@ class CanvasPanel(wx.Panel):
             self.axis.set_xlabel(x1_var.replace("'",''))
             
             if (frame.y2.list.active_count > 0):
-                self.axis.set_color_cycle(list2)
+                self.axis2.set_color_cycle(list2)
                 if (log_options[2]):
                     self.axis2.set_yscale('log')
                 else:
@@ -325,8 +341,9 @@ class CanvasPanel(wx.Panel):
                     current2, = self.axis2.plot(
                             data.df[x1_var].values,
                             data.df[y2_var].values,
-                            marker='s',
+                            marker='^',
                             markevery=point_interval,
+                            alpha = y2_alpha
                             )
                     self.axis2.set_xlim(data.df[x1_var].min(),data.df[x1_var].max())                    
                     self.legendEntries2.append(current2)
@@ -343,8 +360,9 @@ class CanvasPanel(wx.Panel):
                 self.axis2.axis('off')
                 
         else:
+            pass
             self.axis.clear()
-            self.axis2.clear() # remove all tics/labels
+            #self.axis2.clear() # remove all tics/labels
         
 
 # these are the current frame limits in the canvas
@@ -398,6 +416,30 @@ class CanvasPanel(wx.Panel):
             frame.y2_max.SetValue(y2_max)
 
         self.axis.set_title(global_commit,fontdict={'fontsize': 8})
+        self.axis2.patch.set_visible(False)
+
+
+        if ((frame.y1.list.active_count > 0) and (frame.y2.list.active_count > 0)):
+            if (grid_style):
+                self.axis.grid(b=False)
+                self.axis2.grid(b=False)
+        elif (frame.y1.list.active_count > 0):
+            if (grid_style):
+                self.axis.grid(b=True)
+                self.axis2.grid(b=False)
+            self.axis2.get_yaxis().set_ticks([])
+        elif (frame.y2.list.active_count > 0):
+            if (grid_style):
+                self.axis.grid(b=False)
+                self.axis2.grid(b=True)
+            self.axis.get_yaxis().set_ticks([])
+        else:
+            if (grid_style):
+                self.axis.grid(b=False)
+                self.axis2.grid(b=False)
+            self.axis.get_yaxis().set_ticks([])
+            self.axis2.get_yaxis().set_ticks([])
+
         self.canvas.draw()
 
 class FrameGenerator(wx.Frame):
@@ -705,6 +747,7 @@ class FrameGenerator(wx.Frame):
 
     def updateDisplay(self, msg):
         global global_commit
+
         t = msg.data
         if (isinstance(t, int) and not self.block):
             # if we receive an integer message then reload
@@ -790,6 +833,7 @@ class FrameGenerator(wx.Frame):
         self.selector.Show()
     
     def OnQuit(self, event):
+        frame.selector.Close() 
         frame.selector.Destroy() 
         self.Close()
         self.Destroy()
@@ -811,13 +855,16 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
 
         wx.Panel.__init__( self, parent=parent, id=wx.ID_ANY )
         self.archive_data = {}
+        self.archive_data_for_column_sorting = {}
         self.axis = axis
         self.create()
         self.get_archive_data()
         self.populateList()
-        self.itemDataMap = self.archive_data
+        #self.itemDataMap = self.archive_data
+        self.itemDataMap = self.archive_data_for_column_sorting #enable sorting by unix timestamp
         listmix.ColumnSorterMixin.__init__(self, 7)
         self.Bind(wx.EVT_LIST_COL_CLICK, self.OnColClick, self.list)
+        self.SortListItems(col=3, ascending=0) # here we set the default sort by ascending descending time, i.e. column 3
         
         self.SetSizer(self.sizer)
         self.SetAutoLayout( True )
@@ -858,6 +905,10 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
                     ).read()
             relative_time = relative_time.replace('\n','')
 
+            unix_timestamp = os.popen(
+                    "git show -s --format='%at' {0}".format(simulation)
+                    ).read()
+            unix_timestamp = unix_timestamp.replace('\n','')
 
             path_scr = os.path.join(run_archive, simulation, 'output', 'output.scr')
             path_csv = os.path.join(run_archive, simulation, 'output', 'output_step.csv')
@@ -899,12 +950,12 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
                 if (match):
                     status = 'completed'
 
-                match = re.search( r'total wall time = (.*) : .*total cpu time = (.*)', tail_scr)
+                match = re.search( r'total wall time = (.*): .*total cpu time = (.*)', tail_scr)
                 if (match):
                     wall_time = match.group(1).lstrip().rstrip()
                     cpu_time = match.group(2).lstrip().rstrip()
-                    wall_time_output = "{0:.2g}".format(float(wall_time)/60.0)
-                    cpu_time_output = "{0:.2g}".format(float(cpu_time)/60.0)
+                    wall_time_output = "{0:.1f}".format(float(wall_time)/60.0/60.0)
+                    cpu_time_output = "{0:.1f}".format(float(cpu_time)/60.0/60.0)
                 else:
                     wall_time_output = "--"
                     cpu_time_output = "--"
@@ -929,6 +980,7 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
                 timestep_max = ''
 
             self.archive_data.update({i: (simulation, commit_message, note, relative_time, status, timestep_max, wall_time_output, cpu_time_output, thread_count)})
+            self.archive_data_for_column_sorting.update({i: (simulation, commit_message, note, unix_timestamp, status, timestep_max, wall_time_output, cpu_time_output, thread_count)})
 
     def populateList(self):
         self.list.InsertColumn(0, 'commit id', width=150)
@@ -937,8 +989,8 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
         self.list.InsertColumn(3, 'relative time', width=150)
         self.list.InsertColumn(4, 'status', width=150)
         self.list.InsertColumn(5, 'timestep max', width=150)
-        self.list.InsertColumn(6, 'total wall time (min)', width=150)
-        self.list.InsertColumn(7, 'total cpu time (min)', width=150)
+        self.list.InsertColumn(6, 'total wall time (hr)', width=150)
+        self.list.InsertColumn(7, 'total cpu time (hr)', width=150)
         self.list.InsertColumn(8, 'threads', width=150)
 
         items = self.archive_data.items()
@@ -962,7 +1014,7 @@ class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
    
     def GetListCtrl(self):
         return self.list
-    
+ 
     def OnColClick(self, event):
         event.Skip()
         pass
@@ -977,6 +1029,10 @@ class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
         wx.ListCtrl.__init__( self, parent, ID, pos, size, style )
         listmix.ListCtrlAutoWidthMixin.__init__( self )
         self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.on_activation)
+
+        self.cached_x1_active = frame.x1.list.active
+        self.cached_y1_active = frame.y1.list.active
+        self.cached_y2_active = frame.y2.list.active
 
     def on_activation(self, event):
         global global_commit
@@ -1009,8 +1065,8 @@ class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
             frame.force_stop_refresh()
     
     # clear the plot
-            frame.plot.axis.clear()
-            frame.plot.axis2.clear()
+            #frame.plot.axis.clear()
+            #frame.plot.axis2.clear()
             frame.plot.canvas.draw()
     
     # clear the old checkbox lists
@@ -1027,7 +1083,23 @@ class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
             frame.x1.run_set_count()
             frame.y1.run_set_count()
             frame.y2.run_set_count()
-            
+
+
+    # if the previouosly checked variable is present in the newly loaded dataset, then check it
+            for old_var in self.cached_x1_active:
+                if old_var in frame.x1.list.ordered_variables:
+                    frame.x1.list.CheckItem(data.inverted[old_var]-1, True)
+
+            for old_var in self.cached_y1_active:
+                if old_var in frame.y1.list.ordered_variables:
+                    frame.y1.list.CheckItem(data.inverted[old_var]-1, True)
+
+            for old_var in self.cached_y2_active:
+                if old_var in frame.y2.list.ordered_variables:
+                    frame.y2.list.CheckItem(data.inverted[old_var]-1, True)
+
+            frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
+
             # leave the frame open
             #frame.selector.Destroy() 
         
@@ -1079,3 +1151,4 @@ if __name__ == "__main__":
     frame.Show()
 
     app.MainLoop()
+
