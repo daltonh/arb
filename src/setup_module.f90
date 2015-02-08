@@ -940,7 +940,7 @@ end do
 if (allocated(separation_index)) deallocate(separation_index)
 
 !-------------------------------------
-! run through nodes (re)setting icell (surrounding cells), cell%r and cell%reflect_multiplier for glued_nodes
+! run through nodes (re)setting icell (surrounding cells), node%r and node%reflect_multiplier for glued_nodes
 ! node(k)%icell (and r and reflect_multiplier) needs to have a single entry for each real and glued cell (even to itself)
 ! before this loop, glue_faces will have removed duplicate entries for node(k)%icells that are glued (reflected) to themselves through this node, so
 ! if the node is glued, base the calculation on an adjacent face%icell that would already (above) have been correctly calculated via subroutine expand_mask
