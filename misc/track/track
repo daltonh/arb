@@ -1,7 +1,5 @@
 #!/usr/bin/perl -w
 
-# TODO apply the redirect.sh business
-
 use strict;
 use File::Basename;
 use Cwd;
@@ -11,7 +9,7 @@ use File::Copy;
 use File::Path qw(make_path);
 
 
-my $help_mode = 0; # help mode gives hopefully-useful extra information
+my $help_mode = 1; # help mode gives hopefully-useful extra information
 my $debug_mode = 0; # everything still works in debug mode, just more output along the way
 
 # if $restore_write_permissions is false, linked items in the @disable array below will always be non-writable (this is just a safety feature in case you try to delete the archive itself)
@@ -556,6 +554,14 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
     print "\t\ttouch $repository_root/$run_archive/$output_commit_hash/kill\n" if $help_mode;
     print "\tTo kill roughly -->\n" if $help_mode;
     print "\t\tkill $pid\n" if $help_mode;
+    my $tail_src = `tail -5 "$repository_root/$run_archive/$output_commit_hash/output/output.scr"`;
+    chomp($tail_src);
+    my @tail_lines = split(/\n/,$tail_src);
+    print "\tTo follow -->\n" if $help_mode;
+    print "\t    tail -f $run_archive/$output_commit_hash/output/output.scr\n";
+    foreach my $line (@tail_lines) {
+      print "\t\t$line\n";
+    }
   }
   
   # give info about other running jobs
@@ -1014,4 +1020,5 @@ sub get_thread_count {
     
   return $thread_count;
 }
+
 
