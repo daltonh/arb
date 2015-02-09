@@ -43,7 +43,7 @@ use File::Glob ':glob'; # deals with whitespace better
 #use Time::Piece; # removed for portability
 use Sys::Hostname;
 
-my $version="0.50";
+my $version="0.51";
 my $minimum_version="0.40";
 
 # now called from build directory
@@ -435,6 +435,7 @@ sub read_input_files {
   use FileHandle;
   use List::Util qw( min max );
   use Data::Dumper;
+  use Storable qw(dclone);
   my ($file, $oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $region, $otype, $match, $tmp1, $tmp2,
     $handle, $try_dir, $n1, $n2, $search, $replace, $working, $comments, $error, $region_constant, $n,
@@ -444,6 +445,7 @@ sub read_input_files {
   my $default_options = ""; # default options prepended to each statement read in
   my $override_options = ""; # override options appended to each statement read in
   my $skip = 0; # flag to indicate whether we are in comments section or not
+  my @flat_variable = (); # this is a list of variables in the order that they are read from the file - new for v0.51 to allow change of variable type
 
 #-------------------------------
 # ref: general replacements
@@ -766,16 +768,11 @@ sub read_input_files {
         next;
       }
 
-      elsif ( $line =~ /^\s*(((FACE|CELL|NODE)_REGION)|MSH_FILE|((KERNEL|SOLVER)(|S|_OPTION(|S)))|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES)($|\s)/i ) {
+      elsif ( $line =~ /^\s*(((FACE|CELL|NODE)_REGION)|MSH_FILE|((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES)($|\s)/i ) {
 # these are commands that need to be transferred unaltered to the arb input file
         $keyword = "\U$1";
         $line = $'; $line =~ s/^\s*//;
-        if ($keyword =~ /^((KERNEL|SOLVER)(|S)(|_OPTION(|S)))$/) {$keyword = "$2_OPTIONS";}
-        if ($keyword =~ /LINEAR_SOLVER/) { # if this has been specified, attempt to reformat using SOLVER_OPTIONS
-          $keyword = "SOLVER_OPTIONS";
-          $line = "\L$line"; $line =~ s/_//; $line = "linearsolver=".$line;
-          print "WARNING: LINEAR_SOLVER keyword has been depreciated.  Use 'SOLVER_OPTIONS linearsolver=intelpardiso' (an example) instead.\n";
-        }
+        if ($keyword =~ /^((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))$/) {$keyword = "$2_OPTIONS";} # standardise the statement for fortran input
         print FORTRAN_INPUT $keyword; if (nonempty($line)) {print FORTRAN_INPUT " ".$line}; print FORTRAN_INPUT "\n"; # print line to fortran input file, making sure that the keyword is uppercase there
         next;
       }
@@ -850,8 +847,6 @@ sub read_input_files {
         $line = $';
         $type = "\L$2";
         if ($type eq "region_constant") { $type = "constant"; $region_constant = 1; } else { $region_constant = 0; }
-        if ($type eq "transient") { set_transient_simulation(1); print DEBUG "INFO: setting simulation type to transient based on detection of transient variable:\nfile = $file: line = $oline\n"; }
-        if ($type eq "newtient") { $newtient=1; print DEBUG "INFO: setting simulation type to newtient based on detection of newtient variable:\nfile = $file: line = $oline\n"; }
         $centring = ""; # now centring can be grabbed from last definition
         if ($1) { $centring = "\L$1"; ($centring) = $centring =~ /^(\S+?)_/; }
 
@@ -862,52 +857,53 @@ sub read_input_files {
         print DEBUG "  coverting user defined name to consistent name = $name\n";
 
 # see if this name has already been defined, and if this is a generic variable statement, grab type (and possibly centring) from that
-        $mvar = 0; # variable mvar numbers start at 1 if defined
-        KEYSLOOP: foreach $typecheck (sort(keys %variable)) {
-          foreach $mcheck ( 1 .. $m{$typecheck} ) {
-            if ($variable{$typecheck}[$mcheck]{"name"} eq $name) {
-              $mvar = $mcheck;
+        my $mflat = -1; # variable mflat starts at 0 if any variables defined
+        KEYSLOOP: foreach $mcheck ( 0 .. $#flat_variable ) {
+          if ($flat_variable[$mcheck]{"name"} eq $name) { # variable has been previously defined, and position in file is based on first definition
+            $mflat = $mcheck;
 # now allow a generic VARIABLE statement which can be used to pass options to a previously defined variable
-              if ($type eq "variable") {
-                $type=$typecheck;
-                if (empty($centring)) { $centring = $variable{$typecheck}[$mcheck]{"centring"}; } # if centring isn't defined
-                print DEBUG "INFO: found type for generic VARIABLE statement $name as $type\n";
-              } elsif ($type ne $typecheck) {
-                error_stop("trying to define a $type variable $name which has already been defined as a $typecheck variable.  When repeating ".
-                  "the definition of a variable the type cannot be changed (the generic VARIABLE definition is handy for this).\nfile = $file: line = $oline\n");
-              }
-              last KEYSLOOP;
+            if ($type eq "variable") {
+              $type=$flat_variable[$mcheck]{"type"};
+              print DEBUG "INFO: found type for generic VARIABLE statement $name as $type\n";
+            } elsif ($type ne $flat_variable[$mcheck]{"type"}) {
+              print "WARNING: changing variable $name from type $flat_variable[$mflat]{type} to $type\n";
+              print DEBUG "WARNING: changing variable $name from type $flat_variable[$mcheck]{type} to $type based on:\nfile = $file: line = $oline\n";
+              $flat_variable[$mflat]{"type"} = $typecheck;
+              if (!($type eq "transient" || $type eq "newtient")) { delete $flat_variable[$mflat]{"initial_equation"}; };
             }
+            last KEYSLOOP;
           }
         }
         if ($type eq "variable") { error_stop("trying to use generic VARIABLE statement for $name that does not have a type yet.  The VARIABLE definition can only be used after the variable type for a variable has already been defined: \nfile = $file: line = $oline\n"); }
 
-        if ($mvar) {
-# type and mvar have been identified, now check the centring which must be consistent at each variable use (if stated)
+        if ($mflat >= 0) {
+# a variable has been identified, now check whether the centring has changed
           if (empty($centring)) {
-            $centring = $variable{$type}[$mvar]{"centring"} # pick up centring from last definition
-          } elsif ($centring ne $variable{$type}[$mvar]{"centring"}) {
-            error_stop("trying to define a $centring centred $type variable $name which has already been defined as having $variable{$type}[$mvar]{centring} centring.  When repeating ".
-              "the definition of a variable the centring cannot be changed.\nfile = $file: line = $oline\n");
+            $centring = $flat_variable[$mflat]{"centring"} # pick up centring from last definition
+          } elsif ($centring ne $flat_variable[$mflat]{"centring"}) {
+            print "WARNING: changing the centring of variable $name from $flat_variable[$mflat]{centring} to $centring\n";
+            print DEBUG "WARNING: changing the centring of variable $name from $flat_variable[$mflat]{centring} to $centring based on \nfile = $file: line = $oline\n";
+            $flat_variable[$mflat]{"centring"} = $centring;
           }
           print DEBUG "INFO: this is a repeat definition for variable $name\n";
-          $variable{$type}[$mvar]{"comments"}=$variable{$type}[$mvar]{"comments"}." ".$comments;
-          $variable{$type}[$mvar]{"definitions"}++; 
+          $flat_variable[$mflat]{"comments"}=$flat_variable[$mflat]{"comments"}." ".$comments;
+          $flat_variable[$mflat]{"definitions"}++; 
         } else {
 # otherwise create a new variable
-          $m{$type}++;
-          $mvar=$m{$type};
+          $mflat=$#flat_variable+1;
+          print DEBUG "INFO: creating new variable number $mflat with name $name and type $type\n";
 # and set basic info, empty if necessary
-          $variable{$type}[$mvar]{"name"}=$name;
+          $flat_variable[$mflat]{"name"}=$name;
+          $flat_variable[$mflat]{"type"}=$type;
           if (empty($centring)) { $centring = 'none'; } # default centring if not previously set
-          $variable{$type}[$mvar]{"centring"}=$centring;
-          $variable{$type}[$mvar]{"rindex"}=examine_name($name,"rindex");
-          $variable{$type}[$mvar]{"comments"}=$comments;
-          $variable{$type}[$mvar]{"region"}='';
+          $flat_variable[$mflat]{"centring"}=$centring;
+          $flat_variable[$mflat]{"rindex"}=examine_name($name,"rindex"); # this is based on name so doesn't change with repeat definitions
+          $flat_variable[$mflat]{"comments"}=$comments;
+          $flat_variable[$mflat]{"region"}='';
           print DEBUG "INFO: this is the first definition for variable $name\n";
-          $variable{$type}[$mvar]{"definitions"}=1;
+          $flat_variable[$mflat]{"definitions"}=1;
         }
-        $maximum_definitions = max($maximum_definitions,$variable{$type}[$mvar]{"definitions"});
+        $maximum_definitions = max($maximum_definitions,$flat_variable[$mflat]{"definitions"});
 
 # from here on anything read in can change from the previous definition
 
@@ -922,29 +918,30 @@ sub read_input_files {
           if ($cunits =~ /\*/) { ($multiplier,$units) = $cunits =~ /(.*?)\*(.*)/; }
           else { $multiplier=""; $units=$cunits;}
           $multiplier =~ s/e|E|D/d/; # convert single and floats to double precision, regardless of case
-          if (nonempty($units)) { $variable{$type}[$mvar]{"units"}=$units; }
-          if (nonempty($multiplier)) { $variable{$type}[$mvar]{"multiplier"}=$multiplier; }
+          if (nonempty($units)) { $flat_variable[$mflat]{"units"}=$units; }
+          if (nonempty($multiplier)) { $flat_variable[$mflat]{"multiplier"}=$multiplier; }
         }
-        if (!($variable{$type}[$mvar]{"units"})) { $variable{$type}[$mvar]{"units"} = "1"; }
-        if (!($variable{$type}[$mvar]{"multiplier"})) { $variable{$type}[$mvar]{"multiplier"} = "1.d0"; }
+        if (!($flat_variable[$mflat]{"units"})) { $flat_variable[$mflat]{"units"} = "1"; }
+        if (!($flat_variable[$mflat]{"multiplier"})) { $flat_variable[$mflat]{"multiplier"} = "1.d0"; }
 
 # equations or numerical constants
 # look for either a single (CONSTANT) or list (REGION_CONSTANT) of numbers, or otherwise an expression for this variable
 # first look for numerical constants which must start with either +-. or a digit
+# TODO: deal with change in variable type properly
         if ( $type eq "constant" && $line =~ /^\s*[\+\-\d\.]/ ) {
           print DEBUG "INFO: assuming a numerical constant is entered in the following:\nfile = $file: line = $oline\n";
-          if (nonempty($variable{$type}[$mvar]{"equation"}) || nonempty($variable{$type}[$mvar]{"initial_equation"})) {
+          if (nonempty($flat_variable[$mflat]{"equation"}) || nonempty($flat_variable[$mflat]{"initial_equation"})) {
             print "INFO: resetting CONSTANT $name from an equation form to a numerical form\n";
-            delete $variable{$type}[$mvar]{"equation"}; # preference is to delete these key/values as they then won't be included in %variable (for restart purposes)
-            delete $variable{$type}[$mvar]{"initial_equation"};
+            delete $flat_variable[$mflat]{"equation"}; # preference is to delete these key/values as they then won't be included in %variable (for restart purposes)
+            delete $flat_variable[$mflat]{"initial_equation"};
           }
           $n = 1;
-          delete $variable{$type}[$mvar]{"region_list"};
-          delete $variable{$type}[$mvar]{"constant_list"};
+          delete $flat_variable[$mflat]{"region_list"};
+          delete $flat_variable[$mflat]{"constant_list"};
           if ($region_constant) {
             if (empty($region_list{"regions"})) { error_stop("a $centring REGION_CONSTANT appears before a REGION_LIST has been defined:\nfile = $file: line = $oline\n");}
             if (nonempty($region_list{"centring"}) && $region_list{"centring"} ne $centring) { error_stop("the $centring centring of a REGION_CONSTANT is not consistent with the $region_list{centring} of the preceeding REGION_LIST:\nfile = $file: line = $oline\n");}
-            @{$variable{$type}[$mvar]{"region_list"}} = @{$region_list{"regions"}}; # set region_list to that of most recent REGION_LIST
+            @{$flat_variable[$mflat]{"region_list"}} = @{$region_list{"regions"}}; # set region_list to that of most recent REGION_LIST
             $n = scalar(@{$region_list{"regions"}}); # returning the number of elements in this array
           }
           while ($line =~ /^\s*([\+\-\d\.][\+\-\ded\.]*)(\s+|$)/i) { # numbers must start with either +-. or a digit, so options cannot start with any of these
@@ -954,20 +951,20 @@ sub read_input_files {
             $match =~ s/e/d/;
             if ($match !~ /d/) { $match = $match."d0"; }
             if ($match !~ /\./) { $match =~ s/d/.d/; }
-            push(@{$variable{$type}[$mvar]{"constant_list"}},$match); # assemble list of numerical constants
+            push(@{$flat_variable[$mflat]{"constant_list"}},$match); # assemble list of numerical constants
           }
-          if (empty($variable{$type}[$mvar]{"constant_list"})) { error_stop("no numerial constants were read in from the following line, indicating some type of syntax error:\nfile = $file: line = $oline\n"); };
-          print DEBUG "INFO: found the following constant_list for $name: @{$variable{$type}[$mvar]{constant_list}}\n";
-          if ($region_constant) { print DEBUG "INFO: found the following region_list for $name: @{$variable{$type}[$mvar]{region_list}}\n"; }
-          if ($n ne @{$variable{$type}[$mvar]{"constant_list"}} ) {
+          if (empty($flat_variable[$mflat]{"constant_list"})) { error_stop("no numerial constants were read in from the following line, indicating some type of syntax error:\nfile = $file: line = $oline\n"); };
+          print DEBUG "INFO: found the following constant_list for $name: @{$flat_variable[$mflat]{constant_list}}\n";
+          if ($region_constant) { print DEBUG "INFO: found the following region_list for $name: @{$flat_variable[$mflat]{region_list}}\n"; }
+          if ($n ne @{$flat_variable[$mflat]{"constant_list"}} ) {
             if ($region_constant) {
-              error_stop("the following REGION_CONSTANT line has ".scalar(@{$variable{$type}[$mvar]{constant_list}})." numerical entries, whereas the preceeding REGION_LIST has $n entries - these should match:\nfile = $file: line = $oline\n");
+              error_stop("the following REGION_CONSTANT line has ".scalar(@{$flat_variable[$mflat]{constant_list}})." numerical entries, whereas the preceeding REGION_LIST has $n entries - these should match:\nfile = $file: line = $oline\n");
             } else { error_stop("a single numerical constant could not be read from the following CONSTANT line:\nfile = $file: line = $oline\n"); }
           }
         } elsif ( $line =~ /^\s*["']/ ) {
           print DEBUG "INFO: assuming an expression (rather than a numerical constant) is entered in the following:\nfile = $file: line = $oline\n";
-          delete $variable{$type}[$mvar]{"region_list"};
-          delete $variable{$type}[$mvar]{"constant_list"};
+          delete $flat_variable[$mflat]{"region_list"};
+          delete $flat_variable[$mflat]{"constant_list"};
 # read in expressions, noting that only if the expression is nonempty do we overide previously stored expression
 # this allows initial_equation to be reset independently of the equation for transient/newtient variables
           $tmp1 = extract_first($line,$error);
@@ -976,42 +973,21 @@ sub read_input_files {
             $tmp2 = extract_first($line,$error);
             if ($error) { error_stop("some type of syntax problem with the second expression in the following variable definition:\nfile = $file: line = $oline\n"); }
 # if we are here then tmp1 corresponds to the initial_equation, and tmp2 to the equation
-#           if (nonempty($tmp1)) { $variable{$type}[$mvar]{"initial_equation"} = $tmp1; print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n"; }
-#           if (nonempty($tmp2)) { $variable{$type}[$mvar]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n"; }
+#           if (nonempty($tmp1)) { $flat_variable[$mflat]{"initial_equation"} = $tmp1; print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n"; }
+#           if (nonempty($tmp2)) { $flat_variable[$mflat]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n"; }
 # empty and undef now have different meanings - empty ("") now means to repeat the full equation, whereas undef means to give it a value of zero
-            $variable{$type}[$mvar]{"initial_equation"} = $tmp1; print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n";
-            $variable{$type}[$mvar]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n";
+            $flat_variable[$mflat]{"initial_equation"} = $tmp1; print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n";
+            $flat_variable[$mflat]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n";
           } else {
 # if we are here then tmp1 corresponds to the equation
-#           if (nonempty($tmp1)) { $variable{$type}[$mvar]{"equation"} = $tmp1; print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n"; }
-            $variable{$type}[$mvar]{"equation"} = $tmp1; print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n";
+#           if (nonempty($tmp1)) { $flat_variable[$mflat]{"equation"} = $tmp1; print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n"; }
+            $flat_variable[$mflat]{"equation"} = $tmp1; print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n";
           }
 # check/set defaults for these later, after all variable definitions have been read in
         }
 
 # region
-        if ( $line =~ /^\s*ON(\s*)(<.+?>)\s*/i ) { $variable{$type}[$mvar]{"region"} = $2; $line = $'; } # read in region, possibly clobbering old region
-        if (empty($variable{$type}[$mvar]{"region"})) { # set default region for variable
-          if ($centring eq "cell") {
-            if ($type eq "equation") {
-              $variable{$type}[$mvar]{"region"} = "<domain>"; # default cell region for equations
-            } else {
-              $variable{$type}[$mvar]{"region"} = "<all cells>"; # default cell region
-            }
-          } elsif ($centring eq "face") {
-            if ($type eq "equation") {
-              $variable{$type}[$mvar]{"region"} = "<boundaries>"; # default face region for equations
-            } else {
-              $variable{$type}[$mvar]{"region"} = "<all faces>"; # default face region
-            }
-          } elsif ($centring eq "node") {
-            $variable{$type}[$mvar]{"region"} = "<all nodes>"; # default node region
-          }
-        } elsif ( $centring eq "none" ) { error_stop("attempting to set region to $variable{$type}[$mvar]{region} for none centred variable $name in\n:file = $file: line = $oline\n"); }
-        if (nonempty($variable{$type}[$mvar]{"region"})) { 
-          print "INFO: $type $variable{$type}[$mvar]{name} has $variable{$type}[$mvar]{centring} region = $variable{$type}[$mvar]{region}\n"; 
-          print DEBUG "INFO: $type $variable{$type}[$mvar]{name} has $variable{$type}[$mvar]{centring} region = $variable{$type}[$mvar]{region} based on\n:file = $file: line = $oline\n"; 
-        }
+        if ( $line =~ /^\s*ON(\s*)(<.+?>)\s*/i ) { $flat_variable[$mflat]{"region"} = $2; $line = $'; } # read in region, possibly clobbering old region
 
 # store raw options in the variable_options array now
 # variable and compound option lists will be assembled later
@@ -1024,14 +1000,14 @@ sub read_input_files {
           $line = ''; # nothing is now left in the line
 # set some other info for this variable_option
           $variable_options[$#variable_options]{"name"} = $name;
-          $variable_options[$#variable_options]{"mvar"} = $mvar;
+          $variable_options[$#variable_options]{"mvar"} = $mflat;
           $variable_options[$#variable_options]{"type"} = $type;
           print DEBUG "INFO: adding new option entry ($#variable_options) for $type $name of $variable_options[$#variable_options]{options}\n";
         }
 
 # print some summary stuff now about the single line read
-        print "INFO: read in statement for $type [$mvar]: name = $name: definitions = $variable{$type}[$mvar]{definitions}: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}\n";
-        print DEBUG "INFO: read in statement for $type [$mvar]: name = $name: definitions = $variable{$type}[$mvar]{definitions}: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}\n";
+        print "INFO: read in statement for $type [$mflat]: name = $name: definitions = $flat_variable[$mflat]{definitions}: centring = $flat_variable[$mflat]{centring}: rindex = $flat_variable[$mflat]{rindex}: region = $flat_variable[$mflat]{region}: multiplier = $flat_variable[$mflat]{multiplier}: units = $flat_variable[$mflat]{units}\n";
+        print DEBUG "INFO: read in statement for $type [$mflat]: name = $name: definitions = $flat_variable[$mflat]{definitions}: centring = $flat_variable[$mflat]{centring}: rindex = $flat_variable[$mflat]{rindex}: region = $flat_variable[$mflat]{region}: multiplier = $flat_variable[$mflat]{multiplier}: units = $flat_variable[$mflat]{units}\n";
 
 #-----------------------
       } else {
@@ -1047,6 +1023,16 @@ sub read_input_files {
   } # end of loop for all input files
 
   close(UNWRAPPED_INPUT);
+
+#-----------------------------------------------------
+# distill flat_variable into variables of different types
+
+  foreach $mvar ( 0 .. $#flat_variable ) {
+    $type = $flat_variable[$mvar]{"type"};
+    delete $flat_variable[$mvar]{"type"};
+    $m{$type}++;
+    $variable{"$type"}[$m{$type}] = dclone($flat_variable[$mvar]);
+  }
 
 #-----------------------------------------------------
 # process variable options, removing clearoptions statements and creating individual variable options lists
@@ -1076,10 +1062,44 @@ sub read_input_files {
   }
 
 #-----------------------------------------------------
-# set transientdelta and newtientdelta system variables
+# set transientdelta and newtientdelta system variables, and simulation type based on transient/newtient variables
+
   foreach $mvar ( 1 .. $m{"system"} ) {
     if ($variable{"system"}[$mvar]{"name"} eq "<transientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $transient; }
     if ($variable{"system"}[$mvar]{"name"} eq "<newtientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $newtient; }
+  }
+  if (@variable{"transient"}) { set_transient_simulation(1); print DEBUG "INFO: setting simulation type to transient based on the detection of at least one transient variable\n"; }
+  if (@variable{"newtient"}) { $newtient=1; print DEBUG "INFO: setting simulation type to newtient based on detection of at least one newtient variable\n"; }
+
+#-----------------------------------------------------
+# set default region if not already set
+
+  foreach $type ( @general_types ) {
+    if ($type eq "system") {next;}
+    foreach $mvar ( 1 .. $m{$type} ) {
+      $centring = $variable{$type}[$mvar]{"centring"};
+      if (empty($variable{$type}[$mvar]{"region"})) { # set default region for variable
+        if ($centring eq "cell") {
+          if ($type eq "equation") {
+            $variable{$type}[$mvar]{"region"} = "<domain>"; # default cell region for equations
+          } else {
+            $variable{$type}[$mvar]{"region"} = "<all cells>"; # default cell region
+          }
+        } elsif ($centring eq "face") {
+          if ($type eq "equation") {
+            $variable{$type}[$mvar]{"region"} = "<boundaries>"; # default face region for equations
+          } else {
+            $variable{$type}[$mvar]{"region"} = "<all faces>"; # default face region
+          }
+        } elsif ($centring eq "node") {
+          $variable{$type}[$mvar]{"region"} = "<all nodes>"; # default node region
+        }
+      } elsif ( $centring eq "none" ) { error_stop("attempting to set region to $variable{$type}[$mvar]{region} for none centred variable $variable{$type}[$mvar]{name}\n"); }
+      if (nonempty($variable{$type}[$mvar]{"region"})) { 
+        print "INFO: $type $variable{$type}[$mvar]{name} has $variable{$type}[$mvar]{centring} region = $variable{$type}[$mvar]{region}\n"; 
+        print DEBUG "INFO: $type $variable{$type}[$mvar]{name} has $variable{$type}[$mvar]{centring} region = $variable{$type}[$mvar]{region}\n"; 
+      }
+    }
   }
 
 #-----------------------------------------------------

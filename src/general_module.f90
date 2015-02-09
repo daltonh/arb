@@ -339,7 +339,7 @@ character(len=8), dimension(3), parameter :: dumpfilelist = [ "dumpnewt", "dump 
 logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], array_mask2 = [.false.,.true.,.false.], array_mask3 = [.false.,.false.,.true.]
 
 ! code version details
-real, parameter :: version = 0.50 ! current version
+real, parameter :: version = 0.51 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "flexible freddy"
 
