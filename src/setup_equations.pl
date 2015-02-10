@@ -870,14 +870,15 @@ sub read_input_files {
         foreach $mcheck ( 0 .. $#asread_variable ) {
           if ($asread_variable[$mcheck]{"name"} eq $name) { # variable has been previously defined, and position in file is based on first definition
             $masread = $mcheck;
-            print "INFO: a secondary definition statement for variable $asread_variable[$masread]{name} has been found in file = $file\n";
-            print DEBUG "INFO: a secondary definition statement for variable $asread_variable[$masread]{name} has been found based on:\nfile = $file: line = $oline\n";
             last;
           }
         }
 
 # now create or update variable type and centring
         if ($masread >= 0) {
+          $asread_variable[$masread]{"definitions"}++; 
+          print "INFO: a secondary definition statement (number $asread_variable[$masread]{definitions}) for variable $name has been found in file = $file\n";
+          print DEBUG "INFO: a secondary definition statement (number $asread_variable[$masread]{definitions}) for variable $name has been found based on:\nfile = $file: line = $oline\n";
 # a variable has been identified, now check whether the type has changed
           if (nonempty($type)) {
             if ($type ne $asread_variable[$masread]{"type"} && nonempty($asread_variable[$masread]{"type"})) {
@@ -886,6 +887,8 @@ sub read_input_files {
               $asread_variable[$masread]{"typechanges"}++;
             }
             $asread_variable[$masread]{"type"} = $type;
+          } else {
+            $type = $asread_variable[$masread]{"type"};
           }
 # a variable has been identified, now check whether the centring has changed
           if (nonempty($centring)) {
@@ -901,10 +904,13 @@ sub read_input_files {
               }
             }
             $asread_variable[$masread]{"centring"} = $centring;
+          } else {
+            $centring = $asread_variable[$masread]{"centring"};
           }
           $asread_variable[$masread]{"comments"}=$asread_variable[$masread]{"comments"}." ".$comments;
-          $asread_variable[$masread]{"definitions"}++; 
         } else {
+          print "INFO: a primary definition statement for variable $name has been found in file = $file\n";
+          print DEBUG "INFO: a primary definition statement for variable $name has been found based on:\nfile = $file: line = $oline\n";
 # otherwise create a new variable
           $masread=$#asread_variable+1;
           print DEBUG "INFO: creating new variable number $masread with name $name based on \n:file = $file: line = $oline\n";
@@ -1032,7 +1038,7 @@ sub read_input_files {
 # set some other info for this variable_option
           $variable_options[$#variable_options]{"name"} = $name;
           $variable_options[$#variable_options]{"masread"} = $masread;
-          print DEBUG "INFO: adding new option entry ($#variable_options) for $type $name of $variable_options[$#variable_options]{options}\n";
+          print DEBUG "INFO: adding new option entry ($#variable_options): name = $name: masread = $masread: options = $variable_options[$#variable_options]{options}\n";
         }
 
 #-----------------------
@@ -1098,6 +1104,34 @@ sub initialise_user_variables {
     }
     $centring = $variable{$type}[$mvar]{"centring"};
 
+# check whether a region for the variable was defined, and if not, try to guess
+    if (empty($variable{$type}[$mvar]{"region"})) { # set default region for variable
+      if ($centring ne "none") {
+        if ($centring eq "cell") {
+          if ($type eq "equation") {
+            $variable{$type}[$mvar]{"region"} = "<domain>"; # default cell region for equations
+          } else {
+            $variable{$type}[$mvar]{"region"} = "<all cells>"; # default cell region
+          }
+        } elsif ($centring eq "face") {
+          if ($type eq "equation") {
+            $variable{$type}[$mvar]{"region"} = "<boundaries>"; # default face region for equations
+          } else {
+            $variable{$type}[$mvar]{"region"} = "<all faces>"; # default face region
+          }
+        } else { # elsif ($centring eq "node") {
+          $variable{$type}[$mvar]{"region"} = "<all nodes>"; # default node region
+        }
+        print "INFO: region for $type variable $variable{$type}[$mvar]{name} not set:  Defaulting to $variable{$type}[$mvar]{region} based on $centring centring\n";
+        print DEBUG "INFO: region for $type variable $variable{$type}[$mvar]{name} not set:  Defaulting to $variable{$type}[$mvar]{region} based on $centring centring\n";
+      }
+    } elsif ( $centring eq "none" ) {
+      error_stop("attempting to set region to $variable{$type}[$mvar]{region} for none centred variable $variable{$type}[$mvar]{name}\n");
+    } else {
+      print "INFO: $type $variable{$type}[$mvar]{name} has $variable{$type}[$mvar]{centring} region = $variable{$type}[$mvar]{region}\n"; 
+      print DEBUG "INFO: $type $variable{$type}[$mvar]{name} has $variable{$type}[$mvar]{centring} region = $variable{$type}[$mvar]{region}\n"; 
+    }
+
 # check whether the appropriate equations or numerical constants have been read in and
 # check on equation/initial_equation/constant_list consistency and write out constant statements to the fortran input file
     if (nonempty($variable{$type}[$mvar]{"constant_list"})) { # this indicates that this constant is to be numerically read
@@ -1148,46 +1182,22 @@ sub initialise_user_variables {
       }
     }
 
-# check whether a region for the variable was defined, and if not, try to guess
-    if (empty($variable{$type}[$mvar]{"region"})) { # set default region for variable
-      if ($centring ne "none") {
-        if ($centring eq "cell") {
-          if ($type eq "equation") {
-            $variable{$type}[$mvar]{"region"} = "<domain>"; # default cell region for equations
-          } else {
-            $variable{$type}[$mvar]{"region"} = "<all cells>"; # default cell region
-          }
-        } elsif ($centring eq "face") {
-          if ($type eq "equation") {
-            $variable{$type}[$mvar]{"region"} = "<boundaries>"; # default face region for equations
-          } else {
-            $variable{$type}[$mvar]{"region"} = "<all faces>"; # default face region
-          }
-        } else { # elsif ($centring eq "node") {
-          $variable{$type}[$mvar]{"region"} = "<all nodes>"; # default node region
-        }
-        print "INFO: region for $type variable $variable{$type}[$mvar]{name} not set:  Defaulting to $variable{$type}[$mvar]{region} based on $centring centring\n";
-        print DEBUG "INFO: region for $type variable $variable{$type}[$mvar]{name} not set:  Defaulting to $variable{$type}[$mvar]{region} based on $centring centring\n";
-      }
-    } elsif ( $centring eq "none" ) {
-      error_stop("attempting to set region to $variable{$type}[$mvar]{region} for none centred variable $variable{$type}[$mvar]{name}\n");
-    } else {
-      print "INFO: $type $variable{$type}[$mvar]{name} has $variable{$type}[$mvar]{centring} region = $variable{$type}[$mvar]{region}\n"; 
-      print DEBUG "INFO: $type $variable{$type}[$mvar]{name} has $variable{$type}[$mvar]{centring} region = $variable{$type}[$mvar]{region}\n"; 
-    }
-
 # calculate maximum repeats of the definitions, and centring and type changes
     foreach $repeats ( keys(%statement_repeats) ) {
       $statement_repeats{$repeats} = max($statement_repeats{$repeats},$variable{$type}[$mvar]{$repeats});
     }
       
+# print some summary stuff now about the single line read
+    print "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: definitions = $variable{$type}[$mvar]{definitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}\n";
+    print DEBUG "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: definitions = $variable{$type}[$mvar]{definitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}\n";
+
 # process variable options, removing clearoptions statements and creating individual variable options lists
     my $clearoptions = 0;
     foreach $n ( reverse( 0 .. $#variable_options ) ) {
-      if ($variable{$type}[$mvar]{"masread"} != $variable_options[$n]{"masread"}) { next; } # from here on we are dealing with the correct variable
+      if ($masread != $variable_options[$n]{"masread"}) { next; } # from here on we are dealing with the correct variable
 # set mvar for consistency with pre-masread code
-      $variable_options[$#variable_options]{"type"} = $type;
-      $variable_options[$#variable_options]{"mvar"} = $mvar;
+      $variable_options[$n]{"type"} = $type;
+      $variable_options[$n]{"mvar"} = $mvar;
 # first remove any options as specified by the clearoptions statement
       if ($clearoptions) {$variable_options[$n]{"options"} = ''; next; } # clear these options if this is on
       if ($variable_options[$n]{"options"} =~ /.*(^|\,)\s*clearoptions\s*(\,|$)/i) { # match the last occurrence of this option by putting a greedy match of anything on the left
@@ -1203,10 +1213,6 @@ sub initialise_user_variables {
 # print some summary stuff now about the single line read
     if ($variable{$type}[$mvar]{"options"}) { print "INFO: options read in for $type $name = $variable{$type}[$mvar]{options}\n";} else { print "INFO: no options read in for $type $name\n"; }
     if ($variable{$type}[$mvar]{"options"}) { print DEBUG "INFO: options read in for $type $name = $variable{$type}[$mvar]{options}\n";} else { print DEBUG "INFO: no options read in for $type $name\n"; }
-
-# TODO: fix output
-#   print "INFO: read in statement for $type [$mvar]: name = $name: definitions = $variable[$type][$mvar]{definitions}: centring = $variable[$type][$mvar]{centring}: rindex = $variable[$type][$mvar]{rindex}: region = $variable[$type][$mvar]{region}: multiplier = $variable[$type][$mvar]{multiplier}: units = $variable[$type][$mvar]{units}\n";
-#   print DEBUG "INFO: read in statement for $type [$mvar]: name = $name: definitions = $variable[$type][$mvar]{definitions}: centring = $variable[$type][$mvar]{centring}: rindex = $variable[$type][$mvar]{rindex}: region = $variable[$type][$mvar]{region}: multiplier = $variable[$type][$mvar]{multiplier}: units = $variable[$type][$mvar]{units}\n";
 
 # ref: options, ref: componentoptions
 # options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
@@ -3445,7 +3451,7 @@ sub create_compounds {
   foreach $mvar2 ( 1 .. $m{"compound"} ) {
     $type = $variable{"compound"}[$mvar2]{"type"};
     $name = $variable{"compound"}[$mvar2]{"name"};
-# first construct a compound options array by concatenating together the relevant component options array in order that they were written
+# first construct a compound options array by concatenating together the relevant component options array in the order that they were written
     $variable{"compound"}[$mvar2]{"options"} = '';
     foreach $n ( 0 .. $#variable_options ) {
       if (empty($variable_options[$n]{"options"})) { next; }
