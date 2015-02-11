@@ -48,6 +48,7 @@ type kernel_type
   double precision, dimension(:), allocatable :: v ! value of kernel in 1-to-1 correspondance with ijk
   logical :: reflect_present ! if any reflect_multipliers are not 1, and hence, the reflect_multipliers array is allocated
   integer, dimension(:,:), allocatable :: reflect_multiplier ! takes on values of +1 or -1 as multipliers to be applied during reflections (glued faces).  Second index refers to kernel element (ie, one-to-one correspondance with ijk and v) and first to reflection coordinate direction.  If not allocated then +1 values should be used.
+  logical :: available ! as calculated by setup_equations, determines whether this kernel is actually required for a particular simulation
 end type kernel_type
 
 ! this type specifies details of each node (vertex)
@@ -340,6 +341,16 @@ character(len=100), dimension(2), parameter :: magnitude_options = ["dynamicmagn
 character(len=8), dimension(6), parameter :: stopfilelist = [ "kill    ", "stopback", "stopnewt", "stop    ", "stoptime", "halt    " ]
 character(len=8), dimension(3), parameter :: dumpfilelist = [ "dumpnewt", "dump    ", "dumptime" ]
 logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], array_mask2 = [.false.,.true.,.false.], array_mask3 = [.false.,.false.,.true.]
+
+! kernel availability (whether they are calculated or not) is calculated by the setup_equations.pl script, however, the settings can be overwritten (as true) here
+logical :: kernel_availability_faceave = .false. ! needed for varcdivgrad, but this routine itself is not needed until normal circumstances, so set false
+logical :: kernel_availability_facegrad = .false.
+logical :: kernel_availability_cellfromnodegrad = .false.
+logical :: kernel_availability_cellgrad = .true. ! needed for varcgrad used in variable output (for elementnodedata) so always keep on
+logical :: kernel_availability_cellave = .false.
+logical :: kernel_availability_cellfromnodeave = .false.
+logical :: kernel_availability_nodegrad = .false.
+logical :: kernel_availability_nodeave = .false.
 
 ! code version details
 real, parameter :: version = 0.51 ! current version

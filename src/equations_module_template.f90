@@ -81,6 +81,9 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine allocate_meta_arrays'
 ! set newtient_simulation logical
 !<sub_string:newtient_simulation>
 
+! set kernel availability
+!<sub_string:kernel_availability>
+
 if (debug) write(*,'(a/80(1h-))') 'subroutine allocate_meta_arrays'
 
 end subroutine allocate_meta_arrays
