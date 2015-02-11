@@ -1,0 +1,114 @@
+# root_input.arb file created by the arb script
+##################################################################################
+# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
+EXTERNALS "src/free_surface_functions.f90"
+##################################################################################
+# the following working directory files found by the arb script: minimal_kernel_example.arb
+#INCLUDE_WORKING "minimal_kernel_example.arb"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../minimal_kernel_example.arb without any search/replace combinations
+VERSION 0.51 # the version of syntax used in this file
+
+# the following strings describe the simulation and are passed to the output files
+INFO_TITLE "Simple file containing equations that only need minimal kernels to be calculated"
+INFO_DESCRIPTION "Used to bugtest kernel_availability"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "11/2/15" # interpreted as the last modification date
+
+MSH_FILE "surface.msh"
+
+# cell based:
+CELL_UNKNOWN <phi_c> "1.d0" ON <all cells>
+#NONE_CONSTANT <source> 1.d0
+
+# the following only needs facegrad
+#CELL_EQUATION <phi_c domain> "celldiv(facegrad(<phi_c>))-<source>" ON <domain>
+
+# the following needs no kernels
+#CELL_EQUATION <phi_c domain> "<phi_c>-<source>" ON <domain>
+#CELL_EQUATION <phi_c boundaries> "<phi_c>" ON <boundary cells>
+
+# the following needs cellfromnodeave
+CELL_EQUATION <phi_c equation> "<phi_c>-cellfromnodeave(<nodex[l=1]>)" ON <all cells>
+CELL_OUTPUT <phi_c error> "<phi_c>-<cellx[l=1]>" ON <all cells>
+
+# node based:
+NODE_UNKNOWN <phi_n> "1.d0" ON <all nodes>
+# the following needs nodegrad
+NODE_EQUATION <phi_n equation> "<phi_n>-nodegrad[l=1](<cellx[l=1]>)" ON <all nodes>
+# the following needs nodeave
+#NODE_EQUATION <phi_n equation> "<phi_n>-nodeave(<cellx[l=1]>)" ON <all nodes>
+
+# face based:
+#FACE_UNKNOWN <phi_f> "1.d0" ON <all faces>
+# the following needs facegrad
+#FACE_EQUATION <phi_f equation> "<phi_f>-facegrad[l=1](<cellx[l=1]>)" ON <all faces>
+# the following needs faceave
+#FACE_EQUATION <phi_f equation> "<phi_f>-faceave(<cellx[l=1]>)" ON <all faces>
+
+#INCLUDE_ROOT "general"
+# INFO: setting include root directory to general
+#INCLUDE "element_information"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/general/element_information.arb without any search/replace combinations
+# includes all element information files from general
+#INCLUDE "element_coordinates.arb"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/general/element_coordinates.arb without any search/replace combinations
+CELL_OUTPUT <cellx output[l=1]> "<cellx[l=1]>" ON <all cells>
+CELL_OUTPUT <cellx output[l=2]> "<cellx[l=2]>" ON <all cells>
+CELL_OUTPUT <cellx output[l=3]> "<cellx[l=3]>" ON <all cells>
+FACE_OUTPUT <facex output[l=1]> "<facex[l=1]>" ON <all faces>
+FACE_OUTPUT <facex output[l=2]> "<facex[l=2]>" ON <all faces>
+FACE_OUTPUT <facex output[l=3]> "<facex[l=3]>" ON <all faces>
+NODE_OUTPUT <nodex output[l=1]> "<nodex[l=1]>" ON <all nodes>
+NODE_OUTPUT <nodex output[l=2]> "<nodex[l=2]>" ON <all nodes>
+NODE_OUTPUT <nodex output[l=3]> "<nodex[l=3]>" ON <all nodes>
+# INCLUDE FINISHED for ../templates/general/element_coordinates.arb
+#--------------------------------------------------------
+#INCLUDE "element_counts.arb"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/general/element_counts.arb without any search/replace combinations
+FACE_OUTPUT <face_nodes> "nodesum(1.d0,region=<faceknodes>)" ON <all faces>
+CELL_OUTPUT <cell_nodes> "nodesum(1.d0,region=<cellknodes>)" ON <all cells>
+CELL_OUTPUT <cell_faces> "facesum(1.d0,region=<celljfaces>)" ON <all cells>
+# INCLUDE FINISHED for ../templates/general/element_counts.arb
+#--------------------------------------------------------
+#INCLUDE "element_dimensions.arb"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/general/element_dimensions.arb without any search/replace combinations
+CELL_OUTPUT <celldx output[l=1]> "<celldx[l=1]>" ON <all cells>
+CELL_OUTPUT <celldx output[l=2]> "<celldx[l=2]>" ON <all cells>
+CELL_OUTPUT <celldx output[l=3]> "<celldx[l=3]>" ON <all cells>
+CELL_OUTPUT <celldxmax output> "<celldxmax>" ON <all cells>
+FACE_OUTPUT <facedx output> "<facedx>" ON <all faces>
+FACE_OUTPUT <facearea output> "<facearea>" ON <all faces>
+# INCLUDE FINISHED for ../templates/general/element_dimensions.arb
+#--------------------------------------------------------
+#INCLUDE "element_indicies.arb"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/general/element_indicies.arb without any search/replace combinations
+CELL_OUTPUT <icell output> "<icell>" ON <all cells>
+FACE_OUTPUT <jface output> "<jface>" ON <all faces>
+NODE_OUTPUT <knode output> "<knode>" ON <all nodes>
+# INCLUDE FINISHED for ../templates/general/element_indicies.arb
+#--------------------------------------------------------
+# INCLUDE FINISHED for ../templates/general/element_information.arb
+#--------------------------------------------------------
+#INCLUDE "kernel_information"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/general/kernel_information.arb without any search/replace combinations
+CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <all cells>
+CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <all cells>
+CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <all cells>
+CELL_OUTPUT <cell deriv kernel elements output> "cellsum(1.d0,region=<cellkernelregion[l=1]>)" ON <all cells>
+FACE_OUTPUT <face deriv kernel elements output> "cellsum(1.d0,region=<facekernelregion[l=1]>)" ON <all faces>
+NODE_OUTPUT <node deriv kernel elements output> "cellsum(1.d0,region=<nodekernelregion[l=1]>)" ON <all nodes>
+CELL_OUTPUT <celldxkernel output> "<celldxkernel>" ON <all cells>
+FACE_OUTPUT <facedxkernel output> "<facedxkernel>" ON <all faces>
+NODE_OUTPUT <nodedxkernel output> "<nodedxkernel>" ON <all nodes>
+# INCLUDE FINISHED for ../templates/general/kernel_information.arb
+#--------------------------------------------------------
+# INCLUDE FINISHED for ../minimal_kernel_example.arb
+#--------------------------------------------------------
+##################################################################################

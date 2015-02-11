@@ -838,13 +838,15 @@ end if
 ! or check every face using a variety of points
 ! based on node points
 cell_interface = .false. ! 
+pass_vector = rotate_point(rotation_total,centre,node(cell(i)%knode(1))%x) ! avoid temporary array warnings
 if (debug) then
  write(50,*) 'node_x = ',node(cell(i)%knode(1))%x
- write(50,*) 'rotate(node_x) = ',rotate_point(rotation_total,centre,node(cell(i)%knode(1))%x)
+ write(50,*) 'rotate(node_x) = ',pass_vector
 end if
-cell_is_in = is_point_in_shape(shape,size,centre,axis,rotate_point(rotation_total,centre,node(cell(i)%knode(1))%x))
+cell_is_in = is_point_in_shape(shape,size,centre,axis,pass_vector)
 do kk = 2, ubound(cell(i)%knode,1)
-  if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,rotate_point(rotation_total,centre,node(cell(i)%knode(kk))%x))) then
+  pass_vector = rotate_point(rotation_total,centre,node(cell(i)%knode(kk))%x) ! avoid temporary array warnings
+  if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,pass_vector)) then
     cell_interface = .true.
     exit
   end if
@@ -852,8 +854,8 @@ end do
 ! also check on face centres
 if (.not.cell_interface) then
   do jj = 1, ubound(cell(i)%jface,1)
-    if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,rotate_point(rotation_total,centre,face(cell(i)%jface(jj))%x))) &
-      then
+    pass_vector = rotate_point(rotation_total,centre,face(cell(i)%jface(jj))%x) ! avoid temporary array warnings
+    if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,pass_vector)) then
       cell_interface = .true.
       exit
     end if

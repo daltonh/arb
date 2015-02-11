@@ -1173,7 +1173,7 @@ do n = 1, nelements
   end if
   gelement_max = max(gelement_max,gelement)
 
-! determine based on region and dimension info whether element is a cell or face
+! determine based on region and dimension info whether element is a cell, face or node
 ! default is a cell if the element has the maximum dimensions, otherwise a face
 ! note, cells should always be a part of a gmsh physical entity originally, and hence always be associated with a region,
 !  so if an element is not associated with a region then it must be a face

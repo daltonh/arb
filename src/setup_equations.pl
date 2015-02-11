@@ -144,6 +144,10 @@ my %external_operators=();
 my @general_replacements = ();
 
 my %statement_repeats = ( 'definitions' => 0, 'typechanges' => 0, 'centringchanges' => 0 );
+
+# kernels are now only calculated when needed
+# these settings can be overwritten (only making true, not turning off) in kernel_module.f90
+my %kernel_availability = ( 'cellave' => 0, 'cellgrad' => 0, 'cellfromnodeave' => 0, 'cellfromnodegrad' => 0, 'faceave' => 0, 'facegrad' => 0, 'nodeave' => 0, 'nodegrad' => 0 );
 #--------------------------------------------------------------
 # read through setup files storing all the information
 
@@ -374,12 +378,26 @@ sub write_sub_strings {
   use strict;
   use File::Glob ':glob'; # deals with whitespace better
   my @f90_files=bsd_glob("$src_dir/*_template.f90");
-  my ($keyword, $indent, $line, $string, @strings, $n);
+  my ($keyword, $indent, $line, $string, @strings, $n, $key);
   my $linelength = 100;
 
 # set transient and newtient substrings based on the simulation type
   $sub_string{"transient_simulation"} = "transient_simulation = ".fortran_logical_string($transient);
   $sub_string{"newtient_simulation"} = "newtient_simulation = ".fortran_logical_string($newtient);
+
+# setup kernel_availability string
+	print DEBUG "KERNEL_AVAILABILITY as calculated:\n";
+	print "INFO: calculated kernel_availability:\n";
+	$sub_string{"kernel_availability"} = '';
+	foreach $key (keys(%kernel_availability)) {
+		if ($kernel_availability{$key}) {
+   	  $sub_string{"kernel_availability"} = $sub_string{"kernel_availability"}."kernel_availability_".$key." = .true.\n";
+		}
+#  	$sub_string{"kernel_availability"} = $sub_string{"kernel_availability"}.
+# 		"if (.not.kernel_availability_$key) kernel_availability_".$key." = ".fortran_logical_string($kernel_availability{$key})."\n";
+		print DEBUG "$key = $kernel_availability{$key}\n";
+		print "  $key = $kernel_availability{$key}\n";
+	}
 
   foreach my $in_file (@f90_files) {
 
@@ -393,15 +411,13 @@ sub write_sub_strings {
     while ($line=<INFILE>) { chompm($line);
       if (($indent,$keyword) = $line =~ /^\!(\s*?)<sub_string:(.+)>/) { # substring lines are now commented out by default
         print "INFO: found sub_string marker in fortran file with keyword $keyword\n";
-        if (!($sub_string{$keyword})) {
+        if (empty($sub_string{$keyword})) {
           print "NOTE: sub_string corresponding to keyword $keyword not set\n";
         } else {
           @strings = split("\n",$sub_string{$keyword});
           $sub_string{$keyword} = "";
-          print DEBUG "sub_string{keyword} = $sub_string{$keyword}\n";
           foreach $string (@strings) {
             $string =~ s/^\s*//; # remove any space from front of string
-#           print DEBUG "string = |$string|\n";
             if (!($string =~ /^\!/) || $string =~ /^\!\$/) {
               if ($string =~ /^\s*end\s*?if/ || $string =~ /^\s*end\s*?do/) {substr($indent,-2,2,"");}  # decrease indent
               if ($string =~ /^\s*else/) {substr($indent,-2,2,"");}  # decrease indent
@@ -1681,8 +1697,11 @@ sub mequation_interpolation {
         if ( $l < 1 || $l > 3) { error_stop("$centring $operator_type operator has an incorrect or unspecified direction l=$l (should be 1|2|3) in $otype $variable{$otype}[$omvar]{name}"); }
 
         if ($from_centring eq "node") {
+          error_stop("cellfromnodegrad differencing has not been implemented in the fortran source (and may never be implemented... is it needed here?): found in $otype $variable{$otype}[$omvar]{name}");
 # node from_centring: ref: cellfromnodegrad
-          $inbit[$nbits] = "cellkernel[i,".scalar($l+4).",ns]*(".$expression.')'.$reflect_multiplier_string;
+# don't think that reflect_multiplier_string is needed here
+#         $inbit[$nbits] = "cellkernel[i,".scalar($l+4).",ns]*(".$expression.')'.$reflect_multiplier_string;
+          $inbit[$nbits] = "cellkernel[i,".scalar($l+4).",ns]*(".$expression.')';
           $someregion = '<cellkernelregion[l='.scalar($l+4).']>';
           create_someloop($inbit[$nbits],"sum","node",$someregion,$deriv,$otype,$omvar);
 
@@ -2014,7 +2033,7 @@ sub mequation_interpolation {
 # nodeave is an operator that takes cell centred quantities and averages to nodes
       } elsif ($centring eq "node") {
 
-        $inbit[$nbits] = "nodekernel[i,0,ns]*(".$expression.")";
+        $inbit[$nbits] = "nodekernel[k,0,ns]*(".$expression.")";
         create_someloop($inbit[$nbits],"sum","cell","<nodekernelregion[l=0]>",$deriv,$otype,$omvar);
         if (@reflect) { @{$variable{"someloop"}[$m{"someloop"}]{"reflect"}} = @reflect; }
 
@@ -3859,6 +3878,7 @@ sub maxima_to_fortran {
 # create two lists of words which should be swapped in the string
   my @searches = ();
   my @replaces = ();
+  my @kernel_type = (); # now also include a kernel type field that specifies if the string is a kernel that needs an availability set
 
   foreach $type (@user_types,"system","someloop") {
 
@@ -3867,6 +3887,11 @@ sub maxima_to_fortran {
       if (nonempty($variable{$type}[$mvar]{"mfortran"})) { # mfortran is empty in (system) variables that have a maxima name that is an actual value (eq transientdelta)
         push(@searches,$variable{$type}[$mvar]{"mfortran"});
         push(@replaces,$variable{$type}[$mvar]{"fortran"});
+				if (nonempty($variable{$type}[$mvar]{"kernel_type"})) {
+					push(@kernel_type,$variable{$type}[$mvar]{"kernel_type"});
+				} else {
+					push(@kernel_type,'');
+				}
       }
 
     }
@@ -3901,6 +3926,11 @@ sub maxima_to_fortran {
       print DEBUG "found match with searches = $searches[$nsnext]: replaces = $replaces[$nsnext]: at nnext = $nnext\n".
         "on string _[0] = $_[0]\n";
       substr($_[0],$nnext,length($searches[$nsnext]),$replaces[$nsnext]);
+# if the string found is a kernel element, then set corresponding kernel availability
+			if (nonempty($kernel_type[$nsnext])) { 
+				$kernel_availability{$kernel_type[$nsnext]} = 1;
+				print DEBUG "INFO: kernel_type $kernel_type[$nsnext] found in equation/derivative for $variable{$otype}[$omvar]{name}\n";
+			}
       $nlast = $nnext + length($replaces[$nsnext]);
     }
 
@@ -4262,27 +4292,27 @@ sub create_fortran_equations {
         } elsif ($variable{$type}[$mvar]{"region"} eq '<cellkernelregion[l=0]>') {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".
-            "do ns = 1, ubound(cell(i)%kernel(0)%ijk,1)\n".
+            "do ns = 1, allocatable_integer_size(cell(i)%kernel(0)%ijk)\n".
             "j = cell(i)%kernel(0)%ijk(ns)\n";
         } elsif ($variable{$type}[$mvar]{"region"} =~ /<cellkernelregion\[l=([123])\]>/) {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
-            "do ns = 1, ubound(cell(ilast)%kernel($1)%ijk,1)\n".
+            "do ns = 1, allocatable_integer_size(cell(ilast)%kernel($1)%ijk)\n".
             "i = cell(ilast)%kernel($1)%ijk(ns)\n".$reflect_string_form;
         } elsif ($variable{$type}[$mvar]{"region"} =~ /<cellkernelregion\[l=([4567])\]>/) {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".
-            "do ns = 1, ubound(cell(i)%kernel($1)%ijk,1)\n".
+            "do ns = 1, allocatable_integer_size(cell(i)%kernel($1)%ijk)\n".
             "k = cell(i)%kernel($1)%ijk(ns)\n";
         } elsif ($variable{$type}[$mvar]{"region"} =~ /<facekernelregion\[l=([0123456])\]>/) {
           $sub_string{$type}=$sub_string{$type}.$reflect_string_init.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".
-            "do ns = 1, ubound(face(j)%kernel($1)%ijk,1)\n".
+            "do ns = 1, allocatable_integer_size(face(j)%kernel($1)%ijk)\n".
             "i = face(j)%kernel($1)%ijk(ns)\n".$reflect_string_form;
         } elsif ($variable{$type}[$mvar]{"region"} =~ /<nodekernelregion\[l=([0123])\]>/) {
           $sub_string{$type}=$sub_string{$type}.$reflect_string_init.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".
-            "do ns = 1, ubound(node(k)%kernel($1)%ijk,1)\n".
+            "do ns = 1, allocatable_integer_size(node(k)%kernel($1)%ijk)\n".
             "i = node(k)%kernel($1)%ijk(ns)\n".$reflect_string_form;
         } elsif ($variable{$type}[$mvar]{"region"} eq '<glueface>') {
           $sub_string{$type}=$sub_string{$type}.
@@ -4888,6 +4918,12 @@ sub create_system_variables {
     $variable{"system"}[$m{"system"}]{"fortran"} = "node(k)%x($l)";
     $variable{"system"}[$m{"system"}]{"units"} = $lengthunit;
   }
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<nodedxkernel>"; # distance that is characteristic of kernels for this node
+  $variable{"system"}[$m{"system"}]{"centring"} = "node";
+  $variable{"system"}[$m{"system"}]{"maxima"} = "nodedxkernel[k]";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "node(k)%dx_kernel";
+  $variable{"system"}[$m{"system"}]{"units"} = $lengthunit;
 
 #------------------------------------
 # ref: system variables kernels
@@ -4904,6 +4940,12 @@ sub create_system_variables {
     $variable{"system"}[$m{"system"}]{"centring"} = "cell";
     $variable{"system"}[$m{"system"}]{"maxima"} = "facekernel[j,$l,ns]";
     $variable{"system"}[$m{"system"}]{"fortran"} = "face(j)%kernel($l)%v(ns)";
+		if ($l eq 0) {
+      $variable{"system"}[$m{"system"}]{"kernel_type"} = "faceave";
+		} else {
+      $variable{"system"}[$m{"system"}]{"kernel_type"} = "facegrad";
+		}
+			
   }
 
 # cell centred kernels
@@ -4912,24 +4954,28 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"centring"} = "face";
   $variable{"system"}[$m{"system"}]{"maxima"} = "cellkernel[i,0,ns]";
   $variable{"system"}[$m{"system"}]{"fortran"} = "cell(i)%kernel(0)%v(ns)";
+  $variable{"system"}[$m{"system"}]{"kernel_type"} = "cellave";
   foreach $l ( 1 .. 3 ) {
     $m{"system"}++;
     $variable{"system"}[$m{"system"}]{"name"} = "<cellkernel[l=$l]>"; # kernel l=1-3 associated with cell which gives derivative in lth coordinate direction from surrounding cells
     $variable{"system"}[$m{"system"}]{"centring"} = "cell";
     $variable{"system"}[$m{"system"}]{"maxima"} = "cellkernel[ilast,$l,ns]"; # in all instances i will be used for kernel cell, and ilast will refer to central cell
     $variable{"system"}[$m{"system"}]{"fortran"} = "cell(ilast)%kernel($l)%v(ns)";
+    $variable{"system"}[$m{"system"}]{"kernel_type"} = "cellgrad";
   }
   $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<cellkernel[l=4]>"; # kernel 4 associated with cell which gives average from surrounding nodes
   $variable{"system"}[$m{"system"}]{"centring"} = "node";
   $variable{"system"}[$m{"system"}]{"maxima"} = "cellkernel[i,4,ns]";
   $variable{"system"}[$m{"system"}]{"fortran"} = "cell(i)%kernel(4)%v(ns)";
+  $variable{"system"}[$m{"system"}]{"kernel_type"} = "cellfromnodeave";
   foreach $l ( 5 .. 7 ) {
     $m{"system"}++;
     $variable{"system"}[$m{"system"}]{"name"} = "<cellkernel[l=$l]>"; # kernel l=5-7 associated with cell which gives derivative in l-4th coordinate direction from surrounding nodes
     $variable{"system"}[$m{"system"}]{"centring"} = "node";
     $variable{"system"}[$m{"system"}]{"maxima"} = "cellkernel[i,$l,ns]"; # in all instances i will be used for kernel cell, and ilast will refer to central cell
     $variable{"system"}[$m{"system"}]{"fortran"} = "cell(i)%kernel($l)%v(ns)";
+    $variable{"system"}[$m{"system"}]{"kernel_type"} = "cellfromnodegrad";
   }
 
 # node centred kernels
@@ -4938,12 +4984,14 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"centring"} = "cell"; # this is centreing of kernel element, not of kernel
   $variable{"system"}[$m{"system"}]{"maxima"} = "nodekernel[k,0,ns]";
   $variable{"system"}[$m{"system"}]{"fortran"} = "node(k)%kernel(0)%v(ns)";
+  $variable{"system"}[$m{"system"}]{"kernel_type"} = "nodeave";
   foreach $l ( 1 .. 3 ) {
     $m{"system"}++;
     $variable{"system"}[$m{"system"}]{"name"} = "<nodekernel[l=$l]>"; # kernel l=1-3 associated with cell which gives derivative in lth coordinate direction from surrounding cells
     $variable{"system"}[$m{"system"}]{"centring"} = "cell";
     $variable{"system"}[$m{"system"}]{"maxima"} = "nodekernel[k,$l,ns]"; # in all instances i will be used for kernel cell, and ilast will refer to central cell
     $variable{"system"}[$m{"system"}]{"fortran"} = "node(k)%kernel($l)%v(ns)";
+    $variable{"system"}[$m{"system"}]{"kernel_type"} = "nodegrad";
   }
 
 # some kernel diagnostics
