@@ -144,8 +144,8 @@ type region_type
   character(len=1000) :: location ! string specifying location of region
   character(len=4) :: centring ! whether cell or face centred
   integer :: dimensions ! maximum dimensions of the elements within the region
-  integer, dimension(:), allocatable :: ijk ! array of cell or face i or j indicies that are within this region - dimension of this is number of elements in region
-  integer, dimension(:), allocatable :: ns ! array that specifies data number from i or j index - dimension of this is either itotal (cell centred) or jtotal (face centred)
+  integer, dimension(:), allocatable :: ijk ! array of cell (i), face (j) or node (k) indicies that are within this region - dimension of this is number of elements in region - for dynamic regions size of ijk is determined by parent static region, with some indicies being zero
+  integer, dimension(:), allocatable :: ns ! array that specifies data number from i, j or k index - dimension of this is either itotal, jtotal or ktotal - for all regions an ns(ijk) of zero indicates that the particular ijk element is not in the region
 end type region_type
 
 ! data type for any functions that ultimately depend on field data
