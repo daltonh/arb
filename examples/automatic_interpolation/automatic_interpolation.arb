@@ -1,0 +1,28 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+# file equations.in
+VERSION 0.51
+
+# the following strings describe the simulation and are passed to the output files
+INFO_TITLE "Test of the automatic centring interpolation"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "12/2/15" # interpreted as the last modification date
+
+MSH_FILE "surface.msh"
+
+# make it a bit trickier with reflection and periodic boundaries
+GLUE_FACES <west> reflect=1
+GLUE_FACES <north> <south>
+
+# test of automatic operator centring interpolation
+# all of these variables should be 1 everywhere
+CELL_OUTPUT <test1> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
+CELL_OUTPUT <test2> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
+FACE_OUTPUT <test3> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
+FACE_OUTPUT <test4> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
+NODE_OUTPUT <test5> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
+NODE_OUTPUT <test6> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
