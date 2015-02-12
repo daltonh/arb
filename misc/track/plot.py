@@ -33,11 +33,14 @@ matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+show_plot_step_export = 0
 grid_style = 0
-if (LooseVersion(matplotlib.__version__) >= LooseVersion("1.4.2")):
-    import matplotlib.style
-    matplotlib.style.use('ggplot')
-    grid_style = 1
+rasterized_option = True # whether to rasterize pdf data (not the axes and labels, just the data), good when there is a lot of data to show
+
+#if (LooseVersion(matplotlib.__version__) >= LooseVersion("1.4.2")):
+#    import matplotlib.style
+#    matplotlib.style.use('ggplot')
+#    grid_style = 1
 
 
 # directory storing simulation data
@@ -129,7 +132,7 @@ class Data():
         if (load_blank):
             self.df=pd.read_csv(blank_csv, comment='#')[1:]
         else:
-            self.df=pd.read_csv(self.step_file, comment='#')[1:]
+            self.df=pd.read_csv(self.step_file, comment='#', low_memory=False)[1:]
         load_blank = 0
         # convert all but header labels to float values
         self.df = self.df[1:].astype(float)
@@ -313,7 +316,8 @@ class CanvasPanel(wx.Panel):
                             data.df[y1_var].values,
                             marker='o',
                             markevery=point_interval,
-                            alpha = y1_alpha
+                            alpha = y1_alpha,
+                            rasterized=rasterized_option
                             )
                     self.legendEntries1.append(current1)
                     self.legendText1.append(y1_var.replace("'",''))
@@ -343,7 +347,8 @@ class CanvasPanel(wx.Panel):
                             data.df[y2_var].values,
                             marker='^',
                             markevery=point_interval,
-                            alpha = y2_alpha
+                            alpha = y2_alpha,
+                            rasterized=rasterized_option
                             )
                     self.axis2.set_xlim(data.df[x1_var].min(),data.df[x1_var].max())                    
                     self.legendEntries2.append(current2)
@@ -566,29 +571,51 @@ class FrameGenerator(wx.Frame):
         self.y2_min.Bind(wx.EVT_KILL_FOCUS, self.Ony2Min) 
         self.y2_max.Bind(wx.EVT_TEXT_ENTER, self.Ony2Max)
         self.y2_max.Bind(wx.EVT_KILL_FOCUS, self.Ony2Max)
+
+# export settings
+
+        matplotlib_export = wx.StaticBox(container_panel_options, label='matplotlib export', pos=(5, 200), size=(-1, -1))
+        matplotlib_export_sizer = wx.StaticBoxSizer(matplotlib_export, wx.VERTICAL)
+        self.matplotlib_rb_png = wx.RadioButton(container_panel_options, label='png')
+        self.matplotlib_rb_png.SetValue(1)
+        self.matplotlib_rb_pdf = wx.RadioButton(container_panel_options, label='pdf')
+        self.export_filename = wx.TextCtrl(container_panel_options,-1,style=wx.TE_PROCESS_ENTER, value='figure.png', size=(140, -1))
+
+        export_string = wx.Button(container_panel_options, -1, 'Export', size=(140, -1))       
+        matplotlib_export_sizer.Add(self.matplotlib_rb_png, proportion=0, flag=wx.ALL, border=1)
+        matplotlib_export_sizer.Add(self.matplotlib_rb_pdf, proportion=0, flag=wx.ALL, border=1)
+        matplotlib_export_sizer.Add(self.export_filename, proportion=0, flag=wx.ALL, border=1)
+        matplotlib_export_sizer.Add(export_string, proportion=0, flag=wx.ALL, border=1)
+
+        self.matplotlib_rb_png.Bind(wx.EVT_RADIOBUTTON, self.SetValMatplotlibExport)
+        self.matplotlib_rb_pdf.Bind(wx.EVT_RADIOBUTTON, self.SetValMatplotlibExport)
+        export_string.Bind(wx.EVT_BUTTON, self.OnExportString)
+
 # plot_step.pl export settings
-        plot_step_export = wx.StaticBox(container_panel_options, label='plot_step.pl export', pos=(5, 200), size=(-1, -1))
-        plot_step_export_sizer = wx.StaticBoxSizer(plot_step_export, wx.VERTICAL)
 
-        self.rb_x11 = wx.RadioButton(container_panel_options, label='x11', style=wx.RB_GROUP)
-        self.rb_png = wx.RadioButton(container_panel_options, label='png')
-        self.rb_pdf = wx.RadioButton(container_panel_options, label='pdf')
+        if (show_plot_step_export):
+            plot_step_export = wx.StaticBox(container_panel_options, label='plot_step.pl export', pos=(5, 200), size=(-1, -1))
+            plot_step_export_sizer = wx.StaticBoxSizer(plot_step_export, wx.VERTICAL)
 
-        self.rb_x11.Bind(wx.EVT_RADIOBUTTON, self.SetVal)
-        self.rb_png.Bind(wx.EVT_RADIOBUTTON, self.SetVal)
-        self.rb_pdf.Bind(wx.EVT_RADIOBUTTON, self.SetVal)
+            self.rb_x11 = wx.RadioButton(container_panel_options, label='x11', style=wx.RB_GROUP)
+            self.rb_png = wx.RadioButton(container_panel_options, label='png')
+            self.rb_pdf = wx.RadioButton(container_panel_options, label='pdf')
+
+            self.rb_x11.Bind(wx.EVT_RADIOBUTTON, self.SetVal)
+            self.rb_png.Bind(wx.EVT_RADIOBUTTON, self.SetVal)
+            self.rb_pdf.Bind(wx.EVT_RADIOBUTTON, self.SetVal)
         
-        display_string = wx.Button(container_panel_options, -1, 'Display command', size=(140, -1))       
-        run_command = wx.Button(container_panel_options, -1, 'Run plot_step.pl', size=(140, -1))       
+            display_string = wx.Button(container_panel_options, -1, 'Display command', size=(140, -1))       
+            run_command = wx.Button(container_panel_options, -1, 'Run plot_step.pl', size=(140, -1))       
 
-        display_string.Bind(wx.EVT_BUTTON, self.OnDisplayString)
-        run_command.Bind(wx.EVT_BUTTON, self.OnRunCommand)
+            display_string.Bind(wx.EVT_BUTTON, self.OnDisplayString)
+            run_command.Bind(wx.EVT_BUTTON, self.OnRunCommand)
         
-        plot_step_export_sizer.Add(self.rb_x11, proportion=0, flag=wx.ALL, border=1)
-        plot_step_export_sizer.Add(self.rb_png, proportion=0, flag=wx.ALL, border=1)
-        plot_step_export_sizer.Add(self.rb_pdf, proportion=0, flag=wx.ALL, border=1)
-        plot_step_export_sizer.Add(display_string, proportion=0, flag=wx.ALL, border=1)
-        plot_step_export_sizer.Add(run_command, proportion=0, flag=wx.ALL, border=1)
+            plot_step_export_sizer.Add(self.rb_x11, proportion=0, flag=wx.ALL, border=1)
+            plot_step_export_sizer.Add(self.rb_png, proportion=0, flag=wx.ALL, border=1)
+            plot_step_export_sizer.Add(self.rb_pdf, proportion=0, flag=wx.ALL, border=1)
+            plot_step_export_sizer.Add(display_string, proportion=0, flag=wx.ALL, border=1)
+            plot_step_export_sizer.Add(run_command, proportion=0, flag=wx.ALL, border=1)
 
 # refresh plot feature
         refresh = wx.StaticBox(container_panel_options, label='Continually refresh data', pos=(5, 200), size=(-1, -1))
@@ -596,8 +623,9 @@ class FrameGenerator(wx.Frame):
         self.start_refresh_button = start_refresh_button = wx.Button(container_panel_options, -1, 'Start refresh', size=(140, -1))       
         self.stop_refresh_button = stop_refresh_button = wx.Button(container_panel_options, -1, 'Stop refresh', size=(140, -1))       
         self.stop_refresh_button.Disable
-
-        self.refresh_plot_step_output = False # keep a separate variable for this (to avoid the information being destroyed along with the thread)
+    
+        if (show_plot_step_export):
+            self.refresh_plot_step_output = False # keep a separate variable for this (to avoid the information being destroyed along with the thread)
 
         refresh_sizer.Add(start_refresh_button, proportion=0, flag=wx.ALL, border=1)
         refresh_sizer.Add(stop_refresh_button, proportion=0, flag=wx.ALL, border=1)
@@ -611,7 +639,9 @@ class FrameGenerator(wx.Frame):
         vbox_options.Add(set_log_sizer, proportion=0, flag=wx.TOP, border=1)
         vbox_options.Add(set_point_interval_sizer, proportion=0, flag=wx.TOP, border=1)
         vbox_options.Add(set_ranges_sizer, proportion=0, flag=wx.TOP, border=1)
-        vbox_options.Add(plot_step_export_sizer, proportion=0, flag=0, border=1)
+        vbox_options.Add(matplotlib_export_sizer, proportion=0, flag=0, border=1)
+        if (show_plot_step_export):
+            vbox_options.Add(plot_step_export_sizer, proportion=0, flag=0, border=1)
         vbox_options.Add(refresh_sizer, proportion=0, flag=0, border=1)
         container_panel_options.SetSizer(vbox_options)
 
@@ -712,6 +742,34 @@ class FrameGenerator(wx.Frame):
         use_png = self.rb_png.GetValue()
         use_pdf = self.rb_pdf.GetValue()
 
+
+    def SetValMatplotlibExport(self, event):
+        previous_string = self.export_filename.GetValue()
+        previous_name, previous_extension = os.path.splitext(previous_string)
+        if (self.matplotlib_rb_png.GetValue()):
+            new_string = previous_name+'.png'
+        elif (self.matplotlib_rb_pdf.GetValue()):
+            new_string = previous_name+'.pdf'
+        self.export_filename.SetValue(new_string)
+
+    def OnExportString(self, event):
+        filename = self.export_filename.GetValue()
+        file_exists = os.path.isfile(filename)
+        overwrite = True
+
+        if(file_exists):
+            message = "{} already exists\n\nOverwrite it?".format(filename)
+            dlg = wx.MessageDialog(None,message, 'Info', 
+            wx.YES_NO | wx.ICON_QUESTION)
+            overwrite = dlg.ShowModal() == wx.ID_YES
+            dlg.Destroy()
+
+        if (overwrite or not file_exists):
+            if (self.matplotlib_rb_png.GetValue()):
+                    frame.plot.figure.savefig(filename, dpi=300)
+            if (self.matplotlib_rb_pdf.GetValue()):
+                    frame.plot.figure.savefig(filename, dpi=300)
+
     def OnDisplayString(self, event):
         plot_step_string = self.gen_plot_step_string()
         wx.MessageBox(plot_step_string, 'String for plot_step.pl',
@@ -754,16 +812,16 @@ class FrameGenerator(wx.Frame):
             # re-read the data
             try:
                 self.data_object.step_file = open(self.data_object.step_file_path)
-                self.data_object.df=pd.read_csv(self.data_object.step_file, comment='#')[1:]
+                self.data_object.df=pd.read_csv(self.data_object.step_file, comment='#',low_memory=False)[1:]
                 # convert all but header labels to float values
                 self.data_object.df = self.data_object.df[1:].astype(float)
                 self.data_object.step_file.close()
 
                 if (global_commit):
                     path = os.path.join(run_archive,global_commit,'output','output_step.csv')
-                    self.data_object.df=pd.read_csv(path, comment='#')[1:]
+                    self.data_object.df=pd.read_csv(path, comment='#', low_memory=False)[1:]
                 else:
-                    self.data_object.df=pd.read_csv('output/output_step.csv', comment='#')[1:]
+                    self.data_object.df=pd.read_csv('output/output_step.csv', comment='#', low_memory=False)[1:]
                 self.data_object.df = self.data_object.df[1:].astype(float)
                 self.call_plot_upate()
             except:
@@ -1151,4 +1209,3 @@ if __name__ == "__main__":
     frame.Show()
 
     app.MainLoop()
-
