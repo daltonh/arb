@@ -177,6 +177,8 @@ read_maxima_results_files(); # read in any old maxima results stored in files fr
 
 create_mequations(); # create maxima type equations
 
+organise_regions(); # initialise all of the regions not already read in, organise them, and check on regions used by variables
+
 create_allocations();  # create allocation statements
 
 create_fortran_equations(); # generate fortran equations
@@ -651,7 +653,7 @@ sub read_input_files {
         } else {
           $line = $4;
           $input_files[$#input_files]{"include_root"} = extract_first($line,$error);
-          if ($error) {error_stop("matching delimiters not found in the following:\nfile = $file: line = $oline\n")}
+          if ($error) {error_stop("matching delimiters not found in the following:\nfile = $file: line = $oline")}
         }
         print UNWRAPPED_INPUT "# INFO: setting include root directory to $input_files[$#input_files]{include_root}\n";
         next;
@@ -711,7 +713,7 @@ sub read_input_files {
 				$line = $';
 				while ($tmp = extract_first($line,$error)) {
 # check that there weren't any errors, and that text was properly quoted
-          if ($error) { error_stop("some type of syntax problem with the EXTERNAL statement.  Should the text be quoted?:\nfile = $file: line = $oline\n"); }
+          if ($error) { error_stop("some type of syntax problem with the EXTERNAL statement.  Should the text be quoted?:\nfile = $file: line = $oline"); }
 					create_external_file($tmp);
 				}
 				next;
@@ -745,7 +747,7 @@ sub read_input_files {
         if ($2 eq "+") { $append=1; } elsif ($2 eq "-") {$append=-1;} else { $append=0; }
         $tmp = extract_first($line,$error);
 # check that there weren't any errors, and that text was properly quoted
-        if ($error || $line =~ /\S/) { error_stop("some type of syntax problem with the INFO_"."\U$key"." string.  Should the text be quoted?:\nfile = $file: line = $oline\n"); }
+        if ($error || $line =~ /\S/) { error_stop("some type of syntax problem with the INFO_"."\U$key"." string.  Should the text be quoted?:\nfile = $file: line = $oline"); }
 # a plus signifies to append the string to the current value
 # a minus means set the string only if it is empty.
 # Otherwise, set the string to the new value ($append=0)
@@ -813,19 +815,19 @@ sub read_input_files {
 # check for depreciated syntax
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)(INDEPENDENT|FIELD)($|\s)/i) {
         $type = "\U$2";
-        error_stop("$type type has been depreciated, use UNKNOWN instead.\nfile = $file: line = $oline\n");
+        error_stop("$type type has been depreciated, use UNKNOWN instead.\nfile = $file: line = $oline");
       }
 
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)DEPENDENT($|\s)/i) {
-        error_stop("DEPENDENT type has been depreciated, use DERIVED instead.\nfile = $file: line = $oline\n");
+        error_stop("DEPENDENT type has been depreciated, use DERIVED instead.\nfile = $file: line = $oline");
       }
 
       elsif ( $line =~ /^\s*(READ_GMSH)($|\s)/i ) {
-        error_stop("READ_GMSH keyword has been depreciated, use MSH_FILE instead.\nfile = $file: line = $oline\n");
+        error_stop("READ_GMSH keyword has been depreciated, use MSH_FILE instead.\nfile = $file: line = $oline");
       }
 
       elsif ( $line =~ /^\s*(LINEAR_SOLVER)($|\s)/i ) {
-        error_stop("LINEAR_SOLVER keyword has been depreciated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline\n");
+        error_stop("LINEAR_SOLVER keyword has been depreciated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline");
       }
 
 # # read in glue_face
@@ -837,7 +839,7 @@ sub read_input_files {
 #         if ($line =~ /^\s*(<.+?>)\s*/) {
 #           $glue_face[$#glue_face+1]{"region"}[1] = $1;
 #           $line = $';
-#         } else { error_stop("a valid region name was not recognised for the following GLUE_FACES definition\nfile = $file: line = $oline\n"); }
+#         } else { error_stop("a valid region name was not recognised for the following GLUE_FACES definition\nfile = $file: line = $oline"); }
 # # see if this glue_face has been defined before, and if so, overwrite previous definition
 #         if ($line =~ /^\s*(<.+?>)\s*/) {
 #           $glue_face[$#glue_face]{"region"}[2] = $1;
@@ -864,8 +866,8 @@ sub read_input_files {
           $line = $';
           push(@{$region_list{"regions"}},$1); # the regions hash contains an array of region names
         }
-        if ($line !~ /^\s*$/) {error_stop("there is a syntax error in the following REGION_LIST statement:\nfile = $file: line = $oline\n");}
-        if (empty($region_list{"regions"})) {error_stop("the following REGION_LIST statement contains no regions:\nfile = $file: line = $oline\n");}
+        if ($line !~ /^\s*$/) {error_stop("there is a syntax error in the following REGION_LIST statement:\nfile = $file: line = $oline");}
+        if (empty($region_list{"regions"})) {error_stop("the following REGION_LIST statement contains no regions:\nfile = $file: line = $oline");}
 # print some info about this
         $tmp = "INFO: found ";
         if (nonempty($region_list{"centring"})) { $tmp = $tmp."$region_list{centring} centred"; } else { $tmp = $tmp."unknown centring"; }
@@ -885,7 +887,7 @@ sub read_input_files {
         if ($1) { $centring = "\L$1"; ($centring) = $centring =~ /^(\S+?)_/; }
 
         if ($line =~ /^\s*(<.+?>)($|\s)/) { $name = $1; $line = $'; }
-        else { error_stop("problem reading in the variable name from the following line:\nfile = $file: line = $oline\n");}
+        else { error_stop("problem reading in the variable name from the following line:\nfile = $file: line = $oline");}
         print DEBUG "INFO: found user variable in input file: name = $name: type = $type: centring = $centring\n";
         $name = examine_name($name,"name");
         print DEBUG "  coverting user defined name to consistent name = $name\n";
@@ -995,27 +997,27 @@ sub read_input_files {
           delete $asread_variable[$masread]{"region_list"};
           delete $asread_variable[$masread]{"constant_list"};
           if ($region_constant) {
-            if (empty($region_list{"regions"})) { error_stop("a $centring REGION_CONSTANT appears before a REGION_LIST has been defined:\nfile = $file: line = $oline\n");}
-            if (nonempty($region_list{"centring"}) && $region_list{"centring"} ne $centring) { error_stop("the $centring centring of a REGION_CONSTANT is not consistent with the $region_list{centring} of the preceeding REGION_LIST:\nfile = $file: line = $oline\n");}
+            if (empty($region_list{"regions"})) { error_stop("a $centring REGION_CONSTANT appears before a REGION_LIST has been defined:\nfile = $file: line = $oline");}
+            if (nonempty($region_list{"centring"}) && $region_list{"centring"} ne $centring) { error_stop("the $centring centring of a REGION_CONSTANT is not consistent with the $region_list{centring} of the preceeding REGION_LIST:\nfile = $file: line = $oline");}
             @{$asread_variable[$masread]{"region_list"}} = @{$region_list{"regions"}}; # set region_list to that of most recent REGION_LIST
             $n = scalar(@{$region_list{"regions"}}); # returning the number of elements in this array
           }
           while ($line =~ /^\s*([\+\-\d\.][\+\-\ded\.]*)(\s+|$)/i) { # numbers must start with either +-. or a digit, so options cannot start with any of these
             $line = $'; $match = "\L$1";
-            if ($match !~ /\d/) { error_stop("a numerical constant was not valid in the following line, indicating some type of syntax error:\nfile = $file: line = $oline\n"); };
+            if ($match !~ /\d/) { error_stop("a numerical constant was not valid in the following line, indicating some type of syntax error:\nfile = $file: line = $oline"); };
 # make sure all constants are written in double precision
             $match =~ s/e/d/;
             if ($match !~ /d/) { $match = $match."d0"; }
             if ($match !~ /\./) { $match =~ s/d/.d/; }
             push(@{$asread_variable[$masread]{"constant_list"}},$match); # assemble list of numerical constants
           }
-          if (empty($asread_variable[$masread]{"constant_list"})) { error_stop("no numerial constants were read in from the following line, indicating some type of syntax error:\nfile = $file: line = $oline\n"); };
+          if (empty($asread_variable[$masread]{"constant_list"})) { error_stop("no numerial constants were read in from the following line, indicating some type of syntax error:\nfile = $file: line = $oline"); };
           print DEBUG "INFO: found the following constant_list for $name: @{$asread_variable[$masread]{constant_list}}\n";
           if ($region_constant) { print DEBUG "INFO: found the following region_list for $name: @{$asread_variable[$masread]{region_list}}\n"; }
           if ($n ne @{$asread_variable[$masread]{"constant_list"}} ) {
             if ($region_constant) {
-              error_stop("the following REGION_CONSTANT line has ".scalar(@{$asread_variable[$masread]{constant_list}})." numerical entries, whereas the preceeding REGION_LIST has $n entries - these should match:\nfile = $file: line = $oline\n");
-            } else { error_stop("a single numerical constant could not be read from the following CONSTANT line:\nfile = $file: line = $oline\n"); }
+              error_stop("the following REGION_CONSTANT line has ".scalar(@{$asread_variable[$masread]{constant_list}})." numerical entries, whereas the preceeding REGION_LIST has $n entries - these should match:\nfile = $file: line = $oline");
+            } else { error_stop("a single numerical constant could not be read from the following CONSTANT line:\nfile = $file: line = $oline"); }
           }
         } elsif ( $line =~ /^\s*["']/ ) {
           print DEBUG "INFO: assuming an expression (rather than a numerical constant) is entered in the following:\nfile = $file: line = $oline\n";
@@ -1024,10 +1026,10 @@ sub read_input_files {
 # read in expressions, noting that only if the expression is nonempty do we overide previously stored expression
 # this allows initial_equation to be reset independently of the equation for transient/newtient variables
           $tmp1 = extract_first($line,$error);
-          if ($error) { error_stop("some type of syntax problem with the (first) expression in the following variable definition:\nfile = $file: line = $oline\n"); }
+          if ($error) { error_stop("some type of syntax problem with the (first) expression in the following variable definition:\nfile = $file: line = $oline"); }
           if (($type eq "transient" || $type eq "newtient") && $line =~ /^\s*["']/) { # to set the intial expression the type must be known at read-in time
             $tmp2 = extract_first($line,$error);
-            if ($error) { error_stop("some type of syntax problem with the second expression in the following variable definition:\nfile = $file: line = $oline\n"); }
+            if ($error) { error_stop("some type of syntax problem with the second expression in the following variable definition:\nfile = $file: line = $oline"); }
 # if we are here then tmp1 corresponds to the initial_equation, and tmp2 to the equation
 #           if (nonempty($tmp1)) { $asread_variable[$masread]{"initial_equation"} = $tmp1; print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n"; }
 #           if (nonempty($tmp2)) { $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n"; }
@@ -1076,12 +1078,12 @@ sub read_input_files {
         if ($1) { $centring = "\L$1"; ($centring) = $centring =~ /^(\S+?)_/; }
 
         if ($line =~ /^\s*(<.+?>)($|\s)/) { $name = $1; $line = $'; }
-        else { error_stop("problem reading in the region name from the following line:\nfile = $file: line = $oline\n");}
+        else { error_stop("problem reading in the region name from the following line:\nfile = $file: line = $oline");}
         print DEBUG "INFO: found user region in input file: name = $name: centring = $centring\n";
         if (examine_name($name,"rank") ne 'scalar') {
           error_stop("region name $name cannot have l indicies inside the square brackets - only r indicies (relative timesteps) are allowed for regions");
         }
-        $name = examine_name($name,"name");
+        $name = examine_name($name,"regionname");
         print DEBUG "  coverting user defined name to consistent name = $name\n";
 
 # see if this name has already been defined, and if so, find its index
@@ -1163,13 +1165,13 @@ sub read_input_files {
           }
           print DEBUG "INFO: extracting region $name location string from the following:\nfile = $file: line = $oline\n";
           $region[$masread]{"location"} = extract_first($line,$error);
-          if ($error) { error_stop("some type of syntax problem with the location string in the following region definition:\nfile = $file: line = $oline\n"); }
+          if ($error) { error_stop("some type of syntax problem with the location string in the following region definition:\nfile = $file: line = $oline"); }
         }
 
 # if anything is left in the line then this indicates an erro
 
         $line =~ s/^\s*//; # remove leading spaces
-        if (nonempty($line)) { error_stop("some text is left after the region statement for $name has been processed: text = |$line|\nfile = $file: line = $oline\n"); }
+        if (nonempty($line)) { error_stop("some text is left after the region statement for $name has been processed: text = |$line|\nfile = $file: line = $oline"); }
 
         print "INFO: region statement has been read: name = $name: number = $masread: centring = $region[$masread]{centring}: ".
           "location = $region[$masread]{location}: part_of = $region[$masread]{part_of}: depends_upon = $region[$masread]{depends_upon}\n"; 
@@ -1181,7 +1183,7 @@ sub read_input_files {
 #-----------------------
       } else {
 # finally if the line doesn't match any of the above, then stop - it may mean that something is not as intended
-        error_stop("the following line in $file makes no sense:\n line = $oline\n");
+        error_stop("the following line in $file makes no sense:\n line = $oline");
       }
 
     } # end of loop for this input file
@@ -1205,11 +1207,143 @@ sub read_input_files {
 }
 
 #-------------------------------------------------------------------------------
+# here we add all of the SYSTEM, INTERNAL and GMSH (as known) regions to the region array, and then check that everything in these region declarations is consistent
+
+sub organise_regions {
+
+  use strict;
+  use Data::Dumper;
+  $Data::Dumper::Terse = 1;
+  $Data::Dumper::Indent = 0;
+  my ($n, $type, $mvar, $nfound);
+
+#-------------
+# cycle through the user defined regions, removing any that have been cancelled
+  $n = 0;
+  while ($n <= $#region) {
+    if ($region[$n]{"location"} =~ /^CANCEL$/i) {
+      print DEBUG "INFO: removing region $region[$n]{name} as it has been cancelled\n";
+      splice(@region, $n, 1)
+    } else {
+      $n++;
+    }
+  }
+
+#-------------
+# add the SYSTEM regions to the start of the region array
+# SYSTEM regions are those that would be commonly used by a user and which have a corresponding fortran region entity
+  
+  unshift(@region,{ name => '<boundary nodes>', location => 'SYSTEM', centring => 'node' });
+  unshift(@region,{ name => '<domain nodes>', location => 'SYSTEM', centring => 'node' });
+  unshift(@region,{ name => '<all nodes>', location => 'SYSTEM', centring => 'node' });
+  unshift(@region,{ name => '<boundaries>', location => 'SYSTEM', centring => 'face' });
+  unshift(@region,{ name => '<domain faces>', location => 'SYSTEM', centring => 'face' });
+  unshift(@region,{ name => '<all faces>', location => 'SYSTEM', centring => 'face' });
+  unshift(@region,{ name => '<boundary cells>', location => 'SYSTEM', centring => 'cell' });
+  unshift(@region,{ name => '<domain>', location => 'SYSTEM', centring => 'cell' });
+  unshift(@region,{ name => '<all cells>', location => 'SYSTEM', centring => 'cell' });
+
+#-------------
+# now enter all INTERNAL regions, now at the end of the array
+# INTERNAL regions do not require fortran entities but are hard-coded into the create_fortran sub
+# may be used in variable checking
+# the names are actually perl regexs for these regions
+  push(@region,{ name => '<celljfaces>', location => 'INTERNAL', centring => 'face' });
+  push(@region,{ name => '<nobcelljfaces>', location => 'INTERNAL', centring => 'face' });
+  push(@region,{ name => '<cellicells>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<cellknodes>', location => 'INTERNAL', centring => 'node' });
+  push(@region,{ name => '<faceicells>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<faceknodes>', location => 'INTERNAL', centring => 'node' });
+  push(@region,{ name => '<nodeicells>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<adjacentcellicells>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<nocadjacentcellicells>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<adjacentfaceicells>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<adjacentfaceupcell>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<adjacentfacedowncell>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<adjacentfaceothercell>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<upwindfaceicells>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<downwindfaceicells>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<glueface>', location => 'INTERNAL', centring => 'face' });
+  push(@region,{ name => '<lastface>', location => 'INTERNAL', centring => 'face' });
+  push(@region,{ name => '<noloop>', location => 'INTERNAL', centring => '' }); # this special case has no centring
+  push(@region,{ name => '<cellkernelregion[l=0]>', location => 'INTERNAL', centring => 'face' });
+  push(@region,{ name => '<cellkernelregion\[l=([123])\]>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<cellkernelregion\[l=([4567])\]>', location => 'INTERNAL', centring => 'node' });
+  push(@region,{ name => '<facekernelregion\[l=([0123456])\]>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<nodekernelregion\[l=([0123])\]>', location => 'INTERNAL', centring => 'cell' });
+  push(@region,{ name => '<separationcentre(\d*)>', location => 'INTERNAL', centring => 'cell' });
+
+#-------------
+
+  foreach $type (@user_types,"someloop") {
+    foreach $mvar ( 1 .. $m{$type} ) {
+      if (empty($variable{$type}[$mvar]{"region"})) { next; }
+      if ($variable{$type}[$mvar]{"centring"} eq 'none') { next; }
+      print DEBUG "INFO: search for $variable{$type}[$mvar]{centring} region $variable{$type}[$mvar]{region} on which variable $variable{$type}[$mvar]{name} is defined:\n";
+      $nfound = -1;
+      foreach $n ( 0 .. $#region ) {
+        if ($variable{$type}[$mvar]{"region"} =~ /$region[$n]{"name"}/) {
+          $nfound = $n;
+#         exit;
+        }
+      }
+      if ($nfound >= 0) {
+        print DEBUG "INFO: a previously defined region for variable $type $variable{$type}[$mvar]{name} has been found: $region[$nfound]{name}\n";
+        if (nonempty($region[$nfound]{"centring"})) {
+          if ($region[$nfound]{"centring"} ne $variable{$type}[$mvar]{"centring"}) {
+            error_stop("a variable and region centring do not match: region = $region[$nfound]{name}: variable = $variable{$type}[$mvar]{name}: ".
+              "ovariable = $variable{$variable{$type}[$mvar]{otype}}[$variable{$type}[$mvar]{omvar}]{name}: ".
+              "variable centring = $variable{$type}[$mvar]{centring}: apparent region centring = $region[$nfound]{centring}");
+          }
+        }
+      } else {
+        push(@region,{ name => "$variable{$type}[$mvar]{region}", location => 'GMSH', centring => "$variable{$type}[$mvar]{centring}" });
+        print DEBUG "INFO: no previously defined region for variable $type $variable{$type}[$mvar]{name} was found: pushing new GMSH region $region[$n]{name}\n";
+      }
+    }
+  }
+#-------------
+# TODO
+# run through variables
+# 1) adding regions if not already in region (GMSH)
+# 2) checking that centring is consistent if they are
+
+# check that none of the user generated regions use INTERNAL or SYSTEM names
+# only user generated regions can have relstep index
+# process any user locations that contain region names, making sure that names are consistent
+# check that part_of region has a consistent name
+
+#-------------
+# all regions now entered require up-front fortran declarations, so flag as such, and also set any known relationships
+
+  foreach $n ( 0 .. $#region ) {
+    if ($region[$n]{'location'} eq 'INTERNAL' || $region[$n]{'location'} eq 'GMSH') { $region[$n]{"fortran"} = 0; } else { $region[$n]{"fortran"} = 1; }
+    if ($region[$n]{'location'} eq 'INTERNAL' || $region[$n]{'location'} eq 'GMSH' || $region[$n]{'location'} eq 'SYSTEM') { $region[$n]{"user"} = 0; } else { $region[$n]{"user"} = 1; }
+    if (empty($region[$n]{'depends_upon'})) { $region[$n]{'depends_upon'} = ''; }
+    if (empty($region[$n]{'part_of'})) { $region[$n]{'part_of'} = ''; }
+  }
+
+#-------------
+# create region sub_string for all fortran variables
+
+#-------------
+# print debugging info
+
+  print DEBUG "=================================================================\n";
+  print DEBUG "SUMMARY OF ALL REGIONS KNOWN TO SETUP_EQUATIONS\n";
+  foreach $n ( 0 .. $#region ) {
+    print DEBUG "$n $region[$n]{name}: ".Dumper($region[$n])."\n";
+  }
+  print DEBUG "=================================================================\n";
+
+}
+#-------------------------------------------------------------------------------
 # this routine now takes the raw information contained in the $asread_variable array and creates the variable{$type}[$mvar] hash/array used in the rest of the code,
 #  checking that enough definitions and the correct options have been specified at the same time
 
 sub initialise_user_variables {
 
+  use strict;
   my ($type, $name, $centring, $mvar, $option, $option_name, $repeats, $masread, $n, $tmp, $match, $condition);
 
   print DEBUG "INFO: sub initialise_user_variables\n";
@@ -1222,7 +1356,7 @@ sub initialise_user_variables {
     print DEBUG "INFO: creating variable from asread_variable: name = $name: masread = $masread\n";
 
 # check a type was defined - must be - no defaults
-    if (empty($asread_variable[$masread]{"type"})) { error_stop("variable $asread_variable[$masread]{name} has no type.  Every variable must have a type.\n"); };
+    if (empty($asread_variable[$masread]{"type"})) { error_stop("variable $asread_variable[$masread]{name} has no type.  Every variable must have a type."); };
     $type = $asread_variable[$masread]{"type"};
 
     $m{$type}++; # these were previously set to 0 to represent empty types
@@ -1263,7 +1397,7 @@ sub initialise_user_variables {
         print DEBUG "INFO: region for $type variable $variable{$type}[$mvar]{name} not set:  Defaulting to $variable{$type}[$mvar]{region} based on $centring centring\n";
       }
     } elsif ( $centring eq "none" ) {
-      error_stop("attempting to set region to $variable{$type}[$mvar]{region} for none centred variable $variable{$type}[$mvar]{name}\n");
+      error_stop("attempting to set region to $variable{$type}[$mvar]{region} for none centred variable $variable{$type}[$mvar]{name}");
     } else {
       print "INFO: $type $variable{$type}[$mvar]{name} has $variable{$type}[$mvar]{centring} region = $variable{$type}[$mvar]{region}\n"; 
       print DEBUG "INFO: $type $variable{$type}[$mvar]{name} has $variable{$type}[$mvar]{centring} region = $variable{$type}[$mvar]{region}\n"; 
@@ -1290,7 +1424,7 @@ sub initialise_user_variables {
       } else {
 # don't think that the code structure above actually allows this
         error_stop("a constant_list (ie, a numerical value specification) has been given for $type variable $name, indicating that a variable ".
-          "that was previously a constant has been redefined as a $type, however an appropriate equation has not been specified\n");
+          "that was previously a constant has been redefined as a $type, however an appropriate equation has not been specified");
       }
     } elsif (empty($variable{$type}[$mvar]{"equation"})) {
       if ($type eq "unknown") {
@@ -1298,7 +1432,7 @@ sub initialise_user_variables {
         print DEBUG "NOTE: applying default initial value of 1.d0 to unknown $name\n";
         $variable{$type}[$mvar]{"equation"} = "1.d0";
       } else {
-        error_stop("no equation has been given for $type variable $variable{$type}[$mvar]{name}.  Every $type variable needs either an equation or numerical value (for constants only)\n");
+        error_stop("no equation has been given for $type variable $variable{$type}[$mvar]{name}.  Every $type variable needs either an equation or numerical value (for constants only)");
       }
     } else { # a transient or newtient must have an equation specified to be here
       if (($type eq "transient" || $type eq "newtient") && empty($variable{$type}[$mvar]{"initial_equation"})) {
@@ -1450,7 +1584,7 @@ sub initialise_user_variables {
               $variable{$type}[$mvar]{$option_name} = $match;
             }
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
-        else { error_stop("unknown option of $option specified for $type $name\n"); }
+        else { error_stop("unknown option of $option specified for $type $name"); }
       }
 # remove extra leading comma and output to fortran file
       $variable{$type}[$mvar]{"options"} =~ s/^\s*\,//;
@@ -1565,7 +1699,7 @@ sub create_mequations {
       $m{"initial_$type"} = $m{$type};
     # and set equation to initial_equation
       foreach $mvar ( 1 .. $m{"initial_$type"} ) {
-        if (empty($variable{"initial_$type"}[$mvar]{"initial_equation"})) { error_stop("an initial_equation in $type $variable{$type}[$mvar]{name} is not set\n"); }
+        if (empty($variable{"initial_$type"}[$mvar]{"initial_equation"})) { error_stop("an initial_equation in $type $variable{$type}[$mvar]{name} is not set"); }
         $variable{"initial_$type"}[$mvar]{"equation"} = $variable{"initial_$type"}[$mvar]{"initial_equation"};
 #       $variable{"initial_$type"}[$mvar]{"initial_equation"} = ();
         delete $variable{"initial_$type"}[$mvar]{"initial_equation"};
@@ -1612,7 +1746,7 @@ sub create_mequations {
 # error will be picked up anyway in run_maxima_fortran, maybe just a bit criptically
 #     if ($variable{$type}[$mvar]{"mequation"} =~ /(<.*>)/) {
 #       error_stop("mequation for $type $variable{$type}[$mvar]{name} contains a reference to an unknown variable $1.  ".
-#         "Check the definition of this variable for syntax errors.  The offending mequation is:\n $variable{$type}[$mvar]{mequation}\n");
+#         "Check the definition of this variable for syntax errors.  The offending mequation is:\n $variable{$type}[$mvar]{mequation}");
 #     }
 # run through maxima performing any simplifications
       run_maxima_simplify($variable{$type}[$mvar]{"mequation"},$variable{$type}[$mvar]{"otype"},$variable{$type}[$mvar]{"omvar"});
@@ -1716,7 +1850,7 @@ sub mequation_interpolation {
           last;
         }
       }
-      if ($external_operator_file < 0) { error_stop("The operator $centring$external_operator_type is not known, either as an internal or external operator.  Most probably there is a spelling mistake in this operator name, or if it is supposed to be an external operator, the fortran externals file has not been read in or does not contain an arb_external_operator definition for this operator.\n"); }
+      if ($external_operator_file < 0) { error_stop("The operator $centring$external_operator_type is not known, either as an internal or external operator.  Most probably there is a spelling mistake in this operator name, or if it is supposed to be an external operator, the fortran externals file has not been read in or does not contain an arb_external_operator definition for this operator."); }
     }
     $operator =~ s/\($//; # remove trailing brace from operator
     print DEBUG "about to do a split_mequation_at_character with: character = ): _[0] = $_[0]\n";
@@ -2321,7 +2455,7 @@ sub mequation_interpolation {
                      "guessed from the context.  You need to explicitly specify the region within this operator.  An alternative possibility is that this operator is in the wrong ".
                      "centring context (contextcentring = $contextcentring: centring = $centring) and needs first to be averaged to the correct centring using a surrounding ".
                      $contextcentring."ave operator.  Yet another possibility is that you have not included the default value for this operator when using unname operator contents parts, or left it blank by ".
-                     "properly delimiting it via a comma - i.e. like this - $operator(<an expression>,,<region).\n");
+                     "properly delimiting it via a comma - i.e. like this - $operator(<an expression>,,<region).");
         } else {
           $someregion = "<noloop>"; # default min/max region otherwise is current location
         }
@@ -2477,11 +2611,11 @@ sub mequation_interpolation {
 
       if ($operator_type eq "newtonupdate") {
 # for the newtonupdate the centrings have to be consistent
-        if ($centring ne $variable{"unknown"}[$mvar]{"centring"})  { error_stop("unknown variable $variable{unknown}[$mvar]{name} which is found in $operator in $otype $variable{$otype}[$omvar]{name} does not have the same centring as the newtonupdate operator\n"); }
+        if ($centring ne $variable{"unknown"}[$mvar]{"centring"})  { error_stop("unknown variable $variable{unknown}[$mvar]{name} which is found in $operator in $otype $variable{$otype}[$omvar]{name} does not have the same centring as the newtonupdate operator"); }
         $inbit[$nbits] = "newtonupdate[$variable{unknown}[$mvar]{fortran_number},".ijkstring($centring)."]";
       } else {
 # for the magnitude the centring must be none
-        if ($centring ne "none") { error_stop("none centring must be used for the $operator operator which is found in the expression for $otype $variable{$otype}[$omvar]{name}\n"); }
+        if ($centring ne "none") { error_stop("none centring must be used for the $operator operator which is found in the expression for $otype $variable{$otype}[$omvar]{name}"); }
         $inbit[$nbits] = "magnitude[$variable{unknown}[$mvar]{fortran_number}]";
       }
 
@@ -3030,7 +3164,7 @@ sub mequation_interpolation {
   $type = "local";
   foreach $mvar ( 1 .. $m{$type} ) {
     if ($_[0] =~ /\Q$variable{$type}[$mvar]{"maxima"}/) { # see if variable is in the mequation
-      if ($variable{$type}[$mvar]{"centring"} ne $contextcentring) { error_stop("something amiss with local centring in $otype $variable{$otype}[$omvar]{name} expression\n"); }
+      if ($variable{$type}[$mvar]{"centring"} ne $contextcentring) { error_stop("something amiss with local centring in $otype $variable{$otype}[$omvar]{name} expression"); }
       print DEBUG "found $variable{$type}[$mvar]{centring} centred $type $variable{$type}[$mvar]{name} $variable{$type}[$mvar]{maxima} in ".
         "$otype $variable{$otype}[$omvar]{name} mequation that is $contextcentring centred: replacing this local with a someloop\n";
       print DEBUG "before replacing $variable{$type}[$mvar]{maxima}: $_[0]\n";
@@ -3529,19 +3663,19 @@ sub create_compounds {
           print "INFO: found existing $rank compound with name = $name for component $variable{$type}[$mvar]{name}\n";
           print DEBUG "INFO: found existing $rank compound with name = $name for component $variable{$type}[$mvar]{name}\n";
           if (!($rank eq $variable{"compound"}[$mcheck]{"rank"})) {
-            error_stop("rank mismatch found between component ($rank) and compound ($variable{compound}[$mcheck]{rank})\n");
+            error_stop("rank mismatch found between component ($rank) and compound ($variable{compound}[$mcheck]{rank})");
           } elsif (!($variable{$type}[$mvar]{"rindex"} eq $variable{"compound"}[$mcheck]{"rindex"})) {
-            error_stop("rindex mismatch found between component ($variable{$type}[$mvar]{rindex}) and compound ($variable{compound}[$mcheck]{rindex})\n");
+            error_stop("rindex mismatch found between component ($variable{$type}[$mvar]{rindex}) and compound ($variable{compound}[$mcheck]{rindex})");
           } elsif (!($variable{$type}[$mvar]{"units"} eq $variable{"compound"}[$mcheck]{"units"})) {
-            error_stop("units mismatch found between component ($variable{$type}[$mvar]{units}) and compound ($variable{compound}[$mcheck]{units})\n");
+            error_stop("units mismatch found between component ($variable{$type}[$mvar]{units}) and compound ($variable{compound}[$mcheck]{units})");
           } elsif (!($variable{$type}[$mvar]{"centring"} eq $variable{"compound"}[$mcheck]{"centring"})) {
-            error_stop("centring mismatch found between component ($variable{$type}[$mvar]{centring}) and compound ($variable{compound}[$mcheck]{centring})\n");
+            error_stop("centring mismatch found between component ($variable{$type}[$mvar]{centring}) and compound ($variable{compound}[$mcheck]{centring})");
           } elsif (!($variable{$type}[$mvar]{"region"} eq $variable{"compound"}[$mcheck]{"region"})) {
-            error_stop("region mismatch found between component ($variable{$type}[$mvar]{region}) and compound ($variable{compound}[$mcheck]{region})\n");
+            error_stop("region mismatch found between component ($variable{$type}[$mvar]{region}) and compound ($variable{compound}[$mcheck]{region})");
           } elsif (!($variable{$type}[$mvar]{"multiplier"} eq $variable{"compound"}[$mcheck]{"multiplier"})) {
-            error_stop("multiplier mismatch found between component ($variable{$type}[$mvar]{multiplier}) and compound ($variable{compound}[$mcheck]{multiplier})\n");
+            error_stop("multiplier mismatch found between component ($variable{$type}[$mvar]{multiplier}) and compound ($variable{compound}[$mcheck]{multiplier})");
           } elsif (!($type eq $variable{"compound"}[$mcheck]{"type"})) {
-            error_stop("type mismatch found between component ($type) and compound ($variable{compound}[$mcheck]{type})\n");
+            error_stop("type mismatch found between component ($type) and compound ($variable{compound}[$mcheck]{type})");
           }
           $mvar2 = $mcheck;
           last;
@@ -3571,7 +3705,7 @@ sub create_compounds {
       }
 
 # finally allocate component after checking that it is not already allocated
-      if ($variable{"compound"}[$mvar2]{"component"}[$index]) { error_stop("component $index of $rank $name has already been allocated\n"); }
+      if ($variable{"compound"}[$mvar2]{"component"}[$index]) { error_stop("component $index of $rank $name has already been allocated"); }
       $variable{"compound"}[$mvar2]{"component"}[$index] = $mvar;
       $variable{"compound"}[$mvar2]{"fortran_component"}[$index] = $variable{$type}[$mvar]{"fortran_number"};
 
@@ -4109,17 +4243,17 @@ sub create_fortran_equations {
         if ($variable{$type}[$mvar]{"checki"}) {
           $sub_string{$type}=$sub_string{$type}.
             "if (ilast == 0) call error_stop('A type of lastcell averaging has resulted in a i = 0 reference when updating ".
-            "a someloop variable: '//trim(error_string))\n";
+            "a someloop variable: '//trim(error_string))";
         } 
         if ($variable{$type}[$mvar]{"checkj"}) {
           $sub_string{$type}=$sub_string{$type}. 
             "if (jlast == 0) call error_stop('A type of lastface averaging has resulted in a j = 0 reference when updating ".
-            "a someloop variable: '//trim(error_string))\n";
+            "a someloop variable: '//trim(error_string))";
         }
         if ($variable{$type}[$mvar]{"checkk"}) {
           $sub_string{$type}=$sub_string{$type}. 
             "if (klast == 0) call error_stop('A type of lastnode averaging has resulted in a k = 0 reference when updating ".
-            "a someloop variable: '//trim(error_string))\n";
+            "a someloop variable: '//trim(error_string))";
         }
       }
 
@@ -4392,7 +4526,7 @@ sub create_fortran_equations {
             "else if (ilast == face(j)%icell(2)) then\n".
             "ns = 1\n".
             "else\n".
-            "call error_stop('Problem with use of <adjacentfaceothercell> region: '//trim(error_string))\n".
+            "call error_stop('Problem with use of <adjacentfaceothercell> region: '//trim(error_string))".
             "end if\n".
             "i = face(j)%icell(ns)\n".$reflect_string_form;
             $openloop = 0;
@@ -4509,7 +4643,7 @@ sub create_fortran_equations {
           }
 
         } else {
-          error_stop("someloop originating from $variable{$otype}[$omvar]{name} has no region specified in create_fortran_equations\n");
+          error_stop("someloop originating from $variable{$otype}[$omvar]{name} has no region specified in create_fortran_equations");
         }
 
 
@@ -5425,7 +5559,7 @@ sub write_latex {
 
 # input variables are:
 # $_[0] = name
-# $_[1] = action = name|compoundname|basename|nrank|rank|lindex|rindex|all
+# $_[1] = action = name|compoundname|basename|nrank|rank|lindex|rindex|all|regionname
 
 # output variable is a single item corresponding to the action, or for all, an array of all of the items
 # name - <> delimited and standardised (see below)
@@ -5435,6 +5569,7 @@ sub write_latex {
 # rank - scalar|vector|tensor
 # lindex (expressed as 1->9)
 # rindex (>=0)
+# regionname - is a bit different, in that we're dealing with a region name which can only have a relstep index - actually the same as compound name
 
 # the standarised variable name obeys:
 # if the variable is a scalar then no l index is given in the consistent name
@@ -5500,6 +5635,7 @@ sub examine_name {
   elsif ($action eq "lindex") { return ($lindex); }
   elsif ($action eq "rindex") { return ($rindex); }
   elsif ($action eq "all") { return ($compoundname,$rank,$nrank,$lindex,$rindex); }
+  elsif ($action eq "regionname") { return ($compoundname); }
 }
 
 #-------------------------------------------------------------------------------
@@ -5768,6 +5904,7 @@ sub extract_first {
       $remainder=$';
     }
     $remainder=~s/^\s*//; #remove leading spaces
+    $remainder=~s/\s*$//; #remove trailing spaces too now
   } else {
     $remainder = ''; # remainder could have been blank, so set it to nothing explicitly
   }
@@ -5827,7 +5964,7 @@ sub extract_replacements {
       $cancel = 1;
     }
   } else {
-    error_stop("there is some sort of syntax error in the following replace statements:\nfile = $file: line = $oline\n");
+    error_stop("there is some sort of syntax error in the following replace statements:\nfile = $file: line = $oline");
   }
 
   $_[0] = $line;
@@ -5845,7 +5982,7 @@ sub create_external_file {
   my $current = '';
   my ($line);
   
-  open (EXTERNAL, "<$working_dir/$filename") or error_stop("Could not find external file $filename\n");
+  open (EXTERNAL, "<$working_dir/$filename") or error_stop("Could not find external file $filename");
   
   my ($name) = $filename =~ /(.*)\.(f90|f|for)/;
   push(@externals,{name => $name, preamble => '', contents => '', setup => '', used => 0}); # push a new hash onto this array
@@ -5862,10 +5999,10 @@ sub create_external_file {
           push(@{$externals[$#externals]{"operators"}},$1);
           $external_operators{$1}=$#externals;
         } else {
-          error_stop("missing arb_external_operator name in external file $filename\n");
+          error_stop("missing arb_external_operator name in external file $filename");
         }
       } else {
-        error_stop("unknown arb_external_$1 statement in external file $filename\n");
+        error_stop("unknown arb_external_$1 statement in external file $filename");
       }
   	} elsif (nonempty($current)) {
   		$externals[$#externals]{$current} = $externals[$#externals]{$current}."\n".$line;
