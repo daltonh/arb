@@ -1637,7 +1637,18 @@ sub mequation_interpolation {
 # for these operators the centring of the operator should correspond to the centring of the context
     if ($operator_type =~ /^(grad|div|divgrad|ave|limiter|if|delta|link|newtonupdate|vofd|vofphi|vofphishape|boundangle)$/ && $centring ne "none" && $contextcentring ne "none" && $centring ne $contextcentring) {
 # if centring is incorrect, average operator to correct centring, reconstruct string and try again
-      $_[0] = $outbit[$nbits].$contextcentring."ave(".$operator."(".$inbit[$nbits]."))".$_[0];
+      my $operator_to_centring = $contextcentring;
+      my $operator_from_centring = '';
+      if ($centring eq 'node') {
+        $operator_from_centring = 'fromnode';
+        if ($contextcentring eq 'face') { # cannot ave directly from node to face, first must ave to cell and deal with ave to face in the next iteration
+          $operator_to_centring = 'cell';
+        }
+      }
+      if ($centring eq 'face' && $contextcentring eq 'node') {
+        $operator_to_centring = 'cell'; # cannot ave directly from face to node, first must ave to cell and deal with ave to node in the next iteration
+      }
+      $_[0] = $outbit[$nbits].$operator_to_centring.$operator_from_centring."ave(".$operator."(".$inbit[$nbits]."))".$_[0];
       $inbit[$nbits] = 0;
       $outbit[$nbits] = 0;
       print DEBUG "$centring centring was inconsistent with $contextcentring contextcentring in $otype $variable{$otype}[$omvar]{name} : averaging and resetting to _[0] = $_[0]\n";
