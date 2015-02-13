@@ -100,6 +100,7 @@ class Data():
         # (in future, could use dimension strings to automatically show dimensions in plot labels)
         #self.step_file_path = 'output/output_step.csv'
         self.step_file_path = step_file_path
+        self.show_newtsteps = False
         self.open_data()
         self.process_data()
 
@@ -136,6 +137,8 @@ class Data():
         load_blank = 0
         # convert all but header labels to float values
         self.df = self.df[1:].astype(float)
+        if (not self.show_newtsteps):
+            self.df = self.df.groupby("'<timestep>'", as_index=False).nth(-1)
         self.step_file.close()
    
         # dictionaries needed for ColumnSorterMixin
@@ -517,10 +520,14 @@ class FrameGenerator(wx.Frame):
         set_point_interval_sizer = wx.StaticBoxSizer(set_point_interval, wx.VERTICAL)
 
         self.point_interval_widget = wx.SpinCtrl(container_panel_options, value='1', pos=(15, 20), size=(60, -1), min=1, max=40)
+        self.show_newtsteps_box = wx.CheckBox(container_panel_options, label='Show newtsteps', pos=(15, 20))
 
         set_point_interval_sizer.Add(self.point_interval_widget, proportion=0, flag=wx.ALL, border=1)
+        set_point_interval_sizer.Add(self.show_newtsteps_box, proportion=0, flag=wx.ALL, border=1)
 
         self.Bind( wx.EVT_SPINCTRL, self.OnSpin )
+        self.show_newtsteps_box.Bind(wx.EVT_CHECKBOX, self.ShowNewtsteps)
+
 
 # scale settings
         set_ranges = wx.StaticBox(container_panel_options, label='Set axis ranges', pos=(5, 300), size=(200, 200))
@@ -700,6 +707,12 @@ class FrameGenerator(wx.Frame):
         self.call_plot_upate()
 
     def OnSpin(self, event):
+        self.call_plot_upate()
+
+    def ShowNewtsteps(self, event):
+        data.show_newtsteps = self.show_newtsteps_box.GetValue()
+        data.open_data()
+        data.process_data()
         self.call_plot_upate()
 
     def Onx1Min(self, event):
