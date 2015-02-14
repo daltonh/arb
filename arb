@@ -67,8 +67,8 @@ usage () {
   echo "  --clean-compile: remove previous object files";
   echo "  --clean-setup: remove previous meta-programming files";
   echo "  --setup: perform meta-programming (default)";
-  echo "  --no-setup: don't perform meta-programming despite changes to equations.in and constants.in";
-  echo "              (ie, reuse previous equations_module.f90)";
+  echo "  --no-setup: don't perform meta-programming despite changes to the arb input files";
+  echo "              (ie, reuse previous equation_module.f90)";
   echo "  --compile: compile fortran executable (default)";
   echo "  --no-compile: don't compile fortran executable";
   echo "  --run: run the program (default)";
@@ -88,7 +88,7 @@ usage () {
   echo "  --debugger-gnu: use the gnu debugger (default for ifort)";
   echo "  --debugger-intel: use the intel debugger (default for gfortran)";
   echo "  --no-pardiso: do not link in the native pardiso routines, allowing the intel pardiso routines to be used instead";
-# echo "  --externals|-e: incorporate the following user fortran external file into the equations_module";
+# echo "  --externals|-e: incorporate the following user fortran external file into the equation_module";
   echo "  --help|-h: display this HELP INFO";
   echo;
   exit 1;
@@ -144,7 +144,7 @@ OILP="off";
 OPARDISO="present";
 COMPILER="default";
 unset ARBFILES; # the input files that will be passed to setup_equations.pl - unset array first
-unset EXTERNALS; # a list of external fortran files that will be included in equations_module.f90
+unset EXTERNALS; # a list of external fortran files that will be included in equation_module.f90
 EXTERNALS=( `ls src/*_functions.f90 2> /dev/null` ); # all functions files within the src directory get included by default
 
 for i in $*

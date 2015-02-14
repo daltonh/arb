@@ -76,7 +76,7 @@ subroutine newtsolver(ierror)
 ! solves equations using newton's method
 
 use general_module
-use equations_module
+use equation_module
 integer :: m, ierror, p, n, ns, merr, nserr, backstep
 double precision :: newtresold, lambda, varmax, vartmp, varave
 double precision :: active_lambdamin = 0.d0
@@ -377,7 +377,7 @@ subroutine mainsolver(ierror)
 !  the fields (delphi) using newton's method
 
 use general_module
-use equations_module
+use equation_module
 use intel_pardiso_module
 use pardiso_module
 use hsl_ma28d_module
@@ -684,7 +684,7 @@ subroutine residual(ierror)
 ! if a problem is found then ierror is set to 3 here
 
 use general_module
-use equations_module
+use equation_module
 double precision :: aatmp, aatmpmax
 integer :: ns, m, p, nserr, merr, nvar, ierror
 character(len=1000) :: formatline
@@ -1414,7 +1414,7 @@ subroutine update_and_check_derived_and_equations(ierror,setup)
 ! if setup is present and true, then data will be read from a file if the individual variable option is specified (v0.50)
 
 use general_module
-use equations_module
+use equation_module
 logical, optional :: setup
 integer, optional :: ierror
 integer :: ierrorl
@@ -1492,7 +1492,7 @@ subroutine update_and_check_unknowns(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1531,7 +1531,7 @@ subroutine update_and_check_newtients(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1560,7 +1560,7 @@ subroutine update_and_check_transients(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1589,7 +1589,7 @@ subroutine update_and_check_initial_newtients(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1618,7 +1618,7 @@ subroutine update_and_check_initial_transients(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1647,7 +1647,7 @@ subroutine update_and_check_constants(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1676,7 +1676,7 @@ subroutine update_and_check_outputs(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1868,7 +1868,7 @@ subroutine setup_solver
 ! ref: solver options
 
 use general_module
-use equations_module
+use equation_module
 use intel_pardiso_module
 use pardiso_module
 use hsl_ma28d_module

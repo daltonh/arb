@@ -325,7 +325,7 @@ vpath	%.f	$(srcdir)
 # object files are derived here based on source files
 #objects := $(patsubst %.f,%.o,$(patsubst %.f90,%.o,$(notdir $(wildcard $(srcdir)/*.f*))))
 #objects := $(patsubst %.f90,%.o,$(notdir $(wildcard $(srcdir)/*.f90)))
-objects = equations_module.o general_module.o main.o setup_module.o solver_module.o gmesh_module.o output_module.o kernel_module.o
+objects = equation_module.o general_module.o main.o setup_module.o solver_module.o gmesh_module.o output_module.o kernel_module.o region_module.o
 
 #----------------
 # check for existence of pardiso (native, not intel mkl version) libraries
@@ -498,12 +498,12 @@ endif
 # default goal
 all : print delete_files check_equations arb
 
-# no checking of equations, so will reuse old equations_module.f90 regardless of changes to the *.in files,
-#  unless equations_module_template.f90 or setup_equations.pl have changed
+# no checking of equations, so will reuse old equation_module.f90 regardless of changes to the *.in files,
+#  unless equation_module_template.f90 or setup_equations.pl have changed
 compile_only : print delete_files arb
 
-# no making, just create equations_module.f90
-setup_only : print delete_files check_equations equations_module.f90
+# no making, just create equation_module.f90
+setup_only : print delete_files check_equations equation_module.f90
 
 # print out some info
 print :
@@ -531,7 +531,7 @@ print :
 delete_files :
 	rm -f make.log $(files_to_delete)
   
-# check whether equations_module.f90 has to be remade because equations.in or constants.in has changed, and do so if necessary
+# check whether equation_module.f90 has to be remade because equations.in or constants.in has changed, and do so if necessary
 check_equations :
 	../src/setup_equations.pl
   
@@ -543,34 +543,37 @@ check_equations :
 arb : $(objects)
 	$(fcomp) -o arb $(lflags) $^ $(libs) $(logme)
 
-main.o:	main.f90 general_module.o equations_module.o setup_module.o solver_module.o output_module.o gmesh_module.o
+main.o:	main.f90 general_module.o equation_module.o setup_module.o solver_module.o output_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
 general_module.o: general_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
-# this will remake equations_module.f90 if there are changes to the template or setup_equations.pl only
+# this will remake equation_module.f90 if there are changes to the template or setup_equations.pl only
 # changes in the *.in files are picked up via the check_equations entry above
-equations_module.f90: ../src/equations_module_template.f90 ../src/setup_equations.pl
+equation_module.f90: ../src/equation_module_template.f90 ../src/setup_equations.pl
 	rm -f last_setup_equation_data
 	../src/setup_equations.pl
 
 gmesh_module.o: gmesh_module.f90 general_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
-equations_module.o: equations_module.f90 general_module.o gmesh_module.o
+region_module.o: region_module.f90 general_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
-output_module.o: output_module.f90 general_module.o equations_module.o gmesh_module.o solver_module.o
+equation_module.o: equation_module.f90 general_module.o gmesh_module.o region_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
-setup_module.o: setup_module.f90 general_module.o equations_module.o gmesh_module.o kernel_module.o output_module.o solver_module.o $(lapack_module)
+output_module.o: output_module.f90 general_module.o equation_module.o gmesh_module.o solver_module.o
+	$(fcomp) $(cflags) $< $(logme) -o $@
+
+setup_module.o: setup_module.f90 general_module.o equation_module.o gmesh_module.o kernel_module.o output_module.o solver_module.o region_module.o $(lapack_module)
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
 kernel_module.o: kernel_module.f90 general_module.o $(lapack_module) $(numerical_recipes_module)
 	$(fcomp) $(cflagsnoomp) $< $(logme) -o $@
 
-solver_module.o: solver_module.f90 general_module.o equations_module.o $(linear_solver_modules)
+solver_module.o: solver_module.f90 general_module.o equation_module.o $(linear_solver_modules)
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
 intel_mkl_solver.o:	$(intel_mkl_subroutine)
@@ -666,7 +669,7 @@ endif
 clean : clean_setup clean_compile
 # clean all files created during setup process
 clean_setup :
-	rm -f equations_module.f90 last_setup_equation_data last_maxima_fortran_results last_maxima_simplify_results
+	rm -f equation_module.f90 last_setup_equation_data last_maxima_fortran_results last_maxima_simplify_results
 # clean all files created during compile process
 clean_compile :
 	rm -f arb *.o *.mod make.log last_compile_had_* last_compiler_was_*

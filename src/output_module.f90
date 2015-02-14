@@ -58,7 +58,7 @@ subroutine output(debug_dump,intermediate)
 ! dumps the data to a file fit for printing
 
 use general_module
-use equations_module
+use equation_module
 use gmesh_module
 use solver_module
 integer :: gmesh_number
@@ -158,7 +158,7 @@ subroutine output_txt
 ! dumps the data to a file fit for printing
 
 use general_module
-use equations_module
+use equation_module
 
 integer :: error, i, j, k, l, m, list_length
 integer, dimension(:), allocatable :: local_list
@@ -400,7 +400,7 @@ subroutine write_gmesh(gmesh_number,debug_dump,centring,fileformat,intermediate)
 ! dumps the data to a file fit for printing
 
 use general_module
-use equations_module
+use equation_module
 use gmesh_module
 integer :: gmesh_number ! output data concerned with this gmesh
 logical :: debug_dump ! outputs components of all variables without any gradients
@@ -832,7 +832,7 @@ subroutine output_step(action,do_update_outputs)
 !  (typically written once per timestep or newtstep)
 
 use general_module
-use equations_module
+use equation_module
 use gmesh_module
 character(len=*) :: action
 logical, optional, intent(in) :: do_update_outputs
@@ -1297,7 +1297,7 @@ subroutine write_dat(gmesh_number,centring,ngelements)
 ! writes the mesh to foutput in the tecplot asci format dat
 
 use general_module
-use equations_module
+use equation_module
 use gmesh_module
 integer :: gmesh_number ! output data concerned with this gmesh
 character(len=*) :: centring ! whether to output only cell, face, none or all centred elements (default all)

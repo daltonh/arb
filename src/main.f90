@@ -38,7 +38,7 @@ program arb
 
 use general_module
 use setup_module
-use equations_module
+use equation_module
 use solver_module
 use output_module
 !$ use omp_lib

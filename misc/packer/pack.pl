@@ -109,7 +109,7 @@ foreach $argument ( @ARGV )  # second loop looks for other options
     $includes = $includes.' --include="src/" --include="src/contributed/***"';
   } elsif ( $argument eq '-s' || $argument eq '--setup' || $argument eq '--setup_files') {
     print "INFO: all setup related working files will be included in the archive\n";
-    $includes = $includes.' --include="build/" --include="build/equations_module.f90" --include="build/last_maxima*" '.
+    $includes = $includes.' --include="build/" --include="build/equation_module.f90" --include="build/last_maxima*" '.
       '--include="build/last_setup*"';
   } elsif ( $argument eq '-o' || $argument eq '--output') {
     print "INFO: all output files will be included in the archive\n";

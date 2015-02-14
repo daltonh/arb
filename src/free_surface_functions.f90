@@ -31,7 +31,7 @@
 ! <http://people.eng.unimelb.edu.au/daltonh/downloads/arb>.
 !
 !-------------------------------------------------------------------------
-arb_external_preamble ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the preamble of equations_module.f90
+arb_external_preamble ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the preamble of equation_module.f90
 
 ! statements specifying different data types and parameters
 double precision :: normal_magnitude_tol = 1.d-8 ! how close in squared sense normal magnitude must be to 1
@@ -51,7 +51,7 @@ type(scalar_list_type), dimension(:), allocatable, save :: flux_list, phif_list,
 public cellvofd, facevofphi, cellvofphishape, cellvofphiadjust
 
 !-----------------------------------------------------------------
-arb_external_setup ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the setup section (allocate_meta_arrays subroutine) of equations_module.f90
+arb_external_setup ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the setup section (allocate_meta_arrays subroutine) of equation_module.f90
 
 ! allocate some lists that will be used in the free surface routines
 allocate(cellknode_xr(nthreads))
@@ -78,7 +78,7 @@ do n = 1, nthreads
 end do
 
 !-----------------------------------------------------------------
-arb_external_contents ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the main section of equations_module.f90
+arb_external_contents ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the main section of equation_module.f90
 
 !-----------------------------------------------------------------
 
