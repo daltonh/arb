@@ -197,8 +197,8 @@ if ($statement_repeats{"typechanges"} > 1) { print "NOTE: at least one variable 
 if ($statement_repeats{"centringchanges"} > 1) { print "NOTE: at least one variable had its centring changed.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
 if ($number_of_lousysubstitutes > 0) { print "WARNING: some variable substitutions had to be performed that may result in very inefficient code being generated.  These lousy substitutions ".
   "could be avoided by a careful reordering of some of the input statements.  Details are given above (or in the file $debug_info_file by searching for 'lousy substitution').\n"; }
-print "SUCCESS: equations_module.f90 has been created\n";
-print DEBUG "SUCCESS: equations_module.f90 has been created\n";
+print "SUCCESS: equation_module.f90 has been created\n";
+print DEBUG "SUCCESS: equation_module.f90 has been created\n";
 
 # finally move equation data to build directory as a record of the successful run
 print DEBUG "INFO: moving setup_equation_data to build directory\n";
@@ -371,8 +371,8 @@ sub check_variable_status {
     if ($statement_repeats{"definitions"} > 1) { print "NOTE: at least one variable was defined multiple times.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
     if ($statement_repeats{"typechanges"} > 1) { print "NOTE: at least one variable had its type changed.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
     if ($statement_repeats{"centringchanges"} > 1) { print "NOTE: at least one variable had its centring changed.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
-    print "SUCCESS: equations_module.f90 was already up-to-date\n";
-    print DEBUG "SUCCESS: equations_module.f90 was already up-to-date\n";
+    print "SUCCESS: equation_module.f90 was already up-to-date\n";
+    print DEBUG "SUCCESS: equation_module.f90 was already up-to-date\n";
     exit;
   } else {
     print "INFO: setup_equations data has changed since the last run: recreating fortran\n";
@@ -1067,8 +1067,9 @@ sub read_input_files {
           if ($2 eq "<none>" ) { # the '<none>' region cancels the previously defined region
             $asread_variable[$masread]{"region"} = '';
           } else {
-            $asread_variable[$masread]{"region"} = $2;
-          } $line = $';
+            $asread_variable[$masread]{"region"} = examine_name($2,'regionname');
+          }
+          $line = $';
         }
 
 # store raw options in the variable_options array now
@@ -1101,9 +1102,6 @@ sub read_input_files {
         if ($line =~ /^\s*(<.+?>)($|\s)/) { $name = $1; $line = $'; }
         else { error_stop("problem reading in the region name from the following line:\nfile = $file: line = $oline");}
         print DEBUG "INFO: found user region in input file: name = $name: centring = $centring: type = $type\n";
-        if (examine_name($name,"rank") ne 'scalar') {
-          error_stop("region name $name cannot have l indicies inside the square brackets - only r indicies (relative timesteps) are allowed for regions");
-        }
         $name = examine_name($name,"regionname");
         print DEBUG "  coverting user defined name to consistent name = $name\n";
 
@@ -1179,12 +1177,13 @@ sub read_input_files {
         if ($line =~ /PART_OF(\s+(<.+?>)($|\s+)|($|\s+))/i) {
           $line = $`.$';
           if ($2) {
+            $tmp = examine_name($2,'regionname'); # standardise name here
             if (nonempty($region[$masread]{"part_of"})) {
-              print "NOTE: changing the PART_OF region for region $name to $2\n";
-              print DEBUG "NOTE: changing the PART_OF region for region $name to $2\n";
+              print "NOTE: changing the PART_OF region for region $name to $tmp\n";
+              print DEBUG "NOTE: changing the PART_OF region for region $name to $tmp\n";
             }
-            $region[$masread]{"part_of"} = $2;
-            print DEBUG "INFO: found PART_OF region $2 for region $name\n";
+            $region[$masread]{"part_of"} = $tmp;
+            print DEBUG "INFO: found PART_OF region $tmp for region $name\n";
           }
           else { $region[$masread]{"part_of"} = ''; print DEBUG "INFO: cancelling any possible PART_OF region for region $name\n"; }
         }
@@ -1248,7 +1247,7 @@ sub read_input_files {
     print DEBUG "SIMULATION INFO: "."\U$key"." = $simulation_info{$key}\n";
     if ($key ne "description") { print "SIMULATION INFO: "."\U$key"." = $simulation_info{$key}\n"; }
     print FORTRAN_INPUT "INFO_\U$key"." \"$simulation_info{$key}\"\n"; # also tell the fortran program about this
-    $sub_string{"simulation_info"} = $sub_string{"simulation_info"}."! SIMULATION INFO: "."\U$key"." = $simulation_info{$key}\n"; # and write the same to equations_module.f90
+    $sub_string{"simulation_info"} = $sub_string{"simulation_info"}."! SIMULATION INFO: "."\U$key"." = $simulation_info{$key}\n"; # and write the same to equation_module.f90
   }
 
 }
@@ -1262,7 +1261,15 @@ sub organise_regions {
   use Data::Dumper;
   $Data::Dumper::Terse = 1;
   $Data::Dumper::Indent = 0;
-  my ($n, $type, $mvar, $nfound);
+  my ($n, $n2, $type, $mvar);
+
+#-------------
+# set some user-specific flags - user and dynamic - while checking type and centring
+  foreach $n ( 0 .. $#region ) {
+    if (empty($region[$n]{'centring'})) { error_stop("region $region[$n]{name} has no centring defined"); }
+    $region[$n]{"user"} = 1;
+    if (empty($region[$n]{'type'}) || $region[$n]{'type'} eq 'static') { $region[$n]{"dynamic"} = 0; $region[$n]{'type'} = 'static' } else { $region[$n]{"dynamic"} = 1; }
+  }
 
 #-------------
 # add the SYSTEM regions to the start of the region array
@@ -1282,7 +1289,7 @@ sub organise_regions {
 # now enter all INTERNAL regions, now at the end of the array
 # INTERNAL regions do not require fortran entities but are hard-coded into the create_fortran sub
 # may be used in variable checking
-# the names are actually perl regexs for these regions
+# NOTE!!!! the names for internals are actually perl regexs for these regions, so []'s have to be escaped
   push(@region,{ name => '<celljfaces>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<nobcelljfaces>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<cellicells>', type => 'internal', centring => 'cell' });
@@ -1301,7 +1308,7 @@ sub organise_regions {
   push(@region,{ name => '<glueface>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<lastface>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<noloop>', type => 'internal', centring => '' }); # this special case has no centring
-  push(@region,{ name => '<cellkernelregion[l=0]>', type => 'internal', centring => 'face' });
+  push(@region,{ name => '<cellkernelregion\[l=0\]>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<cellkernelregion\[l=([123])\]>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<cellkernelregion\[l=([4567])\]>', type => 'internal', centring => 'node' });
   push(@region,{ name => '<facekernelregion\[l=([0123456])\]>', type => 'internal', centring => 'cell' });
@@ -1309,17 +1316,19 @@ sub organise_regions {
   push(@region,{ name => '<separationcentre(\d*)>', type => 'internal', centring => 'cell' });
 
 #-------------
+# run through regions finding any other regions (that must be brought in via gmsh)
+# NB: the region name here was previously run through examine_name
 
   foreach $type (@user_types,"someloop") {
     foreach $mvar ( 1 .. $m{$type} ) {
       if (empty($variable{$type}[$mvar]{"region"})) { next; }
       if ($variable{$type}[$mvar]{"centring"} eq 'none') { next; }
       print DEBUG "INFO: search for $variable{$type}[$mvar]{centring} region $variable{$type}[$mvar]{region} on which variable $variable{$type}[$mvar]{name} is defined:\n";
-      $nfound = -1;
+      my $nfound = -1;
       foreach $n ( 0 .. $#region ) {
-        if ($variable{$type}[$mvar]{"region"} =~ /$region[$n]{"name"}/) {
+        if (match_region($n,$variable{$type}[$mvar]{"region"})) {
           $nfound = $n;
-#         exit;
+          last;
         }
       }
       if ($nfound >= 0) {
@@ -1333,10 +1342,40 @@ sub organise_regions {
         }
       } else {
         push(@region,{ name => "$variable{$type}[$mvar]{region}", type => 'gmsh', centring => "$variable{$type}[$mvar]{centring}" });
-        print DEBUG "INFO: no previously defined region for variable $type $variable{$type}[$mvar]{name} was found: pushing new GMSH region $region[$n]{name}\n";
+        print DEBUG "INFO: no previously defined region for variable $type $variable{$type}[$mvar]{name} was found: pushing new GMSH region $variable{$type}[$mvar]{region}\n";
       }
     }
   }
+
+#-------------
+# run through user regions adding any part_of regions that have been specifically specified
+# NB: part_of names have also been previously run through examine_name
+
+  foreach $n ( 0 .. $#region ) {
+    if (nonempty($region[$n]{"part_of"})) {
+      my $nfound = -1;
+      foreach $n2 ( 0 .. $#region ) {
+        if (match_region($n2,$region[$n]{"part_of"})) {
+          $nfound = $n2;
+          last;
+        }
+      }
+      if ($nfound >= 0) {
+        print DEBUG "INFO: a previously defined part_of region defined for region $region[$n]{name} has been found: $region[$nfound]{name}\n";
+        if (nonempty($region[$nfound]{"centring"})) {
+          if ($region[$nfound]{"centring"} ne $region[$n]{"centring"}) {
+            error_stop("a region's part_of centring and centring do not match: region = $region[$n]{name}: part_of region = $region[$nfound]{name}: ".
+              "region centring = $region[$n]{centring}: part_of region centring = $region[$nfound]{centring}");
+          }
+        }
+      } else {
+        push(@region,{ name => "$region[$n]{part_of}", type => 'gmsh', centring => "$region[$n]{centring}" });
+        print DEBUG "INFO: no previously defined part_of region was found for region $region[$n]{name}: pushing new GMSH region $region[$n]{part_of}\n";
+      }
+    }
+  }
+      
+
 #-------------
 # TODO
 # run through variables
@@ -1354,17 +1393,25 @@ sub organise_regions {
   my $nfortran = 0; # this is the total number of regions that need to be allocated by this script within the fortran
   foreach $n ( 0 .. $#region ) {
     $type = $region[$n]{'type'};
-    if (empty($region[$n]${"location"}) ) { $region[$n]{"location"} = "\U$type"; $region[$n]{"user"} = 0; } else { $region[$n]{"user"} = 1; }
-    if ($type eq 'static' || $type eq 'system' || $type eq 'internal' || $type eq 'gmsh') { $region[$n]{"dynamic"} = 0; } else { $region[$n]{"dynamic"} = 1; }
-    if (empty($region[$n]${"initial_location"}) ) { $region[$n]{"initial_location"} = ""; }
-    if ($type eq 'internal' || $type eq 'gmsh') { $region[$n]{"fortran"} = 0; } else { $region[$n]{"fortran"} = 1; $nfortran++; }
+    if (empty($region[$n]{"location"})) { $region[$n]{"location"} = "\U$type"; }
+    if (empty($region[$n]{"user"})) { $region[$n]{"user"} = 0; }
+    if (empty($region[$n]{"dynamic"})) { $region[$n]{"dynamic"} = 0; }
+    if (empty($region[$n]{"initial_location"}) ) { $region[$n]{"initial_location"} = ""; }
+    if ($type eq 'internal' || $type eq 'gmsh') { $region[$n]{"fortran"} = 0; } else { $nfortran++; $region[$n]{"fortran"} = $nfortran; }
+# check that only user region names have relative step indicies
+    if ($type eq 'gmsh' && ( examine_name($region[$n]{"name"},'regionname') ne $region[$n]{"name"} ||
+      examine_name($region[$n]{"name"},'rindex') != 0 )) { error_stop("GMSH region names cannot have any r indicies specified: name = $region[$n]{name}"); }
     if (empty($region[$n]{'part_of'})) {
-      if ($region[$n]{'centring'} eq 'cell') {
-        $region[$n]{'part_of'} = '<all cells>';
-      } elsif ($region[$n]{'centring'} eq 'face') {
-        $region[$n]{'part_of'} = '<all faces>';
+			if ($region[$n]{"dynamic"}) { # dynamic regions default to largest static region based on size if part_of not specified - required for dynamic regions to calculate parent region
+				if ($region[$n]{'centring'} eq 'cell') {
+					$region[$n]{'part_of'} = '<all cells>';
+				} elsif ($region[$n]{'centring'} eq 'face') {
+					$region[$n]{'part_of'} = '<all faces>';
+				} else {
+					$region[$n]{'part_of'} = '<all nodes>';
+				}
       } else {
-        $region[$n]{'part_of'} = '<all nodes>';
+        $region[$n]{'part_of'} = ''; # static regions don't need this unless explicitly specified
       }
     }
   }
@@ -1374,45 +1421,50 @@ sub organise_regions {
 
   foreach $n ( 0 .. $#region ) {
     if ($region[$n]{"dynamic"}) {
-      $m = $n;
-      PART_OF_LOOP: while ($region[$m]{"dynamic"}) {
-        my $mm = -1;
-        foreach $mm ( 0 .. $#region ) {
-          if ($region[$m]{"part_of"} eq $region[$mm]{"name"}) {
-						$m = $mm;
-						exit;
+      my $nlast = $n;
+      while ($region[$nlast]{"dynamic"}) {
+        my $nfound = -1;
+        foreach $n2 ( 0 .. $#region ) {
+          if ($region[$nlast]{"part_of"} eq $region[$n2]{"name"}) {
+						$nfound = $n2;
+						last;
 					}
 				}
-				if ($mm < 0) {
-					error_stop("the PART_OF region $region[$m]{part_of} for dynamic region $region[$m]{name} is not a valid region
-            
-# wife bugging me too much, cannot complete this important piece of coding.
-        my local_part_of = $region[$m]{"part_of"}
-        if (empty($region[$m]{"part_of"}) {
-        
+				if ($nfound < 0) { die "INTERNAL ERROR: the PART_OF region $region[$nlast]{part_of} for dynamic region $region[$n]{name} is not a valid region"; }
+        $nlast = $nfound;
+        print DEBUG "INFO: in process of finding parent region for $region[$n]{name}: found part_of region $region[$nfound]{name}\n";
+      }
+      print "INFO: found parent region $region[$nlast]{name} for dynamic region $region[$n]{name}\n";
+      print DEBUG "INFO: found parent region $region[$nlast]{name} for dynamic region $region[$n]{name}\n";
+      $region[$n]{"parent"} = $region[$nlast]{"name"};
+    } else {
+      $region[$n]{"parent"} = '';
+    }
+  }
 
-    if ($region[$n]{'type'} ne 'static' 
+#-------------
+# TODO: for dynamic regions need to find position relative to variables that the region is to be updated, to facilitate writing the hook into create_fortran_equations
 
-    if (empty($region[$n]{'parent'})) { $region[$n]{'parent'} = ''; } # TODO
 #-------------
 # create region sub_string for all fortran variables
 
-# allocate any SYSTEM or user defined regions
-  if ($nfortran > 0) {
-    $sub_string{"allocate_regions"}="allocate(region($nfortran))\n";
-    foreach $n ( 0 .. $#region ) {
-      if ($region[$n]{"fortran"}) {
-        $m = $n + 1;
-        $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
-          "region($m)%name = \"$region[$n]{name}\"\n".
-          "region($m)%centring = \"$region[$n]{centring}\"\n".
-          "region($m)%location = \"$region[$n]{location}\"\n".
-          "region($m)%initial_location = \"$region[$n]{initial_location}\"\n".
-          "region($m)%part_of = \"$region[$n]{part_of}\"\n".
-          "region($m)%parent = \"$region[$n]{parent}\"\n";
-      }
+#allocate any SYSTEM or user defined regions
+if ($nfortran > 0) {
+  $sub_string{"allocate_regions"}="allocate(region($nfortran))\n";
+  foreach $n ( 0 .. $#region ) {
+    my $m = $region[$n]{"fortran"};
+    if ($m) {
+      if ($region[$n]{"type"} eq 'system') {next; } # TODO: skipping prior to rewrite of subroutine setup_regions
+      $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
+        "region($m)%name = \"$region[$n]{name}\"\n".
+        "region($m)%centring = \"$region[$n]{centring}\"\n".
+        "region($m)%location = \"$region[$n]{location}\"\n".
+        "region($m)%initial_location = \"$region[$n]{initial_location}\"\n".
+        "region($m)%part_of = \"$region[$n]{part_of}\"\n".
+        "region($m)%parent = \"$region[$n]{parent}\"\n";
     }
   }
+}
 
 #-------------
 # print debugging info
@@ -1423,6 +1475,22 @@ sub organise_regions {
     print DEBUG "$n $region[$n]{name}: ".Dumper($region[$n])."\n";
   }
   print DEBUG "=================================================================\n";
+
+}
+
+#-------------------------------------------------------------------------------
+# sees if a given region name ($_[1]) matches that of region[$_[0]], taking care of the name being a possible regex
+
+sub match_region {
+
+  use strict;
+  
+  if ( ( $region[$_[0]]{'type'} eq 'internal' && $_[1] =~ /$region[$_[0]]{name}/ ) ||
+       ( $region[$_[0]]{'type'} ne 'internal' && $_[1] eq $region[$_[0]]{"name"}) ) {
+    return (1);
+  } else {
+    return (0);
+  }
 
 }
 #-------------------------------------------------------------------------------
@@ -5724,6 +5792,12 @@ sub examine_name {
   $compoundname = "<".$basename;
   if ($rindex) { $compoundname = $compoundname."[r=$rindex]"; }
   $compoundname = $compoundname.">";
+
+  if ($action eq "regionname") {
+    if ($rank ne "scalar") {
+      error_stop("an attempt is being made to name a region as a vector or tensor quantity - only r indicies (relative timesteps) are allowed for region names: region = $name\n");
+    }
+  }
 
 # $_[1] = action = name|compoundname|basename|nrank|lindex|rindex|all
   if ($action eq "name") { return ($name); }

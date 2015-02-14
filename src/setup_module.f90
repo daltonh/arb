@@ -169,33 +169,33 @@ fileloop: do
   if (debug) write(*,'(a)') 'keyword = '//trim(keyword)//': textline = '//trim(textline)
   if (error) call error_stop('problem reading the keyword on on line:'//trim(otextline))
 
-!---------------
-! region definitions
-  if (trim(keyword) == 'CELL_REGION'.or.trim(keyword) == 'FACE_REGION'.or.trim(keyword) == 'NODE_REGION') then ! read in variable names
-! name
-    name = extract_next_string(textline,error,empty=empty,delimiter="<")
-    if (error.or.empty) call error_stop('region name in '//trim(keyword)// &
-      ' in arb input file incorrectly specified on line:'//trim(otextline))
-! location
-    location = extract_next_string(textline,error,empty=empty,delimiter="'"" ")
-    if (.not.empty.and.error) call error_stop('location string for region '//trim(name)// &
-      ' in arb input file incorrectly specified on line:'//trim(otextline))
-      
-!   read(textline,*,iostat=ierror) location ! with no format specification string in arb input file should be quotted
-!   if (ierror /= 0) location = "" ! if no location is specified then we are just specifying region centring for gmsh region
-    centring = changecase('L',keyword(1:4))
-    m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-    if (m == 0.or.existing) call error_stop('allocation of region = '//trim(region_name)// &
-      ' failed, most likely because the region has already been allocated previously in the arb input file')
-    formatline = '(a,'//trim(dindexformat(m))//',a)'
-    if (trim(location) == "") then
-      write(*,fmt=formatline) 'INFO: centring for region '//trim(region(m)%name)//' has been specified from arb input file: '// &
-        'region_number = ',m,': centring = '//trim(centring)
-    else
-      write(*,fmt=formatline) 'INFO: region '//trim(region(m)%name)//' has been created from arb input file: region_number =  ',m, &
-        ': centring = '//trim(centring)//': location = '//trim(region(m)%location)
-    end if
-  end if
+! !---------------
+! ! region definitions
+!   if (trim(keyword) == 'CELL_REGION'.or.trim(keyword) == 'FACE_REGION'.or.trim(keyword) == 'NODE_REGION') then ! read in variable names
+! ! name
+!     name = extract_next_string(textline,error,empty=empty,delimiter="<")
+!     if (error.or.empty) call error_stop('region name in '//trim(keyword)// &
+!       ' in arb input file incorrectly specified on line:'//trim(otextline))
+! ! location
+!     location = extract_next_string(textline,error,empty=empty,delimiter="'"" ")
+!     if (.not.empty.and.error) call error_stop('location string for region '//trim(name)// &
+!       ' in arb input file incorrectly specified on line:'//trim(otextline))
+!       
+! !   read(textline,*,iostat=ierror) location ! with no format specification string in arb input file should be quotted
+! !   if (ierror /= 0) location = "" ! if no location is specified then we are just specifying region centring for gmsh region
+!     centring = changecase('L',keyword(1:4))
+!     m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
+!     if (m == 0.or.existing) call error_stop('allocation of region = '//trim(region_name)// &
+!       ' failed, most likely because the region has already been allocated previously in the arb input file')
+!     formatline = '(a,'//trim(dindexformat(m))//',a)'
+!     if (trim(location) == "") then
+!       write(*,fmt=formatline) 'INFO: centring for region '//trim(region(m)%name)//' has been specified from arb input file: '// &
+!         'region_number = ',m,': centring = '//trim(centring)
+!     else
+!       write(*,fmt=formatline) 'INFO: region '//trim(region(m)%name)//' has been created from arb input file: region_number =  ',m, &
+!         ': centring = '//trim(centring)//': location = '//trim(region(m)%location)
+!     end if
+!   end if
 
 !---------------
 ! glue_faces

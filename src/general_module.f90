@@ -142,7 +142,9 @@ end type glue_face_type
 type region_type
   character(len=1000) :: name ! name of the region
   character(len=1000) :: location ! string specifying location of region
+  character(len=1000) :: initial_location ! string specifying initial_location of region if a dynamic transient or newtient region
   character(len=4) :: centring ! whether cell or face centred
+  character(len=1000) :: part_of ! TODO
   character(len=1000) :: parent ! name of the region that this region is solely contained within - optional
   integer :: dimensions ! maximum dimensions of the elements within the region
   integer, dimension(:), allocatable :: ijk ! array of cell (i), face (j) or node (k) indicies that are within this region - dimension of this is number of elements in region - for dynamic regions size of ijk is determined by parent static region, with some indicies being zero
