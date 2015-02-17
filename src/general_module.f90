@@ -138,12 +138,19 @@ type glue_face_type
   character(len=100), dimension(:), allocatable :: options ! array of options for this var, with highest priority on the right
 end type glue_face_type
 
+! type for location specification within regions
+type region_location_type
+  logical :: active ! whether location is active or not
+  character(len=1000) :: description ! string that describes location, as given by user in arb file
+end type region_location_type
+
 ! type for regions
 type region_type
   character(len=1000) :: name ! name of the region
-  character(len=1000) :: location ! string specifying location of region
-  character(len=1000) :: initial_location ! string specifying initial_location of region if a dynamic transient or newtient region
+  character(len=100) :: type ! region type: static, constant, transient, newtient, derived, equation, output, condition
   character(len=4) :: centring ! whether cell or face centred
+  type(region_location_type) :: location ! location of region
+  type(region_location_type) :: initial_location ! initial_location of region if a dynamic transient or newtient region
   character(len=1000) :: part_of ! TODO
   character(len=1000) :: parent ! name of the region that this region is solely contained within - optional
   integer :: dimensions ! maximum dimensions of the elements within the region
@@ -453,15 +460,15 @@ end function compound_number_from_name
 
 !----------------------------------------------------------------------------
 
-function region_number_from_name(name,centring,location,dimensions,creatable,existing)
+function region_number_from_name(name,centring,type,dimensions,creatable,existing)
 
 ! find and checks data regarding region_number, or alternatively sets new one if
 !  creatable is present and set to true
 
 integer :: region_number_from_name
 character(len=*), intent(in) :: name
-character(len=1000), intent(in), optional :: location
 character(len=4), intent(in), optional :: centring
+character(len=100), intent(in), optional :: type
 integer, intent(in), optional :: dimensions
 logical, intent(in), optional :: creatable
 logical, intent(out), optional :: existing
@@ -508,11 +515,14 @@ if (.not.creatable) return
 ! create new region
 if (region_number_from_name == 0) then
   default_element%name = name
-  if (present(location)) then
-    default_element%location = location
+  if (present(type)) then
+    default_element%type = type
+    default_element%location%description = changecase("U",type)
   else
-    default_element%location = ''
+    default_element%type = ''
+    default_element%location%description = "UNKNOWN"
   end if
+  default_element%location%active = .false. ! active locations are now set solely via setup_equations.pl
   if (present(centring)) then
     default_element%centring = centring
   else
@@ -531,9 +541,9 @@ else
     write(*,'(a)') 'INFO: updating region = '//trim(name)//' centring to '//trim(centring)
     region(region_number_from_name)%centring = centring
   end if
-  if (present(location).and.trim(region(region_number_from_name)%location) == '') then
-    write(*,'(a)') 'INFO: updating region = '//trim(name)//' location to '//trim(location)
-    region(region_number_from_name)%location = location
+  if (present(type).and.trim(region(region_number_from_name)%location) == '') then
+    write(*,'(a)') 'INFO: updating region = '//trim(name)//' type to '//trim(type)
+    region(region_number_from_name)%type = type
   end if
   if (present(dimensions).and.region(region_number_from_name)%dimensions == -1) then
     write(*,'(a,i1)') 'INFO: updating region = '//trim(name)//' dimensions to ',dimensions
@@ -2722,35 +2732,12 @@ if (debug) write(*,'(80(1h+)/a)') 'function region_delta'
 region_delta = 0.d0
 
 region_number = region_number_from_name(name=name,existing=existing,centring=centring)
-!region_number = region_number_from_name(name="<"//name//">",existing=existing,centring=centring)
-if (.not.existing) then
-! write(*,*) 'ERROR: function region_delta references region <'//trim(name)// &
-!   '> which does not exist'
-  write(*,*) 'ERROR: function region_delta references region '//trim(name)// &
-    ' which does not exist'
-  stop
-end if
-if (region_number == 0) then
-! write(*,*) 'ERROR: problem in function region_delta with region <'//trim(name)// &
-!   '>:- most likely region has wrong centring'
-  write(*,*) 'ERROR: problem in function region_delta with region '//trim(name)// &
-    ':- most likely region has wrong centring'
-  stop
-end if
-
-if (centring /= region(region_number)%centring) call error_stop("ERROR: incorrect centring in region_delta accessing "// &
-  "region "//trim(region(region_number)%name))
+if (.not.existing) call error_stop('function region_delta references region '//trim(name)//' which does not exist')
+! centring consistency is checked in region_number_from_name - it is the only possiblity for 0 for an existing region
+if (region_number == 0)  call error_stop('problem in function region_delta with region '//trim(name)// &
+    ': delta has centring context of '//trim(centring)//' whereas region has '//trim(region(region_number)%name)//' centring')
 
 if (region(region_number)%ns(ijk) == 0) return
-
-! now replaced by simple lookup of region%ns index
-! if (centring == 'cell') then
-!   if (location_in_list(array=cell(ijk)%region_list,element=region_number) == 0) return
-! else if (centring == 'face') then
-!   if (location_in_list(array=face(ijk)%region_list,element=region_number) == 0) return
-! else
-!   stop "ERROR: incorrect centring in region_delta"
-! end if
 
 region_delta = 1.d0
 

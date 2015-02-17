@@ -146,7 +146,7 @@ my @general_replacements = ();
 my %statement_repeats = ( 'definitions' => 0, 'typechanges' => 0, 'centringchanges' => 0 );
 
 # kernels are now only calculated when needed
-# these settings can be overwritten (only making true, not turning off) in kernel_module.f90
+# these settings can be overwritten (only making true, not turning off) in general_module.f90
 my %kernel_availability = ( 'cellave' => 0, 'cellgrad' => 0, 'cellfromnodeave' => 0, 'cellfromnodegrad' => 0, 'faceave' => 0, 'facegrad' => 0, 'nodeave' => 0, 'nodegrad' => 0 );
 
 my @region = (); # list of regions
@@ -1091,7 +1091,7 @@ sub read_input_files {
 #-----------------------
 # now processing user regions too, in much the same way as the user variables
 
-      elsif ( $line =~ /^\s*((FACE|CELL|NODE)_|)((STATIC|DERIVED|EQUATION|CONSTANT|TRANSIENT|NEWTIENT)_|)REGION($|\s)/i ) {
+      elsif ( $line =~ /^\s*((FACE|CELL|NODE)_|)((CONSTANT|TRANSIENT|NEWTIENT|STATIC|DERIVED|EQUATION|OUTPUT|CONDITION)_|)REGION($|\s)/i ) {
         $line = $';
         $centring = ""; # now centring can be grabbed from last definition
         if ($2) { $centring = "\L$2"; }
@@ -1266,9 +1266,10 @@ sub organise_regions {
 #-------------
 # set some user-specific flags - user and dynamic - while checking type and centring
   foreach $n ( 0 .. $#region ) {
-    if (empty($region[$n]{'centring'})) { error_stop("region $region[$n]{name} has no centring defined"); }
     $region[$n]{"user"} = 1;
     if (empty($region[$n]{'type'}) || $region[$n]{'type'} eq 'static') { $region[$n]{"dynamic"} = 0; $region[$n]{'type'} = 'static' } else { $region[$n]{"dynamic"} = 1; }
+    if (empty($region[$n]{'centring'})) { error_stop("user $region[$n]{type} region $region[$n]{name} has no centring defined"); }
+    if (empty($region[$n]{'location'})) { error_stop("user $region[$n]{type} region $region[$n]{name} has no location defined"); }
   }
 
 #-------------
@@ -1393,11 +1394,19 @@ sub organise_regions {
   my $nfortran = 0; # this is the total number of regions that need to be allocated by this script within the fortran
   foreach $n ( 0 .. $#region ) {
     $type = $region[$n]{'type'};
-    if (empty($region[$n]{"location"})) { $region[$n]{"location"} = "\U$type"; }
+    if (empty($region[$n]{"location"})) { $region[$n]{"location"} = "\U$type"; } # user regions have already been checked
     if (empty($region[$n]{"user"})) { $region[$n]{"user"} = 0; }
     if (empty($region[$n]{"dynamic"})) { $region[$n]{"dynamic"} = 0; }
-    if (empty($region[$n]{"initial_location"}) ) { $region[$n]{"initial_location"} = ""; }
-    if ($type eq 'internal' || $type eq 'gmsh') { $region[$n]{"fortran"} = 0; } else { $nfortran++; $region[$n]{"fortran"} = $nfortran; }
+    if (empty($region[$n]{"initial_location"}) ) {
+      if ($type eq "transient" || $type eq "newtient") {
+        $region[$n]{"initial_location"} = $region[$n]{"location"};
+        print "INFO: initial_location of $type region $region[$n]{name} not set - defaulting to location $region[$n]{location}\n";
+        print DEBUG "INFO: initial_location of $type region $region[$n]{name} not set - defaulting to location $region[$n]{location}\n";
+      } else {
+        $region[$n]{"initial_location"} = "";
+      }
+    }
+    if ($type eq 'internal') { $region[$n]{"fortran"} = 0; } else { $nfortran++; $region[$n]{"fortran"} = $nfortran; }
 # check that only user region names have relative step indicies
     if ($type eq 'gmsh' && ( examine_name($region[$n]{"name"},'regionname') ne $region[$n]{"name"} ||
       examine_name($region[$n]{"name"},'rindex') != 0 )) { error_stop("GMSH region names cannot have any r indicies specified: name = $region[$n]{name}"); }
@@ -1454,12 +1463,14 @@ if ($nfortran > 0) {
   foreach $n ( 0 .. $#region ) {
     my $m = $region[$n]{"fortran"};
     if ($m) {
-      if ($region[$n]{"type"} eq 'system') {next; } # TODO: skipping prior to rewrite of subroutine setup_regions
       $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
         "region($m)%name = \"$region[$n]{name}\"\n".
-        "region($m)%centring = \"$region[$n]{centring}\"\n".
-        "region($m)%location = \"$region[$n]{location}\"\n".
-        "region($m)%initial_location = \"$region[$n]{initial_location}\"\n".
+        "region($m)%centring = \"$region[$n]{centring}\"\n". # every region written to fortran has a centring
+        "region($m)%type = \"$region[$n]{type}\"\n".
+        "region($m)%location%active = ".fortran_logical_string($region[$n]{"user"})."\n". # active specifies whether update_region actually calculates this variable
+        "region($m)%location%description = \"$region[$n]{location}\"\n".
+        "region($m)%initial_location%active = ".fortran_logical_string($region[$n]{"initial_location"})."\n".
+        "region($m)%initial_location%description = \"$region[$n]{initial_location}\"\n".
         "region($m)%part_of = \"$region[$n]{part_of}\"\n".
         "region($m)%parent = \"$region[$n]{parent}\"\n";
     }

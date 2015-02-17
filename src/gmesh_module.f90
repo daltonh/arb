@@ -1577,47 +1577,57 @@ do n=1,ngregions
     end if
 ! create new region and set gregion region_number at the same time
     gmesh(gmesh_number)%gregion(gregion_number(n))%region_number = region_number_from_name(name=gregion_name(n), &
-      location=location,centring=centring,dimensions=gregion_dimensions(n),creatable=.true.)
+      type='gmsh',centring=centring,dimensions=gregion_dimensions(n),creatable=.true.)
     gmesh(gmesh_number)%gregion(gregion_number(n))%centring = centring
     region_number = gmesh(gmesh_number)%gregion(gregion_number(n))%region_number
+    region(region_number)%location%active = .false.
+    region(region_number)%location%description = location
+    region(region_number)%initial_location%active = .false.
+    region(region_number)%initial_location%description = ""
 
   else if (trim(region(region_number)%centring) == "") then
 ! region is defined but not centring: this is an error
     call error_stop('region '//trim(gregion_name(n))//' in gmsh file '//trim(filename)//' is already allocated but'// &
       ' has no centring defined')
 
-  else if (trim(region(region_number)%location(1:4)) == "GMSH") then
+! FIX description
+  else if (trim(region(region_number)%location%description(1:4)) == "GMSH") then
     if (check) then
       if (gmesh(gmesh_number)%gregion(gregion_number(n))%region_number /= region_number) call error_stop('region '// &
         trim(gregion_name(n))//' in gmsh file '//trim(filename)//' has inconsistent region_number on reread')
     else
       if (debug) write(*,*) ' before read: region '//trim(gregion_name(n))//': region number ',region_number, &
-        ': centring = '//trim(region(region_number)%centring)//': location '//trim(region(region_number)%location)// &
-        ': dimensions = ',region(region_number)%dimensions
+        ': centring = '//trim(region(region_number)%centring)//': type = '//trim(region(region_number)%type)// &
+        ': location '//trim(region(region_number)%location%description)//': dimensions = ',region(region_number)%dimensions
       write(*,'(a)') 'WARNING: region '//trim(gregion_name(n))//' is contained in more than one gmsh file:'
       write(*,'(a)') ' original location: '//trim(region(region_number)%location)
       write(*,'(a)') ' current location: '//trim(location)
 ! if this gregion has more dimensions then the dimensions of the region expands
 !     region(region_number)%dimensions = max(gregion_dimensions(n),region(region_number)%dimensions) 
 ! actually this should flag a problem as each element associated with a gmsh physical entity should have the same dimension
-      if (region(region_number)%dimensions /= gregion_dimensions(n)) call error_stop('region '//trim(gregion_name(n))// &
+
+      if (region(region_number)%dimensions /= -1 && region(region_number)%dimensions /= gregion_dimensions(n)) &
+        call error_stop('region '//trim(gregion_name(n))// &
         ' in gmsh file '//trim(filename)//' has dimensions that are inconsistent with a previous gmsh definition of this region')
 ! this allows data from multiple mesh files to be read into the same region
+      region(region_number)%location%description = trim(location)
+      region(region_number)%dimensions = gregion_dimensions(n)
       gmesh(gmesh_number)%gregion(gregion_number(n))%region_number = region_number
       gmesh(gmesh_number)%gregion(gregion_number(n))%centring = region(region_number)%centring
     end if
 
+! TODO: combine these two given that now regions can initially have GMSH names
   else if (trim(region(region_number)%location) == "") then
 ! only centring has been set: set location and dimensions
     if (check) call error_stop('region '//trim(gregion_name(n))//' in gmsh file '//trim(filename)// &
       ' is not properly defined on current read: all centring files with the same basename must come from the '// &
       'same simulation and have the same physical entities defined')
     if (debug) write(*,*) ' before read: region '//trim(gregion_name(n))//': region number ',region_number, &
-      ': centring = '//trim(region(region_number)%centring)//': location '//trim(region(region_number)%location)// &
-      ': dimensions = ',region(region_number)%dimensions
+      ': centring = '//trim(region(region_number)%centring)//': type = '//trim(region(region_number)%type)// &
+      ': location '//trim(region(region_number)%location%description)//': dimensions = ',region(region_number)%dimensions
     if (region(region_number)%dimensions /= -1) call error_stop('region '//trim(gregion_name(n))//' in gmsh '// &
       'file '//trim(filename)//' that is about to be read already has dimensions set from some previous definition')
-    region(region_number)%location = trim(location)
+    region(region_number)%location%description = trim(location)
     region(region_number)%dimensions = gregion_dimensions(n)
     gmesh(gmesh_number)%gregion(gregion_number(n))%region_number = region_number
     gmesh(gmesh_number)%gregion(gregion_number(n))%centring = region(region_number)%centring
@@ -1633,8 +1643,8 @@ do n=1,ngregions
   end if
 
   if (debug) write(*,*) ' after read: region '//trim(gregion_name(n))//': region number ',region_number, &
-    ': centring = '//trim(region(region_number)%centring)//': location '//trim(region(region_number)%location)// &
-    ': dimensions = ',region(region_number)%dimensions
+    ': centring = '//trim(region(region_number)%centring)//': type = '//trim(region(region_number)%type)// &
+    ': location '//trim(region(region_number)%location%description)//': dimensions = ',region(region_number)%dimensions
 
 end do
 deallocate(gregion_number,gregion_dimensions,gregion_name)
