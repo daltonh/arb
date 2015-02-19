@@ -12,8 +12,8 @@ FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domain faces>
 #FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <domain faces>
 #FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<rho_f>)" ON <domain faces>
 # pre v0.5 method based on component of velocity in direction of face normal
-FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domain faces>
-#FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho>)" ON <domain faces>
+FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho_f>)" ON <domain faces>
+#FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho_f>)" ON <domain faces>
 
 # viscous limiter
 # this didn't seem to work
@@ -27,10 +27,10 @@ FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu_f>" ON <domain faces>
 # transient limiter
 # this is the equivalent time that the limiter has been moving in the one direction
 # noting that the variables (<u_f_{correction}> and <eps>) here are previous timestep ones
-<<transientnavierstokescomment>>FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <domain faces>
+<<transientnavierstokescomment>>FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho_f>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <domain faces>
 # need to save previous pressure error sign
 <<transientnavierstokescomment>>FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <domain faces>
-<<transientnavierstokescomment>>FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <domain faces>
+<<transientnavierstokescomment>>FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho_f>" ON <domain faces>
 
 # combined limiter
 #<<transientnavierstokescomment>>FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
