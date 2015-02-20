@@ -157,9 +157,11 @@ CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <all cells>
 <<doubledomaincomment>>INCLUDE "free_surface_replacements"
 
 # calculate the interface curvature, using a 2D expansion of the unit normals
-INCLUDE "interface_geometry_2D"
+#INCLUDE "interface_geometry_2D"
 # for 3D include the following which expands the unit normals using their components:
 #INCLUDE "interface_geometry"
+# now by solving separate level-set-like field to calculate the normals
+INCLUDE "clsvof_interface_geometry"
 
 # and now move back to the fluid mesh
 <<doubledomaincomment>>INCLUDE "cancel_free_surface_replacements"
@@ -234,7 +236,6 @@ NONE_TRANSIENT <u_f_max_min[r=1]> "" "<u_f_max_min>"
 # specify outputs for some variables
 
 VARIABLE <vof_F_c[l=1]> output
-<<doubledomaincomment>>VARIABLE <vof_fs_phi_smoothed> output
 <<doubledomaincomment>>VARIABLE <vof_fs_phigrad_unit[l=1]> output
 
 # nonuniform
