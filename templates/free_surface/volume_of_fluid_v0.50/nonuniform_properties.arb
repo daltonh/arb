@@ -1,0 +1,19 @@
+# include this to define varying properties
+#CONSTANT <vof_rho_d_ratio> 1.d0 # dimensional <rho_d>/<rho_c>
+#CELL_LOCAL <vof_rho_c[r=0]> "(<vof_phi_lim>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <all cells>
+#CELL_LOCAL <vof_rho_c[r=1]> "(<vof_phi[r=1]>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <all cells>
+#FACE_LOCAL <vof_rho_advection_f[r=1]> "(<vof_phi_f_adjusted[r=1]>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <all faces> # advection interpolation to use in fluxes calculation
+#FACE_LOCAL <vof_rho_f> "(<vof_phi_lim>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <all faces> # simple interpolation to use in velocity correction calculation
+#CONSTANT <vof_mu_d_ratio> 1.d0 # dimensional <mu_d>/<mu_c>
+#CELL_LOCAL <vof_mu_c> "(cellmax(<vof_phi_lim>,0.d0)*(<vof_mu_d_ratio>-1.d0)+1.d0)*<mu>" ON <all cells>
+#FACE_LOCAL <vof_mu_f> "faceave(<vof_mu_c>)" ON <all faces>
+#FACE_LOCAL <vof_mu_harmonic_f> "faceave[harmonic](<vof_mu_c>)" ON <all faces>
+
+# from Lachlan, 270614
+CELL_LOCAL <vof_rho_c[r=0]> "<vof_phi_lim>*(<rho_d>-<rho_c>)+<rho_c>" ON <all cells>
+CELL_LOCAL <vof_rho_c[r=1]> "<vof_phi[r=1]>*(<rho_d>-<rho_c>)+<rho_c>" ON <all cells>
+FACE_LOCAL <vof_rho_advection_f[r=1]> "<vof_phi_f_adjusted[r=1]>*(<rho_d>-<rho_c>)+<rho_c>" ON <all faces> # advection interpolation to use in fluxes calculation
+FACE_LOCAL <vof_rho_f> "<vof_phi_lim>*(<rho_d>-<rho_c>)+<rho_c>" ON <all faces> # simple interpolation to use in velocity correction calculation
+CELL_LOCAL <vof_mu_c> "cellmax(<vof_phi_lim>,0.d0)*(<mu_d>-<mu_c>)+<mu_c>" ON <all cells>
+FACE_LOCAL <vof_mu_f> "faceave(<vof_mu_c>)" ON <all faces>
+FACE_LOCAL <vof_mu_harmonic_f> "faceave[harmonic](<vof_mu_c>)" ON <all faces>

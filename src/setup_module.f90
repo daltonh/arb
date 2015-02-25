@@ -137,8 +137,8 @@ subroutine read_input_file
 
 use general_module
 use gmesh_module
-integer :: ierror, cut, n, m, gmesh_number, array_size
-character(len=5000) :: textline, otextline, input_string
+integer :: ierror, n, m, gmesh_number, array_size
+character(len=5000) :: textline, otextline
 character(len=1000) :: keyword, name, formatline, region_name, location, options, filename
 character(len=1000), dimension(2) :: glue_region
 character(len=100) :: option_name
@@ -201,22 +201,10 @@ fileloop: do
 
   if (trim(keyword) == 'GLUE_FACES') then ! read in face regions to be glued together and any options
 ! glue_region(1)
-!   cut=scan(textline,'>') ! find end of name string
-!   if (textline(1:1) /= '<'.or.cut<2) call error_stop('first region name in '//trim(keyword)// &
-!     ' definition incorrectly specified on line:'//trim(otextline))
-!   glue_region(1) = textline(1:cut) ! name now includes <>
-!   textline=adjustl(textline(cut+1:len(textline)))
     glue_region(1) = extract_next_string(textline,error,empty=empty,delimiter="<")
     if (error.or.empty) call error_stop('first region name in '//trim(keyword)// &
       ' definition incorrectly specified on line:'//trim(otextline))
 ! glue_region(2)
-!   cut=scan(textline,'>') ! find end of name string
-!   if (textline(1:1) /= '<'.or.cut<2) then
-!     glue_region(2) = glue_region(1) ! assume that the region names are the same
-!   else
-!     glue_region(2) = textline(1:cut) ! name now includes <>
-!   end if
-!   textline=adjustl(textline(cut+1:len(textline)))
     glue_region(2) = extract_next_string(textline,error,empty=empty,delimiter="<")
     if (empty) then
       glue_region(2) = glue_region(1) ! assume that the region names are the same
@@ -432,11 +420,6 @@ fileloop: do
   if (trim(keyword) == 'VARIABLE_OPTIONS') then
     name = extract_next_string(textline,error,empty=empty,delimiter="<")
     if (error.or.empty) call error_stop('variable name in '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
-!   cut=scan(textline,'>') ! find end of name string
-!   if (textline(1:1) /= '<'.or.cut<2) call error_stop('variable name in '//trim(keyword)//' in input file incorrect on line:'// &
-!     trim(textline))
-!   name = textline(1:cut) ! name includes <>
-!   textline=adjustl(textline(cut+1:len(textline)))
 ! find number for this name
     m = var_number_from_name(name)
     if (m == 0) call error_stop('variable '//trim(name)//' specified in arb input file was not found')
@@ -457,11 +440,6 @@ fileloop: do
   if (trim(keyword) == 'COMPOUND_OPTIONS') then
     name = extract_next_string(textline,error,empty=empty,delimiter="<")
     if (error.or.empty) call error_stop('compound name in '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
-!   cut=scan(textline,'>') ! find end of name string
-!   if (textline(1:1) /= '<'.or.cut<2) call error_stop('compound name in '//trim(keyword)//' in input file incorrect on line:'// &
-!     trim(textline))
-!   name = textline(1:cut) ! name includes <>
-!   textline=adjustl(textline(cut+1:len(textline)))
 ! find number for this name
     m = compound_number_from_name(name)
     if (m == 0) call error_stop('compound '//trim(name)//' specified in arb input file was not found')
@@ -962,7 +940,7 @@ end do
 if (allocated(separation_index)) deallocate(separation_index)
 
 !-------------------------------------
-! run through nodes (re)setting icell (surrounding cells), cell%r and cell%reflect_multiplier for glued_nodes
+! run through nodes (re)setting icell (surrounding cells), node%r and node%reflect_multiplier for glued_nodes
 ! node(k)%icell (and r and reflect_multiplier) needs to have a single entry for each real and glued cell (even to itself)
 ! before this loop, glue_faces will have removed duplicate entries for node(k)%icells that are glued (reflected) to themselves through this node, so
 ! if the node is glued, base the calculation on an adjacent face%icell that would already (above) have been correctly calculated via subroutine expand_mask
@@ -2189,7 +2167,7 @@ subroutine setup_vars
 use general_module
 use equations_module
 use solver_module
-integer :: m, ns, n, mc, o, pptotal, mtype, ierror
+integer :: m, ns, n, mc, o, pptotal, mtype
 character(len=1000) :: formatline, component_list
 character(len=100) :: option_name
 logical :: existing, first, error

@@ -1,0 +1,13 @@
+#!/bin/bash
+# little script that automates getting arb from git
+# follow with the branch if not master
+# will be cloned into directory named arb_branch
+# assumes that ssh keys have been setup
+# suggest putting this somewhere in your PATH
+username=`whoami`;
+branch="master";
+if [ -n "$1" ] ; then
+  echo "setting branch to $1";
+  branch=$1;
+fi;
+git clone -b $branch git@vof.chemeng.unimelb.edu.au:$username/arb.git arb_$branch

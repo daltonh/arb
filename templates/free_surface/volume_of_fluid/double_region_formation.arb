@@ -14,6 +14,8 @@ FACE_REGION <free surface centre all faces> "ASSOCIATED WITH <free surface centr
 FACE_REGION <free surface edge domain faces> "DOMAIN OF <free surface edge>"
 FACE_REGION <free surface walls> "COMPOUND <free surface boundaries>" # in this case equivalent to boundaries
 FACE_REGION <free surface centre boundaries> "COMMON <free surface centre domain faces> <free surface edge domain faces>"
+# node
+NODE_REGION <free surface all nodes> "ASSOCIATED WITH <free surface domain>"
 
 # regions specific to fluid mesh
 # requires the following in the fluid msh file (which is a domain type region):

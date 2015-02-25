@@ -48,6 +48,7 @@ type kernel_type
   double precision, dimension(:), allocatable :: v ! value of kernel in 1-to-1 correspondance with ijk
   logical :: reflect_present ! if any reflect_multipliers are not 1, and hence, the reflect_multipliers array is allocated
   integer, dimension(:,:), allocatable :: reflect_multiplier ! takes on values of +1 or -1 as multipliers to be applied during reflections (glued faces).  Second index refers to kernel element (ie, one-to-one correspondance with ijk and v) and first to reflection coordinate direction.  If not allocated then +1 values should be used.
+  logical :: available ! as calculated by setup_equations, determines whether this kernel is actually required for a particular simulation
 end type kernel_type
 
 ! this type specifies details of each node (vertex)
@@ -55,6 +56,7 @@ end type kernel_type
 type node_type
   integer :: type ! integer specifying whether node is within the domain (1) or on a boundary (2)
   double precision, dimension(totaldimensions) :: x ! location of node
+  double precision :: dx_kernel ! characteristic dimension of mesh around this node to be used in kernel scaling - approximately equal to the equivalent radii of surrounding cells (not diameter)
   integer, dimension(:), allocatable :: jface ! array storing j indicies of surrounding faces (directly connected, not via glue)
   integer, dimension(:), allocatable :: icell ! array storing i indicies of surrounding cells (both directly connected and via glue)
   integer, dimension(:), allocatable :: region_list ! list of regions that the node is a member of
@@ -63,6 +65,8 @@ type node_type
   logical :: reflect_present ! signifies that some faces within the icells are not only glued, but also includes reflections (in practice means that reflect_multipliers should be allocated and have non-unity values)
   integer, dimension(:,:), allocatable :: reflect_multiplier ! reflect_multiplier for cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position
   double precision, dimension(:,:), allocatable :: r ! relative position of cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position
+  type(kernel_type), dimension(0:3) :: kernel ! kernel(m) = kernel for the average (m=0) or derivative in the m'th coordinate direction, all based on cell data
+  integer :: domain_dimensions ! number of dimensions of adjacent domain
 end type node_type
   
 ! this type specifies details of each cell face
@@ -338,8 +342,18 @@ character(len=8), dimension(6), parameter :: stopfilelist = [ "kill    ", "stopb
 character(len=8), dimension(3), parameter :: dumpfilelist = [ "dumpnewt", "dump    ", "dumptime" ]
 logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], array_mask2 = [.false.,.true.,.false.], array_mask3 = [.false.,.false.,.true.]
 
+! kernel availability (whether they are calculated or not) is calculated by the setup_equations.pl script, however, the settings can be overwritten (as true) here
+logical :: kernel_availability_faceave = .false. ! needed for varcdivgrad, but this routine itself is not needed until normal circumstances, so set false
+logical :: kernel_availability_facegrad = .false.
+logical :: kernel_availability_cellfromnodegrad = .false.
+logical :: kernel_availability_cellgrad = .true. ! needed for varcgrad used in variable output (for elementnodedata) so always keep on
+logical :: kernel_availability_cellave = .false.
+logical :: kernel_availability_cellfromnodeave = .true. ! needed when reading in elementnodedata so always keep on
+logical :: kernel_availability_nodegrad = .false.
+logical :: kernel_availability_nodeave = .false.
+
 ! code version details
-real, parameter :: version = 0.50 ! current version
+real, parameter :: version = 0.51 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "flexible freddy"
 
@@ -4319,11 +4333,11 @@ separation_loop: do while (separation < maximum_separation_l.and.number_added > 
           if (.not.cell_shares_a_node(icentre=icentre,i=i2,reflect_multiplier=reflect_multiplier2,r=r2,dx=dx)) &
             cycle neighbour_loop
         else if (present(jcentre)) then
-            if (debug) write(83,'(a,i3,a,3(i2),a,3(g10.3))') &
-              'checking if face_shares_a_node: i2 = ',i2,': reflect_multiplier2 = ',reflect_multiplier2,': r2 = ',r2
+          if (debug) write(83,'(a,i3,a,3(i2),a,3(g10.3))') &
+            'checking if face_shares_a_node: i2 = ',i2,': reflect_multiplier2 = ',reflect_multiplier2,': r2 = ',r2
           if (.not.face_shares_a_node(jcentre=jcentre,i=i2,reflect_multiplier=reflect_multiplier2,r=r2,dx=dx)) &
             cycle neighbour_loop
-            if (debug) write(83,'(a)') '  it does'
+          if (debug) write(83,'(a)') '  it does'
         end if
       end if
 

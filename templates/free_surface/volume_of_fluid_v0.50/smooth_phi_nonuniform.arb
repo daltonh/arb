@@ -1,0 +1,72 @@
+# smoothing phi based on a single faceseparation loop
+
+GENERAL_REPLACEMENTS R "<<maxseparation>>" W "3"
+
+# too much smoothing of [r=0] (used in surface tension) causes interface instability
+# too little smoothing of [r=0] (used in surface tension) results in large velocity errors (parasitic currents)
+# unstructured mesh results:
+# with vof_phi_smooth_power = 1 and vof_phi_smooth_constant = 1, interface is stable, but on single cell level has some osciallations
+# with vof_phi_smooth_power = 2 and vof_phi_smooth_constant = 1, interface is smooth and stable, but currents higher than the above
+# with vof_phi_smooth_power = 1, vof_phi_smooth_constant = 0.25 and maxseparation=3,faceseparation, seems to be stable with reasonably low currents
+# structured mesh results:
+# maxseparation=2,faceseparation is OK for KERNEL polynomialorder=1 (ie, the default) - for higher order need to expand maxseparation (although doesn't really improve accuracy much)
+# <vof_phi_smooth_constant> = 0.1 seems to be a good compromise between stability and accuracy on structured meshes using hyperbolic + sqrt kernel
+#NONE_CONSTANT <vof_phi_smooth_power> 1.d0
+#NONE_CONSTANT <vof_phi_smooth_constant> 0.25d0 # a smaller number gives less smoothing
+#NONE_CONSTANT <vof_phi_smooth_constant> 0.125d0
+#NONE_CONSTANT <vof_phi_smooth_constant> 0.1d0
+NONE_CONSTANT <vof_phi_smooth_constant> 0.5d0 # this has been increased as of v0.5 due to use of cell based curvature calc now
+#NONE_CONSTANT <vof_phi_smooth_constant> 1.0d0 # increased due to new exponential + sqrt smoothing function
+
+# find normalised distance between cell in separation loop and cell centre
+# required for any smoothing kernels based on distance
+CELL_LOCAL <vof_smooth_dist^2> "dot(<celltoseparationicellr[l=:]>,<celltoseparationicellr[l=:]>)"
+#NONE_CONSTANT <vof_smooth_celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)"
+# v0.5 now changed to minimum
+#NONE_CONSTANT <vof_smooth_celldxave> "cellsum(<celldxmin>,region=<domain>)/cellsum(1.d0,region=<domain>)"
+#NONE_CONSTANT <vof_smooth_eps^2> "<vof_smooth_celldxave>**2" # square of the radius of smoothing, here uniform throughout the domain
+# v0.5a now lengthscale is local to separation loop and based on the loop's centre cell
+# based on min of dxmin from adjacenticells, which guards against larger values that occur on the boundaries
+#CELL_CONSTANT <vof_smooth_eps_centre^2> "cellmin(<celldxmin>,region=<adjacentcellicells>)**2" ON <all cells>
+# based on <celldxkernel>, but increased by a factor of 4 to make it consistent with the previously employed eps = celldxmin - not stable on highly nonuniform meshes
+#CELL_CONSTANT <vof_smooth_eps_centre^2> "4.d0*<celldxkernel>**2" ON <all cells>
+# based on <celldxkernel>
+#CELL_CONSTANT <vof_smooth_eps_centre^2> "<celldxkernel>**2" ON <all cells>
+# hybrid of both
+CELL_CONSTANT <vof_smooth_eps_centre^2> "cellmin(cellmin(<celldxmin>,region=<adjacentcellicells>),2.d0*<celldxkernel>)**2" ON <all cells>
+CELL_LOCAL <vof_smooth_eps^2> "cellfromcellave[separationcentre](<vof_smooth_eps_centre^2>)" ON <all cells>
+
+# define a smoothing kernel, which is also used in smooth_normals.arb
+# hyperbolic
+#CELL_LOCAL <vof_phi_smooth_kernel> "1.d0/(<vof_smooth_dist^2>/<vof_smooth_eps^2>+<vof_phi_smooth_constant>)"
+# hyperbolic + sqrt
+CELL_LOCAL <vof_phi_smooth_kernel> "1.d0/(sqrt(<vof_smooth_dist^2>/<vof_smooth_eps^2>)+<vof_phi_smooth_constant>)"
+# exponential (guassian)
+# use constant = 1
+#CELL_LOCAL <vof_phi_smooth_kernel> "exp(-<vof_smooth_dist^2>/(<vof_smooth_eps^2>*<vof_phi_smooth_constant>))"
+# exponential + sqrt
+# use constant = 1
+#CELL_LOCAL <vof_phi_smooth_kernel> "exp(-sqrt(<vof_smooth_dist^2>/<vof_smooth_eps^2>)/<vof_phi_smooth_constant>)"
+# hyperbolic based on separation rather than distance
+# requires constant ~ 0.1 for power = 1
+#CELL_LOCAL <vof_phi_smooth_kernel> "1.d0/((<separation>+<vof_phi_smooth_constant>)**<vof_phi_smooth_power>)"
+# with <vof_phi_smooth_constant> 0.125d0 stable, but currents could be smaller
+# with <vof_phi_smooth_constant> 0.25d0 interface is too jaggered
+#CELL_LOCAL <vof_phi_smooth_kernel> "1.d0/(<separation>+<vof_phi_smooth_constant>)"
+
+# now do the smoothing
+# looks like we need a minimum of maxseparation=3 to get enough valid normals (at the edge of the interface region) to avoid instabilities in the (curvature) surface tension calculation
+# now revised to 2, but not using faceseparation
+#CELL_CONSTANT <vof_phi_smooth_demoninator> "cellsum[maxseparation=3,faceseparation](<vof_phi_smooth_kernel>,region=<all cells>)" ON <all cells>
+#CELL_DERIVED <vof_phi_smooth> "cellsum[maxseparation=3,faceseparation](<vof_phi_lim>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>" ON <all cells>
+CELL_CONSTANT <vof_phi_smooth_demoninator> "cellsum[maxseparation=<<maxseparation>>,faceseparation](<vof_phi_smooth_kernel>,region=<all cells>)" ON <all cells>
+#CELL_DERIVED <vof_phi_smooth> "cellsum[maxseparation=2](<vof_phi_lim>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>" ON <all cells>
+
+# using mask based on previous timestep
+# now use the previous timestep result to limit where the new smoothed phi is calculated, assuming that the interface moves with CFL<1
+#CELL_TRANSIENT <vof_phi_smooth_previous_flag> "1.d0" "cellif(cellmin(<vof_phi_smooth>,1.d0-<vof_phi_smooth>)-<vof_phi_tol>,1.d0,-1.d0)" ON <all cells>
+#CELL_TRANSIENT <vof_phi_smooth_next_flag> "1.d0" "cellmax(<vof_phi_smooth_previous_flag>,region=<cellicells>)" ON <all cells>
+#CELL_DERIVED <vof_phi_smooth> "cellif(<vof_phi_smooth_next_flag>,cellsum[maxseparation=<<maxseparation>>,faceseparation](<vof_phi_lim>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>,<vof_phi_lim>)" ON <all cells>
+
+# no mask, calculated everywhere
+CELL_DERIVED <vof_phi_smooth> "cellsum[maxseparation=<<maxseparation>>,faceseparation](<vof_phi_lim>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>" ON <all cells>
