@@ -10,7 +10,7 @@ if (len(sys.argv) == 1):
     print "INFO: usage for {}".format(this_script)
     print "\t./plot_timings <option>"
     print "\tvalues for <option>:"
-    print "\t1 =>  total (cummulative) update time"
+    print "\t1 =>  total (cumulative) update time"
     print "\t2 =>  relative total update time"
     print "\t3 =>  total updates"
     print "\t4 =>  average (per update) update time"
@@ -42,7 +42,7 @@ with open('./output/output.stat') as stat:
             
             timing = entries[timing_type_index-6] # the timings are at the end of the list, so read from the end inwards
             timing_type = timing.split('=')[0].strip()
-            timing_value = float(timing.split('=')[1].strip()) # for example, turn "total (cummulative) update time =  0.11718750" into "0.11718750"
+            timing_value = float(timing.split('=')[1].strip()) # for example, turn "total (cumulative) update time =  0.11718750" into "0.11718750"
             holder[variable_name] = timing_value
             timing_label = timing_type
 
