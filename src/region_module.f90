@@ -50,17 +50,10 @@ subroutine setup_regions
 ! here we setup the regions by finding the i or j indices for each
 
 use general_module
-integer :: ierror, m, i, j, k, n, cut, nregion, ijkregion, nsregion, ns, nscompound, ii, jj, kk, ijk, l, ijktotal, mparent
-double precision :: tmp, tmpmax
-double precision, dimension(totaldimensions) :: x, xmin, xmax ! a single location
-character(len=1000) :: keyword, name, formatline, location, aregion, region_list, filename, geometry
-character(len=100) :: type
-character(len=4) :: centring
-character(len=1) :: rsign
-integer, dimension(:), allocatable :: nregion_list
-logical :: existing, debug_sparse = .true., in_common
-logical, dimension(:), allocatable :: elementisin
-logical, parameter :: debug = .false.
+integer :: m, i, j, k, ns, ierror
+character(len=1000) :: formatline, filename, textline, textline2
+logical :: debug_sparse = .true.
+logical, parameter :: debug = .true.
 
 if (debug) debug_sparse = .true.
                   
@@ -87,56 +80,66 @@ do m = 1, ubound(region,1)
 end do
 
 !---------------------
-
 ! calculate dimensions for each region, noting that dynamic regions are based on parent static regions
+
+! first do non-dynamic regions - that is system, static and gmsh
 do m = 1, ubound(region,1)
-
-  if (region(m)%parent > 0) then ! set to 0 for non-dynamic regions in setup_equations.pl
-    mparent = region(m)%parent
-  else
-    mparent = m
-  end if
-
-  region(mparent)%dimensions = 0
-  if (region(mparent)%centring == 'cell') then
-    do ns = 1, allocatable_size(region(mparent)%ijk)
-      region(mparent)%dimensions = max(region(mparent)%dimensions,cell(region(mparent)%ijk(ns))%dimensions)
+  if (region(m)%dynamic) cycle
+  region(m)%dimensions = 0
+  if (region(m)%centring == 'cell') then
+    do ns = 1, allocatable_size(region(m)%ijk)
+      region(m)%dimensions = max(region(m)%dimensions,cell(region(m)%ijk(ns))%dimensions)
     end do
-  else if (region(mparent)%centring == 'face') then
-    do ns = 1, allocatable_size(region(mparent)%ijk)
-      region(mparent)%dimensions = max(region(mparent)%dimensions,face(region(mparent)%ijk(ns))%dimensions)
+  else if (region(m)%centring == 'face') then
+    do ns = 1, allocatable_size(region(m)%ijk)
+      region(m)%dimensions = max(region(m)%dimensions,face(region(m)%ijk(ns))%dimensions)
     end do
-  else if (region(mparent)%centring == 'node') then
-    region(mparent)%dimensions = 0
+  else if (region(m)%centring == 'node') then
+    region(m)%dimensions = 0
   end if
-  maximum_dimensions = max(maximum_dimensions,region(mparent)%dimensions) ! set maximum number of dimensions of any region used in the simulation
+  maximum_dimensions = max(maximum_dimensions,region(m)%dimensions) ! set maximum number of dimensions of any region used in the simulation
+end do
 
+! now do dynamic based on just-calculated static regions
+do m = 1, ubound(region,1)
+  if (region(m)%dynamic) region(m)%dimensions = region(region(m)%parent)%dimensions
 end do
     
 if (debug_sparse) write(*,'(a,i1)') 'INFO: the maximum number of dimensions of any region is ',maximum_dimensions
 
 !---------------------
 ! write out summary info about the regions
-if (debug_sparse) write(*,'(a)') 'INFO: regions:'
-do m=1,ubound(region,1)
-  if (allocatable_size(region(m)%ijk) == 0) then
-    formatline = '(a,'//trim(dindexformat(m))//',a)'
-    if (debug_sparse) write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': location = '// &
-      trim(region(m)%location)//': centring = '//region(m)%centring//': contains no elements'
-  else
-    formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))// &
-      ',a,'//trim(dindexformat(region(m)%ijk(1)))// &
-      ',a,'//trim(dindexformat(allocatable_size(region(m)%ijk)))// &
-      ',a,'//trim(dindexformat(region(m)%ijk(allocatable_size(region(m)%ijk))))//')'
-    if (debug_sparse) write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': location = '// &
-      trim(region(m)%location)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
-      ': ijk(1) = ',region(m)%ijk(1),': ijk(',allocatable_size(region(m)%ijk),') = ', &
-      region(m)%ijk(allocatable_size(region(m)%ijk))
-  end if
-end do
+if (debug_sparse) then
+  write(*,'(a)') 'INFO: regions:'
+  do m=1,ubound(region,1)
+    if (region(m)%dynamic) then
+      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a)'
+      write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': type = '// &
+        trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
+        ': location = '//trim(region(m)%location%description)//': initial_location = '// &
+        trim(region(m)%initial_location%description)
+    else if (allocatable_size(region(m)%ijk) == 0) then
+      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a)'
+      write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': type = '// &
+        trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
+        ': location = '//trim(region(m)%location%description)//': contains no elements'
+    else
+      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))// &
+        ',a,'//trim(dindexformat(region(m)%ijk(1)))// &
+        ',a,'//trim(dindexformat(allocatable_size(region(m)%ijk)))// &
+        ',a,'//trim(dindexformat(region(m)%ijk(allocatable_size(region(m)%ijk))))//')'
+      write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': type = '// &
+        trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
+        ': location = '//trim(region(m)%location%description)// &
+        ': ijk(1) = ',region(m)%ijk(1),': ijk(',allocatable_size(region(m)%ijk),') = ', &
+        region(m)%ijk(allocatable_size(region(m)%ijk))
+    end if
+  end do
+end if
 ! and some warnings all the time if a region contains no elements
 do m=1,ubound(region,1)
-  if (allocatable_size(region(m)%ijk) == 0) write(*,'(a)') 'WARNING: region '//trim(region(m)%name)//' contains no elements'
+  if (region(m)%dynamic) cycle
+  if (allocatable_size(region(m)%ijk) == 0) write(*,'(a)') 'WARNING: static region '//trim(region(m)%name)//' contains no elements'
 end do
 
 !---------------------
@@ -156,21 +159,51 @@ if (region_details_file) then
   open(fdetail,file=trim(filename),status='replace',iostat=ierror)
   if (ierror /= 0) call error_stop('problem opening file '//trim(filename))
 
-  write(fdetail,'(a)') 'MESH DETAILS:'
+  write(fdetail,'(a)') 'REGION DETAILS:'
   formatline = '(3(a,'//trim(indexformat)//'))'
   write(fdetail,fmt=formatline) 'NODES: ktotal = ',ktotal,': kdomain = ',kdomain,': kboundary = ',kboundary
   do k = 1,ktotal
-    write(fdetail,'(a)') 'node: '//trim(print_node(k))
+    textline = ''
+    do m = 1, ubound(region,1)
+      if (region(m)%dynamic) cycle
+      if (region(m)%centring /= 'node') cycle
+      if (region(m)%ns(k) /= 0) then
+        formatline = '(a,'//trim(dindexformat(m))//',a)'
+        write(textline2,formatline) trim(region(m)%name)//" ",m,"r:"
+        textline = trim(textline)//" "//trim(textline2)
+      end if
+    end do
+    write(fdetail,'(a)') 'node: '//trim(print_node(k,compact=.true.))//': regions ='//trim(textline)
   end do
   formatline = '(3(a,'//trim(indexformat)//'))'
   write(fdetail,fmt=formatline) 'FACES: jtotal = ',jtotal,': jdomain = ',jdomain,': jboundary = ',jboundary
   do j = 1,jtotal
-    write(fdetail,'(a)') 'face: '//trim(print_face(j))
+    textline = ''
+    do m = 1, ubound(region,1)
+      if (region(m)%dynamic) cycle
+      if (region(m)%centring /= 'face') cycle
+      if (region(m)%ns(j) /= 0) then
+        formatline = '(a,'//trim(dindexformat(m))//',a)'
+        write(textline2,formatline) trim(region(m)%name)//" ",m,"r:"
+        textline = trim(textline)//" "//trim(textline2)
+      end if
+    end do
+    write(fdetail,'(a)') 'face: '//trim(print_face(j,compact=.true.))//': regions ='//trim(textline)
   end do
   formatline = '(3(a,'//trim(indexformat)//'))'
   write(fdetail,fmt=formatline) 'CELLS: itotal = ',itotal,': idomain = ',idomain,': iboundary = ',iboundary
   do i = 1,itotal
-    write(fdetail,'(a)') 'cell: '//trim(print_cell(i))
+    textline = ''
+    do m = 1, ubound(region,1)
+      if (region(m)%dynamic) cycle
+      if (region(m)%centring /= 'cell') cycle
+      if (region(m)%ns(i) /= 0) then
+        formatline = '(a,'//trim(dindexformat(m))//',a)'
+        write(textline2,formatline) trim(region(m)%name)//" ",m,"r:"
+        textline = trim(textline)//" "//trim(textline2)
+      end if
+    end do
+    write(fdetail,'(a)') 'cell: '//trim(print_cell(i,compact=.true.))//': regions ='//trim(textline)
   end do
 
   close(fdetail)
@@ -194,14 +227,14 @@ type(region_location_type) :: local_location ! set to either initial or normal l
 integer :: ierror, i, j, k, n, cut, nregion, ijkregion, nsregion, ns, nscompound, ii, jj, kk, ijk, l, ijktotal
 double precision :: tmp, tmpmax
 double precision, dimension(totaldimensions) :: x, xmin, xmax ! a single location
-character(len=1000) :: keyword, name, formatline, location, aregion, region_list, filename, geometry
-character(len=100) :: type
+character(len=1000) :: keyword, name, location, aregion, region_list, geometry
 character(len=4) :: centring
 character(len=1) :: rsign
 integer, dimension(:), allocatable :: nregion_list
-logical :: existing, debug_sparse = .true., in_common
+logical :: existing, in_common
 logical, dimension(:), allocatable :: elementisin
-logical, parameter :: debug = .false.
+logical :: debug_sparse = .true.
+logical, parameter :: debug = .true.
 
 if (debug) debug_sparse = .true.
                   
@@ -211,7 +244,7 @@ if (debug) write(82,*) 'Processing region m = ',m,': name = '//trim(region(m)%na
   ': centring = '//trim(region(m)%centring)//': initial = ',initial
 
 !-----------------------------------------------------------------
-if (trim(type) == 'system') then
+if (trim(region(m)%type) == 'system') then
 
   if (trim(region(m)%name) == '<all cells>') then
     allocate(region(m)%ijk(itotal))
@@ -287,7 +320,7 @@ if (trim(type) == 'system') then
   end if
 
 !-----------------------------------------------------------------
-else if (trim(type) == 'static') then
+else if (trim(region(m)%type) == 'static') then
 
   if (initial) then
     local_location = region(m)%initial_location
@@ -299,6 +332,12 @@ else if (trim(type) == 'static') then
       " is trying to be updated but its location it isn't active")
   end if
   location = local_location%description ! now work on this local version of the description
+
+! TODO:
+! put keyword into location
+! search location for region list, region array (eg +1/-1 for compound) and variable list
+! NONE region
+! make all regions both static and dynamic
 
   ! define the keyword which in this context means the type of region creation method
   keyword = 'UNKNOWN'
@@ -817,32 +856,30 @@ if (debug) write(*,'(a,i3)') ' finding region_link number ',m
 ! find to_region
 region_link(m)%to_region_number = region_number_from_name(name=region_link(m)%to_region, &
   centring=region_link(m)%to_centring,existing=existing,creatable=.false.)
-! check that region exists and that centring is consistent
-if (.not.existing) then
-  write(*,'(a)') "ERROR: "//trim(region_link(m)%to_centring)//" region "//trim(region_link(m)%to_region)// &
-    " which is part of a region link function does not exist"
-  stop
-end if
-if (region_link(m)%to_region_number == 0) then
-  write(*,'(a)') "ERROR: problem with "//trim(region_link(m)%to_centring)//" region "//trim(region_link(m)%to_region)// &
-    " which is part of a region link function:- region most likely has a centring which is inconsistent with its use"
-  stop
-end if
+! check that region exists, that centring is consistent and that region is not dynamic
+if (.not.existing) call error_stop("problem with "//trim(region_link(m)%to_centring)// &
+  " region "//trim(region_link(m)%to_region)//" which is part of a region link function: "// &
+  "region does not exist")
+if (region_link(m)%to_region_number == 0) call error_stop("problem with "//trim(region_link(m)%to_centring)// &
+  " region "//trim(region_link(m)%to_region)//" which is part of a region link function: "// &
+  "region most likely has a centring which is inconsistent with its use")
+if (region(region_link(m)%to_region_number)%dynamic) call error_stop("problem with "//trim(region_link(m)%to_centring)// &
+  " region "//trim(region_link(m)%to_region)//" which is part of a region link function: "// &
+  "region is dynamic and this isn't allowed for a region link")
 
 ! find from_region
 region_link(m)%from_region_number = region_number_from_name(name=region_link(m)%from_region, &
   centring=region_link(m)%from_centring,existing=existing,creatable=.false.)
-! check that region exists and that centring is consistent
-if (.not.existing) then
-  write(*,'(a)') "ERROR: "//trim(region_link(m)%from_centring)//" region "//trim(region_link(m)%from_region)// &
-    " which is part of a region link function does not exist"
-  stop
-end if
-if (region_link(m)%from_region_number == 0) then
-  write(*,'(a)') "ERROR: problem with "//trim(region_link(m)%from_centring)//" region "//trim(region_link(m)%to_region)// &
-    " which is part of a region link function:- region most likely has a centring which is inconsistent with its use"
-  stop
-end if
+! check that region exists, that centring is consistent and that region is not dynamic
+if (.not.existing) call error_stop("problem with "//trim(region_link(m)%from_centring)// &
+  " region "//trim(region_link(m)%from_region)//" which is part of a region link function: "// &
+  "region does not exist")
+if (region_link(m)%from_region_number == 0) call error_stop("problem with "//trim(region_link(m)%from_centring)// &
+  " region "//trim(region_link(m)%from_region)//" which is part of a region link function: "// &
+  "region most likely has a centring which is inconsistent with its use")
+if (region(region_link(m)%from_region_number)%dynamic) call error_stop("problem with "//trim(region_link(m)%from_centring)// &
+  " region "//trim(region_link(m)%from_region)//" which is part of a region link function: "// &
+  "region is dynamic and this isn't allowed for a region link")
 
 ! now create links - ns index to ns index
 if (allocated(region_link(m)%to_ns)) deallocate(region_link(m)%to_ns)

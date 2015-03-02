@@ -1627,7 +1627,7 @@ do n=1,ngregions
       if (trim(region(region_number)%type) == 'gmsh' .and. trim(region(region_number)%location%description) == '') then
         region(region_number)%location%description = trim(location)
       else if (trim(region(region_number)%type) == 'gmsh') then
-        region(region_number)%location%description = trim(region(region_number)%location%description)//': '//trim(location) ! concatenating
+        region(region_number)%location%description = trim(region(region_number)%location%description)//' + '//trim(location) ! concatenating
       else
 ! otherwise let the user know that a region is about to be ignored
         write(*,'(a)') "NOTE: region "//trim(gregion_name(n))//" defined in the gmsh file "//trim(filename)// &

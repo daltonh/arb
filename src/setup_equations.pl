@@ -1272,7 +1272,7 @@ sub organise_regions {
     if (empty($region[$n]{'type'}) || $region[$n]{'type'} eq 'static') { $region[$n]{"dynamic"} = 0; $region[$n]{'type'} = 'static' } else { $region[$n]{"dynamic"} = 1; }
     if (empty($region[$n]{'centring'})) { error_stop("user $region[$n]{type} region $region[$n]{name} has no centring defined"); }
 # an empty CELL_REGION <a region> statement is allowed as a hint that the gmsh region is cell centred - so set this empty location region as a gmsh region
-    if (empty($region[$n]{'location'})) {
+    if (empty($region[$n]{'location'}) || $region[$n]{'location'} =~ /^\s*GMSH/i) {
       if ($region[$n]{'type'} ne 'static') { error_stop("dynamic user $region[$n]{type} region $region[$n]{name} has no location defined"); }
       $region[$n]{'type'} = 'gmsh';
     }
@@ -1475,6 +1475,7 @@ if ($nfortran > 0) {
         "region($m)%name = \"$region[$n]{name}\"\n".
         "region($m)%centring = \"$region[$n]{centring}\"\n". # every region written to fortran has a centring
         "region($m)%type = \"$region[$n]{type}\"\n".
+        "region($m)%dynamic = ".fortran_logical_string($region[$n]{"dynamic"})."\n". # dynamic logical
         "region($m)%location%active = ".fortran_logical_string($region[$n]{"user"})."\n". # active specifies whether update_region actually calculates this variable
         "region($m)%location%description = \"$region[$n]{location}\"\n".
         "region($m)%initial_location%active = ".fortran_logical_string($region[$n]{"initial_location"})."\n".

@@ -147,6 +147,7 @@ type region_type
   character(len=100) :: type ! region type: gmsh, static, constant, transient, newtient, derived, equation, output, condition
   character(len=4) :: centring ! whether cell or face centred
   integer :: dimensions = -1 ! maximum dimensions of the elements within the region (-1 means unset)
+  logical :: dynamic = .false. ! whether region is static (user, static or gmsh) or a dynamic region
   type(region_location_type) :: location ! location of region
   type(region_location_type) :: initial_location ! initial_location of region if a dynamic transient or newtient region
 ! integer :: part_of ! TODO
@@ -376,8 +377,8 @@ logical, parameter :: output_detailed_timings = .false. ! (.false.) whether to g
 logical, parameter :: output_variable_update_times = .true. ! (.true.) time how long it takes to update each variable (on average) and report in output.stat
 logical, parameter :: ignore_initial_update_times = .true. ! (.true.) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
 logical, parameter :: kernel_details_file = .false. ! (.false.) print out a text file (output/kernel_details.txt) with all the kernel details
-logical, parameter :: mesh_details_file = .false. ! (.false.) print out a text file (output/mesh_details.txt) with all the mesh details
-logical, parameter :: region_details_file = .false. ! (.false.) print out a text file (output/region_details.txt) with all the region details
+logical, parameter :: mesh_details_file = .true. ! (.false.) print out a text file (output/mesh_details.txt) with all the mesh details
+logical, parameter :: region_details_file = .true. ! (.false.) print out a text file (output/region_details.txt) with all the region details
 logical, parameter :: link_details_file = .false. ! (.false.) print out a text file (output/link_details.txt) with all the link details
 logical, parameter :: convergence_details_file = .true. ! (.true.) write some convergence debugging data to output/convergence_details.txt
 
@@ -1381,39 +1382,54 @@ end function allocatable_logical_size
 
 !----------------------------------------------------------------------------
 
-function print_node(k)
+function print_node(k,compact)
 
 integer :: k ! knode index
+logical, optional :: compact
+logical :: compact_l
 character(len=1000) :: print_node
 integer :: n, error, njface, nicell, nglue_knode, nr, nreflect_multiplier
 character(len=1000) :: formatline
 
-njface = allocatable_integer_size(node(k)%jface)
-nicell = allocatable_integer_size(node(k)%icell)
-nglue_knode = allocatable_integer_size(node(k)%glue_knode)
-nr = 0
-if (allocated(node(k)%r)) nr = ubound(node(k)%r,2)
-nreflect_multiplier = 0
-if (allocated(node(k)%reflect_multiplier)) nreflect_multiplier = ubound(node(k)%reflect_multiplier,2)
+compact_l = .false.
+if (present(compact)) compact_l = compact
 
-formatline = '(a,'//trim(indexformat)//',a,i1,a'//repeat(',a,g12.5',totaldimensions)// &
-  ',a'//repeat(',a,'//trim(indexformat),njface)// &
-  ',a'//repeat(',a,'//trim(indexformat),nicell)// &
-  ',a'//repeat(',a,'//trim(indexformat),nglue_knode)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
+if (compact_l) then
 
-write(print_node,fmt=formatline,iostat=error) 'k = ',k,'k: type = ',node(k)%type, &
-  ': x =',(' ',node(k)%x(n),n=1,totaldimensions), &
-  ': jface =',(' ',node(k)%jface(n),n=1,njface), &
-  ': icell =',(' ',node(k)%icell(n),n=1,nicell), &
-  ': glue_knode =',(' ',node(k)%glue_knode(n),n=1,nglue_knode), &
-  ': glue_present = ',node(k)%glue_present, &
-  ': r =',(' [',node(k)%r(:,n),']',n=1,nr), &
-  ': reflect_present = ',node(k)%reflect_present, &
-  ': reflect_multiplier =',(' [',node(k)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  write(print_node,fmt=formatline,iostat=error) 'k = ',k,'k: type = ',node(k)%type, &
+    ': x =',(' ',node(k)%x(n),n=1,totaldimensions)
+
+else
+
+  njface = allocatable_integer_size(node(k)%jface)
+  nicell = allocatable_integer_size(node(k)%icell)
+  nglue_knode = allocatable_integer_size(node(k)%glue_knode)
+  nr = 0
+  if (allocated(node(k)%r)) nr = ubound(node(k)%r,2)
+  nreflect_multiplier = 0
+  if (allocated(node(k)%reflect_multiplier)) nreflect_multiplier = ubound(node(k)%reflect_multiplier,2)
+
+  formatline = '(a,'//trim(indexformat)//',a,i1,a'//repeat(',a,g12.5',totaldimensions)// &
+    ',a'//repeat(',a,'//trim(indexformat),njface)// &
+    ',a'//repeat(',a,'//trim(indexformat),nicell)// &
+    ',a'//repeat(',a,'//trim(indexformat),nglue_knode)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
+
+  write(print_node,fmt=formatline,iostat=error) 'k = ',k,'k: type = ',node(k)%type, &
+    ': x =',(' ',node(k)%x(n),n=1,totaldimensions), &
+    ': jface =',(' ',node(k)%jface(n),n=1,njface), &
+    ': icell =',(' ',node(k)%icell(n),n=1,nicell), &
+    ': glue_knode =',(' ',node(k)%glue_knode(n),n=1,nglue_knode), &
+    ': glue_present = ',node(k)%glue_present, &
+    ': r =',(' [',node(k)%r(:,n),']',n=1,nr), &
+    ': reflect_present = ',node(k)%reflect_present, &
+    ': reflect_multiplier =',(' [',node(k)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
+
+end if
 
 if (error /= 0) print_node = 'ERROR: problem in print_node: formatline = '//trim(formatline)
 
@@ -1421,55 +1437,72 @@ end function print_node
 
 !----------------------------------------------------------------------------
 
-function print_face(j)
+function print_face(j,compact)
 
 integer :: j ! jface index
+logical, optional :: compact
+logical :: compact_l
 character(len=10000) :: print_face, rup, rdown
 integer :: n, error, nknode, nicell, l, nr, nreflect_multiplier
 character(len=10000) :: formatline
 
-nknode = allocatable_integer_size(face(j)%knode)
-nicell = allocatable_integer_size(face(j)%icell)
-nr = 0
-rdown = ' not allocated'
-rup = ' not allocated'
-if (allocated(face(j)%r)) then
-  nr = ubound(face(j)%r,2)
-  formatline = '(3(1x,'//trim(compactformat)//'))'
-  if (nr >= 1) write(rdown,fmt=formatline) face(j)%r(:,1)
-  if (nr >= 2) write(rup,fmt=formatline) face(j)%r(:,1)
+compact_l = .false.
+if (present(compact)) compact_l = compact
+
+if (compact_l) then
+
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  write(print_face,fmt=formatline,iostat=error) 'j = ',j,'j: type = ',face(j)%type, &
+    ': dimensions = ',face(j)%dimensions, &
+    ': gtype = ',face(j)%gtype, &
+    ': x =',(' ',face(j)%x(n),n=1,totaldimensions)
+
+else
+
+  nknode = allocatable_integer_size(face(j)%knode)
+  nicell = allocatable_integer_size(face(j)%icell)
+  nr = 0
+  rdown = ' not allocated'
+  rup = ' not allocated'
+  if (allocated(face(j)%r)) then
+    nr = ubound(face(j)%r,2)
+    formatline = '(3(1x,'//trim(compactformat)//'))'
+    if (nr >= 1) write(rdown,fmt=formatline) face(j)%r(:,1)
+    if (nr >= 2) write(rup,fmt=formatline) face(j)%r(:,1)
+  end if
+  nreflect_multiplier = 0
+  if (allocated(face(j)%reflect_multiplier)) nreflect_multiplier = ubound(face(j)%reflect_multiplier,2)
+
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//trim(indexformat)// &
+    ',a,i1,2(a'//repeat(',a,g12.5',totaldimensions)// &
+    '),a,g12.5,a,g12.5'// &
+    repeat(',a,i1,a'//repeat(',a,g12.5',totaldimensions),totaldimensions)// &
+    ',a'//repeat(',a,'//trim(indexformat),nknode)// &
+    ',a'//repeat(',a,'//trim(indexformat),nicell)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
+
+  write(print_face,fmt=formatline,iostat=error) 'j = ',j,'j: type = ',face(j)%type, &
+    ': dimensions = ',face(j)%dimensions, &
+    ': gtype = ',face(j)%gtype, &
+    ': glue_jface = ',face(j)%glue_jface, &
+    ': glue_reflect = ',face(j)%glue_reflect, &
+    ': x =',(' ',face(j)%x(n),n=1,totaldimensions), &
+    ': dx_unit =',(' ',face(j)%dx_unit(n),n=1,totaldimensions), &
+    ': r(1),dx_down ='//trim(rdown)// &
+    ': r(2),dx_up ='//trim(rup)// &
+    ': area = ',face(j)%area,': dx = ',face(j)%dx, &
+    (': norm(',l,') =',(' ',face(j)%norm(n,l),n=1,totaldimensions),l=1,totaldimensions), &
+    ': knode =',(' ',face(j)%knode(n),n=1,nknode), &
+    ': icell =',(' ',face(j)%icell(n),n=1,nicell), &
+    ': glue_present = ',face(j)%glue_present, &
+    ': r =',(' [',face(j)%r(:,n),']',n=1,nr), &
+    ': reflect_present = ',face(j)%reflect_present, &
+    ': reflect_multiplier =',(' [',face(j)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
+
 end if
-nreflect_multiplier = 0
-if (allocated(face(j)%reflect_multiplier)) nreflect_multiplier = ubound(face(j)%reflect_multiplier,2)
-
-formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//trim(indexformat)// &
-  ',a,i1,2(a'//repeat(',a,g12.5',totaldimensions)// &
-  '),a,g12.5,a,g12.5'// &
-  repeat(',a,i1,a'//repeat(',a,g12.5',totaldimensions),totaldimensions)// &
-  ',a'//repeat(',a,'//trim(indexformat),nknode)// &
-  ',a'//repeat(',a,'//trim(indexformat),nicell)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
-
-write(print_face,fmt=formatline,iostat=error) 'j = ',j,'j: type = ',face(j)%type, &
-  ': dimensions = ',face(j)%dimensions, &
-  ': gtype = ',face(j)%gtype, &
-  ': glue_jface = ',face(j)%glue_jface, &
-  ': glue_reflect = ',face(j)%glue_reflect, &
-  ': x =',(' ',face(j)%x(n),n=1,totaldimensions), &
-  ': dx_unit =',(' ',face(j)%dx_unit(n),n=1,totaldimensions), &
-  ': r(1),dx_down ='//trim(rdown)// &
-  ': r(2),dx_up ='//trim(rup)// &
-  ': area = ',face(j)%area,': dx = ',face(j)%dx, &
-  (': norm(',l,') =',(' ',face(j)%norm(n,l),n=1,totaldimensions),l=1,totaldimensions), &
-  ': knode =',(' ',face(j)%knode(n),n=1,nknode), &
-  ': icell =',(' ',face(j)%icell(n),n=1,nicell), &
-  ': glue_present = ',face(j)%glue_present, &
-  ': r =',(' [',face(j)%r(:,n),']',n=1,nr), &
-  ': reflect_present = ',face(j)%reflect_present, &
-  ': reflect_multiplier =',(' [',face(j)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
 
 if (error /= 0) print_face = 'ERROR: problem in print_face: formatline = '//trim(formatline)
 
@@ -1477,43 +1510,60 @@ end function print_face
 
 !----------------------------------------------------------------------------
 
-function print_cell(i)
+function print_cell(i,compact)
 
 integer :: i ! icell index
+logical, optional :: compact
+logical :: compact_l
 character(len=10000) :: print_cell
 integer :: n, njface, error, nknode, nicell, nr, nreflect_multiplier
 character(len=10000) :: formatline
 
-nknode = allocatable_integer_size(cell(i)%knode)
-njface = allocatable_integer_size(cell(i)%jface)
-nicell = allocatable_integer_size(cell(i)%icell)
-nr = 0
-if (allocated(cell(i)%r)) nr = ubound(cell(i)%r,2)
-nreflect_multiplier = 0
-if (allocated(cell(i)%reflect_multiplier)) nreflect_multiplier = ubound(cell(i)%reflect_multiplier,2)
+compact_l = .false.
+if (present(compact)) compact_l = compact
 
-formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a'//repeat(',a,g12.5',totaldimensions)// &
-  ',a,g12.5,a,i1'// &
-  ',a'//repeat(',a,'//trim(indexformat),nknode)// &
-  ',a'//repeat(',a,'//trim(indexformat),njface)// &
-  ',a'//repeat(',a,'//trim(indexformat),nicell)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
+if (compact_l) then
 
-write(print_cell,fmt=formatline,iostat=error) 'i = ',i,'i: type = ',cell(i)%type, &
-  ': dimensions = ',cell(i)%dimensions, &
-  ': gtype = ',cell(i)%gtype, &
-  ': x =',(' ',cell(i)%x(n),n=1,totaldimensions), &
-  ': vol = ', cell(i)%vol, ': njface = ',njface, &
-  ': knode =',(' ',cell(i)%knode(n),n=1,nknode), &
-  ': jface =',(' ',cell(i)%jface(n),n=1,njface), &
-  ': icell =',(' ',cell(i)%icell(n),n=1,nicell), &
-  ': glue_present = ',cell(i)%glue_present, &
-  ': r =',(' [',cell(i)%r(:,n),']',n=1,nr), &
-  ': reflect_present = ',cell(i)%reflect_present, &
-  ': reflect_multiplier =',(' [',cell(i)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  write(print_cell,fmt=formatline,iostat=error) 'i = ',i,'i: type = ',cell(i)%type, &
+    ': dimensions = ',cell(i)%dimensions, &
+    ': gtype = ',cell(i)%gtype, &
+    ': x =',(' ',cell(i)%x(n),n=1,totaldimensions)
+
+else
+
+  nknode = allocatable_integer_size(cell(i)%knode)
+  njface = allocatable_integer_size(cell(i)%jface)
+  nicell = allocatable_integer_size(cell(i)%icell)
+  nr = 0
+  if (allocated(cell(i)%r)) nr = ubound(cell(i)%r,2)
+  nreflect_multiplier = 0
+  if (allocated(cell(i)%reflect_multiplier)) nreflect_multiplier = ubound(cell(i)%reflect_multiplier,2)
+
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a'//repeat(',a,g12.5',totaldimensions)// &
+    ',a,g12.5,a,i1'// &
+    ',a'//repeat(',a,'//trim(indexformat),nknode)// &
+    ',a'//repeat(',a,'//trim(indexformat),njface)// &
+    ',a'//repeat(',a,'//trim(indexformat),nicell)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
+
+  write(print_cell,fmt=formatline,iostat=error) 'i = ',i,'i: type = ',cell(i)%type, &
+    ': dimensions = ',cell(i)%dimensions, &
+    ': gtype = ',cell(i)%gtype, &
+    ': x =',(' ',cell(i)%x(n),n=1,totaldimensions), &
+    ': vol = ', cell(i)%vol, ': njface = ',njface, &
+    ': knode =',(' ',cell(i)%knode(n),n=1,nknode), &
+    ': jface =',(' ',cell(i)%jface(n),n=1,njface), &
+    ': icell =',(' ',cell(i)%icell(n),n=1,nicell), &
+    ': glue_present = ',cell(i)%glue_present, &
+    ': r =',(' [',cell(i)%r(:,n),']',n=1,nr), &
+    ': reflect_present = ',cell(i)%reflect_present, &
+    ': reflect_multiplier =',(' [',cell(i)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
+
+end if
 
 if (error /= 0) print_cell = 'ERROR: problem in print_cell: formatline = '//trim(formatline)
 
