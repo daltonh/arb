@@ -1,0 +1,56 @@
+#!/bin/bash
+# little script that automates getting arb from git
+# updated with more options 2/3/15
+# will be cloned into directory named arb_branch by default
+# assumes that ssh keys have been setup, otherwise use http transport
+# suggest putting this somewhere in your PATH
+#-------------------------------------------------------------------------------
+user="daltonh";
+branch="master";
+server="vof.chemeng.unimelb.edu.au";
+output="arb_$branch";
+port="8000";
+ssh=1;
+#-------------------------------------------------------------------------------
+# usage function
+usage () {
+  echo "This script gets an arb version from a git server";
+  echo "HELP/USAGE: ./getarb [-b branch] [-u user] [-s server] [-o output] [-h]";
+  echo
+  echo "Possible options:";
+  echo "  -b|--branch: branch to get (default = $branch) - also resets output name";
+  echo "  -o|--output: output directory name to use (default = $output)";
+  echo "  -u|--user: user name that hosts arb project (default = $user)";
+  echo "  -p|--port: port number of git server for http requests (default = $port)";
+  echo "  -s|--server: server name to use, only for ssh (default = $server)";
+  echo "  --http: use http transport from git rather than ssh";
+  echo "  --ssh: use ssh transport from git rather than http (default)";
+  echo "  -h|--help: display this HELP INFO";
+  echo;
+  exit 1;
+}
+#-------------------------------------------------------------------------------
+# better case implementation from http://www.linuxtopia.org/online_books/advanced_bash_scripting_guide/testbranch.html
+while [ $# -gt 0 ]; do
+  case "$1" in
+    "-b"|"--branch") if [ ! -n "$2" ]; then echo "ERROR: branch not found"; usage; fi; branch=$2; output="arb_$branch"; shift;;
+    "-u"|"--user") if [ ! -n "$2" ]; then echo "ERROR: user not found"; usage; fi; user=$2; shift;;
+    "-s"|"--server") if [ ! -n "$2" ]; then echo "ERROR: server not found"; usage; fi; server=$2; shift;;
+    "-o"|"--output") if [ ! -n "$2" ]; then echo "ERROR: output not found"; usage; fi; output=$2; shift;;
+    "-p"|"--port") if [ ! -n "$2" ]; then echo "ERROR: port not found"; usage; fi; port=$2; shift;;
+    "--http") ssh=0;;
+    "--ssh") ssh=1;;
+    "-h"|"--help") usage;;
+    "--"*|"-"*) echo "ERROR: unknown option $i passed to getarb"; usage;;
+    *) echo "ERROR: unknown command line entry $i"; usage;;
+  esac
+  shift
+done
+
+if [ $ssh -eq 1 ] ; then
+#echo "git clone -b $branch git@$server:$user/arb.git $output";
+  git clone -b $branch git@$server:$user/arb.git $output;
+else
+#echo "git clone -b $branch http://$server:$port/$user/arb.git $output";
+  git clone -b $branch http://$server:$port/$user/arb.git $output;
+fi

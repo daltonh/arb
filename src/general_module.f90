@@ -358,7 +358,7 @@ logical :: kernel_availability_facegrad = .false.
 logical :: kernel_availability_cellfromnodegrad = .false.
 logical :: kernel_availability_cellgrad = .true. ! needed for varcgrad used in variable output (for elementnodedata) so always keep on
 logical :: kernel_availability_cellave = .false.
-logical :: kernel_availability_cellfromnodeave = .false.
+logical :: kernel_availability_cellfromnodeave = .true. ! needed when reading in elementnodedata so always keep on
 logical :: kernel_availability_nodegrad = .false.
 logical :: kernel_availability_nodeave = .false.
 
