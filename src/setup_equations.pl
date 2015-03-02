@@ -1264,12 +1264,18 @@ sub organise_regions {
   my ($n, $n2, $type, $mvar);
 
 #-------------
+# USER regions are those that are specifically defined in the arb input file
+# only USER regions can be dynamic, although not all USER regions are dynamic
 # set some user-specific flags - user and dynamic - while checking type and centring
   foreach $n ( 0 .. $#region ) {
     $region[$n]{"user"} = 1;
     if (empty($region[$n]{'type'}) || $region[$n]{'type'} eq 'static') { $region[$n]{"dynamic"} = 0; $region[$n]{'type'} = 'static' } else { $region[$n]{"dynamic"} = 1; }
     if (empty($region[$n]{'centring'})) { error_stop("user $region[$n]{type} region $region[$n]{name} has no centring defined"); }
-    if (empty($region[$n]{'location'})) { error_stop("user $region[$n]{type} region $region[$n]{name} has no location defined"); }
+# an empty CELL_REGION <a region> statement is allowed as a hint that the gmsh region is cell centred - so set this empty location region as a gmsh region
+    if (empty($region[$n]{'location'})) {
+      if ($region[$n]{'type'} ne 'static') { error_stop("dynamic user $region[$n]{type} region $region[$n]{name} has no location defined"); }
+      $region[$n]{'type'} = 'gmsh';
+    }
   }
 
 #-------------
@@ -1317,8 +1323,8 @@ sub organise_regions {
   push(@region,{ name => '<separationcentre(\d*)>', type => 'internal', centring => 'cell' });
 
 #-------------
-# run through regions finding any other regions (that must be brought in via gmsh)
-# NB: the region name here was previously run through examine_name
+# run through variables finding any other regions that have not been previously specified and hence must be brought in via gmsh
+# NB: the region name here was previously run through examine_name when the region was specified within the variable definition line
 
   foreach $type (@user_types,"someloop") {
     foreach $mvar ( 1 .. $m{$type} ) {
@@ -1349,7 +1355,7 @@ sub organise_regions {
   }
 
 #-------------
-# run through user regions adding any part_of regions that have been specifically specified
+# run through user regions adding any unrecognised part_of regions that have been specifically specified to the list of regions
 # NB: part_of names have also been previously run through examine_name
 
   foreach $n ( 0 .. $#region ) {
@@ -1395,8 +1401,8 @@ sub organise_regions {
   foreach $n ( 0 .. $#region ) {
     $type = $region[$n]{'type'};
     if (empty($region[$n]{"location"})) { $region[$n]{"location"} = "\U$type"; } # user regions have already been checked
-    if (empty($region[$n]{"user"})) { $region[$n]{"user"} = 0; }
-    if (empty($region[$n]{"dynamic"})) { $region[$n]{"dynamic"} = 0; }
+    if (empty($region[$n]{"user"})) { $region[$n]{"user"} = 0; } # already set for user regions
+    if (empty($region[$n]{"dynamic"})) { $region[$n]{"dynamic"} = 0; } # already set for user regions
     if (empty($region[$n]{"initial_location"}) ) {
       if ($type eq "transient" || $type eq "newtient") {
         $region[$n]{"initial_location"} = $region[$n]{"location"};
@@ -1406,7 +1412,7 @@ sub organise_regions {
         $region[$n]{"initial_location"} = "";
       }
     }
-    if ($type eq 'internal') { $region[$n]{"fortran"} = 0; } else { $nfortran++; $region[$n]{"fortran"} = $nfortran; }
+    if ($type eq 'internal') { $region[$n]{"fortran"} = 0; } else { $nfortran++; $region[$n]{"fortran"} = $nfortran; } # only internal regions don't have a corresponding region in the fortran code
 # check that only user region names have relative step indicies
     if ($type eq 'gmsh' && ( examine_name($region[$n]{"name"},'regionname') ne $region[$n]{"name"} ||
       examine_name($region[$n]{"name"},'rindex') != 0 )) { error_stop("GMSH region names cannot have any r indicies specified: name = $region[$n]{name}"); }
@@ -1446,8 +1452,10 @@ sub organise_regions {
       print "INFO: found parent region $region[$nlast]{name} for dynamic region $region[$n]{name}\n";
       print DEBUG "INFO: found parent region $region[$nlast]{name} for dynamic region $region[$n]{name}\n";
       $region[$n]{"parent"} = $region[$nlast]{"name"};
+      $region[$n]{"parent_fortran"} = $region[$nlast]{"fortran"};
     } else {
       $region[$n]{"parent"} = '';
+      $region[$n]{"parent_fortran"} = 0;
     }
   }
 
@@ -1471,8 +1479,8 @@ if ($nfortran > 0) {
         "region($m)%location%description = \"$region[$n]{location}\"\n".
         "region($m)%initial_location%active = ".fortran_logical_string($region[$n]{"initial_location"})."\n".
         "region($m)%initial_location%description = \"$region[$n]{initial_location}\"\n".
-        "region($m)%part_of = \"$region[$n]{part_of}\"\n".
-        "region($m)%parent = \"$region[$n]{parent}\"\n";
+#       "region($m)%part_of = $region[$region[$n]{part_of}]{fortran}\n".
+        "region($m)%parent = $region[$n]{parent_fortran}\n";
     }
   }
 }

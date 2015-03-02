@@ -59,7 +59,6 @@ type node_type
   double precision :: dx_kernel ! characteristic dimension of mesh around this node to be used in kernel scaling - approximately equal to the equivalent radii of surrounding cells (not diameter)
   integer, dimension(:), allocatable :: jface ! array storing j indicies of surrounding faces (directly connected, not via glue)
   integer, dimension(:), allocatable :: icell ! array storing i indicies of surrounding cells (both directly connected and via glue)
-  integer, dimension(:), allocatable :: region_list ! list of regions that the node is a member of
   integer, dimension(:), allocatable :: glue_knode ! array storing k indicies of any coincident nodes (due to faces being glued together) - unallocated if no faces are glueds to this one
   logical :: glue_present ! signifies that some faces that are attached to this node are glued
   logical :: reflect_present ! signifies that some faces within the icells are not only glued, but also includes reflections (in practice means that reflect_multipliers should be allocated and have non-unity values)
@@ -80,7 +79,6 @@ type face_type
   double precision, dimension(totaldimensions,totaldimensions) :: norm ! orthogonal orientation vectors for face: first norm(:,1) points normal to face in direction from cell icell(1) -> icell(2), second norm(:,2) points from node(1)->node(2) on face (2d and 3d) (first tangent) and third norm(:,3) is normal to both (second tangent in 3d)
   integer, dimension(:), allocatable :: icell ! array storing i indicies of the 2 adjacent cells
   integer, dimension(:), allocatable :: knode ! array storing k indicies of surrounding nodes
-  integer, dimension(:), allocatable :: region_list ! list of regions that the face is a member of
   integer :: dimensions ! number of dimensions that cell is (0, 1 or 2)
   integer :: gtype ! gmsh element type for element geometry
   type(kernel_type), dimension(0:6) :: kernel ! kernel(m) = kernel for the average (m=0) or derivative in the m'th coordinate direction - m>=4 is for normals to the face for norm(:,m-3)
@@ -104,7 +102,6 @@ type cell_type
   integer, dimension(:), allocatable :: knode ! array storing k indicies of surrounding nodes
   integer, dimension(:), allocatable :: jface ! array storing j indicies of surrounding faces
   integer, dimension(:), allocatable :: icell ! array storing i indicies of surrounding cells
-  integer, dimension(:), allocatable :: region_list ! list of regions that the cell is a member of
   integer :: dimensions ! number of dimensions that cell is (1, 2 or 3)
   integer :: gtype ! gmsh element type for element geometry
   type(kernel_type), dimension(0:4) :: kernel ! kernel(m) = kernel for the average from faces (m=0) or derivative in the m'th coordinate direction, or average from nodes (m=4)
@@ -147,13 +144,13 @@ end type region_location_type
 ! type for regions
 type region_type
   character(len=1000) :: name ! name of the region
-  character(len=100) :: type ! region type: static, constant, transient, newtient, derived, equation, output, condition
+  character(len=100) :: type ! region type: gmsh, static, constant, transient, newtient, derived, equation, output, condition
   character(len=4) :: centring ! whether cell or face centred
+  integer :: dimensions = -1 ! maximum dimensions of the elements within the region (-1 means unset)
   type(region_location_type) :: location ! location of region
   type(region_location_type) :: initial_location ! initial_location of region if a dynamic transient or newtient region
-  character(len=1000) :: part_of ! TODO
-  character(len=1000) :: parent ! name of the region that this region is solely contained within - optional
-  integer :: dimensions ! maximum dimensions of the elements within the region
+! integer :: part_of ! TODO
+  integer :: parent ! fortran region index of the region that this region is solely contained within, specified for dynamic (ie, non-static and non-gmsh) regions only
   integer, dimension(:), allocatable :: ijk ! array of cell (i), face (j) or node (k) indicies that are within this region - dimension of this is number of elements in region - for dynamic regions size of ijk is determined by parent static region, with some indicies being zero
   integer, dimension(:), allocatable :: ns ! array that specifies data number from i, j or k index - dimension of this is either itotal, jtotal or ktotal - for all regions an ns(ijk) of zero indicates that the particular ijk element is not in the region
 end type region_type
@@ -541,7 +538,7 @@ else
     write(*,'(a)') 'INFO: updating region = '//trim(name)//' centring to '//trim(centring)
     region(region_number_from_name)%centring = centring
   end if
-  if (present(type).and.trim(region(region_number_from_name)%location) == '') then
+  if (present(type).and.trim(region(region_number_from_name)%type) == '') then
     write(*,'(a)') 'INFO: updating region = '//trim(name)//' type to '//trim(type)
     region(region_number_from_name)%type = type
   end if
@@ -1388,13 +1385,12 @@ function print_node(k)
 
 integer :: k ! knode index
 character(len=1000) :: print_node
-integer :: n, error, njface, nicell, nglue_knode, nregions, nr, nreflect_multiplier
+integer :: n, error, njface, nicell, nglue_knode, nr, nreflect_multiplier
 character(len=1000) :: formatline
 
 njface = allocatable_integer_size(node(k)%jface)
 nicell = allocatable_integer_size(node(k)%icell)
 nglue_knode = allocatable_integer_size(node(k)%glue_knode)
-nregions = allocatable_integer_size(node(k)%region_list)
 nr = 0
 if (allocated(node(k)%r)) nr = ubound(node(k)%r,2)
 nreflect_multiplier = 0
@@ -1407,8 +1403,7 @@ formatline = '(a,'//trim(indexformat)//',a,i1,a'//repeat(',a,g12.5',totaldimensi
   ',a,l1'// &
   ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
   ',a,l1'// &
-  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)// &
-  ',a'//repeat(',a,i3',nregions)//')'
+  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
 
 write(print_node,fmt=formatline,iostat=error) 'k = ',k,'k: type = ',node(k)%type, &
   ': x =',(' ',node(k)%x(n),n=1,totaldimensions), &
@@ -1418,8 +1413,7 @@ write(print_node,fmt=formatline,iostat=error) 'k = ',k,'k: type = ',node(k)%type
   ': glue_present = ',node(k)%glue_present, &
   ': r =',(' [',node(k)%r(:,n),']',n=1,nr), &
   ': reflect_present = ',node(k)%reflect_present, &
-  ': reflect_multiplier =',(' [',node(k)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier), &
-  ': region_list =',(' ',node(k)%region_list(n),n=1,nregions)
+  ': reflect_multiplier =',(' [',node(k)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
 
 if (error /= 0) print_node = 'ERROR: problem in print_node: formatline = '//trim(formatline)
 
@@ -1431,12 +1425,11 @@ function print_face(j)
 
 integer :: j ! jface index
 character(len=10000) :: print_face, rup, rdown
-integer :: n, error, nknode, nicell, nregions, l, nr, nreflect_multiplier
+integer :: n, error, nknode, nicell, l, nr, nreflect_multiplier
 character(len=10000) :: formatline
 
 nknode = allocatable_integer_size(face(j)%knode)
 nicell = allocatable_integer_size(face(j)%icell)
-nregions = allocatable_integer_size(face(j)%region_list)
 nr = 0
 rdown = ' not allocated'
 rup = ' not allocated'
@@ -1458,8 +1451,7 @@ formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//trim(indexformat)//
   ',a,l1'// &
   ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
   ',a,l1'// &
-  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)// &
-  ',a'//repeat(',a,i3',nregions)//')'
+  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
 
 write(print_face,fmt=formatline,iostat=error) 'j = ',j,'j: type = ',face(j)%type, &
   ': dimensions = ',face(j)%dimensions, &
@@ -1477,8 +1469,7 @@ write(print_face,fmt=formatline,iostat=error) 'j = ',j,'j: type = ',face(j)%type
   ': glue_present = ',face(j)%glue_present, &
   ': r =',(' [',face(j)%r(:,n),']',n=1,nr), &
   ': reflect_present = ',face(j)%reflect_present, &
-  ': reflect_multiplier =',(' [',face(j)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier), &
-  ': region_list =',(' ',face(j)%region_list(n),n=1,nregions)
+  ': reflect_multiplier =',(' [',face(j)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
 
 if (error /= 0) print_face = 'ERROR: problem in print_face: formatline = '//trim(formatline)
 
@@ -1490,13 +1481,12 @@ function print_cell(i)
 
 integer :: i ! icell index
 character(len=10000) :: print_cell
-integer :: n, njface, error, nknode, nicell, nregions, nr, nreflect_multiplier
+integer :: n, njface, error, nknode, nicell, nr, nreflect_multiplier
 character(len=10000) :: formatline
 
 nknode = allocatable_integer_size(cell(i)%knode)
 njface = allocatable_integer_size(cell(i)%jface)
 nicell = allocatable_integer_size(cell(i)%icell)
-nregions = allocatable_integer_size(cell(i)%region_list)
 nr = 0
 if (allocated(cell(i)%r)) nr = ubound(cell(i)%r,2)
 nreflect_multiplier = 0
@@ -1510,8 +1500,7 @@ formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a'//repeat(',a,g12.5',to
   ',a,l1'// &
   ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
   ',a,l1'// &
-  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)// &
-  ',a'//repeat(',a,i3',nregions)//')'
+  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
 
 write(print_cell,fmt=formatline,iostat=error) 'i = ',i,'i: type = ',cell(i)%type, &
   ': dimensions = ',cell(i)%dimensions, &
@@ -1524,8 +1513,7 @@ write(print_cell,fmt=formatline,iostat=error) 'i = ',i,'i: type = ',cell(i)%type
   ': glue_present = ',cell(i)%glue_present, &
   ': r =',(' [',cell(i)%r(:,n),']',n=1,nr), &
   ': reflect_present = ',cell(i)%reflect_present, &
-  ': reflect_multiplier =',(' [',cell(i)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier), &
-  ': region_list =',(' ',cell(i)%region_list(n),n=1,nregions)
+  ': reflect_multiplier =',(' [',cell(i)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
 
 if (error /= 0) print_cell = 'ERROR: problem in print_cell: formatline = '//trim(formatline)
 
@@ -1871,8 +1859,6 @@ integer :: l
 call resize_integer_array(keep_data=.false.,array=face_to_set%icell,new_size=allocatable_size(new_value%icell))
 ! knode
 call resize_integer_array(keep_data=.false.,array=face_to_set%knode,new_size=allocatable_size(new_value%knode))
-! region_list
-call resize_integer_array(keep_data=.false.,array=face_to_set%region_list,new_size=allocatable_size(new_value%region_list))
 
 ! copy kernels, including shape
 do l = lbound(new_value%kernel,1), ubound(new_value%kernel,1)
@@ -1900,8 +1886,6 @@ call resize_integer_array(keep_data=.false.,array=cell_to_set%knode,new_size=all
 call resize_integer_array(keep_data=.false.,array=cell_to_set%jface,new_size=allocatable_size(new_value%jface))
 ! icell
 call resize_integer_array(keep_data=.false.,array=cell_to_set%icell,new_size=allocatable_size(new_value%icell))
-! region_list
-call resize_integer_array(keep_data=.false.,array=cell_to_set%region_list,new_size=allocatable_size(new_value%region_list))
 
 ! copy kernels, including shape
 do l = lbound(new_value%kernel,1), ubound(new_value%kernel,1)
@@ -2924,7 +2908,6 @@ default_face%norm = 0.d0
 if (allocated(default_face%icell)) deallocate(default_face%icell)
 allocate(default_face%icell(2))
 if (allocated(default_face%knode)) deallocate(default_face%knode)
-if (allocated(default_face%region_list)) deallocate(default_face%region_list)
 default_face%dimensions = 0
 default_face%gtype = 0
 !do n = 0, 2*totaldimensions
@@ -2960,7 +2943,6 @@ default_cell%dx_min = 0.d0
 if (allocated(default_cell%knode)) deallocate(default_cell%knode)
 if (allocated(default_cell%jface)) deallocate(default_cell%jface)
 if (allocated(default_cell%icell)) deallocate(default_cell%icell)
-if (allocated(default_cell%region_list)) deallocate(default_cell%region_list)
 default_cell%dimensions = 0
 default_cell%gtype = 0
 !do n = 0, totaldimensions
