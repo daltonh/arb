@@ -1263,19 +1263,45 @@ sub organise_regions {
   $Data::Dumper::Indent = 0;
   my ($n, $n2, $type, $mvar);
 
+# ref: regions
+# what this all means:
+
+# type       dynamic  user  fortran  location  initial_location  description
+#---------------------------------------------------------------------------------
+# constant   X        X     X        X                           updated as the constant variables are updated (in the order of definition)
+# transient  X        X     X        X         X                 updated as the transient and initial transient variables are updated (in the order of definition)
+# newtient   X        X     X        X         X                 updated as the newtient and initial newtient variables are updated (in the order of definition)
+# derived    X        X     X        X                           updated as the derived variables are updated (in the order of definition)
+# equation   X        X     X        X                           updated as the equation variables are updated (in the order of definition)
+# output     X        X     X        X                           updated as the output variables are updated (in the order of definition)
+# condition  X        X     X        X                           updated as the condition variables are updated (in the order of definition)
+# static              X     X        X                           updated at the start of a simulation, only once, using location information
+# gmsh                      X        GMSH                        read in from a gmsh file, although centring and name can be declared within arb file (using no location string or 'GMSH')
+# system                    X        SYSTEM                      regions defined by the system, and available to users (such as <all cells>)
+# internal                           INTERNAL                    regions that are special-cased within the fortran (such as <adjacentcellicells>)
+#---------------------------------------------------------------------------------
+# dynamic means that this is actually a region mask, which must have a parent region, and is evaluated in the chain of the same type of variable updates
+# user means that the location string will be interpreted to find the elements within the region
+# fortran means that this region will be specifically defined within the fortran program
+# location is the string that will be interpreted to find relevant region elements for user variables
+# initial_location X is the string that will be interpreted to find relevant region elements, on the initial update of transients and newtients
+#---------------------------------------------------------------------------------
+
 #-------------
-# USER regions are those that are specifically defined in the arb input file
+# user regions are those that are specifically defined in the arb input file, unless this is for gmsh centring specification
 # only USER regions can be dynamic, although not all USER regions are dynamic
 # set some user-specific flags - user and dynamic - while checking type and centring
   foreach $n ( 0 .. $#region ) {
-    $region[$n]{"user"} = 1;
     if (empty($region[$n]{'type'}) || $region[$n]{'type'} eq 'static') { $region[$n]{"dynamic"} = 0; $region[$n]{'type'} = 'static' } else { $region[$n]{"dynamic"} = 1; }
-    if (empty($region[$n]{'centring'})) { error_stop("user $region[$n]{type} region $region[$n]{name} has no centring defined"); }
 # an empty CELL_REGION <a region> statement is allowed as a hint that the gmsh region is cell centred - so set this empty location region as a gmsh region
     if (empty($region[$n]{'location'}) || $region[$n]{'location'} =~ /^\s*GMSH/i) {
       if ($region[$n]{'type'} ne 'static') { error_stop("dynamic user $region[$n]{type} region $region[$n]{name} has no location defined"); }
       $region[$n]{'type'} = 'gmsh';
+    } else {
+      $region[$n]{"user"} = 1;
     }
+    if (empty($region[$n]{'centring'})) { error_stop("$region[$n]{type} region $region[$n]{name} has no centring defined: all regions (even gmsh) ".
+      "entered in the arb file must have a centring defined"); }
   }
 
 #-------------
@@ -1331,13 +1357,7 @@ sub organise_regions {
       if (empty($variable{$type}[$mvar]{"region"})) { next; }
       if ($variable{$type}[$mvar]{"centring"} eq 'none') { next; }
       print DEBUG "INFO: search for $variable{$type}[$mvar]{centring} region $variable{$type}[$mvar]{region} on which variable $variable{$type}[$mvar]{name} is defined:\n";
-      my $nfound = -1;
-      foreach $n ( 0 .. $#region ) {
-        if (match_region($n,$variable{$type}[$mvar]{"region"})) {
-          $nfound = $n;
-          last;
-        }
-      }
+      my $nfound = find_region($variable{$type}[$mvar]{"region"});
       if ($nfound >= 0) {
         print DEBUG "INFO: a previously defined region for variable $type $variable{$type}[$mvar]{name} has been found: $region[$nfound]{name}\n";
         if (nonempty($region[$nfound]{"centring"})) {
@@ -1357,16 +1377,12 @@ sub organise_regions {
 #-------------
 # run through user regions adding any unrecognised part_of regions that have been specifically specified to the list of regions
 # NB: part_of names have also been previously run through examine_name
+# also finalise user variable
 
   foreach $n ( 0 .. $#region ) {
-    if (nonempty($region[$n]{"part_of"})) {
-      my $nfound = -1;
-      foreach $n2 ( 0 .. $#region ) {
-        if (match_region($n2,$region[$n]{"part_of"})) {
-          $nfound = $n2;
-          last;
-        }
-      }
+    if (empty($region[$n]{"user"})) { $region[$n]{"user"} = 0; }
+    if (nonempty($region[$n]{"part_of"}) && $region[$n]{"user"}) {
+      my $nfound = find_region($region[$n]{"part_of"});
       if ($nfound >= 0) {
         print DEBUG "INFO: a previously defined part_of region defined for region $region[$n]{name} has been found: $region[$nfound]{name}\n";
         if (nonempty($region[$nfound]{"centring"})) {
@@ -1376,12 +1392,50 @@ sub organise_regions {
           }
         }
       } else {
-        push(@region,{ name => "$region[$n]{part_of}", type => 'gmsh', centring => "$region[$n]{centring}" });
+        push(@region,{ name => "$region[$n]{part_of}", type => 'gmsh', user => '0', centring => "$region[$n]{centring}" });
         print DEBUG "INFO: no previously defined part_of region was found for region $region[$n]{name}: pushing new GMSH region $region[$n]{part_of}\n";
       }
+    } elsif (nonempty($region[$n]{"part_of"})) {
+      error_stop("part_of region ($region[$n]{part_of}) cannot be used for region type $region[$n]{type} for region $region[$n]{name}");
     }
   }
       
+#-------------
+# now process the location statements, at this stage setting keywords and looking for any other regions
+
+  foreach $n ( 0 .. $#region ) {
+    if (!($region[$n]{"user"})) { next; } # this will ignore any regions that don't have either a valid location or initial location
+# cycle through all location strings
+    for my $match_region (location_description_scan($region[$n]{"location"},"region_names")) {
+      my $nfound = find_region($match_region);
+      if ($nfound >= 0) {
+        print DEBUG "INFO: a previously defined location region for region $region[$n]{name} has been found: $region[$nfound]{name}\n";
+        if (nonempty($region[$nfound]{"centring"})) {
+          if ($region[$nfound]{"centring"} ne $region[$n]{"centring"}) {
+            error_stop("a region's location region centring and centring do not match: region = $region[$n]{name}: location region = $region[$nfound]{name}: ".
+              "region centring = $region[$n]{centring}: location region centring = $region[$nfound]{centring}");
+          }
+        }
+      } else {
+        push(@region,{ name => $match_region, type => 'gmsh', user => '0', centring => "$region[$n]{centring}" });
+        print DEBUG "INFO: no previously defined location region was found for region $region[$n]{name}: pushing new GMSH region $match_region\n";
+        $nfound = $#region;
+      }
+      push(@{$region[$n]{"location_regions"}},$nfound); # add this region number to list of location_regions
+    }
+# now set initial_location if required
+    $type = $region[$n]{'type'};
+    if (empty($region[$n]{"initial_location"}) ) {
+      if ($type eq "transient" || $type eq "newtient") {
+        $region[$n]{"initial_location"} = $region[$n]{"location"};
+        print "INFO: initial_location of $type region $region[$n]{name} not set - defaulting to location $region[$n]{location}\n";
+        print DEBUG "INFO: initial_location of $type region $region[$n]{name} not set - defaulting to location $region[$n]{location}\n";
+      } else {
+        $region[$n]{"initial_location"} = "";
+      }
+    }
+
+  }
 
 #-------------
 # TODO
@@ -1403,15 +1457,6 @@ sub organise_regions {
     if (empty($region[$n]{"location"})) { $region[$n]{"location"} = "\U$type"; } # user regions have already been checked
     if (empty($region[$n]{"user"})) { $region[$n]{"user"} = 0; } # already set for user regions
     if (empty($region[$n]{"dynamic"})) { $region[$n]{"dynamic"} = 0; } # already set for user regions
-    if (empty($region[$n]{"initial_location"}) ) {
-      if ($type eq "transient" || $type eq "newtient") {
-        $region[$n]{"initial_location"} = $region[$n]{"location"};
-        print "INFO: initial_location of $type region $region[$n]{name} not set - defaulting to location $region[$n]{location}\n";
-        print DEBUG "INFO: initial_location of $type region $region[$n]{name} not set - defaulting to location $region[$n]{location}\n";
-      } else {
-        $region[$n]{"initial_location"} = "";
-      }
-    }
     if ($type eq 'internal') { $region[$n]{"fortran"} = 0; } else { $nfortran++; $region[$n]{"fortran"} = $nfortran; } # only internal regions don't have a corresponding region in the fortran code
 # check that only user region names have relative step indicies
     if ($type eq 'gmsh' && ( examine_name($region[$n]{"name"},'regionname') ne $region[$n]{"name"} ||
@@ -1498,6 +1543,123 @@ if ($nfortran > 0) {
 
 }
 
+#-------------------------------------------------------------------------------
+# scans a location string and finds certain things
+# on input:
+# $_[0] = location description string
+# $_[1] = action = keyword|region_names|constants|variables
+# $_[2] = region_number, used for error messages
+
+sub location_description_scan {
+
+  use strict;
+  my $location=$_[0];
+  my $action=$_[1];
+  my $n=$_[2];
+  my ($keyword,$constant);
+  my @region_names=(); # list of region names referred to in the location
+  my @reals=(); # list of any reals for the location, as double precision
+  my @integers=(); # list of any integers for the location, as double precision
+  my @variables=(); # list of any variables used in the location
+  my $line=$location; # line is actually split up during the deconstruction
+
+  print DEBUG "INFO: within location_description_scan with location = $location: action = $action: region number = $n: region name = $region[$n]{name}\n";
+  if ($line =~ /\s*(ASSOCIATED WITH|BOUNDARY OF|SURROUNDS|DOMAIN OF|UNION|INTERSECTION|COMPOUND|COMMON|AT|WITHIN BOX|GMSH|VARIABLE|ALL|NONE|SEPARATION)(\s+|$)/i) {
+    $keyword = "\L$1";
+    $line = $';
+    print DEBUG "keyword = $keyword\n";
+  } else {
+    error_stop("keyword not recognised from the following location string used with region $region[$n]{name}: location = $location");
+  }
+
+# ref: location ref: region location
+
+# move through each type of location keyword
+  if ($action eq "keyword") {
+    return ($keyword);
+  } else {
+# all other actions
+    if ($keyword eq "separation") {
+      if ($line =~ /^\s*(\d+)\s*/) { # first is an integer specifying how many separation levels we are to increase the separation by
+        push(@integers,$1);
+      } else {
+        error_stop("cannot find separation amount the $keyword location for region $region[$n]{name} cannot be recognised: location = $location");
+      }
+    } elsif ($keyword eq "variable") {
+# just a single variable name required
+      if ($line =~ /^\s*(<(.+?)>)(\s*|$)/) {
+        push(@variables,$1);
+        $line = $';
+      } else {
+        error_stop("variable in the $keyword location for region $region[$n]{name} cannot be recognised: location = $location");
+      }
+    } elsif ($keyword =~ /^(associated with|boundary of|domain of|surrounds)$/) {
+# single region required, no delimiters used
+      if ($line =~ /^(<(.+?)>)(\s*|$)/) {
+        push(@region_names,$1);
+        $line = $';
+      }
+    } elsif ($keyword =~ /^(union|compound|intersection|common)$/) {
+# multiple regions required, which may be delimited by +|,|space, and additionally for compound|union, -
+      while ($line =~ /^(\+|-|,|)(<(.+?)>)(\s*|$)/) {
+        push(@region_names,$2);
+        $line=$';
+        if ($1 eq "-") { $constant = -1; } else { $constant = 1; }
+        if ($keyword =~ /^(union|compound)$/) {
+          push(@integers,$constant);
+        } elsif ( $constant eq -1 ) {
+          error_stop("regions in the $keyword location for region $region[$n]{name} must be joined with commas, spaces or pluses, not minuses: location = $location");
+        }
+      }
+    } elsif ($keyword =~ /^(at|within box)$/) {
+# pull location boundaries out from these regions
+      while ($line =~ /^\s*([\+\-\d\.][\+\-\ded\.]*)(\s+|$)/i) { # numbers must start with either +-. or a digit, so options cannot start with any of these
+        $line = $'; $constant = "\L$1";
+        if ($constant !~ /\d/) { error_stop("constants in the $keyword location for region $region[$n]{name} must be valid numbers: location = $location"); }
+        $constant =~ s/e/d/;
+        if ($constant !~ /d/) { $constant = $constant."d0"; }
+        if ($constant !~ /\./) { $constant =~ s/d/.d/; }
+        push(@reals,$constant);
+# TODO: check on number of reals?
+    } else {
+      $line=""; # remove everything that isn't from this keyword to signal no error
+    }
+
+    error_stop("trialing material $line found in the $keyword location for region $region[$n]{name}: location = $location");
+
+    if ($action eq "region_names") {
+      return (@region_names);
+    } elsif ($action eq "integers") {
+      return (@integers);
+    } elsif ($action eq "reals") {
+      return (@reals);
+    } else {
+      error_stop("unknown $action for region $region[$n]{name}: location = $location");
+    }
+  }
+
+}
+#-------------------------------------------------------------------------------
+# sees if a given region name ($_[0]) matches that of another region,
+#  if so returns region number
+#  if not returns -1
+
+sub find_region {
+
+  use strict;
+  my $match=-1;
+  my $region_to_find=$_[0];
+
+  foreach my $n ( 0 .. $#region ) {
+    if (match_region($n,$region_to_find)) {
+      $match = $n;
+      last;
+    }
+  }
+  
+  return ($match);
+
+}
 #-------------------------------------------------------------------------------
 # sees if a given region name ($_[1]) matches that of region[$_[0]], taking care of the name being a possible regex
 

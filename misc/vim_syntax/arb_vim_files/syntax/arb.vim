@@ -29,7 +29,7 @@ syn keyword arbStatement DEFAULT_OPTIONS OVERRIDE_OPTIONS END MSH_FILE NEWTRESTO
 syn keyword arbStatement MSH_FILE nextgroup=arbQuotedString skipwhite
 syn keyword arbDeprecated DIMENSIONS READ_GMSH LINEAR_SOLVER
 syn keyword arbOption default hslma28 intelpardiso intelpardisoooc suitesparseumf
-syn match arbLocationString "\<\(ASSOCIATED WITH\|AT\|BOUNDARY OF\|UNION\|INTERSECTION\|COMPOUND\|COMMON\|DOMAIN OF\|GMSH\|WITHIN BOX\|PART OF\)\>"
+syn match arbLocationString "\<\(ASSOCIATED WITH\|AT\|BOUNDARY OF\|SURROUNDS\|UNION\|INTERSECTION\|COMPOUND\|COMMON\|DOMAIN OF\|GMSH\|WITHIN BOX\|PART OF\)\>"
 
 " equations.in (some syntax common to constants.in)
 syn match arbStatement "\<\(CELL_\|FACE_\|NODE_\|NONE_\)\=\(CONDITION\|CONSTANT\|DERIVED\|EQUATION\|LOCAL\|OUTPUT\|REGION\(_CONSTANT\|_LIST\)\=\|TRANSIENT\|UNKNOWN\)\>"
