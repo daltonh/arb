@@ -86,7 +86,7 @@ y1_alpha = 0.7
 y2_alpha = 0.7
 
 
-# font size for lege2e031096434d596ee63b17308aca892065edb44bnd
+# font size for legend
 legend_font_size=11
 
 # string for storing commit id of present dataset
