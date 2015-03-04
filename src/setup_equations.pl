@@ -1298,6 +1298,7 @@ sub organise_regions {
     if (empty($region[$n]{'location'}{'description'}) || $region[$n]{'location'}{'description'} =~ /^\s*GMSH/i) {
       if ($region[$n]{'type'} ne 'static') { error_stop("dynamic user $region[$n]{type} region $region[$n]{name} has no location defined"); }
       $region[$n]{'type'} = 'gmsh';
+      $region[$n]{'location'}{"description"} = "GMSH from arb file";
     } else {
       $region[$n]{"user"} = 1;
     }
@@ -1393,6 +1394,7 @@ sub organise_regions {
         }
       } else {
         push(@region,{ name => "$variable{$type}[$mvar]{region}", type => 'gmsh', centring => "$variable{$type}[$mvar]{centring}" });
+        $region[$#region]{"location"}{"description"} = "GMSH from variable $variable{$type}[$mvar]{name}";
         print DEBUG "INFO: no previously defined region for variable $type $variable{$type}[$mvar]{name} was found: pushing new GMSH region $variable{$type}[$mvar]{region}\n";
       }
     }
@@ -1422,6 +1424,7 @@ sub organise_regions {
         }
       } else {
         push(@region,{ name => "$region[$n]{part_of}", type => 'gmsh', user => '0', centring => "$region[$n]{centring}" });
+        $region[$#region]{"location"}{"description"} = "GMSH from part_of region from region $region[$n]{name}";
         print DEBUG "INFO: no previously defined part_of region was found for region $region[$n]{name}: pushing new GMSH region $region[$n]{part_of}\n";
       }
     } elsif (nonempty($region[$n]{"part_of"})) {
@@ -1470,22 +1473,9 @@ sub organise_regions {
       @{$region[$n]{$key}{"variablenames"}} = location_description_scan($region[$n]{$key}{"description"},"variablenames",$n);
       @{$region[$n]{$key}{"variablecentrings"}} = location_description_scan($region[$n]{$key}{"description"},"variablecentrings",$n);
 
-# look at floats for at and within location types
-      if ($region[$n]{$key}{"type"} eq "at") {
-        if ($#{$region[$n]{$key}{"floats"}} > 2) {
-          error_stop("more than 3 floats are specified in an "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}");
-        } elsif ($#{$region[$n]{$key}{"floats"}} < 2) {
-          print "WARNING: less than 3 floats are specified in an "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}: using zero for the uninitialised ones\n";
-          while ($#{$region[$n]{$key}{"floats"}} < 2) { push(@{$region[$n]{$key}{"floats"}},"0.d0"); }
-        }
-      }
-      if ($region[$n]{$key}{"type"} eq "within box") {
-        if ($#{$region[$n]{$key}{"floats"}} > 5) {
-          error_stop("more than 6 floats are specified in a "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}");
-        } elsif ($#{$region[$n]{$key}{"floats"}} < 5) {
-          print "WARNING: less than 6 floats are specified in a "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}: using zero for the uninitialised ones\n";
-          while ($#{$region[$n]{$key}{"floats"}} < 5) { push(@{$region[$n]{$key}{"floats"}},"0.d0"); }
-        }
+# check that location type is consistent with dynamic
+      if (!($region[$n]{"dynamic"}) && ($region[$n]{$key}{"type"} eq "variable" || $region[$n]{$key}{"type"} eq "separation")) {
+        error_stop("region location type $region[$n]{$key}{type} used in $key is inconsistent with the static region $region[$n]{name}")
       }
 
 # now look at the region names, checking that these regions are known (adding as gmsh if not) and checking on centring
@@ -1509,6 +1499,7 @@ sub organise_regions {
             }
           } else {
             push(@region,{ name => "$match_name", type => 'gmsh', user => '0', centring => $match_centring });
+            $region[$#region]{"location"}{"description"} = "GMSH from $key description for region $region[$n]{name}";
             print DEBUG "INFO: no previously defined part_of region was found for region $region[$n]{name}: pushing new GMSH region $region[$n]{part_of}\n";
             $nfound = $#region;
             $nfortran++; $region[$nfound]{"fortran"} = $nfortran; # now also have to deal with fortran index
@@ -1536,6 +1527,26 @@ sub organise_regions {
           push(@{$region[$n]{$key}{"variables"}},$variable{$type}[$mvar]{"fortran_number"}); # add this fortran number to list of location_variables
         }
       }
+
+# now check some requirements of each location type
+# look at floats for at and within location types
+      if ($region[$n]{$key}{"type"} eq "at") {
+        if ($#{$region[$n]{$key}{"floats"}} > 2) {
+          error_stop("more than 3 floats are specified in an "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}");
+        } elsif ($#{$region[$n]{$key}{"floats"}} < 2) {
+          print "WARNING: less than 3 floats are specified in an "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}: using zero for the uninitialised ones\n";
+          while ($#{$region[$n]{$key}{"floats"}} < 2) { push(@{$region[$n]{$key}{"floats"}},"0.d0"); }
+        }
+      }
+      if ($region[$n]{$key}{"type"} eq "within box") {
+        if ($#{$region[$n]{$key}{"floats"}} > 5) {
+          error_stop("more than 6 floats are specified in a "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}");
+        } elsif ($#{$region[$n]{$key}{"floats"}} < 5) {
+          print "WARNING: less than 6 floats are specified in a "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}: using zero for the uninitialised ones\n";
+          while ($#{$region[$n]{$key}{"floats"}} < 5) { push(@{$region[$n]{$key}{"floats"}},"0.d0"); }
+        }
+      }
+
     }
 
   }
@@ -1567,6 +1578,7 @@ sub organise_regions {
       examine_name($region[$n]{"name"},'rindex') != 0 )) { error_stop("GMSH region names cannot have any r indicies specified: name = $region[$n]{name}"); }
     if (empty($region[$n]{'part_of'}) && $region[$n]{"user"}) {
 # part_of regions default to largest static region based on size if not specified
+# note, these system regions will come at the start so don't need when each is calculated
       if ($region[$n]{'centring'} eq 'cell') {
         $region[$n]{'part_of'} = '<all cells>';
       } elsif ($region[$n]{'centring'} eq 'face') {
@@ -1579,8 +1591,17 @@ sub organise_regions {
     if ($region[$n]{"user"}) {
       my $nfound = find_region($region[$n]{'part_of'});
       if ($nfound < 0) { error_stop("(INTERNAL ERROR): the PART_OF region $region[$n]{part_of} for region $region[$n]{name} is not a valid region"); }
-      if (!($region[$n]{"dynamic"}) && $region[$nfound]{"dynamic"}) {
-        error_stop("cannot use a dynamic region $region[$nfound]{name} as a PART_OF for a static region $region[$n]{name}");
+# check order and suitability of part_of region update for static regions
+      if (!($region[$n]{"dynamic"})) { 
+        if ($region[$nfound]{"dynamic"}) {
+          error_stop("cannot use a dynamic region $region[$nfound]{name} as a PART_OF for a static region $region[$n]{name}");
+        }
+        if ($region[$nfound]{"user"}) {
+# if we are here then the region and its part_of region are both static user regions - check order of evaluation
+          if ($nfound > $n) {
+            error_stop("the PART_OF region $region[$nfound]{name} for static region $region[$n]{name} is being evaluated after it: you need to reverse the order");
+          }
+        }
       }
       $region[$n]{"part_of_fortran"}=$region[$nfound]{"fortran"};
     }
@@ -1607,6 +1628,7 @@ sub organise_regions {
       $region[$n]{"parent_fortran"} = $region[$nlast]{"fortran"};
     } else {
 # for static regions parent=part_of
+# order dependencies have been checked already as part_ofs
       $region[$n]{"parent"} = $region[$n]{"part_of"};
       $region[$n]{"parent_fortran"} = $region[$n]{"part_of_fortran"};
     }

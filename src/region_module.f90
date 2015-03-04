@@ -63,7 +63,7 @@ if (debug) write(82,'(80(1h+)/a)') 'subroutine setup_regions'
 
 do m = 1, ubound(region,1)
 
-! allocate ns arrays for all regions
+! allocate ns arrays for all regions - these stay allocated and always have these sizes
 
   if (region(m)%centring == "cell") then
     allocate(region(m)%ns(itotal))
@@ -72,10 +72,21 @@ do m = 1, ubound(region,1)
   else if (region(m)%centring == "node") then
     allocate(region(m)%ns(ktotal))
   else
-    stop 'ERROR: a region has neither cell, face or node centring'
+    call error_stop('region '//trim(region(m)%name)//' has neither cell, face or node centring')
   end if
 
-  call update_region(m=m,initial=.false.)
+! check that for user regions part_of and parent centrings are consistent
+  if (.not.(region(m)%type == 'gmsh' .or. region(m)%type == 'system')) then
+    if (region(region(m)%part_of)%centring /= region(m)%centring) &
+      call error_stop("the "//trim(region(m)%centring)//" of region "//trim(region(m)%name)//" does not match the " &
+      //trim(region(region(m)%part_of)%centring)//" centring of its part_of region "//trim(region(region(m)%part_of)%name))
+    if (region(region(m)%parent)%centring /= region(m)%centring) &
+      call error_stop("the "//trim(region(m)%centring)//" of region "//trim(region(m)%name)//" does not match the " &
+      //trim(region(region(m)%parent)%centring)//" centring of its parent region "//trim(region(region(m)%parent)%name))
+  end if
+
+! and now perform the initial update of all of the user and system static regions, calculating and allocating ijk, and from that, ns
+  if (.not.(region(m)%dynamic)) call update_region(m=m,initial=.false.)
 
 end do
 
@@ -227,12 +238,12 @@ type(region_location_type) :: local_location ! set to either initial or normal l
 integer :: ierror, i, j, k, n, cut, nregion, ijkregion, nsregion, ns, nscompound, ii, jj, kk, ijk, l, ijktotal
 double precision :: tmp, tmpmax
 double precision, dimension(totaldimensions) :: x, xmin, xmax ! a single location
-character(len=1000) :: name, description, aregion, region_list
+character(len=1000) :: name, aregion, region_list
 character(len=100) :: type ! this the local_location type that we are dealing with
 character(len=4) :: centring
 character(len=1) :: rsign
 integer, dimension(:), allocatable :: nregion_list
-logical :: existing, in_common
+logical :: existing, in_common, compoundtype
 logical, dimension(:), allocatable :: elementisin
 logical :: debug_sparse = .true.
 logical, parameter :: debug = .true.
@@ -336,14 +347,9 @@ else if (trim(region(m)%type) /= 'gmsh') then
       " is trying to be updated but its location it isn't active")
   end if
 
-! TODO: do we really need to save this in the future?
-  description = local_location%description ! now work on this local version of the description
-
 ! TODO:
-! put local_location%type into description
-! search description for region list, region array (eg +1/-1 for compound) and variable list
-! NONE region
-! make all regions both static and dynamic
+! VARIABLE region
+! SEPARATION region
 
 ! deallocate any allocated regions, starting afresh each time the region is calculated
 ! will have to think about this more for separation regions etc
@@ -352,11 +358,20 @@ else if (trim(region(m)%type) /= 'gmsh') then
       " region operator is acting on region "//trim(region(m)%name)// &
       " that already contains elements: the previous element will be overwritten with the new"
 ! only deallocate specific region types
-    if (.not.(trim(local_location%type) == "at" .or. trim(local_location%type) == "all" .or. trim(local_location%type) == "none")) &
-      deallocate(region(m)%ijk)
+! NB: a none region will be deallocated here and hence be empty
+    if (.not.(trim(local_location%type) == "at")) deallocate(region(m)%ijk)
   end if
 
 ! think about sizing of ijk for dynamic elements - maybe allocate once based on parent size? - and then deal with zero ijk elements when used?
+
+! set ijktotal as it is used for most of these location types
+  if (region(m)%centring == 'cell') then
+    ijktotal = itotal
+  else if (region(m)%centring == 'face') then
+    ijktotal = jtotal
+  else
+    ijktotal = ktotal
+  end if
 
 !---------------------
 ! a user defined region from the arb input file that is a single point
@@ -367,11 +382,10 @@ else if (trim(region(m)%type) /= 'gmsh') then
     if (.not.(allocated(region(m)%ijk))) allocate(region(m)%ijk(1))
     region(m)%ijk(1) = 0
     x = local_location%floats ! the perl has ensured that this has exactly 3 elements
-    nregion = region(m)%part_of ! this is the part_of region which is always defined now, and could be static or dynamic
 
     tmpmax = 1.d+20
-    do ns=1,allocatable_integer_size(region(nregion)%ijk)
-      ijk = region(nregion)%ijk(ns)
+    do ns=1,allocatable_integer_size(region(region(m)%part_of)%ijk)
+      ijk = region(region(m)%part_of)%ijk(ns)
       if (ijk == 0) cycle ! allow for zero elements in ijk
       if (region(m)%centring == "cell") then
         tmp = distance(x,cell(ijk)%x)
@@ -385,6 +399,8 @@ else if (trim(region(m)%type) /= 'gmsh') then
         tmpmax = tmp
       end if
     end do
+
+    if (region(m)%ijk(1) == 0) deallocate(region(m)%ijk) ! now insist that region is not allocated if it is empty
 
 !---------------------
 ! a user defined region from the arb input file that is any elements within a box
@@ -410,10 +426,11 @@ else if (trim(region(m)%type) /= 'gmsh') then
       end if
     end do
 
-    nregion = region(m)%part_of ! this is the part_of region which is always defined now, and could be static or dynamic
+    allocate(elementisin(ijktotal)) 
+    elementisin = .false.
 
-    ijk_loop: do ns=1,allocatable_integer_size(region(nregion)%ijk)
-      ijk = region(nregion)%ijk(ns)
+    ijk_loop: do ns = 1, allocatable_integer_size(region(region(m)%part_of)%ijk) ! just set the elements within the part_of region to be true
+      ijk = region(region(m)%part_of)%ijk(ns)
       if (ijk == 0) cycle ! allow for zero elements in ijk
       if (region(m)%centring == "cell") then
         x = cell(ijk)%x
@@ -425,82 +442,59 @@ else if (trim(region(m)%type) /= 'gmsh') then
       do l = 1, 3
         if ((x(l)-xmin(l))*(xmax(l)-x(l)) < 0.d0) cycle ijk_loop
       end do
-      call push_integer_array(array=region(m)%ijk,new_element=ijk)
+      elementisin(ijk) = .true. ! converting this to the region(m)%ijk array is handled later
     end do ijk_loop
 
 !---------------------
 ! a new region composed of the boundary to another region, or similar type of related domain
 
-! UP TO HERE
-
   else if (trim(local_location%type) == "boundary of".or.trim(local_location%type) == "domain of".or.trim(local_location%type) == "associated with".or. &
     trim(local_location%type) == "surrounds") then
 
-  ! note: this may mean that the region is already defined but defining twice won't hurt if the definition is the same
-    if (allocated(region(m)%ijk)) then
-      write(*,'(a/a)') &
-        "NOTE: a "//trim(local_location%type)//" region operator is acting on region "//trim(region(m)%name)// &
-        " that already contains some elements:", &
-        " the previous elements will be overwritten with the new"
-      deallocate(region(m)%ijk)
-    end if
-
-  ! check centring of requested region
-    if (region(m)%centring /= 'face'.and.region(m)%centring /= 'cell'.and.region(m)%centring /= 'node') call &
-      error_stop('incorrect centring for requested '//trim(local_location%type)//' region '//trim(region(m)%name))
-
-  ! find constitutent region around which to find boundary
-    aregion = adjustl(trim(description(len(trim(local_location%type))+1:1000)))
-    
-    nregion = region_number_from_name(name=aregion,existing=existing,creatable=.false.)
-  ! check that region exists and that centring is consistent
-    if (.not.existing) call error_stop("region "//trim(aregion)//" which is specified in "//trim(local_location%type)//" operator for "// &
-      trim(region(m)%name)//" is not found")
-    if (nregion == 0) call error_stop("problem with region "//trim(aregion)//" in "//trim(local_location%type)//" region "// &
-      trim(region(m)%name))
-    if (region(nregion)%centring /= 'face'.and.region(nregion)%centring /= 'cell'.and.region(nregion)%centring /= 'node') &
+! check centring of requested related region
+    nregion = local_location%regions(1) ! perl only allows one region to be defined
+    if (region(nregion)%centring == 'none') &
       call error_stop('incorrect centring for '//trim(local_location%type)//' consitutent region '//trim(region(nregion)%name))
 
-  ! store whether ijk index is included in the new region in temporary array now for faster lookups
-    if (region(m)%centring == 'cell') then
-      ijktotal = itotal
-    else if (region(m)%centring == 'face') then
-      ijktotal = jtotal
-    else
-      ijktotal = ktotal
-    end if
     allocate(elementisin(ijktotal)) 
     elementisin = .false.
 
     do nsregion = 1,allocatable_integer_size(region(nregion)%ijk)  ! loop through all ijk indices in constituent region
       ijkregion = region(nregion)%ijk(nsregion) ! NB, ijkregion and region(m)%ijk may actually be i or j values depending on centring
+      if (ijkregion == 0) cycle ! in case this is empty due to a dynamic region
       if (region(nregion)%centring == 'cell') then
         if (region(m)%centring == 'cell') then
-  ! create cell region from cell region
+! create cell region from cell region
           do ii = 1, ubound(cell(ijkregion)%jface,1)+1 ! loop around cells that border cells, and itself
             i = cell(ijkregion)%icell(ii)
+            if (region(region(m)%part_of)%ns(i) == 0) cycle ! check that element is a member of the part_of region
             if (trim(local_location%type) == "boundary of".and.cell(i)%type /= 2) cycle
             if (trim(local_location%type) == "domain of".and.cell(i)%type /= 1) cycle
-            if (trim(local_location%type) == "surrounds".and.description_in_list(array=region(nregion)%ijk,element=i) /= 0) cycle ! unfortunately ns array has not yet been defined for all other elements
+!           if (trim(local_location%type) == "surrounds".and.location_in_list(array=region(nregion)%ijk,element=i) /= 0) cycle ! unfortunately ns array has not yet been defined for all other elements
+            if (trim(local_location%type) == "surrounds".and.region(nregion)%ns(i) /= 0) cycle ! unfortunately ns array has not yet been defined for all other elements
             if (.not.elementisin(i)) elementisin(i) = .true.
           end do
         else if (region(m)%centring == 'face') then
-  ! create face region from cell region
+! create face region from cell region
           do jj = 1, ubound(cell(ijkregion)%jface,1)
             j = cell(ijkregion)%jface(jj)
+            if (region(region(m)%part_of)%ns(j) == 0) cycle ! check that element is a member of the part_of region
             if (trim(local_location%type) == "boundary of".and.face(j)%type /= 2) cycle
             if (trim(local_location%type) == "domain of".and.face(j)%type /= 1) cycle
             if (trim(local_location%type) == "surrounds") then
-              if (ijkregion == face(j)%icell(2).and.description_in_list(array=region(nregion)%ijk,element=face(j)%icell(1)) /= 0) cycle
-              if (ijkregion == face(j)%icell(1).and.description_in_list(array=region(nregion)%ijk,element=face(j)%icell(2)) /= 0) cycle
+!             if (ijkregion == face(j)%icell(2).and.location_in_list(array=region(nregion)%ijk,element=face(j)%icell(1)) /= 0) cycle
+!             if (ijkregion == face(j)%icell(1).and.location_in_list(array=region(nregion)%ijk,element=face(j)%icell(2)) /= 0) cycle
+              if (ijkregion == face(j)%icell(2).and.region(nregion)%ns(face(j)%icell(1)) /= 0) cycle
+              if (ijkregion == face(j)%icell(1).and.region(nregion)%ns(face(j)%icell(2)) /= 0) cycle
             end if
             if (.not.elementisin(j)) elementisin(j) = .true.
           end do
         else
-  ! create node region from cell region
-  ! surrounds not implemented
+! create node region from cell region
+! surrounds not implemented
           do kk = 1, ubound(cell(ijkregion)%knode,1)
             k = cell(ijkregion)%knode(kk)
+            if (region(region(m)%part_of)%ns(k) == 0) cycle ! check that element is a member of the part_of region
             if (trim(local_location%type) == "boundary of".and.node(k)%type /= 2) cycle
             if (trim(local_location%type) == "domain of".and.node(k)%type /= 1) cycle
             if (trim(local_location%type) == "surrounds") &
@@ -509,12 +503,13 @@ else if (trim(region(m)%type) /= 'gmsh') then
           end do
         end if
       else if (region(nregion)%centring == 'face') then
-  ! create cell region from face region
-  ! boundary of will pick out boundary cells coincident with boundary faces
-  ! surrounds not implemented
+! create cell region from face region
+! boundary of will pick out boundary cells coincident with boundary faces
+! surrounds not implemented
         if (region(m)%centring == 'cell') then
           do ii = 1, 2
             i = face(ijkregion)%icell(ii)
+            if (region(region(m)%part_of)%ns(i) == 0) cycle ! check that element is a member of the part_of region
             if (trim(local_location%type) == "boundary of".and.cell(i)%type /= 2) cycle
             if (trim(local_location%type) == "domain of".and.cell(i)%type /= 1) cycle
             if (trim(local_location%type) == "surrounds") &
@@ -522,17 +517,19 @@ else if (trim(region(m)%type) /= 'gmsh') then
             if (.not.elementisin(i)) elementisin(i) = .true.
           end do
         else if (region(m)%centring == 'face') then
-  ! create face region from face region
-  ! boundary of will pick out faces that are on the boundary
-  ! associated with is nonsense - will just copy region
+! create face region from face region
+! boundary of will pick out faces that are on the boundary
+! associated with is nonsense - will just copy region
           j = ijkregion
+          if (region(region(m)%part_of)%ns(j) == 0) cycle ! check that element is a member of the part_of region
           if (trim(local_location%type) == "boundary of".and.face(j)%type /= 2) cycle
           if (trim(local_location%type) == "domain of".and.face(j)%type /= 1) cycle
           if (.not.elementisin(j)) elementisin(j) = .true.
         else
-  ! create node region from face region
+! create node region from face region
           do kk = 1, ubound(face(ijkregion)%knode,1)
             k = face(ijkregion)%knode(kk)
+            if (region(region(m)%part_of)%ns(k) == 0) cycle ! check that element is a member of the part_of region
             if (trim(local_location%type) == "boundary of".and.node(k)%type /= 2) cycle
             if (trim(local_location%type) == "domain of".and.node(k)%type /= 1) cycle
             if (trim(local_location%type) == "surrounds") &
@@ -541,183 +538,94 @@ else if (trim(region(m)%type) /= 'gmsh') then
           end do
         end if
       else
+! TODO: fix this node region stuff
         call error_stop(trim(local_location%type)//" not implemented for constructing node region "//trim(region(nregion)%name))
       end if
     end do
 
-  ! now loop through the elementisin list creating a new ijk list from it
-    n = 0 ! to avoid multiple calls to push_array allocate the array using needed size
-    do ijk = 1, ijktotal
-      if (elementisin(ijk)) n = n + 1
-    end do
-    allocate(region(m)%ijk(n))
-    n = 0
-    do ijk = 1, ijktotal
-      if (elementisin(ijk)) then
-        n = n + 1
-        region(m)%ijk(n) = ijk
-      end if
-    end do
-    deallocate(elementisin)
+!---------------------
+! a region composed of a compound list of other regions, or a region that has all of the listed regions in common
 
-  !---------------------
-  ! a new region composed of a compound list of other regions
+  else if (trim(local_location%type) == "compound" .or. trim(local_location%type) == "common") then
 
-  else if (trim(local_location%type) == "compound") then
-
-  ! note: this may mean that the region is already defined but defining twice won't hurt if the definition is the same
-    if (allocated(region(m)%ijk)) then
-      write(*,'(a/a)') &
-        "NOTE: a "//trim(local_location%type)//" region operator is acting on region "//trim(region(m)%name)// &
-        " that already contains some elements:", &
-        " the previous elements will be overwritten with the new"
-      deallocate(region(m)%ijk)
+    allocate(elementisin(ijktotal)) 
+    elementisin(ijk) = .false.
+    if (trim(local_location%type) == "compound") then
+      compoundtype = .true. ! use this for fast lookup later
+    else
+      compoundtype = .false. 
+      do ns = 1, allocatable_integer_size(region(region(m)%part_of)%ijk) ! just set the elements within the part_of region to be true
+        ijk = region(region(m)%part_of)%ijk(ns)
+        if (ijk == 0) cycle
+        elementisin(ijk) = .true.
+      end do
     end if
 
-    region_list = trim(description(9:1000))
+! loop through all regions identified in the list
+    do n = 1, allocatable_integer_size(local_location%regions)
+      nregion = local_location%regions(n)
 
-  ! loop through all regions
-    do while (len_trim(region_list) /= 0) 
+! check centring of requested related region is consistent with the parent
+      if (region(nregion)%centring /= region(m)%centring) &
+        call error_stop('incorrect centring for '//trim(local_location%type)//' consitutent region '//trim(region(nregion)%name)// &
+        ' that is being used in region '//trim(region(m)%name))
 
-      region_list = adjustl(region_list(1:len_trim(region_list))) ! remove leading spaces
+! now loop through all elements within part_of region
 
-      if (region_list(1:1) == "+" .or. region_list(1:1) == "-") then
-        rsign = region_list(1:1)
-        region_list = adjustl(region_list(2:len_trim(region_list)))
-      else
-        rsign = "+"
-      end if
-
-      cut = scan(region_list,">")
-      if (region_list(1:1) /= "<" .or. cut <=1 ) call &
-        error_stop("format for equation region incorrect in "//trim(local_location%type)//" operator list "//trim(region_list))
-
-      aregion = region_list(1:cut)
-      region_list = adjustl(region_list(cut+1:len_trim(region_list)))
-
-      nregion = region_number_from_name(name=aregion,centring=region(m)%centring,existing=existing,creatable=.false.)
-  ! check that region exists and that centring is consistent
-      if (.not.existing) call error_stop("region "//trim(aregion)//" which is part of "//trim(local_location%type)//" region "// &
-        trim(region(m)%name)//" is not found")
-      if (nregion == 0) call error_stop("problem with region "//trim(aregion)//" in "//trim(local_location%type)//" region "// &
-        trim(region(m)%name)//":- regions most likely have different centrings")
-      if (nregion == m) call error_stop("problem with region "//trim(aregion)//" in "//trim(local_location%type)//" region "// &
-        trim(region(m)%name)//":- cannot reference the region being created")
-
-  ! loop through all existing ijk indices in region
-  ! - if indice exists and we are adding, ignore, otherwise do
-  ! - if indice exists and we are subtracting, do, otherwise ignore
-
-  !     if (.not.allocated(region(nregion)%ijk)) call error_stop("region ijk indices not allocated in "//trim(local_location%type)//" operator for region "// &
-  !       trim(region(nregion)%name))
-      if (allocatable_integer_size(region(nregion)%ijk) == 0) then
-        write(*,'(a)') "WARNING: region "//trim(region(nregion)%name)//" that is used in the "//trim(local_location%type)// &
-        " region statement for region "//trim(region(m)%name)//" contains no elements"
-        cycle
-      end if
-        
-      do nsregion = 1,ubound(region(nregion)%ijk,1)  ! loop through all ijk indices in constituent region
-        ijkregion = region(nregion)%ijk(nsregion) ! NB, ijkregion and region(m)%ijk may actually be i or j values depending on centring
-        
-        nscompound = 0 ! this is the position of iregion in the compound region's ijk indices
-        do ns = 1,allocatable_size(region(m)%ijk)
-          if (region(m)%ijk(ns) == ijkregion) then
-            nscompound = ns ! region indice has been found in compound region's ijk indices
-            exit
+      do ns = 1, allocatable_integer_size(region(region(m)%part_of)%ijk) ! just set the elements within the part_of region to be true
+        ijk = region(region(m)%part_of)%ijk(ns)
+        if (ijk == 0) cycle
+        if (compoundtype) then
+          if (local_location%integers(n) == 1) then
+            if (.not.elementisin(ijk)) elementisin(ijk) = .true. ! adding element
+          else
+            if (elementisin(ijk)) elementisin(ijk) = .false. ! subtracting element
           end if
-        end do
-
-        if (rsign == "+" .and. nscompound == 0) then
-          call push_integer_array(array=region(m)%ijk,new_element=ijkregion) ! add region description to equation ijk indices
-        else if (rsign == "-" .and. nscompound /= 0) then
-          if (nscompound /= ubound(region(m)%ijk,1)) then ! unless it is the last element of indicies
-            region(m)%ijk(nscompound:ubound(region(m)%ijk,1)-1) = & ! shift indicies one space to the left to remove reference
-              region(m)%ijk(nscompound+1:ubound(region(m)%ijk,1))
+        else
+          if (elementisin(ijk)) then
+            if (region(nregion)%ns(ijk) == 0) elementisin(ijk) = .false.
           end if
-          call resize_integer_array(array=region(m)%ijk,change=-1) ! reduce ijk array by 1
-        end if
-
-      end do
-
-    end do
-
-  !---------------------
-  ! a new region composed of the common elements from a list of space or comma separated regions
-
-  else if (trim(local_location%type) == "common") then
-
-
-    region_list = trim(description(7:1000))
-    if (debug) write(*,*) trim(local_location%type)//': initial region_list = |'//trim(region_list)//'|'
-
-  ! loop through all regions creating a list of the regions that we are going to look for common elements in
-
-    if (allocated(nregion_list)) deallocate(nregion_list)
-    do while (len_trim(region_list) /= 0) 
-
-      region_list = adjustl(region_list(1:len_trim(region_list))) ! remove leading spaces
-      if (debug) write(*,*) trim(local_location%type)//': looping region_list = |'//trim(region_list)//'|'
-      if (region_list(1:1) == "," .or. region_list(1:1) == '+') then
-        region_list(1:1) = " " ! remove commas or plus signs silently by blanking them out - in the interests of stopping bugs, a minus sign will flag an error
-        cycle
-      end if
-
-      cut = scan(region_list,">")
-      if (debug) write(*,*) 'cut = ',cut,': region_list(1:cut) = '//trim(region_list(1:cut))
-      if (region_list(1:1) /= "<" .or. cut <=1 ) call &
-        error_stop("format for equation region incorrect in "//trim(local_location%type)//" operator list "//trim(region_list))
-
-      aregion = region_list(1:cut)
-      region_list = adjustl(region_list(cut+1:len_trim(region_list)))
-
-      nregion = region_number_from_name(name=aregion,centring=region(m)%centring,existing=existing,creatable=.false.)
-  ! check that region exists and that centring is consistent
-      if (.not.existing) call error_stop("region "//trim(aregion)//" which is part of "//trim(local_location%type)//" region "// &
-        trim(region(m)%name)//" is not found")
-      if (nregion == 0) call error_stop("problem with region "//trim(aregion)//" in "//trim(local_location%type)//" region "// &
-        trim(region(m)%name)//":- regions most likely have different centrings")
-      if (nregion == m) call error_stop("problem with region "//trim(aregion)//" in "//trim(local_location%type)//" region "// &
-        trim(region(m)%name)//":- cannot reference the region being created")
-
-      call push_integer_array(array=nregion_list,new_element=nregion) ! add nregion to the list
-
-    end do
-
-  ! first check that all the regions have elements, otherwise they will have no elements in common
-
-    do nregion = 1, allocatable_integer_size(nregion_list)
-      if (allocatable_integer_size(region(nregion)%ijk) == 0) then
-        write(*,'(a)') "WARNING: region "//trim(region(nregion)%name)//" that is used in the "//trim(local_location%type)// &
-        " region statement for region "//trim(region(m)%name)//" contains no elements"
-        deallocate(nregion_list) ! this will kill all further processing of this common statements
-        exit
-      end if
-    end do
-
-  ! now run through each of the elements in the first region, looking for commonality with the elements of the other regions
-
-    do nsregion = 1,ubound(region(nregion_list(1))%ijk,1)  ! loop through all ijk indices in the first region
-      ijkregion = region(nregion_list(1))%ijk(nsregion) ! NB, ijkregion and region(m)%ijk may actually be i, j or k values depending on centring
-
-      in_common = .true.
-      do nregion = 2, allocatable_integer_size(nregion_list)
-        if (description_in_list(array=region(nregion_list(nregion))%ijk,element=ijkregion) == 0) then
-          in_common = .false.
-          cycle
         end if
       end do
 
-      if (in_common) call push_integer_array(array=region(m)%ijk,new_element=ijkregion) ! add region description to equation ijk indices
-
     end do
 
+!---------------------
+! a region composed of all elements
+
+  else if (trim(local_location%type) == "all") then
+
+    n = allocatable_integer_size(region(region(m)%part_of)%ijk)
+    if (n > 0) then
+      allocate(region(m)%ijk(n))
+      region(m)%ijk = region(region(m)%part_of)%ijk
+    end if
+
+!---------------------
   else
 
-    call error_stop('description for region '//trim(region(m)%name)//' is not understood: description = '//trim(description))
+    call error_stop('location type for region '//trim(region(m)%name)//' is not understood: type = '//trim(local_location%type))
 
   end if
 
 !-----------------------------------------------------------------
+end if
+
+if (allocated(elementisin)) then
+! now loop through the elementisin list creating a new ijk list from it
+  n = 0 ! to avoid multiple calls to push_array allocate the array using needed size
+  do ijk = 1, ijktotal
+    if (elementisin(ijk)) n = n + 1
+  end do
+  allocate(region(m)%ijk(n))
+  n = 0
+  do ijk = 1, ijktotal
+    if (elementisin(ijk)) then
+      n = n + 1
+      region(m)%ijk(n) = ijk
+    end if
+  end do
+  deallocate(elementisin)
 end if
 
 ! check that each region contains some elements, and that it is allocated (even if zero length)
@@ -734,7 +642,9 @@ end if
 
 region(m)%ns = 0 ! a zero indicates that this region does not include this element
 do ns = 1, allocatable_size(region(m)%ijk)
-  region(m)%ns(region(m)%ijk(ns)) = ns
+  ijk = region(m)%ijk(ns)
+  if (ijk == 0) cycle ! now handle zero ijk
+  region(m)%ns(ijk) = ns
 end do
     
 if (debug) then
