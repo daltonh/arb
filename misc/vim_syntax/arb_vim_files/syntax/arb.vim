@@ -50,7 +50,7 @@ syn match arbStatement "\<\(CELL_\|FACE_\|NODE_\|NONE_\)\=\(CONDITION\|CONSTANT\
 syn match arbDeprecated "\<\(CELL_\|FACE_\|NONE_\)\=\(\(IN\)\=DEPENDENT\|FIELD\)\>"
 syn match arbStatement "\<\(\(NON\)\=NEWTIENT\|STEADY-\=STATE\|\(NON\)\=TRANSIENT\)_SIMULATION\>"
 syn keyword arbStatement VARIABLE
-syn match arbStatement "\<\(COMPOUND\|VARIABLE\)_OPTIONS\>"
+syn match arbStatement "\<\(COMPOUND\|VARIABLE\)_OPTIONS\>" " is this right?  Think that VARIABLE should be up with NEWTIENTs etc
 syn keyword arbOption clearoptions magnitude negative nocheck positive
 syn match arbOption "\<\(\(centring\)\=\(mesh\)\=\|\(no\)\=\(compound\|component\)\=\)\(input\|output\)\>"
 syn match arbOption "\<\(\(centring\)\=\(mesh\)\=\|\(no\)\=\)\(dat\|vtk\)output\>"

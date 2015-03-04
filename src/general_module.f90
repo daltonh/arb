@@ -139,6 +139,12 @@ end type glue_face_type
 type region_location_type
   logical :: active ! whether location is active or not
   character(len=1000) :: description ! string that describes location, as given by user in arb file
+  character(len=100) :: type ! string that describes type of location description
+  integer, dimension(:), allocatable :: regions ! list of region numbers used in this description
+  integer, dimension(:), allocatable :: integers ! list of integers used in this description
+  double precision, dimension(:), allocatable :: floats ! list of floats used in this description
+  integer, dimension(:), allocatable :: variables ! list of fortran m numbers used in this description
+  character(len=100), dimension(:), allocatable :: variabletypes ! list of fortran m numbers used in this description
 end type region_location_type
 
 ! type for regions
@@ -150,8 +156,8 @@ type region_type
   logical :: dynamic = .false. ! whether region is static (user, static or gmsh) or a dynamic region
   type(region_location_type) :: location ! location of region
   type(region_location_type) :: initial_location ! initial_location of region if a dynamic transient or newtient region
-! integer :: part_of ! TODO
-  integer :: parent ! fortran region index of the region that this region is solely contained within, specified for dynamic (ie, non-static and non-gmsh) regions only
+  integer :: part_of ! fortran region index of the dynamic or static region that this region is solely contained within, for user (ie, non system) regions only
+  integer :: parent ! fortran region index of the static region that this region is solely contained within, for user (ie, non system) regions only
   integer, dimension(:), allocatable :: ijk ! array of cell (i), face (j) or node (k) indicies that are within this region - dimension of this is number of elements in region - for dynamic regions size of ijk is determined by parent static region, with some indicies being zero
   integer, dimension(:), allocatable :: ns ! array that specifies data number from i, j or k index - dimension of this is either itotal, jtotal or ktotal - for all regions an ns(ijk) of zero indicates that the particular ijk element is not in the region
 end type region_type

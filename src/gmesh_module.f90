@@ -1510,7 +1510,7 @@ character(len=1000), dimension(:), allocatable :: gregion_name
 character(len=1000) :: formatline, textline, filename, location
 character(len=4) :: centring
 character(len=100) :: type
-logical :: check, debug, existing
+logical :: check, debug, existing, guess_centring
 
 rewind(fgmsh)
 do 
@@ -1560,25 +1560,38 @@ do n=1,ngregions
   formatline = '(a,'//trim(dindexformat(gregion_number(n)))//',a)'
   write(location,fmt=formatline) 'GMSH physical entity number ',gregion_number(n),' from file '//trim(filename)
 
+! work out whether we're going to have to guess the centring of this region, and if so, do it
+  guess_centring = .false.
+  if (.not.check) then
+    if (region_number == 0) then
+      guess_centring = .true.
+    else if (trim(region(region_number)%centring) == "") then
+      guess_centring = .true.
+    end if
+    if (guess_centring) then
+      if (gregion_dimensions(n) == gmesh(gmesh_number)%dimensions) then
+        centring = "cell" ! for 3D 3: for 2D 2: for 1D 1.
+      else if (gregion_dimensions(n) == 0 .and. gmesh(gmesh_number)%dimensions /= 1) then
+  ! if dimension is 0 then this is a node region, unless mesh is one 1D, when a 0 dimension element defaults to a face and nodes have to be specified
+        centring = "node" ! for 3D 0: for 2D 0: for 1D no default.
+      else 
+        centring = "face" ! for 3D 2,1: for 2D 1: for 1D 0.
+        if (gregion_dimensions(n) < gmesh(gmesh_number)%dimensions-1) &
+          write(*,'(a)') 'WARNING: region '//trim(gregion_name(n))//' in gmsh file '//trim(filename)// &
+          ' assumed to have face centring based on dimensions relative to the other elements in this file, however the '// &
+          'dimension is one less than it should be probably indicating an error.  Maybe some regions need to have their '// &
+          'centring explicitly set in the arb input file.'
+      end if
+    end if
+  end if
+
   if (region_number == 0) then
 ! region does not yet exist: determine centring and create new region
     if (check) call error_stop('region '//trim(gregion_name(n))//' in gmsh file '//trim(filename)// &
       ' is not properly defined on current read: all centring files with the same basename must come from the '// &
       'same simulation and have the same physical entities defined')
     if (debug) write(*,*) ' before read: region '//trim(gregion_name(n))//': not previously defined'
-    if (gregion_dimensions(n) == gmesh(gmesh_number)%dimensions) then
-      centring = "cell" ! for 3D 3: for 2D 2: for 1D 1.
-    else if (gregion_dimensions(n) == 0 .and. gmesh(gmesh_number)%dimensions /= 1) then
-! if dimension is 0 then this is a node region, unless mesh is one 1D, when a 0 dimension element defaults to a face and nodes have to be specified
-      centring = "node" ! for 3D 0: for 2D 0: for 1D no default.
-    else 
-      centring = "face" ! for 3D 2,1: for 2D 1: for 1D 0.
-      if (gregion_dimensions(n) < gmesh(gmesh_number)%dimensions-1) &
-        write(*,'(a)') 'WARNING: region '//trim(gregion_name(n))//' in gmsh file '//trim(filename)// &
-        ' assumed to have face centring based on dimensions relative to the other elements in this file, however the '// &
-        'dimension is one less than it should be probably indicating an error.  Maybe some regions need to have their '// &
-        'centring explicitly set in the arb input file.'
-    end if
+! centring is now set for this case above
 ! create new region and set gregion region_number at the same time
     type = 'gmsh'
     region_number = region_number_from_name(name=gregion_name(n), &
@@ -1604,16 +1617,18 @@ do n=1,ngregions
         ': location '//trim(region(region_number)%location%description)//': dimensions = ',region(region_number)%dimensions
 
 ! first check that it isn't a system region
+! we don't check on internal names as the fortran has no record of them
       if (trim(region(region_number)%type) == "system") call error_stop('the region '//trim(gregion_name(n))// &
         ' in gmsh file '//trim(filename)//' is attempting to use a system region name - you need to change this region name')
-! and that the region has a valid centring - although I don't know how this situation could eventuate
-      if (trim(region(region_number)%centring) == "") &
-        call error_stop('region '//trim(gregion_name(n))//' in gmsh file '//trim(filename)//' is already allocated but'// &
-          ' has no centring defined')
-      if (trim(region(region_number)%centring) == "none") &
+
+! now check on centring, setting it if it was deemed necessary above
+      if (guess_centring) then
+        region(region_number)%centring = centring
+      else if (trim(region(region_number)%centring) == "none") then
         call error_stop('region '//trim(gregion_name(n))// &
           ' in gmsh file '//trim(filename)//' has a centring of '//trim(region(region_number)%centring)// &
           ' that is inconsistent with a previous definition of this region')
+      end if
 
 ! set/check on dimensions
       if (region(region_number)%dimensions == -1) then
