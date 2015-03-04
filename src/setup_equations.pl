@@ -189,7 +189,9 @@ write_maxima_results_files(); # write out maxima results for subsequent runs
 
 dump_variable_dependency_info(); # dump all variable dependency info into the debug file, and also dump the raw variable arrays for possible post-processing
 
-output_variable_list(); # dump info about variable dependency in a single file
+output_variable_list(); # dump info about variables in a single file
+
+output_region_list(); # dump info about regions in a single file
 
 # final warning about multiple definitions
 if ($statement_repeats{"definitions"} > 1) { print "NOTE: at least one variable was defined multiple times.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
@@ -310,6 +312,40 @@ sub output_variable_list {
   }
   print VARIABLE "-" x 80,"\n";
   close(VARIABLE);
+
+}
+#-------------------------------------------------------------------------------
+# dump the regions as an ordered list
+
+sub output_region_list {
+
+  use strict;
+  use Data::Dumper;
+  my @types=(qw( system setup gmsh constant transient newtient derived equation output condition )); # list of region types
+  my $region_file = "$tmp_dir/region_list.txt";
+  open(REGION, ">$region_file") or die "ERROR: problem opening temporary region file $region_file: something funny is going on: check permissions??\n";
+
+  for my $type ( @types ) {
+    print REGION "-" x 80,"\n";
+    print REGION "List of $type regions:\n";
+    for my $n ( 0 .. $#region ) {
+      if ($region[$n]{"type"} ne $type) { next; }
+      print REGION "$n";
+      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread definitions location initial_location)) {
+        print REGION ": $key = ";
+        if (empty($region[$n]{$key})) {
+          print REGION "empty";
+        } elsif ($key eq "location" || $key eq "initial_location") {
+          print REGION Dumper($region[$n]{$key});
+        } else {
+          print REGION "$region[$n]{$key}";
+        }
+      }
+      print REGION "\n";
+    }
+  }
+  print REGION "-" x 80,"\n";
+  close(REGION);
 
 }
 #-------------------------------------------------------------------------------
@@ -1091,12 +1127,13 @@ sub read_input_files {
 #-----------------------
 # now processing user regions too, in much the same way as the user variables
 
-      elsif ( $line =~ /^\s*((FACE|CELL|NODE)_|)((CONSTANT|TRANSIENT|NEWTIENT|STATIC|DERIVED|EQUATION|OUTPUT|CONDITION)_|)REGION($|\s)/i ) {
+      elsif ( $line =~ /^\s*((FACE|CELL|NODE)_|)((CONSTANT|TRANSIENT|NEWTIENT|STATIC|SETUP|GMSH|DERIVED|EQUATION|OUTPUT|CONDITION)_|)REGION($|\s)/i ) {
         $line = $';
         $centring = ""; # now centring can be grabbed from last definition
         if ($2) { $centring = "\L$2"; }
         $type = ""; # as can type
-        if ($4) { $type = "\L$4"; }
+        if ($4) { $type = "\L$4";}
+        if ($type eq "static") {$type="setup";} # setup is the name used in the fortran and perl to denote a user region that is not dynamic, but for the end user, static is easier to comprehend (for the fortran and perl static means !dynamic, which ewals setup, gmsh and system types)
 
 # grab region name
         if ($line =~ /^\s*(<.+?>)($|\s)/) { $name = $1; $line = $'; }
@@ -1169,7 +1206,6 @@ sub read_input_files {
           $region[$masread]{"part_of"}='';
           $region[$masread]{"location"}{"description"}='';
           $region[$masread]{"initial_location"}{"description"}='';
-          $region[$masread]{"dynamic"}='static';
           $region[$masread]{"last_variable_masread"}=$#asread_variable; # this determines when a region will be evaluated, for dynamic regions
         }
 
@@ -1275,7 +1311,7 @@ sub organise_regions {
 # equation   X        X     X        X                           updated as the equation variables are updated (in the order of definition)
 # output     X        X     X        X                           updated as the output variables are updated (in the order of definition)
 # condition  X        X     X        X                           updated as the condition variables are updated (in the order of definition)
-# static              X     X        X                           updated at the start of a simulation, only once, using location information
+# setup               X     X        X                           updated at the start of a simulation during the setup routines, only once, using location information
 # gmsh                      X        GMSH                        read in from a gmsh file, although centring and name can be declared within arb file (using no location string or 'GMSH')
 # system                    X        SYSTEM                      regions defined by the system, and available to users (such as <all cells>)
 # internal                           INTERNAL                    regions that are special-cased within the fortran (such as <adjacentcellicells>)
@@ -1292,14 +1328,27 @@ sub organise_regions {
 # only USER regions can be dynamic, although not all USER regions are dynamic
 # set some user-specific flags - user and dynamic - while checking type and centring
   foreach $n ( 0 .. $#region ) {
-    if (empty($region[$n]{'type'}) || $region[$n]{'type'} eq 'static') { $region[$n]{"dynamic"} = 0; $region[$n]{'type'} = 'static' } else { $region[$n]{"dynamic"} = 1; }
-# an empty CELL_REGION <a region> statement is allowed as a hint that the gmsh region is cell centred - so set this empty location region as a gmsh region
-# any other comments in location description string that follow the GMSH keyword will remain
-    if (empty($region[$n]{'location'}{'description'}) || $region[$n]{'location'}{'description'} =~ /^\s*GMSH/i) {
-      if ($region[$n]{'type'} ne 'static') { error_stop("dynamic user $region[$n]{type} region $region[$n]{name} has no location defined"); }
+
+    if (empty($region[$n]{'location'}{'description'}) || $region[$n]{'location'}{'description'} =~ /^\s*GMSH/i || 
+      (nonempty($region[$n]{"type"}) && $region[$n]{"type"} eq "gmsh") ) {
+# initialise any gmsh regions
+      if (nonempty($region[$n]{"type"}) && $region[$n]{"type"} ne "gmsh") {
+        print "WARNING: based on not having any location specified, region $region[$n]{name} is being set to gmsh type and is expected to be read in from a msh file";
+        print DEBUG "WARNING: based on not having any location specified, region $region[$n]{name} is being set to gmsh type and is expected to be read in from a msh file";
+      }
       $region[$n]{'type'} = 'gmsh';
-      $region[$n]{'location'}{"description"} = "GMSH from arb file";
+      $region[$n]{"dynamic"} = 0;
+      $region[$n]{"user"} = 0;
+      if ((nonempty($region[$n]{'location'}{'description'}) && $region[$n]{'location'}{'description'} !~ /^\s*GMSH/i) ||
+        empty($region[$n]{'location'}{'description'})) { $region[$n]{'location'}{"description"} = "GMSH from arb file"; }
+    } elsif (empty($region[$n]{'type'}) || $region[$n]{'type'} eq 'setup') {
+# initialise any setup regions
+      $region[$n]{'type'} = 'setup';
+      $region[$n]{"dynamic"} = 0;
+      $region[$n]{"user"} = 1;
     } else {
+# anything left must be dynamic: initialise
+      $region[$n]{"dynamic"} = 1;
       $region[$n]{"user"} = 1;
     }
 # deal with user regions having no centring defined
@@ -4888,6 +4937,7 @@ sub create_fortran_equations {
 # now start actual loop
         if ($variable{$type}[$mvar]{"centring"} ne "none") {
 # face, cell or node centred variable
+# note, as the code currently stands, every region over which a variable is defined must have atleast one element, which is checked in setup_var, so don't need to use allocatable_integer_size here
           $sub_string{$type}=$sub_string{$type}.
             "do ns = 1, ubound(region(var(m)%region_number)%ijk,1)\n".
             ijkstring($variable{$type}[$mvar]{"centring"})." = region(var(m)%region_number)%ijk(ns)\n";

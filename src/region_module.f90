@@ -85,7 +85,7 @@ do m = 1, ubound(region,1)
       //trim(region(region(m)%parent)%centring)//" centring of its parent region "//trim(region(region(m)%parent)%name))
   end if
 
-! and now perform the initial update of all of the user and system static regions, calculating and allocating ijk, and from that, ns
+! and now perform the setup update of all of the static regions, calculating and allocating ijk, and from that, ns
   if (.not.(region(m)%dynamic)) call update_region(m=m,initial=.false.)
 
 end do
@@ -93,7 +93,7 @@ end do
 !---------------------
 ! calculate dimensions for each region, noting that dynamic regions are based on parent static regions
 
-! first do non-dynamic regions - that is system, static and gmsh
+! first do static regions - that is system, setup and gmsh
 do m = 1, ubound(region,1)
   if (region(m)%dynamic) cycle
   region(m)%dimensions = 0
@@ -125,13 +125,13 @@ if (debug_sparse) then
   do m=1,ubound(region,1)
     if (region(m)%dynamic) then
       formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a)'
-      write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': type = '// &
+      write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': dynamic: type = '// &
         trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
         ': location = '//trim(region(m)%location%description)//': initial_location = '// &
         trim(region(m)%initial_location%description)
     else if (allocatable_size(region(m)%ijk) == 0) then
       formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a)'
-      write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': type = '// &
+      write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': static: type = '// &
         trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
         ': location = '//trim(region(m)%location%description)//': contains no elements'
     else
@@ -139,7 +139,7 @@ if (debug_sparse) then
         ',a,'//trim(dindexformat(region(m)%ijk(1)))// &
         ',a,'//trim(dindexformat(allocatable_size(region(m)%ijk)))// &
         ',a,'//trim(dindexformat(region(m)%ijk(allocatable_size(region(m)%ijk))))//')'
-      write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': type = '// &
+      write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': static: type = '// &
         trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
         ': location = '//trim(region(m)%location%description)// &
         ': ijk(1) = ',region(m)%ijk(1),': ijk(',allocatable_size(region(m)%ijk),') = ', &
@@ -602,7 +602,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
     end if
 
 !---------------------
-  else
+  else if (trim(local_location%type) /= "none") then ! anything but none is an error
 
     call error_stop('location type for region '//trim(region(m)%name)//' is not understood: type = '//trim(local_location%type))
 

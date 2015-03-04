@@ -1227,6 +1227,9 @@ do m = 1, ubound(var,1)
     if (var(m)%region_number == 0) call error_stop('there is a problem with region '//trim(var(m)%region)// &
       ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//': most probably the centrings of the region '// &
       'and variable are inconsistent')
+    if (region(var(m)%region_number)%dynamic) call error_stop('the region '//trim(var(m)%region)// &
+      ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//' is dynamic: only static (gmsh, setup and system) regions'// &
+      ' can be used to define variables')
     if (allocatable_size(region(var(m)%region_number)%ijk) == 0) call error_stop('there is a problem with region '// &
       trim(var(m)%region)//' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)// &
       ': the region contains no elements')
