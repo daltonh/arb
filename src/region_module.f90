@@ -53,7 +53,7 @@ use general_module
 integer :: m, i, j, k, ns, ierror
 character(len=1000) :: formatline, filename, textline, textline2
 logical :: debug_sparse = .true.
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 
 if (debug) debug_sparse = .true.
                   
@@ -246,7 +246,7 @@ integer, dimension(:), allocatable :: nregion_list
 logical :: existing, in_common, compoundtype
 logical, dimension(:), allocatable :: elementisin
 logical :: debug_sparse = .true.
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 
 if (debug) debug_sparse = .true.
                   

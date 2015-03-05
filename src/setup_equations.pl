@@ -4813,17 +4813,17 @@ sub create_fortran_equations {
         if ($variable{$type}[$mvar]{"checki"}) {
           $sub_string{$type}=$sub_string{$type}.
             "if (ilast == 0) call error_stop('A type of lastcell averaging has resulted in a i = 0 reference when updating ".
-            "a someloop variable: '//trim(error_string))";
+            "a someloop variable: '//trim(error_string))\n";
         } 
         if ($variable{$type}[$mvar]{"checkj"}) {
           $sub_string{$type}=$sub_string{$type}. 
             "if (jlast == 0) call error_stop('A type of lastface averaging has resulted in a j = 0 reference when updating ".
-            "a someloop variable: '//trim(error_string))";
+            "a someloop variable: '//trim(error_string))\n";
         }
         if ($variable{$type}[$mvar]{"checkk"}) {
           $sub_string{$type}=$sub_string{$type}. 
             "if (klast == 0) call error_stop('A type of lastnode averaging has resulted in a k = 0 reference when updating ".
-            "a someloop variable: '//trim(error_string))";
+            "a someloop variable: '//trim(error_string))\n";
         }
       }
 
@@ -5097,7 +5097,7 @@ sub create_fortran_equations {
             "else if (ilast == face(j)%icell(2)) then\n".
             "ns = 1\n".
             "else\n".
-            "call error_stop('Problem with use of <adjacentfaceothercell> region: '//trim(error_string))".
+            "call error_stop('Problem with use of <adjacentfaceothercell> region: '//trim(error_string))\n".
             "end if\n".
             "i = face(j)%icell(ns)\n".$reflect_string_form;
             $openloop = 0;

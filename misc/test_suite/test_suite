@@ -219,8 +219,8 @@ for dir_name in ${TESTCASES[@]} ; do
     rm *.msh >/dev/null 2>/dev/null
     rm output/* >/dev/null 2>/dev/null; # and clear output files
     if [ -e fort.* ]; then
-      echo "ERROR: debugging files are being produced: exiting";
-      echo "ERROR: debugging files are being produced: exiting" >>$log_file;
+      echo "ERROR: debugging files (ie fort.*) are being produced: you must have left a debugging flag on?: exiting";
+      echo "ERROR: debugging files (ie fort.*) are being produced: you must have left a debugging flag on?: exiting" >>$log_file;
       error=1;
       break 2; # jump out of two loop levels
     fi;
