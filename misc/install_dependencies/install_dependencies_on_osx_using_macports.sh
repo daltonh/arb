@@ -9,7 +9,6 @@ port install maxima gnuplot
 # optional 
 #port install wxmaxima
 # install gfortran
-# TODO: link this and test with OMP etc
 port install gcc49 +gfortran
 
 # pre/post-processing - gmsh - more recent binaries are available which are probably worth using instead of the ubuntu packaged version
@@ -24,3 +23,9 @@ port select --set python python27
 #https://astrofrog.github.io/macports-python/
 #https://guide.macports.org
 #http://truongtx.me/2014/02/25/mac-os-install-python-pip-virtualenv-using-macports/
+
+# finally, link the (strange) macports gfortran name to a standard name within an accessible bin directory
+echo "INFO: creating a link to gfortran within /usr/local/bin"
+ln -s /opt/local/bin/gfortran* /usr/local/bin/gfortran
+
+echo "INFO: you may now want to install the free suitesparse linear solver.  If so, cd src/contributed/suitesparse and type make";
