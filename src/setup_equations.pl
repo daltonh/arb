@@ -1355,14 +1355,14 @@ sub organise_regions {
     if ($region[$n]{"user"} && empty($region[$n]{'centring'})) { error_stop("$region[$n]{type} region $region[$n]{name} has no centring defined: all regions (except gmsh) ".
       "entered in the arb file must have a centring defined"); }
 # remove depreciated PART_OF statements from with location strings
-    print DEBUG "looking for PART_OF: name = $region[$n]{name}: description = $region[$n]{location}{description}\n";
+    print DEBUG "looking for PART OF in description: name = $region[$n]{name}: description = $region[$n]{location}{description}\n";
     if ($region[$n]{"type"} ne "gmsh") {
       for my $key ( "location", "initial_location" ) {
-        if (nonempty($region[$n]{$key}{"description"}) && $region[$n]{$key}{"description"} =~ /(^|\s+)PART_OF\s+(<(.+?)>)(\s+|$)/i) {
-          print "WARNING: using a PART_OF specification within the location description string is depreciated (found in region $region[$n]{name}): place afterwards instead\n";
-          print DEBUG "WARNING: using a PART_OF specification within the location description string is depreciated (found in region $region[$n]{name}): place afterwards instead\n";
+        if (nonempty($region[$n]{$key}{"description"}) && $region[$n]{$key}{"description"} =~ /(^|\s+)PART( |_)OF\s+(<(.+?)>)(\s+|$)/i) {
+          print "WARNING: using a PART OF specification within the location description string is depreciated (found in region $region[$n]{name}): place PART_OF afterwards instead\n";
+          print DEBUG "WARNING: using a PART OF specification within the location description string is depreciated (found in region $region[$n]{name}): place PART_OF afterwards instead\n";
           if (empty($region[$n]{"part_of"})) {
-            $region[$n]{"part_of"} = examine_name($2,"regionname");
+            $region[$n]{"part_of"} = examine_name($3,"regionname");
           } else {
             print "WARNING: part_of region already set: ignoring anyway\n";
             print DEBUG "WARNING: part_of region already set: ignoring anyway\n";
@@ -1428,7 +1428,8 @@ sub organise_regions {
       print DEBUG "INFO: search for $variable{$type}[$mvar]{centring} region $variable{$type}[$mvar]{region} on which variable $variable{$type}[$mvar]{name} is defined:\n";
       my $nfound = find_region($variable{$type}[$mvar]{"region"});
       if ($nfound >= 0) {
-        print DEBUG "INFO: a previously defined region for variable $type $variable{$type}[$mvar]{name} has been found: $region[$nfound]{name}\n";
+        print DEBUG "INFO: a previously defined region for variable $type $variable{$type}[$mvar]{name} has been found: region = $region[$nfound]{name}:".
+          " centring = $region[$nfound]{centring}\n";
         if (nonempty($region[$nfound]{"centring"})) {
 # if centring is defined but not consistent, then this is an error
           if ($region[$nfound]{"centring"} ne $variable{$type}[$mvar]{"centring"}) {
@@ -1436,7 +1437,7 @@ sub organise_regions {
               "ovariable = $variable{$variable{$type}[$mvar]{otype}}[$variable{$type}[$mvar]{omvar}]{name}: ".
               "variable centring = $variable{$type}[$mvar]{centring}: apparent region centring = $region[$nfound]{centring}");
           }
-        } else {
+        } elsif ($region[$nfound]{"type"} ne "internal") { # don't try to set internal region centring (specifically for <noloop>)
 # if centring is not defined then set it based on the variable
           $region[$nfound]{"centring"} = $variable{$type}[$mvar]{"centring"};
           print DEBUG "INFO: setting centring of region $region[$nfound]{name} to $region[$nfound]{centring} based on variable $variable{$type}[$mvar]{name}\n";
@@ -1460,6 +1461,7 @@ sub organise_regions {
       my $nfound = find_region($region[$n]{"part_of"});
       if ($nfound >= 0) {
         print DEBUG "INFO: a previously defined part_of region defined for region $region[$n]{name} has been found: $region[$nfound]{name}\n";
+        if ($region[$nfound]{"type"} eq "internal") { error_stop("a part_of region cannot be an internal region: region = $region[$n]{name}: part_of region = $region[$nfound]{name}"); }
         if (nonempty($region[$nfound]{"centring"})) {
 # if centring is defined but not consistent, then this is an error
           if ($region[$nfound]{"centring"} ne $region[$n]{"centring"}) {
@@ -1529,12 +1531,13 @@ sub organise_regions {
 
 # now look at the region names, checking that these regions are known (adding as gmsh if not) and checking on centring
       if (@{$region[$n]{$key}{"regionnames"}}) {
-        for $n2 ($#{$region[$n]{$key}{"regionnames"}}) {
+        for $n2 ( 0 .. $#{$region[$n]{$key}{"regionnames"}}) {
           my $match_name = $region[$n]{$key}{"regionnames"}[$n2];
           my $match_centring = $region[$n]{$key}{"regioncentrings"}[$n2];
           my $nfound = find_region($match_name);
           if ($nfound >= 0) {
             print DEBUG "INFO: a previously defined location region for region $region[$n]{name} has been found: $region[$nfound]{name}\n";
+            if ($region[$nfound]{"type"} eq "internal") { error_stop("a region within a location description cannot be an internal region: region = $region[$n]{name}: region within location description = $region[$nfound]{name}"); }
             if (nonempty($region[$nfound]{"centring"}) && nonempty($match_centring)) {
 # if both centrings are defined but not consistent, then this is an error
               if ($region[$nfound]{"centring"} ne $match_centring) {
@@ -1615,7 +1618,7 @@ sub organise_regions {
   }
 
 #-------------
-# all regions now entered require up-front fortran declarations, so flag as such, and also set any known relationships
+# update any missing variables, set part_of region and fortran number
 
   foreach $n ( 0 .. $#region ) {
     $type = $region[$n]{'type'};

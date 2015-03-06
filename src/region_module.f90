@@ -85,10 +85,18 @@ do m = 1, ubound(region,1)
       //trim(region(region(m)%parent)%centring)//" centring of its parent region "//trim(region(region(m)%parent)%name))
   end if
 
-! and now perform the setup update of all of the static regions, calculating and allocating ijk, and from that, ns
-  if (.not.(region(m)%dynamic)) call update_region(m=m,initial=.false.)
+! and now perform the setup update of all of the system and gmsh (static) regions, calculating and allocating ijk, and from that, ns
+! all gmsh regions must be done before the user regions as the user regions may refer to gmsh ns and ijk indicies
+  if (trim(region(m)%type) == "system" .or. trim(region(m)%type) == "gmsh") call update_region(m=m,initial=.false.)
 
 end do
+
+! and now update the static user regions separately
+do m = 1, ubound(region,1)
+  if (trim(region(m)%type) == "setup") call update_region(m=m,initial=.false.)
+end do
+
+! dynamic regions get updated with their corresponding variable
 
 !---------------------
 ! calculate dimensions for each region, noting that dynamic regions are based on parent static regions
@@ -243,7 +251,7 @@ character(len=100) :: type ! this the local_location type that we are dealing wi
 character(len=4) :: centring
 character(len=1) :: rsign
 integer, dimension(:), allocatable :: nregion_list
-logical :: existing, in_common, compoundtype
+logical :: existing, in_common, compoundtype, compoundadd
 logical, dimension(:), allocatable :: elementisin
 logical :: debug_sparse = .true.
 logical, parameter :: debug = .false.
@@ -253,7 +261,8 @@ if (debug) debug_sparse = .true.
 if (debug) write(82,'(80(1h+)/a)') 'subroutine update_region'
 
 if (debug) write(82,*) 'Processing region m = ',m,': name = '//trim(region(m)%name)// &
-  ': centring = '//trim(region(m)%centring)//': initial = ',initial
+  ': centring = '//trim(region(m)%centring)//': initial = ',initial,': part_of = ', &
+  region(m)%part_of,': parent = ',region(m)%parent
 
 !-----------------------------------------------------------------
 if (trim(region(m)%type) == 'system') then
@@ -345,6 +354,15 @@ else if (trim(region(m)%type) /= 'gmsh') then
     local_location = region(m)%location
     if (.not.local_location%active) call error_stop("region "//trim(region(m)%name)// &
       " is trying to be updated but its location it isn't active")
+  end if
+
+  if (debug) then
+    write(82,*) "now processing local_location"
+    write(82,*) "type = "//trim(local_location%type)
+    write(82,*) "description = "//trim(local_location%description)
+    if (allocated(local_location%floats)) write(82,*) "floats = ",local_location%floats
+    if (allocated(local_location%integers)) write(82,*) "integers = ",local_location%integers
+    if (allocated(local_location%regions)) write(82,*) "regions = ",local_location%regions
   end if
 
 ! TODO:
@@ -549,7 +567,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
   else if (trim(local_location%type) == "compound" .or. trim(local_location%type) == "common") then
 
     allocate(elementisin(ijktotal)) 
-    elementisin(ijk) = .false.
+    elementisin = .false.
     if (trim(local_location%type) == "compound") then
       compoundtype = .true. ! use this for fast lookup later
     else
@@ -564,6 +582,13 @@ else if (trim(region(m)%type) /= 'gmsh') then
 ! loop through all regions identified in the list
     do n = 1, allocatable_integer_size(local_location%regions)
       nregion = local_location%regions(n)
+      if (compoundtype) then
+        compoundadd = .false.
+        if (local_location%integers(n) == 1) compoundadd = .true.
+      end if
+
+      if (debug) write(82,*) '++ in compound loop processing region = '//trim(region(nregion)%name)//' with integer = ', &
+        local_location%integers(n)
 
 ! check centring of requested related region is consistent with the parent
       if (region(nregion)%centring /= region(m)%centring) &
@@ -574,9 +599,11 @@ else if (trim(region(m)%type) /= 'gmsh') then
 
       do ns = 1, allocatable_integer_size(region(region(m)%part_of)%ijk) ! just set the elements within the part_of region to be true
         ijk = region(region(m)%part_of)%ijk(ns)
+        if (debug) write(82,*) 'before: ns = ',ns,': ijk = ',ijk,': elementisin(ijk) = ',elementisin(ijk)
         if (ijk == 0) cycle
         if (compoundtype) then
-          if (local_location%integers(n) == 1) then
+          if (region(nregion)%ns(ijk) == 0) cycle ! if this element is not in the location region then don't do anything - cycle
+          if (compoundadd) then
             if (.not.elementisin(ijk)) elementisin(ijk) = .true. ! adding element
           else
             if (elementisin(ijk)) elementisin(ijk) = .false. ! subtracting element
@@ -586,6 +613,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
             if (region(nregion)%ns(ijk) == 0) elementisin(ijk) = .false.
           end if
         end if
+        if (debug) write(82,*) 'after: ns = ',ns,': ijk = ',ijk,': elementisin(ijk) = ',elementisin(ijk)
       end do
 
     end do
