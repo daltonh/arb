@@ -4,40 +4,17 @@
 # arb is released under the GNU GPL.  For full details see the license directory.
 #
 #----------------------------------------------------------------------------
-# file equations.in
-VERSION 0.42
+VERSION 0.51
 
 # the following strings describe the simulation and are passed to the output files
 INFO_TITLE "Steady state heat diffusion around an ellipse"
 INFO_DESCRIPTION "Tutorial 1: Example problem demonstrating how to setup a Laplace equation, with associated flux (Neuman) and absolute (Dirichlet) boundary conditions on the walls.  Two dimensional, with an unstructured mesh."
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "8/4/14" # interpreted as the last modification date
-
-#----------------------------------------------------------------------------
-# user-defined constants
-
-# REGION_LIST line has the ordered names of any regions
-# (CELL_|FACE_)REGION_CONSTANT sets a constant that varies with region and has the form: <name> [multiplier*units] value_for_region_1 .. value_for_region_n options # comments
-# (CELL_|FACE_|NONE_|)CONSTANT sets a constant specific to one region or no regions and has the form: <name> [multiplier*units] value ON <region> options # comments
-
-# physical data
-CONSTANT <D> [m^2/s] 1.d-3 # diffusivity
-CONSTANT <hole flux> [W/m^2] -1.d+1 # heat flux around surface of hole
-
-# numerical constants
+INFO_DATE "8/3/15" # interpreted as the last modification date
 
 #-------------------------------------------------------------------
-# solver options
-
 #NEWTRESTOL 1.d-12 # convergence criterion for newton solver
 #NEWTSTEPMAX 10 # maximum number of steps for newton solver
-
-# linear solver that is used to invert jacobian
-#LINEAR_SOLVER "DEFAULT" # choose the fastest available
-#LINEAR_SOLVER "HSL_MA28" # hsl archive direct solver
-#LINEAR_SOLVER "INTEL_PARDISO" # pardiso solver contained in intel mkl library
-#LINEAR_SOLVER "INTEL_PARDISO_OOC" # pardiso solver contained in intel mkl library
-#LINEAR_SOLVER "SUITESPARSE_UMF" # suitesparse umf solver (UMFPACK) by Timothy A. Davis
 
 #-------------------------------------------------------------------
 # geometry
@@ -92,10 +69,15 @@ MSH_FILE "surface.msh"
 #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 
-CELL_UNKNOWN <T> [K] "1.d0" # temperature
-CELL_EQUATION <T transport> "-celldiv(<D>*facegrad(<T>))" ON <domain> # diffusion equation
-FACE_EQUATION <T hole> "-<D>*facegrad(<T>)-<hole flux>" ON <hole> # specified heat flux through hole surface
-FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on walls
-NONE_OUTPUT <T average> "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
+# ---------------------------
+
+CONSTANT <D> [W/(K.m)] 1.d-3 # diffusivity, actually thermal conductivity (k) given the other units
+CONSTANT <hole flux> [W/m^2] -1.d+1 # heat flux around surface of hole
+CELL_UNKNOWN <T> [K] "1.d0" ON <all cells> # temperature
+FACE_DERIVED <q_f> [W/m^2] "-<D>*facegrad(<T>)" ON <all faces> output # flux of heat across each face, in the direction of the face normal
+CELL_EQUATION <T transport> "celldiv(<q_f>)" ON <domain> # diffusion equation, giving conservation of heat on each cell within the domain
+FACE_EQUATION <T hole> "<q_f>-<hole flux>" ON <hole> # specified heat flux through hole surface: Note, face normals on boundary faces all point outwards, so this equation specifies a flux equal to <hole flux> directed out of the domain.  However, <hole flux> is set to a negative number above, giving a (physical) flux directed into the domain
+FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on the walls of the domain 
+NONE_OUTPUT <T average> [K] "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
 
 #-------------------------------------------------------------------

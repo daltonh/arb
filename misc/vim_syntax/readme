@@ -1,7 +1,13 @@
-these are some vim syntax files that were originally written by Christian (Biscombe).
+these are some vim syntax files that were originally written by Christian (Biscombe) to do syntax highlighting of the arb files.
+
+This can be setup using a shell script which does the things listed in this file.  Just run './install_vim_syntax_files.sh' and then restart vim.
+
+##############
+
+Alternatively, read below to find out the details:
 
 To set this up:
-1. Move the attached files to the appropriate subdirectories within ~/.vim/ (ftplugin and syntax, respectively; create these if they don't exist)
+1. Move the attached files to the appropriate subdirectories within ~/.vim/ (ftplugin and syntax, respectively; create these if they don't exist) (from here, rsync -au arb_vim_files/* ~/.vim)
 2. Make sure you have 'filetype plugin on' in your .vimrc
 3. Append the following line to the end of your arb input file (NB spaces are significant):
 # vim: ft=arb
@@ -10,3 +16,11 @@ OR
 
 use the following in your .vimrc file 'autocmd BufRead,BufNewFile *.arb set filetype=arb'
 4. Restart vim and hey presto!
+
+New quick instructions:
+1) mkdir ~/.vim # if this doesn't exist already
+2) rsync -au arb_vim_files/* ~/.vim # copy over the relevant files
+3) place the following in your .vimrc file
+filetype plugin on
+autocmd BufRead,BufNewFile *.arb set filetype=arb
+syntax enable
