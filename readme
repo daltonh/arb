@@ -1,23 +1,6 @@
-to run this example problem (assuming that you have all of the required software installed - see the website or manual within doc)
+arb, an open-source multiphysics finite volume solver
+originally written by Dalton Harvie (daltonh@unimelb.edu.au), this is now a public collaborative project
 
-1) copy all of the problem files (.arb, .msh and .geo) from this directory to the working directory.  IE, from this directory:
-cp *.arb ../..
-cp *.geo ../..
-cp *.msh ../..
-
-2) change directory back to the working directory:
-cd ../..
-
-3) run the simulation
-./arb
-
-3.5) if arb complains that you don't have a linear solver installed at this point you can download and install the suitsparse solver and try again using:
-cd src/contributed/suitesparse
-make
-cd ../../..
-./arb
-
-4) view the simulation results using gmsh:
-gmsh output/output.msh
-
-The directory tutorial_2 contains a more complex problem but the run method is the same as above.  You will need to delete the tutorial_1 *.arb file before running it however (or specify the new *.arb file explicitly to the ./arb run script).  There are many other example files within the examples directory.
+* to run the solver you use the ./arb script
+* try ./arb --help to list available options
+* to get going, look at the readme file in the examples/tutorial_1 directory or at the manual in the doc directory
