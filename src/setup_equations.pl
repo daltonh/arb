@@ -150,6 +150,7 @@ my %statement_repeats = ( 'definitions' => 0, 'typechanges' => 0, 'centringchang
 my %kernel_availability = ( 'cellave' => 0, 'cellgrad' => 0, 'cellfromnodeave' => 0, 'cellfromnodegrad' => 0, 'faceave' => 0, 'facegrad' => 0, 'nodeave' => 0, 'nodegrad' => 0 );
 
 my @region = (); # list of regions
+my $fortran_regions = 0; # number (ie, highest fortran index) of the regions that need fortran allocations
 #--------------------------------------------------------------
 # read through setup files storing all the information
 
@@ -161,9 +162,11 @@ open(FORTRAN_INPUT, ">$fortran_input_file"); # open input file for the fortran e
 
 read_input_files(); # read input files, generating user defined variables
 
-initialise_user_variables(); # create variable structure from raw asread_variable array
+organise_user_variables(); # create variable structure from raw asread_variable array
 
 close(FORTRAN_INPUT);
+
+organise_regions(); # initialise all of the regions not already read in, organise them, and check on regions used by variables
 
 create_compounds(); # create vector and tensor allocations
 
@@ -177,7 +180,7 @@ read_maxima_results_files(); # read in any old maxima results stored in files fr
 
 create_mequations(); # create maxima type equations
 
-organise_regions(); # initialise all of the regions not already read in, organise them, and check on regions used by variables
+process_regions(); # finalise all of the regions, checking any that haven't been included as variable regions, and create fortran allocations etc for them
 
 create_allocations();  # create allocation statements
 
@@ -300,11 +303,12 @@ sub output_variable_list {
     print VARIABLE "List of $key variables:\n";
     for my $mvar ( 1 .. $#{$variable{$key}} ) {
       print VARIABLE "$mvar";
-        for my $infokey ( "name", "units", "centring", "region", "rank", "fortran_number", "component_list", "equation" ) {
+        for my $infokey ( "name", "units", "centring", "region", "rank", "fortran_number", "component_list", "equation", "masread" ) {
+          print VARIABLE ": $infokey = ";
           if (empty($variable{$key}[$mvar]{$infokey})) {
-            print VARIABLE ":"
+            print VARIABLE "empty"
           } else {
-            print VARIABLE ": $variable{$key}[$mvar]{$infokey}";
+            print VARIABLE "$variable{$key}[$mvar]{$infokey}";
           }
         }
       print VARIABLE "\n";
@@ -919,6 +923,7 @@ sub read_input_files {
 
 #-----------------------
 # user variables, by type and name
+# ref: VARIABLE
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)(CONSTANT|REGION_CONSTANT|TRANSIENT|NEWTIENT|DERIVED|UNKNOWN|EQUATION|OUTPUT|CONDITION|LOCAL|VARIABLE)($|\s)/i) {
         $line = $';
         $type = "\L$2"; # NB: $2 cannot be empty
@@ -1126,8 +1131,9 @@ sub read_input_files {
 
 #-----------------------
 # now processing user regions too, in much the same way as the user variables
+# ref: REGION
 
-      elsif ( $line =~ /^\s*((FACE|CELL|NODE)_|)((CONSTANT|TRANSIENT|NEWTIENT|STATIC|SETUP|GMSH|DERIVED|EQUATION|OUTPUT|CONDITION)_|)REGION($|\s)/i ) {
+      elsif ( $line =~ /^\s*((FACE|CELL|NODE)_|)((STATIC|SETUP|GMSH|CONSTANT|TRANSIENT|NEWTIENT|DERIVED|EQUATION|OUTPUT|UNKNOWN)_|)REGION($|\s)/i ) {
         $line = $';
         $centring = ""; # now centring can be grabbed from last definition
         if ($2) { $centring = "\L$2"; }
@@ -1206,7 +1212,7 @@ sub read_input_files {
           $region[$masread]{"part_of"}='';
           $region[$masread]{"location"}{"description"}='';
           $region[$masread]{"initial_location"}{"description"}='';
-          $region[$masread]{"last_variable_masread"}=$#asread_variable; # this determines when a region will be evaluated, for dynamic regions
+          $region[$masread]{"last_variable_masread"}=$#asread_variable; # this determines when a region will be evaluated, for dynamic regions - it will be -1 if no variables are defined yet
         }
 
 # extract the location string, and if two are present, also an initial_location string (to be used for transient and newtient dynamic regions)
@@ -1289,15 +1295,12 @@ sub read_input_files {
 }
 
 #-------------------------------------------------------------------------------
-# here we add all of the SYSTEM, INTERNAL and GMSH (as known) regions to the region array, and then check that everything in these region declarations is consistent
+# here we add all of the SYSTEM, INTERNAL and GMSH (as known) regions to the region array
 
 sub organise_regions {
 
   use strict;
-  use Data::Dumper;
-  $Data::Dumper::Terse = 1;
-  $Data::Dumper::Indent = 0;
-  my ($n, $n2, $type, $mvar);
+  my ($n);
 
 # ref: regions
 # what this all means:
@@ -1310,7 +1313,6 @@ sub organise_regions {
 # derived    X        X     X        X                           updated as the derived variables are updated (in the order of definition)
 # equation   X        X     X        X                           updated as the equation variables are updated (in the order of definition)
 # output     X        X     X        X                           updated as the output variables are updated (in the order of definition)
-# condition  X        X     X        X                           updated as the condition variables are updated (in the order of definition)
 # setup               X     X        X                           updated at the start of a simulation during the setup routines, only once, using location information
 # gmsh                      X        GMSH                        read in from a gmsh file, although centring and name can be declared within arb file (using no location string or 'GMSH')
 # system                    X        SYSTEM                      regions defined by the system, and available to users (such as <all cells>)
@@ -1418,36 +1420,11 @@ sub organise_regions {
   push(@region,{ name => '<separationcentre(\d*)>', type => 'internal', centring => 'cell' });
 
 #-------------
-# run through variables finding any other regions that have not been previously specified and hence must be brought in via gmsh
-# NB: the region name here was previously run through examine_name when the region was specified within the variable definition line
+# set fortran numbers now for the above user, system and internal variables
 
-  foreach $type (@user_types,"someloop") {
-    foreach $mvar ( 1 .. $m{$type} ) {
-      if (empty($variable{$type}[$mvar]{"region"})) { next; }
-      if ($variable{$type}[$mvar]{"centring"} eq 'none') { next; }
-      print DEBUG "INFO: search for $variable{$type}[$mvar]{centring} region $variable{$type}[$mvar]{region} on which variable $variable{$type}[$mvar]{name} is defined:\n";
-      my $nfound = find_region($variable{$type}[$mvar]{"region"});
-      if ($nfound >= 0) {
-        print DEBUG "INFO: a previously defined region for variable $type $variable{$type}[$mvar]{name} has been found: region = $region[$nfound]{name}:".
-          " centring = $region[$nfound]{centring}\n";
-        if (nonempty($region[$nfound]{"centring"})) {
-# if centring is defined but not consistent, then this is an error
-          if ($region[$nfound]{"centring"} ne $variable{$type}[$mvar]{"centring"}) {
-            error_stop("a variable and region centring do not match: region = $region[$nfound]{name}: variable = $variable{$type}[$mvar]{name}: ".
-              "ovariable = $variable{$variable{$type}[$mvar]{otype}}[$variable{$type}[$mvar]{omvar}]{name}: ".
-              "variable centring = $variable{$type}[$mvar]{centring}: apparent region centring = $region[$nfound]{centring}");
-          }
-        } elsif ($region[$nfound]{"type"} ne "internal") { # don't try to set internal region centring (specifically for <noloop>)
-# if centring is not defined then set it based on the variable
-          $region[$nfound]{"centring"} = $variable{$type}[$mvar]{"centring"};
-          print DEBUG "INFO: setting centring of region $region[$nfound]{name} to $region[$nfound]{centring} based on variable $variable{$type}[$mvar]{name}\n";
-        }
-      } else {
-        push(@region,{ name => "$variable{$type}[$mvar]{region}", type => 'gmsh', centring => "$variable{$type}[$mvar]{centring}" });
-        $region[$#region]{"location"}{"description"} = "GMSH from variable $variable{$type}[$mvar]{name}";
-        print DEBUG "INFO: no previously defined region for variable $type $variable{$type}[$mvar]{name} was found: pushing new GMSH region $variable{$type}[$mvar]{region}\n";
-      }
-    }
+  $fortran_regions = 0; # this is the total number of regions that need to be allocated by this script within the fortran
+  foreach $n ( 0 .. $#region ) {
+    if ($region[$n]{'type'} eq 'internal') { $region[$n]{"fortran"} = 0; } else { $fortran_regions++; $region[$n]{"fortran"} = $fortran_regions; } # only internal regions don't have a corresponding region in the fortran code
   }
 
 #-------------
@@ -1458,38 +1435,36 @@ sub organise_regions {
   foreach $n ( 0 .. $#region ) {
     if (empty($region[$n]{"user"})) { $region[$n]{"user"} = 0; }
     if (nonempty($region[$n]{"part_of"}) && $region[$n]{"user"}) {
-      my $nfound = find_region($region[$n]{"part_of"});
-      if ($nfound >= 0) {
-        print DEBUG "INFO: a previously defined part_of region defined for region $region[$n]{name} has been found: $region[$nfound]{name}\n";
-        if ($region[$nfound]{"type"} eq "internal") { error_stop("a part_of region cannot be an internal region: region = $region[$n]{name}: part_of region = $region[$nfound]{name}"); }
-        if (nonempty($region[$nfound]{"centring"})) {
-# if centring is defined but not consistent, then this is an error
-          if ($region[$nfound]{"centring"} ne $region[$n]{"centring"}) {
-            error_stop("a region's part_of centring and centring do not match: region = $region[$n]{name}: part_of region = $region[$nfound]{name}: ".
-              "region centring = $region[$n]{centring}: part_of region centring = $region[$nfound]{centring}");
-          }
-        } else {
-# if centring is not defined then set it based on parent region
-          $region[$nfound]{"centring"} = $region[$n]{"centring"};
-          print DEBUG "INFO: setting centring of region $region[$nfound]{name} to $region[$nfound]{centring} based on region $region[$n]{name}\n";
-        }
-      } else {
-        push(@region,{ name => "$region[$n]{part_of}", type => 'gmsh', user => '0', centring => "$region[$n]{centring}" });
-        $region[$#region]{"location"}{"description"} = "GMSH from part_of region from region $region[$n]{name}";
-        print DEBUG "INFO: no previously defined part_of region was found for region $region[$n]{name}: pushing new GMSH region $region[$n]{part_of}\n";
-      }
+      my $nfound = check_region_and_add_if_not_there($region[$n]{"part_of"},$region[$n]{"centring"},"part_of region from $region[$n]{centring} centred region $region[$n]{name}");
+      if ($region[$nfound]{"type"} eq "internal") { error_stop("a part_of region cannot be an internal region: region = $region[$n]{name}: part_of region = $region[$nfound]{name}"); }
     } elsif (nonempty($region[$n]{"part_of"})) {
-      error_stop("part_of region ($region[$n]{part_of}) cannot be used for region type $region[$n]{type} for region $region[$n]{name}");
+      error_stop("a part_of region ($region[$n]{part_of}) cannot be specified for region type $region[$n]{type}, which is being attempted for region $region[$n]{name}");
     }
   }
       
-#-------------
-# set fortran numbers now, so that an array can be created for the location strings that reference these numbers
+}
+#-------------------------------------------------------------------------------
+# here we first run through all of the variables checking that no regions have been left out, and then process the description strings for the variables
 
-  my $nfortran = 0; # this is the total number of regions that need to be allocated by this script within the fortran
-  foreach $n ( 0 .. $#region ) {
-    $type = $region[$n]{'type'};
-    if ($type eq 'internal') { $region[$n]{"fortran"} = 0; } else { $nfortran++; $region[$n]{"fortran"} = $nfortran; } # only internal regions don't have a corresponding region in the fortran code
+sub process_regions {
+
+  use strict;
+  use Data::Dumper;
+  $Data::Dumper::Terse = 1;
+  $Data::Dumper::Indent = 0;
+  my ($n, $n2, $type, $mvar);
+
+#-------------
+# run through variables finding any other regions that have not been previously specified and hence must be brought in via gmsh
+# NB: the region name here was previously run through examine_name when the region was specified within the variable definition line
+
+  foreach $type (@user_types,"someloop") {
+    foreach $mvar ( 1 .. $m{$type} ) {
+      if (empty($variable{$type}[$mvar]{"region"})) { next; }
+      if ($variable{$type}[$mvar]{"centring"} eq 'none') { next; }
+      print DEBUG "INFO: search for $variable{$type}[$mvar]{centring} region $variable{$type}[$mvar]{region} on which variable $variable{$type}[$mvar]{name} is defined:\n";
+      my $nfound = check_region_and_add_if_not_there($variable{$type}[$mvar]{"region"},$variable{$type}[$mvar]{"centring"},"region associated with $variable{$type}[$mvar]{centring} $type variable $variable{$type}[$mvar]{name}");
+    }
   }
 
 #-------------
@@ -1534,28 +1509,8 @@ sub organise_regions {
         for $n2 ( 0 .. $#{$region[$n]{$key}{"regionnames"}}) {
           my $match_name = $region[$n]{$key}{"regionnames"}[$n2];
           my $match_centring = $region[$n]{$key}{"regioncentrings"}[$n2];
-          my $nfound = find_region($match_name);
-          if ($nfound >= 0) {
-            print DEBUG "INFO: a previously defined location region for region $region[$n]{name} has been found: $region[$nfound]{name}\n";
-            if ($region[$nfound]{"type"} eq "internal") { error_stop("a region within a location description cannot be an internal region: region = $region[$n]{name}: region within location description = $region[$nfound]{name}"); }
-            if (nonempty($region[$nfound]{"centring"}) && nonempty($match_centring)) {
-# if both centrings are defined but not consistent, then this is an error
-              if ($region[$nfound]{"centring"} ne $match_centring) {
-                error_stop("a region's centring and location context centring do not match: region = $region[$n]{name}: ".
-                  "region centring = $region[$n]{centring}: location context centring = $match_centring");
-              }
-            } elsif (nonempty($match_centring)) {
-# if centring is not defined then set it based on parent region
-              $region[$nfound]{"centring"} = $match_centring;
-              print DEBUG "INFO: setting centring of region $region[$nfound]{name} to $match_centring based on region $region[$n]{name}\n";
-            }
-          } else {
-            push(@region,{ name => "$match_name", type => 'gmsh', user => '0', centring => $match_centring });
-            $region[$#region]{"location"}{"description"} = "GMSH from $key description for region $region[$n]{name}";
-            print DEBUG "INFO: no previously defined part_of region was found for region $region[$n]{name}: pushing new GMSH region $region[$n]{part_of}\n";
-            $nfound = $#region;
-            $nfortran++; $region[$nfound]{"fortran"} = $nfortran; # now also have to deal with fortran index
-          }
+          my $nfound = check_region_and_add_if_not_there($match_name,$match_centring,"$key description string for $region[$n]{centring} region $region[$n]{name}"); 
+          if ($region[$nfound]{"type"} eq "internal") { error_stop("a region within a location description cannot be an internal region: region = $region[$n]{name}: region within location description = $region[$nfound]{name}"); }
           push(@{$region[$n]{$key}{"regions"}},$region[$nfound]{"fortran"}); # add this fortran region number to list of location_regions
         }
       }
@@ -1690,47 +1645,46 @@ sub organise_regions {
 # TODO: for dynamic regions need to find position relative to variables that the region is to be updated, to facilitate writing the hook into create_fortran_equations
 
 #-------------
-# create region sub_string for all fortran variables
+# create region sub_string for all regions that require fortran allocations
 
-#allocate any SYSTEM or user defined regions
-if ($nfortran > 0) {
-  $sub_string{"allocate_regions"}="allocate(region($nfortran))\n";
-  foreach $n ( 0 .. $#region ) {
-    my $m = $region[$n]{"fortran"};
-    if ($m) {
-      $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
-        "\n! region $region[$n]{name} of $region[$n]{type} type\n".
-        "region($m)%name = \"$region[$n]{name}\"\n".
-        "region($m)%centring = \"$region[$n]{centring}\"\n". # every region written to fortran has a centring
-        "region($m)%type = \"$region[$n]{type}\"\n".
-        "region($m)%dynamic = ".fortran_logical_string($region[$n]{"dynamic"})."\n"; # dynamic logical
-      if ($region[$n]{"user"}) {
+  if ($fortran_regions > 0) {
+    $sub_string{"allocate_regions"}="allocate(region($fortran_regions))\n";
+    foreach $n ( 0 .. $#region ) {
+      my $m = $region[$n]{"fortran"};
+      if ($m) {
         $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
-          "region($m)%part_of = $region[$n]{part_of_fortran}\n".
-          "region($m)%parent = $region[$n]{parent_fortran}\n";
-      }
-
-      for my $key ( "location", "initial_location" ) {
-        if (nonempty($region[$n]{$key}{"description"})) {
+          "\n! region $region[$n]{name} of $region[$n]{type} type\n".
+          "region($m)%name = \"$region[$n]{name}\"\n".
+          "region($m)%centring = \"$region[$n]{centring}\"\n". # every region written to fortran has a centring
+          "region($m)%type = \"$region[$n]{type}\"\n".
+          "region($m)%dynamic = ".fortran_logical_string($region[$n]{"dynamic"})."\n"; # dynamic logical
+        if ($region[$n]{"user"}) {
           $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
-            "region($m)%".$key."%active = .true.\n".
-            "region($m)%".$key."%description = \"$region[$n]{$key}{description}\"\n";
-          if (nonempty($region[$n]{$key}{"type"})) {
+            "region($m)%part_of = $region[$n]{part_of_fortran}\n".
+            "region($m)%parent = $region[$n]{parent_fortran}\n";
+        }
+
+        for my $key ( "location", "initial_location" ) {
+          if (nonempty($region[$n]{$key}{"description"})) {
             $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
-              "region($m)%".$key."%type = \"$region[$n]{$key}{type}\"\n";
-          }
-          for my $key2 ( "variables", "regions", "integers", "floats" ) {
-            if (nonempty(@{$region[$n]{$key}{$key2}})) {
+              "region($m)%".$key."%active = .true.\n".
+              "region($m)%".$key."%description = \"$region[$n]{$key}{description}\"\n";
+            if (nonempty($region[$n]{$key}{"type"})) {
               $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
-                "allocate(region($m)%".$key."%".$key2."(".scalar($#{$region[$n]{$key}{$key2}}+1)."))\n".
-                "region($m)%".$key."%".$key2." = [".join(',',@{$region[$n]{$key}{$key2}})."]\n";
+                "region($m)%".$key."%type = \"$region[$n]{$key}{type}\"\n";
+            }
+            for my $key2 ( "variables", "regions", "integers", "floats" ) {
+              if (nonempty(@{$region[$n]{$key}{$key2}})) {
+                $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
+                  "allocate(region($m)%".$key."%".$key2."(".scalar($#{$region[$n]{$key}{$key2}}+1)."))\n".
+                  "region($m)%".$key."%".$key2." = [".join(',',@{$region[$n]{$key}{$key2}})."]\n";
+              }
             }
           }
         }
       }
     }
   }
-}
 
 #-------------
 # print debugging info
@@ -1744,6 +1698,45 @@ if ($nfortran > 0) {
 
 }
 
+#-------------------------------------------------------------------------------
+# check if a region name exists:
+# if it doesn't and it is addable, add it to the list, with its centring (if specified)
+# if it does, check that the centring is consistent
+
+sub check_region_and_add_if_not_there {
+
+# on input:
+  my $region_name=$_[0]; # region name, already passed through examine_name
+  my $centring=$_[1]; # if non-empty, centring this region must be
+  my $context=$_[2]; # context to be used for output messages
+# on output:
+# $_[0] region number
+
+  my $nfound = find_region($region_name);
+  if ($nfound >= 0) {
+    print DEBUG "INFO: a previously defined region from the context of $context has been found: region = $region[$nfound]{name}:".
+      " centring = $region[$nfound]{centring}\n";
+    if (nonempty($region[$nfound]{"centring"})) {
+# if centring is defined but not consistent, then this is an error
+      if (nonempty($centring) && $region[$nfound]{"centring"} ne $centring) {
+        error_stop("the centring of a region and the context in which is is used don't match: region = $region[$nfound]{name}: region centring = $region[$nfound]{centring}: context = $context");
+      }
+    } elsif ($region[$nfound]{"type"} ne "internal" && nonempty($centring)) { # don't try to set internal region centring (specifically for <noloop>)
+# if centring is not defined then set it based on the variable
+      $region[$nfound]{"centring"} = $centring;
+      print DEBUG "INFO: setting centring of region $region[$nfound]{name} to $region[$nfound]{centring} based on context $context\n";
+    }
+  } else {
+    $fortran_regions++;
+    push(@region,{ name => $region_name, type => "gmsh", user => 0, centring => $centring, fortran => $fortran_regions });
+    $region[$#region]{"location"}{"description"} = "GMSH from context $context";
+    print DEBUG "INFO: no previously defined region $region_name was found in the context of $context: pushing new GMSH $centring region\n";
+    $nfound = $#region;
+  }
+
+  return ($nfound);
+
+}
 #-------------------------------------------------------------------------------
 # scans a location string and finds certain things
 # on input:
@@ -1903,12 +1896,12 @@ sub match_region {
 # this routine now takes the raw information contained in the $asread_variable array and creates the variable{$type}[$mvar] hash/array used in the rest of the code,
 #  checking that enough definitions and the correct options have been specified at the same time
 
-sub initialise_user_variables {
+sub organise_user_variables {
 
   use strict;
   my ($type, $name, $centring, $mvar, $option, $option_name, $repeats, $masread, $n, $tmp, $match, $condition);
 
-  print DEBUG "INFO: sub initialise_user_variables\n";
+  print DEBUG "INFO: sub organise_user_variables\n";
 
 # distill asread_variable into variables of different types, while at the same time, checking that each variable has a type, centring and region
 
@@ -2359,7 +2352,7 @@ sub mequation_interpolation {
     $substitute, $lousysubstitute, $tmpderiv, $handle, $distance, $difference, $l2, $dx, $name, $gradient, $unknown,
     $mcheck, $not_found, $reflect_multiplier_string, $reflect_option_string, $top, $bottom, $dtype, $ltype, $lmvar, $someloop_mvar,
     $minseparation, $maxseparation, $external_arguments, $faceseparationflag, $method, $vector, $shape, $external_operator_file,
-    $external_operator_type, $from_centring, $interpolate_centring);
+    $external_operator_type, $from_centring, $interpolate_centring, $nfound);
   my $nbits=0;
   my @outbit=();
   my @inbit=();
@@ -3013,6 +3006,7 @@ sub mequation_interpolation {
       
       ($someregion,$name) = search_operator_contents("region",$next_contents_number);
       if ( $someregion =~ /^\<.+?\>$/ ) {
+        $someregion = examine_name($someregion,"regionname"); # standardise regionname
         print DEBUG "INFO: location of $someregion has been found to $centring centred $operator_type operator used in $otype variable $variable{$otype}[$omvar]{name}\n";
       } elsif (empty($someregion)) {
         if ($minseparation >= 0) {
@@ -3086,12 +3080,18 @@ sub mequation_interpolation {
 # single argument is the region
     } elsif ($operator_type eq "delta") {
 
+# TODO: use new region knowledge
       ($someregion,$name) = search_operator_contents("region",$next_contents_number);
       if (empty($someregion)) { error_stop("region not found in $centring $operator in $otype $variable{$otype}[$omvar]{name}"); }
       if ( $someregion !~ /^<.+?>$/ ) { error_stop("format for region incorrect in $centring $operator in $otype $variable{$otype}[$omvar]{name}: region = $someregion"); }
+      $someregion = examine_name($someregion,"regionname"); # standardise regionname
 #     ($someregion) = $someregion =~ /^<(.*)>$/; # now remove delimiters so that the mequation does not contain any <> strings
-      if ( $centring eq "none" ) { error_stop("problem with $centring centring of $operator in $otype $variable{$otype}[$omvar]{name}"); }
-      $inbit[$nbits] = 'region_delta('.ijkstring($centring).',"'.$centring.'","'.$someregion.'")';
+#     if ( $centring eq "none" ) { error_stop("problem with $centring centring of $operator in $otype $variable{$otype}[$omvar]{name}"); }
+#     $inbit[$nbits] = 'region_delta('.ijkstring($centring).',"'.$centring.'","'.$someregion.'")';
+      if ( $centring !~ /cell|face|node/ ) { error_stop("problem with $centring centring of region $someregion in $operator in $otype $variable{$otype}[$omvar]{name}"); }
+# find region index to place directly into code
+      my $nfound = check_region_and_add_if_not_there($someregion,$centring,"region $someregion used in $centring $operator in $otype $variable{$otype}[$omvar]{name}"); 
+      $inbit[$nbits] = 'region_delta(ijk='.ijkstring($centring).',region_number='.$region[$nfound]{"fortran"}.')';
 
 #---------------------
 # ref: link, ref: celllink, ref: facelink, ref: facetofacelink, ref: facetocelllink, ref: celltocelllink, ref: celltofacelink
@@ -3115,15 +3115,19 @@ sub mequation_interpolation {
       if (empty($expression)) { error_stop("expression part for $operator in $otype $variable{$otype}[$omvar]{name} not found:\n  operator_contents = ".Dumper(\%operator_contents)); }
 
 # find both regions
+# TODO: use new region knowledge
 
       ($from_region,$name) = search_operator_contents("fromregion","localregion",$next_contents_number);
       if ( $from_region =~ /^\<.+?\>$/ ) {
+        $from_region=examine_name($from_region,"regionname");
         print DEBUG "INFO: from_region $from_region of centring $centring identified in $otype $variable{$otype}[$omvar]{name}\n";
+        
       } elsif (empty($from_region)) { error_stop("from_region of centring $centring missing in $otype $variable{$otype}[$omvar]{name}");
       } else { error_stop("from_region $from_region of centring $centring incorrectly specified in $otype $variable{$otype}[$omvar]{name}"); }
 
       ($to_region,$name) = search_operator_contents("toregion","remoteregion",$next_contents_number);
       if ( $to_region =~ /^\<.+?\>$/ ) {
+        $to_region=examine_name($to_region,"regionname");
         print DEBUG "INFO: to_region $to_region of centring $to_centring identified in $otype $variable{$otype}[$omvar]{name}\n";
       } elsif (empty($to_region)) {
         error_stop("to_region of centring $to_centring missing in $otype $variable{$otype}[$omvar]{name}");
@@ -4776,17 +4780,48 @@ sub create_fortran_equations {
   use strict;
   my ($type, $mvar, $mequation, $tmp, $m2var, $deriv, $inequality, $first, $fequation, $mlink, $firstcondition,
     $otype, $omvar, $l, $n, $reflect_string_init, $reflect_string_form, $openloop, $maxseparation, $separation_loop, 
-    $separation_list, $ii2max);
+    $separation_list, $ii2max, $regioninitial, $regiontype, $masread_last, $masread_next);
 
   foreach $type (@user_types,"initial_transient","initial_newtient","someloop") {
+
+    print DEBUG "FORTRAN: starting type = $type\n";
     
     $sub_string{$type}="";
     $first = 1;
 
+# find any dynamic regions that precede the first variable of this type
+
+    if ($type =~ /(initial_|)(constant|transient|newtient|derived|equation|output|unknown)/) {
+      if ($1) { $regioninitial=1; } else { $regioninitial=0; }
+      $regiontype = $2;
+      print DEBUG "FORTRAN: regions: looking for initial region initialisations for regiontype = $regiontype: regioninitial = $regioninitial: mvar = $mvar\n";
+      $masread_last = -1;
+      $masread_next = $#asread_variable+1;
+      for my $mvarsearch ( 1 .. $m{$type} ) {
+        if (nonempty($variable{$type}[$mvarsearch]{"mequation"})) {
+          $masread_next = $variable{$type}[$mvarsearch]{"masread"};
+          last;
+        }
+      }
+      print DEBUG "FORTRAN: regions: masread_last = $masread_last: masread_next = $masread_next\n";
+      for $n ( 0 .. $#region ) {
+        if ($regiontype eq $region[$n]{"type"}) {
+          if ($masread_last <= $region[$n]{"last_variable_masread"} && $region[$n]{"last_variable_masread"} < $masread_next) {
+            print DEBUG "FORTRAN: regions: writing fortran for region $region[$n]{name}\n";
+            $sub_string{$type}=$sub_string{$type}.
+              "\n! updating $regiontype region $region[$n]{name} that precedes any of the $type variables\n".
+              "call update_region(m=$region[$n]{fortran},initial=".fortran_logical_string($regioninitial).")\n";
+          }
+        }
+      }
+    }
+
     foreach $mvar ( 1 .. $m{$type} ) {
 
+      print DEBUG "FORTRAN: starting variable: mvar = $mvar: name = $variable{$type}[$mvar]{name}\n";
+
       if (empty($variable{$type}[$mvar]{"mequation"})) {
-        print DEBUG "INFO: skipping generating fortran equations for $type [$mvar]: $variable{$type}[$mvar]{name}\n";
+        print DEBUG "FORTRAN: skipping generating fortran equations for $type [$mvar]: $variable{$type}[$mvar]{name}\n";
         next;
       } # local variables will be skipped here, as well as numerical constant
 
@@ -4797,10 +4832,10 @@ sub create_fortran_equations {
       $deriv = $variable{$type}[$mvar]{"deriv"};
       if ($otype eq "unknown") { $deriv = 0; } # special case this deriv, as unknowns need a derivative, but it is set by the fortran rather than being calculated
 
-      print "INFO: generating fortran equations for $type [$mvar]: $variable{$type}[$mvar]{name}: deriv = $deriv\n";
-      print DEBUG "INFO: generating fortran equations for $type [$mvar]: $variable{$type}[$mvar]{name}: deriv = $deriv\n";
+      print "FORTRAN: generating fortran equations for $type [$mvar]: $variable{$type}[$mvar]{name}: deriv = $deriv\n";
+      print DEBUG "FORTRAN: generating fortran equations for $type [$mvar]: $variable{$type}[$mvar]{name}: deriv = $deriv\n";
 
-# start writing fortran
+# open if statement
 
       if (!($first)) { $sub_string{$type}=$sub_string{$type}."else "; }
       $first = 0;
@@ -4916,7 +4951,7 @@ sub create_fortran_equations {
             $reflect_string_form=$reflect_string_form."*node(k)%kernel($1)%reflect_multiplier($variable{$type}[$mvar]{reflect}[$n],ns)";
           }
         } elsif ($variable{$type}[$mvar]{"region"} && $variable{$type}[$mvar]{"separation_list_number"}) {
-          print DEBUG "INFO: forming reflect_multiplier for separation variable: name = $variable{$type}[$mvar]{name}: ".
+          print DEBUG "FORTRAN: forming reflect_multiplier for separation variable: name = $variable{$type}[$mvar]{name}: ".
             "separation_list_number = $variable{$type}[$mvar]{separation_list_number}: reflect = $variable{$type}[$mvar]{reflect}\n";
           $separation_list="someloop(thread)%separation_list(".$variable{$type}[$mvar]{separation_list_number}.")"; # shorthand for specific separation_list
           $reflect_string_form = "reflect_multiplier = dble($separation_list%reflect_multiplier($variable{$type}[$mvar]{reflect}[0],ii)";
@@ -4942,7 +4977,8 @@ sub create_fortran_equations {
 # face, cell or node centred variable
 # note, as the code currently stands, every region over which a variable is defined must have atleast one element, which is checked in setup_var, so don't need to use allocatable_integer_size here
           $sub_string{$type}=$sub_string{$type}.
-            "do ns = 1, ubound(region(var(m)%region_number)%ijk,1)\n".
+#           "do ns = 1, ubound(region(var(m)%region_number)%ijk,1)\n".
+            "do ns = 1, allocatable_integer_size(region(var(m)%region_number)%ijk)\n".
             ijkstring($variable{$type}[$mvar]{"centring"})." = region(var(m)%region_number)%ijk(ns)\n";
         } else {
 # none centred variable
@@ -4952,8 +4988,6 @@ sub create_fortran_equations {
             "ns = 1\n";
           $openloop = 0;
         }
-#       if ( $type ne "condition" && $variable{$type}[$mvar]{"centring"} ne "none") {
-#         $sub_string{$type}=$sub_string{$type}.
         if ( $openloop eq "omp" ) {
           $sub_string{$type}=$sub_string{$type}.
             "!\$ thread = omp_get_thread_num() + 1\n".
@@ -5211,7 +5245,8 @@ sub create_fortran_equations {
 # loop through region normally in order of increasing ns index of region
                 
             $sub_string{$type}=$sub_string{$type}.
-              "do ns = 1, ubound(region(region_number)%ijk,1)\n".
+#             "do ns = 1, ubound(region(region_number)%ijk,1)\n".
+              "do ns = 1, allocatable_integer_size(region(region_number)%ijk)\n".
               ijkstring($variable{$type}[$mvar]{"centring"})." = region(region_number)%ijk(ns)\n";
 
           }
@@ -5428,11 +5463,36 @@ sub create_fortran_equations {
           "call multiply_dv($tmp,$variable{$type}[$mvar]{fortranns})\n\n";
       }
         
+# find any dynamic regions that follow this variable
+
+      if ($type =~ /(initial_|)(constant|transient|newtient|derived|equation|output|unknown)/) {
+        print DEBUG "FORTRAN: regions: looking for normal region initialisations for regiontype = $regiontype: regioninitial = $regioninitial: mvar = $mvar\n";
+        $masread_last = $variable{$type}[$mvar]{"masread"};
+        $masread_next = $#asread_variable+1;
+        for my $mvarsearch ( $mvar+1 .. $m{$type} ) {
+          if (nonempty($variable{$type}[$mvarsearch]{"mequation"})) {
+            $masread_next = $variable{$type}[$mvarsearch]{"masread"};
+            last;
+          }
+        }
+        print DEBUG "FORTRAN: regions: masread_last = $masread_last: masread_next = $masread_next\n";
+        for $n ( 0 .. $#region ) {
+          if ($regiontype eq $region[$n]{"type"}) {
+            if ($masread_last <= $region[$n]{"last_variable_masread"} && $region[$n]{"last_variable_masread"} < $masread_next) {
+              $sub_string{$type}=$sub_string{$type}.
+                "\n! updating $regiontype region $region[$n]{name} that follows the update of $type variable $asread_variable[$masread_last]{name}\n".
+                "call update_region(m=$region[$n]{fortran},initial=".fortran_logical_string($regioninitial).")\n";
+              print DEBUG "FORTRAN: regions: writing fortran for region $region[$n]{name}\n";
+            }
+          }
+        }
+      }
+
       $mvar++;
 
     }
 
-    if ($sub_string{$type}) {
+    if (!($first)) { # if an if block has been opened, we need to close it again
       if ($type eq "constant") {
         $sub_string{$type}=$sub_string{$type}."\nend if\n";
       } else {

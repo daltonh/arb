@@ -36,7 +36,7 @@ module region_module
 implicit none
 
 private
-public setup_regions, setup_region_link ! only subroutine accessible from outside the module
+public setup_regions, update_region, setup_region_link ! only subroutine accessible from outside the module
 
 ! various setup related options
 
@@ -72,10 +72,10 @@ do m = 1, ubound(region,1)
   else if (region(m)%centring == "node") then
     allocate(region(m)%ns(ktotal))
   else
-    call error_stop('region '//trim(region(m)%name)//' has neither cell, face or node centring')
+    call error_stop(trim(region(m)%type)//'region '//trim(region(m)%name)//" having description '"// &
+      trim(region(m)%location%description)//"' has neither cell, face or node centring")
   end if
 
-! check that for user regions part_of and parent centrings are consistent
   if (.not.(region(m)%type == 'gmsh' .or. region(m)%type == 'system')) then
     if (region(region(m)%part_of)%centring /= region(m)%centring) &
       call error_stop("the "//trim(region(m)%centring)//" of region "//trim(region(m)%name)//" does not match the " &
@@ -104,17 +104,25 @@ end do
 ! first do static regions - that is system, setup and gmsh
 do m = 1, ubound(region,1)
   if (region(m)%dynamic) cycle
-  region(m)%dimensions = 0
-  if (region(m)%centring == 'cell') then
-    do ns = 1, allocatable_size(region(m)%ijk)
-      region(m)%dimensions = max(region(m)%dimensions,cell(region(m)%ijk(ns))%dimensions)
-    end do
-  else if (region(m)%centring == 'face') then
-    do ns = 1, allocatable_size(region(m)%ijk)
-      region(m)%dimensions = max(region(m)%dimensions,face(region(m)%ijk(ns))%dimensions)
-    end do
-  else if (region(m)%centring == 'node') then
+! for gmsh regions the dimensions should already have been set during the file read in
+! a negative dimensions means that the region has not been found within a msh file, so indicates an error
+  if (trim(region(m)%type) == "gmsh") then
+    if (region(m)%dimensions < 0) call error_stop("the gmsh region "//trim(region(m)%name)//" having description '"// &
+      trim(region(m)%location%description)//"' has not been found in a msh file, but is needed for the simulation")
+  else
     region(m)%dimensions = 0
+! check that for user regions part_of and parent centrings are consistent
+    if (region(m)%centring == 'cell') then
+      do ns = 1, allocatable_size(region(m)%ijk)
+        region(m)%dimensions = max(region(m)%dimensions,cell(region(m)%ijk(ns))%dimensions)
+      end do
+    else if (region(m)%centring == 'face') then
+      do ns = 1, allocatable_size(region(m)%ijk)
+        region(m)%dimensions = max(region(m)%dimensions,face(region(m)%ijk(ns))%dimensions)
+      end do
+    else if (region(m)%centring == 'node') then
+      region(m)%dimensions = 0
+    end if
   end if
   maximum_dimensions = max(maximum_dimensions,region(m)%dimensions) ! set maximum number of dimensions of any region used in the simulation
 end do
@@ -246,7 +254,7 @@ type(region_location_type) :: local_location ! set to either initial or normal l
 integer :: ierror, i, j, k, n, cut, nregion, ijkregion, nsregion, ns, nscompound, ii, jj, kk, ijk, l, ijktotal
 double precision :: tmp, tmpmax
 double precision, dimension(totaldimensions) :: x, xmin, xmax ! a single location
-character(len=1000) :: name, aregion, region_list
+character(len=1000) :: name, aregion, region_list, formatline
 character(len=100) :: type ! this the local_location type that we are dealing with
 character(len=4) :: centring
 character(len=1) :: rsign
@@ -656,16 +664,6 @@ if (allocated(elementisin)) then
   deallocate(elementisin)
 end if
 
-! check that each region contains some elements, and that it is allocated (even if zero length)
-! ie, ensure that all region%ijk arrays are allocated
-
-if (allocatable_integer_size(region(m)%ijk) == 0) then
-  write(*,'(a)') 'WARNING: the region '//trim(region(m)%name)//' contains no elements (none allocated)'
-  if (.not.allocated(region(m)%ijk)) allocate(region(m)%ijk(0)) ! bad practice
-else if (maxval(region(m)%ijk) == 0) then
-  write(*,'(a)') 'WARNING: the region '//trim(region(m)%name)//' contains no elements (all zero actually)'
-end if
-
 ! find ns indicies which give the data number corresponding to location i, j or k
 
 region(m)%ns = 0 ! a zero indicates that this region does not include this element
@@ -674,6 +672,25 @@ do ns = 1, allocatable_size(region(m)%ijk)
   if (ijk == 0) cycle ! now handle zero ijk
   region(m)%ns(ijk) = ns
 end do
+
+if (debug_sparse) then
+  if (region(m)%dynamic) then
+    formatline = "(a,"//trim(dindexformat(allocatable_integer_size(region(m)%ijk)))//",a)"
+    write(*,fmt=formatline) "INFO: updated dynamic "//trim(region(m)%centring)//" region "// &
+      trim(region(m)%name)//" which now has ",allocatable_integer_size(region(m)%ijk)," elements"
+  end if
+end if
+
+! check that each region contains some elements, and that it is allocated (even if zero length)
+! ie, ensure that all region%ijk arrays are allocated
+
+if (allocatable_integer_size(region(m)%ijk) == 0) then
+  write(*,'(a)') 'WARNING: the region '//trim(region(m)%name)//' contains no elements (none allocated)'
+!  if (.not.allocated(region(m)%ijk)) allocate(region(m)%ijk(0)) ! bad practice
+!else if (maxval(region(m)%ijk) == 0) then
+!  write(*,'(a)') 'WARNING: the region '//trim(region(m)%name)//' contains no elements (all zero actually)'
+end if
+
     
 if (debug) then
   write(82,*) '# region = '//trim(region(m)%name)//': centring = '//region(m)%centring
@@ -717,12 +734,17 @@ region_link(m)%to_region_number = region_number_from_name(name=region_link(m)%to
 if (.not.existing) call error_stop("problem with "//trim(region_link(m)%to_centring)// &
   " region "//trim(region_link(m)%to_region)//" which is part of a region link function: "// &
   "region does not exist")
-if (region_link(m)%to_region_number == 0) call error_stop("problem with "//trim(region_link(m)%to_centring)// &
+to_region_number = region_link(m)%to_region_number
+if (to_region_number == 0) call error_stop("problem with "//trim(region_link(m)%to_centring)// &
   " region "//trim(region_link(m)%to_region)//" which is part of a region link function: "// &
   "region most likely has a centring which is inconsistent with its use")
-if (region(region_link(m)%to_region_number)%dynamic) call error_stop("problem with "//trim(region_link(m)%to_centring)// &
+if (region(to_region_number)%dynamic) call error_stop("problem with "//trim(region_link(m)%to_centring)// &
   " region "//trim(region_link(m)%to_region)//" which is part of a region link function: "// &
   "region is dynamic and this isn't allowed for a region link")
+if (allocatable_integer_size(region(to_region_number)%ijk) == 0) call error_stop("problem with "// &
+  trim(region_link(m)%to_centring)// &
+  " region "//trim(region_link(m)%to_region)//" which is part of a region link function: "// &
+  "region contains no elements")
 
 ! find from_region
 region_link(m)%from_region_number = region_number_from_name(name=region_link(m)%from_region, &
@@ -731,12 +753,17 @@ region_link(m)%from_region_number = region_number_from_name(name=region_link(m)%
 if (.not.existing) call error_stop("problem with "//trim(region_link(m)%from_centring)// &
   " region "//trim(region_link(m)%from_region)//" which is part of a region link function: "// &
   "region does not exist")
-if (region_link(m)%from_region_number == 0) call error_stop("problem with "//trim(region_link(m)%from_centring)// &
+from_region_number = region_link(m)%from_region_number
+if (from_region_number == 0) call error_stop("problem with "//trim(region_link(m)%from_centring)// &
   " region "//trim(region_link(m)%from_region)//" which is part of a region link function: "// &
   "region most likely has a centring which is inconsistent with its use")
 if (region(region_link(m)%from_region_number)%dynamic) call error_stop("problem with "//trim(region_link(m)%from_centring)// &
   " region "//trim(region_link(m)%from_region)//" which is part of a region link function: "// &
   "region is dynamic and this isn't allowed for a region link")
+if (allocatable_integer_size(region(from_region_number)%ijk) == 0) call error_stop("problem with "// &
+  trim(region_link(m)%from_centring)// &
+  " region "//trim(region_link(m)%from_region)//" which is part of a region link function: "// &
+  "region contains no elements")
 
 ! now create links - ns index to ns index
 if (allocated(region_link(m)%to_ns)) deallocate(region_link(m)%to_ns)
@@ -750,8 +777,6 @@ n_from = 0
 n_to = 0
 
 ! speed up loop by predefining some stuff
-from_region_number = region_link(m)%from_region_number
-to_region_number = region_link(m)%to_region_number
 if (region_link(m)%from_centring == 'cell') then
   from_cell_centred = 1
 else if (region_link(m)%from_centring == 'face') then

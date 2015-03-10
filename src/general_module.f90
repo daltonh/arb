@@ -2758,28 +2758,19 @@ end function has_elements_in_common
 
 !-----------------------------------------------------------------
 
-function region_delta(ijk,centring,name)
+function region_delta(ijk,region_number)
 
-character(len=4) :: centring ! whether region is cell or face centred
-character(len=*) :: name ! name of the region, now with delimiters <>
 double precision :: region_delta
 integer :: ijk, region_number
-logical :: existing
 logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'function region_delta'
 
-region_delta = 0.d0
-
-region_number = region_number_from_name(name=name,existing=existing,centring=centring)
-if (.not.existing) call error_stop('function region_delta references region '//trim(name)//' which does not exist')
-! centring consistency is checked in region_number_from_name - it is the only possiblity for 0 for an existing region
-if (region_number == 0)  call error_stop('problem in function region_delta with region '//trim(name)// &
-    ': delta has centring context of '//trim(centring)//' whereas region has '//trim(region(region_number)%name)//' centring')
-
-if (region(region_number)%ns(ijk) == 0) return
-
-region_delta = 1.d0
+if (region(region_number)%ns(ijk) == 0) then
+  region_delta = 0.d0
+else
+  region_delta = 1.d0
+end if
 
 if (debug) write(*,'(a/80(1h-))') 'function region_delta'
 

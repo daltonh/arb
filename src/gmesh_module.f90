@@ -678,7 +678,7 @@ integer :: gmesh_number
 character(len=1000) :: formatline
 character(len=100) :: input_option
 logical :: success
-logical, parameter :: debug = .false.
+logical, parameter :: debug = .false. ! this is not the variable you are looking for
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_gmesh'
 
@@ -756,7 +756,7 @@ integer, optional :: var_number
 real :: gmsh_version
 character(len=1000) :: textline, filename
 character(len=4) :: file_centring, contents
-logical, parameter :: debug = .false. ! this is passed to called reading subroutines too
+logical, parameter :: debug = .false. ! this is passed to called reading subroutines too - this is the variable you are looking for
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_gmesh_file'
 

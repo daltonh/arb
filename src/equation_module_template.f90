@@ -118,6 +118,7 @@ subroutine update_derived_and_equations(setup)
 
 use general_module
 use gmesh_module
+use region_module
 !$ use omp_lib
 logical :: setup ! now needs to know whether we are in the setup phase or not - if so, posibly read in data
 integer :: nvar, m, ns, i, j, k
@@ -241,6 +242,7 @@ subroutine update_constants
 
 use general_module
 use gmesh_module
+use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k
 integer :: thread = 1
@@ -292,6 +294,7 @@ subroutine update_unknowns
 
 use general_module
 use gmesh_module
+use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k
 integer :: thread = 1
@@ -343,6 +346,7 @@ subroutine update_newtients
 
 use general_module
 use gmesh_module
+use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
 integer :: thread = 1
@@ -396,6 +400,7 @@ subroutine update_initial_newtients
 
 use general_module
 use gmesh_module
+use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
 integer :: thread = 1
@@ -451,6 +456,7 @@ subroutine update_transients
 
 use general_module
 use gmesh_module
+use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
 integer :: thread = 1
@@ -504,6 +510,7 @@ subroutine update_initial_transients
 
 use general_module
 use gmesh_module
+use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
 integer :: thread = 1
@@ -558,6 +565,7 @@ subroutine update_outputs(stepoutput)
 ! here we update all the outputs that are calculated using equations
 
 use general_module
+use region_module
 !$ use omp_lib
 logical, optional, intent(in) :: stepoutput
 logical :: stepoutput_local
