@@ -251,7 +251,7 @@ use general_module
 integer :: m ! region number to be updated
 logical :: initial ! whether the the initial or normal location string is to be used
 type(region_location_type) :: local_location ! set to either initial or normal location
-integer :: ierror, i, j, k, n, cut, nregion, ijkregion, nsregion, ns, nscompound, ii, jj, kk, ijk, l, ijktotal
+integer :: ierror, i, j, k, n, cut, nregion, ijkregion, nsregion, ns, nscompound, ii, jj, kk, ijk, l, ijktotal, ns2
 double precision :: tmp, tmpmax
 double precision, dimension(totaldimensions) :: x, xmin, xmax ! a single location
 character(len=1000) :: name, aregion, region_list, formatline
@@ -624,6 +624,25 @@ else if (trim(region(m)%type) /= 'gmsh') then
         if (debug) write(82,*) 'after: ns = ',ns,': ijk = ',ijk,': elementisin(ijk) = ',elementisin(ijk)
       end do
 
+    end do
+
+!---------------------
+! a region which is only true where a variable is greater than zero
+
+  else if (trim(local_location%type) == "variable") then
+
+    allocate(elementisin(ijktotal)) 
+    elementisin = .false.
+
+    do ns = 1, allocatable_integer_size(region(region(m)%part_of)%ijk) ! just set the elements within the part_of region to be true
+      ijk = region(region(m)%part_of)%ijk(ns)
+      if (ijk == 0) cycle ! allow for zero elements in ijk
+      ns2 = region(var(local_location%variables(1))%region_number)%ns(ijk)
+      if (ns2 == 0) cycle
+      if (var(local_location%variables(1))%funk(ns2)%v > 0.d0) elementisin(ijk) = .true.
+
+!     if (var_value(m=local_location%variables(1),ns=nsvar(m=local_location%variables(1),ijk=ijk,'variable description', &
+!       noerror=.true.),noerror=.true.) > 0.d0) elementisin(ijk) = .true.
     end do
 
 !---------------------

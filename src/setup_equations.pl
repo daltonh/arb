@@ -1527,7 +1527,7 @@ sub process_regions {
             }
           }
           if ($mvar < 0) { error_stop("the variable $match_name that is used in a location statement for region $region[$n]{name} is not known"); }
-          if (nonempty($match_centring) && $match_centring ne $variable{$type}{$mvar}{"centring"}) {
+          if (nonempty($match_centring) && $match_centring ne $variable{$type}[$mvar]{"centring"}) {
             error_stop("the variable $match_name that is used in a location statement for region $region[$n]{name} has inconsistent centring: ".
               "region location context centring = $match_centring: variable centring = $variable{$type}[$mvar]{centring}");
           }
@@ -1539,18 +1539,24 @@ sub process_regions {
 # look at floats for at and within location types
       if ($region[$n]{$key}{"type"} eq "at") {
         if ($#{$region[$n]{$key}{"floats"}} > 2) {
-          error_stop("more than 3 floats are specified in an "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}");
+          error_stop("more than 3 floats are specified in an $region[$n]{$key}{type} statement for region $region[$n]{name}");
         } elsif ($#{$region[$n]{$key}{"floats"}} < 2) {
-          print "WARNING: less than 3 floats are specified in an "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}: using zero for the uninitialised ones\n";
+          print "WARNING: less than 3 floats are specified in an $region[$n]{$key}{type} statement for region $region[$n]{name}: using zero for the uninitialised ones\n";
           while ($#{$region[$n]{$key}{"floats"}} < 2) { push(@{$region[$n]{$key}{"floats"}},"0.d0"); }
         }
       }
       if ($region[$n]{$key}{"type"} eq "within box") {
         if ($#{$region[$n]{$key}{"floats"}} > 5) {
-          error_stop("more than 6 floats are specified in a "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}");
+          error_stop("more than 6 floats are specified in a $region[$n]{$key}{type} statement for region $region[$n]{name}");
         } elsif ($#{$region[$n]{$key}{"floats"}} < 5) {
-          print "WARNING: less than 6 floats are specified in a "//trim($region[$n]{$key}{"type"})//" statement for region $region[$n]{name}: using zero for the uninitialised ones\n";
+          print "WARNING: less than 6 floats are specified in a $region[$n]{$key}{type} statement for region $region[$n]{name}: using zero for the uninitialised ones\n";
           while ($#{$region[$n]{$key}{"floats"}} < 5) { push(@{$region[$n]{$key}{"floats"}},"0.d0"); }
+        }
+      }
+# look at variable type
+      if ($region[$n]{$key}{"type"} eq "variable") {
+        if (@{$region[$n]{$key}{"variables"}} != 1) {
+          error_stop("there is not a single variable specified in a $region[$n]{$key}{type} statement for region $region[$n]{name}: variables = @{$region[$n]{$key}{variables}}");
         }
       }
 
@@ -1789,7 +1795,7 @@ sub location_description_scan {
 # just a single variable name required
     if ($line =~ /^\s*(<(.+?)>)(\s*|$)/) {
       push(@variablenames,examine_name($1,"name"));
-      push(@variablecentrings,""); # centrings are unknown from variable statement??
+      push(@variablecentrings,$region[$n]{"centring"}); # centring of variable needs to be consistent with the region centring
       $line = $';
     } else {
       error_stop("variable in the $type location for region $region[$n]{name} cannot be recognised: location = $location");
@@ -4794,7 +4800,7 @@ sub create_fortran_equations {
     if ($type =~ /(initial_|)(constant|transient|newtient|derived|equation|output|unknown)/) {
       if ($1) { $regioninitial=1; } else { $regioninitial=0; }
       $regiontype = $2;
-      print DEBUG "FORTRAN: regions: looking for initial region initialisations for regiontype = $regiontype: regioninitial = $regioninitial: mvar = $mvar\n";
+      print DEBUG "FORTRAN: regions: looking for initial region initialisations for regiontype = $regiontype: regioninitial = $regioninitial\n";
       $masread_last = -1;
       $masread_next = $#asread_variable+1;
       for my $mvarsearch ( 1 .. $m{$type} ) {
