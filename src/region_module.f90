@@ -432,8 +432,8 @@ else if (trim(region(m)%type) /= 'gmsh') then
 ! a user defined region from the arb input file that is any elements within a box
 ! TODO: deal with other geometries
 
-! ref: within box region ref: within region
-  else if (trim(local_location%type) == "within box") then
+! ref: withinbox region ref: within region
+  else if (trim(local_location%type) == "withinbox") then
 
 ! check that points are in min and max order and otherwise reorder
 
@@ -474,7 +474,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
 !---------------------
 ! a new region composed of the boundary to another region, or similar type of related domain
 
-  else if (trim(local_location%type) == "boundary of".or.trim(local_location%type) == "domain of".or.trim(local_location%type) == "associated with".or. &
+  else if (trim(local_location%type) == "boundaryof".or.trim(local_location%type) == "domainof".or.trim(local_location%type) == "associatedwith".or. &
     trim(local_location%type) == "surrounds") then
 
 ! check centring of requested related region
@@ -494,8 +494,8 @@ else if (trim(region(m)%type) /= 'gmsh') then
           do ii = 1, ubound(cell(ijkregion)%jface,1)+1 ! loop around cells that border cells, and itself
             i = cell(ijkregion)%icell(ii)
             if (region(region(m)%part_of)%ns(i) == 0) cycle ! check that element is a member of the part_of region
-            if (trim(local_location%type) == "boundary of".and.cell(i)%type /= 2) cycle
-            if (trim(local_location%type) == "domain of".and.cell(i)%type /= 1) cycle
+            if (trim(local_location%type) == "boundaryof".and.cell(i)%type /= 2) cycle
+            if (trim(local_location%type) == "domainof".and.cell(i)%type /= 1) cycle
 !           if (trim(local_location%type) == "surrounds".and.location_in_list(array=region(nregion)%ijk,element=i) /= 0) cycle ! unfortunately ns array has not yet been defined for all other elements
             if (trim(local_location%type) == "surrounds".and.region(nregion)%ns(i) /= 0) cycle ! unfortunately ns array has not yet been defined for all other elements
             if (.not.elementisin(i)) elementisin(i) = .true.
@@ -505,8 +505,8 @@ else if (trim(region(m)%type) /= 'gmsh') then
           do jj = 1, ubound(cell(ijkregion)%jface,1)
             j = cell(ijkregion)%jface(jj)
             if (region(region(m)%part_of)%ns(j) == 0) cycle ! check that element is a member of the part_of region
-            if (trim(local_location%type) == "boundary of".and.face(j)%type /= 2) cycle
-            if (trim(local_location%type) == "domain of".and.face(j)%type /= 1) cycle
+            if (trim(local_location%type) == "boundaryof".and.face(j)%type /= 2) cycle
+            if (trim(local_location%type) == "domainof".and.face(j)%type /= 1) cycle
             if (trim(local_location%type) == "surrounds") then
 !             if (ijkregion == face(j)%icell(2).and.location_in_list(array=region(nregion)%ijk,element=face(j)%icell(1)) /= 0) cycle
 !             if (ijkregion == face(j)%icell(1).and.location_in_list(array=region(nregion)%ijk,element=face(j)%icell(2)) /= 0) cycle
@@ -521,8 +521,8 @@ else if (trim(region(m)%type) /= 'gmsh') then
           do kk = 1, ubound(cell(ijkregion)%knode,1)
             k = cell(ijkregion)%knode(kk)
             if (region(region(m)%part_of)%ns(k) == 0) cycle ! check that element is a member of the part_of region
-            if (trim(local_location%type) == "boundary of".and.node(k)%type /= 2) cycle
-            if (trim(local_location%type) == "domain of".and.node(k)%type /= 1) cycle
+            if (trim(local_location%type) == "boundaryof".and.node(k)%type /= 2) cycle
+            if (trim(local_location%type) == "domainof".and.node(k)%type /= 1) cycle
             if (trim(local_location%type) == "surrounds") &
               call error_stop("surrounds not implemented for constructing node from cell region "//trim(region(nregion)%name))
             if (.not.elementisin(k)) elementisin(k) = .true.
@@ -530,34 +530,34 @@ else if (trim(region(m)%type) /= 'gmsh') then
         end if
       else if (region(nregion)%centring == 'face') then
 ! create cell region from face region
-! boundary of will pick out boundary cells coincident with boundary faces
+! boundaryof will pick out boundary cells coincident with boundary faces
 ! surrounds not implemented
         if (region(m)%centring == 'cell') then
           do ii = 1, 2
             i = face(ijkregion)%icell(ii)
             if (region(region(m)%part_of)%ns(i) == 0) cycle ! check that element is a member of the part_of region
-            if (trim(local_location%type) == "boundary of".and.cell(i)%type /= 2) cycle
-            if (trim(local_location%type) == "domain of".and.cell(i)%type /= 1) cycle
+            if (trim(local_location%type) == "boundaryof".and.cell(i)%type /= 2) cycle
+            if (trim(local_location%type) == "domainof".and.cell(i)%type /= 1) cycle
             if (trim(local_location%type) == "surrounds") &
               call error_stop("surrounds not implemented for constructing node from cell region "//trim(region(nregion)%name))
             if (.not.elementisin(i)) elementisin(i) = .true.
           end do
         else if (region(m)%centring == 'face') then
 ! create face region from face region
-! boundary of will pick out faces that are on the boundary
-! associated with is nonsense - will just copy region
+! boundaryof will pick out faces that are on the boundary
+! associatedwith is nonsense - will just copy region
           j = ijkregion
           if (region(region(m)%part_of)%ns(j) == 0) cycle ! check that element is a member of the part_of region
-          if (trim(local_location%type) == "boundary of".and.face(j)%type /= 2) cycle
-          if (trim(local_location%type) == "domain of".and.face(j)%type /= 1) cycle
+          if (trim(local_location%type) == "boundaryof".and.face(j)%type /= 2) cycle
+          if (trim(local_location%type) == "domainof".and.face(j)%type /= 1) cycle
           if (.not.elementisin(j)) elementisin(j) = .true.
         else
 ! create node region from face region
           do kk = 1, ubound(face(ijkregion)%knode,1)
             k = face(ijkregion)%knode(kk)
             if (region(region(m)%part_of)%ns(k) == 0) cycle ! check that element is a member of the part_of region
-            if (trim(local_location%type) == "boundary of".and.node(k)%type /= 2) cycle
-            if (trim(local_location%type) == "domain of".and.node(k)%type /= 1) cycle
+            if (trim(local_location%type) == "boundaryof".and.node(k)%type /= 2) cycle
+            if (trim(local_location%type) == "domainof".and.node(k)%type /= 1) cycle
             if (trim(local_location%type) == "surrounds") &
               call error_stop("surrounds not implemented for constructing node from face region "//trim(region(nregion)%name))
             if (.not.elementisin(k)) elementisin(k) = .true.

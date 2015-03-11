@@ -1330,7 +1330,7 @@ sub organise_regions {
 # set some user-specific flags - user and dynamic - while checking type and centring
   foreach $n ( 0 .. $#region ) {
 
-    if (empty($region[$n]{'location'}{'description'}) || $region[$n]{'location'}{'description'} =~ /^\s*GMSH/i || 
+    if (empty($region[$n]{'location'}{'description'}) || $region[$n]{'location'}{'description'} =~ /^\s*gmsh/i || 
       (nonempty($region[$n]{"type"}) && $region[$n]{"type"} eq "gmsh") ) {
 # initialise any gmsh regions
       if (nonempty($region[$n]{"type"}) && $region[$n]{"type"} ne "gmsh") {
@@ -1340,8 +1340,8 @@ sub organise_regions {
       $region[$n]{'type'} = 'gmsh';
       $region[$n]{"dynamic"} = 0;
       $region[$n]{"user"} = 0;
-      if ((nonempty($region[$n]{'location'}{'description'}) && $region[$n]{'location'}{'description'} !~ /^\s*GMSH/i) ||
-        empty($region[$n]{'location'}{'description'})) { $region[$n]{'location'}{"description"} = "GMSH from arb file"; }
+      if ((nonempty($region[$n]{'location'}{'description'}) && $region[$n]{'location'}{'description'} !~ /^\s*gmsh/i) ||
+        empty($region[$n]{'location'}{'description'})) { $region[$n]{'location'}{"description"} = "gmsh from arb file"; }
     } elsif (empty($region[$n]{'type'}) || $region[$n]{'type'} eq 'setup') {
 # initialise any setup regions
       $region[$n]{'type'} = 'setup';
@@ -1545,7 +1545,7 @@ sub process_regions {
           while ($#{$region[$n]{$key}{"floats"}} < 2) { push(@{$region[$n]{$key}{"floats"}},"0.d0"); }
         }
       }
-      if ($region[$n]{$key}{"type"} eq "within box") {
+      if ($region[$n]{$key}{"type"} eq "withinbox") {
         if ($#{$region[$n]{$key}{"floats"}} > 5) {
           error_stop("more than 6 floats are specified in a $region[$n]{$key}{type} statement for region $region[$n]{name}");
         } elsif ($#{$region[$n]{$key}{"floats"}} < 5) {
@@ -1583,12 +1583,12 @@ sub process_regions {
 
   foreach $n ( 0 .. $#region ) {
     $type = $region[$n]{'type'};
-    if (empty($region[$n]{"location"}{"description"})) { $region[$n]{"location"}{"description"} = "\U$type"; } # user regions have already been checked
+    if (empty($region[$n]{"location"}{"description"})) { $region[$n]{"location"}{"description"} = "$type"; } # user regions have already been checked
     if (empty($region[$n]{"user"})) { $region[$n]{"user"} = 0; } # already set for user regions
     if (empty($region[$n]{"dynamic"})) { $region[$n]{"dynamic"} = 0; } # already set for user regions
 # check that only user region names have relative step indicies
     if ($type eq 'gmsh' && ( examine_name($region[$n]{"name"},'regionname') ne $region[$n]{"name"} ||
-      examine_name($region[$n]{"name"},'rindex') != 0 )) { error_stop("GMSH region names cannot have any r indicies specified: name = $region[$n]{name}"); }
+      examine_name($region[$n]{"name"},'rindex') != 0 )) { error_stop("gmsh region names cannot have any r indicies specified: name = $region[$n]{name}"); }
     if (empty($region[$n]{'part_of'}) && $region[$n]{"user"}) {
 # part_of regions default to largest static region based on size if not specified
 # note, these system regions will come at the start so don't need when each is calculated
@@ -1762,8 +1762,8 @@ sub check_region_and_add_if_not_there {
   } else {
     $fortran_regions++;
     push(@region,{ name => $region_name, type => "gmsh", user => 0, centring => $centring, fortran => $fortran_regions });
-    $region[$#region]{"location"}{"description"} = "GMSH from context $context";
-    print DEBUG "INFO: no previously defined region $region_name was found in the context of $context: pushing new GMSH $centring region\n";
+    $region[$#region]{"location"}{"description"} = "gmsh from context $context";
+    print DEBUG "INFO: no previously defined region $region_name was found in the context of $context: pushing new gmsh $centring region\n";
     $nfound = $#region;
   }
 
@@ -1774,7 +1774,7 @@ sub check_region_and_add_if_not_there {
 # scans a location string and finds certain things
 # on input:
 # $_[0] = location description string
-# $_[1] = action = type|regionnames|floats|integers|variablenames|regioncentrings|variablecentrings
+# $_[1] = action = type|regionnames|floats|integers|variablenames|regioncentrings|variablecentrings|options
 # $_[2] = region_number, used for error messages
 
 sub location_description_scan {
@@ -1790,14 +1790,21 @@ sub location_description_scan {
   my @integers=(); # list of any integers for the location, as double precision
   my @variablenames=(); # list of any variable names used in the location
   my @variablecentrings=(); # list of variable centrings referred to in the location
+  my $options=''; # whatever is in the operator's option that isn't s, dumped in a string
   my $line=$location; # line is actually split up during the deconstruction
 
   print DEBUG "INFO: within location_description_scan with location = $location: action = $action: region number = $n: region name = $region[$n]{name}\n";
-  if ($line =~ /\s*(ASSOCIATED WITH|BOUNDARY OF|SURROUNDS|DOMAIN OF|UNION|INTERSECTION|COMPOUND|COMMON|AT|WITHIN BOX|GMSH|VARIABLE|ALL|NONE|SEPARATION)(\s+|$)/i) {
+  if ($line =~ /^\s*(associated( |)with|boundary( |)of|surrounds|domain( |)of|union|intersection|compound|common|at|within( |)box|gmsh|variable|all|none|expand)(\[(.*?)\]|)(\(|\s|$)/i) {
+#                   1          2                3                      4                                                  5                                         6  7        8 
     $type = "\L$1";
     $line = $';
+    my $next = $8; # the character following the match
+    if (nonempty($7)) { $options = $7; }
     if ($type eq "union") { $type = "compound"; }
     if ($type eq "intersection") { $type = "common"; }
+    if ($type =~ / /) { $type =~ s/ //g; print "WARNING: for consistency with variable operators, the use of spaces in region location operator names has been depreciated: run the individual words together instead as in $type (found in $region[$n]{name})\n"; }
+    if ($next eq " ") { print "WARNING: for consistency with variable operators, operators within region location descriptions should now have their arguments inclosed in brackets, as in $type(arguments) (found in $region[$n]{name})\n"; }
+    if ($next eq "(") { if (!($line =~ /\)\s*$/)) { error_stop("missing closing bracket on $type operator for region $region[$n]{name} location = $location"); } else { $line = $`; } } # remove trailing bracket
     print DEBUG "location type = $type\n";
   } else {
     error_stop("location type not recognised from the following location string used with region $region[$n]{name}: location = $location");
@@ -1809,36 +1816,38 @@ sub location_description_scan {
   if ($action eq "type") { print DEBUG "returning from location_description_scan with type\n"; return ($type); }
 
 # all other actions
-  if ($type eq "separation") {
-    if ($line =~ /^\s*(\d+)\s+FROM\s+(<(.+?)>)(\s*|$)/i) { # first is an integer specifying how many separation levels we are to increase the separation by
-      push(@integers,$1);
-      push(@regionnames,examine_name($2,"regionname"));
-      push(@regioncentrings,""); # centrings are unknown from separation statement??
+  if ($type eq "expand") {
+# extract region name from operator contents
+    if ($line =~ /^\s*(<(.+?)>)\s*/) {
+      push(@regionnames,examine_name($1,"regionname"));
+      push(@regioncentrings,"cell"); # must be cell centred for now
       $line = $';
     } else {
-      error_stop("cannot find separation and region name in the $type location for region $region[$n]{name} cannot be recognised: location = $location");
+      error_stop("cannot find region name in the $type operator for region $region[$n]{name}: location = $location");
     }
+# and extract maxseparation from options, assuming a single separation level if one isn't specified
+    if ($options =~ /(^|\,)\s*(max|maximum)separation\s*=\s*(\S+?)\s*(\,|$)/i) { push(@integers,$4); } else { push(@integers,1); }
   } elsif ($type eq "variable") {
 # just a single variable name required
-    if ($line =~ /^\s*(<(.+?)>)(\s*|$)/) {
+    if ($line =~ /^\s*(<(.+?)>)\s*/) {
       push(@variablenames,examine_name($1,"name"));
       push(@variablecentrings,$region[$n]{"centring"}); # centring of variable needs to be consistent with the region centring
       $line = $';
     } else {
-      error_stop("variable in the $type location for region $region[$n]{name} cannot be recognised: location = $location");
+      error_stop("variable in the $type operator for region $region[$n]{name} cannot be recognised: location = $location");
     }
-  } elsif ($type =~ /^(associated with|boundary of|domain of|surrounds)$/) {
+  } elsif ($type =~ /^(associatedwith|boundaryof|domainof|surrounds)$/) {
 # single region required, no delimiters used
-    if ($line =~ /^(<(.+?)>)(\s*|$)/) {
+    if ($line =~ /^\s*(<(.+?)>)\s*/) {
       push(@regionnames,examine_name($1,"regionname"));
       push(@regioncentrings,""); # centrings are unknown from these statements
       $line = $';
     } else {
-      error_stop("region in the $type location for region $region[$n]{name} cannot be recognised: location = $location");
+      error_stop("region in the $type operator for region $region[$n]{name} cannot be recognised: location = $location");
     }
   } elsif ($type =~ /^(compound|common)$/) {
 # multiple regions required, which may be delimited by +|,|space, and additionally for compound|union, -
-    while ($line =~ /^(\+|-|,|)(<(.+?)>)(\s*|$)/) {
+    while ($line =~ /^\s*(\+|-|,|)\s*(<(.+?)>)\s*/) {
       push(@regionnames,examine_name($2,"regionname"));
       push(@regioncentrings,$region[$n]{"centring"}); # centrings for these regions must be consistent with that of the calling region
       $line=$';
@@ -1846,14 +1855,14 @@ sub location_description_scan {
       if ($type eq "compound") {
         push(@integers,$constant);
       } elsif ( $constant eq -1 ) {
-        error_stop("regions in the $type location for region $region[$n]{name} must be joined with commas, spaces or pluses, not minuses: location = $location");
+        error_stop("regions in the $type operator for region $region[$n]{name} should be listed between commas, not minuses: location = $location");
       }
     }
-  } elsif ($type =~ /^(at|within box)$/) {
+  } elsif ($type =~ /^(at|withinbox)$/) {
 # pull location boundaries out from these regions
-    while ($line =~ /^\s*([\+\-\d\.][\+\-\ded\.]*)(\s+|$)/i) { # numbers must start with either +-. or a digit, so options cannot start with any of these
-      $line = $'; $constant = "\L$1";
-      if ($constant !~ /\d/) { error_stop("constants in the $type location for region $region[$n]{name} must be valid numbers: location = $location"); }
+    while ($line =~ /^\s*(,|)\s*([\+\-\d\.][\+\-\ded\.]*)\s*(,|)\s*/i) { # numbers must start with either +-. or a digit, so options cannot start with any of these
+      $line = $'; $constant = "\L$2";
+      if ($constant !~ /\d/) { error_stop("constants in the $type location for region $region[$n]{name} must be valid numbers: location = $location: line = $line"); }
       $constant =~ s/e/d/;
       if ($constant !~ /d/) { $constant = $constant."d0"; }
       if ($constant !~ /\./) { $constant =~ s/d/.d/; }
@@ -1884,6 +1893,9 @@ sub location_description_scan {
   } elsif ($action eq "variablecentrings") {
     print DEBUG "returning from location_description_scan with variablecentrings = @variablecentrings\n";
     return (@variablecentrings);
+  } elsif ($action eq "options") {
+    print DEBUG "returning from location_description_scan with options = $options\n";
+    return ($options);
   }
 
   error_stop("unknown $action for region $region[$n]{name}: location = $location");
@@ -3015,21 +3027,21 @@ sub mequation_interpolation {
       $minseparation=-1;
       $maxseparation=-1;
 # if separation options are specified then transfer these to someloop too
-      if ($options && $options =~ /(^|\,)\s*(|min|minimum|max|maximum|face|node|no)separation\s*(=\s*\S+?|)\s*(\,|$)/) {
+      if ($options && $options =~ /(^|\,)\s*(|min|minimum|max|maximum|face|node|no)separation\s*(=\s*\S+?|)\s*(\,|$)/i) {
         print DEBUG "INFO: found separation options in $options\n";
         print "INFO: found separation options in $options\n";
-        if ($options =~ /(^|\,)\s*noseparation\s*(=\s*(\S+?)|)\s*(\,|$)/) {
+        if ($options =~ /(^|\,)\s*noseparation\s*(=\s*(\S+?)|)\s*(\,|$)/i) {
           if ($2) { error_stop("noseparation in $options for $centring $operator in $otype $variable{$otype}[$omvar]{name} has trailing characters"); }
           print DEBUG "INFO: separation options ignored from $options for $centring $operator in $otype $variable{$otype}[$omvar]{name}\n";
         } else { # all other options indicate that we are going to do a separation loop
           $minseparation=0; # without any integer, it imposes no limit on maxseparation but does signal that we are to use the separation loop
           if ($centring ne "cell") { error_stop("separation options have been specified in $options for $centring $operator in $otype $variable{$otype}[$omvar]{name} - separation loops are only supported in cell based loops (ie cellsum, cellproduct, cellmax and cellmin)"); }
-          if ($options =~ /(^|\,)\s*(max|maximum)separation\s*(=\s*(\S+?)|)\s*(\,|$)/) {
+          if ($options =~ /(^|\,)\s*(max|maximum)separation\s*(=\s*(\S+?)|)\s*(\,|$)/i) {
             if (nonempty($4)) { $maxseparation=$4;
               if ($maxseparation !~ /^(|\+|-)\d+$/) { error_stop("maxseparation ($maxseparation) in $options for $centring $operator in $otype $variable{$otype}[$omvar]{name} has nonsensical trailing characters - should be an integer"); }
             }
           }
-          if ($options =~ /(^|\,)\s*(|min|minimum)separation\s*(=\s*(\S+?)|)\s*(\,|$)/) {
+          if ($options =~ /(^|\,)\s*(|min|minimum)separation\s*(=\s*(\S+?)|)\s*(\,|$)/i) {
             if (nonempty($4)) { $minseparation=$4;
               if ($minseparation !~ /^(|\+|-)\d+$/) { error_stop("minseparation ($minseparation) in $options for $centring $operator in $otype $variable{$otype}[$omvar]{name} has nonsensical trailing characters - should be an integer"); }
             }
@@ -3080,7 +3092,7 @@ sub mequation_interpolation {
         $mseparation_list++;
         $sub_string{"set_mseparation_list"}="mseparation_list = $mseparation_list\n"; # will only be set if >0
         $variable{"someloop"}[$someloop_mvar]{"separation_list_number"} = $mseparation_list;
-        if ($options =~ /(^|\,)\s*faceseparation\s*(=\s*(\S+?)|)\s*(\,|$)/) { $variable{"someloop"}[$someloop_mvar]{"faceseparation"} = 1; } # flag to indicate that we're loop through cells that share a face, rather than a node
+        if ($options =~ /(^|\,)\s*faceseparation\s*(=\s*(\S+?)|)\s*(\,|$)/i) { $variable{"someloop"}[$someloop_mvar]{"faceseparation"} = 1; } # flag to indicate that we're loop through cells that share a face, rather than a node
         $faceseparationflag = 0;
         ($faceseparationflag,$name) = search_operator_contents("faceseparationflag",$next_contents_number);
         if (nonempty($faceseparationflag)) {
@@ -4676,6 +4688,7 @@ sub create_allocations {
 # also create fortran update statements
   foreach my $type ( @user_types, "initial_newtient", "initial_transient" ) {
     if ($type =~ /(initial_|)(constant|transient|newtient|derived|equation|output|unknown)/) {
+      $sub_string{$type."_region"}='';
       my $regioninitial;
       if ($1) { $regioninitial=1; } else { $regioninitial=0; }
       my $regiontype = $2;
@@ -4947,7 +4960,7 @@ sub create_fortran_equations {
       $deriv = $variable{$type}[$mvar]{"deriv"};
       if ($otype eq "unknown") { $deriv = 0; } # special case this deriv, as unknowns need a derivative, but it is set by the fortran rather than being calculated
 
-      print "FORTRAN: generating fortran equations for $type [$mvar]: $variable{$type}[$mvar]{name}: deriv = $deriv\n";
+      print "INFO: generating fortran equations for $type [$mvar]: $variable{$type}[$mvar]{name}: deriv = $deriv\n";
       print DEBUG "FORTRAN: generating fortran equations for $type [$mvar]: $variable{$type}[$mvar]{name}: deriv = $deriv\n";
 
 # open if statement

@@ -1558,7 +1558,7 @@ do n=1,ngregions
 
   region_number = region_number_from_name(name=gregion_name(n))
   formatline = '(a,'//trim(dindexformat(gregion_number(n)))//',a)'
-  write(location,fmt=formatline) 'GMSH physical entity number ',gregion_number(n),' from file '//trim(filename)
+  write(location,fmt=formatline) 'gmsh physical entity number ',gregion_number(n),' from file '//trim(filename)
 
 ! work out whether we're going to have to guess the centring of this region, and if so, do it
   guess_centring = .false.
