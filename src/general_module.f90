@@ -154,6 +154,7 @@ type region_type
   character(len=4) :: centring ! whether cell or face centred
   integer :: dimensions = -1 ! maximum dimensions of the elements within the region (-1 means unset)
   logical :: dynamic = .false. ! whether region is static (user, static or gmsh) or a dynamic region
+  integer :: relstep ! relative timestep, with relstep=0 being the current step
   type(region_location_type) :: location ! location of region
   type(region_location_type) :: initial_location ! initial_location of region if a dynamic transient or newtient region
   integer :: part_of ! fortran region index of the dynamic or static region that this region is solely contained within, for user (ie, non system) regions only
@@ -198,9 +199,11 @@ end type var_type
 
 ! data type for var_lists
 type var_list_type
-! character(len=4) :: centring
-! character(len=100) :: type ! variable type
-  integer, dimension(:), allocatable :: list
+  character(len=4) :: centring
+  character(len=100) :: type ! variable type
+  logical :: include_regions ! whether compatible dynamic regions are also included in this list
+  integer, dimension(:), allocatable :: list ! index of variable of region
+  logical, dimension(:), allocatable :: region ! whether the corresponding index is a region (.true.) or variable (.false.)
 end type var_list_type
 
 ! meta data type for all compound variables
@@ -327,7 +330,7 @@ type(funk_type), dimension(:), allocatable :: funkt ! funk container which is us
 integer, dimension(:), allocatable :: unknown_var_from_pp ! an array for fast lookup of the unknown var number from p
 character(len=100), dimension(:), allocatable :: kernel_options ! list of kernel options, with highest priority on the right
 character(len=100), dimension(:), allocatable :: solver_options ! list of kernel options, with highest priority on the right
-type(var_list_type), dimension(:), allocatable :: var_list ! array of var_lists, according to type and centring
+type(var_list_type), dimension(:), allocatable :: var_list ! array of var_lists, according to type, centring, and now also region
 double precision, parameter :: pi = 4.d0*atan(1.d0)
 character(len=100), parameter :: indexformat = 'i8' ! formating used for outputting integers throughout program, although now largely superseeding by dynamic format statements
 character(len=100), parameter :: floatformat='g18.10' ! formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places: now seems to be d+8 required
@@ -2781,19 +2784,22 @@ end function region_delta
 
 !-----------------------------------------------------------------
 
-function var_list_number(type,centring)
+function var_list_number(type,centring,include_regions)
 
 ! little function to return number of var_list that corresponds to type and centring
+! now also option to include dynamic regions in the list too
 character(len=*) :: centring ! whether region is cell or face centred
 character(len=*) :: type ! type of var variable
+logical, optional :: include_regions ! if true and present, include relevant dynamic regions in the lists, otherwise don't (default if not present)
 integer :: var_list_number
 integer :: ntype, ncentring, n
+integer, save :: ntypemax = ubound(var_types,1) + 1
 logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'function var_list_number'
 
 if (trim(type) == "all") then
-  ntype = ubound(var_types,1) + 1
+  ntype = ntypemax
 else
   ntype = 1
   do while (ntype <= ubound(var_types,1))
@@ -2817,36 +2823,15 @@ else
   stop "ERROR: unknown centring in var_list_number"
 end if
 
-var_list_number = ntype + (ncentring-1)*(ubound(var_types,1)+1)
+var_list_number = ntype + (ncentring-1)*(ntypemax)
+
+if (present(include_regions)) then
+  if (include_regions) var_list_number = var_list_number*2
+end if
 
 if (debug) write(*,'(a/80(1h-))') 'function var_list_number'
 
 end function var_list_number
-
-!-----------------------------------------------------------------
-
-function var_list_lookup(type,centring)
-
-! little function to return var_list as an array corresponding to type and centring
-character(len=*) :: centring ! centring of var
-character(len=*) :: type ! type of var variable
-integer, dimension(:), allocatable :: var_list_lookup
-integer :: var_list_length
-logical, parameter :: debug = .false.
-
-if (debug) write(*,'(80(1h+)/a)') 'function var_list_lookup'
-
-var_list_length = allocatable_size(var_list(var_list_number(type=type,centring=centring))%list)
-
-if (allocated(var_list_lookup)) deallocate(var_list_lookup)
-
-allocate(var_list_lookup(var_list_length)) ! even if list is empty allocate with zero size, allowable in modern fortran
-
-var_list_lookup = var_list(var_list_number(type=type,centring=centring))%list
-
-if (debug) write(*,'(a/80(1h-))') 'function var_list_lookup'
-
-end function var_list_lookup
 
 !-----------------------------------------------------------------
 

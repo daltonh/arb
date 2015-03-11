@@ -62,6 +62,7 @@ subroutine allocate_meta_arrays
 ! here we allocate array elements of the meta data that corresponds to the input files
 
 use general_module
+integer :: var_list_number_l
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine allocate_meta_arrays'
@@ -71,6 +72,9 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine allocate_meta_arrays'
 
 ! allocate meta arrays for regions
 !<sub_string:allocate_regions>
+
+! allocate var_lists which are lists of variables and regions used for fast looping
+!<sub_string:allocate_var_lists>
 
 ! setup msomeloop which is used to allocate the funks within the someloop (thread) containers
 !<sub_string:set_msomeloop>

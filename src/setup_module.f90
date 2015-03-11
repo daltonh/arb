@@ -1290,16 +1290,17 @@ do mc = 1, ubound(compound,1)
 end do
 
 ! now setup var_lists
-allocate(var_list(var_list_number(type="all",centring="all")))
-do mtype = 1, ubound(var_types,1)
-  do m = 1, ubound(var,1)
-    if (trim(var(m)%type) /= trim(var_types(mtype))) cycle ! lists are created in order
-    call push_array(array=var_list(var_list_number(type="all",centring="all"))%list,new_element=m)
-    call push_array(array=var_list(var_list_number(type=var(m)%type,centring="all"))%list,new_element=m)
-    call push_array(array=var_list(var_list_number(type="all",centring=var(m)%centring))%list,new_element=m)
-    call push_array(array=var_list(var_list_number(type=var(m)%type,centring=var(m)%centring))%list,new_element=m)
-  end do
-end do
+! now done in setup_equations
+! allocate(var_list(var_list_number(type="all",centring="all")))
+! do mtype = 1, ubound(var_types,1)
+!   do m = 1, ubound(var,1)
+!     if (trim(var(m)%type) /= trim(var_types(mtype))) cycle ! lists are created in order
+!     call push_array(array=var_list(var_list_number(type="all",centring="all"))%list,new_element=m)
+!     call push_array(array=var_list(var_list_number(type=var(m)%type,centring="all"))%list,new_element=m)
+!     call push_array(array=var_list(var_list_number(type="all",centring=var(m)%centring))%list,new_element=m)
+!     call push_array(array=var_list(var_list_number(type=var(m)%type,centring=var(m)%centring))%list,new_element=m)
+!   end do
+! end do
 if (debug) then
   write(82,*) 'var_list details:'
   do m = 1, var_list_number(type="all",centring="all")

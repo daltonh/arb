@@ -1206,7 +1206,6 @@ sub read_input_files {
           $region[$masread]{"name"}=$name;
           $region[$masread]{"centring"}=$centring; # maybe blank
           $region[$masread]{"type"}=$type; # maybe blank
-          $region[$masread]{"rindex"}=examine_name($name,"rindex"); # this is based on name so doesn't change with repeat definitions
           $region[$masread]{"comments"}=$comments;
           $region[$masread]{"definitions"}=1;
           $region[$masread]{"part_of"}='';
@@ -1685,7 +1684,9 @@ sub process_regions {
           "region($m)%name = \"$region[$n]{name}\"\n".
           "region($m)%centring = \"$region[$n]{centring}\"\n". # every region written to fortran has a centring
           "region($m)%type = \"$region[$n]{type}\"\n".
+          "region($m)%relstep = ".examine_name($region[$n]{"name"},"rindex")."\n".
           "region($m)%dynamic = ".fortran_logical_string($region[$n]{"dynamic"})."\n"; # dynamic logical
+
         if ($region[$n]{"user"}) {
           $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
             "region($m)%part_of = $region[$n]{part_of_fortran}\n".
@@ -1945,6 +1946,7 @@ sub organise_user_variables {
     $m{$type}++; # these were previously set to 0 to represent empty types
     $m{"user"} = $masread+1; # this stores the total number of user defined variables
     $mvar = $m{$type}; # for convienience
+    $asread_variable[$masread]{"mvar"} = $mvar; # and save this back in the original structure
     $variable{$type}[$mvar] = dclone($asread_variable[$masread]); # for here on work with variable{$type} hash rather than asread_variable array
     delete $variable{$type}[$mvar]{"type"}; # delete this duplication
     $variable{$type}[$mvar]{"masread"} = $masread; # save the asread index for this variable, which represents the order that the variables appear in the file
@@ -4586,6 +4588,75 @@ sub create_allocations {
       }
     }
   }
+
+# now setup var_lists, which now include dynamic regions too
+
+# list of strings taken from fortran, there are 9, with the 10th becoming "all": ie, max(ntype) = 10
+# these are actually the same as the user_types
+#character(len=100), dimension(9), parameter :: var_types = [ "constant   ", "transient  ", "newtient   ", "unknown    ", &
+#  "derived    ", "equation   ", "output     ", "condition  ", "local      " ]
+# and these are the centring numbers
+# if (trim(centring) == "cell") then
+#   ncentring = 1
+# else if (trim(centring) == "face") then
+#   ncentring = 2
+# else if (trim(centring) == "node") then
+#   ncentring = 3
+# else if (trim(centring) == "none") then
+#   ncentring = 4
+# else if (trim(centring) == "all") then
+#   ncentring = 5
+#var_list_number = ntype + (ncentring-1)*(ubound(var_types,1)+1)
+# with include_regions var_list_number = var_list_number*2
+#max(var_list_number) = ntype + (ncentring-1)*(ubound(var_types,1)+1)
+#var_list_number = (ntypemax + (ncentring-1)*(ntypemax))*2 = ncentringmax*ntypemax*2 = 10*5*2 = 100
+
+  $sub_string{"allocate_var_lists"}="! allocating var_lists based on variable and region numbers calculated in setup_equations.pl\n".
+    "allocate(var_list(100))\n";
+
+  foreach my $centring ( "cell", "face", "node", "none", "all" ) {
+    foreach my $type ( @user_types, "all" ) {
+      foreach my $include_regions ( 0 .. 1 ) {
+        $sub_string{"allocate_var_lists"}=$sub_string{"allocate_var_lists"}.
+          "! setting var_list: centring = $centring: type = $type: include_regions = $include_regions\n".
+          "var_list_number_l = var_list_number(centring=\"$centring\",type=\"$type\",include_regions=".fortran_logical_string($include_regions).")\n".
+          "var_list(var_list_number_l)%centring = \"$centring\"\n".
+          "var_list(var_list_number_l)%type = \"$type\"\n".
+          "var_list(var_list_number_l)%include_regions = ".fortran_logical_string($include_regions)."\n";
+# assemble arrays in perl, then write to fortran
+        my @var_list = (); # this will hold the element numbers
+        my @region_list = (); # this will say whether the element is a region (1) or variable (0)
+# loop through all masread locations, starting from before the first variable
+        for my $masread ( -1 .. $#asread_variable ) {
+# look for variables in the fortran order
+          if ($masread >= 0 && ( $type eq "all" || $type eq $asread_variable[$masread]{"type"} ) ) {
+            push(@var_list,$variable{$asread_variable[$masread]{"type"}}[$asread_variable[$masread]{"mvar"}]{"fortran_number"});
+            push(@region_list,".false."); # and this signifies that this is a variable, not a region
+          }
+# and if relevant, look for regions in the fortran order
+          if ($include_regions) {
+            for my $nregion ( 0 .. $#region ) {
+              if (!($region[$nregion]{"dynamic"})) { next; }
+              if ( ( $type eq "all" || $type eq $region[$nregion]{"type"} ) && $region[$nregion]{"last_variable_masread"} == $masread ) {
+                push(@var_list,$region[$nregion]{"fortran"});
+                push(@region_list,".true."); # and this signifies that this is a region
+              }
+            }
+          }
+        }
+# allocate the arrays (allocating zero size is OK now in fortran) and set them
+        $sub_string{"allocate_var_lists"}=$sub_string{"allocate_var_lists"}.
+          "allocate(var_list(var_list_number_l)%list(".scalar($#var_list+1)."))\n".
+          "allocate(var_list(var_list_number_l)%region(".scalar($#var_list+1)."))\n";
+        if ($#var_list > 0) {
+          $sub_string{"allocate_var_lists"}=$sub_string{"allocate_var_lists"}.
+            "var_list(var_list_number_l)%list = [".join(",",@var_list)."]\n".
+            "var_list(var_list_number_l)%region = [".join(",",@region_list)."]\n";
+        }
+      }
+    }
+  }
+      
 
 }
 
