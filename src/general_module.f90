@@ -182,6 +182,8 @@ type var_type
   character(len=6) :: rank ! specifies whether this is a component of a scalar, vector or tensor compound
   character(len=1000) :: region ! name of the region in which it is applied
   integer :: region_number ! number of the region in which it is applied
+  character(len=1000) :: update_region ! name of the region in which it is updated, which is only different to the region if it was defined over a dynamic region
+  integer :: update_region_number ! number of the region in which it is updated
   character(len=1000) :: compound_name ! name of the compound variable of which this scalar is a component
   integer :: compound_number ! number of the compound variable of which this scalar is a component
   integer, dimension(:), allocatable :: component ! ordered list of the compound variable of which this scalar is a component
@@ -211,6 +213,7 @@ type compound_type
   character(len=6) :: rank ! specifies whether this is a component of a scalar, vector or tensor compound
   integer :: relstep ! relative timestep, with relstep=0 being the current step
   character(len=1000) :: region ! name of the region in which it is applied
+  character(len=1000) :: update_region ! name of the region in which it is updated
   integer :: region_number ! number of the region in which it is applied
   integer, dimension(:), allocatable :: component ! ordered list of the compound variable of which this scalar is a component
   character(len=100), dimension(:), allocatable :: options ! array of options for this compound, with highest priority on the right

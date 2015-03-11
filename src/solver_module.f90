@@ -233,6 +233,7 @@ back_loop: do ! entrance point for repeat steps
 ! increment delvar changes to derived variables using possible backstepping
   do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
     m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
+! TODO: place unknown dynamic region update in here too
     do ns = 1, ubound(var(m)%funk,1)
       p = var(m)%funk(ns)%pp(1)
       var(m)%funk(ns)%v = delphiold(p) + lambda*delphi(p)

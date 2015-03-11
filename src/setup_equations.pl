@@ -1239,19 +1239,19 @@ sub read_input_files {
           }
         }
 
-# PART_OF keyword
-        if ($line =~ /PART_OF(\s+(<.+?>)($|\s+)|($|\s+))/i) {
+# ON keyword
+        if ($line =~ /ON(\s+(<.+?>)($|\s+)|($|\s+))/i) {
           $line = $`.$';
           if ($2) {
             $tmp = examine_name($2,'regionname'); # standardise name here
             if (nonempty($region[$masread]{"part_of"})) {
-              print "NOTE: changing the PART_OF region for region $name to $tmp\n";
-              print DEBUG "NOTE: changing the PART_OF region for region $name to $tmp\n";
+              print "NOTE: changing the ON region for region $name to $tmp\n";
+              print DEBUG "NOTE: changing the ON region for region $name to $tmp\n";
             }
             $region[$masread]{"part_of"} = $tmp;
-            print DEBUG "INFO: found PART_OF region $tmp for region $name\n";
+            print DEBUG "INFO: found ON region $tmp for region $name\n";
           }
-          else { $region[$masread]{"part_of"} = ''; print DEBUG "INFO: cancelling any possible PART_OF region for region $name\n"; }
+          else { $region[$masread]{"part_of"} = ''; print DEBUG "INFO: cancelling any possible ON region for region $name\n"; }
         }
           
 # if anything is left in the line then this indicates an error
@@ -1356,13 +1356,13 @@ sub organise_regions {
 # deal with user regions having no centring defined
     if ($region[$n]{"user"} && empty($region[$n]{'centring'})) { error_stop("$region[$n]{type} region $region[$n]{name} has no centring defined: all regions (except gmsh) ".
       "entered in the arb file must have a centring defined"); }
-# remove depreciated PART_OF statements from with location strings
+# remove depreciated PART OF statements from with location strings
     print DEBUG "looking for PART OF in description: name = $region[$n]{name}: description = $region[$n]{location}{description}\n";
     if ($region[$n]{"type"} ne "gmsh") {
       for my $key ( "location", "initial_location" ) {
         if (nonempty($region[$n]{$key}{"description"}) && $region[$n]{$key}{"description"} =~ /(^|\s+)PART( |_)OF\s+(<(.+?)>)(\s+|$)/i) {
-          print "WARNING: using a PART OF specification within the location description string is depreciated (found in region $region[$n]{name}): place PART_OF afterwards instead\n";
-          print DEBUG "WARNING: using a PART OF specification within the location description string is depreciated (found in region $region[$n]{name}): place PART_OF afterwards instead\n";
+          print "WARNING: using a PART OF specification within the location description string is depreciated (found in region $region[$n]{name}): place ON afterwards instead\n";
+          print DEBUG "WARNING: using a PART OF specification within the location description string is depreciated (found in region $region[$n]{name}): place ON afterwards instead\n";
           if (empty($region[$n]{"part_of"})) {
             $region[$n]{"part_of"} = examine_name($3,"regionname");
           } else {
@@ -1457,6 +1457,7 @@ sub process_regions {
 #-------------
 # run through variables finding any other regions that have not been previously specified and hence must be brought in via gmsh
 # NB: the region name here was previously run through examine_name when the region was specified within the variable definition line
+# at the same time record region fortran_number with variable
 
   foreach $type (@user_types,"someloop") {
     foreach $mvar ( 1 .. $m{$type} ) {
@@ -1603,16 +1604,16 @@ sub process_regions {
 # and find fortran number for part_of region
     if ($region[$n]{"user"}) {
       my $nfound = find_region($region[$n]{'part_of'});
-      if ($nfound < 0) { error_stop("(INTERNAL ERROR): the PART_OF region $region[$n]{part_of} for region $region[$n]{name} is not a valid region"); }
+      if ($nfound < 0) { error_stop("(INTERNAL ERROR): the ON region $region[$n]{part_of} for region $region[$n]{name} is not a valid region"); }
 # check order and suitability of part_of region update for static regions
       if (!($region[$n]{"dynamic"})) { 
         if ($region[$nfound]{"dynamic"}) {
-          error_stop("cannot use a dynamic region $region[$nfound]{name} as a PART_OF for a static region $region[$n]{name}");
+          error_stop("cannot use a dynamic region $region[$nfound]{name} as a ON for a static region $region[$n]{name}");
         }
         if ($region[$nfound]{"user"}) {
 # if we are here then the region and its part_of region are both static user regions - check order of evaluation
           if ($nfound > $n) {
-            error_stop("the PART_OF region $region[$nfound]{name} for static region $region[$n]{name} is being evaluated after it: you need to reverse the order");
+            error_stop("the ON region $region[$nfound]{name} for static region $region[$n]{name} is being evaluated after it: you need to reverse the order");
           }
         }
       }
@@ -1631,7 +1632,7 @@ sub process_regions {
       my $nlast = $n;
       while ($region[$nlast]{"dynamic"}) {
         my $nfound = find_region($region[$nlast]{'part_of'});
-				if ($nfound < 0) { die "INTERNAL ERROR: the PART_OF region $region[$nlast]{part_of} for dynamic region $region[$n]{name} is not a valid region"; }
+				if ($nfound < 0) { die "INTERNAL ERROR: the ON region $region[$nlast]{part_of} for dynamic region $region[$n]{name} is not a valid region"; }
         $nlast = $nfound;
         print DEBUG "INFO: in process of finding parent region for $region[$n]{name}: found part_of region $region[$nfound]{name}\n";
       }
@@ -1648,7 +1649,28 @@ sub process_regions {
   }
 
 #-------------
-# TODO: for dynamic regions need to find position relative to variables that the region is to be updated, to facilitate writing the hook into create_fortran_equations
+# now place known region indicies back into variables
+
+  foreach $type (@user_types,"someloop","compound") {
+    foreach $mvar ( 1 .. $m{$type} ) {
+      $variable{$type}[$mvar]{"update_region_number"} = 0;
+      $variable{$type}[$mvar]{"update_region"} = ''; # this being empty means that the update_region is not set
+      if (empty($variable{$type}[$mvar]{"region"}) || $variable{$type}[$mvar]{"centring"} eq 'none') {
+        $variable{$type}[$mvar]{"region_number"} = 0;
+      } else {
+        my $nfound = find_region($variable{$type}[$mvar]{"region"});
+        if ($region[$nfound]{"dynamic"}) { # if the region is dynamic, store this in the update_region and swap the region for the parent region
+          if ($type =~ /unknown|equation/) { error_stop("cannot define a $type variable ($variable{$type}[$mvar]{name}) on a dynamic region ($region[$nfound]{name})"); }
+          $variable{$type}[$mvar]{"update_region"} = $variable{$type}[$mvar]{"region"};
+          $variable{$type}[$mvar]{"update_region_number"} = $region[$nfound]{"fortran"};
+          $variable{$type}[$mvar]{"region"} = $region[$nfound]{"parent"};
+          $variable{$type}[$mvar]{"region_number"} = $region[$nfound]{"parent_fortran"};
+        } else {
+          $variable{$type}[$mvar]{"region_number"} = $region[$nfound]{"fortran"};
+        }
+      }
+    }
+  }
 
 #-------------
 # create region sub_string for all regions that require fortran allocations
@@ -4483,6 +4505,9 @@ sub create_allocations {
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%rank=\'$variable{$type}[$mvar]{rank}\'\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%relstep=$variable{$type}[$mvar]{rindex}\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%region=\'$variable{$type}[$mvar]{region}\'\n".
+          "$basename{$type}($variable{$type}[$mvar]{fortran_number})%update_region=\'$variable{$type}[$mvar]{update_region}\'\n".
+          "$basename{$type}($variable{$type}[$mvar]{fortran_number})%region_number=$variable{$type}[$mvar]{region_number}\n".
+          "$basename{$type}($variable{$type}[$mvar]{fortran_number})%update_region_number=$variable{$type}[$mvar]{update_region_number}\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%compound_name=\'$variable{$type}[$mvar]{compound_name}\'\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%compound_number=$variable{$type}[$mvar]{compound_number}\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%someloop=$variable{$type}[$mvar]{someloop}\n".
@@ -4498,6 +4523,7 @@ sub create_allocations {
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%rank=\'$variable{$type}[$mvar]{rank}\'\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%relstep=$variable{$type}[$mvar]{rindex}\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%region=\'$variable{$type}[$mvar]{region}\'\n".
+          "$basename{$type}($variable{$type}[$mvar]{fortran_number})%update_region=\'$variable{$type}[$mvar]{update_region}\'\n".
           "allocate($basename{$type}($variable{$type}[$mvar]{fortran_number})%component($variable{$type}[$mvar]{nrank}))\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%component=$variable{$type}[$mvar]{component_list}\n";
       }
@@ -4796,6 +4822,9 @@ sub create_fortran_equations {
     $first = 1;
 
 # find any dynamic regions that precede the first variable of this type
+# this doesn't work!
+# TODO
+# also need to save region relstep for use in update_transients etc
 
     if ($type =~ /(initial_|)(constant|transient|newtient|derived|equation|output|unknown)/) {
       if ($1) { $regioninitial=1; } else { $regioninitial=0; }
@@ -4844,8 +4873,8 @@ sub create_fortran_equations {
 # open if statement
 
       if (!($first)) { $sub_string{$type}=$sub_string{$type}."else "; }
-      $first = 0;
       $sub_string{$type}=$sub_string{$type}."if (m == $variable{$type}[$mvar]{fortran_number}) then\n";
+      $first = 0;
 
       $sub_string{$type}=$sub_string{$type}.
         "! $type $variable{$type}[$mvar]{name}\n".
@@ -4984,8 +5013,8 @@ sub create_fortran_equations {
 # note, as the code currently stands, every region over which a variable is defined must have atleast one element, which is checked in setup_var, so don't need to use allocatable_integer_size here
           $sub_string{$type}=$sub_string{$type}.
 #           "do ns = 1, ubound(region(var(m)%region_number)%ijk,1)\n".
-            "do ns = 1, allocatable_integer_size(region(var(m)%region_number)%ijk)\n".
-            ijkstring($variable{$type}[$mvar]{"centring"})." = region(var(m)%region_number)%ijk(ns)\n";
+            "do ns = 1, allocatable_integer_size(region($variable{$type}[$mvar]{region_number})%ijk)\n".
+            ijkstring($variable{$type}[$mvar]{"centring"})." = region($variable{$type}[$mvar]{region_number})%ijk(ns)\n";
         } else {
 # none centred variable
           $sub_string{$type}=$sub_string{$type}.
@@ -5022,6 +5051,13 @@ sub create_fortran_equations {
 
           $sub_string{$type}=$sub_string{$type}.
             "call reset_funk(var(m)%funk(ns))\n";
+
+          if (nonempty($variable{$type}[$mvar]{"update_region"})) {
+            $sub_string{$type}=$sub_string{$type}.
+              "! as variable is defined on dynamic region $variable{$type}[$mvar]{update_region}, checking whether current element is in this region\n".
+              "if (region($variable{$type}[$mvar]{update_region_number})%ns(".ijkstring($variable{$type}[$mvar]{"centring"}).") == 0) cycle\n";
+          }
+
         }
       } else {
 # someloop
@@ -5219,9 +5255,14 @@ sub create_fortran_equations {
 # set up someloops that are absolute locations
         } elsif ($variable{$type}[$mvar]{"region"}) {
 
-          $sub_string{$type}=$sub_string{$type}.
-            "region_number = region_number_from_name(name=\"$variable{$type}[$mvar]{region}\",centring=\"$variable{$type}[$mvar]{centring}\")\n".
-            "if (region_number == 0) call error_stop(\"Problem finding $variable{$type}[$mvar]{centring} region $variable{$type}[$mvar]{region} in update_someloops: \"//trim(error_string))\n\n";
+          if (nonempty($variable{$type}[$mvar]{"update_region"})) {
+            $sub_string{$type}=$sub_string{$type}."region_number = $variable{$type}[$mvar]{update_region_number}\n";
+          } else {
+            $sub_string{$type}=$sub_string{$type}."region_number = $variable{$type}[$mvar]{region_number}\n";
+          }
+#         $sub_string{$type}=$sub_string{$type}.
+#           "region_number = region_number_from_name(name=\"$variable{$type}[$mvar]{region}\",centring=\"$variable{$type}[$mvar]{centring}\")\n".
+#           "if (region_number == 0) call error_stop(\"Problem finding $variable{$type}[$mvar]{centring} region $variable{$type}[$mvar]{region} in update_someloops: \"//trim(error_string))\n\n";
 
 # loop through region in increasing order of increasing separation
           if ($variable{$type}[$mvar]{"separation_list_number"}) {

@@ -1220,10 +1220,10 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine setup_vars'
 ! allocate var funks, zero these funks and set region numbers
 do m = 1, ubound(var,1)
   if (var(m)%centring /= "none") then
-    var(m)%region_number = region_number_from_name(name=var(m)%region,centring=var(m)%centring,existing=existing)
+!   var(m)%region_number = region_number_from_name(name=var(m)%region,centring=var(m)%centring,existing=existing)
 ! check that region exists and that the variable and region centring are consistent
-    if (.not.existing) call error_stop('there is a problem with region '//trim(var(m)%region)//' which is associated with '// &
-      trim(var(m)%type)//' '//trim(var(m)%name)//': the region does not exist')
+!   if (.not.existing) call error_stop('there is a problem with region '//trim(var(m)%region)//' which is associated with '// &
+!     trim(var(m)%type)//' '//trim(var(m)%name)//': the region does not exist')
     if (var(m)%region_number == 0) call error_stop('there is a problem with region '//trim(var(m)%region)// &
       ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//': most probably the centrings of the region '// &
       'and variable are inconsistent')
