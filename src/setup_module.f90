@@ -140,12 +140,11 @@ use general_module
 use gmesh_module
 integer :: ierror, n, m, gmesh_number, array_size
 character(len=5000) :: textline, otextline
-character(len=1000) :: keyword, name, formatline, region_name, location, options, filename
+character(len=1000) :: keyword, name, formatline, options, filename
 character(len=1000), dimension(2) :: glue_region
 character(len=100) :: option_name
-character(len=4) :: centring
 real :: versiontmp
-logical :: existing, error, empty
+logical :: error, empty
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_input_file'
@@ -168,34 +167,6 @@ fileloop: do
 ! if (debug) write(*,'(a)') 'keyword = '//trim(keyword)//': otextline = '//trim(otextline)//''
   if (debug) write(*,'(a)') 'keyword = '//trim(keyword)//': textline = '//trim(textline)
   if (error) call error_stop('problem reading the keyword on on line:'//trim(otextline))
-
-! !---------------
-! ! region definitions
-!   if (trim(keyword) == 'CELL_REGION'.or.trim(keyword) == 'FACE_REGION'.or.trim(keyword) == 'NODE_REGION') then ! read in variable names
-! ! name
-!     name = extract_next_string(textline,error,empty=empty,delimiter="<")
-!     if (error.or.empty) call error_stop('region name in '//trim(keyword)// &
-!       ' in arb input file incorrectly specified on line:'//trim(otextline))
-! ! location
-!     location = extract_next_string(textline,error,empty=empty,delimiter="'"" ")
-!     if (.not.empty.and.error) call error_stop('location string for region '//trim(name)// &
-!       ' in arb input file incorrectly specified on line:'//trim(otextline))
-!       
-! !   read(textline,*,iostat=ierror) location ! with no format specification string in arb input file should be quotted
-! !   if (ierror /= 0) location = "" ! if no location is specified then we are just specifying region centring for gmsh region
-!     centring = changecase('L',keyword(1:4))
-!     m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-!     if (m == 0.or.existing) call error_stop('allocation of region = '//trim(region_name)// &
-!       ' failed, most likely because the region has already been allocated previously in the arb input file')
-!     formatline = '(a,'//trim(dindexformat(m))//',a)'
-!     if (trim(location) == "") then
-!       write(*,fmt=formatline) 'INFO: centring for region '//trim(region(m)%name)//' has been specified from arb input file: '// &
-!         'region_number = ',m,': centring = '//trim(centring)
-!     else
-!       write(*,fmt=formatline) 'INFO: region '//trim(region(m)%name)//' has been created from arb input file: region_number =  ',m, &
-!         ': centring = '//trim(centring)//': location = '//trim(region(m)%location)
-!     end if
-!   end if
 
 !---------------
 ! glue_faces
@@ -1151,11 +1122,12 @@ fileloop: do
 
 ! find region and check that the centrings of the region and variable match
   if (var(m)%centring /= 'none') then
-    region_number = region_number_from_name(name=region_name,creatable=.false.,existing=existing)
-    if (.not.existing .or. region_number == 0) &
-      call error_stop('the region '//trim(region_name)//' which appears in '//trim(input_file)//' is not known')
+    region_number = region_number_from_name(name=region_name)
+    if (region_number == 0) call error_stop('the region '//trim(region_name)// &
+      ' for which we are trying to read in some numerical constant values is not known')
     if (var(m)%centring /= region(region_number)%centring) &
-      call error_stop('the region '//trim(region_name)//' which appears in '//trim(input_file)//' has a different centring to '// &
+      call error_stop('the region '//trim(region_name)//' for which we are trying to read in some numerical constant values '// &
+        'has a different centring to '// &
         'the corresponding variable '//trim(name)//'.  Change the definition statements for this constant to make the centrings '// &
         'consistent')
   end if
@@ -1209,7 +1181,7 @@ use solver_module
 integer :: m, ns, n, mc, o, pptotal, mtype
 character(len=1000) :: formatline, component_list
 character(len=100) :: option_name
-logical :: existing, first, error
+logical :: first, error
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -1220,13 +1192,8 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine setup_vars'
 ! allocate var funks, zero these funks and set region numbers
 do m = 1, ubound(var,1)
   if (var(m)%centring /= "none") then
-!   var(m)%region_number = region_number_from_name(name=var(m)%region,centring=var(m)%centring,existing=existing)
-! check that region exists and that the variable and region centring are consistent
-!   if (.not.existing) call error_stop('there is a problem with region '//trim(var(m)%region)//' which is associated with '// &
-!     trim(var(m)%type)//' '//trim(var(m)%name)//': the region does not exist')
     if (var(m)%region_number == 0) call error_stop('there is a problem with region '//trim(var(m)%region)// &
-      ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//': most probably the centrings of the region '// &
-      'and variable are inconsistent')
+      ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//': something catastrophic')
     if (region(var(m)%region_number)%dynamic) call error_stop('the region '//trim(var(m)%region)// &
       ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//' is dynamic: only static (gmsh, setup and system) regions'// &
       ' can be used to define variables')
@@ -1289,18 +1256,7 @@ do mc = 1, ubound(compound,1)
   end do
 end do
 
-! now setup var_lists
-! now done in setup_equations
-! allocate(var_list(var_list_number(type="all",centring="all")))
-! do mtype = 1, ubound(var_types,1)
-!   do m = 1, ubound(var,1)
-!     if (trim(var(m)%type) /= trim(var_types(mtype))) cycle ! lists are created in order
-!     call push_array(array=var_list(var_list_number(type="all",centring="all"))%list,new_element=m)
-!     call push_array(array=var_list(var_list_number(type=var(m)%type,centring="all"))%list,new_element=m)
-!     call push_array(array=var_list(var_list_number(type="all",centring=var(m)%centring))%list,new_element=m)
-!     call push_array(array=var_list(var_list_number(type=var(m)%type,centring=var(m)%centring))%list,new_element=m)
-!   end do
-! end do
+! now print var_lists
 if (debug) then
   write(82,*) 'var_list details:'
   do m = 1, var_list_number(type="all",centring="all")
@@ -1613,12 +1569,11 @@ do n = 1, ubound(glue_face,1)
 
 ! find region numbers
   do m = 1, 2
-    glue_face(n)%region_number(m) = region_number_from_name(name=glue_face(n)%region(m),existing=existing,creatable=.false.)
+    glue_face(n)%region_number(m) = region_number_from_name(name=glue_face(n)%region(m))
 ! check that region exists
-    if (.not.existing.or.glue_face(n)%region_number(m) == 0) &
+    if (glue_face(n)%region_number(m) == 0) &
       call error_stop("the region "//trim(glue_face(n)%region(m))//" which is being referenced in a GLUE_FACE "// &
-      "command is not found or not valid:  Note, regions used in this command must be defined directly in the gmesh file "// &
-      "rather than be defined via user commands or generated by the fortran (ie, system regions).")
+      "command is not known:  Note, regions used in this command must be defined directly in a gmesh file")
 ! and that it is of type gmsh, which means that it is defined by reading in from a gmsh file and so is also static
     if (region(glue_face(n)%region_number(m))%type /= 'gmsh') &
       call error_stop("the region "//trim(glue_face(n)%region(m))//" which is being referenced in a GLUE_FACE "// &

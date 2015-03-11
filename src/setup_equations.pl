@@ -43,7 +43,7 @@ use File::Glob ':glob'; # deals with whitespace better
 #use Time::Piece; # removed for portability
 use Sys::Hostname;
 
-my $version="0.52";
+my $version="0.53";
 my $minimum_version="0.40";
 
 # now called from build directory
@@ -1709,6 +1709,10 @@ sub process_regions {
                   "region($m)%".$key."%".$key2." = [".join(',',@{$region[$n]{$key}{$key2}})."]\n";
               }
             }
+          } else {
+            $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
+              "region($m)%".$key."%active = .false.\n".
+              "region($m)%".$key."%description = 'inactive'\n";
           }
         }
       }
@@ -2382,7 +2386,7 @@ sub mequation_interpolation {
     $substitute, $lousysubstitute, $tmpderiv, $handle, $distance, $difference, $l2, $dx, $name, $gradient, $unknown,
     $mcheck, $not_found, $reflect_multiplier_string, $reflect_option_string, $top, $bottom, $dtype, $ltype, $lmvar, $someloop_mvar,
     $minseparation, $maxseparation, $external_arguments, $faceseparationflag, $method, $vector, $shape, $external_operator_file,
-    $external_operator_type, $from_centring, $interpolate_centring, $nfound);
+    $external_operator_type, $from_centring, $interpolate_centring, $nfound, $to_region_number, $from_region_number);
   my $nbits=0;
   my @outbit=();
   my @inbit=();
@@ -3151,7 +3155,10 @@ sub mequation_interpolation {
       if ( $from_region =~ /^\<.+?\>$/ ) {
         $from_region=examine_name($from_region,"regionname");
         print DEBUG "INFO: from_region $from_region of centring $centring identified in $otype $variable{$otype}[$omvar]{name}\n";
-        
+# find region index to place directly into code
+        $nfound = check_region_and_add_if_not_there($from_region,$centring,"from $centring region $from_region used in $centring $operator in $otype $variable{$otype}[$omvar]{name}"); 
+        if ($region[$nfound]{"dynamic"}) { error_stop("from $centring region $from_region used in $centring $operator is dynamic: link regions must be static: in $otype $variable{$otype}[$omvar]{name}"); }
+        $from_region_number = $region[$nfound]{"fortran"};
       } elsif (empty($from_region)) { error_stop("from_region of centring $centring missing in $otype $variable{$otype}[$omvar]{name}");
       } else { error_stop("from_region $from_region of centring $centring incorrectly specified in $otype $variable{$otype}[$omvar]{name}"); }
 
@@ -3159,6 +3166,10 @@ sub mequation_interpolation {
       if ( $to_region =~ /^\<.+?\>$/ ) {
         $to_region=examine_name($to_region,"regionname");
         print DEBUG "INFO: to_region $to_region of centring $to_centring identified in $otype $variable{$otype}[$omvar]{name}\n";
+# find region index to place directly into code
+        $nfound = check_region_and_add_if_not_there($to_region,$to_centring,"to $to_centring region $to_region used in $centring $operator in $otype $variable{$otype}[$omvar]{name}"); 
+        if ($region[$nfound]{"dynamic"}) { error_stop("to $to_centring region $to_region used in $centring $operator is dynamic: link regions must be static: in $otype $variable{$otype}[$omvar]{name}"); }
+        $to_region_number = $region[$nfound]{"fortran"};
       } elsif (empty($to_region)) {
         error_stop("to_region of centring $to_centring missing in $otype $variable{$otype}[$omvar]{name}");
       } else {
@@ -3166,7 +3177,7 @@ sub mequation_interpolation {
       }
 
       print DEBUG "INFO: the contents of $operator in $otype $variable{$otype}[$omvar]{name} was found to be:\n".
-        "  expression = $expression\n  centring fromregion (localregion) = $centring $from_region\n  tocentring toregion (remoteregion) = $to_centring $to_region\n";
+        "  expression = $expression\n  centring fromregion fromregionnumber (localregion) = $centring $from_region $from_region_number\n  tocentring toregion toregionnumber (remoteregion) = $to_centring $to_region $to_region_number\n";
 
       $inbit[$nbits] = $expression;
 
@@ -3174,7 +3185,7 @@ sub mequation_interpolation {
 
 # find region_link if it already exists and save to someloop
       foreach $mlink ( 0 .. $#region_link ) { # $# signifies the index of the last element in the array
-        if ($region_link[$mlink]{"to_region"} eq $to_region && $region_link[$mlink]{"from_region"} eq $from_region &&
+        if ($region_link[$mlink]{"to_region_number"} eq $to_region_number && $region_link[$mlink]{"from_region_number"} eq $from_region_number &&
             $region_link[$mlink]{"to_centring"} eq $to_centring && $region_link[$mlink]{"from_centring"} eq $centring &&
             $region_link[$mlink]{"options"} eq $options) {
           $variable{"someloop"}[$m{"someloop"}]{"region_mlink"} = $mlink; # previous link can be reused
@@ -3190,6 +3201,8 @@ sub mequation_interpolation {
         $mlink = $#region_link + 1;
         $region_link[$mlink]{"to_region"} = $to_region;
         $region_link[$mlink]{"from_region"} = $from_region;
+        $region_link[$mlink]{"to_region_number"} = $to_region_number;
+        $region_link[$mlink]{"from_region_number"} = $from_region_number;
         $region_link[$mlink]{"to_centring"} = $to_centring;
         $region_link[$mlink]{"from_centring"} = $centring;
         $region_link[$mlink]{"options"} = $options;
@@ -4541,6 +4554,8 @@ sub create_allocations {
       $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}."\n".
         "region_link($region_link[$mlink]{number})%to_region = '$region_link[$mlink]{to_region}'\n".
         "region_link($region_link[$mlink]{number})%from_region = '$region_link[$mlink]{from_region}'\n".
+        "region_link($region_link[$mlink]{number})%to_region_number = $region_link[$mlink]{to_region_number}\n".
+        "region_link($region_link[$mlink]{number})%from_region_number = $region_link[$mlink]{from_region_number}\n".
         "region_link($region_link[$mlink]{number})%to_centring = '$region_link[$mlink]{to_centring}'\n".
         "region_link($region_link[$mlink]{number})%from_centring = '$region_link[$mlink]{from_centring}'\n";
     }
@@ -4620,6 +4635,7 @@ sub create_allocations {
         $sub_string{"allocate_var_lists"}=$sub_string{"allocate_var_lists"}.
           "! setting var_list: centring = $centring: type = $type: include_regions = $include_regions\n".
           "var_list_number_l = var_list_number(centring=\"$centring\",type=\"$type\",include_regions=".fortran_logical_string($include_regions).")\n".
+          "if (debug) write(*,*) 'centring = $centring: type = $type: include_regions = $include_regions: var_list_number_l = ',var_list_number_l\n".
           "var_list(var_list_number_l)%centring = \"$centring\"\n".
           "var_list(var_list_number_l)%type = \"$type\"\n".
           "var_list(var_list_number_l)%include_regions = ".fortran_logical_string($include_regions)."\n";
@@ -4657,6 +4673,29 @@ sub create_allocations {
     }
   }
       
+# also create fortran update statements
+  foreach my $type ( @user_types, "initial_newtient", "initial_transient" ) {
+    if ($type =~ /(initial_|)(constant|transient|newtient|derived|equation|output|unknown)/) {
+      my $regioninitial;
+      if ($1) { $regioninitial=1; } else { $regioninitial=0; }
+      my $regiontype = $2;
+      my $first = 1;
+      for my $nregion ( 0 .. $#region ) {
+        if ($region[$nregion]{"dynamic"} && $region[$nregion]{"type"} eq $regiontype) {
+          if (!($first)) { 
+            $sub_string{$type."_region"}=$sub_string{$type."_region"}."else if ";
+          } else {
+            $sub_string{$type."_region"}=$sub_string{$type."_region"}."if ";
+            $first = 0;
+          }
+          $sub_string{$type."_region"}=$sub_string{$type."_region"}.
+            "(m == $region[$nregion]{fortran}) then\n".
+            "call update_region(m=$region[$nregion]{fortran},initial=".fortran_logical_string($regioninitial).")\n";
+        }
+      }
+      if (!($first)) { $sub_string{$type."_region"}=$sub_string{$type."_region"}."end if\n"; }
+    }
+  }
 
 }
 
@@ -4883,7 +4922,7 @@ sub create_fortran_equations {
   use strict;
   my ($type, $mvar, $mequation, $tmp, $m2var, $deriv, $inequality, $first, $fequation, $mlink, $firstcondition,
     $otype, $omvar, $l, $n, $reflect_string_init, $reflect_string_form, $openloop, $maxseparation, $separation_loop, 
-    $separation_list, $ii2max, $regioninitial, $regiontype, $masread_last, $masread_next);
+    $separation_list, $ii2max);
 
   foreach $type (@user_types,"initial_transient","initial_newtient","someloop") {
 
@@ -4891,36 +4930,6 @@ sub create_fortran_equations {
     
     $sub_string{$type}="";
     $first = 1;
-
-# find any dynamic regions that precede the first variable of this type
-# this doesn't work!
-# TODO
-# also need to save region relstep for use in update_transients etc
-
-    if ($type =~ /(initial_|)(constant|transient|newtient|derived|equation|output|unknown)/) {
-      if ($1) { $regioninitial=1; } else { $regioninitial=0; }
-      $regiontype = $2;
-      print DEBUG "FORTRAN: regions: looking for initial region initialisations for regiontype = $regiontype: regioninitial = $regioninitial\n";
-      $masread_last = -1;
-      $masread_next = $#asread_variable+1;
-      for my $mvarsearch ( 1 .. $m{$type} ) {
-        if (nonempty($variable{$type}[$mvarsearch]{"mequation"})) {
-          $masread_next = $variable{$type}[$mvarsearch]{"masread"};
-          last;
-        }
-      }
-      print DEBUG "FORTRAN: regions: masread_last = $masread_last: masread_next = $masread_next\n";
-      for $n ( 0 .. $#region ) {
-        if ($regiontype eq $region[$n]{"type"}) {
-          if ($masread_last <= $region[$n]{"last_variable_masread"} && $region[$n]{"last_variable_masread"} < $masread_next) {
-            print DEBUG "FORTRAN: regions: writing fortran for region $region[$n]{name}\n";
-            $sub_string{$type}=$sub_string{$type}.
-              "\n! updating $regiontype region $region[$n]{name} that precedes any of the $type variables\n".
-              "call update_region(m=$region[$n]{fortran},initial=".fortran_logical_string($regioninitial).")\n";
-          }
-        }
-      }
-    }
 
     foreach $mvar ( 1 .. $m{$type} ) {
 
@@ -5331,9 +5340,6 @@ sub create_fortran_equations {
           } else {
             $sub_string{$type}=$sub_string{$type}."region_number = $variable{$type}[$mvar]{region_number}\n";
           }
-#         $sub_string{$type}=$sub_string{$type}.
-#           "region_number = region_number_from_name(name=\"$variable{$type}[$mvar]{region}\",centring=\"$variable{$type}[$mvar]{centring}\")\n".
-#           "if (region_number == 0) call error_stop(\"Problem finding $variable{$type}[$mvar]{centring} region $variable{$type}[$mvar]{region} in update_someloops: \"//trim(error_string))\n\n";
 
 # loop through region in increasing order of increasing separation
           if ($variable{$type}[$mvar]{"separation_list_number"}) {
@@ -5581,31 +5587,6 @@ sub create_fortran_equations {
           "call multiply_dv($tmp,$variable{$type}[$mvar]{fortranns})\n\n";
       }
         
-# find any dynamic regions that follow this variable
-
-      if ($type =~ /(initial_|)(constant|transient|newtient|derived|equation|output|unknown)/) {
-        print DEBUG "FORTRAN: regions: looking for normal region initialisations for regiontype = $regiontype: regioninitial = $regioninitial: mvar = $mvar\n";
-        $masread_last = $variable{$type}[$mvar]{"masread"};
-        $masread_next = $#asread_variable+1;
-        for my $mvarsearch ( $mvar+1 .. $m{$type} ) {
-          if (nonempty($variable{$type}[$mvarsearch]{"mequation"})) {
-            $masread_next = $variable{$type}[$mvarsearch]{"masread"};
-            last;
-          }
-        }
-        print DEBUG "FORTRAN: regions: masread_last = $masread_last: masread_next = $masread_next\n";
-        for $n ( 0 .. $#region ) {
-          if ($regiontype eq $region[$n]{"type"}) {
-            if ($masread_last <= $region[$n]{"last_variable_masread"} && $region[$n]{"last_variable_masread"} < $masread_next) {
-              $sub_string{$type}=$sub_string{$type}.
-                "\n! updating $regiontype region $region[$n]{name} that follows the update of $type variable $asread_variable[$masread_last]{name}\n".
-                "call update_region(m=$region[$n]{fortran},initial=".fortran_logical_string($regioninitial).")\n";
-              print DEBUG "FORTRAN: regions: writing fortran for region $region[$n]{name}\n";
-            }
-          }
-        }
-      }
-
       $mvar++;
 
     }

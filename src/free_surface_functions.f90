@@ -110,7 +110,7 @@ double precision :: normal_magnitude, d_max, d_min, d, phi, phitol, d_node, vcur
 double precision, dimension(0:2) :: aatotal ! this should be private is it is not saved
 double precision, dimension(maximum_celljfaces,0:2) :: aaface ! this should be private is it is not saved
 double precision, dimension(totaldimensions) :: normal, pass_vector
-integer, parameter :: nmax = 1e5
+integer, parameter :: nmax = 100000
 logical, parameter :: reciprocal = .true. ! if phi < 0.5 solve for 1-phi instead, to reduce the number of geometrical operations
 logical :: debug = .false.
 

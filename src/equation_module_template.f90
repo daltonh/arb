@@ -126,6 +126,8 @@ use region_module
 !$ use omp_lib
 logical :: setup ! now needs to know whether we are in the setup phase or not - if so, posibly read in data
 integer :: nvar, m, ns, i, j, k
+integer, save :: var_list_number_l_derived = -1, var_list_number_l_equation = -1
+logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
 character(len=1000) :: formatline
@@ -136,31 +138,45 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine update_derived_and_equations'
 
 if (debug) write(*,'(40(1h+)/a)') 'derived updates'
 
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="derived"))%list)
-  m = var_list(var_list_number(centring="all",type="derived"))%list(nvar)
+if (var_list_number_l_derived < 0) var_list_number_l_derived = var_list_number(centring="all",type="derived",include_regions=.true.)
+do nvar = 1, allocatable_size(var_list(var_list_number_l_derived)%list)
+  m = var_list(var_list_number_l_derived)%list(nvar)
+  region_l = var_list(var_list_number_l_derived)%region(nvar)
 
-  i = 0
-  j = 0
-  k = 0
+  if (region_l) then
 
-  if (debug) write(*,*) 'updating var derived: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
-  error_string = "Error occurred while updating derived "//trim(var(m)%name)
+    if (debug) write(*,*) 'updating dynamic derived region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+      region(m)%centring
 
-  if (output_variable_update_times) call time_variable_update(thread,0,m)
+! derived region
+!    <sub_string:derived_region>
+
+  else
+
+    i = 0
+    j = 0
+    k = 0
+
+    if (debug) write(*,*) 'updating var derived: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
+    error_string = "Error occurred while updating derived "//trim(var(m)%name)
+
+    if (output_variable_update_times) call time_variable_update(thread,0,m)
 
 ! derived
-!  <sub_string:derived>
+!    <sub_string:derived>
 
-  if (output_variable_update_times) call time_variable_update(thread,1,m)
+    if (output_variable_update_times) call time_variable_update(thread,1,m)
 
-! read from data file only (possibly) during variable setup
-  if (setup) call read_gmesh(contents='data',var_number=m)
+  ! read from data file only (possibly) during variable setup
+    if (setup) call read_gmesh(contents='data',var_number=m)
 
-  if (debug) then
-    formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
-    do ns = 1, ubound(var(m)%funk,1)
-      write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
-    end do
+    if (debug) then
+      formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
+      do ns = 1, ubound(var(m)%funk,1)
+        write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
+      end do
+    end if
+
   end if
 
 end do
@@ -171,31 +187,45 @@ if (debug) write(*,'(a/40(1h-))') 'derived updates'
 
 if (debug) write(*,'(40(1h+)/a)') 'equation updates'
 
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nvar)
+if (var_list_number_l_equation < 0) var_list_number_l_equation = var_list_number(centring="all",type="equation",include_regions=.true.)
+do nvar = 1, allocatable_size(var_list(var_list_number_l_equation)%list)
+  m = var_list(var_list_number_l_equation)%list(nvar)
+  region_l = var_list(var_list_number_l_equation)%region(nvar)
 
-  i = 0
-  j = 0
-  k = 0
+  if (region_l) then
 
-  if (debug) write(*,*) 'updating var equation: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
-  error_string = "Error occurred while updating equation "//trim(var(m)%name)
+    if (debug) write(*,*) 'updating dynamic equation region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+      region(m)%centring
 
-  if (output_variable_update_times) call time_variable_update(thread,0,m)
+! equation region
+!    <sub_string:equation_region>
+
+  else
+
+    i = 0
+    j = 0
+    k = 0
+
+    if (debug) write(*,*) 'updating var equation: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
+    error_string = "Error occurred while updating equation "//trim(var(m)%name)
+
+    if (output_variable_update_times) call time_variable_update(thread,0,m)
 
 ! equations
-!  <sub_string:equation>
+!    <sub_string:equation>
 
-  if (output_variable_update_times) call time_variable_update(thread,1,m)
+    if (output_variable_update_times) call time_variable_update(thread,1,m)
 
-! read from data file only (possibly) during variable setup
-  if (setup) call read_gmesh(contents='data',var_number=m)
+  ! read from data file only (possibly) during variable setup
+    if (setup) call read_gmesh(contents='data',var_number=m)
 
-  if (debug) then
-    formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
-    do ns = 1, ubound(var(m)%funk,1)
-      write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
-    end do
+    if (debug) then
+      formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
+      do ns = 1, ubound(var(m)%funk,1)
+        write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
+      end do
+    end if
+
   end if
 
 end do
@@ -249,6 +279,8 @@ use gmesh_module
 use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k
+integer, save :: var_list_number_l = -1
+logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
 character(len=1000) :: formatline
@@ -257,31 +289,45 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_constants'
 
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="constant"))%list)
-  m = var_list(var_list_number(centring="all",type="constant"))%list(nvar)
+if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="constant",include_regions=.true.)
+do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
+  m = var_list(var_list_number_l)%list(nvar)
+  region_l = var_list(var_list_number_l)%region(nvar)
 
-  i = 0
-  j = 0
-  k = 0
+  if (region_l) then
 
-  if (debug) write(*,*) 'updating var constant: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
-  error_string = "Error occurred while updating constant "//trim(var(m)%name)
+    if (debug) write(*,*) 'updating dynamic constant region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+      region(m)%centring
 
-  if (output_variable_update_times) call time_variable_update(thread,0,m)
+! constant region
+!    <sub_string:constant_region>
+
+  else
+
+    i = 0
+    j = 0
+    k = 0
+
+    if (debug) write(*,*) 'updating var constant: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
+    error_string = "Error occurred while updating constant "//trim(var(m)%name)
+
+    if (output_variable_update_times) call time_variable_update(thread,0,m)
 
 ! constants
-!  <sub_string:constant>
+!    <sub_string:constant>
 
-  if (output_variable_update_times) call time_variable_update(thread,1,m)
+    if (output_variable_update_times) call time_variable_update(thread,1,m)
 
 ! read from data file
-  call read_gmesh(contents='data',var_number=m)
+    call read_gmesh(contents='data',var_number=m)
 
-  if (debug) then
-    formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
-    do ns = 1, ubound(var(m)%funk,1)
-      write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
-    end do
+    if (debug) then
+      formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
+      do ns = 1, ubound(var(m)%funk,1)
+        write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
+      end do
+    end if
+
   end if
 
 end do
@@ -301,6 +347,8 @@ use gmesh_module
 use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k
+integer, save :: var_list_number_l = -1
+logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
 character(len=1000) :: formatline
@@ -309,31 +357,45 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_unknowns'
 
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(nvar)
+if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="unknown",include_regions=.true.)
+do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
+  m = var_list(var_list_number_l)%list(nvar)
+  region_l = var_list(var_list_number_l)%region(nvar)
 
-  i = 0
-  j = 0
-  k = 0
+  if (region_l) then
 
-  if (debug) write(*,*) 'updating var unknown: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
-  error_string = "Error occurred while updating unknown "//trim(var(m)%name)
+    if (debug) write(*,*) 'updating dynamic unknown region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+      region(m)%centring
 
-  if (output_variable_update_times) call time_variable_update(thread,0,m)
+! unknown region
+!    <sub_string:unknown_region>
+
+  else
+
+    i = 0
+    j = 0
+    k = 0
+
+    if (debug) write(*,*) 'updating var unknown: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
+    error_string = "Error occurred while updating unknown "//trim(var(m)%name)
+
+    if (output_variable_update_times) call time_variable_update(thread,0,m)
 
 ! unknowns
-!  <sub_string:unknown>
+!    <sub_string:unknown>
 
-  if (output_variable_update_times) call time_variable_update(thread,1,m)
+    if (output_variable_update_times) call time_variable_update(thread,1,m)
 
-! read from data file
-  call read_gmesh(contents='data',var_number=m)
+  ! read from data file
+    call read_gmesh(contents='data',var_number=m)
 
-  if (debug) then
-    formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
-    do ns = 1, ubound(var(m)%funk,1)
-      write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
-    end do
+    if (debug) then
+      formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
+      do ns = 1, ubound(var(m)%funk,1)
+        write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
+      end do
+    end if
+
   end if
 
 end do
@@ -353,6 +415,8 @@ use gmesh_module
 use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
+integer, save :: var_list_number_l = -1
+logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
 character(len=1000) :: formatline
@@ -361,32 +425,48 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_newtients'
 
+if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="newtient",include_regions=.true.)
 do relstep = newtient_relstepmax, 0, -1 ! look through newtient variables in reverse order
-  do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="newtient"))%list)
-    m = var_list(var_list_number(centring="all",type="newtient"))%list(nvar)
+  do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
+    m = var_list(var_list_number_l)%list(nvar)
+    region_l = var_list(var_list_number_l)%region(nvar)
 
-    if (var(m)%relstep /= relstep) cycle ! skip this variable if it isn't the correct relstep
+    if (region_l) then
 
-    i = 0
-    j = 0
-    k = 0
-    error_string = "Error occurred while updating newtient "//trim(var(m)%name)
+      if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
 
-    if (debug) write(*,*) 'updating var newtient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring, &
-      ": relstep = ",relstep
+      if (debug) write(*,*) 'updating dynamic newtient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+        region(m)%centring
 
-    if (output_variable_update_times) call time_variable_update(thread,0,m)
+! newtient region
+!      <sub_string:newtient_region>
+
+    else
+
+      if (var(m)%relstep /= relstep) cycle ! skip this variable if it isn't the correct relstep
+
+      i = 0
+      j = 0
+      k = 0
+      error_string = "Error occurred while updating newtient "//trim(var(m)%name)
+
+      if (debug) write(*,*) 'updating var newtient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring, &
+        ": relstep = ",relstep
+
+      if (output_variable_update_times) call time_variable_update(thread,0,m)
 
 ! newtients
-!    <sub_string:newtient>
+!      <sub_string:newtient>
 
-    if (output_variable_update_times) call time_variable_update(thread,1,m)
+      if (output_variable_update_times) call time_variable_update(thread,1,m)
 
-    if (debug) then
-      formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
-      do ns = 1, ubound(var(m)%funk,1)
-        write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
-      end do
+      if (debug) then
+        formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
+        do ns = 1, ubound(var(m)%funk,1)
+          write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
+        end do
+      end if
+
     end if
 
   end do
@@ -407,6 +487,8 @@ use gmesh_module
 use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
+integer, save :: var_list_number_l = -1
+logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
 character(len=1000) :: formatline
@@ -415,34 +497,50 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_initial_newtients'
 
+if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="newtient",include_regions=.true.)
 do relstep = 0, newtient_relstepmax ! look through newtient variables in forward order
-  do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="newtient"))%list)
-    m = var_list(var_list_number(centring="all",type="newtient"))%list(nvar)
+  do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
+    m = var_list(var_list_number_l)%list(nvar)
+    region_l = var_list(var_list_number_l)%region(nvar)
 
-    if (var(m)%relstep /= relstep) cycle ! skip this variable if it isn't the correct relstep
+    if (region_l) then
 
-    i = 0
-    j = 0
-    k = 0
+      if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
 
-    if (debug) write(*,*) 'initialising var newtient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring,": relstep = ",relstep
-    error_string = "Error occurred while updating initial_newtient "//trim(var(m)%name)
+      if (debug) write(*,*) 'updating dynamic initial newtient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+        region(m)%centring
 
-    if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,0,m)
+! newtient region
+!      <sub_string:initial_newtient_region>
+
+    else
+
+      if (var(m)%relstep /= relstep) cycle ! skip this variable if it isn't the correct relstep
+
+      i = 0
+      j = 0
+      k = 0
+
+      if (debug) write(*,*) 'initialising var newtient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring,": relstep = ",relstep
+      error_string = "Error occurred while updating initial_newtient "//trim(var(m)%name)
+
+      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,0,m)
 
 ! initial_newtients
-!    <sub_string:initial_newtient>
+!      <sub_string:initial_newtient>
 
-    if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,1,m)
+      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,1,m)
 
 ! read from data file
-    call read_gmesh(contents='data',var_number=m)
+      call read_gmesh(contents='data',var_number=m)
 
-    if (debug) then
-      formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
-      do ns = 1, ubound(var(m)%funk,1)
-        write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
-      end do
+      if (debug) then
+        formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
+        do ns = 1, ubound(var(m)%funk,1)
+          write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
+        end do
+      end if
+
     end if
 
   end do
@@ -463,6 +561,8 @@ use gmesh_module
 use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
+integer, save :: var_list_number_l = -1
+logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
 character(len=1000) :: formatline
@@ -471,32 +571,48 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_transients'
 
+if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="transient",include_regions=.true.)
 do relstep = transient_relstepmax, 0, -1 ! look through transient variables in reverse order
-  do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="transient"))%list)
-    m = var_list(var_list_number(centring="all",type="transient"))%list(nvar)
+  do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
+    m = var_list(var_list_number_l)%list(nvar)
+    region_l = var_list(var_list_number_l)%region(nvar)
 
-    if (var(m)%relstep /= relstep) cycle ! skip this variable if it isn't the correct relstep
+    if (region_l) then
 
-    i = 0
-    j = 0
-    k = 0
+      if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
 
-    if (debug) write(*,*) 'updating var transient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring, &
-      ": relstep = ",relstep
-    error_string = "Error occurred while updating transient "//trim(var(m)%name)
+      if (debug) write(*,*) 'updating dynamic transient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+        region(m)%centring
 
-    if (output_variable_update_times) call time_variable_update(thread,0,m)
+! transient region
+!      <sub_string:transient_region>
+
+    else
+
+      if (var(m)%relstep /= relstep) cycle ! skip this variable if it isn't the correct relstep
+
+      i = 0
+      j = 0
+      k = 0
+
+      if (debug) write(*,*) 'updating var transient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring, &
+        ": relstep = ",relstep
+      error_string = "Error occurred while updating transient "//trim(var(m)%name)
+
+      if (output_variable_update_times) call time_variable_update(thread,0,m)
 
 ! transients
-!    <sub_string:transient>
+!      <sub_string:transient>
 
-    if (output_variable_update_times) call time_variable_update(thread,1,m)
+      if (output_variable_update_times) call time_variable_update(thread,1,m)
 
-    if (debug) then
-      formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
-      do ns = 1, ubound(var(m)%funk,1)
-        write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
-      end do
+      if (debug) then
+        formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
+        do ns = 1, ubound(var(m)%funk,1)
+          write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
+        end do
+      end if
+
     end if
 
   end do
@@ -517,6 +633,8 @@ use gmesh_module
 use region_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
+integer, save :: var_list_number_l = -1
+logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
 character(len=1000) :: formatline
@@ -525,34 +643,50 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_initial_transients'
 
+if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="transient",include_regions=.true.)
 do relstep = 0, transient_relstepmax ! look through transient variables in forward order
-  do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="transient"))%list)
-    m = var_list(var_list_number(centring="all",type="transient"))%list(nvar)
+  do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
+    m = var_list(var_list_number_l)%list(nvar)
+    region_l = var_list(var_list_number_l)%region(nvar)
 
-    if (var(m)%relstep /= relstep) cycle ! skip this variable if it isn't the correct relstep
+    if (region_l) then
 
-    i = 0
-    j = 0
-    k = 0
+      if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
 
-    if (debug) write(*,*) 'initialising var transient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring,": relstep = ",relstep
-    error_string = "Error occurred while updating initial_transient "//trim(var(m)%name)
+      if (debug) write(*,*) 'updating dynamic initial transient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+        region(m)%centring
 
-    if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,0,m)
+! transient region
+!      <sub_string:initial_transient_region>
+
+    else
+
+      if (var(m)%relstep /= relstep) cycle ! skip this variable if it isn't the correct relstep
+
+      i = 0
+      j = 0
+      k = 0
+
+      if (debug) write(*,*) 'initialising var transient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring,": relstep = ",relstep
+      error_string = "Error occurred while updating initial_transient "//trim(var(m)%name)
+
+      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,0,m)
 
 ! initial_transients
-!    <sub_string:initial_transient>
+!      <sub_string:initial_transient>
 
-    if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,1,m)
+      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,1,m)
 
-! read from data file
-    call read_gmesh(contents='data',var_number=m)
+  ! read from data file
+      call read_gmesh(contents='data',var_number=m)
 
-    if (debug) then
-      formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
-      do ns = 1, ubound(var(m)%funk,1)
-        write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
-      end do
+      if (debug) then
+        formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
+        do ns = 1, ubound(var(m)%funk,1)
+          write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
+        end do
+      end if
+
     end if
 
   end do
@@ -574,6 +708,8 @@ use region_module
 logical, optional, intent(in) :: stepoutput
 logical :: stepoutput_local
 integer :: nvar, m, ns, i, j, k
+integer, save :: var_list_number_l = -1
+logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
 character(len=1000) :: formatline
@@ -587,35 +723,51 @@ if (present(stepoutput)) then
   stepoutput_local = stepoutput
 end if
 
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="output"))%list)
-  m = var_list(var_list_number(centring="all",type="output"))%list(nvar)
+if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="output",include_regions=.true.)
+do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
+  m = var_list(var_list_number_l)%list(nvar)
+  region_l = var_list(var_list_number_l)%region(nvar)
 
-  i = 0
-  j = 0
-  k = 0
+  if (region_l) then
 
-  if (debug) write(*,*) 'updating var output: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
-  error_string = "Error occurred while updating output "//trim(var(m)%name)
+! TODO: fix stepoutput_local for regions
 
-! if stepoutput is not on for either the component or compound and this is being called from output_step, then skip
-!  updating this variable
-  if (stepoutput_local) then
-    if (.not.( trim(check_option(compound(var(m)%compound_number)%options,stepoutput_options)) == "stepoutput" .or. &
-               trim(check_option(var(m)%options,stepoutput_options)) == "stepoutput" )) cycle
-  end if
+    if (debug) write(*,*) 'updating dynamic output region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+      region(m)%centring
 
-  if (output_variable_update_times) call time_variable_update(thread,0,m)
+! output region
+!    <sub_string:output_region>
+
+  else
+
+    i = 0
+    j = 0
+    k = 0
+
+    if (debug) write(*,*) 'updating var output: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
+    error_string = "Error occurred while updating output "//trim(var(m)%name)
+
+  ! if stepoutput is not on for either the component or compound and this is being called from output_step, then skip
+  !  updating this variable
+    if (stepoutput_local) then
+      if (.not.( trim(check_option(compound(var(m)%compound_number)%options,stepoutput_options)) == "stepoutput" .or. &
+                 trim(check_option(var(m)%options,stepoutput_options)) == "stepoutput" )) cycle
+    end if
+
+    if (output_variable_update_times) call time_variable_update(thread,0,m)
 
 ! equations
-!  <sub_string:output>
+!    <sub_string:output>
 
-  if (output_variable_update_times) call time_variable_update(thread,1,m)
+    if (output_variable_update_times) call time_variable_update(thread,1,m)
 
-  if (debug) then
-    formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
-    do ns = 1, ubound(var(m)%funk,1)
-      write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
-    end do
+    if (debug) then
+      formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
+      do ns = 1, ubound(var(m)%funk,1)
+        write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
+      end do
+    end if
+
   end if
 
 end do
@@ -632,27 +784,44 @@ subroutine read_initial_outputs
 
 use general_module
 use gmesh_module
+use region_module
 integer :: nvar, m, ns
+integer, save :: var_list_number_l = -1
+logical :: region_l
 character(len=1000) :: formatline
 character(len=1000) :: error_string
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_initial_outputs'
 
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="output"))%list)
-  m = var_list(var_list_number(centring="all",type="output"))%list(nvar)
+if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="output",include_regions=.true.)
+do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
+  m = var_list(var_list_number_l)%list(nvar)
+  region_l = var_list(var_list_number_l)%region(nvar)
 
-  if (debug) write(*,*) 'updating var output: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
-  error_string = "Error occurred while updating output "//trim(var(m)%name)
+  if (region_l) then
 
-! read from data file
-  call read_gmesh(contents='data',var_number=m)
+    if (debug) write(*,*) 'updating dynamic output region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+      region(m)%centring
 
-  if (debug) then
-    formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
-    do ns = 1, ubound(var(m)%funk,1)
-      write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
-    end do
+! output region
+!    <sub_string:output_region>
+
+  else
+
+    if (debug) write(*,*) 'updating var output: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
+    error_string = "Error occurred while updating output "//trim(var(m)%name)
+
+  ! read from data file
+    call read_gmesh(contents='data',var_number=m)
+
+    if (debug) then
+      formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
+      do ns = 1, ubound(var(m)%funk,1)
+        write(*,fmt=formatline) '(ns,m) = (',ns,',',m,'): var = ',trim(print_funk(var(m)%funk(ns)))
+      end do
+    end if
+
   end if
 
 end do
@@ -672,6 +841,7 @@ function check_condition(condition_type)
 use general_module
 character(len=*) :: condition_type
 logical :: check_condition
+integer, save :: var_list_number_l = -1
 integer :: nvar, m, ns, i, j, k
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -683,8 +853,9 @@ if (debug) write(*,'(80(1h+)/a)') 'function check_condition'
 
 check_condition = .false.
 
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="condition"))%list)
-  m = var_list(var_list_number(centring="all",type="condition"))%list(nvar)
+if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="constant",include_regions=.false.)
+do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
+  m = var_list(var_list_number_l)%list(nvar)
 
   i = 0
   j = 0

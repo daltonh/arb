@@ -373,7 +373,7 @@ logical :: kernel_availability_nodegrad = .false.
 logical :: kernel_availability_nodeave = .false.
 
 ! code version details
-real, parameter :: version = 0.52 ! current version
+real, parameter :: version = 0.53 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "flexible freddy"
 
@@ -470,23 +470,15 @@ end function compound_number_from_name
 
 !----------------------------------------------------------------------------
 
-function region_number_from_name(name,centring,type,dimensions,creatable,existing)
+function region_number_from_name(name)
 
-! find and checks data regarding region_number, or alternatively sets new one if
-!  creatable is present and set to true
+! finds the region number for the region name (no fancy features here anymore since regions implemented within perl)
 
 integer :: region_number_from_name
 character(len=*), intent(in) :: name
-character(len=4), intent(in), optional :: centring
-character(len=100), intent(in), optional :: type
-integer, intent(in), optional :: dimensions
-logical, intent(in), optional :: creatable
-logical, intent(out), optional :: existing
-type(region_type) :: default_element
 integer :: n
 
 region_number_from_name = 0 ! default is an error code
-if (present(existing)) existing = .false.
 
 ! see if region already exists
 if (allocated(region)) then
@@ -496,69 +488,6 @@ if (allocated(region)) then
       exit
     end if
   end do
-end if
-
-! check centring of existing region is consistent if it was previously set
-if (region_number_from_name /= 0) then
-  if (present(existing)) existing = .true.
-  if (present(centring)) then
-    if (trim(region(region_number_from_name)%centring) /= ''.and. &
-        centring /= region(region_number_from_name)%centring) then
-      write(*,*) 'ERROR: existing region = '//trim(name)//' has different centring than previously specified'
-      region_number_from_name = 0 ! set number to indicate error
-      return
-    end if
-  end if
-  if (present(dimensions)) then
-    if (dimensions >= 0 .and. dimensions /= region(region_number_from_name)%dimensions) then
-      write(*,*) 'ERROR: existing region = '//trim(name)//' has different dimensions than previously specified'
-      region_number_from_name = 0 ! set number to indicate error
-      return
-    end if
-  end if
-end if
-
-! to create or alter region data logical creatable must be present and set to true
-if (.not.present(creatable)) return 
-if (.not.creatable) return 
-
-! create new region
-if (region_number_from_name == 0) then
-  default_element%name = name
-  if (present(type)) then
-    default_element%type = type
-    default_element%location%description = changecase("U",type)
-  else
-    default_element%type = ''
-    default_element%location%description = "UNKNOWN"
-  end if
-  default_element%location%active = .false. ! active locations are now set solely via setup_equations.pl
-  if (present(centring)) then
-    default_element%centring = centring
-  else
-    default_element%centring = ''
-  end if
-  if (present(dimensions)) then
-    default_element%dimensions = dimensions
-  else
-    default_element%dimensions = -1 ! this value indicates that the dimensions are not known
-  end if
-  call resize_region_array(new_element=default_element,change=1)
-  region_number_from_name = ubound(region,1)
-else
-! check existing region and update any info if presently empty
-  if (present(centring).and.trim(region(region_number_from_name)%centring) == '') then
-    write(*,'(a)') 'INFO: updating region = '//trim(name)//' centring to '//trim(centring)
-    region(region_number_from_name)%centring = centring
-  end if
-  if (present(type).and.trim(region(region_number_from_name)%type) == '') then
-    write(*,'(a)') 'INFO: updating region = '//trim(name)//' type to '//trim(type)
-    region(region_number_from_name)%type = type
-  end if
-  if (present(dimensions).and.region(region_number_from_name)%dimensions == -1) then
-    write(*,'(a,i1)') 'INFO: updating region = '//trim(name)//' dimensions to ',dimensions
-    region(region_number_from_name)%dimensions = dimensions
-  end if
 end if
 
 end function region_number_from_name
@@ -2793,7 +2722,8 @@ character(len=*) :: type ! type of var variable
 logical, optional :: include_regions ! if true and present, include relevant dynamic regions in the lists, otherwise don't (default if not present)
 integer :: var_list_number
 integer :: ntype, ncentring, n
-integer, save :: ntypemax = ubound(var_types,1) + 1
+integer, parameter :: ntypemax = ubound(var_types,1) + 1 ! can do this as var_types is a parameter
+integer, parameter :: ntypecentringmax = ntypemax*5
 logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'function var_list_number'
@@ -2826,7 +2756,7 @@ end if
 var_list_number = ntype + (ncentring-1)*(ntypemax)
 
 if (present(include_regions)) then
-  if (include_regions) var_list_number = var_list_number*2
+  if (include_regions) var_list_number = var_list_number+ntypecentringmax
 end if
 
 if (debug) write(*,'(a/80(1h-))') 'function var_list_number'

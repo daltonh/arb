@@ -1509,7 +1509,7 @@ integer, dimension(:), allocatable :: gregion_dimensions, gregion_number
 character(len=1000), dimension(:), allocatable :: gregion_name
 character(len=1000) :: formatline, textline, filename, location
 character(len=4) :: centring
-character(len=100) :: type
+type(region_type) :: default_element ! this is the element that will be added to region
 logical :: check, debug, existing, guess_centring
 
 rewind(fgmsh)
@@ -1556,7 +1556,7 @@ do n=1,ngregions
 ! 3) region is identified, type is not gmsh - check centring, set/check dimensions, and continue, noting that data may be read in for this region
 ! 4) region is identified, type is gmsh - check centring, set/check dimensions, set/append location string
 
-  region_number = region_number_from_name(name=gregion_name(n),creatable=.false.)
+  region_number = region_number_from_name(name=gregion_name(n))
   formatline = '(a,'//trim(dindexformat(gregion_number(n)))//',a)'
   write(location,fmt=formatline) 'GMSH physical entity number ',gregion_number(n),' from file '//trim(filename)
 
@@ -1593,15 +1593,19 @@ do n=1,ngregions
     if (debug) write(*,*) ' before read: region '//trim(gregion_name(n))//': not previously defined'
 ! centring is now set for this case above
 ! create new region and set gregion region_number at the same time
-    type = 'gmsh'
-    region_number = region_number_from_name(name=gregion_name(n), &
-      type=type,centring=centring,dimensions=gregion_dimensions(n),creatable=.true.)
+    default_element%name = gregion_name(n)
+    default_element%centring = centring
+    default_element%type = 'gmsh'
+    default_element%dimensions = gregion_dimensions(n)
+    default_element%location%active = .false.
+    default_element%location%description = location
+    default_element%initial_location%active = .false.
+    default_element%initial_location%description = ""
+    call resize_region_array(new_element=default_element,change=1)
+    region_number = ubound(region,1)
+
     gmesh(gmesh_number)%gregion(gregion_number(n))%region_number = region_number
     gmesh(gmesh_number)%gregion(gregion_number(n))%centring = centring
-    region(region_number)%location%active = .false.
-    region(region_number)%location%description = location
-    region(region_number)%initial_location%active = .false.
-    region(region_number)%initial_location%description = ""
 
   else
 ! this region already has a valid fortran definition

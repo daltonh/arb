@@ -1,42 +1,23 @@
-general_module.f90:463:function region_number_from_name(name,centring,type,dimensions,creatable,existing)
-general_module.f90:468:integer :: region_number_from_name
-general_module.f90:478:region_number_from_name = 0 ! default is an error code
-general_module.f90:485:      region_number_from_name = n
-general_module.f90:492:if (region_number_from_name /= 0) then
-general_module.f90:495:    if (trim(region(region_number_from_name)%centring) /= ''.and. &
-general_module.f90:496:        centring /= region(region_number_from_name)%centring) then
-general_module.f90:498:      region_number_from_name = 0 ! set number to indicate error
-general_module.f90:503:    if (dimensions >= 0 .and. dimensions /= region(region_number_from_name)%dimensions) then
-general_module.f90:505:      region_number_from_name = 0 ! set number to indicate error
-general_module.f90:516:if (region_number_from_name == 0) then
-general_module.f90:537:  region_number_from_name = ubound(region,1)
-general_module.f90:540:  if (present(centring).and.trim(region(region_number_from_name)%centring) == '') then
-general_module.f90:542:    region(region_number_from_name)%centring = centring
-general_module.f90:544:! if (present(type).and.trim(region(region_number_from_name)%location) == '') then
-general_module.f90:546:!   region(region_number_from_name)%type = type
-general_module.f90:548:  if (present(dimensions).and.region(region_number_from_name)%dimensions == -1) then
-general_module.f90:550:    region(region_number_from_name)%dimensions = dimensions
-general_module.f90:554:end function region_number_from_name
-general_module.f90:2734:region_number = region_number_from_name(name=name,existing=existing,centring=centring)
-general_module.f90:2736:! centring consistency is checked in region_number_from_name - it is the only possiblity for 0 for an existing region
-gmesh_module.f90:1555:  region_number = region_number_from_name(name=gregion_name(n),creatable=.false.)
-gmesh_module.f90:1579:    gmesh(gmesh_number)%gregion(gregion_number(n))%region_number = region_number_from_name(name=gregion_name(n), &
-region_module.f90:74:m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-region_module.f90:83:m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-region_module.f90:96:m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-region_module.f90:111:m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-region_module.f90:120:m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-region_module.f90:133:m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-region_module.f90:148:m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-region_module.f90:157:m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-region_module.f90:170:m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-region_module.f90:251:    nregion = region_number_from_name(name=aregion,centring=region(m)%centring,existing=existing,creatable=.false.)
-region_module.f90:378:    nregion = region_number_from_name(name=aregion,existing=existing,creatable=.false.)
-region_module.f90:521:      nregion = region_number_from_name(name=aregion,centring=region(m)%centring,existing=existing,creatable=.false.)
-region_module.f90:604:      nregion = region_number_from_name(name=aregion,centring=region(m)%centring,existing=existing,creatable=.false.)
-region_module.f90:830:region_link(m)%to_region_number = region_number_from_name(name=region_link(m)%to_region, &
-region_module.f90:845:region_link(m)%from_region_number = region_number_from_name(name=region_link(m)%from_region, &
-setup_module.f90:187:!     m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-setup_module.f90:1154:    region_number = region_number_from_name(name=region_name,creatable=.false.,existing=existing)
-setup_module.f90:1223:    var(m)%region_number = region_number_from_name(name=var(m)%region,centring=var(m)%centring,existing=existing)
-setup_module.f90:1612:    glue_face(n)%region_number(m) = region_number_from_name(name=glue_face(n)%region(m),existing=existing,creatable=.false.)
+general_module.f90:473:function region_number_from_name(name,centring,type,dimensions,creatable,existing)
+general_module.f90:478:integer :: region_number_from_name
+general_module.f90:488:region_number_from_name = 0 ! default is an error code
+general_module.f90:495:      region_number_from_name = n
+general_module.f90:502:if (region_number_from_name /= 0) then
+general_module.f90:505:    if (trim(region(region_number_from_name)%centring) /= ''.and. &
+general_module.f90:506:        centring /= region(region_number_from_name)%centring) then
+general_module.f90:508:      region_number_from_name = 0 ! set number to indicate error
+general_module.f90:513:    if (dimensions >= 0 .and. dimensions /= region(region_number_from_name)%dimensions) then
+general_module.f90:515:      region_number_from_name = 0 ! set number to indicate error
+general_module.f90:526:if (region_number_from_name == 0) then
+general_module.f90:547:  region_number_from_name = ubound(region,1)
+general_module.f90:550:  if (present(centring).and.trim(region(region_number_from_name)%centring) == '') then
+general_module.f90:552:    region(region_number_from_name)%centring = centring
+general_module.f90:554:  if (present(type).and.trim(region(region_number_from_name)%type) == '') then
+general_module.f90:556:    region(region_number_from_name)%type = type
+general_module.f90:558:  if (present(dimensions).and.region(region_number_from_name)%dimensions == -1) then
+general_module.f90:560:    region(region_number_from_name)%dimensions = dimensions
+general_module.f90:564:end function region_number_from_name
+
+gmesh_module.f90:1559:  region_number = region_number_from_name(name=gregion_name(n))
+setup_module.f90:1125:    region_number = region_number_from_name(name=region_name)
+setup_module.f90:1572:    glue_face(n)%region_number(m) = region_number_from_name(name=glue_face(n)%region(m))

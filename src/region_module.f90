@@ -747,12 +747,6 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine setup_region_link'
 if (debug) write(*,'(a,i3)') ' finding region_link number ',m
 
 ! find to_region
-region_link(m)%to_region_number = region_number_from_name(name=region_link(m)%to_region, &
-  centring=region_link(m)%to_centring,existing=existing,creatable=.false.)
-! check that region exists, that centring is consistent and that region is not dynamic
-if (.not.existing) call error_stop("problem with "//trim(region_link(m)%to_centring)// &
-  " region "//trim(region_link(m)%to_region)//" which is part of a region link function: "// &
-  "region does not exist")
 to_region_number = region_link(m)%to_region_number
 if (to_region_number == 0) call error_stop("problem with "//trim(region_link(m)%to_centring)// &
   " region "//trim(region_link(m)%to_region)//" which is part of a region link function: "// &
@@ -766,12 +760,6 @@ if (allocatable_integer_size(region(to_region_number)%ijk) == 0) call error_stop
   "region contains no elements")
 
 ! find from_region
-region_link(m)%from_region_number = region_number_from_name(name=region_link(m)%from_region, &
-  centring=region_link(m)%from_centring,existing=existing,creatable=.false.)
-! check that region exists, that centring is consistent and that region is not dynamic
-if (.not.existing) call error_stop("problem with "//trim(region_link(m)%from_centring)// &
-  " region "//trim(region_link(m)%from_region)//" which is part of a region link function: "// &
-  "region does not exist")
 from_region_number = region_link(m)%from_region_number
 if (from_region_number == 0) call error_stop("problem with "//trim(region_link(m)%from_centring)// &
   " region "//trim(region_link(m)%from_region)//" which is part of a region link function: "// &
