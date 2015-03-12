@@ -85,13 +85,13 @@ FACE_OUTPUT <facedx output> "<facedx>" ON <all faces>
 FACE_OUTPUT <facearea output> "<facearea>" ON <all faces>
 # INCLUDE FINISHED for ../templates/general/element_dimensions.arb
 #--------------------------------------------------------
-#INCLUDE "element_indicies.arb"
+#INCLUDE "element_indices.arb"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/general/element_indicies.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/general/element_indices.arb without any search/replace combinations
 CELL_OUTPUT <icell output> "<icell>" ON <all cells>
 FACE_OUTPUT <jface output> "<jface>" ON <all faces>
 NODE_OUTPUT <knode output> "<knode>" ON <all nodes>
-# INCLUDE FINISHED for ../templates/general/element_indicies.arb
+# INCLUDE FINISHED for ../templates/general/element_indices.arb
 #--------------------------------------------------------
 # INCLUDE FINISHED for ../templates/general/element_information.arb
 #--------------------------------------------------------
