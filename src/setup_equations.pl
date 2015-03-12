@@ -801,22 +801,22 @@ sub read_input_files {
         next;
       }
 
-# check for depreciated syntax
+# check for deprecated syntax
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)(INDEPENDENT|FIELD)($|\s)/i) {
         $type = "\U$2";
-        error_stop("$type type has been depreciated, use UNKNOWN instead.\nfile = $file: line = $oline\n");
+        error_stop("$type type has been deprecated, use UNKNOWN instead.\nfile = $file: line = $oline\n");
       }
 
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)DEPENDENT($|\s)/i) {
-        error_stop("DEPENDENT type has been depreciated, use DERIVED instead.\nfile = $file: line = $oline\n");
+        error_stop("DEPENDENT type has been deprecated, use DERIVED instead.\nfile = $file: line = $oline\n");
       }
 
       elsif ( $line =~ /^\s*(READ_GMSH)($|\s)/i ) {
-        error_stop("READ_GMSH keyword has been depreciated, use MSH_FILE instead.\nfile = $file: line = $oline\n");
+        error_stop("READ_GMSH keyword has been deprecated, use MSH_FILE instead.\nfile = $file: line = $oline\n");
       }
 
       elsif ( $line =~ /^\s*(LINEAR_SOLVER)($|\s)/i ) {
-        error_stop("LINEAR_SOLVER keyword has been depreciated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline\n");
+        error_stop("LINEAR_SOLVER keyword has been deprecated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline\n");
       }
 
 # # read in glue_face
@@ -1356,7 +1356,7 @@ sub initialise_user_variables {
         $variable{$type}[$mvar]{"fortran"}="var($m{user})%funk(1)%v";
       } 
 # create mfortran names for the variable, which are what maxima produces from the f90 package
-      $variable{$type}[$mvar]{"mfortran"}=$variable{$type}[$mvar]{"maxima"}; # only differ by braces used on indicies
+      $variable{$type}[$mvar]{"mfortran"}=$variable{$type}[$mvar]{"maxima"}; # only differ by braces used on indices
       $variable{$type}[$mvar]{"mfortran"}=~s/\[/(/;
       $variable{$type}[$mvar]{"mfortran"}=~s/\]/)/;
       $variable{$type}[$mvar]{"fortranns"}="var($m{user})%funk(ns)%v"; # fortran name referenced by ns rather than location
@@ -2230,7 +2230,7 @@ sub mequation_interpolation {
       create_someloop($inbit[$nbits],$operator_type,$centring,$someregion,$deriv,$otype,$omvar);
       $someloop_mvar = $m{"someloop"}; # save someloop type
       if ($minseparation >= 0) { # this is the flag that indicates that a separation loop is being conducted
-        $variable{"someloop"}[$someloop_mvar]{"minseparation"} = $minseparation; # separation indicies (minseparation determines whether separation looping will be used)
+        $variable{"someloop"}[$someloop_mvar]{"minseparation"} = $minseparation; # separation indices (minseparation determines whether separation looping will be used)
         $variable{"someloop"}[$someloop_mvar]{"maxseparation"} = $maxseparation;
         $mseparation_list++;
         $sub_string{"set_mseparation_list"}="mseparation_list = $mseparation_list\n"; # will only be set if >0
@@ -2342,7 +2342,7 @@ sub mequation_interpolation {
         $region_link[$mlink]{"to_centring"} = $to_centring;
         $region_link[$mlink]{"from_centring"} = $centring;
         $region_link[$mlink]{"options"} = $options;
-        $region_link[$mlink]{"number"} = $mlink + 1; # perl and fortran indicies are offset by one
+        $region_link[$mlink]{"number"} = $mlink + 1; # perl and fortran indices are offset by one
         $variable{"someloop"}[$m{"someloop"}]{"region_mlink"} = $mlink; # tell someloop the mlink number
         print DEBUG "INFO: creating region_link number $region_link[$mlink]{number} in $operator for $otype $variable{$otype}[$omvar]{name}\n";
       }
@@ -3920,7 +3920,7 @@ sub maxima_to_fortran {
   while ($nnext < length($_[0])) {
 
 # find position of next match
-    $nnext = length($_[0]); # this sets next match to be beyond the last index in the string, as indicies are from 0 but length is number of characters
+    $nnext = length($_[0]); # this sets next match to be beyond the last index in the string, as indices are from 0 but length is number of characters
     foreach $ns ( 0 .. $#searches ) { # $#array is the index of the last element of the array
       $n = index($_[0],$searches[$ns],$nlast); # find occurance of search string which is closest to previous
 
@@ -3994,7 +3994,7 @@ sub create_fortran_equations {
         "! $variable{$type}[$mvar]{equation}\n".
         "! $variable{$type}[$mvar]{mequation}\n\n";
 
-# check ilast, jlast and klast indicies if this operation depends on them (eg, a lastface, lastcell or lastnode operation)
+# check ilast, jlast and klast indices if this operation depends on them (eg, a lastface, lastcell or lastnode operation)
       if ($type eq "someloop") {
         if ($variable{$type}[$mvar]{"checki"}) {
           $sub_string{$type}=$sub_string{$type}.
@@ -5095,7 +5095,7 @@ sub create_system_variables {
 # create mfortran names for the variable, which are what maxima produces from the f90 package
 # as these are used to (reverse) search through the maxima output, only create these for variables that have a fortran name
     if (nonempty($variable{"system"}[$mvar]{"fortran"})) {
-      $variable{"system"}[$mvar]{"mfortran"}=$variable{"system"}[$mvar]{"maxima"}; # only differ by braces used on indicies
+      $variable{"system"}[$mvar]{"mfortran"}=$variable{"system"}[$mvar]{"maxima"}; # only differ by braces used on indices
       $variable{"system"}[$mvar]{"mfortran"}=~s/\[/(/g;
       $variable{"system"}[$mvar]{"mfortran"}=~s/\]/)/g;
     }
@@ -5320,7 +5320,7 @@ sub write_latex {
 # output variable is a single item corresponding to the action, or for all, an array of all of the items
 # name - <> delimited and standardised (see below)
 # compoundname - <> delimited, and has only r index if r>0
-# basename - no indicies and no <> delimiters
+# basename - no indices and no <> delimiters
 # nrank - 1|3|9
 # rank - scalar|vector|tensor
 # lindex (expressed as 1->9)
@@ -5334,7 +5334,7 @@ sub write_latex {
 sub examine_name {
 
   use strict;
-  my ($name,$action,$compoundname,$basename,$nrank,$rank,$indices,$lindex,$rindex,$lindicies);
+  my ($name,$action,$compoundname,$basename,$nrank,$rank,$indices,$lindex,$rindex,$lindices);
 
   $action = $_[1];
   ($name) = $_[0] =~ /^<(.*)>$/;
@@ -5346,20 +5346,20 @@ sub examine_name {
   $nrank = 1;
   $rank = "scalar";
   $rindex = 0; # default is at the current timestep (relative timestep = 0)
-  $lindicies = "";
+  $lindices = "";
   if ($name =~ /^(.+?)\[(.+?)\]$/) {
     ($basename,$indices) = ($1, $2);
     if ($indices =~ /(^|\,)\s*l\s*=\s*([123])\s*,\s*([123])\s*($|\,)/) {
       $nrank = 9;
       $rank = "tensor";
       $lindex = ($2-1)*3 + $3; # l = (j-1)*3+i where j = row number, i = col number
-      $lindicies = "$2,$3";
+      $lindices = "$2,$3";
     } elsif ($indices =~ /(^|\,)\s*l\s*=\s*([0123])\s*($|\,)/) {
       if ($2) { # l=0 indicates a scalar
         $nrank = 3;
         $rank = "vector";
         $lindex = $2;
-        $lindicies = "$2";
+        $lindices = "$2";
       }
     }
     if ($indices =~ /(^|\,)\s*r\s*=\s*(\d+)\s*($|\,)/) {
@@ -5369,13 +5369,13 @@ sub examine_name {
 
 # now assemble (consistent) name and compoundname
   $name = "<".$basename;
-  if ($lindicies || $rindex) { $name = $name."["; }
-  if ($lindicies) {
-    $name = $name."l=".$lindicies;
+  if ($lindices || $rindex) { $name = $name."["; }
+  if ($lindices) {
+    $name = $name."l=".$lindices;
     if ($rindex) {$name = $name.",";}
   }
   if ($rindex) { $name = $name."r=$rindex"; }
-  if ($lindicies || $rindex) { $name = $name."]"; }
+  if ($lindices || $rindex) { $name = $name."]"; }
   $name = $name.">";
   $compoundname = "<".$basename;
   if ($rindex) { $compoundname = $compoundname."[r=$rindex]"; }
