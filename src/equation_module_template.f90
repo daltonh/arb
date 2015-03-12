@@ -796,10 +796,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
 
   if (region_l) then
 
-! TODO: fix stepoutput_local for regions
-
     if (debug) write(*,*) 'updating dynamic output region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
       region(m)%centring
+
+! TODO: use options in regions to allow dynamic regions to be updated using stepoutput
+! right now output dynamic regions are never updated during setupoutput
+    if (stepoutput_local) cycle
 
     if (output_region_update_times) call time_variable_update(thread,0,m,region_l=region_l)
  

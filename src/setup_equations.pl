@@ -95,7 +95,6 @@ foreach $type (@user_types,"initial_transient","initial_newtient","someloop","sy
 }
 
 my %variable=(); # is a hash/array/hash of all the variables with associated data of each type and number and datatype
-my @variable_options=(); # is an array/hash of all the variable options read in, in the order that they were read
 my @asread_variable = (); # this is a list of variables in the order that they are read from the file - new for v0.51 to allow change of variable type
 
 my @region_link=(); # is an array/hash of all the region links that need to calculated at run time
@@ -335,7 +334,7 @@ sub output_region_list {
     for my $n ( 0 .. $#region ) {
       if ($region[$n]{"type"} ne $type) { next; }
       print REGION "$n";
-      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread definitions location initial_location)) {
+      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread definitions location initial_location options newtstepmax newtstepmin)) {
         print REGION ": $key = ";
         if (empty($region[$n]{$key})) {
           print REGION "empty";
@@ -953,6 +952,7 @@ sub read_input_files {
             print "INFO: cancelling variable $name\n";
             print DEBUG "INFO: cancelling variable $name\n";
             splice(@asread_variable, $masread, 1)
+# TODO: get rid of options if variable is cancelled
           } else {
             print "WARNING: attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored\n";
             print DEBUG "WARNING: attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored\n";
@@ -1011,6 +1011,7 @@ sub read_input_files {
           $asread_variable[$masread]{"definitions"}=1;
           $asread_variable[$masread]{"typechanges"}=0;
           $asread_variable[$masread]{"centringchanges"}=0;
+          $asread_variable[$masread]{"options"} = '';
         }
 
 # units and multiplier (optional)
@@ -1113,19 +1114,21 @@ sub read_input_files {
           $line = $';
         }
 
-# store raw options in the variable_options array now
+# store raw options in the asread_variable array now
 # variable and compound option lists will be assembled later
         $line =~ s/^\s*//; # remove any leading space from the line
         if (nonempty($line) || nonempty($default_options) || nonempty($override_options)) {
-          $variable_options[$#variable_options+1]{"options"} = $default_options.','.$line.','.$override_options;
+          $line = $default_options.','.$line.','.$override_options;
+          $line =~ s/(^\,+\s*)|(\s*\,+$)//;
+          $line =~ s/\s*\,+\s*/,/g;
+          if (empty($asread_variable[$masread]{"options"})) {
+            $asread_variable[$masread]{"options"} = $line;
+          } else {
+            $asread_variable[$masread]{"options"} = $asread_variable[$masread]{"options"}.",".$line;
+          }
+          print DEBUG "INFO: adding options $line to: name = $name: masread = $masread: options = $asread_variable[$masread]{options}\n";
 # now clean up by removing any leading, repeated or trailing commas
-          $variable_options[$#variable_options]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
-          $variable_options[$#variable_options]{"options"} =~ s/\s*\,+\s*/,/g;
           $line = ''; # nothing is now left in the line
-# set some other info for this variable_option
-          $variable_options[$#variable_options]{"name"} = $name;
-          $variable_options[$#variable_options]{"masread"} = $masread;
-          print DEBUG "INFO: adding new option entry ($#variable_options): name = $name: masread = $masread: options = $variable_options[$#variable_options]{options}\n";
         }
       }
 
@@ -1209,6 +1212,7 @@ sub read_input_files {
           $region[$masread]{"comments"}=$comments;
           $region[$masread]{"definitions"}=1;
           $region[$masread]{"part_of"}='';
+          $region[$masread]{"options"}='';
           $region[$masread]{"location"}{"description"}='';
           $region[$masread]{"initial_location"}{"description"}='';
           $region[$masread]{"last_variable_masread"}=$#asread_variable; # this determines when a region will be evaluated, for dynamic regions - it will be -1 if no variables are defined yet
@@ -1253,10 +1257,15 @@ sub read_input_files {
           else { $region[$masread]{"part_of"} = ''; print DEBUG "INFO: cancelling any possible ON region for region $name\n"; }
         }
           
-# if anything is left in the line then this indicates an error
-
-        $line =~ s/^\s*//; # remove leading spaces
-        if (nonempty($line)) { error_stop("some text is left after the region statement for $name has been processed: text = |$line|\nfile = $file: line = $oline"); }
+# region options
+        $line =~ s/^\s*//; # remove any leading space from the line
+        if (nonempty($line)) {
+          $region[$masread]{"options"} = $region[$masread]{"options"}.",".$line;
+          $region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
+          $region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
+          print DEBUG "INFO: adding options to: region = $region[$masread]{name}: masread = $masread: options = $region[$masread]{options}\n";
+          $line = ''; # nothing is now left in the line
+        }
 
         print "INFO: region statement has been read: name = $name: number = $masread: centring = $region[$masread]{centring}: ".
           "type = $region[$masread]{type}: location = $region[$masread]{location}{description}: ".
@@ -1591,6 +1600,33 @@ sub process_regions {
 # check that only user region names have relative step indices
     if ($type eq 'gmsh' && ( examine_name($region[$n]{"name"},'regionname') ne $region[$n]{"name"} ||
       examine_name($region[$n]{"name"},'rindex') != 0 )) { error_stop("gmsh region names cannot have any r indices specified: name = $region[$n]{name}"); }
+# process options
+    $region[$n]{"newtstepmin"}='';
+    $region[$n]{"newtstepmax"}='';
+    if (nonempty($region[$n]{options})) {
+      my $tmp = $region[$n]{"options"};
+      $region[$n]{"options"} = '';
+      print DEBUG "INFO: before processing region options $type $region[$n]{name} has loaded (unchecked) options of $tmp\n";
+      while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
+        my $option = $2; $tmp = $`.','.$';
+        if ($option =~ /^(newtstep(max|min))(\s*=\s*([\+\-\d][\+\-\de]*))$/i) { # integer max/min of newtsteps during which this variable should be updated
+          my $option_name = "\L$1";
+          my $match;
+          if (empty($4)) { 
+            $match = "-1";
+          } else { 
+            $match = "\L$4"; # match is the magnitude of the variable, which needs to be an integer
+          }
+          if (($type eq "derived" || $type eq "equation") && $region[$n]{"dynamic"}) { # newtstep limiting is only done on equations or deriveds right now
+            if ($match < 0) { # a negative values clears this option
+              $region[$n]{$option_name} = '';
+            } else {
+              $region[$n]{$option_name} = $match;
+            }
+          } else { error_stop("option $option specified for region $type $region[$n]{name} cannot be used for this type of region"); }
+        }
+      }
+    }
     if (empty($region[$n]{'part_of'}) && $region[$n]{"user"}) {
 # part_of regions default to largest static region based on size if not specified
 # note, these system regions will come at the start so don't need when each is calculated
@@ -1970,6 +2006,8 @@ sub organise_user_variables {
     $variable{$type}[$mvar]{"masread"} = $masread; # save the asread index for this variable, which represents the order that the variables appear in the file
     $variable{$type}[$mvar]{"otype"} = $type; # save original and type and mvar for this expression
     $variable{$type}[$mvar]{"omvar"} = $mvar;
+    $variable{$type}[$mvar]{"newtstepmin"} = '';
+    $variable{$type}[$mvar]{"newtstepmax"} = '';
 
 # check a centring was defined, and if not, try to work out a default
     if (empty($variable{$type}[$mvar]{"centring"})) { $variable{$type}[$mvar]{"centring"} = 'none';
@@ -2066,24 +2104,10 @@ sub organise_user_variables {
     print DEBUG "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: definitions = $variable{$type}[$mvar]{definitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}\n";
 
 # process variable options, removing clearoptions statements and creating individual variable options lists
-    my $clearoptions = 0;
-    foreach $n ( reverse( 0 .. $#variable_options ) ) {
-      if ($masread != $variable_options[$n]{"masread"}) { next; } # from here on we are dealing with the correct variable
-# set mvar for consistency with pre-masread code
-      $variable_options[$n]{"type"} = $type;
-      $variable_options[$n]{"mvar"} = $mvar;
-# first remove any options as specified by the clearoptions statement
-      if ($clearoptions) {$variable_options[$n]{"options"} = ''; next; } # clear these options if this is on
-      if ($variable_options[$n]{"options"} =~ /.*(^|\,)\s*clearoptions\s*(\,|$)/i) { # match the last occurrence of this option by putting a greedy match of anything on the left
-        $variable_options[$n]{"options"} = $'; # the only valid options on this line are those that follow the clearoptions statement
-        $clearoptions = 1; # flag to indicate that all preceeding options for this variable are to be ignored
-      }
-      $variable_options[$n]{"options"} =~ s/^\s*//; # clear any leading spaces
-      if (empty($variable_options[$n]{"options"})) { next; }
-# if we are here then we have some valid options so concatenate them to the individual variable options
-      if (empty($variable{$type}[$mvar]{"options"})) { $variable{$type}[$mvar]{"options"} = $variable_options[$n]{"options"} }
-      else { $variable{$type}[$mvar]{"options"} = $variable_options[$n]{"options"}.",".$variable{$type}[$mvar]{"options"} }
+    if ($asread_variable[$masread]{"options"} =~ /.*(^|\,)\s*clearoptions\s*(\,|$)\*/i) { # match the last occurrence of this option by putting a greedy match of anything on the left
+      $asread_variable[$masread]{"options"} = $'; # the only valid options on this line are those that follow the clearoptions statement
     }
+    $variable{$type}[$mvar]{"options"} = $asread_variable[$masread]{"options"}; # save this straight to variable now
 # print some summary stuff now about the single line read
     if ($variable{$type}[$mvar]{"options"}) { print "INFO: options read in for $type $name = $variable{$type}[$mvar]{options}\n";} else { print "INFO: no options read in for $type $name\n"; }
     if ($variable{$type}[$mvar]{"options"}) { print DEBUG "INFO: options read in for $type $name = $variable{$type}[$mvar]{options}\n";} else { print DEBUG "INFO: no options read in for $type $name\n"; }
@@ -2186,8 +2210,9 @@ sub organise_user_variables {
             } else {
               $variable{$type}[$mvar]{$option_name} = $match;
             }
-          } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
-        else { error_stop("unknown option of $option specified for $type $name"); }
+#         } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
+          } else { error_stop("option $option specified for variable $type $name cannot be used for this type of region"); }
+        } else { error_stop("unknown option of $option specified for $type $name"); }
       }
 # remove extra leading comma and output to fortran file
       $variable{$type}[$mvar]{"options"} =~ s/^\s*\,//;
@@ -4360,11 +4385,11 @@ sub create_compounds {
     $name = $variable{"compound"}[$mvar2]{"name"};
 # first construct a compound options array by concatenating together the relevant component options array in the order that they were written
     $variable{"compound"}[$mvar2]{"options"} = '';
-    foreach $n ( 0 .. $#variable_options ) {
-      if (empty($variable_options[$n]{"options"})) { next; }
-      if ($type ne $variable_options[$n]{"type"}) { next; }
+    foreach my $masread ( 0 .. $#asread_variable ) {
+      if (empty($asread_variable[$masread]{"options"})) { next; }
+      if ($type ne $asread_variable[$masread]{"type"}) { next; }
 # use smartmatch
-#     if (!($variable_options[$n]{"mvar"} ~~ @{$variable{"compound"}[$mvar2]{"component"}})) { next; } # smartmatch operator looks for left element in the array on the right
+#     if (!($asread_variable[$masread]{"mvar"} ~~ @{$variable{"compound"}[$mvar2]{"component"}})) { next; } # smartmatch operator looks for left element in the array on the right
 # smartmatch is not available pre perl 5.10, so use the following workaround (keep these debugging statements)
 #     print "dumper = ".Dumper(\$variable{"compound"}[$mvar2]{"component"})."\n";
 #     print '$ = ',$variable{"compound"}[$mvar2]{"component"},"\n";
@@ -4375,9 +4400,9 @@ sub create_compounds {
 # @{$variable{"compound"}[$mvar2]{"component"}} is the array
 # $#{$variable{"compound"}[$mvar2]{"component"}} is the index of the last element in the array
 # the first element of this array is undef, so we only pass the 2nd to last elements of the array to present_in_array
-      if (!(present_in_array($variable_options[$n]{"mvar"},@{$variable{"compound"}[$mvar2]{"component"}}[ 1 .. $#{$variable{"compound"}[$mvar2]{"component"}} ]))) { next; } # smartmatch operator looks for left element in the array on the right
-      print DEBUG "INFO: the $type compound $name is receiving the following options from the component $variable_options[$n]{name}: options = $variable_options[$n]{options}\n";
-      $variable{"compound"}[$mvar2]{"options"} = $variable{"compound"}[$mvar2]{"options"}.','.$variable_options[$n]{"options"};
+      if (!(present_in_array($asread_variable[$masread]{"mvar"},@{$variable{"compound"}[$mvar2]{"component"}}[ 1 .. $#{$variable{"compound"}[$mvar2]{"component"}} ]))) { next; } # smartmatch operator looks for left element in the array on the right
+      print DEBUG "INFO: the $type compound $name is receiving the following options from the component $asread_variable[$masread]{name}: options = $asread_variable[$masread]{options}\n";
+      $variable{"compound"}[$mvar2]{"options"} = $variable{"compound"}[$mvar2]{"options"}.','.$asread_variable[$masread]{"options"};
     }
     $variable{"compound"}[$mvar2]{"options"} =~ s/^\s*\,//; # remove leading comma if present
     print DEBUG "INFO: before extracting just the compound options, the $type compound $name has the combined options = $variable{compound}[$mvar2]{options}\n";
@@ -4711,8 +4736,20 @@ sub create_allocations {
             $first = 0;
           }
           $sub_string{$type."_region"}=$sub_string{$type."_region"}.
-            "(m == $region[$nregion]{fortran}) then\n".
+            "(m == $region[$nregion]{fortran}) then\n";
+
+# if this uses newtstepmin/max then have to surround update in conditionals
+          if (nonempty($region[$nregion]{newtstepmax}) || nonempty($region[$nregion]{newtstepmin})) {
+            $sub_string{$type."_region"}=$sub_string{$type."_region"}.
+              "if (.not.(".newtstepcondition($region[$nregion]{newtstepmin},$region[$nregion]{newtstepmax}).")) then\n";
+          }
+# do the update
+          $sub_string{$type."_region"}=$sub_string{$type."_region"}.
             "call update_region(m=$region[$nregion]{fortran},initial=".fortran_logical_string($regioninitial).")\n";
+          if (nonempty($region[$nregion]{newtstepmax}) || nonempty($region[$nregion]{newtstepmin})) {
+            $sub_string{$type."_region"}=$sub_string{$type."_region"}."end if\n";
+          }
+
         }
       }
       if (!($first)) { $sub_string{$type."_region"}=$sub_string{$type."_region"}."end if\n"; }
@@ -5138,17 +5175,9 @@ sub create_fortran_equations {
 # if newtstepmax/min are set then insert statements to check on the range, and if not current, clear the derivative while maintaining the
 # previously evaluated value rather than recalculating both value (and possibly derivative)
           if (nonempty($variable{$type}[$mvar]{newtstepmax}) || nonempty($variable{$type}[$mvar]{newtstepmin})) {
-            $sub_string{$type}=$sub_string{$type}."if (";
-            if (nonempty($variable{$type}[$mvar]{newtstepmax})) {
-              $sub_string{$type}=$sub_string{$type}."newtstep > $variable{$type}[$mvar]{newtstepmax}";
-              if (nonempty($variable{$type}[$mvar]{newtstepmin})) {
-                $sub_string{$type}=$sub_string{$type}.".or.";
-              }
-            }
-            if (nonempty($variable{$type}[$mvar]{newtstepmin})) {
-              $sub_string{$type}=$sub_string{$type}."newtstep < $variable{$type}[$mvar]{newtstepmin}";
-            }
-            $sub_string{$type}=$sub_string{$type}.") then\n"."call clear_funk_derivatives(var(m)%funk(ns))\n"."else\n";
+            $sub_string{$type}=$sub_string{$type}.
+              "if (".newtstepcondition($variable{$type}[$mvar]{newtstepmin},$variable{$type}[$mvar]{newtstepmax}).") then\n".
+              "call clear_funk_derivatives(var(m)%funk(ns))\n"."else\n";
           }
 
           $sub_string{$type}=$sub_string{$type}.
@@ -5625,6 +5654,25 @@ sub create_fortran_equations {
 
 }
 
+#-------------------------------------------------------------------------------
+# little function to create condition string for fortran that determines whether variable or region is updated or not
+
+sub newtstepcondition {
+# on input
+  my $newtstepmin=$_[0];
+  my $newtstepmax=$_[1];
+# on output
+  my $string='';
+
+  if (nonempty($newtstepmax)) {
+    $string="newtstep > $newtstepmax";
+    if (nonempty($newtstepmin)) { $string=$string.".or."; }
+  }
+  if (nonempty($newtstepmin)) {
+    $string=$string."newtstep < $newtstepmin";
+  }
+  return ($string);
+}
 #-------------------------------------------------------------------------------
 # here we scan a string for any someloops, and write corresponding fortran
 #  to call update_someloop
