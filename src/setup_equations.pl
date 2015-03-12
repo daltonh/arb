@@ -860,19 +860,19 @@ sub read_input_files {
 # check for deprecated syntax
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)(INDEPENDENT|FIELD)($|\s)/i) {
         $type = "\U$2";
-        error_stop("$type type has been deprecated, use UNKNOWN instead.\nfile = $file: line = $oline");
+        error_stop("$type type has been deprecated, use UNKNOWN instead.\nfile = $file: line = $oline\n");
       }
 
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)DEPENDENT($|\s)/i) {
-        error_stop("DEPENDENT type has been deprecated, use DERIVED instead.\nfile = $file: line = $oline");
+        error_stop("DEPENDENT type has been deprecated, use DERIVED instead.\nfile = $file: line = $oline\n");
       }
 
       elsif ( $line =~ /^\s*(READ_GMSH)($|\s)/i ) {
-        error_stop("READ_GMSH keyword has been deprecated, use MSH_FILE instead.\nfile = $file: line = $oline");
+        error_stop("READ_GMSH keyword has been deprecated, use MSH_FILE instead.\nfile = $file: line = $oline\n");
       }
 
       elsif ( $line =~ /^\s*(LINEAR_SOLVER)($|\s)/i ) {
-        error_stop("LINEAR_SOLVER keyword has been deprecated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline");
+        error_stop("LINEAR_SOLVER keyword has been deprecated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline\n");
       }
 
 # # read in glue_face

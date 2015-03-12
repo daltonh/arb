@@ -2,4 +2,4 @@
 INCLUDE "element_coordinates.arb"
 INCLUDE "element_counts.arb"
 INCLUDE "element_dimensions.arb"
-INCLUDE "element_indicies.arb"
+INCLUDE "element_indices.arb"

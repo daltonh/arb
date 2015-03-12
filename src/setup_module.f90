@@ -507,7 +507,7 @@ call read_gmesh(contents='mesh')
 !-------------------------------------
 if (debug) write(*,*) 'doing generic mesh setup'
 
-! run through cells checking icells and possibly setting icell(2) indicies
+! run through cells checking icells and possibly setting icell(2) indices
 ! also does some sanity checks on the faces, checking that they are connected to at least one cell, and not more than that
 do i = 1, itotal
   cell(i)%type = 1 ! domain cell

@@ -55,7 +55,7 @@ type gtype_list_type
   integer :: dimensions ! 0 for point, 1 for line, 2 for plane, 3 for volume
   integer :: nnodes ! number of surrounding nodes
   integer :: nfaces ! number of surrounding faces
-  type(node_list_type), dimension(:), allocatable :: face_nodes ! lists the node indicies of each of the nfaces faces
+  type(node_list_type), dimension(:), allocatable :: face_nodes ! lists the node indices of each of the nfaces faces
   logical :: supported ! suitable for arb?
   integer :: vtk_type ! vtk type of this element, or 0 for not supported
   integer, dimension(:), allocatable :: vtk_nodes ! a list of the nodes numbers of the element as they should be output for vtk
@@ -1153,7 +1153,7 @@ do n = 1, nelements
   read(textline,*,iostat=error) gelement, gtype, ntags, tags, local_gnodes
   if (error /= 0) call error_stop('problem reading element tags/nodes in gmsh file '//trim(filename))
 
-! due to gmsh_output_node_elements_as_lines (now depreciated), node elements may be stored as degenerate line elements in gmsh
+! due to gmsh_output_node_elements_as_lines (now deprecated), node elements may be stored as degenerate line elements in gmsh
 ! these are identified as lines that have the two duplicate gnodes
 ! simply overwrite gtype, and as local_knodes is based on gtype only first node will be used (local_gnode array isn't used further)
   if (gtype == line_gtype) then
@@ -1352,7 +1352,7 @@ do n = 1, nelements
       trim(region(region_number)%name))
 ! gelement number needs to be identified and placed in gmesh()%gelement()%knode for lookup
     k = local_knodes(1)
-    knode_from_gelement(gelement) = k ! local_knodes is already a stored list (here 1) of the k indicies
+    knode_from_gelement(gelement) = k ! local_knodes is already a stored list (here 1) of the k indices
 
 ! add node number to region list if it isn't there already
     if (region_number /= 0) then
