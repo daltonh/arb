@@ -1582,7 +1582,7 @@ integer, dimension(:), allocatable :: weight_importance ! this specifies the imp
 integer, dimension(:), allocatable :: imask ! list of cells that could be in the kernel
 integer :: minimum_separation ! only elements with this separation will have non-zero weights for the mls method
 integer, dimension(:), allocatable :: separation_index ! these are the final elements having that separation
-integer, dimension(:), allocatable :: separation_array ! this is the separation indicies of each element
+integer, dimension(:), allocatable :: separation_array ! this is the separation indices of each element
 double precision, dimension(:,:), allocatable :: rr ! array of cell locations, first index is spatial dimension, second is point number
 integer :: nn_total, nn, separation, i, ii, start_index, end_index, i2, ii2, flux_to_cells, nn_minimum_separation, mm, m, &
   maximum_separation, nn_local_separation, ll
@@ -2810,8 +2810,8 @@ use general_module
 integer, dimension(:), allocatable :: iarray ! the array of all surrounding cells, passed in as one of the cell or face arrays, not ordered
 integer :: maximum_separation ! this is the maximum separation that we will consider
 integer, dimension(:), allocatable :: imask ! this is the list of cells that is passed out, with a changed size
-integer, dimension(:), allocatable :: separation_index ! this is the list of separation indicies is passed out, with a changed size
-integer, dimension(:), allocatable :: separation_array ! this the separation indicies per element passed out, with a changed size
+integer, dimension(:), allocatable :: separation_index ! this is the list of separation indices is passed out, with a changed size
+integer, dimension(:), allocatable :: separation_array ! this the separation indices per element passed out, with a changed size
 integer :: separation, i, ii, start_index, end_index, i2, ii2, k, kk, common_nodes
 logical, parameter :: debug = .false.
 
@@ -2842,10 +2842,10 @@ end if
 separation_loop: do while (separation < maximum_separation.and. &
   (limit_kernel_mask_to_shared_nodes.and.ubound(iarray,1) > ubound(imask,1).or..not.limit_kernel_mask_to_shared_nodes))
 
-! define indicies of imask that bound last separation
+! define indices of imask that bound last separation
   start_index = end_index + 1
   end_index = separation_index(separation)
-  if (end_index < start_index) call error_stop('indicies out of order in expand_kernel_masks')
+  if (end_index < start_index) call error_stop('indices out of order in expand_kernel_masks')
 
   separation = separation + 1
   call resize_integer_array(keep_data=.true.,array=separation_index,change=1)

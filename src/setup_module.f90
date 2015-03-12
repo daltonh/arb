@@ -534,7 +534,7 @@ call read_gmesh(contents='mesh')
 !-------------------------------------
 if (debug) write(*,*) 'doing generic mesh setup'
 
-! run through cells checking icells and possibly setting icell(2) indicies
+! run through cells checking icells and possibly setting icell(2) indices
 ! also does some sanity checks on the faces, checking that they are connected to at least one cell, and not more than that
 do i = 1, itotal
   cell(i)%type = 1 ! domain cell
@@ -1599,8 +1599,8 @@ do m=1,ubound(region,1)
         if (rsign == "+" .and. nscompound == 0) then
           call push_integer_array(array=region(m)%ijk,new_element=ijkregion) ! add region location to equation ijk indices
         else if (rsign == "-" .and. nscompound /= 0) then
-          if (nscompound /= ubound(region(m)%ijk,1)) then ! unless it is the last element of indicies
-            region(m)%ijk(nscompound:ubound(region(m)%ijk,1)-1) = & ! shift indicies one space to the left to remove reference
+          if (nscompound /= ubound(region(m)%ijk,1)) then ! unless it is the last element of indices
+            region(m)%ijk(nscompound:ubound(region(m)%ijk,1)-1) = & ! shift indices one space to the left to remove reference
               region(m)%ijk(nscompound+1:ubound(region(m)%ijk,1))
           end if
           call resize_integer_array(array=region(m)%ijk,change=-1) ! reduce ijk array by 1
@@ -1715,7 +1715,7 @@ do m=1,ubound(region,1)
     if (.not.allocated(region(m)%ijk)) allocate(region(m)%ijk(0))
   end if
 
-! find ns indicies which give the data number corresponding to location i or j
+! find ns indices which give the data number corresponding to location i or j
 
   if (region(m)%centring == "cell") then
     allocate(region(m)%ns(itotal))
@@ -1762,7 +1762,7 @@ end do
 if (debug_sparse) write(*,'(a,i1)') 'INFO: the maximum number of dimensions of any region is ',maximum_dimensions
 
 !---------------------
-! now do reverse indicies - ie, list of regions which each cell is a member of
+! now do reverse indices - ie, list of regions which each cell is a member of
 ! these arrays are initialised here, so can get rid of the location_in_list stuff
 
 do m = 1, ubound(region,1)
@@ -1907,7 +1907,7 @@ if (allocated(region_link(m)%to_ns)) deallocate(region_link(m)%to_ns)
 allocate(region_link(m)%to_ns(ubound(region(region_link(m)%from_region_number)%ijk,1)))
 region_link(m)%to_ns = 0 ! default value if no link is found
 
-! also create temporary storage of reverse indicies for checking purposes
+! also create temporary storage of reverse indices for checking purposes
 allocate(from_ns(ubound(region(region_link(m)%to_region_number)%ijk,1)))
 from_ns = 0
 n_from = 0
