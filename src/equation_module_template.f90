@@ -148,8 +148,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l_derived)%list)
     if (debug) write(*,*) 'updating dynamic derived region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
       region(m)%centring
 
+    if (output_region_update_times) call time_variable_update(thread,0,m,region_l=region_l)
+
 ! derived region
 !    <sub_string:derived_region>
+
+    if (output_region_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
   else
 
@@ -160,12 +164,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l_derived)%list)
     if (debug) write(*,*) 'updating var derived: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
     error_string = "Error occurred while updating derived "//trim(var(m)%name)
 
-    if (output_variable_update_times) call time_variable_update(thread,0,m)
+    if (output_variable_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! derived
 !    <sub_string:derived>
 
-    if (output_variable_update_times) call time_variable_update(thread,1,m)
+    if (output_variable_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
   ! read from data file only (possibly) during variable setup
     if (setup) call read_gmesh(contents='data',var_number=m)
@@ -197,8 +201,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l_equation)%list)
     if (debug) write(*,*) 'updating dynamic equation region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
       region(m)%centring
 
+    if (output_region_update_times) call time_variable_update(thread,0,m,region_l=region_l)
+
 ! equation region
 !    <sub_string:equation_region>
+
+    if (output_region_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
   else
 
@@ -209,12 +217,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l_equation)%list)
     if (debug) write(*,*) 'updating var equation: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
     error_string = "Error occurred while updating equation "//trim(var(m)%name)
 
-    if (output_variable_update_times) call time_variable_update(thread,0,m)
+    if (output_variable_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! equations
 !    <sub_string:equation>
 
-    if (output_variable_update_times) call time_variable_update(thread,1,m)
+    if (output_variable_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
   ! read from data file only (possibly) during variable setup
     if (setup) call read_gmesh(contents='data',var_number=m)
@@ -299,8 +307,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
     if (debug) write(*,*) 'updating dynamic constant region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
       region(m)%centring
 
+    if (output_region_update_times) call time_variable_update(thread,0,m,region_l=region_l)
+
 ! constant region
 !    <sub_string:constant_region>
+
+    if (output_region_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
   else
 
@@ -311,12 +323,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
     if (debug) write(*,*) 'updating var constant: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
     error_string = "Error occurred while updating constant "//trim(var(m)%name)
 
-    if (output_variable_update_times) call time_variable_update(thread,0,m)
+    if (output_variable_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! constants
 !    <sub_string:constant>
 
-    if (output_variable_update_times) call time_variable_update(thread,1,m)
+    if (output_variable_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
 ! read from data file
     call read_gmesh(contents='data',var_number=m)
@@ -367,8 +379,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
     if (debug) write(*,*) 'updating dynamic unknown region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
       region(m)%centring
 
+    if (output_region_update_times) call time_variable_update(thread,0,m,region_l=region_l)
+
 ! unknown region
 !    <sub_string:unknown_region>
+
+    if (output_region_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
   else
 
@@ -379,12 +395,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
     if (debug) write(*,*) 'updating var unknown: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
     error_string = "Error occurred while updating unknown "//trim(var(m)%name)
 
-    if (output_variable_update_times) call time_variable_update(thread,0,m)
+    if (output_variable_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! unknowns
 !    <sub_string:unknown>
 
-    if (output_variable_update_times) call time_variable_update(thread,1,m)
+    if (output_variable_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
   ! read from data file
     call read_gmesh(contents='data',var_number=m)
@@ -433,13 +449,25 @@ do relstep = newtient_relstepmax, 0, -1 ! look through newtient variables in rev
 
     if (region_l) then
 
-      if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
+      if (debug) then
+        if (region(m)%relstep /= relstep) then
+          write(*,*) 'skipping dynamic newtient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+            trim(region(m)%centring),': relstep = ',region(m)%relstep
+          cycle ! skip this region if it isn't the correct relstep
+        else
+          write(*,*) 'updating dynamic newtient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+            trim(region(m)%centring),': relstep = ',region(m)%relstep
+        end if
+      else
+        if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
+      end if
 
-      if (debug) write(*,*) 'updating dynamic newtient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
-        region(m)%centring
+      if (output_region_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! newtient region
 !      <sub_string:newtient_region>
+
+      if (output_region_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
     else
 
@@ -453,12 +481,12 @@ do relstep = newtient_relstepmax, 0, -1 ! look through newtient variables in rev
       if (debug) write(*,*) 'updating var newtient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring, &
         ": relstep = ",relstep
 
-      if (output_variable_update_times) call time_variable_update(thread,0,m)
+      if (output_variable_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! newtients
 !      <sub_string:newtient>
 
-      if (output_variable_update_times) call time_variable_update(thread,1,m)
+      if (output_variable_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
       if (debug) then
         formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
@@ -505,13 +533,25 @@ do relstep = 0, newtient_relstepmax ! look through newtient variables in forward
 
     if (region_l) then
 
-      if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
+      if (debug) then
+        if (region(m)%relstep /= relstep) then
+          write(*,*) 'skipping dynamic initial newtient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+            trim(region(m)%centring),': relstep = ',region(m)%relstep
+          cycle ! skip this region if it isn't the correct relstep
+        else
+          write(*,*) 'updating dynamic initial newtient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+            trim(region(m)%centring),': relstep = ',region(m)%relstep
+        end if
+      else
+        if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
+      end if
 
-      if (debug) write(*,*) 'updating dynamic initial newtient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
-        region(m)%centring
-
+      if (output_region_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,0,m,region_l=region_l)
+ 
 ! newtient region
 !      <sub_string:initial_newtient_region>
+
+      if (output_region_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
     else
 
@@ -524,12 +564,12 @@ do relstep = 0, newtient_relstepmax ! look through newtient variables in forward
       if (debug) write(*,*) 'initialising var newtient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring,": relstep = ",relstep
       error_string = "Error occurred while updating initial_newtient "//trim(var(m)%name)
 
-      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,0,m)
+      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! initial_newtients
 !      <sub_string:initial_newtient>
 
-      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,1,m)
+      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
 ! read from data file
       call read_gmesh(contents='data',var_number=m)
@@ -579,14 +619,26 @@ do relstep = transient_relstepmax, 0, -1 ! look through transient variables in r
 
     if (region_l) then
 
-      if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
+      if (debug) then
+        if (region(m)%relstep /= relstep) then
+          write(*,*) 'skipping dynamic transient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+            trim(region(m)%centring),': relstep = ',region(m)%relstep
+          cycle ! skip this region if it isn't the correct relstep
+        else
+          write(*,*) 'updating dynamic transient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+            trim(region(m)%centring),': relstep = ',region(m)%relstep
+        end if
+      else
+        if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
+      end if
 
-      if (debug) write(*,*) 'updating dynamic transient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
-        region(m)%centring
-
+      if (output_region_update_times) call time_variable_update(thread,0,m,region_l=region_l)
+ 
 ! transient region
 !      <sub_string:transient_region>
 
+      if (output_region_update_times) call time_variable_update(thread,1,m,region_l=region_l)
+ 
     else
 
       if (var(m)%relstep /= relstep) cycle ! skip this variable if it isn't the correct relstep
@@ -599,12 +651,12 @@ do relstep = transient_relstepmax, 0, -1 ! look through transient variables in r
         ": relstep = ",relstep
       error_string = "Error occurred while updating transient "//trim(var(m)%name)
 
-      if (output_variable_update_times) call time_variable_update(thread,0,m)
+      if (output_variable_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! transients
 !      <sub_string:transient>
 
-      if (output_variable_update_times) call time_variable_update(thread,1,m)
+      if (output_variable_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
       if (debug) then
         formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
@@ -644,20 +696,34 @@ logical, parameter :: debug = .false.
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_initial_transients'
 
 if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="transient",include_regions=.true.)
+if (debug) write(*,*) 'var_list_number_l = ',var_list_number_l
 do relstep = 0, transient_relstepmax ! look through transient variables in forward order
   do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
     m = var_list(var_list_number_l)%list(nvar)
     region_l = var_list(var_list_number_l)%region(nvar)
 
+    if (debug) write(*,*) 'relstep = ',relstep,': nvar = ',nvar,': m = ',m,': region_l = ',region_l
     if (region_l) then
 
-      if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
+      if (debug) then
+        if (region(m)%relstep /= relstep) then
+          write(*,*) 'skipping dynamic initial transient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+            trim(region(m)%centring),': relstep = ',region(m)%relstep
+          cycle ! skip this region if it isn't the correct relstep
+        else
+          write(*,*) 'updating dynamic initial transient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
+            trim(region(m)%centring),': relstep = ',region(m)%relstep
+        end if
+      else
+        if (region(m)%relstep /= relstep) cycle ! skip this region if it isn't the correct relstep
+      end if
 
-      if (debug) write(*,*) 'updating dynamic initial transient region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
-        region(m)%centring
+      if (output_region_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! transient region
 !      <sub_string:initial_transient_region>
+
+      if (output_region_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
     else
 
@@ -670,12 +736,12 @@ do relstep = 0, transient_relstepmax ! look through transient variables in forwa
       if (debug) write(*,*) 'initialising var transient: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring,": relstep = ",relstep
       error_string = "Error occurred while updating initial_transient "//trim(var(m)%name)
 
-      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,0,m)
+      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! initial_transients
 !      <sub_string:initial_transient>
 
-      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,1,m)
+      if (output_variable_update_times.and..not.ignore_initial_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
   ! read from data file
       call read_gmesh(contents='data',var_number=m)
@@ -735,8 +801,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
     if (debug) write(*,*) 'updating dynamic output region: m = ',m,': name = ',trim(region(m)%name),': centring = ', &
       region(m)%centring
 
+    if (output_region_update_times) call time_variable_update(thread,0,m,region_l=region_l)
+ 
 ! output region
 !    <sub_string:output_region>
+
+    if (output_region_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
   else
 
@@ -754,12 +824,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
                  trim(check_option(var(m)%options,stepoutput_options)) == "stepoutput" )) cycle
     end if
 
-    if (output_variable_update_times) call time_variable_update(thread,0,m)
+    if (output_variable_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
 ! equations
 !    <sub_string:output>
 
-    if (output_variable_update_times) call time_variable_update(thread,1,m)
+    if (output_variable_update_times) call time_variable_update(thread,1,m,region_l=region_l)
 
     if (debug) then
       formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'
@@ -864,12 +934,12 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
   if (debug) write(*,*) 'checking condition var: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
   error_string = "Error occurred while updating condition "//trim(var(m)%name)
 
-  if (output_variable_update_times) call time_variable_update(thread,0,m)
+  if (output_variable_update_times) call time_variable_update(thread,0,m,region_l=.false.)
 
 ! conditions
 !  <sub_string:condition>
 
-  if (output_variable_update_times) call time_variable_update(thread,1,m)
+  if (output_variable_update_times) call time_variable_update(thread,1,m,region_l=.false.)
 
   if (debug) then
     formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'

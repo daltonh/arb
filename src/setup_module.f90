@@ -140,7 +140,8 @@ use general_module
 use gmesh_module
 integer :: ierror, n, m, gmesh_number, array_size
 character(len=5000) :: textline, otextline
-character(len=1000) :: keyword, name, formatline, options, filename
+character(len=4000) :: name
+character(len=1000) :: keyword, formatline, options, filename
 character(len=1000), dimension(2) :: glue_region
 character(len=100) :: option_name
 real :: versiontmp
@@ -434,23 +435,23 @@ fileloop: do
     name = extract_next_string(textline,error,empty=empty,delimiter="'"" ")
     if (error) call error_stop('simulation info '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
     if (trim(keyword) == 'TITLE') then
-      simulation_info%title = name
+      simulation_info%title = name(1:200)
     else if (trim(keyword) == 'DESCRIPTION') then
-      simulation_info%description = name
+      simulation_info%description = name(1:4000) ! actually name and the description field are the same size, of 4000
     else if (trim(keyword) == 'AUTHOR') then
-      simulation_info%author = name
+      simulation_info%author = name(1:200)
     else if (trim(keyword) == 'VERSION') then
-      simulation_info%version = name
+      simulation_info%version = name(1:200)
     else if (trim(keyword) == 'DATE') then
-      simulation_info%date = name
+      simulation_info%date = name(1:200)
     else if (trim(keyword) == 'RUNVERSION') then
-      simulation_info%runversion = name
+      simulation_info%runversion = name(1:200)
     else if (trim(keyword) == 'RUNDATE') then
-      simulation_info%rundate = name
+      simulation_info%rundate = name(1:200)
     else if (trim(keyword) == 'RUNHOST') then
-      simulation_info%runhost = name
+      simulation_info%runhost = name(1:200)
     else if (trim(keyword) == 'FILENAME') then
-      simulation_info%filename = name
+      simulation_info%filename = name(1:200)
     else
       call error_stop('simulation info keyword '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
     end if
@@ -1071,7 +1072,6 @@ use general_module
 integer :: ierror, cut, m, region_number, nn, ns, ijk
 character(len=1000) :: textline, keyword, name, formatline, region_name
 double precision :: value
-logical :: existing
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_constants'
@@ -1178,7 +1178,7 @@ subroutine setup_vars
 use general_module
 use equation_module
 use solver_module
-integer :: m, ns, n, mc, o, pptotal, mtype
+integer :: m, ns, n, mc, o, pptotal, mtype, var_list_number_l, relstep
 character(len=1000) :: formatline, component_list
 character(len=100) :: option_name
 logical :: first, error
@@ -1302,16 +1302,26 @@ do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="equatio
   pptotal = pptotal + ubound(var(m)%funk,1)
 end do
 
-! count maximum relstep in each of the transients/newtients
+! count maximum relstep in each of the transients/newtients, now for both variables and dynamic regions
 transient_relstepmax = 0
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="transient"))%list)
-  m = var_list(var_list_number(centring="all",type="transient"))%list(n)
-  transient_relstepmax = max(transient_relstepmax,var(m)%relstep)
+var_list_number_l = var_list_number(centring="all",type="transient",include_regions=.true.)
+do n = 1, allocatable_size(var_list(var_list_number_l)%list)
+  if (var_list(var_list_number_l)%region(n)) then
+    relstep = region(var_list(var_list_number_l)%list(n))%relstep
+  else
+    relstep = var(var_list(var_list_number_l)%list(n))%relstep
+  end if
+  transient_relstepmax = max(transient_relstepmax,relstep)
 end do
 newtient_relstepmax = 0
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="newtient"))%list)
-  m = var_list(var_list_number(centring="all",type="newtient"))%list(n)
-  newtient_relstepmax = max(newtient_relstepmax,var(m)%relstep)
+var_list_number_l = var_list_number(centring="all",type="newtient",include_regions=.true.)
+do n = 1, allocatable_size(var_list(var_list_number_l)%list)
+  if (var_list(var_list_number_l)%region(n)) then
+    relstep = region(var_list(var_list_number_l)%list(n))%relstep
+  else
+    relstep = var(var_list(var_list_number_l)%list(n))%relstep
+  end if
+  newtient_relstepmax = max(newtient_relstepmax,relstep)
 end do
 
 ! find user-set magnitude and whether dynamically adjusted magnitudes are set
@@ -1555,7 +1565,7 @@ integer :: n, m, jj, j, jjmax, kk, k, kkmax, m1, m2, jj1, jj2, j1, j2, norphans,
 character(len=100) :: option_name, formatline
 double precision, dimension(totaldimensions) :: centre, targetx, rel_x
 double precision :: maxdist, maxdist2, dist2, dist
-logical :: existing, error, translate
+logical :: error, translate
 logical, parameter :: debug = .false.
 
 if (.not.allocated(glue_face)) return

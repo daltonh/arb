@@ -857,22 +857,22 @@ sub read_input_files {
         next;
       }
 
-# check for depreciated syntax
+# check for deprecated syntax
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)(INDEPENDENT|FIELD)($|\s)/i) {
         $type = "\U$2";
-        error_stop("$type type has been depreciated, use UNKNOWN instead.\nfile = $file: line = $oline");
+        error_stop("$type type has been deprecated, use UNKNOWN instead.\nfile = $file: line = $oline");
       }
 
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)DEPENDENT($|\s)/i) {
-        error_stop("DEPENDENT type has been depreciated, use DERIVED instead.\nfile = $file: line = $oline");
+        error_stop("DEPENDENT type has been deprecated, use DERIVED instead.\nfile = $file: line = $oline");
       }
 
       elsif ( $line =~ /^\s*(READ_GMSH)($|\s)/i ) {
-        error_stop("READ_GMSH keyword has been depreciated, use MSH_FILE instead.\nfile = $file: line = $oline");
+        error_stop("READ_GMSH keyword has been deprecated, use MSH_FILE instead.\nfile = $file: line = $oline");
       }
 
       elsif ( $line =~ /^\s*(LINEAR_SOLVER)($|\s)/i ) {
-        error_stop("LINEAR_SOLVER keyword has been depreciated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline");
+        error_stop("LINEAR_SOLVER keyword has been deprecated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline");
       }
 
 # # read in glue_face
@@ -1351,17 +1351,19 @@ sub organise_regions {
 # anything left must be dynamic: initialise
       $region[$n]{"dynamic"} = 1;
       $region[$n]{"user"} = 1;
+      if ($region[$n]{"type"} eq "transient") { set_transient_simulation(1); print DEBUG "INFO: setting simulation type to transient based on the detection of at least one transient region $region[$n]{name}\n"; }
+      if ($region[$n]{"type"} eq "newtient") { $newtient=1; print DEBUG "INFO: setting simulation type to newtient based on detection of at least one newtient region $region[$n]{name}\n"; }
     }
 # deal with user regions having no centring defined
     if ($region[$n]{"user"} && empty($region[$n]{'centring'})) { error_stop("$region[$n]{type} region $region[$n]{name} has no centring defined: all regions (except gmsh) ".
       "entered in the arb file must have a centring defined"); }
-# remove depreciated PART OF statements from with location strings
+# remove deprecated PART OF statements from with location strings
     print DEBUG "looking for PART OF in description: name = $region[$n]{name}: description = $region[$n]{location}{description}\n";
     if ($region[$n]{"type"} ne "gmsh") {
       for my $key ( "location", "initial_location" ) {
         if (nonempty($region[$n]{$key}{"description"}) && $region[$n]{$key}{"description"} =~ /(^|\s+)PART( |_)OF\s+(<(.+?)>)(\s+|$)/i) {
-          print "WARNING: using a PART OF specification within the location description string is depreciated (found in region $region[$n]{name}): place ON afterwards instead\n";
-          print DEBUG "WARNING: using a PART OF specification within the location description string is depreciated (found in region $region[$n]{name}): place ON afterwards instead\n";
+          print "WARNING: using a PART OF specification within the location description string is deprecated (found in region $region[$n]{name}): place ON afterwards instead\n";
+          print DEBUG "WARNING: using a PART OF specification within the location description string is deprecated (found in region $region[$n]{name}): place ON afterwards instead\n";
           if (empty($region[$n]{"part_of"})) {
             $region[$n]{"part_of"} = examine_name($3,"regionname");
           } else {
@@ -1586,9 +1588,9 @@ sub process_regions {
     if (empty($region[$n]{"location"}{"description"})) { $region[$n]{"location"}{"description"} = "$type"; } # user regions have already been checked
     if (empty($region[$n]{"user"})) { $region[$n]{"user"} = 0; } # already set for user regions
     if (empty($region[$n]{"dynamic"})) { $region[$n]{"dynamic"} = 0; } # already set for user regions
-# check that only user region names have relative step indicies
+# check that only user region names have relative step indices
     if ($type eq 'gmsh' && ( examine_name($region[$n]{"name"},'regionname') ne $region[$n]{"name"} ||
-      examine_name($region[$n]{"name"},'rindex') != 0 )) { error_stop("gmsh region names cannot have any r indicies specified: name = $region[$n]{name}"); }
+      examine_name($region[$n]{"name"},'rindex') != 0 )) { error_stop("gmsh region names cannot have any r indices specified: name = $region[$n]{name}"); }
     if (empty($region[$n]{'part_of'}) && $region[$n]{"user"}) {
 # part_of regions default to largest static region based on size if not specified
 # note, these system regions will come at the start so don't need when each is calculated
@@ -1648,7 +1650,7 @@ sub process_regions {
   }
 
 #-------------
-# now place known region indicies back into variables
+# now place known region indices back into variables
 
   foreach $type (@user_types,"someloop","compound") {
     foreach $mvar ( 1 .. $m{$type} ) {
@@ -1802,7 +1804,7 @@ sub location_description_scan {
     if (nonempty($7)) { $options = $7; }
     if ($type eq "union") { $type = "compound"; }
     if ($type eq "intersection") { $type = "common"; }
-    if ($type =~ / /) { $type =~ s/ //g; print "WARNING: for consistency with variable operators, the use of spaces in region location operator names has been depreciated: run the individual words together instead as in $type (found in $region[$n]{name})\n"; }
+    if ($type =~ / /) { $type =~ s/ //g; print "WARNING: for consistency with variable operators, the use of spaces in region location operator names has been deprecated: run the individual words together instead as in $type (found in $region[$n]{name})\n"; }
     if ($next eq " ") { print "WARNING: for consistency with variable operators, operators within region location descriptions should now have their arguments inclosed in brackets, as in $type(arguments) (found in $region[$n]{name})\n"; }
     if ($next eq "(") { if (!($line =~ /\)\s*$/)) { error_stop("missing closing bracket on $type operator for region $region[$n]{name} location = $location"); } else { $line = $`; } } # remove trailing bracket
     print DEBUG "location type = $type\n";
@@ -2212,7 +2214,7 @@ sub organise_user_variables {
         $variable{$type}[$mvar]{"fortran"}="var($m{user})%funk(1)%v";
       } 
 # create mfortran names for the variable, which are what maxima produces from the f90 package
-      $variable{$type}[$mvar]{"mfortran"}=$variable{$type}[$mvar]{"maxima"}; # only differ by braces used on indicies
+      $variable{$type}[$mvar]{"mfortran"}=$variable{$type}[$mvar]{"maxima"}; # only differ by braces used on indices
       $variable{$type}[$mvar]{"mfortran"}=~s/\[/(/;
       $variable{$type}[$mvar]{"mfortran"}=~s/\]/)/;
       $variable{$type}[$mvar]{"fortranns"}="var($m{user})%funk(ns)%v"; # fortran name referenced by ns rather than location
@@ -2469,6 +2471,7 @@ sub mequation_interpolation {
       if ($operator_type ne "link") { error_stop("to_centring of $to_centring inappropriately defined for $operator_type operator in $otype $variable{$otype}[$omvar]{name}"); }
     }
 # from centring is not implemented for everything, only where there is possible confusion
+# TODO: clean this up, or atleast go through it more thoroughly
     if ($from_centring) {
       if ( ( $operator_type eq "ave" && $centring eq "cell" && 0 ) || # cellfromfaceave, cellfromnodeave, cellfromcellave (v0.50)
            ( $operator_type eq "ave" && $centring eq "face" && $from_centring ne "cell" ) || # facefromcellave
@@ -3028,25 +3031,26 @@ sub mequation_interpolation {
       $maxseparation=-1;
 # if separation options are specified then transfer these to someloop too
       if ($options && $options =~ /(^|\,)\s*(|min|minimum|max|maximum|face|node|no)separation\s*(=\s*\S+?|)\s*(\,|$)/i) {
-        print DEBUG "INFO: found separation options in $options\n";
-        print "INFO: found separation options in $options\n";
+        print DEBUG "INFO: found separation options in $centring $operator in $otype $variable{$otype}[$omvar]{name}\n";
+        print "INFO: found separation options in $centring $operator in $otype $variable{$otype}[$omvar]{name}\n";
         if ($options =~ /(^|\,)\s*noseparation\s*(=\s*(\S+?)|)\s*(\,|$)/i) {
-          if ($2) { error_stop("noseparation in $options for $centring $operator in $otype $variable{$otype}[$omvar]{name} has trailing characters"); }
+          if ($2) { error_stop("noseparation option in $centring $operator in $otype $variable{$otype}[$omvar]{name} has trailing characters"); }
           print DEBUG "INFO: separation options ignored from $options for $centring $operator in $otype $variable{$otype}[$omvar]{name}\n";
         } else { # all other options indicate that we are going to do a separation loop
           $minseparation=0; # without any integer, it imposes no limit on maxseparation but does signal that we are to use the separation loop
-          if ($centring ne "cell") { error_stop("separation options have been specified in $options for $centring $operator in $otype $variable{$otype}[$omvar]{name} - separation loops are only supported in cell based loops (ie cellsum, cellproduct, cellmax and cellmin)"); }
+          if ($centring ne "cell") { error_stop("separation options have been specified for $centring $operator in $otype $variable{$otype}[$omvar]{name} indicating that a separation loop is required, however separation loops are only supported in cell based loops (ie cellsum, cellproduct, cellmax and cellmin), and this isn't one of those"); }
+          if ($contextcentring ne "cell") { error_stop("separation options have been specified for $centring $operator in $otype $variable{$otype}[$omvar]{name} indicating that a separation loop is required, however the context centring for this loop is $contextcentring rather than the required cell centring.  Remember, a separation loop loops outward from a starting cell."); }
           if ($options =~ /(^|\,)\s*(max|maximum)separation\s*(=\s*(\S+?)|)\s*(\,|$)/i) {
             if (nonempty($4)) { $maxseparation=$4;
-              if ($maxseparation !~ /^(|\+|-)\d+$/) { error_stop("maxseparation ($maxseparation) in $options for $centring $operator in $otype $variable{$otype}[$omvar]{name} has nonsensical trailing characters - should be an integer"); }
+              if ($maxseparation !~ /^(|\+|-)\d+$/) { error_stop("maxseparation ($maxseparation) for $centring $operator in $otype $variable{$otype}[$omvar]{name} has nonsensical trailing characters - should be an integer"); }
             }
           }
           if ($options =~ /(^|\,)\s*(|min|minimum)separation\s*(=\s*(\S+?)|)\s*(\,|$)/i) {
             if (nonempty($4)) { $minseparation=$4;
-              if ($minseparation !~ /^(|\+|-)\d+$/) { error_stop("minseparation ($minseparation) in $options for $centring $operator in $otype $variable{$otype}[$omvar]{name} has nonsensical trailing characters - should be an integer"); }
+              if ($minseparation !~ /^(|\+|-)\d+$/) { error_stop("minseparation ($minseparation) for $centring $operator in $otype $variable{$otype}[$omvar]{name} has nonsensical trailing characters - should be an integer"); }
             }
           }
-          print DEBUG "INFO: setting minseparation = $minseparation and maxseparation = $maxseparation from options $options for $centring $operator in $otype $variable{$otype}[$omvar]{name}\n";
+          print DEBUG "INFO: setting minseparation = $minseparation and maxseparation = $maxseparation for $centring $operator in $otype $variable{$otype}[$omvar]{name}\n";
         }
       }
       
@@ -3087,7 +3091,7 @@ sub mequation_interpolation {
       create_someloop($inbit[$nbits],$operator_type,$centring,$someregion,$deriv,$otype,$omvar);
       $someloop_mvar = $m{"someloop"}; # save someloop type
       if ($minseparation >= 0) { # this is the flag that indicates that a separation loop is being conducted
-        $variable{"someloop"}[$someloop_mvar]{"minseparation"} = $minseparation; # separation indicies (minseparation determines whether separation looping will be used)
+        $variable{"someloop"}[$someloop_mvar]{"minseparation"} = $minseparation; # separation indices (minseparation determines whether separation looping will be used)
         $variable{"someloop"}[$someloop_mvar]{"maxseparation"} = $maxseparation;
         $mseparation_list++;
         $sub_string{"set_mseparation_list"}="mseparation_list = $mseparation_list\n"; # will only be set if >0
@@ -3218,7 +3222,7 @@ sub mequation_interpolation {
         $region_link[$mlink]{"to_centring"} = $to_centring;
         $region_link[$mlink]{"from_centring"} = $centring;
         $region_link[$mlink]{"options"} = $options;
-        $region_link[$mlink]{"number"} = $mlink + 1; # perl and fortran indicies are offset by one
+        $region_link[$mlink]{"number"} = $mlink + 1; # perl and fortran indices are offset by one
         $variable{"someloop"}[$m{"someloop"}]{"region_mlink"} = $mlink; # tell someloop the mlink number
         print DEBUG "INFO: creating region_link number $region_link[$mlink]{number} in $operator for $otype $variable{$otype}[$omvar]{name}\n";
       }
@@ -4641,16 +4645,21 @@ sub create_allocations {
   $sub_string{"allocate_var_lists"}="! allocating var_lists based on variable and region numbers calculated in setup_equations.pl\n".
     "allocate(var_list(100))\n";
 
-  foreach my $centring ( "cell", "face", "node", "none", "all" ) {
-    foreach my $type ( @user_types, "all" ) {
+  my @centrings = ( "cell", "face", "node", "none", "all" );
+  my @types = ( @user_types, "all" );
+  foreach my $ncentring ( 0 .. $#centrings ) {
+    my $centring = $centrings[$ncentring];
+    foreach my $ntype ( 0 .. $#types ) {
+      my $type = $types[$ntype];
       foreach my $include_regions ( 0 .. 1 ) {
+# calculate var_list_number here, but check that it checks with what the fortran is calculating
+        my $var_list_number = ($ntype+1) + ($ncentring)*($#types+1) + $include_regions*50;
         $sub_string{"allocate_var_lists"}=$sub_string{"allocate_var_lists"}.
-          "! setting var_list: centring = $centring: type = $type: include_regions = $include_regions\n".
-          "var_list_number_l = var_list_number(centring=\"$centring\",type=\"$type\",include_regions=".fortran_logical_string($include_regions).")\n".
-          "if (debug) write(*,*) 'centring = $centring: type = $type: include_regions = $include_regions: var_list_number_l = ',var_list_number_l\n".
-          "var_list(var_list_number_l)%centring = \"$centring\"\n".
-          "var_list(var_list_number_l)%type = \"$type\"\n".
-          "var_list(var_list_number_l)%include_regions = ".fortran_logical_string($include_regions)."\n";
+          "! setting var_list: var_list_number = $var_list_number: centring = $centring: type = $type: include_regions = $include_regions\n".
+          "if (var_list_number(centring=\"$centring\",type=\"$type\",include_regions=".fortran_logical_string($include_regions).") /= $var_list_number) call error_stop('internal error: var_list_number is being incorrectly calculated')\n".
+          "var_list($var_list_number)%centring = \"$centring\"\n".
+          "var_list($var_list_number)%type = \"$type\"\n".
+          "var_list($var_list_number)%include_regions = ".fortran_logical_string($include_regions)."\n";
 # assemble arrays in perl, then write to fortran
         my @var_list = (); # this will hold the element numbers
         my @region_list = (); # this will say whether the element is a region (1) or variable (0)
@@ -4674,12 +4683,12 @@ sub create_allocations {
         }
 # allocate the arrays (allocating zero size is OK now in fortran) and set them
         $sub_string{"allocate_var_lists"}=$sub_string{"allocate_var_lists"}.
-          "allocate(var_list(var_list_number_l)%list(".scalar($#var_list+1)."))\n".
-          "allocate(var_list(var_list_number_l)%region(".scalar($#var_list+1)."))\n";
-        if ($#var_list > 0) {
+          "allocate(var_list($var_list_number)%list(".scalar($#var_list+1)."))\n".
+          "allocate(var_list($var_list_number)%region(".scalar($#var_list+1)."))\n";
+        if ($#var_list >= 0) {
           $sub_string{"allocate_var_lists"}=$sub_string{"allocate_var_lists"}.
-            "var_list(var_list_number_l)%list = [".join(",",@var_list)."]\n".
-            "var_list(var_list_number_l)%region = [".join(",",@region_list)."]\n";
+            "var_list($var_list_number)%list = [".join(",",@var_list)."]\n".
+            "var_list($var_list_number)%region = [".join(",",@region_list)."]\n";
         }
       }
     }
@@ -4896,7 +4905,7 @@ sub maxima_to_fortran {
   while ($nnext < length($_[0])) {
 
 # find position of next match
-    $nnext = length($_[0]); # this sets next match to be beyond the last index in the string, as indicies are from 0 but length is number of characters
+    $nnext = length($_[0]); # this sets next match to be beyond the last index in the string, as indices are from 0 but length is number of characters
     foreach $ns ( 0 .. $#searches ) { # $#array is the index of the last element of the array
       $n = index($_[0],$searches[$ns],$nlast); # find occurance of search string which is closest to previous
 
@@ -4974,7 +4983,7 @@ sub create_fortran_equations {
         "! $variable{$type}[$mvar]{equation}\n".
         "! $variable{$type}[$mvar]{mequation}\n\n";
 
-# check ilast, jlast and klast indicies if this operation depends on them (eg, a lastface, lastcell or lastnode operation)
+# check ilast, jlast and klast indices if this operation depends on them (eg, a lastface, lastcell or lastnode operation)
       if ($type eq "someloop") {
         if ($variable{$type}[$mvar]{"checki"}) {
           $sub_string{$type}=$sub_string{$type}.
@@ -6085,7 +6094,7 @@ sub create_system_variables {
 # create mfortran names for the variable, which are what maxima produces from the f90 package
 # as these are used to (reverse) search through the maxima output, only create these for variables that have a fortran name
     if (nonempty($variable{"system"}[$mvar]{"fortran"})) {
-      $variable{"system"}[$mvar]{"mfortran"}=$variable{"system"}[$mvar]{"maxima"}; # only differ by braces used on indicies
+      $variable{"system"}[$mvar]{"mfortran"}=$variable{"system"}[$mvar]{"maxima"}; # only differ by braces used on indices
       $variable{"system"}[$mvar]{"mfortran"}=~s/\[/(/g;
       $variable{"system"}[$mvar]{"mfortran"}=~s/\]/)/g;
     }
@@ -6310,7 +6319,7 @@ sub write_latex {
 # output variable is a single item corresponding to the action, or for all, an array of all of the items
 # name - <> delimited and standardised (see below)
 # compoundname - <> delimited, and has only r index if r>0
-# basename - no indicies and no <> delimiters
+# basename - no indices and no <> delimiters
 # nrank - 1|3|9
 # rank - scalar|vector|tensor
 # lindex (expressed as 1->9)
@@ -6325,7 +6334,7 @@ sub write_latex {
 sub examine_name {
 
   use strict;
-  my ($name,$action,$compoundname,$basename,$nrank,$rank,$indices,$lindex,$rindex,$lindicies);
+  my ($name,$action,$compoundname,$basename,$nrank,$rank,$indices,$lindex,$rindex,$lindices);
 
   $action = $_[1];
   ($name) = $_[0] =~ /^<(.*)>$/;
@@ -6337,20 +6346,20 @@ sub examine_name {
   $nrank = 1;
   $rank = "scalar";
   $rindex = 0; # default is at the current timestep (relative timestep = 0)
-  $lindicies = "";
+  $lindices = "";
   if ($name =~ /^(.+?)\[(.+?)\]$/) {
     ($basename,$indices) = ($1, $2);
     if ($indices =~ /(^|\,)\s*l\s*=\s*([123])\s*,\s*([123])\s*($|\,)/) {
       $nrank = 9;
       $rank = "tensor";
       $lindex = ($2-1)*3 + $3; # l = (j-1)*3+i where j = row number, i = col number
-      $lindicies = "$2,$3";
+      $lindices = "$2,$3";
     } elsif ($indices =~ /(^|\,)\s*l\s*=\s*([0123])\s*($|\,)/) {
       if ($2) { # l=0 indicates a scalar
         $nrank = 3;
         $rank = "vector";
         $lindex = $2;
-        $lindicies = "$2";
+        $lindices = "$2";
       }
     }
     if ($indices =~ /(^|\,)\s*r\s*=\s*(\d+)\s*($|\,)/) {
@@ -6360,13 +6369,13 @@ sub examine_name {
 
 # now assemble (consistent) name and compoundname
   $name = "<".$basename;
-  if ($lindicies || $rindex) { $name = $name."["; }
-  if ($lindicies) {
-    $name = $name."l=".$lindicies;
+  if ($lindices || $rindex) { $name = $name."["; }
+  if ($lindices) {
+    $name = $name."l=".$lindices;
     if ($rindex) {$name = $name.",";}
   }
   if ($rindex) { $name = $name."r=$rindex"; }
-  if ($lindicies || $rindex) { $name = $name."]"; }
+  if ($lindices || $rindex) { $name = $name."]"; }
   $name = $name.">";
   $compoundname = "<".$basename;
   if ($rindex) { $compoundname = $compoundname."[r=$rindex]"; }
@@ -6374,7 +6383,7 @@ sub examine_name {
 
   if ($action eq "regionname") {
     if ($rank ne "scalar") {
-      error_stop("an attempt is being made to name a region as a vector or tensor quantity - only r indicies (relative timesteps) are allowed for region names: region = $name\n");
+      error_stop("an attempt is being made to name a region as a vector or tensor quantity - only r indices (relative timesteps) are allowed for region names: region = $name\n");
     }
   }
 

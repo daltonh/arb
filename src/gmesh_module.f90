@@ -1510,7 +1510,7 @@ character(len=1000), dimension(:), allocatable :: gregion_name
 character(len=1000) :: formatline, textline, filename, location
 character(len=4) :: centring
 type(region_type) :: default_element ! this is the element that will be added to region
-logical :: check, debug, existing, guess_centring
+logical :: check, debug, guess_centring
 
 rewind(fgmsh)
 do 

@@ -161,6 +161,8 @@ type region_type
   integer :: parent ! fortran region index of the static region that this region is solely contained within, for user (ie, non system) regions only
   integer, dimension(:), allocatable :: ijk ! array of cell (i), face (j) or node (k) indicies that are within this region - dimension of this is number of elements in region - for dynamic regions size of ijk is determined by parent static region, with some indicies being zero
   integer, dimension(:), allocatable :: ns ! array that specifies data number from i, j or k index - dimension of this is either itotal, jtotal or ktotal - for all regions an ns(ijk) of zero indicates that the particular ijk element is not in the region
+  real :: update_time = 0.d0 ! total cpu time that has been spent on updating this region (only for dynamic variables)
+  integer :: update_number = 0 ! total number of times that this region has been updated (only for dynamic variables)
 end type region_type
 
 ! data type for any functions that ultimately depend on field data
@@ -299,8 +301,8 @@ integer :: jdomain, jboundary, jtotal ! number of domain (type 1) and boundary (
 integer :: kdomain, kboundary, ktotal ! number of domain (type 1) and boundary (type 2) nodes, also total
 integer :: ptotal ! number of equations and unknowns
 double precision, dimension(:), allocatable, save :: delphiold, delphi ! single dimension unknown-sized variables for newton proceedure
-integer :: transient_relstepmax ! maximum relstep value for all transients
-integer :: newtient_relstepmax ! maximum relstep value for all newtients
+integer :: transient_relstepmax ! maximum relstep value for all transients (variables and dynamic regions)
+integer :: newtient_relstepmax ! maximum relstep value for all newtients (variables and dynamic regions)
 double precision :: newtres = 0.d0 ! last evaluated value of the newton residual
 logical :: transient_simulation = .false. ! whether simulation is transient or steady-state
 logical :: newtient_simulation = .false. ! whether simulation is newtient or not (ie, has variables that are evaluated only outside of the newton loop)
@@ -387,6 +389,7 @@ character(len=100) :: output_step_file = "default" ! whether to print output.ste
 logical, parameter :: output_timings = .true. ! (.true.) whether to time processes and output results to screen (see subroutine time_process)
 logical, parameter :: output_detailed_timings = .false. ! (.false.) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
 logical, parameter :: output_variable_update_times = .true. ! (.true.) time how long it takes to update each variable (on average) and report in output.stat
+logical, parameter :: output_region_update_times = .true. ! (.true.) time how long it takes to update each dynamic region (on average) and report in output.stat
 logical, parameter :: ignore_initial_update_times = .true. ! (.true.) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
 logical, parameter :: kernel_details_file = .false. ! (.false.) print out a text file (output/kernel_details.txt) with all the kernel details
 logical, parameter :: mesh_details_file = .true. ! (.false.) print out a text file (output/mesh_details.txt) with all the mesh details
@@ -844,6 +847,7 @@ end subroutine resize_double_precision_array
 subroutine resize_integer_array(keep_data,array,change,new_size,default_value)
 
 ! here we change the size of an array (by change or to new_size) while maintaining its data
+! if size = 0 then array is left unallocated
 
 integer, dimension(:), allocatable :: array, array_store
 integer, intent(in), optional :: change, new_size
@@ -1081,7 +1085,6 @@ subroutine push_character_array(array,new_element,reverse)
 character(len=*), dimension(:), allocatable :: array
 character(len=*) :: new_element
 logical, optional :: reverse
-integer :: n
 
 call resize_character_array(array=array,change=1)
 array(ubound(array,1))=new_element
@@ -1108,7 +1111,6 @@ subroutine push_logical_array(array,new_element,reverse)
 logical, dimension(:), allocatable :: array
 logical :: new_element
 logical, optional :: reverse
-integer :: n
 
 call resize_logical_array(array=array,change=1)
 array(ubound(array,1))=new_element
@@ -1165,7 +1167,6 @@ subroutine push_integer_array(array,new_element,reverse)
 integer, dimension(:), allocatable :: array
 integer :: new_element
 logical, optional :: reverse
-integer :: n
 
 call resize_integer_array(array=array,change=1)
 array(ubound(array,1))=new_element
@@ -1191,7 +1192,6 @@ subroutine push_double_precision_array(array,new_element,reverse)
 double precision, dimension(:), allocatable :: array
 double precision :: new_element
 logical, optional :: reverse
-integer :: n
 
 call resize_double_precision_array(array=array,change=1)
 array(ubound(array,1))=new_element
@@ -1217,7 +1217,6 @@ subroutine push_real_array(array,new_element,reverse)
 real, dimension(:), allocatable :: array
 real :: new_element
 logical, optional :: reverse
-integer :: n
 
 call resize_real_array(array=array,change=1)
 array(ubound(array,1))=new_element
@@ -2540,7 +2539,7 @@ end subroutine time_process
 
 !-----------------------------------------------------------------
 
-subroutine time_variable_update(thread,calling_phase,m)
+subroutine time_variable_update(thread,calling_phase,m,region_l)
 
 ! this routine calculates the total time spent on updating a variable, and the number of times that the variable has been updated
 ! must be called by a particular processor in sequence
@@ -2548,6 +2547,7 @@ subroutine time_variable_update(thread,calling_phase,m)
 integer :: calling_phase ! 0 for initial, 1 for final (used an integer here as lookup needs to be fast)
 integer :: m ! variable number
 integer :: thread ! thread number
+logical :: region_l ! we are timing a region update rather than a variable update
 real :: this_cpu_time
 logical, parameter :: debug = .false.
 
@@ -2557,8 +2557,13 @@ if (calling_phase == 0) then
   call cpu_time(update_time_start(thread))
 else if (calling_phase == 1) then
   call cpu_time(this_cpu_time)
-  var(m)%update_time = var(m)%update_time + this_cpu_time - update_time_start(thread)
-  var(m)%update_number = var(m)%update_number + 1
+  if (region_l) then
+    region(m)%update_time = region(m)%update_time + this_cpu_time - update_time_start(thread)
+    region(m)%update_number = region(m)%update_number + 1
+  else
+    var(m)%update_time = var(m)%update_time + this_cpu_time - update_time_start(thread)
+    var(m)%update_number = var(m)%update_number + 1
+  end if
 end if
 
 if (debug) write(*,'(a/80(1h-))') 'subroutine time_variable_update'
@@ -2721,7 +2726,7 @@ character(len=*) :: centring ! whether region is cell or face centred
 character(len=*) :: type ! type of var variable
 logical, optional :: include_regions ! if true and present, include relevant dynamic regions in the lists, otherwise don't (default if not present)
 integer :: var_list_number
-integer :: ntype, ncentring, n
+integer :: ntype, ncentring
 integer, parameter :: ntypemax = ubound(var_types,1) + 1 ! can do this as var_types is a parameter
 integer, parameter :: ntypecentringmax = ntypemax*5
 logical, parameter :: debug = .false.
@@ -3029,7 +3034,7 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine memory_manage_dvs'
 
 if (debug) write(*,*) 'doing action = '//trim(action)//' for type '//trim(type)
 
-if (debug) pause
+!if (debug) pause
 
 if (trim(action) == 'deallocate') then
   do n = 1, allocatable_size(var_list(var_list_number(centring="all",type=type))%list)
@@ -3059,7 +3064,7 @@ else
   stop 'ERROR: unknown action in memory_manage_dvs'
 end if
 
-if (debug) pause
+!if (debug) pause
 
 if (debug) write(*,'(a/80(1h-))') 'subroutine memory_manage_dvs'
 
@@ -3669,7 +3674,6 @@ type(scalar_list_type) :: list
 double precision :: new_element
 logical, optional :: check_length ! if this is true check the length of the list before adding element - default is off to save time
 logical :: check_lengthl ! local version of check_length
-integer :: existing_length
 integer :: change
 
 change = 0
@@ -3684,12 +3688,6 @@ if (check_lengthl) then
   else
     change = list%length - ubound(list%elements,1)
   end if
-
-! sanity check that should be removed later
-! if (change > 1) then
-!   write(*,*) 'change = ',change
-!   call error_stop("problem in add_to_scalar_list")
-! end if
 
   if (change > 0) call resize_double_precision_array(keep_data=.true.,array=list%elements,change=change)
 end if
@@ -3706,7 +3704,6 @@ type(integer_list_type) :: list
 integer :: new_element
 logical, optional :: check_length ! if this is true check the length of the list before adding element - default is off to save time
 logical :: check_lengthl ! local version of check_length
-integer :: existing_length
 integer :: change
 
 change = 0
@@ -3786,7 +3783,6 @@ type(vector_list_type) :: list
 double precision, dimension(totaldimensions) :: new_element
 logical, optional :: check_length ! if this is true check the length of the list before adding element - default is off to save time
 logical :: check_lengthl ! local version of check_length
-integer :: existing_length
 integer, dimension(2) :: change_2d
 
 change_2d = 0
@@ -3802,12 +3798,6 @@ if (check_lengthl) then
   else
     change_2d(2) = list%length - ubound(list%elements,2)
   end if
-
-! sanity check that should be removed later
-! if (change_2d(2) > 1) then
-!   write(*,*) 'change_2d = ',change_2d
-!   call error_stop("problem in add_to_vector_list")
-! end if
 
   if (change_2d(2) > 0) call resize_double_precision_2d_array(keep_data=.true.,array=list%elements,change=change_2d)
 end if
@@ -4141,7 +4131,7 @@ double precision, dimension(:,:), allocatable :: r ! location of cell centres re
 double precision :: dx ! order of magnitude of element dimensions
 integer, dimension(totaldimensions) :: reflect_multiplier2
 double precision, dimension(totaldimensions) :: r2
-integer :: separation, i, ii, i2, ii2, i3, ii3, k, kk, common_nodes, number_added, this_separation_start, last_separation_start, &
+integer :: separation, i, ii, i2, ii2, i3, ii3, number_added, this_separation_start, last_separation_start, &
   sign_upcell, n, maximum_separation_l, start_index, end_index, j, jj, ii2max
 character(len=1000) :: formatline
 integer, dimension(2), save :: change_2d = [0,1], ijk_2d
@@ -4688,7 +4678,7 @@ function celltoicellr(i,l,ns,error_string)
 ! this really needs to be fixed to properly reference icentre, rather than ilast (which will break with any nested someloops)
 
 double precision, dimension(totaldimensions) :: celltoicellr
-integer :: i, ns, isize
+integer :: i, ns
 integer, optional :: l
 character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
 character(len=*), optional :: error_string
@@ -4733,7 +4723,7 @@ function celltoicellreflect_multiplier(i,l,ns,error_string)
 !  l is not given
 
 integer, dimension(totaldimensions) :: celltoicellreflect_multiplier
-integer :: i, ns, isize
+integer :: i, ns
 integer, optional :: l
 character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
 character(len=*), optional :: error_string
