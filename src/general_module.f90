@@ -2817,6 +2817,17 @@ else
     'Look at the use of this variable in the equations and check that its region and centring context are consistent.'// &
     trim(error_stringl))
   end if
+  if (ijk > allocatable_integer_size(region(var(m)%region_number)%ns)) then
+    if (present(error_string)) then
+      error_stringl = '  Info from calling routine: '//trim(error_string)
+    else
+      error_stringl = ''
+    end if
+    call error_stop('ijk is greater than size of ns array in function nsvar: This means that an attempt is being made '// &
+    'to reference variable '//trim(var(m)%name)//' at an erroreous location. '// &
+    'Look at the use of this variable in the equations and check that its region and centring context are consistent.'// &
+    trim(error_stringl))
+  end if
   nsvar = region(var(m)%region_number)%ns(ijk)
   if (nsvar == 0) then
     noerror_l = .false.

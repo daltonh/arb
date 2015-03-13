@@ -4702,7 +4702,8 @@ sub create_allocations {
 # loop through all masread locations, starting from before the first variable
         for my $masread ( -1 .. $#asread_variable ) {
 # look for variables in the fortran order
-          if ($masread >= 0 && ( $type eq "all" || $type eq $asread_variable[$masread]{"type"} ) ) {
+          if ($masread >= 0 && ( $type eq "all" || $type eq $asread_variable[$masread]{"type"} ) && 
+                              ( $centring eq "all" || $centring eq $asread_variable[$masread]{"centring"} ) ) {
             push(@var_list,$variable{$asread_variable[$masread]{"type"}}[$asread_variable[$masread]{"mvar"}]{"fortran_number"});
             push(@region_list,".false."); # and this signifies that this is a variable, not a region
           }
@@ -4710,7 +4711,8 @@ sub create_allocations {
           if ($include_regions) {
             for my $nregion ( 0 .. $#region ) {
               if (!($region[$nregion]{"dynamic"})) { next; }
-              if ( ( $type eq "all" || $type eq $region[$nregion]{"type"} ) && $region[$nregion]{"last_variable_masread"} == $masread ) {
+              if ( ( $type eq "all" || $type eq $region[$nregion]{"type"} ) &&
+                  ( $centring eq "all" || $centring eq $region[$nregion]{"centring"} ) && $region[$nregion]{"last_variable_masread"} == $masread ) {
                 push(@var_list,$region[$nregion]{"fortran"});
                 push(@region_list,".true."); # and this signifies that this is a region
               }
@@ -6383,7 +6385,7 @@ sub write_latex {
 # rank - scalar|vector|tensor
 # lindex (expressed as 1->9)
 # rindex (>=0)
-# regionname - is a bit different, in that we're dealing with a region name which can only have a relstep index - actually the same as compound name
+# regionname - can have both rindices and lindices (witness the kernel regions) so is exactly the same as name
 
 # the standarised variable name obeys:
 # if the variable is a scalar then no l index is given in the consistent name
@@ -6440,12 +6442,6 @@ sub examine_name {
   if ($rindex) { $compoundname = $compoundname."[r=$rindex]"; }
   $compoundname = $compoundname.">";
 
-  if ($action eq "regionname") {
-    if ($rank ne "scalar") {
-      error_stop("an attempt is being made to name a region as a vector or tensor quantity - only r indices (relative timesteps) are allowed for region names: region = $name\n");
-    }
-  }
-
 # $_[1] = action = name|compoundname|basename|nrank|lindex|rindex|all
   if ($action eq "name") { return ($name); }
   elsif ($action eq "compoundname") { return ($compoundname); }
@@ -6455,7 +6451,7 @@ sub examine_name {
   elsif ($action eq "lindex") { return ($lindex); }
   elsif ($action eq "rindex") { return ($rindex); }
   elsif ($action eq "all") { return ($compoundname,$rank,$nrank,$lindex,$rindex); }
-  elsif ($action eq "regionname") { return ($compoundname); }
+  elsif ($action eq "regionname") { return ($name); }
 }
 
 #-------------------------------------------------------------------------------

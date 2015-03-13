@@ -210,7 +210,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'cell'.or.trim(txtoutput) == 'all'))
   do i = 1, itotal
     write(foutput,fmt=formatline) i,(delimiter,trunk_dble(cell(i)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=i,noerror=.true., &
-      error_string='Error occurred while txtfile outputting variable '//trim(var(local_list(m))%name)))),m=1,ubound(local_list,1))
+      error_string='Error occurred while txtfile outputting cell variable '//trim(var(local_list(m))%name)))), &
+      m=1,ubound(local_list,1))
   end do
 
   deallocate(local_list)
@@ -233,7 +234,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'face'.or.trim(txtoutput) == 'all'))
   do j = 1, jtotal
     write(foutput,fmt=formatline) j,(delimiter,trunk_dble(face(j)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=j,noerror=.true., &
-      error_string='Error occurred while txtfile outputting variable '//trim(var(local_list(m))%name)))),m=1,ubound(local_list,1))
+      error_string='Error occurred while txtfile outputting face variable '//trim(var(local_list(m))%name)))), &
+      m=1,ubound(local_list,1))
   end do
 
   deallocate(local_list)
@@ -256,7 +258,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'node'.or.trim(txtoutput) == 'all'))
   do k = 1, ktotal
     write(foutput,fmt=formatline) k,(delimiter,trunk_dble(node(k)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=k,noerror=.true., &
-      error_string='Error occurred while txtfile outputting variable '//trim(var(local_list(m))%name)))),m=1,ubound(local_list,1))
+      error_string='Error occurred while txtfile outputting node variable '//trim(var(local_list(m))%name)))), &
+      m=1,ubound(local_list,1))
   end do
 
   deallocate(local_list)
