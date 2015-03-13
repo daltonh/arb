@@ -1698,7 +1698,7 @@ sub process_regions {
 #-------------
 # now place known region indices back into variables
 
-  foreach $type (@user_types,"someloop","compound") {
+  foreach $type (@user_types,"initial_transient","initial_newtient","someloop","compound") {
     foreach $mvar ( 1 .. $m{$type} ) {
       $variable{$type}[$mvar]{"update_region_number"} = 0;
       $variable{$type}[$mvar]{"update_region"} = ''; # this being empty means that the update_region is not set

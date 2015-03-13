@@ -942,7 +942,7 @@ if (debug) write(*,'(80(1h+)/a)') 'function check_condition'
 
 check_condition = .false.
 
-if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="constant",include_regions=.false.)
+if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="condition",include_regions=.false.)
 do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
   m = var_list(var_list_number_l)%list(nvar)
 
