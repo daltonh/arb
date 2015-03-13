@@ -732,11 +732,13 @@ else if (trim(region(m)%type) /= 'gmsh') then
           iimax = ubound(cell(i)%icell,1) ! for cellseparation
         end if
         do iinext = 1, iimax
-          inext = cell(i)%icell(ii) ! we need to check whether this cell is already in the region
+          inext = cell(i)%icell(iinext) ! we need to check whether this cell is in the part_of_region and already in the new region
           if (region(m)%ns(inext) == 0) then
-            nsregion = nsregion + 1
-            region(m)%ijk(nsregion) = inext
-            region(m)%ns(inext) = nsregion
+            if (region(part_of_region)%ns(inext) /= 0) then
+              nsregion = nsregion + 1
+              region(m)%ijk(nsregion) = inext
+              region(m)%ns(inext) = nsregion
+            end if
           end if
         end do
       end do

@@ -62,7 +62,6 @@ subroutine allocate_meta_arrays
 ! here we allocate array elements of the meta data that corresponds to the input files
 
 use general_module
-integer :: var_list_number_l
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine allocate_meta_arrays'

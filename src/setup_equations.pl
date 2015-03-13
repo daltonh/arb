@@ -375,6 +375,7 @@ sub check_variable_status {
   foreach $n ( 1 .. $#region ) {
     delete $region[$n]{"options"}; # delete removes value and key for a hash
     delete $region[$n]{"comments"}; # delete removes value and key for a hash
+    delete $region[$n]{"definitions"}; # delete removes value and key for a hash
   }
 
   $Storable::canonical=1; # the data structure will have its keys sorted before being created
@@ -1063,7 +1064,8 @@ sub read_input_files {
           delete $asread_variable[$masread]{"constant_list"};
           if ($region_constant) {
             if (empty($region_list{"regions"})) { error_stop("a $centring REGION_CONSTANT appears before a REGION_LIST has been defined:\nfile = $file: line = $oline");}
-            if (nonempty($region_list{"centring"}) && $region_list{"centring"} ne $centring) { error_stop("the $centring centring of a REGION_CONSTANT is not consistent with the $region_list{centring} of the preceeding REGION_LIST:\nfile = $file: line = $oline");}
+            if ($centring eq "none") { error_stop("attempting to set a none centred constant $name using a REGION_CONSTANT statement: use a NONE_CONSTANT statement instead:\nfile = $file: line = $oline");}
+            if (nonempty($region_list{"centring"}) && $region_list{"centring"} ne $centring) { error_stop("the $centring centring of a REGION_CONSTANT is not consistent with the $region_list{centring} centring of the preceeding REGION_LIST:\nfile = $file: line = $oline");}
             @{$asread_variable[$masread]{"region_list"}} = @{$region_list{"regions"}}; # set region_list to that of most recent REGION_LIST
             $n = scalar(@{$region_list{"regions"}}); # returning the number of elements in this array
           }
@@ -1873,7 +1875,7 @@ sub location_description_scan {
     }
 # and extract maxseparation from options, assuming a single separation level if one isn't specified
     if ($options =~ /(^|\,)\s*(max|maximum)separation\s*=\s*(\d+?)\s*(\,|$)/i) { push(@integers,$3); } else { push(@integers,1); }
-    if ($options =~ /(^|\,)\s*faceseparation\s*(\,|$)/i) { $integers[1]=-$integers[1]; } # use a negative integer here to indicate that face separation should be used in the loop
+    if ($options =~ /(^|\,)\s*faceseparation\s*(\,|$)/i) { $integers[0]=-$integers[0]; } # use a negative integer here to indicate that face separation should be used in the loop
   } elsif ($type eq "variable") {
 # just a single variable name required
     if ($line =~ /^\s*(<(.+?)>)\s*/) {
@@ -3064,22 +3066,22 @@ sub mequation_interpolation {
       $minseparation=-1;
       $maxseparation=-1;
 # if separation options are specified then transfer these to someloop too
-      if ($options && $options =~ /(^|\,)\s*(|min|minimum|max|maximum|face|node|no)separation\s*(=\s*\S+?|)\s*(\,|$)/i) {
+      if ($options && $options =~ /(^|\,)\s*(|min|minimum|max|maximum|face|node|no)separation\s*(=\s*\d+?|)\s*(\,|$)/i) {
         print DEBUG "INFO: found separation options in $centring $operator in $otype $variable{$otype}[$omvar]{name}\n";
         print "INFO: found separation options in $centring $operator in $otype $variable{$otype}[$omvar]{name}\n";
-        if ($options =~ /(^|\,)\s*noseparation\s*(=\s*(\S+?)|)\s*(\,|$)/i) {
+        if ($options =~ /(^|\,)\s*noseparation\s*(=\s*(\d+?)|)\s*(\,|$)/i) {
           if ($2) { error_stop("noseparation option in $centring $operator in $otype $variable{$otype}[$omvar]{name} has trailing characters"); }
           print DEBUG "INFO: separation options ignored from $options for $centring $operator in $otype $variable{$otype}[$omvar]{name}\n";
         } else { # all other options indicate that we are going to do a separation loop
           $minseparation=0; # without any integer, it imposes no limit on maxseparation but does signal that we are to use the separation loop
           if ($centring ne "cell") { error_stop("separation options have been specified for $centring $operator in $otype $variable{$otype}[$omvar]{name} indicating that a separation loop is required, however separation loops are only supported in cell based loops (ie cellsum, cellproduct, cellmax and cellmin), and this isn't one of those"); }
           if ($contextcentring ne "cell") { error_stop("separation options have been specified for $centring $operator in $otype $variable{$otype}[$omvar]{name} indicating that a separation loop is required, however the context centring for this loop is $contextcentring rather than the required cell centring.  Remember, a separation loop loops outward from a starting cell."); }
-          if ($options =~ /(^|\,)\s*(max|maximum)separation\s*(=\s*(\S+?)|)\s*(\,|$)/i) {
+          if ($options =~ /(^|\,)\s*(max|maximum)separation\s*(=\s*(\d+?)|)\s*(\,|$)/i) {
             if (nonempty($4)) { $maxseparation=$4;
               if ($maxseparation !~ /^(|\+|-)\d+$/) { error_stop("maxseparation ($maxseparation) for $centring $operator in $otype $variable{$otype}[$omvar]{name} has nonsensical trailing characters - should be an integer"); }
             }
           }
-          if ($options =~ /(^|\,)\s*(|min|minimum)separation\s*(=\s*(\S+?)|)\s*(\,|$)/i) {
+          if ($options =~ /(^|\,)\s*(|min|minimum)separation\s*(=\s*(\d+?)|)\s*(\,|$)/i) {
             if (nonempty($4)) { $minseparation=$4;
               if ($minseparation !~ /^(|\+|-)\d+$/) { error_stop("minseparation ($minseparation) for $centring $operator in $otype $variable{$otype}[$omvar]{name} has nonsensical trailing characters - should be an integer"); }
             }
@@ -3130,7 +3132,7 @@ sub mequation_interpolation {
         $mseparation_list++;
         $sub_string{"set_mseparation_list"}="mseparation_list = $mseparation_list\n"; # will only be set if >0
         $variable{"someloop"}[$someloop_mvar]{"separation_list_number"} = $mseparation_list;
-        if ($options =~ /(^|\,)\s*faceseparation\s*(=\s*(\S+?)|)\s*(\,|$)/i) { $variable{"someloop"}[$someloop_mvar]{"faceseparation"} = 1; } # flag to indicate that we're loop through cells that share a face, rather than a node
+        if ($options =~ /(^|\,)\s*faceseparation\s*(\,|$)/i) { $variable{"someloop"}[$someloop_mvar]{"faceseparation"} = 1; } # flag to indicate that we're loop through cells that share a face, rather than a node
         $faceseparationflag = 0;
         ($faceseparationflag,$name) = search_operator_contents("faceseparationflag",$next_contents_number);
         if (nonempty($faceseparationflag)) {

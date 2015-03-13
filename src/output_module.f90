@@ -398,7 +398,7 @@ if (include_regions) then
   if (output_region_update_times) then
     total_update_time = 0.e0
     maximum_update_time = 0.e0
-    do m = 1, ubound(var,1)
+    do m = 1, ubound(region,1)
       if (.not.region(m)%dynamic) cycle
       total_update_time = total_update_time + region(m)%update_time
       maximum_update_time = max(maximum_update_time,region(m)%update_time/float(max(region(m)%update_number,1)))
