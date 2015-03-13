@@ -251,11 +251,12 @@ use general_module
 integer :: m ! region number to be updated
 logical :: initial ! whether the the initial or normal location string is to be used
 type(region_location_type) :: local_location ! set to either initial or normal location
-integer :: i, j, k, n, nregion, ijkregion, nsregion, ns, ii, jj, kk, ijk, l, ijktotal, ns2
+integer :: i, j, k, n, nregion, ijkregion, nsregion, ns, ii, jj, kk, ijk, l, ijktotal, ns2, donor_region, part_of_region, &
+  nsnext, iinext, inext, separation, iimax
 double precision :: tmp, tmpmax
 double precision, dimension(totaldimensions) :: x, xmin, xmax ! a single location
 character(len=1000) :: formatline
-logical :: compoundtype, compoundadd, setijk, setns
+logical :: compoundtype, compoundadd, setijk, setns, faceseparation
 logical, dimension(:), allocatable :: elementisin
 logical :: debug_sparse = .true.
 logical, parameter :: debug = .false.
@@ -400,8 +401,8 @@ else if (trim(region(m)%type) /= 'gmsh') then
   end if
 
 !---------------------
-! a user defined region from the arb input file that is a single point
 ! ref: at region
+! a user defined region from the arb input file that is a single point
 ! setting ijk but not ns
 
   if (trim(local_location%type) == "at") then
@@ -430,10 +431,10 @@ else if (trim(region(m)%type) /= 'gmsh') then
     if (region(m)%ijk(1) == 0) call resize_integer_array(array=region(m)%ijk,new_size=0,keep_data=.false.)
 
 !---------------------
+! ref: withinbox region ref: within region
 ! a user defined region from the arb input file that is any elements within a box
 ! TODO: deal with other geometries
 ! setting ns but not ijk
-! ref: withinbox region ref: within region
 
   else if (trim(local_location%type) == "withinbox") then
 
@@ -476,9 +477,9 @@ else if (trim(region(m)%type) /= 'gmsh') then
     end do ijk_loop
 
 !---------------------
+! ref: associatedwith ref: boundaryof ref: domainof ref: surrounds
 ! a new region composed of the boundary to another region, or similar type of related domain
 ! setting ns but not ijk
-! ref: associatedwith ref: boundaryof ref: domainof ref: surrounds
 
   else if (trim(local_location%type) == "boundaryof".or.trim(local_location%type) == "domainof".or.trim(local_location%type) == "associatedwith".or. &
     trim(local_location%type) == "surrounds") then
@@ -595,10 +596,10 @@ else if (trim(region(m)%type) /= 'gmsh') then
     end do
 
 !---------------------
+! ref: compound ref: common ref: intersection ref: union
 ! a region composed of a compound list of other regions, or a region that has all of the listed regions in common
 ! we use elementisin here as the ns index of the elements is unknown when they are being added
 ! ns and ijk will be calculated below from elementisin
-! ref: compound ref: common ref: intersection ref: union
 
   else if (trim(local_location%type) == "compound" .or. trim(local_location%type) == "common") then
 
@@ -658,9 +659,9 @@ else if (trim(region(m)%type) /= 'gmsh') then
     end do
 
 !---------------------
+! ref: variable
 ! a region which is only true where a variable is greater than zero
 ! setting ns but not ijk
-! ref: variable
 
   else if (trim(local_location%type) == "variable") then
 
@@ -680,8 +681,75 @@ else if (trim(region(m)%type) /= 'gmsh') then
     end do
 
 !---------------------
-! a region composed of all elements - actually a straight copy from region(m)%part_of
+! ref: expand
+! expand a region outwards through a set number of separation levels
+! setting both ns and ijk
+
+  else if (trim(local_location%type) == "expand") then
+
+    setijk = .true.
+    setns = .true.
+
+    donor_region = local_location%regions(1)
+    part_of_region = region(m)%part_of
+! need to copy ijk and ns indicies from donor region into new region while respecting part_of size of new region
+! first increase the new region ijk array size to the maximum size possible, which is that of its part_of region
+    call resize_integer_array(array=region(m)%ijk,new_size=allocatable_integer_size(region(part_of_region)%ns),keep_data=.false.)
+    region(m)%ijk = 0
+    region(m)%ns = 0
+    region(m)%nslast = 0 ! this is the last index of the cells one separation less than the maximum in region(m)
+    nsregion = 0
+    do ns = 1, allocatable_integer_size(region(donor_region)%ijk)
+      ijk = region(donor_region)%ijk(ns)
+      if (region(part_of_region)%ns(ijk) /= 0) then
+        nsregion = nsregion + 1
+        region(m)%ijk(nsregion) = ijk
+        region(m)%ns(ijk) = nsregion
+        if (ns <= region(donor_region)%nslast) region(m)%nslast = nsregion
+      end if
+    end do
+
+! at this stage we have all elements from donor region in the possibly resized new array
+
+    if (local_location%integers(1) < 0) then
+      faceseparation = .true.
+    else
+      faceseparation = .false.
+    end if
+
+! loop through separation levels
+    do separation = 1, abs(local_location%integers(1))
+      nsnext = nsregion
+! loop through indicies in outer layer of region
+      do ns2 = region(m)%nslast+1, nsnext
+        i = region(m)%ijk(ns2)
+! loop through cells that surround this cell
+        if (faceseparation) then
+! for a faceseparation loop break after the surround face cells have been done
+! a faceseparation loop is indicated by a negative maximumseparation integer
+          iimax = ubound(cell(i)%jface,1) + 1
+        else
+          iimax = ubound(cell(i)%icell,1) ! for cellseparation
+        end if
+        do iinext = 1, iimax
+          inext = cell(i)%icell(ii) ! we need to check whether this cell is already in the region
+          if (region(m)%ns(inext) == 0) then
+            nsregion = nsregion + 1
+            region(m)%ijk(nsregion) = inext
+            region(m)%ns(inext) = nsregion
+          end if
+        end do
+      end do
+! update outer region indicies
+      region(m)%nslast=nsnext
+    end do
+
+! finally resize ijk array so that it doesn't include any zero elements
+    call resize_integer_array(array=region(m)%ijk,new_size=nsregion,keep_data=.true.)
+
+!---------------------
 ! ref: all
+! a region composed of all elements - actually a straight copy from region(m)%part_of
 ! setting both ns and ijk
 
   else if (trim(local_location%type) == "all") then

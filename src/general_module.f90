@@ -163,6 +163,7 @@ type region_type
   integer, dimension(:), allocatable :: ns ! array that specifies data number from i, j or k index - dimension of this is either itotal, jtotal or ktotal - for all regions an ns(ijk) of zero indicates that the particular ijk element is not in the region
   real :: update_time = 0.d0 ! total cpu time that has been spent on updating this region (only for dynamic variables)
   integer :: update_number = 0 ! total number of times that this region has been updated (only for dynamic variables)
+  integer :: nslast = 0 ! this is the last index of the cells one separation less than the maximum in region(m) - 0 means that there is no information stored about this separation level, as it is one below the minimum ijk index
 end type region_type
 
 ! data type for any functions that ultimately depend on field data

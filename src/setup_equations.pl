@@ -1833,7 +1833,7 @@ sub location_description_scan {
   my @regionnames=(); # list of region names referred to in the location
   my @regioncentrings=(); # list of region centrings referred to in the location
   my @floats=(); # list of any floats for the location, as double precision
-  my @integers=(); # list of any integers for the location, as double precision
+  my @integers=(); # list of any integers for the location
   my @variablenames=(); # list of any variable names used in the location
   my @variablecentrings=(); # list of variable centrings referred to in the location
   my $options=''; # whatever is in the operator's option that isn't s, dumped in a string
@@ -1851,7 +1851,7 @@ sub location_description_scan {
     if ($type =~ / /) { $type =~ s/ //g; print "WARNING: for consistency with variable operators, the use of spaces in region location operator names has been deprecated: run the individual words together instead as in $type (found in $region[$n]{name})\n"; }
     if ($next eq " ") { print "WARNING: for consistency with variable operators, operators within region location descriptions should now have their arguments inclosed in brackets, as in $type(arguments) (found in $region[$n]{name})\n"; }
     if ($next eq "(") { if (!($line =~ /\)\s*$/)) { error_stop("missing closing bracket on $type operator for region $region[$n]{name} location = $location"); } else { $line = $`; } } # remove trailing bracket
-    print DEBUG "location type = $type\n";
+    print DEBUG "location type = $type: options = $options\n";
   } else {
     error_stop("location type not recognised from the following location string used with region $region[$n]{name}: location = $location");
   }
@@ -1872,7 +1872,8 @@ sub location_description_scan {
       error_stop("cannot find region name in the $type operator for region $region[$n]{name}: location = $location");
     }
 # and extract maxseparation from options, assuming a single separation level if one isn't specified
-    if ($options =~ /(^|\,)\s*(max|maximum)separation\s*=\s*(\S+?)\s*(\,|$)/i) { push(@integers,$4); } else { push(@integers,1); }
+    if ($options =~ /(^|\,)\s*(max|maximum)separation\s*=\s*(\d+?)\s*(\,|$)/i) { push(@integers,$3); } else { push(@integers,1); }
+    if ($options =~ /(^|\,)\s*faceseparation\s*(\,|$)/i) { $integers[1]=-$integers[1]; } # use a negative integer here to indicate that face separation should be used in the loop
   } elsif ($type eq "variable") {
 # just a single variable name required
     if ($line =~ /^\s*(<(.+?)>)\s*/) {
