@@ -8,18 +8,18 @@
 user="daltonh";
 branch="master";
 server="vof.chemeng.unimelb.edu.au";
-output="arb_$branch";
+directory="";
 port="8000";
 ssh=1;
 #-------------------------------------------------------------------------------
 # usage function
 usage () {
   echo "This script gets an arb version from a git server";
-  echo "HELP/USAGE: ./getarb [-b branch] [-u user] [-s server] [-o output] [-h]";
+  echo "HELP/USAGE: ./getarb [-b branch] [-u user] [-s server] [-d directory] [-h]";
   echo
   echo "Possible options:";
-  echo "  -b|--branch: branch to get (default = $branch) - also resets output name";
-  echo "  -o|--output: output directory name to use (default = $output)";
+  echo "  -b|--branch: branch to get (default = $branch)";
+  echo "  -d|--directory: output directory name to use (default = arb_$branch)";
   echo "  -u|--user: user name that hosts arb project (default = $user)";
   echo "  -p|--port: port number of git server for http requests (default = $port)";
   echo "  -s|--server: server name to use, only for ssh (default = $server)";
@@ -33,10 +33,10 @@ usage () {
 # better case implementation from http://www.linuxtopia.org/online_books/advanced_bash_scripting_guide/testbranch.html
 while [ $# -gt 0 ]; do
   case "$1" in
-    "-b"|"--branch") if [ ! -n "$2" ]; then echo "ERROR: branch not found"; usage; fi; branch=$2; output="arb_$branch"; shift;;
+    "-b"|"--branch") if [ ! -n "$2" ]; then echo "ERROR: branch not found"; usage; fi; branch=$2; shift;;
     "-u"|"--user") if [ ! -n "$2" ]; then echo "ERROR: user not found"; usage; fi; user=$2; shift;;
     "-s"|"--server") if [ ! -n "$2" ]; then echo "ERROR: server not found"; usage; fi; server=$2; shift;;
-    "-o"|"--output") if [ ! -n "$2" ]; then echo "ERROR: output not found"; usage; fi; output=$2; shift;;
+    "-d"|"--directory") if [ ! -n "$2" ]; then echo "ERROR: directory not found"; usage; fi; directory=$2; shift;;
     "-p"|"--port") if [ ! -n "$2" ]; then echo "ERROR: port not found"; usage; fi; port=$2; shift;;
     "--http") ssh=0;;
     "--ssh") ssh=1;;
@@ -47,10 +47,12 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+if [ "${directory}" = "" ]; then directory="arb_$branch"; echo "setting output directory based on branch to $directory"; fi;
+
 if [ $ssh -eq 1 ] ; then
-#echo "git clone -b $branch git@$server:$user/arb.git $output";
-  git clone -b $branch git@$server:$user/arb.git $output;
+  echo "performing: git clone -b $branch git@$server:$user/arb.git $directory";
+  git clone -b $branch git@$server:$user/arb.git $directory;
 else
-#echo "git clone -b $branch http://$server:$port/$user/arb.git $output";
-  git clone -b $branch http://$server:$port/$user/arb.git $output;
+  echo "performing: git clone -b $branch http://$server:$port/$user/arb.git $directory";
+  git clone -b $branch http://$server:$port/$user/arb.git $directory;
 fi

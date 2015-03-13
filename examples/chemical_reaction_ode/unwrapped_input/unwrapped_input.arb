@@ -10,6 +10,16 @@ EXTERNALS "src/free_surface_functions.f90"
 # this file introduces the basics of solving a transient problem
 # it is 0D, hence, there is no distribution of quantities throughout space, and hence, there is no msh file is used and all variables are 'NONE' centred
 
+# to run this simulation you need to:
+# 1) cp this file to the working directory, ie, from the simulation working directory:
+#   cp examples/chemical_reaction_ode/chemical_reaction_ode.arb .
+# 2) run it using
+#   ./arb chemical_reaction_ode.arb
+# if all goes well you should get a message saying 'SUCCESS'
+# 3) view the 0D results using plot or plot_step.  For the former type
+#   ./plot
+# and then check some boxes to see various outputs as a function of time <t>
+
 VERSION 0.50 # the version of syntax used in this file
 
 # the following strings describe the simulation and are passed to the output files
@@ -18,9 +28,10 @@ INFO_DESCRIPTION "Demonstrates how to solve 0D transient problems:  In this case
 INFO_AUTHOR "Dalton Harvie"
 INFO_DATE "8/3/15" # interpreted as the last modification date
 
-TRANSIENT_SIMULATION # tell arb that we will be stepping forwards (probably in time).  We can actually omit this keyword as arb will guess that it is a transient simulation as TRANSIENT variables are defined below.
+TRANSIENT_SIMULATION # tell arb that we will be stepping forwards (probably in time).  We can actually omit this keyword as arb will guess that it is a transient simulation as TRANSIENT variables are defined below.  During a transient simulation arb updates a variable <timestep> as we progress, solving for every unknown at each timestep.
 
-NONE_UNKNOWN <c_AB> "0.d0" magnitude=10.d0 # only one unknown and one equation.  The expression for this unknown is its initial value (as this is a transient simulation).  Also, <c_AB> needs a characteristic magnitude for the solver to be able to solve it - use the initial concentration of B for this, although any realistic concentration value will do.  If you don't specify a characteristic magnitude for an unknown variable, arb will try and guess it based on the variable's initial value.  This guess won't work for this simulation however as the initial value of this variable is 0, and which gives no indication of how large this variable will become.
+# now to set up the equations to solve
+NONE_UNKNOWN <c_AB> "0.d0" magnitude=10.d0 # only one unknown and one equation here.  The expression for this unknown is its initial value (as this is a transient simulation).  Also, <c_AB> needs a characteristic magnitude for the solver to be able to solve it - use the initial concentration of B for this, although any realistic concentration value will do.  If you don't specify a characteristic magnitude for an unknown variable, arb will try and guess it based on the variable's initial value.  This guess won't work for this simulation however as the initial value of this variable is 0, and which gives no indication of how large this variable will become.
 NONE_DERIVED <c_A> "<c_A_0>-<c_AB>" # using a mass balance <c_A> can be expressed in terms of <c_AB>, so write it as a derived (deriveds are just a way to store commonly used functions of the unknowns).  An alternative for this problem would be to have <c_A> as a second unknown, with a corresponding second equation expressing this mass balance - that is, <c_A>-<c_A_0>-<c_AB> as an equation to solve (ie, make equal to zero)
 NONE_CONSTANT <c_A_0> 1.d0 # initial concentration of <c_A>, set as a constant
 NONE_CONSTANT <c_B> 10.d0 # for this reaction we assume that the concentration of B is a constant, regardless of the amount of AB that has formed.
