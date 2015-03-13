@@ -76,6 +76,10 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine allocate_meta_arrays'
 ! allocate var_lists which are lists of variables and regions used for fast looping
 !<sub_string:allocate_var_lists>
 
+! set these two commonly used variable-only var_list_numbers
+var_list_number_unknown = var_list_number(centring="all",type="unknown",include_regions=.false.)
+var_list_number_equation = var_list_number(centring="all",type="equation",include_regions=.false.)
+
 ! setup msomeloop which is used to allocate the funks within the someloop (thread) containers
 !<sub_string:set_msomeloop>
 
@@ -350,7 +354,7 @@ end subroutine update_constants
 
 !-----------------------------------------------------------------
 
-subroutine update_unknowns
+subroutine update_unknowns(initial,lambda)
 
 ! here we update all the unknown initial values
 
@@ -358,7 +362,9 @@ use general_module
 use gmesh_module
 use region_module
 !$ use omp_lib
-integer :: nvar, m, ns, i, j, k
+double precision, optional :: lambda ! if initial=.false. then lambda is the backstepping parameter and needs to be specified
+logical :: initial ! whether this is the first initialisation of the unknowns (true) or the backstepping update of them (false)
+integer :: nvar, m, ns, i, j, k, p
 integer, save :: var_list_number_l = -1
 logical :: region_l
 integer :: thread = 1
@@ -388,22 +394,34 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
 
   else
 
-    i = 0
-    j = 0
-    k = 0
+    if (initial) then
 
-    if (debug) write(*,*) 'updating var unknown: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
-    error_string = "Error occurred while updating unknown "//trim(var(m)%name)
+      i = 0
+      j = 0
+      k = 0
 
-    if (output_variable_update_times) call time_variable_update(thread,0,m,region_l=region_l)
+      if (debug) write(*,*) 'updating var unknown: m = ',m,': name = ',trim(var(m)%name),': centring = ',var(m)%centring
+      error_string = "Error occurred while updating unknown "//trim(var(m)%name)
 
-! unknowns
-!    <sub_string:unknown>
+      if (output_variable_update_times) call time_variable_update(thread,0,m,region_l=region_l)
 
-    if (output_variable_update_times) call time_variable_update(thread,1,m,region_l=region_l)
+! unknowns, updated via user-entered initial expressions
+!      <sub_string:unknown>
 
-  ! read from data file
-    call read_gmesh(contents='data',var_number=m)
+      if (output_variable_update_times) call time_variable_update(thread,1,m,region_l=region_l)
+
+! read from data file
+      call read_gmesh(contents='data',var_number=m)
+
+    else
+
+! backstepping update
+      do ns = 1, ubound(var(m)%funk,1)
+        p = var(m)%funk(ns)%pp(1)
+        var(m)%funk(ns)%v = delphiold(p) + lambda*delphi(p)
+      end do
+
+    end if 
 
     if (debug) then
       formatline = '(a,'//trim(indexformat)//',a,i3,a,a)'

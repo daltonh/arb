@@ -1272,8 +1272,8 @@ end if
 
 ! run through unknowns setting derivatives and calculating ptotal
 ptotal = 0 ! this is the number of unknown variables (should equal pptotal)
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(n)
   do ns = 1, ubound(var(m)%funk,1)
     ptotal = ptotal + 1
     call push_array(var(m)%funk(ns)%pp,ptotal)
@@ -1290,15 +1290,15 @@ delphiold = 0.d0
 
 ! initialise and place values in the fast lookup array unknown_var_from_pp
 allocate(unknown_var_from_pp(ptotal))
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(n)
   unknown_var_from_pp(var(m)%funk(1)%pp(1):var(m)%funk(ubound(var(m)%funk,1))%pp(1)) = m
 end do
   
 ! run through equations calculating pptotal
 pptotal = 0 ! this is the number of equations (should equal ptotal)
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(n)
   pptotal = pptotal + ubound(var(m)%funk,1)
 end do
 
@@ -1427,7 +1427,7 @@ call update_and_check_constants
 call read_initial_outputs
 
 ! run through unknowns setting initial values
-call update_and_check_unknowns
+call update_and_check_unknowns(initial=.true.)
 
 ! run through transients setting initial values
 if (transient_simulation) call update_and_check_initial_transients

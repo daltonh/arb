@@ -302,7 +302,7 @@ sub output_variable_list {
     print VARIABLE "List of $key variables:\n";
     for my $mvar ( 1 .. $#{$variable{$key}} ) {
       print VARIABLE "$mvar";
-        for my $infokey ( "name", "units", "centring", "region", "rank", "fortran_number", "component_list", "equation", "masread" ) {
+        for my $infokey ( qw( name units centring region rank fortran_number component_list equation masread hasderiv deriv newtstepmax newtstepmin )) {
           print VARIABLE ": $infokey = ";
           if (empty($variable{$key}[$mvar]{$infokey})) {
             print VARIABLE "empty"
@@ -373,6 +373,7 @@ sub check_variable_status {
 
 # also do similar for regions
   foreach $n ( 1 .. $#region ) {
+    delete $region[$n]{"options"}; # delete removes value and key for a hash
     delete $region[$n]{"comments"}; # delete removes value and key for a hash
   }
 
@@ -951,7 +952,11 @@ sub read_input_files {
           if ($masread >= 0) {
             print "INFO: cancelling variable $name\n";
             print DEBUG "INFO: cancelling variable $name\n";
-            splice(@asread_variable, $masread, 1)
+            splice(@asread_variable, $masread, 1);
+# also have to adjust the reference to the variables from the regions
+            for my $nregion ( 0 .. $#region ) {
+              if ($region[$nregion]{"last_variable_masread"} >= $masread) { $region[$nregion]{"last_variable_masread"}=$region[$nregion]{"last_variable_masread"}-1; }
+            }
 # TODO: get rid of options if variable is cancelled
           } else {
             print "WARNING: attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored\n";
@@ -1383,6 +1388,34 @@ sub organise_regions {
         }
       }
     }
+# process options - from now on the options string can be wiped and does not determine whether equations need re-running
+    $region[$n]{"newtstepmin"}='';
+    $region[$n]{"newtstepmax"}='';
+    my $type = $region[$n]{"type"};
+    if (nonempty($region[$n]{"options"})) {
+      my $tmp = $region[$n]{"options"};
+      $region[$n]{"options"} = '';
+      print DEBUG "INFO: before processing region options $type $region[$n]{name} has loaded (unchecked) options of $tmp\n";
+      while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
+        my $option = $2; $tmp = $`.','.$';
+        if ($option =~ /^(newtstep(max|min))(\s*=\s*([\+\-\d][\+\-\de]*))$/i) { # integer max/min of newtsteps during which this variable should be updated
+          my $option_name = "\L$1";
+          my $match;
+          if (empty($4)) { 
+            $match = "-1";
+          } else { 
+            $match = "\L$4"; # match is the magnitude of the variable, which needs to be an integer
+          }
+          if (($type eq "derived" || $type eq "equation") && $region[$n]{"dynamic"}) { # newtstep limiting is only done on equations or deriveds right now
+            if ($match < 0) { # a negative values clears this option
+              $region[$n]{$option_name} = '';
+            } else {
+              $region[$n]{$option_name} = $match;
+            }
+          } else { error_stop("option $option specified for region $type $region[$n]{name} cannot be used for this type of region"); }
+        }
+      }
+    }
   }
 
 #-------------
@@ -1435,6 +1468,8 @@ sub organise_regions {
   $fortran_regions = 0; # this is the total number of regions that need to be allocated by this script within the fortran
   foreach $n ( 0 .. $#region ) {
     if ($region[$n]{'type'} eq 'internal') { $region[$n]{"fortran"} = 0; } else { $fortran_regions++; $region[$n]{"fortran"} = $fortran_regions; } # only internal regions don't have a corresponding region in the fortran code
+    if (empty($region[$n]{"newtstepmin"})) { $region[$n]{"newtstepmin"}=''; }
+    if (empty($region[$n]{"newtstepmax"})) { $region[$n]{"newtstepmax"}=''; }
   }
 
 #-------------
@@ -1600,33 +1635,6 @@ sub process_regions {
 # check that only user region names have relative step indices
     if ($type eq 'gmsh' && ( examine_name($region[$n]{"name"},'regionname') ne $region[$n]{"name"} ||
       examine_name($region[$n]{"name"},'rindex') != 0 )) { error_stop("gmsh region names cannot have any r indices specified: name = $region[$n]{name}"); }
-# process options
-    $region[$n]{"newtstepmin"}='';
-    $region[$n]{"newtstepmax"}='';
-    if (nonempty($region[$n]{options})) {
-      my $tmp = $region[$n]{"options"};
-      $region[$n]{"options"} = '';
-      print DEBUG "INFO: before processing region options $type $region[$n]{name} has loaded (unchecked) options of $tmp\n";
-      while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
-        my $option = $2; $tmp = $`.','.$';
-        if ($option =~ /^(newtstep(max|min))(\s*=\s*([\+\-\d][\+\-\de]*))$/i) { # integer max/min of newtsteps during which this variable should be updated
-          my $option_name = "\L$1";
-          my $match;
-          if (empty($4)) { 
-            $match = "-1";
-          } else { 
-            $match = "\L$4"; # match is the magnitude of the variable, which needs to be an integer
-          }
-          if (($type eq "derived" || $type eq "equation") && $region[$n]{"dynamic"}) { # newtstep limiting is only done on equations or deriveds right now
-            if ($match < 0) { # a negative values clears this option
-              $region[$n]{$option_name} = '';
-            } else {
-              $region[$n]{$option_name} = $match;
-            }
-          } else { error_stop("option $option specified for region $type $region[$n]{name} cannot be used for this type of region"); }
-        }
-      }
-    }
     if (empty($region[$n]{'part_of'}) && $region[$n]{"user"}) {
 # part_of regions default to largest static region based on size if not specified
 # note, these system regions will come at the start so don't need when each is calculated
@@ -1799,7 +1807,7 @@ sub check_region_and_add_if_not_there {
     }
   } else {
     $fortran_regions++;
-    push(@region,{ name => $region_name, type => "gmsh", user => 0, centring => $centring, fortran => $fortran_regions });
+    push(@region,{ name => $region_name, type => "gmsh", user => 0, centring => $centring, fortran => $fortran_regions, newtstepmax => '', newtstepmin => '' });
     $region[$#region]{"location"}{"description"} = "gmsh from context $context";
     print DEBUG "INFO: no previously defined region $region_name was found in the context of $context: pushing new gmsh $centring region\n";
     $nfound = $#region;

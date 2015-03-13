@@ -98,8 +98,8 @@ if (lambda_previous_step > 0.d0.and.sticky_lambda) lambda = min(dfloat(2**sticky
 if (.false.) call find_sensitive_equation(varname='<n+>',icell=6447)
 
 ! save old unknown values as delphiold
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(n)
   do ns = 1, ubound(var(m)%funk,1)
     delphiold(var(m)%funk(ns)%pp(1)) = var(m)%funk(ns)%v ! as pp(1) is the sequential index of the unknown
   end do
@@ -132,8 +132,8 @@ merr = 0
 nserr = 0
 varmax = 0.d0
 varave = 0.d0
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(n)
   do ns = 1, ubound(var(m)%funk,1)
     p = p + 1
     if (.not.number_is_valid(delphi(p)).or.delphi(p)*lambdamin > var(m)%magnitude*normalised_variable_limit) then
@@ -230,24 +230,29 @@ back_loop: do ! entrance point for repeat steps
     read(*,*) lambda
   end if
 
+! call update_unknowns(initial=.false.,lambda=lambda)
 ! increment delvar changes to derived variables using possible backstepping
-  do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-    m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
+! do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+!   m = var_list(var_list_number_unknown)%list(n)
 ! TODO: place unknown dynamic region update in here too
-    do ns = 1, ubound(var(m)%funk,1)
-      p = var(m)%funk(ns)%pp(1)
-      var(m)%funk(ns)%v = delphiold(p) + lambda*delphi(p)
-    end do
-  end do
+!   do ns = 1, ubound(var(m)%funk,1)
+!     p = var(m)%funk(ns)%pp(1)
+!     var(m)%funk(ns)%v = delphiold(p) + lambda*delphi(p)
+!   end do
+! end do
 
 ! update all vars/derivatives and calculate new newtres value
 
   if (debug) write(*,*) 'in newtsolver before update with ierror = ',ierror
 
   call time_process
-  call update_and_check_derived_and_equations(ierror=ierror)
-  call time_process(description='update and check derived and equations in newtsolve')
+  call update_and_check_unknowns(initial=.false.,lambda=lambda,ierror=ierror)
+  call time_process(description='update and check unknowns in newtsolve')
+  if (debug) write(*,*) 'in newtsolver after update and check unknowns: ierror = ',ierror
+
   call time_process
+  if (ierror == 0) call update_and_check_derived_and_equations(ierror=ierror)
+  call time_process(description='update and check derived and equations in newtsolve')
   if (debug) write(*,*) 'in newtsolver after update and check derived and equations: ierror = ',ierror
 
   if (ierror == 0) then
@@ -425,8 +430,8 @@ call time_process
 !if (debug_sparse) write(*,'(a)') 'sizing sparse matrix'
 n = ptotal
 nz = 0
-do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nn)
+do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nn)
   do ns = 1, ubound(var(m)%funk,1)
     nz = nz + var(m)%funk(ns)%ndv
   end do
@@ -451,8 +456,8 @@ normalisation_multiplier = 1.d0
 nz = 0
 ! loop through all equation lines
 p = 0
-do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nn)
+do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nn)
   if (normalise_matrix) normalisation_multiplier = 1.d0/var(m)%magnitude ! reciprocal of the equation magnitude, applied to all lhs and rhs elements
   
   do ns = 1, ubound(var(m)%funk,1)
@@ -632,8 +637,8 @@ if (ierror /= 0) then
     write(*,*) 'WARNING: error implies some type of singularity: there is probably something wrong with the equations, '// &
       'but perturbing solution and continuing regardless'
     pp = 0
-    do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-      m = var_list(var_list_number(centring="all",type="unknown"))%list(nn)
+    do nn = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+      m = var_list(var_list_number_unknown)%list(nn)
       do ns = 1, ubound(var(m)%funk,1)
         pp = pp + 1 ! should be faster than looking up pp from unknown
         delphi(pp) = var(m)%magnitude*min(newtres,1.d-1) ! perturb solution by a small proportion of each variable's magnitude
@@ -644,8 +649,8 @@ if (ierror /= 0) then
 else if (normalise_matrix) then
 ! if matrix was normalised then need to recover unnormalised delphis
   pp = 0
-  do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-    m = var_list(var_list_number(centring="all",type="unknown"))%list(nn)
+  do nn = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+    m = var_list(var_list_number_unknown)%list(nn)
     do ns = 1, ubound(var(m)%funk,1)
       pp = pp + 1 ! should be faster than looking up pp from unknown
       delphi(pp) = delphi(pp)*var(m)%magnitude
@@ -701,8 +706,8 @@ nserr = 0
 merr = 0
 
 p = 0
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nvar)
+do nvar = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nvar)
   do ns = 1, ubound(var(m)%funk,1)
     p = p + 1
     aatmp = abs(var(m)%funk(ns)%v)/var(m)%magnitude
@@ -977,8 +982,8 @@ ierror = 0
 first = .false.
 
 ! update order of magnitude of unknowns
-unknown_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(nvar)
+unknown_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(nvar)
   if (var(m)%magnitude < 0.d0) first = .true.
   if (.not.(var(m)%dynamic_magnitude.or.first)) cycle
   old_magnitude = var(m)%magnitude
@@ -1015,8 +1020,8 @@ unknown_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number(c
 end do unknown_magnitude_loop
 
 ! update order of magnitude of equations
-equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nvar)
+equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nvar)
   if (var(m)%magnitude < 0.d0) first = .true.
   if (.not.(var(m)%dynamic_magnitude.or.first)) cycle
   old_magnitude = var(m)%magnitude
@@ -1225,8 +1230,8 @@ logical, parameter :: debug = .true.
 ! loop through all equations finding those that have the same centring and element location as an unknown
 ! right now assumes that the first unknown that the equation depends upon at the same location is the one that is relevant to this equation
 ! difficult to generalise this to more that one unknown at the current location without serious complications
-do neq = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  meq = var_list(var_list_number(centring="all",type="equation"))%list(neq)
+do neq = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  meq = var_list(var_list_number_equation)%list(neq)
   if (debug) write(90,'(a)') 'Examining equation '//trim(var(meq)%name)//' with centring '//trim(var(meq)%centring)
   if (trim(var(meq)%centring) == 'none') cycle
 ! reset equation counters
@@ -1304,8 +1309,8 @@ logical, parameter :: debug_file = .true.
 
 ! first loop through each unknown finding number of varname
 um = 0 ! this is the unknown variable number that we are examining
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(nvar)
+do nvar = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(nvar)
   if (trim(var(m)%name) == trim(varname)) then
     um = m
     exit
@@ -1332,8 +1337,8 @@ ens = 0 ! ns for this equation
 ederiv = 0.d0 ! maximum normalised derivative
 evalue = 0.d0 ! normalised equation value for this equation
 p = 0
-equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nvar)
+equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nvar)
   do ns = 1, ubound(var(m)%funk,1)
     p = p + 1
     do n = 1,var(m)%funk(ns)%ndv
@@ -1486,7 +1491,7 @@ end subroutine update_and_check_derived_and_equations
 
 !-----------------------------------------------------------------
 
-subroutine update_and_check_unknowns(ierror)
+subroutine update_and_check_unknowns(initial,lambda,ierror)
 
 ! this wrapper routine does both the update and checking of these variables
 ! if ierror is present then it will return with the error
@@ -1494,10 +1499,17 @@ subroutine update_and_check_unknowns(ierror)
 
 use general_module
 use equation_module
-integer, optional :: ierror
+logical :: initial ! whether this is the initial or update invocation of this subroutine - must be specified
+double precision, optional :: lambda ! backstepping parameter that is only used (and needs to be passed in) during non-initial update invocation
+integer, optional :: ierror ! optional error code, which if not passed in will cause routine to die on finding an error
 integer :: ierrorl
 
-call update_unknowns
+if (initial) then
+  call update_unknowns(initial=initial)
+else
+  if (.not.present(lambda)) call error_stop("horrible internal error in update_and_check_knowns around lambda")
+  call update_unknowns(initial=initial,lambda=lambda)
+end if
 
 call check_variable_validity(type='unknown',ierror=ierrorl)
 if (ierrorl /= 0) then
@@ -1723,8 +1735,8 @@ do pp = 1, allocatable_size(debug_list_p)
   write(96,'(a,i8,a,i8,a)') 'The unknown '//trim(var(um)%name)//' with p = ',debug_list_p(pp),' and '// &
     trim(ijkstring(var(um)%centring))//' = ',ijkvar(um,uns),' is related to the equations:'
 
-  do mm = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-    m = var_list(var_list_number(centring="all",type="equation"))%list(mm)
+  do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+    m = var_list(var_list_number_equation)%list(mm)
     do ns = 1, ubound(var(m)%funk,1)
 
       ppp = location_in_list_dummy(array=var(m)%funk(ns)%pp(1:var(m)%funk(ns)%ndv),element=debug_list_p(pp))
@@ -1775,8 +1787,8 @@ character(len=2000) :: textline
 
 write(*,'(a)') 'NOTE: writing details of all equations to fort.97'
 
-do mm = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(mm)
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
   do ns = 1, ubound(var(m)%funk,1)
 
     write(textline,'(a,i8,a,g12.5,a)') trim(var(m)%name)//':'//trim(ijkstring(var(m)%centring))//'=',ijkvar(m,ns),':v=', &
@@ -1814,8 +1826,8 @@ if (solution_accuracy_file) write(*,'(a)') 'NOTE: writing details of matrix accu
 newtrescheck = 0.d0
 sumrmscheck = 0.d0
 summaxcheck = 0.d0
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(n)
   do ns = 1, ubound(var(m)%funk,1)
     lhscheck = 0.d0
     sumcheck = 0.d0
@@ -1846,8 +1858,8 @@ if (convergence_details_file) write(fconverge,'(3(a,g10.3))') 'INFO: newtreschec
 
 if (.false.) then
   newtrescheck = 0.d0
-  do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-    m = var_list(var_list_number(centring="all",type="equation"))%list(n)
+  do n = 1, allocatable_size(var_list(var_list_number_equation)%list)
+    m = var_list(var_list_number_equation)%list(n)
     do ns = 1, ubound(var(m)%funk,1)
       newtrescheck = newtrescheck + var(m)%funk(ns)%v**2
     end do

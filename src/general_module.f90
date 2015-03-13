@@ -333,6 +333,7 @@ integer, dimension(:), allocatable :: unknown_var_from_pp ! an array for fast lo
 character(len=100), dimension(:), allocatable :: kernel_options ! list of kernel options, with highest priority on the right
 character(len=100), dimension(:), allocatable :: solver_options ! list of kernel options, with highest priority on the right
 type(var_list_type), dimension(:), allocatable :: var_list ! array of var_lists, according to type, centring, and now also region
+integer :: var_list_number_unknown, var_list_number_equation ! these two commonly used var_list_numbers are stored for quick access and calculated in equation_module
 double precision, parameter :: pi = 4.d0*atan(1.d0)
 character(len=100), parameter :: indexformat = 'i8' ! formating used for outputting integers throughout program, although now largely superseeding by dynamic format statements
 character(len=100), parameter :: floatformat='g18.10' ! formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places: now seems to be d+8 required
