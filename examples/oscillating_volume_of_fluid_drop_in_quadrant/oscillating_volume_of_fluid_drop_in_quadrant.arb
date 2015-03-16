@@ -245,7 +245,8 @@ VARIABLE <vof_F_c[l=1]> output
 <<nonuniformcomment>>VARIABLE <vof_rho_f> output
 <<nonuniformcomment>>VARIABLE <vof_mu_f> output
 
-# by default surface tension and property changes are turned off after 30 newtsteps (via <vof_phi_lim>), and <vof_phi_adjust[r=1]> changes after 50
+# by default surface tension changes are turned off after 20 newtsteps (via <vof_phi_interface>), delta function and properties after 30 newtsteps (via <vof_phi_lim>) and <vof_phi_adjust[r=1]> changes after 50
 #VARIABLE <vof_phi_adjust[r=1]> newtstepmax=30
-#VARIABLE <vof_phi_lim> newtstepmax=50
+#VARIABLE <vof_phi_interface> newtstepmax=50
+#VARIABLE <vof_phi_lim> newtstepmax=40
 #-------------------------------------------------------------------

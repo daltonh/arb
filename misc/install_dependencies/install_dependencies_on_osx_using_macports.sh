@@ -22,6 +22,8 @@ port install maxima gnuplot
 #port install wxmaxima
 # install gfortran
 port install gcc49 +gfortran
+# install SuiteSparse
+port install SuiteSparse
 
 # for Lachlan's plot and track scripts
 port install python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8
@@ -36,7 +38,9 @@ port select --set python python27
 # finally, link the (strange) macports gfortran name to a standard name within an accessible bin directory
 echo "INFO: creating a link to gfortran within /usr/local/bin";
 echo "UNINSTALL: to get rid of this link do rm /usr/local/bin/gfortran";
-ln -s /opt/local/bin/gfortran* /usr/local/bin/gfortran
+echo "WARNING: this link will not work if you have multiple gfortran versions installed via macports - remote the older ones or just create the link manually"
+#ln -s /opt/local/bin/gfortran-mp-4.9 /usr/local/bin/gfortran
+ln -s /opt/local/bin/gfortran-mp-* /usr/local/bin/gfortran
 
-echo "INFO: you may now want to install the free suitesparse linear solver.  If so, cd src/contributed/suitesparse and type make";
+echo "INFO: you may now want to install the free suitesparse linear solver umfpack fortran 90 wrapper routine.  If so, cd src/contributed/suitesparse and type make";
 echo "INFO: if you haven't already done so install Xcode with the command line utilities, and the Xquartz x11 server";

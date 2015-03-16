@@ -58,15 +58,15 @@ CELL_LOCAL <vof_phi_smooth_kernel> "1.d0/(sqrt(<vof_smooth_dist^2>/<vof_smooth_e
 # looks like we need a minimum of maxseparation=3 to get enough valid normals (at the edge of the interface region) to avoid instabilities in the (curvature) surface tension calculation
 # now revised to 2, but not using faceseparation
 #CELL_CONSTANT <vof_phi_smooth_demoninator> "cellsum[maxseparation=3,faceseparation](<vof_phi_smooth_kernel>,region=<all cells>)" ON <all cells>
-#CELL_DERIVED <vof_phi_smooth> "cellsum[maxseparation=3,faceseparation](<vof_phi_lim>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>" ON <all cells>
+#CELL_DERIVED <vof_phi_smooth> "cellsum[maxseparation=3,faceseparation](<vof_phi_interface>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>" ON <all cells>
 CELL_CONSTANT <vof_phi_smooth_demoninator> "cellsum[maxseparation=<<maxseparation>>,faceseparation](<vof_phi_smooth_kernel>,region=<all cells>)" ON <all cells>
-#CELL_DERIVED <vof_phi_smooth> "cellsum[maxseparation=2](<vof_phi_lim>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>" ON <all cells>
+#CELL_DERIVED <vof_phi_smooth> "cellsum[maxseparation=2](<vof_phi_interface>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>" ON <all cells>
 
 # using mask based on previous timestep
 # now use the previous timestep result to limit where the new smoothed phi is calculated, assuming that the interface moves with CFL<1
 #CELL_TRANSIENT <vof_phi_smooth_previous_flag> "1.d0" "cellif(cellmin(<vof_phi_smooth>,1.d0-<vof_phi_smooth>)-<vof_phi_tol>,1.d0,-1.d0)" ON <all cells>
 #CELL_TRANSIENT <vof_phi_smooth_next_flag> "1.d0" "cellmax(<vof_phi_smooth_previous_flag>,region=<cellicells>)" ON <all cells>
-#CELL_DERIVED <vof_phi_smooth> "cellif(<vof_phi_smooth_next_flag>,cellsum[maxseparation=<<maxseparation>>,faceseparation](<vof_phi_lim>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>,<vof_phi_lim>)" ON <all cells>
+#CELL_DERIVED <vof_phi_smooth> "cellif(<vof_phi_smooth_next_flag>,cellsum[maxseparation=<<maxseparation>>,faceseparation](<vof_phi_interface>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>,<vof_phi_interface>)" ON <all cells>
 
 # no mask, calculated everywhere
-CELL_DERIVED <vof_phi_smooth> "cellsum[maxseparation=<<maxseparation>>,faceseparation](<vof_phi_lim>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>" ON <all cells>
+CELL_DERIVED <vof_phi_smooth> "cellsum[maxseparation=<<maxseparation>>,faceseparation](<vof_phi_interface>*<vof_phi_smooth_kernel>,region=<all cells>)/<vof_phi_smooth_demoninator>" ON <all cells>
