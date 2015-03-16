@@ -5,7 +5,9 @@
 # run as sudo
 
 # basic arb dependencies
-apt-get install maxima maxima-share gfortran liblapack-dev libblas-dev curl gnuplot valgrind 
+apt-get install maxima maxima-share gfortran liblapack-dev libblas-dev curl gnuplot valgrind libsuitesparse-dev
+
+# not sure if also need libumfpack5.4.0 - test on new machine
 
 # pre/post-processing - gmsh - more recent binaries are available which are probably worth using instead of the ubuntu packaged version
 apt-get install gmsh
@@ -17,3 +19,5 @@ apt-get install python-pip python-dev python-wxgtk2.8 python-wxtools wx2.8-doc w
 pip install --upgrade numpy
 pip install --upgrade pandas
 pip install --upgrade numexpr
+
+echo "INFO: you may now want to install the free suitesparse linear solver umfpack fortran 90 wrapper routine.  If so, cd src/contributed/suitesparse and type make";

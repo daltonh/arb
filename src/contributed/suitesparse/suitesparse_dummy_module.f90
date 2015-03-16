@@ -50,10 +50,10 @@ logical, optional :: trans
 
 write(*,*)
 write(*,*) 'ERROR: the suitesparse UMFPACK routines have not been linked into the arb executable'
-write(*,*) 'Have a look at the readme file in src/contributed/suitesparse to find out more'
-write(*,*) 'In brief they can be downloaded and compiled using the command ''make'' run from the src/contributed/suitesparse '// &
-  'directory'
-write(*,*) 'Alternatively, try another matrix inversion technique'
+write(*,*) 'This most probably means that system-wide umfpack libraries have not been installed'
+write(*,*) 'Have a look in misc/install_dependencies for more information on this'
+write(*,*) 'Another possibility is that you do not have the fortran 90 wrapper module and that'
+write(*,*) 'you are not connected to the internet to allow the arb script to download this'
 stop
 
 end subroutine suitesparse_linear_solver
