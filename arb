@@ -88,6 +88,7 @@ usage () {
   echo "  --debugger-gnu: use the gnu debugger (default for ifort)";
   echo "  --debugger-intel: use the intel debugger (default for gfortran)";
   echo "  --no-pardiso: do not link in the native pardiso routines, allowing the intel pardiso routines to be used instead";
+  echo "  --no-suitesparse: do not download the fortran 90 suitesparse interface or link in the packaged suitesparse routines";
 # echo "  --externals|-e: incorporate the following user fortran external file into the equations_module";
   echo "  --help|-h: display this HELP INFO";
   echo;
@@ -142,6 +143,7 @@ OOMP=0; # 0 means no omp, 1 means compile with omp support
 OOPT=1; # default is optimsation level 1
 OILP="off";
 OPARDISO="present";
+OSUITESPARSE="present";
 COMPILER="default";
 unset ARBFILES; # the input files that will be passed to setup_equations.pl - unset array first
 unset EXTERNALS; # a list of external fortran files that will be included in equations_module.f90
@@ -170,6 +172,7 @@ do
     "--debugger-gnu") DEBUGGER="gdb";;
     "--debugger-intel") DEBUGGER="idb";;
     "--no-pardiso") OPARDISO="not present";;
+    "--no-suitesparse") OSUITESPARSE="not present";;
     "--omp") OOMP=1; unset OMP_NUM_THREADS;;
 #   "--omp") OOMP=1;;
 #   "--omp"*) OOMP=1; export OMP_NUM_THREADS=${i:5};; # this extracts from character position 6 and onwards (NB ${i:6:10} would extract characters 7 -> 10 or thereabouts)
@@ -382,7 +385,7 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
   fi
 
 # assemble makeline and make
-  MAKELINE="make opt=$OOPT ilp=$OILP pardiso_from_arb=\"$OPARDISO\"";
+  MAKELINE="make opt=$OOPT ilp=$OILP pardiso_from_arb=\"$OPARDISO\" suitesparse_from_arb=\"$OSUITESPARSE\"";
 # MAKELINE="make opt=$OOPT ilp=$OILP";
   if [ $OSETUP -eq 0 ] ; then
     MAKELINE="$MAKELINE compile_only" ;

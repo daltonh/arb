@@ -1,2 +1,3 @@
-SuiteSparse
-*.gz
+mUMFPACK
+*.tgz
+umfpack.f90
