@@ -7,4 +7,4 @@ UMFPACK is released under the GNU GPL (see http://www.cise.ufl.edu/research/spar
 
 To use umfpack we now use the fortran 90 interface module from here
 http://geo.mff.cuni.cz/~lh/Fortran/UMFPACK/
-
+This wrapper file should be automatically downloaded as part of the arb run procedure if system-wide umfpack libraries are available.  For more details on how to install these libraries see the misc/install_dependencies directory.

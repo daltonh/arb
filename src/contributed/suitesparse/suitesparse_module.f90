@@ -42,9 +42,12 @@ contains
 
 subroutine suitesparse_linear_solver(aa,iaa_csr1,jaa_csr1,xx,ierror,trans)
 
-! this subroutine is an interface to the hsl ma28 linear solver routine
+! this subroutine is an interface to the suitesparse umfpack solver
 
-use mUMFPACK
+use mUMFPACK ! we now use the fortran 90 wrpaaer to this solver kindly provided by 
+! http://geo.mff.cuni.cz/~lh/Fortran/UMFPACK/#changelog
+! the wrapper routine that contains this module will be automatically downloaded during the arb compilation step
+
 double precision, dimension(:), allocatable :: xx ! already allocated
 double precision, dimension(:), allocatable :: aa ! already allocated
 integer, dimension(:), allocatable :: iaa_csr1, jaa_csr1 ! already allocated
@@ -59,7 +62,7 @@ character(len=1000) :: formatline
 !integer*8 :: n, sys
 integer :: n
 logical, parameter :: iterative = .true. ! use iterative refinement when solving
-logical :: debug = .true., debug_sparse = .false.
+logical :: debug = .false., debug_sparse = .false.
 logical, optional :: trans ! if true then solve using the tranpose of A
 logical :: trans_l ! local version of trans 
 

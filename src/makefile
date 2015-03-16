@@ -68,6 +68,10 @@ ilp = off
 # use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
 pardiso_from_arb = present
 
+# suitesparse solver
+# use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
+suitesparse_from_arb = present
+
 #------------------------------------------------------------------------------
 # variables below this should be automagically set within this makefile
 
@@ -79,6 +83,7 @@ suitesparse = present
 donest = present
 intel_pardiso = present
 pardiso := $(pardiso_from_arb)
+suitesparse := $(suitesparse_from_arb)
 
 # additional libraries to link in
 libs =		
@@ -448,18 +453,29 @@ else
 endif
 
 #----------------
-# check for existence of suitesparse libraries
-# compilation of these is handled locally in the suitesparse directory right now
+# check for existence of suitesparse libraries, which now requires that a system-wide suitesparse library be installed
+# if these libraries are present, then we will attempt to download the mUMFPACK fortran 90 interface as part of the make procedure to the suitesparsedir
+ifeq "$(os_type)" "Darwin"
+# via macports on osX, port SuiteSparse
+  suitesparselib = /opt/local/lib/libumfpack.a
+else
+# apt-get on linux, package libsuitesparse-dev
+  suitesparselib = /usr/lib/libumfpack.a
+endif
 suitesparsedir = $(srcdir)/contributed/suitesparse
 ifeq "$(strip $(suitesparse))" "present"
-  ifeq "$(wildcard $(suitesparsedir)/umfpack.f90)" ""
+  ifeq "$(wildcard $(suitesparselib))" ""
     suitesparse = not present
   endif
 endif
 ifeq "$(strip $(suitesparse))" "present"
   objects += suitesparse_module.o umfpack.o
   oldlibs := $(libs)
-  libs := $(libs) -lumfpack
+  ifeq "$(os_type)" "Darwin"
+    libs := $(libs) -L/opt/local/lib -lumfpack
+  else
+    libs := $(libs) -lumfpack
+  endif
   linear_solver_modules += suitesparse_module.o umfpack.o
   files_to_delete += suitesparse_dummy_module.o
 else
@@ -584,6 +600,8 @@ hsl_ma28d_dummy_module.o : $(srcdir)/contributed/hsl_ma28d/hsl_ma28d_dummy_modul
 endif
 
 ifeq "$(strip $(suitesparse))" "present"
+$(suitesparsedir)/umfpack.f90 :  		
+	make -C $(suitesparsedir)
 umfpack.o : $(suitesparsedir)/umfpack.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 ifeq "$(strip $(mach_type))" "intel64"
@@ -593,7 +611,7 @@ suitesparse_module.o : $(suitesparsedir)/suitesparse_module.f90 umfpack.o
 else
 suitesparse_module.o : $(suitesparsedir)/suitesparse_module.f90 umfpack.o
 	cp $< suitesparse_module_arch.f90
-	perl -p -i -e 's/integer\*8/integer*4/g' suitesparse_module_arch.f90 # if this is on a ia32 processor need to use shorter integers
+	perl -p -i -e 's/integer\*8/integer*4/g' suitesparse_module_arch.f90 # if this is on a ia32 processor need to use shorter integers # not sure if needed anymore - who has a 32bit machine anyway to test it on???
 	$(fcomp) $(cflags) suitesparse_module_arch.f90 $(logme) -o $@
 endif
 else
