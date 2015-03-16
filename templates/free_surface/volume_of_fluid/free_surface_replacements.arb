@@ -8,6 +8,6 @@ GENERAL_REPLACEMENTS R "<boundaries>" W "<free surface boundaries>"
 GENERAL_REPLACEMENTS R "<all nodes>" W "<free surface all nodes>"
 # and some variables too, to emphasise that these are defined on the free surface mesh
 GENERAL_REPLACEMENTS R "<vof_phi_smooth" W "<vof_fs_phi_smooth"
-GENERAL_REPLACEMENTS R "<vof_phi_lim>" W "<vof_fs_phi_lim>"
+GENERAL_REPLACEMENTS R "<vof_phi_interface>" W "<vof_fs_phi_interface>"
 GENERAL_REPLACEMENTS R "<vof_phigrad" W "<vof_fs_phigrad" 
 GENERAL_REPLACEMENTS R "<vof_kappa" W "<vof_fs_kappa"

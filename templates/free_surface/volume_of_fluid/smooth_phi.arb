@@ -45,7 +45,7 @@ GENERAL_REPLACEMENTS DEFAULT "<<maxsmoothingseparation>>" W "3" # default maximu
 # now do the smoothing
 # looks like we need a minimum of maxseparation=3 to get enough valid normals (at the edge of the interface region) to avoid instabilities in the (curvature) surface tension calculation
 CELL_CONSTANT <vof_phi_smoothing_demoninator> "cellsum[maxseparation=<<maxsmoothingseparation>>,faceseparation](<vof_smoothing_kernel>,region=<all cells>)" ON <all cells>
-CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=<<maxsmoothingseparation>>,faceseparation](<vof_phi_lim>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
+CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=<<maxsmoothingseparation>>,faceseparation](<vof_phi_interface>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
 
 # save the smoothed phi for later - necessary?
 #CELL_TRANSIENT <vof_phi_smoothed[r=1]> "" "<vof_phi_smoothed>" ON <all cells> output
