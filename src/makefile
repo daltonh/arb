@@ -452,25 +452,20 @@ endif
 # compilation of these is handled locally in the suitesparse directory right now
 suitesparsedir = $(srcdir)/contributed/suitesparse
 ifeq "$(strip $(suitesparse))" "present"
-  ifeq "$(and $(wildcard $(suitesparsedir)/libumfpack.a), $(wildcard $(suitesparsedir)/umf4_f77wrapper.o) )" ""
+  ifeq "$(wildcard $(suitesparsedir)/umfpack.f90)" ""
     suitesparse = not present
   endif
 endif
 ifeq "$(strip $(suitesparse))" "present"
-  objects += $(suitesparsedir)/umf4_f77wrapper.o suitesparse_module.o
-# libs += $(suitesparsedir)/libumfpack.a $(suitesparsedir)/libamd.a $(suitesparsedir)/libcholmod.a \
-#   $(suitesparsedir)/libcolamd.a $(suitesparsedir)/libcamd.a $(suitesparsedir)/libmetis.a \
-#   $(suitesparsedir)/libccolamd.a -lblas # order as used in UMFPACK/Demo Makefile, and lblas necessary
+  objects += suitesparse_module.o umfpack.o
   oldlibs := $(libs)
-  libs := $(suitesparsedir)/libumfpack.a $(suitesparsedir)/libamd.a $(suitesparsedir)/libcholmod.a \
-    $(suitesparsedir)/libcolamd.a $(suitesparsedir)/libcamd.a $(suitesparsedir)/libmetis.a \
-    $(suitesparsedir)/libccolamd.a $(oldlibs)
-  linear_solver_modules += suitesparse_module.o
+  libs := $(libs) -lumfpack
+  linear_solver_modules += suitesparse_module.o umfpack.o
   files_to_delete += suitesparse_dummy_module.o
 else
   objects += suitesparse_dummy_module.o
   linear_solver_modules += suitesparse_dummy_module.o
-  files_to_delete += suitesparse_module.o suitesparse_module_arch.f90
+  files_to_delete += suitesparse_module.o suitesparse_module_arch.f90 umfpack.o
 endif
 
 #----------------
@@ -589,12 +584,14 @@ hsl_ma28d_dummy_module.o : $(srcdir)/contributed/hsl_ma28d/hsl_ma28d_dummy_modul
 endif
 
 ifeq "$(strip $(suitesparse))" "present"
-  ifeq "$(strip $(mach_type))" "intel64"
-suitesparse_module.o : $(suitesparsedir)/suitesparse_module.f90
+umfpack.o : $(suitesparsedir)/umfpack.f90
+	$(fcomp) $(cflags) $< $(logme) -o $@
+ifeq "$(strip $(mach_type))" "intel64"
+suitesparse_module.o : $(suitesparsedir)/suitesparse_module.f90 umfpack.o
 	cp $< suitesparse_module_arch.f90
 	$(fcomp) $(cflags) suitesparse_module_arch.f90 $(logme) -o $@
 else
-suitesparse_module.o : $(suitesparsedir)/suitesparse_module.f90
+suitesparse_module.o : $(suitesparsedir)/suitesparse_module.f90 umfpack.o
 	cp $< suitesparse_module_arch.f90
 	perl -p -i -e 's/integer\*8/integer*4/g' suitesparse_module_arch.f90 # if this is on a ia32 processor need to use shorter integers
 	$(fcomp) $(cflags) suitesparse_module_arch.f90 $(logme) -o $@

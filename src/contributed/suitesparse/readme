@@ -5,49 +5,6 @@ http://www.cise.ufl.edu/research/sparse/SuiteSparse/
 http://www.cise.ufl.edu/research/sparse/umfpack/
 UMFPACK is released under the GNU GPL (see http://www.cise.ufl.edu/research/sparse/umfpack/current/.
 
-UMFPACK depends on `METIS - Serial Graph Partitioning and Fill-reducing Matrix Ordering'.  See:
-http://glaros.dtc.umn.edu/gkhome/metis/metis/overview
-METIS is freely available.  See http://glaros.dtc.umn.edu/gkhome/metis/metis/faq?q=metis/metis/faq#distribute for conditions.
+To use umfpack we now use the fortran 90 interface module from here
+http://geo.mff.cuni.cz/~lh/Fortran/UMFPACK/
 
-Install:
-
-The installation process for the UMFPACK/METIS combination has been automated so that it can be easily used with arb.  To install these packages and compile them in a form that is suitable for arb:
-
-1) cd src/contributed/suitesparse
-2) make
-
-The make command will download a compatible version of UMFPACK and version 4.0 of METIS (using curl), and then compile these libraries using the gcc compiler.  A wrapper script for using UMFPACK from fortran (included with UMFPACK) will also be compiled.  The files will be placed in the src/contributed/suitesparse directory, so will not overwrite any alternative suitesparse or metis libraries already on your system.
-
-If all goes well the following files will be placed in src/contributed/suitesparse to be used by arb:
-libamd.a
-libcamd.a
-libccolamd.a
-libcholmod.a
-libcolamd.a
-libmetis.a
-libumfpack.a
-umf4_f77wrapper.o
-
-Note that the compilation is mach_type dependent and the libraries will need to be remade if transferred from one machine to another - do a make clean and then a make.
-
-Uninstall:
-
-To remove the compiled libraries and files type
-
-make clean
-
-This will leave only the downloaded files (ready to be reused).  To remove the suitesparse and metis downloads as well, type
-
-make clean_all
-
-Compatibility:
-
-arb has been tested with the following combinations of umfpack and metis:
-
-(02/06/10)
-UMFPACK.tar.gz  02-Jun-2010 11:46
-metis-4.0.tar.gz (4.0.1)
-
-(23/03/11)
-SuiteSparse-3.6.0.tar.gz
-metis-4.0.3.tar.gz

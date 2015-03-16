@@ -44,35 +44,30 @@ subroutine suitesparse_linear_solver(aa,iaa_csr1,jaa_csr1,xx,ierror,trans)
 
 ! this subroutine is an interface to the hsl ma28 linear solver routine
 
-use mUMFPACK
 double precision, dimension(:), allocatable :: xx ! already allocated
 double precision, dimension(:), allocatable :: aa ! already allocated
 integer, dimension(:), allocatable :: iaa_csr1, jaa_csr1 ! already allocated
-!integer*8, dimension(:), allocatable :: iaa, jaa ! to be allocated
-integer, dimension(:), allocatable :: iaa, jaa ! to be allocated
+integer*8, dimension(:), allocatable :: iaa, jaa ! to be allocated
 double precision, dimension(:), allocatable :: rhs ! to be allocated
 integer :: ierror, nn, nz
 character(len=1000) :: formatline
-!double precision, dimension(20) :: control
-!double precision, dimension(90) :: info
-!integer*8 :: n, symbolic, numeric, sys
-!integer*8 :: n, sys
-integer :: n
+double precision, dimension(20) :: control
+double precision, dimension(90) :: info
+integer*8 :: n, symbolic, numeric, sys
 logical, parameter :: iterative = .true. ! use iterative refinement when solving
-logical :: debug = .true., debug_sparse = .false.
+logical :: debug = .false., debug_sparse = .false.
 logical, optional :: trans ! if true then solve using the tranpose of A
 logical :: trans_l ! local version of trans 
 
-! UMFPACK constant
-integer :: sys=UMFPACK_A
-! ---------- SELECT ONE CHOICE: ----------
-! C pointers
-  type(c_ptr) :: symbolic,numeric
-! integer pointers
-! integer(c_intptr_t) :: symbolic,numeric
-! ----------------------------------------
-! zero-based arrays
-real(8) :: control(0:UMFPACK_CONTROL-1),info(0:UMFPACK_INFO-1)
+external umf4def 
+external umf4pcon 
+external umf4sym 
+external umf4pinf 
+external umf4num 
+external umf4fsym 
+external umf4solr 
+external umf4sol 
+external umf4fnum 
 
 if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine suitesparse_linear_solver'
@@ -136,7 +131,6 @@ if (debug_sparse) call umf4pcon (control)
 ! pre-order and symbolic analysis
 !call umf4sym (n, n, Ap, Ai, Ax, symbolic, control, info)
 call umf4sym (n, n, jaa, iaa, aa, symbolic, control, info)
-!call umf4sym (n, n, Ap, Ai, Ax, symbolic, control, info)
  
 if (debug_sparse) write(*,*) 'symbolic analysis complete'
 
