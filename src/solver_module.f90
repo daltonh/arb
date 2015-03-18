@@ -385,7 +385,7 @@ use suitesparse_module
 
 double precision, dimension(:), allocatable :: aa
 integer, dimension(:), allocatable :: iaa, jaa
-integer :: ierror, p, nz, nz_last_row, nz_col, nn, nz_full_row, nz_full, n, m, ns, pp
+integer :: ierror, p, nz, nz_last_row, nz_col, nn, nz_full_row, nz_full, n, m, ns, pp, npp, nsm, mm
 double precision :: aa_max, varmag, normalisation_multiplier
 character(len=1000) :: formatline
 logical :: singular
@@ -397,7 +397,7 @@ logical, parameter :: condition_number = .false. ! calculate the condition numbe
 logical, parameter :: condition_number_estimate = .false. ! calculate an estimate of the condition number of the matrix - requires the suitesparse solvers to be compiled in
 logical, parameter :: diagonal_dominance = .false. ! calculate some statistics about the diagonal dominance of the equations
 logical, parameter :: matrix_test = .false. ! do a test matrix inversion using a made-up test matrix instead of solving PDE system
-logical, parameter :: dump_matrix = .false. ! dump contents and solution to matrix in fort.91
+logical, parameter :: dump_matrix = .true. ! dump contents and solution to matrix in fort.91
 integer, parameter :: dump_matrix_max = 1000 ! maximum number of elements to include when dumping matrix
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .false.
@@ -453,15 +453,16 @@ p = 0
 do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
   m = var_list(var_list_number(centring="all",type="equation"))%list(nn)
   if (normalise_matrix) normalisation_multiplier = 1.d0/var(m)%magnitude ! reciprocal of the equation magnitude, applied to all lhs and rhs elements
+  if (debug) write(80,'(a,i8,a)') 'nn = ',nn,': equation = '//trim(var(m)%name)
   
   do ns = 1, ubound(var(m)%funk,1)
     p = p + 1
 
     delphi(p) = -var(m)%funk(ns)%v*normalisation_multiplier
     iaa(p) = nz + 1  ! row index
-    if (debug) write(80,*) 'new row: p = ',p,': delphi(p) = ',delphi(p)
-    if (debug) write(80,*) 'var(m)%funk(ns)%ndv = ',var(m)%funk(ns)%ndv,': var(m)%funk(ns)%pp = ',var(m)%funk(ns)%pp, &
-      ': var(m)%funk(ns)%dv = ',var(m)%funk(ns)%dv
+    if (debug) write(80,'(a,i8,a,g10.4)') 'new row: p = ',p,': delphi(p) = ',delphi(p)
+!   if (debug) write(80,*) 'var(m)%funk(ns)%ndv = ',var(m)%funk(ns)%ndv,': var(m)%funk(ns)%pp = ',var(m)%funk(ns)%pp, &
+!     ': var(m)%funk(ns)%dv = ',var(m)%funk(ns)%dv
 
     nz_last_row = nz ! last entry in matrix of previous row is saved
     nz = nz + var(m)%funk(ns)%ndv
@@ -471,6 +472,16 @@ do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="equati
     end if
     jaa(nz_last_row+1:nz) = var(m)%funk(ns)%pp(1:var(m)%funk(ns)%ndv) ! column index (icn for hsl/coordinate, ja for intel storage)
     aa(nz_last_row+1:nz) = var(m)%funk(ns)%dv(1:var(m)%funk(ns)%ndv) ! matrix value
+    if (debug) then
+      do npp = 1, var(m)%funk(ns)%ndv
+        pp = var(m)%funk(ns)%pp(npp)
+        mm = unknown_var_from_pp(pp)
+        if (mm == 0) call error_stop("problem in mainsolver with debugging 1")
+        nsm = pp - var(mm)%funk(1)%pp(1) + 1 ! the ns for the unknown can be found from the unknown derivatives
+        write(80,'(2(a,i8),a,g10.4)') '  adding entry: unknown = '//trim(var(mm)%name)//': pp = ',pp, &
+          ': ijk = ',ijkvar(mm,nsm),': dv = ',var(m)%funk(ns)%dv(npp)
+      end do
+    end if
     if (normalise_matrix) then
       do nz_col = nz_last_row + 1, nz ! loop through aa entries on the current row (equation)
         aa(nz_col) = aa(nz_col)*normalisation_multiplier*var(unknown_var_from_pp(jaa(nz_col)))%magnitude ! multiply each element by the unknown magnitude and divide by the equation magnitude

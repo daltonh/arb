@@ -164,6 +164,10 @@ else
   control (UMFPACK_PRL) = 1
 end if
 !control(UMFPACK_STRATEGY) = UMFPACK_STRATEGY_UNSYMMETRIC
+!control(UMFPACK_SCALE) = 0 ! no scaling
+!control(UMFPACK_SCALE) = 1 ! sum scaling (default)
+control(UMFPACK_SCALE) = 2 ! max scaling
+control(UMFPACK_PIVOT_TOLERANCE) = 0.3d0 ! (default 0.1d0, but with sum scaling this default has given problems on fairly innocuous problems, so increased it as of v0.52)
 if (debug_sparse) call umf4pcon (control)
 
 ! pre-order and symbolic analysis
