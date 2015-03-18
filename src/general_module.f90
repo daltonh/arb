@@ -332,15 +332,17 @@ character(len=100), dimension(5), parameter :: vtkoutput_gmesh_options = ["vtkou
   "meshvtkoutput        ", "centringmeshvtkoutput", "novtkoutput          "]
 character(len=100), dimension(5), parameter :: datoutput_gmesh_options = ["datoutput            ", "centringdatoutput    ", &
   "meshdatoutput        ", "centringmeshdatoutput", "nodatoutput          "]
-character(len=100), dimension(5), parameter :: input_gmesh_options = ["input            ", "centringinput    ", "meshinput        ", &
-  "centringmeshinput", "noinput          "]
+character(len=100), dimension(5), parameter :: input_gmesh_options = ["input            ", "centringinput    ", &
+  "meshinput        ", "centringmeshinput", "noinput          "]
 character(len=100), dimension(3), parameter :: data_options = ["elementdata           ", "elementnodedata       ", &
   "elementnodelimiteddata"]
 character(len=100), dimension(2), parameter :: input_options = ["input            ", "noinput          "]
 character(len=100), dimension(2), parameter :: magnitude_options = ["dynamicmagnitude", "staticmagnitude "]
-character(len=8), dimension(6), parameter :: stopfilelist = [ "kill    ", "stopback", "stopnewt", "stop    ", "stoptime", "halt    " ]
+character(len=8), dimension(6), parameter :: stopfilelist = [ "kill    ", "stopback", "stopnewt", "stop    ", "stoptime", &
+  "halt    " ]
 character(len=8), dimension(3), parameter :: dumpfilelist = [ "dumpnewt", "dump    ", "dumptime" ]
-logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], array_mask2 = [.false.,.true.,.false.], array_mask3 = [.false.,.false.,.true.]
+logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], array_mask2 = [.false.,.true.,.false.], &
+  array_mask3 = [.false.,.false.,.true.]
 
 ! kernel availability (whether they are calculated or not) is calculated by the setup_equations.pl script, however, the settings can be overwritten (as true) here
 logical :: kernel_availability_faceave = .false. ! needed for varcdivgrad, but this routine itself is not needed until normal circumstances, so set false

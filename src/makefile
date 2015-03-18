@@ -455,19 +455,26 @@ endif
 #----------------
 # check for existence of suitesparse libraries, which now requires that a system-wide suitesparse library be installed
 # if these libraries are present, then we will attempt to download the mUMFPACK fortran 90 interface as part of the make procedure to the suitesparsedir
-ifeq "$(os_type)" "Darwin"
-# via macports on osX, port SuiteSparse
-  suitesparselib = /opt/local/lib/libumfpack.a
-else
-# apt-get on linux, package libsuitesparse-dev
-  suitesparselib = /usr/lib/libumfpack.a
-endif
-suitesparsedir = $(srcdir)/contributed/suitesparse
 ifeq "$(strip $(suitesparse))" "present"
+  ifeq "$(os_type)" "Darwin"
+# via macports on osX, port SuiteSparse
+    suitesparselib = /opt/local/lib/libumfpack.a
+  else
+# apt-get on 12.04 ubuntu, package libsuitesparse-dev
+    suitesparselib = /usr/lib/libumfpack.a
+  endif
   ifeq "$(wildcard $(suitesparselib))" ""
     suitesparse = not present
+# on post 14.04 ubuntu library has been moved, so try this too
+    ifneq "$(os_type)" "Darwin"
+      suitesparselib = /usr/lib/x86_64-linux-gnu/libumfpack.a
+      ifneq "$(wildcard $(suitesparselib))" ""
+        suitesparse = present
+      endif
+    endif
   endif
 endif
+suitesparsedir = $(srcdir)/contributed/suitesparse
 ifeq "$(strip $(suitesparse))" "present"
   objects += suitesparse_module.o umfpack.o
   oldlibs := $(libs)

@@ -609,7 +609,7 @@ else if (trim(linear_solver) == "suitesparse") then
 ! suitesparse umf solver
 
   call suitesparse_linear_solver(aa,iaa,jaa,delphi,ierror)
-! if (ierror == -2) singular = .true. ! not sure what number this is
+  if (ierror == 1) singular = .true.
 
 else if (trim(linear_solver) == "hslma28") then
 ! hsl_ma28 solver

@@ -764,7 +764,9 @@ sub read_input_files {
         next;
       }
 
+# ref: default options
 # set or reset any default options (these go before the individual options so any relevant individual options take precedence over these)
+# also, each DEFAULT_OPTIONS statement clears previous DEFAULT_OPTIONS statements
       elsif ($line =~ /^\s*DEFAULT_OPTIONS\s*($|\s)/i) {
         $default_options = $';
         ($default_options) = $default_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
@@ -778,7 +780,9 @@ sub read_input_files {
         next;
       }
 
+# ref: override options
 # set or reset any override options (these go at the end of the individual options so override any individual options)
+# also, each OVERRIDE_OPTIONS statement clears previous OVERRIDE_OPTIONS statements
       elsif ($line =~ /^\s*OVERRIDE_OPTIONS\s*($|\s)/i) {
         $override_options = $';
         ($override_options) = $override_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
