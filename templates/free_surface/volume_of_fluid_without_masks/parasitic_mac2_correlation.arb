@@ -1,0 +1,14 @@
+# calculates the parasitic current magnitude based on dhamm06 paper, using nondimensional numbers <We> and <Ca>
+# right now only for uniform density and viscosity
+
+CONSTANT <parasitic_mac2_celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)"
+CONSTANT <parasitic_mac2_uu_V> "1/nonemax(<Ca>,<tinyish>)"
+CONSTANT <parasitic_mac2_a_V> 6.4d-4
+CONSTANT <parasitic_mac2_uu_A> "sqrt(1.d0/(nonemax(<We>,<tinyish>)*<parasitic_mac2_celldxave>))"
+CONSTANT <parasitic_mac2_a_A> 6.4d-2
+NONE_TRANSIENT <parasitic_mac2_uu_T> "0.d0" "<t>/(nonemax(<We>,<tinyish>)*(<parasitic_mac2_celldxave>**2))" nostepoutput
+CONSTANT <parasitic_mac2_a_T> 8.3d-3
+CONSTANT <parasitic_mac2_u_V> "<parasitic_mac2_uu_V>*<parasitic_mac2_a_V>" stepoutput
+CONSTANT <parasitic_mac2_u_A> "<parasitic_mac2_uu_A>*<parasitic_mac2_a_A>" stepoutput
+NONE_TRANSIENT <parasitic_mac2_u_T> "" "<parasitic_mac2_uu_T>*<parasitic_mac2_a_T>" stepoutput
+NONE_TRANSIENT <parasitic_mac2_u_p> "" "nonemin(<parasitic_mac2_u_V>,nonemin(<parasitic_mac2_u_A>,<parasitic_mac2_u_T>))" stepoutput

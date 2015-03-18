@@ -33,32 +33,12 @@
 #-------------------------------------------------------------------------
 
 This file contains details of past changes, current features and the future development direction for arb.
+This information is now basically hosted on our local gitlab server - this file only contains major release summaries
 
 ***************************************************************
 CURRENT VERSION:
 
--------------------------------
-v0.50 - nosey nodey
-
-* basic implementation of node centred variables, including input and output routines, but not kernels yet (300614)
-* COMMON (also called INTERSECTION) regions command, which produces a new region which has elements of others in common (030714)
-* COMPOUND region is equivalently UNION region command (030714)
-* significant changes to volume_of_fluid templates files (040714)
-* kernel parameters changed (090714)
-* output of gmsh geometrical regions altered to be consistent with msh file standard, particularly for zero dimensional mesh elements (150714)
-* better 2d geometry treatment for faces and cells that are slightly curved (220714)
-* added support for the native pardiso solver (linearsolver=pardiso or pardisoiterative) under ifort on linux, and gfortran on both osx and linux (230714)
-* support for long integer (ilp64) under ifort only (230714)
-* for pointwise compatibility add delimiters onto regions on readin if not already present (300814)
-* improvements in prandtl zero equation, prandtl one equation and wilcox06 turbulence models (280914)
-* decreased the forgotten parameter eps_dv in general_module.f90 to 1.d-40 from 1.d-20 (131014)
-* stop pesky OsX .DS_Store files from being packed via pack (131014)
-* INCLUDE_ROOT statements are hierarchical now, meaning that an included file's INCLUDE_ROOT statement does not alter the parent file's INCLUDE_ROOT directory, allowing routines to include code from other directories without altering the upstream file's behaviour (271014)
-* added cellfromcellave[separationcentreN] averaging so that can pick up properties of a separation cell centre (from the last nth separation loop) in a separation cell (031214)
-* fixed potentially serious bug around faceave[adjacentcells|harmonic|etc] which may have caused an error when used as a demoninator (081214)
-* default kernel polynomialorder and polynomialaverageorder=2 now, and increase in minw with automaximumseparation has been dropped (131214)
-* <<radialdim>> and <<axialdim>> general replacement variables now for 2D cylindrical coordinates (161214)
-* adopting git distribution control (090115)
+v0.53 - major rewrite of region treatment, including dynamic regions
 
 -------------------------------
 LONG TERM DESIRABLES:
@@ -270,4 +250,30 @@ v0.42 - flexible frankie
 * bugfix for regions that contain no elements (220514)
 * newtstepmax/newtstepmin options for derived and equations control range of newtsteps over which variable will be updated (270514)
 
+-------------------------------
+v0.50 - nosey nodey
+
+* basic implementation of node centred variables, including input and output routines, but not kernels yet (300614)
+* COMMON (also called INTERSECTION) regions command, which produces a new region which has elements of others in common (030714)
+* COMPOUND region is equivalently UNION region command (030714)
+* significant changes to volume_of_fluid templates files (040714)
+* kernel parameters changed (090714)
+* output of gmsh geometrical regions altered to be consistent with msh file standard, particularly for zero dimensional mesh elements (150714)
+* better 2d geometry treatment for faces and cells that are slightly curved (220714)
+* added support for the native pardiso solver (linearsolver=pardiso or pardisoiterative) under ifort on linux, and gfortran on both osx and linux (230714)
+* support for long integer (ilp64) under ifort only (230714)
+* for pointwise compatibility add delimiters onto regions on readin if not already present (300814)
+* improvements in prandtl zero equation, prandtl one equation and wilcox06 turbulence models (280914)
+* decreased the forgotten parameter eps_dv in general_module.f90 to 1.d-40 from 1.d-20 (131014)
+* stop pesky OsX .DS_Store files from being packed via pack (131014)
+* INCLUDE_ROOT statements are hierarchical now, meaning that an included file's INCLUDE_ROOT statement does not alter the parent file's INCLUDE_ROOT directory, allowing routines to include code from other directories without altering the upstream file's behaviour (271014)
+* added cellfromcellave[separationcentreN] averaging so that can pick up properties of a separation cell centre (from the last nth separation loop) in a separation cell (031214)
+* fixed potentially serious bug around faceave[adjacentcells|harmonic|etc] which may have caused an error when used as a demoninator (081214)
+* default kernel polynomialorder and polynomialaverageorder=2 now, and increase in minw with automaximumseparation has been dropped (131214)
+* <<radialdim>> and <<axialdim>> general replacement variables now for 2D cylindrical coordinates (161214)
+* adopting git distribution control (090115)
+
+-------------------------------
+v0.51
+v0.52 - more complete implementation of node-centred variables
 -------------------------------
