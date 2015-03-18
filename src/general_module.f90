@@ -44,10 +44,11 @@ integer, parameter :: totaldimensions=3 ! this is maximum number of dimensions, 
 ! a generic kernel for calculating averages and derivatives
 type kernel_type
   character(len=4) :: centring ! whether input values are cell (i), face (j) or node (k) centred
-  integer, dimension(:), allocatable :: ijk ! array of cell/face/node indicies that are used in this kernel
+  integer, dimension(:), allocatable :: ijk ! array of cell/face/node indices that are used in this kernel
   double precision, dimension(:), allocatable :: v ! value of kernel in 1-to-1 correspondance with ijk
   logical :: reflect_present ! if any reflect_multipliers are not 1, and hence, the reflect_multipliers array is allocated
   integer, dimension(:,:), allocatable :: reflect_multiplier ! takes on values of +1 or -1 as multipliers to be applied during reflections (glued faces).  Second index refers to kernel element (ie, one-to-one correspondance with ijk and v) and first to reflection coordinate direction.  If not allocated then +1 values should be used.
+  logical :: available ! as calculated by setup_equations, determines whether this kernel is actually required for a particular simulation
 end type kernel_type
 
 ! this type specifies details of each node (vertex)
@@ -55,14 +56,17 @@ end type kernel_type
 type node_type
   integer :: type ! integer specifying whether node is within the domain (1) or on a boundary (2)
   double precision, dimension(totaldimensions) :: x ! location of node
-  integer, dimension(:), allocatable :: jface ! array storing j indicies of surrounding faces (directly connected, not via glue)
-  integer, dimension(:), allocatable :: icell ! array storing i indicies of surrounding cells (both directly connected and via glue)
+  double precision :: dx_kernel ! characteristic dimension of mesh around this node to be used in kernel scaling - approximately equal to the equivalent radii of surrounding cells (not diameter)
+  integer, dimension(:), allocatable :: jface ! array storing j indices of surrounding faces (directly connected, not via glue)
+  integer, dimension(:), allocatable :: icell ! array storing i indices of surrounding cells (both directly connected and via glue)
   integer, dimension(:), allocatable :: region_list ! list of regions that the node is a member of
-  integer, dimension(:), allocatable :: glue_knode ! array storing k indicies of any coincident nodes (due to faces being glued together) - unallocated if no faces are glueds to this one
+  integer, dimension(:), allocatable :: glue_knode ! array storing k indices of any coincident nodes (due to faces being glued together) - unallocated if no faces are glueds to this one
   logical :: glue_present ! signifies that some faces that are attached to this node are glued
   logical :: reflect_present ! signifies that some faces within the icells are not only glued, but also includes reflections (in practice means that reflect_multipliers should be allocated and have non-unity values)
   integer, dimension(:,:), allocatable :: reflect_multiplier ! reflect_multiplier for cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position
   double precision, dimension(:,:), allocatable :: r ! relative position of cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position
+  type(kernel_type), dimension(0:3) :: kernel ! kernel(m) = kernel for the average (m=0) or derivative in the m'th coordinate direction, all based on cell data
+  integer :: domain_dimensions ! number of dimensions of adjacent domain
 end type node_type
   
 ! this type specifies details of each cell face
@@ -74,8 +78,8 @@ type face_type
   double precision, dimension(totaldimensions) :: dx_unit ! unit vector from cell(idown) to cell(iup), adjacent to face
   double precision :: dx_kernel ! characteristic dimension of mesh around this face to be used in kernel scaling - approximately equal to the equivalent radii of surrounding cells (not diameter)
   double precision, dimension(totaldimensions,totaldimensions) :: norm ! orthogonal orientation vectors for face: first norm(:,1) points normal to face in direction from cell icell(1) -> icell(2), second norm(:,2) points from node(1)->node(2) on face (2d and 3d) (first tangent) and third norm(:,3) is normal to both (second tangent in 3d)
-  integer, dimension(:), allocatable :: icell ! array storing i indicies of the 2 adjacent cells
-  integer, dimension(:), allocatable :: knode ! array storing k indicies of surrounding nodes
+  integer, dimension(:), allocatable :: icell ! array storing i indices of the 2 adjacent cells
+  integer, dimension(:), allocatable :: knode ! array storing k indices of surrounding nodes
   integer, dimension(:), allocatable :: region_list ! list of regions that the face is a member of
   integer :: dimensions ! number of dimensions that cell is (0, 1 or 2)
   integer :: gtype ! gmsh element type for element geometry
@@ -97,9 +101,9 @@ type cell_type
   double precision :: dx_kernel ! characteristic dimension of mesh around this cell to be used in kernel scaling - approximately equal to the equivalent radius of the cell (not strictly, but definitely not the diameter either)
   double precision :: dx_max ! maximum cell centre to node distance for this cell
   double precision :: dx_min ! minimum cell centre to node distance for this cell
-  integer, dimension(:), allocatable :: knode ! array storing k indicies of surrounding nodes
-  integer, dimension(:), allocatable :: jface ! array storing j indicies of surrounding faces
-  integer, dimension(:), allocatable :: icell ! array storing i indicies of surrounding cells
+  integer, dimension(:), allocatable :: knode ! array storing k indices of surrounding nodes
+  integer, dimension(:), allocatable :: jface ! array storing j indices of surrounding faces
+  integer, dimension(:), allocatable :: icell ! array storing i indices of surrounding cells
   integer, dimension(:), allocatable :: region_list ! list of regions that the cell is a member of
   integer :: dimensions ! number of dimensions that cell is (1, 2 or 3)
   integer :: gtype ! gmsh element type for element geometry
@@ -140,7 +144,7 @@ type region_type
   character(len=1000) :: location ! string specifying location of region
   character(len=4) :: centring ! whether cell or face centred
   integer :: dimensions ! maximum dimensions of the elements within the region
-  integer, dimension(:), allocatable :: ijk ! array of cell or face i or j indicies that are within this region - dimension of this is number of elements in region
+  integer, dimension(:), allocatable :: ijk ! array of cell or face i or j indices that are within this region - dimension of this is number of elements in region
   integer, dimension(:), allocatable :: ns ! array that specifies data number from i or j index - dimension of this is either itotal (cell centred) or jtotal (face centred)
 end type region_type
 
@@ -291,7 +295,7 @@ integer :: timestepmin = 0 ! minimum number of timesteps performed
 integer :: timestepadditional = 0 ! minimum number of timesteps that must be completed during current run
 integer :: timestepout = 0 ! maximum number of timesteps between output, with zero indicating no output
 integer :: newtstepout = 0 ! maximum number of newtsteps between output, with zero indicating no output
-integer :: timestep = 0, newtstep = 0 ! timestep and newtonstep indicies
+integer :: timestep = 0, newtstep = 0 ! timestep and newtonstep indices
 logical :: ignore_gmesh_step = .false. ! if a TIMESTEPSTART (for transient) or NEWTSTEPSTART (for steady-state) is specified in the input file then the step from any gmesh file is ignored
 integer :: maximum_dimensions = 0 ! maximum dimensions of any region used in the simulation
 integer :: maximum_celljfaces = 0 ! maximum number of faces that a cell has
@@ -328,18 +332,30 @@ character(len=100), dimension(5), parameter :: vtkoutput_gmesh_options = ["vtkou
   "meshvtkoutput        ", "centringmeshvtkoutput", "novtkoutput          "]
 character(len=100), dimension(5), parameter :: datoutput_gmesh_options = ["datoutput            ", "centringdatoutput    ", &
   "meshdatoutput        ", "centringmeshdatoutput", "nodatoutput          "]
-character(len=100), dimension(5), parameter :: input_gmesh_options = ["input            ", "centringinput    ", "meshinput        ", &
-  "centringmeshinput", "noinput          "]
+character(len=100), dimension(5), parameter :: input_gmesh_options = ["input            ", "centringinput    ", &
+  "meshinput        ", "centringmeshinput", "noinput          "]
 character(len=100), dimension(3), parameter :: data_options = ["elementdata           ", "elementnodedata       ", &
   "elementnodelimiteddata"]
 character(len=100), dimension(2), parameter :: input_options = ["input            ", "noinput          "]
 character(len=100), dimension(2), parameter :: magnitude_options = ["dynamicmagnitude", "staticmagnitude "]
-character(len=8), dimension(6), parameter :: stopfilelist = [ "kill    ", "stopback", "stopnewt", "stop    ", "stoptime", "halt    " ]
+character(len=8), dimension(6), parameter :: stopfilelist = [ "kill    ", "stopback", "stopnewt", "stop    ", "stoptime", &
+  "halt    " ]
 character(len=8), dimension(3), parameter :: dumpfilelist = [ "dumpnewt", "dump    ", "dumptime" ]
-logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], array_mask2 = [.false.,.true.,.false.], array_mask3 = [.false.,.false.,.true.]
+logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], array_mask2 = [.false.,.true.,.false.], &
+  array_mask3 = [.false.,.false.,.true.]
+
+! kernel availability (whether they are calculated or not) is calculated by the setup_equations.pl script, however, the settings can be overwritten (as true) here
+logical :: kernel_availability_faceave = .false. ! needed for varcdivgrad, but this routine itself is not needed until normal circumstances, so set false
+logical :: kernel_availability_facegrad = .false.
+logical :: kernel_availability_cellfromnodegrad = .false.
+logical :: kernel_availability_cellgrad = .true. ! needed for varcgrad used in variable output (for elementnodedata) so always keep on
+logical :: kernel_availability_cellave = .false.
+logical :: kernel_availability_cellfromnodeave = .true. ! needed when reading in elementnodedata so always keep on
+logical :: kernel_availability_nodegrad = .false.
+logical :: kernel_availability_nodeave = .false.
 
 ! code version details
-real, parameter :: version = 0.51 ! current version
+real, parameter :: version = 0.52 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "flexible freddy"
 
@@ -850,7 +866,7 @@ end if
 ! if any data is to be required in the future then save it now
 if (min_size>0) then
   allocate(array_store(min_size))
-  array_store = array(1:min_size) !bit pedantic - should be OK without indicies
+  array_store = array(1:min_size) !bit pedantic - should be OK without indices
 end if
 
 !if (old_size>0) deallocate(array)
@@ -859,7 +875,7 @@ if (allocated(array)) deallocate(array)
 if (new_size_l>0) then
   allocate(array(new_size_l))
   if (min_size>0) then
-    array(1:min_size) = array_store !bit pedantic - should be OK without indicies
+    array(1:min_size) = array_store !bit pedantic - should be OK without indices
     deallocate(array_store)
   end if
   if (min_size<new_size_l) then
@@ -908,7 +924,7 @@ end if
 ! if any data is to be required in the future then save it now
 if (min_size>0) then
   allocate(array_store(min_size))
-  array_store = array(1:min_size) !bit pedantic - should be OK without indicies
+  array_store = array(1:min_size) !bit pedantic - should be OK without indices
 end if
 
 !if (old_size>0) deallocate(array)
@@ -917,7 +933,7 @@ if (allocated(array)) deallocate(array)
 if (new_size_l>0) then
   allocate(array(new_size_l))
   if (min_size>0) then
-    array(1:min_size) = array_store !bit pedantic - should be OK without indicies
+    array(1:min_size) = array_store !bit pedantic - should be OK without indices
     deallocate(array_store)
   end if
   if (min_size<new_size_l) then
@@ -967,7 +983,7 @@ end if
 ! if any data is to be required in the future then save it now
 if (min_size>0) then
   allocate(array_store(min_size))
-  array_store = array(1:min_size) !bit pedantic - should be OK without indicies
+  array_store = array(1:min_size) !bit pedantic - should be OK without indices
 end if
 
 !if (old_size>0) deallocate(array)
@@ -976,7 +992,7 @@ if (allocated(array)) deallocate(array)
 if (new_size_l>0) then
   allocate(array(new_size_l))
   if (min_size>0) then
-    array(1:min_size) = array_store !bit pedantic - should be OK without indicies
+    array(1:min_size) = array_store !bit pedantic - should be OK without indices
     deallocate(array_store)
   end if
   if (min_size<new_size_l) then
@@ -1026,7 +1042,7 @@ end if
 ! if any data is to be required in the future then save it now
 if (min_size>0) then
   allocate(array_store(min_size))
-  array_store = array(1:min_size) ! bit pedantic - should be OK without indicies
+  array_store = array(1:min_size) ! bit pedantic - should be OK without indices
 end if
 
 !if (old_size>0) deallocate(array)
@@ -1035,7 +1051,7 @@ if (allocated(array)) deallocate(array)
 if (new_size_l>0) then
   allocate(array(new_size_l))
   if (min_size>0) then
-    array(1:min_size) = array_store ! bit pedantic - should be OK without indicies
+    array(1:min_size) = array_store ! bit pedantic - should be OK without indices
     deallocate(array_store)
   end if
   if (min_size<new_size_l) then
@@ -1084,7 +1100,7 @@ end if
 ! if any data is to be required in the future then save it now
 if (min_size>0) then
   allocate(array_store(min_size))
-  array_store = array(1:min_size) !bit pedantic - should be OK without indicies
+  array_store = array(1:min_size) !bit pedantic - should be OK without indices
 end if
 
 !if (old_size>0) deallocate(array)
@@ -1093,7 +1109,7 @@ if (allocated(array)) deallocate(array)
 if (new_size_l>0) then
   allocate(array(new_size_l))
   if (min_size>0) then
-    array(1:min_size) = array_store !bit pedantic - should be OK without indicies
+    array(1:min_size) = array_store !bit pedantic - should be OK without indices
     deallocate(array_store)
   end if
   if (min_size<new_size_l) then
@@ -3915,7 +3931,7 @@ if (maxval(min_size)>0) then
   allocate(array_store(min_size(1),min_size(2)))
   do n = 1, min_size(1)
     do m = 1, min_size(2)
-      array_store(n,m) = array(n,m) ! explicit loops, so that indicies are correct across unequally sized arrays
+      array_store(n,m) = array(n,m) ! explicit loops, so that indices are correct across unequally sized arrays
     end do
   end do
 end if
@@ -3933,7 +3949,7 @@ if (maxval(new_size_l)>0) then
   if (maxval(min_size)>0) then
     do n = 1, min_size(1)
       do m = 1, min_size(2)
-        array(n,m) = array_store(n,m) ! explicit loops, so that indicies are correct across unequally sized arrays
+        array(n,m) = array_store(n,m) ! explicit loops, so that indices are correct across unequally sized arrays
       end do
     end do
     deallocate(array_store)
@@ -3992,7 +4008,7 @@ if (maxval(min_size)>0) then
   allocate(array_store(min_size(1),min_size(2)))
   do n = 1, min_size(1)
     do m = 1, min_size(2)
-      array_store(n,m) = array(n,m) ! explicit loops, so that indicies are correct across unequally sized arrays
+      array_store(n,m) = array(n,m) ! explicit loops, so that indices are correct across unequally sized arrays
     end do
   end do
 end if
@@ -4010,7 +4026,7 @@ if (maxval(new_size_l)>0) then
   if (maxval(min_size)>0) then
     do n = 1, min_size(1)
       do m = 1, min_size(2)
-        array(n,m) = array_store(n,m) ! explicit loops, so that indicies are correct across unequally sized arrays
+        array(n,m) = array_store(n,m) ! explicit loops, so that indices are correct across unequally sized arrays
       end do
     end do
     deallocate(array_store)
@@ -4048,7 +4064,7 @@ end function print_kernel_reflect
 
 function same_entity(ijk,reflect_multiplier,r,dx)
 
-! tests whether an element (cell, node) are the same based upon their indicies (ijk), reflect_multiplier and location (r)
+! tests whether an element (cell, node) are the same based upon their indices (ijk), reflect_multiplier and location (r)
 ! locations are considered coincident based on maximum difference in location components right now (more efficient than true distance)
 
 logical :: same_entity
@@ -4101,7 +4117,7 @@ cell_node_loop: do kk = 1, ubound(cell(icentre)%knode,1)
   inner_loop: do kk2 = 1, ubound(cell(i)%knode,1)
     k2 = cell(i)%knode(kk2)
     if (k == k2.or.location_in_list(array=node(k2)%glue_knode,element=k) /= 0) then
-! nodes are contained in both cells with the same or coincident glued knode indicies
+! nodes are contained in both cells with the same or coincident glued knode indices
 ! now test to see whether they are actually in the same location
       do n = 1, totaldimensions
 ! find location of each node, respecting any reflections, and per component (faster)
@@ -4148,7 +4164,7 @@ do kk = 1, ubound(face(jcentre)%knode,1)
     if (debug) write(83,*) 'in face_shares_a_node: k = ',k,': k2 = ',k2
     if (k == k2.or.location_in_list(array=node(k2)%glue_knode,element=k) /= 0) then
       if (debug) write(83,*) 'in face_shares_a_node: k and k2 are coincident: checking on locations'
-! nodes are contained in both cells with the same or coincident glued knode indicies
+! nodes are contained in both cells with the same or coincident glued knode indices
 ! now test to see whether they are actually in the same location
       do n = 1, totaldimensions
 ! find location of each node, respecting any reflections, and per component (faster)
@@ -4183,8 +4199,8 @@ logical :: limit_mask_to_shared_nodes ! if on then cells in mask must share a no
 logical :: include_adjacent_boundary_cells ! cells are also considered neighbours if they are both boundary cells and share at least (dimension-1) nodes
 integer, optional :: maximum_separation ! this is the maximum separation that we wish to include.  If not present, then number of elements in the mask is not limited by separation.  On output contains the maximum separation used.
 integer, dimension(:), allocatable :: imask ! this is the list of cells that is passed out, with a changed size
-integer, dimension(:), allocatable :: separation_index ! this is the list of separation indicies is passed out, with a changed size
-integer, dimension(:), allocatable, optional :: separation_array ! this the separation indicies per element passed out, with a changed size, optional
+integer, dimension(:), allocatable :: separation_index ! this is the list of separation indices is passed out, with a changed size
+integer, dimension(:), allocatable, optional :: separation_array ! this the separation indices per element passed out, with a changed size, optional
 integer, dimension(:,:), allocatable :: reflect_multiplier ! this the reflect_multiplier for each cell: first index is the dimension (1:3), second is kernel element number
 double precision, dimension(:,:), allocatable :: r ! location of cell centres relative to centre of kernel: first index is the dimension (1:3), second is the kernel element number
 double precision :: dx ! order of magnitude of element dimensions
@@ -4239,7 +4255,7 @@ separation_loop: do while (separation < maximum_separation_l.and.number_added > 
 
   number_added = 0
 
-! define indicies of imask that start this separation and the last
+! define indices of imask that start this separation and the last
   this_separation_start = 1
   last_separation_start = 1
   if (separation > 1) this_separation_start = separation_index(separation-1) + 1
@@ -4319,11 +4335,11 @@ separation_loop: do while (separation < maximum_separation_l.and.number_added > 
           if (.not.cell_shares_a_node(icentre=icentre,i=i2,reflect_multiplier=reflect_multiplier2,r=r2,dx=dx)) &
             cycle neighbour_loop
         else if (present(jcentre)) then
-            if (debug) write(83,'(a,i3,a,3(i2),a,3(g10.3))') &
-              'checking if face_shares_a_node: i2 = ',i2,': reflect_multiplier2 = ',reflect_multiplier2,': r2 = ',r2
+          if (debug) write(83,'(a,i3,a,3(i2),a,3(g10.3))') &
+            'checking if face_shares_a_node: i2 = ',i2,': reflect_multiplier2 = ',reflect_multiplier2,': r2 = ',r2
           if (.not.face_shares_a_node(jcentre=jcentre,i=i2,reflect_multiplier=reflect_multiplier2,r=r2,dx=dx)) &
             cycle neighbour_loop
-            if (debug) write(83,'(a)') '  it does'
+          if (debug) write(83,'(a)') '  it does'
         end if
       end if
 
@@ -4450,7 +4466,7 @@ end subroutine expand_mask
 !   inner_loop: do kk2 = 1, ubound(cell(i)%knode,1)
 !     k2 = cell(i)%knode(kk2)
 !     if (k == k2.or.location_in_list(array=node(k2)%glue_knode,element=k) /= 0) then
-! ! nodes are contained in both cells with the same or coincident glued knode indicies
+! ! nodes are contained in both cells with the same or coincident glued knode indices
 ! ! now test to see whether they are actually in the same location
 !       do n = 1, totaldimensions
 ! ! find location of each node, respecting any reflections, and per component (faster)

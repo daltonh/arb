@@ -8,7 +8,7 @@ VERSION 0.50 # the version of syntax used in this file
 
 # the following strings describe the simulation and are passed to the output files
 INFO_TITLE "Steady state flow around an offset cylinder within a channel"
-INFO_DESCRIPTION "Tutorial 2: Here the steady-state Navier-Stokes equations are solved in 2D, using an unstructured mesh.  The Reynolds number for the problem based on the cylinder diameter and maximum inlet velocity is 20.  This is a CFD benchmark problem.  The problem is not physical however, as the inlet has an imposed parabolic profile but is also very close to the cylinder."
+INFO_DESCRIPTION "Tutorial 3: Here the steady-state Navier-Stokes equations are solved in 2D, using an unstructured mesh.  The Reynolds number for the problem based on the cylinder diameter and maximum inlet velocity is 20.  This is a CFD benchmark problem.  The problem is not physical however, as the inlet has an imposed parabolic profile but is also very close to the cylinder."
 INFO_AUTHOR "Dalton Harvie"
 INFO_DATE "3/8/14" # interpreted as the last modification date
 
@@ -37,7 +37,7 @@ FACE_REGION <walls> "COMPOUND <boundaries>-<inlet>-<outlet>"
 # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
 # vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
 # dat file output options are: datoutput,centringdatoutput,meshdatoutput,centringmeshdatoutput,nodatoutput (nodatoutput is the default)
-MSH_FILE "surface.msh"
+MSH_FILE "steady_state_channel_flow_with_cylinder.msh"
 MSH_FILE "output/output.msh" centringvtkoutput,datoutput
 
 #-------------------------------------------------------------------

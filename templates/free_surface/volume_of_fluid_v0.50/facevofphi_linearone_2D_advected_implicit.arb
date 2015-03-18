@@ -1,0 +1,12 @@
+# a fully arb version of the operator facevofphi[linearone]() for 2D cells, using the linearone method
+# requires cell centred <facevofphi_n[l=:]>, face centred <u_f> and cell centred <facevofphi_d>
+# unlike the vector version, here donating region is defined by local flux velocity <u_f> rather than actual node velocity (<u_f_vect[l=:]>)
+# with node loops the linearone method could be completely done in arb syntax for any dimensions
+
+INCLUDE "facevofphi_linearone_2D_advected_vector_implicit"
+
+# these are the only changed lines
+FACE_LOCAL <facevofphi_x_3[l=1]> "<facex[l=1]>+<facearea>*<facetang1[l=1]>/2.d0-<facevofphi_x_c[l=1]>-<dt>*<facenorm[l=1]>*<u_f>"
+FACE_LOCAL <facevofphi_x_3[l=2]> "<facex[l=2]>+<facearea>*<facetang1[l=2]>/2.d0-<facevofphi_x_c[l=2]>-<dt>*<facenorm[l=2]>*<u_f>"
+FACE_LOCAL <facevofphi_x_4[l=1]> "<facex[l=1]>-<facearea>*<facetang1[l=1]>/2.d0-<facevofphi_x_c[l=1]>-<dt>*<facenorm[l=1]>*<u_f>"
+FACE_LOCAL <facevofphi_x_4[l=2]> "<facex[l=2]>-<facearea>*<facetang1[l=2]>/2.d0-<facevofphi_x_c[l=2]>-<dt>*<facenorm[l=2]>*<u_f>"

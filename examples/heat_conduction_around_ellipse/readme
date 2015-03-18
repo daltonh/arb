@@ -1,4 +1,4 @@
-to run this example problem (assuming that you have all of the required software installed - see the website or manual within doc)
+to run this example problem (assuming that you have all of the required software installed - see the misc/install_dependencies directory)
 
 1) copy all of the problem files (.arb, .msh and .geo) from this directory to the working directory.  IE, from this directory:
 cp *.arb ../..
@@ -9,12 +9,6 @@ cp *.msh ../..
 cd ../..
 
 3) run the simulation
-./arb
-
-3.5) if arb complains that you don't have a linear solver installed at this point you can download and install the suitsparse solver and try again using:
-cd src/contributed/suitesparse
-make
-cd ../../..
 ./arb
 
 4) view the simulation results using gmsh:

@@ -360,11 +360,23 @@ do m = 1, ubound(var,1)
     write(textline,fmt=formatline) trim(textline)//': magnitude = ',var(m)%magnitude
   end if
 
+! ref: update times ref: time ref: timing ref: variable_update_times
+
+! Some timing definitions:
+! total_update_time = total (cumulative) amount of time spent on updating all variables
+! maximum_update_time = maximum amount of time that any particular variable took to update once, throughout the whole simulation.
+! total (cumulative) update time = total amount of time updating a particular variable throughout the entire simulation
+! relative total update time = [total (cumulative) update time]/[total_update_time] = proportion of simulation time over the entire simulation that has been spent on a particular variable.  This is the most accurate (useful) parameter to look at when deciding what variable to concentrate on to speed up a simulation.
+! total updates = total number of times that a particular variable has been updated during the simulation
+! average (per update) update time = [total (cumulative) update time]/[total updates] = the average time that it takes to update this particular variable once
+! relative average update time = [average (per update) update time]/[maximum_update_time] = the average update time for this particular variable dividied by the largest (average) update time across all variables.  This isn't as useful as it looks, as the variable that is used in the normalisation may only be updated once (say, at the beginning) in a simulation.
+
   if (output_variable_update_times) then
     formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(indexformat)//',2(a,'//trim(realformat)//'))'
     write(textline,fmt=formatline) trim(textline),&
-      ': total update time = ',var(m)%update_time,': relative total update time = ',var(m)%update_time/total_update_time, &
-      ': total updates = ',var(m)%update_number,': average update time = ', &
+      ': total (cumulative) update time = ',var(m)%update_time,': relative total update time = ', &
+      var(m)%update_time/total_update_time, &
+      ': total updates = ',var(m)%update_number,': average (per update) update time = ', &
       var(m)%update_time/dfloat(max(var(m)%update_number,1)),': relative average update time = ', &
       var(m)%update_time/(dfloat(max(var(m)%update_number,1))*maximum_update_time)
   end if

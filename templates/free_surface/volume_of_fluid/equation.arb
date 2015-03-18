@@ -22,9 +22,9 @@ FACE_DERIVED <vof_phi_f[r=1]> "facevofphi[noderivative,linearone](phi=<vof_phi[r
 
 #CELL_DERIVED <vof_phi_adjust[r=1]> "cellvofphiadjust[noderivative](phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>)" ON <all cells> output
 # cellvofphiadjust now supports derivative calculation too for implicit flux (but not phif or phi[r=1])
-<<cartesiancomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>)" ON <all cells> output,newtstepmax=50
-<<cylindricalcomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<<radius_f>>*<u_f>/faceave[lastcell](<<radius_c>>),dt=<dt>)" ON <all cells> output,newtstepmax=50
-FACE_DERIVED <vof_phi_f_adjusted[r=1]> "facemax(facemin(<vof_phi_f[r=1]>+faceif(<u_f>,faceave[downcell](<vof_phi_adjust[r=1]>),faceave[upcell](<vof_phi_adjust[r=1]>)),1.d0),0.d0)" ON <all faces> output
+<<cartesiancomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>)" ON <all cells> output,newtstepmax=40
+<<cylindricalcomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<<radius_f>>*<u_f>/faceave[lastcell](<<radius_c>>),dt=<dt>)" ON <all cells> output,newtstepmax=40
+FACE_DERIVED <vof_phi_f_adjusted[r=1]> "facemax(facemin(<vof_phi_f[r=1]>+faceif(<u_f>,faceave[downcell](<vof_phi_adjust[r=1]>),faceave[upcell](<vof_phi_adjust[r=1]>)),1.d0),0.d0)" ON <all faces> output,newtstepmax=40
 
 #CELL_TRANSIENT <vof_phi_advected> "<vof[r=1]>-<dt>*celldiv(<vof_phi_f_adjusted[r=1]>*<u_f[r=1]>)" ON <all cells> nooutput
 # note: guarding against destabilising effects of non-zero divergence enroute to convergence

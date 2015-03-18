@@ -81,6 +81,9 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine allocate_meta_arrays'
 ! set newtient_simulation logical
 !<sub_string:newtient_simulation>
 
+! set kernel availability
+!<sub_string:kernel_availability>
+
 if (debug) write(*,'(a/80(1h-))') 'subroutine allocate_meta_arrays'
 
 end subroutine allocate_meta_arrays
@@ -213,7 +216,7 @@ logical, parameter :: debug = .false.
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_someloop'
 !if (.not.present(error_string)) call error_stop("something is calling update_someloop without an error_string")
 
-! ilast and jlast these hold the indicies from the calling routine, and cannot be changed since they are used in the
+! ilast and jlast these hold the indices from the calling routine, and cannot be changed since they are used in the
 ! loop of the calling routine - so save a copy of these that can be altered within this routine
 i = ilast 
 j = jlast

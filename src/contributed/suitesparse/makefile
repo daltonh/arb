@@ -30,12 +30,9 @@
 # <http://people.eng.unimelb.edu.au/daltonh/downloads/arb>.
 #
 #-------------------------------------------------------------------------
-# makefile to fetch and compile UMFPACK specifically for arb
-# daltonh, introduced for v0.24, 051210
-
-# lock suitesparse and metis versions so that updates don't break compatibility
-suitesparse_version = 3.6.0
-metis_version = 4.0.3
+# makefile to fetch mumfpack.f90 module, which is a much simplier interface
+# for using suitesparse as here we use the packaged umfpack solvers
+# daltonh, introduced for v0.53, 16015
 
 #------------------------------------------------------------------------------
 # variables below this should be pretty-much automagically set
@@ -82,103 +79,34 @@ endif
 #----------------
 # all the rules
 
-all: print umf4_f77wrapper.o libumfpack.a libamd.a libcholmod.a libcolamd.a libcamd.a libmetis.a libccolamd.a
+all: print umfpack.f90
 
 # print out some info
 print :
-	@echo "Compiling umfpack libraries for arb:"
+	@echo "Grabbing umfpack libraries for arb:"
 	@echo " os_type = $(os_type)"
 	@echo " mach_type is: $(mach_type)"
 
-download: SuiteSparse.tar.gz metis-$(metis_version).tar.gz
+download: mUMFPACK.tgz
 
-SuiteSparse.tar.gz:
-	curl -O http://www.cise.ufl.edu/research/sparse/SuiteSparse/SuiteSparse-$(suitesparse_version).tar.gz
-	mv SuiteSparse-$(suitesparse_version).tar.gz SuiteSparse.tar.gz
-	touch SuiteSparse.tar.gz
-#wget http://www.cise.ufl.edu/research/sparse/SuiteSparse/SuiteSparse-$(suitesparse_version).tar.gz
-# wget http://www.cise.ufl.edu/research/sparse/SuiteSparse/current/SuiteSparse.tar.gz
+mUMFPACK.tgz:
+	curl -O http://geo.mff.cuni.cz/~lh/Fortran/UMFPACK/_static/mUMFPACK.tgz
+	touch mUMFPACK.tgz
 
-metis-$(metis_version).tar.gz:
-	curl -O http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-$(metis_version).tar.gz
-	touch metis-$(metis_version).tar.gz
-# http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-4.0.3.tar.gz
-#wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-4.0.tar.gz
+mUMFPACK: mUMFPACK.tgz
+	rm -rf mUMFPACK
+	mkdir mUMFPACK
+	tar -xzf mUMFPACK.tgz -C mUMFPACK
+	touch mUMFPACK
 
-SuiteSparse: SuiteSparse.tar.gz metis-$(metis_version).tar.gz
-	rm -rf SuiteSparse
-	tar -xzf SuiteSparse.tar.gz
-	tar -xzf metis-$(metis_version).tar.gz
-	mv metis-$(metis_version) SuiteSparse/metis-4.0
-	touch SuiteSparse
-	chmod -R u+w SuiteSparse
-	@echo "F77 = gfortran" >>SuiteSparse/UFconfig/UFconfig.mk  # actually fortran compiler is not used for libraries and wrapper script
-	@echo "F77FLAGS = -O" >>SuiteSparse/UFconfig/UFconfig.mk
-	@echo "F77LIB =" >>SuiteSparse/UFconfig/UFconfig.mk
-	@echo "CC = gcc" >>SuiteSparse/UFconfig/UFconfig.mk
-	@echo "CFLAGS = -O3 $(clibs_extra) -fexceptions" >>SuiteSparse/UFconfig/UFconfig.mk
-	@echo "LIB = -lstdc++" >>SuiteSparse/UFconfig/UFconfig.mk
-	@echo "BLAS = $(libs)" >>SuiteSparse/UFconfig/UFconfig.mk
-	@echo "LAPACK = $(libs)" >>SuiteSparse/UFconfig/UFconfig.mk
-	perl -p -i -e 's/__log2/METIS__log2/' SuiteSparse/metis-4.0/Lib/rename.h # bugfix as specified by http://www.cise.ufl.
-
-# the semi colon in these commands is used so that the second command is performed in the directory specified by the cd
-
-umf4_f77wrapper.o: SuiteSparse
-	cd SuiteSparse/UMFPACK/Demo; make umf4_f77wrapper$(wrapper_addon).o # wrapper_addon is either 64 or nothing (for ia32)
-	cp SuiteSparse/UMFPACK/Demo/umf4_f77wrapper$(wrapper_addon).o umf4_f77wrapper.o
-
-UMFPACK: SuiteSparse
-	cd SuiteSparse/UMFPACK/Demo; make libs
-
-libumfpack.a: UMFPACK
-	cp SuiteSparse/UMFPACK/Lib/libumfpack.a .
-
-libamd.a: UMFPACK
-	cp SuiteSparse/AMD/Lib/libamd.a .
-
-libcholmod.a: UMFPACK
-	cp SuiteSparse/CHOLMOD/Lib/libcholmod.a .
-
-libcolamd.a: UMFPACK
-	cp SuiteSparse/COLAMD/Lib/libcolamd.a .
-	ranlib libcolamd.a
-
-libcamd.a: UMFPACK
-	cp SuiteSparse/CAMD/Lib/libcamd.a .
-
-libmetis.a: UMFPACK
-	cp SuiteSparse/metis-4.0/libmetis.a .
-
-libccolamd.a: UMFPACK
-	cp SuiteSparse/CCOLAMD/Lib/libccolamd.a .
-	ranlib libccolamd.a
-
-
-
-#libumfpack.a
-#libamd.a
-#libcholmod.a
-#libcolamd.a
-#libcamd.a
-#libmetis.a
-#libccolamd.a
-
-
-#../Lib/libumfpack.a
-#../../AMD/Lib/libamd.a
-#../../CHOLMOD/Lib/libcholmod.a
-#../../COLAMD/Lib/libcolamd.a
-#../../CAMD/Lib/libcamd.a
-#../../metis-4.0/libmetis.a
-#../../CCOLAMD/Lib/libccolamd.a
+umfpack.f90: mUMFPACK
+	cp mUMFPACK/umfpack.f90 .
 
 clean_all: clean clean_download
 
 clean:
-	rm -rf SuiteSparse metis-$(metis_version) *.a *.o
+	rm -rf mUMFPACK umfpack.f90
 
 clean_download:
-	rm -rf SuiteSparse.tar.gz
-	rm -rf metis-*.tar.gz
+	rm -rf mUMFPACK.tgz
 

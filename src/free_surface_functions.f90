@@ -92,7 +92,7 @@ subroutine cellvofd(thread,m,ilast,jlast,klast,error_string,deriv,msomeloop_phi,
 ! called by the arb function cellvofd
 ! i is cell index
 ! someloop(thread)%funk(m) is the variable that is to contain d (and possibly its derivative)
-! the msomeloops contain the funk indicies that contain: phi, the three unitnormals (normal1->normal3) and phitol
+! the msomeloops contain the funk indices that contain: phi, the three unitnormals (normal1->normal3) and phitol
 ! if any msomeloop index = -1, then the someloop variable is not defined
 ! method is an integer that specifies how d is calculated:  1 = linearone, 2 = lineartwo, 3 = parabolic fit to max, min and centroid, 4 = exactpiecewise means match volumes on the nodes exactly, but use linear interpolation between the node, 5 = exact
 
@@ -118,7 +118,7 @@ if (debug) write(50,'(80(1h+)/a)') 'subroutine cellvofd'
 
 if (deriv > 0) call error_stop("subroutine cellvofd cannot handle derivative yet")
 
-! form normal indicies into a vector
+! form normal indices into a vector
 msomeloop_normal = [msomeloop_normal_l1,msomeloop_normal_l2,msomeloop_normal_l3]
 i = ilast
 
@@ -511,7 +511,7 @@ type(integer_list_type), intent(in) :: kkin, kkout ! these lists contain the nod
 type(scalar_list_type), intent(in) :: d ! list of d values for each cell(i)%knode
 type(vector_list_type), intent(in) :: x ! list of x values for each cell(i)%knode, relative to cell centre
 integer, intent(in) :: i, j ! the considered cell and face indices
-integer, intent(in) :: kk_max, kk_min ! the cell(i)%knode indicies of the maximum and minimum d's
+integer, intent(in) :: kk_max, kk_min ! the cell(i)%knode indices of the maximum and minimum d's
 ! local variables
 double precision, dimension(totaldimensions,0:2) :: alpha ! local calculation vector
 double precision :: d2d1, dmaxdmin, l3mag, d3
@@ -559,7 +559,7 @@ subroutine facevofphi(thread,m,ilast,jlast,klast,error_string,deriv,msomeloop_ph
 ! called by the arb function facevofphi
 ! i is cell index
 ! someloop(thread)%funk(m) is the variable that is to contain d (and possibly its derivative)
-! the msomeloops contain the funk indicies that contain: phi, phitol, and the three unitnormals (normal1->normal3)
+! the msomeloops contain the funk indices that contain: phi, phitol, and the three unitnormals (normal1->normal3)
 ! if any msomeloop index = -1, then the someloop variable is not defined
 ! method is an integer that specifies how d is calculated:  1 = linearone, 2 = lineartwo, 3 = parabolic fit to max, min and centroid, 4 = match volumes (exact)
 
@@ -838,13 +838,15 @@ end if
 ! or check every face using a variety of points
 ! based on node points
 cell_interface = .false. ! 
+pass_vector = rotate_point(rotation_total,centre,node(cell(i)%knode(1))%x) ! avoid temporary array warnings
 if (debug) then
  write(50,*) 'node_x = ',node(cell(i)%knode(1))%x
- write(50,*) 'rotate(node_x) = ',rotate_point(rotation_total,centre,node(cell(i)%knode(1))%x)
+ write(50,*) 'rotate(node_x) = ',pass_vector
 end if
-cell_is_in = is_point_in_shape(shape,size,centre,axis,rotate_point(rotation_total,centre,node(cell(i)%knode(1))%x))
+cell_is_in = is_point_in_shape(shape,size,centre,axis,pass_vector)
 do kk = 2, ubound(cell(i)%knode,1)
-  if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,rotate_point(rotation_total,centre,node(cell(i)%knode(kk))%x))) then
+  pass_vector = rotate_point(rotation_total,centre,node(cell(i)%knode(kk))%x) ! avoid temporary array warnings
+  if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,pass_vector)) then
     cell_interface = .true.
     exit
   end if
@@ -852,8 +854,8 @@ end do
 ! also check on face centres
 if (.not.cell_interface) then
   do jj = 1, ubound(cell(i)%jface,1)
-    if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,rotate_point(rotation_total,centre,face(cell(i)%jface(jj))%x))) &
-      then
+    pass_vector = rotate_point(rotation_total,centre,face(cell(i)%jface(jj))%x) ! avoid temporary array warnings
+    if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,pass_vector)) then
       cell_interface = .true.
       exit
     end if

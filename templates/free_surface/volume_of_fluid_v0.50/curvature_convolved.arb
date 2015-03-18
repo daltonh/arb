@@ -1,0 +1,16 @@
+# trying similar but based on exponential function
+CELL_LOCAL <vof_cell_dist^2> "dot(<celltoseparationicellr[l=:]>,<celltoseparationicellr[l=:]>)"
+CONSTANT <vof_cell_convolve_radius> 0.5d0 # roughly the number of cells in the radius of the smoothing kernel
+NONE_CONSTANT <vof_cell_eps^2> "(<vof_cell_convolve_radius>*<celldxave>)^2" # square of the radius of convolving, here uniform throughout the domain
+CELL_LOCAL <vof K/A> "exp(-<vof_cell_dist^2>/<vof_cell_eps^2>)"
+CELL_CONSTANT <convolve_demoninator> "cellsum[maxseparation=2](<vof K/A>,region=<all cells>)" ON <all cells> output
+
+<<dim1comment>>CELL_DERIVED <vof_n_c[l=1]> "cellsum[maxseparation=2](+2.d0*<vof_phi>*<vof K/A>*<celltoseparationicellr[l=1]>/<vof_cell_eps^2>,region=<all cells>)/<convolve_demoninator>" ON <all cells> output
+<<dim1comment>>CELL_DERIVED <vof_n_c[l=2]> "cellsum[maxseparation=2](+2.d0*<vof_phi>*<vof K/A>*<celltoseparationicellr[l=2]>/<vof_cell_eps^2>,region=<all cells>)/<convolve_demoninator>" ON <all cells> output
+<<dim1comment>>CELL_DERIVED <vof_n_c[l=3]> "cellsum[maxseparation=2](+2.d0*<vof_phi>*<vof K/A>*<celltoseparationicellr[l=3]>/<vof_cell_eps^2>,region=<all cells>)/<convolve_demoninator>" ON <all cells> output
+CELL_DERIVED <vof_n_c mag> "cellmax(sqrt(dot(<vof_n_c[l=:]>,<vof_n_c[l=:]>)),<vof_phi_tol>/<celldxave>)" ON <all cells>
+<<dim1comment>>CELL_LOCAL <vof_n_c_unit[l=1]> "<vof_n_c[l=1]>/<vof_n_c mag>" ON <all cells> output
+<<dim2comment>>CELL_LOCAL <vof_n_c_unit[l=2]> "<vof_n_c[l=2]>/<vof_n_c mag>" ON <all cells>
+<<dim3comment>>CELL_LOCAL <vof_n_c_unit[l=3]> "<vof_n_c[l=3]>/<vof_n_c mag>" ON <all cells>
+FACE_DERIVED <vof_kappa_f> "-(facegrad[l=1](<vof_n_c_unit[l=1]>)+facegrad[l=2](<vof_n_c_unit[l=2]>)+facegrad[l=3](<vof_n_c_unit[l=3]>))" ON <all faces> output
+CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" output

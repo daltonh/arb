@@ -96,7 +96,7 @@ DEFAULT_OPTIONS noderivative
 CELL_LOCAL <vof_phi_rounded> "cellif(<vof_phi>-<vof_phi_tol>,cellif(1.d0-<vof_phi_tol>-<vof_phi>,<vof_phi>,1.d0),0.d0)"
 CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_initial>" "<vof_phi_rounded>" output
 CONSTANT <vof_phi_tol> 1.d-8
-CELL_LOCAL <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells>
+CELL_LOCAL <vof_phi_interface> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells>
 # compute a smoothed phi, which is used in the surface tension calculation and later in the vof advection
 #INCLUDE "smooth_phi"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -143,10 +143,12 @@ CELL_LOCAL <vof_smoothing_kernel> "1.d0/(sqrt(<vof_smoothing_dist^2>/<vof_smooth
 # with <vof_smoothing_constant> 0.25d0 interface is too jaggered
 #CELL_LOCAL <vof_smoothing_kernel> "1.d0/(<separation>+<vof_smoothing_constant>)"
 
+#GENERAL_REPLACEMENTS DEFAULT "<<maxsmoothingseparation>>" W "3" # default maximum separation used for the smoothing, which can be overwritten by calling files
+
 # now do the smoothing
 # looks like we need a minimum of maxseparation=3 to get enough valid normals (at the edge of the interface region) to avoid instabilities in the (curvature) surface tension calculation
 CELL_CONSTANT <vof_phi_smoothing_demoninator> "cellsum[maxseparation=3,faceseparation](<vof_smoothing_kernel>,region=<all cells>)" ON <all cells>
-CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=3,faceseparation](<vof_phi_lim>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
+CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=3,faceseparation](<vof_phi_interface>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
 
 # save the smoothed phi for later - necessary?
 #CELL_TRANSIENT <vof_phi_smoothed[r=1]> "" "<vof_phi_smoothed>" ON <all cells> output
