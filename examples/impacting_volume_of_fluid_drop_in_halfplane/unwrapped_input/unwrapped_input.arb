@@ -420,9 +420,12 @@ CONSTANT <vof_phi_tol> 1.d-8
 
 # this is the vof function, defined on all cells
 CELL_UNKNOWN <vof_phi> [] "<vof_phi_initial>" ON <fluid all cells> magnitude=1.d0
-#CELL_LOCAL <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)"
-# now this is a derived, so that newtstepmax can be used with it to turn off implicit iterations if newton loop is not converging
-CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <fluid all cells> newtstepmax=20
+# this vof function is used on the fluid domain only, and defines fluid properties and is used to construct the delta function
+# function is limited, and has newtstepmax on it
+CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <fluid all cells> newtstepmax=30
+# also define a derived version of <vof_phi>, so that newtstepmax can be used with it to turn off implicit iterations if newton loop is not converging
+# now (since v0.52) replaces <vof_phi_lim> in interface (kappa) calculation, without being bounded between 0 and 1
+CELL_DERIVED <vof_phi_interface> "<vof_phi>" ON <fluid all cells> newtstepmax=20
 # update vof, while rounding to identify interface cells
 CELL_LOCAL <vof_phi_rounded> "cellif(<vof_phi>-<vof_phi_tol>,cellif(1.d0-<vof_phi_tol>-<vof_phi>,<vof_phi>,1.d0),0.d0)"
 CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_rounded>" "<vof_phi_rounded>" ON <fluid all cells> nooutput
@@ -463,8 +466,8 @@ CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <fluid all cells>
 # local variables to transfer values from the fluid to free surface domains, and back again
 # variables starting with <vof_fs_ are on the free surface domain, while those starting with <vof_ are not
 
-# move fluid <vof_phi_lim> to free surface region <vof_fs_phi_lim>
-CELL_LOCAL <vof_fs_phi_lim> "cellif(celldelta(<free surface centre>),celllink(<vof_phi_lim>,localregion=<free surface centre>,remoteregion=<fluid domain>),celllink(<vof_phi_lim>,localregion=<free surface all cells>,remoteregion=<fluid boundary cells>))" ON <free surface all cells>
+# move fluid <vof_phi_interface> to free surface region <vof_fs_phi_interface>
+CELL_LOCAL <vof_fs_phi_interface> "cellif(celldelta(<free surface centre>),celllink(<vof_phi_interface>,localregion=<free surface centre>,remoteregion=<fluid domain>),celllink(<vof_phi_interface>,localregion=<free surface all cells>,remoteregion=<fluid boundary cells>))" ON <free surface all cells>
 # move free surface <vof_fs_phigrad_unit[l=:]> back to fluid region <vof_phigrad_unit[l=:]> 
 CELL_LOCAL <vof_phigrad_unit[l=1]> "cellif(celldelta(<fluid boundary cells>),celltofacelink(<vof_fs_phigrad_unit[l=1]>,localregion=<fluid boundary cells>,remoteregion=<free surface centre boundaries>),celltocelllink(<vof_fs_phigrad_unit[l=1]>,localregion=<fluid domain>,remoteregion=<free surface centre>))" ON <fluid all cells>
 CELL_LOCAL <vof_phigrad_unit[l=2]> "cellif(celldelta(<fluid boundary cells>),celltofacelink(<vof_fs_phigrad_unit[l=2]>,localregion=<fluid boundary cells>,remoteregion=<free surface centre boundaries>),celltocelllink(<vof_fs_phigrad_unit[l=2]>,localregion=<fluid domain>,remoteregion=<free surface centre>))" ON <fluid all cells>
@@ -492,7 +495,7 @@ FACE_LOCAL <vof_kappa_f> "facetofacelink(<vof_fs_kappa_f>,localregion=<fluid all
 #GENERAL_REPLACEMENTS R "<all nodes>" W "<free surface all nodes>"
 # and some variables too, to emphasise that these are defined on the free surface mesh
 #GENERAL_REPLACEMENTS R "<vof_phi_smooth" W "<vof_fs_phi_smooth"
-#GENERAL_REPLACEMENTS R "<vof_phi_lim>" W "<vof_fs_phi_lim>"
+#GENERAL_REPLACEMENTS R "<vof_phi_interface>" W "<vof_fs_phi_interface>"
 #GENERAL_REPLACEMENTS R "<vof_phigrad" W "<vof_fs_phigrad" 
 #GENERAL_REPLACEMENTS R "<vof_kappa" W "<vof_fs_kappa"
 # INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/free_surface_replacements.arb
@@ -510,14 +513,14 @@ FACE_LOCAL <vof_kappa_f> "facetofacelink(<vof_fs_kappa_f>,localregion=<fluid all
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb without any search/replace combinations
 # implicit reconstructed levelset idea
-CELL_UNKNOWN <vof_s> "2.d0*<vof_fs_phi_lim>-1.d0" ON <free surface all cells> magnitude=1.d0
+CELL_UNKNOWN <vof_s> "2.d0*<vof_fs_phi_interface>-1.d0" ON <free surface all cells> magnitude=1.d0
 CONSTANT <vof_s_interface_width> 5.d0 # this controls the thickness of the interface, roughly in terms of the local cell width
 # the larger this is, the more uniform the calculated curvature -> lower errors on a sphere, but at the cost of reduced accuracy in regions of large curvature
 CELL_CONSTANT <local smoothed celldx> "cellsum[maxseparation=3](<celldxkernel>,region=<free surface domain>)/cellsum[maxseparation=3](1.d0,region=<free surface domain>)" ON <free surface all cells> output
 FACE_CONSTANT <vof_s_D> "(<local smoothed celldx>*<vof_s_interface_width>)**2" ON <free surface all faces> output
-FACE_DERIVED <vof_s_j> "<vof_s_D>*facegrad(<vof_s>)" ON <free surface all faces>
-CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)+2.d0*<vof_fs_phi_lim>-1.d0-<vof_s>" ON <free surface domain>
-FACE_EQUATION <vof_s boundary> "2.d0*<vof_fs_phi_lim>-1.d0-<vof_s>" ON <free surface boundaries>
+FACE_DERIVED <vof_s_j> "-<vof_s_D>*facegrad(<vof_s>)" ON <free surface all faces>
+CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_fs_phi_interface>-1.d0-<vof_s>)" ON <free surface domain>
+FACE_EQUATION <vof_s boundary> "2.d0*<vof_fs_phi_interface>-1.d0-<vof_s>" ON <free surface boundaries>
 # INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb
 #--------------------------------------------------------
 #INCLUDE "normals_node_based" R "<vof_phi_smoothed>" W "<vof_s>"
@@ -571,7 +574,7 @@ CELL_DERIVED <vof_fs_kappa_c> "<vof_fs_kappa_f>" ON <free surface all cells> out
 #GENERAL_REPLACEMENTS CANCEL "<domain faces>"
 #GENERAL_REPLACEMENTS CANCEL "<boundaries>"
 #GENERAL_REPLACEMENTS CANCEL "<vof_phi_smooth"
-#GENERAL_REPLACEMENTS CANCEL "<vof_phi_lim>"
+#GENERAL_REPLACEMENTS CANCEL "<vof_phi_interface>"
 #GENERAL_REPLACEMENTS CANCEL "<vof_phigrad"
 #GENERAL_REPLACEMENTS CANCEL "<vof_kappa"
 # INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/cancel_free_surface_replacements.arb
@@ -945,9 +948,10 @@ VARIABLE <vof_rho_c[r=0]> output
 VARIABLE <vof_rho_f> output
 VARIABLE <vof_mu_f> output
 
-# by default surface tension and property changes are turned off after 30 newtsteps (via <vof_phi_lim>), and <vof_phi_adjust[r=1]> changes after 50
+# by default surface tension changes are turned off after 20 newtsteps (via <vof_phi_interface>), delta function and properties after 30 newtsteps (via <vof_phi_lim>) and <vof_phi_adjust[r=1]> changes after 50
 #VARIABLE <vof_phi_adjust[r=1]> newtstepmax=30
-#VARIABLE <vof_phi_lim> newtstepmax=50
+#VARIABLE <vof_phi_interface> newtstepmax=50
+#VARIABLE <vof_phi_lim> newtstepmax=40
 
 #-------------------------------------------------------------------
 # numerical options

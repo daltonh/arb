@@ -86,7 +86,7 @@ DEFAULT_OPTIONS noderivative
 CELL_LOCAL <vof_phi_rounded> "cellif(<vof_phi>-<vof_phi_tol>,cellif(1.d0-<vof_phi_tol>-<vof_phi>,<vof_phi>,1.d0),0.d0)"
 CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_initial>" "<vof_phi_rounded>" output
 CONSTANT <vof_phi_tol> 1.d-8
-CELL_LOCAL <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells>
+CELL_LOCAL <vof_phi_interface> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells>
 # compute a smoothed phi, which is used in the surface tension calculation and later in the vof advection
 INCLUDE "smooth_phi"
 # include routines to calculate surface tension force

@@ -821,7 +821,9 @@ sub read_input_files {
         next;
       }
 
+# ref: default options
 # set or reset any default options (these go before the individual options so any relevant individual options take precedence over these)
+# also, each DEFAULT_OPTIONS statement clears previous DEFAULT_OPTIONS statements
       elsif ($line =~ /^\s*DEFAULT_OPTIONS\s*($|\s)/i) {
         $default_options = $';
         ($default_options) = $default_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
@@ -835,7 +837,9 @@ sub read_input_files {
         next;
       }
 
+# ref: override options
 # set or reset any override options (these go at the end of the individual options so override any individual options)
+# also, each OVERRIDE_OPTIONS statement clears previous OVERRIDE_OPTIONS statements
       elsif ($line =~ /^\s*OVERRIDE_OPTIONS\s*($|\s)/i) {
         $override_options = $';
         ($override_options) = $override_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
@@ -2123,17 +2127,17 @@ sub organise_user_variables {
     if ($variable{$type}[$mvar]{"options"}) { print "INFO: options read in for $type $name = $variable{$type}[$mvar]{options}\n";} else { print "INFO: no options read in for $type $name\n"; }
     if ($variable{$type}[$mvar]{"options"}) { print DEBUG "INFO: options read in for $type $name = $variable{$type}[$mvar]{options}\n";} else { print DEBUG "INFO: no options read in for $type $name\n"; }
 
-# ref: options, ref: componentoptions
+# ref: options ref: componentoptions ref: compoundoptions
 # options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
 #p  derivative/noderivative - for DERIVED, EQUATION, LOCAL : do or do not calculate Jacobian derivatives for this variable
 #p  positive/negative/nocheck - for DERIVED, UNKNOWN, EQUATION, LOCAL : check at each iteration that variable is positive/negative
-#f  output/nooutput - for ALL : output compound to msh files
+#f  output/nooutput - for ALL : output compound to msh files (equivalently compoundoutput/nocompoundoutput)
 #f  componentoutput/nocomponentoutput - for ALL : output just this component to msh files
-#f  stepoutput/stepoutputnoupdate/nostepoutput - for ALL : output compound to step file.  The noupdate one does not update the variable when the step file is written (needed for recording when output occurred for example).
+#f  stepoutput/stepoutputnoupdate/nostepoutput - for ALL : output compound to step file.  The noupdate one does not update the variable when the step file is written (needed for recording when output occurred for example). (equivalently compoundstepoutput/compoundstepoutputnoupdate/nocompoundstepoutput)
 #f  componentstepoutput/componentstepoutputnoupdate/nocomponentstepoutput - for ALL : output just this component to step files
 #f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
 #f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
-#f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component)
+#f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component) (equivalently compoundelementdata,compoundelementnodedata,compoundelementnodelimiteddata)
 #p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
 #f  magnitude=value - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
 #f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
@@ -2172,9 +2176,9 @@ sub organise_user_variables {
         elsif ($option =~ /^(|compound)element(|node|nodelimited)data$/i) { next ;}
         elsif ($option =~ /^(|no)component(output|(stepoutput(|noupdate)))$/i) {
           $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$1$2"; }
-        elsif ($option =~ /^(|no)component(element(|node|nodelimited)data)$/i) {
+        elsif ($option =~ /^component(element(|node|nodelimited)data)$/i) {
           if ($variable{$type}[$mvar]{"centring"} eq "cell") {
-            $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$1$2";
+            $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$1";
           } else { print "WARNING: option $option specified for $variable{$type}[$mvar]{centring} $type $name is only relevant for cell centred variables and is ignored\n"; } }
         elsif ($option =~ /^(|no)component(input)$/i) {
           if ($type eq "unknown" || $type eq "constant" || $type eq "transient" || $type eq "output" || $type eq "derived" || $type eq "equation" ) { # allowing derived and equation now for v0.50
