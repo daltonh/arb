@@ -376,9 +376,12 @@ CONSTANT <vof_phi_tol> 1.d-8
 
 # this is the vof function, defined on all cells
 CELL_UNKNOWN <vof_phi> [] "<vof_phi_initial>" ON <all cells> magnitude=1.d0
-#CELL_LOCAL <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)"
-# now this is a derived, so that newtstepmax can be used with it to turn off implicit iterations if newton loop is not converging
-CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells> newtstepmax=20
+# this vof function is used on the fluid domain only, and defines fluid properties and is used to construct the delta function
+# function is limited, and has newtstepmax on it
+CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells> newtstepmax=30
+# also define a derived version of <vof_phi>, so that newtstepmax can be used with it to turn off implicit iterations if newton loop is not converging
+# now (since v0.52) replaces <vof_phi_lim> in interface (kappa) calculation, without being bounded between 0 and 1
+CELL_DERIVED <vof_phi_interface> "<vof_phi>" ON <all cells> newtstepmax=20
 # update vof, while rounding to identify interface cells
 CELL_LOCAL <vof_phi_rounded> "cellif(<vof_phi>-<vof_phi_tol>,cellif(1.d0-<vof_phi_tol>-<vof_phi>,<vof_phi>,1.d0),0.d0)"
 CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_rounded>" "<vof_phi_rounded>" ON <all cells> nooutput
@@ -417,14 +420,14 @@ CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <all cells>
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb without any search/replace combinations
 # implicit reconstructed levelset idea
-CELL_UNKNOWN <vof_s> "2.d0*<vof_phi_lim>-1.d0" ON <all cells> magnitude=1.d0
+CELL_UNKNOWN <vof_s> "2.d0*<vof_phi_interface>-1.d0" ON <all cells> magnitude=1.d0
 CONSTANT <vof_s_interface_width> 5.d0 # this controls the thickness of the interface, roughly in terms of the local cell width
 # the larger this is, the more uniform the calculated curvature -> lower errors on a sphere, but at the cost of reduced accuracy in regions of large curvature
 CELL_CONSTANT <local smoothed celldx> "cellsum[maxseparation=3](<celldxkernel>,region=<domain>)/cellsum[maxseparation=3](1.d0,region=<domain>)" ON <all cells> output
 FACE_CONSTANT <vof_s_D> "(<local smoothed celldx>*<vof_s_interface_width>)**2" ON <all faces> output
-FACE_DERIVED <vof_s_j> "<vof_s_D>*facegrad(<vof_s>)" ON <all faces>
-CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)+2.d0*<vof_phi_lim>-1.d0-<vof_s>" ON <domain>
-FACE_EQUATION <vof_s boundary> "2.d0*<vof_phi_lim>-1.d0-<vof_s>" ON <boundaries>
+FACE_DERIVED <vof_s_j> "-<vof_s_D>*facegrad(<vof_s>)" ON <all faces>
+CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
+FACE_EQUATION <vof_s boundary> "2.d0*<vof_phi_interface>-1.d0-<vof_s>" ON <boundaries>
 # INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb
 #--------------------------------------------------------
 #INCLUDE "normals_node_based" R "<vof_phi_smoothed>" W "<vof_s>"
@@ -826,9 +829,10 @@ VARIABLE <vof_rho_c[r=0]> output
 VARIABLE <vof_rho_f> output
 VARIABLE <vof_mu_f> output
 
-# by default surface tension and property changes are turned off after 30 newtsteps (via <vof_phi_lim>), and <vof_phi_adjust[r=1]> changes after 50
+# by default surface tension changes are turned off after 20 newtsteps (via <vof_phi_interface>), delta function and properties after 30 newtsteps (via <vof_phi_lim>) and <vof_phi_adjust[r=1]> changes after 50
 #VARIABLE <vof_phi_adjust[r=1]> newtstepmax=30
-#VARIABLE <vof_phi_lim> newtstepmax=50
+#VARIABLE <vof_phi_interface> newtstepmax=50
+#VARIABLE <vof_phi_lim> newtstepmax=40
 #-------------------------------------------------------------------
 # INCLUDE FINISHED for ../oscillating_volume_of_fluid_drop_in_quadrant.arb
 #--------------------------------------------------------

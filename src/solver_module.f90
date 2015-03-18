@@ -460,7 +460,7 @@ do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="equati
 
     delphi(p) = -var(m)%funk(ns)%v*normalisation_multiplier
     iaa(p) = nz + 1  ! row index
-    if (debug) write(80,'(a,i8,a,g10.4)') 'new row: p = ',p,': delphi(p) = ',delphi(p)
+    if (debug) write(80,'(a,i8,a,g11.4)') 'new row: p = ',p,': delphi(p) = ',delphi(p)
 !   if (debug) write(80,*) 'var(m)%funk(ns)%ndv = ',var(m)%funk(ns)%ndv,': var(m)%funk(ns)%pp = ',var(m)%funk(ns)%pp, &
 !     ': var(m)%funk(ns)%dv = ',var(m)%funk(ns)%dv
 
@@ -478,7 +478,7 @@ do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="equati
         mm = unknown_var_from_pp(pp)
         if (mm == 0) call error_stop("problem in mainsolver with debugging 1")
         nsm = pp - var(mm)%funk(1)%pp(1) + 1 ! the ns for the unknown can be found from the unknown derivatives
-        write(80,'(2(a,i8),a,g10.4)') '  adding entry: unknown = '//trim(var(mm)%name)//': pp = ',pp, &
+        write(80,'(2(a,i8),a,g11.4)') '  adding entry: unknown = '//trim(var(mm)%name)//': pp = ',pp, &
           ': ijk = ',ijkvar(mm,nsm),': dv = ',var(m)%funk(ns)%dv(npp)
       end do
     end if
