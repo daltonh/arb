@@ -308,8 +308,8 @@ subroutine output_stat
 ! prints out some current statistics about the data
 
 use general_module
-integer :: error, ns, m, max_loc, min_loc
-character(len=100) :: filename
+integer :: error, ns, m, max_loc, min_loc, ntype, nvar
+character(len=100) :: filename, type
 character(len=1000) :: formatline, textline
 real :: total_update_time, maximum_update_time
 logical :: therel
@@ -349,25 +349,29 @@ if (output_variable_update_times) then
   end do
 end if
 
-! general variables
-do m = 1, ubound(var,1)
+! general variables, now in variable type order
+do ntype = 1, ubound(var_types,1)
+  type = trim(var_types(ntype))
   if (trim(var(m)%type) == 'local') cycle ! do not include local variables in this analysis as generally they may not be correctly located
-  max_loc = 1
-  min_loc = 1
-  do ns = 2, ubound(var(m)%funk,1)
-    if (var(m)%funk(ns)%v > var(m)%funk(max_loc)%v) max_loc = ns
-    if (var(m)%funk(ns)%v < var(m)%funk(min_loc)%v) min_loc = ns
-  end do
-! new textline formulation
-  formatline = '(a,'//trim(realformat)//',a,'//trim(dindexformat(ijkvar(m,max_loc)))//',a,'//trim(realformat)//',a,'// &
-    trim(dindexformat(ijkvar(m,min_loc)))//')'
-  write(textline,fmt=formatline) "variable "//trim(var(m)%type)//' '//trim(var(m)%name)//': max = ', &
-    trunk_dble(var(m)%funk(max_loc)%v),' at '//trim(var(m)%centring)//' ', &
-    ijkvar(m,max_loc),': min = ',trunk_dble(var(m)%funk(min_loc)%v),' at '//trim(var(m)%centring)//' ',ijkvar(m,min_loc)
-  if (trim(var(m)%type) == 'equation' .or. trim(var(m)%type) == 'unknown') then
-    formatline = '(a,'//trim(realformat)//')'
-    write(textline,fmt=formatline) trim(textline)//': magnitude = ',var(m)%magnitude
-  end if
+  do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type=type))%list) ! by default regions are not included in these lists
+    m = var_list(var_list_number(centring="all",type=type))%list(nvar)
+
+    max_loc = 1
+    min_loc = 1
+    do ns = 2, ubound(var(m)%funk,1)
+      if (var(m)%funk(ns)%v > var(m)%funk(max_loc)%v) max_loc = ns
+      if (var(m)%funk(ns)%v < var(m)%funk(min_loc)%v) min_loc = ns
+    end do
+  ! new textline formulation
+    formatline = '(a,'//trim(realformat)//',a,'//trim(dindexformat(ijkvar(m,max_loc)))//',a,'//trim(realformat)//',a,'// &
+      trim(dindexformat(ijkvar(m,min_loc)))//')'
+    write(textline,fmt=formatline) "variable "//trim(var(m)%type)//' '//trim(var(m)%name)//': max = ', &
+      trunk_dble(var(m)%funk(max_loc)%v),' at '//trim(var(m)%centring)//' ', &
+      ijkvar(m,max_loc),': min = ',trunk_dble(var(m)%funk(min_loc)%v),' at '//trim(var(m)%centring)//' ',ijkvar(m,min_loc)
+    if (trim(var(m)%type) == 'equation' .or. trim(var(m)%type) == 'unknown') then
+      formatline = '(a,'//trim(realformat)//')'
+      write(textline,fmt=formatline) trim(textline)//': magnitude = ',var(m)%magnitude
+    end if
 
 ! ref: update times ref: time ref: timing ref: variable_update_times
 
@@ -380,21 +384,23 @@ do m = 1, ubound(var,1)
 ! average (per update) update time = [total (cumulative) update time]/[total updates] = the average time that it takes to update this particular variable once
 ! relative average update time = [average (per update) update time]/[maximum_update_time] = the average update time for this particular variable dividied by the largest (average) update time across all variables.  This isn't as useful as it looks, as the variable that is used in the normalisation may only be updated once (say, at the beginning) in a simulation.
 
-  if (output_variable_update_times) then
-    formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(dindexformat(var(m)%update_number))//',2(a,'//trim(realformat)//'))'
-    write(textline,fmt=formatline) trim(textline),&
-      ': total (cumulative) update time = ',var(m)%update_time,': relative total update time = ', &
-      var(m)%update_time/total_update_time, &
-      ': total updates = ',var(m)%update_number,': average (per update) update time = ', &
-      var(m)%update_time/float(max(var(m)%update_number,1)),': relative average update time = ', &
-      var(m)%update_time/(float(max(var(m)%update_number,1))*maximum_update_time)
-  end if
+    if (output_variable_update_times) then
+      formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(dindexformat(var(m)%update_number))//',2(a,'//trim(realformat)//'))'
+      write(textline,fmt=formatline) trim(textline),&
+        ': total (cumulative) update time = ',var(m)%update_time,': relative total update time = ', &
+        var(m)%update_time/total_update_time, &
+        ': total updates = ',var(m)%update_number,': average (per update) update time = ', &
+        var(m)%update_time/float(max(var(m)%update_number,1)),': relative average update time = ', &
+        var(m)%update_time/(float(max(var(m)%update_number,1))*maximum_update_time)
+    end if
 
-  write(foutput,'(a)') trim(textline)
+    write(foutput,'(a)') trim(textline)
+
+  end do
 
 end do
 
-! dynamic regions
+! dynamic regions, now in type order
 if (include_regions) then
 
 ! do the same timing operations as per variables
@@ -408,24 +414,30 @@ if (include_regions) then
     end do
   end if
 
-  do m = 1, ubound(region,1)
-    if (.not.(region(m)%dynamic)) cycle
+  do ntype = 1, ubound(var_types,1)
+    type = trim(var_types(ntype))
+    if (trim(var(m)%type) == 'local') cycle ! do not include local regions in this analysis again
+    do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type=type,include_regions=.true.))%list)
+      if (.not.var_list(var_list_number(centring="all",type=type,include_regions=.true.))%region(nvar)) cycle
+      m = var_list(var_list_number(centring="all",type=type,include_regions=.true.))%list(nvar)
+      if (.not.(region(m)%dynamic)) cycle
 
-    formatline = '(a,'//trim(dindexformat(allocatable_integer_size(region(m)%ijk)))//')'
-    write(textline,fmt=formatline) "region "//trim(region(m)%type)//' '//trim(region(m)%name)//': elements = ', &
-      allocatable_integer_size(region(m)%ijk)
+      formatline = '(a,'//trim(dindexformat(allocatable_integer_size(region(m)%ijk)))//')'
+      write(textline,fmt=formatline) "region "//trim(region(m)%type)//' '//trim(region(m)%name)//': elements = ', &
+        allocatable_integer_size(region(m)%ijk)
 
-    if (output_region_update_times) then
-      formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(dindexformat(region(m)%update_number))//',2(a,'//trim(realformat)//'))'
-      write(textline,fmt=formatline) trim(textline),&
-        ': total (cumulative) update time = ',region(m)%update_time,': relative total update time = ', &
-        region(m)%update_time/total_update_time, &
-        ': total updates = ',region(m)%update_number,': average (per update) update time = ', &
-        region(m)%update_time/float(max(region(m)%update_number,1)),': relative average update time = ', &
-        region(m)%update_time/(float(max(region(m)%update_number,1))*maximum_update_time)
-    end if
+      if (output_region_update_times) then
+        formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(dindexformat(region(m)%update_number))//',2(a,'//trim(realformat)//'))'
+        write(textline,fmt=formatline) trim(textline),&
+          ': total (cumulative) update time = ',region(m)%update_time,': relative total update time = ', &
+          region(m)%update_time/total_update_time, &
+          ': total updates = ',region(m)%update_number,': average (per update) update time = ', &
+          region(m)%update_time/float(max(region(m)%update_number,1)),': relative average update time = ', &
+          region(m)%update_time/(float(max(region(m)%update_number,1))*maximum_update_time)
+      end if
 
-    write(foutput,'(a)') trim(textline)
+      write(foutput,'(a)') trim(textline)
+    end do
   end do
 end if
 
