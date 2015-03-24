@@ -1387,18 +1387,19 @@ end do
 ! elementnodedata cannot be used for face centred quantities (or none centred for that matter)
 do n = 1, ubound(compound,1)
 ! ref: default output
-  if ((compound(n)%type == 'unknown'.or.compound(n)%type == 'output'.or. &
+! outputs are not always output
+  if (compound(n)%type == 'output'.or.((compound(n)%type == 'unknown'.or. &
     (compound(n)%type == 'derived'.and.compound(n)%centring == 'cell').or. &
-!   compound(n)%type == 'transient').and.compound(n)%relstep < max(relstepmax,1)) then
-    compound(n)%type == 'transient').and.compound(n)%relstep < max(transient_relstepmax,1)) then
+    compound(n)%type == 'transient').and.compound(n)%relstep < max(transient_relstepmax,1))) then
     call push_character_array(array=compound(n)%options,new_element='output',reverse=.true.)
   else
     call push_character_array(array=compound(n)%options,new_element='nooutput',reverse=.true.)
   end if
 ! ref: default stepoutput
-  if ((compound(n)%type == 'unknown'.or.compound(n)%type == 'derived'.or. &
+! none centred outputs now also always stepoutputted
+  if ((compound(n)%type == 'output'.or.((compound(n)%type == 'unknown'.or. &
     compound(n)%type == 'transient'.or.compound(n)%type == 'output') &
-    .and.compound(n)%centring == 'none'.and.compound(n)%relstep == 0) then
+    .and.compound(n)%relstep == 0)).and.compound(n)%centring == 'none') then
     call push_character_array(array=compound(n)%options,new_element='stepoutput',reverse=.true.)
   else
     call push_character_array(array=compound(n)%options,new_element='nostepoutput',reverse=.true.)

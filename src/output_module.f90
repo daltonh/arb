@@ -352,7 +352,7 @@ end if
 ! general variables, now in variable type order
 do ntype = 1, ubound(var_types,1)
   type = trim(var_types(ntype))
-  if (trim(var(m)%type) == 'local') cycle ! do not include local variables in this analysis as generally they may not be correctly located
+  if (trim(type) == 'local') cycle ! do not include local variables in this analysis as generally they may not be correctly located
   do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type=type))%list) ! by default regions are not included in these lists
     m = var_list(var_list_number(centring="all",type=type))%list(nvar)
 
@@ -416,7 +416,7 @@ if (include_regions) then
 
   do ntype = 1, ubound(var_types,1)
     type = trim(var_types(ntype))
-    if (trim(var(m)%type) == 'local') cycle ! do not include local regions in this analysis again
+    if (trim(type) == 'local') cycle ! do not include local regions in this analysis again
     do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type=type,include_regions=.true.))%list)
       if (.not.var_list(var_list_number(centring="all",type=type,include_regions=.true.))%region(nvar)) cycle
       m = var_list(var_list_number(centring="all",type=type,include_regions=.true.))%list(nvar)

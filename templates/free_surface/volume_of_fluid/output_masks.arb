@@ -1,0 +1,7 @@
+# this file contains variables that allow the outputing of the various dynamic region masks
+CELL_OUTPUT <vof_interface_mask_output[r=1]> "1.d0" ON <vof_interface_mask[r=1]>
+FACE_OUTPUT <vof_interface_mask_f_output[r=1]> "1.d0" ON <vof_interface_mask_f[r=1]>
+CELL_OUTPUT <vof_delta_mask_output[r=1]> "1.d0" ON <vof_delta_mask[r=1]>
+FACE_OUTPUT <vof_delta_mask_f_output[r=1]> "1.d0" ON <vof_delta_mask_f[r=1]>
+CELL_OUTPUT <vof_phigrad_mask_output[r=1]> "1.d0" ON <vof_phigrad_mask[r=1]>
+NODE_OUTPUT <vof_phigrad_mask_n_output[r=1]> "1.d0" ON <vof_phigrad_mask_n[r=1]>
