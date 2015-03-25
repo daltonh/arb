@@ -1,0 +1,3 @@
+# some metrics on mesh quality
+INCLUDE "cell_aspect_ratio" # keep < 100 say for structured meshes, or as close to 1 as possible
+INCLUDE "cell_adjacent_volume_ratio" # keep < 1.2 say, or as close to 1 as possible

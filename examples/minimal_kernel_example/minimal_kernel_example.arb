@@ -40,3 +40,4 @@ NODE_EQUATION <phi_n equation> "<phi_n>-nodegrad[l=1](<cellx[l=1]>)" ON <all nod
 INCLUDE_ROOT "general"
 INCLUDE "element_information"
 INCLUDE "kernel_information"
+INCLUDE "mesh_quality"
