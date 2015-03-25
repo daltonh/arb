@@ -136,7 +136,7 @@ class Data():
             self.df=pd.read_csv(self.step_file, comment='#', low_memory=False)[1:]
         load_blank = 0
         # convert all but header labels to float values
-        self.df = self.df[1:].astype(float)
+        self.df = self.df.astype(float)
         if (not self.show_newtsteps):
             self.df = self.df.groupby("'<timestep>'", as_index=False).nth(-1)
         self.step_file.close()
@@ -173,7 +173,7 @@ class RefreshThread(Thread):
     def run(self):
         # This is the code executing in the new thread.
         while (self.refresh_state):
-            time.sleep(2) # wait n seconds
+            time.sleep(5) # wait n seconds
             wx.CallAfter(self.postTime, 1)
         wx.CallAfter(Publisher().sendMessage, "update", "string") # send a string to the "update" broadcast (will allow thread to continue)
  
@@ -827,7 +827,7 @@ class FrameGenerator(wx.Frame):
                 self.data_object.step_file = open(self.data_object.step_file_path)
                 self.data_object.df=pd.read_csv(self.data_object.step_file, comment='#',low_memory=False)[1:]
                 # convert all but header labels to float values
-                self.data_object.df = self.data_object.df[1:].astype(float)
+                self.data_object.df = self.data_object.df.astype(float)
                 self.data_object.step_file.close()
 
                 if (global_commit):
@@ -835,7 +835,7 @@ class FrameGenerator(wx.Frame):
                     self.data_object.df=pd.read_csv(path, comment='#', low_memory=False)[1:]
                 else:
                     self.data_object.df=pd.read_csv('output/output_step.csv', comment='#', low_memory=False)[1:]
-                self.data_object.df = self.data_object.df[1:].astype(float)
+                self.data_object.df = self.data_object.df.astype(float)
                 self.call_plot_upate()
             except:
                 pass
