@@ -180,6 +180,7 @@ type var_type
   character(len=1000) :: units ! character string of the units
   double precision :: multiplier ! multiplier appended to units when interacting with outside world
   double precision :: magnitude = -1.d0 ! an order of magnitude estimate of the variable, calculated from initial conditions or dynamically (option dynamicmagnitude/staticmagnitude) and only for unknown and equation variables right now.  -1 indicates that this magnitude has not been set
+  integer :: magnitude_constant = 0 ! fortran var number of a none-centred constant that is to be used as the magnitude of this variable, only for unknowns and equations, and if this is set, it takes precedence over any default magnitude values
   character(len=4) :: centring
   character(len=100) :: type ! variable type: constant, transient, newtient, unknown, derived, equation, output, condition, local
   integer :: relstep ! relative timestep, with relstep=0 being the current step

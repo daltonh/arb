@@ -2023,6 +2023,11 @@ sub organise_user_variables {
     $variable{$type}[$mvar]{"omvar"} = $mvar;
     $variable{$type}[$mvar]{"newtstepmin"} = '';
     $variable{$type}[$mvar]{"newtstepmax"} = '';
+# now set magnitude constants
+    if ($type eq "unknown" || $type eq "equation") {
+      $variable{$type}[$mvar]{"magnitude_constant"} = 0; # specifies that it is not to be set from a none-centred constant value
+    }
+      
 
 # check a centring was defined, and if not, try to work out a default
     if (empty($variable{$type}[$mvar]{"centring"})) { $variable{$type}[$mvar]{"centring"} = 'none';
@@ -2139,7 +2144,7 @@ sub organise_user_variables {
 #f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
 #f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component) (equivalently compoundelementdata,compoundelementnodedata,compoundelementnodelimiteddata)
 #p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
-#f  magnitude=value - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
+#f  magnitude=[value|<a none centred constant>] - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
 #f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
 #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
@@ -2195,6 +2200,11 @@ sub organise_user_variables {
           $match =~ s/e/d/; if ($match !~ /d/) { $match = $match."d0"; } if ($match !~ /\./) { $match =~ s/d/.d/; }
           if ($type eq "unknown" || $type eq "equation") {
             $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",$option_name=$match";
+            if ($option_name eq "magnitude") { $variable{$type}[$mvar]{"magnitude_constant"} = 0; } # this also resets the magnitude_constant variable
+          } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
+        elsif ($option =~ /^magnitude\s*=\s*(<.+?>)$/i) { # alternatively, the magnitude may be specified as a none centred constant variable, which will be checked later
+          if ($type eq "unknown" || $type eq "equation") {
+            $variable{$type}[$mvar]{"magnitude_constant"} = examine_name($1,"name");
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         elsif ($option =~ /^(output|stop|convergence|bell)condition$/i) {
           $condition = "\L$1";
@@ -2261,6 +2271,33 @@ sub organise_user_variables {
     }
     $variable{$type}[$mvar]{"fortran_number"} = $masread+1; # fortran var array element number which starts at 1 (previously we used $m{user} for this)
 
+  }
+
+#-----------------------------------------------------
+# find and check none-centred constant magnitude variable
+
+  foreach $type ( "unknown", "equation" ) {
+    foreach $mvar ( 1 .. $m{$type} ) {
+      if ($variable{$type}[$mvar]{"magnitude_constant"}) {
+        $name = $variable{$type}[$mvar]{"magnitude_constant"};
+        $variable{$type}[$mvar]{"magnitude_constant"} = 0;
+        for my $mvarc ( 1 .. $m{"constant"} ) {
+          if ($name eq $variable{"constant"}[$mvarc]{"name"}) {
+            $variable{$type}[$mvar]{"magnitude_constant"} = $mvarc;
+            last;
+          }
+        }
+        if (!($variable{$type}[$mvar]{"magnitude_constant"})) {
+          error_stop("the constant variable $name used to specify the magnitude of $type $variable{$type}[$mvar]{name} is not found\n");
+        } elsif ($variable{"constant"}[$variable{$type}[$mvar]{"magnitude_constant"}]{"centring"} ne "none") {
+          error_stop("the constant variable $name used to specify the magnitude of $type $variable{$type}[$mvar]{name} needs to be none centred: ".
+            "it is $variable{constant}[$variable{$type}[$mvar]{magnitude_constant}]{centring} centred\n");
+        }
+# if we are here then we have identified a none centred constant variable that should be used to set the magnitude - store the fortran number of this variable
+        print DEBUG "INFO: identified the none centred constant $name which will be used as the magnitude of $type $variable{$type}[$mvar]{name}\n";
+        $variable{$type}[$mvar]{"magnitude_constant"} = $variable{"constant"}[$variable{$type}[$mvar]{"magnitude_constant"}]{"fortran_number"};
+      }
+    }
   }
 
 #-----------------------------------------------------
@@ -4584,6 +4621,10 @@ sub create_allocations {
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%someloop=$variable{$type}[$mvar]{someloop}\n".
           "allocate($basename{$type}($variable{$type}[$mvar]{fortran_number})%component($variable{$type}[$mvar]{nrank}))\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%component=$variable{$type}[$mvar]{component_list}\n";
+        if ($type eq "unknown" || $type eq "equation") {
+          $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.
+            "$basename{$type}($variable{$type}[$mvar]{fortran_number})%magnitude_constant=$variable{$type}[$mvar]{magnitude_constant}\n";
+        }
       } else {
         $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.
           "\n!$type: $variable{$type}[$mvar]{name} of $variable{$type}[$mvar]{rank} rank\n".

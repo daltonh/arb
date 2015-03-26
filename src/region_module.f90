@@ -827,7 +827,7 @@ end if
 if (nsregion == 0) then
   if (.not.region(m)%dynamic) &
     write(*,'(a)') "WARNING: the "//trim(region(m)%centring)//" "//trim(region(m)%type)//" region "//trim(region(m)%name)// &
-    "contains no elements (none allocated)"
+    " contains no elements (none allocated)"
   if (.not.allocated(region(m)%ijk)) allocate(region(m)%ijk(0)) ! don't think that this is required in the code anymore, but it is valid fortran now
 end if
 
