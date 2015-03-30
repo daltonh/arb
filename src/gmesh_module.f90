@@ -387,13 +387,13 @@ do gmesh_number = 0, ubound(gmesh,1)
     nregion  = 0
     if (allocated(region)) then
       do region_number = 1, ubound(region,1)
-        if (trim(region(region_number)%type) == 'static' .or. trim(region(region_number)%type) == 'gmsh') nregion = nregion + 1
+        if ((.not.region(region_number)%dynamic) .and. trim(region(region_number)%type) /= 'system') nregion = nregion + 1
       end do
       if (nregion > 0) then
         allocate(gmesh(0)%gregion(nregion))
         nregion  = 0
         do region_number = 1, ubound(region,1)
-          if (trim(region(region_number)%type) == 'static' .or. trim(region(region_number)%type) == 'gmsh') then
+          if ((.not.region(region_number)%dynamic) .and. trim(region(region_number)%type) /= 'system') then
             nregion = nregion + 1
             gmesh(0)%gregion(nregion)%region_number = region_number
             gmesh(0)%gregion(nregion)%centring = region(region_number)%centring

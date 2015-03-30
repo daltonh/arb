@@ -1348,6 +1348,7 @@ do m = 1, ubound(var,1)
     option_name = extract_option_name(var(m)%options(n),error)
     if (error) cycle
     if (trim(option_name) == 'magnitude') then
+      if (var(m)%magnitude_constant /= 0) cycle ! skip setting this magnitude if it will be set by a magnitude_constant
       var(m)%magnitude = extract_option_double_precision(var(m)%options(n),error)
       if (error) call error_stop("could not determine the user-set magnitude for variable "//trim(var(m)%name)// &
         " from the option "//trim(var(m)%options(n)))

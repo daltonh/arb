@@ -998,21 +998,30 @@ unknown_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_u
   if (var(m)%magnitude < 0.d0) first = .true.
   if (.not.(var(m)%dynamic_magnitude.or.first)) cycle
   old_magnitude = var(m)%magnitude
-  if (rms_magnitude) then
-    var(m)%magnitude = sqrt(max(sum(var(m)%funk(:)%v**2)/dble(max(ubound(var(m)%funk,1),1)),0.d0))
+  if (var(m)%magnitude_constant > 0.and.first) then
+    var(m)%magnitude = abs(var(var(m)%magnitude_constant)%funk(1)%v)
+    write(*,'(a,g10.3)') 'INFO: found magnitude for unknown '//trim(var(m)%name)//' based on constant '// &
+      trim(var(var(m)%magnitude_constant)%name)//': magnitude = ',var(m)%magnitude
+    if (convergence_details_file) write(fconverge,'(a,g10.3)') &
+      'INFO: found magnitude for unknown '//trim(var(m)%name)//' based on constant '// &
+      trim(var(var(m)%magnitude_constant)%name)//': magnitude = ',var(m)%magnitude
   else
-    var(m)%magnitude = maxval(abs(var(m)%funk(:)%v))
-  end if
-  if (debug_sparse) write(*,'(2(a,g10.3))') 'unknown '//trim(var(m)%name)//': raw magnitude ',var(m)%magnitude, &
-    ': old_magnitude = ',old_magnitude
-  if (first) then
+    if (rms_magnitude) then
+      var(m)%magnitude = sqrt(max(sum(var(m)%funk(:)%v**2)/dble(max(ubound(var(m)%funk,1),1)),0.d0))
+    else
+      var(m)%magnitude = maxval(abs(var(m)%funk(:)%v))
+    end if
     write(*,'(a,g10.3)') 'INFO: found magnitude for unknown '//trim(var(m)%name)//' based on initial values: '// &
       'magnitude = ',var(m)%magnitude
     if (convergence_details_file) write(fconverge,'(a,g10.3)') &
       'INFO: found magnitude for unknown '//trim(var(m)%name)//' based on initial values: magnitude = ',var(m)%magnitude
-    if (var(m)%magnitude < error_magnitude) call error_stop("a zero magnitude was calculated for this variable based "// &
-      "upon its initial value.  Every unknown variable needs a finite order of magnitude.  Either initialise this "// &
-      "unknown with non-zero values, or set the magnitude for this explicitly via the option magnitude=value in "// &
+  end if
+  if (debug_sparse) write(*,'(2(a,g10.3))') 'unknown '//trim(var(m)%name)//': raw magnitude ',var(m)%magnitude, &
+    ': old_magnitude = ',old_magnitude
+  if (first) then
+    if (var(m)%magnitude < error_magnitude) call error_stop("a zero initial magnitude was calculated for this variable. "// &
+      "Every unknown variable needs a finite order of magnitude.  Either initialise this "// &
+      "unknown with non-zero values, or set the magnitude for this explicitly via the option magnitude=[value|constant] in "// &
       "the input file.")
   end if
   if (.not.first) then
@@ -1022,12 +1031,11 @@ unknown_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_u
     first = .false.
   end if
   if (debug_sparse) write(*,'(a,g13.6)') '  final: magnitude = ',var(m)%magnitude
-  if (var(m)%magnitude < error_magnitude) &
-    call error_stop("During a dynamic adjustment the magnitude for unknown variable "//trim(var(m)%name)// &
+  if (var(m)%magnitude < error_magnitude) call error_stop("The magnitude for unknown variable "//trim(var(m)%name)// &
     "is approaching zero.  The best scenario is that the solution to the problem has this variable equal to "// &
     "zero.  If this is the case then consider setting the magnitude of this unknown statically "// &
     "(staticmagnitude option in the input file) or decrease the dynamic magnitude multiplier for this variable (via "// &
-    "the option dynamicmagnitudemultiplier=value)")
+    "the option dynamicmagnitudemultiplier=value).")
 end do unknown_magnitude_loop
 
 ! update order of magnitude of equations
@@ -1036,58 +1044,67 @@ equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_
   if (var(m)%magnitude < 0.d0) first = .true.
   if (.not.(var(m)%dynamic_magnitude.or.first)) cycle
   old_magnitude = var(m)%magnitude
-  var(m)%magnitude = 0.d0
-  do ns = 1, ubound(var(m)%funk,1)
+  if (var(m)%magnitude_constant > 0.and.first) then
+    var(m)%magnitude = abs(var(var(m)%magnitude_constant)%funk(1)%v)
+    write(*,'(a,g10.3)') 'INFO: found magnitude for equation '//trim(var(m)%name)//' based on constant '// &
+      trim(var(var(m)%magnitude_constant)%name)//': magnitude = ',var(m)%magnitude
+    if (convergence_details_file) write(fconverge,'(a,g10.3)') &
+      'INFO: found magnitude for equation '//trim(var(m)%name)//' based on constant '// &
+      trim(var(var(m)%magnitude_constant)%name)//': magnitude = ',var(m)%magnitude
+  else
+    var(m)%magnitude = 0.d0
+    do ns = 1, ubound(var(m)%funk,1)
 ! need to think about this in terms of the convergence criterion
-    equation_magnitude = abs(var(m)%funk(ns)%v)
-    do n = 1,var(m)%funk(ns)%ndv
-      pp = var(m)%funk(ns)%pp(n)
+      equation_magnitude = abs(var(m)%funk(ns)%v)
+      do n = 1,var(m)%funk(ns)%ndv
+        pp = var(m)%funk(ns)%pp(n)
 ! search for unknown variable that pp refers to
-      mm = unknown_var_from_pp(pp)
-      if (mm == 0) then
-        write(*,*) 'ERROR: unknown variable not found in update_checker'
-        write(*,'(4(a,i6))') 'm = ',m,': ns = ',ns,': pp = ',pp,': mm = ',mm
-        stop
+        mm = unknown_var_from_pp(pp)
+        if (mm == 0) then
+          write(*,*) 'ERROR: unknown variable not found in update_checker'
+          write(*,'(4(a,i6))') 'm = ',m,': ns = ',ns,': pp = ',pp,': mm = ',mm
+          stop
+        end if
+        equation_magnitude = max(equation_magnitude,abs(var(m)%funk(ns)%dv(n)*var(mm)%magnitude))
+        if (debug.and..false.) then
+          write(*,'(4(a,i6))') 'm = ',m,': ns = ',ns,': pp = ',pp,': mm = ',mm
+          write(*,'(3(a,g14.6))') 'equation_magnitude = ',equation_magnitude,': var(m)%funk(ns)%dv(n) = ', &
+            var(m)%funk(ns)%dv(n),': var(mm)%magnitude = ',var(mm)%magnitude 
+        end if
+      end do
+      if (rms_magnitude) then
+        var(m)%magnitude = var(m)%magnitude + equation_magnitude**2
+      else
+        var(m)%magnitude = max(var(m)%magnitude,equation_magnitude)
       end if
-      equation_magnitude = max(equation_magnitude,abs(var(m)%funk(ns)%dv(n)*var(mm)%magnitude))
-      if (debug.and..false.) then
-        write(*,'(4(a,i6))') 'm = ',m,': ns = ',ns,': pp = ',pp,': mm = ',mm
-        write(*,'(3(a,g14.6))') 'equation_magnitude = ',equation_magnitude,': var(m)%funk(ns)%dv(n) = ', &
-          var(m)%funk(ns)%dv(n),': var(mm)%magnitude = ',var(mm)%magnitude 
+      if (debug) write(*,'(a,g13.6,a,g13.6,a)') 'equation_magnitude = ',equation_magnitude, &
+        'old_magnitude = ',old_magnitude,': var(m)%name = '//trim(var(m)%name)// &
+        ': var(m)%funk(ns) = '//trim(print_funk(var(m)%funk(ns)))
+      if (equation_magnitude < error_magnitude) then
+        write(*,'(a/a,g14.6,a)') 'ERROR: the maximum product of a jacobian element times its corresponding unknown variable', &
+          '  magnitude for '//trim(var(m)%type)//' '//trim(var(m)%name)//' is ',equation_magnitude,' at '// &
+          trim(variable_location_string(m,ns))
+        if (convergence_details_file) write(fconverge,'(a/a,g14.6,a)') &
+          'ERROR: the maximum product of a jacobian element times its corresponding unknown variable', &
+          '  magnitude for '//trim(var(m)%type)//' '//trim(var(m)%name)//' is ',equation_magnitude,' at '// &
+          trim(variable_location_string(m,ns))
+        write(*,'(a)') '  This indicates that this '//trim(var(m)%type)//' is currently not dependent on any of the unknown '// &
+          'variables.  Equivalently, the total derivative of this '//trim(var(m)%type)//' with respect to any of the '// &
+          'unknown variables is zero (or very small).  Note that every equation must depend on atleast one unknown variable '// &
+          'at all times, otherwise the jacobian has a zero row and is singular.  One possibility is that one of the variables '// &
+          'used has the option ''noderivative'' set explicitly or implicitly (by being an output variable for example).  You '// &
+          'may be able to find more clues in the output/convergence_details.txt file, created if convergence_details_file '// &
+          'is set to true in general_module.f90.  As a last resort set debug = .true. in subroutine update_magnitudes.'
+        ierror = 1
+        cycle equation_magnitude_loop
       end if
     end do
-    if (rms_magnitude) then
-      var(m)%magnitude = var(m)%magnitude + equation_magnitude**2
-    else
-      var(m)%magnitude = max(var(m)%magnitude,equation_magnitude)
-    end if
-    if (debug) write(*,'(a,g13.6,a,g13.6,a)') 'equation_magnitude = ',equation_magnitude, &
-      'old_magnitude = ',old_magnitude,': var(m)%name = '//trim(var(m)%name)// &
-      ': var(m)%funk(ns) = '//trim(print_funk(var(m)%funk(ns)))
-    if (equation_magnitude < error_magnitude) then
-      write(*,'(a/a,g14.6,a)') 'ERROR: the maximum product of a jacobian element times its corresponding unknown variable', &
-        '  magnitude for '//trim(var(m)%type)//' '//trim(var(m)%name)//' is ',equation_magnitude,' at '// &
-        trim(variable_location_string(m,ns))
-      if (convergence_details_file) write(fconverge,'(a/a,g14.6,a)') &
-        'ERROR: the maximum product of a jacobian element times its corresponding unknown variable', &
-        '  magnitude for '//trim(var(m)%type)//' '//trim(var(m)%name)//' is ',equation_magnitude,' at '// &
-        trim(variable_location_string(m,ns))
-      write(*,'(a)') '  This indicates that this '//trim(var(m)%type)//' is currently not dependent on any of the unknown '// &
-        'variables.  Equivalently, the total derivative of this '//trim(var(m)%type)//' with respect to any of the '// &
-        'unknown variables is zero (or very small).  Note that every equation must depend on atleast one unknown variable '// &
-        'at all times, otherwise the jacobian has a zero row and is singular.  One possibility is that one of the variables '// &
-        'used has the option ''noderivative'' set explicitly or implicitly (by being an output variable for example).  You '// &
-        'may be able to find more clues in the output/convergence_details.txt file, created if convergence_details_file '// &
-        'is set to true in general_module.f90.  As a last resort set debug = .true. in subroutine update_magnitudes.'
-      ierror = 1
-      cycle equation_magnitude_loop
-    end if
-  end do
-  if (rms_magnitude) var(m)%magnitude = sqrt(max(var(m)%magnitude/dble(max(ubound(var(m)%funk,1),1)),0.d0))
+    if (rms_magnitude) var(m)%magnitude = sqrt(max(var(m)%magnitude/dble(max(ubound(var(m)%funk,1),1)),0.d0))
+    if (convergence_details_file.and.first) write(fconverge,'(a,g10.3)') &
+      'INFO: found magnitude for equation '//trim(var(m)%name)//' based on initial values: magnitude = ',var(m)%magnitude
+  end if
   if (debug_sparse) write(*,'(2(a,g10.3))') 'equation '//trim(var(m)%name)//': raw magnitude ',var(m)%magnitude, &
     ': old_magnitude = ',old_magnitude 
-  if (convergence_details_file.and.first) write(fconverge,'(a,g10.3)') &
-    'INFO: found magnitude for equation '//trim(var(m)%name)//' based on initial values: magnitude = ',var(m)%magnitude
   if (.not.first) then
     var(m)%magnitude = max(min(var(m)%magnitude,old_magnitude*var(m)%dynamic_magnitude_multiplier), &
       old_magnitude/var(m)%dynamic_magnitude_multiplier) ! underrelax new unknown magnitude to avoid sudden changes
@@ -1095,6 +1112,8 @@ equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_
     first = .false.
   end if
   if (debug_sparse) write(*,'(a,g13.6)') '  final: magnitude = ',var(m)%magnitude
+  if (var(m)%magnitude < error_magnitude) &
+    call error_stop("The magnitude for equation variable "//trim(var(m)%name)//"is approaching zero.")
 end do equation_magnitude_loop
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine update_magnitudes'
