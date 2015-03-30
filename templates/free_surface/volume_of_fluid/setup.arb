@@ -10,8 +10,8 @@ CELL_UNKNOWN <vof_phi> [] "<vof_phi_initial>" ON <all cells> magnitude=1.d0
 # function is limited, and has newtstepmax on it
 CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells> newtstepmax=30
 # create some vof_phi's specifically for the delta functions
-CELL_LOCAL <vof_phi_delta> "<vof_phi_lim>" ON <all cells> # this is used on rarely, so just link to <vof_phi_lim>
-FACE_DERIVED <vof_phi_delta_f> "<vof_phi_lim>" ON <vof_delta_mask_f[r=1]> # this will be used repeatedly in celldiv so use a derived, but only need it on the vof_delta_mask_f
+CELL_LOCAL <vof_phi_delta> "<vof_phi_lim>" ON <all cells> # this is used on rarely (for force_f), so just link to <vof_phi_lim>
+FACE_DERIVED <vof_phi_delta_f> "faceif(facedelta(<vof_delta_mask_f[r=1]>),<vof_phi_lim>,faceave[adjacentcells](<vof_phi_lim>))" ON <all faces> # this will be used repeatedly in celldiv so use a derived, but also calculate it as cheaply as possible for density property use
 # also define a derived version of <vof_phi>, so that newtstepmax can be used with it to turn off implicit iterations if newton loop is not converging
 # now (since v0.52) replaces <vof_phi_lim> in interface (normals and kappa) calculation, without being bounded between 0 and 1
 CELL_DERIVED <vof_phi_interface> "<vof_phi>" ON <all cells> newtstepmax=20
@@ -21,19 +21,26 @@ CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_rounded>" "<vof_phi_rounded>" ON <all ce
 # update without rounding
 #CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi>" "<vof_phi>" ON <all cells> nooutput
 
-# setup a transient region which is true only around the interface, that is based on the previous timestep vof_phi, but includes up to an extra cell meaning that for CFL<=1 will also include the current timestep interface
-GENERAL_REPLACEMENTS D "<<vof_setup_mask_comment>>" W "" # if this is not set then 
-<<vof_setup_mask_comment>>CELL_TRANSIENT <vof_interface_indicator[r=1]> "" "cellmax(<vof_phi_lim>,region=<adjacentcellicells>)-cellmin(<vof_phi_lim>,region=<adjacentcellicells>)-<vof_phi_tol>" ON <all cells> output
-<<vof_setup_mask_comment>>CELL_TRANSIENT_REGION <vof_interface_mask[r=1]> "" "variable(<vof_interface_indicator[r=1]>)" ON <all cells>
-# and now expand this mask to capture all cells that at current timestep may have non-interfacial <vof_delta> values
+# mask setup:
+GENERAL_REPLACEMENTS DEFAULT "<<vof_mask_comment>>" W "" # if this is not set then no masks are defined.  If you don't want to use masks, then include remove_masks near the start of the input file.
 GENERAL_REPLACEMENTS DEFAULT "<<maxfaceaveseparation>>" W "3" # default maximum separation used for the faceave kernels, which can be overwritten outside of this routine
-<<vof_setup_mask_comment>>CELL_TRANSIENT_REGION <vof_delta_mask[r=1]> "" "expand[maxseparation=<<maxfaceaveseparation>>,faceseparation](<vof_interface_mask[r=1]>)" ON <all cells>
+GENERAL_REPLACEMENTS DEFAULT "<<maxfacegradseparation>>" W "3" # default maximum separation used for the facegrad kernels, which can be overwritten outside of this routine
+
+# interface masks (on fluid domain):
+# first we deal with the interface masks, which are concerned with the phi advection calculation, as well as the 
+# setup a transient region which is true only around the interface, that is based on the previous timestep vof_phi, but includes up to an extra cell meaning that for CFL<=1 will also include the current timestep interface
+<<vof_mask_comment>>CELL_TRANSIENT <vof_interface_indicator[r=1]> "" "cellmax(<vof_phi_lim>,region=<adjacentcellicells>)-cellmin(<vof_phi_lim>,region=<adjacentcellicells>)-<vof_phi_tol>" ON <all cells> output
+<<vof_mask_comment>>CELL_TRANSIENT_REGION <vof_interface_mask[r=1]> "" "variable(<vof_interface_indicator[r=1]>)" ON <all cells>
+# and using associatedwith capture the surrounding faces, which will include all faces that have a interfacial advection phi
+<<vof_mask_comment>>FACE_TRANSIENT_REGION <vof_interface_mask_f[r=1]> "" "associatedwith(<vof_interface_mask[r=1]>)" ON <all faces>
+
+# delta masks (on fluid domain):
+# and now expand this mask to capture all cells that at current timestep may have non-interfacial <vof_delta> values
+<<vof_mask_comment>>CELL_TRANSIENT_REGION <vof_delta_mask[r=1]> "" "expand[maxseparation=<<maxfaceaveseparation>>,faceseparation](<vof_interface_mask[r=1]>)" ON <all cells>
 # and also non-interfacial <vof_phi_delta_f> values
-<<vof_setup_mask_comment>>FACE_TRANSIENT_REGION <vof_delta_mask_f[r=1]> "" "associatedwith(<vof_delta_mask[r=1]>)" ON <all faces>
-<<vof_setup_mask_comment>>FACE_TRANSIENT_REGION <vof_interface_mask_f[r=1]> "" "associatedwith(<vof_interface_mask[r=1]>)" ON <vof_delta_mask_f[r=1]>
-# and for the normals
-# need to think about this more
-<<vof_setup_mask_comment>>CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=<<maxfaceaveseparation>>,faceseparation](<vof_delta_mask[r=1]>)" ON <all cells>
-<<vof_setup_mask_comment>>NODE_TRANSIENT_REGION <vof_phigrad_mask_n[r=1]> "" "associatedwith(<vof_phigrad_mask[r=1]>)" ON <all nodes>
+# this will also define faces which have interfacial fluid properties
+<<vof_mask_comment>>FACE_TRANSIENT_REGION <vof_delta_mask_f[r=1]> "" "associatedwith(<vof_delta_mask[r=1]>)" ON <all faces>
+
+# normal masks are now calculated where the normals are calculated.
 
 CELL_LOCAL <vof_phi_initial> "0.d0" # default initial phi value - set this to something in the actual input file
