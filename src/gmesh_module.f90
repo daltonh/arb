@@ -490,6 +490,10 @@ do gmesh_number = 0, ubound(gmesh,1)
   end if
 
 ! counting of gelements and create arrays of gregions for each gelement
+! the purpose of this loop is to 
+! 1) calculate the number of gelement output lines will be output for each gmesh, noting that an element will be repeated for every region that it is in, except for boundary cells (which are not output for any cell regions)
+! 2) form the gregions array for each element, which is used when writing each gelement
+! note, that if a gelement is not in a region (or is only in one region but is a boundary cell) then it still is given an entry in the output file, but here is assigned a sole gregion array entry of 1
   gmesh(gmesh_number)%ngelements = 0 ! these have one entry per element, with repeats if an element is in multiple regions
   gmesh(gmesh_number)%ngelements_face = 0
   gmesh(gmesh_number)%ngelements_cell = 0
@@ -501,6 +505,7 @@ do gmesh_number = 0, ubound(gmesh,1)
       iadd = 0
       if (i /= 0.and.allocated(gmesh(gmesh_number)%gregion)) then
         do gregion = 1, ubound(gmesh(gmesh_number)%gregion,1)
+          if (gmesh(gmesh_number)%gregion(gregion)%centring.ne.'cell') cycle ! as per v0.53 the cell|face|node%region_list array has been removed, so instead check the region centring and then later that this element is in the region
   ! only include gelements that have the same dimension as the gregion (otherwise gmsh pickles)
           region_number = gmesh(gmesh_number)%gregion(gregion)%region_number
           if (region_number == 0) cycle
@@ -509,7 +514,6 @@ do gmesh_number = 0, ubound(gmesh,1)
   ! NB: as per original gmsh file, boundary cells are created once the read in has taken place
   ! data can still be associated with them as there gelements for the boundary face elements are defined
           if (cell(i)%type /= 1) cycle
-!         if (location_in_list(array=cell(i)%region_list,element=region_number) /= 0) then
           if (region(region_number)%ns(i) /= 0) then
             iadd = iadd + 1
             call push_integer_array(gmesh(gmesh_number)%gelement(gelement)%gregions,new_element=gregion)
@@ -520,10 +524,10 @@ do gmesh_number = 0, ubound(gmesh,1)
       jadd = 0
       if (j /= 0.and.allocated(gmesh(gmesh_number)%gregion)) then
         do gregion = 1, ubound(gmesh(gmesh_number)%gregion,1)
+          if (gmesh(gmesh_number)%gregion(gregion)%centring.ne.'face') cycle
           region_number = gmesh(gmesh_number)%gregion(gregion)%region_number
           if (region_number == 0) cycle
           if (face(j)%dimensions /= region(region_number)%dimensions) cycle
-!         if (location_in_list(array=face(j)%region_list,element=region_number) /= 0) then
           if (region(region_number)%ns(j) /= 0) then
             jadd = jadd + 1
             call push_integer_array(gmesh(gmesh_number)%gelement(gelement)%gregions,new_element=gregion)
@@ -534,10 +538,10 @@ do gmesh_number = 0, ubound(gmesh,1)
       kadd = 0
       if (k /= 0.and.allocated(gmesh(gmesh_number)%gregion)) then
         do gregion = 1, ubound(gmesh(gmesh_number)%gregion,1)
+          if (gmesh(gmesh_number)%gregion(gregion)%centring.ne.'node') cycle
           region_number = gmesh(gmesh_number)%gregion(gregion)%region_number
           if (region_number == 0) cycle
           if (0 /= region(region_number)%dimensions) cycle
-!         if (location_in_list(array=node(k)%region_list,element=region_number) /= 0) then ! here
           if (region(region_number)%ns(k) /= 0) then
             kadd = kadd + 1
             call push_integer_array(gmesh(gmesh_number)%gelement(gelement)%gregions,new_element=gregion)
