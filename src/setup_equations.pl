@@ -563,8 +563,8 @@ sub read_input_files {
         }
         $input_files[$#input_files]{"include_root"} = $input_files[$#input_files-1]{"include_root"}; # copy over include_root from previous file
         $input_files[$#input_files]{"name"} = '';
-# append arb suffix if an extension isn't there already to ref_name
-        if ( $input_files[$#input_files]{"ref_name"} !~ /.+\..+$/ ) {
+# append arb suffix to ref_name if it isn't already there - for v0.52 onwards, only arb or in suffixes are allowed
+        if ( $input_files[$#input_files]{"ref_name"} !~ /.+\.(arb|in)$/ ) {
           $input_files[$#input_files]{"ref_name"} = $input_files[$#input_files]{"ref_name"}.'.arb';
         }
 # ref: include working
