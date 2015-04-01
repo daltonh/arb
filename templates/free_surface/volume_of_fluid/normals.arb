@@ -4,8 +4,8 @@
 GENERAL_REPLACEMENTS DEFAULT "<<vofnodenormalscomment>>" W "" DEFAULT "<<vofcellnormalscomment>>" W "#"
 
 # first calculate masks for the normals
-<<vof_mask_comment>>CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=<<maxfacegradseparation>>,faceseparation](<vof_delta_mask[r=1]>)" ON <all cells>
-<<vofnodenormalscomment>><<vof_mask_comment>>NODE_TRANSIENT_REGION <vof_phigrad_mask_n[r=1]> "" "associatedwith(<vof_phigrad_mask[r=1]>)" ON <all nodes>
+<<vofmaskcomment>>CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=<<maxfacegradseparation>>,faceseparation](<vof_delta_mask[r=1]>)" ON <all cells>
+<<vofnodenormalscomment>><<vofmaskcomment>>NODE_TRANSIENT_REGION <vof_phigrad_mask_n[r=1]> "" "associatedwith(<vof_phigrad_mask[r=1]>)" ON <all nodes>
 
 <<vofnodenormalscomment>><<dim1comment>>NODE_DERIVED <vof_phigrad_n[l=1]> "nodefromcellgrad[l=1](<vof_phi_smoothed>)" ON <vof_phigrad_mask_n[r=1]> output
 <<vofnodenormalscomment>><<dim2comment>>NODE_DERIVED <vof_phigrad_n[l=2]> "nodefromcellgrad[l=2](<vof_phi_smoothed>)" ON <vof_phigrad_mask_n[r=1]>

@@ -23,8 +23,8 @@ FACE_DERIVED <vof_phi_f[r=1]> "faceif(facedelta(<vof_interface_mask_f[r=1]>),fac
 
 #CELL_DERIVED <vof_phi_adjust[r=1]> "cellvofphiadjust[noderivative](phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>)" ON <all cells> output
 # cellvofphiadjust now supports derivative calculation too for implicit flux (but not phif or phi[r=1])
-<<cartesiancomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>),0.d0)" ON <all cells> newtstepmax=40
-<<cylindricalcomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<<radius_f>>*<u_f>/faceave[lastcell](<<radius_c>>),dt=<dt>),0.d0)" ON <all cells> newtstepmax=40
+<<cartesiancomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>),0.d0)" ON <all cells> newtstepmax=60
+<<cylindricalcomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<<radius_f>>*<u_f>/faceave[lastcell](<<radius_c>>),dt=<dt>),0.d0)" ON <all cells> newtstepmax=60
 FACE_LOCAL <vof_phi_f_adjusted[r=1]> "faceif(facedelta(<vof_interface_mask_f[r=1]>),facemax(facemin(<vof_phi_f[r=1]>+faceif(<u_f>,faceave[downcell](<vof_phi_adjust[r=1]>),faceave[upcell](<vof_phi_adjust[r=1]>)),1.d0),0.d0),<vof_phi_f[r=1]>)" ON <all faces> output
 
 #CELL_TRANSIENT <vof_phi_advected> "<vof[r=1]>-<dt>*celldiv(<vof_phi_f_adjusted[r=1]>*<u_f[r=1]>)" ON <all cells> nooutput
