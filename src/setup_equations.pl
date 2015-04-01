@@ -2222,12 +2222,12 @@ sub organise_user_variables {
             if ("\L$1" eq 'no') { $variable{$type}[$mvar]{"deriv"} = 0; } else { $variable{$type}[$mvar]{"deriv"} = 1; }
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
 # ref: newtstepmax ref: newtstepmin
-        elsif ($option =~ /^(newtstep(max|min))(\s*=\s*([\+\-\d][\+\-\de]*))$/i) { # integer max/min of newtsteps during which this variable should be updated
+        elsif ($option =~ /^(newtstep(max|min))(|(\s*=\s*([\+\-\d][\+\-\de]*)))$/i) { # integer max/min of newtsteps during which this variable should be updated
           $option_name = "\L$1";
-          if (empty($4)) { 
+          if (empty($5)) { 
             $match = "-1";
           } else { 
-            $match = "\L$4"; # match is the magnitude of the variable, which needs to be an integer
+            $match = "\L$5"; # match is the magnitude of the variable, which needs to be an integer
           }
           if ($type eq "derived" || $type eq "equation") { # newtstep limiting is only done on equations or deriveds right now
             if ($match < 0) { # a negative values clears this option
