@@ -9,7 +9,9 @@ INCLUDE "smooth_phi"
 #INCLUDE "normals"
 #INCLUDE "curvature"
 
-INCLUDE "normals_node_based"
-INCLUDE "curvature_face_based"
+INCLUDE "normals"
+INCLUDE "curvature"
+#INCLUDE "normals_node_based"
+#INCLUDE "curvature_face_based"
 
 NONE_CONSTANT <vof_smoothing_constant> 0.1d0 # a small number gives less smoothing

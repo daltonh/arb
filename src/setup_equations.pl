@@ -1106,7 +1106,9 @@ sub read_input_files {
 #           if (nonempty($tmp2)) { $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n"; }
 # empty and undef now have different meanings - empty ("") now means to repeat the full equation, whereas undef means to give it a value of zero
             $asread_variable[$masread]{"initial_equation"} = $tmp1; print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n";
-            $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n";
+#           $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n";
+# incase we need to only set the initial_equation of a variable, keeping the previous equation value, only set equation if it is actually nonempty (ie, not "")
+            if (nonempty($tmp2)) { $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n"; }
           } else {
 # if we are here then tmp1 corresponds to the equation
 #           if (nonempty($tmp1)) { $asread_variable[$masread]{"equation"} = $tmp1; print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n"; }
@@ -2027,7 +2029,6 @@ sub organise_user_variables {
     if ($type eq "unknown" || $type eq "equation") {
       $variable{$type}[$mvar]{"magnitude_constant"} = 0; # specifies that it is not to be set from a none-centred constant value
     }
-      
 
 # check a centring was defined, and if not, try to work out a default
     if (empty($variable{$type}[$mvar]{"centring"})) { $variable{$type}[$mvar]{"centring"} = 'none';
@@ -2096,12 +2097,15 @@ sub organise_user_variables {
         error_stop("no equation has been given for $type variable $variable{$type}[$mvar]{name}.  Every $type variable needs either an equation or numerical value (for constants only)");
       }
     } else { # a transient or newtient must have an equation specified to be here
+# if initial equation isn't specified for a transient/newtient
       if (($type eq "transient" || $type eq "newtient") && empty($variable{$type}[$mvar]{"initial_equation"})) {
         if (($variable{$type}[$mvar]{"rindex"} > 0 && $type eq "transient") || $type eq "newtient" || defined($variable{$type}[$mvar]{"initial_equation"}) ) {
+# if transient with r>0, or newtient, or initial_equation was specified as an empty variable (""), set initial_equation=equation
           print "INFO: applying initial value given by the update equation to $type $name\n";
           print DEBUG "INFO: applying initial value given by the update equation to $type $name\n";
           $variable{$type}[$mvar]{"initial_equation"} = $variable{$type}[$mvar]{"equation"};
         } else {
+# otherwise apply 0.d0
           print "INFO: applying default initial equation of \"0.d0\" to current relstep (r=0) $type $name\n";
           print DEBUG "INFO: applying default initial equation of \"0.d0\" to current relstep (r=0) $type $name\n";
           $variable{$type}[$mvar]{"initial_equation"} = "0.d0";
@@ -2124,7 +2128,7 @@ sub organise_user_variables {
     print DEBUG "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: definitions = $variable{$type}[$mvar]{definitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}\n";
 
 # process variable options, removing clearoptions statements and creating individual variable options lists
-    if ($asread_variable[$masread]{"options"} =~ /.*(^|\,)\s*clearoptions\s*(\,|$)\*/i) { # match the last occurrence of this option by putting a greedy match of anything on the left
+    if ($asread_variable[$masread]{"options"} =~ /.*(^|\,)\s*clearoptions\s*(\,|$)/i) { # match the last occurrence of this option by putting a greedy match of anything on the left
       $asread_variable[$masread]{"options"} = $'; # the only valid options on this line are those that follow the clearoptions statement
     }
     $variable{$type}[$mvar]{"options"} = $asread_variable[$masread]{"options"}; # save this straight to variable now
@@ -2222,19 +2226,17 @@ sub organise_user_variables {
             if ("\L$1" eq 'no') { $variable{$type}[$mvar]{"deriv"} = 0; } else { $variable{$type}[$mvar]{"deriv"} = 1; }
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
 # ref: newtstepmax ref: newtstepmin
-        elsif ($option =~ /^(newtstep(max|min))(|(\s*=\s*([\+\-\d][\+\-\de]*)))$/i) { # integer max/min of newtsteps during which this variable should be updated
+        elsif ($option =~ /^(newtstep(max|min))(|(\s*=(|\s*([\+\-\d][\+\-\de]*))))$/i) { # integer max/min of newtsteps during which this variable should be updated
           $option_name = "\L$1";
-          if (empty($5)) { 
+          if (empty($6)) { 
             $match = "-1";
           } else { 
-            $match = "\L$5"; # match is the magnitude of the variable, which needs to be an integer
+            $match = "\L$6"; # match is the magnitude of the variable, which needs to be an integer
           }
-          if ($type eq "derived" || $type eq "equation") { # newtstep limiting is only done on equations or deriveds right now
-            if ($match < 0) { # a negative values clears this option
-              $variable{$type}[$mvar]{$option_name} = '';
-            } else {
-              $variable{$type}[$mvar]{$option_name} = $match;
-            }
+          if ($match < 0) { # a negative values clears this option
+            $variable{$type}[$mvar]{$option_name} = '';
+          } elsif ($type eq "derived" || $type eq "equation") { # newtstep limiting is only done on equations or deriveds right now
+            $variable{$type}[$mvar]{$option_name} = $match;
 #         } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
           } else { error_stop("option $option specified for variable $type $name cannot be used for this type of region"); }
         } else { error_stop("unknown option of $option specified for $type $name"); }

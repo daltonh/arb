@@ -1,3 +1,2 @@
 # here we don't smooth the vof function
-CELL_LOCAL <vof_phi_smoothed> "<vof_phi>"
-CELL_TRANSIENT <vof_phi_smoothed[r=1]> "" "<vof_phi_smoothed>" ON <all cells> output
+CELL_LOCAL <vof_phi_smoothed> "<vof_phi_interface>"
