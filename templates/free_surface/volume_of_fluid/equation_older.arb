@@ -1,9 +1,0 @@
-# here we just advect <vof>
-
-CELL_DERIVED <vof_advection_limiter> "celllimiter[lower](<vof_phi>,0.d0,celllimiter[upper](<vof_phi>,1.d0))" output
-FACE_DERIVED <vof_phi_f> "faceave[advection](<vof_phi>,<u_f>,<vof_advection_limiter>)" ON <all faces> nooutput
-#CELL_DERIVED <vof_advected> "<vof[r=1]>-<dt>*celldiv(<vof_f_advected>*<u_f>)" ON <all cells> nooutput
-# note: guarding against destabilising effects of non-zero divergence enroute to convergence
-CELL_DERIVED <vof_phi_advected> "<vof_phi[r=1]>-<dt>*celldiv((<vof_phi_f>-faceave[lastcell](<vof_phi>))*<u_f>)" ON <all cells> nooutput
-
-CELL_EQUATION <vof_equation_domain> "<vof_phi>-<vof_phi_advected>" ON <domain>

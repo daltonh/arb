@@ -22,7 +22,8 @@ use File::Glob ':glob'; # deals with whitespace better
 my $output_dir="batcher_output"; # this directory will contain details of the runs, including copies of the original input files
 my ($line, $n, $key, $systemcall, $filename, $ffilename, $run_record_dir, $output_file, $variable_line, $value_line);
 my ($msh_store_dir);
-my $arb_options="--omp8 --opt"; # quiet (-q) is already included
+#my $arb_options="--omp8 --opt"; # quiet (-q) is already included
+my $arb_options=""; # quiet (-q) is already included
 my $input_file=""; # set this below to a specific file name or glob pattern if you don't want all the *.arb files within the working directory to be used as input
 my $geo_file=""; # set this below to a specific file name or glob pattern if you don't want all the *.geo files within the working directory to be used
 my $continue=0; # set this to true (1) to allow continuation from a previous run, with new (additional) runs to take place
@@ -56,15 +57,28 @@ my $m=$nrunstart-1;
 # setup runs array here by specifying strings to replace with appropriate values
 # runs is an array (one element for each run) containing hashes in the format string -> substitution
 
-$input_file = 'impacting_volume_of_fluid_drop_in_halfplane.arb';
+$input_file = 'parasitic_currents_090415.arb';
 
-@exclude_geo = ('free_surface_halfplane_extruded_structured_variables.geo'); # meshing of these .geo files will be skipped (though they will still be made available for use in include statements)
+@exclude_geo = ('free_surface_quadrant_extruded_structured_variables.geo','free_surface_quadrant_extruded_structured_variables.geo'); # meshing of these .geo files will be skipped (though they will still be made available for use in include statements)
 
-for my $length_extension_factor ( '1.0' ) {
-  for my $width_extension_factor ( '1.0', '2.0', '3.0' ) {
-      $m++;
-      $geo[$m]{"<<length_extension_factor>>"} = $length_extension_factor;
-      $geo[$m]{"<<width_extension_factor>>"} = $width_extension_factor;
+#for my $meshtype ( "structured", "unstructured" ) {
+for my $meshtype ( "structured" ) {
+  for my $lcscale ( 0 .. 0 ) { # 0 is the default mesh, 1 is half as fine
+    for my $rescale ( 0 .. 0 ) { # re is simply 10*$rescale
+      for my $sscale ( 0 .. 0 ) { # s is simply 10*$sscale
+        $m++;
+        $geo[$m]{"<<lc>>"} = 0.125/(2**$lcscale);
+        if ($meshtype eq "structured") {
+          $runs[$m]{"<<batcherstructureddomaincomment>>"} = "";
+          $runs[$m]{"<<batcherunstructureddomaincomment>>"} = "#";
+        } else {
+          $runs[$m]{"<<batcherstructureddomaincomment>>"} = "#";
+          $runs[$m]{"<<batcherunstructureddomaincomment>>"} = "";
+        }
+        $runs[$m]{"<<batcherRe>>"} = 10.**$rescale;
+        $runs[$m]{"<<batcherS>>"} = 10.**$sscale;
+      }
+    }
   }
 }
 
@@ -85,11 +99,32 @@ $outputs{"success"}='';
 # now optional ones (variables) go here
 # edit these, add what you want
 $outputs{"<dt>"}='';
-$outputs{"<CFL>"}='';
+$outputs{"<CFL[r=1]>"}='';
+$outputs{"<t>"}='';
 $outputs{"<t_out>"}='';
-$outputs{"<error_initial_initial1>"}='';
-$outputs{"<error_final1>"}='';
-$outputs{"<error_final2>"}='';
+$outputs{"<t_save>"}='';
+$outputs{"<stretch[l=1]>"}='';
+$outputs{"<stretch[l=2]>"}='';
+$outputs{"<centroid[l=1]>"}='';
+$outputs{"<centroid[l=2]>"}='';
+$outputs{"<u_f_max>"}='';
+$outputs{"<u_f_max[r=1]>"}='';
+$outputs{"<absdudt>"}='';
+$outputs{"<absdudt[r=1]>"}='';
+$outputs{"<phi error>"}='';
+$outputs{"<p error>"}='';
+$outputs{"<p rel error>"}='';
+$outputs{"<p initial>"}='';
+$outputs{"<vof_phi_max all cells>"}='';
+$outputs{"<vof_phi_min all cells>"}='';
+$outputs{"<integrated volume>"}='';
+$outputs{"<initial integrated volume>"}='';
+$outputs{"<integrated volume error>"}='';
+$outputs{"<vof_interface_mask[r=1]>"}='';
+$outputs{"<parasitic_mac2_u_V>"}='';
+$outputs{"<parasitic_mac2_u_A>"}='';
+$outputs{"<parasitic_mac2_u_T>"}='';
+$outputs{"<parasitic_mac2_u_p>"}='';
 
 ####################################################################################
 # main code below this
@@ -224,8 +259,8 @@ for $n ( $nrunstart .. $nruns ) {
       chompm($line);
       if ($line =~ /^# NEWTSTEP = \s+(\S+)/) { $outputs{"nstepmax"} = $1; }
       for $key ( keys(%outputs) ) {
-        if ($key =~ /^<.+>$/) { # assume that this is a variable from constants.in or equations.in
-          if ($line =~ /^\S+ \Q$key\E: max\s+(\S+)\s/) { $outputs{"$key"} = "$1"; } # \Q starts to escape special characters, \E stops
+        if ($key =~ /^<.+>$/) { # assume that this is a variable or region, outputting maximum value or number of elements, respectively
+          if ($line =~ /^\S+ \S+ \Q$key\E:\s+(max|elements)\s+=\s+(\S+?)(\s|:)/) { $outputs{"$key"} = "$2"; } # \Q starts to escape special characters, \E stops
         }
       }
     }

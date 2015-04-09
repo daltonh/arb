@@ -15,3 +15,16 @@ CELL_LOCAL <vof_fs_phi_interface> "cellif(celldelta(<free surface centre>),celll
 CELL_LOCAL <vof_kappa_c> "cellif(celldelta(<fluid boundary cells>),celltofacelink(<vof_fs_kappa_f>,localregion=<fluid boundary cells>,remoteregion=<free surface centre boundaries>),celltocelllink(<vof_fs_kappa_c>,localregion=<fluid domain>,remoteregion=<free surface centre>))" ON <fluid all cells>
 # move free surface <vof_fs_kappa_f> back to fluid region <vof_kappa_f>
 FACE_LOCAL <vof_kappa_f> "facetofacelink(<vof_fs_kappa_f>,localregion=<fluid all faces>,remoteregion=<free surface centre all faces>)" ON <fluid all faces>
+
+# copy <vof_delta_mask> and <vof_delta_mask_f> from the fluid domain to the free surface centre so that we can calculate where the normals are required on the free surface mesh
+#CELL_TRANSIENT <vof_fs_delta_mask_indicator[r=1]> "" "celllink(celldelta(<vof_delta_mask[r=1]>),localregion=<free surface centre>,remoteregion=<fluid domain>)" ON <free surface centre>
+#CELL_TRANSIENT_REGION <vof_fs_delta_mask[r=1]> "" "variable(<vof_fs_delta_mask_indicator[r=1]>)" ON <free surface centre>
+#FACE_TRANSIENT <vof_fs_delta_mask_f_indicator[r=1]> "" "facelink(facedelta(<vof_delta_mask_f[r=1]>),localregion=<free surface centre all faces>,remoteregion=<fluid all faces>)" ON <free surface centre all faces>
+#FACE_TRANSIENT_REGION <vof_fs_delta_mask_f[r=1]> "" "variable(<vof_fs_delta_mask_f_indicator[r=1]>)" ON <free surface centre all faces>
+
+# copy over interface variable, and recreate interface and delta regions on free surface mesh, to correctly allow kappa_c to be calculated beyond fluid mesh, which is required for rhie-chow
+# although we're doing the delta expansion twice, they will be slightly different near the boundaries and it's pretty cheap anyway
+<<vofmaskcomment>>CELL_TRANSIENT <vof_fs_interface_indicator[r=1]> "" "celllink(<vof_interface_indicator[r=1]>,localregion=<free surface centre>,remoteregion=<fluid domain>)" ON <free surface centre>
+<<vofmaskcomment>>CELL_TRANSIENT_REGION <vof_fs_interface_mask[r=1]> "" "variable(<vof_fs_interface_indicator[r=1]>)" ON <free surface centre>
+<<vofmaskcomment>>CELL_TRANSIENT_REGION <vof_fs_delta_mask[r=1]> "" "expand[maxseparation=<<maxfaceaveseparation>>,faceseparation](<vof_fs_interface_mask[r=1]>)" ON <free surface all cells>
+<<vofmaskcomment>>FACE_TRANSIENT_REGION <vof_fs_delta_mask_f[r=1]> "" "associatedwith(<vof_fs_delta_mask[r=1]>)" ON <free surface all faces>

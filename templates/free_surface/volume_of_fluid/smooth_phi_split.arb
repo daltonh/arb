@@ -1,5 +1,0 @@
-# a simple smoothing based on a single node separation loop
-CELL_CONSTANT <vof_phi_smoothing_demoninator> "cellsum(1.d0,region=<adjacentcellicells>)" ON <all cells> output
-CELL_DERIVED <vof_phi_smoothed> "cellsum(<vof_phi>,region=<adjacentcellicells>)/<vof_phi_smoothing_demoninator>" ON <all cells> output
-CELL_CONSTANT <vof_phi_smoothing_demoninator[r=1]> "cellsum(1.d0,region=<cellicells>)" ON <all cells> output
-CELL_TRANSIENT <vof_phi_smoothed[r=1]> "" "cellsum(<vof_phi>,region=<cellicells>)/<vof_phi_smoothing_demoninator[r=1]>" ON <all cells> output

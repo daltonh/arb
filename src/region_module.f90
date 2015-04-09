@@ -495,7 +495,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
     nsregion = 0
     do ns2 = 1,allocatable_integer_size(region(nregion)%ijk)  ! loop through all ijk indices in constituent region
       ijkregion = region(nregion)%ijk(ns2) ! NB, ijkregion and region(m)%ijk may actually be i or j values depending on centring
-      if (ijkregion == 0) cycle ! in case this is empty due to a dynamic region
+!     if (ijkregion == 0) cycle ! in case this is empty due to a dynamic region - no, presently all ijk values have to be non-zero
       if (region(nregion)%centring == 'cell') then
         if (region(m)%centring == 'cell') then
 ! create cell region from cell region
@@ -504,8 +504,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
             if (region(region(m)%part_of)%ns(i) == 0) cycle ! check that element is a member of the part_of region
             if (trim(local_location%type) == "boundaryof".and.cell(i)%type /= 2) cycle
             if (trim(local_location%type) == "domainof".and.cell(i)%type /= 1) cycle
-!           if (trim(local_location%type) == "surrounds".and.location_in_list(array=region(nregion)%ijk,element=i) /= 0) cycle ! unfortunately ns array has not yet been defined for all other elements
-            if (trim(local_location%type) == "surrounds".and.region(nregion)%ns(i) /= 0) cycle ! unfortunately ns array has not yet been defined for all other elements
+            if (trim(local_location%type) == "surrounds".and.region(nregion)%ns(i) /= 0) cycle
             if (region(m)%ns(i) == 0) then
               nsregion = nsregion + 1
               region(m)%ns(i) = nsregion
@@ -519,8 +518,6 @@ else if (trim(region(m)%type) /= 'gmsh') then
             if (trim(local_location%type) == "boundaryof".and.face(j)%type /= 2) cycle
             if (trim(local_location%type) == "domainof".and.face(j)%type /= 1) cycle
             if (trim(local_location%type) == "surrounds") then
-!             if (ijkregion == face(j)%icell(2).and.location_in_list(array=region(nregion)%ijk,element=face(j)%icell(1)) /= 0) cycle
-!             if (ijkregion == face(j)%icell(1).and.location_in_list(array=region(nregion)%ijk,element=face(j)%icell(2)) /= 0) cycle
               if (ijkregion == face(j)%icell(2).and.region(nregion)%ns(face(j)%icell(1)) /= 0) cycle
               if (ijkregion == face(j)%icell(1).and.region(nregion)%ns(face(j)%icell(2)) /= 0) cycle
             end if

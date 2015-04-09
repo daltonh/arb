@@ -1,0 +1,9 @@
+# by including this file all vof masks get replaced by the maximum size and the masks themselves are not defined
+GENERAL_REPLACEMENTS R "<vof_interface_mask[r=1]>" W "<all cells>"
+GENERAL_REPLACEMENTS R "<vof_interface_mask_f[r=1]>" W "<all faces>"
+GENERAL_REPLACEMENTS R "<vof_delta_mask[r=1]>" W "<all cells>"
+GENERAL_REPLACEMENTS R "<vof_delta_mask_f[r=1]>" W "<all faces>"
+GENERAL_REPLACEMENTS R "<vof_phigrad_mask[r=1]>" W "<all cells>"
+GENERAL_REPLACEMENTS R "<vof_phigrad_mask_n[r=1]>" W "<all nodes>"
+GENERAL_REPLACEMENTS R "<<vofmaskcomment>>" W "#"
+INFO_DESCRIPTION+ ": masks overwritten with maximal regions"
