@@ -137,7 +137,7 @@ class Data():
         load_blank = 0
         # convert all but header labels to float values
         self.df = self.df.astype(float)
-        if (not self.show_newtsteps):
+        if (not self.show_newtsteps and load_blank):
             self.df = self.df.groupby("'<timestep>'", as_index=False).nth(-1)
         self.step_file.close()
    
@@ -1182,27 +1182,63 @@ if __name__ == "__main__":
     # process command line 'blank_csv'
     this_script = sys.argv[0]
 
-
     if (len(sys.argv) > 2):
         print "ERROR: incorrect syntax for {}".format(this_script)
         print "\tuse either"
         print "\t\ttrack plot"
         print "\t\ttrack plot <commit-id>"
         sys.exit()
-
     if (len(sys.argv) == 2):
         load_blank = 0
-        specified_commit = sys.argv[1]
-        global_commit = specified_commit
-        print "INFO: {} called using commit {}".format(this_script, specified_commit)
-        specified_step_file = os.path.join(run_archive,specified_commit,'output','output_step.csv')
+        target_from_command_line = sys.argv[1]
+        match = re.search('output_step.csv',target_from_command_line)
+        if match:
+            to_test = os.path.join(target_from_command_line)
+            if (os.path.isfile(to_test)):
+                print 'INFO: loading {}'.format(target_from_command_line)
+                specified_step_file = target_from_command_line
+            else:
+                print "INFO: Nothing to plot, this is where I looked:\n\t./{0}".format(to_test)
+                sys.exit()
+        else:
+            to_test = os.path.join(target_from_command_line,'output_step.csv')
+            if (os.path.isfile(to_test)):
+                specified_step_file = to_test
+                print "INFO: loading ./{}".format(specified_step_file)
+            else:
+                print "INFO: Nothing to plot, this is where I looked:\n\t./{0}".format(to_test)
+                sys.exit()
     elif (len(sys.argv) == 1):
         default_data = 'output/output_step.csv'
         if (os.path.isfile(default_data)):
             load_blank = 0
             specified_step_file = default_data
+            print "INFO: loading {}".format(default_data)
         else:
-            specified_step_file = 'blank_csv' # as a last resort
+            local_step_file='output_step.csv'
+            if (os.path.isfile(local_step_file)):
+                load_blank = 0
+                specified_step_file = local_step_file
+                print "INFO: loading ./{}".format(local_step_file)
+            else:
+                specified_step_file = 'blank_csv' # as a last resort
+                print "INFO: Nothing to plot, this is where I looked:\n\t./{0}\n\t./output/{0}".format(local_step_file)
+                sys.exit() # NOTE if this line is removed, then a dummy csv file is loaded
+
+# previous method for loading archived step file
+    #if (len(sys.argv) == 2):
+    #    load_blank = 0
+    #    specified_commit = sys.argv[1]
+    #    global_commit = specified_commit
+    #    print "INFO: {} called using commit {}".format(this_script, specified_commit)
+    #    specified_step_file = os.path.join(run_archive,specified_commit,'output','output_step.csv')
+    #elif (len(sys.argv) == 1):
+    #    default_data = 'output/output_step.csv'
+    #    if (os.path.isfile(default_data)):
+    #        load_blank = 0
+    #        specified_step_file = default_data
+    #    else:
+    #        specified_step_file = 'blank_csv' # as a last resort
 
     data = Data(specified_step_file)
     app = wx.App(False)
