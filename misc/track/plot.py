@@ -137,7 +137,7 @@ class Data():
         load_blank = 0
         # convert all but header labels to float values
         self.df = self.df.astype(float)
-        if (not self.show_newtsteps and load_blank):
+        if (not self.show_newtsteps and not load_blank):
             self.df = self.df.groupby("'<timestep>'", as_index=False).nth(-1)
         self.step_file.close()
    
