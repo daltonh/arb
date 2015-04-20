@@ -2,11 +2,11 @@
 # perl script to run sequential arb simulations, changing text in both arb and geo files, and then extracting data from the output files
 
 # usage
-# 1) create the perl module batcher_setup (not necessarily this file name) within the arb working directory which contains the subs case_setup and output_setup - for example, within the file parasitic_currents_batcher_setup.pm
-# see instructions in the example module file included in misc/batcher/examples/parasitic_currents/parasitic_currents_batcher_setup.pm
+# 1) create the perl module batcher_setup within the arb working directory which contains the subs case_setup and output_setup
+# see instructions in the example module file included in misc/batcher/examples/parasitic_currents/batcher_setup.pm
 # 2) run batcher, while at the same time including this module using
 #
-#     ./misc/batcher/batcher.pl -m parasitic_currents_batcher_setup.pm
+#     ./misc/batcher/batcher.pl -m batcher_setup.pm
 #
 # 3) output will be placed in batcher_output off the working directory
 # 4) copy the batcher_output directory to somewhere else before doing the next run, otherwise some of the input files will be clobbered (change this behaviour by using the no-continue flag below)
