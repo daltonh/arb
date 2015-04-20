@@ -239,7 +239,7 @@ for my $n ( 0 .. $#case ) {
   for my $key ( keys(%output) ) { $output{"$key"}=''; }
 
 # look for user created stopfile
-  if (-e $stopfile) {print "BATCHER STOPPING: found $stopfile stop file so stoping the batcher run\n"; last;}
+  if (-e $stopfile) {print "BATCHER STOPPING: found $stopfile stop file so stopping the batcher run\n"; last;}
 }
 
 close(OUTPUT);
@@ -314,6 +314,7 @@ sub copy_back_input_files {
     unlink($filename) or warn "BATCHER WARNING: could not delete $filename from working directory\n";
   }
   foreach my $filename (bsd_glob("$input_dir/*")) {
+    print "BATCHER_DEBUG: before dying copying back input file $filename to working directory\n";
     copy($filename,".") or die "BATCHER ERROR: could not copy $filename back to working directory\n";
   }
 }
