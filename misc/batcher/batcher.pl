@@ -107,7 +107,7 @@ for my $n ( 0 .. $#case ) {
       open(ORIGINAL, "<".$ffilename) or error_stop("can't open original input file $ffilename");
       while (my $line=<ORIGINAL>) {
         if ($case[$n]{"replacements"}) {
-          for my $key ( keys(%{$case[$n]{"replacements"}}) ) {
+          for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
 # now stopping replacements if the string is mentioned as a replacement keyword
             if ($line !~ /\s(R|REPLACE)\s+("|'|)\Q$key\E("|'|\s|$)/) {
               $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
@@ -187,7 +187,7 @@ for my $n ( 0 .. $#case ) {
     while (my $line = <INPUT>) {
       chompm($line);
       if ($line =~ /^# NEWTSTEP = \s+(\S+)/) { $output{"nstepmax"} = $1; }
-      for my $key ( keys(%output) ) {
+      for my $key ( sort(keys(%output)) ) {
         if ($key =~ /^<.+>$/) { # assume that this is a variable or region, outputting maximum value or number of elements, respectively
           if ($line =~ /^\S+ \S+ \Q$key\E:\s+(max|elements)\s+=\s+(\S+?)(\s|:)/) { $output{"$key"} = "$2"; } # \Q starts to escape special characters, \E stops
         }
@@ -203,7 +203,7 @@ for my $n ( 0 .. $#case ) {
     my $variable_line = "# run";
     my $value_line = "$ndir";
   # output inputs
-    for my $key ( keys(%{$case[$n]{"replacements"}}) ) {
+    for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
       $variable_line = $variable_line.", \"$key\"";
       $value_line = $value_line.", ".$case[$n]{"replacements"}{"$key"};
     }
