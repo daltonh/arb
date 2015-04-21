@@ -739,8 +739,6 @@ class FrameGenerator(wx.Frame):
 
     def ShowMarkers(self, event):
         data.show_markers = self.show_markers_box.GetValue()
-        data.open_data()
-        data.process_data()
         self.call_plot_upate()
 
     def Onx1Min(self, event):
