@@ -33,6 +33,9 @@ matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+
+operating_system = os.uname()[0]
+
 show_plot_step_export = 0
 grid_style = 0
 rasterized_option = True # whether to rasterize pdf data (not the axes and labels, just the data), good when there is a lot of data to show
@@ -85,7 +88,6 @@ list2 = [
 y1_alpha = 0.7
 y2_alpha = 0.7
 
-
 # font size for legend
 legend_font_size=11
 
@@ -100,6 +102,7 @@ class Data():
         # (in future, could use dimension strings to automatically show dimensions in plot labels)
         #self.step_file_path = 'output/output_step.csv'
         self.step_file_path = step_file_path
+        self.show_markers = True
         self.show_newtsteps = False
         self.open_data()
         self.process_data()
@@ -308,6 +311,12 @@ class CanvasPanel(wx.Panel):
 
             point_interval = frame.point_interval_widget.GetValue()
 
+            marker_y1 = None
+            marker_y2 = None
+            if (data.show_markers):
+                marker_y1 = 'o'
+                marker_y2 = '^'
+
             x1_var = frame.x1.list.active[0]
             if (frame.y1.list.active_count > 0):
                 self.axis.set_color_cycle(list1)
@@ -317,7 +326,7 @@ class CanvasPanel(wx.Panel):
                     current1, = self.axis.plot(
                             data.df[x1_var].values,
                             data.df[y1_var].values,
-                            marker='o',
+                            marker=marker_y1,
                             markevery=point_interval,
                             alpha = y1_alpha,
                             rasterized=rasterized_option
@@ -348,7 +357,7 @@ class CanvasPanel(wx.Panel):
                     current2, = self.axis2.plot(
                             data.df[x1_var].values,
                             data.df[y2_var].values,
-                            marker='^',
+                            marker=marker_y2,
                             markevery=point_interval,
                             alpha = y2_alpha,
                             rasterized=rasterized_option
@@ -516,18 +525,31 @@ class FrameGenerator(wx.Frame):
         
 
 # point interval settings
-        set_point_interval = wx.StaticBox(container_panel_options, label='Set point interval', pos=(5, 200), size=(120, 80))
+        set_point_interval = wx.StaticBox(container_panel_options, label='Set marker interval', pos=(5, 200), size=(120, 80))
         set_point_interval_sizer = wx.StaticBoxSizer(set_point_interval, wx.VERTICAL)
 
-        self.point_interval_widget = wx.SpinCtrl(container_panel_options, value='1', pos=(15, 20), size=(60, -1), min=1, max=40)
+        self.point_interval_widget = wx.SpinCtrl(container_panel_options, value='1', pos=(15, 20), size=(80, -1), min=1, max=1e6, style=wx.TE_PROCESS_ENTER)
+
+        # enable TAB and ENTER on mac (works already on ubuntu)
+        # see https://groups.google.com/forum/#!topic/wxpython-users/Gud8PI6n-4E
+        if operating_system == 'Darwin':
+            self.tmp_txtctrl = self.point_interval_widget.GetChildren()[0]
+            self.tmp_txtctrl.SetWindowStyle(self.tmp_txtctrl.GetWindowStyle() | wx.TE_PROCESS_ENTER)
+
+        self.show_markers_box = wx.CheckBox(container_panel_options, label='Show markers', pos=(15, 20))
+        self.show_markers_box.SetValue(True)
         self.show_newtsteps_box = wx.CheckBox(container_panel_options, label='Show newtsteps', pos=(15, 20))
 
         set_point_interval_sizer.Add(self.point_interval_widget, proportion=0, flag=wx.ALL, border=1)
+        set_point_interval_sizer.Add(self.show_markers_box, proportion=0, flag=wx.ALL, border=1)
         set_point_interval_sizer.Add(self.show_newtsteps_box, proportion=0, flag=wx.ALL, border=1)
 
         self.Bind( wx.EVT_SPINCTRL, self.OnSpin )
+        if operating_system == 'Darwin':
+            self.tmp_txtctrl.Bind(wx.EVT_TEXT_ENTER, self.OnSpin)
+    
+        self.show_markers_box.Bind(wx.EVT_CHECKBOX, self.ShowMarkers)
         self.show_newtsteps_box.Bind(wx.EVT_CHECKBOX, self.ShowNewtsteps)
-
 
 # scale settings
         set_ranges = wx.StaticBox(container_panel_options, label='Set axis ranges', pos=(5, 300), size=(200, 200))
@@ -711,6 +733,12 @@ class FrameGenerator(wx.Frame):
 
     def ShowNewtsteps(self, event):
         data.show_newtsteps = self.show_newtsteps_box.GetValue()
+        data.open_data()
+        data.process_data()
+        self.call_plot_upate()
+
+    def ShowMarkers(self, event):
+        data.show_markers = self.show_markers_box.GetValue()
         data.open_data()
         data.process_data()
         self.call_plot_upate()
