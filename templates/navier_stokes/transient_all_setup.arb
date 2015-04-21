@@ -38,10 +38,10 @@ GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "" DEFAULT "<<nonne
 GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
 
 <<dynamictimestepcomment>>NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
+<<dynamictimestepcomment>>FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces> # don't actually need this for implicit timestepping, but it is used in input files for some of the problems for output, so in the interests of not breaking things...
 
 # explicit
 # use CFL_number template, but make the calculation explicit - ie, based on r=1 values
-<<dynamictimestepcomment>><<explicittimestepcomment>>FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces>
 <<dynamictimestepcomment>><<explicittimestepcomment>>INCLUDE "CFL_number" R "<CFL local/dt>" W "<CFL local/dt[r=1]>" R "<u_f>" W "<u_f[r=1]>" R "<CFL local>" W "<CFL local[r=1]>" R "<dt>" W "<dt[r=1]>" R "NONE_OUTPUT <CFL>" W 'NONE_TRANSIENT <CFL[r=1]> ""'
 #<<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
 <<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <CFL[r=1]> output,stepoutput
