@@ -15,3 +15,6 @@ CELL_LOCAL <n_0^2 signed> "cellmin(<ion+ n>,<ion- n>)*abs(cellmax(<ion+ n>,<ion-
 
 # for error checking
 #CELL_OUTPUT <rho_e error> "<rho_e>-<rho_e pos>" ON <all cells>
+
+# this face-averaged potential is needed early on in the derived calculations (for dynamic_force_c) so include it here
+FACE_DERIVED <U_f> "faceave(<U>)" ON <all faces> # this is needed in <dynamic_force_c> which will be calculated in p_error_dxunit

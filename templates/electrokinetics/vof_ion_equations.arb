@@ -1,0 +1,12 @@
+# equations required for the transport of a binary univalent electrolyte within two phase vof simulation with no inlet/outlets
+# this is for a single species
+
+INCLUDE "ion_constants"
+INCLUDE "ion_domain"
+INCLUDE "ion_walls"
+FACE_DERIVED <ion J_f> [molecules/(m^2.s)] "<vof_electro_phi_f_adjusted[r=1]>*<ion n_f>*<u_f>" ON <all faces> # flux of ions across each face
+# overwrite conservation equation for the species, only solving where <vof_electro_phi> is non-zero (rounded by <vof_phi_tol>) and otherwise saving the previous value (although this value should not matter)
+<<cartesiancomment>>CELL_EQUATION <ion continuity> [molecules/(m^3.s)] "cellif(<vof_electro_phi>-<vof_phi_tol>,(<ion n>*<vof_electro_phi>-<ion n[r=1]>*<vof_electro_phi[r=1]>)/<dt>+celldiv(<ion J_f>),<ion n>-<ion n[r=1]>)" ON <domain>
+<<cylindricalcomment>>CELL_EQUATION <ion continuity> [molecules/(m^3.s)] "cellif(<vof_electro_phi>-<vof_phi_tol>,(<ion n>*<vof_electro_phi>-<ion n[r=1]>*<vof_electro_phi[r=1]>)/<dt>+celldiv(<<radius_f>>*<ion J_f>)/<<radius_c>>,<ion n>-<ion n[r=1]>)" ON <domain>
+FACE_EQUATION <ion walls> "facegrad(<ion n>)" ON <walls> # no gradient of ions next to walls now
+CELL_OUTPUT <ion n phi> "<ion n>*<vof_electro_phi>" ON <all cells>

@@ -2,9 +2,9 @@
 # include statements for binary combinations should be included earlier before p_error calculation (binary_ion_combinations)
 
 # include positive ion transport equations
-INCLUDE "ion_equations" REPLACE "<ion initial>" WITH "<average ion n>" REPLACE "<ion" WITH "<ion+"
+INCLUDE "ion_equations" REPLACE "<ion" WITH "<ion+"
 # include negative ion transport equations, correcting valency to be negative
-INCLUDE "ion_equations" REPLACE "<ion initial>" WITH "<average ion n>" REPLACE "<ion" WITH "<ion-"
+INCLUDE "ion_equations" REPLACE "<ion" WITH "<ion-"
 CONSTANT <ion- z> [1] "-<average ion z>" # valency of ion-
 
 # calculate currents crossing into domain over inlet, most probably used in potential boundary conditions
