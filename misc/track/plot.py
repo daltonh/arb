@@ -558,7 +558,7 @@ class FrameGenerator(wx.Frame):
         set_point_interval_sizer.Add(self.show_newtsteps_box, proportion=0, flag=wx.ALL, border=1)
 
         self.Bind( wx.EVT_SPINCTRL, self.OnSpin )
-        if operating_system == 'Darwin':
+        if (operating_system == 'Darwin' and not old_wx_version):
             self.tmp_txtctrl.Bind(wx.EVT_TEXT_ENTER, self.OnSpin)
     
         self.show_markers_box.Bind(wx.EVT_CHECKBOX, self.ShowMarkers)
