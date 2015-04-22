@@ -33,6 +33,8 @@ matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+# to output wx version
+#print wx.__version__
 
 operating_system = os.uname()[0]
 
@@ -45,6 +47,11 @@ rasterized_option = True # whether to rasterize pdf data (not the axes and label
 #    matplotlib.style.use('ggplot')
 #    grid_style = 1
 
+old_wx_version = False
+running_wx_version = LooseVersion(wx.__version__)
+old_wx_version_threshold = "2.9.0"
+if running_wx_version < old_wx_version_threshold:
+    old_wx_version = True
 
 # directory storing simulation data
 # see misc/track/track_main.pl
@@ -532,8 +539,16 @@ class FrameGenerator(wx.Frame):
 
         # enable TAB and ENTER on mac (works already on ubuntu)
         # see https://groups.google.com/forum/#!topic/wxpython-users/Gud8PI6n-4E
-        if operating_system == 'Darwin':
+
+        # if the version of wx is "old" then bypass this section
+        if (operating_system == 'Darwin' and not old_wx_version):
+            # the following line likely works with all wxpython v2.9.* but not with all v2.8.*
             self.tmp_txtctrl = self.point_interval_widget.GetChildren()[0]
+            
+            # the following alternative lines likely work with all wxpython v2.9.* and v2.8.* (but not tested yet with v2.8.*)
+            #self.tmp_children_list = list(self.point_interval_widget.GetChildren())
+            #self.tmp_txtctrl = self.tmp_children_list[0]
+            
             self.tmp_txtctrl.SetWindowStyle(self.tmp_txtctrl.GetWindowStyle() | wx.TE_PROCESS_ENTER)
 
         self.show_markers_box = wx.CheckBox(container_panel_options, label='Show markers', pos=(15, 20))
@@ -545,7 +560,7 @@ class FrameGenerator(wx.Frame):
         set_point_interval_sizer.Add(self.show_newtsteps_box, proportion=0, flag=wx.ALL, border=1)
 
         self.Bind( wx.EVT_SPINCTRL, self.OnSpin )
-        if operating_system == 'Darwin':
+        if (operating_system == 'Darwin' and not old_wx_version):
             self.tmp_txtctrl.Bind(wx.EVT_TEXT_ENTER, self.OnSpin)
     
         self.show_markers_box.Bind(wx.EVT_CHECKBOX, self.ShowMarkers)
