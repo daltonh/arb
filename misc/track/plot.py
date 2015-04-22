@@ -33,6 +33,8 @@ matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+# to output wx version
+#print wx.__version__
 
 operating_system = os.uname()[0]
 
