@@ -88,7 +88,7 @@ INCLUDE "nondimensional_constants"
 # v0.50 - now use transient setup files
 # include the following to include a constraint based on the previous number of newtsteps
 #GENERAL_REPLACEMENTS REPLACE "<<newtsteptimestepcomment>>" W "" REPLACE "<<nonnewtsteptimestepcomment>>" W "#"
-#INCLUDE "transient_dynamic_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
+#INCLUDE "transient_explicit_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
 INCLUDE "transient_implicit_setup" # a dynamic implicitly calculated timestep to keep the CFL number at a specified level
 #INCLUDE "transient_constant_setup" # a constant timestep
 
