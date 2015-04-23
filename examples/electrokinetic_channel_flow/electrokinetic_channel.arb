@@ -66,7 +66,7 @@ MSH_FILE "electrokinetic_channel_structured_nonuniform.msh"
 INCLUDE_ROOT "navier_stokes"
 INCLUDE "nondimensional_constants" # specify physical and numerical constants
 INCLUDE_ROOT "electrokinetics"
-INCLUDE "nondimensional_electrokinetic_constants" # and the same for the electrokinetic equations
+INCLUDE "nondimensional_constants" # and the same for the electrokinetic equations
 
 # some concentrations and charges required in other equations, and also the face centred potential required in the dynamic_force calculation
 INCLUDE "binary_ion_combinations"
@@ -75,7 +75,7 @@ INCLUDE "binary_ion_combinations"
 INCLUDE_ROOT "navier_stokes"
 INCLUDE "domain"
 INCLUDE_ROOT "electrokinetics"
-INCLUDE "electrokinetic_dynamic_force" # overwrite the dynamic_force used in the navier-stokes equations to include an electrical forcing term
+INCLUDE "dynamic_force" # overwrite the dynamic_force used in the navier-stokes equations to include an electrical forcing term
 
 # and the flow boundary conditions
 INCLUDE_ROOT "navier_stokes"

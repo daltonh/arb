@@ -172,7 +172,7 @@ INCLUDE_ROOT "navier_stokes"
 <<uniformcomment>>INCLUDE "advection_flux"
 
 INCLUDE_ROOT "volume_of_fluid"
-INCLUDE "p_error"
+INCLUDE "dynamic_force"
 INCLUDE "equation" # all phi advection done on fluid mesh
 
 INCLUDE_ROOT "navier_stokes"
