@@ -101,6 +101,10 @@ legend_font_size=11
 # string for storing commit id of present dataset
 global_commit = ''
 
+# need regex to deal with [l=1,r=1] combinations
+# this is a negative look ahead for ,r and ,l
+sep_string=",(?!r|l)"
+
 class Data():
     def __init__(self, step_file_path):
 
@@ -143,7 +147,8 @@ class Data():
         if (load_blank):
             self.df=pd.read_csv(blank_csv, comment='#')[1:]
         else:
-            self.df=pd.read_csv(self.step_file, comment='#', low_memory=False)[1:]
+            #self.df=pd.read_csv(self.step_file, comment='#', low_memory=False)[1:]
+            self.df=pd.read_csv(self.step_file, comment='#', engine='python', sep=sep_string)[1:]
         load_blank = 0
         # convert all but header labels to float values
         self.df = self.df.astype(float)
@@ -866,16 +871,19 @@ class FrameGenerator(wx.Frame):
             # re-read the data
             try:
                 self.data_object.step_file = open(self.data_object.step_file_path)
-                self.data_object.df=pd.read_csv(self.data_object.step_file, comment='#',low_memory=False)[1:]
+                #self.data_object.df=pd.read_csv(self.data_object.step_file, comment='#',low_memory=False)[1:]
+                self.data_object.df=pd.read_csv(self.data_object.step_file, comment='#', engine='python', sep=sep_string)[1:]
                 # convert all but header labels to float values
                 self.data_object.df = self.data_object.df.astype(float)
                 self.data_object.step_file.close()
 
                 if (global_commit):
                     path = os.path.join(run_archive,global_commit,'output','output_step.csv')
-                    self.data_object.df=pd.read_csv(path, comment='#', low_memory=False)[1:]
+                    #self.data_object.df=pd.read_csv(path, comment='#', low_memory=False)[1:]
+                    self.data_object.df=pd.read_csv(path, comment='#', engine='python', sep=sep_string)[1:]
                 else:
-                    self.data_object.df=pd.read_csv('output/output_step.csv', comment='#', low_memory=False)[1:]
+                    #self.data_object.df=pd.read_csv('output/output_step.csv', comment='#', low_memory=False)[1:]
+                    self.data_object.df=pd.read_csv('output/output_step.csv', comment='#', engine='python', sep=sep_string)[1:]
                 self.data_object.df = self.data_object.df.astype(float)
                 self.call_plot_upate()
             except:
