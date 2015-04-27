@@ -38,6 +38,8 @@ from matplotlib.figure import Figure
 
 operating_system = os.uname()[0]
 
+
+
 show_plot_step_export = 0
 grid_style = 0
 rasterized_option = True # whether to rasterize pdf data (not the axes and labels, just the data), good when there is a lot of data to show
@@ -101,9 +103,6 @@ legend_font_size=11
 # string for storing commit id of present dataset
 global_commit = ''
 
-# need regex to deal with [l=1,r=1] combinations
-# this is a negative look ahead for ,r and ,l
-sep_string=",(?!r|l)"
 
 class Data():
     def __init__(self, step_file_path):
@@ -147,13 +146,16 @@ class Data():
         if (load_blank):
             self.df=pd.read_csv(blank_csv, comment='#')[1:]
         else:
-            #self.df=pd.read_csv(self.step_file, comment='#', low_memory=False)[1:]
-            self.df=pd.read_csv(self.step_file, comment='#', engine='python', sep=sep_string)[1:]
+            self.df=pd.read_csv(self.step_file, comment='#', **read_csv_options)[1:]
         load_blank = 0
         # convert all but header labels to float values
         self.df = self.df.astype(float)
         if (not self.show_newtsteps and not load_blank):
-            self.df = self.df.groupby("'<timestep>'", as_index=False).nth(-1)
+            delimiter_correction=""
+            if csv_single_quote:
+                delimiter_correction="'"
+            tmp_variable = "{0}<timestep>{0}".format(delimiter_correction)
+            self.df = self.df.groupby(tmp_variable, as_index=False).nth(-1)
         self.step_file.close()
    
         # dictionaries needed for ColumnSorterMixin
@@ -871,19 +873,16 @@ class FrameGenerator(wx.Frame):
             # re-read the data
             try:
                 self.data_object.step_file = open(self.data_object.step_file_path)
-                #self.data_object.df=pd.read_csv(self.data_object.step_file, comment='#',low_memory=False)[1:]
-                self.data_object.df=pd.read_csv(self.data_object.step_file, comment='#', engine='python', sep=sep_string)[1:]
+                self.data_object.df=pd.read_csv(self.data_object.step_file, comment='#', **read_csv_options)[1:]
                 # convert all but header labels to float values
                 self.data_object.df = self.data_object.df.astype(float)
                 self.data_object.step_file.close()
 
                 if (global_commit):
                     path = os.path.join(run_archive,global_commit,'output','output_step.csv')
-                    #self.data_object.df=pd.read_csv(path, comment='#', low_memory=False)[1:]
-                    self.data_object.df=pd.read_csv(path, comment='#', engine='python', sep=sep_string)[1:]
+                    self.data_object.df=pd.read_csv(path, comment='#', **read_csv_options)[1:]
                 else:
-                    #self.data_object.df=pd.read_csv('output/output_step.csv', comment='#', low_memory=False)[1:]
-                    self.data_object.df=pd.read_csv('output/output_step.csv', comment='#', engine='python', sep=sep_string)[1:]
+                    self.data_object.df=pd.read_csv('output/output_step.csv', comment='#', **read_csv_options)[1:]
                 self.data_object.df = self.data_object.df.astype(float)
                 self.call_plot_upate()
             except:
@@ -1289,17 +1288,47 @@ if __name__ == "__main__":
     #    else:
     #        specified_step_file = 'blank_csv' # as a last resort
 
+
+    # figure out whether single or double quotes are used in csv file
+    def contains_data(line):
+        if(re.match(r'#', line)):
+            return 0
+        else:
+            return 1
+    with open(specified_step_file) as step_file:
+        for line in step_file:
+            if contains_data(line):
+                if line[0] == "\'":
+                    csv_single_quote = True
+                else:
+                    csv_single_quote = False
+                break
+    step_file.close()
+
+    if csv_single_quote:
+        # need regex to deal with [l=1,r=1] combinations
+        # this is a negative look ahead for ,r and ,l
+        sep_string=",(?!r|l)"
+        read_csv_options = {'engine':'python', 'sep':sep_string}
+    else:
+        read_csv_options = {'low_memory':False}
+
     data = Data(specified_step_file)
     app = wx.App(False)
     
     directory_name = os.path.basename(os.getcwd())
     frame = FrameGenerator(None, -1, title=directory_name, data_object=data)
 
-    # This will select '<t>' as default x1 axis variable (if it exists)
+    # This will select '<timestep>' as default x1 axis variable (if it exists)
+    # change the tmp_variable line below to set the default variable (note, only one can be chosen)
     step = 0
     if (step == 0):
         try:
-            frame.x1.list.CheckItem(data.inverted["'<timestep>'"]-1, True)
+            delimiter_correction = ""
+            if csv_single_quote:
+                delimiter_correction="\'"
+            tmp_variable = "{0}<timestep>{0}".format(delimiter_correction)
+            frame.x1.list.CheckItem(data.inverted[tmp_variable]-1, True)
         except:
             pass
         step+=1
@@ -1307,3 +1336,4 @@ if __name__ == "__main__":
     frame.Show()
 
     app.MainLoop()
+
