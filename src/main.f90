@@ -292,6 +292,8 @@ time_loop: do while ( &
     .not.transient_simulation) then
     if (check_dumpfile("dumptime")) write(*,'(a)') 'INFO: user has requested output via dump file'
     call time_process
+    if (output_timings.and.output_timings_on_mesh_write.and.(timestepout /= 0.and.mod(timestep,max(timestepout,1)) == 0)) &
+      write(*,'(2(a,g10.3))') 'TIMING: total wall time = ',total_wall_time,': total cpu time = ',total_cpu_time  
     call output
     if (trim(output_step_file) == "timestep") call output_step(action="write",do_update_outputs=.false.)
     call time_process(description='output')
@@ -302,6 +304,7 @@ time_loop: do while ( &
   if (transient_simulation) then
     formatline = "(a,"//trim(dindexformat(timestep))//",a)"
     write(*,fmt=formatline) repeat('-',timeline)//' timestep ',timestep,' ending '//repeat('-',totalline-timeline+2)
+     
     if (convergence_details_file) then
       write(fconverge,fmt=formatline) repeat('-',timeline)//' timestep ',timestep,' ending '//repeat('-',totalline-timeline+2)
       call flush(fconverge)
@@ -341,3 +344,4 @@ call output_step(action="close")
 end program arb
 
 !-----------------------------------------------------------------
+
