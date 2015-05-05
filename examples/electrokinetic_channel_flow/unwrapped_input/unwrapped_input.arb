@@ -14,12 +14,12 @@ EXTERNALS "src/free_surface_functions.f90"
 #
 #-------------------------------------------------------------------
 # file equations.in
-VERSION 0.50
+VERSION 0.53
 
 INFO_TITLE "Fully-developed electrokinetic flow"
 INFO_DESCRIPTION "Now setup for electroviscous flow with zero total current"
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "22/8/14" # interpreted as the last modification date
+INFO_DATE "22/4/15" # interpreted as the last modification date
 
 # choose coordinate system
 # for cartesian slit flow include the following:
@@ -37,8 +37,8 @@ GLUE_FACES <centreline> reflect=2 # glue the centreline back on itself (while re
 #----------------------------------------------------------------------------
 # solver options
 
-# for electrokinetic problems, higher order kernels give significantly better results
-KERNEL polynomialaverageorder=2,polynomialorder=2 # specifies that when averaging/differentiating quantities to/at faces, ensure that function fits a second order polynomial
+# for electrokinetic problems, higher order kernels give significantly better results (these are now the default anyway)
+KERNEL_OPTIONS polynomialaverageorder=2,polynomialorder=2 # specifies that when averaging/differentiating quantities to/at faces, ensure that function fits a second order polynomial
 
 #-------------------------------------------------------------------
 # geometry
@@ -66,20 +66,22 @@ MSH_FILE "electrokinetic_channel_structured_nonuniform.msh"
 #MSH_FILE "electrokinetic_channel_unstructured.msh"
 
 # use templates from the electrokinetics template directory to build up problem
-#INCLUDE_ROOT "electrokinetics" # this is the base directory that will be appended to the following files
-# INFO: setting include root directory to electrokinetics
 # use these for a dimensional problem
+#INCLUDE_ROOT "navier_stokes"
 #INCLUDE "constants" # specify physical and numerical constants
+#INCLUDE_ROOT "electrokinetics"
 #INCLUDE "electrokinetic_constants" # and the same for the electrokinetic equations
 # or these for a nondimensional problem
+#INCLUDE_ROOT "navier_stokes"
+# INFO: setting include root directory to navier_stokes
 #INCLUDE "nondimensional_constants" # specify physical and numerical constants
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/nondimensional_constants.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/nondimensional_constants.arb without any search/replace combinations
 # use this constants file if solving nondimensionally
 
 #INCLUDE "constants"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/constants.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/constants.arb without any search/replace combinations
 # physical data
 CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
 CONSTANT <rho> [kg/m^3] 1.d0 # density
@@ -113,7 +115,7 @@ CELL_LOCAL <ls_minimum_boundary_distance> "sqrt(facemin(dot(<ls_boundary_vector[
 
 CONSTANT <a_lengthscale> "cellmax(<ls_minimum_boundary_distance>,region=<domain>)" # an estimate of the mesh lengthscale (channel half-width) based on the minimum domain -> wall distance
 CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
-# INCLUDE FINISHED for ../templates/electrokinetics/constants.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/constants.arb
 #--------------------------------------------------------
 
 # set Reynolds number here to a value so that it isn't left as a function of <mu> from constants
@@ -123,16 +125,18 @@ CONSTANT <Re> [1] 1.d-2 # Reynolds number, overwrite this after this file is inc
 CONSTANT <mu> "1.d0/<Re>"
 CONSTANT <rho> 1.d0
 CONSTANT <u_av> 1.d0
-# INCLUDE FINISHED for ../templates/electrokinetics/nondimensional_constants.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/nondimensional_constants.arb
 #--------------------------------------------------------
-#INCLUDE "nondimensional_electrokinetic_constants" # and the same for the electrokinetic equations
+#INCLUDE_ROOT "electrokinetics"
+# INFO: setting include root directory to electrokinetics
+#INCLUDE "nondimensional_constants" # and the same for the electrokinetic equations
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/nondimensional_electrokinetic_constants.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/electrokinetics/nondimensional_constants.arb without any search/replace combinations
 # general setup for nondimensional electrokinetic problems
 
-#INCLUDE "electrokinetic_constants"
+#INCLUDE "constants"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/electrokinetic_constants.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/electrokinetics/constants.arb without any search/replace combinations
 # general setup for electrokinetic problems
 
 CONSTANT <average ion n molarity> [molarity] 1.d-3 # molarity = mol/l
@@ -168,7 +172,7 @@ CELL_LOCAL <ls_minimum_boundary_distance> "sqrt(facemin(dot(<ls_boundary_vector[
 CONSTANT <a_lengthscale> "cellmax(<ls_minimum_boundary_distance>,region=<domain>)" # an estimate of the mesh lengthscale (channel half-width) based on the minimum domain -> wall distance
 CONSTANT <K> "<a_lengthscale>*sqrt(2.d0*<e>^2*<average ion z>^2*<average ion n>/(<eps_o>*<eps_fluid>*<k>*<T>))" # nondimensional channel half-width
 CONSTANT <S> "<wall charge>*<e>*<average ion z>*<a_lengthscale>/(<eps_o>*<eps_fluid>*<k>*<T>)" # nondimensional surface charge
-# INCLUDE FINISHED for ../templates/electrokinetics/electrokinetic_constants.arb
+# INCLUDE FINISHED for ../templates/electrokinetics/constants.arb
 #--------------------------------------------------------
 
 # physical data
@@ -198,10 +202,11 @@ CONSTANT <T> 0.d0
 
 # lengthscale of the mesh - for nondimensional problems this needs to be 1
 CONSTANT <a_lengthscale> "1.d0"
-# INCLUDE FINISHED for ../templates/electrokinetics/nondimensional_electrokinetic_constants.arb
+# INCLUDE FINISHED for ../templates/electrokinetics/nondimensional_constants.arb
 #--------------------------------------------------------
 
-#INCLUDE "binary_ion_combinations" # some concentrations and charges required in other equations
+# some concentrations and charges required in other equations, and also the face centred potential required in the dynamic_force calculation
+#INCLUDE "binary_ion_combinations"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/electrokinetics/binary_ion_combinations.arb without any search/replace combinations
 # these are relationships that involve combinations of ion properties
@@ -232,32 +237,42 @@ FACE_DERIVED <ion- n_hf> "faceave[harmonicweighted](<ion- n pos>)" ON <all faces
 #--------------------------------------------------------
 
 # also define the following locals
-CELL_LOCAL <rho_e> "<e>*(<ion+ z>*<ion+ n>+<ion- z>*<ion- n>)" # used on right of poisson equation
-CELL_LOCAL <rho_e pos> "<e>*(<ion+ z>*<ion+ n pos>+<ion- z>*<ion- n pos>)" # used in momentum balance (navier-stokes)
+CELL_LOCAL <rho_e> "<e>*(<ion+ z>*<ion+ n>+<ion- z>*<ion- n>)" ON <all cells> # used on right of poisson equation
+CELL_LOCAL <rho_e pos> "<e>*(<ion+ z>*<ion+ n pos>+<ion- z>*<ion- n pos>)" ON <all cells> # used in momentum balance (navier-stokes)
 FACE_LOCAL <rho_e_hf> "<e>*(<ion+ z>*<ion+ n_hf>+<ion- z>*<ion- n_hf>)" ON <all faces> output
-CELL_LOCAL <n_0^2 signed> "cellmin(<ion+ n>,<ion- n>)*abs(cellmax(<ion+ n>,<ion- n>))"
+CELL_LOCAL <n_0^2 signed> "cellmin(<ion+ n>,<ion- n>)*abs(cellmax(<ion+ n>,<ion- n>))" ON <all cells>
 
 # for error checking
 #CELL_OUTPUT <rho_e error> "<rho_e>-<rho_e pos>" ON <all cells>
+
+# this face-averaged potential is needed early on in the derived calculations (for dynamic_force_c) so include it here
+FACE_DERIVED <U_f> "faceave(<U>)" ON <all faces> # this is needed in <dynamic_force_c> which will be calculated in p_error_dxunit
 # INCLUDE FINISHED for ../templates/electrokinetics/binary_ion_combinations.arb
 #--------------------------------------------------------
-#INCLUDE "unknowns" # linked to navier-stokes template
+
+# now the flow parts
+#INCLUDE_ROOT "navier_stokes"
+# INFO: setting include root directory to navier_stokes
+#INCLUDE "domain"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/unknowns.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/domain.arb without any search/replace combinations
+#INCLUDE "unknowns" # no .arb suffix is required
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/navier_stokes/unknowns.arb without any search/replace combinations
 # unknown variables used for flow problems
 CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
 CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
 #CELL_UNKNOWN <u[l=3]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
 CELL_UNKNOWN <p> [] "1.d0" ON <all cells> # pressure
-# INCLUDE FINISHED for ../templates/electrokinetics/unknowns.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/unknowns.arb
 #--------------------------------------------------------
-#INCLUDE "total_stress" # linked to navier-stokes template
+#INCLUDE "total_stress"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/total_stress.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/total_stress.arb without any search/replace combinations
 # total stress tensor
 #INCLUDE "u_gradient_tensor"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/u_gradient_tensor.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/u_gradient_tensor.arb without any search/replace combinations
 # a tensor of face centred gradients that respects any reflections
 # used in the total stress and boundary conditions now
 # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
@@ -276,7 +291,7 @@ FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,](<u[l=1]>)" ON <all faces>
 # this is a now a placeholder for where this should be calculated
 # to include this contribution just include u_divergence_face somewhere after this file and <udiv_f> will be correctly calculated
 FACE_DERIVED <udiv_f> "0.d0" ON <all faces>
-# INCLUDE FINISHED for ../templates/electrokinetics/u_gradient_tensor.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/u_gradient_tensor.arb
 #--------------------------------------------------------
 
 # no both cartesian and cylindrical stresses don't include pressure
@@ -294,35 +309,28 @@ FACE_LOCAL <tau[l=1,2]> "- <mu>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <all fac
 FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <all faces>
 #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <all faces>
 #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <all faces>
-# INCLUDE FINISHED for ../templates/electrokinetics/total_stress.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/total_stress.arb
 #--------------------------------------------------------
-#INCLUDE "combined_fluxes" # this includes an electrokinetic term too and includes electrical terms in the dynamic force vector
+#INCLUDE "combined_fluxes"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/combined_fluxes.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/combined_fluxes.arb without any search/replace combinations
 # this calculated all fluxes now, including the rhie-chow stuff
 # by default this will work for steady-state (or implicit) simulations with constant rho
 # for other cases include files separately, using alternative files for momentum_flux.arb and doing specific face-centred property replacements in advection_flux.arb
 #INCLUDE "advection_flux.arb"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/advection_flux.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/advection_flux.arb without any search/replace combinations
 # uses a rhie-chow type interpolation method to calculate the fluid flux (velocity) over and in the direction of each face
 
 #INCLUDE "p_error"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/p_error.arb without any search/replace combinations
-# this modifies the p_error calculated for the navier_stokes equations to include the electrical forcing terms
-# dynamic force is also modified to include the electrical force term, so the conservation equations don't need any other modification
-
-FACE_DERIVED <U_f> "faceave(<U>)" ON <all faces> # this is needed in <dynamic_force_c> which will be calculated in p_error_dxunit
-#INCLUDE "p_error_dxunit"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/p_error_dxunit.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/p_error.arb without any search/replace combinations
 # a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
 # pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
 
 #INCLUDE "dynamic_force" # cell centred dynamic force
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/dynamic_force.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/dynamic_force.arb without any search/replace combinations
 # dynamic force is the pressure force that could cause fluid movement
 # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
 # dynamic force now has the physically correct sign!
@@ -335,23 +343,15 @@ CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <all cells>
 FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[,adjacentcells](<dynamic_force_c[l=1]>)"
 FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[reflect=2,adjacentcells](<dynamic_force_c[l=2]>)"
 #FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
-# INCLUDE FINISHED for ../templates/electrokinetics/dynamic_force.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
 #--------------------------------------------------------
 FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
 FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
-# INCLUDE FINISHED for ../templates/electrokinetics/p_error_dxunit.arb
-#--------------------------------------------------------
-
-# these overwrite the forces in p_error with pressure equivalent forces that include an electrical term
-CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=1](<U_f>)" ON <all cells>
-CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=2](<U_f>)" ON <all cells>
-#CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=3](<U_f>)" ON <all cells>
-FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)-<BK^2/Re^2>*<rho_e_hf>*facegrad[dxunit](<U>)" ON <all faces>
-# INCLUDE FINISHED for ../templates/electrokinetics/p_error.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
 #--------------------------------------------------------
 #INCLUDE "u_f"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/u_f.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/u_f.arb without any search/replace combinations
 # calculate the Rhie-Chow type velocity correction, only applied (nonzero) on the domain faces
 FACE_LOCAL <u_f_vect[l=1]> "faceave[](<u[l=1]>)"
 FACE_LOCAL <u_f_vect[l=2]> "faceave[reflect=2](<u[l=2]>)"
@@ -405,13 +405,13 @@ FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{
 FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
 
 #FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
-# INCLUDE FINISHED for ../templates/electrokinetics/u_f.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/u_f.arb
 #--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/electrokinetics/advection_flux.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/advection_flux.arb
 #--------------------------------------------------------
 #INCLUDE "momentum_flux.arb"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/momentum_flux.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/momentum_flux.arb without any search/replace combinations
 # flux of momentum over and in the direction of each face
 
 # flux now split to allow easier overwriting of the advection component
@@ -423,20 +423,20 @@ FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,reflect=2](<u[l=2]>,<u_
 FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+<J_advection_f[l=1]>" ON <all faces> # component of momentum transport from stress and advection
 FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+<J_advection_f[l=2]>" ON <all faces> # component of momentum transport from stress and advection
 #FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)+<J_advection_f[l=3]>" ON <all faces> # component of momentum transport from stress and advection
-# INCLUDE FINISHED for ../templates/electrokinetics/momentum_flux.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/momentum_flux.arb
 #--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/electrokinetics/combined_fluxes.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/combined_fluxes.arb
 #--------------------------------------------------------
-#INCLUDE "conservation" # linked to navier-stokes template
+#INCLUDE "conservation"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/conservation.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/conservation.arb without any search/replace combinations
 # this now chooses between the steady-state and transient conservation files based on the transient navier-stokes comment string
 # these comment strings should be set from either constants, transient_setup or transient_dynamic_setup
 # both files assume constant density for now, otherwise overwrite with conservation_incompressible_transient_varying_rho specifically
 #INCLUDE "conservation_incompressible_transient_constant_rho"
 #INCLUDE "conservation_incompressible_steady_state"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/conservation_incompressible_steady_state.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/conservation_incompressible_steady_state.arb without any search/replace combinations
 # conservation equations solved over each domain cell (finite volume method)
 
 # cartesian
@@ -454,54 +454,73 @@ CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <d
 #CELL_EQUATION <momentum[l=1]> "celldiv(1.d0*<J_f[l=1]>)/1.d0-<dynamic_force_c[l=1]>+0*2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)" ON <domain> # momentum component
 #CELL_EQUATION <momentum[l=2]> "celldiv(1.d0*<J_f[l=2]>)/1.d0-<dynamic_force_c[l=2]>+0*2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)" ON <domain> # momentum component
 ##CELL_EQUATION <momentum[l=3]> "celldiv(1.d0*<J_f[l=3]>)/1.d0-<dynamic_force_c[l=3]>+0*2.d0*<u[l=3]>*<mu>/(<cellx[l=3]>**2)" ON <domain> # momentum component
-# INCLUDE FINISHED for ../templates/electrokinetics/conservation_incompressible_steady_state.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/conservation_incompressible_steady_state.arb
 #--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/electrokinetics/conservation.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/conservation.arb
+#--------------------------------------------------------
+# INCLUDE FINISHED for ../templates/navier_stokes/domain.arb
+#--------------------------------------------------------
+#INCLUDE_ROOT "electrokinetics"
+# INFO: setting include root directory to electrokinetics
+#INCLUDE "dynamic_force" # overwrite the dynamic_force used in the navier-stokes equations to include an electrical forcing term
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/electrokinetics/dynamic_force.arb without any search/replace combinations
+# this overwrites the dynamic forces calculated for the navier_stokes equations to include the electrical forcing terms
+# dynamic force is included in the navier-stokes conservation equations, so they don't need any other modification
+# <U_f> should also be defined previously
+
+CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=1](<U_f>)" ON <all cells>
+CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=2](<U_f>)" ON <all cells>
+#CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=3](<U_f>)" ON <all cells>
+FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)-<BK^2/Re^2>*<rho_e_hf>*facegrad[dxunit](<U>)" ON <all faces>
+# INCLUDE FINISHED for ../templates/electrokinetics/dynamic_force.arb
 #--------------------------------------------------------
 
-# the following wall bcs are linked to navier-stokes templates
+# and the flow boundary conditions
+#INCLUDE_ROOT "navier_stokes"
+# INFO: setting include root directory to navier_stokes
 #INCLUDE "walls_noslip" # nonslip walls BC
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/walls_noslip.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/walls_noslip.arb without any search/replace combinations
 # boundary conditions on nonslip walls
 #INCLUDE "noflux" REPLACE "<region>" WITH "<walls>" REPLACE "<equation>" WITH "<walls noflux>"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/noflux.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls noflux>
+# the following is INCLUDED from ../templates/navier_stokes/noflux.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls noflux>
 FACE_EQUATION <walls noflux> "<u_f>" ON <walls> # no flux normal to region
-# INCLUDE FINISHED for ../templates/electrokinetics/noflux.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/noflux.arb
 #--------------------------------------------------------
 #INCLUDE "noslip" REPLACE "<region>" WITH "<walls>" REPLACE "<equation" WITH "<walls noslip" # noslip now detects whether it is a 3D or 2D problem
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/noslip.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation with <walls noslip
+# the following is INCLUDED from ../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation with <walls noslip
 FACE_EQUATION <walls noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
 #FACE_EQUATION <walls noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
-# INCLUDE FINISHED for ../templates/electrokinetics/noslip.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
 #--------------------------------------------------------
 #INCLUDE "p_extrapolation" REPLACE "<region>" WITH "<walls>" REPLACE "<equation>" WITH "<walls p_extrapolation>"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/p_extrapolation.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls p_extrapolation>
+# the following is INCLUDED from ../templates/navier_stokes/p_extrapolation.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls p_extrapolation>
 FACE_EQUATION <walls p_extrapolation> "<dynamic_force_f>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
-# INCLUDE FINISHED for ../templates/electrokinetics/p_extrapolation.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/p_extrapolation.arb
 #--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/electrokinetics/walls_noslip.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/walls_noslip.arb
 #--------------------------------------------------------
 #INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure gradient to give using <u_av>
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/inlet_u_fully_developed.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/inlet_u_fully_developed.arb without any search/replace combinations
 # boundary conditions on inlet - fully developed flow
 #INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/u_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation> with <inlet fully developed>
+# the following is INCLUDED from ../templates/navier_stokes/u_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation> with <inlet fully developed>
 #FACE_EQUATION <inlet fully developed> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <inlet> # normal velocity component is fully developed
 FACE_EQUATION <inlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <inlet> # normal velocity component is fully developed
-# INCLUDE FINISHED for ../templates/electrokinetics/u_fully_developed.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/u_fully_developed.arb
 #--------------------------------------------------------
 #INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/noslip.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation with <inlet no slip
+# the following is INCLUDED from ../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation with <inlet no slip
 FACE_EQUATION <inlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <inlet> # no component tangential to the face
 #FACE_EQUATION <inlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <inlet> # no component tangential to the face in the second tangential direction
-# INCLUDE FINISHED for ../templates/electrokinetics/noslip.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
 #--------------------------------------------------------
 
 # alternatively, set uniform inlet pressure giving required average velocity
@@ -512,34 +531,37 @@ NONE_DERIVED <u_av_calc> "facesum(-<u_f>*<facearea>,<inlet>)/facesum(<facearea>,
 NONE_EQUATION <inlet centreline flowrate equation> "<u_av_calc>-<u_av>" # set flowrate through inlet to give required average velocity
 NONE_DERIVED <inlet centreline gradp> "facesum(<dynamic_force_f>,region=<inlet centreline>)"
 FACE_EQUATION <inlet flowrate equation> "<dynamic_force_f>-<inlet centreline gradp>" ON <inlet sans centreline> # apply specified pressure over inlet
-# INCLUDE FINISHED for ../templates/electrokinetics/inlet_u_fully_developed.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/inlet_u_fully_developed.arb
 #--------------------------------------------------------
 #INCLUDE "outlet_u_fully_developed" # fully developed velocity profile, setting pressure at centreline to zero and a uniform pressure gradient
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/outlet_u_fully_developed.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/navier_stokes/outlet_u_fully_developed.arb without any search/replace combinations
 # boundary conditions on outlet - fully developed flow
 #INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<outlet>" REPLACE "<equation>" WITH "<outlet fully developed>"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/u_fully_developed.arb with the following search/replace combinations: replace <region> with <outlet>: replace <equation> with <outlet fully developed>
+# the following is INCLUDED from ../templates/navier_stokes/u_fully_developed.arb with the following search/replace combinations: replace <region> with <outlet>: replace <equation> with <outlet fully developed>
 #FACE_EQUATION <outlet fully developed> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <outlet> # normal velocity component is fully developed
 FACE_EQUATION <outlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <outlet> # normal velocity component is fully developed
-# INCLUDE FINISHED for ../templates/electrokinetics/u_fully_developed.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/u_fully_developed.arb
 #--------------------------------------------------------
 #INCLUDE "noslip" REPLACE "<region>" WITH "<outlet>" REPLACE "<equation" WITH "<outlet no slip"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/noslip.arb with the following search/replace combinations: replace <region> with <outlet>: replace <equation with <outlet no slip
+# the following is INCLUDED from ../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <outlet>: replace <equation with <outlet no slip
 FACE_EQUATION <outlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to the face
 #FACE_EQUATION <outlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <outlet> # no component tangential to the face in the second tangential direction
-# INCLUDE FINISHED for ../templates/electrokinetics/noslip.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
 #--------------------------------------------------------
 
 # now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <outlet sans centreline> and <outlet centreline>
 NONE_EQUATION <outlet centreline flowrate equation> "facesum(<p_f>,region=<outlet centreline>)" # set pressure at centreline to be zero
 NONE_DERIVED <outlet centreline gradp> "facesum(<dynamic_force_f>,region=<outlet centreline>)"
 FACE_EQUATION <outlet flowrate equation> "<dynamic_force_f>-<outlet centreline gradp>" ON <outlet sans centreline> # apply specified pressure over outlet
-# INCLUDE FINISHED for ../templates/electrokinetics/outlet_u_fully_developed.arb
+# INCLUDE FINISHED for ../templates/navier_stokes/outlet_u_fully_developed.arb
 #--------------------------------------------------------
 
+# now ion transport and potential equation
+#INCLUDE_ROOT "electrokinetics"
+# INFO: setting include root directory to electrokinetics
 #INCLUDE "binary_ion_equations" # transport of binary electrolyte (positive and negative ions), including boundary conditions
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/electrokinetics/binary_ion_equations.arb without any search/replace combinations
@@ -547,9 +569,9 @@ FACE_EQUATION <outlet flowrate equation> "<dynamic_force_f>-<outlet centreline g
 # include statements for binary combinations should be included earlier before p_error calculation (binary_ion_combinations)
 
 # include positive ion transport equations
-#INCLUDE "ion_equations" REPLACE "<ion initial>" WITH "<average ion n>" REPLACE "<ion" WITH "<ion+"
+#INCLUDE "ion_equations" REPLACE "<ion" WITH "<ion+"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_equations.arb with the following search/replace combinations: replace <ion initial> with <average ion n>: replace <ion with <ion+
+# the following is INCLUDED from ../templates/electrokinetics/ion_equations.arb with the following search/replace combinations: replace <ion with <ion+
 #INCLUDE "ion_constants"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/electrokinetics/ion_constants.arb without any search/replace combinations
@@ -566,17 +588,26 @@ CONSTANT <ion+ D> [m^2/s] "<average ion D>" # diffusivity of ion
 # ion transport equations for one specific ion species
 # all variables start with <ion+ so this can be replaced to make specific ions
 
-#CELL_UNKNOWN <ion+ n> [molecules/m^3] "<average ion n>" ON <all cells> # ion concentration, note units
+#CELL_LOCAL <ion+ n initial> "<average ion n>"
 # initial value now based on initial potential, so the potential expression will be unwrapped to use here
-CELL_UNKNOWN <ion+ n> [molecules/m^3] "<average ion n>*exp(-<ion+ z>*<e/kT>*<U>)" ON <all cells> # ion concentration, note units
+CELL_LOCAL <ion+ n initial> "<average ion n>*exp(-<ion+ z>*<e/kT>*<U>)"
+CELL_UNKNOWN <ion+ n> [molecules/m^3] "<ion+ n initial>" ON <all cells> # ion concentration, note units
+
+#CELL_TRANSIENT <ion+ n[r=1]> "<ion+ n initial>" "<ion+ n>" ON <all cells>
 CELL_DERIVED <ion+ limiter> [1] "celllimiter[lower](<ion+ n>,cellmin(<ion+ n>,,<cellicells>),celllimiter[upper](<ion+ n>,cellmax(<ion+ n>,,<cellicells>)))" ON <all cells> # relative limits
 FACE_LOCAL <ion+ n_f> "faceave[advection](<ion+ n>,<u_f>,<ion+ limiter>*<adv_limiter>)" ON <all faces> # face advection-interpolated concentration
 FACE_DERIVED <ion+ J_f> [molecules/(m^2.s)] "<ion+ n_f>*<u_f>-<ion+ D>*(facegrad(<ion+ n>)+<ion+ z>*<e/kT>*<ion+ n_hf>*facegrad(<U>))" ON <all faces> # flux of ions across each face
+
 # conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
 # cartesian only
 CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "celldiv(<ion+ J_f>-faceave[lastcell](<ion+ n>)*<u_f>)" ON <domain>
 # cylindrical and cartesian
 #CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "celldiv(1.d0*(<ion+ J_f>-faceave[lastcell](<ion+ n>)*<u_f>))/1.d0" ON <domain>
+
+# cartesian only
+#CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "(<ion+ n>-<ion+ n[r=1]>)/<dt>+celldiv(<ion+ J_f>-faceave[lastcell](<ion+ n>)*<u_f>)" ON <domain>
+# cylindrical and cartesian
+##CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "(<ion+ n>-<ion+ n[r=1]>)/<dt>+celldiv(1.d0*(<ion+ J_f>-faceave[lastcell](<ion+ n>)*<u_f>))/1.d0" ON <domain>
 # INCLUDE FINISHED for ../templates/electrokinetics/ion_domain.arb
 #--------------------------------------------------------
 #INCLUDE "ion_walls"
@@ -609,9 +640,9 @@ FACE_EQUATION <ion+ inlet> "facegrad(<ion+ n>)" ON <inlet> # fully developed flo
 # INCLUDE FINISHED for ../templates/electrokinetics/ion_equations.arb
 #--------------------------------------------------------
 # include negative ion transport equations, correcting valency to be negative
-#INCLUDE "ion_equations" REPLACE "<ion initial>" WITH "<average ion n>" REPLACE "<ion" WITH "<ion-"
+#INCLUDE "ion_equations" REPLACE "<ion" WITH "<ion-"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_equations.arb with the following search/replace combinations: replace <ion initial> with <average ion n>: replace <ion with <ion-
+# the following is INCLUDED from ../templates/electrokinetics/ion_equations.arb with the following search/replace combinations: replace <ion with <ion-
 #INCLUDE "ion_constants"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/electrokinetics/ion_constants.arb without any search/replace combinations
@@ -628,17 +659,26 @@ CONSTANT <ion- D> [m^2/s] "<average ion D>" # diffusivity of ion
 # ion transport equations for one specific ion species
 # all variables start with <ion- so this can be replaced to make specific ions
 
-#CELL_UNKNOWN <ion- n> [molecules/m^3] "<average ion n>" ON <all cells> # ion concentration, note units
+#CELL_LOCAL <ion- n initial> "<average ion n>"
 # initial value now based on initial potential, so the potential expression will be unwrapped to use here
-CELL_UNKNOWN <ion- n> [molecules/m^3] "<average ion n>*exp(-<ion- z>*<e/kT>*<U>)" ON <all cells> # ion concentration, note units
+CELL_LOCAL <ion- n initial> "<average ion n>*exp(-<ion- z>*<e/kT>*<U>)"
+CELL_UNKNOWN <ion- n> [molecules/m^3] "<ion- n initial>" ON <all cells> # ion concentration, note units
+
+#CELL_TRANSIENT <ion- n[r=1]> "<ion- n initial>" "<ion- n>" ON <all cells>
 CELL_DERIVED <ion- limiter> [1] "celllimiter[lower](<ion- n>,cellmin(<ion- n>,,<cellicells>),celllimiter[upper](<ion- n>,cellmax(<ion- n>,,<cellicells>)))" ON <all cells> # relative limits
 FACE_LOCAL <ion- n_f> "faceave[advection](<ion- n>,<u_f>,<ion- limiter>*<adv_limiter>)" ON <all faces> # face advection-interpolated concentration
 FACE_DERIVED <ion- J_f> [molecules/(m^2.s)] "<ion- n_f>*<u_f>-<ion- D>*(facegrad(<ion- n>)+<ion- z>*<e/kT>*<ion- n_hf>*facegrad(<U>))" ON <all faces> # flux of ions across each face
+
 # conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
 # cartesian only
 CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "celldiv(<ion- J_f>-faceave[lastcell](<ion- n>)*<u_f>)" ON <domain>
 # cylindrical and cartesian
 #CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "celldiv(1.d0*(<ion- J_f>-faceave[lastcell](<ion- n>)*<u_f>))/1.d0" ON <domain>
+
+# cartesian only
+#CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "(<ion- n>-<ion- n[r=1]>)/<dt>+celldiv(<ion- J_f>-faceave[lastcell](<ion- n>)*<u_f>)" ON <domain>
+# cylindrical and cartesian
+##CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "(<ion- n>-<ion- n[r=1]>)/<dt>+celldiv(1.d0*(<ion- J_f>-faceave[lastcell](<ion- n>)*<u_f>))/1.d0" ON <domain>
 # INCLUDE FINISHED for ../templates/electrokinetics/ion_domain.arb
 #--------------------------------------------------------
 #INCLUDE "ion_walls"
@@ -759,6 +799,7 @@ NONE_EQUATION <inlet centreline potential equation> "<I_total_calc>-<I_total>"
 # INCLUDE FINISHED for ../templates/electrokinetics/potential_equations.arb
 #--------------------------------------------------------
 
+# giving a better initial estimate leads to faster and more reliable convergence
 #INCLUDE "estimate_initial_potential" # sets the initial potential using a very rough correlation.  Initial ion concentrations reference this potential.
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/electrokinetics/estimate_initial_potential.arb without any search/replace combinations
@@ -776,6 +817,7 @@ CELL_UNKNOWN <U> "<U initial>" # adopts region etc from real definition on the u
 # INCLUDE FINISHED for ../templates/electrokinetics/estimate_initial_potential.arb
 #--------------------------------------------------------
 
+#-------------------------------------------------------------------
 # correct some magnitudes
 CELL_UNKNOWN <p> magnitude=1.d+5
 # the following magnitudes are resonably well calculated from the initial potential estimate, so don't bother setting explicitly

@@ -211,7 +211,7 @@ CONSTANT <u_av> 1.d0
 # v0.50 - now use transient setup files
 # include the following to include a constraint based on the previous number of newtsteps
 #GENERAL_REPLACEMENTS REPLACE "<<newtsteptimestepcomment>>" W "" REPLACE "<<nonnewtsteptimestepcomment>>" W "#"
-#INCLUDE "transient_dynamic_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
+#INCLUDE "transient_explicit_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
 #INCLUDE "transient_implicit_setup" # a dynamic implicitly calculated timestep to keep the CFL number at a specified level
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/navier_stokes/transient_implicit_setup.arb without any search/replace combinations
@@ -232,30 +232,41 @@ CONSTANT <dt_initial> [] "<CFL_initial>*<celldxave>/<u_av>" # initial timestep b
 CONSTANT <CFL_out> 10.d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity
 CONSTANT <dt_out> [] "<CFL_out>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
 #CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
-# dynamic timestep constants
-CONSTANT <dt_increase> 1.2d0
-CONSTANT <dt_max> "<dt_initial>*1.d4"
-CONSTANT <dt_min> "<dt_initial>*1.d-3"
-CONSTANT <CFL_max> 0.25d0
 
 # transient bits
 TRANSIENT_SIMULATION
-
 #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+
+#---------------------------------------------------------------------------------------------------------
+# dynamic timestepping
+
+# by default there is a explicit newtstep timestep limitation - to remove it reverse the following string replacement
+#GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "" DEFAULT "<<nonnewtsteptimestepcomment>>" W "#"
+
+# dynamic timestep constants
+CONSTANT <dt_increase> 1.2d0
+CONSTANT <dt_decrease> 0.7d0
+CONSTANT <dt_max> "<dt_initial>*1.d4"
+CONSTANT <dt_min> "<dt_initial>*1.d-3"
+CONSTANT <CFL_max> 0.25d0
+CONSTANT <newtstepdtlimiterlow> 4.d0 # explicitly calculated timestep is only increased if <newtstep[r=1]> is <= than this value
+CONSTANT <newtstepdtlimiterhigh> 8.d0 # explicitly calculated timestep is decreased if <newtstep[r=1]> is > than this value
+NONE_TRANSIENT <newtstep[r=1]> "0.d0" "<newtstep>" # we save the previous timestep <newtstep> for the above explicit timestep calculation
+NONE_TRANSIENT <dt_newtstep_increase[r=1]> "1.d0" "noneif(<newtstep[r=1]>-<newtstepdtlimiterhigh>,<dt_decrease>,noneif(<newtstep[r=1]>-<newtstepdtlimiterlow>,1.d0,<dt_increase>))" # apply this to the previous timestep to keep newtstep roughly between high/low ranges
+#NONE_LOCAL <dt_newtstep_increase[r=1]> "<dt_increase>" # placeholder for nonnewtsteplimited timestepping
 
 # the default is for explicit timestepping, but implicit can also be enabled by reversing the following strings
 #GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
 
-# dynamic timestepping
 NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
-FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <fluid all faces>
+FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <fluid all faces> # don't actually need this for implicit timestepping, but it is used in input files for some of the problems for output, so in the interests of not breaking things...
 
 # explicit
 # use CFL_number template, but make the calculation explicit - ie, based on r=1 values
 #INCLUDE "CFL_number" R "<CFL local/dt>" W "<CFL local/dt[r=1]>" R "<u_f>" W "<u_f[r=1]>" R "<CFL local>" W "<CFL local[r=1]>" R "<dt>" W "<dt[r=1]>" R "NONE_OUTPUT <CFL>" W 'NONE_TRANSIENT <CFL[r=1]> ""'
 ##NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<fluid domain>)" output,stepoutput
 #NONE_TRANSIENT <CFL[r=1]> output,stepoutput
-#NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+#NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
 
 # implicit
 #INCLUDE "CFL_number"
@@ -271,19 +282,19 @@ NONE_OUTPUT <CFL> "cellmax(<CFL local>,region=<fluid domain>)"
 # INCLUDE FINISHED for ../templates/navier_stokes/CFL_number.arb
 #--------------------------------------------------------
 NONE_UNKNOWN <dt[r=0]> "<dt_initial>" stepoutput,input
-# by default there is no explicit newtstep timestep limitation - to include it reverse the following string replacement
-#GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "#" DEFAULT "<<nonnewtsteptimestepcomment>>" W ""
-# without the explicit newtstep limitation
-NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_increase>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<fluid domain>)),<dt_max>),<dt_min>)"
-# for dynamic and implicit timestepping, include the following to also include a constraint based on the previous number of newtsteps
-#NONE_CONSTANT <newtstepdecrease> 5.d0 # number of newtonsteps that take place before <newtstep> starts to limit <dt> (explicit)
-#NONE_CONSTANT <dt_decrease> 0.8d0 # amount to decrease timestep by if previous timestep newtstep was exceeded
-#NONE_TRANSIENT <newtstep[r=1]> "0.d0" "<newtstep>" # save previous newtstep
-#NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(noneif(<newtstep[r=1]>-<newtstepdecrease>,<dt_decrease>,<dt_increase>)*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<fluid domain>)),<dt_max>),<dt_min>)"
+# straight minimum
+#NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<fluid domain>)),<dt_max>),<dt_min>)"
+# harmonically averaged, for smoother convergence than the straight minimum which can bounce around
+NONE_LOCAL <dt_explicit_target> "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
+NONE_LOCAL <dt_CFL_target> "nonemax(<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<fluid domain>),<dt_min>)" stepoutput
+# using two factor here which really doesn't respect dt_increase and CFL_max values correctly, but performs best when both timescales are about the same - ie, more thought required
+NONE_LOCAL <dt_target> "2.d0/(1.d0/<dt_explicit_target>+1.d0/<dt_CFL_target>)" stepoutput
 NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
 
+#---------------------------------------------------------------------------------------------------------
 # constant timestep, next 1 line
 #NONE_CONSTANT <dt> "<dt_initial>"
+#---------------------------------------------------------------------------------------------------------
 
 NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
 NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
@@ -445,9 +456,22 @@ CELL_UNKNOWN <vof_phi> [] "<vof_phi_initial>" ON <fluid all cells> magnitude=1.d
 # this vof function is used on the fluid domain only, and defines fluid properties and is used to construct the delta function
 # function is limited, and has newtstepmax on it
 CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <fluid all cells> newtstepmax=30
+
 # create some vof_phi's specifically for the delta functions
 CELL_LOCAL <vof_phi_delta> "<vof_phi_lim>" ON <fluid all cells> # this is used on rarely (for force_f), so just link to <vof_phi_lim>
-FACE_DERIVED <vof_phi_delta_f> "faceif(facedelta(<vof_delta_mask_f[r=1]>),<vof_phi_lim>,faceave[adjacentcells](<vof_phi_lim>))" ON <fluid all faces> # this will be used repeatedly in celldiv so use a derived, but also calculate it as cheaply as possible for density property use
+
+# there are possibly three choices for interpolating vof_phi_delta (which right now equals vof_phi_lim) to the faces
+# using arithmetic averaging, which is the same as done for the pressure, and results in the lowests velocity errors as the phi and p interpolations are matched
+FACE_LOCAL <vof_phi_delta_local_f> "faceave(<vof_phi_lim>)" ON <fluid all faces>
+# do the same, but limit delta to avoid under/overshoots.  This will result in higher velocity errors (due to the interpolation mismatch between p and phi) but will evaluate the total area more accurately if using delta (which is now limited though anyway)
+#FACE_LOCAL <vof_phi_delta_local_f> "facemax(facemin(faceave(<vof_phi_lim>),1.d0),0.d0)" ON <fluid all faces>
+# use adjacent cell averaging which will not cause under/overshoots, but does not match the p_f interpolation.  Consider changing this p interpolation, but will be at the expense of grad(<p>) evaluation in the navier-stokes equations
+#FACE_LOCAL <vof_phi_delta_local_f> "faceave[adjacentcells](<vof_phi_lim>)" ON <fluid all faces>
+# on the initial calculation or within the delta mask used interpolation of the cell centred vof_phi_lim, otherwise use previous timestep values (which should be 0 or 1 anyway and evaluate identically)
+FACE_DERIVED <vof_phi_delta_f> "faceif(facedelta(<vof_delta_mask_f[r=1]>)*<timestep>,<vof_phi_delta_local_f>,<vof_phi_delta_f[r=1]>)" ON <fluid all faces> # this will be used repeatedly in celldiv so use a derived, but also calculate it as cheaply as possible for density property use
+#FACE_DERIVED <vof_phi_delta_f> "faceif(facedelta(<vof_delta_mask_f[r=1]>)*<timestep>,<vof_phi_delta_local_f>,faceave[adjacentcells](<vof_phi_lim>))" ON <fluid all faces> # this will be used repeatedly in celldiv so use a derived, but also calculate it as cheaply as possible for density property use
+FACE_TRANSIENT <vof_phi_delta_f[r=1]> "<vof_phi_delta_local_f>" "<vof_phi_delta_f>" ON <fluid all faces>
+
 # also define a derived version of <vof_phi>, so that newtstepmax can be used with it to turn off implicit iterations if newton loop is not converging
 # now (since v0.52) replaces <vof_phi_lim> in interface (normals and kappa) calculation, without being bounded between 0 and 1
 CELL_DERIVED <vof_phi_interface> "<vof_phi>" ON <fluid all cells> newtstepmax=20
@@ -827,9 +851,9 @@ FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<fluid domain faces>),<u_f_{cor
 
 #INCLUDE_ROOT "volume_of_fluid"
 # INFO: setting include root directory to volume_of_fluid
-#INCLUDE "p_error"
+#INCLUDE "dynamic_force"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/free_surface/volume_of_fluid/p_error.arb without any search/replace combinations
+# the following is INCLUDED from ../templates/free_surface/volume_of_fluid/dynamic_force.arb without any search/replace combinations
 # standard lines to overwrite dynamic_force_c and dynamic_force_f from navier_stokes p_error_facegrad file to include surface tension force in p_error calculation
 
 CELL_DERIVED <dynamic_force_c[l=1]> "-(celldivgrad[l=1](<p_f>)-<sigma>*<vof_F_c[l=1]>)" ON <fluid all cells>
@@ -840,7 +864,7 @@ CELL_DERIVED <dynamic_force_c[l=2]> "-(celldivgrad[l=2](<p_f>)-<sigma>*<vof_F_c[
 FACE_LOCAL <dynamic_force_f> "-(facegrad[dxunit](<p>)-<sigma>*<vof_F_f>)" ON <fluid all faces>
 #FACE_LOCAL <dynamic_force_f> "-(facegrad(<p>)-<sigma>*<vof_F_f>)" ON <fluid all faces>
 
-# INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/p_error.arb
+# INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/dynamic_force.arb
 #--------------------------------------------------------
 #INCLUDE "equation" # all phi advection done on fluid mesh
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
