@@ -1,1 +1,31 @@
-../navier_stokes/nondimensional_constants.arb
+# general setup for nondimensional electrokinetic problems
+
+INCLUDE "constants"
+
+# physical data
+CONSTANT <Re> [1] 1.d-2 # Reynolds number.  Overwrites value set in nondimensional_constants
+CONSTANT <Sc> [1] 1.d+3 # Schmidt number
+CONSTANT <B> [1] 2.34d-4 # B number
+CONSTANT <K> [1] 1.d-1 # K
+CONSTANT <S> [1] -2.d+1 # S (signed)
+CONSTANT <I_total> [1] 0.d0 # total current passing through domain
+
+# calculate derived constants and make dummy ones unity
+CONSTANT <u_av> [1] 1.d0
+CONSTANT <average ion n> [1] 1.d0
+CONSTANT <Pe> [1] "<Re>*<Sc>" # Peclet number
+CONSTANT <average ion D> [1] "1/<Pe>"
+CONSTANT <K^2/2> [1] "<K>^2/2.d0"
+CONSTANT <BK^2/Re^2> [1] "<B>*<K>^2/(<Re>^2)"
+CONSTANT <eps_fluid> [1] 1.d0
+CONSTANT <wall charge> [1] "<S>"
+CONSTANT <e> [1] 1.d0
+CONSTANT <eps_o> [1] 1.d0
+CONSTANT <e/kT> [1] 1.d0
+
+# zero some undefined dimensional constants
+CONSTANT <average ion n molarity> 0.d0
+CONSTANT <T> 0.d0
+
+# lengthscale of the mesh - for nondimensional problems this needs to be 1
+CONSTANT <a_lengthscale> "1.d0"
