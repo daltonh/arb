@@ -60,6 +60,7 @@ our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='/usr/local/bin/maxima'; # if all else fails specify the actual location
 #our $maxima_bin='../misc/maxima_OsX/maxima'; # or the supplied script for the OsX binary, relative to the build directory
 my $fortran_input_file="$build_dir/fortran_input.arb"; # input file for the fortran executable, which is in a slightly different format to the user written input files
+my $current_unwrapped_input_file="$tmp_dir/current_unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
 my $unwrapped_input_file="$tmp_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
 my $current_debug_info_file="$tmp_dir/current_debugging_info.txt"; # this is where all the debugging info is dumped from this current call to setup_equations.pl
 my $debug_info_file="$tmp_dir/debugging_info.txt"; # this is where all the debugging info is stored from the last setup
@@ -70,7 +71,7 @@ my $version_file="$working_dir/licence/version";
 if (! -d $tmp_dir) { mkpath($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 my $filename;
 foreach $filename (bsd_glob("$tmp_dir/*")) {
-  if ($filename eq $variable_file || $filename eq $region_file || $filename eq $debug_info_file ) { next; } # don't delete the files which are a record of the previous setup run
+  if ($filename eq $variable_file || $filename eq $region_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
   if (-f $filename) {unlink($filename) or die "ERROR: could not remove $filename in directory $tmp_dir\n";}
 }
 
@@ -211,8 +212,9 @@ print DEBUG "SUCCESS: equation_module.f90 has been created\n";
 # finally move equation data to build directory as a record of the successful run
 print DEBUG "INFO: moving setup_equation_data to build directory\n";
 move("$tmp_dir/setup_equation_data","$build_dir/last_setup_equation_data") or die "could not move $tmp_dir/setup_equation_data to $build_dir/last_setup_equation_data\n";
-# and also keep a copy of the debugging file which will be from the last successful setup
-move("$current_debug_info_file","$debug_info_file") or  die "could not save $current_debug_info_file as $debug_info_file\n";
+# and also keep a copy of the debugging and unwrapped file which acts as a record from the last successful setup
+copy("$current_debug_info_file","$debug_info_file") or  die "could not save $current_debug_info_file as $debug_info_file\n";
+copy("$current_unwrapped_input_file","$unwrapped_input_file") or  die "could not save $current_unwrapped_input_file as $unwrapped_input_file\n";
 
 close(DEBUG);
 
@@ -569,7 +571,7 @@ sub read_input_files {
   my $skip = 0; # flag to indicate whether we are in comments section or not
 
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
-  open(UNWRAPPED_INPUT, ">$unwrapped_input_file");
+  open(UNWRAPPED_INPUT, ">$current_unwrapped_input_file");
 
   $input_files[$#input_files]{"include_root"} = ''; # initial include_root is blank
   $input_files[$#input_files]{"handle"} = FileHandle->new(); # make a filehandle for the first file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
