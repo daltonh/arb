@@ -1,6 +1,8 @@
 # setup things needed for transient flow
-# this file works for either dynamic or constant timestepping, which must be set by string replacement from the calling file
+# this file works for either dynamic or constant timestepping
 # designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
+# string replacements default to constant timestepping, or if dynamic timestepping is specified, explicit dynamic timestepping
+# choice should be made by general replacements set from the calling files
 
 # <dt_initial> is used to set the intial timestep during dynamic timestepping or constant timestep otherwise
 
@@ -15,6 +17,9 @@ CONSTANT <dt_out> [] "<CFL_out>*<celldxave>/<u_av>" # initial timestep based on 
 # transient bits
 TRANSIENT_SIMULATION
 GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+
+# the default is for constant as opposed to dynamic timestepping
+GENERAL_REPLACEMENTS DEFAULT "<<constanttimestepcomment>>" W "" DEFAULT "<<dynamictimestepcomment>>" W "#"
 
 #---------------------------------------------------------------------------------------------------------
 # dynamic timestepping
@@ -48,15 +53,18 @@ GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<expl
 <<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
 
 # implicit
+# note, a newtstepmax may be applied to <dt_target> within u_f.arb (unfortunately this must be done after <u_f> derived has been calculated, hence, newtstepmax can't be applied here)
 <<dynamictimestepcomment>><<implicittimestepcomment>>INCLUDE "CFL_number"
 <<dynamictimestepcomment>><<implicittimestepcomment>>NONE_UNKNOWN <dt[r=0]> "<dt_initial>" stepoutput,input
 # straight minimum
-#<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
+# advantage of straight minimum is that provided convergence is achieved the CFL constraint will be rigorously obeyed
+<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
 # harmonically averaged, for smoother convergence than the straight minimum which can bounce around
-<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_explicit_target> "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
-<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_CFL_target> "nonemax(<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>),<dt_min>)" stepoutput
+# disadvantage of the particular harmonic function used is for a factor of two (see below) the dt could be up to twice what the CFL criterion dictates, but using a factor of one can unreasonably decrease timestep below the CFL limit for many timestep combinations
+#<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_explicit_target> "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
+#<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_CFL_target> "nonemax(<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>),<dt_min>)" stepoutput
 # using two factor here which really doesn't respect dt_increase and CFL_max values correctly, but performs best when both timescales are about the same - ie, more thought required
-<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_target> "2.d0/(1.d0/<dt_explicit_target>+1.d0/<dt_CFL_target>)" stepoutput
+#<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_target> "2.d0/(1.d0/<dt_explicit_target>+1.d0/<dt_CFL_target>)" stepoutput
 <<dynamictimestepcomment>><<implicittimestepcomment>>NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
 
 #---------------------------------------------------------------------------------------------------------
