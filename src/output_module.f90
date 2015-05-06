@@ -897,11 +897,15 @@ integer, dimension(:), allocatable :: m_list
 character(len=100) :: filename, cut_name
 character(len=10000) :: formatline
 character(len=2) :: cont_bit
-character(len=1) :: separator = ',' ! for csv files
+character(len=1), parameter :: separator = ',' ! for csv files
+character(len=1), parameter :: delimiter = '"' ! for csv files
 logical :: therel, do_update_outputs_local
-logical, parameter :: debug = .false.
+logical, parameter :: debug = .true.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine output_step'
+
+if (debug) write(*,*) 'nvar,output_step_variable(nvar)%m,output_step_variable(nvar)%ns'
+if (debug) write(*,*) nvar,output_step_variable(nvar)%m,output_step_variable(nvar)%ns
 
 if (trim(action) == "setup") then
 
@@ -959,7 +963,7 @@ if (trim(action) == "setup") then
       region_number = var(m)%region_number
       if (region_number == 0) then
         nvar = nvar + 1
-        output_step_variable(nvar)%name = "'"//trim(var(m)%name)//"'"
+        output_step_variable(nvar)%name = delimiter//trim(var(m)%name)//delimiter
         output_step_variable(nvar)%m = m
         output_step_variable(nvar)%ns = 1
       else
@@ -973,12 +977,12 @@ if (trim(action) == "setup") then
         do ns = 1, ubound(var(m)%funk,1)
           nvar = nvar + 1
           formatline = '(a,'//trim(dindexformat(ns))//',a)'
-          write(output_step_variable(nvar)%name,fmt=formatline) "'"//trim(cut_name)//"n=",ns,"]>'"
+          write(output_step_variable(nvar)%name,fmt=formatline) delimiter//trim(cut_name)//"n=",ns,"]>"//delimiter
           output_step_variable(nvar)%m = m
           output_step_variable(nvar)%ns = ns
         end do
       end if
-      output_step_variable(nvar)%units = "'["//trim(var(m)%units)//"]'" ! units are delimited by []
+      output_step_variable(nvar)%units = delimiter//"["//trim(var(m)%units)//"]"//delimiter ! units are delimited by []
     end do
     deallocate(m_list)
   end if
@@ -1006,15 +1010,16 @@ if (trim(action) == "setup") then
 ! write out variable names and units (v0.42)
   if (transient_simulation) then
     formatline = '(a'//repeat(',a,a',ubound(output_step_variable,1)+1)//')'
-    write(foutputstep,fmt=formatline) trim(cont_bit)//"'<timestep>'",separator,"'<newtstep>'", &
+    write(foutputstep,fmt=formatline) trim(cont_bit)//delimiter//"<timestep>"//delimiter,separator, &
+      delimiter//"<newtstep>"//delimiter, &
       (separator,trim(output_step_variable(nvar)%name),nvar=1,ubound(output_step_variable,1))
-    write(foutputstep,fmt=formatline) trim(cont_bit)//"'[1]'",separator,"'[1]'", &
+    write(foutputstep,fmt=formatline) trim(cont_bit)//delimiter//"[1]"//delimiter,separator,delimiter//"[1]"//delimiter, &
       (separator,trim(output_step_variable(nvar)%units),nvar=1,ubound(output_step_variable,1))
   else
     formatline = '(a'//repeat(',a,a',ubound(output_step_variable,1))//')'
-    write(foutputstep,fmt=formatline) trim(cont_bit)//"'<newtstep>'", &
+    write(foutputstep,fmt=formatline) trim(cont_bit)//delimiter//"<newtstep>"//delimiter, &
       (separator,trim(output_step_variable(nvar)%name),nvar=1,ubound(output_step_variable,1))
-    write(foutputstep,fmt=formatline) trim(cont_bit)//"'[1]'", &
+    write(foutputstep,fmt=formatline) trim(cont_bit)//delimiter//"[1]"//delimiter, &
       (separator,trim(output_step_variable(nvar)%units),nvar=1,ubound(output_step_variable,1))
   end if
   call flush(foutputstep)

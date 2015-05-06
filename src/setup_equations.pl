@@ -52,6 +52,8 @@ my $src_dir="$working_dir/src";
 my $build_dir=".";
 my $template_dir="$working_dir/templates";
 my $tmp_dir="$working_dir/tmp/setup";
+my $variable_file = "$tmp_dir/variable_list.txt";
+my $region_file = "$tmp_dir/region_list.txt";
 my $tmp_file_number=0;
 our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='/sw/bin/maxima'; # if all else fails specify the actual location - fink
@@ -59,7 +61,8 @@ our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='../misc/maxima_OsX/maxima'; # or the supplied script for the OsX binary, relative to the build directory
 my $fortran_input_file="$build_dir/fortran_input.arb"; # input file for the fortran executable, which is in a slightly different format to the user written input files
 my $unwrapped_input_file="$tmp_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
-my $debug_info_file="$tmp_dir/debugging_info.txt"; # this is where all the debugging info is dumped
+my $current_debug_info_file="$tmp_dir/current_debugging_info.txt"; # this is where all the debugging info is dumped from this current call to setup_equations.pl
+my $debug_info_file="$tmp_dir/debugging_info.txt"; # this is where all the debugging info is stored from the last setup
 my $version_file="$working_dir/licence/version";
 
 # create and clear out tmp directory of any files
@@ -67,6 +70,7 @@ my $version_file="$working_dir/licence/version";
 if (! -d $tmp_dir) { mkpath($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 my $filename;
 foreach $filename (bsd_glob("$tmp_dir/*")) {
+  if ($filename eq $variable_file || $filename eq $region_file || $filename eq $debug_info_file ) { next; } # don't delete the files which are a record of the previous setup run
   if (-f $filename) {unlink($filename) or die "ERROR: could not remove $filename in directory $tmp_dir\n";}
 }
 
@@ -74,7 +78,7 @@ foreach $filename (bsd_glob("$tmp_dir/*")) {
 my $stopfile="$working_dir/stop";
 if (-e $stopfile) { unlink($stopfile) or die "ERROR: could not remove $stopfile from previous run\n"; }
 
-open(DEBUG, ">$debug_info_file");
+open(DEBUG, ">$current_debug_info_file");
 print "\nperl setup_equations script to create f90 subroutines for arb\n";
 print "dalton harvie, v$version\n\n";
 print DEBUG "\nperl setup_equations script to create f90 subroutines for arb\n";
@@ -207,6 +211,8 @@ print DEBUG "SUCCESS: equation_module.f90 has been created\n";
 # finally move equation data to build directory as a record of the successful run
 print DEBUG "INFO: moving setup_equation_data to build directory\n";
 move("$tmp_dir/setup_equation_data","$build_dir/last_setup_equation_data") or die "could not move $tmp_dir/setup_equation_data to $build_dir/last_setup_equation_data\n";
+# and also keep a copy of the debugging file which will be from the last successful setup
+move("$current_debug_info_file","$debug_info_file") or  die "could not save $current_debug_info_file as $debug_info_file\n";
 
 close(DEBUG);
 
@@ -295,7 +301,6 @@ sub dump_variable_dependency_info {
 sub output_variable_list {
 
   use strict;
-  my $variable_file = "$tmp_dir/variable_list.txt";
   open(VARIABLE, ">$variable_file") or die "ERROR: problem opening temporary variable file $variable_file: something funny is going on: check permissions??\n";
   for my $key ( keys(%variable) ) {
     print VARIABLE "-" x 80,"\n";
@@ -325,7 +330,6 @@ sub output_region_list {
   use strict;
   use Data::Dumper;
   my @types=(qw( system setup gmsh constant transient newtient derived equation output condition )); # list of region types
-  my $region_file = "$tmp_dir/region_list.txt";
   open(REGION, ">$region_file") or die "ERROR: problem opening temporary region file $region_file: something funny is going on: check permissions??\n";
 
   for my $type ( @types ) {

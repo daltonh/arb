@@ -212,8 +212,8 @@ if ($batcher) {
     open(STEPFILE, "<$step_dir/output_step.csv");
     while ($line=<STEPFILE>) {
       chompm($line);
-      if ($line =~ /^\s*[']{0,1}</) {
-        while ($line =~ /^\s*[,]{0,1}\s*[']{0,1}(<.+?>)[']{0,1}/) {
+      if ($line =~ /^\s*["']{0,1}</) {
+        while ($line =~ /^\s*[,]{0,1}\s*["']{0,1}(<.+?>)["']{0,1}/) {
           push(@test_names,$1);
           $line = $';
         }
@@ -242,8 +242,8 @@ print "PLOTSTEP INFO: $step_file contains the following column names\n";
 while ($line=<STEPFILE>) {
   chompm($line);
   if (!($title)) { if ($line =~ /#\s*TITLE\s*=\s*(.+?)\s*$/) {$title = $1; next;}; } # grab title if it's there
-  if ($line =~ /^\s*[']{0,1}</) {
-    while ($line =~ /^\s*[,]{0,1}\s*[']{0,1}(<.+?>)[']{0,1}/) {
+  if ($line =~ /^\s*["']{0,1}</) {
+    while ($line =~ /^\s*[,]{0,1}\s*["']{0,1}(<.+?>)["']{0,1}/) {
       push(@names,$1); # first name is $names[0]
       $line = $';
     }
@@ -252,8 +252,8 @@ while ($line=<STEPFILE>) {
 }
 while ($line=<STEPFILE>) {
   chompm($line);
-  if ($line =~ /^\s*[']{0,1}\[/) {
-    while ($line =~ /^\s*[,]{0,1}\s*[']{0,1}\[(.*?)\][']{0,1}/) {
+  if ($line =~ /^\s*["']{0,1}\[/) {
+    while ($line =~ /^\s*[,]{0,1}\s*["']{0,1}\[(.*?)\]["']{0,1}/) {
       push(@units,$1);
       if ($units[$#units] eq "1") { $units[$#units] = ''; } # 1 symbolises a nondimensional number in arb, so remove the units for plotting purposes
       $line = $';
