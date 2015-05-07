@@ -892,20 +892,19 @@ use equation_module
 use gmesh_module
 character(len=*) :: action
 logical, optional, intent(in) :: do_update_outputs
-integer :: mm, m, mc, nvar, region_number, nvar_local, ns, error, name_length
+integer :: mm, m, mc, nvar, region_number, nvar_local, ns, error, name_length, formatline_length
 integer, dimension(:), allocatable :: m_list
 character(len=100) :: filename, cut_name
-character(len=10000) :: formatline
+character(len=100) :: formatline
+!character(len=:), allocatable, save :: repeatformatline ! this is sized for large output_step headers, fortran 2003, and allocated during setup only
+character(len=100000) :: repeatformatline ! gfortran 4.6 doesn't support dynamically allocated character strings, so leave this for now (v0.53)
 character(len=2) :: cont_bit
 character(len=1), parameter :: separator = ',' ! for csv files
 character(len=1), parameter :: delimiter = '"' ! for csv files
 logical :: therel, do_update_outputs_local
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine output_step'
-
-if (debug) write(*,*) 'nvar,output_step_variable(nvar)%m,output_step_variable(nvar)%ns'
-if (debug) write(*,*) nvar,output_step_variable(nvar)%m,output_step_variable(nvar)%ns
 
 if (trim(action) == "setup") then
 
@@ -966,6 +965,7 @@ if (trim(action) == "setup") then
         output_step_variable(nvar)%name = delimiter//trim(var(m)%name)//delimiter
         output_step_variable(nvar)%m = m
         output_step_variable(nvar)%ns = 1
+        output_step_variable(nvar)%units = delimiter//"["//trim(var(m)%units)//"]"//delimiter ! units are delimited by []
       else
 ! reform name by including ns in [] 
         name_length = len_trim(var(m)%name)
@@ -980,9 +980,11 @@ if (trim(action) == "setup") then
           write(output_step_variable(nvar)%name,fmt=formatline) delimiter//trim(cut_name)//"n=",ns,"]>"//delimiter
           output_step_variable(nvar)%m = m
           output_step_variable(nvar)%ns = ns
+          output_step_variable(nvar)%units = delimiter//"["//trim(var(m)%units)//"]"//delimiter ! units are delimited by []
         end do
       end if
-      output_step_variable(nvar)%units = delimiter//"["//trim(var(m)%units)//"]"//delimiter ! units are delimited by []
+      if (debug) write(*,*) 'added output_step_variable for '//trim(output_step_variable(nvar)%name)// &
+        ': last element data: nvar = ',nvar,': m = ',output_step_variable(nvar)%m,': ns = ',output_step_variable(nvar)%ns
     end do
     deallocate(m_list)
   end if
@@ -1007,19 +1009,29 @@ if (trim(action) == "setup") then
     cont_bit = ""
   end if
 
+! size and dynamically allocate formatline required for all of the variable names, based on length of repeating string unit
+! (eg, ',a,g20,10', which is an example of the float specification is a unit of 9 characters, plus a bit more)
+  formatline_length=9*ubound(output_step_variable,1)+100
+! have to stick with static, but now with a length check, for gfortran 4.6 version which doesn't implement fortran 2003 standard as of 2012ish...
+! allocate(character(len=formatline_length) :: repeatformatline)
+  if (debug) write(*,*) 'repeatformatline length: actual = ',len(repeatformatline),': requested = ',formatline_length
+  if (len(repeatformatline) < formatline_length) call error_stop('character string repeatformatline is not long enough in '// &
+    'output_step, but this probably means you''re creating a massive header anyway - are you sure you are stepoutputing '// &
+    'appropriate variables?  Turn debug on in subroutine output_step to work out what is going on.')
+
 ! write out variable names and units (v0.42)
   if (transient_simulation) then
-    formatline = '(a'//repeat(',a,a',ubound(output_step_variable,1)+1)//')'
-    write(foutputstep,fmt=formatline) trim(cont_bit)//delimiter//"<timestep>"//delimiter,separator, &
+    repeatformatline = '(a'//repeat(',a,a',ubound(output_step_variable,1)+1)//')'
+    write(foutputstep,fmt=repeatformatline) trim(cont_bit)//delimiter//"<timestep>"//delimiter,separator, &
       delimiter//"<newtstep>"//delimiter, &
       (separator,trim(output_step_variable(nvar)%name),nvar=1,ubound(output_step_variable,1))
-    write(foutputstep,fmt=formatline) trim(cont_bit)//delimiter//"[1]"//delimiter,separator,delimiter//"[1]"//delimiter, &
+    write(foutputstep,fmt=repeatformatline) trim(cont_bit)//delimiter//"[1]"//delimiter,separator,delimiter//"[1]"//delimiter, &
       (separator,trim(output_step_variable(nvar)%units),nvar=1,ubound(output_step_variable,1))
   else
-    formatline = '(a'//repeat(',a,a',ubound(output_step_variable,1))//')'
-    write(foutputstep,fmt=formatline) trim(cont_bit)//delimiter//"<newtstep>"//delimiter, &
+    repeatformatline = '(a'//repeat(',a,a',ubound(output_step_variable,1))//')'
+    write(foutputstep,fmt=repeatformatline) trim(cont_bit)//delimiter//"<newtstep>"//delimiter, &
       (separator,trim(output_step_variable(nvar)%name),nvar=1,ubound(output_step_variable,1))
-    write(foutputstep,fmt=formatline) trim(cont_bit)//delimiter//"[1]"//delimiter, &
+    write(foutputstep,fmt=repeatformatline) trim(cont_bit)//delimiter//"[1]"//delimiter, &
       (separator,trim(output_step_variable(nvar)%units),nvar=1,ubound(output_step_variable,1))
   end if
   call flush(foutputstep)
@@ -1035,14 +1047,14 @@ else if (trim(action) == "write") then
   if (do_update_outputs_local) call update_outputs(stepoutput=.true.) ! update any output-only variables
 
   if (transient_simulation) then
-    formatline = '('//trim(dindexformat(timestep))//',a,'//trim(dindexformat(newtstep))// &
+    repeatformatline = '('//trim(dindexformat(timestep))//',a,'//trim(dindexformat(newtstep))// &
       repeat(',a,'//trim(realformat),ubound(output_step_variable,1))//')'
-    write(foutputstep,fmt=formatline) timestep,separator,newtstep, &
+    write(foutputstep,fmt=repeatformatline) timestep,separator,newtstep, &
       (separator,trunk_dble(var_value(output_step_variable(nvar)%m,output_step_variable(nvar)%ns)), &
       nvar=1,ubound(output_step_variable,1))
   else
-    formatline = '('//trim(dindexformat(newtstep))//repeat(',a,'//trim(realformat),ubound(output_step_variable,1))//')'
-    write(foutputstep,fmt=formatline) newtstep, &
+    repeatformatline = '('//trim(dindexformat(newtstep))//repeat(',a,'//trim(realformat),ubound(output_step_variable,1))//')'
+    write(foutputstep,fmt=repeatformatline) newtstep, &
       (separator,trunk_dble(var_value(output_step_variable(nvar)%m,output_step_variable(nvar)%ns)), &
       nvar=1,ubound(output_step_variable,1))
   end if

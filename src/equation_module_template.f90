@@ -265,6 +265,10 @@ logical, parameter :: debug = .false.
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_someloop'
 !if (.not.present(error_string)) call error_stop("something is calling update_someloop without an error_string")
 
+if (debug) write(*,*) 'm (someloop) = ',m
+if (debug) write(*,*) 'thread = ',thread
+if (debug) write(*,*) 'calling error_string = '//trim(error_string)
+
 ! ilast and jlast these hold the indices from the calling routine, and cannot be changed since they are used in the
 ! loop of the calling routine - so save a copy of these that can be altered within this routine
 i = ilast 

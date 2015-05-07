@@ -38,7 +38,7 @@ use strict;
 use File::Basename;
 #use File::Path qw(make_path);
 use File::Path qw(mkpath); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
-use File::Copy qw(move);
+use File::Copy qw(move copy);
 use File::Glob ':glob'; # deals with whitespace better
 #use Time::Piece; # removed for portability
 use Sys::Hostname;
