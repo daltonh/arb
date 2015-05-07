@@ -3157,12 +3157,12 @@ character(len=1000) :: formatline
 
 if (var(m)%centring == 'cell') then
   i = region(var(m)%region_number)%ijk(ns)
-  formatline = '(a,'//trim(dindexformat(i))//',a,3(1x,g10.2),a)'
+  formatline = '(a,'//trim(dindexformat(i))//',a,3(1x,g11.3),a)'
   write(variable_location_string,fmt=formatline) 'cell i = ',i,' and x =',cell(i)%x, &
     ' ('//trim(var(m)%type)//' '//trim(var(m)%name)//')'
 else if (var(m)%centring == 'face') then
   j = region(var(m)%region_number)%ijk(ns)
-  formatline = '(a,'//trim(dindexformat(j))//',a,3(1x,g10.2),a)'
+  formatline = '(a,'//trim(dindexformat(j))//',a,3(1x,g11.3),a)'
   write(variable_location_string,fmt=formatline) 'face j = ',j,' and x =',face(j)%x, &
     ' ('//trim(var(m)%type)//' '//trim(var(m)%name)//')'
 else
