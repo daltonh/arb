@@ -75,6 +75,8 @@ do m = 1, ubound(region,1)
     call error_stop(trim(region(m)%type)//'region '//trim(region(m)%name)//" having description '"// &
       trim(region(m)%location%description)//"' has neither cell, face or node centring")
   end if
+  region(m)%ns = 0 ! default for all regions prior to being updated - specifically ensures that prior to being calculated, dynamic regions contain no elements (based on ns array)
+  if (.not.allocated(region(m)%ijk)) allocate(region(m)%ijk(0)) ! allocate to zero size if array hasn't already been allocated, just to cover bases w.r.t. initial use of dynamic regions - note, code should be using allocatable_integer_size on ijk everywhere, but do this as insurance against wayward ubound calls
 
   if (.not.(region(m)%type == 'gmsh' .or. region(m)%type == 'system')) then
     if (region(region(m)%part_of)%centring /= region(m)%centring) &
@@ -269,7 +271,7 @@ if (debug) write(82,*) 'Processing region m = ',m,': name = '//trim(region(m)%na
   ': centring = '//trim(region(m)%centring)//': initial = ',initial,': part_of = ', &
   region(m)%part_of,': parent = ',region(m)%parent
 
-! ns array is allocated always, but is zeroed here
+! ns array is allocated always, but is zeroed here (possibly again)
 region(m)%ns = 0
 
 ! specify which of ijk and ns are already (or about to be) set, and from which the other needs to be (possibly) calculated
@@ -279,6 +281,8 @@ setns = .false. ! also need to calculate nsregion, which is the number of elemen
 
 !-----------------------------------------------------------------
 if (trim(region(m)%type) == 'system') then
+
+  deallocate(region(m)%ijk) ! undo temporary allocation from setup
 
   if (trim(region(m)%name) == '<all cells>') then
     allocate(region(m)%ijk(itotal))
@@ -383,7 +387,8 @@ else if (trim(region(m)%type) /= 'gmsh') then
 
 ! deallocate any allocated regions, starting afresh each time the region is calculated
 ! will have to think about this more for separation regions etc
-  if (allocated(region(m)%ijk)) then
+! if (allocated(region(m)%ijk)) then
+  if (allocatable_integer_size(region(m)%ijk) > 0) then
     if (.not.region(m)%dynamic) write(*,'(a/a)') "NOTE: an "//trim(local_location%type)// &
       " region operator is acting on region "//trim(region(m)%name)// &
       " that already contains elements: the previous element will be overwritten with the new"

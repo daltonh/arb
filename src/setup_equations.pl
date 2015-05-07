@@ -4691,7 +4691,8 @@ sub create_allocations {
             "do ns = 1, 1\n";
         } else {
           $sub_string{$type."_constraints"}=$sub_string{$type."_constraints"}.
-            "do ns = 1, ubound(region(var($variable{$type}[$mvar]{fortran_number})%region_number)%ijk,1)\n";
+#           "do ns = 1, ubound(region(var($variable{$type}[$mvar]{fortran_number})%region_number)%ijk,1)\n";
+            "do ns = 1, allocatable_integer_size(region(var($variable{$type}[$mvar]{fortran_number})%region_number)%ijk)\n";
         }
         $sub_string{$type."_constraints"}=$sub_string{$type."_constraints"}.
 #         "if (var_value($variable{$type}[$mvar]{fortran_number},ns) $comparator 0.d0) return\n".

@@ -459,7 +459,11 @@ if [ $ORUN -eq 1 ] ; then
       echo "ERROR: $DEBUGGER is not in the path - is it installed?" ;
       exit 1;
     fi
-    eval $DEBUGGER $AOUT $RUNOUTPUT;
+    if [ $DEBUGGER = "valgrind" ]; then
+      eval "$DEBUGGER $AOUT --track-origins=yes --leak-check=full -v $RUNOUTPUT";
+    else
+      eval $DEBUGGER $AOUT $RUNOUTPUT;
+    fi
   else
     eval $AOUT $RUNOUTPUT;
   fi ;
