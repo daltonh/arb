@@ -3157,12 +3157,12 @@ character(len=1000) :: formatline
 
 if (var(m)%centring == 'cell') then
   i = region(var(m)%region_number)%ijk(ns)
-  formatline = '(a,'//trim(dindexformat(i))//',a,3(1x,g10.4),a)'
+  formatline = '(a,'//trim(dindexformat(i))//',a,3(1x,g10.2),a)'
   write(variable_location_string,fmt=formatline) 'cell i = ',i,' and x =',cell(i)%x, &
     ' ('//trim(var(m)%type)//' '//trim(var(m)%name)//')'
 else if (var(m)%centring == 'face') then
   j = region(var(m)%region_number)%ijk(ns)
-  formatline = '(a,'//trim(dindexformat(j))//',a,3(1x,g10.4),a)'
+  formatline = '(a,'//trim(dindexformat(j))//',a,3(1x,g10.2),a)'
   write(variable_location_string,fmt=formatline) 'face j = ',j,' and x =',face(j)%x, &
     ' ('//trim(var(m)%type)//' '//trim(var(m)%name)//')'
 else
@@ -4277,7 +4277,7 @@ separation_loop: do while (separation < maximum_separation_l.and.number_added > 
           if (.not.cell_shares_a_node(icentre=icentre,i=i2,reflect_multiplier=reflect_multiplier2,r=r2,dx=dx)) &
             cycle neighbour_loop
         else if (present(jcentre)) then
-          if (debug) write(83,'(a,i3,a,3(i2),a,3(g10.3))') &
+          if (debug) write(83,'(a,i3,a,3(i2),a,3(g10.2))') &
             'checking if face_shares_a_node: i2 = ',i2,': reflect_multiplier2 = ',reflect_multiplier2,': r2 = ',r2
           if (.not.face_shares_a_node(jcentre=jcentre,i=i2,reflect_multiplier=reflect_multiplier2,r=r2,dx=dx)) &
             cycle neighbour_loop
@@ -4301,7 +4301,7 @@ separation_loop: do while (separation < maximum_separation_l.and.number_added > 
 
 ! if we are here then cell i2 is not in the last, current or new separation levels so should be added to the list
       if (debug) then
-        formatline = '(a,'//trim(indexformat)//',a,i2,a,3(1x,i2),a,3(1x,g10.3))'
+        formatline = '(a,'//trim(indexformat)//',a,i2,a,3(1x,i2),a,3(1x,g10.2))'
         write(83,fmt=formatline) 'found new imask element = ',i2,' having separation = ',separation+1,': reflect_multiplier2 =', &
           reflect_multiplier2,': r2 =',r2
         if (ii2 > ubound(cell(i)%jface,1)+1) write(83,'(2(a,i1))') '  adjacent boundary cell: cell(i)%type = ',cell(i)%type, &
