@@ -1070,7 +1070,7 @@ subroutine read_constants
 
 use general_module
 integer :: ierror, cut, m, region_number, nn, ns, ijk
-character(len=1000) :: textline, keyword, name, formatline, region_name
+character(len=1000) :: textline, keyword, name, formatline, region_name, error_string
 double precision :: value
 logical, parameter :: debug = .false.
                   
@@ -1140,8 +1140,9 @@ fileloop: do
       ijk = region(region_number)%ijk(nn)
 ! right now if the requested region is outside of the region we are reading in values for, the read will fail
 ! could change this behaviour, but may mean that user doesn't know what they are doing???
-      ns = nsvar(m=m,ijk=ijk,error_string='Error occurred while reading numerical constant '//trim(var(m)%name)// &
-        'from file '//trim(input_file))
+      error_string='Error occurred while reading numerical constant '//trim(var(m)%name)// &
+        'from file '//trim(input_file)
+      ns = nsvar(m=m,ijk=ijk,error_string=error_string)
       var(m)%funk(ns)%v = value
     end do
   end if

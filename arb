@@ -128,6 +128,11 @@ DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:src/contributed/pardiso"
 # location where previously run output files will be stored
 PREVIOUS_RUN=output/previous
 
+# stacksize for OMP runs, not properly tested but probably necessary as recursion grows under ifort
+OMP_STACKSIZE="100000000"; # not sure whether it is KMP or OMP...., so set both to very large numbers
+KMP_STACKSIZE="100000000"; # http://wiki.seas.harvard.edu/geos-chem/index.php/Intel_Fortran_Compiler#Resetting_stacksize_for_Linux
+ulimit -s 65000; # set stacksize using ulimit, up to apparently hard limit that exists on osx
+
 #-------------------------------------------------------------------------------
 # loop through options and set flags to say what has to be done
 
@@ -232,6 +237,8 @@ export MKLROOT
 export PARDISO_LIC_PATH
 export LD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH
+export OMP_STACKSIZE
+export KMP_STACKSIZE
 echo "DYLD_LIBRARY_PATH = $DYLD_LIBRARY_PATH"
 echo "OMP_NUM_THREADS = $OMP_NUM_THREADS"
 

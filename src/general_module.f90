@@ -2431,11 +2431,13 @@ function newtonupdate(m,ijk)
 ! this function returns the last newtonupdate (unbackstepped) for the unknown variable m
 
 double precision :: newtonupdate
+character(len=1000) :: error_string
 integer :: m, ijk, ns
 
 ! sanity check on unknown variable identification
 if (trim(var(m)%type) /= "unknown") call error_stop("newtonupdate has been called with an m index that does not refer to an unknown")
-ns = nsvar(m=m,ijk=ijk,error_string="called from newtonupdate trying to reference unknown variable"//trim(var(m)%name))
+error_string="called from newtonupdate trying to reference unknown variable"//trim(var(m)%name)
+ns = nsvar(m=m,ijk=ijk,error_string=error_string)
 newtonupdate = delphi(var(m)%funk(ns)%pp(1))
 
 end function newtonupdate
@@ -4604,8 +4606,8 @@ function facetoicellr(j,l,ns,error_string)
 double precision, dimension(totaldimensions) :: facetoicellr
 integer :: j, ns
 integer, optional :: l
-character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
-character(len=*), optional :: error_string
+character(len=1000) :: error_stringl ! to optimise speed, error_stringl only defined when needed
+character(len=1000), optional :: error_string
 
 ! could also check for j validity
 
@@ -4648,8 +4650,8 @@ function facetoicellreflect_multiplier(j,l,ns,error_string)
 integer, dimension(totaldimensions) :: facetoicellreflect_multiplier
 integer :: j, ns
 integer, optional :: l
-character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
-character(len=*), optional :: error_string
+character(len=1000) :: error_stringl ! to optimise speed, error_stringl only defined when needed
+character(len=1000), optional :: error_string
 
 ! could also check for j validity
 
@@ -4697,8 +4699,8 @@ function celltoicellr(i,l,ns,error_string)
 double precision, dimension(totaldimensions) :: celltoicellr
 integer :: i, ns
 integer, optional :: l
-character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
-character(len=*), optional :: error_string
+character(len=1000) :: error_stringl ! to optimise speed, error_stringl only defined when needed
+character(len=1000), optional :: error_string
 
 if (ns <= allocatable_integer_size(cell(i)%icell)) then
 
@@ -4742,8 +4744,8 @@ function celltoicellreflect_multiplier(i,l,ns,error_string)
 integer, dimension(totaldimensions) :: celltoicellreflect_multiplier
 integer :: i, ns
 integer, optional :: l
-character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
-character(len=*), optional :: error_string
+character(len=1000) :: error_stringl ! to optimise speed, error_stringl only defined when needed
+character(len=1000), optional :: error_string
 
 if (ns <= allocatable_integer_size(cell(i)%icell)) then
 
@@ -4788,8 +4790,8 @@ function celltoseparationicellr(thread,icurrent,l,error_string)
 double precision, dimension(totaldimensions) :: celltoseparationicellr
 integer :: thread, icurrent, iicurrent, mcurrent
 integer, optional :: l
-character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
-character(len=*), optional :: error_string
+character(len=1000) :: error_stringl ! to optimise speed, error_stringl only defined when needed
+character(len=1000), optional :: error_string
 
 mcurrent = someloop(thread)%current_separation_list(1)
 if (mcurrent == 0) then
@@ -4916,7 +4918,7 @@ integer, intent(in) :: thread
 integer, intent(in) :: n
 integer :: separation_list_number ! number of the separation list that we are finding the centre of - each separation loop corresponds to a particular separation loop in the input file
 integer :: separationcentreicell
-character(len=*) :: error_string ! compulsory here!
+character(len=1000) :: error_string ! compulsory here!
 
 if (n > ubound(someloop(thread)%current_separation_list,1) .or. n < 1) &
   call error_stop('n out of array range in separationcentreicell, indicated major problem: '//trim(error_string))
@@ -4942,7 +4944,7 @@ integer, intent(in) :: l ! dimension
 integer :: iicurrent
 integer :: separation_list_number ! number of the separation list that we are finding the centre of - each separation loop corresponds to a particular separation loop in the input file
 double precision :: celltoseparationicellreflect_multiplier
-character(len=*) :: error_string ! compulsory here!
+character(len=1000) :: error_string ! compulsory here!
 
 if (n > ubound(someloop(thread)%current_separation_list,1) .or. n < 1) &
   call error_stop('n out of array range in celltoseparationicellreflect_multiplier, indicated major problem: '//trim(error_string))
@@ -4970,7 +4972,7 @@ integer :: iicurrent
 integer :: l
 integer :: separation_list_number ! number of the separation list that we are finding the centre of - each separation loop corresponds to a particular separation loop in the input file
 double precision :: celltoseparationicellrsquared
-character(len=*) :: error_string ! compulsory here!
+character(len=1000) :: error_string ! compulsory here!
 
 if (n > ubound(someloop(thread)%current_separation_list,1) .or. n < 1) &
   call error_stop('n out of array range in celltoseparationicellreflect_multiplier, indicated major problem: '//trim(error_string))
@@ -4997,7 +4999,7 @@ function facereflect(j,l,error_string)
 
 integer :: j ! face index
 integer :: l ! dimension
-character(len=*) :: error_string ! compulsory here!
+character(len=1000) :: error_string ! compulsory here!
 double precision :: facereflect
 
 if (l < 1 .or. l > 3 .or. j < 0 .or. j > jtotal) call error_stop('problem with facereflect: '//trim(error_string))

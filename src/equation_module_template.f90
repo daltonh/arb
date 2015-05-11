@@ -258,16 +258,17 @@ use general_module
 integer :: m, ilast, jlast, klast, i, j, k, ns, region_number, flux_direction, to_ns, from_ns, thread, static_ns, ii, &
   nseparation, i2, ii2, iistart, iiend
 double precision :: derivative_multiplier, reflect_multiplier
-!character(len=*), optional :: error_string ! no longer optional
-character(len=*) :: error_string
+character(len=1000) :: error_string
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_someloop'
 !if (.not.present(error_string)) call error_stop("something is calling update_someloop without an error_string")
 
-if (debug) write(*,*) 'm (someloop) = ',m
-if (debug) write(*,*) 'thread = ',thread
-if (debug) write(*,*) 'calling error_string = '//trim(error_string)
+if (debug) then
+  write(*,*) 'm (someloop) = ',m
+  write(*,*) 'thread = ',thread
+  write(*,*) 'calling error_string = '//trim(error_string)
+end if
 
 ! ilast and jlast these hold the indices from the calling routine, and cannot be changed since they are used in the
 ! loop of the calling routine - so save a copy of these that can be altered within this routine
@@ -275,7 +276,16 @@ i = ilast
 j = jlast
 k = klast
 
-call reset_funk(someloop(thread)%funk(m))
+if (debug) then
+  if (.not.allocated(someloop)) call error_stop("someloop not allocated")
+  if (thread > ubound(someloop,1) .or. thread < lbound(someloop,1)) call error_stop("someloop not in range")
+  if (.not.allocated(someloop(thread)%funk)) call error_stop("someloop%funk not allocated")
+  if (m > ubound(someloop(thread)%funk,1) .or. m < lbound(someloop(thread)%funk,1)) call error_stop("someloop%funk not in range")
+  someloop(thread)%funk(m)%v = 0.d0
+  someloop(thread)%funk(m)%ndv = 0
+else
+  call reset_funk(someloop(thread)%funk(m))
+end if
 
 !<sub_string:someloop>
 

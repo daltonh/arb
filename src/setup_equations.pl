@@ -5760,7 +5760,8 @@ sub update_someloop_fortran {
     print DEBUG "SEARCH FOR: m = $mvar: maxima = $variable{someloop}[$mvar]{maxima}\n";
     if ($_[0] =~ /\Q$variable{"someloop"}[$mvar]{"maxima"}/ || $_[0] =~ /(\[|,)\s*msomeloop_\S+\s*=\s*$mvar\s*(,|\])/) { # now also match fortran subroutine references to someloop variables
 # NB: an msomeloop_* reference triggers a call to update_someloop, whereas a m_* reference does not and so for this case update_someloop would need to be called within the subroutine itself
-      $fortran = $fortran."call update_someloop(thread,$mvar,i,j,k,error_string)\n";
+#     $fortran = $fortran."call update_someloop(thread,$mvar,i,j,k,error_string)\n";
+      $fortran = $fortran."call update_someloop(thread=thread,m=$mvar,ilast=i,jlast=j,klast=k,error_string=error_string)\n";
       print DEBUG "SEARCH FOUND\n";
     }
     $mvar++;

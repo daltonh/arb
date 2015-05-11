@@ -277,12 +277,19 @@ else
 # intel fortran compiler
 #   -g includes debugging info
 #   -fltconsistency required for direct solver
+#   -heap-arrays 6000 means use heap arrays instead of the stack for >6000Kb.  Note, stacksize default seems to be 8192 for both linux and osx
+#   -heap-arrays means always use heap arrays (gave up on this - seems not all was to do with heap-arrays, but stacksize increase cures observed bugs with ifort + debugging)
+#      (gfortran I think handles this better by using heap arrays for anything marked recursive)
   fcomp = ifort
   cflags += -c -O$(opt)
   lflags = -O$(opt)
 # cdebug += -c -g -traceback -debug all
-  cdebug += -c -g -traceback -debug all -check all -check arg_temp_created
-# ldebug = 
+# cdebug += -c -g -traceback -debug all -check all -check arg_temp_created -O0 -debug inline-debug-info -warn all -debug variable-locations
+# cdebug += -c -g -traceback -debug extended -check all -check arg_temp_created
+# cdebug += -c -g -traceback -debug extended -check all -warn all # ifort 15.0.1 seems to baulk on this for particular jobs
+  cdebug += -c -g -traceback -debug all -check all -warn all
+# need to increase stacksize when debugging using ifort - apparently this is for 256MB - linux has limit option, but osx does not, so pass option to linker instead
+# https://software.intel.com/en-us/articles/intel-fortran-compiler-increased-stack-usage-of-80-or-higher-compilers-causes-segmentation-fault/
   ifeq "$(os_type)" "Darwin"
     ldebug = -check all -Wl,-no_pie
   else

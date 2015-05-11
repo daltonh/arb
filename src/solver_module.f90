@@ -774,7 +774,7 @@ use general_module
 character(len=*) :: type ! variable type: constant, transient, unknown, derived, equation, output, condition, local
 integer :: ierror, n, p, pp, mm, ns, nvar, m, mmax, nsmax, mdermax, nsdermax, nsm, j, jj, i, ii
 double precision :: varmax, vartmp, dermax
-character(len=1000) :: formatline
+character(len=1000) :: formatline, error_string
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .false.
 logical, parameter :: derivative_details = .true. ! output the equation derivatives for the equation with the largest normalised error
@@ -920,7 +920,8 @@ if (convergence_details_file.and.mmax /= 0.and.nsmax /= 0.and.ierror == 0) then
         m = var_number_from_name("<q_f>")
         do jj = 1, ubound(cell(ijkvar(mmax,nsmax))%jface,1)
           j = cell(ijkvar(mmax,nsmax))%jface(jj)
-          ns = nsvar(m,j,"some rubbish")
+          error_string = "debugging"
+          ns = nsvar(m,j,error_string)
           write(fconverge,'(a,i10,a,g11.4)') trim(var(m)%centring)//" "//trim(var(m)%type)//" "//trim(var(m)%name)//" at j = ",j, &
             " has value = ",var(m)%funk(ns)%v
           do n = 1,var(m)%funk(ns)%ndv
@@ -939,7 +940,8 @@ if (convergence_details_file.and.mmax /= 0.and.nsmax /= 0.and.ierror == 0) then
 !       do ii = 1, ubound(cell(ijkvar(mmax,nsmax))%jface,1)+1 ! will pull out all adjacent surrounding cells including itself
         do ii = 1, ubound(cell(ijkvar(mmax,nsmax))%icell,1) ! will pull out all surrounding cells including itself
           i = cell(ijkvar(mmax,nsmax))%icell(ii)
-          ns = nsvar(m,i,"some rubbish")
+          error_string = "debugging"
+          ns = nsvar(m,i,error_string)
           write(fconverge,'(a,i10,a,g11.4)') trim(var(m)%centring)//" "//trim(var(m)%type)//" "//trim(var(m)%name)//" at i = ",i, &
             " has value = ",var(m)%funk(ns)%v
           do n = 1,var(m)%funk(ns)%ndv
