@@ -1132,6 +1132,7 @@ integer :: gmesh_number ! output data concerned with this gmesh
 character(len=*) :: centring ! whether to output only cell, face, none or all centred elements (default all)
 integer :: gregion, region_number, gnode, k, ngelements, gelement, i, j, l, dimensions, geo_entity
 character(len=1000) :: formatline
+logical, parameter :: gelement_geo_entity = .true. ! think that this is now the safest way to make gmsh happy with the geometric (elemental) entity, but keep as a logical for now
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine write_mesh_msh'
@@ -1187,43 +1188,71 @@ if (centring /= 'none') then ! mesh data not required for none centred file
 ! and for elements that are both faces and nodes (ie, a 1D simulation) and in more than one region (in the node and face centred files)
 ! no overhead for normal output
 ! if an element is not a member of any gregion then it will have one 0 entry, and it doesn't matter whether i, j or k (provided they are non-zero) are used to output the element
+    if (debug) write(91,*) 'gmesh_number = ',gmesh_number,': centring = ',centring
     do gelement = 1, ubound(gmesh(gmesh_number)%gelement,1)
       i = gmesh(gmesh_number)%gelement(gelement)%icell 
       j = gmesh(gmesh_number)%gelement(gelement)%jface
       k = gmesh(gmesh_number)%gelement(gelement)%knode
+      if (debug) then
+        write(91,*) 'gelement,i,j,k,gregions'
+        write(91,*) gelement,i,j,k,gmesh(gmesh_number)%gelement(gelement)%gregions
+      end if
       if (i /= 0.and.(centring == 'cell'.or.centring == 'all')) then
 ! output elements in their reverse region order for consistency with gmsh
-        do gregion = ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1), 1, -1
-! now only output two integer tags per element: the physical entity and the 'elementary geometrical entity' which is now (v0.50) set equal to the physical entity number plus 3 if part of a physical region, or the dimension otherwise if not a point - If a point, then the gnode number + 3 + ngregions
-          if (cell(i)%dimensions == 0) then
-            formatline = '('//trim(indexformat)//',3(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(cell(i)%knode,1)+1)//')'
-            geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(cell(i)%knode(1)) ! if it is a point set equal to gnode + ngregions + 3
+        if (debug) write(91,*) 'i'
+!       do gregion = ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1), 1, -1
+        do gregion = 1, ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1) ! back to forward loop
+          if (debug) write(91,*) 'gregion = ',gregion,': gregions(gregion) = ', &
+            gmesh(gmesh_number)%gelement(gelement)%gregions(gregion)
+! now only output two integer tags per element: the physical entity and the 'elementary geometrical entity'
+          formatline = '('//trim(indexformat)//',3(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(cell(i)%knode,1)+1)//')'
+          if (gelement_geo_entity) then
+! this is the safest option for gmsh - give every gelement a unique geometrical entity, which we just make equal to the gelement number
+! no disadvantages as far as I can see except that gelements aren't grouped (however, this was what was required for nodes anyway previously)
+! can't see anyway around this actually unless we form a whole new group of elementary entities that are unique to the combination of physical regions that each element is in - timewaster
+            geo_entity = gelement
           else
-            formatline = '('//trim(indexformat)//',4(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(cell(i)%knode,1))//')'
-            geo_entity = gmesh(gmesh_number)%gelement(gelement)%gregions(gregion)
-            if (geo_entity == 0) then
-              geo_entity = cell(i)%dimensions
+! here we set the geo_entity equal to the physical entity number plus 3 if part of a physical region, or the dimension otherwise if not a point - If a point, then the gnode number + 3 + ngregions
+! actually this didn't work as gmsh doesn't allow a geometrical entity to span more than one physical region, so now reverting to the above
+            if (cell(i)%dimensions == 0) then
+              geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(cell(i)%knode(1)) ! if it is a point set equal to gnode + ngregions + 3
             else
-              geo_entity = geo_entity + 3
+              geo_entity = gmesh(gmesh_number)%gelement(gelement)%gregions(gregion)
+              if (geo_entity == 0) then
+                geo_entity = cell(i)%dimensions
+              else
+                geo_entity = geo_entity + 3
+              end if
             end if
           end if
           write(foutput,fmt=formatline) gelement,' ',cell(i)%gtype,' ',2,' ', &
             gmesh(gmesh_number)%gelement(gelement)%gregions(gregion),' ', &
             geo_entity, &
             (' ',gmesh(gmesh_number)%gnode_from_knode(cell(i)%knode(l)),l=1,ubound(cell(i)%knode,1))
+          if (debug) then
+            write(91,*) 'output line:'
+            write(91,fmt=formatline) gelement,' ',cell(i)%gtype,' ',2,' ', &
+              gmesh(gmesh_number)%gelement(gelement)%gregions(gregion),' ', &
+              geo_entity, &
+              (' ',gmesh(gmesh_number)%gnode_from_knode(cell(i)%knode(l)),l=1,ubound(cell(i)%knode,1))
+          end if
         end do
       else if (j /= 0.and.(centring == 'face'.or.centring == 'all')) then
-        do gregion = ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1), 1, -1
-          if (face(j)%dimensions == 0) then
-            formatline = '('//trim(indexformat)//',3(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(face(j)%knode,1)+1)//')'
-            geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(face(j)%knode(1)) ! if it is a point set equal to gnode + ngregions + 3
+        if (debug) write(91,*) 'j'
+        do gregion = 1, ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1)
+          formatline = '('//trim(indexformat)//',3(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(face(j)%knode,1)+1)//')'
+          if (gelement_geo_entity) then
+            geo_entity = gelement
           else
-            formatline = '('//trim(indexformat)//',4(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(face(j)%knode,1))//')'
-            geo_entity = gmesh(gmesh_number)%gelement(gelement)%gregions(gregion)
-            if (geo_entity == 0) then
-              geo_entity = face(j)%dimensions
+            if (face(j)%dimensions == 0) then
+              geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(face(j)%knode(1)) ! if it is a point set equal to gnode + ngregions + 3
             else
-              geo_entity = geo_entity + 3
+              geo_entity = gmesh(gmesh_number)%gelement(gelement)%gregions(gregion)
+              if (geo_entity == 0) then
+                geo_entity = face(j)%dimensions
+              else
+                geo_entity = geo_entity + 3
+              end if
             end if
           end if
           write(foutput,fmt=formatline) gelement,' ',face(j)%gtype,' ',2,' ', &
@@ -1232,10 +1261,15 @@ if (centring /= 'none') then ! mesh data not required for none centred file
             (' ',gmesh(gmesh_number)%gnode_from_knode(face(j)%knode(l)),l=1,ubound(face(j)%knode,1))
         end do
       else if (k /= 0.and.(centring == 'node'.or.centring == 'all')) then
+        if (debug) write(91,*) 'k'
 ! nodes elements have only one knode attached, and have are of node_gtype
         formatline = '('//trim(indexformat)//',3(a,i3,),2(a,'//trim(indexformat)//'))' ! elementary node element region can become large
-        do gregion = ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1), 1, -1
-          geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(k) ! for a point set equal to gnode + ngregions + 3
+        do gregion = 1, ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1)
+          if (gelement_geo_entity) then
+            geo_entity = gelement
+          else
+            geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(k) ! for a point set equal to gnode + ngregions + 3
+          end if
           write(foutput,fmt=formatline) gelement,' ',node_gtype,' ',2,' ', &
             gmesh(gmesh_number)%gelement(gelement)%gregions(gregion),' ', &
 ! point mesh elements in gmsh require a unique element number - use the gnode + the maximum physical entity for this mesh + 3

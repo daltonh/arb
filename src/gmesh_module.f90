@@ -569,6 +569,16 @@ do gmesh_number = 0, ubound(gmesh,1)
     write(87,*) 'ngelements_cell = ',gmesh(gmesh_number)%ngelements_cell
     write(87,*) 'ngelements_face = ',gmesh(gmesh_number)%ngelements_face
     write(87,*) 'ngelements_node = ',gmesh(gmesh_number)%ngelements_node
+    write(87,*) 'gregions:'
+    if (allocated(gmesh(gmesh_number)%gregion)) then
+      do gregion = 1, ubound(gmesh(gmesh_number)%gregion,1)
+        region_number = gmesh(gmesh_number)%gregion(gregion)%region_number
+        write(87,*) 'gregion = ',gregion,': centring = '//trim(gmesh(gmesh_number)%gregion(gregion)%centring)// &
+          ': region_number = ',region_number,': region centring = '//trim(region(region_number)%centring)//&
+          ': region dimensions = ',region(region_number)%dimensions,': region name = '//trim(region(region_number)%name)
+      end do
+    end if
+    write(87,*) 'gelements:'
     if (allocated(gmesh(gmesh_number)%gelement)) then
       do gelement = 1, ubound(gmesh(gmesh_number)%gelement,1)
         write(87,*) 'gelement = ',gelement,': icell = ',gmesh(gmesh_number)%gelement(gelement)%icell, &

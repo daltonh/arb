@@ -39,13 +39,13 @@ This information is now basically hosted on our local gitlab server - this file 
 CURRENT VERSION:
 
 v0.53 - major rewrite of region treatment, including dynamic regions
+* node centred variables
+* dynamic masks for ls and vof
+* clsvof capability
 
 -------------------------------
 LONG TERM DESIRABLES:
 
-* node centred variables
-* dynamic masks for ls and vof
-* clsvof capability
 * loops
 * viscoelastic capability
 * robust two fluid
