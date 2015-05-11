@@ -171,12 +171,15 @@ CONSTANT <u_av> 1.d0
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/navier_stokes/transient_dynamic_setup.arb without any search/replace combinations
 # use this file to initial a transient Navier-Stokes simulation using explicit dynamic timestepping
-#INCLUDE "transient_all_setup" R "<<dynamictimestepcomment>>" W "" R "<<constanttimestepcomment>>" W "#"
+#GENERAL_REPLACEMENTS R "<<dynamictimestepcomment>>" W "" R "<<constanttimestepcomment>>" W "#"
+#INCLUDE "transient_all_setup"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/transient_all_setup.arb with the following search/replace combinations: replace <<dynamictimestepcomment>> with : replace <<constanttimestepcomment>> with #
+# the following is INCLUDED from ../templates/navier_stokes/transient_all_setup.arb without any search/replace combinations
 # setup things needed for transient flow
-# this file works for either dynamic or constant timestepping, which must be set by string replacement from the calling file
+# this file works for either dynamic or constant timestepping
 # designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
+# string replacements default to constant timestepping, or if dynamic timestepping is specified, explicit dynamic timestepping
+# choice should be made by general replacements set from the calling files
 
 # <dt_initial> is used to set the intial timestep during dynamic timestepping or constant timestep otherwise
 
@@ -191,6 +194,9 @@ CONSTANT <dt_out> [] "<CFL_out>*<celldxave>/<u_av>" # initial timestep based on 
 # transient bits
 TRANSIENT_SIMULATION
 #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+
+# the default is for constant as opposed to dynamic timestepping
+#GENERAL_REPLACEMENTS DEFAULT "<<constanttimestepcomment>>" W "" DEFAULT "<<dynamictimestepcomment>>" W "#"
 
 #---------------------------------------------------------------------------------------------------------
 # dynamic timestepping
@@ -235,15 +241,18 @@ NONE_TRANSIENT <CFL[r=1]> output,stepoutput
 NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
 
 # implicit
+# note, a newtstepmax may be applied to <dt_target> within u_f.arb (unfortunately this must be done after <u_f> derived has been calculated, hence, newtstepmax can't be applied here)
 #INCLUDE "CFL_number"
 #NONE_UNKNOWN <dt[r=0]> "<dt_initial>" stepoutput,input
 # straight minimum
-##NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
+# advantage of straight minimum is that provided convergence is achieved the CFL constraint will be rigorously obeyed
+#NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
 # harmonically averaged, for smoother convergence than the straight minimum which can bounce around
-#NONE_LOCAL <dt_explicit_target> "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
-#NONE_LOCAL <dt_CFL_target> "nonemax(<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>),<dt_min>)" stepoutput
+# disadvantage of the particular harmonic function used is for a factor of two (see below) the dt could be up to twice what the CFL criterion dictates, but using a factor of one can unreasonably decrease timestep below the CFL limit for many timestep combinations
+##NONE_LOCAL <dt_explicit_target> "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
+##NONE_LOCAL <dt_CFL_target> "nonemax(<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>),<dt_min>)" stepoutput
 # using two factor here which really doesn't respect dt_increase and CFL_max values correctly, but performs best when both timescales are about the same - ie, more thought required
-#NONE_LOCAL <dt_target> "2.d0/(1.d0/<dt_explicit_target>+1.d0/<dt_CFL_target>)" stepoutput
+##NONE_LOCAL <dt_target> "2.d0/(1.d0/<dt_explicit_target>+1.d0/<dt_CFL_target>)" stepoutput
 #NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
 
 #---------------------------------------------------------------------------------------------------------
@@ -702,6 +711,13 @@ FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{
 FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
 
 #FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+
+# this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
+# save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
+# if # hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
+#GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+#NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
+#NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
 # INCLUDE FINISHED for ../templates/navier_stokes/u_f.arb
 #--------------------------------------------------------
 # INCLUDE FINISHED for ../templates/navier_stokes/advection_flux.arb
