@@ -70,7 +70,7 @@ MSH_FILE "electrokinetic_channel_structured_nonuniform.msh"
 #INCLUDE_ROOT "navier_stokes"
 #INCLUDE "constants" # specify physical and numerical constants
 #INCLUDE_ROOT "electrokinetics"
-#INCLUDE "electrokinetic_constants" # and the same for the electrokinetic equations
+#INCLUDE "constants" # and the same for the electrokinetic equations
 # or these for a nondimensional problem
 #INCLUDE_ROOT "navier_stokes"
 # INFO: setting include root directory to navier_stokes
