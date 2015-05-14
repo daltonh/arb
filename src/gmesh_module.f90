@@ -770,7 +770,7 @@ integer, optional :: var_number
 real :: gmsh_version
 character(len=1000) :: textline, filename
 character(len=4) :: file_centring, contents
-logical, parameter :: debug = .false. ! this is passed to called reading subroutines too - this is the variable you are looking for
+logical, parameter :: debug = .true. ! this is passed to called reading subroutines too - this is the variable you are looking for (ref: star wars)
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_gmesh_file'
 
@@ -877,6 +877,7 @@ data_type = ''
 main_loop: do 
   read(fgmsh,'(a)',iostat=error) textline
   if (error /= 0) exit
+  if (trim(textline) == '') cycle
   if (data_type /= '') then
     if (trim(textline) == '$End'//trim(data_type)) data_type = ''
   else if (trim(textline) == "$Data" .or. trim(textline) == "$ElementData" .or. trim(textline) == "$ElementNodeData") then
@@ -902,6 +903,7 @@ main_loop: do
         write(*,'(a)') '  Offending textline was '//trim(textline)
         cycle main_loop
       end if
+      if (textline(1:1) /= "<") textline = "<"//trim(textline)//">" ! add arb delimiters to any data names that don't have them already
       if (n == 1) then
         name = var(var_number)%name
         centring = var(var_number)%centring
@@ -1129,6 +1131,7 @@ do
     write(*,'(a)') "WARNING: list of elements not found in gmsh file "//trim(filename)
     return
   end if
+  if (trim(textline) == '') cycle
   if (trim(textline) == "$Elements") exit
 end do
 read(fgmsh,*,iostat=error) nelements
@@ -1154,6 +1157,7 @@ do n = 1, nelements
 
   read(fgmsh,'(a)',iostat=error) textline
   if (error /= 0) call error_stop('problem reading elements in gmsh file '//trim(filename))
+  if (trim(textline) == '') cycle
   read(textline,*,iostat=error) gelement, gtype, ntags
   if (error /= 0) call error_stop('problem reading initial element data in gmsh file '//trim(filename))
   if (gtype > ubound(gtype_list,1) .or. .not.gtype_list(gtype)%supported) stop &
@@ -1161,6 +1165,7 @@ do n = 1, nelements
 
 ! get tags and local_nodes arrays to the correct size ready for reading
   call resize_integer_array(array=tags,new_size=ntags)
+  if (ntags == 0) allocate(tags(0)) ! fortran allows this now, so reallocate for future convienience even if the element has no associated tags
   call resize_integer_array(array=local_gnodes,new_size=gtype_list(gtype)%nnodes)
 
 ! re-read line now knowing number of tags and number of nodes
@@ -1203,9 +1208,11 @@ do n = 1, nelements
   end if
 ! now check on the parent region, overwriting above defaults if necessary
   region_number = 0
-  if (tags(1) /= 0.and.tags(1) <= ubound(gmesh(gmesh_number)%gregion,1)) then
-    region_number = gmesh(gmesh_number)%gregion(tags(1))%region_number
-    centring = gmesh(gmesh_number)%gregion(tags(1))%centring
+  if (allocatable_integer_size(tags) >= 1) then
+    if (tags(1) /= 0.and.tags(1) <= ubound(gmesh(gmesh_number)%gregion,1)) then
+      region_number = gmesh(gmesh_number)%gregion(tags(1))%region_number
+      centring = gmesh(gmesh_number)%gregion(tags(1))%centring
+    end if
   end if
 
   if (debug) write(81,*) 'NEW ELEMENT: gelement = ',gelement,': gtype = ',gtype,': name = ',trim(gtype_list(gtype)%name), &
@@ -1456,6 +1463,7 @@ do
     write(*,'(a)') "WARNING: list of nodes not found in gmsh file "//trim(filename)
     return
   end if
+  if (trim(textline) == '') cycle
   if (trim(textline) == "$Nodes") exit
 end do
 read(fgmsh,*,iostat=error) nnodes
@@ -1466,8 +1474,8 @@ if (.not.check) then
   allocate(gnode(nnodes))
   do k = 1, nnodes
     read(fgmsh,*,iostat=error) gnode(k),node(k+ktotal)%x
-    node(k+ktotal)%x = transform_coordinates(node(k+ktotal)%x)*gmesh(gmesh_number)%input_scale
     if (error /= 0) call error_stop('problem reading nodes in gmsh file '//trim(filename))
+    node(k+ktotal)%x = transform_coordinates(node(k+ktotal)%x)*gmesh(gmesh_number)%input_scale
   end do
   ! now create lookup array
   allocate(gmesh(gmesh_number)%knode_from_gnode(maxval(gnode)))
@@ -1532,8 +1540,11 @@ do
 ! if (error /= 0) call error_stop('list of physical names not found in gmsh file '//trim(filename))
   if (error /= 0) then
     write(*,'(a)') "WARNING: list of physical names not found in gmsh file "//trim(filename)
+    write(*,'(a)') "WARNING: assuming mesh is 3 dimensional given the lack of physical regions"
+    gmesh(gmesh_number)%dimensions = 3
     return
   end if
+  if (trim(textline) == '') cycle
   if (trim(textline) == "$PhysicalNames") exit
 end do
 read(fgmsh,*,iostat=error) ngregions
@@ -1544,11 +1555,11 @@ if (debug) write(*,*) 'number of physical names: ngregions = ',ngregions
 allocate(gregion_number(ngregions),gregion_dimensions(ngregions),gregion_name(ngregions))
 do n=1,ngregions
   read(fgmsh,*,iostat=error) gregion_dimensions(n),gregion_number(n),gregion_name(n)
+  if (error /= 0) call error_stop('problem reading physical name in gmsh file '//trim(filename))
 ! for Pointwise compatibility, add on <> delimiters if not already present, and add dimension onto Unspecified regions to make them unique
   if (trim(gregion_name(n)) == "Unspecified") write(gregion_name(n),'(a,i1)') "Unspecified_dim",gregion_dimensions(n)
   if (gregion_name(n)(1:1) /= "<") gregion_name(n) = "<"//trim(gregion_name(n))//">"
   if (debug) write(*,*) gregion_dimensions(n), gregion_number(n), trim(gregion_name(n))
-  if (error /= 0) call error_stop('problem reading physical name in gmsh file '//trim(filename))
 end do
 if (debug) write(*,*) ' gmesh dimensions = ',maxval(gregion_dimensions)
 if (check) then
