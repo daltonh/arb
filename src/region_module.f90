@@ -256,7 +256,7 @@ type(region_location_type) :: local_location ! set to either initial or normal l
 integer :: i, j, k, n, nregion, ijkregion, nsregion, ns, ii, jj, kk, ijk, l, ijktotal, ns2, donor_region, part_of_region, &
   nsnext, iinext, inext, separation, iimax
 double precision :: tmp, tmpmax
-double precision, dimension(totaldimensions) :: x, xmin, xmax ! a single location
+double precision, dimension(totaldimensions) :: x, xmin, xmax, unitnormal ! a single location
 character(len=1000) :: formatline
 logical :: compoundtype, compoundadd, setijk, setns, faceseparation
 logical, dimension(:), allocatable :: elementisin
@@ -464,7 +464,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
     end do
 
     nsregion = 0
-    ijk_loop: do ns = 1, allocatable_integer_size(region(region(m)%part_of)%ijk) ! just set the elements within the part_of region to be true
+    do ns = 1, allocatable_integer_size(region(region(m)%part_of)%ijk) ! just set the elements within the part_of region to be true
       ijk = region(region(m)%part_of)%ijk(ns)
       if (ijk == 0) cycle ! allow for zero elements in ijk
       if (region(m)%centring == "cell") then
@@ -475,11 +475,41 @@ else if (trim(region(m)%type) /= 'gmsh') then
         x = node(ijk)%x
       end if
       do l = 1, 3
-        if ((x(l)-xmin(l))*(xmax(l)-x(l)) < 0.d0) cycle ijk_loop
+        if ((x(l)-xmin(l))*(xmax(l)-x(l)) < 0.d0) cycle
       end do
       nsregion = nsregion + 1
       region(m)%ns(ijk) = nsregion
-    end do ijk_loop
+    end do
+
+!---------------------
+! ref: normal region, only face centred
+! a user defined region from the arb input file that is any faces that have a normal that is within a certain dot-product of the specified unit normal
+! the first three components define the normal, and will be normalised
+! the fourth component is the maximum deviation from the normal that is allowed, expressed as a dot-product (deviation, ie, valid range is between 0 (exact) and 2 (all faces))
+! setting ns but not ijk
+
+  else if (trim(local_location%type) == "normal") then
+
+    setijk = .false.
+    setns = .true.
+
+! this should already be checked from the perl, but...
+    if (region(m)%centring /= "face") call error_stop("normal region "//trim(region(m)%name)//" must be face centred")
+
+! create unit normal from three components
+    tmp = vector_magnitude(local_location%floats(1:3))
+    if (tmp < tinyish) call error_stop("the normal for normal region "//trim(region(m)%name)// &
+      " is numerically too small:  have you entered the three components as the first three floats within the region description?")
+    unitnormal = local_location%floats(1:3)/tmp
+
+    nsregion = 0
+    do ns = 1, allocatable_integer_size(region(region(m)%part_of)%ijk) ! just set the elements within the part_of region to be true
+      ijk = region(region(m)%part_of)%ijk(ns)
+      if (ijk == 0) cycle ! allow for zero elements in ijk
+      if (1.d0 - dot_product(face(ijk)%norm(:,1),unitnormal) > local_location%floats(4)) cycle
+      nsregion = nsregion + 1
+      region(m)%ns(ijk) = nsregion
+    end do
 
 !---------------------
 ! ref: associatedwith ref: boundaryof ref: domainof ref: surrounds

@@ -1596,7 +1596,7 @@ sub process_regions {
       }
 
 # now check some requirements of each location type
-# look at floats for at and within location types
+# look at floats for at, within or normal location types
       if ($region[$n]{$key}{"type"} eq "at") {
         if ($#{$region[$n]{$key}{"floats"}} > 2) {
           error_stop("more than 3 floats are specified in an $region[$n]{$key}{type} statement for region $region[$n]{name}");
@@ -1611,6 +1611,23 @@ sub process_regions {
         } elsif ($#{$region[$n]{$key}{"floats"}} < 5) {
           print "WARNING: less than 6 floats are specified in a $region[$n]{$key}{type} statement for region $region[$n]{name}: using zero for the uninitialised ones\n";
           while ($#{$region[$n]{$key}{"floats"}} < 5) { push(@{$region[$n]{$key}{"floats"}},"0.d0"); }
+        }
+      }
+# a normal region is defined by the three normal components plus a maximum dot-product deviation from this vector
+      if ($region[$n]{$key}{"type"} eq "normal") {
+        if ($#{$region[$n]{$key}{"floats"}} > 3) {
+          error_stop("more than 4 floats are specified in a $region[$n]{$key}{type} statement for region $region[$n]{name}");
+        } 
+        if ($#{$region[$n]{$key}{"floats"}} < 2) {
+          print "WARNING: less than 3 floats are specified in a $region[$n]{$key}{type} statement for region $region[$n]{name}: using zero for the uninitialised normal components\n";
+          while ($#{$region[$n]{$key}{"floats"}} < 2) { push(@{$region[$n]{$key}{"floats"}},"0.d0"); }
+        }
+        if ($#{$region[$n]{$key}{"floats"}} == 2) {
+          print "INFO: a normal deviation float (the fourth component) is not specified in a $region[$n]{$key}{type} statement for region $region[$n]{name}: using 1.d-3 for this component\n";
+          push(@{$region[$n]{$key}{"floats"}},"1.d-3");
+        }
+        if ($region[$n]{'centring'} ne 'face') {
+          error_stop("the normal region $region[$n]{name} must be face centred");
         }
       }
 # look at variable type
@@ -1854,7 +1871,7 @@ sub location_description_scan {
   my $line=$location; # line is actually split up during the deconstruction
 
   print DEBUG "INFO: within location_description_scan with location = $location: action = $action: region number = $n: region name = $region[$n]{name}\n";
-  if ($line =~ /^\s*(associated( |)with|boundary( |)of|surrounds|domain( |)of|union|intersection|compound|common|at|within( |)box|gmsh|variable|all|none|expand)(\[(.*?)\]|)(\(|\s|$)/i) {
+  if ($line =~ /^\s*(associated( |)with|boundary( |)of|surrounds|domain( |)of|union|intersection|compound|common|at|within( |)box|normal|gmsh|variable|all|none|expand)(\[(.*?)\]|)(\(|\s|$)/i) {
 #                   1          2                3                      4                                                  5                                         6  7        8 
     $type = "\L$1";
     $line = $';
@@ -1919,7 +1936,7 @@ sub location_description_scan {
         error_stop("regions in the $type operator for region $region[$n]{name} should be listed between commas, not minuses: location = $location");
       }
     }
-  } elsif ($type =~ /^(at|withinbox)$/) {
+  } elsif ($type =~ /^(at|withinbox|normal)$/) {
 # pull location boundaries out from these regions
     while ($line =~ /^\s*(,|)\s*([\+\-\d\.][\+\-\ded\.]*)\s*(,|)\s*/i) { # numbers must start with either +-. or a digit, so options cannot start with any of these
       $line = $'; $constant = "\L$2";
