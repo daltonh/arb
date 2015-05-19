@@ -129,8 +129,8 @@ DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:src/contributed/pardiso"
 PREVIOUS_RUN=output/previous
 
 # stacksize for OMP runs, not properly tested but probably necessary as recursion grows under ifort
-OMP_STACKSIZE="100000000"; # not sure whether it is KMP or OMP...., so set both to very large numbers
-KMP_STACKSIZE="100000000"; # http://wiki.seas.harvard.edu/geos-chem/index.php/Intel_Fortran_Compiler#Resetting_stacksize_for_Linux
+#OMP_STACKSIZE="100000000"; # not sure whether it is KMP or OMP...., so set both to very large numbers
+KMP_STACKSIZE="97660k"; # http://wiki.seas.harvard.edu/geos-chem/index.php/Intel_Fortran_Compiler#Resetting_stacksize_for_Linux
 ulimit -s 65000; # set stacksize using ulimit, up to apparently hard limit that exists on osx
 
 #-------------------------------------------------------------------------------
