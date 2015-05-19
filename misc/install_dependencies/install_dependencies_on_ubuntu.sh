@@ -10,7 +10,8 @@ apt-get install maxima maxima-share gfortran liblapack-dev libblas-dev curl gnup
 # not sure if also need libumfpack5.4.0 - test on new machine
 
 # pre/post-processing - gmsh - more recent binaries are available which are probably worth using instead of the ubuntu packaged version
-apt-get install gmsh
+#apt-get install gmsh
+echo "INFO: no longer installing the ubuntu packaged version of gmsh, but you can easily do this via 'sudo apt-get install gmsh'.  The better alternative is to download a binary directly from the gmsh website."
 # pre/post-processing - paraview
 apt-get install paraview
 
