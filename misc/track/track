@@ -266,7 +266,7 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
   my $original_job_string = $job_string; # keep a copy
   print "DEBUG INFO: original requested command was '$job_string'\n" if $debug_mode;
 # force all tracked jobs to run in nohup mode
-  if ($job_string =~/>/) {
+  if (($job_string =~/>/) && ($job_string !~/batcher.pl/)) {
     print "ERROR: $this_script does not support custom redirection of arb output\n";
     print "       The requested command cannot contain \">\" redirection\n";
     print "       Use --quiet option for arb\n";
@@ -331,7 +331,8 @@ if ($ARGV[0] eq 'init' and $#ARGV==0) {
     print "      modifying requested command to `$job_string &`\n" if $help_mode;
   }
 # make sure the job is a "--quiet" job
-  if ($job_string !~/--quiet/) {
+# (batcher jobs don't need --quiet though as this is already added by batcher.pl)
+  if (($job_string !~/--quiet/) && ($job_string !~/batcher.pl/)) {
     $job_string = $job_string.' --quiet';
     print "INFO: `track $mode` only supports --quiet option \n" if $help_mode;
     print "      modifying requested command to `$job_string &`\n" if $help_mode;
