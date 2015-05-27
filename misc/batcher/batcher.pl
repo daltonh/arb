@@ -224,7 +224,7 @@ for my $n ( 0 .. $#case ) {
   }
 
 # save all output files that are present, including msh files
-  for my $output_file ("output/output.stat", "output/output.scr", "output/output_step.csv", bsd_glob("output/output*.msh"), "output/convergence_details.txt", "tmp/setup/unwrapped_input.arb") {
+  for my $output_file ("output/output.stat", "output/output.scr", "output/output_step.csv", bsd_glob("output/output*.msh"), "output/convergence_details.txt", "tmp/setup/unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt") {
 # save all output files that are present, except for msh
 # for $output_file ("output/output.stat", "output/output.scr", "output/output_step.csv") {
     if (-e "$output_file") {
