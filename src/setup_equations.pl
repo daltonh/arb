@@ -1730,7 +1730,7 @@ sub process_regions {
   foreach $type (@user_types,"initial_transient","initial_newtient","someloop","compound") {
     foreach $mvar ( 1 .. $m{$type} ) {
       $variable{$type}[$mvar]{"update_region_number"} = 0;
-      $variable{$type}[$mvar]{"update_region"} = ''; # this being empty means that the update_region is not set
+      $variable{$type}[$mvar]{"update_region"} = '';
       if (empty($variable{$type}[$mvar]{"region"}) || $variable{$type}[$mvar]{"centring"} eq 'none') {
         $variable{$type}[$mvar]{"region_number"} = 0;
       } else {
@@ -1743,6 +1743,9 @@ sub process_regions {
           $variable{$type}[$mvar]{"region_number"} = $region[$nfound]{"parent_fortran"};
         } else {
           $variable{$type}[$mvar]{"region_number"} = $region[$nfound]{"fortran"};
+# now update_region is set generally to be equal to region for static regions, and different for dynamic regions (update_region is the dynamic region)
+          $variable{$type}[$mvar]{"update_region"} = $variable{$type}[$mvar]{"region"};
+          $variable{$type}[$mvar]{"update_region_number"} = $variable{$type}[$mvar]{"region_number"};
         }
       }
     }
@@ -4662,7 +4665,9 @@ sub create_allocations {
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%rank=\'$variable{$type}[$mvar]{rank}\'\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%relstep=$variable{$type}[$mvar]{rindex}\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%region=\'$variable{$type}[$mvar]{region}\'\n".
+          "$basename{$type}($variable{$type}[$mvar]{fortran_number})%region_number=$variable{$type}[$mvar]{region_number}\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%update_region=\'$variable{$type}[$mvar]{update_region}\'\n".
+          "$basename{$type}($variable{$type}[$mvar]{fortran_number})%update_region_number=$variable{$type}[$mvar]{update_region_number}\n".
           "allocate($basename{$type}($variable{$type}[$mvar]{fortran_number})%component($variable{$type}[$mvar]{nrank}))\n".
           "$basename{$type}($variable{$type}[$mvar]{fortran_number})%component=$variable{$type}[$mvar]{component_list}\n";
       }
@@ -5269,7 +5274,7 @@ sub create_fortran_equations {
           $sub_string{$type}=$sub_string{$type}.
             "call reset_funk(var(m)%funk(ns))\n";
 
-          if (nonempty($variable{$type}[$mvar]{"update_region"})) {
+          if ($variable{$type}[$mvar]{"update_region_number"} ne $variable{$type}[$mvar]{"region_number"}) { # only true if update region is dynamic, noting that we cycle through all elements in the parent region to zero elements that are outside of the update region (that previously may not have been)
             $sub_string{$type}=$sub_string{$type}.
               "! as variable is defined on dynamic region $variable{$type}[$mvar]{update_region}, checking whether current element is in this region\n".
               "if (region($variable{$type}[$mvar]{update_region_number})%ns(".ijkstring($variable{$type}[$mvar]{"centring"}).") == 0) cycle\n";
@@ -5470,13 +5475,10 @@ sub create_fortran_equations {
           $openloop = 0;
         
 # set up someloops that are absolute locations
-        } elsif ($variable{$type}[$mvar]{"region"}) {
+        } elsif ($variable{$type}[$mvar]{"update_region_number"}) { # 0 if not defined over a region
 
-          if (nonempty($variable{$type}[$mvar]{"update_region"})) {
-            $sub_string{$type}=$sub_string{$type}."region_number = $variable{$type}[$mvar]{update_region_number}\n";
-          } else {
-            $sub_string{$type}=$sub_string{$type}."region_number = $variable{$type}[$mvar]{region_number}\n";
-          }
+# now update_region_number is always defined
+          $sub_string{$type}=$sub_string{$type}."region_number = $variable{$type}[$mvar]{update_region_number}\n";
 
 # loop through region in increasing order of increasing separation
           if ($variable{$type}[$mvar]{"separation_list_number"}) {

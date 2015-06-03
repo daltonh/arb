@@ -1104,8 +1104,8 @@ do jj = 1, ubound(cell(i)%jface,1)
   do ii = 1, ubound(face(j)%kernel(0)%ijk,1)
     ik = face(j)%kernel(0)%ijk(ii) 
     if (ik == 0) cycle
-    ns = region(var(m)%region_number)%ns(ik)
-    if (ns == 0) ns = region(var(m)%region_number)%ns(i) ! if point doesn't lie in region then use centre
+    if (region(var(m)%update_region_number)%ns(ik) == 0) ik = i ! if point doesn't lie in (update_)region then use centre
+    ns = region(var(m)%region_number)%ns(ik) ! find real ns which is based on parent region
     varcdivgrad = varcdivgrad + face(j)%norm(:,1)*divop(i,j)*face(j)%kernel(0)%v(ii)*var_value(m,ns)
   end do
 end do
@@ -1141,8 +1141,11 @@ do l = 1, totaldimensions
     end if
     ik = cell(i)%kernel(l)%ijk(ii) 
     if (ik == 0) cycle
-    ns = region(var(m)%region_number)%ns(ik)
-    if (ns == 0) ns = nsc ! if point doesn't lie in region then use centre
+    if (region(var(m)%update_region_number)%ns(ik) == 0) then
+      ns = nsc ! if point doesn't lie in region then use centre
+    else
+      ns = region(var(m)%region_number)%ns(ik)
+    end if
     varcgrad(l) = varcgrad(l) + cell(i)%kernel(l)%v(ii)*var_value(m,ns)
   end do
 end do
@@ -1183,8 +1186,8 @@ do kk = 1, allocatable_integer_size(cell(i)%knode)
   do ii2 = 1, allocatable_integer_size(node(k)%icell)
     i2 = node(k)%icell(ii2)
     if (i2 == i) cycle ! central cell already included
+    if (region(var(m)%update_region_number)%ns(i2) == 0) cycle
     ns = region(var(m)%region_number)%ns(i2)
-    if (ns == 0) cycle
     varl = var_value(m,ns) - varc
     varmax = max(varmax,varl)
     varmin = min(varmin,varl)

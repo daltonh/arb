@@ -612,8 +612,7 @@ if (fileformatl == 'msh') then ! other file formats only support compound variab
           ijk = gmesh(gmesh_number)%gelement(gelement)%knode
         end if
         if (ijk == 0) cycle
-        ns = region(var(m)%region_number)%ns(ijk)
-        if (ns == 0) cycle
+        if (region(var(m)%update_region_number)%ns(ijk) == 0) cycle
         if (select_elements) then
           if (var(m)%centring == 'cell'.and.location_in_list(array=select_cells,element=ijk) == 0) cycle
           if (var(m)%centring == 'face'.and.location_in_list(array=select_faces,element=ijk) == 0) cycle
@@ -639,8 +638,9 @@ if (fileformatl == 'msh') then ! other file formats only support compound variab
             ijk = gmesh(gmesh_number)%gelement(gelement)%knode
           end if
           if (ijk == 0) cycle
+          if (region(var(m)%update_region_number)%ns(ijk) == 0) cycle ! check for dynamic regions
           ns = region(var(m)%region_number)%ns(ijk)
-          if (ns == 0) cycle
+          if (ns == 0) call error_stop('problem with parent region in write_gmesh')
           if (select_elements) then
             if (var(m)%centring == 'cell'.and.location_in_list(array=select_cells,element=ijk) == 0) cycle
             if (var(m)%centring == 'face'.and.location_in_list(array=select_faces,element=ijk) == 0) cycle
@@ -663,8 +663,9 @@ if (fileformatl == 'msh') then ! other file formats only support compound variab
         do gelement = 1, ubound(gmesh(gmesh_number)%gelement,1)
           i = gmesh(gmesh_number)%gelement(gelement)%icell
           if (i == 0) cycle
+          if (region(var(m)%update_region_number)%ns(i) == 0) cycle ! check for dynamic regions
           ns = region(var(m)%region_number)%ns(i)
-          if (ns == 0) cycle
+          if (ns == 0) call error_stop('problem with parent region in write_gmesh')
           if (select_elements) then
             if (location_in_list(array=select_cells,element=i) == 0) cycle
           end if
@@ -741,8 +742,7 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
           ijk = gmesh(gmesh_number)%gelement(gelement)%knode
         end if
         if (ijk == 0) cycle
-        ns = region(compound(mc)%region_number)%ns(ijk)
-        if (ns == 0) cycle
+        if (region(compound(mc)%update_region_number)%ns(ijk) == 0) cycle
         if (select_elements) then
           if (compound(mc)%centring == 'cell'.and.location_in_list(array=select_cells,element=ijk) == 0) cycle
           if (compound(mc)%centring == 'face'.and.location_in_list(array=select_faces,element=ijk) == 0) cycle
@@ -780,8 +780,9 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
 !------------------
         if (fileformatl == 'msh') then
           if (ijk == 0) cycle
+          if (region(compound(mc)%update_region_number)%ns(ijk) == 0) cycle
           ns = region(compound(mc)%region_number)%ns(ijk)
-          if (ns == 0) cycle
+          if (ns == 0) call error_stop('problem with parent region in write_gmesh')
           if (select_elements) then
             if (compound(mc)%centring == 'cell'.and.location_in_list(array=select_cells,element=ijk) == 0) cycle
             if (compound(mc)%centring == 'face'.and.location_in_list(array=select_faces,element=ijk) == 0) cycle
@@ -808,7 +809,7 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
           else
             ns = region(compound(mc)%region_number)%ns(ijk)
 ! even if this variable doesn't have a value in this face/cell element, vtk still requires a value output
-            if (ns /= 0) then
+            if (ns /= 0.and.region(compound(mc)%update_region_number)%ns(ijk) /= 0) then
               do n = 1, nrank
                 m = compound(mc)%component(n)
                 if (m /= 0) cellvaluel(n) = var_value(m,ns)
@@ -837,8 +838,9 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
       do gelement = 1, ubound(gmesh(gmesh_number)%gelement,1)
         i = gmesh(gmesh_number)%gelement(gelement)%icell
         if (i == 0) cycle
+        if (region(compound(mc)%update_region_number)%ns(i) == 0) cycle
         ns = region(compound(mc)%region_number)%ns(i)
-        if (ns == 0) cycle
+        if (ns == 0) call error_stop('problem with parent region in write_gmesh')
         if (select_elements) then
           if (location_in_list(array=select_cells,element=i) == 0) cycle
         end if
@@ -1094,7 +1096,7 @@ formatline = '(a,6(/a))'
 if (trim(structure) == "component") then
   write(foutput,fmt=formatline) '"name='//trim(var(m)%name)//'"', &
                                 '"centring='//trim(var(m)%centring)//'"', &
-                                '"region='//trim(var(m)%region)//'"', &
+                                '"region='//trim(var(m)%update_region)//'"', &
                                 '"rank='//trim(var(m)%rank)//'"', &
                                 '"type='//trim(var(m)%type)//'"', &
                                 '"units='//trim(var(m)%units)//'"', &
@@ -1102,7 +1104,7 @@ if (trim(structure) == "component") then
 else if (trim(structure) == "compound") then
   write(foutput,fmt=formatline) '"name='//trim(compound(m)%name)//'"', &
                                 '"centring='//trim(compound(m)%centring)//'"', &
-                                '"region='//trim(compound(m)%region)//'"', &
+                                '"region='//trim(compound(m)%update_region)//'"', &
                                 '"rank='//trim(compound(m)%rank)//'"', &
                                 '"type='//trim(compound(m)%type)//'"', &
                                 '"units='//trim(compound(m)%units)//'"', &

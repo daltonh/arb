@@ -1195,6 +1195,7 @@ do m = 1, ubound(var,1)
   if (var(m)%centring /= "none") then
     if (var(m)%region_number == 0) call error_stop('there is a problem with region '//trim(var(m)%region)// &
       ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//': something catastrophic')
+! this check is redundant as only the update_region will be dynamic - the region is the static parent of the update_region if the latter is dynamic
     if (region(var(m)%region_number)%dynamic) call error_stop('the region '//trim(var(m)%region)// &
       ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//' is dynamic: only static (gmsh, setup and system) regions'// &
       ' can be used to define variables')
@@ -1237,24 +1238,6 @@ do n = 1, nthreads
       allocate(someloop(n)%separation_list(m)%reflect_multiplier(totaldimensions,1))
     end do
   end if
-end do
-
-! copy region numbers set in components to compound
-do mc = 1, ubound(compound,1)
-  first = .true.
-  do n = 1, ubound(compound(mc)%component,1)
-    m = compound(mc)%component(n)
-    if (m /= 0) then
-      if (first) then
-        compound(mc)%region_number = var(m)%region_number
-        first = .false.
-      else
-! also check whether the remaining valid components are from the same region
-        if (compound(mc)%region_number /= var(m)%region_number) &
-          call error_stop("components of compound "//trim(compound(mc)%name)//" are from inconsistent regions")
-      end if
-    end if
-  end do
 end do
 
 ! now print var_lists

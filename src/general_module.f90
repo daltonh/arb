@@ -222,6 +222,7 @@ type compound_type
   character(len=1000) :: region ! name of the region in which it is applied
   character(len=1000) :: update_region ! name of the region in which it is updated
   integer :: region_number ! number of the region in which it is applied
+  integer :: update_region_number ! number of the region in which it is updated
   integer, dimension(:), allocatable :: component ! ordered list of the compound variable of which this scalar is a component
   character(len=100), dimension(:), allocatable :: options ! array of options for this compound, with highest priority on the right
 end type compound_type
