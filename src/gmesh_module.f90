@@ -1039,10 +1039,13 @@ main_loop: do
           ijk = gmesh(gmesh_number)%gelement(gelement)%knode
         end if
         if (ijk == 0.and.debug) write(*,*) 'ijk = ',ijk,': gelement = ',gelement,': textline = ',trim(textline)
-        if (ijk == 0) call error_stop(trim(centring)//' centred data references an invalid element for variable '//trim(name)// &
-          ' in gmsh file '//trim(filename))
+!       if (ijk == 0) call error_stop(trim(centring)//' centred data references an invalid element for variable '//trim(name)// &
+!         ' in gmsh file '//trim(filename))
+! now silently ignore data that is given on an element that has a centring that is inconsistent with that of the data
+! this flexibility need (eg) when dealing with data that is neglected after a face has been glued, so that a boundary cell has disappeared, but the data remains (and should be ignored) on what the code sees as a face
+        if (ijk == 0) cycle ! not only is this data not in the region, the centring is wrong too
         ns = region(region_number)%ns(ijk)
-        if (ns == 0) cycle main_loop ! silently skip any data that is not within the variable's region
+        if (ns == 0) cycle ! also silently skip any data that is not within the variable's region
       else
         if (gelement /= 1) &
           call error_stop('gelement should be 1 for none centred variable '//trim(name)//' in gmsh file '//trim(filename))
@@ -1199,8 +1202,18 @@ do n = 1, nelements
 ! default is a cell if the element has the maximum dimensions, otherwise a face
 ! note, cells should always be a part of a gmsh physical entity originally, and hence always be associated with a region,
 !  so if an element is not associated with a region then it must be a face
-  if (gtype_list(gtype)%dimensions == gmesh(gmesh_number)%dimensions) then
+  if (gtype_list(gtype)%dimensions >= gmesh(gmesh_number)%dimensions) then
     centring = 'cell'
+    if (gtype_list(gtype)%dimensions > gmesh(gmesh_number)%dimensions) then
+      write(*,'(a,i1,a,i1,a)') "WARNING: an element was found in gmsh file "//trim(gmesh(gmesh_number)%basename)// &
+        " that has dimensions higher than those listed in the physical names: increasing gmesh dimensions from ", &
+        gmesh(gmesh_number)%dimensions," to ",gtype_list(gtype)%dimensions," as a result, but this may cause problems, "// &
+        "namely that any physical regions (names) included within the file may have the wrong centring. "// &
+        "It is recommend to include a cell centred physical region within the gmsh file having the maximum dimensions "// &
+        "of the mesh. Failing that, define all region centrings explicitly within the arb input file so that none are "// &
+        "guessed based on the mesh dimensions."
+      gmesh(gmesh_number)%dimensions = gtype_list(gtype)%dimensions
+    end if
   else if (gtype_list(gtype)%dimensions == 0 .and. gmesh(gmesh_number)%dimensions /= 1) then
     centring = 'node'
   else
@@ -1567,6 +1580,8 @@ if (check) then
     "dimension mismatch between msh files: all .msh files (of different centring) must come from the same simulation")
 else
   gmesh(gmesh_number)%dimensions = maxval(gregion_dimensions)
+  write(*,'(a,i1,a)') "INFO: "//trim(gmesh(gmesh_number)%basename)// &
+    " gmsh file is ",gmesh(gmesh_number)%dimensions," dimensional based upon included physical names"
 end if
 
 if (.not.check) then

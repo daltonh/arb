@@ -94,7 +94,7 @@ subroutine cellvofd(thread,m,ilast,jlast,klast,error_string,deriv,msomeloop_phi,
 ! someloop(thread)%funk(m) is the variable that is to contain d (and possibly its derivative)
 ! the msomeloops contain the funk indices that contain: phi, the three unitnormals (normal1->normal3) and phitol
 ! if any msomeloop index = -1, then the someloop variable is not defined
-! method is an integer that specifies how d is calculated:  1 = linearone, 2 = lineartwo, 3 = parabolic fit to max, min and centroid, 4 = exactpiecewise means match volumes on the nodes exactly, but use linear interpolation between the node, 5 = exact
+! method is an integer that specifies how d is calculated:  1 = linearone, 2 = lineartwo, 3 = parabolic fit to max, min and centroid, 4 = exactpiecewise means match volumes on the nodes exactly, but use linear interpolation between the node, 5 = exact, 6 = best (best method available for the dimension)
 
 use general_module
 ! these are passed to all external routines
@@ -104,7 +104,7 @@ character(len=1000) :: error_string
 integer :: msomeloop_phi,msomeloop_phitol,msomeloop_normal_l1,msomeloop_normal_l2,msomeloop_normal_l3,method
 ! local variables
 integer, dimension(totaldimensions) :: msomeloop_normal
-integer :: k, kk, l, kk_max, kk_min, i, kkkcurrent, kkcurrent, kcurrent, kkk, j, jj, location, kknext, n
+integer :: k, kk, l, kk_max, kk_min, i, kkkcurrent, kkcurrent, kcurrent, kkk, j, jj, location, kknext, n, method_l
 double precision :: normal_magnitude, d_max, d_min, d, phi, phitol, d_node, vcurrent, vtarget, vnext, dnext, dcurrent, &
   d1, d2, d3, d4, v1, v2, v3, v4, reciprocal_sign, faceareamax, dtol, vtol
 double precision, dimension(0:2) :: aatotal ! this should be private is it is not saved
@@ -132,6 +132,23 @@ if (debug) then
 end if
 
 if (cell(i)%dimensions == 0) call error_stop("cellvofd being called on zero dimensional cell")
+
+! set method to be used based on cell dimension if best method in use
+if (cell(i)%dimensions == 1) then
+  method_l = 1 ! all methods are equivalent to this simplest method for lines
+else if (method == 0) then
+  if (cell(i)%dimensions == 2.and.cell(i)%type == 1) then
+    method_l = 5 ! exact
+  else
+    method_l = 1 ! linear for 3D domain and boundary cells
+  end if
+else
+  method_l = method
+end if
+if (debug) then
+  write(50,*) 'cell(i)%dimensions = ',cell(i)%dimensions
+  write(50,*) 'method_l = ',method_l
+end if
 
 ! save phi in a temporary variable
 if (msomeloop_phi <= 0) call error_stop('error with msomeloop_phi passed to cellvofd')
@@ -201,11 +218,11 @@ kk_max = 0
 kk_min = 0
 d_max = -huge(0.d0) ! this will be larger than zero here
 d_min = +huge(0.d0) ! this will be smaller than zero here
-if (method > 3) cellknode_d(thread)%length = 0
+if (method_l > 3) cellknode_d(thread)%length = 0
 do kk = 1, cellknode_xr(thread)%length
   if (debug) write(50,*) 'kk,cellknode_xr(thread)%elements(:,kk) = ',kk,cellknode_xr(thread)%elements(:,kk)
   d_node = dot_product(normal,cellknode_xr(thread)%elements(:,kk))
-  if (method > 3) call add_to_scalar_list(list=cellknode_d(thread),new_element=d_node) ! for exact method need d calculated for each node
+  if (method_l > 3) call add_to_scalar_list(list=cellknode_d(thread),new_element=d_node) ! for exact method need d calculated for each node
   if (d_node > d_max) then
     d_max = d_node
     kk_max = kk
@@ -230,14 +247,15 @@ else if (phi > 1.d0-phitol) then
 
   d = d_min
 
-else if (method == 1.or.cell(i)%dimensions == 1) then
+else if (method_l == 1) then
 ! linearone method, using linear interpolation over one range between d_max (phi=0) and d_min (phi=1)
-! for a single dimension line, this is exact
+! for a single dimension line, this is exact, so actually all methods are equivalent to this for a line
 
   d = phi*d_min+(1.d0-phi)*d_max
 
-else if (method == 2) then
+else if (method_l == 2) then
 ! lineartwo method, using linear interpolation over the two ranges between d_max (phi=0), centroid (d=0, phi=0.5) and d_min (phi=1)
+! for now exact doesn't work in 3D, so this is the best (method 6) option available
 
   if (phi < 0.5d0) then
     d = -(2.d0*phi-1.d0)*d_max
@@ -247,7 +265,7 @@ else if (method == 2) then
 
 ! method 3 is supposed to be parabolic, between centre and two extremes, but not coded yet
 
-else if (method >= 4 .and. method <= 5) then
+else if (method_l >= 4 .and. method_l <= 5) then
 ! exact and exactpiecewise methods
 
 ! create list of each node kk index (ie, position in cell(i)%knode) in order of increasing d
@@ -384,7 +402,7 @@ else if (method >= 4 .and. method <= 5) then
     d = dcurrent
   else if (abs(vnext-vcurrent) > vtol.and.abs(dnext-dcurrent) > dtol) then
 ! if we are here then the root has been bounded and the range of v is significant
-    if (method == 4) then ! exactpiecewise: exact matching of the verticies, but linear interpolation between 
+    if (method_l == 4) then ! exactpiecewise: exact matching of the verticies, but linear interpolation between 
       d = -vcurrent*(dnext-dcurrent)/(vnext-vcurrent)+dcurrent
     else ! exact: iterate to find exact d
 ! bisection method

@@ -7,7 +7,9 @@
 
 # calculate the position of the interface in each cell, captured using the scalar d
 # exact matches area within polygon to phi value exactly and gives better results, but only works for 2D
-CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[exact](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <vof_interface_mask[r=1]> output
+#CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[exact](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <vof_interface_mask[r=1]> output
+# best uses exact when possible (ie, 2D problems) and linear (synonym linearone) otherwise (which is equivalent to exact in 1D, but an approximation in 3D)
+CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[best](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <vof_interface_mask[r=1]> output
 # lineartwo used linear interpolation between the cell extremes and cell centre, so is cheaper (as it doesn't involve polygon constructions) but is less accurate - works in 3D though
 # this tends to leave material behind when normal is orientated with one of the boundaries
 #CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[lineartwo](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all cells> output

@@ -3404,7 +3404,7 @@ sub mequation_interpolation {
 
 # choose method to use based on options
       $method = 1; # default is linearone for now
-      if ($options && $options =~ /(^|\,)\s*linearone\s*(\,|$)/) {
+      if ($options && $options =~ /(^|\,)\s*linear(|one)\s*(\,|$)/) {
         $method = 1; # which is linear fit between d_max and d_min
       } elsif ($options && $options =~ /(^|\,)\s*lineartwo\s*(\,|$)/) {
         $method = 2; # which is linear fit over two regions, between d_max, centroid and d_min
@@ -3414,6 +3414,8 @@ sub mequation_interpolation {
         $method = 4; # which is matches volume precisely
       } elsif ($options && $options =~ /(^|\,)\s*exact\s*(\,|$)/) {
         $method = 5; # which is matches volume precisely
+      } elsif ($options && $options =~ /(^|\,)\s*best\s*(\,|$)/) {
+        $method = 0; # chooses the most accurate method available based on the cell's dimension
       }
       $external_arguments = $external_arguments.",method=$method";
 

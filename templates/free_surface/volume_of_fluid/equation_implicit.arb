@@ -8,7 +8,9 @@ CELL_TRANSIENT <vof_phigrad_unit[l=2,r=1]> "" "<vof_phigrad_unit[l=2]>" ON <all 
 # exact matches area within polygon to phi value exactly and gives better results, but only works for 2D
 #CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[exact](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all cells> output
 # lineartwo used linear interpolation between the cell extremes and cell centre, so is cheaper (as it doesn't involve polygon constructions) but is less accurate - works in 3D though
-CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[lineartwo](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all cells> output
+#CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[lineartwo](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all cells> output
+# best picks the best available method
+CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[best](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <all cells> output
 
 # based on this position (d), calculate the flux values of phi at each face
 # option 1): use built-in function facevofphi
