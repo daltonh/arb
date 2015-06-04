@@ -562,7 +562,7 @@ sub read_input_files {
   use Storable qw(dclone);
   my ($file, $oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
-    $handle, $try_dir, $n1, $n2, $search, $replace, $working, $comments, $error, $region_constant, $n,
+    $handle, $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
     $condition, $key, $append, $cancel, $default, $masread);
 
   my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
@@ -589,8 +589,8 @@ sub read_input_files {
 # do file-specific replacements on file before anything else
 # for v0.42 and onwards not doing replacements on any statements that define replacements (including include statements)
       if (!($oline =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i)) {
-        foreach $n1 ( reverse( 0 .. $#input_files ) ) {
-          foreach $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
+        foreach my $n1 ( reverse( 0 .. $#input_files ) ) {
+          foreach my $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
             replace_substrings($oline,$input_files[$n1]{"replacements"}[$n2]{"search"},$input_files[$n1]{"replacements"}[$n2]{"replace"});
           }
         }
@@ -599,7 +599,7 @@ sub read_input_files {
 # now do general replacements, with latest defined replacements taking precedence
 # don't do general replacements on general_replacement or include lines
       if (!($oline =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i)) {
-        foreach $n1 ( reverse( 0 .. $#general_replacements ) ) {
+        foreach my $n1 ( reverse( 0 .. $#general_replacements ) ) {
           replace_substrings($oline,$general_replacements[$n1]{"search"},$general_replacements[$n1]{"replace"});
         }
       }
@@ -675,8 +675,8 @@ sub read_input_files {
         if ($input_files[$#input_files]{"replacements"}) {
           print "INFO: using the following search/replace combinations during the include of $input_files[$#input_files]{ref_name}";
           print UNWRAPPED_INPUT " with the following search/replace combinations";
-          $n1 = $#input_files;
-          foreach $n2 ( 0 .. $#{$input_files[$#input_files]{"replacements"}} ) {
+          my $n1 = $#input_files;
+          foreach my $n2 ( 0 .. $#{$input_files[$#input_files]{"replacements"}} ) {
             print ": replace $input_files[$n1]{replacements}[$n2]{search} with $input_files[$n1]{replacements}[$n2]{replace}";
             print UNWRAPPED_INPUT ": replace $input_files[$n1]{replacements}[$n2]{search} with $input_files[$n1]{replacements}[$n2]{replace}";
           }
@@ -720,8 +720,8 @@ sub read_input_files {
           if (nonempty($search)) {
 # if the replacement is a default replacement, first need to check whether string is part of an existing input file replacement
             if ($default) {
-              foreach $n1 ( reverse( 0 .. $#input_files ) ) {
-                foreach $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
+              foreach my $n1 ( reverse( 0 .. $#input_files ) ) {
+                foreach my $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
                   if ($search eq $input_files[$n1]{"replacements"}[$n2]{"search"}) { # found search string in input file replacements
                     print "INFO: general replacement (default) search string $search cancelled as the string is already present as an input file string replacement\n";
                     last;
@@ -730,27 +730,26 @@ sub read_input_files {
               }
             }
 # v0.42 general replacements of each search string is unique
-            for $n ( 0 .. $#general_replacements+1 ) {
-              if ($n == $#general_replacements+1) {
-                if ($cancel) {
-                  print "WARNING: general replacement search string $search cancelled before being allocated\n";
-                } else {
-                  %{$general_replacements[$n]} = ( search => $search, replace => $replace );
-                  print "INFO: added general replacements search and replace pair: search = $search: replace = $replace\n";
-                }
-              } elsif ($search eq $general_replacements[$n]{"search"}) { # found existing general replacements
-                if ($cancel) {
-                  splice(@general_replacements,$n,1);
-                  print "INFO: cancelling previous general replacements search string: search = $search\n";
-                } elsif ($default) {
-                  print "INFO: general replacement (default) search string $search cancelled as the string is already present as a general string replacement\n";
-                } else {
-                  %{$general_replacements[$n]} = ( search => $search, replace => $replace );
-                  print "INFO: replaced general replacements search and replace pair: search = $search: replace = $replace\n";
-                }
-                last;
+            my $n = search_general_replacements($search);
+            if ($n < 0) { # indicates that string is not found in general_replacements
+              if ($cancel) {
+                print "WARNING: general replacement search string $search cancelled before being allocated\n";
+              } else { # add a new one
+                %{$general_replacements[$#general_replacements+1]} = ( search => $search, replace => $replace );
+                print "INFO: added general replacements search and replace pair: search = $search: replace = $replace\n";
+              }
+            } else { # found search as an existing general replacement
+              if ($cancel) {
+                splice(@general_replacements,$n,1);
+                print "INFO: cancelling previous general replacements search string: search = $search\n";
+              } elsif ($default) {
+                print "INFO: general replacement (default) search string $search cancelled as the string is already present as a general string replacement\n";
+              } else {
+                $general_replacements[$n]{"replace"}=$replace;
+                print "INFO: replaced general replacements search and replace pair: search = $search: replace = $replace\n";
               }
             }
+
           }
         }
         print DEBUG "INFO: just processed GENERAL_REPLACEMENTS statement: general_replacements = ".Dumper(@general_replacements)."\n";
@@ -864,6 +863,22 @@ sub read_input_files {
         $keyword = "\U$1";
         $line = $'; $line =~ s/^\s*//;
         if ($keyword =~ /^((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))$/) {$keyword = "$2_OPTIONS";} # standardise the statement for fortran input
+# if this is a GLUE_FACES then check if reflect=? has been specified and if so, set general_replacement string automatically
+# not setting this in the arb input file has caught me out so many times that it is now automatic, but can be overwritten after the GLUE_FACES command if need be
+        if ($keyword =~ /^GLUE_FACES/i) {
+          $tmp = $line;
+# strip any region definitions from line, just in case a region contains a reflect=N statement in it...
+          while ($tmp =~ /\s*<(.+?)>\s*/) { $tmp = $`." ".$'; }
+          while ($tmp =~ /\s*reflect\s*=\s*(\d)\s*/i) {
+            my $search="<<reflect=$1>>";
+            my $replace="reflect=$1";
+            $tmp = $tmp = $`." ".$';
+            my $n = search_general_replacements($search);
+            if ($n < 0) { error_stop("some type of error with the reflect specification in the following: $oline"); }
+            else { $general_replacements[$n]{"replace"}=$replace; }
+            print "INFO: based on a GLUE_FACES statement setting $search general_replacements string to $replace\n";
+          }
+        }
         print FORTRAN_INPUT $keyword; if (nonempty($line)) {print FORTRAN_INPUT " ".$line}; print FORTRAN_INPUT "\n"; # print line to fortran input file, making sure that the keyword is uppercase there
         next;
       }
@@ -1069,7 +1084,7 @@ sub read_input_files {
             delete $asread_variable[$masread]{"equation"}; # preference is to delete these key/values as they then won't be included in %variable (for restart purposes)
             delete $asread_variable[$masread]{"initial_equation"};
           }
-          $n = 1;
+          my $n = 1;
           delete $asread_variable[$masread]{"region_list"};
           delete $asread_variable[$masread]{"constant_list"};
           if ($region_constant) {
@@ -6941,6 +6956,24 @@ sub set_transient_simulation {
 
 }
 
+#-------------------------------------------------------------------------------
+# search through general_replacements for search string
+
+sub search_general_replacements {
+
+  my $search = $_[0]; # on input, search string
+  my $nfound = -1; # on output returns -1 if not found, or general_replacments index if found
+
+  for my $n ( 0 .. $#general_replacements ) {
+    if ($search eq $general_replacements[$n]{"search"}) { # found existing general replacements
+      $nfound = $n;
+      last;
+    }
+  }
+
+  return $nfound;
+
+}
 #-------------------------------------------------------------------------------
 # perl tips 
 #         ($cunits,$line) = $line =~ /^\[(.*?)\]\s*(.*)$/;  #\s is a space, \S is a nonspace, . is a single wildcard, + is 1 or more times, ? is non greedy
