@@ -399,8 +399,8 @@ logical, parameter :: output_variable_update_times = .true. ! (.true.) time how 
 logical, parameter :: output_region_update_times = .true. ! (.true.) time how long it takes to update each dynamic region (on average) and report in output.stat
 logical, parameter :: ignore_initial_update_times = .true. ! (.true.) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
 logical, parameter :: kernel_details_file = .false. ! (.false.) print out a text file (output/kernel_details.txt) with all the kernel details
-logical, parameter :: mesh_details_file = .true. ! (.false.) print out a text file (output/mesh_details.txt) with all the mesh details
-logical, parameter :: region_details_file = .true. ! (.false.) print out a text file (output/region_details.txt) with all the region details
+logical, parameter :: mesh_details_file = .false. ! (.false.) print out a text file (output/mesh_details.txt) with all the mesh details
+logical, parameter :: region_details_file = .false. ! (.false.) print out a text file (output/region_details.txt) with all the region details
 logical, parameter :: link_details_file = .false. ! (.false.) print out a text file (output/link_details.txt) with all the link details
 logical, parameter :: convergence_details_file = .true. ! (.true.) write some convergence debugging data to output/convergence_details.txt
 
