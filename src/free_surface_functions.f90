@@ -136,7 +136,7 @@ if (cell(i)%dimensions == 0) call error_stop("cellvofd being called on zero dime
 ! set method to be used based on cell dimension if best method in use
 if (cell(i)%dimensions == 1) then
   method_l = 1 ! all methods are equivalent to this simplest method for lines
-else if (method == 0) then
+else if (method == 0) then ! the method == 0 flag indicates the 'best' method
   if (cell(i)%dimensions == 2.and.cell(i)%type == 1) then
     method_l = 5 ! exact
   else
