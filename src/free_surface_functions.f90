@@ -770,8 +770,8 @@ integer, dimension(totaldimensions) :: msomeloop_size, msomeloop_centre, msomelo
 double precision, dimension(totaldimensions) :: size, centre, axis, x_sample, x_minimum, pass_vector
 integer :: i, l, jj, kk, j, sample_points_total, sample_points_in_cell, sample_points_in_shape, n1, n2
 logical :: cell_interface, cell_is_in, any_rotation
-double precision :: phitol
-double precision, dimension(totaldimensions,totaldimensions) :: rotation_axis, rotation_total
+double precision :: phitol, rotation_angle
+double precision, dimension(totaldimensions,totaldimensions) :: rotation_total
 logical, parameter :: debug = .false.
 
 if (debug) write(50,'(80(1h+)/a)') 'subroutine cellvofphishape'
@@ -817,28 +817,34 @@ do l = 1, 3
   end if
 end do
 any_rotation = .false.
-call identity_matrix(rotation_total) ! by default rotation_total is the identity matrix, ie, no rotation
-do l = 3, 1, -1
+call identity_matrix(rotation_total) ! by default rotation_total is the identity matrix, ie, no rotation (although the any_rotation logical now means that this identity matrix isn't used)
+do l = 1, 3
   if (msomeloop_axis(l) > 0) then
     axis(l) = someloop(thread)%funk(msomeloop_axis(l))%v
     any_rotation = .true.
-    call rotation_matrix(rotation_axis,-axis(l),l) ! now performing rotations in decreasing dimension order, but the inverse transformation - not entirely sure how it will behave except for simple single axis rotations
-    rotation_total = matmul(rotation_axis,rotation_total)
+  else
+    axis(l) = 0.d0
+  end if
+end do
+if (any_rotation) then ! form the matrix that will convert vector x - centre into reference frame that has object's centreline along z axis
+  rotation_angle = vector_magnitude(axis) ! rotation angle magnitude is given by magnitude of rotation vector, right now in degrees
+  if (debug) write(50,*) 'rotation_angle (degrees) = ',rotation_angle
+  if (rotation_angle > tinyish) then
+    axis = axis/rotation_angle ! normalise axis to give a unit vector
+    rotation_angle = -rotation_angle*pi/180.d0 ! negative as we want the rotation_total matrix to perform a rotation from the actual back to shape coordinate system (ie, reverse rotation), and also convert to radians
+    rotation_total = rotation_matrix(axis,rotation_angle)
     if (debug) then
-      write(50,*) 'rotation occurs in ',l,' dimension: axis(l) = ',axis(l)
-      write(50,*) 'rotation_axis:'
+      write(50,*) 'axis:'
       do n1 = 1, 3
-        write(50,'(3(1x,g12.5))') (rotation_axis(n1,n2),n2=1,3)
+        write(50,'(3(1x,g12.5))') axis(n1)
       end do
       write(50,*) 'rotation_total:'
       do n1 = 1, 3
         write(50,'(3(1x,g12.5))') (rotation_total(n1,n2),n2=1,3)
       end do
     end if
-  else
-    axis(l) = 0.d0
   end if
-end do
+end if
 
 ! if this is a sphere or cube, then set size to be equal in each dimension
 if (shape == 1) size = minval(size) 
@@ -856,15 +862,11 @@ end if
 ! or check every face using a variety of points
 ! based on node points
 cell_interface = .false. ! 
-pass_vector = rotate_point(rotation_total,centre,node(cell(i)%knode(1))%x) ! avoid temporary array warnings
-if (debug) then
- write(50,*) 'node_x = ',node(cell(i)%knode(1))%x
- write(50,*) 'rotate(node_x) = ',pass_vector
-end if
-cell_is_in = is_point_in_shape(shape,size,centre,axis,pass_vector)
+pass_vector = node(cell(i)%knode(1))%x ! avoid temporary array warnings
+cell_is_in = is_point_in_shape(shape,size,centre,rotation_total,any_rotation,pass_vector)
 do kk = 2, ubound(cell(i)%knode,1)
-  pass_vector = rotate_point(rotation_total,centre,node(cell(i)%knode(kk))%x) ! avoid temporary array warnings
-  if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,pass_vector)) then
+  pass_vector = node(cell(i)%knode(kk))%x ! avoid temporary array warnings
+  if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,rotation_total,any_rotation,pass_vector)) then
     cell_interface = .true.
     exit
   end if
@@ -872,8 +874,8 @@ end do
 ! also check on face centres
 if (.not.cell_interface) then
   do jj = 1, ubound(cell(i)%jface,1)
-    pass_vector = rotate_point(rotation_total,centre,face(cell(i)%jface(jj))%x) ! avoid temporary array warnings
-    if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,pass_vector)) then
+    pass_vector = face(cell(i)%jface(jj))%x ! avoid temporary array warnings
+    if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,rotation_total,any_rotation,pass_vector)) then
       cell_interface = .true.
       exit
     end if
@@ -940,12 +942,8 @@ else
       if (debug) write(50,*) 'calculated as in cell'
     end do
     sample_points_in_cell = sample_points_in_cell + 1
-! check that it is in the shape, after possibly rotating the axis of the point in the wrong direction (and hence the shape in the right direction)
-    if (any_rotation) then
-      x_sample = rotate_point(rotation_total,centre,x_sample) ! only do rotation if any_rotation is true, to avoid unnecessary matmul
-      if (debug) write(50,*) 'rotated: x_sample = ',x_sample
-    end if
-    if (is_point_in_shape(shape,size,centre,axis,x_sample)) sample_points_in_shape = sample_points_in_shape + 1
+! check that it is in the shape
+    if (is_point_in_shape(shape,size,centre,rotation_total,any_rotation,x_sample)) sample_points_in_shape = sample_points_in_shape + 1
   end do SAMPLE_LOOP
 
   if (debug) write(50,*) 'sample_points_in_cell,sample_points_in_shape = ',sample_points_in_cell,sample_points_in_shape
@@ -961,31 +959,32 @@ end subroutine cellvofphishape
 
 !-----------------------------------------------------------------
 
-function is_point_in_shape(shape,size,centre,axis,x)
+function is_point_in_shape(shape,size,centre,rotation_total,any_rotation,x)
 
 ! on the boundary is in
+! now rewritten to accept rotation_total matrix, and so not need axis vector
 
 use general_module
 logical :: is_point_in_shape
-double precision, dimension(totaldimensions) :: size, centre, axis, x
-double precision, dimension(totaldimensions) :: x_rotated ! position of x relative to shape in unrotated configuration
+logical, intent(in) :: any_rotation
+double precision, dimension(totaldimensions,totaldimensions), intent(in) :: rotation_total
+double precision, dimension(totaldimensions), intent(in) :: size, centre, x
+double precision, dimension(totaldimensions) :: x_rotated ! position of x relative cente relative to unrotated configuration of shape
 integer :: shape
 double precision :: d
 integer :: l
 
-x_rotated = x
-
-!x_rotated = centre + cross_product(x-centre,axis)
+x_rotated = x - centre
+if (any_rotation) x_rotated = matmul(rotation_total,x_rotated)
 
 if (shape <= 2) then ! ellipsoid (or sphere which is an ellipsoid with all sizes equal)
 
   d = 0.d0
   do l = 1, totaldimensions
-    d = d + (2.d0*(x_rotated(l)-centre(l))/size(l))**2
+    d = d + (2.d0*x_rotated(l)/size(l))**2
   end do
-  d = d - 1.d0
 
-  if (d <= 0.d0) then
+  if (d <= 1.d0) then
     is_point_in_shape = .true.
   else
     is_point_in_shape = .false.
@@ -995,8 +994,16 @@ else if (shape <= 4) then ! box (or cube which is a box with all sizes equal)
 
   is_point_in_shape = .false.
   do l = 1, totaldimensions
-    if ((centre(l)-size(l)/2.d0-x_rotated(l))*(centre(l)+size(l)/2.d0-x_rotated(l)) > 0.d0) return
+    if (abs(x_rotated(l)) > size(l)/2.d0) return
   end do
+  is_point_in_shape = .true.
+
+else if (shape == 5) then ! cylinder, with centreline along the z axis, and size 1 as diameter and size 2 as length
+
+  is_point_in_shape = .false.
+  if (abs(x_rotated(3)) > size(2)/2.d0) return
+  if (max(abs(x_rotated(1)),abs(x_rotated(2))) > size(1)/2.d0) return ! these checks should be faster than the exact square ones below
+  if (x_rotated(1)**2 + x_rotated(2)**2 > size(1)**2/4.d0) return
   is_point_in_shape = .true.
 
 else

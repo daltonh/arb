@@ -3560,7 +3560,7 @@ sub mequation_interpolation {
 # the cellvofphishape function takes three vectors, a size, centre and axis, returning a volume fraction for each cell based on the requested shape
 # the size of the object is determined by the maximum size that is consistent with all of the object's dimensions (defaults to huge), so for a sphere set one size to the sphere's diameter
 # the centre of the object is specified by the centre vector, defaulting to zero if a component is not specified
-# the axis of the object is specified by the axis vector (rad), defaulting to zero if a component is not specified
+# the axis vector specifies a line about which the axis of the object is rotated, with a length equal to the rotation about that line required (in degrees) - by default each object has its unrotated centreline along the z axis
 # phitol is the accuracy required, which is used to determine the number of sample points
 # for 2D shapes choose a 3D shape that gives the correct intersection with the 2D plane (ie, sphere for circle, box for rectangle)
     } elsif ($operator_type eq "vofphishape") {
@@ -3570,7 +3570,7 @@ sub mequation_interpolation {
 
 # 1-3) each of the sizes
 # 4-6) each of the centres - note spelling
-# 7-10) each of the axiss
+# 7-10) each of the rotation axiss
       for $l ( 1 .. 3) {
         for $vector ( "size","centre","axis") {
           ($tmp,$name) = search_operator_contents("$vector\[l=$l\]",$next_contents_number);
@@ -3603,6 +3603,8 @@ sub mequation_interpolation {
         $shape = 3;
       } elsif ($options && $options =~ /(^|\,)\s*box|rectangle\s*(\,|$)/) {
         $shape = 4;
+      } elsif ($options && $options =~ /(^|\,)\s*cylinder\s*(\,|$)/) { # size[l=1] is diameter, size[l=2] is length, centre is geometrical centre
+        $shape = 5;
       }
       $external_arguments = $external_arguments.",shape=$shape";
 

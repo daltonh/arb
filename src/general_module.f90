@@ -4872,42 +4872,33 @@ end subroutine identity_matrix
 
 !-----------------------------------------------------------------
 
-subroutine rotation_matrix(matrix,angle,l)
-!http://inside.mines.edu/~gmurray/ArbitraryAxisRotation/
+function rotation_matrix(axis,angle)
 
-! little function to form an identity matrix, without doing bound checks
+! here we form matrix that when matmul by x will be rotated about the line specified by vector axis (normalised) by angle (radian)
+! http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
 
-double precision, dimension(totaldimensions,totaldimensions) :: matrix
-double precision :: angle ! angle to rotate, in rad, using right hand rule
-integer :: l ! axis dimension
-integer :: n1, n2
+double precision, dimension(totaldimensions,totaldimensions) :: rotation_matrix
+double precision, dimension(totaldimensions), intent(in) :: axis
+double precision, intent(in) :: angle
+integer :: n1, n2, n3
+double precision :: adding
 
-call identity_matrix(matrix) ! first initialise to the identity matrix
-n1 = l+1
-n2 = l+2
-if (n1 > 3) n1 = n1 - 3
-if (n2 > 3) n2 = n2 - 3
-matrix(n1,n1) = cos(angle)
-matrix(n2,n2) = cos(angle)
-matrix(n1,n2) = -sin(angle)
-matrix(n2,n1) = sin(angle)
+do n1 = 1, 3
+  do n2 = 1, 3
+    if (n1 == n2) then
+      rotation_matrix(n1,n1) = axis(n1)**2 + (1.d0-axis(n1)**2)*cos(angle)
+    else
+      n3 = 6 - n1 - n2 ! this is the other dimension
+      adding = 1.d0
+      if (n1 == 1.and.n2 == 2) adding = -1.d0
+      if (n1 == 2.and.n2 == 3) adding = -1.d0
+      if (n1 == 3.and.n2 == 1) adding = -1.d0
+      rotation_matrix(n1,n2) = axis(n1)*axis(n2)*(1.d0-cos(angle)) + adding*axis(n3)*sin(angle)
+    end if
+  end do
+end do
 
-end subroutine rotation_matrix
-
-!-----------------------------------------------------------------
-
-function rotate_point(rotation,centre,point)
-
-! no checks on dimensions performed
-
-double precision, dimension(totaldimensions,totaldimensions), intent(in) :: rotation
-double precision, dimension(totaldimensions) :: rotate_point
-double precision, dimension(totaldimensions), intent(in) :: point, centre
-
-rotate_point = matmul(rotation,point-centre)+centre
-!rotate_point = matmul(point-centre,rotation)+centre
-
-end function rotate_point
+end function rotation_matrix
 
 !-----------------------------------------------------------------
 
