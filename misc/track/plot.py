@@ -34,6 +34,8 @@ matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+import argparse
+
 # to output wx version
 #print wx.__version__
 
@@ -1228,7 +1230,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Plot script for output_step.csv files")
     parser.add_argument("step_file", nargs='?', default=None, help="output_step.csv location (relative or absolute path)")
-    parser.add_argument("-s","--show", help="instructions regarding variables to show")    
+    parser.add_argument("-s","--show", 
+            help='instructions regarding variables to show, example: ./plot "<timestep>:<t>,<dt>:<newtstep>" '
+            )    
     args = parser.parse_args()
 
     # check if step_file was specified in command line arguments
