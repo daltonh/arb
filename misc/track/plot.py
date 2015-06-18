@@ -7,7 +7,8 @@
 # run the script "misc/track/install_plot_dependencies_on_ubuntu.sh"
 
 # osx:
-# easiest method is to use a python install such as 
+# run the script "misc/install_dependencies/install_dependencies_on_osx_using_macports.sh"
+# otherwise use a python install such as 
 # enthought canopy express (https://store.enthought.com/downloads/)
 
 # import required modules
@@ -37,8 +38,6 @@ from matplotlib.figure import Figure
 #print wx.__version__
 
 operating_system = os.uname()[0]
-
-
 
 show_plot_step_export = 0
 grid_style = 0
@@ -151,10 +150,7 @@ class Data():
         # convert all but header labels to float values
         self.df = self.df.astype(float)
         if (not self.show_newtsteps and not load_blank):
-            delimiter_correction=""
-            if csv_single_quote:
-                delimiter_correction="'"
-            tmp_variable = "{0}<timestep>{0}".format(delimiter_correction)
+            tmp_variable = "<timestep>"
             self.df = self.df.groupby(tmp_variable, as_index=False).nth(-1)
         self.step_file.close()
    
@@ -1230,15 +1226,17 @@ if __name__ == "__main__":
     # process command line 'blank_csv'
     this_script = sys.argv[0]
 
-    if (len(sys.argv) > 2):
-        print "ERROR: incorrect syntax for {}".format(this_script)
-        print "\tuse either"
-        print "\t\ttrack plot"
-        print "\t\ttrack plot <commit-id>"
-        sys.exit()
-    if (len(sys.argv) == 2):
-        load_blank = 0
-        target_from_command_line = sys.argv[1]
+    parser = argparse.ArgumentParser(description="Plot script for output_step.csv files")
+    parser.add_argument("step_file", nargs='?', default=None, help="output_step.csv location (relative or absolute path)")
+    parser.add_argument("-s","--show", help="instructions regarding variables to show")    
+    args = parser.parse_args()
+
+    # check if step_file was specified in command line arguments
+    myargs = vars(args)
+    # if a step_file was specified then we need to check whether it exists
+    if (myargs['step_file'] is not None):
+        load_blank = 0        
+        target_from_command_line = args.step_file
         match = re.search('output_step.csv',target_from_command_line)
         if match:
             to_test = os.path.join(target_from_command_line)
@@ -1256,7 +1254,9 @@ if __name__ == "__main__":
             else:
                 print "INFO: Nothing to plot, this is where I looked:\n\t./{0}".format(to_test)
                 sys.exit()
-    elif (len(sys.argv) == 1):
+
+    # if a step_file wasn't specified then we check for existence of ./output/output_step.csv or even ./output_step.csv
+    elif (myargs['step_file'] is None):
         default_data = 'output/output_step.csv'
         if (os.path.isfile(default_data)):
             load_blank = 0
@@ -1273,22 +1273,6 @@ if __name__ == "__main__":
                 print "INFO: Nothing to plot, this is where I looked:\n\t./{0}\n\t./output/{0}".format(local_step_file)
                 sys.exit() # NOTE if this line is removed, then a dummy csv file is loaded
 
-# previous method for loading archived step file
-    #if (len(sys.argv) == 2):
-    #    load_blank = 0
-    #    specified_commit = sys.argv[1]
-    #    global_commit = specified_commit
-    #    print "INFO: {} called using commit {}".format(this_script, specified_commit)
-    #    specified_step_file = os.path.join(run_archive,specified_commit,'output','output_step.csv')
-    #elif (len(sys.argv) == 1):
-    #    default_data = 'output/output_step.csv'
-    #    if (os.path.isfile(default_data)):
-    #        load_blank = 0
-    #        specified_step_file = default_data
-    #    else:
-    #        specified_step_file = 'blank_csv' # as a last resort
-
-
     # figure out whether single or double quotes are used in csv file
     def contains_data(line):
         if(re.match(r'#', line)):
@@ -1299,41 +1283,61 @@ if __name__ == "__main__":
         for line in step_file:
             if contains_data(line):
                 if line[0] == "\'":
-                    csv_single_quote = True
+                    found_quotechar = "'" # set csv quotechar to single quote
                 else:
-                    csv_single_quote = False
+                    found_quotechar = '"' # set csv quotechar to double quote
                 break
     step_file.close()
 
-    if csv_single_quote:
-        # need regex to deal with [l=1,r=1] combinations
-        # this is a negative look ahead for ,r and ,l
-        sep_string=",(?!r|l)"
-        read_csv_options = {'engine':'python', 'sep':sep_string}
-    else:
-        read_csv_options = {'low_memory':False}
-
+    read_csv_options = {'quotechar':found_quotechar, 'low_memory':False}
+    
     data = Data(specified_step_file)
     app = wx.App(False)
     
     directory_name = os.path.basename(os.getcwd())
     frame = FrameGenerator(None, -1, title=directory_name, data_object=data)
 
-    # This will select '<timestep>' as default x1 axis variable (if it exists)
-    # change the tmp_variable line below to set the default variable (note, only one can be chosen)
-    step = 0
-    if (step == 0):
-        try:
-            delimiter_correction = ""
-            if csv_single_quote:
-                delimiter_correction="\'"
-            tmp_variable = "{0}<timestep>{0}".format(delimiter_correction)
-            frame.x1.list.CheckItem(data.inverted[tmp_variable]-1, True)
-        except:
-            pass
-        step+=1
+    
+    if args.show:
+    # show variables based on command line arguments
+        print "INFO: showing variables based upon {}".format(args.show)
+        axis_strings = args.show.split(":")
+
+        n_specified_axes=len(axis_strings)
+        for i, axis in enumerate(axis_strings):
+            variables = re.split("(?<=[>]),",axis) # use a regex look behind, otherwise eg variable <var[l=1,r=2]> would get split
+            for var in variables:
+                if var: # deals with "<timestep>::<t>" type show string
+                    try:
+                        if (i==0 and n_specified_axes==1):
+                            # show string is "<var1>,<var2>", so default to showing <timestep> on x1 axis, and the specified variables on the y1 axis
+                            frame.x1.list.CheckItem(data.inverted['<timestep>']-1, True)
+                            frame.y1.list.CheckItem(data.inverted[var]-1, True)
+                        if (i==0 and n_specified_axes>1):
+                            frame.x1.list.CheckItem(data.inverted[var]-1, True)
+                        elif i==1:
+                            frame.y1.list.CheckItem(data.inverted[var]-1, True)
+                        elif i==2:
+                            frame.y2.list.CheckItem(data.inverted[var]-1, True)
+                    except:
+                        sys.exit("{} does not contain variable {}".format(specified_step_file,var))   
+
+    # if nothing was requested to be shown, then only leave timestep showing on opening
+    else:
+        # This will select '<timestep>' as default x1 axis variable (if it exists)
+        # change the tmp_variable line below to set the default variable (note, only one can be chosen)
+        step = 0
+        if (step == 0):
+            try:
+                tmp_variable = "<timestep>"
+                frame.x1.list.CheckItem(data.inverted[tmp_variable]-1, True)
+            except:
+                sys.exit("{} does not contain <timestep> variable\n{} only works for transient simulation data".format(specified_step_file,this_script))
+            step+=1
+    
 
     frame.Show()
 
     app.MainLoop()
+
 
