@@ -1231,7 +1231,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot script for output_step.csv files")
     parser.add_argument("step_file", nargs='?', default=None, help="output_step.csv location (relative or absolute path)")
     parser.add_argument("-s","--show", 
-            help='instructions regarding variables to show, example: ./plot "<timestep>:<t>,<dt>:<newtstep>" '
+            help='instructions regarding variables to show, example: ./plot output/output_step.csv -s "<timestep>:<t>,<dt>:<newtstep>" '
             )    
     args = parser.parse_args()
 
