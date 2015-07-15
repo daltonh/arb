@@ -36,6 +36,10 @@ port select --set python python27
 
 # finally, link the (strange) macports gfortran name to a standard name within an accessible bin directory
 echo "INFO: creating a link to gfortran within /usr/local/bin";
+if [ ! -d "/usr/local/bin" ] ; then 
+echo "INFO: first creating /usr/local/bin directory";
+mkdir -p "/usr/local/bin" ;
+fi ;
 echo "UNINSTALL: to get rid of this link do rm /usr/local/bin/gfortran";
 echo "WARNING: this link will not work if you have multiple gfortran versions installed via macports - remote the older ones or just create the link manually"
 #ln -s /opt/local/bin/gfortran-mp-4.9 /usr/local/bin/gfortran
