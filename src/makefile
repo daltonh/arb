@@ -142,7 +142,7 @@ ifeq "$(strip $(compiler))" "intel"
   intel_mkl = present
   ifeq "$(wildcard $(mklpath)/libmkl_core.a)" ""
     intel_mkl = not found despite the intel compiler being in use
-#   $(error ERROR: the intel compiler is specified but the intel maths kernel libraries are not found: try setting the environment variable MKLROOT manually if there really are present)
+#   $(error ERROR: the intel compiler is specified but the intel maths kernel libraries are not found: try setting the environment variable MKLROOT manually if they really are present)
   endif
 else
   intel_mkl = not available as the intel compiler is not in use
@@ -169,14 +169,14 @@ ifeq "$(strip $(intel_mkl))" "present"
       ifeq "$(omp)" "on"
 # the following have been tested with versions 12.1.2, 13.0.1, 14.0.0
 # osX, static linking, 32bit integers (lp64), omp + blas95 and lapack95 interfaces
-        libs := $(MKLROOT)/lib/libmkl_blas95_lp64.a  $(MKLROOT)/lib/libmkl_lapack95_lp64.a $(MKLROOT)/lib/libmkl_intel_lp64.a $(MKLROOT)/lib/libmkl_intel_thread.a $(MKLROOT)/lib/libmkl_core.a -openmp -lpthread -lm
+        libs := $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_intel_thread.a $(mklroot_local)/lib/libmkl_core.a -openmp -lpthread -lm
       else
 # osX, static linking, 32bit integers (lp64), sequential + blas95 and lapack95 interfaces
-        libs := $(MKLROOT)/lib/libmkl_blas95_lp64.a  $(MKLROOT)/lib/libmkl_lapack95_lp64.a $(MKLROOT)/lib/libmkl_intel_lp64.a $(MKLROOT)/lib/libmkl_sequential.a $(MKLROOT)/lib/libmkl_core.a -lpthread -lm
+        libs := $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_sequential.a $(mklroot_local)/lib/libmkl_core.a -lpthread -lm
       endif
-      cflags += -I$(MKLROOT)/include/intel64/lp64 -I$(MKLROOT)/include 
-      cdebug += -I$(MKLROOT)/include/intel64/lp64 -I$(MKLROOT)/include 
-      c77flags += -I$(MKLROOT)/include/intel64/lp64 -I$(MKLROOT)/include
+      cflags += -I$(mklroot_local)/include/intel64/lp64 -I$(mklroot_local)/include 
+      cdebug += -I$(mklroot_local)/include/intel64/lp64 -I$(mklroot_local)/include 
+      c77flags += -I$(mklroot_local)/include/intel64/lp64 -I$(mklroot_local)/include
     else
 # osX, static linking, 32bit integers (lp64), sequential, working with 11.1.084
       libs := $(mklpath)/libmkl_solver_lp64_sequential.a $(mklpath)/libmkl_intel_lp64.a $(mklpath)/libmkl_sequential.a $(mklpath)/libmkl_core.a -lpthread
@@ -189,25 +189,25 @@ ifeq "$(strip $(intel_mkl))" "present"
       ifeq "$(mach_type)" "intel64"
         ifeq "$(omp)" "on"
 # linux intel64, static linking, 32bit integers (lp64), omp, working with 12.1.2
-          libs := $(MKLROOT)/lib/intel64/libmkl_blas95_lp64.a  $(MKLROOT)/lib/intel64/libmkl_lapack95_lp64.a  -Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a $(MKLROOT)/lib/intel64/libmkl_core.a -Wl,--end-group -openmp -lpthread -lm
+          libs := $(mklroot_local)/lib/intel64/libmkl_blas95_lp64.a  $(mklroot_local)/lib/intel64/libmkl_lapack95_lp64.a  -Wl,--start-group  $(mklroot_local)/lib/intel64/libmkl_intel_lp64.a $(mklroot_local)/lib/intel64/libmkl_intel_thread.a $(mklroot_local)/lib/intel64/libmkl_core.a -Wl,--end-group -openmp -lpthread -lm
         else
 # linux intel64, static linking, 32bit integers (lp64), sequential, working with 12.1.2
-          libs := $(MKLROOT)/lib/intel64/libmkl_blas95_lp64.a  $(MKLROOT)/lib/intel64/libmkl_lapack95_lp64.a  -Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_sequential.a -Wl,--end-group -lpthread -lm
+          libs := $(mklroot_local)/lib/intel64/libmkl_blas95_lp64.a  $(mklroot_local)/lib/intel64/libmkl_lapack95_lp64.a  -Wl,--start-group  $(mklroot_local)/lib/intel64/libmkl_intel_lp64.a $(mklroot_local)/lib/intel64/libmkl_core.a $(mklroot_local)/lib/intel64/libmkl_sequential.a -Wl,--end-group -lpthread -lm
         endif
-        cflags += -I$(MKLROOT)/include/intel64/lp64 -I$(MKLROOT)/include 
-        cdebug += -I$(MKLROOT)/include/intel64/lp64 -I$(MKLROOT)/include 
-        c77flags += -I$(MKLROOT)/include/intel64/lp64 -I$(MKLROOT)/include
+        cflags += -I$(mklroot_local)/include/intel64/lp64 -I$(mklroot_local)/include 
+        cdebug += -I$(mklroot_local)/include/intel64/lp64 -I$(mklroot_local)/include 
+        c77flags += -I$(mklroot_local)/include/intel64/lp64 -I$(mklroot_local)/include
       else
         ifeq "$(omp)" "on"
 # linux ia32, static linking, 32bit integers (lp64), omp, working with 12.1.2
-          libs := $(MKLROOT)/lib/ia32/libmkl_blas95.a  $(MKLROOT)/lib/ia32/libmkl_lapack95.a  -Wl,--start-group  $(MKLROOT)/lib/ia32/libmkl_intel.a $(MKLROOT)/lib/ia32/libmkl_intel_thread.a $(MKLROOT)/lib/ia32/libmkl_core.a -Wl,--end-group -openmp -lpthread -lm 
+          libs := $(mklroot_local)/lib/ia32/libmkl_blas95.a  $(mklroot_local)/lib/ia32/libmkl_lapack95.a  -Wl,--start-group  $(mklroot_local)/lib/ia32/libmkl_intel.a $(mklroot_local)/lib/ia32/libmkl_intel_thread.a $(mklroot_local)/lib/ia32/libmkl_core.a -Wl,--end-group -openmp -lpthread -lm 
         else
 # linux ia32, static linking, 32bit integers (lp64), sequential, working with 12.1.2
-          libs := $(MKLROOT)/lib/ia32/libmkl_blas95.a  $(MKLROOT)/lib/ia32/libmkl_lapack95.a  -Wl,--start-group  $(MKLROOT)/lib/ia32/libmkl_intel.a $(MKLROOT)/lib/ia32/libmkl_sequential.a $(MKLROOT)/lib/ia32/libmkl_core.a -Wl,--end-group -lpthread -lm
+          libs := $(mklroot_local)/lib/ia32/libmkl_blas95.a  $(mklroot_local)/lib/ia32/libmkl_lapack95.a  -Wl,--start-group  $(mklroot_local)/lib/ia32/libmkl_intel.a $(mklroot_local)/lib/ia32/libmkl_sequential.a $(mklroot_local)/lib/ia32/libmkl_core.a -Wl,--end-group -lpthread -lm
         endif
-        cflags += -I$(MKLROOT)/include/ia32 -I$(MKLROOT)/include
-        cdebug += -I$(MKLROOT)/include/ia32 -I$(MKLROOT)/include
-        c77flags += -I$(MKLROOT)/include/ia32 -I$(MKLROOT)/include
+        cflags += -I$(mklroot_local)/include/ia32 -I$(mklroot_local)/include
+        cdebug += -I$(mklroot_local)/include/ia32 -I$(mklroot_local)/include
+        c77flags += -I$(mklroot_local)/include/ia32 -I$(mklroot_local)/include
       endif
     else
 # this line for ubuntu, intel 11.0.074
