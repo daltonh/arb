@@ -20,7 +20,9 @@ use Data::Dumper;
 use File::Path qw(mkpath rmtree); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 use File::Copy qw(move copy);
 use File::Glob ':glob'; # deals with whitespace better
-use batcher_setup qw(case_setup output_setup); # brings in the user-written module that defines case-specific data
+use Thread; # for simultaneous jobs
+use batcher_setup qw(case_setup output_setup $parallel); # brings in the user-written module that defines case-specific data
+my @threads;
 my $systemcall;
 my $output_dir="batcher_output"; # this directory will store all of the output
 my $input_dir="$output_dir/input_files"; # this will contain copies of the original arb, geo and msh input files
@@ -30,7 +32,7 @@ my $continue=1; # set this to true (1) to allow continuation from a previous run
 my @case=case_setup(); # array that specifies information about each case that is being run that is initialised using case_setup within batcher_setup.pm
 my @output_keys=output_setup(); # create list output keys of variables to be output that is also initialised within batcher_setup.pm
 # convert this to output hash that will store the values
-my %output=();
+our %output=();
 for my $key (@output_keys) {
   $output{$key} = '';
 }
@@ -39,7 +41,7 @@ for my $key (@output_keys) {
 if (! -d "build") { die "BATCHER ERROR: call this script from working directory\n"; }
 
 # remove stopfile from previous run if it exists
-my $stopfile="batcher_stop";
+our $stopfile="batcher_stop";
 if (-e $stopfile) { unlink($stopfile) or die "BATCHER ERROR: could not remove $stopfile stop file from the previous run\n"; }
 
 # make output directory and copy over original arb, geo, msh and pm files
@@ -66,7 +68,6 @@ if (@run_dirs) {
     }
   }
 }
-
 open(OUTPUT, ">>$output_dir/batch_data.csv"); # open batch_data csv file
 
 #-----------------------------------------------------------------------------------------
@@ -102,7 +103,7 @@ for my $n ( 0 .. $#case ) {
     foreach my $ffilename (bsd_glob("$input_dir/".$fffilename)) {
       $ffilename =~ /(.*)\/((.+?)\.(.+?))$/;
       my $filename=$2;
-      print "BATCHER INFO: perforing substitutions on $filename\n";
+      print "BATCHER INFO: performing substitutions on $filename\n";
       open(INFILE, ">".$filename) or error_stop("can't open substitute input file $filename");
       open(ORIGINAL, "<".$ffilename) or error_stop("can't open original input file $ffilename");
       while (my $line=<ORIGINAL>) {
@@ -152,98 +153,34 @@ for my $n ( 0 .. $#case ) {
   }
 
 #-----------------
-# now run arb
-  $systemcall="./arb --quiet --quiet-make ".protect($case[$n]{"arboptions"});
-  for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
-    $systemcall=$systemcall." ".bsd_glob($ffilename);
+  
+  if ($parallel) { # run arb jobs in parallel
+    # copy everything needed to run_record_dir
+    $systemcall="rsync -au * $run_record_dir --exclude batcher_output --exclude batcher_setup.pm";
+    (!(system("$systemcall"))) or error_stop("could not $systemcall");
+
+    my $t = threads->new(\&arbthread, \@case, $n, $ndir, $run_record_dir);
+    push(@threads,$t);
+  } else { # run arb jobs in series
+    # run only a single thread and wait for it to finish before moving onto the next job
+    &arbthread(\@case, $n, $ndir, $run_record_dir);
   }
-  (!(system("$systemcall"))) or error_stop("could not $systemcall");
- 
-#-----------------
-# now extract the data
-
-  if (-e "output/output.scr") {
-    open(INPUT,"<output/output.scr");
-    while (my $line = <INPUT>) {
-      chompm($line);
-      if ($line =~ /^\s*CELLS: itotal =\s+(\S+): idomain =\s+(\S+):/) { $output{"itotal"}= $1; $output{"idomain"} = $2 }
-      if ($line =~ /^TIMING: cpu time to complete setup routines =\s+(\S+)/) { $output{"setuptime"} = $1; }
-#     if ($line =~ /^TIMING: cpu time to complete initial update routines =\s+(\S+)/) { $output{"cputime"} = $output{"cputime"} + $1; }
-#     if ($line =~ /^TIMING: cpu time to complete update routines =\s+(\S+)/) { $output{"cputime"} = $output{"cputime"} + $1; }
-#     if ($line =~ /^TIMING: cpu time to complete mainsolver routines =\s+(\S+)/) { $output{"cputime"} = $output{"cputime"} + $1; }
-      if ($line =~ /^TIMING: total wall time =\s+(\S+)\s*: total cpu time =\s+(\S+)/) { $output{"walltime"} = $1; $output{"cputime"} = $2; }
-      if ($line =~ /^INFO: the maximum number of dimensions of any region is\s+(\S+)/) { $output{"dimensions"} = $1; }
-      if ($line =~ /^INFO: total number of kernel elements =\s+(\S+)/) { $output{"kernel_elements"} = $1; }
-      if ($line =~ /^SUCCESS: the simulation finished gracefully/) { $output{"success"} = 1; }
-    }
-    close(INPUT);
-    print "BATCHER INFO: extracted data from output/output.scr\n"
-  } else {
-    print "BATCHER WARNING: file output/output.scr not found\n"
-  }
-
-  if (-e "output/output.stat") {
-    open(INPUT,"<output/output.stat");
-    while (my $line = <INPUT>) {
-      chompm($line);
-      if ($line =~ /^# NEWTSTEP = \s+(\S+)/) { $output{"nstepmax"} = $1; }
-      for my $key ( sort(keys(%output)) ) {
-        if ($key =~ /^<.+>$/) { # assume that this is a variable or region, outputting maximum value or number of elements, respectively
-          if ($line =~ /^\S+ \S+ \Q$key\E:\s+(max|elements)\s+=\s+(\S+?)(\s|:)/) { $output{"$key"} = "$2"; } # \Q starts to escape special characters, \E stops
-        }
-      }
-    }
-    close(INPUT);
-    print "BATCHER INFO: extracted data from output/output.stat\n"
-  } else {
-    print "BATCHER WARNING: file output/output.stat not found\n"
-  }
-
-  { 
-    my $variable_line = "# run";
-    my $value_line = "$ndir";
-  # output inputs
-    for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
-      $variable_line = $variable_line.", \"$key\"";
-      $value_line = $value_line.", ".$case[$n]{"replacements"}{"$key"};
-    }
-  # and output
-    for my $key ( sort(keys(%output)) ) {
-      $variable_line = $variable_line.", \"$key\"";
-      $value_line = $value_line.", $output{$key}";
-    }
-    if (!($n)) {print OUTPUT "$variable_line\n"; } # now only print headings at top of file, ie, for first run
-    if (!($output{"success"})) {
-      print OUTPUT "# $value_line\n";
-      print OUTPUT "# ERROR: arb run $ndir (the above line) was not successful\n";
-      print "BATCHER ERROR: arb run $ndir was not successful\n";
-    } else {
-      print OUTPUT "$value_line\n";
-      print "BATCHER INFO: printed summary data for run $ndir to batch_data.csv\n"
-    }
-  }
-
-# save all output files that are present, including msh files
-  for my $output_file ("output/output.stat", "output/output.scr", "output/output_step.csv", bsd_glob("output/output*.msh"), "output/convergence_details.txt", "tmp/setup/unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt") {
-# save all output files that are present, except for msh
-# for $output_file ("output/output.stat", "output/output.scr", "output/output_step.csv") {
-    if (-e "$output_file") {
-      copy("$output_file",$run_record_dir) or error_stop("could not copy $output_file to run record directory $run_record_dir");
-    }
-  }
-
-# reset all input files within the working directory, now at the end of each case
-  copy_back_input_files();
-
-# clear all output results before starting the next run
-  for my $key ( keys(%output) ) { $output{"$key"}=''; }
-
-# look for user created stopfile
-  if (-e $stopfile) {print "BATCHER STOPPING: found $stopfile stop file so stopping the batcher run\n"; last;}
 }
 
-close(OUTPUT);
 
+# reset all input files within the working directory, now at the end of each case
+copy_back_input_files();
+
+if ($parallel) {
+  # wait for all threads to finish
+  foreach (@threads) {
+    $_->join;
+  }
+}
+
+
+
+close(OUTPUT);
 exit;
 
 #-------------------------------------------------------------------------------
@@ -319,3 +256,153 @@ sub copy_back_input_files {
   }
 }
 #-------------------------------------------------------------------------------
+
+sub arbthread {
+  my @case = @{$_[0]};
+  my $n = $_[1];
+  my $ndir = $_[2];
+  my $run_record_dir = $_[3];
+
+  # write headers in $output_dir/batch_data.csv
+  if (!($n)) {
+    my $variable_line = "# run";
+    for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
+      $variable_line = $variable_line.", \"$key\"";
+    }
+  # and output
+    for my $key ( sort(keys(%output)) ) {
+      $variable_line = $variable_line.", \"$key\"";
+    }
+    print OUTPUT "$variable_line\n"; 
+  }
+
+
+  my $systemcall="./arb --quiet --quiet-make ".protect($case[$n]{"arboptions"});
+  for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
+    $systemcall=$systemcall." ".bsd_glob($ffilename);
+  }
+  
+  if ($parallel) {
+    # parallel jobs run in run_record_dir
+    $systemcall = "cd $run_record_dir; ".$systemcall;
+    (!(system("$systemcall"))) or error_stop("could not $systemcall");
+  } else {
+    # series jobs run in working directory
+    (!(system("$systemcall"))) or error_stop("could not $systemcall");
+  }
+
+#-----------------
+# now extract the data
+
+  my $scr_location = "output/output.scr";
+  if ($parallel) {
+    $scr_location = "$run_record_dir/output/output.scr";
+  }
+
+  if (-e $scr_location) {
+    open(INPUT,"<$scr_location");
+    while (my $line = <INPUT>) {
+      chompm($line);
+      if ($line =~ /^\s*CELLS: itotal =\s+(\S+): idomain =\s+(\S+):/) { $output{"itotal"}= $1; $output{"idomain"} = $2 }
+      if ($line =~ /^TIMING: cpu time to complete setup routines =\s+(\S+)/) { $output{"setuptime"} = $1; }
+#     if ($line =~ /^TIMING: cpu time to complete initial update routines =\s+(\S+)/) { $output{"cputime"} = $output{"cputime"} + $1; }
+#     if ($line =~ /^TIMING: cpu time to complete update routines =\s+(\S+)/) { $output{"cputime"} = $output{"cputime"} + $1; }
+#     if ($line =~ /^TIMING: cpu time to complete mainsolver routines =\s+(\S+)/) { $output{"cputime"} = $output{"cputime"} + $1; }
+      if ($line =~ /^TIMING: total wall time =\s+(\S+)\s*: total cpu time =\s+(\S+)/) { $output{"walltime"} = $1; $output{"cputime"} = $2; }
+      if ($line =~ /^INFO: the maximum number of dimensions of any region is\s+(\S+)/) { $output{"dimensions"} = $1; }
+      if ($line =~ /^INFO: total number of kernel elements =\s+(\S+)/) { $output{"kernel_elements"} = $1; }
+      if ($line =~ /^SUCCESS: the simulation finished gracefully/) { $output{"success"} = 1; }
+    }
+    close(INPUT);
+    print "BATCHER INFO: extracted data from output/output.scr\n";
+  } else {
+    print "BATCHER WARNING: file output/output.scr not found\n";
+  }
+
+  my $stat_location = "output/output.stat";
+  if ($parallel) {
+    $stat_location = "$run_record_dir/output/output.stat";
+  }
+  if (-e $stat_location) {
+    open(INPUT,"<$stat_location");
+    while (my $line = <INPUT>) {
+      chompm($line);
+      if ($line =~ /^# NEWTSTEP = \s+(\S+)/) { $output{"nstepmax"} = $1; }
+      for my $key ( sort(keys(%output)) ) {
+        if ($key =~ /^<.+>$/) { # assume that this is a variable or region, outputting maximum value or number of elements, respectively
+          if ($line =~ /^\S+ \S+ \Q$key\E:\s+(max|elements)\s+=\s+(\S+?)(\s|:)/) { $output{"$key"} = "$2"; } # \Q starts to escape special characters, \E stops
+        }
+      }
+    }
+    close(INPUT);
+    print "BATCHER INFO: extracted data from output/output.stat\n";
+  } else {
+    print "BATCHER WARNING: file output/output.stat not found\n";
+  }
+
+  { 
+    my $variable_line = "# run";
+    my $value_line = "$ndir";
+  # output inputs
+    for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
+      $variable_line = $variable_line.", \"$key\"";
+      $value_line = $value_line.", ".$case[$n]{"replacements"}{"$key"};
+    }
+  # and output
+    for my $key ( sort(keys(%output)) ) {
+      $variable_line = $variable_line.", \"$key\"";
+      $value_line = $value_line.", $output{$key}";
+    }
+  
+    if (!($output{"success"})) {
+      print OUTPUT "# $value_line\n";
+      print OUTPUT "# ERROR: arb run $ndir (the above line) was not successful\n";
+      print "BATCHER ERROR: arb run $ndir was not successful\n";
+    } else {
+      print OUTPUT "$value_line\n";
+      print "BATCHER INFO: printed summary data for run $ndir to batch_data.csv\n"
+    }
+  }
+
+  if ($parallel) {
+    # remove files/directories from run_record_dir
+    # though, anything in the following grep pattern is *retained*
+    opendir(RUNDIR, $run_record_dir) or die "BATCHER ERROR: could not open $run_record_dir\n";
+    my @to_delete = grep(!/^\.+|output|tmp|input_mesh|batcher_info.txt|\.arb$/, readdir(RUNDIR));
+    closedir(RUNDIR);
+    print "BATCHER_INFO: cleaning files in $run_record_dir\n";
+    for my $entry (@to_delete) {
+      if (-f "$run_record_dir/$entry") {
+        unlink("$run_record_dir/$entry");
+      } else {
+        rmtree("$run_record_dir/$entry");
+      }
+    }
+  }
+
+ # save all output files that are present, including msh files
+   for my $output_file ("output/output.stat", "output/output.scr", "output/output_step.csv", bsd_glob("output/output*.msh"), "output/convergence_details.txt", "tmp/setup/unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt") {
+     if ($parallel) { # parallel
+       if (-e "$run_record_dir/$output_file") {
+         move("$run_record_dir/$output_file",$run_record_dir) or error_stop("could not copy $run_record_dir/$output_file to run record directory $run_record_dir");
+       } 
+     } else { # series
+       if (-e "$output_file") {
+         copy("$output_file",$run_record_dir) or error_stop("could not copy $output_file to run record directory $run_record_dir"); 
+       }
+     }
+   }
+
+   if ($parallel) {
+     # remove trace of everything else
+     rmtree("$run_record_dir/output");
+     rmtree("$run_record_dir/tmp");
+   }
+   
+# clear all output results before starting the next run
+  for my $key ( keys(%output) ) { $output{"$key"}=''; }
+
+# look for user created stopfile
+  if (-e $stopfile) {print "BATCHER STOPPING: found $stopfile stop file so stopping the batcher run\n"; last;}
+
+}

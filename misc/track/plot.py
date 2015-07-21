@@ -35,6 +35,7 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 import argparse
+from collections import defaultdict
 
 # to output wx version
 #print wx.__version__
@@ -99,24 +100,30 @@ y1_alpha = 0.7
 y2_alpha = 0.7
 
 # font size for legend
-legend_font_size=11
-
-# string for storing commit id of present dataset
-global_commit = ''
-
+legend_font_size=9
 
 class Data():
-    def __init__(self, step_file_path):
+    show_markers = True # class attribute
+    show_lines = True # class attribute
+    show_legend = True # class attribute
+
+    def __init__(self, step_file_path, summary_file=False):
+        # summary_file=True implies file of type batcher_output.csv
+        # summary_file=False (default) implies file of type output_step.csv
 
         # read output_step.csv into pandas data frame
         # ignore the row of dimension strings ([1:])
         # (in future, could use dimension strings to automatically show dimensions in plot labels)
         #self.step_file_path = 'output/output_step.csv'
         self.step_file_path = step_file_path
-        self.show_markers = True
+        self.summary_file = summary_file
         self.show_newtsteps = False
+        self.converged_data_present = True
+
         self.open_data()
         self.process_data()
+
+        self.path_tag = ''
 
     def open_data(self):
         global load_blank
@@ -127,34 +134,43 @@ class Data():
             self.step_file = open(self.step_file_path)
         else:
             print "ERROR: {} does not exist".format(self.step_file_path)
-            print "Try running a with an archived simulation: `track plot <commit-id>`"
-            print "or equivalently run `./misc/track/plot.py <commit-id>`"
-            
-            available = next(os.walk(run_archive))[1]
-            if (available):
-                print "Available archived simulations are"
-
-            for entry in available:
-                if re.match(r'stash_storage', entry): #re.match matches from start of string
-                    pass
-                else:
-                    print "\t{}".format(entry)
-
             sys.exit() 
         
     def process_data(self):
+
         global load_blank
         if (load_blank):
             self.df=pd.read_csv(blank_csv, comment='#')[1:]
         else:
-            self.df=pd.read_csv(self.step_file, comment='#', **read_csv_options)[1:]
+            if self.summary_file:
+                with open(self.step_file_path, 'r') as f:
+                    header = StringIO(f.readline().lstrip('# ')) # remove "# run" comment
+                    df_header = pd.read_csv(header)
+                    f.close()
+                filtered = []
+                for item in df_header.columns:
+                    filtered.append(item.rstrip('\"').lstrip(' \"'))
+                # assemble data frame 
+                try:
+                    self.df = pd.read_csv(self.step_file_path, skiprows=1, header=None, comment='#')
+                except:
+                    print "INFO: {} contains no converged data".format(self.step_file_path)
+                    self.converged_data_present = False
+                    return # leave early, we won't do anything else with the data is converged_data_present is False
+                self.df.columns = filtered
+                self.df.sort(['run'],inplace=True) # sort by run with parallel jobs are out of order
+            else:
+                # extra row for arb variable dimensions
+                self.df=pd.read_csv(self.step_file, comment='#', **read_csv_options)[1:]
         load_blank = 0
         # convert all but header labels to float values
-        self.df = self.df.astype(float)
-        if (not self.show_newtsteps and not load_blank):
-            tmp_variable = "<timestep>"
-            self.df = self.df.groupby(tmp_variable, as_index=False).nth(-1)
-        self.step_file.close()
+
+        if not self.summary_file:
+            self.df = self.df.astype(float)
+            if (not self.show_newtsteps and not load_blank):
+                tmp_variable = "<timestep>"
+                self.df = self.df.groupby(tmp_variable, as_index=False).nth(-1)
+            self.step_file.close()
    
         # dictionaries needed for ColumnSorterMixin
         self.variables = {}
@@ -169,14 +185,6 @@ class Data():
         # store a reverse dictionary (possible as variable numbers are unique)
         # can use this to look up variable ID if variable name (eg "'<timestep>'") is known
         self.inverted = dict([[v,k] for k,v in self.variables.items()])
-
-    def change_dataset(self, path):
-        self.step_file_path = path
-        self.open_data()
-        self.process_data()
-    
-    def example_method(self):
-        print 'was called'
 
 class RefreshThread(Thread):
     def __init__(self):
@@ -245,15 +253,15 @@ class SortableListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin, listmix.Che
 
 class AxisPanel(wx.Panel, listmix.ColumnSorterMixin):
 
-    def __init__(self, parent, data_object, axis):
+    def __init__(self, parent, data_object_list, axis):
 
         wx.Panel.__init__( self, parent=parent, id=wx.ID_ANY )
         self.axis = axis
-        self.create(data_object)
-        self.layout(data_object)
+        self.create(data_object_list)
+        self.layout(data_object_list)
         self.run_set_count()
         
-    def create(self, data_object):
+    def create(self, data_object_list):
         self.sizer = wx.BoxSizer( wx.VERTICAL )
         self.list = SortableListCtrl( self, wx.ID_ANY, axis=self.axis, style=wx.LC_REPORT
                              | wx.BORDER_NONE
@@ -263,21 +271,39 @@ class AxisPanel(wx.Panel, listmix.ColumnSorterMixin):
         self.sizer.Add(self.list, 1, wx.EXPAND)
         self.list.InsertColumn(0, axis[self.axis], width=150)
 
-
-    def layout(self, data_object):
-        self.populateList(data_object)
-        self.itemDataMap = data.variables_stripped # when sorting the list, use the stripped variables
+    def layout(self, data_object_list):
+        self.populateList(data_object_list)
+        self.itemDataMap = self.selection_stripped # when sorting the list, use the stripped variables
         listmix.ColumnSorterMixin.__init__(self, numColumns=1)
         self.SetSizer(self.sizer)
-        self.SetAutoLayout( True )
+        self.SetAutoLayout(True)
 
     def run_set_count(self):
         self.list.set_count()
        
-    def populateList(self, data_object):
-        items = data_object.variables.items()
+    def populateList(self, data_object_list):
 
-        for key, data in items:
+        master = [] # contains all variables with repetition
+        union = [] # contains all variables at most once
+
+        self.selection = {} # what will be shown in the gui list
+        self.selection_stripped = {}
+        
+        for data_set in data_object_list:
+            master.extend(data_set.variables.values())
+
+        for item in master:
+            if item not in union:
+                union.append(item)
+        
+        for i, variable in enumerate(union):
+            self.selection[i+1] = variable
+            chars = ("'", '<', '>')
+            for char in chars:
+                variable = variable.replace(char,'')
+            self.selection_stripped[i+1] = variable
+
+        for key, data in self.selection.items():
             index = self.list.InsertStringItem(sys.maxint, data)           
             self.list.SetItemData(index, key)
         self.list.SetColumnWidth( 0, wx.LIST_AUTOSIZE )
@@ -287,12 +313,11 @@ class AxisPanel(wx.Panel, listmix.ColumnSorterMixin):
 
 
 class CanvasPanel(wx.Panel):
-    def __init__(self, parent):
+    def __init__(self, parent, data_object_list):
         wx.Panel.__init__(self, parent)
+        self.data_object_list = data_object_list
         self.figure = Figure(facecolor='white')
         self.axis = self.figure.add_subplot(111)
-        self.axis.set_title(global_commit,fontdict={'fontsize': 8})
-        
         self.axis2 = self.axis.twinx()
         self.axis.ticklabel_format(useOffset=False)
         self.axis2.ticklabel_format(useOffset=False)
@@ -304,9 +329,11 @@ class CanvasPanel(wx.Panel):
         self.sizer.Add(self.canvas, 1, wx.EXPAND|wx.ALL, 1)
         self.SetSizerAndFit(self.sizer)
 
-    def update_plot(self,log_options, axis_limits):
-        global global_commit
 
+
+    def update_plot(self, log_options, axis_limits):
+
+        # upon each update the canvas gets cleared
         self.axis.clear()
         self.axis2.clear()
 
@@ -315,91 +342,134 @@ class CanvasPanel(wx.Panel):
         self.legendText1=[]
         self.legendText2=[]
 
+        def variable_available(variable, data_object):
+            available = True
+            if variable not in data_object.inverted.keys():
+                available = False
+            return available
+
+        def update_y1_var(y1_var):
+            for data_object in self.data_object_list:
+                if variable_available(y1_var, data_object):
+                    current1, = self.axis.plot(
+                            data_object.df[self.x1_var].values,
+                            data_object.df[y1_var].values,
+                            marker=marker_y1,
+                            linestyle=line_y1,
+                            markevery=point_interval,
+                            alpha = y1_alpha,
+                            rasterized=rasterized_option
+                            )
+                    self.legendEntries1.append(current1)
+                    y1_legend_entry = y1_var.replace("'",'')
+                    if data_object.path_tag:
+                        y1_legend_entry = y1_legend_entry + ", {}".format(data_object.path_tag)
+
+                    self.legendText1.append(y1_legend_entry)
+                    
+                    # extend axis range, if we need to
+                    requested_x1_min = min(data_object.df[self.x1_var].min(),self.axis.get_xlim()[0])
+                    requested_x1_max = max(data_object.df[self.x1_var].max(),self.axis.get_xlim()[1])                   
+                    self.axis.set_xlim(requested_x1_min,requested_x1_max)
+                    text1 = self.legendText1
+                    entries1 = self.legendEntries1
+                    if Data.show_legend:
+                        lgd1 = self.axis.legend(
+                                entries1,
+                                text1,
+                                numpoints=1, 
+                                loc='upper left',
+                                prop={'size':legend_font_size}
+                                )
+
+        def update_y2_var(y2_var):
+            for data_object in self.data_object_list:
+                if variable_available(y2_var, data_object):                
+                    current2, = self.axis2.plot(
+                            data_object.df[self.x1_var].values,
+                            data_object.df[y2_var].values,
+                            marker=marker_y2,
+                            linestyle=line_y2,
+                            markevery=point_interval,
+                            alpha = y2_alpha,
+                            rasterized=rasterized_option
+                            )
+                    #self.axis2.set_xlim(data_object.df[self.x1_var].min(),data_object.df[self.x1_var].max())                    
+                    self.legendEntries2.append(current2)
+                    y2_legend_entry = y2_var.replace("'",'')
+                    if data_object.path_tag:
+                        y2_legend_entry = y2_legend_entry + ", {}".format(data_object.path_tag)
+                    self.legendText2.append(y2_legend_entry)
+                    text2 = self.legendText2
+                    entries2 = self.legendEntries2
+                    if Data.show_legend:
+                        lgd2 = self.axis2.legend(
+                                entries2,
+                                text2,
+                                numpoints=1, 
+                                loc='upper right',
+                                prop={'size':legend_font_size}
+                                )
+        # deal with x1_var
         if (frame.x1.list.active_count == 1):
+            # set x1_var
+            self.x1_var = frame.x1.list.active[0]
+
+            # deal with possible x1 log scale
             if (log_options[0]):
                 self.axis.set_xscale('log')
             else:
                 self.axis.ticklabel_format(useOffset=False)
 
             point_interval = frame.point_interval_widget.GetValue()
-
             marker_y1 = None
             marker_y2 = None
-            if (data.show_markers):
+            line_y1 = 'None'
+            line_y2 = 'None'
+            if (Data.show_markers):
                 marker_y1 = 'o'
                 marker_y2 = '^'
+            if (Data.show_lines):
+                line_y1 = '-'
+                line_y2 = '-'
+            
+            # set color cycles before variable loops
+            self.axis.set_color_cycle(list1)
+            self.axis2.set_color_cycle(list2)
 
-            x1_var = frame.x1.list.active[0]
-            if (frame.y1.list.active_count > 0):
-                self.axis.set_color_cycle(list1)
+            # loop over active y1_var
+            if (frame.y1.list.active_count > 0):           
                 if (log_options[1]):
                     self.axis.set_yscale('log')
                 for y1_var in frame.y1.list.active:
-                    current1, = self.axis.plot(
-                            data.df[x1_var].values,
-                            data.df[y1_var].values,
-                            marker=marker_y1,
-                            markevery=point_interval,
-                            alpha = y1_alpha,
-                            rasterized=rasterized_option
-                            )
-                    self.legendEntries1.append(current1)
-                    self.legendText1.append(y1_var.replace("'",''))
-                    self.axis.set_xlim(data.df[x1_var].min(),data.df[x1_var].max())                    
-                    lgd = self.axis.legend(
-                            self.legendEntries1, 
-                            self.legendText1, 
-                            numpoints=1, 
-                            loc='upper left',
-                            prop={'size':legend_font_size}
-                            )
+                    update_y1_var(y1_var)
             else:
-                self.axis.clear() # remove data
+                self.axis.clear()
+            self.axis.set_xlabel(self.x1_var.replace("'",''))
 
-            x1_var = frame.x1.list.active[0]
-            self.axis.set_xlabel(x1_var.replace("'",''))
-            
-            if (frame.y2.list.active_count > 0):
-                self.axis2.set_color_cycle(list2)
+            # loop over active y2_var
+            if (frame.y2.list.active_count > 0):           
                 if (log_options[2]):
                     self.axis2.set_yscale('log')
                 else:
-                    self.axis2.ticklabel_format(useOffset=False)
+                    if not log_options[0]:
+                        self.axis2.ticklabel_format(useOffset=False)
+                   
                 for y2_var in frame.y2.list.active:
-                    current2, = self.axis2.plot(
-                            data.df[x1_var].values,
-                            data.df[y2_var].values,
-                            marker=marker_y2,
-                            markevery=point_interval,
-                            alpha = y2_alpha,
-                            rasterized=rasterized_option
-                            )
-                    self.axis2.set_xlim(data.df[x1_var].min(),data.df[x1_var].max())                    
-                    self.legendEntries2.append(current2)
-                    self.legendText2.append(y2_var.replace("'",''))
-                    lgd2 = self.axis2.legend(
-                            self.legendEntries2, 
-                            self.legendText2, 
-                            numpoints=1, 
-                            loc='upper right',
-                            prop={'size':legend_font_size}
-                            )
+                    update_y2_var(y2_var)
             else:
                 self.axis2.clear()
                 self.axis2.axis('off')
-                
-        else:
-            pass
-            self.axis.clear()
-            #self.axis2.clear() # remove all tics/labels
-        
 
-# these are the current frame limits in the canvas
+        else: # if no (single) appropriate x1_var is selected then clear
+                self.axis.clear()
+
+        # these are the current frame limits in the canvas
         x1_lims = self.axis.get_xlim()
         y1_lims = self.axis.get_ylim()
         y2_lims = self.axis2.get_ylim()
 
-# these are possible requests to set the limits coming from the "Set axis ranges" window
+        # these are possible requests to set the limits coming from the "Set axis ranges" window
         x1_min_input = axis_limits[0][0]
         x1_max_input = axis_limits[0][1]
         y1_min_input = axis_limits[1][0]
@@ -444,7 +514,6 @@ class CanvasPanel(wx.Panel):
             y2_max = "{0:.3g}".format(y2_lims[1])
             frame.y2_max.SetValue(y2_max)
 
-        self.axis.set_title(global_commit,fontdict={'fontsize': 8})
         self.axis2.patch.set_visible(False)
 
 
@@ -470,10 +539,12 @@ class CanvasPanel(wx.Panel):
             self.axis2.get_yaxis().set_ticks([])
 
         self.canvas.draw()
+        
+
 
 class FrameGenerator(wx.Frame):
  
-    def __init__(self, parent, id, title, data_object):
+    def __init__(self, parent, id, title, data_object_list):
         wx.Frame.__init__(self, parent, id, title, size=(-1,-1), pos=(-1,-1))
 
         menubar = wx.MenuBar()
@@ -492,12 +563,12 @@ class FrameGenerator(wx.Frame):
             self.frame_y_location = -50
             self.SetPosition((self.frame_x_location, self.frame_y_location))
 
-        self.data_object = data_object
+        self.data_object_list = data_objects
        
         container_panel_left = wx.Panel(self, -1)        
-        self.x1 = AxisPanel(container_panel_left, self.data_object, axis=0)
-        self.y1 = AxisPanel(container_panel_left, self.data_object, axis=1)
-        self.y2 = AxisPanel(container_panel_left, self.data_object, axis=2)
+        self.x1 = AxisPanel(container_panel_left, self.data_object_list, axis=0)
+        self.y1 = AxisPanel(container_panel_left, self.data_object_list, axis=1)
+        self.y2 = AxisPanel(container_panel_left, self.data_object_list, axis=2)
         
         vbox_left = wx.BoxSizer(wx.VERTICAL)
         vbox_left.Add(self.x1, proportion=1, flag=wx.EXPAND, border=1)
@@ -507,17 +578,6 @@ class FrameGenerator(wx.Frame):
         container_panel_left.SetSizer(vbox_left)
 
         container_panel_options = wx.Panel(self, -1)
-
-
-# change dataset feature
-        change_dataset_box = wx.StaticBox(container_panel_options, label='Archive integration', pos=(5, 200), size=(-1, -1))
-        change_dataset_sizer = wx.StaticBoxSizer(change_dataset_box, wx.VERTICAL)
-        self.change_dataset_button = change_dataset_button = wx.Button(container_panel_options, -1, 'Change dataset', size=(140, -1))       
-        
-        change_dataset_button.Bind(wx.EVT_BUTTON, self.start_refresh)
-        change_dataset_sizer.Add(change_dataset_button, proportion=0, flag=wx.ALL, border=1)
-
-        change_dataset_button.Bind(wx.EVT_BUTTON, self.change_dataset)
 
 # log scale settings
         set_log = wx.StaticBox(container_panel_options, label='Set log scale', pos=(5, 5), size=(120, 100))
@@ -556,19 +616,28 @@ class FrameGenerator(wx.Frame):
             
             self.tmp_txtctrl.SetWindowStyle(self.tmp_txtctrl.GetWindowStyle() | wx.TE_PROCESS_ENTER)
 
+        self.show_legend_box = wx.CheckBox(container_panel_options, label='Show legend', pos=(15, 20))
+        self.show_legend_box.SetValue(True)
         self.show_markers_box = wx.CheckBox(container_panel_options, label='Show markers', pos=(15, 20))
         self.show_markers_box.SetValue(True)
+        self.show_lines_box = wx.CheckBox(container_panel_options, label='Show lines', pos=(15, 20))
+        self.show_lines_box.SetValue(True)
+
         self.show_newtsteps_box = wx.CheckBox(container_panel_options, label='Show newtsteps', pos=(15, 20))
 
         set_point_interval_sizer.Add(self.point_interval_widget, proportion=0, flag=wx.ALL, border=1)
         set_point_interval_sizer.Add(self.show_markers_box, proportion=0, flag=wx.ALL, border=1)
+        set_point_interval_sizer.Add(self.show_lines_box, proportion=0, flag=wx.ALL, border=1)
+        set_point_interval_sizer.Add(self.show_legend_box, proportion=0, flag=wx.ALL, border=1)
         set_point_interval_sizer.Add(self.show_newtsteps_box, proportion=0, flag=wx.ALL, border=1)
 
         self.Bind( wx.EVT_SPINCTRL, self.OnSpin )
         if (operating_system == 'Darwin' and not old_wx_version):
             self.tmp_txtctrl.Bind(wx.EVT_TEXT_ENTER, self.OnSpin)
     
+        self.show_legend_box.Bind(wx.EVT_CHECKBOX, self.ShowLegend)
         self.show_markers_box.Bind(wx.EVT_CHECKBOX, self.ShowMarkers)
+        self.show_lines_box.Bind(wx.EVT_CHECKBOX, self.ShowLines)
         self.show_newtsteps_box.Bind(wx.EVT_CHECKBOX, self.ShowNewtsteps)
 
 # scale settings
@@ -684,7 +753,6 @@ class FrameGenerator(wx.Frame):
 
 
         vbox_options = wx.BoxSizer(wx.VERTICAL)
-        vbox_options.Add(change_dataset_sizer, proportion=0, flag=0, border=1)
         vbox_options.Add(set_log_sizer, proportion=0, flag=wx.TOP, border=1)
         vbox_options.Add(set_point_interval_sizer, proportion=0, flag=wx.TOP, border=1)
         vbox_options.Add(set_ranges_sizer, proportion=0, flag=wx.TOP, border=1)
@@ -695,7 +763,7 @@ class FrameGenerator(wx.Frame):
         container_panel_options.SetSizer(vbox_options)
 
         container_panel_right = wx.Panel(self, -1)
-        self.plot = CanvasPanel(container_panel_right)                                      
+        self.plot = CanvasPanel(container_panel_right, self.data_object_list)                                      
 
         vbox_right = wx.BoxSizer(wx.VERTICAL)
         vbox_right.Add(self.plot, proportion=1, flag=wx.EXPAND, border=1)
@@ -758,8 +826,17 @@ class FrameGenerator(wx.Frame):
         self.call_plot_upate()
 
     def ShowMarkers(self, event):
-        data.show_markers = self.show_markers_box.GetValue()
+        Data.show_markers = self.show_markers_box.GetValue() # modify class attribute
         self.call_plot_upate()
+
+    def ShowLines(self, event):
+        Data.show_lines = self.show_lines_box.GetValue() # modify class attribute
+        self.call_plot_upate()
+
+    def ShowLegend(self, event):
+        Data.show_legend = self.show_legend_box.GetValue() # modify class attribute
+        self.call_plot_upate()
+
 
     def Onx1Min(self, event):
         value = float(self.x1_min.GetValue())
@@ -863,30 +940,23 @@ class FrameGenerator(wx.Frame):
         self.block = 1
 
     def updateDisplay(self, msg):
-        global global_commit
 
         t = msg.data
         if (isinstance(t, int) and not self.block):
             # if we receive an integer message then reload
             # re-read the data
-            try:
-                self.data_object.step_file = open(self.data_object.step_file_path)
-                self.data_object.df=pd.read_csv(self.data_object.step_file, comment='#', **read_csv_options)[1:]
-                # convert all but header labels to float values
-                self.data_object.df = self.data_object.df.astype(float)
-                self.data_object.step_file.close()
 
-                if (global_commit):
-                    path = os.path.join(run_archive,global_commit,'output','output_step.csv')
-                    self.data_object.df=pd.read_csv(path, comment='#', **read_csv_options)[1:]
-                else:
-                    self.data_object.df=pd.read_csv('output/output_step.csv', comment='#', **read_csv_options)[1:]
-                self.data_object.df = self.data_object.df.astype(float)
-                self.call_plot_upate()
+            try:
+                for data_object in self.data_object_list:
+                    data_object.step_file = open(data_object.step_file_path)
+                    data_object.df=pd.read_csv(data_object.step_file, comment='#', **data_object.read_csv_options)[1:]
+                    # convert all but header labels to float values
+                    data_object.df = data_object.df.astype(float)
+                    data_object.step_file.close()
+                    data_object.df = data_object.df.astype(float)
+                self.call_plot_upate()                    
             except:
                 pass
-                #sys.exit('ERROR: output/output_step.csv does not exist') 
-
         else:
             # if we receive a non-integer message then refresh thread will have stopped
             #self.call_plot_upate()
@@ -945,198 +1015,11 @@ class FrameGenerator(wx.Frame):
         
         return command
 
-    def change_dataset(self, event):
-        self.selector = DatasetSelection()
-        self.selector.Show()
-    
     def OnQuit(self, event):
         frame.selector.Close() 
         frame.selector.Destroy() 
         self.Close()
         self.Destroy()
-
-class DatasetSelection(wx.Frame):
-     def __init__(self):
-          wx.Frame.__init__(self, None, title="Dataset selection", size=(1350,400))
-          if (len(frame.monitor_sizes) > 1):
-              self.SetPosition((frame.frame_x_location, frame.frame_y_location))
-          container_panel_left = wx.Panel(self, -1)
-          self.available = DataSelectPanel(container_panel_left, axis=0)
-          vbox_left = wx.BoxSizer(wx.VERTICAL)
-          vbox_left.Add(self.available, proportion=1, flag=wx.EXPAND, border=1)
-          container_panel_left.SetSizer(vbox_left)
-
-class DataSelectPanel(wx.Panel, listmix.ColumnSorterMixin):
-
-    def __init__(self, parent, axis):
-
-        wx.Panel.__init__( self, parent=parent, id=wx.ID_ANY )
-        self.archive_data = {}
-        self.archive_data_for_column_sorting = {}
-        self.axis = axis
-        self.create()
-        self.get_archive_data()
-        self.populateList()
-        #self.itemDataMap = self.archive_data
-        self.itemDataMap = self.archive_data_for_column_sorting #enable sorting by unix timestamp
-        listmix.ColumnSorterMixin.__init__(self, 7)
-        self.Bind(wx.EVT_LIST_COL_CLICK, self.OnColClick, self.list)
-        self.SortListItems(col=3, ascending=0) # here we set the default sort by ascending descending time, i.e. column 3
-        
-        self.SetSizer(self.sizer)
-        self.SetAutoLayout( True )
-
-    def create(self):
-        self.sizer = wx.BoxSizer( wx.VERTICAL )
-        self.list = SingleSelectListCtrl( self, wx.ID_ANY, axis=self.axis, style=wx.LC_REPORT
-                             | wx.BORDER_NONE
-                             | wx.LC_SINGLE_SEL
-                             | wx.LC_SORT_ASCENDING, )
-
-        self.sizer.Add(self.list, 1, wx.EXPAND)
-
-    def get_archive_data(self):
-        available = next(os.walk(run_archive))[1]
-
-        # don't show stash storage in the dialogue box
-        for entry in available:
-            if re.match(r'stash_storage', entry): #re.match matches from start of string
-                available.remove(entry)
-
-        # make the data array first
-        for (i, simulation) in enumerate(available):
-            
-            commit_message = os.popen(
-                    "git log --format=%B -n 1 {0} | head -1".format(simulation)
-                    ).read()
-            commit_message = commit_message.replace('\n','')
-           
-            note = os.popen(
-                    "git log --no-walk --oneline --show-notes=track {0} 2>/dev/null | awk '/Notes \(track\)/{{getline; print}}'".format(simulation)
-                    ).read()
-            note = note.replace('\n','')
-            note = note.lstrip()
-
-            relative_time = os.popen(
-                    "git show -s --format='%cr' {0}".format(simulation)
-                    ).read()
-            relative_time = relative_time.replace('\n','')
-
-            unix_timestamp = os.popen(
-                    "git show -s --format='%at' {0}".format(simulation)
-                    ).read()
-            unix_timestamp = unix_timestamp.replace('\n','')
-
-            path_scr = os.path.join(run_archive, simulation, 'output', 'output.scr')
-            path_csv = os.path.join(run_archive, simulation, 'output', 'output_step.csv')
-
-            timestep_max = ''
-            
-            if (os.path.isfile(path_scr) and os.path.isfile(path_csv)):
-                tail_scr = os.popen(
-                    "tail -10 {0}".format(path_scr)
-                    ).read()
-                tail_scr.rstrip()
-
-                head_scr = os.popen(
-                        "head -3 {0}".format(path_scr)
-                        ).read()
-                head_scr.rstrip()
-
-                tail_csv = os.popen(
-                    "tail -1 {0}".format(path_csv)
-                    ).read()
-                tail_csv.rstrip()
-
-                head_csv = os.popen(
-                    "head -15 {0}".format(path_csv)
-                    ).read()
-                head_csv.rstrip()
-
-                match = re.search( r'WARNING: the simulation was stopped prematurely by the user using a stop file', tail_scr)
-                if (match):
-                    status = 'killed'
-                else:
-                    status = "--"
-
-                match = re.search( r'ERROR: there was an error in one of the solver routines', tail_scr)
-                if (match):
-                    status = 'convergence error'
-
-                match = re.search( r'SUCCESS: the simulation finished gracefully', tail_scr)
-                if (match):
-                    status = 'completed'
-
-                match = re.search( r'total wall time = (.*): .*total cpu time = (.*)', tail_scr)
-                if (match):
-                    wall_time = match.group(1).lstrip().rstrip()
-                    cpu_time = match.group(2).lstrip().rstrip()
-                    wall_time_output = "{0:.1f}".format(float(wall_time)/60.0/60.0)
-                    cpu_time_output = "{0:.1f}".format(float(cpu_time)/60.0/60.0)
-                else:
-                    wall_time_output = "--"
-                    cpu_time_output = "--"
-                
-                match = re.search( r'(\d+) threads in use', head_scr)
-                if (match):
-                    threads = match.group(1)
-                    thread_count = threads
-                else:
-                    thread_count = "1"
-
-
-                timestep_present = re.search(r'<timestep>', head_csv)
-                if (timestep_present):
-                    timestep_max = tail_csv.split(',')[0]
-
-            else:
-                status = ''
-                wall_time_output = ''
-                cpu_time_output = ''
-                thread_count = ''
-                timestep_max = ''
-
-            self.archive_data.update({i: (simulation, commit_message, note, relative_time, status, timestep_max, wall_time_output, cpu_time_output, thread_count)})
-            self.archive_data_for_column_sorting.update({i: (simulation, commit_message, note, unix_timestamp, status, timestep_max, wall_time_output, cpu_time_output, thread_count)})
-
-    def populateList(self):
-        self.list.InsertColumn(0, 'commit id', width=150)
-        self.list.InsertColumn(1, 'commit message', width=150)
-        self.list.InsertColumn(2, 'track notes', width=150)
-        self.list.InsertColumn(3, 'relative time', width=150)
-        self.list.InsertColumn(4, 'status', width=150)
-        self.list.InsertColumn(5, 'timestep max', width=150)
-        self.list.InsertColumn(6, 'total wall time (hr)', width=150)
-        self.list.InsertColumn(7, 'total cpu time (hr)', width=150)
-        self.list.InsertColumn(8, 'threads', width=150)
-
-        items = self.archive_data.items()
-
-        index = 0
-        for key, data in items:
-            self.list.InsertStringItem(index, data[0])           
-            self.list.SetStringItem(index, 1, data[1])
-            self.list.SetStringItem(index, 2, data[2])
-            self.list.SetStringItem(index, 3, data[3])
-            self.list.SetStringItem(index, 4, data[4])
-            self.list.SetStringItem(index, 5, data[5])
-            self.list.SetStringItem(index, 6, data[6])
-            self.list.SetStringItem(index, 7, data[7])
-            self.list.SetStringItem(index, 8, data[8])
-            self.list.SetItemData(index, key)
-            index += 1
-        self.list.SetColumnWidth( 0, wx.LIST_AUTOSIZE ) 
-        self.list.SetColumnWidth( 1, wx.LIST_AUTOSIZE ) 
-        self.list.SetColumnWidth( 4, wx.LIST_AUTOSIZE ) 
-   
-    def GetListCtrl(self):
-        return self.list
- 
-    def OnColClick(self, event):
-        event.Skip()
-        pass
-
-
 
 class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
 
@@ -1152,12 +1035,7 @@ class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
         self.cached_y2_active = frame.y2.list.active
 
     def on_activation(self, event):
-        global global_commit
         index = event.GetIndex()
-        item = frame.selector.available.list.GetItem(index,col=0) # col corresponds to the column where the commits ids are
-
-        commit_string = item.GetText()
-        path = os.path.join('.archive',commit_string,'output','output_step.csv')
 
         if (not (os.path.isfile(path))):
             wx.MessageBox('output_step.csv does not yet exist in {}'.format(path), 'Info', 
@@ -1171,13 +1049,6 @@ class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
             for item in frame.y2.list.active:
                 frame.y2.list.CheckItem(data.inverted[item]-1, False)
             
-            
-            global_commit = commit_string
-    
-            # change plot title
-    
-            data.change_dataset(path)
-    
     # stop any refreshing
             frame.force_stop_refresh()
     
@@ -1202,7 +1073,7 @@ class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
             frame.y2.run_set_count()
 
 
-    # if the previouosly checked variable is present in the newly loaded dataset, then check it
+    # if the previously checked variable is present in the newly loaded dataset, then check it
             for old_var in self.cached_x1_active:
                 if old_var in frame.x1.list.ordered_variables:
                     frame.x1.list.CheckItem(data.inverted[old_var]-1, True)
@@ -1229,93 +1100,185 @@ if __name__ == "__main__":
     this_script = sys.argv[0]
 
     parser = argparse.ArgumentParser(description="Plot script for output_step.csv files")
-    parser.add_argument("step_file", nargs='?', default=None, help="output_step.csv location (relative or absolute path)")
+    parser.add_argument("source", nargs='*', default=None, help="Path to data file/s, or path to data directory/s containing file. Note you can specify multiple paths and wildcard expressions")
     parser.add_argument("-s","--show", 
             help='instructions regarding variables to show, example: ./plot output/output_step.csv -s "<timestep>:<t>,<dt>:<newtstep>" '
             )    
+    parser.add_argument("-b","--batcher", action="store_true", default=False, 
+            help='batcher mode: load batch_data.csv files instead of output_step.csv files'
+            ) 
     args = parser.parse_args()
 
     # check if step_file was specified in command line arguments
     myargs = vars(args)
-    # if a step_file was specified then we need to check whether it exists
-    if (myargs['step_file'] is not None):
-        load_blank = 0        
-        target_from_command_line = args.step_file
-        match = re.search('output_step.csv',target_from_command_line)
-        if match:
-            to_test = os.path.join(target_from_command_line)
-            if (os.path.isfile(to_test)):
-                print 'INFO: loading {}'.format(target_from_command_line)
-                specified_step_file = target_from_command_line
-            else:
-                print "INFO: Nothing to plot, this is where I looked:\n\t./{0}".format(to_test)
-                sys.exit()
-        else:
-            to_test = os.path.join(target_from_command_line,'output_step.csv')
-            if (os.path.isfile(to_test)):
-                specified_step_file = to_test
-                print "INFO: loading ./{}".format(specified_step_file)
-            else:
-                print "INFO: Nothing to plot, this is where I looked:\n\t./{0}".format(to_test)
-                sys.exit()
 
-    # if a step_file wasn't specified then we check for existence of ./output/output_step.csv or even ./output_step.csv
-    elif (myargs['step_file'] is None):
-        default_data = 'output/output_step.csv'
+    
+    def contains_strings(line):
+        if args.batcher:
+            if(re.match(r'# run', line)):
+                return 1
+            else:
+                return 0
+        else:
+            if(re.match(r'#', line)):
+                return 0
+            else:
+                return 1
+
+    def set_csv_options(reference_file):
+        with open(reference_file) as f:
+            for line in f:
+                if contains_strings(line):
+                    if line[-2] == "\'": # look for the last character, note [-1] will be \n
+                        found_quotechar = "'" # set csv quotechar to single quote
+                    else:
+                        found_quotechar = '"' # set csv quotechar to double quote
+                    break
+        f.close() # might be redundant
+        return {'quotechar':found_quotechar, 'low_memory':False}
+
+    def find_step_files(path):
+        csv_list = []
+        for root, dirs, files in os.walk(path):
+                for file in files:
+                    if file.endswith("output_step.csv"):
+                        csv_list.append(os.path.join(root, file))
+        return csv_list
+
+    def find_batch_data_files(path):
+        csv_list = []
+        for root, dirs, files in os.walk(path):
+                for f in files:
+                    if f.endswith("batch_data.csv"):
+                        csv_list.append(os.path.join(root, f))
+        return csv_list
+    
+    def natural_sort_key(s, _nsre=re.compile('([0-9]+)')):
+        return [int(text) if text.isdigit() else text.lower()
+                for text in re.split(_nsre, s)]    
+
+    data_files_to_show = [] # list of strings that are paths to data files
+    data_objects = [] # the actual Data instances corresponding to these strings
+    target_list = myargs['source'] # strings comming in from the command line
+
+    found_step_file = False
+    found_batch_data_file = False
+
+    for item in target_list:
+        match_step = re.search(r'output_step.csv', item)
+        match_batch = re.search(r'batch_data.csv', item)
+        if match_batch:
+            found_batch_data_file = True
+        if match_step:
+            found_step_file = True
+    if (found_step_file and found_batch_data_file):
+        print "ERROR: not possible to show output_step.csv and batch_data.csv simulaneously"
+        sys.exit()
+    
+    if args.batcher and found_step_file:
+        print "ERROR: -b, --batcher option cannot be used to show output_step.csv files"
+        sys.exit()
+
+    if (not args.batcher) and found_batch_data_file:
+        print "ERROR: use -b, --batcher option if you want to show batch_data.csv files"
+        sys.exit()
+
+    if target_list: # directories were specified from command line
+        load_blank = 0        
+        targets_from_command_line = args.source
+
+        for target in targets_from_command_line:
+            
+            if args.batcher:
+                match = re.search(r'batch_data.csv$',target)
+            else:
+                match = re.search(r'output_step.csv$',target)
+
+            if match: # path to csv file has been specified
+                to_test = os.path.join(target)
+                if (os.path.isfile(to_test)):
+                    print 'INFO: loading {}'.format(target)
+                    data_files_to_show.append(target)
+                    
+                else:
+                    print "ERROR: Nothing to plot, this is where I looked:\n\t./{0}".format(to_test)
+                    sys.exit()
+            else: # path to a directory has been specified
+                if os.path.isdir(target):
+                    print "INFO: searching recursively for all files in ./{}".format(target)
+                if args.batcher:        
+                   data_files = find_batch_data_files(target)
+                else:
+                   data_files = find_step_files(target)
+                data_files = sorted(data_files, key=natural_sort_key)
+                if data_files:
+                    print "INFO: loading the following from ./{}".format(target) 
+                    for data_file in data_files:
+                        print "\t./{}".format(data_file)
+                    data_files_to_show.extend(data_files)
+                elif os.path.isdir(target):
+                    print "INFO: no files found in ./{}".format(target)
+
+    else: # no directories were specified at command line, use default search for data files
+        if args.batcher:
+            default_data = 'batcher_output/batch_data.csv'
+        else:
+            default_data = 'output/output_step.csv'
         if (os.path.isfile(default_data)):
             load_blank = 0
-            specified_step_file = default_data
             print "INFO: loading {}".format(default_data)
+            data_files_to_show.append(default_data)
         else:
-            local_step_file='output_step.csv'
-            if (os.path.isfile(local_step_file)):
-                load_blank = 0
-                specified_step_file = local_step_file
-                print "INFO: loading ./{}".format(local_step_file)
+            if args.batcher:
+                local_data_file='batch_data.csv'
             else:
-                specified_step_file = 'blank_csv' # as a last resort
-                print "INFO: Nothing to plot, this is where I looked:\n\t./{0}\n\t./output/{0}".format(local_step_file)
+                local_data_file='output_step.csv'
+            if (os.path.isfile(local_data_file)):
+                load_blank = 0
+                print "INFO: loading ./{}".format(local_data_file)
+                data_files_to_show.append(local_data_file)
+            else:
+                specified_data_file = 'blank_csv' # as a last resort
+                print "INFO: Nothing to plot, this is where I looked:\n\t./{0}\n\t./output/{0}".format(local_data_file)
                 sys.exit() # NOTE if this line is removed, then a dummy csv file is loaded
 
-    # figure out whether single or double quotes are used in csv file
-    def contains_data(line):
-        if(re.match(r'#', line)):
-            return 0
+    for data_file in data_files_to_show:
+        load_blank = 0
+        # figure out whether single or double quotes are used in csv file
+        read_csv_options = set_csv_options(data_file)
+        if args.batcher:
+            data = Data(data_file, summary_file=True)
         else:
-            return 1
-    with open(specified_step_file) as step_file:
-        for line in step_file:
-            if contains_data(line):
-                if line[0] == "\'":
-                    found_quotechar = "'" # set csv quotechar to single quote
-                else:
-                    found_quotechar = '"' # set csv quotechar to double quote
-                break
-    step_file.close()
+            data = Data(data_file)
+        data.path_tag = os.path.dirname(data_file)
+        data.read_csv_options = set_csv_options(data_file) # keep a copy so that refresh works, note global read_csv_options got used on instantiation
+        if data.converged_data_present:
+            data_objects.append(data) # only one object in the list as we're not using batcher mode
 
-    read_csv_options = {'quotechar':found_quotechar, 'low_memory':False}
-    
-    data = Data(specified_step_file)
     app = wx.App(False)
-    
     directory_name = os.path.basename(os.getcwd())
-    frame = FrameGenerator(None, -1, title=directory_name, data_object=data)
-
-    
-    if args.show:
-    # show variables based on command line arguments
+    frame = FrameGenerator(None, -1, title=directory_name, data_object_list=data_objects)
+ 
+    if args.show: # show variables based on command line arguments
+        data = data_objects[0]
         print "INFO: showing variables based upon {}".format(args.show)
         axis_strings = args.show.split(":")
-
         n_specified_axes=len(axis_strings)
         for i, axis in enumerate(axis_strings):
-            variables = re.split("(?<=[>]),",axis) # use a regex look behind, otherwise eg variable <var[l=1,r=2]> would get split
+            if args.batcher:
+                variables = re.split(",",axis) # batch data args don't necessarily have angled bracket
+            else:
+                variables = re.split("(?<=[>]),",axis) # use a regex look behind, otherwise eg variable <var[l=1,r=2]> would get split
             for var in variables:
                 if var: # deals with "<timestep>::<t>" type show string
                     try:
                         if (i==0 and n_specified_axes==1):
                             # show string is "<var1>,<var2>", so default to showing <timestep> on x1 axis, and the specified variables on the y1 axis
-                            frame.x1.list.CheckItem(data.inverted['<timestep>']-1, True)
+                            if args.batcher:
+                                frame.x1.list.CheckItem(data.inverted["run"]-1, True)
+                            else:
+                                frame.x1.list.CheckItem(data.inverted["<timestep>"]-1, True)
+
                             frame.y1.list.CheckItem(data.inverted[var]-1, True)
                         if (i==0 and n_specified_axes>1):
                             frame.x1.list.CheckItem(data.inverted[var]-1, True)
@@ -1324,21 +1287,24 @@ if __name__ == "__main__":
                         elif i==2:
                             frame.y2.list.CheckItem(data.inverted[var]-1, True)
                     except:
-                        sys.exit("{} does not contain variable {}".format(specified_step_file,var))   
+                        pass
+                        #sys.exit("{} does not contain variable {}".format(specified_step_file,var))   
 
-    # if nothing was requested to be shown, then only leave timestep showing on opening
-    else:
-        # This will select '<timestep>' as default x1 axis variable (if it exists)
-        # change the tmp_variable line below to set the default variable (note, only one can be chosen)
+    else: 
+    # no variables requested, only leave <timestep> (or run number) showing
+    # This will select '<timestep>' as default x1 axis variable (if it exists)
+    # change the tmp_variable line below to set the default variable (note, only one can be chosen)
+        if args.batcher:
+            tmp_variable = "run"
+        else: 
+            tmp_variable = "<timestep>"
         step = 0
         if (step == 0):
             try:
-                tmp_variable = "<timestep>"
                 frame.x1.list.CheckItem(data.inverted[tmp_variable]-1, True)
             except:
-                sys.exit("{} does not contain <timestep> variable\n{} only works for transient simulation data".format(specified_step_file,this_script))
+                sys.exit("Variable {} not available".format(tmp_variable))
             step+=1
-    
 
     frame.Show()
 
