@@ -4,7 +4,8 @@ use warnings;
  
 use Exporter qw(import);
  
-our @EXPORT_OK = qw(case_setup output_setup);
+our @EXPORT_OK = qw(case_setup output_setup $parallel);
+our $parallel = 0; # default to run arb jobs in series
 
 ###########################################################################################
 # within this subroutine you need to setup the case array of hashes
@@ -71,6 +72,7 @@ sub output_setup {
     "itotal",
     "idomain",
     "cputime",
+    "dimensions",
     "walltime",
     "kernel_elements",
     "success",
