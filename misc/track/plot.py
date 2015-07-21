@@ -142,21 +142,30 @@ class Data():
         if (load_blank):
             self.df=pd.read_csv(blank_csv, comment='#')[1:]
         else:
+            # batch_data.csv files are small, read into string and replace midline
+            # '#' comment characters that are used in <<comment>> replacements within arb
             if self.summary_file:
+                # store in string
                 with open(self.step_file_path, 'r') as f:
-                    header = StringIO(f.readline().lstrip('# ')) # remove "# run" comment
-                    df_header = pd.read_csv(header)
-                    f.close()
-                filtered = []
-                for item in df_header.columns:
-                    filtered.append(item.rstrip('\"').lstrip(' \"'))
+                    data=f.read()
+                data = re.sub('# run', '"run"', data)
+                data = re.sub(re.compile(r'(?<!^)#',re.MULTILINE),'NA', data) # replace all non-comment hashes with NA, this is an artifact of using eg R "<<varcomment>>" W "#" in arb
+                ready_for_input = StringIO(data)
+
                 # assemble data frame 
                 try:
-                    self.df = pd.read_csv(self.step_file_path, skiprows=1, header=None, comment='#')
+                    self.df = pd.read_csv(ready_for_input, comment='#')
                 except:
+                    sys.exit("ERROR: problem opening {}".format(self.step_file_path))
+                if self.df.empty:
                     print "INFO: {} contains no converged data".format(self.step_file_path)
                     self.converged_data_present = False
                     return # leave early, we won't do anything else with the data is converged_data_present is False
+
+                filtered = []
+                for item in self.df.columns:
+                    filtered.append(item.rstrip('\"').lstrip(' \"'))
+
                 self.df.columns = filtered
                 self.df.sort(['run'],inplace=True) # sort by run with parallel jobs are out of order
             else:
@@ -1159,42 +1168,19 @@ if __name__ == "__main__":
 
     data_files_to_show = [] # list of strings that are paths to data files
     data_objects = [] # the actual Data instances corresponding to these strings
-    target_list = myargs['source'] # strings comming in from the command line
+    target_list = myargs['source'] # strings coming in from the command line
 
     found_step_file = False
     found_batch_data_file = False
-
-    for item in target_list:
-        match_step = re.search(r'output_step.csv', item)
-        match_batch = re.search(r'batch_data.csv', item)
-        if match_batch:
-            found_batch_data_file = True
-        if match_step:
-            found_step_file = True
-    if (found_step_file and found_batch_data_file):
-        print "ERROR: not possible to show output_step.csv and batch_data.csv simulaneously"
-        sys.exit()
-    
-    if args.batcher and found_step_file:
-        print "ERROR: -b, --batcher option cannot be used to show output_step.csv files"
-        sys.exit()
-
-    if (not args.batcher) and found_batch_data_file:
-        print "ERROR: use -b, --batcher option if you want to show batch_data.csv files"
-        sys.exit()
 
     if target_list: # directories were specified from command line
         load_blank = 0        
         targets_from_command_line = args.source
 
         for target in targets_from_command_line:
-            
-            if args.batcher:
-                match = re.search(r'batch_data.csv$',target)
-            else:
-                match = re.search(r'output_step.csv$',target)
-
-            if match: # path to csv file has been specified
+            match_batch = re.search(r'batch_data.csv$',target)
+            match_step = re.search(r'output_step.csv$',target)
+            if (args.batcher and match_batch) or (not args.batcher and match_step): # path to csv file has been specified
                 to_test = os.path.join(target)
                 if (os.path.isfile(to_test)):
                     print 'INFO: loading {}'.format(target)
@@ -1255,9 +1241,12 @@ if __name__ == "__main__":
         if data.converged_data_present:
             data_objects.append(data) # only one object in the list as we're not using batcher mode
 
-    app = wx.App(False)
-    directory_name = os.path.basename(os.getcwd())
-    frame = FrameGenerator(None, -1, title=directory_name, data_object_list=data_objects)
+    if data_objects:
+        app = wx.App(False)
+        directory_name = os.path.basename(os.getcwd())
+        frame = FrameGenerator(None, -1, title=directory_name, data_object_list=data_objects)
+    else:
+        sys.exit("ERROR: no valid data to show")
  
     if args.show: # show variables based on command line arguments
         data = data_objects[0]
