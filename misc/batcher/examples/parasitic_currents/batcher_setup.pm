@@ -72,6 +72,7 @@ sub output_setup {
     "itotal",
     "idomain",
     "cputime",
+    "dimensions",
     "walltime",
     "kernel_elements",
     "success",
