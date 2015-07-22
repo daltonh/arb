@@ -247,7 +247,9 @@ sub error_stop {
 #-------------------------------------------------------------------------------
 sub copy_back_input_files {
   use File::Copy qw(copy);
+  print "DEBUG: running copy_back_input_files\n";
   foreach my $filename (bsd_glob("*.arb"),bsd_glob("*.geo"),bsd_glob("*.msh"),bsd_glob("*.pm")) {
+    print "DEBUG: deleting $filename\n";
     unlink($filename) or warn "BATCHER WARNING: could not delete $filename from working directory\n";
   }
   foreach my $filename (bsd_glob("$input_dir/*")) {
@@ -314,9 +316,9 @@ sub arbthread {
       if ($line =~ /^SUCCESS: the simulation finished gracefully/) { $output{"success"} = 1; }
     }
     close(INPUT);
-    print "BATCHER INFO: extracted data from output/output.scr\n";
+    print "BATCHER INFO: extracted data from $scr_location\n";
   } else {
-    print "BATCHER WARNING: file output/output.scr not found\n";
+    print "BATCHER WARNING: file $scr_location not found\n";
   }
 
   my $stat_location = "output/output.stat";
@@ -335,9 +337,9 @@ sub arbthread {
       }
     }
     close(INPUT);
-    print "BATCHER INFO: extracted data from output/output.stat\n";
+    print "BATCHER INFO: extracted data from $stat_location\n";
   } else {
-    print "BATCHER WARNING: file output/output.stat not found\n";
+    print "BATCHER WARNING: file $stat_location not found\n";
   }
 
   { 
@@ -380,10 +382,27 @@ sub arbthread {
     }
   }
 
+   my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/convergence_details.txt", "tmp/setup/unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt");
+   if ($parallel) {
+     my @output_msh_files = bsd_glob("$run_record_dir/output/output*.msh");
+     foreach my $item (@output_msh_files) {
+       $item =~ s/$run_record_dir\///g;
+     }
+     push(@output_search, @output_msh_files);
+   } else {
+     push(@output_search, bsd_glob("output/output*.msh"));
+   }
+
  # save all output files that are present, including msh files
-   for my $output_file ("output/output.stat", "output/output.scr", "output/output_step.csv", bsd_glob("output/output*.msh"), "output/convergence_details.txt", "tmp/setup/unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt") {
+   for my $output_file (@output_search) {
      if ($parallel) { # parallel
+       print "DEBUG: testing to see if $run_record_dir/$output_file exists\n";
+       my $ls_command = "ls $run_record_dir/output";
+       print "DEBUG: running $ls_command\n";
+       system($ls_command);
        if (-e "$run_record_dir/$output_file") {
+         print "DEBUG: it does\n";
+         print "DEBUG: moving $run_record_dir/$output_file to $run_record_dir\n";
          move("$run_record_dir/$output_file",$run_record_dir) or error_stop("could not copy $run_record_dir/$output_file to run record directory $run_record_dir");
        } 
      } else { # series
