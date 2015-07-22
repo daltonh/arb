@@ -247,9 +247,7 @@ sub error_stop {
 #-------------------------------------------------------------------------------
 sub copy_back_input_files {
   use File::Copy qw(copy);
-  print "DEBUG: running copy_back_input_files\n";
   foreach my $filename (bsd_glob("*.arb"),bsd_glob("*.geo"),bsd_glob("*.msh"),bsd_glob("*.pm")) {
-    print "DEBUG: deleting $filename\n";
     unlink($filename) or warn "BATCHER WARNING: could not delete $filename from working directory\n";
   }
   foreach my $filename (bsd_glob("$input_dir/*")) {
@@ -396,12 +394,9 @@ sub arbthread {
  # save all output files that are present, including msh files
    for my $output_file (@output_search) {
      if ($parallel) { # parallel
-       print "DEBUG: testing to see if $run_record_dir/$output_file exists\n";
        my $ls_command = "ls $run_record_dir/output";
-       print "DEBUG: running $ls_command\n";
        system($ls_command);
        if (-e "$run_record_dir/$output_file") {
-         print "DEBUG: it does\n";
          print "DEBUG: moving $run_record_dir/$output_file to $run_record_dir\n";
          move("$run_record_dir/$output_file",$run_record_dir) or error_stop("could not copy $run_record_dir/$output_file to run record directory $run_record_dir");
        } 
