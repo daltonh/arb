@@ -739,7 +739,23 @@ do j = 1, jtotal
   else if (face(j)%dimensions == 0) then
     face(j)%area = 1.d0
     face(j)%x = node(face(j)%knode(1))%x
-    face(j)%norm(:,1) = face(j)%x - cell(face(j)%icell(1))%x ! NB icell(1) is neither a glued cell or a boundary cell, hence this one-sided definition
+! previously facenorm was based on the vector to the downcell
+!   face(j)%norm(:,1) = face(j)%x - cell(face(j)%icell(1))%x ! NB icell(1) is neither a glued cell or a boundary cell, hence this one-sided definition
+! now we set the orientation based on both cells that surround the point, including periodic and reflect glued boundaries
+    if (face(j)%glue_jface /= 0) then
+      if (face(j)%glue_reflect /= 0) then
+! a glued reflect face has a normal in the direction of the reflection
+        face(j)%norm(:,1) = 0
+        face(j)%norm(face(j)%glue_reflect,1) = face(j)%x(face(j)%glue_reflect) - cell(face(j)%icell(1))%x(face(j)%glue_reflect)
+      else
+! a periodic glued face has a normal based on both adjacent cells, noting that glued cell has a normal facing towards the glued face too
+        jglue = face(j)%glue_jface
+        face(j)%norm(:,1) = cell(face(jglue)%icell(1))%x - face(jglue)%x + face(j)%x - cell(face(j)%icell(1))%x
+      end if
+    else
+! under normal circumstances normal points from downcell to upcell
+      face(j)%norm(:,1) = cell(face(j)%icell(2))%x - cell(face(j)%icell(1))%x
+    end if
     call normalise_vector(face(j)%norm(:,1))
 ! from orthogonal vectors select one which has smallest dot product with first
     face(j)%norm(:,2) = [1.d0, 0.d0, 0.d0]
