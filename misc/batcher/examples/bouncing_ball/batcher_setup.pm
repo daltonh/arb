@@ -3,8 +3,13 @@ use strict;
 use warnings;
  
 use Exporter qw(import);
-our @EXPORT_OK = qw(case_setup output_setup $parallel);
+our @EXPORT_OK = qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name);
 our $parallel = 0; # default to run arb jobs in series
+our $pbs = 1; # whether to use job queueing system
+our $pbs_jobname = "example";
+our $pbs_walltime = '100:00:00';
+our $pbs_pmem = '60000mb';
+our $pbs_queue_name = 'batch';
 
 ###########################################################################################
 # within this subroutine you need to setup the case array of hashes
@@ -13,7 +18,7 @@ sub case_setup {
 # runs is an array (one element for each run) containing hashes in the format string -> substitution
 
   my @case=();
-  $parallel = 1; # run arb jobs in parallel
+  #$parallel = 1; # run arb jobs in parallel
 
 
   # now uses case hash which is specific to each run and can accept the following fields (all filenames accept glob patterns and now default to empty if not used):
