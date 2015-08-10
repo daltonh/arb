@@ -84,3 +84,41 @@ NONE_TRANSIENT <bounces[r=1]> [] "0" "<bounces>"
 NONE_CONDITION <bounce based stop condition> [] "<bounces>-<max_bounces>" stopcondition # stop the simulation when the maximum number of bounces has been reached
 
 #-------------------------------------------------------------------
+
+# this is an example of trigger based sampling
+
+INCLUDE_ROOT "general"
+# we sample variables when <trigger expression> first returns true
+# for example, here <z> is initially 1.5 and begins to decrease as the ball travels towards the wall
+# we want to sample certain variables when <z> first passes through 0.8, so we would set <trigger expression> to 
+# <z_threshold>-<z>, where <z_threshold> takes the value 0.8
+
+# create a trigger using the "base" namespace (use this if only one trigger is being used)
+#NONE_CONSTANT <z_threshold> 0.8 stepoutput
+#INCLUDE "trigger_create" R "<trigger_expression_base>" W "<z_threshold>-<z>"
+#INCLUDE "trigger_link" R "var" W "z" R "<occurrence_base>" W "2.d0" # inputs: <z>; outputs: <z_triggered_base>
+
+# alternatively, if multiple triggers are being used, give them each their own namespace by replacing "<base_" with "<foo_"
+NONE_CONSTANT <z_threshold_one> 0.8 stepoutput
+INCLUDE "trigger_create" R "<trigger_expression_base>" W "<z_threshold_one>-<z>" R "_base" "_one" # important, ensure that any namespace replacements occur last in this sequence of replacements
+INCLUDE "trigger_link" R "var" W "z" R "<occurrence_base>" W "1.d0" R "_base" W "_one" # store value for trigger in "one" namespace; inputs: <z>; outputs: <z_triggered_one>
+
+NONE_CONSTANT <z_threshold_two> 0.8 stepoutput
+INCLUDE "trigger_create" R "<trigger_expression_base>" W "<z_threshold_two>-<z>" R "_base" "_two" # important, ensure that any namespace replacements occur last in this sequence of replacements
+INCLUDE "trigger_link" R "var" W "z" R "<occurrence_base>" W "2.d0" R "_base" W "_two" # store value for trigger in "two" namespace; inputs: <z>; outputs: <z_triggered_two>
+
+#-------------------------------------------------------------------
+
+# this is an example of storing the minimum and maximum values of a none-centred variable over the course of a transient simulation
+
+# global max
+# inputs: <var> (an already defined none-centred variable)
+# inputs: "var" a name to give to newly created output variable
+# outputs: "<var_max>" (default)
+INCLUDE "series_nonemax" R "<var>" "<z>" R "var" W "z"
+
+# global min
+# inputs: <var> (an already defined none-centred variable)
+# inputs: "var" a name to give to newly created output variable
+# outputs: "<var_min>" (default)
+INCLUDE "series_nonemin" R "<var>" "<z>" R "var" W "z"
