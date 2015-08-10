@@ -1,0 +1,2 @@
+NONE_DERIVED <var_triggered_base> "noneif(<logical_base>-(<occurrence_base>-0.1),noneif((<occurrence_base>+0.1)-<logical_base>,noneif(abs(<logical_base>-<logical_base[r=1]>)-1.d-10,<var>,<var_triggered_base[r=1]>),<var_triggered_base[r=1]>),<var_triggered_base[r=1]>)" stepoutput
+NONE_TRANSIENT <var_triggered_base[r=1]> "0.d0" "<var_triggered_base>"

@@ -1,0 +1,6 @@
+NONE_DERIVED <trigger_base> "noneif(<trigger_expression_base>,1.d0,0.d0)"
+NONE_TRANSIENT <trigger_base[r=1]> "0.d0" "<trigger_base>"
+
+# if <trigger_base> changes sign over the course of the timestep, then increment <logical_base>
+NONE_DERIVED <logical_base> "cellif(abs(<trigger_base>-<trigger_base[r=1]>)-1e-10,<logical_base[r=1]>+1.d0,<logical_base[r=1]>)"
+NONE_TRANSIENT <logical_base[r=1]> "0.d0" "<logical_base>"
