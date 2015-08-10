@@ -115,10 +115,10 @@ INCLUDE "trigger_link" R "var" W "z" R "<occurrence_base>" W "2.d0" R "_base" W 
 # inputs: <var> (an already defined none-centred variable)
 # inputs: "var" a name to give to newly created output variable
 # outputs: "<var_max>" (default)
-INCLUDE "series_nonemax" R "<var>" "<z>" R "var" W "z"
+INCLUDE "series_nonemax" R "<var>" W "<z>" R "var" W "z"
 
 # global min
 # inputs: <var> (an already defined none-centred variable)
 # inputs: "var" a name to give to newly created output variable
 # outputs: "<var_min>" (default)
-INCLUDE "series_nonemin" R "<var>" "<z>" R "var" W "z"
+INCLUDE "series_nonemin" R "<var>" W "<z>" R "var" W "z"
