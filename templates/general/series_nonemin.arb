@@ -1,3 +1,3 @@
 NONE_LOCAL <var_decrement> "<var_min[r=1]>-<var>"
 NONE_DERIVED <var_min> "noneif(<var_decrement>,<var_min[r=1]>-<var_decrement>,<var_min[r=1]>)" stepoutput # decrement the var_min value only if we need to
-NONE_TRANSIENT <var_min[r=1]> "0.d0" "<var_min>"
+NONE_TRANSIENT <var_min[r=1]> "<var>" "<var_min>"
