@@ -1,6 +1,24 @@
-NONE_DERIVED <trigger_base> "noneif(<trigger_expression_base>,1.d0,0.d0)"
-NONE_TRANSIENT <trigger_base[r=1]> "0.d0" "<trigger_base>"
+# trigger_create
+#
+# usage:
+#
+# user input variables:
+# <trigger_expression>
+#     {<trigger}> will return true whenever <trigger_expression> changes sign between sequential time steps
+#
+# template variables:
+# {<trigger}>
+#     {<trigger}> will return true whenever <trigger_expression> changes sign between sequential time steps
+# {<trigger}_logical>
+#     {<trigger}_logical> stores the total number of times that <trigger_expression> has changed sign since the start of the simulation
+#
+# examples:
+#INCLUDE "trigger_create" R "<trigger_expression>" W "<z_threshold>-<z>"
+#INCLUDE "trigger_create" R "<trigger_expression>" W "<z_threshold>-<z>" R "<trigger" W "<trigger_z" # create a namespace called <trigger_z
 
-# if <trigger_base> changes sign over the course of the timestep, then increment <logical_base>
-NONE_DERIVED <logical_base> "cellif(abs(<trigger_base>-<trigger_base[r=1]>)-1e-10,<logical_base[r=1]>+1.d0,<logical_base[r=1]>)"
-NONE_TRANSIENT <logical_base[r=1]> "0.d0" "<logical_base>"
+NONE_DERIVED <trigger> "noneif(<trigger_expression>,1.d0,0.d0)"
+NONE_TRANSIENT <trigger[r=1]> "0.d0" "<trigger>"
+
+# if <trigger> changes sign over the course of the timestep, then increment <trigger_logical>
+NONE_DERIVED <trigger_logical> "cellif(abs(<trigger>-<trigger[r=1]>)-1e-10,<trigger_logical[r=1]>+1.d0,<trigger_logical[r=1]>)"
+NONE_TRANSIENT <trigger_logical[r=1]> "0.d0" "<trigger_logical>"

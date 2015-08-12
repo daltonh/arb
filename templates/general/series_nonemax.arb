@@ -1,3 +1,18 @@
-NONE_LOCAL <var_increment> "<var>-<var_max[r=1]>"
+# series_nonemax
+# max over entire timeseries
+# usage:
+#
+# user input variables:
+# <var_tracked>
+#     the name of the variable to track
+#
+# template variables:
+# {<var}_max> input,output
+#   stores the maximum value of <var_tracked> over the course of the simulation
+#
+# example
+#INCLUDE "series_nonemax" R "<var_tracked>" W "<z>" R "<var" W "<z"
+
+NONE_LOCAL <var_increment> "<var_tracked>-<var_max[r=1]>"
 NONE_DERIVED <var_max> "noneif(<var_increment>,<var_max[r=1]>+<var_increment>,<var_max[r=1]>)" stepoutput # increment the var_max value only if we need to
-NONE_TRANSIENT <var_max[r=1]> "<var>" "<var_max>" input,output
+NONE_TRANSIENT <var_max[r=1]> "<var_tracked>" "<var_max>" input,output
