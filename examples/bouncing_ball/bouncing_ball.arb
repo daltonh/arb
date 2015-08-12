@@ -93,32 +93,88 @@ INCLUDE_ROOT "general"
 # we want to sample certain variables when <z> first passes through 0.8, so we would set <trigger expression> to 
 # <z_threshold>-<z>, where <z_threshold> takes the value 0.8
 
-# create a trigger using the "base" namespace (use this if only one trigger is being used)
-#NONE_CONSTANT <z_threshold> 0.8 stepoutput
-#INCLUDE "trigger_create" R "<trigger_expression_base>" W "<z_threshold>-<z>"
-#INCLUDE "trigger_link" R "var" W "z" R "<occurrence_base>" W "2.d0" # inputs: <z>; outputs: <z_triggered_base>
+NONE_CONSTANT <z_threshold> 0.8 stepoutput
 
-# alternatively, if multiple triggers are being used, give them each their own namespace by replacing "<base_" with "<foo_"
-NONE_CONSTANT <z_threshold_one> 0.8 stepoutput
-INCLUDE "trigger_create" R "<trigger_expression_base>" W "<z_threshold_one>-<z>" R "_base" "_one" # important, ensure that any namespace replacements occur last in this sequence of replacements
-INCLUDE "trigger_link" R "var" W "z" R "<occurrence_base>" W "1.d0" R "_base" W "_one" # store value for trigger in "one" namespace; inputs: <z>; outputs: <z_triggered_one>
+# trigger_create
+#
+# usage:
+#
+# user input variables:
+# <trigger_expression>
+#     {<trigger}> will return true whenever <trigger_expression> changes sign between sequential time steps
+#
+# template variables:
+# {<trigger}>
+#     {<trigger}> will return true whenever <trigger_expression> changes sign between sequential time steps
+# {<trigger}_logical>
+#     {<trigger}_logical> stores the total number of times that <trigger_expression> has changed sign since the start of the simulation
+#
+# example:
+# here we create a trigger and name it as <trigger_z
+INCLUDE "trigger_create" R "<trigger_expression>" W "<z_threshold>-<z>" R "<trigger" W "<trigger_z" # create a namespace called <trigger_z
 
-NONE_CONSTANT <z_threshold_two> 0.8 stepoutput
-INCLUDE "trigger_create" R "<trigger_expression_base>" W "<z_threshold_two>-<z>" R "_base" "_two" # important, ensure that any namespace replacements occur last in this sequence of replacements
-INCLUDE "trigger_link" R "var" W "z" R "<occurrence_base>" W "2.d0" R "_base" W "_two" # store value for trigger in "two" namespace; inputs: <z>; outputs: <z_triggered_two>
+# trigger_link
+# link variables to a particular trigger
+#
+# usage:
+# 
+# user input variables:
+# <linked_variable_to_store>
+#      <linked_variable_to_store> will be stored in {<linked}> whenever {<trigger}> is activated
+# <linked_on_trigger_occurence>, none-centred integer
+#      store when {<trigger}> has been actived the number of times specified by <linked_on_trigger_occurence>
+#
+# template variables:
+# {<linked}> stepoutput
+#       the name of the stored output variable that is newly created
+# {<trigger}_logical>
+#       a reference to an existing trigger
+#
+# example:
+# here we link <z> to <trigger_z>, which was created above
+# we demonstrate the use of <linked_on_trigger_occurence> to store the values of <z> on the first and second activation of <trigger_z>
+# and name these values <z_triggered_one> and <z_triggered_two>, respectively
+INCLUDE "trigger_link" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "1.d0" R "<trigger" W "<trigger_z" R "<linked" W "<z_triggered_one" # use the <trigger_z namespace
+INCLUDE "trigger_link" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "2.d0" R "<trigger" W "<trigger_z" R "<linked" W "<z_triggered_two" # use the <trigger_z namespace
+
+# we can store the number of times <z> has passed through <z_threshold> by accessing the {<trigger}_logical> variable
+NONE_DERIVED <cumulative passes> "<trigger_z_logical>" stepoutput
+
+# alternative minimal example
+# here we create a trigger using it's default variable names
+# and link it to the variable <z>
+INCLUDE "trigger_create" R "<trigger_expression>" W "<z_threshold>-<z>"
+INCLUDE "trigger_link" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "1.d0"
 
 #-------------------------------------------------------------------
-
 # this is an example of storing the minimum and maximum values of a none-centred variable over the course of a transient simulation
 
-# global max
-# inputs: <var> (an already defined none-centred variable)
-# inputs: "var" a name to give to newly created output variable
-# outputs: "<var_max>" (default)
-INCLUDE "series_nonemax" R "<var>" W "<z>" R "var" W "z"
+# series_nonemax
+# max over entire timeseries
+# usage:
+#
+# user input variables:
+# <var_tracked>
+#     the name of the variable to track
+#
+# template variables:
+# {<var}_max> input,output
+#   stores the maximum value of <var_tracked> over the course of the simulation
+#
+# example
+INCLUDE "series_nonemax" R "<var_tracked>" W "<z>" R "<var" W "<z"
 
-# global min
-# inputs: <var> (an already defined none-centred variable)
-# inputs: "var" a name to give to newly created output variable
-# outputs: "<var_min>" (default)
-INCLUDE "series_nonemin" R "<var>" W "<z>" R "var" W "z"
+# series_nonemin
+# minimum over entire timeseries
+# usage:
+#
+# user input variables:
+# <var_tracked>
+#     the name of the variable to track
+#
+# template variables:
+# {<var}_min> input,output
+#   stores the minimum value of <var_tracked> over the course of the simulation
+#
+# example
+INCLUDE "series_nonemin" R "<var_tracked>" W "<z>" R "<var" W "<z"
