@@ -381,9 +381,9 @@ logical :: kernel_availability_nodegrad = .false.
 logical :: kernel_availability_nodeave = .false.
 
 ! code version details
-real, parameter :: version = 0.53 ! current version
+real, parameter :: version = 0.54 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
-character(len=100), parameter :: versionname = "flexible freddy"
+character(len=100), parameter :: versionname = "flexible freda"
 
 ! the following are default values for various parameters which can be altered here (and not via user input options)
 double precision, parameter :: limitertolerance = 1.d-10 ! (1.d-10) tolerance used when calculating advection gradient limiting - set to small positive number
