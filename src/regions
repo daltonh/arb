@@ -1,0 +1,23 @@
+general_module.f90:473:function region_number_from_name(name,centring,type,dimensions,creatable,existing)
+general_module.f90:478:integer :: region_number_from_name
+general_module.f90:488:region_number_from_name = 0 ! default is an error code
+general_module.f90:495:      region_number_from_name = n
+general_module.f90:502:if (region_number_from_name /= 0) then
+general_module.f90:505:    if (trim(region(region_number_from_name)%centring) /= ''.and. &
+general_module.f90:506:        centring /= region(region_number_from_name)%centring) then
+general_module.f90:508:      region_number_from_name = 0 ! set number to indicate error
+general_module.f90:513:    if (dimensions >= 0 .and. dimensions /= region(region_number_from_name)%dimensions) then
+general_module.f90:515:      region_number_from_name = 0 ! set number to indicate error
+general_module.f90:526:if (region_number_from_name == 0) then
+general_module.f90:547:  region_number_from_name = ubound(region,1)
+general_module.f90:550:  if (present(centring).and.trim(region(region_number_from_name)%centring) == '') then
+general_module.f90:552:    region(region_number_from_name)%centring = centring
+general_module.f90:554:  if (present(type).and.trim(region(region_number_from_name)%type) == '') then
+general_module.f90:556:    region(region_number_from_name)%type = type
+general_module.f90:558:  if (present(dimensions).and.region(region_number_from_name)%dimensions == -1) then
+general_module.f90:560:    region(region_number_from_name)%dimensions = dimensions
+general_module.f90:564:end function region_number_from_name
+
+gmesh_module.f90:1559:  region_number = region_number_from_name(name=gregion_name(n))
+setup_module.f90:1125:    region_number = region_number_from_name(name=region_name)
+setup_module.f90:1572:    glue_face(n)%region_number(m) = region_number_from_name(name=glue_face(n)%region(m))

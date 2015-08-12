@@ -76,7 +76,7 @@ subroutine newtsolver(ierror)
 ! solves equations using newton's method
 
 use general_module
-use equations_module
+use equation_module
 integer :: m, ierror, p, n, ns, merr, nserr, backstep
 double precision :: newtresold, lambda, varmax, vartmp, varave
 double precision :: active_lambdamin = 0.d0
@@ -98,8 +98,8 @@ if (lambda_previous_step > 0.d0.and.sticky_lambda) lambda = min(dfloat(2**sticky
 if (.false.) call find_sensitive_equation(varname='<n+>',icell=6447)
 
 ! save old unknown values as delphiold
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(n)
   do ns = 1, ubound(var(m)%funk,1)
     delphiold(var(m)%funk(ns)%pp(1)) = var(m)%funk(ns)%v ! as pp(1) is the sequential index of the unknown
   end do
@@ -132,8 +132,8 @@ merr = 0
 nserr = 0
 varmax = 0.d0
 varave = 0.d0
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(n)
   do ns = 1, ubound(var(m)%funk,1)
     p = p + 1
     if (.not.number_is_valid(delphi(p)).or.delphi(p)*lambdamin > var(m)%magnitude*normalised_variable_limit) then
@@ -230,23 +230,29 @@ back_loop: do ! entrance point for repeat steps
     read(*,*) lambda
   end if
 
+! call update_unknowns(initial=.false.,lambda=lambda)
 ! increment delvar changes to derived variables using possible backstepping
-  do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-    m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
-    do ns = 1, ubound(var(m)%funk,1)
-      p = var(m)%funk(ns)%pp(1)
-      var(m)%funk(ns)%v = delphiold(p) + lambda*delphi(p)
-    end do
-  end do
+! do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+!   m = var_list(var_list_number_unknown)%list(n)
+! TODO: place unknown dynamic region update in here too
+!   do ns = 1, ubound(var(m)%funk,1)
+!     p = var(m)%funk(ns)%pp(1)
+!     var(m)%funk(ns)%v = delphiold(p) + lambda*delphi(p)
+!   end do
+! end do
 
 ! update all vars/derivatives and calculate new newtres value
 
   if (debug) write(*,*) 'in newtsolver before update with ierror = ',ierror
 
   call time_process
-  call update_and_check_derived_and_equations(ierror=ierror)
-  call time_process(description='update and check derived and equations in newtsolve')
+  call update_and_check_unknowns(initial=.false.,lambda=lambda,ierror=ierror)
+  call time_process(description='update and check unknowns in newtsolve')
+  if (debug) write(*,*) 'in newtsolver after update and check unknowns: ierror = ',ierror
+
   call time_process
+  if (ierror == 0) call update_and_check_derived_and_equations(ierror=ierror)
+  call time_process(description='update and check derived and equations in newtsolve')
   if (debug) write(*,*) 'in newtsolver after update and check derived and equations: ierror = ',ierror
 
   if (ierror == 0) then
@@ -377,7 +383,7 @@ subroutine mainsolver(ierror)
 !  the fields (delphi) using newton's method
 
 use general_module
-use equations_module
+use equation_module
 use intel_pardiso_module
 use pardiso_module
 use hsl_ma28d_module
@@ -424,8 +430,8 @@ call time_process
 !if (debug_sparse) write(*,'(a)') 'sizing sparse matrix'
 n = ptotal
 nz = 0
-do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nn)
+do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nn)
   do ns = 1, ubound(var(m)%funk,1)
     nz = nz + var(m)%funk(ns)%ndv
   end do
@@ -450,8 +456,8 @@ normalisation_multiplier = 1.d0
 nz = 0
 ! loop through all equation lines
 p = 0
-do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nn)
+do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nn)
   if (normalise_matrix) normalisation_multiplier = 1.d0/var(m)%magnitude ! reciprocal of the equation magnitude, applied to all lhs and rhs elements
   if (debug) write(80,'(a,i8,a)') 'nn = ',nn,': equation = '//trim(var(m)%name)
   
@@ -642,8 +648,8 @@ if (ierror /= 0) then
     write(*,*) 'WARNING: error implies some type of singularity: there is probably something wrong with the equations, '// &
       'but perturbing solution and continuing regardless'
     pp = 0
-    do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-      m = var_list(var_list_number(centring="all",type="unknown"))%list(nn)
+    do nn = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+      m = var_list(var_list_number_unknown)%list(nn)
       do ns = 1, ubound(var(m)%funk,1)
         pp = pp + 1 ! should be faster than looking up pp from unknown
         delphi(pp) = var(m)%magnitude*min(newtres,1.d-1) ! perturb solution by a small proportion of each variable's magnitude
@@ -654,8 +660,8 @@ if (ierror /= 0) then
 else if (normalise_matrix) then
 ! if matrix was normalised then need to recover unnormalised delphis
   pp = 0
-  do nn = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-    m = var_list(var_list_number(centring="all",type="unknown"))%list(nn)
+  do nn = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+    m = var_list(var_list_number_unknown)%list(nn)
     do ns = 1, ubound(var(m)%funk,1)
       pp = pp + 1 ! should be faster than looking up pp from unknown
       delphi(pp) = delphi(pp)*var(m)%magnitude
@@ -695,7 +701,7 @@ subroutine residual(ierror)
 ! if a problem is found then ierror is set to 3 here
 
 use general_module
-use equations_module
+use equation_module
 double precision :: aatmp, aatmpmax
 integer :: ns, m, p, nserr, merr, nvar, ierror
 character(len=1000) :: formatline
@@ -711,8 +717,8 @@ nserr = 0
 merr = 0
 
 p = 0
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nvar)
+do nvar = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nvar)
   do ns = 1, ubound(var(m)%funk,1)
     p = p + 1
     aatmp = abs(var(m)%funk(ns)%v)/var(m)%magnitude
@@ -768,7 +774,7 @@ use general_module
 character(len=*) :: type ! variable type: constant, transient, unknown, derived, equation, output, condition, local
 integer :: ierror, n, p, pp, mm, ns, nvar, m, mmax, nsmax, mdermax, nsdermax, nsm, j, jj, i, ii
 double precision :: varmax, vartmp, dermax
-character(len=1000) :: formatline
+character(len=1000) :: formatline, error_string
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .false.
 logical, parameter :: derivative_details = .true. ! output the equation derivatives for the equation with the largest normalised error
@@ -914,7 +920,8 @@ if (convergence_details_file.and.mmax /= 0.and.nsmax /= 0.and.ierror == 0) then
         m = var_number_from_name("<q_f>")
         do jj = 1, ubound(cell(ijkvar(mmax,nsmax))%jface,1)
           j = cell(ijkvar(mmax,nsmax))%jface(jj)
-          ns = nsvar(m,j,"some rubbish")
+          error_string = "debugging"
+          ns = nsvar(m,j,error_string)
           write(fconverge,'(a,i10,a,g11.4)') trim(var(m)%centring)//" "//trim(var(m)%type)//" "//trim(var(m)%name)//" at j = ",j, &
             " has value = ",var(m)%funk(ns)%v
           do n = 1,var(m)%funk(ns)%ndv
@@ -933,7 +940,8 @@ if (convergence_details_file.and.mmax /= 0.and.nsmax /= 0.and.ierror == 0) then
 !       do ii = 1, ubound(cell(ijkvar(mmax,nsmax))%jface,1)+1 ! will pull out all adjacent surrounding cells including itself
         do ii = 1, ubound(cell(ijkvar(mmax,nsmax))%icell,1) ! will pull out all surrounding cells including itself
           i = cell(ijkvar(mmax,nsmax))%icell(ii)
-          ns = nsvar(m,i,"some rubbish")
+          error_string = "debugging"
+          ns = nsvar(m,i,error_string)
           write(fconverge,'(a,i10,a,g11.4)') trim(var(m)%centring)//" "//trim(var(m)%type)//" "//trim(var(m)%name)//" at i = ",i, &
             " has value = ",var(m)%funk(ns)%v
           do n = 1,var(m)%funk(ns)%ndv
@@ -987,26 +995,35 @@ ierror = 0
 first = .false.
 
 ! update order of magnitude of unknowns
-unknown_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(nvar)
+unknown_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(nvar)
   if (var(m)%magnitude < 0.d0) first = .true.
   if (.not.(var(m)%dynamic_magnitude.or.first)) cycle
   old_magnitude = var(m)%magnitude
-  if (rms_magnitude) then
-    var(m)%magnitude = sqrt(max(sum(var(m)%funk(:)%v**2)/dble(max(ubound(var(m)%funk,1),1)),0.d0))
+  if (var(m)%magnitude_constant > 0.and.first) then
+    var(m)%magnitude = abs(var(var(m)%magnitude_constant)%funk(1)%v)
+    write(*,'(a,g10.3)') 'INFO: found magnitude for unknown '//trim(var(m)%name)//' based on constant '// &
+      trim(var(var(m)%magnitude_constant)%name)//': magnitude = ',var(m)%magnitude
+    if (convergence_details_file) write(fconverge,'(a,g10.3)') &
+      'INFO: found magnitude for unknown '//trim(var(m)%name)//' based on constant '// &
+      trim(var(var(m)%magnitude_constant)%name)//': magnitude = ',var(m)%magnitude
   else
-    var(m)%magnitude = maxval(abs(var(m)%funk(:)%v))
-  end if
-  if (debug_sparse) write(*,'(2(a,g10.3))') 'unknown '//trim(var(m)%name)//': raw magnitude ',var(m)%magnitude, &
-    ': old_magnitude = ',old_magnitude
-  if (first) then
+    if (rms_magnitude) then
+      var(m)%magnitude = sqrt(max(sum(var(m)%funk(:)%v**2)/dble(max(ubound(var(m)%funk,1),1)),0.d0))
+    else
+      var(m)%magnitude = maxval(abs(var(m)%funk(:)%v))
+    end if
     write(*,'(a,g10.3)') 'INFO: found magnitude for unknown '//trim(var(m)%name)//' based on initial values: '// &
       'magnitude = ',var(m)%magnitude
     if (convergence_details_file) write(fconverge,'(a,g10.3)') &
       'INFO: found magnitude for unknown '//trim(var(m)%name)//' based on initial values: magnitude = ',var(m)%magnitude
-    if (var(m)%magnitude < error_magnitude) call error_stop("a zero magnitude was calculated for this variable based "// &
-      "upon its initial value.  Every unknown variable needs a finite order of magnitude.  Either initialise this "// &
-      "unknown with non-zero values, or set the magnitude for this explicitly via the option magnitude=value in "// &
+  end if
+  if (debug_sparse) write(*,'(2(a,g10.3))') 'unknown '//trim(var(m)%name)//': raw magnitude ',var(m)%magnitude, &
+    ': old_magnitude = ',old_magnitude
+  if (first) then
+    if (var(m)%magnitude < error_magnitude) call error_stop("a zero initial magnitude was calculated for this variable. "// &
+      "Every unknown variable needs a finite order of magnitude.  Either initialise this "// &
+      "unknown with non-zero values, or set the magnitude for this explicitly via the option magnitude=[value|constant] in "// &
       "the input file.")
   end if
   if (.not.first) then
@@ -1016,72 +1033,80 @@ unknown_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number(c
     first = .false.
   end if
   if (debug_sparse) write(*,'(a,g13.6)') '  final: magnitude = ',var(m)%magnitude
-  if (var(m)%magnitude < error_magnitude) &
-    call error_stop("During a dynamic adjustment the magnitude for unknown variable "//trim(var(m)%name)// &
+  if (var(m)%magnitude < error_magnitude) call error_stop("The magnitude for unknown variable "//trim(var(m)%name)// &
     "is approaching zero.  The best scenario is that the solution to the problem has this variable equal to "// &
     "zero.  If this is the case then consider setting the magnitude of this unknown statically "// &
     "(staticmagnitude option in the input file) or decrease the dynamic magnitude multiplier for this variable (via "// &
-    "the option dynamicmagnitudemultiplier=value)")
+    "the option dynamicmagnitudemultiplier=value).")
 end do unknown_magnitude_loop
 
 ! update order of magnitude of equations
-equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nvar)
+equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nvar)
   if (var(m)%magnitude < 0.d0) first = .true.
   if (.not.(var(m)%dynamic_magnitude.or.first)) cycle
   old_magnitude = var(m)%magnitude
-  var(m)%magnitude = 0.d0
-  do ns = 1, ubound(var(m)%funk,1)
+  if (var(m)%magnitude_constant > 0.and.first) then
+    var(m)%magnitude = abs(var(var(m)%magnitude_constant)%funk(1)%v)
+    write(*,'(a,g10.3)') 'INFO: found magnitude for equation '//trim(var(m)%name)//' based on constant '// &
+      trim(var(var(m)%magnitude_constant)%name)//': magnitude = ',var(m)%magnitude
+    if (convergence_details_file) write(fconverge,'(a,g10.3)') &
+      'INFO: found magnitude for equation '//trim(var(m)%name)//' based on constant '// &
+      trim(var(var(m)%magnitude_constant)%name)//': magnitude = ',var(m)%magnitude
+  else
+    var(m)%magnitude = 0.d0
+    do ns = 1, ubound(var(m)%funk,1)
 ! need to think about this in terms of the convergence criterion
-    equation_magnitude = abs(var(m)%funk(ns)%v)
-    do n = 1,var(m)%funk(ns)%ndv
-      pp = var(m)%funk(ns)%pp(n)
+      equation_magnitude = abs(var(m)%funk(ns)%v)
+      do n = 1,var(m)%funk(ns)%ndv
+        pp = var(m)%funk(ns)%pp(n)
 ! search for unknown variable that pp refers to
-      mm = unknown_var_from_pp(pp)
-      if (mm == 0) then
-        write(*,*) 'ERROR: unknown variable not found in update_checker'
-        write(*,'(4(a,i6))') 'm = ',m,': ns = ',ns,': pp = ',pp,': mm = ',mm
-        stop
+        mm = unknown_var_from_pp(pp)
+        if (mm == 0) then
+          write(*,*) 'ERROR: unknown variable not found in update_checker'
+          write(*,'(4(a,i6))') 'm = ',m,': ns = ',ns,': pp = ',pp,': mm = ',mm
+          stop
+        end if
+        equation_magnitude = max(equation_magnitude,abs(var(m)%funk(ns)%dv(n)*var(mm)%magnitude))
+        if (debug.and..false.) then
+          write(*,'(4(a,i6))') 'm = ',m,': ns = ',ns,': pp = ',pp,': mm = ',mm
+          write(*,'(3(a,g14.6))') 'equation_magnitude = ',equation_magnitude,': var(m)%funk(ns)%dv(n) = ', &
+            var(m)%funk(ns)%dv(n),': var(mm)%magnitude = ',var(mm)%magnitude 
+        end if
+      end do
+      if (rms_magnitude) then
+        var(m)%magnitude = var(m)%magnitude + equation_magnitude**2
+      else
+        var(m)%magnitude = max(var(m)%magnitude,equation_magnitude)
       end if
-      equation_magnitude = max(equation_magnitude,abs(var(m)%funk(ns)%dv(n)*var(mm)%magnitude))
-      if (debug.and..false.) then
-        write(*,'(4(a,i6))') 'm = ',m,': ns = ',ns,': pp = ',pp,': mm = ',mm
-        write(*,'(3(a,g14.6))') 'equation_magnitude = ',equation_magnitude,': var(m)%funk(ns)%dv(n) = ', &
-          var(m)%funk(ns)%dv(n),': var(mm)%magnitude = ',var(mm)%magnitude 
+      if (debug) write(*,'(a,g13.6,a,g13.6,a)') 'equation_magnitude = ',equation_magnitude, &
+        'old_magnitude = ',old_magnitude,': var(m)%name = '//trim(var(m)%name)// &
+        ': var(m)%funk(ns) = '//trim(print_funk(var(m)%funk(ns)))
+      if (equation_magnitude < error_magnitude) then
+        write(*,'(a/a,g14.6,a)') 'ERROR: the maximum product of a jacobian element times its corresponding unknown variable', &
+          '  magnitude for '//trim(var(m)%type)//' '//trim(var(m)%name)//' is ',equation_magnitude,' at '// &
+          trim(variable_location_string(m,ns))
+        if (convergence_details_file) write(fconverge,'(a/a,g14.6,a)') &
+          'ERROR: the maximum product of a jacobian element times its corresponding unknown variable', &
+          '  magnitude for '//trim(var(m)%type)//' '//trim(var(m)%name)//' is ',equation_magnitude,' at '// &
+          trim(variable_location_string(m,ns))
+        write(*,'(a)') '  This indicates that this '//trim(var(m)%type)//' is currently not dependent on any of the unknown '// &
+          'variables.  Equivalently, the total derivative of this '//trim(var(m)%type)//' with respect to any of the '// &
+          'unknown variables is zero (or very small).  Note that every equation must depend on atleast one unknown variable '// &
+          'at all times, otherwise the jacobian has a zero row and is singular.  One possibility is that one of the variables '// &
+          'used has the option ''noderivative'' set explicitly or implicitly (by being an output variable for example).  You '// &
+          'may be able to find more clues in the output/convergence_details.txt file, created if convergence_details_file '// &
+          'is set to true in general_module.f90.  As a last resort set debug = .true. in subroutine update_magnitudes.'
+        ierror = 1
+        cycle equation_magnitude_loop
       end if
     end do
-    if (rms_magnitude) then
-      var(m)%magnitude = var(m)%magnitude + equation_magnitude**2
-    else
-      var(m)%magnitude = max(var(m)%magnitude,equation_magnitude)
-    end if
-    if (debug) write(*,'(a,g13.6,a,g13.6,a)') 'equation_magnitude = ',equation_magnitude, &
-      'old_magnitude = ',old_magnitude,': var(m)%name = '//trim(var(m)%name)// &
-      ': var(m)%funk(ns) = '//trim(print_funk(var(m)%funk(ns)))
-    if (equation_magnitude < error_magnitude) then
-      write(*,'(a/a,g14.6,a)') 'ERROR: the maximum product of a jacobian element times its corresponding unknown variable', &
-        '  magnitude for '//trim(var(m)%type)//' '//trim(var(m)%name)//' is ',equation_magnitude,' at '// &
-        trim(variable_location_string(m,ns))
-      if (convergence_details_file) write(fconverge,'(a/a,g14.6,a)') &
-        'ERROR: the maximum product of a jacobian element times its corresponding unknown variable', &
-        '  magnitude for '//trim(var(m)%type)//' '//trim(var(m)%name)//' is ',equation_magnitude,' at '// &
-        trim(variable_location_string(m,ns))
-      write(*,'(a)') '  This indicates that this '//trim(var(m)%type)//' is currently not dependent on any of the unknown '// &
-        'variables.  Equivalently, the total derivative of this '//trim(var(m)%type)//' with respect to any of the '// &
-        'unknown variables is zero (or very small).  Note that every equation must depend on atleast one unknown variable '// &
-        'at all times, otherwise the jacobian has a zero row and is singular.  One possibility is that one of the variables '// &
-        'used has the option ''noderivative'' set explicitly or implicitly (by being an output variable for example).  You '// &
-        'may be able to find more clues in the output/convergence_details.txt file, created if convergence_details_file '// &
-        'is set to true in general_module.f90.  As a last resort set debug = .true. in subroutine update_magnitudes.'
-      ierror = 1
-      cycle equation_magnitude_loop
-    end if
-  end do
-  if (rms_magnitude) var(m)%magnitude = sqrt(max(var(m)%magnitude/dble(max(ubound(var(m)%funk,1),1)),0.d0))
+    if (rms_magnitude) var(m)%magnitude = sqrt(max(var(m)%magnitude/dble(max(ubound(var(m)%funk,1),1)),0.d0))
+    if (convergence_details_file.and.first) write(fconverge,'(a,g10.3)') &
+      'INFO: found magnitude for equation '//trim(var(m)%name)//' based on initial values: magnitude = ',var(m)%magnitude
+  end if
   if (debug_sparse) write(*,'(2(a,g10.3))') 'equation '//trim(var(m)%name)//': raw magnitude ',var(m)%magnitude, &
     ': old_magnitude = ',old_magnitude 
-  if (convergence_details_file.and.first) write(fconverge,'(a,g10.3)') &
-    'INFO: found magnitude for equation '//trim(var(m)%name)//' based on initial values: magnitude = ',var(m)%magnitude
   if (.not.first) then
     var(m)%magnitude = max(min(var(m)%magnitude,old_magnitude*var(m)%dynamic_magnitude_multiplier), &
       old_magnitude/var(m)%dynamic_magnitude_multiplier) ! underrelax new unknown magnitude to avoid sudden changes
@@ -1089,6 +1114,8 @@ equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number(
     first = .false.
   end if
   if (debug_sparse) write(*,'(a,g13.6)') '  final: magnitude = ',var(m)%magnitude
+  if (var(m)%magnitude < error_magnitude) &
+    call error_stop("The magnitude for equation variable "//trim(var(m)%name)//"is approaching zero.")
 end do equation_magnitude_loop
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine update_magnitudes'
@@ -1235,8 +1262,8 @@ logical, parameter :: debug = .true.
 ! loop through all equations finding those that have the same centring and element location as an unknown
 ! right now assumes that the first unknown that the equation depends upon at the same location is the one that is relevant to this equation
 ! difficult to generalise this to more that one unknown at the current location without serious complications
-do neq = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  meq = var_list(var_list_number(centring="all",type="equation"))%list(neq)
+do neq = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  meq = var_list(var_list_number_equation)%list(neq)
   if (debug) write(90,'(a)') 'Examining equation '//trim(var(meq)%name)//' with centring '//trim(var(meq)%centring)
   if (trim(var(meq)%centring) == 'none') cycle
 ! reset equation counters
@@ -1314,8 +1341,8 @@ logical, parameter :: debug_file = .true.
 
 ! first loop through each unknown finding number of varname
 um = 0 ! this is the unknown variable number that we are examining
-do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(nvar)
+do nvar = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(nvar)
   if (trim(var(m)%name) == trim(varname)) then
     um = m
     exit
@@ -1342,8 +1369,8 @@ ens = 0 ! ns for this equation
 ederiv = 0.d0 ! maximum normalised derivative
 evalue = 0.d0 ! normalised equation value for this equation
 p = 0
-equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(nvar)
+equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nvar)
   do ns = 1, ubound(var(m)%funk,1)
     p = p + 1
     do n = 1,var(m)%funk(ns)%ndv
@@ -1425,7 +1452,7 @@ subroutine update_and_check_derived_and_equations(ierror,setup)
 ! if setup is present and true, then data will be read from a file if the individual variable option is specified (v0.50)
 
 use general_module
-use equations_module
+use equation_module
 logical, optional :: setup
 integer, optional :: ierror
 integer :: ierrorl
@@ -1496,18 +1523,25 @@ end subroutine update_and_check_derived_and_equations
 
 !-----------------------------------------------------------------
 
-subroutine update_and_check_unknowns(ierror)
+subroutine update_and_check_unknowns(initial,lambda,ierror)
 
 ! this wrapper routine does both the update and checking of these variables
 ! if ierror is present then it will return with the error
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
-integer, optional :: ierror
+use equation_module
+logical :: initial ! whether this is the initial or update invocation of this subroutine - must be specified
+double precision, optional :: lambda ! backstepping parameter that is only used (and needs to be passed in) during non-initial update invocation
+integer, optional :: ierror ! optional error code, which if not passed in will cause routine to die on finding an error
 integer :: ierrorl
 
-call update_unknowns
+if (initial) then
+  call update_unknowns(initial=initial)
+else
+  if (.not.present(lambda)) call error_stop("horrible internal error in update_and_check_knowns around lambda")
+  call update_unknowns(initial=initial,lambda=lambda)
+end if
 
 call check_variable_validity(type='unknown',ierror=ierrorl)
 if (ierrorl /= 0) then
@@ -1542,7 +1576,7 @@ subroutine update_and_check_newtients(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1571,7 +1605,7 @@ subroutine update_and_check_transients(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1600,7 +1634,7 @@ subroutine update_and_check_initial_newtients(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1629,7 +1663,7 @@ subroutine update_and_check_initial_transients(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1658,7 +1692,7 @@ subroutine update_and_check_constants(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1687,7 +1721,7 @@ subroutine update_and_check_outputs(ierror)
 ! if ierror is not present, then any error will halt the simulation
 
 use general_module
-use equations_module
+use equation_module
 integer, optional :: ierror
 integer :: ierrorl
 
@@ -1733,8 +1767,8 @@ do pp = 1, allocatable_size(debug_list_p)
   write(96,'(a,i8,a,i8,a)') 'The unknown '//trim(var(um)%name)//' with p = ',debug_list_p(pp),' and '// &
     trim(ijkstring(var(um)%centring))//' = ',ijkvar(um,uns),' is related to the equations:'
 
-  do mm = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-    m = var_list(var_list_number(centring="all",type="equation"))%list(mm)
+  do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+    m = var_list(var_list_number_equation)%list(mm)
     do ns = 1, ubound(var(m)%funk,1)
 
       ppp = location_in_list_dummy(array=var(m)%funk(ns)%pp(1:var(m)%funk(ns)%ndv),element=debug_list_p(pp))
@@ -1785,8 +1819,8 @@ character(len=2000) :: textline
 
 write(*,'(a)') 'NOTE: writing details of all equations to fort.97'
 
-do mm = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(mm)
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
   do ns = 1, ubound(var(m)%funk,1)
 
     write(textline,'(a,i8,a,g12.5,a)') trim(var(m)%name)//':'//trim(ijkstring(var(m)%centring))//'=',ijkvar(m,ns),':v=', &
@@ -1824,8 +1858,8 @@ if (solution_accuracy_file) write(*,'(a)') 'NOTE: writing details of matrix accu
 newtrescheck = 0.d0
 sumrmscheck = 0.d0
 summaxcheck = 0.d0
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(n)
   do ns = 1, ubound(var(m)%funk,1)
     lhscheck = 0.d0
     sumcheck = 0.d0
@@ -1856,8 +1890,8 @@ if (convergence_details_file) write(fconverge,'(3(a,g10.3))') 'INFO: newtreschec
 
 if (.false.) then
   newtrescheck = 0.d0
-  do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-    m = var_list(var_list_number(centring="all",type="equation"))%list(n)
+  do n = 1, allocatable_size(var_list(var_list_number_equation)%list)
+    m = var_list(var_list_number_equation)%list(n)
     do ns = 1, ubound(var(m)%funk,1)
       newtrescheck = newtrescheck + var(m)%funk(ns)%v**2
     end do
@@ -1879,7 +1913,7 @@ subroutine setup_solver
 ! ref: solver options
 
 use general_module
-use equations_module
+use equation_module
 use intel_pardiso_module
 use pardiso_module
 use hsl_ma28d_module

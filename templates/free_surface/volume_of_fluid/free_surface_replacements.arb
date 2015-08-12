@@ -11,3 +11,6 @@ GENERAL_REPLACEMENTS R "<vof_phi_smooth" W "<vof_fs_phi_smooth"
 GENERAL_REPLACEMENTS R "<vof_phi_interface>" W "<vof_fs_phi_interface>"
 GENERAL_REPLACEMENTS R "<vof_phigrad" W "<vof_fs_phigrad" 
 GENERAL_REPLACEMENTS R "<vof_kappa" W "<vof_fs_kappa"
+# and the delta region to enable the normal calculation
+#GENERAL_REPLACEMENTS R "<vof_delta_mask[r=1]>" W "<vof_fs_delta_mask[r=1]>"
+GENERAL_REPLACEMENTS R "<vof_delta" W "<vof_fs_delta"

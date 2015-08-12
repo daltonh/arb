@@ -1,0 +1,5 @@
+# for each cell within the domain, this is the ratio between the maximum surround cell volume and the cell's volume, indicating how uniform cell sizes are
+#CELL_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<nocadjacentcellicells>)/<cellvol>" ON <domain> # NB boundary cells have cellvol = 0 so will not contribute to this calculation, as required
+#NONE_OUTPUT <maximum cell adjacent volume ratio> "cellmax(<cell adjacent volume ratio>,region=<domain>)"
+FACE_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<adjacentfaceicells>)/cellmin(<cellvol>,default=<hugeish>,region=<adjacentfaceicells>)" ON <domain faces>
+NONE_OUTPUT <maximum cell adjacent volume ratio> "facemax(<cell adjacent volume ratio>,region=<domain faces>)"

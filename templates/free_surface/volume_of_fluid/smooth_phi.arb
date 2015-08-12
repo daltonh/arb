@@ -10,10 +10,7 @@
 # maxseparation=2,faceseparation is OK for KERNEL polynomialorder=1 (ie, the default) - for higher order need to expand maxseparation (although doesn't really improve accuracy much)
 # <vof_smoothing_constant> = 0.1 seems to be a good compromise between stability and accuracy on structured meshes using hyperbolic + sqrt kernel
 NONE_CONSTANT <vof_smoothing_power> 1.d0
-#NONE_CONSTANT <vof_smoothing_constant> 0.25d0 # a smaller number gives less smoothing
-#NONE_CONSTANT <vof_smoothing_constant> 0.125d0
-#NONE_CONSTANT <vof_smoothing_constant> 0.1d0
-NONE_CONSTANT <vof_smoothing_constant> 0.5d0
+NONE_CONSTANT <vof_smoothing_constant> 0.1d0 # a smaller number gives less smoothing
 
 # required for smoothing kernels based on distance
 # previous method based on uniform cell size
@@ -40,12 +37,14 @@ CELL_LOCAL <vof_smoothing_kernel> "1.d0/(sqrt(<vof_smoothing_dist^2>/<vof_smooth
 # with <vof_smoothing_constant> 0.25d0 interface is too jaggered
 #CELL_LOCAL <vof_smoothing_kernel> "1.d0/(<separation>+<vof_smoothing_constant>)"
 
-GENERAL_REPLACEMENTS DEFAULT "<<maxsmoothingseparation>>" W "3" # default maximum separation used for the smoothing, which can be overwritten by calling files
+# default maximum separation used for the smoothing, which can be overwritten by calling files
+# setting this equal to <<maxfaceaveseparation>> should JUST be enough to get some node centred normals defined around the outermost cell used in the kappa_f calculation
+# with these being equal, can use the delta mask to define where smoothed phi is required
+GENERAL_REPLACEMENTS DEFAULT "<<maxsmoothingseparation>>" W "<<maxfaceaveseparation>>"
+#GENERAL_REPLACEMENTS DEFAULT "<<maxsmoothingseparation>>" W "3"
 
 # now do the smoothing
 # looks like we need a minimum of maxseparation=3 to get enough valid normals (at the edge of the interface region) to avoid instabilities in the (curvature) surface tension calculation
 CELL_CONSTANT <vof_phi_smoothing_demoninator> "cellsum[maxseparation=<<maxsmoothingseparation>>,faceseparation](<vof_smoothing_kernel>,region=<all cells>)" ON <all cells>
-CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=<<maxsmoothingseparation>>,faceseparation](<vof_phi_interface>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
-
-# save the smoothed phi for later - necessary?
-#CELL_TRANSIENT <vof_phi_smoothed[r=1]> "" "<vof_phi_smoothed>" ON <all cells> output
+#CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=<<maxsmoothingseparation>>,faceseparation](<vof_phi_interface>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
+CELL_DERIVED <vof_phi_smoothed> "cellif(celldelta(<vof_delta_mask[r=1]>),cellsum[maxseparation=<<maxsmoothingseparation>>,faceseparation](<vof_phi_interface>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>,<vof_phi_interface>)" ON <all cells>

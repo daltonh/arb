@@ -50,11 +50,12 @@ subroutine setup
 ! this handles everything prior to a simulation starting
 
 use general_module
-use equations_module
+use equation_module
 use gmesh_module
 use kernel_module
 use output_module
 use solver_module
+use region_module
 logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine setup'
@@ -139,12 +140,12 @@ use general_module
 use gmesh_module
 integer :: ierror, n, m, gmesh_number, array_size
 character(len=5000) :: textline, otextline
-character(len=1000) :: keyword, name, formatline, region_name, location, options, filename
+character(len=4000) :: name
+character(len=1000) :: keyword, formatline, options, filename
 character(len=1000), dimension(2) :: glue_region
 character(len=100) :: option_name
-character(len=4) :: centring
 real :: versiontmp
-logical :: existing, error, empty
+logical :: error, empty
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_input_file'
@@ -167,34 +168,6 @@ fileloop: do
 ! if (debug) write(*,'(a)') 'keyword = '//trim(keyword)//': otextline = '//trim(otextline)//''
   if (debug) write(*,'(a)') 'keyword = '//trim(keyword)//': textline = '//trim(textline)
   if (error) call error_stop('problem reading the keyword on on line:'//trim(otextline))
-
-!---------------
-! region definitions
-  if (trim(keyword) == 'CELL_REGION'.or.trim(keyword) == 'FACE_REGION'.or.trim(keyword) == 'NODE_REGION') then ! read in variable names
-! name
-    name = extract_next_string(textline,error,empty=empty,delimiter="<")
-    if (error.or.empty) call error_stop('region name in '//trim(keyword)// &
-      ' in arb input file incorrectly specified on line:'//trim(otextline))
-! location
-    location = extract_next_string(textline,error,empty=empty,delimiter="'"" ")
-    if (.not.empty.and.error) call error_stop('location string for region '//trim(name)// &
-      ' in arb input file incorrectly specified on line:'//trim(otextline))
-      
-!   read(textline,*,iostat=ierror) location ! with no format specification string in arb input file should be quotted
-!   if (ierror /= 0) location = "" ! if no location is specified then we are just specifying region centring for gmsh region
-    centring = changecase('L',keyword(1:4))
-    m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-    if (m == 0.or.existing) call error_stop('allocation of region = '//trim(region_name)// &
-      ' failed, most likely because the region has already been allocated previously in the arb input file')
-    formatline = '(a,'//trim(dindexformat(m))//',a)'
-    if (trim(location) == "") then
-      write(*,fmt=formatline) 'INFO: centring for region '//trim(region(m)%name)//' has been specified from arb input file: '// &
-        'region_number = ',m,': centring = '//trim(centring)
-    else
-      write(*,fmt=formatline) 'INFO: region '//trim(region(m)%name)//' has been created from arb input file: region_number =  ',m, &
-        ': centring = '//trim(centring)//': location = '//trim(region(m)%location)
-    end if
-  end if
 
 !---------------
 ! glue_faces
@@ -462,23 +435,23 @@ fileloop: do
     name = extract_next_string(textline,error,empty=empty,delimiter="'"" ")
     if (error) call error_stop('simulation info '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
     if (trim(keyword) == 'TITLE') then
-      simulation_info%title = name
+      simulation_info%title = name(1:200)
     else if (trim(keyword) == 'DESCRIPTION') then
-      simulation_info%description = name
+      simulation_info%description = name(1:4000) ! actually name and the description field are the same size, of 4000
     else if (trim(keyword) == 'AUTHOR') then
-      simulation_info%author = name
+      simulation_info%author = name(1:200)
     else if (trim(keyword) == 'VERSION') then
-      simulation_info%version = name
+      simulation_info%version = name(1:200)
     else if (trim(keyword) == 'DATE') then
-      simulation_info%date = name
+      simulation_info%date = name(1:200)
     else if (trim(keyword) == 'RUNVERSION') then
-      simulation_info%runversion = name
+      simulation_info%runversion = name(1:200)
     else if (trim(keyword) == 'RUNDATE') then
-      simulation_info%rundate = name
+      simulation_info%rundate = name(1:200)
     else if (trim(keyword) == 'RUNHOST') then
-      simulation_info%runhost = name
+      simulation_info%runhost = name(1:200)
     else if (trim(keyword) == 'FILENAME') then
-      simulation_info%filename = name
+      simulation_info%filename = name(1:200)
     else
       call error_stop('simulation info keyword '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
     end if
@@ -766,7 +739,23 @@ do j = 1, jtotal
   else if (face(j)%dimensions == 0) then
     face(j)%area = 1.d0
     face(j)%x = node(face(j)%knode(1))%x
-    face(j)%norm(:,1) = face(j)%x - cell(face(j)%icell(1))%x ! NB icell(1) is neither a glued cell or a boundary cell, hence this one-sided definition
+! previously facenorm was based on the vector to the downcell
+!   face(j)%norm(:,1) = face(j)%x - cell(face(j)%icell(1))%x ! NB icell(1) is neither a glued cell or a boundary cell, hence this one-sided definition
+! now we set the orientation based on both cells that surround the point, including periodic and reflect glued boundaries
+    if (face(j)%glue_jface /= 0) then
+      if (face(j)%glue_reflect /= 0) then
+! a glued reflect face has a normal in the direction of the reflection
+        face(j)%norm(:,1) = 0
+        face(j)%norm(face(j)%glue_reflect,1) = face(j)%x(face(j)%glue_reflect) - cell(face(j)%icell(1))%x(face(j)%glue_reflect)
+      else
+! a periodic glued face has a normal based on both adjacent cells, noting that glued cell has a normal facing towards the glued face too
+        jglue = face(j)%glue_jface
+        face(j)%norm(:,1) = cell(face(jglue)%icell(1))%x - face(jglue)%x + face(j)%x - cell(face(j)%icell(1))%x
+      end if
+    else
+! under normal circumstances normal points from downcell to upcell
+      face(j)%norm(:,1) = cell(face(j)%icell(2))%x - cell(face(j)%icell(1))%x
+    end if
     call normalise_vector(face(j)%norm(:,1))
 ! from orthogonal vectors select one which has smallest dot product with first
     face(j)%norm(:,2) = [1.d0, 0.d0, 0.d0]
@@ -1091,977 +1080,14 @@ end subroutine setup_mesh
 
 !-----------------------------------------------------------------
 
-subroutine setup_regions
-
-! here we setup the regions by finding the i or j indices for each
-
-use general_module
-integer :: ierror, m, i, j, k, n, cut, nregion, ijkregion, nsregion, ns, nscompound, ii, jj, kk, ijk, l, ijktotal
-double precision :: tmp, tmpmax
-double precision, dimension(totaldimensions) :: x, xmin, xmax ! a single location
-character(len=1000) :: keyword, name, formatline, location, aregion, region_list, filename, geometry
-character(len=4) :: centring
-character(len=1) :: rsign
-integer, dimension(:), allocatable :: nregion_list
-logical :: existing, debug_sparse = .true., in_common
-logical, dimension(:), allocatable :: elementisin
-logical, parameter :: debug = .false.
-
-if (debug) debug_sparse = .true.
-                  
-if (debug) write(82,'(80(1h+)/a)') 'subroutine setup_regions'
-
-! create system generated regions
-
-location='SYSTEM'
-centring='cell'
-
-name = '<all cells>'
-m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-if (existing) call error_stop("an attempt has been made to create a region called "//trim(name)// &
-  ": this name is reserved for a system generated region")
-allocate(region(m)%ijk(itotal))
-do n = 1, itotal
-  region(m)%ijk(n) = n
-end do
-  
-name='<domain>'
-m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-if (existing) call error_stop("an attempt has been made to create a region called "//trim(name)// &
-  ": this name is reserved for a system generated region")
-allocate(region(m)%ijk(idomain))
-n = 0
-do i = 1, itotal
-  if (cell(i)%type == 1) then
-    n = n + 1
-    region(m)%ijk(n) = i
-  end if
-end do
-  
-name='<boundary cells>'
-m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-if (existing) call error_stop("an attempt has been made to create a region called "//trim(name)// &
-  ": this name is reserved for a system generated region")
-allocate(region(m)%ijk(iboundary))
-n = 0
-do i = 1, itotal
-  if (cell(i)%type == 2) then
-    n = n + 1
-    region(m)%ijk(n) = i
-  end if
-end do
-  
-centring='face'
-
-name='<all faces>'
-m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-if (existing) call error_stop("an attempt has been made to create a region called "//trim(name)// &
-  ": this name is reserved for a system generated region")
-allocate(region(m)%ijk(jtotal))
-do n = 1, jtotal
-  region(m)%ijk(n) = n
-end do
-  
-name='<domain faces>'
-m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-if (existing) call error_stop("an attempt has been made to create a region called "//trim(name)// &
-  ": this name is reserved for a system generated region")
-allocate(region(m)%ijk(jdomain))
-n = 0
-do j = 1, jtotal
-  if (face(j)%type == 1) then
-    n = n + 1
-    region(m)%ijk(n) = j
-  end if
-end do
-  
-name='<boundaries>'
-m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-if (existing) call error_stop("an attempt has been made to create a region called "//trim(name)// &
-  ": this name is reserved for a system generated region")
-allocate(region(m)%ijk(jboundary))
-n = 0
-do j = 1, jtotal
-  if (face(j)%type == 2) then
-    n = n + 1
-    region(m)%ijk(n) = j
-  end if
-end do
-  
-centring='node'
-
-name = '<all nodes>'
-m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-if (existing) call error_stop("an attempt has been made to create a region called "//trim(name)// &
-  ": this name is reserved for a system generated region")
-allocate(region(m)%ijk(ktotal))
-do n = 1, ktotal
-  region(m)%ijk(n) = n
-end do
-  
-name='<domain nodes>'
-m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-if (existing) call error_stop("an attempt has been made to create a region called "//trim(name)// &
-  ": this name is reserved for a system generated region")
-allocate(region(m)%ijk(kdomain))
-n = 0
-do k = 1, ktotal
-  if (node(k)%type == 1) then
-    n = n + 1
-    region(m)%ijk(n) = k
-  end if
-end do
-  
-name='<boundary nodes>'
-m = region_number_from_name(name=name,location=location,centring=centring,existing=existing,creatable=.true.)
-if (existing) call error_stop("an attempt has been made to create a region called "//trim(name)// &
-  ": this name is reserved for a system generated region")
-allocate(region(m)%ijk(kboundary))
-n = 0
-do k = 1, ktotal
-  if (node(k)%type == 2) then
-    n = n + 1
-    region(m)%ijk(n) = k
-  end if
-end do
-  
-! now run through remaining regions doing any user-defined locating
-
-do m=1,ubound(region,1)
-
-  if (debug) write(82,*) 'Processing region m = ',m,': name = '//trim(region(m)%name)// &
-    ': centring = '//trim(region(m)%centring)//': location = '//trim(region(m)%location)
-
-! define the keyword which in this context means the type of region creation method
-  keyword = 'UNKNOWN'
-  if (region(m)%location(1:4) == "GMSH") then
-    keyword = 'GMSH'
-  else if (region(m)%location(1:2) == "AT") then
-    keyword = 'AT'
-  else if (region(m)%location(1:6) == "WITHIN") then
-    keyword = 'WITHIN'
-  else if (region(m)%location(1:11) == "BOUNDARY OF") then
-    keyword = 'BOUNDARY OF'
-  else if (region(m)%location(1:9) == "DOMAIN OF") then
-    keyword = 'DOMAIN OF'
-  else if (region(m)%location(1:15) == "ASSOCIATED WITH") then
-    keyword = 'ASSOCIATED WITH'
-  else if (region(m)%location(1:9) == "SURROUNDS") then
-    keyword = 'SURROUNDS'
-  else if (region(m)%location(1:8) == "COMPOUND") then
-    keyword = 'COMPOUND'
-  else if (region(m)%location(1:6) == "COMMON") then
-    keyword = 'COMMON'
-  else if (region(m)%location(1:13) == "INTERSECTION") then
-    keyword = 'INTERSECTION'
-  else if (region(m)%location(1:5) == "UNION") then
-    keyword = 'UNION'
-  end if
-
-!---------------------
-! a user defined region from the arb input file that is a single point
-! ref: AT region
-
-  if (trim(keyword) == "AT") then
-
-! if region is already defined then it is overwritten
-    if (allocated(region(m)%ijk)) then
-      write(*,'(a/a)') &
-        "NOTE: an AT region operator is acting on region "//trim(region(m)%name)// &
-        " that already contains an element:", &
-        " the previous element will be overwritten with the new"
-    else
-      allocate(region(m)%ijk(1))
-    end if
-    region(m)%ijk(1) = 0
-
-    read(region(m)%location(3:1000),*,iostat=ierror) x
-    if (ierror /= 0) call error_stop('AT location for region '//trim(region(m)%name)//' is not understood as a single point')
-
-! now see whether definition is limited to another region via the PART OF statement
-    n = scanstring(region(m)%location,'PART OF')
-    if (n > 0 .and. n < 993) then ! a PART OF region name should follow
-      aregion = adjustl(region(m)%location(n+7:1000)) ! assignment in fortran implies padding with blanks
-      n = scan(aregion,'<')
-      cut = scan(aregion,'>')
-      if (n < 1.or.cut <= n) call error_stop('the PART OF region name for region '//trim(region(m)%name)// &
-        ' could not be read from the following definition '//trim(region(m)%location))
-      aregion = aregion(n:cut)
-    else if (trim(region(m)%centring) == 'cell') then
-      aregion = '<all cells>'
-    else if (trim(region(m)%centring) == 'face') then
-      aregion = '<all faces>'
-    else
-      aregion = '<all nodes>'
-    end if
-    nregion = region_number_from_name(name=aregion,centring=region(m)%centring,existing=existing,creatable=.false.)
-! check that region exists and that centring is consistent
-    if (.not.existing) call error_stop("region "//trim(aregion)//" which is the PART OF part of an AT region "// &
-      trim(region(m)%name)//" is not found")
-    if (nregion == 0) call error_stop("problem with the PART OF region "//trim(aregion)//" in AT region "//trim(region(m)%name)// &
-      " definition:- regions most likely the regions have different centrings")
-
-    tmpmax = 1.d+20
-    do ns=1,allocatable_integer_size(region(nregion)%ijk)
-      ijk = region(nregion)%ijk(ns)
-      if (region(m)%centring == "cell") then
-        tmp = distance(x,cell(ijk)%x)
-      else if (region(m)%centring == "face") then
-        tmp = distance(x,face(ijk)%x)
-      else
-        tmp = distance(x,node(ijk)%x)
-      end if
-      if (tmp < tmpmax) then
-        region(m)%ijk(1) = ijk
-        tmpmax = tmp
-      end if
-    end do
-
-    if (region(m)%ijk(1) == 0) then
-      write(*,'(a)') 'WARNING: no elements were found within the AT '//trim(geometry)// &
-        ' region of '//trim(region(m)%name)
-      deallocate(region(m)%ijk) ! allocate this as zero length later
-    end if
-
-!---------------------
-! a user defined region from the arb input file that is any elements within a geometry 
-! TODO: integrate WITHIN and AT statements to give PART OF functionality to former
-
-! ref: WITHIN region
-  else if (trim(keyword) == "WITHIN") then
-
-! if region is already defined then it is overwritten
-    if (allocated(region(m)%ijk)) then
-      write(*,'(a/a)') &
-        "NOTE: a WITHIN region operator is acting on region "//trim(region(m)%name)// &
-        " that already contains an element:", &
-        " the previous element will be overwritten with the new"
-      deallocate(region(m)%ijk)
-    end if
-
-! find the geometry type
-    location = adjustl(region(m)%location(8:1000))
-    cut = scan(location,' ')
-    read(location(1:cut-1),*,iostat=ierror) geometry
-    if (ierror /= 0) call error_stop('WITHIN geometry type for region '//trim(region(m)%name)//' is not understood')
-    location = adjustl(location(cut+1:1000))
-
-    if (trim(geometry) == 'BOX') then
-      if (debug) write(82,*) 'found WITHIN BOX geometry with location points: '//trim(location)
-
-      read(location,*,iostat=ierror) xmin, xmax
-      if (ierror /= 0) call error_stop('WITHIN BOX location for region '//trim(region(m)%name)// &
-        ' is not understood as two three dimensional points')
-
-! check that points are in min and max order and otherwise reorder
-      do l = 1, 3
-        if (xmin(l) > xmax(l)) then
-          write(*,'(a,i1,a)') 'WARNING: dimension ',l,' of the points that define the BOX geometry in region '// &
-            trim(region(m)%name)//' were incorrectly ordered: they should be in the order of the minimum coordinate values '// &
-            'in each dimension, followed by the maximum coordinate values in each dimension.'
-          write(*,'(2(a,i1,a,g14.6))') ' xmin(',l,') = ',xmin(l),' xmax(',l,') = ',xmax(l)
-          write(*,*) 'These values will be swapped.'
-          tmp = xmax(l)
-          xmax(l) = xmin(l)
-          xmin(l) = tmp
-        end if
-      end do
-
-      if (region(m)%centring == "cell") then
-        ijktotal = itotal
-      else if (region(m)%centring == "face") then
-        ijktotal = jtotal
-      else
-        ijktotal = ktotal
-      end if
-
-      ijk_loop: do ijk=1,ijktotal
-        if (region(m)%centring == "cell") then
-          x = cell(ijk)%x
-        else if (region(m)%centring == "face") then
-          x = face(ijk)%x
-        else
-          x = node(ijk)%x
-        end if
-        do l = 1, 3
-          if ((x(l)-xmin(l))*(xmax(l)-x(l)) < 0.d0) cycle ijk_loop
-        end do
-        call push_integer_array(array=region(m)%ijk,new_element=ijk)
-      end do ijk_loop
-
-    else
-      call error_stop('WITHIN geometry type of '//trim(geometry)//' for region '//trim(region(m)%name)//' is not understood')
-    end if
-
-!   if (.not.allocated(region(m)%ijk)) write(*,'(a)') 'WARNING: no elements were found within the WITHIN '//trim(geometry)// &
-!     ' region of '//trim(region(m)%name)
-    if (allocatable_integer_size(region(m)%ijk) == 0) write(*,'(a)') &
-      'WARNING: no elements were found within the WITHIN '//trim(geometry)// &
-      ' region of '//trim(region(m)%name)
-
-!---------------------
-! a new region composed of the boundary to another region, or similar type of related domain
-
-  else if (trim(keyword) == "BOUNDARY OF".or.trim(keyword) == "DOMAIN OF".or.trim(keyword) == "ASSOCIATED WITH".or. &
-    trim(keyword) == "SURROUNDS") then
-
-! note: this may mean that the region is already defined but defining twice won't hurt if the definition is the same
-    if (allocated(region(m)%ijk)) then
-      write(*,'(a/a)') &
-        "NOTE: a "//trim(keyword)//" region operator is acting on region "//trim(region(m)%name)// &
-        " that already contains some elements:", &
-        " the previous elements will be overwritten with the new"
-      deallocate(region(m)%ijk)
-    end if
-
-! check centring of requested region
-    if (region(m)%centring /= 'face'.and.region(m)%centring /= 'cell'.and.region(m)%centring /= 'node') call &
-      error_stop('incorrect centring for requested '//trim(keyword)//' region '//trim(region(m)%name))
-
-! find constitutent region around which to find boundary
-    aregion = adjustl(trim(region(m)%location(len(trim(keyword))+1:1000)))
-    
-    nregion = region_number_from_name(name=aregion,existing=existing,creatable=.false.)
-! check that region exists and that centring is consistent
-    if (.not.existing) call error_stop("region "//trim(aregion)//" which is specified in "//trim(keyword)//" operator for "// &
-      trim(region(m)%name)//" is not found")
-    if (nregion == 0) call error_stop("problem with region "//trim(aregion)//" in "//trim(keyword)//" region "// &
-      trim(region(m)%name))
-    if (region(nregion)%centring /= 'face'.and.region(nregion)%centring /= 'cell'.and.region(nregion)%centring /= 'node') &
-      call error_stop('incorrect centring for '//trim(keyword)//' consitutent region '//trim(region(nregion)%name))
-
-! store whether ijk index is included in the new region in temporary array now for faster lookups
-    if (region(m)%centring == 'cell') then
-      ijktotal = itotal
-    else if (region(m)%centring == 'face') then
-      ijktotal = jtotal
-    else
-      ijktotal = ktotal
-    end if
-    allocate(elementisin(ijktotal)) 
-    elementisin = .false.
-
-    do nsregion = 1,allocatable_integer_size(region(nregion)%ijk)  ! loop through all ijk indices in constituent region
-      ijkregion = region(nregion)%ijk(nsregion) ! NB, ijkregion and region(m)%ijk may actually be i or j values depending on centring
-      if (region(nregion)%centring == 'cell') then
-        if (region(m)%centring == 'cell') then
-! create cell region from cell region
-          do ii = 1, ubound(cell(ijkregion)%jface,1)+1 ! loop around cells that border cells, and itself
-            i = cell(ijkregion)%icell(ii)
-            if (trim(keyword) == "BOUNDARY OF".and.cell(i)%type /= 2) cycle
-            if (trim(keyword) == "DOMAIN OF".and.cell(i)%type /= 1) cycle
-            if (trim(keyword) == "SURROUNDS".and.location_in_list(array=region(nregion)%ijk,element=i) /= 0) cycle ! unfortunately ns array has not yet been defined for all other elements
-            if (.not.elementisin(i)) elementisin(i) = .true.
-          end do
-        else if (region(m)%centring == 'face') then
-! create face region from cell region
-          do jj = 1, ubound(cell(ijkregion)%jface,1)
-            j = cell(ijkregion)%jface(jj)
-            if (trim(keyword) == "BOUNDARY OF".and.face(j)%type /= 2) cycle
-            if (trim(keyword) == "DOMAIN OF".and.face(j)%type /= 1) cycle
-            if (trim(keyword) == "SURROUNDS") then
-              if (ijkregion == face(j)%icell(2).and.location_in_list(array=region(nregion)%ijk,element=face(j)%icell(1)) /= 0) cycle
-              if (ijkregion == face(j)%icell(1).and.location_in_list(array=region(nregion)%ijk,element=face(j)%icell(2)) /= 0) cycle
-            end if
-            if (.not.elementisin(j)) elementisin(j) = .true.
-          end do
-        else
-! create node region from cell region
-! SURROUNDS not implemented
-          do kk = 1, ubound(cell(ijkregion)%knode,1)
-            k = cell(ijkregion)%knode(kk)
-            if (trim(keyword) == "BOUNDARY OF".and.node(k)%type /= 2) cycle
-            if (trim(keyword) == "DOMAIN OF".and.node(k)%type /= 1) cycle
-            if (trim(keyword) == "SURROUNDS") &
-              call error_stop("SURROUNDS not implemented for constructing node from cell region "//trim(region(nregion)%name))
-            if (.not.elementisin(k)) elementisin(k) = .true.
-          end do
-        end if
-      else if (region(nregion)%centring == 'face') then
-! create cell region from face region
-! BOUNDARY OF will pick out boundary cells coincident with boundary faces
-! SURROUNDS not implemented
-        if (region(m)%centring == 'cell') then
-          do ii = 1, 2
-            i = face(ijkregion)%icell(ii)
-            if (trim(keyword) == "BOUNDARY OF".and.cell(i)%type /= 2) cycle
-            if (trim(keyword) == "DOMAIN OF".and.cell(i)%type /= 1) cycle
-            if (trim(keyword) == "SURROUNDS") &
-              call error_stop("SURROUNDS not implemented for constructing node from cell region "//trim(region(nregion)%name))
-            if (.not.elementisin(i)) elementisin(i) = .true.
-          end do
-        else if (region(m)%centring == 'face') then
-! create face region from face region
-! BOUNDARY OF will pick out faces that are on the boundary
-! ASSOCIATED WITH is nonsense - will just copy region
-          j = ijkregion
-          if (trim(keyword) == "BOUNDARY OF".and.face(j)%type /= 2) cycle
-          if (trim(keyword) == "DOMAIN OF".and.face(j)%type /= 1) cycle
-          if (.not.elementisin(j)) elementisin(j) = .true.
-        else
-! create node region from face region
-          do kk = 1, ubound(face(ijkregion)%knode,1)
-            k = face(ijkregion)%knode(kk)
-            if (trim(keyword) == "BOUNDARY OF".and.node(k)%type /= 2) cycle
-            if (trim(keyword) == "DOMAIN OF".and.node(k)%type /= 1) cycle
-            if (trim(keyword) == "SURROUNDS") &
-              call error_stop("SURROUNDS not implemented for constructing node from face region "//trim(region(nregion)%name))
-            if (.not.elementisin(k)) elementisin(k) = .true.
-          end do
-        end if
-      else
-        call error_stop(trim(keyword)//" not implemented for constructing node region "//trim(region(nregion)%name))
-      end if
-    end do
-
-! now loop through the elementisin list creating a new ijk list from it
-    n = 0 ! to avoid multiple calls to push_array allocate the array using needed size
-    do ijk = 1, ijktotal
-      if (elementisin(ijk)) n = n + 1
-    end do
-    allocate(region(m)%ijk(n))
-    n = 0
-    do ijk = 1, ijktotal
-      if (elementisin(ijk)) then
-        n = n + 1
-        region(m)%ijk(n) = ijk
-      end if
-    end do
-    deallocate(elementisin)
-
-!---------------------
-! a new region composed of a compound list of other regions
-
-  else if (trim(keyword) == "COMPOUND" .or. trim(keyword) == "UNION") then
-
-! note: this may mean that the region is already defined but defining twice won't hurt if the definition is the same
-    if (allocated(region(m)%ijk)) then
-      write(*,'(a/a)') &
-        "NOTE: a "//trim(keyword)//" region operator is acting on region "//trim(region(m)%name)// &
-        " that already contains some elements:", &
-        " the previous elements will be overwritten with the new"
-      deallocate(region(m)%ijk)
-    end if
-
-    region_list = trim(region(m)%location(9:1000))
-
-! loop through all regions
-    do while (len_trim(region_list) /= 0) 
-
-      region_list = adjustl(region_list(1:len_trim(region_list))) ! remove leading spaces
-
-      if (region_list(1:1) == "+" .or. region_list(1:1) == "-") then
-        rsign = region_list(1:1)
-        region_list = adjustl(region_list(2:len_trim(region_list)))
-      else
-        rsign = "+"
-      end if
-
-      cut = scan(region_list,">")
-      if (region_list(1:1) /= "<" .or. cut <=1 ) call &
-        error_stop("format for equation region incorrect in "//trim(keyword)//" operator list "//trim(region_list))
-
-      aregion = region_list(1:cut)
-      region_list = adjustl(region_list(cut+1:len_trim(region_list)))
-
-      nregion = region_number_from_name(name=aregion,centring=region(m)%centring,existing=existing,creatable=.false.)
-! check that region exists and that centring is consistent
-      if (.not.existing) call error_stop("region "//trim(aregion)//" which is part of "//trim(keyword)//" region "// &
-        trim(region(m)%name)//" is not found")
-      if (nregion == 0) call error_stop("problem with region "//trim(aregion)//" in "//trim(keyword)//" region "// &
-        trim(region(m)%name)//":- regions most likely have different centrings")
-      if (nregion == m) call error_stop("problem with region "//trim(aregion)//" in "//trim(keyword)//" region "// &
-        trim(region(m)%name)//":- cannot reference the region being created")
-
-! loop through all existing ijk indices in region
-! - if indice exists and we are adding, ignore, otherwise do
-! - if indice exists and we are subtracting, do, otherwise ignore
-
-!     if (.not.allocated(region(nregion)%ijk)) call error_stop("region ijk indices not allocated in "//trim(keyword)//" operator for region "// &
-!       trim(region(nregion)%name))
-      if (allocatable_integer_size(region(nregion)%ijk) == 0) then
-        write(*,'(a)') "WARNING: region "//trim(region(nregion)%name)//" that is used in the "//trim(keyword)// &
-        " region statement for region "//trim(region(m)%name)//" contains no elements"
-        cycle
-      end if
-        
-      do nsregion = 1,ubound(region(nregion)%ijk,1)  ! loop through all ijk indices in constituent region
-        ijkregion = region(nregion)%ijk(nsregion) ! NB, ijkregion and region(m)%ijk may actually be i or j values depending on centring
-        
-        nscompound = 0 ! this is the position of iregion in the compound region's ijk indices
-        do ns = 1,allocatable_size(region(m)%ijk)
-          if (region(m)%ijk(ns) == ijkregion) then
-            nscompound = ns ! region indice has been found in compound region's ijk indices
-            exit
-          end if
-        end do
-
-        if (rsign == "+" .and. nscompound == 0) then
-          call push_integer_array(array=region(m)%ijk,new_element=ijkregion) ! add region location to equation ijk indices
-        else if (rsign == "-" .and. nscompound /= 0) then
-          if (nscompound /= ubound(region(m)%ijk,1)) then ! unless it is the last element of indices
-            region(m)%ijk(nscompound:ubound(region(m)%ijk,1)-1) = & ! shift indices one space to the left to remove reference
-              region(m)%ijk(nscompound+1:ubound(region(m)%ijk,1))
-          end if
-          call resize_integer_array(array=region(m)%ijk,change=-1) ! reduce ijk array by 1
-        end if
-
-      end do
-
-    end do
-
-!---------------------
-! a new region composed of the common elements from a list of space or comma separated regions
-
-  else if (trim(keyword) == "COMMON" .or. trim(keyword) == "INTERSECTION") then
-
-! note: this may mean that the region is already defined but defining twice won't hurt if the definition is the same
-    if (allocated(region(m)%ijk)) then
-      write(*,'(a/a)') &
-        "NOTE: a "//trim(keyword)//" region operator is acting on region "//trim(region(m)%name)// &
-        " that already contains some elements:", &
-        " the previous elements will be overwritten with the new"
-      deallocate(region(m)%ijk)
-    end if
-
-    region_list = trim(region(m)%location(7:1000))
-    if (debug) write(*,*) trim(keyword)//': initial region_list = |'//trim(region_list)//'|'
-
-! loop through all regions creating a list of the regions that we are going to look for common elements in
-
-    if (allocated(nregion_list)) deallocate(nregion_list)
-    do while (len_trim(region_list) /= 0) 
-
-      region_list = adjustl(region_list(1:len_trim(region_list))) ! remove leading spaces
-      if (debug) write(*,*) trim(keyword)//': looping region_list = |'//trim(region_list)//'|'
-      if (region_list(1:1) == "," .or. region_list(1:1) == '+') then
-        region_list(1:1) = " " ! remove commas or plus signs silently by blanking them out - in the interests of stopping bugs, a minus sign will flag an error
-        cycle
-      end if
-
-      cut = scan(region_list,">")
-      if (debug) write(*,*) 'cut = ',cut,': region_list(1:cut) = '//trim(region_list(1:cut))
-      if (region_list(1:1) /= "<" .or. cut <=1 ) call &
-        error_stop("format for equation region incorrect in "//trim(keyword)//" operator list "//trim(region_list))
-
-      aregion = region_list(1:cut)
-      region_list = adjustl(region_list(cut+1:len_trim(region_list)))
-
-      nregion = region_number_from_name(name=aregion,centring=region(m)%centring,existing=existing,creatable=.false.)
-! check that region exists and that centring is consistent
-      if (.not.existing) call error_stop("region "//trim(aregion)//" which is part of "//trim(keyword)//" region "// &
-        trim(region(m)%name)//" is not found")
-      if (nregion == 0) call error_stop("problem with region "//trim(aregion)//" in "//trim(keyword)//" region "// &
-        trim(region(m)%name)//":- regions most likely have different centrings")
-      if (nregion == m) call error_stop("problem with region "//trim(aregion)//" in "//trim(keyword)//" region "// &
-        trim(region(m)%name)//":- cannot reference the region being created")
-
-      call push_integer_array(array=nregion_list,new_element=nregion) ! add nregion to the list
-
-    end do
-
-! first check that all the regions have elements, otherwise they will have no elements in common
-
-    do nregion = 1, allocatable_integer_size(nregion_list)
-      if (allocatable_integer_size(region(nregion)%ijk) == 0) then
-        write(*,'(a)') "WARNING: region "//trim(region(nregion)%name)//" that is used in the "//trim(keyword)// &
-        " region statement for region "//trim(region(m)%name)//" contains no elements"
-        deallocate(nregion_list) ! this will kill all further processing of this COMMON statements
-        exit
-      end if
-    end do
-
-! now run through each of the elements in the first region, looking for commonality with the elements of the other regions
-
-    do nsregion = 1,ubound(region(nregion_list(1))%ijk,1)  ! loop through all ijk indices in the first region
-      ijkregion = region(nregion_list(1))%ijk(nsregion) ! NB, ijkregion and region(m)%ijk may actually be i, j or k values depending on centring
-
-      in_common = .true.
-      do nregion = 2, allocatable_integer_size(nregion_list)
-        if (location_in_list(array=region(nregion_list(nregion))%ijk,element=ijkregion) == 0) then
-          in_common = .false.
-          cycle
-        end if
-      end do
-
-      if (in_common) call push_integer_array(array=region(m)%ijk,new_element=ijkregion) ! add region location to equation ijk indices
-
-    end do
-
-!---------------------
-! this is a region that should have elements assigned to it from a mesh file
-
-  else if (trim(keyword) == "GMSH") then
-
-! if it doesn't then that indicates a problem
-    if (allocatable_integer_size(region(m)%ijk) == 0) write(*,'(a)') 'WARNING: the region '//trim(region(m)%name)// &
-      ' which was supposed to be read in from a mesh file contains no elements: location = '//trim(region(m)%location)
-
-!---------------------
-
-  else if (.not.allocated(region(m)%ijk)) then
-
-! TODO: other fancier region specifications
-
-    call error_stop('location for region '//trim(region(m)%name)//' is not understood: location = '//trim(region(m)%location))
-
-  end if
-
-! check that each region contains some elements, and that it is allocated (even if zero length)
-! ie, ensure that all region%ijk arrays are allocated
-
-  if (allocatable_integer_size(region(m)%ijk) == 0) then
-    write(*,'(a)') 'WARNING: the region '//trim(region(m)%name)//' contains no elements'
-    if (.not.allocated(region(m)%ijk)) allocate(region(m)%ijk(0))
-  end if
-
-! find ns indices which give the data number corresponding to location i or j
-
-  if (region(m)%centring == "cell") then
-    allocate(region(m)%ns(itotal))
-  else if (region(m)%centring == "face") then
-    allocate(region(m)%ns(jtotal))
-  else if (region(m)%centring == "node") then
-    allocate(region(m)%ns(ktotal))
-  else
-    stop 'ERROR: a region has neither cell, face or node centring'
-  end if
-
-  region(m)%ns = 0 ! a zero indicates that this region does not include this i or j index
-  do ns = 1, allocatable_size(region(m)%ijk)
-    region(m)%ns(region(m)%ijk(ns)) = ns
-  end do
-    
-  if (debug) then
-    write(82,*) '# region = '//trim(region(m)%name)//': centring = '//region(m)%centring
-    write(82,*) '# '//ijkstring(region(m)%centring)//', ns'
-    do ijk = 1, allocatable_size(region(m)%ns)
-      write(82,*) ijk, region(m)%ns(ijk)
-    end do
-  end if
-
-end do
-
-!---------------------
-! calculate maximum dimensions for each region
-do m=1,ubound(region,1)
-  region(m)%dimensions = 0
-  if (region(m)%centring == 'cell') then
-    do ns = 1, allocatable_size(region(m)%ijk)
-      region(m)%dimensions = max(region(m)%dimensions,cell(region(m)%ijk(ns))%dimensions)
-    end do
-  else if (region(m)%centring == 'face') then
-    do ns = 1, allocatable_size(region(m)%ijk)
-      region(m)%dimensions = max(region(m)%dimensions,face(region(m)%ijk(ns))%dimensions)
-    end do
-  else if (region(m)%centring == 'node') then
-    region(m)%dimensions = 0
-  end if
-  maximum_dimensions = max(maximum_dimensions,region(m)%dimensions) ! set maximum number of dimensions of any region used in the simulation
-end do
-if (debug_sparse) write(*,'(a,i1)') 'INFO: the maximum number of dimensions of any region is ',maximum_dimensions
-
-!---------------------
-! now do reverse indices - ie, list of regions which each cell is a member of
-! these arrays are initialised here, so can get rid of the location_in_list stuff
-
-do m = 1, ubound(region,1)
-  if (allocatable_size(region(m)%ijk) == 0) cycle
-  if (region(m)%centring == 'cell') then
-    do ii = 1, allocatable_size(region(m)%ijk)
-      i = region(m)%ijk(ii)
-      call push_array(array=cell(i)%region_list,new_element=m)
-    end do
-  else if (region(m)%centring == 'face') then
-    do jj = 1, allocatable_size(region(m)%ijk)
-      j = region(m)%ijk(jj)
-      call push_array(array=face(j)%region_list,new_element=m)
-    end do
-  else if (region(m)%centring == 'node') then
-    do kk = 1, allocatable_size(region(m)%ijk)
-      k = region(m)%ijk(kk)
-      call push_array(array=node(k)%region_list,new_element=m)
-    end do
-  end if
-end do
-
-!---------------------
-! write out summary info about the regions
-if (debug_sparse) write(*,'(a)') 'INFO: regions:'
-do m=1,ubound(region,1)
-  if (allocatable_size(region(m)%ijk) == 0) then
-    formatline = '(a,'//trim(dindexformat(m))//',a)'
-    if (debug_sparse) write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': location = '// &
-      trim(region(m)%location)//': centring = '//region(m)%centring//': contains no elements'
-  else
-    formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))// &
-      ',a,'//trim(dindexformat(region(m)%ijk(1)))// &
-      ',a,'//trim(dindexformat(allocatable_size(region(m)%ijk)))// &
-      ',a,'//trim(dindexformat(region(m)%ijk(allocatable_size(region(m)%ijk))))//')'
-    if (debug_sparse) write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': location = '// &
-      trim(region(m)%location)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
-      ': ijk(1) = ',region(m)%ijk(1),': ijk(',allocatable_size(region(m)%ijk),') = ', &
-      region(m)%ijk(allocatable_size(region(m)%ijk))
-  end if
-end do
-! and some warnings all the time if a region contains no elements
-do m=1,ubound(region,1)
-  if (allocatable_size(region(m)%ijk) == 0) write(*,'(a)') 'WARNING: region '//trim(region(m)%name)//' contains no elements'
-end do
-
-!---------------------
-! setup any region links
-if (allocated(region_link)) then
-  if (debug_sparse) write(*,'(a)') 'INFO: region_links:'
-  do m = 1, ubound(region_link,1)
-    call setup_region_link(m,debug_sparse)
-  end do
-end if
-
-!---------------------
-if (region_details_file) then
-  if (debug_sparse) write(*,*) 'INFO: writing region details to region_details.txt file'
-
-  filename = "output/region_details.txt"
-  open(fdetail,file=trim(filename),status='replace',iostat=ierror)
-  if (ierror /= 0) call error_stop('problem opening file '//trim(filename))
-
-  write(fdetail,'(a)') 'MESH DETAILS:'
-  formatline = '(3(a,'//trim(indexformat)//'))'
-  write(fdetail,fmt=formatline) 'NODES: ktotal = ',ktotal,': kdomain = ',kdomain,': kboundary = ',kboundary
-  do k = 1,ktotal
-    write(fdetail,'(a)') 'node: '//trim(print_node(k))
-  end do
-  formatline = '(3(a,'//trim(indexformat)//'))'
-  write(fdetail,fmt=formatline) 'FACES: jtotal = ',jtotal,': jdomain = ',jdomain,': jboundary = ',jboundary
-  do j = 1,jtotal
-    write(fdetail,'(a)') 'face: '//trim(print_face(j))
-  end do
-  formatline = '(3(a,'//trim(indexformat)//'))'
-  write(fdetail,fmt=formatline) 'CELLS: itotal = ',itotal,': idomain = ',idomain,': iboundary = ',iboundary
-  do i = 1,itotal
-    write(fdetail,'(a)') 'cell: '//trim(print_cell(i))
-  end do
-
-  close(fdetail)
-end if
-!---------------------
-
-if (debug) write(82,'(a/80(1h-))') 'subroutine setup_regions'
-
-end subroutine setup_regions
-
-!-----------------------------------------------------------------
-
-subroutine setup_region_link(m,debug_sparse)
-
-! little subroutine to setup the link between a from_region and to_region
-use general_module
-! using omp to do the element search
-!$ use omp_lib
-integer :: m, nsf, nst, n_to, n_from, to_ijk, from_ijk, ierror, from_region_number, to_region_number, &
-  from_cell_centred, to_cell_centred
-integer, dimension(:), allocatable :: from_ns ! temporary array of ns in from_region from ns in to_region
-double precision :: maxdist, maxdist2, dist2
-double precision, dimension(totaldimensions) :: from_x, to_x, rel_x ! single locations
-character(len=1000) :: formatline, filename
-logical :: existing, debug_sparse
-logical, parameter :: debug = .false.
-                  
-if (debug) write(*,'(80(1h+)/a)') 'subroutine setup_region_link'
-
-if (debug) write(*,'(a,i3)') ' finding region_link number ',m
-
-! find to_region
-region_link(m)%to_region_number = region_number_from_name(name=region_link(m)%to_region, &
-  centring=region_link(m)%to_centring,existing=existing,creatable=.false.)
-! check that region exists and that centring is consistent
-if (.not.existing) then
-  write(*,'(a)') "ERROR: "//trim(region_link(m)%to_centring)//" region "//trim(region_link(m)%to_region)// &
-    " which is part of a region link function does not exist"
-  stop
-end if
-if (region_link(m)%to_region_number == 0) then
-  write(*,'(a)') "ERROR: problem with "//trim(region_link(m)%to_centring)//" region "//trim(region_link(m)%to_region)// &
-    " which is part of a region link function:- region most likely has a centring which is inconsistent with its use"
-  stop
-end if
-
-! find from_region
-region_link(m)%from_region_number = region_number_from_name(name=region_link(m)%from_region, &
-  centring=region_link(m)%from_centring,existing=existing,creatable=.false.)
-! check that region exists and that centring is consistent
-if (.not.existing) then
-  write(*,'(a)') "ERROR: "//trim(region_link(m)%from_centring)//" region "//trim(region_link(m)%from_region)// &
-    " which is part of a region link function does not exist"
-  stop
-end if
-if (region_link(m)%from_region_number == 0) then
-  write(*,'(a)') "ERROR: problem with "//trim(region_link(m)%from_centring)//" region "//trim(region_link(m)%to_region)// &
-    " which is part of a region link function:- region most likely has a centring which is inconsistent with its use"
-  stop
-end if
-
-! now create links - ns index to ns index
-if (allocated(region_link(m)%to_ns)) deallocate(region_link(m)%to_ns)
-allocate(region_link(m)%to_ns(ubound(region(region_link(m)%from_region_number)%ijk,1)))
-region_link(m)%to_ns = 0 ! default value if no link is found
-
-! also create temporary storage of reverse indices for checking purposes
-allocate(from_ns(ubound(region(region_link(m)%to_region_number)%ijk,1)))
-from_ns = 0
-n_from = 0
-n_to = 0
-
-! speed up loop by predefining some stuff
-from_region_number = region_link(m)%from_region_number
-to_region_number = region_link(m)%to_region_number
-if (region_link(m)%from_centring == 'cell') then
-  from_cell_centred = 1
-else if (region_link(m)%from_centring == 'face') then
-  from_cell_centred = 0
-else
-  from_cell_centred = 2
-end if
-if (region_link(m)%to_centring == 'cell') then
-  to_cell_centred = 1
-else if (region_link(m)%to_centring == 'face') then
-  to_cell_centred = 0
-else
-  to_cell_centred = 2
-end if
-! as this is an expensive lookup, do in parallel
-!$omp parallel do private(nsf,maxdist2,maxdist,from_x,nst,to_x,rel_x,dist2)
-do nsf = 1, ubound(region_link(m)%to_ns,1)
-  maxdist2 = huge(1.d0) ! use dist and dist2 (the square) concurrently now
-  maxdist = sqrt(maxdist2)
-  if (from_cell_centred == 1) then
-    from_x = cell(region(from_region_number)%ijk(nsf))%x
-  else if (from_cell_centred == 0) then
-    from_x = face(region(from_region_number)%ijk(nsf))%x
-  else
-    from_x = node(region(from_region_number)%ijk(nsf))%x
-  end if
-  do nst = 1, ubound(region(to_region_number)%ijk,1)
-    if (to_cell_centred == 1) then
-      to_x = cell(region(to_region_number)%ijk(nst))%x
-    else if (to_cell_centred == 0) then
-      to_x = face(region(to_region_number)%ijk(nst))%x
-    else
-      to_x = node(region(to_region_number)%ijk(nst))%x
-    end if
-    rel_x = to_x - from_x
-! in the interests of speed, compare each component against maxdist separately as a coarse filter
-    if (abs(rel_x(1)) > maxdist) cycle
-    if (abs(rel_x(2)) > maxdist) cycle
-    if (abs(rel_x(3)) > maxdist) cycle
-! now calculate the distance squared and compared this against the stored value
-    dist2 = dot_product(rel_x,rel_x)
-    if (dist2 < maxdist2) then
-      region_link(m)%to_ns(nsf) = nst
-! save both the squared distance and actual distance
-      maxdist2 = dist2
-      maxdist = sqrt(max(dist2,0.d0))
-    end if
-  end do
-end do
-!$omp end parallel do
-
-do nsf = 1, ubound(region_link(m)%to_ns,1)
-  if (region_link(m)%to_ns(nsf) /= 0) then
-    n_from = n_from + 1 ! number of from elements that have links defined
-    if (from_ns(region_link(m)%to_ns(nsf)) == 0) n_to = n_to + 1 ! number of to elements that have links defined
-    from_ns(region_link(m)%to_ns(nsf)) = nsf
-  end if
-end do
-
-if (debug_sparse) then
-  formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(n_from))//',a,'//trim(dindexformat(n_to))//',a)'
-  write(*,fmt=formatline) " region_link ",m," from "//trim(region_link(m)%from_centring)//" region "// &
-    trim(region_link(m)%from_region)//" to "//trim(region_link(m)%to_centring)//" region "// &
-    trim(region_link(m)%to_region)//" contains ",n_from," forward and ",n_to," reverse links"
-end if
-
-! run some checks on linking
-
-! check that each from_region cell has a valid link
-if (n_to < ubound(region(region_link(m)%to_region_number)%ijk,1)) then
-  formatline = '(a,'//trim(dindexformat(ubound(region(region_link(m)%to_region_number)%ijk,1)-n_to))//',a)'
-  write(*,fmt=formatline) '    INFO: ',ubound(region(region_link(m)%to_region_number)%ijk,1)-n_to,' elements in '// &
-    trim(region_link(m)%to_centring)//' region '//trim(region_link(m)%to_region)//' do not have links from '// &
-    trim(region_link(m)%from_centring)//' region '//trim(region_link(m)%from_region)
-end if
-
-! see if there is a unique to_region element for every from_region
-if (n_from > n_to) then
-  formatline = '(a,'//trim(dindexformat(n_from-n_to))//',a)'
-  write(*,fmt=formatline) '    WARNING: there are ',n_from-n_to,' non-unique links to '//trim(region_link(m)%to_region)// &
-    ' '//trim(region_link(m)%to_centring)//' elements coming from multiple '//trim(region_link(m)%from_region)// &
-    ' '//trim(region_link(m)%from_centring)//' elements - i.e., there is not a ''one-to-one'''// &
-    ' correspondance between the linked regions'
-end if
-
-! check that each from_region cell has a valid link
-if (n_from < ubound(region_link(m)%to_ns,1)) then
-  formatline = '(a,'//trim(dindexformat(ubound(region_link(m)%to_ns,1)-n_from))//',a)'
-  write(*,fmt=formatline) '    WARNING: ',ubound(region_link(m)%to_ns,1)-n_from,' '//trim(region_link(m)%from_centring)// &
-    ' elements in '//trim(region_link(m)%from_region)//' do not have links to '//trim(region_link(m)%to_centring)// &
-    ' elements in '//trim(region_link(m)%to_region)
-end if
-
-if (link_details_file) then
-  if (debug) write(*,*) 'writing region details to region_details.txt file'
-
-  filename = "output/link_details.txt"
-  open(fdetail,file=trim(filename),status='replace',iostat=ierror)
-  if (ierror /= 0) call error_stop('problem opening file '//trim(filename))
-
-  write(fdetail,'(a)') repeat('*',80)
-  write(fdetail,'(a)') "region_link from "//trim(region_link(m)%from_region)//" to "//trim(region_link(m)%to_region)
-  write(fdetail,'(/a)') 'FORWARD LINKS'
-  do nsf = 1, ubound(region(region_link(m)%from_region_number)%ijk,1)
-    from_ijk = region(region_link(m)%from_region_number)%ijk(nsf)
-    if (region_link(m)%to_ns(nsf) /= 0) then
-      to_ijk = region(region_link(m)%to_region_number)%ijk(region_link(m)%to_ns(nsf))
-    else
-      to_ijk = 0
-    end if
-    formatline = '(a,'//trim(dindexformat(nsf))//',a,'//trim(dindexformat(from_ijk))//',a,'//trim(dindexformat(to_ijk))//')'
-    write(fdetail,fmt=formatline) '  region link ',nsf,' from ijk = ',from_ijk,' to ijk = ',to_ijk
-  end do
-  write(fdetail,'(/a)') 'REVERSE LINKS'
-  do nst = 1, ubound(region(region_link(m)%to_region_number)%ijk,1)
-    to_ijk = region(region_link(m)%to_region_number)%ijk(nst)
-    if (from_ns(nst) /= 0) then
-      from_ijk = region(region_link(m)%from_region_number)%ijk(from_ns(nst))
-    else
-      from_ijk = 0
-    end if
-    formatline = '(a,'//trim(dindexformat(nst))//',a,'//trim(dindexformat(to_ijk))//',a,'//trim(dindexformat(from_ijk))//')'
-    write(fdetail,fmt=formatline) '  region link ',nst,' to ijk = ',to_ijk,' from ijk = ',from_ijk
-  end do
-  write(fdetail,'(/a)') repeat('*',80)
-
-  close(fdetail)
-end if
-
-deallocate(from_ns)
-
-if (debug) write(*,'(a/80(1h-))') 'subroutine setup_region_link'
-
-end subroutine setup_region_link
-
-!-----------------------------------------------------------------
-
 subroutine read_constants
 
 ! here we read in numerical values for the constants given in the input file
 
 use general_module
 integer :: ierror, cut, m, region_number, nn, ns, ijk
-character(len=1000) :: textline, keyword, name, formatline, region_name
+character(len=1000) :: textline, keyword, name, formatline, region_name, error_string
 double precision :: value
-logical :: existing
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_constants'
@@ -2112,11 +1138,12 @@ fileloop: do
 
 ! find region and check that the centrings of the region and variable match
   if (var(m)%centring /= 'none') then
-    region_number = region_number_from_name(name=region_name,creatable=.false.,existing=existing)
-    if (.not.existing .or. region_number == 0) &
-      call error_stop('the region '//trim(region_name)//' which appears in '//trim(input_file)//' is not known')
+    region_number = region_number_from_name(name=region_name)
+    if (region_number == 0) call error_stop('the region '//trim(region_name)// &
+      ' for which we are trying to read in some numerical constant values is not known')
     if (var(m)%centring /= region(region_number)%centring) &
-      call error_stop('the region '//trim(region_name)//' which appears in '//trim(input_file)//' has a different centring to '// &
+      call error_stop('the region '//trim(region_name)//' for which we are trying to read in some numerical constant values '// &
+        'has a different centring to '// &
         'the corresponding variable '//trim(name)//'.  Change the definition statements for this constant to make the centrings '// &
         'consistent')
   end if
@@ -2129,8 +1156,9 @@ fileloop: do
       ijk = region(region_number)%ijk(nn)
 ! right now if the requested region is outside of the region we are reading in values for, the read will fail
 ! could change this behaviour, but may mean that user doesn't know what they are doing???
-      ns = nsvar(m=m,ijk=ijk,error_string='Error occurred while reading numerical constant '//trim(var(m)%name)// &
-        'from file '//trim(input_file))
+      error_string='Error occurred while reading numerical constant '//trim(var(m)%name)// &
+        'from file '//trim(input_file)
+      ns = nsvar(m=m,ijk=ijk,error_string=error_string)
       var(m)%funk(ns)%v = value
     end do
   end if
@@ -2165,12 +1193,12 @@ subroutine setup_vars
 ! here we allocate array elements for the fields and functions and initialise fields
 
 use general_module
-use equations_module
+use equation_module
 use solver_module
-integer :: m, ns, n, mc, o, pptotal, mtype
+integer :: m, ns, n, mc, o, pptotal, mtype, var_list_number_l, relstep
 character(len=1000) :: formatline, component_list
 character(len=100) :: option_name
-logical :: existing, first, error
+logical :: first, error
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -2181,13 +1209,12 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine setup_vars'
 ! allocate var funks, zero these funks and set region numbers
 do m = 1, ubound(var,1)
   if (var(m)%centring /= "none") then
-    var(m)%region_number = region_number_from_name(name=var(m)%region,centring=var(m)%centring,existing=existing)
-! check that region exists and that the variable and region centring are consistent
-    if (.not.existing) call error_stop('there is a problem with region '//trim(var(m)%region)//' which is associated with '// &
-      trim(var(m)%type)//' '//trim(var(m)%name)//': the region does not exist')
     if (var(m)%region_number == 0) call error_stop('there is a problem with region '//trim(var(m)%region)// &
-      ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//': most probably the centrings of the region '// &
-      'and variable are inconsistent')
+      ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//': something catastrophic')
+! this check is redundant as only the update_region will be dynamic - the region is the static parent of the update_region if the latter is dynamic
+    if (region(var(m)%region_number)%dynamic) call error_stop('the region '//trim(var(m)%region)// &
+      ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//' is dynamic: only static (gmsh, setup and system) regions'// &
+      ' can be used to define variables')
     if (allocatable_size(region(var(m)%region_number)%ijk) == 0) call error_stop('there is a problem with region '// &
       trim(var(m)%region)//' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)// &
       ': the region contains no elements')
@@ -2229,35 +1256,7 @@ do n = 1, nthreads
   end if
 end do
 
-! copy region numbers set in components to compound
-do mc = 1, ubound(compound,1)
-  first = .true.
-  do n = 1, ubound(compound(mc)%component,1)
-    m = compound(mc)%component(n)
-    if (m /= 0) then
-      if (first) then
-        compound(mc)%region_number = var(m)%region_number
-        first = .false.
-      else
-! also check whether the remaining valid components are from the same region
-        if (compound(mc)%region_number /= var(m)%region_number) &
-          call error_stop("components of compound "//trim(compound(mc)%name)//" are from inconsistent regions")
-      end if
-    end if
-  end do
-end do
-
-! now setup var_lists
-allocate(var_list(var_list_number(type="all",centring="all")))
-do mtype = 1, ubound(var_types,1)
-  do m = 1, ubound(var,1)
-    if (trim(var(m)%type) /= trim(var_types(mtype))) cycle ! lists are created in order
-    call push_array(array=var_list(var_list_number(type="all",centring="all"))%list,new_element=m)
-    call push_array(array=var_list(var_list_number(type=var(m)%type,centring="all"))%list,new_element=m)
-    call push_array(array=var_list(var_list_number(type="all",centring=var(m)%centring))%list,new_element=m)
-    call push_array(array=var_list(var_list_number(type=var(m)%type,centring=var(m)%centring))%list,new_element=m)
-  end do
-end do
+! now print var_lists
 if (debug) then
   write(82,*) 'var_list details:'
   do m = 1, var_list_number(type="all",centring="all")
@@ -2273,8 +1272,8 @@ end if
 
 ! run through unknowns setting derivatives and calculating ptotal
 ptotal = 0 ! this is the number of unknown variables (should equal pptotal)
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(n)
   do ns = 1, ubound(var(m)%funk,1)
     ptotal = ptotal + 1
     call push_array(var(m)%funk(ns)%pp,ptotal)
@@ -2291,28 +1290,38 @@ delphiold = 0.d0
 
 ! initialise and place values in the fast lookup array unknown_var_from_pp
 allocate(unknown_var_from_pp(ptotal))
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="unknown"))%list)
-  m = var_list(var_list_number(centring="all",type="unknown"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(n)
   unknown_var_from_pp(var(m)%funk(1)%pp(1):var(m)%funk(ubound(var(m)%funk,1))%pp(1)) = m
 end do
   
 ! run through equations calculating pptotal
 pptotal = 0 ! this is the number of equations (should equal ptotal)
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="equation"))%list)
-  m = var_list(var_list_number(centring="all",type="equation"))%list(n)
+do n = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(n)
   pptotal = pptotal + ubound(var(m)%funk,1)
 end do
 
-! count maximum relstep in each of the transients/newtients
+! count maximum relstep in each of the transients/newtients, now for both variables and dynamic regions
 transient_relstepmax = 0
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="transient"))%list)
-  m = var_list(var_list_number(centring="all",type="transient"))%list(n)
-  transient_relstepmax = max(transient_relstepmax,var(m)%relstep)
+var_list_number_l = var_list_number(centring="all",type="transient",include_regions=.true.)
+do n = 1, allocatable_size(var_list(var_list_number_l)%list)
+  if (var_list(var_list_number_l)%region(n)) then
+    relstep = region(var_list(var_list_number_l)%list(n))%relstep
+  else
+    relstep = var(var_list(var_list_number_l)%list(n))%relstep
+  end if
+  transient_relstepmax = max(transient_relstepmax,relstep)
 end do
 newtient_relstepmax = 0
-do n = 1, allocatable_size(var_list(var_list_number(centring="all",type="newtient"))%list)
-  m = var_list(var_list_number(centring="all",type="newtient"))%list(n)
-  newtient_relstepmax = max(newtient_relstepmax,var(m)%relstep)
+var_list_number_l = var_list_number(centring="all",type="newtient",include_regions=.true.)
+do n = 1, allocatable_size(var_list(var_list_number_l)%list)
+  if (var_list(var_list_number_l)%region(n)) then
+    relstep = region(var_list(var_list_number_l)%list(n))%relstep
+  else
+    relstep = var(var_list(var_list_number_l)%list(n))%relstep
+  end if
+  newtient_relstepmax = max(newtient_relstepmax,relstep)
 end do
 
 ! find user-set magnitude and whether dynamically adjusted magnitudes are set
@@ -2339,6 +1348,7 @@ do m = 1, ubound(var,1)
     option_name = extract_option_name(var(m)%options(n),error)
     if (error) cycle
     if (trim(option_name) == 'magnitude') then
+      if (var(m)%magnitude_constant /= 0) cycle ! skip setting this magnitude if it will be set by a magnitude_constant
       var(m)%magnitude = extract_option_double_precision(var(m)%options(n),error)
       if (error) call error_stop("could not determine the user-set magnitude for variable "//trim(var(m)%name)// &
         " from the option "//trim(var(m)%options(n)))
@@ -2378,18 +1388,19 @@ end do
 ! elementnodedata cannot be used for face centred quantities (or none centred for that matter)
 do n = 1, ubound(compound,1)
 ! ref: default output
-  if ((compound(n)%type == 'unknown'.or.compound(n)%type == 'output'.or. &
+! outputs are not always output
+  if (compound(n)%type == 'output'.or.((compound(n)%type == 'unknown'.or. &
     (compound(n)%type == 'derived'.and.compound(n)%centring == 'cell').or. &
-!   compound(n)%type == 'transient').and.compound(n)%relstep < max(relstepmax,1)) then
-    compound(n)%type == 'transient').and.compound(n)%relstep < max(transient_relstepmax,1)) then
+    compound(n)%type == 'transient').and.compound(n)%relstep < max(transient_relstepmax,1))) then
     call push_character_array(array=compound(n)%options,new_element='output',reverse=.true.)
   else
     call push_character_array(array=compound(n)%options,new_element='nooutput',reverse=.true.)
   end if
 ! ref: default stepoutput
-  if ((compound(n)%type == 'unknown'.or.compound(n)%type == 'derived'.or. &
+! none centred outputs now also always stepoutputted
+  if ((compound(n)%type == 'output'.or.((compound(n)%type == 'unknown'.or. &
     compound(n)%type == 'transient'.or.compound(n)%type == 'output') &
-    .and.compound(n)%centring == 'none'.and.compound(n)%relstep == 0) then
+    .and.compound(n)%relstep == 0)).and.compound(n)%centring == 'none') then
     call push_character_array(array=compound(n)%options,new_element='stepoutput',reverse=.true.)
   else
     call push_character_array(array=compound(n)%options,new_element='nostepoutput',reverse=.true.)
@@ -2418,7 +1429,7 @@ call update_and_check_constants
 call read_initial_outputs
 
 ! run through unknowns setting initial values
-call update_and_check_unknowns
+call update_and_check_unknowns(initial=.true.)
 
 ! run through transients setting initial values
 if (transient_simulation) call update_and_check_initial_transients
@@ -2556,7 +1567,7 @@ integer :: n, m, jj, j, jjmax, kk, k, kkmax, m1, m2, jj1, jj2, j1, j2, norphans,
 character(len=100) :: option_name, formatline
 double precision, dimension(totaldimensions) :: centre, targetx, rel_x
 double precision :: maxdist, maxdist2, dist2, dist
-logical :: existing, error, translate
+logical :: error, translate
 logical, parameter :: debug = .false.
 
 if (.not.allocated(glue_face)) return
@@ -2570,14 +1581,13 @@ do n = 1, ubound(glue_face,1)
 
 ! find region numbers
   do m = 1, 2
-    glue_face(n)%region_number(m) = region_number_from_name(name=glue_face(n)%region(m),existing=existing,creatable=.false.)
+    glue_face(n)%region_number(m) = region_number_from_name(name=glue_face(n)%region(m))
 ! check that region exists
-    if (.not.existing.or.glue_face(n)%region_number(m) == 0) &
+    if (glue_face(n)%region_number(m) == 0) &
       call error_stop("the region "//trim(glue_face(n)%region(m))//" which is being referenced in a GLUE_FACE "// &
-      "command is not found or not valid:  Note, regions used in this command must be defined directly in the gmesh file "// &
-      "rather than be defined via user commands or generated by the fortran (ie, system regions).")
-! and that it has been read in from a gmesh file
-    if (region(glue_face(n)%region_number(m))%location(1:4) /= 'GMSH') &
+      "command is not known:  Note, regions used in this command must be defined directly in a gmesh file")
+! and that it is of type gmsh, which means that it is defined by reading in from a gmsh file and so is also static
+    if (region(glue_face(n)%region_number(m))%type /= 'gmsh') &
       call error_stop("the region "//trim(glue_face(n)%region(m))//" which is being referenced in a GLUE_FACE "// &
       "command is not defined primarily as a GMSH region:  Note, regions used in this command must be defined directly in "// &
       "the gmesh file rather than be defined via user commands or generated by the fortran (ie, system regions).  Note also "// &

@@ -387,13 +387,13 @@ do gmesh_number = 0, ubound(gmesh,1)
     nregion  = 0
     if (allocated(region)) then
       do region_number = 1, ubound(region,1)
-        if (region(region_number)%location(1:6) /= 'SYSTEM') nregion = nregion + 1
+        if ((.not.region(region_number)%dynamic) .and. trim(region(region_number)%type) /= 'system') nregion = nregion + 1
       end do
       if (nregion > 0) then
         allocate(gmesh(0)%gregion(nregion))
         nregion  = 0
         do region_number = 1, ubound(region,1)
-          if (region(region_number)%location(1:6) /= 'SYSTEM') then
+          if ((.not.region(region_number)%dynamic) .and. trim(region(region_number)%type) /= 'system') then
             nregion = nregion + 1
             gmesh(0)%gregion(nregion)%region_number = region_number
             gmesh(0)%gregion(nregion)%centring = region(region_number)%centring
@@ -490,6 +490,10 @@ do gmesh_number = 0, ubound(gmesh,1)
   end if
 
 ! counting of gelements and create arrays of gregions for each gelement
+! the purpose of this loop is to 
+! 1) calculate the number of gelement output lines will be output for each gmesh, noting that an element will be repeated for every region that it is in, except for boundary cells (which are not output for any cell regions)
+! 2) form the gregions array for each element, which is used when writing each gelement
+! note, that if a gelement is not in a region (or is only in one region but is a boundary cell) then it still is given an entry in the output file, but here is assigned a sole gregion array entry of 1
   gmesh(gmesh_number)%ngelements = 0 ! these have one entry per element, with repeats if an element is in multiple regions
   gmesh(gmesh_number)%ngelements_face = 0
   gmesh(gmesh_number)%ngelements_cell = 0
@@ -501,6 +505,7 @@ do gmesh_number = 0, ubound(gmesh,1)
       iadd = 0
       if (i /= 0.and.allocated(gmesh(gmesh_number)%gregion)) then
         do gregion = 1, ubound(gmesh(gmesh_number)%gregion,1)
+          if (gmesh(gmesh_number)%gregion(gregion)%centring.ne.'cell') cycle ! as per v0.53 the cell|face|node%region_list array has been removed, so instead check the region centring and then later that this element is in the region
   ! only include gelements that have the same dimension as the gregion (otherwise gmsh pickles)
           region_number = gmesh(gmesh_number)%gregion(gregion)%region_number
           if (region_number == 0) cycle
@@ -509,7 +514,7 @@ do gmesh_number = 0, ubound(gmesh,1)
   ! NB: as per original gmsh file, boundary cells are created once the read in has taken place
   ! data can still be associated with them as there gelements for the boundary face elements are defined
           if (cell(i)%type /= 1) cycle
-          if (location_in_list(array=cell(i)%region_list,element=region_number) /= 0) then
+          if (region(region_number)%ns(i) /= 0) then
             iadd = iadd + 1
             call push_integer_array(gmesh(gmesh_number)%gelement(gelement)%gregions,new_element=gregion)
           end if
@@ -519,10 +524,11 @@ do gmesh_number = 0, ubound(gmesh,1)
       jadd = 0
       if (j /= 0.and.allocated(gmesh(gmesh_number)%gregion)) then
         do gregion = 1, ubound(gmesh(gmesh_number)%gregion,1)
+          if (gmesh(gmesh_number)%gregion(gregion)%centring.ne.'face') cycle
           region_number = gmesh(gmesh_number)%gregion(gregion)%region_number
           if (region_number == 0) cycle
           if (face(j)%dimensions /= region(region_number)%dimensions) cycle
-          if (location_in_list(array=face(j)%region_list,element=region_number) /= 0) then
+          if (region(region_number)%ns(j) /= 0) then
             jadd = jadd + 1
             call push_integer_array(gmesh(gmesh_number)%gelement(gelement)%gregions,new_element=gregion)
           end if
@@ -532,10 +538,11 @@ do gmesh_number = 0, ubound(gmesh,1)
       kadd = 0
       if (k /= 0.and.allocated(gmesh(gmesh_number)%gregion)) then
         do gregion = 1, ubound(gmesh(gmesh_number)%gregion,1)
+          if (gmesh(gmesh_number)%gregion(gregion)%centring.ne.'node') cycle
           region_number = gmesh(gmesh_number)%gregion(gregion)%region_number
           if (region_number == 0) cycle
           if (0 /= region(region_number)%dimensions) cycle
-          if (location_in_list(array=node(k)%region_list,element=region_number) /= 0) then ! here
+          if (region(region_number)%ns(k) /= 0) then
             kadd = kadd + 1
             call push_integer_array(gmesh(gmesh_number)%gelement(gelement)%gregions,new_element=gregion)
           end if
@@ -562,6 +569,16 @@ do gmesh_number = 0, ubound(gmesh,1)
     write(87,*) 'ngelements_cell = ',gmesh(gmesh_number)%ngelements_cell
     write(87,*) 'ngelements_face = ',gmesh(gmesh_number)%ngelements_face
     write(87,*) 'ngelements_node = ',gmesh(gmesh_number)%ngelements_node
+    write(87,*) 'gregions:'
+    if (allocated(gmesh(gmesh_number)%gregion)) then
+      do gregion = 1, ubound(gmesh(gmesh_number)%gregion,1)
+        region_number = gmesh(gmesh_number)%gregion(gregion)%region_number
+        write(87,*) 'gregion = ',gregion,': centring = '//trim(gmesh(gmesh_number)%gregion(gregion)%centring)// &
+          ': region_number = ',region_number,': region centring = '//trim(region(region_number)%centring)//&
+          ': region dimensions = ',region(region_number)%dimensions,': region name = '//trim(region(region_number)%name)
+      end do
+    end if
+    write(87,*) 'gelements:'
     if (allocated(gmesh(gmesh_number)%gelement)) then
       do gelement = 1, ubound(gmesh(gmesh_number)%gelement,1)
         write(87,*) 'gelement = ',gelement,': icell = ',gmesh(gmesh_number)%gelement(gelement)%icell, &
@@ -675,7 +692,7 @@ integer :: gmesh_number
 character(len=1000) :: formatline
 character(len=100) :: input_option
 logical :: success
-logical, parameter :: debug = .false.
+logical, parameter :: debug = .false. ! this is not the variable you are looking for
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_gmesh'
 
@@ -753,7 +770,7 @@ integer, optional :: var_number
 real :: gmsh_version
 character(len=1000) :: textline, filename
 character(len=4) :: file_centring, contents
-logical, parameter :: debug = .false. ! this is passed to called reading subroutines too
+logical, parameter :: debug = .false. ! this is passed to called reading subroutines too - this is the variable you are looking for (ref: star wars)
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_gmesh_file'
 
@@ -860,6 +877,7 @@ data_type = ''
 main_loop: do 
   read(fgmsh,'(a)',iostat=error) textline
   if (error /= 0) exit
+  if (trim(textline) == '') cycle
   if (data_type /= '') then
     if (trim(textline) == '$End'//trim(data_type)) data_type = ''
   else if (trim(textline) == "$Data" .or. trim(textline) == "$ElementData" .or. trim(textline) == "$ElementNodeData") then
@@ -885,6 +903,7 @@ main_loop: do
         write(*,'(a)') '  Offending textline was '//trim(textline)
         cycle main_loop
       end if
+      if (textline(1:1) /= "<") textline = "<"//trim(textline)//">" ! add arb delimiters to any data names that don't have them already
       if (n == 1) then
         name = var(var_number)%name
         centring = var(var_number)%centring
@@ -1020,10 +1039,13 @@ main_loop: do
           ijk = gmesh(gmesh_number)%gelement(gelement)%knode
         end if
         if (ijk == 0.and.debug) write(*,*) 'ijk = ',ijk,': gelement = ',gelement,': textline = ',trim(textline)
-        if (ijk == 0) call error_stop(trim(centring)//' centred data references an invalid element for variable '//trim(name)// &
-          ' in gmsh file '//trim(filename))
+!       if (ijk == 0) call error_stop(trim(centring)//' centred data references an invalid element for variable '//trim(name)// &
+!         ' in gmsh file '//trim(filename))
+! now silently ignore data that is given on an element that has a centring that is inconsistent with that of the data
+! this flexibility need (eg) when dealing with data that is neglected after a face has been glued, so that a boundary cell has disappeared, but the data remains (and should be ignored) on what the code sees as a face
+        if (ijk == 0) cycle ! not only is this data not in the region, the centring is wrong too
         ns = region(region_number)%ns(ijk)
-        if (ns == 0) cycle main_loop ! silently skip any data that is not within the variable's region
+        if (ns == 0) cycle ! also silently skip any data that is not within the variable's region
       else
         if (gelement /= 1) &
           call error_stop('gelement should be 1 for none centred variable '//trim(name)//' in gmsh file '//trim(filename))
@@ -1112,6 +1134,7 @@ do
     write(*,'(a)') "WARNING: list of elements not found in gmsh file "//trim(filename)
     return
   end if
+  if (trim(textline) == '') cycle
   if (trim(textline) == "$Elements") exit
 end do
 read(fgmsh,*,iostat=error) nelements
@@ -1137,6 +1160,7 @@ do n = 1, nelements
 
   read(fgmsh,'(a)',iostat=error) textline
   if (error /= 0) call error_stop('problem reading elements in gmsh file '//trim(filename))
+  if (trim(textline) == '') cycle
   read(textline,*,iostat=error) gelement, gtype, ntags
   if (error /= 0) call error_stop('problem reading initial element data in gmsh file '//trim(filename))
   if (gtype > ubound(gtype_list,1) .or. .not.gtype_list(gtype)%supported) stop &
@@ -1144,6 +1168,7 @@ do n = 1, nelements
 
 ! get tags and local_nodes arrays to the correct size ready for reading
   call resize_integer_array(array=tags,new_size=ntags)
+  if (ntags == 0) allocate(tags(0)) ! fortran allows this now, so reallocate for future convienience even if the element has no associated tags
   call resize_integer_array(array=local_gnodes,new_size=gtype_list(gtype)%nnodes)
 
 ! re-read line now knowing number of tags and number of nodes
@@ -1177,8 +1202,18 @@ do n = 1, nelements
 ! default is a cell if the element has the maximum dimensions, otherwise a face
 ! note, cells should always be a part of a gmsh physical entity originally, and hence always be associated with a region,
 !  so if an element is not associated with a region then it must be a face
-  if (gtype_list(gtype)%dimensions == gmesh(gmesh_number)%dimensions) then
+  if (gtype_list(gtype)%dimensions >= gmesh(gmesh_number)%dimensions) then
     centring = 'cell'
+    if (gtype_list(gtype)%dimensions > gmesh(gmesh_number)%dimensions) then
+      write(*,'(a,i1,a,i1,a)') "WARNING: an element was found in gmsh file "//trim(gmesh(gmesh_number)%basename)// &
+        " that has dimensions higher than those listed in the physical names: increasing gmesh dimensions from ", &
+        gmesh(gmesh_number)%dimensions," to ",gtype_list(gtype)%dimensions," as a result, but this may cause problems, "// &
+        "namely that any physical regions (names) included within the file may have the wrong centring. "// &
+        "It is recommend to include a cell centred physical region within the gmsh file having the maximum dimensions "// &
+        "of the mesh. Failing that, define all region centrings explicitly within the arb input file so that none are "// &
+        "guessed based on the mesh dimensions."
+      gmesh(gmesh_number)%dimensions = gtype_list(gtype)%dimensions
+    end if
   else if (gtype_list(gtype)%dimensions == 0 .and. gmesh(gmesh_number)%dimensions /= 1) then
     centring = 'node'
   else
@@ -1186,9 +1221,11 @@ do n = 1, nelements
   end if
 ! now check on the parent region, overwriting above defaults if necessary
   region_number = 0
-  if (tags(1) /= 0.and.tags(1) <= ubound(gmesh(gmesh_number)%gregion,1)) then
-    region_number = gmesh(gmesh_number)%gregion(tags(1))%region_number
-    centring = gmesh(gmesh_number)%gregion(tags(1))%centring
+  if (allocatable_integer_size(tags) >= 1) then
+    if (tags(1) /= 0.and.tags(1) <= ubound(gmesh(gmesh_number)%gregion,1)) then
+      region_number = gmesh(gmesh_number)%gregion(tags(1))%region_number
+      centring = gmesh(gmesh_number)%gregion(tags(1))%centring
+    end if
   end if
 
   if (debug) write(81,*) 'NEW ELEMENT: gelement = ',gelement,': gtype = ',gtype,': name = ',trim(gtype_list(gtype)%name), &
@@ -1439,6 +1476,7 @@ do
     write(*,'(a)') "WARNING: list of nodes not found in gmsh file "//trim(filename)
     return
   end if
+  if (trim(textline) == '') cycle
   if (trim(textline) == "$Nodes") exit
 end do
 read(fgmsh,*,iostat=error) nnodes
@@ -1449,8 +1487,8 @@ if (.not.check) then
   allocate(gnode(nnodes))
   do k = 1, nnodes
     read(fgmsh,*,iostat=error) gnode(k),node(k+ktotal)%x
-    node(k+ktotal)%x = transform_coordinates(node(k+ktotal)%x)*gmesh(gmesh_number)%input_scale
     if (error /= 0) call error_stop('problem reading nodes in gmsh file '//trim(filename))
+    node(k+ktotal)%x = transform_coordinates(node(k+ktotal)%x)*gmesh(gmesh_number)%input_scale
   end do
   ! now create lookup array
   allocate(gmesh(gmesh_number)%knode_from_gnode(maxval(gnode)))
@@ -1506,7 +1544,8 @@ integer, dimension(:), allocatable :: gregion_dimensions, gregion_number
 character(len=1000), dimension(:), allocatable :: gregion_name
 character(len=1000) :: formatline, textline, filename, location
 character(len=4) :: centring
-logical :: check, debug, existing
+type(region_type) :: default_element ! this is the element that will be added to region
+logical :: check, debug, guess_centring
 
 rewind(fgmsh)
 do 
@@ -1514,8 +1553,11 @@ do
 ! if (error /= 0) call error_stop('list of physical names not found in gmsh file '//trim(filename))
   if (error /= 0) then
     write(*,'(a)') "WARNING: list of physical names not found in gmsh file "//trim(filename)
+    write(*,'(a)') "WARNING: assuming mesh is 3 dimensional given the lack of physical regions"
+    gmesh(gmesh_number)%dimensions = 3
     return
   end if
+  if (trim(textline) == '') cycle
   if (trim(textline) == "$PhysicalNames") exit
 end do
 read(fgmsh,*,iostat=error) ngregions
@@ -1526,11 +1568,11 @@ if (debug) write(*,*) 'number of physical names: ngregions = ',ngregions
 allocate(gregion_number(ngregions),gregion_dimensions(ngregions),gregion_name(ngregions))
 do n=1,ngregions
   read(fgmsh,*,iostat=error) gregion_dimensions(n),gregion_number(n),gregion_name(n)
+  if (error /= 0) call error_stop('problem reading physical name in gmsh file '//trim(filename))
 ! for Pointwise compatibility, add on <> delimiters if not already present, and add dimension onto Unspecified regions to make them unique
   if (trim(gregion_name(n)) == "Unspecified") write(gregion_name(n),'(a,i1)') "Unspecified_dim",gregion_dimensions(n)
   if (gregion_name(n)(1:1) /= "<") gregion_name(n) = "<"//trim(gregion_name(n))//">"
   if (debug) write(*,*) gregion_dimensions(n), gregion_number(n), trim(gregion_name(n))
-  if (error /= 0) call error_stop('problem reading physical name in gmsh file '//trim(filename))
 end do
 if (debug) write(*,*) ' gmesh dimensions = ',maxval(gregion_dimensions)
 if (check) then
@@ -1538,6 +1580,8 @@ if (check) then
     "dimension mismatch between msh files: all .msh files (of different centring) must come from the same simulation")
 else
   gmesh(gmesh_number)%dimensions = maxval(gregion_dimensions)
+  write(*,'(a,i1,a)') "INFO: "//trim(gmesh(gmesh_number)%basename)// &
+    " gmsh file is ",gmesh(gmesh_number)%dimensions," dimensional based upon included physical names"
 end if
 
 if (.not.check) then
@@ -1546,15 +1590,40 @@ if (.not.check) then
   gmesh(gmesh_number)%gregion(:)%centring = ''
 end if
 do n=1,ngregions
-! region existence possibilities
-! 1) nothing has been set: centring is calculated from dimension related to the rest of the mesh file
-! 2) centring has been set from constants.in but not location: this centring is to be applied to elements read in from gmsh file
-! 3) centring and location has been set from previous GMSH read: check on consistency of centring and dimensions
-! 4) centring and location has been set from user's arb file: gmsh element data is to be ignored
+! region possibilities for non-check invocation
+! 1) nothing has been set: centring is calculated from dimension related to the rest of the mesh file, and type is set to gmsh
+! 2) region is identified, but type is system - error
+! 3) region is identified, type is not gmsh - check centring, set/check dimensions, and continue, noting that data may be read in for this region
+! 4) region is identified, type is gmsh - check centring, set/check dimensions, set/append location string
 
-  region_number = region_number_from_name(name=gregion_name(n),creatable=.false.)
+  region_number = region_number_from_name(name=gregion_name(n))
   formatline = '(a,'//trim(dindexformat(gregion_number(n)))//',a)'
-  write(location,fmt=formatline) 'GMSH physical entity number ',gregion_number(n),' from file '//trim(filename)
+  write(location,fmt=formatline) 'gmsh physical entity number ',gregion_number(n),' from file '//trim(filename)
+
+! work out whether we're going to have to guess the centring of this region, and if so, do it
+  guess_centring = .false.
+  if (.not.check) then
+    if (region_number == 0) then
+      guess_centring = .true.
+    else if (trim(region(region_number)%centring) == "") then
+      guess_centring = .true.
+    end if
+    if (guess_centring) then
+      if (gregion_dimensions(n) == gmesh(gmesh_number)%dimensions) then
+        centring = "cell" ! for 3D 3: for 2D 2: for 1D 1.
+      else if (gregion_dimensions(n) == 0 .and. gmesh(gmesh_number)%dimensions /= 1) then
+  ! if dimension is 0 then this is a node region, unless mesh is one 1D, when a 0 dimension element defaults to a face and nodes have to be specified
+        centring = "node" ! for 3D 0: for 2D 0: for 1D no default.
+      else 
+        centring = "face" ! for 3D 2,1: for 2D 1: for 1D 0.
+        if (gregion_dimensions(n) < gmesh(gmesh_number)%dimensions-1) &
+          write(*,'(a)') 'WARNING: region '//trim(gregion_name(n))//' in gmsh file '//trim(filename)// &
+          ' assumed to have face centring based on dimensions relative to the other elements in this file, however the '// &
+          'dimension is one less than it should be probably indicating an error.  Maybe some regions need to have their '// &
+          'centring explicitly set in the arb input file.'
+      end if
+    end if
+  end if
 
   if (region_number == 0) then
 ! region does not yet exist: determine centring and create new region
@@ -1562,79 +1631,80 @@ do n=1,ngregions
       ' is not properly defined on current read: all centring files with the same basename must come from the '// &
       'same simulation and have the same physical entities defined')
     if (debug) write(*,*) ' before read: region '//trim(gregion_name(n))//': not previously defined'
-    if (gregion_dimensions(n) == gmesh(gmesh_number)%dimensions) then
-      centring = "cell" ! for 3D 3: for 2D 2: for 1D 1.
-    else if (gregion_dimensions(n) == 0 .and. gmesh(gmesh_number)%dimensions /= 1) then
-! if dimension is 0 then this is a node region, unless mesh is one 1D, when a 0 dimension element defaults to a face and nodes have to be specified
-      centring = "node" ! for 3D 0: for 2D 0: for 1D no default.
-    else 
-      centring = "face" ! for 3D 2,1: for 2D 1: for 1D 0.
-      if (gregion_dimensions(n) < gmesh(gmesh_number)%dimensions-1) &
-        write(*,'(a)') 'WARNING: region '//trim(gregion_name(n))//' in gmsh file '//trim(filename)// &
-        ' assumed to have face centring based on dimensions relative to the other elements in this file, however the '// &
-        'dimension is one less than it should be probably indicating an error.  Maybe some regions need to have their '// &
-        'centring explicitly set in the arb input file.'
-    end if
+! centring is now set for this case above
 ! create new region and set gregion region_number at the same time
-    gmesh(gmesh_number)%gregion(gregion_number(n))%region_number = region_number_from_name(name=gregion_name(n), &
-      location=location,centring=centring,dimensions=gregion_dimensions(n),creatable=.true.)
+    default_element%name = gregion_name(n)
+    default_element%centring = centring
+    default_element%type = 'gmsh'
+    default_element%dimensions = gregion_dimensions(n)
+    default_element%location%active = .false.
+    default_element%location%description = location
+    default_element%initial_location%active = .false.
+    default_element%initial_location%description = ""
+    call resize_region_array(new_element=default_element,change=1)
+    region_number = ubound(region,1)
+
+    gmesh(gmesh_number)%gregion(gregion_number(n))%region_number = region_number
     gmesh(gmesh_number)%gregion(gregion_number(n))%centring = centring
-    region_number = gmesh(gmesh_number)%gregion(gregion_number(n))%region_number
 
-  else if (trim(region(region_number)%centring) == "") then
-! region is defined but not centring: this is an error
-    call error_stop('region '//trim(gregion_name(n))//' in gmsh file '//trim(filename)//' is already allocated but'// &
-      ' has no centring defined')
+  else
+! this region already has a valid fortran definition
 
-  else if (trim(region(region_number)%location(1:4)) == "GMSH") then
+! if this is being called with check, then the region should already be defined
     if (check) then
       if (gmesh(gmesh_number)%gregion(gregion_number(n))%region_number /= region_number) call error_stop('region '// &
         trim(gregion_name(n))//' in gmsh file '//trim(filename)//' has inconsistent region_number on reread')
     else
+
       if (debug) write(*,*) ' before read: region '//trim(gregion_name(n))//': region number ',region_number, &
-        ': centring = '//trim(region(region_number)%centring)//': location '//trim(region(region_number)%location)// &
-        ': dimensions = ',region(region_number)%dimensions
-      write(*,'(a)') 'WARNING: region '//trim(gregion_name(n))//' is contained in more than one gmsh file:'
-      write(*,'(a)') ' original location: '//trim(region(region_number)%location)
-      write(*,'(a)') ' current location: '//trim(location)
-! if this gregion has more dimensions then the dimensions of the region expands
-!     region(region_number)%dimensions = max(gregion_dimensions(n),region(region_number)%dimensions) 
-! actually this should flag a problem as each element associated with a gmsh physical entity should have the same dimension
-      if (region(region_number)%dimensions /= gregion_dimensions(n)) call error_stop('region '//trim(gregion_name(n))// &
-        ' in gmsh file '//trim(filename)//' has dimensions that are inconsistent with a previous gmsh definition of this region')
+        ': centring = '//trim(region(region_number)%centring)//': type = '//trim(region(region_number)%type)// &
+        ': location '//trim(region(region_number)%location%description)//': dimensions = ',region(region_number)%dimensions
+
+! first check that it isn't a system region
+! we don't check on internal names as the fortran has no record of them
+      if (trim(region(region_number)%type) == "system") call error_stop('the region '//trim(gregion_name(n))// &
+        ' in gmsh file '//trim(filename)//' is attempting to use a system region name - you need to change this region name')
+
+! now check on centring, setting it if it was deemed necessary above
+      if (guess_centring) then
+        region(region_number)%centring = centring
+      else if (trim(region(region_number)%centring) == "none") then
+        call error_stop('region '//trim(gregion_name(n))// &
+          ' in gmsh file '//trim(filename)//' has a centring of '//trim(region(region_number)%centring)// &
+          ' that is inconsistent with a previous definition of this region')
+      end if
+
+! set/check on dimensions
+      if (region(region_number)%dimensions == -1) then
+        region(region_number)%dimensions = gregion_dimensions(n) ! set dimensions if not already set
+      else if (region(region_number)%dimensions /= gregion_dimensions(n)) then ! or if already set but inconsistent, then this is an error
+        call error_stop('region '//trim(gregion_name(n))// &
+          ' in gmsh file '//trim(filename)//' has dimensions that are inconsistent with a previous definition of this region')
+      end if
+
+! and if this is a gmsh region, keep a record of all locations that are used for read ins
+      if (trim(region(region_number)%type) == 'gmsh' .and. trim(region(region_number)%location%description) == '') then
+        region(region_number)%location%description = trim(location)
+      else if (trim(region(region_number)%type) == 'gmsh') then
+        region(region_number)%location%description = trim(region(region_number)%location%description)//' + '//trim(location) ! concatenating
+      else
+! otherwise let the user know that a region is about to be ignored
+        write(*,'(a)') "NOTE: region "//trim(gregion_name(n))//" defined in the gmsh file "//trim(filename)// &
+          " conflicts with a region definition given in the arb input file:  the region definition in the current gmsh file "// &
+          "will be ignored"
+      end if
+
 ! this allows data from multiple mesh files to be read into the same region
       gmesh(gmesh_number)%gregion(gregion_number(n))%region_number = region_number
       gmesh(gmesh_number)%gregion(gregion_number(n))%centring = region(region_number)%centring
+
     end if
-
-  else if (trim(region(region_number)%location) == "") then
-! only centring has been set: set location and dimensions
-    if (check) call error_stop('region '//trim(gregion_name(n))//' in gmsh file '//trim(filename)// &
-      ' is not properly defined on current read: all centring files with the same basename must come from the '// &
-      'same simulation and have the same physical entities defined')
-    if (debug) write(*,*) ' before read: region '//trim(gregion_name(n))//': region number ',region_number, &
-      ': centring = '//trim(region(region_number)%centring)//': location '//trim(region(region_number)%location)// &
-      ': dimensions = ',region(region_number)%dimensions
-    if (region(region_number)%dimensions /= -1) call error_stop('region '//trim(gregion_name(n))//' in gmsh '// &
-      'file '//trim(filename)//' that is about to be read already has dimensions set from some previous definition')
-    region(region_number)%location = trim(location)
-    region(region_number)%dimensions = gregion_dimensions(n)
-    gmesh(gmesh_number)%gregion(gregion_number(n))%region_number = region_number
-    gmesh(gmesh_number)%gregion(gregion_number(n))%centring = region(region_number)%centring
-
-  else
-! this is a region that is to be defined using user statements: gmsh definition will be ignored to allow reread
-    if (.not.check) write(*,'(a)') "NOTE: region "//trim(gregion_name(n))//" defined in the gmsh file "//trim(filename)// &
-      " conflicts with a region definition given in the arb input file:  the region definition in the current gmsh file will "// &
-      "be ignored"
-! however centring is recorded so that the centring of cells associated with this gregion can be correctly identified
-    gmesh(gmesh_number)%gregion(gregion_number(n))%centring = region(region_number)%centring
 
   end if
 
   if (debug) write(*,*) ' after read: region '//trim(gregion_name(n))//': region number ',region_number, &
-    ': centring = '//trim(region(region_number)%centring)//': location '//trim(region(region_number)%location)// &
-    ': dimensions = ',region(region_number)%dimensions
+    ': centring = '//trim(region(region_number)%centring)//': type = '//trim(region(region_number)%type)// &
+    ': location '//trim(region(region_number)%location%description)//': dimensions = ',region(region_number)%dimensions
 
 end do
 deallocate(gregion_number,gregion_dimensions,gregion_name)

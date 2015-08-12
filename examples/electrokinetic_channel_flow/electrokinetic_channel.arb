@@ -5,12 +5,12 @@
 #
 #-------------------------------------------------------------------
 # file equations.in
-VERSION 0.50
+VERSION 0.53
 
 INFO_TITLE "Fully-developed electrokinetic flow"
 INFO_DESCRIPTION "Now setup for electroviscous flow with zero total current"
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "22/8/14" # interpreted as the last modification date
+INFO_DATE "22/4/15" # interpreted as the last modification date
 
 # choose coordinate system
 # for cartesian slit flow include the following:
@@ -28,8 +28,8 @@ GLUE_FACES <centreline> reflect=2 # glue the centreline back on itself (while re
 #----------------------------------------------------------------------------
 # solver options
 
-# for electrokinetic problems, higher order kernels give significantly better results
-KERNEL polynomialaverageorder=2,polynomialorder=2 # specifies that when averaging/differentiating quantities to/at faces, ensure that function fits a second order polynomial
+# for electrokinetic problems, higher order kernels give significantly better results (these are now the default anyway)
+KERNEL_OPTIONS polynomialaverageorder=2,polynomialorder=2 # specifies that when averaging/differentiating quantities to/at faces, ensure that function fits a second order polynomial
 
 #-------------------------------------------------------------------
 # geometry
@@ -57,30 +57,41 @@ MSH_FILE "electrokinetic_channel_structured_nonuniform.msh"
 #MSH_FILE "electrokinetic_channel_unstructured.msh"
 
 # use templates from the electrokinetics template directory to build up problem
-INCLUDE_ROOT "electrokinetics" # this is the base directory that will be appended to the following files
 # use these for a dimensional problem
+#INCLUDE_ROOT "navier_stokes"
 #INCLUDE "constants" # specify physical and numerical constants
-#INCLUDE "electrokinetic_constants" # and the same for the electrokinetic equations
+#INCLUDE_ROOT "electrokinetics"
+#INCLUDE "constants" # and the same for the electrokinetic equations
 # or these for a nondimensional problem
+INCLUDE_ROOT "navier_stokes"
 INCLUDE "nondimensional_constants" # specify physical and numerical constants
-INCLUDE "nondimensional_electrokinetic_constants" # and the same for the electrokinetic equations
+INCLUDE_ROOT "electrokinetics"
+INCLUDE "nondimensional_constants" # and the same for the electrokinetic equations
 
-INCLUDE "binary_ion_combinations" # some concentrations and charges required in other equations
-INCLUDE "unknowns" # linked to navier-stokes template
-INCLUDE "total_stress" # linked to navier-stokes template
-INCLUDE "combined_fluxes" # this includes an electrokinetic term too and includes electrical terms in the dynamic force vector
-INCLUDE "conservation" # linked to navier-stokes template
+# some concentrations and charges required in other equations, and also the face centred potential required in the dynamic_force calculation
+INCLUDE "binary_ion_combinations"
 
-# the following wall bcs are linked to navier-stokes templates
+# now the flow parts
+INCLUDE_ROOT "navier_stokes"
+INCLUDE "domain"
+INCLUDE_ROOT "electrokinetics"
+INCLUDE "dynamic_force" # overwrite the dynamic_force used in the navier-stokes equations to include an electrical forcing term
+
+# and the flow boundary conditions
+INCLUDE_ROOT "navier_stokes"
 INCLUDE "walls_noslip" # nonslip walls BC
 INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure gradient to give using <u_av>
 INCLUDE "outlet_u_fully_developed" # fully developed velocity profile, setting pressure at centreline to zero and a uniform pressure gradient
 
+# now ion transport and potential equation
+INCLUDE_ROOT "electrokinetics"
 INCLUDE "binary_ion_equations" # transport of binary electrolyte (positive and negative ions), including boundary conditions
 INCLUDE "potential_equations" # electrical poisson equation for potential, including boundary conditions
 
+# giving a better initial estimate leads to faster and more reliable convergence
 INCLUDE "estimate_initial_potential" # sets the initial potential using a very rough correlation.  Initial ion concentrations reference this potential.
 
+#-------------------------------------------------------------------
 # correct some magnitudes
 CELL_UNKNOWN <p> magnitude=1.d+5
 # the following magnitudes are resonably well calculated from the initial potential estimate, so don't bother setting explicitly

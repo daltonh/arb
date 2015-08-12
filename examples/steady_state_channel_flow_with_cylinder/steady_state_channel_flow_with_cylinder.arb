@@ -4,13 +4,13 @@
 # arb is released under the GNU GPL.  For full details see the license directory.
 #
 #-------------------------------------------------------------------
-VERSION 0.50 # the version of syntax used in this file
+VERSION 0.53 # the version of syntax used in this file
 
 # the following strings describe the simulation and are passed to the output files
 INFO_TITLE "Steady state flow around an offset cylinder within a channel"
 INFO_DESCRIPTION "Tutorial 3: Here the steady-state Navier-Stokes equations are solved in 2D, using an unstructured mesh.  The Reynolds number for the problem based on the cylinder diameter and maximum inlet velocity is 20.  This is a CFD benchmark problem.  The problem is not physical however, as the inlet has an imposed parabolic profile but is also very close to the cylinder."
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "3/8/14" # interpreted as the last modification date
+INFO_DATE "14/5/14" # interpreted as the last modification date
 
 #-------------------------------------------------------------------
 # system constants
@@ -22,14 +22,14 @@ INFO_DATE "3/8/14" # interpreted as the last modification date
 # geometry
 
 # CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
-# where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
-# where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
-# where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
-# where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
-# where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
-# where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
+# where location string could be: "at(x1,x2,x3)" for a single point closest to these coordinates
+# where location string could be: "withinbox(x1_min,x2_min,x3_min,x1_max,x2_max,x3_max)" for all elements within a box defined by the minimum and maximum coordinate values
+# where location string could be: "compound(+<a region>-<another region>)" for a + and - compound region list
+# where location string could be: "boundaryof(<a region>)" - boundary faces/cells contained within or surrounding <a region>
+# where location string could be: "domainof(<a region>)" - domain faces/cells contained within <a region>
+# where location string could be: "associatedwith( <a region>)" - faces/cells both contained within and surrounding <a region>
 
-FACE_REGION <walls> "COMPOUND <boundaries>-<inlet>-<outlet>"
+FACE_REGION <walls> "compound(<boundaries>-<inlet>-<outlet>)"
 
 # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
 # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
@@ -108,4 +108,6 @@ VARIABLE <u_f> output
 VARIABLE <J_f[l=1]> output
 VARIABLE <tau[l=1,1]> output
 
+#INCLUDE_ROOT "navier_stokes"
+#INCLUDE "strain_rate_magnitude"
 #-------------------------------------------------------------------

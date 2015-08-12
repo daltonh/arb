@@ -31,7 +31,7 @@
 ! <http://people.eng.unimelb.edu.au/daltonh/downloads/arb>.
 !
 !-------------------------------------------------------------------------
-arb_external_preamble ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the preamble of equations_module.f90
+arb_external_preamble ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the preamble of equation_module.f90
 
 ! statements specifying different data types and parameters
 double precision :: normal_magnitude_tol = 1.d-8 ! how close in squared sense normal magnitude must be to 1
@@ -51,7 +51,7 @@ type(scalar_list_type), dimension(:), allocatable, save :: flux_list, phif_list,
 public cellvofd, facevofphi, cellvofphishape, cellvofphiadjust
 
 !-----------------------------------------------------------------
-arb_external_setup ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the setup section (allocate_meta_arrays subroutine) of equations_module.f90
+arb_external_setup ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the setup section (allocate_meta_arrays subroutine) of equation_module.f90
 
 ! allocate some lists that will be used in the free surface routines
 allocate(cellknode_xr(nthreads))
@@ -78,7 +78,7 @@ do n = 1, nthreads
 end do
 
 !-----------------------------------------------------------------
-arb_external_contents ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the main section of equations_module.f90
+arb_external_contents ! an arb flag to say everything between this and the next arb_external_(setup|preamble|contents) is included in the main section of equation_module.f90
 
 !-----------------------------------------------------------------
 
@@ -94,7 +94,7 @@ subroutine cellvofd(thread,m,ilast,jlast,klast,error_string,deriv,msomeloop_phi,
 ! someloop(thread)%funk(m) is the variable that is to contain d (and possibly its derivative)
 ! the msomeloops contain the funk indices that contain: phi, the three unitnormals (normal1->normal3) and phitol
 ! if any msomeloop index = -1, then the someloop variable is not defined
-! method is an integer that specifies how d is calculated:  1 = linearone, 2 = lineartwo, 3 = parabolic fit to max, min and centroid, 4 = exactpiecewise means match volumes on the nodes exactly, but use linear interpolation between the node, 5 = exact
+! method is an integer that specifies how d is calculated:  1 = linearone, 2 = lineartwo, 3 = parabolic fit to max, min and centroid, 4 = exactpiecewise means match volumes on the nodes exactly, but use linear interpolation between the node, 5 = exact, 6 = best (best method available for the dimension)
 
 use general_module
 ! these are passed to all external routines
@@ -104,13 +104,13 @@ character(len=1000) :: error_string
 integer :: msomeloop_phi,msomeloop_phitol,msomeloop_normal_l1,msomeloop_normal_l2,msomeloop_normal_l3,method
 ! local variables
 integer, dimension(totaldimensions) :: msomeloop_normal
-integer :: k, kk, l, kk_max, kk_min, i, kkkcurrent, kkcurrent, kcurrent, kkk, j, jj, location, kknext, n
+integer :: k, kk, l, kk_max, kk_min, i, kkkcurrent, kkcurrent, kcurrent, kkk, j, jj, location, kknext, n, method_l
 double precision :: normal_magnitude, d_max, d_min, d, phi, phitol, d_node, vcurrent, vtarget, vnext, dnext, dcurrent, &
   d1, d2, d3, d4, v1, v2, v3, v4, reciprocal_sign, faceareamax, dtol, vtol
 double precision, dimension(0:2) :: aatotal ! this should be private is it is not saved
 double precision, dimension(maximum_celljfaces,0:2) :: aaface ! this should be private is it is not saved
 double precision, dimension(totaldimensions) :: normal, pass_vector
-integer, parameter :: nmax = 1e5
+integer, parameter :: nmax = 100000
 logical, parameter :: reciprocal = .true. ! if phi < 0.5 solve for 1-phi instead, to reduce the number of geometrical operations
 logical :: debug = .false.
 
@@ -132,6 +132,23 @@ if (debug) then
 end if
 
 if (cell(i)%dimensions == 0) call error_stop("cellvofd being called on zero dimensional cell")
+
+! set method to be used based on cell dimension if best method in use
+if (cell(i)%dimensions == 1) then
+  method_l = 1 ! all methods are equivalent to this simplest method for lines
+else if (method == 0) then ! the method == 0 flag indicates the 'best' method
+  if (cell(i)%dimensions == 2.and.cell(i)%type == 1) then
+    method_l = 5 ! exact
+  else
+    method_l = 1 ! linear for 3D domain and boundary cells
+  end if
+else
+  method_l = method
+end if
+if (debug) then
+  write(50,*) 'cell(i)%dimensions = ',cell(i)%dimensions
+  write(50,*) 'method_l = ',method_l
+end if
 
 ! save phi in a temporary variable
 if (msomeloop_phi <= 0) call error_stop('error with msomeloop_phi passed to cellvofd')
@@ -201,11 +218,11 @@ kk_max = 0
 kk_min = 0
 d_max = -huge(0.d0) ! this will be larger than zero here
 d_min = +huge(0.d0) ! this will be smaller than zero here
-if (method > 3) cellknode_d(thread)%length = 0
+if (method_l > 3) cellknode_d(thread)%length = 0
 do kk = 1, cellknode_xr(thread)%length
   if (debug) write(50,*) 'kk,cellknode_xr(thread)%elements(:,kk) = ',kk,cellknode_xr(thread)%elements(:,kk)
   d_node = dot_product(normal,cellknode_xr(thread)%elements(:,kk))
-  if (method > 3) call add_to_scalar_list(list=cellknode_d(thread),new_element=d_node) ! for exact method need d calculated for each node
+  if (method_l > 3) call add_to_scalar_list(list=cellknode_d(thread),new_element=d_node) ! for exact method need d calculated for each node
   if (d_node > d_max) then
     d_max = d_node
     kk_max = kk
@@ -230,14 +247,15 @@ else if (phi > 1.d0-phitol) then
 
   d = d_min
 
-else if (method == 1.or.cell(i)%dimensions == 1) then
+else if (method_l == 1) then
 ! linearone method, using linear interpolation over one range between d_max (phi=0) and d_min (phi=1)
-! for a single dimension line, this is exact
+! for a single dimension line, this is exact, so actually all methods are equivalent to this for a line
 
   d = phi*d_min+(1.d0-phi)*d_max
 
-else if (method == 2) then
+else if (method_l == 2) then
 ! lineartwo method, using linear interpolation over the two ranges between d_max (phi=0), centroid (d=0, phi=0.5) and d_min (phi=1)
+! for now exact doesn't work in 3D, so this is the best (method 6) option available
 
   if (phi < 0.5d0) then
     d = -(2.d0*phi-1.d0)*d_max
@@ -247,7 +265,7 @@ else if (method == 2) then
 
 ! method 3 is supposed to be parabolic, between centre and two extremes, but not coded yet
 
-else if (method >= 4 .and. method <= 5) then
+else if (method_l >= 4 .and. method_l <= 5) then
 ! exact and exactpiecewise methods
 
 ! create list of each node kk index (ie, position in cell(i)%knode) in order of increasing d
@@ -384,7 +402,7 @@ else if (method >= 4 .and. method <= 5) then
     d = dcurrent
   else if (abs(vnext-vcurrent) > vtol.and.abs(dnext-dcurrent) > dtol) then
 ! if we are here then the root has been bounded and the range of v is significant
-    if (method == 4) then ! exactpiecewise: exact matching of the verticies, but linear interpolation between 
+    if (method_l == 4) then ! exactpiecewise: exact matching of the verticies, but linear interpolation between 
       d = -vcurrent*(dnext-dcurrent)/(vnext-vcurrent)+dcurrent
     else ! exact: iterate to find exact d
 ! bisection method
@@ -752,8 +770,8 @@ integer, dimension(totaldimensions) :: msomeloop_size, msomeloop_centre, msomelo
 double precision, dimension(totaldimensions) :: size, centre, axis, x_sample, x_minimum, pass_vector
 integer :: i, l, jj, kk, j, sample_points_total, sample_points_in_cell, sample_points_in_shape, n1, n2
 logical :: cell_interface, cell_is_in, any_rotation
-double precision :: phitol
-double precision, dimension(totaldimensions,totaldimensions) :: rotation_axis, rotation_total
+double precision :: phitol, rotation_angle
+double precision, dimension(totaldimensions,totaldimensions) :: rotation_total
 logical, parameter :: debug = .false.
 
 if (debug) write(50,'(80(1h+)/a)') 'subroutine cellvofphishape'
@@ -799,28 +817,34 @@ do l = 1, 3
   end if
 end do
 any_rotation = .false.
-call identity_matrix(rotation_total) ! by default rotation_total is the identity matrix, ie, no rotation
-do l = 3, 1, -1
+call identity_matrix(rotation_total) ! by default rotation_total is the identity matrix, ie, no rotation (although the any_rotation logical now means that this identity matrix isn't used)
+do l = 1, 3
   if (msomeloop_axis(l) > 0) then
     axis(l) = someloop(thread)%funk(msomeloop_axis(l))%v
     any_rotation = .true.
-    call rotation_matrix(rotation_axis,-axis(l),l) ! now performing rotations in decreasing dimension order, but the inverse transformation - not entirely sure how it will behave except for simple single axis rotations
-    rotation_total = matmul(rotation_axis,rotation_total)
+  else
+    axis(l) = 0.d0
+  end if
+end do
+if (any_rotation) then ! form the matrix that will convert vector x - centre into reference frame that has object's centreline along z axis
+  rotation_angle = vector_magnitude(axis) ! rotation angle magnitude is given by magnitude of rotation vector, right now in degrees
+  if (debug) write(50,*) 'rotation_angle (degrees) = ',rotation_angle
+  if (rotation_angle > tinyish) then
+    axis = axis/rotation_angle ! normalise axis to give a unit vector
+    rotation_angle = -rotation_angle*pi/180.d0 ! negative as we want the rotation_total matrix to perform a rotation from the actual back to shape coordinate system (ie, reverse rotation), and also convert to radians
+    rotation_total = rotation_matrix(axis,rotation_angle)
     if (debug) then
-      write(50,*) 'rotation occurs in ',l,' dimension: axis(l) = ',axis(l)
-      write(50,*) 'rotation_axis:'
+      write(50,*) 'axis:'
       do n1 = 1, 3
-        write(50,'(3(1x,g12.5))') (rotation_axis(n1,n2),n2=1,3)
+        write(50,'(3(1x,g12.5))') axis(n1)
       end do
       write(50,*) 'rotation_total:'
       do n1 = 1, 3
         write(50,'(3(1x,g12.5))') (rotation_total(n1,n2),n2=1,3)
       end do
     end if
-  else
-    axis(l) = 0.d0
   end if
-end do
+end if
 
 ! if this is a sphere or cube, then set size to be equal in each dimension
 if (shape == 1) size = minval(size) 
@@ -838,15 +862,11 @@ end if
 ! or check every face using a variety of points
 ! based on node points
 cell_interface = .false. ! 
-pass_vector = rotate_point(rotation_total,centre,node(cell(i)%knode(1))%x) ! avoid temporary array warnings
-if (debug) then
- write(50,*) 'node_x = ',node(cell(i)%knode(1))%x
- write(50,*) 'rotate(node_x) = ',pass_vector
-end if
-cell_is_in = is_point_in_shape(shape,size,centre,axis,pass_vector)
+pass_vector = node(cell(i)%knode(1))%x ! avoid temporary array warnings
+cell_is_in = is_point_in_shape(shape,size,centre,rotation_total,any_rotation,pass_vector)
 do kk = 2, ubound(cell(i)%knode,1)
-  pass_vector = rotate_point(rotation_total,centre,node(cell(i)%knode(kk))%x) ! avoid temporary array warnings
-  if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,pass_vector)) then
+  pass_vector = node(cell(i)%knode(kk))%x ! avoid temporary array warnings
+  if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,rotation_total,any_rotation,pass_vector)) then
     cell_interface = .true.
     exit
   end if
@@ -854,8 +874,8 @@ end do
 ! also check on face centres
 if (.not.cell_interface) then
   do jj = 1, ubound(cell(i)%jface,1)
-    pass_vector = rotate_point(rotation_total,centre,face(cell(i)%jface(jj))%x) ! avoid temporary array warnings
-    if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,axis,pass_vector)) then
+    pass_vector = face(cell(i)%jface(jj))%x ! avoid temporary array warnings
+    if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,rotation_total,any_rotation,pass_vector)) then
       cell_interface = .true.
       exit
     end if
@@ -922,12 +942,8 @@ else
       if (debug) write(50,*) 'calculated as in cell'
     end do
     sample_points_in_cell = sample_points_in_cell + 1
-! check that it is in the shape, after possibly rotating the axis of the point in the wrong direction (and hence the shape in the right direction)
-    if (any_rotation) then
-      x_sample = rotate_point(rotation_total,centre,x_sample) ! only do rotation if any_rotation is true, to avoid unnecessary matmul
-      if (debug) write(50,*) 'rotated: x_sample = ',x_sample
-    end if
-    if (is_point_in_shape(shape,size,centre,axis,x_sample)) sample_points_in_shape = sample_points_in_shape + 1
+! check that it is in the shape
+    if (is_point_in_shape(shape,size,centre,rotation_total,any_rotation,x_sample)) sample_points_in_shape = sample_points_in_shape + 1
   end do SAMPLE_LOOP
 
   if (debug) write(50,*) 'sample_points_in_cell,sample_points_in_shape = ',sample_points_in_cell,sample_points_in_shape
@@ -943,31 +959,32 @@ end subroutine cellvofphishape
 
 !-----------------------------------------------------------------
 
-function is_point_in_shape(shape,size,centre,axis,x)
+function is_point_in_shape(shape,size,centre,rotation_total,any_rotation,x)
 
 ! on the boundary is in
+! now rewritten to accept rotation_total matrix, and so not need axis vector
 
 use general_module
 logical :: is_point_in_shape
-double precision, dimension(totaldimensions) :: size, centre, axis, x
-double precision, dimension(totaldimensions) :: x_rotated ! position of x relative to shape in unrotated configuration
+logical, intent(in) :: any_rotation
+double precision, dimension(totaldimensions,totaldimensions), intent(in) :: rotation_total
+double precision, dimension(totaldimensions), intent(in) :: size, centre, x
+double precision, dimension(totaldimensions) :: x_rotated ! position of x relative cente relative to unrotated configuration of shape
 integer :: shape
 double precision :: d
 integer :: l
 
-x_rotated = x
-
-!x_rotated = centre + cross_product(x-centre,axis)
+x_rotated = x - centre
+if (any_rotation) x_rotated = matmul(rotation_total,x_rotated)
 
 if (shape <= 2) then ! ellipsoid (or sphere which is an ellipsoid with all sizes equal)
 
   d = 0.d0
   do l = 1, totaldimensions
-    d = d + (2.d0*(x_rotated(l)-centre(l))/size(l))**2
+    d = d + (2.d0*x_rotated(l)/size(l))**2
   end do
-  d = d - 1.d0
 
-  if (d <= 0.d0) then
+  if (d <= 1.d0) then
     is_point_in_shape = .true.
   else
     is_point_in_shape = .false.
@@ -977,8 +994,16 @@ else if (shape <= 4) then ! box (or cube which is a box with all sizes equal)
 
   is_point_in_shape = .false.
   do l = 1, totaldimensions
-    if ((centre(l)-size(l)/2.d0-x_rotated(l))*(centre(l)+size(l)/2.d0-x_rotated(l)) > 0.d0) return
+    if (abs(x_rotated(l)) > size(l)/2.d0) return
   end do
+  is_point_in_shape = .true.
+
+else if (shape == 5) then ! cylinder, with centreline along the z axis, and size 1 as diameter and size 2 as length
+
+  is_point_in_shape = .false.
+  if (abs(x_rotated(3)) > size(2)/2.d0) return
+  if (max(abs(x_rotated(1)),abs(x_rotated(2))) > size(1)/2.d0) return ! these checks should be faster than the exact square ones below
+  if (x_rotated(1)**2 + x_rotated(2)**2 > size(1)**2/4.d0) return
   is_point_in_shape = .true.
 
 else

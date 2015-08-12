@@ -5,7 +5,7 @@
 #
 #-------------------------------------------------------------------
 # file equations.in
-VERSION 0.50
+VERSION 0.53
 
 # the following strings describe the simulation and are passed to the output files
 INFO_TITLE "Impacting vof droplet"
@@ -27,6 +27,10 @@ GENERAL_REPLACEMENTS R "<<uniformcomment>>" W "#" R "<<nonuniformcomment>>" W ""
 # for a double mesh domain everything except the curvature calculation (and its dependent smoothed phi and normals) is done on the fluid domain, and the rest on the free surface domain which is coincident and larger
 GENERAL_REPLACEMENTS R "<<singledomaincomment>>" W "#" R "<<doubledomaincomment>>" W ""
 
+# the default is for normals calculated at nodes, and then averaged to surrounding cells
+# to use normals based on cellgrad directly include the following which alters the behaviour within the normals templates file:
+#GENERAL_REPLACEMENTS R "<<vofnodenormalscomment>>" W "#" R "<<vofcellnormalscomment>>" W ""
+
 <<cartesiancomment>>INFO_DESCRIPTION+ ": cartesian 2D droplet"
 <<cylindricalcomment>>INFO_DESCRIPTION+ ": cylindrical droplet"
 <<uniformcomment>>INFO_DESCRIPTION+ ": uniform properties (rho and mu)"
@@ -44,7 +48,9 @@ GENERAL_REPLACEMENTS R "<<singledomaincomment>>" W "#" R "<<doubledomaincomment>
 #MSH_FILE "free_surface_quadrant_structured.msh"
 MSH_FILE "free_surface_halfplane_extruded_structured_fluid.msh" nooutput
 <<doubledomaincomment>>MSH_FILE "free_surface_halfplane_extruded_structured_free_surface.msh" nooutput
-#MSH_FILE "restart.39.msh" input
+#MSH_FILE "restart.239.msh" input
+#MSH_FILE "restart.1.develop.msh" input
+#MSH_FILE "restart.264.msh" input
 #MSH_FILE "output/latest.output.msh" input
 
 #-------------------------------------------------------------------
@@ -54,16 +60,8 @@ GLUE_FACES <fluid west> reflect=1
 <<doubledomaincomment>>GLUE_FACES <free surface west> reflect=1
 <<doubledomaincomment>>GLUE_FACES <free surface centre west> reflect=1
 
-# CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
-# where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
-# where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
-# where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
-# where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
-# where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
-# where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
-# where location string could be: "SURROUNDS <a region>" - faces/cells that surround <a region>, irrespective of whether they are boundary or domain elements - right now only works when <a region> is cell centred
-
 INCLUDE_ROOT "free_surface/volume_of_fluid"
+#INCLUDE "remove_masks" # include this file to remove the masks, calculating surface variables everywhere
 # commands to form the single mesh regions from the fluid msh file
 <<singledomaincomment>>INCLUDE "single_region_formation"
 # commands to form the double mesh regions from both the fluid and free surface msh files
@@ -90,7 +88,7 @@ INCLUDE "nondimensional_constants"
 # v0.50 - now use transient setup files
 # include the following to include a constraint based on the previous number of newtsteps
 #GENERAL_REPLACEMENTS REPLACE "<<newtsteptimestepcomment>>" W "" REPLACE "<<nonnewtsteptimestepcomment>>" W "#"
-#INCLUDE "transient_dynamic_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
+#INCLUDE "transient_explicit_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
 INCLUDE "transient_implicit_setup" # a dynamic implicitly calculated timestep to keep the CFL number at a specified level
 #INCLUDE "transient_constant_setup" # a constant timestep
 
@@ -148,12 +146,10 @@ CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <all cells>
 <<doubledomaincomment>>INCLUDE "link_double_domain_variables" # NB, has to be done while no region replacements are active, so do it here but as only involves locals could go in other places (start of file eg)
 <<doubledomaincomment>>INCLUDE "free_surface_replacements"
 
-# calculate the interface curvature, using a 2D expansion of the unit normals
-#INCLUDE "interface_geometry_2D"
-# for 3D include the following which expands the unit normals using their components:
+# calculate the interface curvature using the normal (low order) vof technique
 #INCLUDE "interface_geometry"
-# now by solving separate level-set-like field to calculate the normals
-INCLUDE "clsvof_interface_geometry"
+# or, instead by solving a separate level-set-like field to calculate the normals, termed a high order vof technique
+INCLUDE "high_order_interface_geometry"
 
 # and now move back to the fluid mesh
 <<doubledomaincomment>>INCLUDE "cancel_free_surface_replacements"
@@ -171,7 +167,7 @@ INCLUDE_ROOT "navier_stokes"
 <<uniformcomment>>INCLUDE "advection_flux"
 
 INCLUDE_ROOT "volume_of_fluid"
-INCLUDE "p_error"
+INCLUDE "dynamic_force"
 INCLUDE "equation" # all phi advection done on fluid mesh
 
 INCLUDE_ROOT "navier_stokes"
@@ -181,8 +177,6 @@ INCLUDE_ROOT "navier_stokes"
 # uniform
 <<uniformcomment>>INCLUDE "momentum_flux_transient_constant_rho"
 <<uniformcomment>>INCLUDE "conservation_incompressible_transient_constant_rho"
-
-#CELL_DERIVED <vof_phi_adjust[r=1]> "0.d0"
 
 # fluid boundary conditions on nonslip walls
 INCLUDE_ROOT "volume_of_fluid"
@@ -228,6 +222,7 @@ NONE_TRANSIENT <u_f_max_min[r=1]> "" "<u_f_max_min>"
 # specify outputs for some variables
 
 VARIABLE <vof_F_c[l=1]> output
+VARIABLE <vof_phi_adjust[r=1]> output
 <<doubledomaincomment>>VARIABLE <vof_fs_phigrad_unit[l=1]> output
 
 # nonuniform
@@ -237,11 +232,21 @@ VARIABLE <vof_F_c[l=1]> output
 <<nonuniformcomment>>VARIABLE <vof_rho_f> output
 <<nonuniformcomment>>VARIABLE <vof_mu_f> output
 
-# by default surface tension changes are turned off after 20 newtsteps (via <vof_phi_interface>), delta function and properties after 30 newtsteps (via <vof_phi_lim>) and <vof_phi_adjust[r=1]> changes after 50
-#VARIABLE <vof_phi_adjust[r=1]> newtstepmax=30
-#VARIABLE <vof_phi_interface> newtstepmax=50
-#VARIABLE <vof_phi_lim> newtstepmax=40
+# by default surface tension curvature changes are turned off after 20 newtsteps (via <vof_phi_interface>), delta function and properties after 30 newtsteps (via <vof_phi_lim> and <vof_phi_f[r=1]>) and <vof_phi_adjust[r=1]> changes after 50
+#VARIABLE <vof_phi_interface> newtstepmax=20
+#VARIABLE <vof_phi_lim> newtstepmax=30
+#VARIABLE <vof_phi_f[r=1]> newtstepmax=30
+#VARIABLE <vof_phi_adjust[r=1]> newtstepmax=50
 
+# to show the interface masks include this file
+#INCLUDE_ROOT "volume_of_fluid"
+#INCLUDE "output_masks"
+
+# for the high order method only, adjust the interface width
+#VARIABLE <vof_s_interface_width> 1.d0 # default is 1.d0
+
+# try alternative correction velocity expression - actually slower
+#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
 #-------------------------------------------------------------------
 # numerical options
 NEWTSTEPMAX 100
@@ -249,6 +254,4 @@ NEWTSTEPDEBUGOUT 90
 # for test simulation just do a few timesteps
 TIMESTEPOUT 2
 TIMESTEPMAX 4 # just compute the first 5 timesteps for this trial simulation
-
-#KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2
 #-------------------------------------------------------------------

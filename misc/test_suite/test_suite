@@ -70,6 +70,8 @@ stopfile='test_suite_stop'
 error=0;
 REFRESH=1; # default is refresh is on
 COMPILER="both"; # both compilers used by default
+arb_options=""; # any additional options you want passed
+#arb_options="--debugger-none";
 unset TESTCASES;
 
 if [ -e $stopfile ] ; then rm $stopfile ; fi;
@@ -185,7 +187,7 @@ for dir_name in ${TESTCASES[@]} ; do
     local_log_file="$results_dir/test_suite.log";
     cp $subdir/*.arb $cwd >>$local_log_file 2>>$local_log_file;
     cp $subdir/*.msh $cwd >>$local_log_file 2>>$local_log_file;
-    ./arb --quiet --quiet-make --compiler-$compiler >>$local_log_file 2>>$local_log_file;
+    ./arb $arb_options --quiet --quiet-make --compiler-$compiler >>$local_log_file 2>>$local_log_file;
     keyword=ERROR_IN_MAKE;
     if [ -e output/output.scr ] ; then
       last_line=`tail -n 1 output/output.scr`;
@@ -219,8 +221,8 @@ for dir_name in ${TESTCASES[@]} ; do
     rm *.msh >/dev/null 2>/dev/null
     rm output/* >/dev/null 2>/dev/null; # and clear output files
     if [ -e fort.* ]; then
-      echo "ERROR: debugging files are being produced: exiting";
-      echo "ERROR: debugging files are being produced: exiting" >>$log_file;
+      echo "ERROR: debugging files (ie fort.*) are being produced: you must have left a debugging flag on?: exiting";
+      echo "ERROR: debugging files (ie fort.*) are being produced: you must have left a debugging flag on?: exiting" >>$log_file;
       error=1;
       break 2; # jump out of two loop levels
     fi;

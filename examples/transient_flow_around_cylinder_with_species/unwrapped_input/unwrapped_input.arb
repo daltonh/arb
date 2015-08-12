@@ -144,12 +144,15 @@ CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # the following is INCLUDED from ../templates/navier_stokes/transient_constant_setup.arb without any search/replace combinations
 # use this file to initial a transient Navier-Stokes simulation using constant timestepping
-#INCLUDE "transient_all_setup" R "<<dynamictimestepcomment>>" W "#" R "<<constanttimestepcomment>>" W ""
+#GENERAL_REPLACEMENTS R "<<dynamictimestepcomment>>" W "#" R "<<constanttimestepcomment>>" W ""
+#INCLUDE "transient_all_setup"
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/transient_all_setup.arb with the following search/replace combinations: replace <<dynamictimestepcomment>> with #: replace <<constanttimestepcomment>> with 
+# the following is INCLUDED from ../templates/navier_stokes/transient_all_setup.arb without any search/replace combinations
 # setup things needed for transient flow
-# this file works for either dynamic or constant timestepping, which must be set by string replacement from the calling file
+# this file works for either dynamic or constant timestepping
 # designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
+# string replacements default to constant timestepping, or if dynamic timestepping is specified, explicit dynamic timestepping
+# choice should be made by general replacements set from the calling files
 
 # <dt_initial> is used to set the intial timestep during dynamic timestepping or constant timestep otherwise
 
@@ -160,47 +163,64 @@ CONSTANT <dt_initial> [] "<CFL_initial>*<celldxave>/<u_av>" # initial timestep b
 CONSTANT <CFL_out> 10.d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity
 CONSTANT <dt_out> [] "<CFL_out>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
 #CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
-# dynamic timestep constants
-#CONSTANT <dt_increase> 1.2d0
-#CONSTANT <dt_max> "<dt_initial>*1.d4"
-#CONSTANT <dt_min> "<dt_initial>*1.d-3"
-#CONSTANT <CFL_max> 0.25d0
 
 # transient bits
 TRANSIENT_SIMULATION
-
 #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+
+# the default is for constant as opposed to dynamic timestepping
+#GENERAL_REPLACEMENTS DEFAULT "<<constanttimestepcomment>>" W "" DEFAULT "<<dynamictimestepcomment>>" W "#"
+
+#---------------------------------------------------------------------------------------------------------
+# dynamic timestepping
+
+# by default there is a explicit newtstep timestep limitation - to remove it reverse the following string replacement
+#GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "" DEFAULT "<<nonnewtsteptimestepcomment>>" W "#"
+
+# dynamic timestep constants
+#CONSTANT <dt_increase> 1.2d0
+#CONSTANT <dt_decrease> 0.7d0
+#CONSTANT <dt_max> "<dt_initial>*1.d4"
+#CONSTANT <dt_min> "<dt_initial>*1.d-3"
+#CONSTANT <CFL_max> 0.25d0
+#CONSTANT <newtstepdtlimiterlow> 4.d0 # explicitly calculated timestep is only increased if <newtstep[r=1]> is <= than this value
+#CONSTANT <newtstepdtlimiterhigh> 8.d0 # explicitly calculated timestep is decreased if <newtstep[r=1]> is > than this value
+#NONE_TRANSIENT <newtstep[r=1]> "0.d0" "<newtstep>" # we save the previous timestep <newtstep> for the above explicit timestep calculation
+#NONE_TRANSIENT <dt_newtstep_increase[r=1]> "1.d0" "noneif(<newtstep[r=1]>-<newtstepdtlimiterhigh>,<dt_decrease>,noneif(<newtstep[r=1]>-<newtstepdtlimiterlow>,1.d0,<dt_increase>))" # apply this to the previous timestep to keep newtstep roughly between high/low ranges
+##NONE_LOCAL <dt_newtstep_increase[r=1]> "<dt_increase>" # placeholder for nonnewtsteplimited timestepping
 
 # the default is for explicit timestepping, but implicit can also be enabled by reversing the following strings
 #GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
 
-# dynamic timestepping
 #NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
-#FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces>
+#FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces> # don't actually need this for implicit timestepping, but it is used in input files for some of the problems for output, so in the interests of not breaking things...
 
 # explicit
 # use CFL_number template, but make the calculation explicit - ie, based on r=1 values
 #INCLUDE "CFL_number" R "<CFL local/dt>" W "<CFL local/dt[r=1]>" R "<u_f>" W "<u_f[r=1]>" R "<CFL local>" W "<CFL local[r=1]>" R "<dt>" W "<dt[r=1]>" R "NONE_OUTPUT <CFL>" W 'NONE_TRANSIENT <CFL[r=1]> ""'
 ##NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
 #NONE_TRANSIENT <CFL[r=1]> output,stepoutput
-#NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+#NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
 
 # implicit
+# note, a newtstepmax may be applied to <dt_target> within u_f.arb (unfortunately this must be done after <u_f> derived has been calculated, hence, newtstepmax can't be applied here)
 ##INCLUDE "CFL_number"
 ##NONE_UNKNOWN <dt[r=0]> "<dt_initial>" stepoutput,input
-# by default there is no explicit newtstep timestep limitation - to include it reverse the following string replacement
-#GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "#" DEFAULT "<<nonnewtsteptimestepcomment>>" W ""
-# without the explicit newtstep limitation
-##NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_increase>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
-# for dynamic and implicit timestepping, include the following to also include a constraint based on the previous number of newtsteps
-###NONE_CONSTANT <newtstepdecrease> 5.d0 # number of newtonsteps that take place before <newtstep> starts to limit <dt> (explicit)
-###NONE_CONSTANT <dt_decrease> 0.8d0 # amount to decrease timestep by if previous timestep newtstep was exceeded
-###NONE_TRANSIENT <newtstep[r=1]> "0.d0" "<newtstep>" # save previous newtstep
-###NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(noneif(<newtstep[r=1]>-<newtstepdecrease>,<dt_decrease>,<dt_increase>)*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<fluid domain>)),<dt_max>),<dt_min>)"
+# straight minimum
+# advantage of straight minimum is that provided convergence is achieved the CFL constraint will be rigorously obeyed
+##NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
+# harmonically averaged, for smoother convergence than the straight minimum which can bounce around
+# disadvantage of the particular harmonic function used is for a factor of two (see below) the dt could be up to twice what the CFL criterion dictates, but using a factor of one can unreasonably decrease timestep below the CFL limit for many timestep combinations
+###NONE_LOCAL <dt_explicit_target> "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
+###NONE_LOCAL <dt_CFL_target> "nonemax(<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>),<dt_min>)" stepoutput
+# using two factor here which really doesn't respect dt_increase and CFL_max values correctly, but performs best when both timescales are about the same - ie, more thought required
+###NONE_LOCAL <dt_target> "2.d0/(1.d0/<dt_explicit_target>+1.d0/<dt_CFL_target>)" stepoutput
 ##NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
 
+#---------------------------------------------------------------------------------------------------------
 # constant timestep, next 1 line
 NONE_CONSTANT <dt> "<dt_initial>"
+#---------------------------------------------------------------------------------------------------------
 
 NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
 NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
@@ -259,16 +279,17 @@ FACE_DERIVED <udiv_f> "0.d0" ON <all faces>
 
 # no both cartesian and cylindrical stresses don't include pressure
 # without the numerical velocity divergence
-# FACE_LOCAL <tau[l=1,1]> "- <mu>*2.d0*<ugrad_f[l=1,1]>" ON <all faces>
-# FACE_LOCAL <tau[l=2,2]> "- <mu>*2.d0*<ugrad_f[l=2,2]>" ON <all faces>
-## FACE_LOCAL <tau[l=3,3]> "- <mu>*2.d0*<ugrad_f[l=3,3]>" ON <all faces>
+# FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*<ugrad_f[l=1,1]>" ON <all faces>
+# FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*<ugrad_f[l=2,2]>" ON <all faces>
+## FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*<ugrad_f[l=3,3]>" ON <all faces>
 # with the numerical velocity divergence (although it is generally set to zero in u_gradient_tensor anyway)
- FACE_LOCAL <tau[l=1,1]> "- <mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <all faces>
- FACE_LOCAL <tau[l=2,2]> "- <mu>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <all faces>
-# FACE_LOCAL <tau[l=3,3]> "- <mu>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <all faces>
-FACE_LOCAL <tau[l=1,2]> "- <mu>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <all faces>
-#FACE_LOCAL <tau[l=1,3]> "- <mu>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <all faces>
-#FACE_LOCAL <tau[l=2,3]> "- <mu>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <all faces>
+# Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
+ FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <all faces>
+ FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <all faces>
+# FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <all faces>
+FACE_LOCAL <tau[l=1,2]> "-<mu>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <all faces>
+#FACE_LOCAL <tau[l=1,3]> "-<mu>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <all faces>
+#FACE_LOCAL <tau[l=2,3]> "-<mu>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <all faces>
 FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <all faces>
 #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <all faces>
 #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <all faces>
@@ -349,12 +370,18 @@ FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facema
 FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <domain faces>
 FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <domain faces>
 
-# combined limiter
+# combined limiter, using one of two possible methods
+# use a straight minimum of the three or two correction velocities
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
+##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
+# alternatively, average the reciprocal of the three of two correction velocities
+# in pre v0.53 these weren't limited using <tinyish> which could case a problem if one is zero
+FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+# it isn't clear which of the above two methods is better: the reciprocal version can be slightly more expensive to calculate, but as it varies more continuously, can (sometimes, possibly, etc etc) lead to slightly faster overall simulation times.  Doesn't seem to be much in it though.
+# unfortunately in versions around v0.52 the steady-state and transient cases were accidentally handled using different methods (transient with reciprocal averaging, steady-state with straight minimum)
+# for debugging set the correction velocity to be solely only one of the three possibilities
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <domain faces>
-FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1./<u_mf_{transient}>+1./<u_mf_{adv}>+1./<u_mf_{vis}>)" ON <domain faces>
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1./<u_mf_{adv}>+1./<u_mf_{vis}>)" ON <domain faces>
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <domain faces>
 
@@ -362,6 +389,13 @@ FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1./<u_mf_{transient}
 FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
 
 #FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+
+# this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
+# save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
+# if # hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
+#GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+#NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
+#NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
 # INCLUDE FINISHED for ../templates/navier_stokes/u_f.arb
 #--------------------------------------------------------
 # INCLUDE FINISHED for ../templates/navier_stokes/advection_flux.arb

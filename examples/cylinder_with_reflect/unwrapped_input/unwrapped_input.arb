@@ -181,16 +181,17 @@ FACE_DERIVED <udiv_f> "0.d0" ON <all faces>
 
 # no both cartesian and cylindrical stresses don't include pressure
 # without the numerical velocity divergence
-# FACE_LOCAL <tau[l=1,1]> "- <mu>*2.d0*<ugrad_f[l=1,1]>" ON <all faces>
-# FACE_LOCAL <tau[l=2,2]> "- <mu>*2.d0*<ugrad_f[l=2,2]>" ON <all faces>
-## FACE_LOCAL <tau[l=3,3]> "- <mu>*2.d0*<ugrad_f[l=3,3]>" ON <all faces>
+# FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*<ugrad_f[l=1,1]>" ON <all faces>
+# FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*<ugrad_f[l=2,2]>" ON <all faces>
+## FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*<ugrad_f[l=3,3]>" ON <all faces>
 # with the numerical velocity divergence (although it is generally set to zero in u_gradient_tensor anyway)
- FACE_LOCAL <tau[l=1,1]> "- <mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <all faces>
- FACE_LOCAL <tau[l=2,2]> "- <mu>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <all faces>
-# FACE_LOCAL <tau[l=3,3]> "- <mu>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <all faces>
-FACE_LOCAL <tau[l=1,2]> "- <mu>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <all faces>
-#FACE_LOCAL <tau[l=1,3]> "- <mu>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <all faces>
-#FACE_LOCAL <tau[l=2,3]> "- <mu>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <all faces>
+# Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
+ FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <all faces>
+ FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <all faces>
+# FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <all faces>
+FACE_LOCAL <tau[l=1,2]> "-<mu>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <all faces>
+#FACE_LOCAL <tau[l=1,3]> "-<mu>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <all faces>
+#FACE_LOCAL <tau[l=2,3]> "-<mu>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <all faces>
 FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <all faces>
 #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <all faces>
 #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <all faces>
@@ -271,12 +272,18 @@ FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
 #FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <domain faces>
 #FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <domain faces>
 
-# combined limiter
+# combined limiter, using one of two possible methods
+# use a straight minimum of the three or two correction velocities
 ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
+#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
+# alternatively, average the reciprocal of the three of two correction velocities
+# in pre v0.53 these weren't limited using <tinyish> which could case a problem if one is zero
+#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+# it isn't clear which of the above two methods is better: the reciprocal version can be slightly more expensive to calculate, but as it varies more continuously, can (sometimes, possibly, etc etc) lead to slightly faster overall simulation times.  Doesn't seem to be much in it though.
+# unfortunately in versions around v0.52 the steady-state and transient cases were accidentally handled using different methods (transient with reciprocal averaging, steady-state with straight minimum)
+# for debugging set the correction velocity to be solely only one of the three possibilities
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <domain faces>
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1./<u_mf_{transient}>+1./<u_mf_{adv}>+1./<u_mf_{vis}>)" ON <domain faces>
-FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1./<u_mf_{adv}>+1./<u_mf_{vis}>)" ON <domain faces>
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <domain faces>
 
@@ -284,6 +291,13 @@ FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,
 FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
 
 #FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+
+# this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
+# save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
+# if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
+#GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+##NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
+##NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
 # INCLUDE FINISHED for ../templates/navier_stokes/u_f.arb
 #--------------------------------------------------------
 # INCLUDE FINISHED for ../templates/navier_stokes/advection_flux.arb

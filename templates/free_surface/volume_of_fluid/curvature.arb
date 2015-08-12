@@ -1,1 +1,11 @@
-curvature_270614.arb
+# within this file we calculate the curvature
+
+# uses implicit cell centred unit normals
+<<cartesiancomment>>FACE_DERIVED <vof_kappa_f> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <vof_delta_mask_f[r=1]> output
+
+<<cylindricalcomment>>FACE_LOCAL <vof_kappa_cart_f> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <vof_delta_mask_f[r=1]>
+<<cylindricalcomment>>FACE_LOCAL <vof_kappa_cyl_f> "-faceave[reflect=<<radialdim>>](<vof_phigrad_unit[l=<<radialdim>>]>)/<<radius_f>>" ON <vof_delta_mask_f[r=1]> # won't work on centreline, so instead use twice carteisan curvature there
+<<cylindricalcomment>>FACE_DERIVED <vof_kappa_f> "faceif(<<radius_f>>-1.d-10,<vof_kappa_cart_f>+<vof_kappa_cyl_f>,2.d0*<vof_kappa_cart_f>)" ON <vof_delta_mask_f[r=1]> output
+
+# cell centred curvature is calculated directly from face centred curvature now
+CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" ON <vof_delta_mask[r=1]> output

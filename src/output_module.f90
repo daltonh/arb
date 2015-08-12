@@ -58,7 +58,7 @@ subroutine output(debug_dump,intermediate)
 ! dumps the data to a file fit for printing
 
 use general_module
-use equations_module
+use equation_module
 use gmesh_module
 use solver_module
 integer :: gmesh_number
@@ -158,7 +158,7 @@ subroutine output_txt
 ! dumps the data to a file fit for printing
 
 use general_module
-use equations_module
+use equation_module
 
 integer :: error, i, j, k, l, m, list_length
 integer, dimension(:), allocatable :: local_list
@@ -210,7 +210,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'cell'.or.trim(txtoutput) == 'all'))
   do i = 1, itotal
     write(foutput,fmt=formatline) i,(delimiter,trunk_dble(cell(i)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=i,noerror=.true., &
-      error_string='Error occurred while txtfile outputting variable '//trim(var(local_list(m))%name)))),m=1,ubound(local_list,1))
+      error_string='Error occurred while txtfile outputting cell variable '//trim(var(local_list(m))%name)))), &
+      m=1,ubound(local_list,1))
   end do
 
   deallocate(local_list)
@@ -233,7 +234,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'face'.or.trim(txtoutput) == 'all'))
   do j = 1, jtotal
     write(foutput,fmt=formatline) j,(delimiter,trunk_dble(face(j)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=j,noerror=.true., &
-      error_string='Error occurred while txtfile outputting variable '//trim(var(local_list(m))%name)))),m=1,ubound(local_list,1))
+      error_string='Error occurred while txtfile outputting face variable '//trim(var(local_list(m))%name)))), &
+      m=1,ubound(local_list,1))
   end do
 
   deallocate(local_list)
@@ -256,7 +258,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'node'.or.trim(txtoutput) == 'all'))
   do k = 1, ktotal
     write(foutput,fmt=formatline) k,(delimiter,trunk_dble(node(k)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=k,noerror=.true., &
-      error_string='Error occurred while txtfile outputting variable '//trim(var(local_list(m))%name)))),m=1,ubound(local_list,1))
+      error_string='Error occurred while txtfile outputting node variable '//trim(var(local_list(m))%name)))), &
+      m=1,ubound(local_list,1))
   end do
 
   deallocate(local_list)
@@ -305,11 +308,12 @@ subroutine output_stat
 ! prints out some current statistics about the data
 
 use general_module
-integer :: error, ns, m, max_loc, min_loc
-character(len=100) :: filename
+integer :: error, ns, m, max_loc, min_loc, ntype, nvar
+character(len=100) :: filename, type
 character(len=1000) :: formatline, textline
 real :: total_update_time, maximum_update_time
 logical :: therel
+logical, parameter :: include_regions = .true. ! also include some details about the dynamic regions in this file, more to come about these, possibly output time
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine output_stat'
@@ -333,32 +337,41 @@ end if
 formatline = '(a/a,'//trim(indexformat)//'/a,'//trim(indexformat)//'/)'
 write(foutput,fmt=formatline) '#########################################','# NEWTSTEP = ',newtstep,'# TIMESTEP = ',timestep
   
+if (output_variable_update_times) then
 ! for calculating relative times, first loop through finding total and maximum update times
-total_update_time = 0.d0
-maximum_update_time = 0.d0
-do m = 1, ubound(var,1)
-  if (trim(var(m)%type) == 'local') cycle ! do not include local variables in this analysis as generally they may not be correctly located
-  total_update_time = total_update_time + var(m)%update_time
-  maximum_update_time = max(maximum_update_time,var(m)%update_time/dfloat(max(var(m)%update_number,1)))
-end do
-
-! general variables
-do m = 1, ubound(var,1)
-  if (trim(var(m)%type) == 'local') cycle ! do not include local variables in this analysis as generally they may not be correctly located
-  max_loc = 1
-  min_loc = 1
-  do ns = 2, ubound(var(m)%funk,1)
-    if (var(m)%funk(ns)%v > var(m)%funk(max_loc)%v) max_loc = ns
-    if (var(m)%funk(ns)%v < var(m)%funk(min_loc)%v) min_loc = ns
+! note, these are reals!
+  total_update_time = 0.e0
+  maximum_update_time = 0.e0
+  do m = 1, ubound(var,1)
+    if (trim(var(m)%type) == 'local') cycle ! do not include local variables in this analysis as generally they may not be correctly located
+    total_update_time = total_update_time + var(m)%update_time
+    maximum_update_time = max(maximum_update_time,var(m)%update_time/float(max(var(m)%update_number,1)))
   end do
-! new textline formulation
-  formatline = '(a,a,'//trim(realformat)//',a,a,a,'//trim(indexformat)//',a,'//trim(realformat)//',a,a,a,'//trim(indexformat)//')'
-  write(textline,fmt=formatline) trim(var(m)%type)//' '//trim(var(m)%name),': max ',trunk_dble(var(m)%funk(max_loc)%v),' at ', &
-    var(m)%centring,' ',ijkvar(m,max_loc),': min ',trunk_dble(var(m)%funk(min_loc)%v),' at ',var(m)%centring,' ',ijkvar(m,min_loc)
-  if (trim(var(m)%type) == 'equation' .or. trim(var(m)%type) == 'unknown') then
-    formatline = '(a,'//trim(realformat)//')'
-    write(textline,fmt=formatline) trim(textline)//': magnitude = ',var(m)%magnitude
-  end if
+end if
+
+! general variables, now in variable type order
+do ntype = 1, ubound(var_types,1)
+  type = trim(var_types(ntype))
+  if (trim(type) == 'local') cycle ! do not include local variables in this analysis as generally they may not be correctly located
+  do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type=type))%list) ! by default regions are not included in these lists
+    m = var_list(var_list_number(centring="all",type=type))%list(nvar)
+
+    max_loc = 1
+    min_loc = 1
+    do ns = 2, ubound(var(m)%funk,1)
+      if (var(m)%funk(ns)%v > var(m)%funk(max_loc)%v) max_loc = ns
+      if (var(m)%funk(ns)%v < var(m)%funk(min_loc)%v) min_loc = ns
+    end do
+  ! new textline formulation
+    formatline = '(a,'//trim(realformat)//',a,'//trim(dindexformat(ijkvar(m,max_loc)))//',a,'//trim(realformat)//',a,'// &
+      trim(dindexformat(ijkvar(m,min_loc)))//')'
+    write(textline,fmt=formatline) "variable "//trim(var(m)%type)//' '//trim(var(m)%name)//': max = ', &
+      trunk_dble(var(m)%funk(max_loc)%v),' at '//trim(var(m)%centring)//' ', &
+      ijkvar(m,max_loc),': min = ',trunk_dble(var(m)%funk(min_loc)%v),' at '//trim(var(m)%centring)//' ',ijkvar(m,min_loc)
+    if (trim(var(m)%type) == 'equation' .or. trim(var(m)%type) == 'unknown') then
+      formatline = '(a,'//trim(realformat)//')'
+      write(textline,fmt=formatline) trim(textline)//': magnitude = ',var(m)%magnitude
+    end if
 
 ! ref: update times ref: time ref: timing ref: variable_update_times
 
@@ -371,31 +384,62 @@ do m = 1, ubound(var,1)
 ! average (per update) update time = [total (cumulative) update time]/[total updates] = the average time that it takes to update this particular variable once
 ! relative average update time = [average (per update) update time]/[maximum_update_time] = the average update time for this particular variable dividied by the largest (average) update time across all variables.  This isn't as useful as it looks, as the variable that is used in the normalisation may only be updated once (say, at the beginning) in a simulation.
 
-  if (output_variable_update_times) then
-    formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(indexformat)//',2(a,'//trim(realformat)//'))'
-    write(textline,fmt=formatline) trim(textline),&
-      ': total (cumulative) update time = ',var(m)%update_time,': relative total update time = ', &
-      var(m)%update_time/total_update_time, &
-      ': total updates = ',var(m)%update_number,': average (per update) update time = ', &
-      var(m)%update_time/dfloat(max(var(m)%update_number,1)),': relative average update time = ', &
-      var(m)%update_time/(dfloat(max(var(m)%update_number,1))*maximum_update_time)
+    if (output_variable_update_times) then
+      formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(dindexformat(var(m)%update_number))//',2(a,'//trim(realformat)//'))'
+      write(textline,fmt=formatline) trim(textline),&
+        ': total (cumulative) update time = ',var(m)%update_time,': relative total update time = ', &
+        var(m)%update_time/total_update_time, &
+        ': total updates = ',var(m)%update_number,': average (per update) update time = ', &
+        var(m)%update_time/float(max(var(m)%update_number,1)),': relative average update time = ', &
+        var(m)%update_time/(float(max(var(m)%update_number,1))*maximum_update_time)
+    end if
+
+    write(foutput,'(a)') trim(textline)
+
+  end do
+
+end do
+
+! dynamic regions, now in type order
+if (include_regions) then
+
+! do the same timing operations as per variables
+  if (output_region_update_times) then
+    total_update_time = 0.e0
+    maximum_update_time = 0.e0
+    do m = 1, ubound(region,1)
+      if (.not.region(m)%dynamic) cycle
+      total_update_time = total_update_time + region(m)%update_time
+      maximum_update_time = max(maximum_update_time,region(m)%update_time/float(max(region(m)%update_number,1)))
+    end do
   end if
 
-  write(foutput,'(a)') trim(textline)
+  do ntype = 1, ubound(var_types,1)
+    type = trim(var_types(ntype))
+    if (trim(type) == 'local') cycle ! do not include local regions in this analysis again
+    do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type=type,include_regions=.true.))%list)
+      if (.not.var_list(var_list_number(centring="all",type=type,include_regions=.true.))%region(nvar)) cycle
+      m = var_list(var_list_number(centring="all",type=type,include_regions=.true.))%list(nvar)
+      if (.not.(region(m)%dynamic)) cycle
 
-! if (trim(var(m)%type) == 'equation' .or. trim(var(m)%type) == 'unknown') then
-! for unknown and equation variables also print out their (current) magnitude
-!   formatline = '(a,a,'//trim(realformat)//',a,a,a,'//trim(indexformat)//',a,'//trim(realformat)//',a,a,a,'//trim(indexformat)// &
-!     ',a,'//trim(realformat)//')'
-!   write(foutput,fmt=formatline) trim(var(m)%type)//' '//trim(var(m)%name),': max ',trunk_dble(var(m)%funk(max_loc)%v),' at ', &
-!     var(m)%centring,' ',ijkvar(m,max_loc),': min ',trunk_dble(var(m)%funk(min_loc)%v),' at ',var(m)%centring,' ',ijkvar(m,min_loc), &
-!     ': magnitude = ',var(m)%magnitude
-! else
-!   formatline = '(a,a,'//trim(realformat)//',a,a,a,'//trim(indexformat)//',a,'//trim(realformat)//',a,a,a,'//trim(indexformat)//')'
-!   write(foutput,fmt=formatline) trim(var(m)%type)//' '//trim(var(m)%name),': max ',trunk_dble(var(m)%funk(max_loc)%v),' at ', &
-!     var(m)%centring,' ',ijkvar(m,max_loc),': min ',trunk_dble(var(m)%funk(min_loc)%v),' at ',var(m)%centring,' ',ijkvar(m,min_loc)
-! end if
-end do
+      formatline = '(a,'//trim(dindexformat(allocatable_integer_size(region(m)%ijk)))//')'
+      write(textline,fmt=formatline) "region "//trim(region(m)%type)//' '//trim(region(m)%name)//': elements = ', &
+        allocatable_integer_size(region(m)%ijk)
+
+      if (output_region_update_times) then
+        formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(dindexformat(region(m)%update_number))//',2(a,'//trim(realformat)//'))'
+        write(textline,fmt=formatline) trim(textline),&
+          ': total (cumulative) update time = ',region(m)%update_time,': relative total update time = ', &
+          region(m)%update_time/total_update_time, &
+          ': total updates = ',region(m)%update_number,': average (per update) update time = ', &
+          region(m)%update_time/float(max(region(m)%update_number,1)),': relative average update time = ', &
+          region(m)%update_time/(float(max(region(m)%update_number,1))*maximum_update_time)
+      end if
+
+      write(foutput,'(a)') trim(textline)
+    end do
+  end do
+end if
 
 close(foutput)
 
@@ -412,7 +456,7 @@ subroutine write_gmesh(gmesh_number,debug_dump,centring,fileformat,intermediate)
 ! dumps the data to a file fit for printing
 
 use general_module
-use equations_module
+use equation_module
 use gmesh_module
 integer :: gmesh_number ! output data concerned with this gmesh
 logical :: debug_dump ! outputs components of all variables without any gradients
@@ -420,7 +464,7 @@ character(len=*) :: centring ! whether to output only cell, face, none or all ce
 character(len=3), optional :: fileformat ! format of file to write (msh|vtk|dat) - if not present, defaults to msh
 character(len=3) :: fileformatl ! local version of fileformat
 logical :: intermediate ! if this is an intermediate newton step, rather than a final one
-integer :: error, i, j, k, m, kk, nnodes, n, mc, nrank, ns, gelement, ngelements, ijk, mvar, jj, step
+integer :: error, i, j, m, kk, nnodes, n, mc, nrank, ns, gelement, ngelements, ijk, mvar, jj, step
 double precision, dimension(:), allocatable :: cellvaluel
 double precision, dimension(:,:), allocatable :: cellgradl
 character(len=1000) :: filename, linkname, formatline, system_command
@@ -568,8 +612,7 @@ if (fileformatl == 'msh') then ! other file formats only support compound variab
           ijk = gmesh(gmesh_number)%gelement(gelement)%knode
         end if
         if (ijk == 0) cycle
-        ns = region(var(m)%region_number)%ns(ijk)
-        if (ns == 0) cycle
+        if (region(var(m)%update_region_number)%ns(ijk) == 0) cycle
         if (select_elements) then
           if (var(m)%centring == 'cell'.and.location_in_list(array=select_cells,element=ijk) == 0) cycle
           if (var(m)%centring == 'face'.and.location_in_list(array=select_faces,element=ijk) == 0) cycle
@@ -595,8 +638,9 @@ if (fileformatl == 'msh') then ! other file formats only support compound variab
             ijk = gmesh(gmesh_number)%gelement(gelement)%knode
           end if
           if (ijk == 0) cycle
+          if (region(var(m)%update_region_number)%ns(ijk) == 0) cycle ! check for dynamic regions
           ns = region(var(m)%region_number)%ns(ijk)
-          if (ns == 0) cycle
+          if (ns == 0) call error_stop('problem with parent region in write_gmesh')
           if (select_elements) then
             if (var(m)%centring == 'cell'.and.location_in_list(array=select_cells,element=ijk) == 0) cycle
             if (var(m)%centring == 'face'.and.location_in_list(array=select_faces,element=ijk) == 0) cycle
@@ -619,8 +663,9 @@ if (fileformatl == 'msh') then ! other file formats only support compound variab
         do gelement = 1, ubound(gmesh(gmesh_number)%gelement,1)
           i = gmesh(gmesh_number)%gelement(gelement)%icell
           if (i == 0) cycle
+          if (region(var(m)%update_region_number)%ns(i) == 0) cycle ! check for dynamic regions
           ns = region(var(m)%region_number)%ns(i)
-          if (ns == 0) cycle
+          if (ns == 0) call error_stop('problem with parent region in write_gmesh')
           if (select_elements) then
             if (location_in_list(array=select_cells,element=i) == 0) cycle
           end if
@@ -697,8 +742,7 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
           ijk = gmesh(gmesh_number)%gelement(gelement)%knode
         end if
         if (ijk == 0) cycle
-        ns = region(compound(mc)%region_number)%ns(ijk)
-        if (ns == 0) cycle
+        if (region(compound(mc)%update_region_number)%ns(ijk) == 0) cycle
         if (select_elements) then
           if (compound(mc)%centring == 'cell'.and.location_in_list(array=select_cells,element=ijk) == 0) cycle
           if (compound(mc)%centring == 'face'.and.location_in_list(array=select_faces,element=ijk) == 0) cycle
@@ -736,8 +780,9 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
 !------------------
         if (fileformatl == 'msh') then
           if (ijk == 0) cycle
+          if (region(compound(mc)%update_region_number)%ns(ijk) == 0) cycle
           ns = region(compound(mc)%region_number)%ns(ijk)
-          if (ns == 0) cycle
+          if (ns == 0) call error_stop('problem with parent region in write_gmesh')
           if (select_elements) then
             if (compound(mc)%centring == 'cell'.and.location_in_list(array=select_cells,element=ijk) == 0) cycle
             if (compound(mc)%centring == 'face'.and.location_in_list(array=select_faces,element=ijk) == 0) cycle
@@ -764,7 +809,7 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
           else
             ns = region(compound(mc)%region_number)%ns(ijk)
 ! even if this variable doesn't have a value in this face/cell element, vtk still requires a value output
-            if (ns /= 0) then
+            if (ns /= 0.and.region(compound(mc)%update_region_number)%ns(ijk) /= 0) then
               do n = 1, nrank
                 m = compound(mc)%component(n)
                 if (m /= 0) cellvaluel(n) = var_value(m,ns)
@@ -793,8 +838,9 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
       do gelement = 1, ubound(gmesh(gmesh_number)%gelement,1)
         i = gmesh(gmesh_number)%gelement(gelement)%icell
         if (i == 0) cycle
+        if (region(compound(mc)%update_region_number)%ns(i) == 0) cycle
         ns = region(compound(mc)%region_number)%ns(i)
-        if (ns == 0) cycle
+        if (ns == 0) call error_stop('problem with parent region in write_gmesh')
         if (select_elements) then
           if (location_in_list(array=select_cells,element=i) == 0) cycle
         end if
@@ -844,16 +890,19 @@ subroutine output_step(action,do_update_outputs)
 !  (typically written once per timestep or newtstep)
 
 use general_module
-use equations_module
+use equation_module
 use gmesh_module
 character(len=*) :: action
 logical, optional, intent(in) :: do_update_outputs
-integer :: mm, m, mc, nvar, region_number, nvar_local, ns, error, name_length
+integer :: mm, m, mc, nvar, region_number, nvar_local, ns, error, name_length, formatline_length
 integer, dimension(:), allocatable :: m_list
 character(len=100) :: filename, cut_name
-character(len=10000) :: formatline
+character(len=100) :: formatline
+!character(len=:), allocatable, save :: repeatformatline ! this is sized for large output_step headers, fortran 2003, and allocated during setup only
+character(len=100000) :: repeatformatline ! gfortran 4.6 doesn't support dynamically allocated character strings, so leave this for now (v0.53)
 character(len=2) :: cont_bit
-character(len=1) :: separator = ',' ! for csv files
+character(len=1), parameter :: separator = ',' ! for csv files
+character(len=1), parameter :: delimiter = '"' ! for csv files
 logical :: therel, do_update_outputs_local
 logical, parameter :: debug = .false.
                   
@@ -915,9 +964,10 @@ if (trim(action) == "setup") then
       region_number = var(m)%region_number
       if (region_number == 0) then
         nvar = nvar + 1
-        output_step_variable(nvar)%name = "'"//trim(var(m)%name)//"'"
+        output_step_variable(nvar)%name = delimiter//trim(var(m)%name)//delimiter
         output_step_variable(nvar)%m = m
         output_step_variable(nvar)%ns = 1
+        output_step_variable(nvar)%units = delimiter//"["//trim(var(m)%units)//"]"//delimiter ! units are delimited by []
       else
 ! reform name by including ns in [] 
         name_length = len_trim(var(m)%name)
@@ -929,12 +979,14 @@ if (trim(action) == "setup") then
         do ns = 1, ubound(var(m)%funk,1)
           nvar = nvar + 1
           formatline = '(a,'//trim(dindexformat(ns))//',a)'
-          write(output_step_variable(nvar)%name,fmt=formatline) "'"//trim(cut_name)//"n=",ns,"]>'"
+          write(output_step_variable(nvar)%name,fmt=formatline) delimiter//trim(cut_name)//"n=",ns,"]>"//delimiter
           output_step_variable(nvar)%m = m
           output_step_variable(nvar)%ns = ns
+          output_step_variable(nvar)%units = delimiter//"["//trim(var(m)%units)//"]"//delimiter ! units are delimited by []
         end do
       end if
-      output_step_variable(nvar)%units = "'["//trim(var(m)%units)//"]'" ! units are delimited by []
+      if (debug) write(*,*) 'added output_step_variable for '//trim(output_step_variable(nvar)%name)// &
+        ': last element data: nvar = ',nvar,': m = ',output_step_variable(nvar)%m,': ns = ',output_step_variable(nvar)%ns
     end do
     deallocate(m_list)
   end if
@@ -959,18 +1011,29 @@ if (trim(action) == "setup") then
     cont_bit = ""
   end if
 
+! size and dynamically allocate formatline required for all of the variable names, based on length of repeating string unit
+! (eg, ',a,g20,10', which is an example of the float specification is a unit of 9 characters, plus a bit more)
+  formatline_length=9*ubound(output_step_variable,1)+100
+! have to stick with static, but now with a length check, for gfortran 4.6 version which doesn't implement fortran 2003 standard as of 2012ish...
+! allocate(character(len=formatline_length) :: repeatformatline)
+  if (debug) write(*,*) 'repeatformatline length: actual = ',len(repeatformatline),': requested = ',formatline_length
+  if (len(repeatformatline) < formatline_length) call error_stop('character string repeatformatline is not long enough in '// &
+    'output_step, but this probably means you''re creating a massive header anyway - are you sure you are stepoutputing '// &
+    'appropriate variables?  Turn debug on in subroutine output_step to work out what is going on.')
+
 ! write out variable names and units (v0.42)
   if (transient_simulation) then
-    formatline = '(a'//repeat(',a,a',ubound(output_step_variable,1)+1)//')'
-    write(foutputstep,fmt=formatline) trim(cont_bit)//"'<timestep>'",separator,"'<newtstep>'", &
+    repeatformatline = '(a'//repeat(',a,a',ubound(output_step_variable,1)+1)//')'
+    write(foutputstep,fmt=repeatformatline) trim(cont_bit)//delimiter//"<timestep>"//delimiter,separator, &
+      delimiter//"<newtstep>"//delimiter, &
       (separator,trim(output_step_variable(nvar)%name),nvar=1,ubound(output_step_variable,1))
-    write(foutputstep,fmt=formatline) trim(cont_bit)//"'[1]'",separator,"'[1]'", &
+    write(foutputstep,fmt=repeatformatline) trim(cont_bit)//delimiter//"[1]"//delimiter,separator,delimiter//"[1]"//delimiter, &
       (separator,trim(output_step_variable(nvar)%units),nvar=1,ubound(output_step_variable,1))
   else
-    formatline = '(a'//repeat(',a,a',ubound(output_step_variable,1))//')'
-    write(foutputstep,fmt=formatline) trim(cont_bit)//"'<newtstep>'", &
+    repeatformatline = '(a'//repeat(',a,a',ubound(output_step_variable,1))//')'
+    write(foutputstep,fmt=repeatformatline) trim(cont_bit)//delimiter//"<newtstep>"//delimiter, &
       (separator,trim(output_step_variable(nvar)%name),nvar=1,ubound(output_step_variable,1))
-    write(foutputstep,fmt=formatline) trim(cont_bit)//"'[1]'", &
+    write(foutputstep,fmt=repeatformatline) trim(cont_bit)//delimiter//"[1]"//delimiter, &
       (separator,trim(output_step_variable(nvar)%units),nvar=1,ubound(output_step_variable,1))
   end if
   call flush(foutputstep)
@@ -986,14 +1049,14 @@ else if (trim(action) == "write") then
   if (do_update_outputs_local) call update_outputs(stepoutput=.true.) ! update any output-only variables
 
   if (transient_simulation) then
-    formatline = '('//trim(dindexformat(timestep))//',a,'//trim(dindexformat(newtstep))// &
+    repeatformatline = '('//trim(dindexformat(timestep))//',a,'//trim(dindexformat(newtstep))// &
       repeat(',a,'//trim(realformat),ubound(output_step_variable,1))//')'
-    write(foutputstep,fmt=formatline) timestep,separator,newtstep, &
+    write(foutputstep,fmt=repeatformatline) timestep,separator,newtstep, &
       (separator,trunk_dble(var_value(output_step_variable(nvar)%m,output_step_variable(nvar)%ns)), &
       nvar=1,ubound(output_step_variable,1))
   else
-    formatline = '('//trim(dindexformat(newtstep))//repeat(',a,'//trim(realformat),ubound(output_step_variable,1))//')'
-    write(foutputstep,fmt=formatline) newtstep, &
+    repeatformatline = '('//trim(dindexformat(newtstep))//repeat(',a,'//trim(realformat),ubound(output_step_variable,1))//')'
+    write(foutputstep,fmt=repeatformatline) newtstep, &
       (separator,trunk_dble(var_value(output_step_variable(nvar)%m,output_step_variable(nvar)%ns)), &
       nvar=1,ubound(output_step_variable,1))
   end if
@@ -1033,7 +1096,7 @@ formatline = '(a,6(/a))'
 if (trim(structure) == "component") then
   write(foutput,fmt=formatline) '"name='//trim(var(m)%name)//'"', &
                                 '"centring='//trim(var(m)%centring)//'"', &
-                                '"region='//trim(var(m)%region)//'"', &
+                                '"region='//trim(var(m)%update_region)//'"', &
                                 '"rank='//trim(var(m)%rank)//'"', &
                                 '"type='//trim(var(m)%type)//'"', &
                                 '"units='//trim(var(m)%units)//'"', &
@@ -1041,7 +1104,7 @@ if (trim(structure) == "component") then
 else if (trim(structure) == "compound") then
   write(foutput,fmt=formatline) '"name='//trim(compound(m)%name)//'"', &
                                 '"centring='//trim(compound(m)%centring)//'"', &
-                                '"region='//trim(compound(m)%region)//'"', &
+                                '"region='//trim(compound(m)%update_region)//'"', &
                                 '"rank='//trim(compound(m)%rank)//'"', &
                                 '"type='//trim(compound(m)%type)//'"', &
                                 '"units='//trim(compound(m)%units)//'"', &
@@ -1071,6 +1134,7 @@ integer :: gmesh_number ! output data concerned with this gmesh
 character(len=*) :: centring ! whether to output only cell, face, none or all centred elements (default all)
 integer :: gregion, region_number, gnode, k, ngelements, gelement, i, j, l, dimensions, geo_entity
 character(len=1000) :: formatline
+logical, parameter :: gelement_geo_entity = .true. ! think that this is now the safest way to make gmsh happy with the geometric (elemental) entity, but keep as a logical for now
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine write_mesh_msh'
@@ -1126,43 +1190,71 @@ if (centring /= 'none') then ! mesh data not required for none centred file
 ! and for elements that are both faces and nodes (ie, a 1D simulation) and in more than one region (in the node and face centred files)
 ! no overhead for normal output
 ! if an element is not a member of any gregion then it will have one 0 entry, and it doesn't matter whether i, j or k (provided they are non-zero) are used to output the element
+    if (debug) write(91,*) 'gmesh_number = ',gmesh_number,': centring = ',centring
     do gelement = 1, ubound(gmesh(gmesh_number)%gelement,1)
       i = gmesh(gmesh_number)%gelement(gelement)%icell 
       j = gmesh(gmesh_number)%gelement(gelement)%jface
       k = gmesh(gmesh_number)%gelement(gelement)%knode
+      if (debug) then
+        write(91,*) 'gelement,i,j,k,gregions'
+        write(91,*) gelement,i,j,k,gmesh(gmesh_number)%gelement(gelement)%gregions
+      end if
       if (i /= 0.and.(centring == 'cell'.or.centring == 'all')) then
 ! output elements in their reverse region order for consistency with gmsh
-        do gregion = ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1), 1, -1
-! now only output two integer tags per element: the physical entity and the 'elementary geometrical entity' which is now (v0.50) set equal to the physical entity number plus 3 if part of a physical region, or the dimension otherwise if not a point - If a point, then the gnode number + 3 + ngregions
-          if (cell(i)%dimensions == 0) then
-            formatline = '('//trim(indexformat)//',3(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(cell(i)%knode,1)+1)//')'
-            geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(cell(i)%knode(1)) ! if it is a point set equal to gnode + ngregions + 3
+        if (debug) write(91,*) 'i'
+!       do gregion = ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1), 1, -1
+        do gregion = 1, ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1) ! back to forward loop
+          if (debug) write(91,*) 'gregion = ',gregion,': gregions(gregion) = ', &
+            gmesh(gmesh_number)%gelement(gelement)%gregions(gregion)
+! now only output two integer tags per element: the physical entity and the 'elementary geometrical entity'
+          formatline = '('//trim(indexformat)//',3(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(cell(i)%knode,1)+1)//')'
+          if (gelement_geo_entity) then
+! this is the safest option for gmsh - give every gelement a unique geometrical entity, which we just make equal to the gelement number
+! no disadvantages as far as I can see except that gelements aren't grouped (however, this was what was required for nodes anyway previously)
+! can't see anyway around this actually unless we form a whole new group of elementary entities that are unique to the combination of physical regions that each element is in - timewaster
+            geo_entity = gelement
           else
-            formatline = '('//trim(indexformat)//',4(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(cell(i)%knode,1))//')'
-            geo_entity = gmesh(gmesh_number)%gelement(gelement)%gregions(gregion)
-            if (geo_entity == 0) then
-              geo_entity = cell(i)%dimensions
+! here we set the geo_entity equal to the physical entity number plus 3 if part of a physical region, or the dimension otherwise if not a point - If a point, then the gnode number + 3 + ngregions
+! actually this didn't work as gmsh doesn't allow a geometrical entity to span more than one physical region, so now reverting to the above
+            if (cell(i)%dimensions == 0) then
+              geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(cell(i)%knode(1)) ! if it is a point set equal to gnode + ngregions + 3
             else
-              geo_entity = geo_entity + 3
+              geo_entity = gmesh(gmesh_number)%gelement(gelement)%gregions(gregion)
+              if (geo_entity == 0) then
+                geo_entity = cell(i)%dimensions
+              else
+                geo_entity = geo_entity + 3
+              end if
             end if
           end if
           write(foutput,fmt=formatline) gelement,' ',cell(i)%gtype,' ',2,' ', &
             gmesh(gmesh_number)%gelement(gelement)%gregions(gregion),' ', &
             geo_entity, &
             (' ',gmesh(gmesh_number)%gnode_from_knode(cell(i)%knode(l)),l=1,ubound(cell(i)%knode,1))
+          if (debug) then
+            write(91,*) 'output line:'
+            write(91,fmt=formatline) gelement,' ',cell(i)%gtype,' ',2,' ', &
+              gmesh(gmesh_number)%gelement(gelement)%gregions(gregion),' ', &
+              geo_entity, &
+              (' ',gmesh(gmesh_number)%gnode_from_knode(cell(i)%knode(l)),l=1,ubound(cell(i)%knode,1))
+          end if
         end do
       else if (j /= 0.and.(centring == 'face'.or.centring == 'all')) then
-        do gregion = ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1), 1, -1
-          if (face(j)%dimensions == 0) then
-            formatline = '('//trim(indexformat)//',3(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(face(j)%knode,1)+1)//')'
-            geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(face(j)%knode(1)) ! if it is a point set equal to gnode + ngregions + 3
+        if (debug) write(91,*) 'j'
+        do gregion = 1, ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1)
+          formatline = '('//trim(indexformat)//',3(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(face(j)%knode,1)+1)//')'
+          if (gelement_geo_entity) then
+            geo_entity = gelement
           else
-            formatline = '('//trim(indexformat)//',4(a,i3,)'//repeat(',a,'//trim(indexformat),ubound(face(j)%knode,1))//')'
-            geo_entity = gmesh(gmesh_number)%gelement(gelement)%gregions(gregion)
-            if (geo_entity == 0) then
-              geo_entity = face(j)%dimensions
+            if (face(j)%dimensions == 0) then
+              geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(face(j)%knode(1)) ! if it is a point set equal to gnode + ngregions + 3
             else
-              geo_entity = geo_entity + 3
+              geo_entity = gmesh(gmesh_number)%gelement(gelement)%gregions(gregion)
+              if (geo_entity == 0) then
+                geo_entity = face(j)%dimensions
+              else
+                geo_entity = geo_entity + 3
+              end if
             end if
           end if
           write(foutput,fmt=formatline) gelement,' ',face(j)%gtype,' ',2,' ', &
@@ -1171,10 +1263,15 @@ if (centring /= 'none') then ! mesh data not required for none centred file
             (' ',gmesh(gmesh_number)%gnode_from_knode(face(j)%knode(l)),l=1,ubound(face(j)%knode,1))
         end do
       else if (k /= 0.and.(centring == 'node'.or.centring == 'all')) then
+        if (debug) write(91,*) 'k'
 ! nodes elements have only one knode attached, and have are of node_gtype
         formatline = '('//trim(indexformat)//',3(a,i3,),2(a,'//trim(indexformat)//'))' ! elementary node element region can become large
-        do gregion = ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1), 1, -1
-          geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(k) ! for a point set equal to gnode + ngregions + 3
+        do gregion = 1, ubound(gmesh(gmesh_number)%gelement(gelement)%gregions,1)
+          if (gelement_geo_entity) then
+            geo_entity = gelement
+          else
+            geo_entity = 3 + gmesh(gmesh_number)%ngregions + gmesh(gmesh_number)%gnode_from_knode(k) ! for a point set equal to gnode + ngregions + 3
+          end if
           write(foutput,fmt=formatline) gelement,' ',node_gtype,' ',2,' ', &
             gmesh(gmesh_number)%gelement(gelement)%gregions(gregion),' ', &
 ! point mesh elements in gmsh require a unique element number - use the gnode + the maximum physical entity for this mesh + 3
@@ -1309,7 +1406,7 @@ subroutine write_dat(gmesh_number,centring,ngelements)
 ! writes the mesh to foutput in the tecplot asci format dat
 
 use general_module
-use equations_module
+use equation_module
 use gmesh_module
 integer :: gmesh_number ! output data concerned with this gmesh
 character(len=*) :: centring ! whether to output only cell, face, none or all centred elements (default all)

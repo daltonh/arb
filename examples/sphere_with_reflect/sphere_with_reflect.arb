@@ -108,4 +108,8 @@ VARIABLE <tau[l=1,1]> output
 #NONE_OUTPUT <F_drag> [N] "16.d0*facesum(<facearea>*<facex[l=2]>*dot(<facenorm[l=:]>,<stress[l=:,1]>),<sphere>)" # force on object in axial direction, expressed as a drag coefficient
 #NONE_OUTPUT <F_drag_theo> [N] "24.d0/<Re>" # 
 #NONE_OUTPUT <ERROR_PERCENTAGE> [%] "(<F_drag>-<F_drag_theo>)/<F_drag_theo>*1.d+2"
+
+# also output strain rate magnitude, as defined by bird 2002 for example
+INCLUDE_ROOT "navier_stokes"
+INCLUDE "strain_rate_magnitude"
 #-------------------------------------------------------------------

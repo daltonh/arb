@@ -1086,6 +1086,7 @@ if (trim(centring) == 'face'.and.present(norm)) then
 !  by the same number of norm vectors
 ! only have to worry about 2 and 1 dimensional spaces - in the former check that the nullspace is equivalent, in the latter check the
 !  the basis space is equivalent
+! need to think about face kernels on curvlinear meshes
   if (basis_dimension == 2.and.abs(sqrt(abs(dot_product(basis_vectors(:,3),norm(:,6))))-1.d0) > small_element) then
     write(*,*) 'basis_vectors(:,3) = ',basis_vectors(:,3)
     write(*,*) 'norm(:,6) = ',norm(:,6)

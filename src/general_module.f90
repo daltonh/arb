@@ -59,7 +59,6 @@ type node_type
   double precision :: dx_kernel ! characteristic dimension of mesh around this node to be used in kernel scaling - approximately equal to the equivalent radii of surrounding cells (not diameter)
   integer, dimension(:), allocatable :: jface ! array storing j indices of surrounding faces (directly connected, not via glue)
   integer, dimension(:), allocatable :: icell ! array storing i indices of surrounding cells (both directly connected and via glue)
-  integer, dimension(:), allocatable :: region_list ! list of regions that the node is a member of
   integer, dimension(:), allocatable :: glue_knode ! array storing k indices of any coincident nodes (due to faces being glued together) - unallocated if no faces are glueds to this one
   logical :: glue_present ! signifies that some faces that are attached to this node are glued
   logical :: reflect_present ! signifies that some faces within the icells are not only glued, but also includes reflections (in practice means that reflect_multipliers should be allocated and have non-unity values)
@@ -80,7 +79,6 @@ type face_type
   double precision, dimension(totaldimensions,totaldimensions) :: norm ! orthogonal orientation vectors for face: first norm(:,1) points normal to face in direction from cell icell(1) -> icell(2), second norm(:,2) points from node(1)->node(2) on face (2d and 3d) (first tangent) and third norm(:,3) is normal to both (second tangent in 3d)
   integer, dimension(:), allocatable :: icell ! array storing i indices of the 2 adjacent cells
   integer, dimension(:), allocatable :: knode ! array storing k indices of surrounding nodes
-  integer, dimension(:), allocatable :: region_list ! list of regions that the face is a member of
   integer :: dimensions ! number of dimensions that cell is (0, 1 or 2)
   integer :: gtype ! gmsh element type for element geometry
   type(kernel_type), dimension(0:6) :: kernel ! kernel(m) = kernel for the average (m=0) or derivative in the m'th coordinate direction - m>=4 is for normals to the face for norm(:,m-3)
@@ -104,7 +102,6 @@ type cell_type
   integer, dimension(:), allocatable :: knode ! array storing k indices of surrounding nodes
   integer, dimension(:), allocatable :: jface ! array storing j indices of surrounding faces
   integer, dimension(:), allocatable :: icell ! array storing i indices of surrounding cells
-  integer, dimension(:), allocatable :: region_list ! list of regions that the cell is a member of
   integer :: dimensions ! number of dimensions that cell is (1, 2 or 3)
   integer :: gtype ! gmsh element type for element geometry
   type(kernel_type), dimension(0:4) :: kernel ! kernel(m) = kernel for the average from faces (m=0) or derivative in the m'th coordinate direction, or average from nodes (m=4)
@@ -138,14 +135,35 @@ type glue_face_type
   character(len=100), dimension(:), allocatable :: options ! array of options for this var, with highest priority on the right
 end type glue_face_type
 
+! type for location specification within regions
+type region_location_type
+  logical :: active ! whether location is active or not
+  character(len=1000) :: description ! string that describes location, as given by user in arb file
+  character(len=100) :: type ! string that describes type of location description
+  integer, dimension(:), allocatable :: regions ! list of region numbers used in this description
+  integer, dimension(:), allocatable :: integers ! list of integers used in this description
+  double precision, dimension(:), allocatable :: floats ! list of floats used in this description
+  integer, dimension(:), allocatable :: variables ! list of fortran m numbers used in this description
+  character(len=100), dimension(:), allocatable :: variabletypes ! list of fortran m numbers used in this description
+end type region_location_type
+
 ! type for regions
 type region_type
   character(len=1000) :: name ! name of the region
-  character(len=1000) :: location ! string specifying location of region
+  character(len=100) :: type ! region type: gmsh, static, constant, transient, newtient, derived, equation, output, condition
   character(len=4) :: centring ! whether cell or face centred
-  integer :: dimensions ! maximum dimensions of the elements within the region
-  integer, dimension(:), allocatable :: ijk ! array of cell or face i or j indices that are within this region - dimension of this is number of elements in region
-  integer, dimension(:), allocatable :: ns ! array that specifies data number from i or j index - dimension of this is either itotal (cell centred) or jtotal (face centred)
+  integer :: dimensions = -1 ! maximum dimensions of the elements within the region (-1 means unset)
+  logical :: dynamic = .false. ! whether region is static (user, static or gmsh) or a dynamic region
+  integer :: relstep ! relative timestep, with relstep=0 being the current step
+  type(region_location_type) :: location ! location of region
+  type(region_location_type) :: initial_location ! initial_location of region if a dynamic transient or newtient region
+  integer :: part_of ! fortran region index of the dynamic or static region that this region is solely contained within, for user (ie, non system) regions only
+  integer :: parent ! fortran region index of the static region that this region is solely contained within, for user (ie, non system) regions only
+  integer, dimension(:), allocatable :: ijk ! array of cell (i), face (j) or node (k) indices that are within this region - dimension of this is number of elements in region - for dynamic regions size of ijk is determined by parent static region, with some indices being zero
+  integer, dimension(:), allocatable :: ns ! array that specifies data number from i, j or k index - dimension of this is either itotal, jtotal or ktotal - for all regions an ns(ijk) of zero indicates that the particular ijk element is not in the region
+  real :: update_time = 0.d0 ! total cpu time that has been spent on updating this region (only for dynamic variables)
+  integer :: update_number = 0 ! total number of times that this region has been updated (only for dynamic variables)
+  integer :: nslast = 0 ! this is the last index of the cells one separation less than the maximum in region(m) - 0 means that there is no information stored about this separation level, as it is one below the minimum ijk index
 end type region_type
 
 ! data type for any functions that ultimately depend on field data
@@ -162,12 +180,15 @@ type var_type
   character(len=1000) :: units ! character string of the units
   double precision :: multiplier ! multiplier appended to units when interacting with outside world
   double precision :: magnitude = -1.d0 ! an order of magnitude estimate of the variable, calculated from initial conditions or dynamically (option dynamicmagnitude/staticmagnitude) and only for unknown and equation variables right now.  -1 indicates that this magnitude has not been set
+  integer :: magnitude_constant = 0 ! fortran var number of a none-centred constant that is to be used as the magnitude of this variable, only for unknowns and equations, and if this is set, it takes precedence over any default magnitude values
   character(len=4) :: centring
   character(len=100) :: type ! variable type: constant, transient, newtient, unknown, derived, equation, output, condition, local
   integer :: relstep ! relative timestep, with relstep=0 being the current step
   character(len=6) :: rank ! specifies whether this is a component of a scalar, vector or tensor compound
   character(len=1000) :: region ! name of the region in which it is applied
   integer :: region_number ! number of the region in which it is applied
+  character(len=1000) :: update_region ! name of the region in which it is updated, which is only different to the region if it was defined over a dynamic region
+  integer :: update_region_number ! number of the region in which it is updated
   character(len=1000) :: compound_name ! name of the compound variable of which this scalar is a component
   integer :: compound_number ! number of the compound variable of which this scalar is a component
   integer, dimension(:), allocatable :: component ! ordered list of the compound variable of which this scalar is a component
@@ -182,9 +203,11 @@ end type var_type
 
 ! data type for var_lists
 type var_list_type
-! character(len=4) :: centring
-! character(len=100) :: type ! variable type
-  integer, dimension(:), allocatable :: list
+  character(len=4) :: centring
+  character(len=100) :: type ! variable type
+  logical :: include_regions ! whether compatible dynamic regions are also included in this list
+  integer, dimension(:), allocatable :: list ! index of variable of region
+  logical, dimension(:), allocatable :: region ! whether the corresponding index is a region (.true.) or variable (.false.)
 end type var_list_type
 
 ! meta data type for all compound variables
@@ -197,7 +220,9 @@ type compound_type
   character(len=6) :: rank ! specifies whether this is a component of a scalar, vector or tensor compound
   integer :: relstep ! relative timestep, with relstep=0 being the current step
   character(len=1000) :: region ! name of the region in which it is applied
+  character(len=1000) :: update_region ! name of the region in which it is updated
   integer :: region_number ! number of the region in which it is applied
+  integer :: update_region_number ! number of the region in which it is updated
   integer, dimension(:), allocatable :: component ! ordered list of the compound variable of which this scalar is a component
   character(len=100), dimension(:), allocatable :: options ! array of options for this compound, with highest priority on the right
 end type compound_type
@@ -279,8 +304,8 @@ integer :: jdomain, jboundary, jtotal ! number of domain (type 1) and boundary (
 integer :: kdomain, kboundary, ktotal ! number of domain (type 1) and boundary (type 2) nodes, also total
 integer :: ptotal ! number of equations and unknowns
 double precision, dimension(:), allocatable, save :: delphiold, delphi ! single dimension unknown-sized variables for newton proceedure
-integer :: transient_relstepmax ! maximum relstep value for all transients
-integer :: newtient_relstepmax ! maximum relstep value for all newtients
+integer :: transient_relstepmax ! maximum relstep value for all transients (variables and dynamic regions)
+integer :: newtient_relstepmax ! maximum relstep value for all newtients (variables and dynamic regions)
 double precision :: newtres = 0.d0 ! last evaluated value of the newton residual
 logical :: transient_simulation = .false. ! whether simulation is transient or steady-state
 logical :: newtient_simulation = .false. ! whether simulation is newtient or not (ie, has variables that are evaluated only outside of the newton loop)
@@ -310,7 +335,8 @@ type(funk_type), dimension(:), allocatable :: funkt ! funk container which is us
 integer, dimension(:), allocatable :: unknown_var_from_pp ! an array for fast lookup of the unknown var number from p
 character(len=100), dimension(:), allocatable :: kernel_options ! list of kernel options, with highest priority on the right
 character(len=100), dimension(:), allocatable :: solver_options ! list of kernel options, with highest priority on the right
-type(var_list_type), dimension(:), allocatable :: var_list ! array of var_lists, according to type and centring
+type(var_list_type), dimension(:), allocatable :: var_list ! array of var_lists, according to type, centring, and now also region
+integer :: var_list_number_unknown, var_list_number_equation ! these two commonly used var_list_numbers are stored for quick access and calculated in equation_module
 double precision, parameter :: pi = 4.d0*atan(1.d0)
 character(len=100), parameter :: indexformat = 'i8' ! formating used for outputting integers throughout program, although now largely superseeding by dynamic format statements
 character(len=100), parameter :: floatformat='g18.10' ! formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places: now seems to be d+8 required
@@ -355,7 +381,7 @@ logical :: kernel_availability_nodegrad = .false.
 logical :: kernel_availability_nodeave = .false.
 
 ! code version details
-real, parameter :: version = 0.52 ! current version
+real, parameter :: version = 0.53 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "flexible freddy"
 
@@ -367,8 +393,10 @@ double precision, parameter :: eps_dv = 1.d-40 ! minimum derivative magnitude to
 character(len=100) :: output_step_file = "default" ! whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
 !character(len=100) :: output_step_file = "newtstep" ! whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
 logical, parameter :: output_timings = .true. ! (.true.) whether to time processes and output results to screen (see subroutine time_process)
+logical, parameter :: output_timings_on_mesh_write = .false. ! (.false.) output timings each time a mesh file is written - requires that output_timings be on
 logical, parameter :: output_detailed_timings = .false. ! (.false.) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
 logical, parameter :: output_variable_update_times = .true. ! (.true.) time how long it takes to update each variable (on average) and report in output.stat
+logical, parameter :: output_region_update_times = .true. ! (.true.) time how long it takes to update each dynamic region (on average) and report in output.stat
 logical, parameter :: ignore_initial_update_times = .true. ! (.true.) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
 logical, parameter :: kernel_details_file = .false. ! (.false.) print out a text file (output/kernel_details.txt) with all the kernel details
 logical, parameter :: mesh_details_file = .false. ! (.false.) print out a text file (output/mesh_details.txt) with all the mesh details
@@ -452,23 +480,15 @@ end function compound_number_from_name
 
 !----------------------------------------------------------------------------
 
-function region_number_from_name(name,centring,location,dimensions,creatable,existing)
+function region_number_from_name(name)
 
-! find and checks data regarding region_number, or alternatively sets new one if
-!  creatable is present and set to true
+! finds the region number for the region name (no fancy features here anymore since regions implemented within perl)
 
 integer :: region_number_from_name
 character(len=*), intent(in) :: name
-character(len=1000), intent(in), optional :: location
-character(len=4), intent(in), optional :: centring
-integer, intent(in), optional :: dimensions
-logical, intent(in), optional :: creatable
-logical, intent(out), optional :: existing
-type(region_type) :: default_element
 integer :: n
 
 region_number_from_name = 0 ! default is an error code
-if (present(existing)) existing = .false.
 
 ! see if region already exists
 if (allocated(region)) then
@@ -478,66 +498,6 @@ if (allocated(region)) then
       exit
     end if
   end do
-end if
-
-! check centring of existing region is consistent if it was previously set
-if (region_number_from_name /= 0) then
-  if (present(existing)) existing = .true.
-  if (present(centring)) then
-    if (trim(region(region_number_from_name)%centring) /= ''.and. &
-        centring /= region(region_number_from_name)%centring) then
-      write(*,*) 'ERROR: existing region = '//trim(name)//' has different centring than previously specified'
-      region_number_from_name = 0 ! set number to indicate error
-      return
-    end if
-  end if
-  if (present(dimensions)) then
-    if (dimensions >= 0 .and. dimensions /= region(region_number_from_name)%dimensions) then
-      write(*,*) 'ERROR: existing region = '//trim(name)//' has different dimensions than previously specified'
-      region_number_from_name = 0 ! set number to indicate error
-      return
-    end if
-  end if
-end if
-
-! to create or alter region data logical creatable must be present and set to true
-if (.not.present(creatable)) return 
-if (.not.creatable) return 
-
-! create new region
-if (region_number_from_name == 0) then
-  default_element%name = name
-  if (present(location)) then
-    default_element%location = location
-  else
-    default_element%location = ''
-  end if
-  if (present(centring)) then
-    default_element%centring = centring
-  else
-    default_element%centring = ''
-  end if
-  if (present(dimensions)) then
-    default_element%dimensions = dimensions
-  else
-    default_element%dimensions = -1 ! this value indicates that the dimensions are not known
-  end if
-  call resize_region_array(new_element=default_element,change=1)
-  region_number_from_name = ubound(region,1)
-else
-! check existing region and update any info if presently empty
-  if (present(centring).and.trim(region(region_number_from_name)%centring) == '') then
-    write(*,'(a)') 'INFO: updating region = '//trim(name)//' centring to '//trim(centring)
-    region(region_number_from_name)%centring = centring
-  end if
-  if (present(location).and.trim(region(region_number_from_name)%location) == '') then
-    write(*,'(a)') 'INFO: updating region = '//trim(name)//' location to '//trim(location)
-    region(region_number_from_name)%location = location
-  end if
-  if (present(dimensions).and.region(region_number_from_name)%dimensions == -1) then
-    write(*,'(a,i1)') 'INFO: updating region = '//trim(name)//' dimensions to ',dimensions
-    region(region_number_from_name)%dimensions = dimensions
-  end if
 end if
 
 end function region_number_from_name
@@ -894,6 +854,7 @@ end subroutine resize_double_precision_array
 subroutine resize_integer_array(keep_data,array,change,new_size,default_value)
 
 ! here we change the size of an array (by change or to new_size) while maintaining its data
+! if size = 0 then array is left unallocated
 
 integer, dimension(:), allocatable :: array, array_store
 integer, intent(in), optional :: change, new_size
@@ -1131,7 +1092,6 @@ subroutine push_character_array(array,new_element,reverse)
 character(len=*), dimension(:), allocatable :: array
 character(len=*) :: new_element
 logical, optional :: reverse
-integer :: n
 
 call resize_character_array(array=array,change=1)
 array(ubound(array,1))=new_element
@@ -1158,7 +1118,6 @@ subroutine push_logical_array(array,new_element,reverse)
 logical, dimension(:), allocatable :: array
 logical :: new_element
 logical, optional :: reverse
-integer :: n
 
 call resize_logical_array(array=array,change=1)
 array(ubound(array,1))=new_element
@@ -1215,7 +1174,6 @@ subroutine push_integer_array(array,new_element,reverse)
 integer, dimension(:), allocatable :: array
 integer :: new_element
 logical, optional :: reverse
-integer :: n
 
 call resize_integer_array(array=array,change=1)
 array(ubound(array,1))=new_element
@@ -1241,7 +1199,6 @@ subroutine push_double_precision_array(array,new_element,reverse)
 double precision, dimension(:), allocatable :: array
 double precision :: new_element
 logical, optional :: reverse
-integer :: n
 
 call resize_double_precision_array(array=array,change=1)
 array(ubound(array,1))=new_element
@@ -1267,7 +1224,6 @@ subroutine push_real_array(array,new_element,reverse)
 real, dimension(:), allocatable :: array
 real :: new_element
 logical, optional :: reverse
-integer :: n
 
 call resize_real_array(array=array,change=1)
 array(ubound(array,1))=new_element
@@ -1373,42 +1329,54 @@ end function allocatable_logical_size
 
 !----------------------------------------------------------------------------
 
-function print_node(k)
+function print_node(k,compact)
 
 integer :: k ! knode index
+logical, optional :: compact
+logical :: compact_l
 character(len=1000) :: print_node
-integer :: n, error, njface, nicell, nglue_knode, nregions, nr, nreflect_multiplier
+integer :: n, error, njface, nicell, nglue_knode, nr, nreflect_multiplier
 character(len=1000) :: formatline
 
-njface = allocatable_integer_size(node(k)%jface)
-nicell = allocatable_integer_size(node(k)%icell)
-nglue_knode = allocatable_integer_size(node(k)%glue_knode)
-nregions = allocatable_integer_size(node(k)%region_list)
-nr = 0
-if (allocated(node(k)%r)) nr = ubound(node(k)%r,2)
-nreflect_multiplier = 0
-if (allocated(node(k)%reflect_multiplier)) nreflect_multiplier = ubound(node(k)%reflect_multiplier,2)
+compact_l = .false.
+if (present(compact)) compact_l = compact
 
-formatline = '(a,'//trim(indexformat)//',a,i1,a'//repeat(',a,g12.5',totaldimensions)// &
-  ',a'//repeat(',a,'//trim(indexformat),njface)// &
-  ',a'//repeat(',a,'//trim(indexformat),nicell)// &
-  ',a'//repeat(',a,'//trim(indexformat),nglue_knode)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)// &
-  ',a'//repeat(',a,i3',nregions)//')'
+if (compact_l) then
 
-write(print_node,fmt=formatline,iostat=error) 'k = ',k,'k: type = ',node(k)%type, &
-  ': x =',(' ',node(k)%x(n),n=1,totaldimensions), &
-  ': jface =',(' ',node(k)%jface(n),n=1,njface), &
-  ': icell =',(' ',node(k)%icell(n),n=1,nicell), &
-  ': glue_knode =',(' ',node(k)%glue_knode(n),n=1,nglue_knode), &
-  ': glue_present = ',node(k)%glue_present, &
-  ': r =',(' [',node(k)%r(:,n),']',n=1,nr), &
-  ': reflect_present = ',node(k)%reflect_present, &
-  ': reflect_multiplier =',(' [',node(k)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier), &
-  ': region_list =',(' ',node(k)%region_list(n),n=1,nregions)
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  write(print_node,fmt=formatline,iostat=error) 'k = ',k,'k: type = ',node(k)%type, &
+    ': x =',(' ',node(k)%x(n),n=1,totaldimensions)
+
+else
+
+  njface = allocatable_integer_size(node(k)%jface)
+  nicell = allocatable_integer_size(node(k)%icell)
+  nglue_knode = allocatable_integer_size(node(k)%glue_knode)
+  nr = 0
+  if (allocated(node(k)%r)) nr = ubound(node(k)%r,2)
+  nreflect_multiplier = 0
+  if (allocated(node(k)%reflect_multiplier)) nreflect_multiplier = ubound(node(k)%reflect_multiplier,2)
+
+  formatline = '(a,'//trim(indexformat)//',a,i1,a'//repeat(',a,g12.5',totaldimensions)// &
+    ',a'//repeat(',a,'//trim(indexformat),njface)// &
+    ',a'//repeat(',a,'//trim(indexformat),nicell)// &
+    ',a'//repeat(',a,'//trim(indexformat),nglue_knode)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
+
+  write(print_node,fmt=formatline,iostat=error) 'k = ',k,'k: type = ',node(k)%type, &
+    ': x =',(' ',node(k)%x(n),n=1,totaldimensions), &
+    ': jface =',(' ',node(k)%jface(n),n=1,njface), &
+    ': icell =',(' ',node(k)%icell(n),n=1,nicell), &
+    ': glue_knode =',(' ',node(k)%glue_knode(n),n=1,nglue_knode), &
+    ': glue_present = ',node(k)%glue_present, &
+    ': r =',(' [',node(k)%r(:,n),']',n=1,nr), &
+    ': reflect_present = ',node(k)%reflect_present, &
+    ': reflect_multiplier =',(' [',node(k)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
+
+end if
 
 if (error /= 0) print_node = 'ERROR: problem in print_node: formatline = '//trim(formatline)
 
@@ -1416,58 +1384,72 @@ end function print_node
 
 !----------------------------------------------------------------------------
 
-function print_face(j)
+function print_face(j,compact)
 
 integer :: j ! jface index
+logical, optional :: compact
+logical :: compact_l
 character(len=10000) :: print_face, rup, rdown
-integer :: n, error, nknode, nicell, nregions, l, nr, nreflect_multiplier
+integer :: n, error, nknode, nicell, l, nr, nreflect_multiplier
 character(len=10000) :: formatline
 
-nknode = allocatable_integer_size(face(j)%knode)
-nicell = allocatable_integer_size(face(j)%icell)
-nregions = allocatable_integer_size(face(j)%region_list)
-nr = 0
-rdown = ' not allocated'
-rup = ' not allocated'
-if (allocated(face(j)%r)) then
-  nr = ubound(face(j)%r,2)
-  formatline = '(3(1x,'//trim(compactformat)//'))'
-  if (nr >= 1) write(rdown,fmt=formatline) face(j)%r(:,1)
-  if (nr >= 2) write(rup,fmt=formatline) face(j)%r(:,1)
+compact_l = .false.
+if (present(compact)) compact_l = compact
+
+if (compact_l) then
+
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  write(print_face,fmt=formatline,iostat=error) 'j = ',j,'j: type = ',face(j)%type, &
+    ': dimensions = ',face(j)%dimensions, &
+    ': gtype = ',face(j)%gtype, &
+    ': x =',(' ',face(j)%x(n),n=1,totaldimensions)
+
+else
+
+  nknode = allocatable_integer_size(face(j)%knode)
+  nicell = allocatable_integer_size(face(j)%icell)
+  nr = 0
+  rdown = ' not allocated'
+  rup = ' not allocated'
+  if (allocated(face(j)%r)) then
+    nr = ubound(face(j)%r,2)
+    formatline = '(3(1x,'//trim(compactformat)//'))'
+    if (nr >= 1) write(rdown,fmt=formatline) face(j)%r(:,1)
+    if (nr >= 2) write(rup,fmt=formatline) face(j)%r(:,1)
+  end if
+  nreflect_multiplier = 0
+  if (allocated(face(j)%reflect_multiplier)) nreflect_multiplier = ubound(face(j)%reflect_multiplier,2)
+
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//trim(indexformat)// &
+    ',a,i1,2(a'//repeat(',a,g12.5',totaldimensions)// &
+    '),a,g12.5,a,g12.5'// &
+    repeat(',a,i1,a'//repeat(',a,g12.5',totaldimensions),totaldimensions)// &
+    ',a'//repeat(',a,'//trim(indexformat),nknode)// &
+    ',a'//repeat(',a,'//trim(indexformat),nicell)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
+
+  write(print_face,fmt=formatline,iostat=error) 'j = ',j,'j: type = ',face(j)%type, &
+    ': dimensions = ',face(j)%dimensions, &
+    ': gtype = ',face(j)%gtype, &
+    ': glue_jface = ',face(j)%glue_jface, &
+    ': glue_reflect = ',face(j)%glue_reflect, &
+    ': x =',(' ',face(j)%x(n),n=1,totaldimensions), &
+    ': dx_unit =',(' ',face(j)%dx_unit(n),n=1,totaldimensions), &
+    ': r(1),dx_down ='//trim(rdown)// &
+    ': r(2),dx_up ='//trim(rup)// &
+    ': area = ',face(j)%area,': dx = ',face(j)%dx, &
+    (': norm(',l,') =',(' ',face(j)%norm(n,l),n=1,totaldimensions),l=1,totaldimensions), &
+    ': knode =',(' ',face(j)%knode(n),n=1,nknode), &
+    ': icell =',(' ',face(j)%icell(n),n=1,nicell), &
+    ': glue_present = ',face(j)%glue_present, &
+    ': r =',(' [',face(j)%r(:,n),']',n=1,nr), &
+    ': reflect_present = ',face(j)%reflect_present, &
+    ': reflect_multiplier =',(' [',face(j)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
+
 end if
-nreflect_multiplier = 0
-if (allocated(face(j)%reflect_multiplier)) nreflect_multiplier = ubound(face(j)%reflect_multiplier,2)
-
-formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//trim(indexformat)// &
-  ',a,i1,2(a'//repeat(',a,g12.5',totaldimensions)// &
-  '),a,g12.5,a,g12.5'// &
-  repeat(',a,i1,a'//repeat(',a,g12.5',totaldimensions),totaldimensions)// &
-  ',a'//repeat(',a,'//trim(indexformat),nknode)// &
-  ',a'//repeat(',a,'//trim(indexformat),nicell)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)// &
-  ',a'//repeat(',a,i3',nregions)//')'
-
-write(print_face,fmt=formatline,iostat=error) 'j = ',j,'j: type = ',face(j)%type, &
-  ': dimensions = ',face(j)%dimensions, &
-  ': gtype = ',face(j)%gtype, &
-  ': glue_jface = ',face(j)%glue_jface, &
-  ': glue_reflect = ',face(j)%glue_reflect, &
-  ': x =',(' ',face(j)%x(n),n=1,totaldimensions), &
-  ': dx_unit =',(' ',face(j)%dx_unit(n),n=1,totaldimensions), &
-  ': r(1),dx_down ='//trim(rdown)// &
-  ': r(2),dx_up ='//trim(rup)// &
-  ': area = ',face(j)%area,': dx = ',face(j)%dx, &
-  (': norm(',l,') =',(' ',face(j)%norm(n,l),n=1,totaldimensions),l=1,totaldimensions), &
-  ': knode =',(' ',face(j)%knode(n),n=1,nknode), &
-  ': icell =',(' ',face(j)%icell(n),n=1,nicell), &
-  ': glue_present = ',face(j)%glue_present, &
-  ': r =',(' [',face(j)%r(:,n),']',n=1,nr), &
-  ': reflect_present = ',face(j)%reflect_present, &
-  ': reflect_multiplier =',(' [',face(j)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier), &
-  ': region_list =',(' ',face(j)%region_list(n),n=1,nregions)
 
 if (error /= 0) print_face = 'ERROR: problem in print_face: formatline = '//trim(formatline)
 
@@ -1475,46 +1457,60 @@ end function print_face
 
 !----------------------------------------------------------------------------
 
-function print_cell(i)
+function print_cell(i,compact)
 
 integer :: i ! icell index
+logical, optional :: compact
+logical :: compact_l
 character(len=10000) :: print_cell
-integer :: n, njface, error, nknode, nicell, nregions, nr, nreflect_multiplier
+integer :: n, njface, error, nknode, nicell, nr, nreflect_multiplier
 character(len=10000) :: formatline
 
-nknode = allocatable_integer_size(cell(i)%knode)
-njface = allocatable_integer_size(cell(i)%jface)
-nicell = allocatable_integer_size(cell(i)%icell)
-nregions = allocatable_integer_size(cell(i)%region_list)
-nr = 0
-if (allocated(cell(i)%r)) nr = ubound(cell(i)%r,2)
-nreflect_multiplier = 0
-if (allocated(cell(i)%reflect_multiplier)) nreflect_multiplier = ubound(cell(i)%reflect_multiplier,2)
+compact_l = .false.
+if (present(compact)) compact_l = compact
 
-formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a'//repeat(',a,g12.5',totaldimensions)// &
-  ',a,g12.5,a,i1'// &
-  ',a'//repeat(',a,'//trim(indexformat),nknode)// &
-  ',a'//repeat(',a,'//trim(indexformat),njface)// &
-  ',a'//repeat(',a,'//trim(indexformat),nicell)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
-  ',a,l1'// &
-  ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)// &
-  ',a'//repeat(',a,i3',nregions)//')'
+if (compact_l) then
 
-write(print_cell,fmt=formatline,iostat=error) 'i = ',i,'i: type = ',cell(i)%type, &
-  ': dimensions = ',cell(i)%dimensions, &
-  ': gtype = ',cell(i)%gtype, &
-  ': x =',(' ',cell(i)%x(n),n=1,totaldimensions), &
-  ': vol = ', cell(i)%vol, ': njface = ',njface, &
-  ': knode =',(' ',cell(i)%knode(n),n=1,nknode), &
-  ': jface =',(' ',cell(i)%jface(n),n=1,njface), &
-  ': icell =',(' ',cell(i)%icell(n),n=1,nicell), &
-  ': glue_present = ',cell(i)%glue_present, &
-  ': r =',(' [',cell(i)%r(:,n),']',n=1,nr), &
-  ': reflect_present = ',cell(i)%reflect_present, &
-  ': reflect_multiplier =',(' [',cell(i)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier), &
-  ': region_list =',(' ',cell(i)%region_list(n),n=1,nregions)
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  write(print_cell,fmt=formatline,iostat=error) 'i = ',i,'i: type = ',cell(i)%type, &
+    ': dimensions = ',cell(i)%dimensions, &
+    ': gtype = ',cell(i)%gtype, &
+    ': x =',(' ',cell(i)%x(n),n=1,totaldimensions)
+
+else
+
+  nknode = allocatable_integer_size(cell(i)%knode)
+  njface = allocatable_integer_size(cell(i)%jface)
+  nicell = allocatable_integer_size(cell(i)%icell)
+  nr = 0
+  if (allocated(cell(i)%r)) nr = ubound(cell(i)%r,2)
+  nreflect_multiplier = 0
+  if (allocated(cell(i)%reflect_multiplier)) nreflect_multiplier = ubound(cell(i)%reflect_multiplier,2)
+
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a'//repeat(',a,g12.5',totaldimensions)// &
+    ',a,g12.5,a,i1'// &
+    ',a'//repeat(',a,'//trim(indexformat),nknode)// &
+    ',a'//repeat(',a,'//trim(indexformat),njface)// &
+    ',a'//repeat(',a,'//trim(indexformat),nicell)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,'//trim(compactformat)//'),a',nr)// &
+    ',a,l1'// &
+    ',a'//repeat(',a,3(1x,i2),a',nreflect_multiplier)//')'
+
+  write(print_cell,fmt=formatline,iostat=error) 'i = ',i,'i: type = ',cell(i)%type, &
+    ': dimensions = ',cell(i)%dimensions, &
+    ': gtype = ',cell(i)%gtype, &
+    ': x =',(' ',cell(i)%x(n),n=1,totaldimensions), &
+    ': vol = ', cell(i)%vol, ': njface = ',njface, &
+    ': knode =',(' ',cell(i)%knode(n),n=1,nknode), &
+    ': jface =',(' ',cell(i)%jface(n),n=1,njface), &
+    ': icell =',(' ',cell(i)%icell(n),n=1,nicell), &
+    ': glue_present = ',cell(i)%glue_present, &
+    ': r =',(' [',cell(i)%r(:,n),']',n=1,nr), &
+    ': reflect_present = ',cell(i)%reflect_present, &
+    ': reflect_multiplier =',(' [',cell(i)%reflect_multiplier(:,n),']',n=1,nreflect_multiplier)
+
+end if
 
 if (error /= 0) print_cell = 'ERROR: problem in print_cell: formatline = '//trim(formatline)
 
@@ -1860,8 +1856,6 @@ integer :: l
 call resize_integer_array(keep_data=.false.,array=face_to_set%icell,new_size=allocatable_size(new_value%icell))
 ! knode
 call resize_integer_array(keep_data=.false.,array=face_to_set%knode,new_size=allocatable_size(new_value%knode))
-! region_list
-call resize_integer_array(keep_data=.false.,array=face_to_set%region_list,new_size=allocatable_size(new_value%region_list))
 
 ! copy kernels, including shape
 do l = lbound(new_value%kernel,1), ubound(new_value%kernel,1)
@@ -1889,8 +1883,6 @@ call resize_integer_array(keep_data=.false.,array=cell_to_set%knode,new_size=all
 call resize_integer_array(keep_data=.false.,array=cell_to_set%jface,new_size=allocatable_size(new_value%jface))
 ! icell
 call resize_integer_array(keep_data=.false.,array=cell_to_set%icell,new_size=allocatable_size(new_value%icell))
-! region_list
-call resize_integer_array(keep_data=.false.,array=cell_to_set%region_list,new_size=allocatable_size(new_value%region_list))
 
 ! copy kernels, including shape
 do l = lbound(new_value%kernel,1), ubound(new_value%kernel,1)
@@ -2440,11 +2432,13 @@ function newtonupdate(m,ijk)
 ! this function returns the last newtonupdate (unbackstepped) for the unknown variable m
 
 double precision :: newtonupdate
+character(len=1000) :: error_string
 integer :: m, ijk, ns
 
 ! sanity check on unknown variable identification
 if (trim(var(m)%type) /= "unknown") call error_stop("newtonupdate has been called with an m index that does not refer to an unknown")
-ns = nsvar(m=m,ijk=ijk,error_string="called from newtonupdate trying to reference unknown variable"//trim(var(m)%name))
+error_string="called from newtonupdate trying to reference unknown variable"//trim(var(m)%name)
+ns = nsvar(m=m,ijk=ijk,error_string=error_string)
 newtonupdate = delphi(var(m)%funk(ns)%pp(1))
 
 end function newtonupdate
@@ -2554,7 +2548,7 @@ end subroutine time_process
 
 !-----------------------------------------------------------------
 
-subroutine time_variable_update(thread,calling_phase,m)
+subroutine time_variable_update(thread,calling_phase,m,region_l)
 
 ! this routine calculates the total time spent on updating a variable, and the number of times that the variable has been updated
 ! must be called by a particular processor in sequence
@@ -2562,6 +2556,7 @@ subroutine time_variable_update(thread,calling_phase,m)
 integer :: calling_phase ! 0 for initial, 1 for final (used an integer here as lookup needs to be fast)
 integer :: m ! variable number
 integer :: thread ! thread number
+logical :: region_l ! we are timing a region update rather than a variable update
 real :: this_cpu_time
 logical, parameter :: debug = .false.
 
@@ -2571,8 +2566,13 @@ if (calling_phase == 0) then
   call cpu_time(update_time_start(thread))
 else if (calling_phase == 1) then
   call cpu_time(this_cpu_time)
-  var(m)%update_time = var(m)%update_time + this_cpu_time - update_time_start(thread)
-  var(m)%update_number = var(m)%update_number + 1
+  if (region_l) then
+    region(m)%update_time = region(m)%update_time + this_cpu_time - update_time_start(thread)
+    region(m)%update_number = region(m)%update_number + 1
+  else
+    var(m)%update_time = var(m)%update_time + this_cpu_time - update_time_start(thread)
+    var(m)%update_number = var(m)%update_number + 1
+  end if
 end if
 
 if (debug) write(*,'(a/80(1h-))') 'subroutine time_variable_update'
@@ -2707,51 +2707,19 @@ end function has_elements_in_common
 
 !-----------------------------------------------------------------
 
-function region_delta(ijk,centring,name)
+function region_delta(ijk,region_number)
 
-character(len=4) :: centring ! whether region is cell or face centred
-character(len=*) :: name ! name of the region, now with delimiters <>
 double precision :: region_delta
 integer :: ijk, region_number
-logical :: existing
 logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'function region_delta'
 
-region_delta = 0.d0
-
-region_number = region_number_from_name(name=name,existing=existing,centring=centring)
-!region_number = region_number_from_name(name="<"//name//">",existing=existing,centring=centring)
-if (.not.existing) then
-! write(*,*) 'ERROR: function region_delta references region <'//trim(name)// &
-!   '> which does not exist'
-  write(*,*) 'ERROR: function region_delta references region '//trim(name)// &
-    ' which does not exist'
-  stop
+if (region(region_number)%ns(ijk) == 0) then
+  region_delta = 0.d0
+else
+  region_delta = 1.d0
 end if
-if (region_number == 0) then
-! write(*,*) 'ERROR: problem in function region_delta with region <'//trim(name)// &
-!   '>:- most likely region has wrong centring'
-  write(*,*) 'ERROR: problem in function region_delta with region '//trim(name)// &
-    ':- most likely region has wrong centring'
-  stop
-end if
-
-if (centring /= region(region_number)%centring) call error_stop("ERROR: incorrect centring in region_delta accessing "// &
-  "region "//trim(region(region_number)%name))
-
-if (region(region_number)%ns(ijk) == 0) return
-
-! now replaced by simple lookup of region%ns index
-! if (centring == 'cell') then
-!   if (location_in_list(array=cell(ijk)%region_list,element=region_number) == 0) return
-! else if (centring == 'face') then
-!   if (location_in_list(array=face(ijk)%region_list,element=region_number) == 0) return
-! else
-!   stop "ERROR: incorrect centring in region_delta"
-! end if
-
-region_delta = 1.d0
 
 if (debug) write(*,'(a/80(1h-))') 'function region_delta'
 
@@ -2759,19 +2727,23 @@ end function region_delta
 
 !-----------------------------------------------------------------
 
-function var_list_number(type,centring)
+function var_list_number(type,centring,include_regions)
 
 ! little function to return number of var_list that corresponds to type and centring
+! now also option to include dynamic regions in the list too
 character(len=*) :: centring ! whether region is cell or face centred
 character(len=*) :: type ! type of var variable
+logical, optional :: include_regions ! if true and present, include relevant dynamic regions in the lists, otherwise don't (default if not present)
 integer :: var_list_number
-integer :: ntype, ncentring, n
+integer :: ntype, ncentring
+integer, parameter :: ntypemax = ubound(var_types,1) + 1 ! can do this as var_types is a parameter
+integer, parameter :: ntypecentringmax = ntypemax*5
 logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'function var_list_number'
 
 if (trim(type) == "all") then
-  ntype = ubound(var_types,1) + 1
+  ntype = ntypemax
 else
   ntype = 1
   do while (ntype <= ubound(var_types,1))
@@ -2795,36 +2767,15 @@ else
   stop "ERROR: unknown centring in var_list_number"
 end if
 
-var_list_number = ntype + (ncentring-1)*(ubound(var_types,1)+1)
+var_list_number = ntype + (ncentring-1)*(ntypemax)
+
+if (present(include_regions)) then
+  if (include_regions) var_list_number = var_list_number+ntypecentringmax
+end if
 
 if (debug) write(*,'(a/80(1h-))') 'function var_list_number'
 
 end function var_list_number
-
-!-----------------------------------------------------------------
-
-function var_list_lookup(type,centring)
-
-! little function to return var_list as an array corresponding to type and centring
-character(len=*) :: centring ! centring of var
-character(len=*) :: type ! type of var variable
-integer, dimension(:), allocatable :: var_list_lookup
-integer :: var_list_length
-logical, parameter :: debug = .false.
-
-if (debug) write(*,'(80(1h+)/a)') 'function var_list_lookup'
-
-var_list_length = allocatable_size(var_list(var_list_number(type=type,centring=centring))%list)
-
-if (allocated(var_list_lookup)) deallocate(var_list_lookup)
-
-allocate(var_list_lookup(var_list_length)) ! even if list is empty allocate with zero size, allowable in modern fortran
-
-var_list_lookup = var_list(var_list_number(type=type,centring=centring))%list
-
-if (debug) write(*,'(a/80(1h-))') 'function var_list_lookup'
-
-end function var_list_lookup
 
 !-----------------------------------------------------------------
 
@@ -2869,6 +2820,17 @@ else
       error_stringl = ''
     end if
     call error_stop('ijk is equal to 0 in function nsvar: This means that an attempt is being made '// &
+    'to reference variable '//trim(var(m)%name)//' at an erroreous location. '// &
+    'Look at the use of this variable in the equations and check that its region and centring context are consistent.'// &
+    trim(error_stringl))
+  end if
+  if (ijk > allocatable_integer_size(region(var(m)%region_number)%ns)) then
+    if (present(error_string)) then
+      error_stringl = '  Info from calling routine: '//trim(error_string)
+    else
+      error_stringl = ''
+    end if
+    call error_stop('ijk is greater than size of ns array in function nsvar: This means that an attempt is being made '// &
     'to reference variable '//trim(var(m)%name)//' at an erroreous location. '// &
     'Look at the use of this variable in the equations and check that its region and centring context are consistent.'// &
     trim(error_stringl))
@@ -2936,7 +2898,6 @@ default_face%norm = 0.d0
 if (allocated(default_face%icell)) deallocate(default_face%icell)
 allocate(default_face%icell(2))
 if (allocated(default_face%knode)) deallocate(default_face%knode)
-if (allocated(default_face%region_list)) deallocate(default_face%region_list)
 default_face%dimensions = 0
 default_face%gtype = 0
 !do n = 0, 2*totaldimensions
@@ -2972,7 +2933,6 @@ default_cell%dx_min = 0.d0
 if (allocated(default_cell%knode)) deallocate(default_cell%knode)
 if (allocated(default_cell%jface)) deallocate(default_cell%jface)
 if (allocated(default_cell%icell)) deallocate(default_cell%icell)
-if (allocated(default_cell%region_list)) deallocate(default_cell%region_list)
 default_cell%dimensions = 0
 default_cell%gtype = 0
 !do n = 0, totaldimensions
@@ -3094,7 +3054,7 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine memory_manage_dvs'
 
 if (debug) write(*,*) 'doing action = '//trim(action)//' for type '//trim(type)
 
-if (debug) pause
+!if (debug) pause
 
 if (trim(action) == 'deallocate') then
   do n = 1, allocatable_size(var_list(var_list_number(centring="all",type=type))%list)
@@ -3124,7 +3084,7 @@ else
   stop 'ERROR: unknown action in memory_manage_dvs'
 end if
 
-if (debug) pause
+!if (debug) pause
 
 if (debug) write(*,'(a/80(1h-))') 'subroutine memory_manage_dvs'
 
@@ -3200,12 +3160,12 @@ character(len=1000) :: formatline
 
 if (var(m)%centring == 'cell') then
   i = region(var(m)%region_number)%ijk(ns)
-  formatline = '(a,'//trim(dindexformat(i))//',a,3(1x,g10.4),a)'
+  formatline = '(a,'//trim(dindexformat(i))//',a,3(1x,g11.3),a)'
   write(variable_location_string,fmt=formatline) 'cell i = ',i,' and x =',cell(i)%x, &
     ' ('//trim(var(m)%type)//' '//trim(var(m)%name)//')'
 else if (var(m)%centring == 'face') then
   j = region(var(m)%region_number)%ijk(ns)
-  formatline = '(a,'//trim(dindexformat(j))//',a,3(1x,g10.4),a)'
+  formatline = '(a,'//trim(dindexformat(j))//',a,3(1x,g11.3),a)'
   write(variable_location_string,fmt=formatline) 'face j = ',j,' and x =',face(j)%x, &
     ' ('//trim(var(m)%type)//' '//trim(var(m)%name)//')'
 else
@@ -3734,7 +3694,6 @@ type(scalar_list_type) :: list
 double precision :: new_element
 logical, optional :: check_length ! if this is true check the length of the list before adding element - default is off to save time
 logical :: check_lengthl ! local version of check_length
-integer :: existing_length
 integer :: change
 
 change = 0
@@ -3749,12 +3708,6 @@ if (check_lengthl) then
   else
     change = list%length - ubound(list%elements,1)
   end if
-
-! sanity check that should be removed later
-! if (change > 1) then
-!   write(*,*) 'change = ',change
-!   call error_stop("problem in add_to_scalar_list")
-! end if
 
   if (change > 0) call resize_double_precision_array(keep_data=.true.,array=list%elements,change=change)
 end if
@@ -3771,7 +3724,6 @@ type(integer_list_type) :: list
 integer :: new_element
 logical, optional :: check_length ! if this is true check the length of the list before adding element - default is off to save time
 logical :: check_lengthl ! local version of check_length
-integer :: existing_length
 integer :: change
 
 change = 0
@@ -3851,7 +3803,6 @@ type(vector_list_type) :: list
 double precision, dimension(totaldimensions) :: new_element
 logical, optional :: check_length ! if this is true check the length of the list before adding element - default is off to save time
 logical :: check_lengthl ! local version of check_length
-integer :: existing_length
 integer, dimension(2) :: change_2d
 
 change_2d = 0
@@ -3867,12 +3818,6 @@ if (check_lengthl) then
   else
     change_2d(2) = list%length - ubound(list%elements,2)
   end if
-
-! sanity check that should be removed later
-! if (change_2d(2) > 1) then
-!   write(*,*) 'change_2d = ',change_2d
-!   call error_stop("problem in add_to_vector_list")
-! end if
 
   if (change_2d(2) > 0) call resize_double_precision_2d_array(keep_data=.true.,array=list%elements,change=change_2d)
 end if
@@ -4206,7 +4151,7 @@ double precision, dimension(:,:), allocatable :: r ! location of cell centres re
 double precision :: dx ! order of magnitude of element dimensions
 integer, dimension(totaldimensions) :: reflect_multiplier2
 double precision, dimension(totaldimensions) :: r2
-integer :: separation, i, ii, i2, ii2, i3, ii3, k, kk, common_nodes, number_added, this_separation_start, last_separation_start, &
+integer :: separation, i, ii, i2, ii2, i3, ii3, number_added, this_separation_start, last_separation_start, &
   sign_upcell, n, maximum_separation_l, start_index, end_index, j, jj, ii2max
 character(len=1000) :: formatline
 integer, dimension(2), save :: change_2d = [0,1], ijk_2d
@@ -4335,7 +4280,7 @@ separation_loop: do while (separation < maximum_separation_l.and.number_added > 
           if (.not.cell_shares_a_node(icentre=icentre,i=i2,reflect_multiplier=reflect_multiplier2,r=r2,dx=dx)) &
             cycle neighbour_loop
         else if (present(jcentre)) then
-          if (debug) write(83,'(a,i3,a,3(i2),a,3(g10.3))') &
+          if (debug) write(83,'(a,i3,a,3(i2),a,3(g10.2))') &
             'checking if face_shares_a_node: i2 = ',i2,': reflect_multiplier2 = ',reflect_multiplier2,': r2 = ',r2
           if (.not.face_shares_a_node(jcentre=jcentre,i=i2,reflect_multiplier=reflect_multiplier2,r=r2,dx=dx)) &
             cycle neighbour_loop
@@ -4359,7 +4304,7 @@ separation_loop: do while (separation < maximum_separation_l.and.number_added > 
 
 ! if we are here then cell i2 is not in the last, current or new separation levels so should be added to the list
       if (debug) then
-        formatline = '(a,'//trim(indexformat)//',a,i2,a,3(1x,i2),a,3(1x,g10.3))'
+        formatline = '(a,'//trim(indexformat)//',a,i2,a,3(1x,i2),a,3(1x,g10.2))'
         write(83,fmt=formatline) 'found new imask element = ',i2,' having separation = ',separation+1,': reflect_multiplier2 =', &
           reflect_multiplier2,': r2 =',r2
         if (ii2 > ubound(cell(i)%jface,1)+1) write(83,'(2(a,i1))') '  adjacent boundary cell: cell(i)%type = ',cell(i)%type, &
@@ -4662,8 +4607,8 @@ function facetoicellr(j,l,ns,error_string)
 double precision, dimension(totaldimensions) :: facetoicellr
 integer :: j, ns
 integer, optional :: l
-character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
-character(len=*), optional :: error_string
+character(len=1000) :: error_stringl ! to optimise speed, error_stringl only defined when needed
+character(len=1000), optional :: error_string
 
 ! could also check for j validity
 
@@ -4706,8 +4651,8 @@ function facetoicellreflect_multiplier(j,l,ns,error_string)
 integer, dimension(totaldimensions) :: facetoicellreflect_multiplier
 integer :: j, ns
 integer, optional :: l
-character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
-character(len=*), optional :: error_string
+character(len=1000) :: error_stringl ! to optimise speed, error_stringl only defined when needed
+character(len=1000), optional :: error_string
 
 ! could also check for j validity
 
@@ -4753,10 +4698,10 @@ function celltoicellr(i,l,ns,error_string)
 ! this really needs to be fixed to properly reference icentre, rather than ilast (which will break with any nested someloops)
 
 double precision, dimension(totaldimensions) :: celltoicellr
-integer :: i, ns, isize
+integer :: i, ns
 integer, optional :: l
-character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
-character(len=*), optional :: error_string
+character(len=1000) :: error_stringl ! to optimise speed, error_stringl only defined when needed
+character(len=1000), optional :: error_string
 
 if (ns <= allocatable_integer_size(cell(i)%icell)) then
 
@@ -4798,10 +4743,10 @@ function celltoicellreflect_multiplier(i,l,ns,error_string)
 !  l is not given
 
 integer, dimension(totaldimensions) :: celltoicellreflect_multiplier
-integer :: i, ns, isize
+integer :: i, ns
 integer, optional :: l
-character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
-character(len=*), optional :: error_string
+character(len=1000) :: error_stringl ! to optimise speed, error_stringl only defined when needed
+character(len=1000), optional :: error_string
 
 if (ns <= allocatable_integer_size(cell(i)%icell)) then
 
@@ -4846,8 +4791,8 @@ function celltoseparationicellr(thread,icurrent,l,error_string)
 double precision, dimension(totaldimensions) :: celltoseparationicellr
 integer :: thread, icurrent, iicurrent, mcurrent
 integer, optional :: l
-character(len=1100) :: error_stringl ! to optimise speed, error_stringl only defined when needed
-character(len=*), optional :: error_string
+character(len=1000) :: error_stringl ! to optimise speed, error_stringl only defined when needed
+character(len=1000), optional :: error_string
 
 mcurrent = someloop(thread)%current_separation_list(1)
 if (mcurrent == 0) then
@@ -4927,42 +4872,33 @@ end subroutine identity_matrix
 
 !-----------------------------------------------------------------
 
-subroutine rotation_matrix(matrix,angle,l)
-!http://inside.mines.edu/~gmurray/ArbitraryAxisRotation/
+function rotation_matrix(axis,angle)
 
-! little function to form an identity matrix, without doing bound checks
+! here we form matrix that when matmul by x will be rotated about the line specified by vector axis (normalised) by angle (radian)
+! http://inside.mines.edu/fs_home/gmurray/ArbitraryAxisRotation/
 
-double precision, dimension(totaldimensions,totaldimensions) :: matrix
-double precision :: angle ! angle to rotate, in rad, using right hand rule
-integer :: l ! axis dimension
-integer :: n1, n2
+double precision, dimension(totaldimensions,totaldimensions) :: rotation_matrix
+double precision, dimension(totaldimensions), intent(in) :: axis
+double precision, intent(in) :: angle
+integer :: n1, n2, n3
+double precision :: adding
 
-call identity_matrix(matrix) ! first initialise to the identity matrix
-n1 = l+1
-n2 = l+2
-if (n1 > 3) n1 = n1 - 3
-if (n2 > 3) n2 = n2 - 3
-matrix(n1,n1) = cos(angle)
-matrix(n2,n2) = cos(angle)
-matrix(n1,n2) = -sin(angle)
-matrix(n2,n1) = sin(angle)
+do n1 = 1, 3
+  do n2 = 1, 3
+    if (n1 == n2) then
+      rotation_matrix(n1,n1) = axis(n1)**2 + (1.d0-axis(n1)**2)*cos(angle)
+    else
+      n3 = 6 - n1 - n2 ! this is the other dimension
+      adding = 1.d0
+      if (n1 == 1.and.n2 == 2) adding = -1.d0
+      if (n1 == 2.and.n2 == 3) adding = -1.d0
+      if (n1 == 3.and.n2 == 1) adding = -1.d0
+      rotation_matrix(n1,n2) = axis(n1)*axis(n2)*(1.d0-cos(angle)) + adding*axis(n3)*sin(angle)
+    end if
+  end do
+end do
 
-end subroutine rotation_matrix
-
-!-----------------------------------------------------------------
-
-function rotate_point(rotation,centre,point)
-
-! no checks on dimensions performed
-
-double precision, dimension(totaldimensions,totaldimensions), intent(in) :: rotation
-double precision, dimension(totaldimensions) :: rotate_point
-double precision, dimension(totaldimensions), intent(in) :: point, centre
-
-rotate_point = matmul(rotation,point-centre)+centre
-!rotate_point = matmul(point-centre,rotation)+centre
-
-end function rotate_point
+end function rotation_matrix
 
 !-----------------------------------------------------------------
 
@@ -4974,7 +4910,7 @@ integer, intent(in) :: thread
 integer, intent(in) :: n
 integer :: separation_list_number ! number of the separation list that we are finding the centre of - each separation loop corresponds to a particular separation loop in the input file
 integer :: separationcentreicell
-character(len=*) :: error_string ! compulsory here!
+character(len=1000) :: error_string ! compulsory here!
 
 if (n > ubound(someloop(thread)%current_separation_list,1) .or. n < 1) &
   call error_stop('n out of array range in separationcentreicell, indicated major problem: '//trim(error_string))
@@ -5000,7 +4936,7 @@ integer, intent(in) :: l ! dimension
 integer :: iicurrent
 integer :: separation_list_number ! number of the separation list that we are finding the centre of - each separation loop corresponds to a particular separation loop in the input file
 double precision :: celltoseparationicellreflect_multiplier
-character(len=*) :: error_string ! compulsory here!
+character(len=1000) :: error_string ! compulsory here!
 
 if (n > ubound(someloop(thread)%current_separation_list,1) .or. n < 1) &
   call error_stop('n out of array range in celltoseparationicellreflect_multiplier, indicated major problem: '//trim(error_string))
@@ -5028,7 +4964,7 @@ integer :: iicurrent
 integer :: l
 integer :: separation_list_number ! number of the separation list that we are finding the centre of - each separation loop corresponds to a particular separation loop in the input file
 double precision :: celltoseparationicellrsquared
-character(len=*) :: error_string ! compulsory here!
+character(len=1000) :: error_string ! compulsory here!
 
 if (n > ubound(someloop(thread)%current_separation_list,1) .or. n < 1) &
   call error_stop('n out of array range in celltoseparationicellreflect_multiplier, indicated major problem: '//trim(error_string))
@@ -5055,7 +4991,7 @@ function facereflect(j,l,error_string)
 
 integer :: j ! face index
 integer :: l ! dimension
-character(len=*) :: error_string ! compulsory here!
+character(len=1000) :: error_string ! compulsory here!
 double precision :: facereflect
 
 if (l < 1 .or. l > 3 .or. j < 0 .or. j > jtotal) call error_stop('problem with facereflect: '//trim(error_string))

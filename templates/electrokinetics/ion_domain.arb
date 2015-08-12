@@ -1,14 +1,23 @@
 # ion transport equations for one specific ion species
 # all variables start with <ion so this can be replaced to make specific ions
 
-#CELL_UNKNOWN <ion n> [molecules/m^3] "<average ion n>" ON <all cells> # ion concentration, note units
+#CELL_LOCAL <ion n initial> "<average ion n>"
 # initial value now based on initial potential, so the potential expression will be unwrapped to use here
-CELL_UNKNOWN <ion n> [molecules/m^3] "<average ion n>*exp(-<ion z>*<e/kT>*<U>)" ON <all cells> # ion concentration, note units
+CELL_LOCAL <ion n initial> "<average ion n>*exp(-<ion z>*<e/kT>*<U>)"
+CELL_UNKNOWN <ion n> [molecules/m^3] "<ion n initial>" ON <all cells> # ion concentration, note units
+
+<<transientnavierstokescomment>>CELL_TRANSIENT <ion n[r=1]> "<ion n initial>" "<ion n>" ON <all cells>
 CELL_DERIVED <ion limiter> [1] "celllimiter[lower](<ion n>,cellmin(<ion n>,,<cellicells>),celllimiter[upper](<ion n>,cellmax(<ion n>,,<cellicells>)))" ON <all cells> # relative limits
 FACE_LOCAL <ion n_f> "faceave[advection](<ion n>,<u_f>,<ion limiter>*<adv_limiter>)" ON <all faces> # face advection-interpolated concentration
 FACE_DERIVED <ion J_f> [molecules/(m^2.s)] "<ion n_f>*<u_f>-<ion D>*(facegrad(<ion n>)+<ion z>*<e/kT>*<ion n_hf>*facegrad(<U>))" ON <all faces> # flux of ions across each face
+
 # conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
 # cartesian only
-<<cartesiancomment>>CELL_EQUATION <ion continuity> [molecules/(m^3.s)] "celldiv(<ion J_f>-faceave[lastcell](<ion n>)*<u_f>)" ON <domain>
+<<steadystatenavierstokescomment>><<cartesiancomment>>CELL_EQUATION <ion continuity> [molecules/(m^3.s)] "celldiv(<ion J_f>-faceave[lastcell](<ion n>)*<u_f>)" ON <domain>
 # cylindrical and cartesian
-<<cylindricalcomment>>CELL_EQUATION <ion continuity> [molecules/(m^3.s)] "celldiv(<<radius_f>>*(<ion J_f>-faceave[lastcell](<ion n>)*<u_f>))/<<radius_c>>" ON <domain>
+<<steadystatenavierstokescomment>><<cylindricalcomment>>CELL_EQUATION <ion continuity> [molecules/(m^3.s)] "celldiv(<<radius_f>>*(<ion J_f>-faceave[lastcell](<ion n>)*<u_f>))/<<radius_c>>" ON <domain>
+
+# cartesian only
+<<transientnavierstokescomment>><<cartesiancomment>>CELL_EQUATION <ion continuity> [molecules/(m^3.s)] "(<ion n>-<ion n[r=1]>)/<dt>+celldiv(<ion J_f>-faceave[lastcell](<ion n>)*<u_f>)" ON <domain>
+# cylindrical and cartesian
+<<transientnavierstokescomment>><<cylindricalcomment>>CELL_EQUATION <ion continuity> [molecules/(m^3.s)] "(<ion n>-<ion n[r=1]>)/<dt>+celldiv(<<radius_f>>*(<ion J_f>-faceave[lastcell](<ion n>)*<u_f>))/<<radius_c>>" ON <domain>
