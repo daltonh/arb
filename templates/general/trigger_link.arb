@@ -1,24 +1,2 @@
-# trigger_link
-# link variables to a particular trigger
-#
-# usage:
-# 
-# user input variables:
-# <linked_variable_to_store>
-#      <linked_variable_to_store> will be stored in {<linked}> whenever {<trigger}> is activated
-# <linked_on_trigger_occurence>, none-centred integer
-#      store when {<trigger}> has been actived the number of times specified by <linked_on_trigger_occurence>
-#
-# template variables:
-# {<linked}> stepoutput
-#       the name of the stored output variable that is newly created
-# {<trigger}_logical>
-#       a reference to an existing trigger
-#
-# examples:
-#INCLUDE "trigger_link" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "1.d0"
-#INCLUDE "trigger_link" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "1.d0" R "<trigger" W "<trigger_z" R "<linked" W "<z_triggered_one" # use the <trigger_z namespace
-#INCLUDE "trigger_link" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "2.d0" R "<trigger" W "<trigger_z" R "<linked" W "<z_triggered_two" # use the <trigger_z namespace
-
 NONE_DERIVED <linked> "noneif(<trigger_logical>-(<linked_on_trigger_occurrence>-0.1),noneif((<linked_on_trigger_occurrence>+0.1)-<trigger_logical>,noneif(abs(<trigger_logical>-<trigger_logical[r=1]>)-1.d-10,<linked_variable_to_store>,<linked[r=1]>),<linked[r=1]>),<linked[r=1]>)" stepoutput
 NONE_TRANSIENT <linked[r=1]> "0.d0" "<linked>"
