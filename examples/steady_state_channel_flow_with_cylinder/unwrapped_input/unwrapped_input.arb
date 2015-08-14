@@ -443,6 +443,8 @@ VARIABLE <u_f> output
 VARIABLE <J_f[l=1]> output
 VARIABLE <tau[l=1,1]> output
 
+#INCLUDE_ROOT "navier_stokes"
+#INCLUDE "strain_rate_magnitude"
 #-------------------------------------------------------------------
 # INCLUDE FINISHED for ../steady_state_channel_flow_with_cylinder.arb
 #--------------------------------------------------------
