@@ -1,0 +1,16 @@
+NONE_CONSTANT <asymptote_timestep_bin_width> 100.0 #N; or number of bins for mean test
+NONE_DERIVED <asymptote_check> "noneif(abs(mod(<timestep>,<asymptote_timestep_bin_width>)-1.d0),0,1)" #return 1 if timestep is N+1,2N+1,3N+1 etc. 
+NONE_DERIVED <asymptote_total> "noneif(<asymptote_check>,0.d0+<var_tracked>,<asymptote_total[r=1]>+<var_tracked>)" #add end-of-current-timestep <var_tracked> to the running total
+NONE_TRANSIENT <asymptote_total[r=1]> "0.d0" "<asymptote_total>"
+NONE_DERIVED <asymptote_mean> "noneif(<asymptote_check>,<asymptote_total[r=1]>/<asymptote_timestep_bin_width>,<asymptote_mean[r=1]>)" stepoutput
+NONE_TRANSIENT <asymptote_mean[r=1]> "0.d0" "<asymptote_mean>"
+NONE_DERIVED <asymptote_measure> "abs(noneif(<asymptote_check>,abs(<asymptote_mean[r=1]>/<asymptote_mean[r=0]>),0)-1.d0)" #ratio of means; <asymptote_mean[r=1]> is the mean over the period {<timestep>-2N-1 to <timestep>-N-1}, <asymptote_mean[r=0]> is the mean over the period {<timestep>-N-1 to <timestep>-1}; where N is the bin width
+NONE_CONSTANT <asymptote_tolerance> 0.01 stepoutput #how close must <asymptote_mean[r=1]>/<asymptote_mean[r=0]> be to 1.0 in order to cause a sign change in <asymptote_expression>
+NONE_CONDITION <asymptote_expression> "<asymptote_tolerance>-<asymptote_measure>"
+
+# track the minimum of <asymptote_measure>
+INCLUDE "series_nonemin" R "<var_tracked>" W "<asymptote_measure>" R "<var" W "<asymptote_measure"
+# just rename <asymptote_measure_min> to <asymptote_progress>
+VARIABLE <asymptote_measure_min> nooutput,nostepoutput
+NONE_DERIVED <asymptote_progress> "<asymptote_measure_min>" stepoutput
+
