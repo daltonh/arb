@@ -4,7 +4,7 @@ NONE_DERIVED <asymptote_total> "noneif(<asymptote_check>,0.d0+<var_tracked>,<asy
 NONE_TRANSIENT <asymptote_total[r=1]> "0.d0" "<asymptote_total>"
 NONE_DERIVED <asymptote_mean> "noneif(<asymptote_check>,<asymptote_total[r=1]>/<asymptote_timestep_bin_width>,<asymptote_mean[r=1]>)" stepoutput
 NONE_TRANSIENT <asymptote_mean[r=1]> "0.d0" "<asymptote_mean>"
-NONE_DERIVED <asymptote_measure> "abs(noneif(<asymptote_check>,abs(<asymptote_mean[r=1]>/<asymptote_mean[r=0]>),0)-1.d0)" #ratio of means; <asymptote_mean[r=1]> is the mean over the period {<timestep>-2N-1 to <timestep>-N-1}, <asymptote_mean[r=0]> is the mean over the period {<timestep>-N-1 to <timestep>-1}; where N is the bin width
+NONE_DERIVED <asymptote_measure> "abs(noneif(<asymptote_check>,noneif(<asymptote_mean[r=0]>,<asymptote_mean[r=1]>/<asymptote_mean[r=0]>,2.d0),0.d0)-1.d0)" #ratio of means; <asymptote_mean[r=1]> is the mean over the period {<timestep>-2N-1 to <timestep>-N-1}, <asymptote_mean[r=0]> is the mean over the period {<timestep>-N-1 to <timestep>-1}; where N is the bin width
 NONE_CONSTANT <asymptote_tolerance> 0.01 stepoutput #how close must <asymptote_mean[r=1]>/<asymptote_mean[r=0]> be to 1.0 in order to cause a sign change in <asymptote_expression>
 NONE_CONDITION <asymptote_expression> "<asymptote_tolerance>-<asymptote_measure>"
 
