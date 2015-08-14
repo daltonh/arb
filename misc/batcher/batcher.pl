@@ -21,7 +21,7 @@ use File::Path qw(mkpath rmtree); # for File::Path version < 2.08, http://perldo
 use File::Copy qw(move copy);
 use File::Glob ':glob'; # deals with whitespace better
 use Thread; # for simultaneous jobs
-use batcher_setup qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name); # brings in the user-written module that defines case-specific data
+use batcher_setup qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name $pbs_module_load_commands); # brings in the user-written module that defines case-specific data
 
 our $run_in_main = 1;
 if ($parallel) {
@@ -191,12 +191,16 @@ for my $n ( 0 .. $#case ) {
     if ($specified_arboptions =~ /omp(\d+)/) { $nthreads = $1;}
   }
 
+  my $hostname = `'hostname'`;
+  my $module_load_intel = '';
+  my $module_load_maxima = '';
+
   if ($pbs) {
     (my $pbs_job_contents = qq{#!/bin/bash
     #PBS -S /bin/bash
     ##PBS -M skink.notification\@gmail.com
     ##PBS -m bea
-    #PBS -N $pbs_jobname
+    #PBS -N $pbs_jobname\_run\_$ndir
     
     # ensure job spans only one node
     #PBS -l nodes=1:ppn=$nthreads
@@ -207,6 +211,7 @@ for my $n ( 0 .. $#case ) {
     #send pbs output to batcher_output/run_*
     #PBS -e $run_record_dir/
     #PBS -o $run_record_dir/
+    
     
     # even though job will run in eg. \$PBS_O_WORKDIR/batcher_output/run_0
     # the script ./misc/run_and_collect.pl is designed to be called from \$PBS_O_WORKDIR
@@ -220,7 +225,11 @@ for my $n ( 0 .. $#case ) {
     echo 'uname -a: ' `uname -a`
     echo 'STARTING DATE ' `date`
     echo
+
+    # load modules if specified
+    $pbs_module_load_commands
     
+
     # move to rundir
     cd \$rundir
     # run job
