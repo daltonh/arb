@@ -76,7 +76,7 @@ INCLUDE_ROOT "general"
 #     use to monitor how close the system is to reaching the asymptote condition {<asymptote}_tolerance>
 #
 # example:
-# here we create a trigger and name it as <trigger_z
+# here we create an asymptote expression
 INCLUDE "trigger_create_asymptote_expression" R "<var_tracked>" W "<z>" R "<asymptote" W "<z_asymptote"
 VARIABLE <z_asymptote_timestep_bin_width> 300.0 # (default is 100 <timestep> bin width)
 VARIABLE <z_asymptote_tolerance> 0.001 # (default is 0.01 tolerance)
