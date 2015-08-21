@@ -3,8 +3,28 @@ use strict;
 use warnings;
  
 use Exporter qw(import);
-our @EXPORT_OK = qw(case_setup output_setup $parallel);
-our $parallel = 0; # default to run arb jobs in series
+our @EXPORT_OK = qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name $pbs_module_load_commands);
+
+# choose either
+# parallel = 1 and pbs = 0 for local parallel batch
+# parallel = 0 and pbs = 0 for local series batch
+# parallel = 0 and pbs = 1 for cluster pbs submission (each job submitted individually to the queue given by $pbs_queue_name below
+
+our $parallel = 1; # default to run arb jobs in series
+our $pbs = 0; # whether to use job queueing system
+
+# note that for a parallel example, all $pbs_* variables are ignored
+our $pbs_jobname = `basename \$(pwd)`; # pull in dir name automatically
+chomp($pbs_jobname);
+
+our $pbs_walltime = '0:25:00';
+our $pbs_pmem = '4000mb';
+
+our $pbs_queue_name = 'batch'; # for skink
+our $pbs_module_load_commands = ''; # for skink
+
+#our $pbs_queue_name = 'serial'; # for edward
+#our $pbs_module_load_commands = 'module load intel; module load maxima'; # for edward
 
 ###########################################################################################
 # within this subroutine you need to setup the case array of hashes
@@ -13,7 +33,7 @@ sub case_setup {
 # runs is an array (one element for each run) containing hashes in the format string -> substitution
 
   my @case=();
-  $parallel = 1; # run arb jobs in parallel
+  #$parallel = 1; # run arb jobs in parallel
 
 
   # now uses case hash which is specific to each run and can accept the following fields (all filenames accept glob patterns and now default to empty if not used):

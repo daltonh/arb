@@ -129,8 +129,9 @@ CELL_OUTPUT <u_error[l=1]> "<u[l=1]>-<u_analytical[l=1]>"
 CELL_OUTPUT <u_error[l=2]> "<u[l=2]>-<u_analytical[l=2]>"
 CELL_OUTPUT <u_error[l=3]> "<u[l=3]>-<u_analytical[l=3]>"
 
+#INCLUDE_ROOT "navier_stokes"
+#INCLUDE "strain_rate_magnitude"
 # --------------------------------------------------------------------------------------------
-
 # INCLUDE FINISHED for ../stokes_flow_through_cylinder.arb
 #--------------------------------------------------------
 ##################################################################################
