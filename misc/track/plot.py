@@ -178,7 +178,10 @@ class Data():
             self.df = self.df.astype(float)
             if (not self.show_newtsteps and not load_blank):
                 tmp_variable = "<timestep>"
-                self.df = self.df.groupby(tmp_variable, as_index=False).nth(-1)
+                try:
+                    self.df = self.df.groupby(tmp_variable, as_index=False).nth(-1)
+                except:
+                    pass
             self.step_file.close()
    
         # dictionaries needed for ColumnSorterMixin
@@ -1102,6 +1105,32 @@ class SingleSelectListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin ) :
         
 if __name__ == "__main__":
 
+    def activate_default_x1_variable():
+        # here we set a default x1 variable to be activated
+        # for transient data we choose "<timestep>"
+        # for steady-state data we choose "<newtstep>"
+        # for batch data (batch_data.csv) we choose "run"
+
+        if args.batcher:
+            tmp_variables = ["run"]
+        else: 
+            tmp_variables = ["<timestep>", "<newtstep>"]
+
+        for tmp_variable in tmp_variables:
+            try:
+                frame.x1.list.CheckItem(data.inverted[tmp_variable]-1, True)
+                break
+            except:
+                pass
+
+        # here we show some info about what happened on the command line
+        if tmp_variable == "<timestep>":
+            print "INFO: data is of transient type"
+        elif tmp_variable == "<newtstep>":
+            print "INFO: data is of steady-state type"
+        elif tmp_variable == "run":
+            print "INFO: data is of batch type"
+
     load_blank = 1
     blank_csv = StringIO('click "Change dataset"') # the simplest csv file
     
@@ -1121,7 +1150,6 @@ if __name__ == "__main__":
     # check if step_file was specified in command line arguments
     myargs = vars(args)
 
-    
     def contains_strings(line):
         if args.batcher:
             if(re.match(r'# run', line)):
@@ -1246,7 +1274,11 @@ if __name__ == "__main__":
         directory_name = os.path.basename(os.getcwd())
         frame = FrameGenerator(None, -1, title=directory_name, data_object_list=data_objects)
     else:
-        sys.exit("ERROR: no valid data to show")
+        error_string = "ERROR: no valid data to show\n"
+        error_string += "\tI looked in {}\n".format(args.source)
+        error_string += '\tdid you mean to use `plot -s "<var>"`?'
+        sys.exit(error_string)
+
  
     if args.show: # show variables based on command line arguments
         data = data_objects[0]
@@ -1262,12 +1294,8 @@ if __name__ == "__main__":
                 if var: # deals with "<timestep>::<t>" type show string
                     try:
                         if (i==0 and n_specified_axes==1):
-                            # show string is "<var1>,<var2>", so default to showing <timestep> on x1 axis, and the specified variables on the y1 axis
-                            if args.batcher:
-                                frame.x1.list.CheckItem(data.inverted["run"]-1, True)
-                            else:
-                                frame.x1.list.CheckItem(data.inverted["<timestep>"]-1, True)
-
+                            # show string is "<var1>,<var2>", so activate default variable on x1 axis, and the specified variables on the y1 axis
+                            activate_default_x1_variable()
                             frame.y1.list.CheckItem(data.inverted[var]-1, True)
                         if (i==0 and n_specified_axes>1):
                             frame.x1.list.CheckItem(data.inverted[var]-1, True)
@@ -1279,24 +1307,12 @@ if __name__ == "__main__":
                         pass
                         #sys.exit("{} does not contain variable {}".format(specified_step_file,var))   
 
-    else: 
-    # no variables requested, only leave <timestep> (or run number) showing
-    # This will select '<timestep>' as default x1 axis variable (if it exists)
-    # change the tmp_variable line below to set the default variable (note, only one can be chosen)
-        if args.batcher:
-            tmp_variable = "run"
-        else: 
-            tmp_variable = "<timestep>"
-        step = 0
-        if (step == 0):
-            try:
-                frame.x1.list.CheckItem(data.inverted[tmp_variable]-1, True)
-            except:
-                sys.exit("Variable {} not available".format(tmp_variable))
-            step+=1
+    else:
+        activate_default_x1_variable()
 
     frame.Show()
 
     app.MainLoop()
+
 
 
