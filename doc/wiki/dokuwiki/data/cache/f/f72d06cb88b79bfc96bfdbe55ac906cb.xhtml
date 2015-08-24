@@ -1,0 +1,2032 @@
+
+<h1 class="sectionedit1" id="what_is_arb">What is arb?</h1>
+<div class="level1">
+
+<p>
+arb solves arbitrary partial differential equations on unstructured meshes using the finite volume method. The code is written in fortran95, with some meta-programming done in perl with help from maxima.
+</p>
+
+<p>
+The primary strengths of arb are:
+</p>
+<ul>
+<li class="level1"><div class="li"> All equations and variables are defined using ‘maths-type’ expressions written by the user, and hence can be easily tailored to each application;</div>
+</li>
+<li class="level1"><div class="li"> All equations are solved simultaneously using a Newton-Raphson method, so implicitly discretised equations can be solved efficiently; and</div>
+</li>
+<li class="level1"><div class="li"> The unstructured mesh over which the equations are solved can be componsed of all sorts of convex polygons/polyhedrons.</div>
+</li>
+</ul>
+
+<p>
+arb requires a UNIX type environment to run, and has been tested on both the Apple OsX and ubuntu linux platforms. Certain third party programs are used by arb:
+</p>
+<ul>
+<li class="level1"><div class="li"> A fortran compiler; ifort and gfortran are supported;</div>
+</li>
+<li class="level1"><div class="li"> The computer algebra system ;</div>
+</li>
+<li class="level1"><div class="li"> A sparse matrix linear solver: , and (currently a single) Harwell Subroutine Library routines are supported; and</div>
+</li>
+<li class="level1"><div class="li"> The mesh generator .</div>
+</li>
+</ul>
+
+<p>
+Further details about how to get and install this software are given in section [sec:thirdparty].
+</p>
+
+<p>
+arb is copyright Dalton Harvie (2009–2014), but released under the . Further details of this licence can be found in the licence directory once the code has been unpacked.
+</p>
+
+</div>
+<!-- EDIT1 SECTION "What is arb?" [1-1360] -->
+<h1 class="sectionedit2" id="installation">Installation</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT2 SECTION "Installation" [1361-1388] -->
+<h2 class="sectionedit3" id="no-nonsense_setup_on_ubuntu_1004_or_1204">No-nonsense setup on ubuntu 10.04 or 12.04:</h2>
+<div class="level2">
+<pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/ol.html"><span class="kw2">ol</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+Install required packages via <code>apt-get</code>:
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code">sudo apt-get install maxima maxima-share gfortran
+  liblapack-dev libblas-dev gmsh curl gnuplot paraview valgrind</pre>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+Download the arb files, unpack the archive, move to the working directory and create the directory structure (see section [sec:installing_arb] for more detail)
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code">wget http://people.eng.unimelb.edu.au/daltonh/
+  downloads/arb/code/latest.tar
+tar -xf latest.tar
+cd arb_*
+./unpack</pre>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+Download and compile the suitesparse solver (see section [sec:umfpack] for more detail)
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code">cd src/contributed/suitesparse/
+make
+cd ../../..</pre>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+Run a test simulation and view the results (see section [sec:running_arb] for more detail)
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code">./arb
+gmsh output/output.msh</pre>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/ol.html"><span class="kw2">ol</span></a>&gt;</span></pre>
+<p>
+On ubuntu 8.04 the versions of <code>perl</code>, <code>gfortran</code> and <code>gmsh</code> in the standard repositories are too old to be installed via this method.
+</p>
+
+</div>
+<!-- EDIT3 SECTION "No-nonsense setup on ubuntu 10.04 or 12.04:" [1389-2662] -->
+<h2 class="sectionedit4" id="no-nonsense_setup_on_osx">No-nonsense setup on OsX:</h2>
+<div class="level2">
+
+<p>
+Installation on OsX is slightly more fiddly. This procedure is known to work on OsX 10.6 and 10.8, and previously I had it working on OsX 10.4.
+</p>
+<ol>
+<li class="level1"><div class="li"> Install Apple’s Xcode developer package.</div>
+</li>
+<li class="level1"><div class="li"> Install a gfortran binary package as per section [sec:compiler]</div>
+</li>
+<li class="level1"><div class="li"> Install a maxima binary package as per section [sec:maxima]</div>
+</li>
+<li class="level1"><div class="li"> Follow steps 2 and onwards from the ubuntu instructions.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT4 SECTION "No-nonsense setup on OsX:" [2663-3087] -->
+<h2 class="sectionedit5" id="installing_prerequisit_software_in_more_detail_secthirdparty">Installing prerequisit software (in more detail)[sec:thirdparty]</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT5 SECTION "Installing prerequisit software (in more detail)[sec:thirdparty]" [3088-3165] -->
+<h3 class="sectionedit6" id="secmaxima">[sec:maxima]</h3>
+<div class="level3">
+
+<p>
+Equation generation is performed using the Maxima Computer Algebra system. It is released under the and is available for free. To check whether you have it installed already try typing <code>maxima</code>. If the program is installed you will enter a symbolic maths environment. Then check that the command <code>load(f90);</code> finds these libraries, and then quit using <code>quit();</code>. If you need to install it:
+</p>
+
+<p>
+<strong>Installing <code>maxima</code> on ubuntu:</strong>
+</p>
+
+<p>
+On ubuntu linux <code>maxima</code> and the f90 package can be installed using
+</p>
+<pre class="code">sudo apt-get install maxima maxima-share</pre>
+
+<p>
+<strong>Installing <code>maxima</code> on OsX using a binary package:</strong>
+</p>
+
+<p>
+A precompiled version of maxima for the mac is available from . This is a fastest way of getting things going. Download the package and copy the application ‘Maxima.app’ to your <code> Applications</code> directory as directed. To make it available from the command line place the script <code>misc/maxima_OsX/maxima</code> somewhere in your path (for example in a <code>bin</code> directory).
+</p>
+
+<p>
+<strong>Installing <code>maxima</code> on OsX using fink/macports:</strong>
+</p>
+
+<p>
+On OsX <code>maxima</code> can be installed using either or package managers. For fink enable the unstable branch and use
+</p>
+<pre class="code">sudo fink install maxima</pre>
+
+<p>
+For macports replace <code>fink</code> with <code>port</code> in the above. Compilation will take some time.
+</p>
+
+</div>
+<!-- EDIT6 SECTION "[sec:maxima]" [3166-4535] -->
+<h3 class="sectionedit7" id="a_fortran_compiler_and_the_blas_lapack_libraries_seccompiler">A fortran compiler and the blas/lapack libraries [sec:compiler]</h3>
+<div class="level3">
+
+<p>
+Two different compilers have been tested with arb: <code>ifort</code> (Intel) and <code>gfortran</code>. The <code>ifort</code> is probably the faster of the two as currently also supports OMP execution. It also includes the Intel Maths Kernel library which itself includes the excellent Pardiso linear solver routines (see section [sec:pardiso] below): however this compiler is not free except on linux and even then, only under specific non-commercial circumstances. The GNU compiler <code>gfortran</code> is an easier option to get going, and is freely available on both the OsX and linux platforms. It does not include the Pardiso routines but with the new interface to the UMFPACK routines this isn’t a tremendous disadvantage (except for the OMP caveat).
+</p>
+
+<p>
+Compiler choice is made automatically when the <code>arb</code> script is run (defaulting to <code>ifort</code> if it exists, otherwise using <code>gfortran</code>). These defaults can be overwritten with the <code>arb</code> options <code>–compiler-gnu</code> or <code>–compiler-intel</code>.
+</p>
+
+<p>
+<strong>Installing <code>ifort</code>:</strong>
+</p>
+
+<p>
+The non-commercial download site for ifort on linux is . For OsX the compiler must be bought. Make sure you install both the compiler and MKL (Math Kernel Libraries). <code>ifort</code> versions of 11.1.069 and newer (including Composer XE) have been tested on both linux (v12 and v13) and OsX (v12 only). <strong>Installing <code>gfortran</code> on ubuntu:</strong>
+</p>
+
+<p>
+On ubuntu linux <code>gfortran</code> and the lapack/blas libraries can be installed using
+</p>
+<pre class="code">sudo apt-get install gfortran liblapack-dev libblas-dev</pre>
+
+<p>
+<code>gfortran</code> version 4.2.4 on ubuntu 8.04 doesn’t seem to work on some computers (internal compiler error) whereas version 4.4.3 on ubuntu 10.04 does. The version on ubuntu 12.04 is fine too. On ubuntu 8.04 you could try downloading a newer binary version of <code>gfortran</code> but I haven’t tried this.
+</p>
+
+<p>
+<strong>Installing <code>gfortran</code> on OsX using a binary package:</strong>
+</p>
+
+<p>
+The easiest way to install an up-to-date version of <code>gfortran</code> is via a precompiled package. One that worked for me is found - currently (23/2/11) this is version 4.6. Alternatively this and this gives information about other precompiled versions. Check that once installed the <code>gfortran</code> executable is in your path - that is, typing <code>gfortran</code> at the command line should find the compiler. Version 4.5 of <code>gfortran</code> should also work fine. <strong>Installing <code>gfortran</code> on OsX using fink/macports:</strong>
+</p>
+
+<p>
+<code>gfortran</code> can also be installed by the package managers but there are some issues with this. <code>gfortran</code> is included as part of fink’s gcc packages (for example <code>gcc45</code>) but it will need to be installed as 64bit, otherwise there will be some compatibility problems with UMFPACK (unless this is modified). With macports it is also part of gcc but needs to be specified as a variant:
+</p>
+<pre class="code">sudo port install gcc46 +gfortran</pre>
+
+<p>
+Again, compilation will take some time. I have not tested this fully.
+</p>
+
+</div>
+<!-- EDIT7 SECTION "A fortran compiler and the blas/lapack libraries [sec:compiler]" [4536-7580] -->
+<h3 class="sectionedit8" id="secpardiso">[sec:pardiso]</h3>
+<div class="level3">
+
+<p>
+The pardiso sparse linear matrix solver is included as part of the Intel Math Kernel Library which is packaged with the (see above).
+</p>
+
+<p>
+If using the intel compiler then this solver will automatically become available (check the initial output when running <code>arb</code> to see if this has been found). There is currently no interface to use this solver external to the Intel Math Kernel library.
+</p>
+
+</div>
+<!-- EDIT8 SECTION "[sec:pardiso]" [7581-7999] -->
+<h3 class="sectionedit9" id="secumfpack">[sec:umfpack]</h3>
+<div class="level3">
+
+<p>
+The sparse linear solver is part of the suitesparse collection of sparse matrix routines written by Prof. Tim Davis. It is written in c and released under the GNU <abbr title="GNU General Public License">GPL</abbr> (see ).
+</p>
+
+<p>
+UMFPACK depends on . METIS is freely available but not free distributable. For more details see the .
+</p>
+
+<p>
+The installation process for the UMFPACK/METIS combination has been automated so that it can be easily used with arb. To install these packages and compile them in a form that is suitable for arb:
+</p>
+<pre class="code">cd src/contributed/suitesparse
+make</pre>
+
+<p>
+The <code>make</code> command will download version 3.6.0 of UMFPACK and version 4.0.3 of METIS (using curl - install on ubuntu using <code>sudo apt-get install curl</code> if you don’t have it already), and then compile these libraries using the gcc compiler. A wrapper script for using UMFPACK from fortran (included with UMFPACK) will also be compiled. The files will be placed in the src/contributed/suitesparse directory, so will not overwrite any alternative suitesparse or metis libraries already on your system. You need to have <code>gcc</code> installed on your system to build these libraries.
+</p>
+
+<p>
+If all goes well the following files will be placed in src/contributed/suitesparse to be used by arb:
+</p>
+<pre class="code">libamd.a
+libcamd.a
+libccolamd.a
+libcholmod.a
+libcolamd.a
+libmetis.a
+libumfpack.a
+umf4_f77wrapper.o</pre>
+
+<p>
+All of these files are required for UMFPACK to successfully run.
+</p>
+
+<p>
+You also need to have a version of the blas libraries available for <code>arb</code> to use UMFPACK. On OsX these should already be installed as part of Xcode (see section [sec:compiler]). On ubuntu linux they can be installed using <code>sudo apt-get install libblas-dev</code> if they’re not already present.
+</p>
+
+<p>
+To remove the compiled libraries and files type
+</p>
+<pre class="code">make clean</pre>
+
+<p>
+from the <code>suitesparse</code> directory. This will leave only the downloaded files (ready to be reused). To remove the suitesparse and metis downloads as well, type
+</p>
+<pre class="code">make clean_all</pre>
+
+<p>
+Note that UMFPACK library compilation is dependent on the type of machine architecture and the libraries will need to be remade if transferred from one machine to another - do a <code>make clean</code> and then a <code>make</code> again from within the <code>suitesparse</code> directory.
+</p>
+
+<p>
+arb has been tested with the following combinations of umfpack/suitesparse and metis:
+</p>
+<ul>
+<li class="level1"><div class="li"> UMFPACK.tar.gz 02-Jun-2010 11:46 and metis-4.0.tar.gz (4.0.1)</div>
+</li>
+<li class="level1"><div class="li"> SuiteSparse-3.6.0.tar.gz and metis-4.0.tar.gz (4.0.3)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT9 SECTION "[sec:umfpack]" [8000-10491] -->
+<h3 class="sectionedit10" id="perl">Perl</h3>
+<div class="level3">
+
+<p>
+On ubuntu or OsX you should already have a version of perl installed.
+</p>
+
+</div>
+<!-- EDIT10 SECTION "Perl" [10492-10578] -->
+<h3 class="sectionedit11" id="sechsl">[sec:hsl]</h3>
+<div class="level3">
+
+<p>
+An interface to the subroutine MA28D has been implemented. With the availability of UMFPACK, there is no real reason to use this, except for development. For more information see the <code>src/contributed/hsl_ma28d</code> directory. An interface to MA48D is under development (don’t hold your breath though!).
+</p>
+
+</div>
+<div class="level3">
+
+<p>
+These are an alternative to using some of the lapack routines. There is no reason to use these, except for development. For more information see the <code>src/contributed/numerical_recipes</code> directory.
+</p>
+
+</div>
+<!-- EDIT11 SECTION "[sec:hsl]" [10579-11123] -->
+<h3 class="sectionedit12" id="secgmsh">[sec:gmsh]</h3>
+<div class="level3">
+
+<p>
+While not integral to the arb code, the mesh and data format which arb uses is that developed for gmsh. Gmsh is a mesh element generator which can be run using scripts or via a graphical interface and can be used for post-processing (visualisation) too. Gmsh uses the .
+</p>
+
+<p>
+There is some great introductory material available on the on the use of this program, particularly these online .
+</p>
+
+<p>
+<strong>Installing <code>gmsh</code> on ubuntu 10.04/12.04:</strong>
+</p>
+<pre class="code">sudo apt-get install gmsh</pre>
+
+<p>
+On earlier ubuntu versions the repository version is too old.
+</p>
+
+<p>
+<strong>Installing <code>gmsh</code> on anything else or getting the latest version on ubuntu:</strong>
+</p>
+
+<p>
+Download a version from the . Version 2.4 is the minimum required for arb - most importantly the msh file format produced needs to be 2.1 or greater. I have had no problems using development versions that are available.
+</p>
+
+</div>
+<!-- EDIT12 SECTION "[sec:gmsh]" [11124-11997] -->
+<h3 class="sectionedit13" id="secparaview">[sec:paraview]</h3>
+<div class="level3">
+
+<p>
+There is now capability to output in the <code>.vtk</code> format, used by (for example) ParaView. To install ParaView on ubuntu use:
+</p>
+<pre class="code">sudo apt-get install paraview</pre>
+
+<p>
+On the mac there are binaries available. Input of this file format is not supported.
+</p>
+
+</div>
+<!-- EDIT13 SECTION "[sec:paraview]" [11998-12285] -->
+<h3 class="sectionedit14" id="sectecplot">[sec:tecplot]</h3>
+<div class="level3">
+
+<p>
+Tecplot is proprietary visualisation software. <code>arb</code> can output to its <code>*.dat</code> asci format, but not input from this format.
+</p>
+
+</div>
+<!-- EDIT14 SECTION "[sec:tecplot]" [12286-12448] -->
+<h2 class="sectionedit15" id="installing_arb_secinstalling_arb">Installing arb [sec:installing_arb]</h2>
+<div class="level2">
+
+<p>
+As arb is distributed as source code that is compiled for each application, arb is not installed in the traditional sense. Instead, for each new simulation a new self-contained copy of the source files is unpacked from a source tarball. Once created arb is run from a working directory which contains a specific structure of files and subdirectories. Two routines, <code>pack</code> and <code>unpack</code>, are provided to automate the process of managing this required file/subdirectory structure.
+</p>
+
+</div>
+<!-- EDIT15 SECTION "Installing arb [sec:installing_arb]" [12449-12988] -->
+<h3 class="sectionedit16" id="unpacking_the_code">Unpacking the code</h3>
+<div class="level3">
+
+<p>
+To create a new version of arb, a new working directory should be created or that contains the five files
+</p>
+<pre class="code">archive.tar.gz
+unpack
+readme
+licence
+version</pre>
+
+<p>
+Using the command
+</p>
+<pre class="code">./unpack</pre>
+
+<p>
+from within this directory will unpack the archive ready for use.
+</p>
+
+<p>
+The remainder of this section details the file structure and how to pack up the code again.
+</p>
+
+</div>
+<!-- EDIT16 SECTION "Unpacking the code" [12989-13388] -->
+<h3 class="sectionedit17" id="the_working_directory_and_file_structure">The working directory and file structure</h3>
+<div class="level3">
+
+<p>
+Once the archive is unpacked the working directory will contain the following subdirectories and files/links:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>src</code> directory: contains the main fortran source code of arb, and the <code>makefile</code> necessary to build everything (except for the contributed libraries). It also contains the meta-programming perl script <code>setup_equations.pl</code> and a template file <code>equations_module_template.f90</code> which are used to create the fortran file <code>equations_module.f90</code> within <code>build</code> which is specific to each problem.</div>
+</li>
+<li class="level1"><div class="li"> <code>src_equations/contributed</code> directory: This directory may/should/can contain contributed third party code that can be used by arb, along with associated interface modules — for example, linear solver routines. There is a separate subdirectory for each package. Each directory contains error handling modules that handle runtime cases where the third party routines are not available, and also some brief installation instructions. Most directories work on the drop-box principle — if the required files are available then they will be included in the arb executable.</div>
+</li>
+<li class="level1"><div class="li"> <code>build</code> directory: all building is done within this directory. Some notable files are <code>equations_module.f90</code> which contains all of the fortran coding that is specific to the current problem, and <code>fortran_input.arb</code> which is the only input file read by the executable fortran file.</div>
+</li>
+<li class="level1"><div class="li"> <code>tmp</code> directory: temporary files are stored within this directory.</div>
+</li>
+<li class="level1"><div class="li"> <code>tmp/setup</code> directory: includes files produced during the setup of the problem (running of <code>setup_equations.pl</code>). If you’re having to debug a problem setup then this is the place to look. The file <code>debugging_info.txt</code> contains a lot of detail regarding the equation setup. The file <code>unwrapped_input.arb</code> is a completely unwrapped version of the last run input, in which any <code>INCLUDE</code>d files are unwrapped, with any relevant text strings substituted. This file can be input directly to arb again if desired.</div>
+</li>
+<li class="level1"><div class="li"> <code>output</code> directory: output files from a simulation are placed in here.</div>
+</li>
+<li class="level1"><div class="li"> <code>misc</code> directory: contains miscellaneous files — for example: a <code>create_mesh</code> script which builds a <code>.msh</code> file from any <code>.geo</code> file in the working directory; a <code>batcher.pl</code> script which automates the running of consecutive arb runs; and a <code>test_suite</code> script which runs all cases in the <code>examples</code> directory as a check.</div>
+</li>
+<li class="level1"><div class="li"> <code>doc</code> directory: contains documentation including this manual.</div>
+</li>
+<li class="level1"><div class="li"> <code>examples</code> directory: example problem-specific <code>*.arb</code> files with their associated geometry files (structure files with <code>.geo</code> extension, and mesh files with <code>.msh</code> extension) are stored here. Looking through these examples is currently the best way to learn about the language syntax and generally understand how to run arb simulations.</div>
+</li>
+<li class="level1"><div class="li"> <code>templates</code> directory: New for version 0.4, this directory contains template <code>*.arb</code> files for doing common chunks of setup. For example, there is a <code>navier_stokes</code> directory which contains all of the code chunks necessary to run Navier-Stokes problems. There are also directories to implement high-order limited advection in both two and three dimensions. These pieces of template code can be used via the <code>INCLUDE_ROOT</code> and <code>INCLUDE</code> commands.</div>
+</li>
+<li class="level1"><div class="li"> <code>pack</code> script: packs the directory for transportation to another location or computer. This script has many useful options — try <code>./pack –help</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>licence</code> directory: contains licence details, including the (GNU <abbr title="GNU General Public License">GPL</abbr>) licence under which arb is released and the specific version of the code. A history file within the directory <code>packer_history.txt</code> records the distribution history of this particular code directory.</div>
+</li>
+<li class="level1"><div class="li"> <code>*.arb</code> files: these files and an associated <code>.msh</code> or <code>.geo</code> file contain all the problem-specific information required for a particular simulation.</div>
+</li>
+<li class="level1"><div class="li"> <code>arb</code> script: this shell script is a wrapper script for setting-up, making and running <code>arb</code>. You can pass options to this script to control the compilation process — for example choose between the gnu and intel compilers, whether using OMP or not, whether you are restarting a simulation or starting from scratch. This script works out when the equation meta-programming has to be redone or not, and when recompilation is necessary, although with other options you can overwrite this behaviour. To list the options type <code>arb –help</code>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT17 SECTION "The working directory and file structure" [13389-18038] -->
+<h3 class="sectionedit18" id="packing_the_code">Packing the code</h3>
+<div class="level3">
+
+<p>
+To pack a simulation ready to transport or backup, use the command
+</p>
+<pre class="code">./pack</pre>
+
+<p>
+from within the working directory. This will create a subdirectory with a name of the form <code>arb_v[version]_[date]</code> which contains all files necessary to run arb. Following the command with a name, as in
+</p>
+<pre class="code">./pack a_name</pre>
+
+<p>
+will create the archive in a subdirectory named <code>a_name</code> instead of the default.
+</p>
+
+<p>
+The script <code>pack</code> accepts a number of options. By default only files within the <code>examples</code> or <code>gmsh</code> directories that are specific to this manual are included in the archive. The options <code>–example</code>, <code>–misc</code> or <code>–all</code> specify that all files within either the <code>example</code>, <code>misc</code> or both directories are contained within the archive. By default only source code within the <code>src/contributed</code> directory that is not subject to a non-free third party licence is included in the archive. Using the options <code>–contributed</code> or <code>–all</code> causes all files in these directories to be archived (including the build suitesparse libraries). Using <code>–distribute</code> means that no third party software is included in the archive and example input files will be copied to the working directory. The option <code>–build</code> means that all files in the build directory will be included in the archive. This may be useful if you want to transport the simulation to another machine that may not have maxima installed (for example).
+</p>
+
+<p>
+Use <code>./pack –help</code> to list other options.
+</p>
+
+</div>
+<!-- EDIT18 SECTION "Packing the code" [18039-19619] -->
+<h1 class="sectionedit19" id="running_simulations_secrunning_arb">Running simulations [sec:running_arb]</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT19 SECTION "Running simulations [sec:running_arb]" [19620-19672] -->
+<h2 class="sectionedit20" id="a_super-quick_examplea_heat_conduction_simulation">A super-quick example: A heat conduction simulation</h2>
+<div class="level2">
+
+<p>
+Once the code is unpacked you should be left in the working directory. If this version has been downloaded from the homepage then the three files
+</p>
+<pre class="code">heat_conduction_around_ellipse.arb
+surface.geo
+surface.msh</pre>
+
+<p>
+that exist in the working directory specify a simple heat conduction problem. If they don’t exist for whatever reason they can be copied from <code>examples/manual/heat_conduction_around_ellipse</code> to the working directory.
+</p>
+
+<p>
+Now run the simulation using
+</p>
+<pre class="code">./arb</pre>
+
+<p>
+If all goes well the code will be metaprogrammed and compiled, the simulation will run and output will be produced in the directory <code>output</code>. Note that if a specific <code>.arb</code> file is not passed to the <code>arb</code> script, as above, it will default to any <code>.arb</code> files that exist within the working directory. The above code worked because only one <code>.arb</code> file should have been present in the working directory when the code is first unpacked.
+</p>
+
+<p>
+To view the output type
+</p>
+<pre class="code">gmsh output/output.msh</pre>
+
+<p>
+You should see the temperature field around a heated ellipse.
+</p>
+
+</div>
+<!-- EDIT20 SECTION "A super-quick example: A heat conduction simulation" [19673-20826] -->
+<h2 class="sectionedit21" id="other_examples">Other examples:</h2>
+<div class="level2">
+
+<p>
+Other example simulation files are included in the subdirectories of <code>examples</code>. To run any of these first copy the relevant <code>*.arb</code> and <code>*.geo</code> or <code>*.msh</code> files to the working directory. If only a <code>*.geo</code> file is included (or if you want to change the mesh resolution) create the <code>.msh</code> file via the included <code>create_mesh</code> script:
+</p>
+<pre class="code">misc/create_msh/create_msh geo_file.geo</pre>
+
+<p>
+replacing ‘<code>geo_file.geo</code>’ with name of the file. Note that an optional first numeric argument can be passed to the script to control the relative cell size — the smaller the parameter, the smaller the mesh element size and greater the number (see <code>misc/create_msh/create_msh –help</code>). Finally run arb using <code>./arb</code> and view the results.
+</p>
+
+<p>
+Right now the examples include:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>1d_nonuniform_diffusion</code>: diffusion along a line containing two diffusion coefficients (1D)</div>
+</li>
+<li class="level1"><div class="li"> <code>advection_2d_box_test</code>: advection of scalar in two dimensions demonstrating high-order limited advection inclusions</div>
+</li>
+<li class="level1"><div class="li"> <code>bouncing_ball</code>: a transient bouncing ball</div>
+</li>
+<li class="level1"><div class="li"> <code>cube_laplacian_dhctac10_2012</code>: nonlinear laplacian in a 3D box, presented at the CTAC10 conference (and shown in associated paper )</div>
+</li>
+<li class="level1"><div class="li"> <code>heat_conduction_around_ellipse</code>: diffusion (nominally heat) around an ellipse within a box (2D)</div>
+</li>
+<li class="level1"><div class="li"> <code>heat_conduction_with_linked_regions</code>: similar to the above but demonstrating the use of linked regions (2D)</div>
+</li>
+<li class="level1"><div class="li"> <code>inviscid_burgers_equation</code>: 1D transient</div>
+</li>
+<li class="level1"><div class="li"> <code>laplacian_in_square</code>: comparison between the numerical and analytical solution for a laplacian problem (2D)</div>
+</li>
+<li class="level1"><div class="li"> <code>slit_flow_with_structured_mesh_xy_plane</code>: Navier-Stokes flow with structured mesh</div>
+</li>
+<li class="level1"><div class="li"> <code>slit_flow_with_structured_mesh_xz_plane</code>: Same but in different direction</div>
+</li>
+<li class="level1"><div class="li"> <code>steady_state_channel_flow_with_cylinder</code>: CFD benchmark problem of fluid flow around a slightly offset cylinder at ${\mbox{Re}_\mathrm{}}=20$ (2D)</div>
+</li>
+<li class="level1"><div class="li"> <code>stokes_flow_through_cylinder</code>: Stokes flow through a pipe in 3D</div>
+</li>
+<li class="level1"><div class="li"> <code>weiluns_stokes_sphere</code>: Flow around a sphere in cylindrical polar coordinates</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT21 SECTION "Other examples:" [20827-23006] -->
+<h2 class="sectionedit22" id="the_arb_run_script">The arb run script:</h2>
+<div class="level2">
+
+<p>
+This shell script handles the perl meta-programming, fortran compiling, linking and running of arb. It uses a makefile (<code>src/makefile</code>) to determine when various components have to be remade. All code building is done in the directory <code>build</code>.
+</p>
+
+<p>
+By default the <code>arb</code> script will try to do all that is necessary to run a simulation from scratch (except make the suitesparse libraries), however its behaviour can be altered by (at least) the following options:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>–clean</code>: remove all meta-programmed fortran source and executable objects before building again.</div>
+</li>
+<li class="level1"><div class="li"> <code>–clean-compile</code>: remove all executable objects before building again. This may be handy if you want to run a simulation on a machine that has a fortran compiler, but not say maxima.</div>
+</li>
+<li class="level1"><div class="li"> <code>–clean-setup</code>: remove all meta-programmed fortran source before building again.</div>
+</li>
+<li class="level1"><div class="li"> <code>–setup</code>: create perl meta-programmed fortran source (default).</div>
+</li>
+<li class="level1"><div class="li"> <code>–no-setup</code>: do not recreate perl meta-programmed fortran source.</div>
+</li>
+<li class="level1"><div class="li"> <code>–compile</code>: create executable objects by compiling fortran source (default).</div>
+</li>
+<li class="level1"><div class="li"> <code>–no-compile</code>: do not recreate executable objects by compiling fortran source. If both <code>–no-setup</code> and <code>–no-compile</code> are specified, the existing <code>arb</code> executable will be rerun regardless of changes to the <code>.in</code> files.</div>
+</li>
+<li class="level1"><div class="li"> <code>–run</code>: run the <code>arb</code> executable once it is built (default).</div>
+</li>
+<li class="level1"><div class="li"> <code>–no-run</code>: do not run the <code>arb</code> executable.</div>
+</li>
+<li class="level1"><div class="li"> <code>-q|–quiet</code>: send screen output to <code>output/output.scr</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>-c|–continue</code>: continue on from a previous simulation. This is the not the default behaviour. Unless this is specified the contents of <code>output</code> will be cleared out before each simulation. Note that a copy of the previous output files are placed in <code>output/previous</code> so if you accidentally run <code>arb</code> without the continue flag (once) you can get the old files back from this directory.</div>
+</li>
+<li class="level1"><div class="li"> <code>-d|–debug</code>: compile the fortran using debug flags, and run the executable within the <code>gdb</code> environment.</div>
+</li>
+<li class="level1"><div class="li"> <code>–compiler-gnu</code>: compile the fortran using <code>gfortran</code> (default if <code>ifort</code> is not present).</div>
+</li>
+<li class="level1"><div class="li"> <code>–compiler-intel</code>: compile the fortran using <code>ifort</code> (default if <code>ifort</code> is present).</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT22 SECTION "The arb run script:" [23007-25394] -->
+<h2 class="sectionedit23" id="a_more_detailed_guidenewtonian_fluid_flow">A more detailed guide: Newtonian fluid flow</h2>
+<div class="level2">
+
+<p>
+To discuss the working method in more detail we use the example of the steady-state flow of a Newtonian fluid around a cylinder that is provided in <code>examples/steady_state_channel_flow_with_cylinder</code>.
+</p>
+
+<p>
+There are 5 basic steps to setting up, running and debugging an arb simulation:
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/ol.html"><span class="kw2">ol</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+<strong>Create a mesh:</strong> Geometry definition and mesh creation can be performed in gmsh. The domain geometry details are stored in a <code>.geo</code> file, which can be created by hand (file editing) or with the help of the gmsh <abbr title="Graphical User Interface">GUI</abbr>. Once a geometry (<code>.geo</code> file) has been created, gmsh can mesh this to produce a <code>.msh</code> file which is the file that is read in by arb. You can either do this via the gmsh <abbr title="Graphical User Interface">GUI</abbr>, or via the simple <code>create_mesh</code> script (mentioned above) which calls gmsh. When creating a 3D mesh be sure to optimise the mesh after creation (greatly improves mesh quality - <code>create_mesh</code> does this by default for 3D meshes).
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+arb uses the concept of ‘regions’ to locate various equations (for example boundary conditions, domain equations etc) and these should be defined in the <code>.geo</code> file prior to meshing (some regions are also created by arb). Regions have names that are delimited by the <code>&lt;</code> and <code>&gt;</code> signs: for example <code>&lt;inlet&gt;</code> and <code>&lt;outlet&gt;</code> (generally any user-defined names are delimited this way in arb). Like variable names (discussed later) region names can contain any characters except for <code>&quot;</code> and <code>#</code>. Region and variable names are case sensitive.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+In the example geometry file the boundary regions <code>&lt;inlet&gt;</code>, <code>&lt;outlet&gt;</code> and <code>&lt;cylinder&gt;</code> have all been defined as physical entities. The area region of <code>&lt;flow domain&gt;</code> which contains all mesh cells within the flow domain has also been created. This region is necessary as by default, gmsh does not write out mesh cells to a mesh file unless they are part of a physical entity. Note that certain region names are reserved: see section [sec:regions] for more details.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+<strong>Edit the <code>*.arb</code> input file</strong>: Aside from the mesh file, all information that is specific to a simulation is contained in this file. Some commands/statements/options within this file will require the fortran to be recreated and the fortran executable to be recompiled, while other commands/statements/options within this file are passed directly to the fortran exectuable at run time (see <code>build/fortran_input.arb</code>).
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+Further details regarding the syntax of the <code>*.arb</code> file can be found in Sections [sec:setup_reference] and [sec:language]. As these are not very complete, it is a good idea to look through the example files too.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+<strong>Run <code>arb</code>:</strong> From the working directory
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code">./arb</pre>
+<pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+will run arb.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+The first thing that happens is that the makefile checks what libraries/software are available and prints diagnostic messages to the screen.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+The perl script <code>setup_equations.pl</code> is then called. It reads any <code>*.arb</code> files that are present in the working directory, and using maxima, creates the fortran source code file <code>build/equations_module.f90</code>. The name of a specific <code>*.arb</code> file can also be given, as in
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code">./arb steady_state_channel_flow_with_cylinder.arb</pre>
+<pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+to only run this one simulation. <code>setup_equations.pl</code> writes plenty of progress information to the screen - if all goes well this output will end with the statement ‘<code>SUCCESS</code>’. Otherwise errors in the <code>*.arb</code> file will need to be found and corrected. Aside from the screen output, more debugging information is written by <code>setup_equations.pl</code> to the file <code>tmp/setup/debugging_info.txt</code>. Other files in the <code>tmp/setup</code> directory trace the interaction between the perl script and maxima.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+Next the fortran code is compiled. If the debugging option has been requested (<code>./arb –debug</code>) the any error messages will be contained in <code>build/make.log</code>.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+If all goes well the resulting executable will run. Alongside the <code>.msh</code> and <code>output.stat</code> (statistics) files written to the directory <code>output</code>, other files in this directory can be used to diagnose problems. If these don’t help, there are many <code>debug</code> and <code>debug_sparse</code> logicals scattered through the code, and in <code>src/general_module.f90</code> there are options to print out alternative output files.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+<strong>View results:</strong> arb produces a file <code>output/output.msh</code> which can be opened by gmsh for viewing. The file <code>output/output_step.csv</code> is also produced which contains (by default) mainly <code>none</code> centred variables, and can be easily graphed using the script <code>misc/plot_step/plot_step.pl</code>.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+<strong>Rerun the simulation:</strong> The <code>output/output.msh</code> file produced by <code>arb</code> includes both the mesh information as well as variable data, so can be passed back to arb as an input <code>.msh</code> file for subsequent simulations. To do this replace the existing <code>MSH_FILE</code> line in the <code>*.arb</code> file with
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code">MSH_FILE &quot;output/output.msh&quot; input</pre>
+<pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+and rerun arb, without first removing this file via
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code">./arb --continue</pre>
+<pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre>
+<p>
+If you forget the <code>–continue</code> flag then you can recover the previous output files that are saved in <code>output/previous</code> for just this emergency.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/p.html"><span class="kw2">p</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/li.html"><span class="kw2">li</span></a>&gt;</span></pre><pre class="code html4strict"><span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/ol.html"><span class="kw2">ol</span></a>&gt;</span></pre>
+</div>
+<!-- EDIT23 SECTION "A more detailed guide: Newtonian fluid flow" [25395-31486] -->
+<h1 class="sectionedit24" id="simulation_setup_reference_secsetup_reference">Simulation setup reference [sec:setup_reference]</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT24 SECTION "Simulation setup reference [sec:setup_reference]" [31487-31550] -->
+<h2 class="sectionedit25" id="meshes">Meshes</h2>
+<div class="level2">
+
+<p>
+arb uses an unstructured mesh composed of cell elements that are separated by face elements. The dimension of each element is specified on a per-element basis, consistent with the particular computational domain that the element is within (that is, not globally). Cell elements are classified as either boundary cells (that is, on the boundary of a domain) or domain cells (that is, contained within a domain). Domain cells have a dimension that is equal to that of the domain they are in (ie, dimension 3/2/1 if the domain is a volume/surface/line, resp.). Boundary cells have a dimension that is one less than that of the associated domain (ie, dimension 2/1/0 if the domain is a volume/surface/line, resp.). Face elements are any elements that separate cell elements. Face elements also have a dimension that is one less than that of the domain they are within. Some face elements are specified explicitly within a <code>.msh</code> file (if they are part of a physical entity such as <code>&lt;inlet&gt;</code> for example), while the remainder are generated by arb when the mesh is read in. Face elements are also classified as being either domain faces or boundary faces. Each boundary face has the same geometry, and is conincident with, a boundary cell. Hence, a mesh has the same number of boundary faces as boundary cells.
+</p>
+
+<p>
+Meshes are read in from <code>.msh</code> files, generally produced by the gmsh program. Multiple <code>.msh</code> files can be read in by arb for each simulation. arb has been coded to be able to handle any poly-sided first order elements supported by the gmsh file format. It has been tested to date (v0.3) with tetrahedron, boxes and prisms in 3D, triangles and rectangles in 2D, lines in 1D and points in 0D. Tetrahedron, triangles, lines and points are the default element geometries created by gmsh.
+</p>
+
+<p>
+Meshes and data are also exported by arb using the <code>.msh</code> format. During every simulation all domains and all output-enabled data will be written by default to the <code>output/output.msh</code> file. Other files may also be written, corresponding to any <code>.msh</code> files that are read in (with any associated output-enabled data). Regions imported from <code>.msh</code> files as well as regions created by arb will be exported to any written <code>.msh</code> files, however note that as the physical entities handled by gmsh can only have a single dimension, elements that have a dimension that is less than any others within a region will not be associated with that region in any arb-created <code>.msh</code> files. This is relevant for example when a compound region is created that contains both domain and boundary cells. When this arb-written <code>.msh</code> file is displayed by gmsh it will only appear to contain the domain cells.
+</p>
+
+</div>
+<!-- EDIT25 SECTION "Meshes" [31551-34316] -->
+<h3 class="sectionedit26" id="cell_and_face_element_specification">Cell and face element specification</h3>
+<div class="level3">
+
+<p>
+The distinction between cell elements and face elements is not made by gmsh or contained explicitly in the <code>.msh</code> file, but rather must be made by arb when a <code>.msh</code> file is read in. Gmsh’s behaviour is to only write an element to a <code>.msh</code> file if it is a member of a physical entity. Further, each physical entity has a single dimension. So, to decide whether an element is either a face or cell element, arb does two things when reading in each <code>.msh</code> file:
+</p>
+<ol>
+<li class="level1"><div class="li"> The maximum dimension of all physical entities with the <code>.msh</code> file is found. This is stored as the dimension of the particular mesh;</div>
+</li>
+<li class="level1"><div class="li"> When an element is read in that has the same dimension as that of the mesh, it is regarded as a cell element. If it has a dimension that is one less than that of the mesh, it is regarded as a face element. If it has a dimension that is two or more less than that of the mesh, then the element is ignored.</div>
+</li>
+</ol>
+
+<p>
+So what’s the implication of all this? Generally arb will be able to work out from each <code>.msh</code> file which elements within it are cell elements and which are face elements. The only time it won’t is when <em>there are multiple domains having different dimensions contained within the one <code>.msh</code> file</em>. For example, you have both a volume domain and a surface domain specified within a <code>.msh</code> file, on which you want separate (but possibly linked) sets of equations solved.
+</p>
+
+<p>
+If you do have multiple domains having different dimensions contained within the one file then the dimension of all regions (that is, physical entities) contained within the <code>.msh</code> file that belong to any domains that have a dimension that is <em>less than</em> that of the <code>.msh</code> file need their centring explicitly specified. For example, if a <code>.msh</code> file contains both a volume and a surface domain, then all regions associated with the surface domain must have their centring explicitly specified. Statements for specifying this cell/face centring for particular regions (gmsh physical entities) are described in section [sec:gmsh_regions]. Alternatively, there is another way that may work for your simulation: As arb can read multiple <code>.msh</code> files for each simulation, it may be easier to place domains of different dimensions in separate <code>.msh</code> files. The cell/face specification will then be handled automatically without additional statements in the <code>constants.in</code> file (If you want multiple domains to share common mesh features however this may be difficult to accomplish using gmsh).
+</p>
+
+</div>
+<!-- EDIT26 SECTION "Cell and face element specification" [34317-36925] -->
+<h3 class="sectionedit27" id="data_and_mesh_file_rereading">Data and mesh file rereading</h3>
+<div class="level3">
+
+<p>
+The <code>.msh</code> files written by <code>arb</code> can contain data. Variables associated with cell elements can be written in either <code>ElementData</code> (a uniform value for each cell) or <code>ElementNodeData</code> (values vary linearly within each cell) gmsh formats. Variables associated with face elements will only be written in <code>ElementData</code> format. Variables which are <code>none</code> centred are written using a special <code>Data</code> format which gmsh won’t display. Note that face and cell boundary elements are not written separately to each <code>.msh</code> file by arb, but rather as a single element. Hence both cell and face boundary data is associated with a single element in each <code>.msh</code> file.
+</p>
+
+<p>
+One purpose of exporting data to a <code>.msh</code> file is to provide initial conditions for another (or next) simulation. In this case generally you just have to specify the <code>output/output.msh</code> file from the previous simulation as the mesh file to be read in for the next simulation. Note that each arb-written <code>.msh</code> file contains all the information about a mesh that was originally contained in the mesh-only gmsh-written <code>.msh</code> file: Hence, when starting a simulation from an arb-written datafile is it not necessary (nor does it make sense) to also read in the original gmsh <code>.msh</code> file. Also note that data files that contain variable values can only refer to mesh elements that are specified in the same data file (unless some fancy <code>facelink</code> magic is worked in your equations).
+</p>
+
+</div>
+<!-- EDIT27 SECTION "Data and mesh file rereading" [36926-38490] -->
+<h3 class="sectionedit28" id="mesh_read_and_write_options">Mesh read and write options</h3>
+<div class="level3">
+
+<p>
+Mesh and data input and output is specified by <code>MSH_FILE</code> statements within the <code>constants.in</code> file:
+</p>
+<pre class="code">MSH_FILE &quot;msh_file_name_including_path&quot; comma,separated,list,of,options # comments</pre>
+
+<p>
+The file name refers to the read location. Options for the default <code>output</code> file should be referred to by <code>output/output.msh</code> (which is the read location if it did exist). If a <code>.msh</code> file is to be written it will always be written to the <code>output</code> directory. As a result, all file basenames must be unique.
+</p>
+
+<p>
+Three types of options are available for each <code>.msh</code> file:
+</p>
+
+<p>
+<em>Output options:</em>
+</p>
+
+<p>
+These options specify what information is to be written to the <code>.msh</code> file.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>output</code>: Both a mesh and all specified variables will be written.</div>
+</li>
+<li class="level1"><div class="li"> <code>centringoutput</code>: Both a mesh and all specified variables will be written. Output will be split between three files, each containing variables of only a single centring (cell, face and none). This can be handy for gmsh compatibility when doing cutgrid and streamtrace operations for example.</div>
+</li>
+<li class="level1"><div class="li"> <code>centringmeshoutput</code>: Only the mesh is written, split between three files as above.</div>
+</li>
+<li class="level1"><div class="li"> <code>meshoutput</code>: Only the mesh is written.</div>
+</li>
+<li class="level1"><div class="li"> <code>nooutput</code>: Neither the mesh or any data will be written.</div>
+</li>
+<li class="level1"><div class="li"> <code>vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput</code>: Same as the <code>*.msh</code> file options, but for <code>*.vtk</code> output, compatible with ParaView (for example). The default is <code>novtkoutput</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>datoutput,centringdatoutput,meshdatoutput,centringmeshdatoutput,nodatoutput</code>: Same as the <code>*.msh</code> file options, but for <code>*.dat</code> output, compatible with Tecplot. The default is <code>nodatoutput</code>.</div>
+</li>
+</ul>
+
+<p>
+By default all meshes have the <code>nooutput</code> option specified, with the exception of the <code>output/output.msh</code> mesh, which has option <code>output</code>.
+</p>
+
+<p>
+<em>Input options:</em>
+</p>
+
+<p>
+These options specify what information is to be read from the <code>.msh</code> file.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>input</code>: Both a mesh and all relevant data will be read.</div>
+</li>
+<li class="level1"><div class="li"> <code>centringinput</code>: Both a mesh and all relevant data will be read. In this case the existing <code>.msh</code> is split into three, each containing variables of only a single centring (cell, face and none) as output from a previous simulation employing <code>centringoutput</code>. In this case the filename should be specified without the centring, for example <code>output/output.msh</code> (rather than <code>output/output.cell.msh</code>).</div>
+</li>
+<li class="level1"><div class="li"> <code>centringmeshinput</code>: Only the mesh is read, split between three files as above.</div>
+</li>
+<li class="level1"><div class="li"> <code>meshinput</code>: Only the mesh is read.</div>
+</li>
+<li class="level1"><div class="li"> <code>noinput</code>: Neither the mesh or any data will be read.</div>
+</li>
+</ul>
+
+<p>
+By default all meshes have the <code>input</code> option specified, with the exception of the <code>output/output.msh</code> mesh, which has option <code>noinput</code>.
+</p>
+
+<p>
+<em>Data format options:</em>
+</p>
+
+<p>
+These options specify how cell centred data will be written to the <code>.msh</code> file. These options overwrite any data format options specific to individual variables.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>elementdata</code>: All cell data will be written using the <code>ElementData</code> format.</div>
+</li>
+<li class="level1"><div class="li"> <code>elementnodedata</code>: All cell data will be written using the <code>ElementNodeData</code> format.</div>
+</li>
+<li class="level1"><div class="li"> <code>elementnodelimiteddata</code>: All cell data will be written using the <code>ElementNodeData</code> format, but with the gradients in each cell limited so that each vertex value is bounded by surrounding cell values.</div>
+</li>
+</ul>
+
+<p>
+By default all meshes have no data format options specified, the format instead being determined by the options contained in the individual variable definitions within input <code>.arb</code> file.
+</p>
+
+</div>
+<!-- EDIT28 SECTION "Mesh read and write options" [38491-42207] -->
+<h2 class="sectionedit29" id="regions_secregions">Regions [sec:regions]</h2>
+<div class="level2">
+
+<p>
+Regions are sets of elements that are used to locate user-defined variables and equations. Each region may contain only mesh elements of the same centring (that is, either cell or face elements, but not both). Regions may contain elements of different dimensions (see caveat in previous section regarding gmsh display of this though). Regions can be defined by the user directly in gmsh when the mesh is generated, or via statements in the <code>.arb</code> file that are interpreted when <code>arb</code> is run. There are also several generic system generated regions. Region names must be delimited by the <code>&lt;&gt;</code> characters, and within these delimiters cannot contain the characters <code>&lt;</code>, <code>&gt;</code>, <code>#</code> or <code>&quot;</code>. Apart from these four characters their names may contain any non-alphanumeric characters.
+</p>
+
+</div>
+<!-- EDIT29 SECTION "Regions [sec:regions]" [42208-43059] -->
+<h3 class="sectionedit30" id="defining_regions_via_gmsh_secgmsh_regions">Defining regions via gmsh [sec:gmsh_regions]</h3>
+<div class="level3">
+
+<p>
+Regions are specified in gmsh by defining and then naming physical entities. To do this via the gmsh <abbr title="Graphical User Interface">GUI</abbr>:
+</p>
+<ul>
+<li class="level1"><div class="li"> Add a physical entity (under the physical groups tab) by selecting various elemental entities.</div>
+</li>
+<li class="level1"><div class="li"> Edit the geometry file (using the edit tab) and change the physical entity’s name from the numerical name given by gmsh to the required <code>&lt;&gt;</code> delimited name suitable for arb.</div>
+</li>
+<li class="level1"><div class="li"> Save the <code>.geo</code> file.</div>
+</li>
+<li class="level1"><div class="li"> Reload the <code>.geo</code> file again (using the reload tab). If you now check under the visibility menu that the physical entity is visible.</div>
+</li>
+</ul>
+
+<p>
+You can specify the cell or face designation of any gmsh element using the following commands within the <code>constants.in</code> file. This is seldom necessary (although it doesn’t hurt either), unless the <code>.msh</code> file it is contained within contains multiple domains, of differing dimensions (see discussion in previous section).
+</p>
+<pre class="code">CELL_REGION &lt;gmsh_region_name&gt; 
+FACE_REGION &lt;gmsh_region_name&gt;</pre>
+
+</div>
+<!-- EDIT30 SECTION "Defining regions via gmsh [sec:gmsh_regions]" [43060-44097] -->
+<h3 class="sectionedit31" id="defining_regions_within_the_constantsin_file">Defining regions within the constants.in file</h3>
+<div class="level3">
+
+<p>
+There are several types of region specification statements that can be used in the <code>constants.in</code> file. Regions specified by these statements will overwrite any regions defined in the <code>.msh</code> files, however a warning is issued (This allows <code>.msh</code> files to be reread without altering region definition statements). The specification statements are:
+</p>
+
+<p>
+<em>Compound region:</em>
+</p>
+<pre class="code">CELL_REGION &lt;name&gt; &quot;COMPOUND +&lt;region1&gt;+&lt;region2&gt;-&lt;region3&gt;&quot; # comments
+FACE_REGION &lt;name&gt; &quot;COMPOUND &lt;region1&gt;-&lt;region2&gt;&quot; # comments</pre>
+
+<p>
+A compound region is defined using other existing regions. All regions that are used in the definition (ie, <code>&lt;region1&gt;</code>, <code>&lt;region2&gt;</code> and <code>&lt;region3&gt;</code> in the above examples) must have the (same) centring that is specified by the <code>REGION</code> keyword. If a <code>+</code> sign precedes a region name in the list of regions, then all the mesh elements that are in the following region are added to the new compound region, if they are not already members. If a <code>-</code> sign precedes a region name in the list of regions, then all the mesh elements that are in the following region are removed from the new compound region, if they are (at that stage) members of the new compound region. If no sign immediately precedes a region name in the defining list then a <code>+</code> sign is assumed. When constructing a compound region <code>arb</code> deals with each region in the defining list sequentially; so whether a mesh element is included in the compound region or not may depend on the order that the regions are listed.
+</p>
+
+<p>
+<em>At region:</em>
+</p>
+<pre class="code">CELL_REGION &lt;name&gt; &quot;AT x1 x2 x3&quot; # comments
+CELL_REGION &lt;name&gt; &quot;AT x1 x2 x3 PART OF &lt;domain&gt;&quot; # comments
+FACE_REGION &lt;name&gt; &quot;AT x1 x2 x3&quot; # comments
+FACE_REGION &lt;name&gt; &quot;AT x1 x2 x3 PART OF &lt;inlet&gt;&quot; # comments</pre>
+
+<p>
+This statement defines a region that contains one cell or one face mesh element. The element chosen lies closest to the point <code>(x1,x2,x3)</code>. The values <code>x1</code>, <code>x2</code> and <code>x3</code> can be real or double precision floats. An optional <code>PART OF &lt;a region&gt;</code> confines the choice of an element to those within <code>&lt;a region&gt;</code>. In this case <code>&lt;a region&gt;</code> must have the same centring as the region statement.
+</p>
+
+<p>
+<em>Within box region:</em>
+</p>
+<pre class="code">CELL_REGION &lt;name&gt; &quot;WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max&quot; # comments
+FACE_REGION &lt;name&gt; &quot;WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max&quot; # comments</pre>
+
+<p>
+This statement defines a region including all elements (cell or face) that lie within a box with faces orientated with the coordinate directions, and location defined by the two corner points having the minimum (<code>x1_min x2_min x3_min</code>) and maximum (<code>x1_max x2_max x3_max</code>) coordinate values. An optional <code>PART OF</code> function is planned.
+</p>
+
+<p>
+<em>Boundary of region:</em>
+</p>
+<pre class="code">CELL_REGION &lt;name&gt; &quot;BOUNDARY OF &lt;region&gt;&quot; # comments
+FACE_REGION &lt;name&gt; &quot;BOUNDARY OF &lt;region&gt;&quot; # comments</pre>
+
+<p>
+This statement defines a region that contains <em>only</em> the boundary elements (either cell or face) that border the region <code>&lt;region&gt;</code>.
+</p>
+
+<p>
+<em>Domain of region:</em>
+</p>
+<pre class="code">CELL_REGION &lt;name&gt; &quot;DOMAIN OF &lt;region&gt;&quot; # comments
+FACE_REGION &lt;name&gt; &quot;DOMAIN OF &lt;region&gt;&quot; # comments</pre>
+
+<p>
+This statement defines a region that contains <em>only</em> the domain elements (either cell or face) that are associated with the region <code>&lt;region&gt;</code>.
+</p>
+
+<p>
+<em>Associated with region:</em>
+</p>
+<pre class="code">CELL_REGION &lt;name&gt; &quot;ASSOCIATED WITH &lt;region&gt;&quot; # comments
+FACE_REGION &lt;name&gt; &quot;ASSOCIATED WITH &lt;region&gt;&quot; # comments</pre>
+
+<p>
+This statement defines a region that contains <em>both</em> the domain and boundary elements (either cell or face) that are associated with the region <code>&lt;region&gt;</code>. Effectively this is a combination of the <code>BOUNDARY OF</code> and <code>DOMAIN OF</code> statements.
+</p>
+
+</div>
+<!-- EDIT31 SECTION "Defining regions within the constants.in file" [44098-47949] -->
+<h3 class="sectionedit32" id="system_generated_regions">System generated regions</h3>
+<div class="level3">
+
+<p>
+The following regions are generated by <code>arb</code> at the start of a simulation. The names cannot be used for user-defined regions:
+</p>
+
+<p>
+lp10cm region name &amp; description<br/>
+
+<code>&lt;all cells&gt;</code> &amp; all cells<br/>
+
+<code>&lt;domain&gt;</code> &amp; internal domain cells<br/>
+
+<code>&lt;boundary cells&gt;</code> &amp; cells located on the boundary<br/>
+
+<code>&lt;all faces&gt;</code> &amp; all faces<br/>
+
+<code>&lt;domain faces&gt;</code> &amp; internal domain faces<br/>
+
+<code>&lt;boundaries&gt;</code> &amp; faces located on the boundary<br/>
+
+</p>
+
+<p>
+Additionally, there are a number of system regions which may be used in user-written expressions (see section [sec:language]) which specify sets of mesh elements relative to the current position. These names cannot be used for user-defined regions either:
+</p>
+
+<p>
+llp8cm region name &amp; rel. to&amp; description<br/>
+
+<code>&lt;celljfaces&gt;</code> &amp; cell &amp; faces that surround the current cell<br/>
+
+<code>&lt;nobcelljfaces&gt;</code> &amp; cell &amp; faces that surround the current cell, unless the current cell is on a boundary. In that instance move to the neighbouring domain cell and then cycle around the surrounding face cells.<br/>
+
+<code>&lt;cellicells&gt;</code> &amp; cell &amp; cells that are local to the current cell (more than just the adjacent cells)<br/>
+
+<code>&lt;faceicells&gt;</code> &amp; face &amp; cells that are local to the current face (more than just the adjacent cells)<br/>
+
+<code>&lt;adjacentcellicells&gt;</code> &amp; cell &amp; cells that are strictly adjacent to the current cell<br/>
+
+<code>&lt;adjacentfaceicells&gt;</code> &amp; face &amp; cells that are strictly adjacent to the current face (always two)<br/>
+
+<code>&lt;adjacentfaceupcell&gt;</code> &amp; face &amp; cell that is adjacent to the current face in the direction of the normal<br/>
+
+<code>&lt;adjacentfacedowncell&gt;</code> &amp; face &amp; cell that is adjacent to the current face in the opposite direction to the normal<br/>
+
+<code>&lt;upwindfaceicells&gt;</code> &amp; face &amp; the cell that is upwind of the face, used when performing <code>faceave[advection]</code> averaging (see section [sec:language]. Not really a user region.<br/>
+
+<code>&lt;downwindfaceicells&gt;</code> &amp; face &amp; the cell that is downwind of the face, used when performing <code>faceave[advection]</code> averaging (see section [sec:language]. Not really a user region.<br/>
+
+<code>&lt;cellkernelregion[l=0]&gt;</code> &amp; cell &amp; surrounding faces used in a cell averaging kernel (see section [sec:language]. Not really a user region.<br/>
+
+<code>&lt;cellkernelregion[l=1-3]&gt;</code> &amp; cell &amp; surrounding cells used in cell derivative kernels (see section [sec:language]. Not really a user region.<br/>
+
+<code>&lt;cellkernelregion[l=4]&gt;</code> &amp; cell &amp; surrounding nodes used in a cell averaging kernels (see section [sec:language]. Not really a user region.<br/>
+
+<code>&lt;facekernelregion[l=0-6]&gt;</code> &amp; face &amp; surrounding cells used in face averaging and derivative kernels (see section [sec:language]. Not really a user region.<br/>
+
+<code>&lt;noloop&gt;</code> &amp; face/cell &amp; dummy region which specifies no elements, or the last element used in an operator’s context.<br/>
+
+</p>
+
+</div>
+<!-- EDIT32 SECTION "System generated regions" [47950-50794] -->
+<h2 class="sectionedit33" id="variables">Variables</h2>
+<div class="level2">
+
+<p>
+ This section needs some rewritting: there is only one input file now
+</p>
+
+<p>
+There are eight types of user defined variables: constant, transient, derived, unknown, equation, output, condition and local. Each of these are stored in arb using the same general data structure (fortran type <code>var</code>). Any of these variables can be defined by a user-written expression in <code>equations.in</code> which is read by <code>setup_equations</code> and interpreted by maxima. Additionally, the constant type may be defined in <code>constants.in</code> and there given (only) a numerical value. Along with the user defined variables, there are also system defined variables which can be used in user-written expressions.
+</p>
+
+<p>
+All variables have an associated compound variable type (scalar, vector or tensor) which is used mainly for output purposes.
+</p>
+
+<p>
+Details of both the user and system defined variables are given in this section.
+</p>
+
+</div>
+<!-- EDIT33 SECTION "Variables" [50795-51720] -->
+<h3 class="sectionedit34" id="constant_type_variable_defined_in_equationsin_secequation_constants">Constant type variable defined in equations.in [sec:equation_constants]</h3>
+<div class="level3">
+
+<p>
+<em>Synopsis:</em>
+</p>
+
+<p>
+Constant variables are evaluated once at the start of a simulation. If defined in <code>equations.in</code> they are defined using an expression which may contain only system variables and other constants — in the latter case the constants must have been defined in either the <code>constants.in</code> file or previously (above) in the <code>equations.in</code> file.
+</p>
+
+<p>
+<em>Defining statements:</em>
+</p>
+<pre class="code">CELL_CONSTANT &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+FACE_CONSTANT &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+NONE_CONSTANT &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments
+CONSTANT &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments</pre>
+
+<p>
+<em>Statement components:</em>
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(CELL_|FACE_|NONE_|)CONSTANT</code> <em>(required)</em>: This keyword specifies the centring of the variable. Constants that have cell or face centring vary over the simulation domain, and have values associated with each cell or face, respectively (subject to the <code>region</code> statement, below). None centred constants have one value that is not linked to any spatial location. If the centring specifier is omitted from the keyword (as in <code>CONSTANT</code>) then none centring is assumed (ie., keyword <code>CONSTANT</code> is equivalent to keyword <code>NONE_CONSTANT</code>).</div>
+</li>
+<li class="level1"><div class="li"> <code>&lt;name&gt;</code> <em>(required)</em>: Each variable must have a unique name, delimited by the <code>&lt;</code> and <code>&gt;</code> characters. Besides these characters, the variable may contain spaces and any other non-alphanumeric characters except for double quotation marks <code>&quot;</code> (which demarcate the expression strings) and hash character <code>#</code> (which indicates that a comment follows). If the name ends with a direction index, as in <code>&lt;u[l=1]&gt;</code> or <code>&lt;gradp [l=3]&gt;</code>, then the variable is considered to be a component of a three dimensional vector compound. Similarly, if the name ends with a double direction index, as in <code>&lt;tau[l=1,3]&gt;</code>, the variable is considered to be a component of a three by three tensor compound. Components of compounds that are not explicitly defined are given a zero value (when used in dot and double dot products for example). All defined components that are members of the same compound must be of the same variable type, have the same centring, be defined over the same region and have the same units and multiplier. Certain names are reserved for system variables (see section [sec:system_variables]).</div>
+</li>
+<li class="level1"><div class="li"> <code>multiplier</code> <em>(optional)</em>: When reading in numerical constants, each value is multiplied by this value. At present not in use in <code>equations.in</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>units</code> <em>(optional):</em> A string which specifies the units for the variable. At present this string is not interpreted by the code at all and the user must ensure that the units used are consistent.</div>
+</li>
+<li class="level1"><div class="li"> <code>expression</code> <em>(required)</em>: When a constant is defined in <code>equations.in</code>, this double-quoted expression is used to specify the value of the constant. As they may contain system variables and also other constants, they may vary throughout the domain. For more details regarding the syntax of these expressions, see section [sec:language].</div>
+</li>
+<li class="level1"><div class="li"> <code>ON &lt;region&gt;</code> <em>(optional)</em>: This part of the statement determines over what region the variable should be defined. It is only applicable for cell and face centred variables, and must in these cases refer to a region that has the same centring as the variable. If omitted then by default a cell centred constant will be defined on <code>&lt;all cells&gt;</code> and a face centred constant on <code>&lt;all faces&gt;</code>. Note that referring to a variable value outside of its region of definition will produce an error when running <code>arb</code>.</div>
+</li>
+<li class="level1 node"><div class="li"> <code>options</code> <em>(optional)</em>: This is a comma separated list of options. Options earlier in the list take precedence over later ones. Valid options for the constant variable type include:</div>
+<ul>
+<li class="level2"><div class="li"> <code>output</code>: The compound variable that this component is a member of to be written to each applicable <code>.msh</code> file. The opposite option <code>nooutput</code> exists. Default is <code>output</code> for unknown variables, output variables, derived cell-centred variables, and transient variables that do not correspond to the oldest stored timestep (that is, ${\texttt{rstep}}&lt;{\texttt{rstepmax}}$). The default is <code>nooutput</code> for everything else.</div>
+</li>
+<li class="level2"><div class="li"> <code>stepoutput</code>: The compound variable that this component is a member of is to be included in the <code>output.step</code> file. The opposite option <code>nostepoutput</code> exists. By default only this option is set only for unknown, output and transient non-centred variables that are at the current timestep (that is, ${\texttt{rstep}}=0$). The option <code>stepoutputnoupdate</code> also exists which specifies that the variable should be included in the <code>output.step</code> file, but that its value is not updated before being printed. This option is useful for outputing variables which should only be updated when a <code>.msh</code> file is actually written (for example, a variable that records the time when output occurs).</div>
+</li>
+<li class="level2"><div class="li"> <code>componentoutput</code>: This component to be written to each applicable <code>.msh</code> file. Default is <code>nocomponentoutput</code> for all variables.</div>
+</li>
+<li class="level2"><div class="li"> <code>input</code>: The compound variable that is component is a member will be read from each applicable <code>.msh</code> file. The opposite option <code>noinput</code> exists. Default is <code>input</code> for all unknown and transient variables and <code>noinput</code> for everything else.</div>
+</li>
+<li class="level2"><div class="li"> <code>componentinput</code>: This component to be read from each applicable <code>.msh</code> file. Default is <code>nocomponentinput</code> for all variables.</div>
+</li>
+<li class="level2"><div class="li"> <code>elementdata</code>: This compound will be written using the gmsh <code>ElementData</code> format. Any data format options specified for each <code>.msh</code> file will overwrite this option. Other options include <code>elementnodedata</code>, <code>elementnodelimiteddata</code>, <code>componentelementdata</code>, <code>componentelementnodedata</code> and <code>componentelementnodelimiteddata</code>. Default is <code>elementnodedata</code> and <code>componentelementdata</code>.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>comments</code> <em>(optional)</em>: Anything written beyond the first <code>#</code> appearing on each line of the input file is regarded as a comment.</div>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">CELL_CONSTANT &lt;test constant&gt; &quot;&lt;cellx[l=1]&gt;^2&quot; ON &lt;boundaries&gt; # a test
+FACE_CONSTANT &lt;test constant 2&gt; [m] &quot;&lt;facex[l=2]&gt;&quot; # another test</pre>
+
+</div>
+<!-- EDIT34 SECTION "Constant type variable defined in equations.in [sec:equation_constants]" [51721-58248] -->
+<h3 class="sectionedit35" id="constant_type_variable_defined_in_constantsin">Constant type variable defined in constants.in</h3>
+<div class="level3">
+
+<p>
+<em>Synopsis:</em>
+</p>
+
+<p>
+Constant variables defined in <code>constants.in</code> are set to numerical values read directly by the <code>arb</code> executable, rather than expressions interpreted by maxima.
+</p>
+
+<p>
+<em>Defining statements:</em>
+</p>
+<pre class="code">CELL_CONSTANT &lt;name&gt; [multiplier*units] value ON &lt;region&gt; options # comments
+FACE_CONSTANT &lt;name&gt; [multiplier*units] value ON &lt;region&gt; options # comments
+NONE_CONSTANT &lt;name&gt; [multiplier*units] value options # comments
+CONSTANT &lt;name&gt; [multiplier*units] value options # comments</pre>
+
+<p>
+<em>Statement components:</em>
+</p>
+
+<p>
+The components of these statements are the same as in section [sec:equation_constants] with the exception of:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>value</code> <em>(required)</em>: A numerical value of real or double precision type.</div>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">CONSTANT &lt;mu&gt; [Pa.s] 1.0d-3 # fluid viscosity
+NONE_CONSTANT &lt;rho&gt; [997*kg/m^3] 1.0 # fluid density</pre>
+
+</div>
+<!-- EDIT35 SECTION "Constant type variable defined in constants.in" [58249-59167] -->
+<h3 class="sectionedit36" id="constant_type_variable_defined_per_region_in_constantsin">Constant type variable defined per region in constants.in</h3>
+<div class="level3">
+
+<p>
+<em>Synopsis:</em>
+</p>
+
+<p>
+This definition can be used in the <code>constants.in</code> file to assign different numerical values to either a cell or face centred constant in specific regions. Two statements are required for this type of constant definition: The first defines the list of regions where the next constant will be set (<code>REGION_LIST</code>) and the second defines the constant and sets/lists the corresponding numerical values (<code>(CELL_|FACE_)REGION_CONSTANT</code>). The region names in the <code>REGION_LIST</code> statement must have the same centring as the following <code>REGION_CONSTANT</code> statement. Furthermore, the <code>&lt;region&gt;</code> over which the constant is defined must include all of the regions listed within the previous <code>REGION_LIST</code> statement.
+</p>
+
+<p>
+<em>Defining statements:</em>
+</p>
+<pre class="code">REGION_LIST &lt;region1&gt; &lt;region2&gt; ... &lt;regionN&gt; # comments
+CELL_REGION_CONSTANT &lt;name&gt; [multiplier*units] value1 value2 ... valueN ON &lt;region&gt; options # comments
+FACE_REGION_CONSTANT &lt;name&gt; [multiplier*units] value1 value2 ... valueN ON &lt;region&gt; options # comments</pre>
+
+<p>
+<em>Statement components:</em>
+</p>
+
+<p>
+The components of these statements are the same as in section [sec:equation_constants] with the exception of:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>&lt;region1&gt;</code> <code>&lt;region2&gt;</code> … <code>&lt;regionN&gt;</code> <em>(required)</em>: A list of regions that have the same centring as the following <code>REGION_CONSTANT</code> statement.</div>
+</li>
+<li class="level1"><div class="li"> <code>value1</code> <code>value2</code> … <code>valueN</code> <em>(required)</em>: A list of numerical values for the constant, corresponding in a one-to-one fashion with the list of regions given in the previous <code>REGION_LIST</code> statement.</div>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">REGION_LIST &lt;inlet&gt; &lt;outlet&gt; # some face regions
+FACE_REGION_CONSTANT &lt;electric field&gt; [V/m] 10 20. ON &lt;boundaries&gt; </pre>
+
+</div>
+<!-- EDIT36 SECTION "Constant type variable defined per region in constants.in" [59168-60990] -->
+<h3 class="sectionedit37" id="transient_type_variable_defined_in_equationsin">Transient type variable defined in equations.in</h3>
+<div class="level3">
+
+<p>
+<em>Synopsis:</em>
+</p>
+
+<p>
+Transient variables are used only in transient simulations, and are evaluated at the start of each timestep. Transient variables are typically used to store previous timestep values, or to provide constant data to a simulation that depends explicitly on the time.
+</p>
+
+<p>
+<em>Defining statements:</em>
+</p>
+<pre class="code">CELL_TRANSIENT &lt;name&gt; [multiplier*units] &quot;initial expression&quot; &quot;expression&quot; ON &lt;region&gt; options # comments
+FACE_TRANSIENT &lt;name&gt; [multiplier*units] &quot;initial expression&quot; &quot;expression&quot; ON &lt;region&gt; options # comments
+NONE_TRANSIENT &lt;name&gt; [multiplier*units] &quot;initial expression&quot; &quot;expression&quot; options # comments
+NONE_TRANSIENT &lt;name&gt; [multiplier*units] &quot;&quot; &quot;expression&quot; options # this will use the update expression as the initial expression
+NONE_TRANSIENT &lt;name&gt; [multiplier*units] &quot;expression&quot; options # the initial expression here depends on rstep</pre>
+
+<p>
+<em>Statement components:</em>
+</p>
+
+<p>
+Along with the information presented in section [sec:equation_constants], the following applies to transient variables:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(CELL_|FACE_|NONE_|)TRANSIENT</code> <em>(required)</em>: If no centring is specified then none centring is assumed.</div>
+</li>
+<li class="level1"><div class="li"> <code>&lt;name&gt;</code> <em>(required)</em>: Along with the rules detailed in section [sec:equation_constants], transient variables are associated with particular relative timesteps. Relative timesteps, described using the term <code>rstep</code> in this document, indicate how many timesteps previous to the current one the variable refers to. The <code>rstep</code> value of a variable is defined in a similar manner to the direction of a variable, using an <code>r</code> index in square brackets at the end of the variable name: For example, <code>&lt;t[r=0]&gt;</code> would be the time corresponding to the end of the current timestep, <code>&lt;t[r=1]&gt;</code> would be time from the previous timestep, <code>&lt;t[r=2]&gt;</code> the time from the (earlier) timestep before that one and so on. If an <code>r</code> index is omitted from a definition, then <code>r=0</code> is assumed. Actually, any type of variable can be associated with any particular relative timestep, but it is rare to do this with anything other than a transient variable.</div>
+</li>
+<li class="level1"><div class="li"> <code>initial expression</code> <em>(optional)</em>: This expression is applied once (only) at the start of a simulation, and represents the variable’s initial condition. These initial expressions are applied in the order of increasing <code>rstep</code> (relative timestep), meaning that the current (latest) time value is calculated first, followed by the previous timestep value, and then one before etc. This expression should not depend on any transient variables that have a higher <code>rstep</code> (an earlier timestep) or that are from the same timestep (equal <code>rstep</code>) but defined later in the input file. If an initial expression is not given at all (no quotation marks present for this field), then the value of zero is assumed if the variable has <code>rstep=0</code>, or the update expression otherwise. If the initial expression is not specified but quotation marks are present for this field, then the update expression is substituted for the initial expression - ie, a shorthand way of repeating the update expression.</div>
+</li>
+<li class="level1"><div class="li"> <code>expression</code> <em>(required)</em>: This expression for the transient variable is applied once at the start of each timestep. These expressions are applied in the order of decreasing <code>rstep</code> (relative timestep), meaning that the earliest time value is calculated first, followed by the next timestep value, until the current time (${\texttt{rstep}}=0$) is reached. Circular references are not allowed in the expression (in practice this is not limiting).</div>
+</li>
+<li class="level1"><div class="li"> <code>ON &lt;region&gt;</code> <em>(optional)</em>: If ommitted then by default a cell centred transient will be defined on <code>&lt;all cells&gt;</code> and a face centred transient on <code>&lt;all faces&gt;</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>options</code> <em>(optional)</em>: This is a comma separated list of options. Valid options for transient variables are the same as those for constants, as detailed in section [sec:equation_constants])</div>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">NONE_TRANSIENT &lt;t[r=0]&gt; &quot;0.d0&quot; &quot;&lt;t[r=1]&gt;+&lt;dt&gt;&quot; # current end-of-timestep time (r=0)
+NONE_TRANSIENT &lt;t[r=1]&gt; &quot;&lt;t&gt;-&lt;dt&gt;&quot; &quot;&lt;t&gt;&quot; # time at last step (r=1)
+NONE_TRANSIENT &lt;t[r=2]&gt; &quot;&lt;t[r=1]&gt;-&lt;dt&gt;&quot; &quot;&lt;t[r=1]&gt;&quot; # time at step before last step (r=2, assuming a constant dt)
+NONE_TRANSIENT &lt;z[r=1]&gt; [m] &quot;&lt;z&gt;-&lt;w_0&gt;*&lt;dt&gt;&quot; &quot;&lt;z_real&gt;&quot; # position of ball at last step (r=1)
+NONE_TRANSIENT &lt;w[r=1]&gt; [m/s] &quot;&lt;w&gt;&quot; &quot;&lt;w_real&gt;&quot; # velocity of ball at last step (r=1)</pre>
+
+</div>
+<!-- EDIT37 SECTION "Transient type variable defined in equations.in" [60991-65517] -->
+<h3 class="sectionedit38" id="derived_type_variable_defined_in_equationsin_secequation_deriveds">Derived type variable defined in equations.in [sec:equation_deriveds]</h3>
+<div class="level3">
+
+<p>
+<em>Synopsis:</em>
+</p>
+
+<p>
+Derived variables depend on the unknown variables and other previously defined (ie, above in the file) derived variables.
+</p>
+
+<p>
+<em>Defining statements:</em>
+</p>
+<pre class="code">CELL_DERIVED &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+FACE_DERIVED &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+NONE_DERIVED &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments
+DERIVED &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments</pre>
+
+<p>
+<em>Statement components:</em>
+</p>
+
+<p>
+Along with the information presented in section [sec:equation_constants], the following applies to derived variables:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(CELL_|FACE_|NONE_|)DERIVED</code> <em>(required)</em>: If no centring is specified then none centring is assumed.</div>
+</li>
+<li class="level1"><div class="li"> <code>expression</code> <em>(required)</em>: This is an expression for the derived variable in terms of constant, transient, unknown, previously defined derived (appearing above in <code>equations.in</code>) and system variables.</div>
+</li>
+<li class="level1"><div class="li"> <code>ON &lt;region&gt;</code> <em>(optional)</em>: If ommitted then by default a cell centred derived will be defined on <code>&lt;all cells&gt;</code> and a face centred derived on <code>&lt;all faces&gt;</code>.</div>
+</li>
+<li class="level1 node"><div class="li"> <code>options</code> <em>(optional)</em>: This is a comma separated list of options. Valid options for derived variables (as well as those given in section [sec:equation_constants]) include:</div>
+<ul>
+<li class="level2"><div class="li"> <code>noderivative</code>: Normally the derivative of this variable’s expression is calculated with respect to each unknown variable (the Jacobian) when performing the Newton-Raphson solution procedure. Including this option sets this derivative to zero. This may be required for functions for which the derivative cannot be calculated or for functions that undergo step changes (not continuous) which are not ammeniable to solution via the Newton-Raphson procedure. Using this option will usually slow convergence.</div>
+</li>
+<li class="level2"><div class="li"> <code>positive/negative</code>: Including one of these options causes the code to check the sign of the derived variable. In theory this could be used for quantities like concentrations that are only physically meaningful when being positive. By using an expression such as <code>1-&lt;con&gt;</code> and including the option <code>positive</code> an upper limit for a variable can also be enforced. In practice using these types of limiting conditions to prevent equation singularities slows convergence to an unfeasibly slow rate. It is usually better to choose the form of the equations so that they are stable even for small unphysical excursions, and then check once convergence has been achieved that the results are physical.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">FACE_DERIVED &lt;tau[l=1,1]&gt; &quot;&lt;p&gt; - &lt;mu&gt;*2.d0*facegrad[l=1](&lt;u[l=1]&gt;)&quot; output
+CELL_DERIVED &lt;graddivp[l=1]&gt; &quot;celldivgrad[l=1](&lt;p&gt;)&quot; # divergence based pressure gradient</pre>
+
+</div>
+<!-- EDIT38 SECTION "Derived type variable defined in equations.in [sec:equation_deriveds]" [65518-68359] -->
+<h3 class="sectionedit39" id="unknown_type_variable_defined_in_equationsin">Unknown type variable defined in equations.in</h3>
+<div class="level3">
+
+<p>
+<em>Synopsis:</em>
+</p>
+
+<p>
+Unknown variables are those upon which the equations and derived variables ultimately depend.
+</p>
+
+<p>
+<em>Defining statements:</em>
+</p>
+<pre class="code">CELL_UNKNOWN &lt;name&gt; [multiplier*units] magnitude &quot;expression&quot; ON &lt;region&gt; options # comments
+FACE_UNKNOWN &lt;name&gt; [multiplier*units] magnitude &quot;expression&quot; ON &lt;region&gt; options # comments
+NONE_UNKNOWN &lt;name&gt; [multiplier*units] magnitude &quot;expression&quot; options # comments
+UNKNOWN &lt;name&gt; [multiplier*units] magnitude &quot;expression&quot; ON &lt;region&gt; options # comments</pre>
+
+<p>
+<em>Statement components:</em>
+</p>
+
+<p>
+Along with the information presented in section [sec:equation_deriveds], the following applies to unknown variables:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(CELL_|FACE_|NONE_|)UNKNOWN</code> <em>(required)</em>: If no centring is specified then cell centring is assumed.</div>
+</li>
+<li class="level1"><div class="li"> <code>magnitude</code> <em>(required)</em>: An order of magnitude estimate (postive and greater than zero real or double precision value) must be specified for all unknown variables. This magnitude is used when checking on the convergence of the solution.</div>
+</li>
+<li class="level1"><div class="li"> <code>expression</code> <em>(required)</em>: For an unknown variable the expression specifies the variable’s initial value. The expression may contain constant variables, derived variables, previously defined unknown variables, (initial) transient variables and system variables.</div>
+</li>
+<li class="level1"><div class="li"> <code>ON &lt;region&gt;</code> <em>(optional)</em>: If ommitted then by default a cell centred unknown will be defined on <code>&lt;all cells&gt;</code> and a face centred unknown on <code>&lt;all faces&gt;</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>options</code> <em>(optional)</em>: The <code>noderivative</code> option is not applicable for unknown variables.</div>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">CELL_UNKNOWN &lt;u[l=1]&gt; 1.d0 &quot;&lt;u_av&gt;&quot; # a velocity component
+CELL_UNKNOWN &lt;p&gt; [] 1.d0 &quot;1.d0-&lt;cellx[l=1]&gt;&quot; # pressure
+NONE_UNKNOWN &lt;p_in&gt; [Pa] 1.d0 &quot;1.d0&quot; # the pressure at the inlet</pre>
+
+</div>
+<!-- EDIT39 SECTION "Unknown type variable defined in equations.in" [68360-70209] -->
+<h3 class="sectionedit40" id="equation_type_variable_defined_in_equationsin">Equation type variable defined in equations.in</h3>
+<div class="level3">
+
+<p>
+<em>Synopsis:</em>
+</p>
+
+<p>
+Equation variables represent the equations to be satisfied. The equation expressions should be formulated so that when the equation is satisfied, the expression equals zero. The number of equations must equal the number of unknown variables. Furthermore, for the system to be well posed the equations must be unknown (no single equation can be made from a combination of the other equations).
+</p>
+
+<p>
+<em>Defining statements:</em>
+</p>
+<pre class="code">CELL_EQUATION &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+FACE_EQUATION &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+NONE_EQUATION &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments
+EQUATION &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments</pre>
+
+<p>
+<em>Statement components:</em>
+</p>
+
+<p>
+Along with the information presented in section [sec:equation_deriveds], the following applies to equation variables:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(CELL_|FACE_|NONE_|)EQUATION</code> <em>(required)</em>: If no centring is specified then none centring is assumed.</div>
+</li>
+<li class="level1"><div class="li"> <code>expression</code> <em>(required)</em>: For an equation variable the expression should equal zero when the equation is satisfied. The expression may contain constant, transient, derived, unknown and system variables.</div>
+</li>
+<li class="level1"><div class="li"> <code>ON &lt;region&gt;</code> <em>(optional)</em>: If ommitted then by default a cell centred equation will be defined on <code>&lt;domain&gt;</code> and a face centred equation on <code>&lt;boundaries&gt;</code>.</div>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">CELL_EQUATION &lt;continuity&gt; &quot;celldiv(&lt;u_f&gt;)&quot; ON &lt;domain&gt; # continuity
+FACE_EQUATION &lt;outlet noslip&gt; &quot;dot(&lt;u[l=:]&gt;,&lt;facetang1[l=:]&gt;)&quot; ON &lt;outlet&gt; # no component tangential to outlet
+NONE_EQUATION &lt;p_in for flowrate&gt; &quot;&lt;u_av_calc&gt;-&lt;u_av&gt;&quot; # set flowrate through inlet to give required average velocity</pre>
+
+</div>
+<!-- EDIT40 SECTION "Equation type variable defined in equations.in" [70210-72012] -->
+<h3 class="sectionedit41" id="output_type_variable_defined_in_equationsin">Output type variable defined in equations.in</h3>
+<div class="level3">
+
+<p>
+<em>Synopsis:</em>
+</p>
+
+<p>
+Output variables are evaluated once convergence of the solution has been reached: They are only for output purposes.
+</p>
+
+<p>
+<em>Defining statements:</em>
+</p>
+<pre class="code">CELL_OUTPUT &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+FACE_OUTPUT &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+NONE_OUTPUT &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments
+OUTPUT &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments</pre>
+
+<p>
+<em>Statement components:</em>
+</p>
+
+<p>
+Along with the information presented in section [sec:equation_deriveds], the following applies to output variables:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(CELL_|FACE_|NONE_|)OUTPUT</code> <em>(required)</em>: If no centring is specified then none centring is assumed.</div>
+</li>
+<li class="level1"><div class="li"> <code>expression</code> <em>(required)</em>: For an output variable the expression may contain constant, transient, derived, unknown, equation and system variables.</div>
+</li>
+<li class="level1"><div class="li"> <code>ON &lt;region&gt;</code> <em>(optional)</em>: If ommitted then by default a cell centred output variable will be defined on <code>&lt;all cells&gt;</code> and a face centred output variable on <code>&lt;all faces&gt;</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>options</code> <em>(optional)</em>: The <code>noderivative</code> option is not applicable for output variables (this option is implicitly set anyway for these variables).</div>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">NONE_OUTPUT &lt;F_drag&gt; [N] &quot;facesum(&lt;facearea&gt;*dot(&lt;facenorm[l=:]&gt;,&lt;tau[l=:,1]&gt;),&lt;cylinder&gt;)&quot; # force on object in axial direction</pre>
+
+</div>
+<!-- EDIT41 SECTION "Output type variable defined in equations.in" [72013-73482] -->
+<h3 class="sectionedit42" id="condition_type_variable_defined_in_equationsin">Condition type variable defined in equations.in</h3>
+<div class="level3">
+
+<p>
+<em>Synopsis:</em>
+</p>
+
+<p>
+Condition variables control the running of the simulation. They can initiate the following actions: output, stop, convergence and a bell.
+</p>
+
+<p>
+<em>Defining statements:</em>
+</p>
+<pre class="code">CELL_CONDITION &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+FACE_CONDITION &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+NONE_CONDITION &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments
+CONDITION &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments</pre>
+
+<p>
+<em>Statement components:</em>
+</p>
+
+<p>
+Along with the information presented in section [sec:equation_deriveds], the following applies to condition variables:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(CELL_|FACE_|NONE_|)OUTPUT</code> <em>(required)</em>: If no centring is specified then none centring is assumed.</div>
+</li>
+<li class="level1"><div class="li"> <code>expression</code> <em>(required)</em>: For a condition variable, if the evaluated expression is positive ($&gt;0$) then the condition is satisfied and the corresponding action will take place. Note that an action will take place if any of the condition variables that correspond to it are positive (in fact, after one positive value is found the remainder are not even evaluated).</div>
+</li>
+<li class="level1"><div class="li"> <code>ON &lt;region&gt;</code> <em>(optional)</em>: If ommitted then by default a cell centred condition variable will be defined on <code>&lt;all cells&gt;</code> and a face centred condition variable on <code>&lt;all faces&gt;</code>.</div>
+</li>
+<li class="level1 node"><div class="li"> <code>options</code> <em>(optional)</em>: In addition to the options discussed for the other variables, one or more of the following options may be applied to each condition variable to specify what action it corresponds to:</div>
+<ul>
+<li class="level2"><div class="li"> <code>convergencecondition</code>: For transient and steady-state simulations, indicates when the Newton loop has converged. Is evaluated at the start of each Newton loop.</div>
+</li>
+<li class="level2"><div class="li"> <code>stopcondition</code>: For a transient simulation, indicates when the simulation should finish. Is evaluated at the end of each successful timestep.</div>
+</li>
+<li class="level2"><div class="li"> <code>outputcondition</code>: For a transient simulation, indicates when the <code>.msh</code> output files should be written. Is evaluated at the end of each successful timestep.</div>
+</li>
+<li class="level2"><div class="li"> <code>bellcondition</code>: For a transient simulation, indicates when a noise should be made (this one’s a bit silly). Is evaluated at the end of each successful timestep.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">NONE_CONDITION &lt;time based stop condition&gt; &quot;&lt;t&gt;-&lt;tend&gt;&quot; stopcondition # when this becomes true (&gt;0.) the simulation stops
+NONE_CONDITION &lt;bouncing bell&gt; &quot;noneif(&lt;z&gt;,-1.d0,1.d0)&quot; bellcondition # is positive when &lt;z&gt; is negative at the end of a timestep
+NONE_CONDITION &lt;output test&gt; &quot;&lt;t&gt;-&lt;tout&gt;-&lt;dtout&gt;&quot; outputcondition # this will be true (&gt;0.) whenever we are &lt;dtout&gt; from last output</pre>
+
+</div>
+<!-- EDIT42 SECTION "Condition type variable defined in equations.in" [73483-76204] -->
+<h3 class="sectionedit43" id="local_type_variable_defined_in_equationsin">Local type variable defined in equations.in</h3>
+<div class="level3">
+
+<p>
+<em>Synopsis:</em>
+</p>
+
+<p>
+Local variables are like derived variables, except that they are not stored, but rather evaluated only when required. Local variables may be used instead of derived variables to save memory. This strategy makes sense if the variable is only going to be used once or twice at each location. Local variables may also be used to split up an otherwise long expression into smaller (and possibly common) sub-statements, dependent on the local conditions. For example, in the examples given below, local variables are used to calculate the second derivative of the normal velocity to a wall, in the normal direction to a wall.
+</p>
+
+<p>
+<em>Defining statements:</em>
+</p>
+<pre class="code">CELL_LOCAL &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+FACE_LOCAL &lt;name&gt; [multiplier*units] &quot;expression&quot; ON &lt;region&gt; options # comments
+NONE_LOCAL &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments
+LOCAL &lt;name&gt; [multiplier*units] &quot;expression&quot; options # comments</pre>
+
+<p>
+<em>Statement components:</em>
+</p>
+
+<p>
+Along with the information presented in section [sec:equation_deriveds], the following applies to condition variables:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>(CELL_|FACE_|NONE_|)OUTPUT</code> <em>(required)</em>: If no centring is specified then none centring is assumed.</div>
+</li>
+<li class="level1"><div class="li"> <code>expression</code> <em>(required)</em>: A local variable may depend on ‘local’ variables which correspond to the locale of the calling statement: For example, in the following examples we refer to the <code>&lt;facenorm&gt;</code> of the face on which the local variable <code>&lt;u_n&gt;</code> is calculated. Note that it would not make sense to output this <code>&lt;u_n&gt;</code> separately over <code>&lt;all cells&gt;</code>, as the <code>&lt;facenorm&gt;</code> would be undefined.</div>
+</li>
+<li class="level1"><div class="li"> <code>ON &lt;region&gt;</code> <em>(optional)</em>: The output region for a local variable is only really used right now to specify what elements are output (should the <code>output</code> option be set).</div>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">CELL_LOCAL &lt;u_n&gt; &quot;dot(&lt;u[l=:]&gt;,cellave[lastface](&lt;facenorm[l=:]&gt;))&quot;
+CELL_LOCAL &lt;d u_n d x[l=1]&gt; &quot;cellgrad[l=1](&lt;u_n&gt;)&quot;
+CELL_LOCAL &lt;d u_n d x[l=2]&gt; &quot;cellgrad[l=2](&lt;u_n&gt;)&quot;
+CELL_LOCAL &lt;d u_n d x_n&gt; &quot;dot(&lt;d u_n d x[l=:]&gt;,cellave[lastface](&lt;facenorm[l=:]&gt;))&quot;
+FACE_LOCAL &lt;d^2 u_n d x_n^2&gt; &quot;facegrad(&lt;d u_n d x_n&gt;)&quot; ON &lt;boundaries&gt; output</pre>
+
+</div>
+<!-- EDIT43 SECTION "Local type variable defined in equations.in" [76205-78482] -->
+<h3 class="sectionedit44" id="system_variables_secsystem_variables">System variables [sec:system_variables]</h3>
+<div class="level3">
+
+<p>
+<em>TODO</em>
+</p>
+
+</div>
+<!-- EDIT44 SECTION "System variables [sec:system_variables]" [78483-78543] -->
+<h2 class="sectionedit45" id="simulation_options">Simulation options</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <code>TRANSIENT SIMULATION|STEADYSTATE SIMULATION</code>: choose between the two types of simulation.</div>
+</li>
+<li class="level1"><div class="li"> <code>END</code>: end input</div>
+</li>
+<li class="level1"><div class="li"> <code>START_SKIP|STOP_SKIP</code>: ignore the text between these statements.</div>
+</li>
+<li class="level1"><div class="li"> <code>DEFAULT_OPTIONS</code>: add the following options to every subsequent variable, until cleared again using a blank <code>DEFAULT_OPTIONS</code> statement. When listed in order, default options precede a variable’s individually specified options - hence, in the case of conflicting option statements, individual options take precedence over default options (ie, the individual options have a higher priority).</div>
+</li>
+<li class="level1"><div class="li"> <code>OVERRIDE_OPTIONS</code>: are the same as <code>DEFAULT_OPTIONS</code>, except that they follow a variable’s individually specified options, and so in the case of conflicting option statements, take precedence over the individual options (ie, the override options have a higher priority).</div>
+</li>
+<li class="level1"><div class="li"> <code>LINEAR_SOLVER</code>: choose the type of linear solver to use.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT45 SECTION "Simulation options" [78544-79548] -->
+<h2 class="sectionedit46" id="include_statements_and_string_replacements">Include statements and string replacements</h2>
+<div class="level2">
+
+<p>
+Include statements allow other <code>.arb</code> input files to be included. These files can be user written, or be from a library of template files within the <code>templates</code> directory. String substitution that occurs as the file is read in allow these included files to be (basically) used as functions. An ‘unwrapped’ input file that is a handy reference as to how the include statements behaved (and can be used as an input file for subsequent runs) is placed at <code>tmp/setup/unwrapped_input.arb</code> after every run setup. The include statements are:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>INCLUDE_ROOT</code>: choose a template directory to look for any files included via any following <code>INCLUDE</code> statements. If no string is specified, then the include root directory name is set equal to that of its parent (including) file. If the blank string is specified, then <code>INCLUDE_ROOT</code> is set to the blank string and all templates directories (up to two subdirectory levels) are searched for the following included files. The <code>INCLUDE_ROOT</code> definitions are hierarchical, in that the definition in a child file does not affect that of the parent.</div>
+</li>
+<li class="level1"><div class="li"> <code>INCLUDE</code>: command to include a file from the most recent <code>INCLUDE_ROOT</code> directory (or subdirectory thereof), possibly also specifying file-specific string replacements using the syntax <code>REPLACE a string WITH another string</code> (or the shorter <code>R a string W another string</code>). If an <code>INCLUDE_ROOT</code> directory has not been specified (or cancelled with a blank <code>INCLUDE_ROOT</code> statement) then the templates directories will be searched until a matching <code>INCLUDE</code> file is found (up to two subdirectory levels right now).</div>
+</li>
+<li class="level1"><div class="li"> <code>INCLUDE_WORKING</code>: include the following files from the working directory. This command does not affect and is not influenced by the <code>INCLUDE_ROOT</code> directory and is (basically) used to include sets of user-written statements (i.e., like a local a function).</div>
+</li>
+</ul>
+
+<p>
+Partnering the include file capability is the ability to read in multiple definitions for the same variable. The ultimate position of a variable’s definition is that of the first definition for that variable. The ultimate expression used for a variable is that given (read in) last. This functionality allows a variable’s expression to be changed from what is used in (say) a template file by specifying a new definition lower in the file, after the template file include statement. Options can also be added to previously specified options for a variable by including more definition statements (that may only contain options and not expressions) lower in the input file. Similarly for units.
+</p>
+
+<p>
+There are two types of string replacements that occur when a line from an input file is parsed: i) file-specific replacements, which occur recursively through ‘child’ file inclusions, and ii) general replacements, which occur throughout all files from their point of definition onwards, until (possibly) cancelled. The following demonstrates a general replacement statement specifying two general replacement strings, using a long and short form:
+</p>
+
+<p>
+<code>GENERAL_REPLACEMENTS REPLACE &lt;a region&gt; WITH &lt;another region&gt; R a string W another string</code>
+</p>
+
+<p>
+There are certain system generated general replacements that occur automatically unless specifically changed by the user. Use the search hint to find the list of these in <code>setup_equations.pl</code>.
+</p>
+
+<p>
+<code>GENERAL_REPLACEMENTS CANCEL &lt;a region&gt; C a string</code>
+</p>
+
+<p>
+The above demonstrates how to cancel a search string replacement, using either a long (<code>CANCEL</code>) or short (<code>C</code>) form. Note that both general and file specific replacements do not occur on a line of an input file if the line is itself a general replacement definition line (specifically, it begins with the <code>GENERAL_REPLACEMENTS</code> keyword), or is an include line for a file (begins with some type of <code>INCLUDE</code> keyword).
+</p>
+
+</div>
+<!-- EDIT46 SECTION "Include statements and string replacements" [79549-83521] -->
+<h2 class="sectionedit47" id="kernel_options">Kernel options</h2>
+<div class="level2">
+
+<p>
+There are many options that can be used to change the kernels used. For example
+</p>
+
+<p>
+<code>KERNEL polynomialaverageorder=2,polynomialorder=2</code>
+</p>
+
+<p>
+specifies that when averaging/differentiating quantities to/at faces, ensure that a second order polynomial would be reproduced precisely.
+</p>
+
+</div>
+<!-- EDIT47 SECTION "Kernel options" [83522-83829] -->
+<h2 class="sectionedit48" id="glued_boundaries">Glued boundaries</h2>
+<div class="level2">
+
+<p>
+Used to implement periodic or reflection boundaries by glueing two boundary face regions together. Boundary regions to be glued must have the same element structure (size and number). Individual element matching between the boundaries is accomplished by matching the closest element locations, relative to the region centroids (much like the <code>facelink</code> and <code>celllink</code> operators).
+</p>
+
+<p>
+Example of a periodic boundary glueing the top and bottom boundaries of a domain:
+</p>
+
+<p>
+<code>GLUE_FACES &lt;south&gt; &lt;north&gt;</code>
+</p>
+
+<p>
+Example of a reflection (axis of symmetry) boundary along the left side of a domain:
+</p>
+
+<p>
+<code>GLUE_FACES &lt;west&gt; reflect=1</code>
+</p>
+
+<p>
+In the case of reflection, certain operators (eg, <code>facegrad</code>) need to be aware when they are operating on the component of a vector, that needs to be reflected over this reflection boundary. See the <code>reflect=1</code> options for each operator.
+</p>
+
+</div>
+<!-- EDIT48 SECTION "Glued boundaries" [83830-84745] -->
+<h2 class="sectionedit49" id="simulation_info">Simulation Info</h2>
+<div class="level2">
+
+<p>
+The following strings can be used within an input file to help keep track of what the file contains. These and other automatically generated info strings are included as comments in most of the output files.
+</p>
+
+<p>
+<code>INFO_TITLE, INFO_DESCRIPTION, INFO_AUTHOR, INFO_DATE, INFO_VERSION</code>
+</p>
+
+</div>
+<!-- EDIT49 SECTION "Simulation Info" [84746-85059] -->
+<h1 class="sectionedit50" id="expression_language_reference_seclanguage">Expression language reference [sec:language]</h1>
+<div class="level1">
+
+<p>
+<em>There’s lots missing in this section. The examples files are currently the best guide as to the language syntax.</em>
+</p>
+
+</div>
+<!-- EDIT50 SECTION "Expression language reference [sec:language]" [85060-85239] -->
+<h2 class="sectionedit51" id="operators">Operators</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT51 SECTION "Operators" [85240-85262] -->
+<h3 class="sectionedit52" id="general_notes">General Notes</h3>
+<div class="level3">
+
+<p>
+Operators produce a single value from the arguments that are contained within their parentheses (). They also accept options, contained within square brackets [].
+</p>
+
+<p>
+<code>operator[option1,option2,…](&lt;argument1&gt;,&lt;argument2&gt;,…)</code>
+</p>
+
+<p>
+The centring of an operator generally corresponds to the first syllable of the operator, however there are exceptions. Following the rule is <code>celldiv</code>, which is the cell centred divergence of a face centred quantity. This operator is cell centred and must be used in this context, hence its context centring is cell. The content expression passed into <code>celldiv</code> (actually its first argument) is face centred however. Similarly, <code>facegrad</code> is the gradient of a cell centred quantity evaluated at a face, so this operator is face (context) centred, but has cell content centring. Exceptions to the rule include the loop-type operators, <code>max</code>, <code>min</code>, <code>sum</code> and <code>product</code>. For example, <code>cellmax</code> loops through a region of cells finding the maximum value of an expression within those cells. Hence, this operator produces a result which has no centring (none centred) so can be used in any centring context, but has cell content centring.
+</p>
+
+<p>
+Each operator accepts a certain number of arguments, however if an argument is not specified then a default value may be used. For example, <code>cellmax</code> uses three arguments: an expression that is to evaluated in each cell (<code>&lt;expression&gt;</code>, here denoted by a single variable, but more usually an expression of variables), an initial, default expression for the operator (<code>&lt;default&gt;</code>), and the cell centred content region over which the maximum will be calculated (<code>&lt;region&gt;</code>). Using implicit argument notation, operators expect the arguments in a specific order, so <code>cellmax</code> expects these three arguments in the manner
+</p>
+
+<p>
+<code>cellmax(&lt;expression&gt;,&lt;default&gt;,&lt;region&gt;)</code>
+</p>
+
+<p>
+If less than the required number of arguments are passed to an operator, then a default value for the omitted arguments will be assumed (or if no defaults are available or are sensible, an error will be flagged). For example, using
+</p>
+
+<p>
+<code>cellmax(&lt;expression&gt;)</code>
+</p>
+
+<p>
+sets <code>&lt;default&gt;</code> to <code>-&lt;huge&gt;</code> (the largest negative double precision number that the processor can store) and <code>&lt;region&gt;</code> to <code>&lt;noloop&gt;</code> if (for example) the expression was being used in a cell centred context. If in doubt about what the default value for an argument is, specify it!
+</p>
+
+<p>
+The alternative to the implicit argument notation is to specify the arguments explicitly (similar to argument passing in f90). Using explicit notation the order of the arguments that are passed explicitly is irrelevant, however the order of any arguments that are not explicitly named (and hence specified implicitly) still is. For example, the following will all produce the same result
+</p>
+
+<p>
+<code>cellmax(expression=&lt;expression&gt;,default=&lt;default&gt;,region=&lt;region&gt;)</code><br/>
+
+<code>cellmax(&lt;expression&gt;,&lt;default&gt;,&lt;region&gt;)</code><br/>
+
+<code>cellmax(region=&lt;region&gt;,default=&lt;default&gt;,expression=&lt;expression&gt;)</code><br/>
+
+<code>cellmax(expression,region=&lt;region&gt;,default)</code><br/>
+
+<code>cellmax(region=&lt;region&gt;,expression,default)</code>
+</p>
+
+<p>
+Note in the last case that although <code>&lt;expression&gt;</code> was the second argument in the operator, it was the first implicitly named operator, so would be read correctly. Using a combination of the implicit and explicit passing is often convenient. For example, for the <code>cellmax</code> operator, the following form that uses a default value of <code>-&lt;huge&gt;</code> but performs the maximum comparison over a specified region is handy
+</p>
+
+<p>
+<code>cellmax(&lt;expression&gt;,region=&lt;region&gt;)</code>
+</p>
+
+<p>
+Operator options are similar to variable options. Some operators require a dimension, and this dimension (direction) is specified via the options. For example, <code>celldivgrad</code> calculates a gradient in a certain direction dimension using the divergence of a face centred scalar. To find this gradient in the second dimension you use the option <code>[l=2]</code>:
+</p>
+
+<p>
+<code>celldivgrad[l=2](&lt;face centred expression&gt;)</code>
+</p>
+
+<p>
+Some options are quite generic (eg, <code>noderivative</code>), however most are specific to the operator. There is no restriction on the order that options are specified.
+</p>
+
+<p>
+Options and operators should be written in lowercase (I have started to make both of these case independent, but no guarantees yet).
+</p>
+
+<p>
+Details of individual operators follows. Ultimate details of each operator (including argument order, options etc) can be found in the code file <code>src/setup_equations.pl</code> which shows how they are expanded into working code. Use search strings such as <code>ref: celldiv</code> within the perl file to find the specific code.
+</p>
+
+</div>
+<!-- EDIT52 SECTION "General Notes" [85263-89992] -->
+<h3 class="sectionedit53" id="celldivdivergence">celldiv: Divergence</h3>
+<div class="level3">
+
+<p>
+<em>Summary:</em> Uses Gauss’ theorem to calculate the divergence of a face centred vector component around a cell.
+</p>
+
+<p>
+<em>Statement:</em>
+</p>
+
+<p>
+<code>celldiv[options](expression=&lt;expression&gt;)</code>
+</p>
+
+<p>
+<em>Centring:</em>
+</p>
+
+<p>
+Operator is context cell centred, while <code>&lt;expression&gt;</code> is face centred.
+</p>
+
+<p>
+<em>Details:</em>
+</p>
+
+<p>
+Using Gauss’ theorem to evaluate divergences around cells is probably the defining characteristic of Finite Volume methods. <code>celldiv</code> performs this operation.
+</p>
+
+<p>
+Specifically, to discretise the divergence of a face centred vector ${\boldsymbol{u}_\mathrm{j}}$ over a cell $i$ that sits within the domain, Gauss’ theorem gives $\begin{aligned}
+\frac{1}<a href="/arb_dokuwiki/lib/exe/fetch.php?media=v_i" class="media mediafile mf_ wikilink2" title="v_i">v_i</a>} \int_<a href="/arb_dokuwiki/lib/exe/fetch.php?media=v_i" class="media mediafile mf_ wikilink2" title="v_i">v_i</a>} {\boldsymbol{\nabla}_\mathrm{}} \cdot {\boldsymbol{u}_\mathrm{}} dV &amp; \Rightarrow \frac{1}<a href="/arb_dokuwiki/lib/exe/fetch.php?media=v_i" class="media mediafile mf_ wikilink2" title="v_i">v_i</a>} \sum_{j \in {\mathbb{J}_{\text{nobcellfaces},i}}} \frac{1}<a href="/arb_dokuwiki/lib/exe/fetch.php?media=s_j" class="media mediafile mf_ wikilink2" title="s_j">s_j</a>} \int_<a href="/arb_dokuwiki/lib/exe/fetch.php?media=s_j" class="media mediafile mf_ wikilink2" title="s_j">s_j</a>} {\boldsymbol{N}_{i,j}} \cdot {\boldsymbol{u}_{j}} \, dS <br/>
+
+&amp; = {\settowidth{\explainwidth}{$\sum_{j \in {\mathbb{J}_{\text{nobcellfaces},i}}} \frac{{\boldsymbol{N}_{i,j}} \cdot {\boldsymbol{n}_{j}} }{{V_{i}}}$} \ensuremath{\underbrace{\sum_{j \in {\mathbb{J}_{\text{nobcellfaces},i}}} \frac{{\boldsymbol{N}_{i,j}} \cdot {\boldsymbol{n}_{j}} }<a href="/arb_dokuwiki/lib/exe/fetch.php?media=v_i" class="media mediafile mf_ wikilink2" title="v_i">v_i</a>}}_\text{\mbox{\centering \small \normalsize{\texttt{celldiv}}}}}} \frac{1}<a href="/arb_dokuwiki/lib/exe/fetch.php?media=s_j" class="media mediafile mf_ wikilink2" title="s_j">s_j</a>} \int_<a href="/arb_dokuwiki/lib/exe/fetch.php?media=s_j" class="media mediafile mf_ wikilink2" title="s_j">s_j</a>} {\boldsymbol{n}_{j}} \cdot {\boldsymbol{u}_{j}} \, dS \nonumber <br/>
+
+&amp; \Rightarrow {\texttt{celldiv(dot(&lt;u[l=:]&gt;,&lt;facenorm[l=:]&gt;))}}
+\end{aligned}$ where ${V_{i}}$ and ${S_{j}}$ are the volume and total surface area of the cell $i$ and face $j$, respectively, ${\boldsymbol{N}_{i,j}}$ is a unit normal pointing outward from cell $i$ but located at face $j$, ${\boldsymbol{n}_{j}}$ is a normal associated with face $j$, and the sum is conducted over the set of all face elements that surround cell $i$, denoted by ${\mathbb{J}_{\text{nobcellfaces},i}}$. In the equivalent coding the face centred vector ${\boldsymbol{u}_{j}}$ is represented by the three component variables &#039;&#039;%%&lt;u[l=1]&gt;%%&#039;&#039;, &#039;&#039;%%&lt;u[l=2]&gt;%%&#039;&#039; and &#039;&#039;%%&lt;u[l=3]&gt;%%&#039;&#039;, and the unit normal associated with the face $j$, ${\boldsymbol{n}_{j}}$, is given by the system component variables <code>&lt;facenorm[l=1]&gt;</code>, <code>&lt;facenorm[l=2]&gt;</code> and <code>&lt;facenorm[l=3]&gt;</code>. Note that as the divergence of a vector results in a scalar, the above operation produces a scalar for each cell it is performed in.
+</p>
+
+<p>
+The region used by arb in performing the above sum as represented by ${\mathbb{J}_{\text{nobcellfaces},i}}$ is <code>&lt;nobcelljfaces&gt;</code> (‘no-boundary-cell-faces’). This relative region specifies all faces that surround a given cell, unless that cell is a boundary cell. As boundary cells are not fully surrounded by faces Gauss’ theorem can not be applied. Hence, if the operator <code>celldiv</code> is used at a boundary cell then the region <code>&lt;nobcelljfaces&gt;</code> is taken relative (moved) to the closest domain cell that is adjacent the boundary cell, so this is where <code>celldiv</code> becomes evaluated. Physically it is inadvisable to use an equation that involves a divergence at a boundary cell anyway.
+</p>
+
+<p>
+<em>Options:</em>
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>noderivative</code>: No derivatives with respect to the unknown variables for the Newton-Raphson Jacobian are calculated for this operator (and its contents).</div>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">CELL_EQUATION &lt;continuity&gt; &quot;celldiv(&lt;u_f&gt;)&quot; ON &lt;domain&gt; # continuity equation
+CELL_EQUATION &lt;momentum[l=1]&gt; &quot;celldiv(&lt;J_f[l=1]&gt;)&quot; ON &lt;domain&gt; # momentum conservation in direction l=1
+CELL_EQUATION &lt;momentum[l=2]&gt; &quot;celldiv(&lt;J_f[l=2]&gt;)&quot; ON &lt;domain&gt; # momentum conservation in direction l=2</pre>
+
+</div>
+<!-- EDIT53 SECTION "celldiv: Divergence" [89993-93595] -->
+<h3 class="sectionedit54" id="cellgrad_or_facegradgradient">cellgrad or facegrad: Gradient</h3>
+<div class="level3">
+
+<p>
+<em>Summary:</em> Calculates a scalar component of a gradient over a cell or face.
+</p>
+
+<p>
+<em>Statement:</em>
+</p>
+
+<p>
+<code>cellgrad[options](expression=&lt;expression&gt;)</code><br/>
+
+<code>facegrad[options](expression=&lt;expression&gt;)</code>
+</p>
+
+<p>
+<em>Centring:</em>
+</p>
+
+<p>
+<code>cellgrad</code> is context cell centred and <code>facegrad</code> is context face centred. In both cases <code>&lt;expression&gt;</code> is cell centred.
+</p>
+
+<p>
+<em>Details:</em>
+</p>
+
+<p>
+To calculate the gradient of a cell centred scalar ${\phi_{i}}$ in coodinate direction $2$ in cell $i$, $\frac{1}{{V_{i}}} \int_{{V_{i}}} {\boldsymbol{e}_{2}} \cdot {\boldsymbol{\nabla}_\mathrm{}} \phi dV \Rightarrow \sum_{i&#039; \in {\mathbb{I}_{\text{cellcells},i}}} {{\overset{\bullet}{k}}^{(2)}_{i,i&#039;}} {\phi_{i&#039;}} \Rightarrow {\texttt{cellgrad[l=2](phi)}} \nonumber$ where ${\boldsymbol{e}_{2}}$ is a unit vector in coordinate direction $2$, ${{\overset{\bullet}{k}}^{(2)}_{i,i&#039;}}$ is a predetermined kernel for this operation, and ${\mathbb{I}_{\text{cellcells},i}}$ is the set of all cells in the vicinity of cell $i$ that are used by this kernel. Kernels to calculate the cell gradient in the other coordinate directions, that is ${{\overset{\bullet}{k}}^{(1)}_{i,i&#039;}}$ and ${{\overset{\bullet}{k}}^{(3)}_{i,i&#039;}}$ also exist.
+</p>
+
+<p>
+A gradient of a cell centred quantity evaluated at a face can be calculated similarly, for example $\frac{1}{{S_{j}}} \int_{{S_{j}}} {\boldsymbol{e}_{3}} \cdot {\boldsymbol{\nabla}_\mathrm{}} \phi dS \Rightarrow \sum_{i \in {\mathbb{I}_{\text{facecells},j}}} {{\overset{\circ}{k}}^{(3)}_{j,i}} {\phi_{i}} \Rightarrow {\texttt{facegrad[l=3](phi)}} \nonumber$ Gradients taken in directions relative to the face orientation are also available using the <code>facegrad</code> operator. Index $4$ gives the gradient relative to the face’s normal, that is $\frac{1}{{S_{j}}} \int_{{S_{j}}} {\boldsymbol{n}_{j}} \cdot {\boldsymbol{\nabla}_\mathrm{}} \phi dS \Rightarrow \sum_{i \in {\mathbb{I}_{\text{facecells},j}}} {{\overset{\circ}{k}}^{(4)}_{j,i}} {\phi_{i}} \Rightarrow {\texttt{facegrad[l=4](phi)}} \nonumber$ In computational terms the face normal is represented by (<code>&lt;facenorm[l=1]&gt;</code>,<code>&lt;facenorm[l=2]&gt;</code>, <code>&lt;facenorm[l=3]&gt;</code>). Indices $5$ and $6$ give gradients in the directions of the first and second tangents for each face, respectively, that is $\frac{1}{{S_{j}}} \int_{{S_{j}}} {\boldsymbol{t}_{j}}^{(1)} \cdot {\boldsymbol{\nabla}_\mathrm{}} \phi dS \Rightarrow \sum_{i \in {\mathbb{I}_{\text{facecells},j}}} {{\overset{\circ}{k}}^{(5)}_{j,i}} {\phi_{i}} \Rightarrow {\texttt{facegrad[l=5](phi)}} \nonumber$ and $\frac{1}{{S_{j}}} \int_{{S_{j}}} {\boldsymbol{t}_{j}}^{(2)} \cdot {\boldsymbol{\nabla}_\mathrm{}} \phi dS \Rightarrow \sum_{i \in {\mathbb{I}_{\text{facecells},j}}} {{\overset{\circ}{k}}^{(6)}_{j,i}} {\phi_{i}} \Rightarrow {\texttt{facegrad[l=6](phi)}} \nonumber$ Computationally ${\boldsymbol{t}_{j}}^{(1)}$ is represented by (<code>&lt;facetang1[l=1]&gt;</code>,<code>&lt;facetang1[l=2]&gt;</code>, <code>&lt;facetang1[l=3]&gt;</code>) and ${\boldsymbol{t}_{j}}^{(2)}$ by (<code>&lt;facetang2[l=1]&gt;</code>,<code>&lt;facetang2[l=2]&gt;</code>, <code>&lt;facetang2[l=3]&gt;</code>), respectively. If the face has one dimension then ${\boldsymbol{t}_{j}}^{(1)}$ will be directed along the face, and ${\boldsymbol{t}_{j}}^{(2)}$ will be normal to both ${\boldsymbol{t}_{j}}^{(1)}$ and $vecti[j]{n}$. If the face has no or two dimensions (a point or a plane) then there are no preferential directions for these tangents. If no index is specified on the <code>facegrad</code> operator then <code>l=4</code> is assumed.
+</p>
+
+<p>
+<em>Options:</em>
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>l=1</code>, <code>l=2</code>, etc: This index specifies the direction that the gradient will be taken in. For <code>cellgrad</code> this index represents the dimension the gradient is taken in and must be specified. For <code>facegrad</code> if the index is specified and is $\le 3$, this specifies the dimension the gradient is taken in. For an index $\ge 4$, the direction is taken relative to the face orientation. <code>l=4</code> specifies a gradient taken in the direction of the face normal, <code>l=5</code> a gradient taken in the direction of the first tangent to the face and <code>l=6</code> in the direction of the second tangent to the face. If the index is not specified for <code>facegrad</code> then <code>l=4</code> is assumed — that is, a gradient taken normal to the face.</div>
+</li>
+<li class="level1"><div class="li"> <code>adjacentcells</code> for <code>facegrad</code> only: Gradient is based on adjacent cells only, but attempts to be in the direction of the face normal (it is only an approximation, but should be accurate for structured meshes). Note, only works for <code>l=4</code> direction — that is, the direction of the face normal.</div>
+</li>
+<li class="level1"><div class="li"> <code>dxunit</code> for <code>facegrad</code> only: Similar to option <code>adjacentcells</code> in that it is based on adjacent cells only, but now it is in the direction of <code>&lt;dxunit[l=:]&gt;</code>, which is a unit vector pointing from the centre of the cell immediate below the face (in the face’s normal direction) to the centre of the cell immediately above the face. Hence, for unstructured meshes, this gradient is not precisely in the same direction as the true <code>&lt;facenorm[l=:]&gt;</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>reflect=1</code>, <code>reflect=2</code>, etc: This specifies that the contained expression is a component of a vector, and that over any glued reflection boundaries, must be reflected in this direction. These options only need to be specified if the operator is going to be acting over (or next to) a glued, reflection boundary that is reflected in a direction that is the same as the vector’s component direction.</div>
+</li>
+<li class="level1"><div class="li"> <code>noderivative</code>: As previously.</div>
+</li>
+</ul>
+
+<p>
+<em>Examples:</em>
+</p>
+<pre class="code">FACE_DERIVED &lt;T flux&gt; &quot;-&lt;D&gt;*facegrad(&lt;T&gt;)&quot; ON &lt;all faces&gt; # some type of heat flux occuring across each face
+CELL_DERIVED &lt;dpdx[l=1]&gt; &quot;cellgrad[l=1](&lt;p&gt;)&quot; # gradient of pressure in first dimension</pre>
+
+</div>
+<!-- EDIT54 SECTION "cellgrad or facegrad: Gradient" [93596-99373] -->
+<h3 class="sectionedit55" id="cellaveinterpolation_to_cell_centring">cellave: Interpolation to cell centring</h3>
+<div class="level3">
+
+<p>
+<em>Summary:</em> Interpolates or averages an expression from (mainly) face centring to cell centring.
+</p>
+
+<p>
+<em>Statement:</em>
+</p>
+
+<p>
+<code>cellave[options](expression=&lt;expression&gt;)</code><br/>
+
+<em>Centring:</em>
+</p>
+
+<p>
+<code>cellave</code> is context cell centred and generally takes a face centred expression (see <code>othercell</code> option however).
+</p>
+
+<p>
+<em>Details:</em>
+</p>
+
+<p>
+Without any options, predefined kernels are used to interpolate the face centred expression from the faces that surround a cell to the centroid of that cell.
+</p>
+
+<p>
+<em>Options:</em>
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>lastface</code>: Evaluates <code>&lt;expression&gt;</code> at the last face that was referenced in the context of the operator’s position, but treats the result as having cell centring.</div>
+</li>
+<li class="level1"><div class="li"> <code>lastfacenoglue</code>: As above, but moves through glued boundaries to the actual last face that was used (if it was glued).</div>
+</li>
+<li class="level1"><div class="li"> <code>othercell</code>: Evaluates <code>&lt;expression&gt;</code> at the cell that is adjacent to the last face that was referenced in the context of the operator’s position. In this (exception) case <code>&lt;expression&gt;</code> is cell centred. For this case only <code>reflect=1</code> etc options may be used/necessary as the cell may be on the other side of a glued reflection boundary.</div>
+</li>
+<li class="level1"><div class="li"> <code>noderivative</code>: As previously.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT55 SECTION "cellave: Interpolation to cell centring" [99374-100642] -->
+<h3 class="sectionedit56" id="faceaveinterpolation">faceave: Interpolation</h3>
+<div class="level3">
+
+<p>
+<em>Summary:</em> Interpolates or averages an expression from cell to face centring.
+</p>
+
+<p>
+<em>Statement:</em>
+</p>
+
+<p>
+<code>faceave[options](expression=&lt;expression&gt;)</code>
+</p>
+
+<p>
+<code>faceave[advection,options](expression=&lt;expression&gt;,flux=&lt;flux&gt;, limiter=&lt;limiter&gt;)</code>
+</p>
+
+<p>
+<em>Centring:</em>
+</p>
+
+<p>
+<code>faceave</code> has face context centring. <code>&lt;expression&gt;</code> is cell centred. <code>&lt;flux&gt;</code> is face centred. <code>&lt;limiter&gt;</code> is cell centred.
+</p>
+
+<p>
+<em>Details:</em>
+</p>
+
+<p>
+TODO
+</p>
+
+<p>
+<em>Options:</em>
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>harmonic</code>:</div>
+</li>
+<li class="level1"><div class="li"> <code>advection</code>:</div>
+</li>
+<li class="level1"><div class="li"> <code>lastcell</code>:</div>
+</li>
+<li class="level1"><div class="li"> <code>noderivative</code>: As previously.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT56 SECTION "faceave: Interpolation" [100643-101223] -->
+<h3 class="sectionedit57" id="cellsum_or_facesumsum">cellsum or facesum: Sum</h3>
+<div class="level3">
+
+<p>
+<em>Summary:</em> Performs a sum over a region of either cell or face elements.
+</p>
+
+<p>
+<em>Statement:</em>
+</p>
+
+<p>
+<code>cellsum[options](cell_centred_expression)</code><br/>
+
+<code>cellsum[options](cell_centred_expression,&lt;cell_centred_region&gt;)</code><br/>
+
+<code>facesum[options](face_centred_expression)</code><br/>
+
+<code>facesum[options](face_centred_expression,&lt;face_centred_region&gt;)</code> <em>Centring:</em>
+</p>
+
+<p>
+Operators may be cell, face or none centred. Contents of <code>cellsum</code> is cell centred, contents of <code>facesum</code> is face centred.
+</p>
+
+<p>
+<em>Details:</em>
+</p>
+
+<p>
+This operator sums the contained expression over a region of cell or face elements. If no region is specified, then default regions are applied, defined by:
+</p>
+<div class="table sectionedit58"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 centeralign">  Operator centring  </th><th class="col1 centeralign">  Expression centring  </th><th class="col2 centeralign">         Default region         </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 centeralign">    <code>cell</code>     </td><td class="col1 centeralign">     <code>face</code>      </td><td class="col2 centeralign">      <code>&lt;celljfaces&gt;</code>      </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 centeralign">    <code>cell</code>     </td><td class="col1 centeralign">     <code>cell</code>      </td><td class="col2 centeralign">  <code>&lt;adjacentcellicells&gt;</code>  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 centeralign">    <code>face</code>     </td><td class="col1 centeralign">     <code>cell</code>      </td><td class="col2 centeralign">  <code>&lt;adjacentfaceicells&gt;</code>  </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign">                     </td><td class="col1 centeralign">   <code>&lt;noloop&gt;</code>    </td><td class="col2 leftalign">                                </td>
+	</tr>
+</table></div>
+<!-- EDIT58 TABLE [101924-102328] -->
+<p>
+<em>Options:</em>
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>noderivative</code>: As previously.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT57 SECTION "cellsum or facesum: Sum" [101224-102385] -->
+<h3 class="sectionedit59" id="celldivgradgradient_evaluated_at_a_cell_calculated_via_a_divergence">celldivgrad: Gradient evaluated at a cell calculated via a divergence</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT59 SECTION "celldivgrad: Gradient evaluated at a cell calculated via a divergence" [102386-102466] -->
+<h3 class="sectionedit60" id="celllimitergradient_limiter_for_ensuring_advection_stability">celllimiter: Gradient limiter for ensuring advection stability</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT60 SECTION "celllimiter: Gradient limiter for ensuring advection stability" [102467-102540] -->
+<h3 class="sectionedit61" id="cellif_faceif_or_noneifif_conditional_statement">cellif, faceif or noneif: If conditional statement</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT61 SECTION "cellif, faceif or noneif: If conditional statement" [102541-102602] -->
+<h3 class="sectionedit62" id="cellproduct_or_faceproductproduct_performed_over_a_region_of_elements">cellproduct or faceproduct: Product performed over a region of elements</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT62 SECTION "cellproduct or faceproduct: Product performed over a region of elements" [102603-102685] -->
+<h3 class="sectionedit63" id="cellmin_max_facemin_max_or_nonemin_maxpicks_the_minimum_maximum_from_a_region_of_elements">cellmin/max, facemin/max or nonemin/max: Picks the minimum/maximum from a region of elements</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT63 SECTION "cellmin/max, facemin/max or nonemin/max: Picks the minimum/maximum from a region of elements" [102686-102789] -->
+<h3 class="sectionedit64" id="celldelta_or_facedeltaa_delta_function_to_identify_specific_regions">celldelta or facedelta: A delta function to identify specific regions</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT64 SECTION "celldelta or facedelta: A delta function to identify specific regions" [102790-102870] -->
+<h3 class="sectionedit65" id="celllink_or_facelinklink_to_other_regions">celllink or facelink: Link to other regions</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT65 SECTION "celllink or facelink: Link to other regions" [102871-102925] -->
+<h1 class="sectionedit66" id="code_structure_seccode_structure">Code structure [sec:code_structure]</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT66 SECTION "Code structure [sec:code_structure]" [102926-] -->
