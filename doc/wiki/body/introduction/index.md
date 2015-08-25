@@ -26,11 +26,11 @@ arb requires a UNIX type environment to run, and has been tested on both the App
 * A sparse matrix linear solver: [UMFPACK](http://www.cise.ufl.edu/research/sparse/umfpack/), [pardiso](http://www.pardiso-project.org/), and (currently a single) Harwell Subroutine Library routines are supported; and
 * The mesh generator [gmsh](http://geuz.org/gmsh/).
 
-Further details about how to install arb are given in [Installation](./installation/basics.html).
+Further details about how to install arb are given in [Installation](../installation/index.html).
 
 ## Licence
 
-arb is copyright Dalton Harvie (2009–2015), but released under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).  Full details of the licence are in the [arb_licence file](./working_dir/licence/arb_licence.txt).
+arb is copyright Dalton Harvie (2009–2015), but released under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).  Full details of the licence are in the [arb licence file](../working_dir/licence/arb_licence.txt).
 
 ```bash
 echo "some bash string";

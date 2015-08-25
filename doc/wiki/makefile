@@ -35,16 +35,26 @@
 
 rootdir = .
 bodydir = $(rootdir)/body
+bodycssfile = $(rootdir)/css/arb_body.css
 
-# find all of the 
-#vpath	%.md $(markdownbodydir)
-# idea courtesy of http://lincolnmullen.com/blog/make-and-pandoc/
-markdownbodyfiles := $(wildcard *.md)
+# find all of the markdown files within the body directory and first level of body subdirectories
+markdownbodyfiles := $(wildcard $(bodydir)/*.md) $(wildcard $(bodydir)/*/*.md)
 htmlbodyfiles := $(patsubst %.md,%.html,$(markdownbodyfiles))
 
 all : createhtmlbodyfiles
 
+# print out some info
+print :
+	@echo "Compiling arb wiki with options:"
+	@echo " markdownbodyfiles: $(markdownbodyfiles)"
+	@echo " htmlbodyfiles: $(htmlbodyfiles)"
+
+# this idea courtesy of http://lincolnmullen.com/blog/make-and-pandoc/
 createhtmlbodyfiles : $(htmlbodyfiles)
+
+# define generic rule to create the htmlbodyfiles
+%.html : %.md
+	pandoc -S -c ../../$(bodycssfile) --toc $< -o $@
 
 # clean all files
 clean : clean_html
