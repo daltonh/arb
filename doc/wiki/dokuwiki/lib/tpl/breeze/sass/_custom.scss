@@ -1,0 +1,147 @@
+// Your custom SCSS should be written here...
+
+// Typography
+h1 { @include font-size($xlarge);}
+h2 { @include font-size($larger);}
+h3 { @include font-size($large);}
+h4 { @include font-size($med);}
+h5 { @include font-size($norm);}
+
+@include respond(all-phones) {
+    h1 { @include font-size($xlarge);}
+    h2 { @include font-size($larger);}
+}
+
+#dokuwiki__content {
+    p, a, li, td, th, .fn {
+        font-family: $font-content;
+    }
+    
+    p {
+        @include respond(portrait-tablets) {
+            @include font-size($base-font-size);
+        }
+    }
+    .wikilink2 {
+        color: $orange;
+        border: none;
+    }
+    
+    ul, ol {
+        margin-left: 2em;
+        margin-bottom: $base-line-height / 2;
+    }
+    li { padding: 0; }
+    ul li { list-style: disc; } 
+    ul > li > ul, 
+    ul > li > ol, 
+    ol > li > ol, 
+    ol > li > ul {
+        margin: 0 0 0 1em;
+    }
+
+    sub, sup {
+        font-size: $small;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+    }
+    sup {
+        top: -0.5em;
+    }
+    sub {
+        bottom: -0.25em;
+    }
+
+    .fn {
+        font-size: $small;
+    }
+
+    pre, code, kbd, samp {
+        font-family: $font-monospace;
+    }
+    code, kbd, samp {
+        word-break: break-all;
+    }
+    pre { 
+        font-size: $small;
+        padding: .5em 1em;
+        margin-bottom: $base-line-height / 2;
+        background-color: $pre-bg-color;
+        overflow: scroll;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    abbr, acronym {
+        text-transform: none;
+        font-size: inherit;
+        color: inherit;
+        border-bottom: 1px solid $green;
+    }
+}
+
+hr {
+    border: none;
+    height: 1px;
+    background-color: $horizontal-rule-color;
+}
+
+// Sidebar
+#dokuwiki__sidebar {
+    h4 { font-size: $med; }
+    div, h5, p, a, li {
+        font-size: $small;
+        line-height: $norm;
+    }
+    hr {
+        margin: 6px 0 6px;
+    }
+}
+
+// TOC
+#dw__toc {
+    float: left;
+    margin: 0;
+    width: 100%;
+    background-color: inherit;
+    color: inherit;
+    &.active {
+        display:none;
+    }
+    h3 {
+        display:none; //Don't use the original DW heading
+    }
+    ul {
+        margin: 0 .5em .5em 0;
+    }
+    a {
+        line-height: $small;
+        margin-bottom: $norm - $small;
+    }
+    @include respond(all-phones) {
+        display: none;
+        &.active {
+            display: inherit;
+        }
+    }
+}
+
+// Status Bar and Page Info
+#status__bar, #page__info {
+    font-size: $small;
+    margin-bottom: 0.5em;
+}
+
+// Visibility
+
+.hide-on-phones {
+    @include hidden(portrait-tablets);
+    @include visible(desktop);
+}
+
+.show-on-phones {
+    @include visible(portrait-tablets);
+    @include hidden(desktop);
+}
+
+

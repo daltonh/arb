@@ -1,0 +1,7 @@
+base     breeze
+author   Florian Wehner
+email    florian@whnr.de
+date     2014-08-15 
+name     Breeze 
+desc     Clean and clear Typography that will change quite a bit soon. Colors based on Solarized. Gumby Framework underneath.
+url      https://www.dokuwiki.org/template:breeze

@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 # file misc/plot_step/plot_step.pl
 #
-# Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+# Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
 # 

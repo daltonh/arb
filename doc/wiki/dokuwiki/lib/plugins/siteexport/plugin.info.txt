@@ -1,0 +1,9 @@
+# General Plugin Info do not edit
+
+base   siteexport
+author i-net software
+email  tools@inetsoftware.de
+date   2015-08-12
+name   Site Export
+desc   exports the dokuwiki site in the given format
+url    https://www.dokuwiki.org/plugin:siteexport

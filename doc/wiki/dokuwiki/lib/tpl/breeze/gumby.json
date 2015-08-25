@@ -1,0 +1,7 @@
+{
+	"build": {
+		"gumbyPath": "bower_components/gumby",
+		"outPath": "js",
+                "addons": ["bower_components/gumby-fittext/gumby.fittext.js"]
+	}
+}

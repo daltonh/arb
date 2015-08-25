@@ -1,0 +1,29 @@
+/* Tables */
+
+table {
+    width: initial;
+    min-width: 50%;
+    margin-left: auto;
+    margin-right: auto;
+    border-style: $table-border-style none;
+    border-size: $table-border-size;
+    border-color: $table-border-color;
+    
+    thead th,
+    tbody td,
+    tr td {
+        border-top: none;
+    }
+
+    tr:hover {
+        background-color: $table-stripe-bgcolor;
+    }
+    thead {
+        background-color: $table-thead-bgcolor;
+        color: $table-head-color;
+        tr th {
+            border-bottom: $table-cell-border-size $table-cell-border-style $table-cell-border-color;
+        }
+    }
+}
+

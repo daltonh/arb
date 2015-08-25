@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="no-js">
+<head>
+    <meta charset="utf-8" />
+    <title>start [arb manual]</title>
+    <script>(function(H){H.className=H.className.replace(/\bno-js\b/,'js')})(document.documentElement)</script>
+    <meta name="generator" content="DokuWiki"/>
+<meta name="robots" content="noindex,nofollow"/>
+<meta name="keywords" content="start"/>
+<link rel="search" type="application/opensearchdescription+xml" href="lib/exe/opensearch.html" title="arb manual"/>
+<link rel="start" href="start.html"/>
+<link rel="contents" href="start.html" title="Sitemap"/>
+<link rel="alternate" type="application/rss+xml" title="Recent Changes" />
+<link rel="alternate" type="application/rss+xml" title="Current namespace" />
+<link rel="edit" title="Edit this page" href="start.html"/>
+<link rel="alternate" type="text/html" title="Plain HTML" href="start.html"/>
+<link rel="alternate" type="text/plain" title="Wiki Markup" href="start.html"/>
+<link rel="canonical" href="http://localhost/arb_dokuwiki/"/>
+<link rel="stylesheet" type="text/css" href="lib/exe/css.php.t.dokuwiki.css"/>
+<script type="text/javascript">/*<![CDATA[*/var NS='';var SIG=' --- //[[daltonh@unimelb.edu.au|Dalton Harvie]] 2015/08/24 23:52//';var JSINFO = {"id":"start","namespace":"","showbookcreatorpagetool":true,"DOKU_COOKIE_PARAM":{"path":"\/arb_dokuwiki\/","secure":false}};
+/*!]]>*/</script>
+<script type="text/javascript" charset="utf-8" src="lib/exe/js.php.t.dokuwiki.js"></script>
+<script type="text/x-mathjax-config">/*<![CDATA[*/MathJax.Hub.Config({
+    tex2jax: {
+        inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+        displayMath: [ ["$$","$$"], ["\\[","\\]"] ],
+        processEscapes: true
+    }
+});
+/*!]]>*/</script>
+<script type="text/javascript" charset="utf-8" src="cdn.mathjax.org/mathjax/latest/MathJax.0bfd08f327a4d922c87db63c3651fcaa.js"></script>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="shortcut icon" href="lib/tpl/dokuwiki/images/favicon.ico" />
+<link rel="apple-touch-icon" href="lib/tpl/dokuwiki/images/apple-touch-icon.png" />
+    </head>
+
+<body>
+    <!--[if lte IE 8 ]><div id="IE8"><![endif]-->
+    <div id="dokuwiki__site"><div id="dokuwiki__top" class="site dokuwiki mode_show tpl_dokuwiki loggedIn  home showSidebar hasSidebar">
+
+        
+            <!-- ********** CONTENT ********** -->
+            <div id="dokuwiki__content"><div class="pad group">
+                <div class="notify">Hotfix release available: 2015-08-10a "Detritus".
+          <a href="http://download.dokuwiki.org">upgrade now!</a> [47.1] <a href="http://www.dokuwiki.org/update_check">(what's this?)</a></div>
+                <div class="pageId"><span>start</span></div>
+
+                <div class="page group">
+                                                            <!-- wikipage start -->
+                    <!-- TOC START -->
+<div id="dw__toc">
+<h3 class="toggle">Table of Contents</h3>
+<div>
+
+<ul class="toc">
+<li class="level1"><div class="li"><a href="#arb_manual">arb manual</a></div>
+<ul class="toc">
+<li class="level2"><div class="li"><a href="#what_is_arb">What is arb?</a></div></li>
+<li class="level2"><div class="li"><a href="#what_is_needed_to_run_arb">What is needed to run arb?</a></div></li>
+<li class="level2"><div class="li"><a href="#licence">Licence</a></div></li>
+</ul></li>
+</ul>
+</div>
+</div>
+<!-- TOC END -->
+
+<h1 class="sectionedit1" id="arb_manual">arb manual</h1>
+<div class="level1">
+
+</div>
+<div class='secedit editbutton_section editbutton_1'><form class="button btn_secedit" method="post" action="/arb_dokuwiki/doku.html.doku.php.html"><div class="no"><input type="hidden" name="do" value="edit" /><input type="hidden" name="rev" value="1440417756" /><input type="hidden" name="summary" value="[arb manual] " /><input type="hidden" name="target" value="section" /><input type="hidden" name="range" value="1-26" /><input type="hidden" name="id" value="start" /><button type="submit" title="arb manual" />Edit</button></div></form></div>
+<h2 class="sectionedit2" id="what_is_arb">What is arb?</h2>
+<div class="level2">
+
+<p>
+arb solves arbitrary partial differential equations on unstructured meshes using the finite volume method.  The code is written in fortran95, with some meta-programming done in perl with help from maxima.
+</p>
+
+<p>
+The primary strengths of arb are:
+</p>
+<ul>
+<li class="level1"><div class="li"> All equations and variables are defined using `maths-type&#039; expressions written by the user, and hence can be easily tailored to each application;</div>
+</li>
+<li class="level1"><div class="li"> All equations are solved simultaneously using a Newton-Raphson method, so implicitly discretised equations can be solved efficiently; and</div>
+</li>
+<li class="level1"><div class="li"> The unstructured mesh over which the equations are solved can be componsed of all sorts of convex polygons/polyhedrons.</div>
+</li>
+</ul>
+
+</div>
+<div class='secedit editbutton_section editbutton_2'><form class="button btn_secedit" method="post" action="/arb_dokuwiki/doku.html.doku.php.html"><div class="no"><input type="hidden" name="do" value="edit" /><input type="hidden" name="rev" value="1440417756" /><input type="hidden" name="summary" value="[What is arb?] " /><input type="hidden" name="target" value="section" /><input type="hidden" name="range" value="27-709" /><input type="hidden" name="id" value="start" /><button type="submit" title="What is arb?" />Edit</button></div></form></div>
+<h2 class="sectionedit3" id="what_is_needed_to_run_arb">What is needed to run arb?</h2>
+<div class="level2">
+
+<p>
+arb requires a UNIX type environment to run, and has been tested on both the Apple OsX and ubuntu linux platforms. Certain third party programs are used by arb:
+</p>
+<ul>
+<li class="level1"><div class="li"> A fortran compiler; ifort and gfortran are supported;</div>
+</li>
+<li class="level1"><div class="li"> The computer algebra system <a href="http://maxima.sourceforge.net" class="urlextern" title="http://maxima.sourceforge.net"  rel="nofollow">maxima</a>;</div>
+</li>
+<li class="level1"><div class="li"> A sparse matrix linear solver: <a href="http://www.cise.ufl.edu/research/sparse/umfpack/" class="urlextern" title="http://www.cise.ufl.edu/research/sparse/umfpack/"  rel="nofollow">UMFPACK</a>, <a href="http://www.pardiso-project.org/" class="urlextern" title="http://www.pardiso-project.org/"  rel="nofollow">pardiso</a>, and (currently a single) Harwell Subroutine Library routines are supported; and</div>
+</li>
+<li class="level1"><div class="li"> The mesh generator <a href="http://geuz.org/gmsh/" class="urlextern" title="http://geuz.org/gmsh/"  rel="nofollow">gmsh</a></div>
+</li>
+</ul>
+
+<p>
+Further details about how to install arb are given in <a href="installation" class="wikilink2" title="installation" rel="nofollow">Installation</a>.
+</p>
+
+</div>
+<div class='secedit editbutton_section editbutton_3'><form class="button btn_secedit" method="post" action="/arb_dokuwiki/doku.html.doku.php.html"><div class="no"><input type="hidden" name="do" value="edit" /><input type="hidden" name="rev" value="1440417756" /><input type="hidden" name="summary" value="[What is needed to run arb?] " /><input type="hidden" name="target" value="section" /><input type="hidden" name="range" value="710-1392" /><input type="hidden" name="id" value="start" /><button type="submit" title="What is needed to run arb?" />Edit</button></div></form></div>
+<h2 class="sectionedit4" id="licence">Licence</h2>
+<div class="level2">
+
+<p>
+arb is copyright Dalton Harvie (2009–2015), but released under the <a href="http://www.gnu.org/licenses/gpl.html" class="urlextern" title="http://www.gnu.org/licenses/gpl.html"  rel="nofollow">GNU General Public License</a>.  Full details of the licence are in <a href="working_dir/licence/arb_licence.txt" class="media mediafile mf_txt" title="working_dir:licence:arb_licence.txt (1.4 KB)">arb_licence.txt</a>
+</p>
+
+</div>
+<div class='secedit editbutton_section editbutton_4'><form class="button btn_secedit" method="post" action="/arb_dokuwiki/doku.html.doku.php.html"><div class="no"><input type="hidden" name="do" value="edit" /><input type="hidden" name="rev" value="1440417756" /><input type="hidden" name="summary" value="[Licence] " /><input type="hidden" name="target" value="section" /><input type="hidden" name="range" value="1393-" /><input type="hidden" name="id" value="start" /><button type="submit" title="Licence" />Edit</button></div></form></div>
+                    <!-- wikipage stop -->
+                                    </div>
+
+                <div class="docInfo"><bdi>start.txt</bdi> · Last modified: 2015/08/24 23:02 (external edit)</div>
+
+                            </div></div><!-- /content -->
+
+            <hr class="a11y" />
+
+            <!-- PAGE ACTIONS -->
+            <div id="dokuwiki__pagetools">
+                <h3 class="a11y">Page Tools</h3>
+                <div class="tools">
+                    <ul>
+                        <li><a href="start.html"  class="action edit" accesskey="e" rel="nofollow" title="Edit this page [E]"><span>Edit this page</span></a></li><li><a href="start.html"  class="action revs" accesskey="o" rel="nofollow" title="Old revisions [O]"><span>Old revisions</span></a></li><li><a href="start.html"  class="action backlink" rel="nofollow" title="Backlinks"><span>Backlinks</span></a></li><li>    <a href=/arb_dokuwiki/doku.php?id=start&amp;do=addtobook  class="action addtobook" rel="nofollow" title="Add to book">        <span>Add to book</span>    </a></li><li><a href="#dokuwiki__top"  class="action top" accesskey="t" rel="nofollow" title="Back to top [T]"><span>Back to top</span></a></li><li><a href="start.html"  class="action siteexport_addpage" title="Add page"><span>Export Page</span></a></li>                    </ul>
+                </div>
+            </div>
+        </div><!-- /wrapper -->
+
+        
+<!-- ********** FOOTER ********** -->
+<div id="dokuwiki__footer"><div class="pad">
+    <div class="license">Except where otherwise noted, content on this wiki is licensed under the following license: <bdi><a href="http://www.gnu.org/licenses/fdl-1.3.html" rel="license" class="urlextern">GNU Free Documentation License 1.3</a></bdi></div>
+    <div class="buttons">
+        <a href="http://www.gnu.org/licenses/fdl-1.3.html" rel="license"><img src="lib/images/license/button/gnufdl.png" alt="GNU Free Documentation License 1.3" /></a>        <a href="http://www.dokuwiki.org/donate" title="Donate" ><img
+            src="lib/tpl/dokuwiki/images/button-donate.gif" width="80" height="15" alt="Donate" /></a>
+        <a href="http://www.php.net" title="Powered by PHP" ><img
+            src="lib/tpl/dokuwiki/images/button-php.gif" width="80" height="15" alt="Powered by PHP" /></a>
+        <a href="http://validator.w3.org/check/referer" title="Valid HTML5" ><img
+            src="lib/tpl/dokuwiki/images/button-html5.png" width="80" height="15" alt="Valid HTML5" /></a>
+        <a href="http://jigsaw.w3.org/css-validator/check/referer?profile=css3" title="Valid CSS" ><img
+            src="lib/tpl/dokuwiki/images/button-css.png" width="80" height="15" alt="Valid CSS" /></a>
+        <a href="http://dokuwiki.org/" title="Driven by DokuWiki" ><img
+            src="lib/tpl/dokuwiki/images/button-dw.png" width="80" height="15" alt="Driven by DokuWiki" /></a>
+    </div>
+</div></div><!-- /footer -->
+
+    </div></div><!-- /site -->
+
+    <div class="no"><img  width="2" height="1" alt="" /></div>
+    <div id="screen__mode" class="no"></div>    <!--[if lte IE 8 ]></div><![endif]-->
+</body>
+</html>

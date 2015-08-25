@@ -1,0 +1,144 @@
+/* Form Styles */
+
+
+
+form fieldset {
+    max-width: 500px;
+    border-color: $form-border-color;// FIXME
+}
+
+label {
+    &.block {
+        display: block;
+        text-align: right;
+        select, input.edit {
+            width: 50%;
+        }
+    }
+    &.simple {
+        display: block;
+        text-align: left;
+    }
+    span {
+        font-size: $small;
+        display: inline-block;
+        padding-right: 10px;
+        text-align: left;
+    }
+}
+
+input.edit {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    border: none;
+    outline: none;
+    resize: none;
+    -webkit-appearance: none;
+    font-family: $font-family;
+    font-weight: $font-weight-light;
+    @include font-size($norm);
+    @include box-shadow(none);
+    position: relative;
+    padding: 0 10px;
+    background: #fff;
+    border: 1px solid $form-border-color;// FIXME
+    @include line-and-height(height-calc($norm));
+    @include border-radius(4px);
+}
+select.edit {
+    position: relative;
+    width: auto;
+    max-width: 100%;
+    display: inline-block;
+    margin: 0 0 2px 1.2%;
+    overflow: hidden;
+    border:  1px solid $form-border-color;// FIXME
+    @include font-size($norm);
+    @include box-shadow(none);
+    @include border-radius(4px);
+    font-family: $font-family;
+    font-weight: $font-weight-light;
+    height: auto;
+    background-image: none; //FIXME
+    background-color: $default-color; //FIXME
+    &:after {
+        content: "\E75C";
+        font-family: $icons;
+        z-index: 0;
+        position:absolute;
+        right: 8%;
+        top: 50%;
+        margin-top: -12px;
+        color: $body-font-color;
+    }
+    &:first-child {
+        margin-left: 0;
+    }
+    option {
+        position: relative;
+        display: block;
+        min-width: 100%;
+        width: 135%;
+        height: 34px;
+        padding: 6px 45px 6px 15px;
+        color: $body-font-color;
+        border: none;
+        background: transparent;
+        outline: none;
+        -webkit-appearance: none;
+        z-index: 99;
+        cursor: pointer;
+        @include font-size($norm);
+    }
+    option::-ms-expand {
+        display: none;
+    }
+}
+
+[disabled] { opacity: .5; }
+
+.js .field {
+    .radio, .checkbox {
+        @each $error in danger $danger-color, warning $warning-color, success $success-color {
+            &.#{nth($error, 1)} {
+                color: nth($error, 2);
+                @if nth($error, 1) == success {
+                    color: $body-font-color;
+                    i { color: nth($error, 2); }
+                }
+                span {
+                    border-color: nth($error, 2);
+                    color: nth($error, 2);
+                    background: lighten(nth($error, 2), 35%);
+                    @include transition-duration(.2s);
+                }
+            }
+        }
+        position: relative;
+        &.checked i {
+            position: absolute;
+            top: -1px;
+            left: -8px;
+            line-height: 16px;
+        }
+        span {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            position: relative;
+            top: 2px;
+            border: solid 1px #ccc;
+            background: #fefefe;
+        }
+        input[type="radio"], input[type="checkbox"] {
+            display: none;
+        }
+    }
+    .radio span {
+        @include border-radius(8px);
+    }
+    .checkbox span {
+        @include border-radius(3px);
+    }
+}
