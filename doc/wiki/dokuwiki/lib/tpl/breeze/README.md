@@ -1,4 +1,0 @@
-breeze
-======
-
-Dokuwiki Template

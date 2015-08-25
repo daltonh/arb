@@ -1,3 +1,0 @@
-====== Site Export Beheerder ======
-
-Deze pagina stelt u in staat om de het site te exporteren naar elk formaat waarvoor u een renderer heeft.

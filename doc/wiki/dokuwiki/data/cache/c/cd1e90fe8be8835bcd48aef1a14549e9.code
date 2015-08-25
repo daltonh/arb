@@ -1,1 +1,0 @@
-CELL_LOCAL &lt;tau[l=1,1]&gt; [Pa] &quot;&lt;mu&gt;*(facediv[l=2](&lt;u[l=1]&gt;))&quot; output # a comment
