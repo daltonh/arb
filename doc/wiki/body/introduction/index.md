@@ -10,12 +10,17 @@ arb solves arbitrary partial differential equations on unstructured meshes using
 
 The primary strengths of arb are:
 
-* All equations and variables are defined using 'maths-type' expressions written by the user, and hence can be easily tailored to each application, for example;
+* All equations and variables are defined using 'maths-type' expressions written by the user, and hence can be tailored to each application, for example;
 ```arb
-CELL_UNKNOWN <temperature> [K] "<P>*<V>/(<R>)" ON <all cells> # an unknown temperature field
+CELL_UNKNOWN <temperature> [K] "<P>*<V>/(<R>)" ON <all cells> # an unknown temperature field, with units Kelvin, its expression in terms of other variables, and the region (of in this case cells) over which it is defined
 ```
 * All equations are solved simultaneously using a Newton-Raphson method, so implicitly discretised equations can be solved efficiently; and
 * The unstructured mesh over which the equations are solved can be componsed of all sorts of convex polygons/polyhedrons.
+
+The disadvantages of arb are:
+
+* There is no graphical user interface for problem setup, so the learning curve is steeper; and
+* There are some more efficient (either faster or less memory intensive) algorithms out there for specific problems.
 
 ## What is needed to run arb?
 
@@ -32,10 +37,11 @@ Further details about how to install arb are given in [Installation](../installa
 
 arb is copyright Dalton Harvie (2009–2015), but released under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).  Full details of the licence are in the [arb licence file](../working_dir/licence/arb_licence.txt).
 
+<!---
 ```bash
 echo "some bash string";
 ```
 
 $t=4$
-
+-->
 
