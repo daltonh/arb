@@ -53,8 +53,10 @@ print :
 createhtmlbodyfiles : $(htmlbodyfiles)
 
 # define generic rule to create the htmlbodyfiles
+#%.html : %.md
+#	pandoc -S -c ../../$(bodycssfile) --toc $< -o $@
 %.html : %.md
-	pandoc -S -c ../../$(bodycssfile) --toc $< -o $@
+	assembler/assembler.pl < $< > $@
 
 # clean all files
 clean : clean_html

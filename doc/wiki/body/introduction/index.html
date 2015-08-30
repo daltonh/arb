@@ -1,3 +1,4 @@
+<!-- cwd file from assemnbler /Users/daltonh/codes/arb/development/current/doc/wiki: arb version = 0.54 --><!-- pre comments -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -6,24 +7,21 @@
   <meta name="generator" content="pandoc" />
   <title></title>
   <style type="text/css">code{white-space: pre;}</style>
-  <link rel="stylesheet" href="../.././css/arb_body.css" type="text/css" />
+  <link rel="stylesheet" href="/Users/daltonh/codes/arb/development/current/doc/wiki/css/arb_body.css" type="text/css" />
+  <link rel="stylesheet" href="/Users/daltonh/codes/arb/development/current/doc/wiki/css/arb_main.css" type="text/css" />
 </head>
 <body>
-<div id="TOC">
-<ul>
-<li><a href="#an-introduction-to-arb">An introduction to arb</a><ul>
-<li><a href="#what-is-arb">What is arb?</a></li>
-<li><a href="#what-is-needed-to-run-arb">What is needed to run arb?</a></li>
-<li><a href="#licence">Licence</a></li>
-</ul></li>
-</ul>
-</div>
+<!-- add a blank left margin here-->
+<!--<div id=leftcolumn></div>-->
+<div id=maincolumn>
+<!-- pre comments -->
+
 <h1 id="an-introduction-to-arb">An introduction to arb</h1>
 <h2 id="what-is-arb">What is arb?</h2>
 <p>arb solves arbitrary partial differential equations on unstructured meshes using the finite volume method. The code is written in fortran95, with some meta-programming done in perl with help from maxima.</p>
 <p>The primary strengths of arb are:</p>
 <ul>
-<li><p>All equations and variables are defined using ‘maths-type’ expressions written by the user, and hence can be tailored to each application, for example;</p>
+<li><p>All equations and variables are defined using 'maths-type' expressions written by the user, and hence can be tailored to each application, for example;</p>
 <pre class="arb"><code>CELL_UNKNOWN &lt;temperature&gt; [K] &quot;&lt;P&gt;*&lt;V&gt;/(&lt;R&gt;)&quot; ON &lt;all cells&gt; # an unknown temperature field, with units Kelvin, its expression in terms of other variables, and the region (of in this case cells) over which it is defined</code></pre></li>
 <li>All equations are solved simultaneously using a Newton-Raphson method, so implicitly discretised equations can be solved efficiently; and</li>
 <li><p>The unstructured mesh over which the equations are solved can be componsed of all sorts of convex polygons/polyhedrons.</p></li>
@@ -41,9 +39,9 @@
 <li>A sparse matrix linear solver: <a href="http://www.cise.ufl.edu/research/sparse/umfpack/">UMFPACK</a>, <a href="http://www.pardiso-project.org/">pardiso</a>, and (currently a single) Harwell Subroutine Library routines are supported; and</li>
 <li>The mesh generator <a href="http://geuz.org/gmsh/">gmsh</a>.</li>
 </ul>
-<p>Further details about how to install arb are given in <a href="../installation/index.html">Installation</a>.</p>
+<p>Further details about how to install arb are given in <a href="/Users/daltonh/codes/arb/development/current/doc/wiki/body/installation/index.html">Installation</a>.</p>
 <h2 id="licence">Licence</h2>
-<p>arb is copyright Dalton Harvie (2009–2015), but released under the <a href="http://www.gnu.org/licenses/gpl.html">GNU General Public License</a>. Full details of the licence are in the <a href="../working_dir/licence/arb_licence.txt">arb licence file</a>.</p>
+<p>arb is copyright Dalton Harvie (2009–2015), but released under the <a href="http://www.gnu.org/licenses/gpl.html">GNU General Public License</a>. Full details of the licence are in the <a href="/Users/daltonh/codes/arb/development/current/doc/wiki/working_dir/licence/arb_licence.txt">arb licence file</a>.</p>
 <!---
 ```bash
 echo "some bash string";
@@ -51,5 +49,20 @@ echo "some bash string";
 
 $t=4$
 -->
+<!-- post comments -->
+</div>
+<div id=rightheader>
+<h1>arb</h1>
+<h2>0.54</h2>
+<h3>manual</h3>
+</div>
+<div id=rightcontents>
+<ul>
+<li><a href="/Users/daltonh/codes/arb/development/current/doc/wiki/body/installation/index.html">installation</a></li>
+<li><a href="/Users/daltonh/codes/arb/development/current/doc/wiki/body/introduction/index.html">introduction</a></li>
+</ul>
+
+</div>
 </body>
 </html>
+<!-- post comments -->
