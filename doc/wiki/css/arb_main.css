@@ -7,16 +7,25 @@
 
 */
 
+a:hover {
+/*  color: red; */
+  color: #9F00E9; /* lighter purple */
+}
+
 #rightheader {
     font-family: "Helvetica Neue", Helvetica, "Liberation Sans", Calibri, Arial, sans-serif; /* Sans-serif headers */
         font-size: 80%;
         position: fixed;
-        color: gray;
+        color: red;
+  color: #030089; /* bluey blue */
+  color: #040099; /* lighter bluey blue */
+  color: #2D2873; /* darker steely blue */
+  color: #610090; /* darker purple */
         padding: 0px 20px 0px 20px;
         top: 0px;
         right: 0px;
         width: 110px;
-  text-align: right;
+  text-align: left;
 }
 
 /*#rightheader p {
@@ -36,30 +45,64 @@
   margin: 0px;
 }
 #rightheader h3 {
-  font-size:15px;
+  font-size:20px;
   padding: 0px;
   margin: 0px;
 }
 
-#maincolumn {
-  float: left;
-  width: auto;
-  margin-left: 100px;
-  margin-right: 150px;
+#container {
+/*  float: center;
+  width: 1050px;
+  margin: auto; */
+  margin-left: auto;
+  margin-right: auto;
 }
+
+#maincolumn {
+  float: center;
+  width: auto;
+  max-width: 900px;
+  margin-left: 110px;
+  margin-right: 160px;
+}
+
 #rightcontents {
     font-family: "Helvetica Neue", Helvetica, "Liberation Sans", Calibri, Arial, sans-serif; /* Sans-serif headers */
-        font-size: 100%;
+        font-size: 90%;
         position: fixed;
         color: gray;
         bottom: 0px;
         right: 0px;
         width: 110px;
 /*        padding: 0px 20px 0px 20px; */
-        padding: 20px;
+/*        padding: 20px; */
+        padding: 0px 20px 0px 20px;
+        margin: 0px;
   text-align: left;
+  overflow: auto;
+/* height: 50%; */
+  max-height: 70%;
+  vertical-align: bottom;
 }
-#rightcontents li {
+#rightcontents li ul {
   padding: 0px;
   margin: 0px;
+  vertical-align: bottom;
+}
+#rightcontents ul {
+    list-style-type: none;
+    padding-left:0;
+}
+#rightcontents a:link {
+        color: gray;
+}
+#rightcontents a:visited {
+        color: gray;
+}
+#rightcontents a:hover {
+/*  color: red; */
+  color: #9F00E9; /* lighter purple */
+}
+#active {
+        color: blue;
 }
