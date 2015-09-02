@@ -106,3 +106,14 @@ a:hover {
 #active {
         color: blue;
 }
+
+pre, code 
+    {
+    background-color: #111111;
+    font-weight: normal;
+    color: #808080;
+}
+pre 
+    {
+    font-size: 120%;
+}

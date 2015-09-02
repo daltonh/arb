@@ -55,7 +55,7 @@ createhtmlbodyfiles : $(htmlbodyfiles)
 # define generic rule to create the htmlbodyfiles
 #%.html : %.md
 #	pandoc -S -c ../../$(bodycssfile) --toc $< -o $@
-%.html : %.md
+%.html : %.md makefile assembler/assembler.pl assembler/assembler_pre.html assembler/assembler_post.html
 	assembler/assembler.pl < $< > $@
 
 # clean all files

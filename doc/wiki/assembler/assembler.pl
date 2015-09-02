@@ -30,28 +30,41 @@ my $assembler_dir="assembler";
 my $assembler_file_pre="$assembler_dir/assembler_pre.html";
 my $assembler_file_post="$assembler_dir/assembler_post.html";
 
-# run through file doing any replacements
+# assemble a list of replacements, as a hash
+my %replacements=();
+# linkrootdir
 my $cwd = getcwd;
+$replacements{"<<linkrootdir>>"}=$cwd;
+# workingdir
+$replacements{"<<workingdir>>"}=$cwd."/working_dir";
+# version
 my $version;
 open(SETUPEQS,"<working_dir/src/setup_equations.pl") or die "problem opening setup_equations.pl\n";
 while ($line=<SETUPEQS>) {
-  if ($line=~/\$version\s*=\s*"\s*(.+)\s*"\s*/) { $version=$1; last; }
+  if ($line=~/\$version\s*=\s*"\s*(.+)\s*"\s*/) { $replacements{"<<version>>"}=$1; last; }
 }
 close(SETUPEQS);
-print "<!-- cwd file from assemnbler $cwd: arb version = $version -->"; 
+print "<!-- cwd file from assembler $cwd: arb version = ".$replacements{"<<version>>"}." -->"; 
+# scripting
+$replacements{"```arb"}="```{.arb hl='vim'}";
+$replacements{"```fortran"}="```{.fortran hl='vim'}";
+$replacements{"```bash"}="```{.bash hl='vim'}";
+$replacements{"```sh"}="```{.sh hl='vim'}";
+$replacements{"```perl"}="```{.perl hl='vim'}";
+$replacements{"```maxima"}="```{.maxima hl='vim'}";
 
 # write material from pre template file to assembler_file
+my $assemblerfile='';
 open(ASSEMBLERFILE, "<$assembler_file_pre") or die "ASSEMBLERFILE ERROR: cannot open $assembler_file_pre\n";;
-while ($line=<ASSEMBLERFILE>) {
-  $line =~ s/<<linkrootdir>>/$cwd/g;
-  print $line;
-}
+while (<ASSEMBLERFILE>) { $assemblerfile=$assemblerfile.$_; }
 close(ASSEMBLERFILE);
+do_replacements($assemblerfile);
+print $assemblerfile;
 
 # input file
 #while ($line=<>) { print $line; }
 my $markdownfile;
-while ($line=<STDIN>) { $markdownfile=$markdownfile.$line; }
+while (<STDIN>) { $markdownfile=$markdownfile.$_; }
 
 # straight copy
 #print $markdownfile;
@@ -60,11 +73,10 @@ while ($line=<STDIN>) { $markdownfile=$markdownfile.$line; }
 #print $htmlfile;
 #print Pandoc->convert( $markdownfile );
 
-# now swapping linkrootdir
-$markdownfile =~ s/<<linkrootdir>>/$cwd/g;
+do_replacements($markdownfile);
 
 # do format conversion using pandoc
-my $htmlfile=Pandoc->convert( $markdownfile );
+my $htmlfile=Pandoc->convert( $markdownfile , filter => 'vimhl.hs' );
 
 #$htmlfile =~ s/linkrootdir/$cwd/g;
 print $htmlfile;
@@ -75,19 +87,28 @@ my $markdowncontents;
 my $content_name;
 foreach my $content_dir ( @content_dirs ) {
   ($content_name) = $content_dir =~ /body\/(.*)\/index.md/;
+  $content_name =~ s/_/ /g;
   my $content_link = $content_dir;
   $content_dir =~ s/.md$/.html/;
   $markdowncontents=$markdowncontents."* [$content_name]($cwd/$content_dir)\n";
 }
 my $htmlcontents=Pandoc->convert( $markdowncontents );
+$replacements{"<<contents>>"}=$htmlcontents;
 
 # write material from pre template file to assembler_file
 open(ASSEMBLERFILE, "<$assembler_file_post") or die "ASSEMBLERFILE ERROR: cannot open $assembler_file_post\n";;
-while ($line=<ASSEMBLERFILE>) {
-  $line =~ s/<<linkrootdir>>/$cwd/g;
-  $line =~ s/<<version>>/$version/g;
-  $line =~ s/<<contents>>/$htmlcontents/g;
- print $line; }
+while (<ASSEMBLERFILE>) { $assemblerfile=$assemblerfile.$_; }
 close(ASSEMBLERFILE);
+do_replacements($assemblerfile);
+print $assemblerfile;
 
 exit;
+
+######################################################################################
+# on input $_[0] is the string to operate on, using global %replacements hash
+sub do_replacements{
+  foreach my $key ( keys(%replacements) ) {
+    $_[0] =~ s/$key/$replacements{$key}/g;
+  }
+}
+######################################################################################
