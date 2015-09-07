@@ -19,7 +19,8 @@ CELL_UNKNOWN <temperature> [K] "<P>*<V>/(<R>)" ON <all cells> # represents an un
 
 Compared to other partial differential equation solvers the disadvantages of arb are:
 
-* There is no graphical user interface for problem setup, so the learning curve is steep; and
+* There is no graphical user interface for problem setup, so the learning curve is steep;
+* This manual needs work.  Tutorials are a good reference however, and
 * There are some more efficient (either faster or less memory intensive) algorithms out there for specific problems.
 
 ## What is needed to run arb?
