@@ -2374,6 +2374,18 @@ end function heaviside
 
 !-----------------------------------------------------------------
 
+function random
+
+! this generates a random number in the range 0 <= random < 1
+
+double precision :: random
+
+call random_number(random) ! this is an intrinsic function apparently
+
+end function random
+
+!-----------------------------------------------------------------
+
 function signum(x)
 
 ! this is the sign function as used in maxima

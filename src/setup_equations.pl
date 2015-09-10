@@ -6219,6 +6219,10 @@ sub create_system_variables {
 # $variable{"system"}[$m{"system"}]{"fortran"} = "(1.d-2*sqrt(huge(0.d0)))";
   $variable{"system"}[$m{"system"}]{"fortran"} = "hugeish";
   $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<random>"; # a random number within the range 0 <= random < 1
+  $variable{"system"}[$m{"system"}]{"maxima"} = "random";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "random()";
+  $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtstep>"; # double precision representation of newtstep
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtstep";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(newtstep)";

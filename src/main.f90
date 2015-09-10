@@ -68,6 +68,7 @@ end if
 ! now make nthreads = 1 for serial version
 nthreads = max(nthreads,1)
 
+call random_seed
 call time_process
 call setup ! sets up variable metadata, reads in values, allocates arrays, creates mesh, initialises fields etc
 call time_process(description='setup')
