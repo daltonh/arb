@@ -18,7 +18,7 @@ my %present_case = ();
 my $run_record_dir;
 our $output_dir = 'batcher_output';
 our %output = ();
-my ($n, $ndir);
+my ($n, $ndir, $prune_output_structure);
 my @case = (); # read in case using eval, deals with the possibility that batcher_setup.pm may have changed during the time the job has spent in the pbs queue
 
 our $input_dir="$output_dir/input_files"; # this will contain copies of the original arb, geo and msh input files

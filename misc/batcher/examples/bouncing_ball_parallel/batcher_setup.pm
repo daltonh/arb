@@ -3,7 +3,7 @@ use strict;
 use warnings;
  
 use Exporter qw(import);
-our @EXPORT_OK = qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name $pbs_module_load_commands);
+our @EXPORT_OK = qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name $pbs_module_load_commands $prune_output_structure);
 
 # choose either
 # parallel = 1 and pbs = 0 for local parallel batch
@@ -25,6 +25,9 @@ our $pbs_module_load_commands = ''; # for skink
 
 #our $pbs_queue_name = 'serial'; # for edward
 #our $pbs_module_load_commands = 'module load intel; module load maxima'; # for edward
+
+our $prune_output_structure = 1; # clear tmp, src, etc. from final run_* directories
+
 
 ###########################################################################################
 # within this subroutine you need to setup the case array of hashes
