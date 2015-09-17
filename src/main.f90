@@ -68,7 +68,8 @@ end if
 ! now make nthreads = 1 for serial version
 nthreads = max(nthreads,1)
 
-call random_seed
+call initialise_random_number ! initialise the random seed used to evaluate the arb variable <random>
+
 call time_process
 call setup ! sets up variable metadata, reads in values, allocates arrays, creates mesh, initialises fields etc
 call time_process(description='setup')

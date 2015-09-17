@@ -2374,7 +2374,7 @@ end function heaviside
 
 !-----------------------------------------------------------------
 
-function random
+function random()
 
 ! this generates a random number in the range 0 <= random < 1
 
@@ -5032,6 +5032,26 @@ else
 end if
 
 end function facefromcelldirection
+
+!-----------------------------------------------------------------
+
+subroutine initialise_random_number
+
+! call the random_seed subroutine with a set of integers based on the time
+
+integer :: clock, seed_size, n ! for random seed
+integer, dimension(:), allocatable :: seed
+
+call random_seed(size=seed_size)
+allocate(seed(seed_size))
+do n = 1, seed_size
+  call system_clock(clock)
+  seed(n)=int(clock)
+end do
+call random_seed(put=seed) ! for gnu compiler need to generate unique seed, put needs to be random itself...
+deallocate(seed)
+
+end subroutine initialise_random_number
 
 !-----------------------------------------------------------------
 
