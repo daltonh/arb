@@ -21,6 +21,7 @@ sub arbthread {
   my %output = %main::output; # local copy
   my $output_dir = $main::output_dir; # local copy
   my $parallel = $main::parallel; # local copy
+  my $prune_output_structure = $main::prune_output_structure; # local copy
   my $run_in_main = $main::run_in_main; # local copy
   my $stopfile = 'batcher_stop';
 
@@ -130,55 +131,56 @@ sub arbthread {
     close(OUTPUT);
   }
 
-  if (not $run_in_main) {
-    # remove files/directories from run_record_dir
-    # though, anything in the following grep pattern is *retained*
-    opendir(RUNDIR, $run_record_dir) or die "BATCHER ERROR: could not open $run_record_dir\n";
-    my @to_delete = grep(!/^\.+|output|tmp|input_mesh|batcher_info.txt|batcher_pbs_variables.txt|job.pbs|\.arb$/, readdir(RUNDIR));
-    closedir(RUNDIR);
-    print "BATCHER_INFO: cleaning files in $run_record_dir\n";
-    for my $entry (@to_delete) {
-      if (-f "$run_record_dir/$entry") {
-        unlink("$run_record_dir/$entry");
-      } else {
-        rmtree("$run_record_dir/$entry");
+  if ($prune_output_structure) {
+    if (not $run_in_main) {
+      # remove files/directories from run_record_dir
+      # though, anything in the following grep pattern is *retained*
+      opendir(RUNDIR, $run_record_dir) or die "BATCHER ERROR: could not open $run_record_dir\n";
+      my @to_delete = grep(!/^\.+|output|tmp|input_mesh|batcher_info.txt|batcher_pbs_variables.txt|job.pbs|\.arb$/, readdir(RUNDIR));
+      closedir(RUNDIR);
+      print "BATCHER_INFO: cleaning files in $run_record_dir\n";
+      for my $entry (@to_delete) {
+        if (-f "$run_record_dir/$entry") {
+          unlink("$run_record_dir/$entry");
+        } else {
+          rmtree("$run_record_dir/$entry");
+        }
       }
     }
+
+    my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/convergence_details.txt", "tmp/setup/current_unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt");
+    if (not $run_in_main) {
+      my @output_msh_files = bsd_glob("$run_record_dir/output/output*.msh");
+      foreach my $item (@output_msh_files) {
+        $item =~ s/$run_record_dir\///g;
+      }
+      push(@output_search, @output_msh_files);
+    } else {
+      push(@output_search, bsd_glob("output/output*.msh"));
+    }
+
+  # save all output files that are present, including msh files
+    for my $output_file (@output_search) {
+      if (not $run_in_main) {
+        #my $ls_command = "ls $run_record_dir/output";
+        #system($ls_command);
+        if (-e "$run_record_dir/$output_file") {
+          #print "BATCHER_DEBUG: moving $run_record_dir/$output_file to $run_record_dir\n";
+          move("$run_record_dir/$output_file",$run_record_dir) or error_stop("could not copy $run_record_dir/$output_file to run record directory $run_record_dir");
+        } 
+      } else {
+        if (-e "$output_file") {
+          copy("$output_file",$run_record_dir) or error_stop("could not copy $output_file to run record directory $run_record_dir"); 
+        }
+      }
+    }
+
+    if (not $run_in_main) {
+      # remove trace of everything else
+      rmtree("$run_record_dir/output");
+      rmtree("$run_record_dir/tmp");
+    }
   }
-
-   my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/convergence_details.txt", "tmp/setup/current_unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt");
-   if (not $run_in_main) {
-     my @output_msh_files = bsd_glob("$run_record_dir/output/output*.msh");
-     foreach my $item (@output_msh_files) {
-       $item =~ s/$run_record_dir\///g;
-     }
-     push(@output_search, @output_msh_files);
-   } else {
-     push(@output_search, bsd_glob("output/output*.msh"));
-   }
-
- # save all output files that are present, including msh files
-   for my $output_file (@output_search) {
-     if (not $run_in_main) {
-       #my $ls_command = "ls $run_record_dir/output";
-       #system($ls_command);
-       if (-e "$run_record_dir/$output_file") {
-         #print "BATCHER_DEBUG: moving $run_record_dir/$output_file to $run_record_dir\n";
-         move("$run_record_dir/$output_file",$run_record_dir) or error_stop("could not copy $run_record_dir/$output_file to run record directory $run_record_dir");
-       } 
-     } else {
-       if (-e "$output_file") {
-         copy("$output_file",$run_record_dir) or error_stop("could not copy $output_file to run record directory $run_record_dir"); 
-       }
-     }
-   }
-
-   if (not $run_in_main) {
-     # remove trace of everything else
-     rmtree("$run_record_dir/output");
-     rmtree("$run_record_dir/tmp");
-   }
-   
 # clear all output results before starting the next run
   for my $key ( keys(%output) ) { $output{"$key"}=''; }
 

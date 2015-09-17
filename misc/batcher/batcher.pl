@@ -21,7 +21,7 @@ use File::Path qw(mkpath rmtree); # for File::Path version < 2.08, http://perldo
 use File::Copy qw(move copy);
 use File::Glob ':glob'; # deals with whitespace better
 use Thread; # for simultaneous jobs
-use batcher_setup qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name $pbs_module_load_commands); # brings in the user-written module that defines case-specific data
+use batcher_setup qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name $pbs_module_load_commands $prune_output_structure); # brings in the user-written module that defines case-specific data
 
 our $run_in_main = 1;
 if ($parallel) {
@@ -113,11 +113,12 @@ for my $n ( 0 .. $#case ) {
   print PBS "#INFO: code within this file is evaluated by batcher\n";
   print PBS "#INFO: information for present case (likely set by batcher_setup.pm)\n";
   print PBS Data::Dumper->Dump([$case[$n]], ['*present_case']);
-  print PBS "#INFO: we're we are:\n";
+  print PBS "#INFO: where we are:\n";
   print PBS Data::Dumper->Dump([$run_record_dir], ['*run_record_dir']);
   print PBS Data::Dumper->Dump([\%output], ['*output']);
   print PBS Data::Dumper->Dump([$n], ['*n']);
   print PBS Data::Dumper->Dump([$ndir], ['*ndir']);
+  print PBS Data::Dumper->Dump([$prune_output_structure], ['*prune_output_structure']);
   close(PBS);
 
 #-----------------
