@@ -1213,11 +1213,16 @@ do m = 1, ubound(var,1)
       ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//': something catastrophic')
 ! this check is redundant as only the update_region will be dynamic - the region is the static parent of the update_region if the latter is dynamic
     if (region(var(m)%region_number)%dynamic) call error_stop('the region '//trim(var(m)%region)// &
-      ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)//' is dynamic: only static (gmsh, setup and system) regions'// &
+      ' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)// &
+      ' is dynamic: only static (gmsh, setup and system) regions'// &
       ' can be used to define variables')
-    if (allocatable_size(region(var(m)%region_number)%ijk) == 0) call error_stop('there is a problem with region '// &
+! let a variable assigned to a region with no elements, and hence no values, work, with a warning
+!   if (allocatable_size(region(var(m)%region_number)%ijk) == 0) call error_stop('there is a problem with region '// &
+!     trim(var(m)%region)//' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)// &
+!     ': the region contains no elements')
+    if (allocatable_size(region(var(m)%region_number)%ijk) == 0) write(*,'(a)') 'WARNING: there is a problem with region '// &
       trim(var(m)%region)//' which is associated with '//trim(var(m)%type)//' '//trim(var(m)%name)// &
-      ': the region contains no elements')
+      ': the region contains no elements'
     if (var(m)%type /= 'local') allocate(var(m)%funk(ubound(region(var(m)%region_number)%ijk,1)))
   else
     var(m)%region_number = 0 ! dummy region number for none centred variables

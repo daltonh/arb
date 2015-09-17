@@ -24,10 +24,12 @@ CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calcula
 
 # this bit of code taken from level set routines, and identical
 # finds minimum distance to walls
-<<dim1comment>>FACE_LOCAL <ls_boundary_vector[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
-<<dim2comment>>FACE_LOCAL <ls_boundary_vector[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
-<<dim3comment>>FACE_LOCAL <ls_boundary_vector[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
-CELL_LOCAL <ls_minimum_boundary_distance> "sqrt(facemin(dot(<ls_boundary_vector[l=:]>,<ls_boundary_vector[l=:]>),region=<walls>))"
+# overwrite the following with a comment to remove this part, eg, if there are no <walls> present
+GENERAL_REPLACEMENTS D "<<nolengthscalecomment>>" W ""
+<<nolengthscalecomment>><<dim1comment>>FACE_LOCAL <ls_boundary_vector[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
+<<nolengthscalecomment>><<dim2comment>>FACE_LOCAL <ls_boundary_vector[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
+<<nolengthscalecomment>><<dim3comment>>FACE_LOCAL <ls_boundary_vector[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
+<<nolengthscalecomment>>CELL_LOCAL <ls_minimum_boundary_distance> "sqrt(facemin(dot(<ls_boundary_vector[l=:]>,<ls_boundary_vector[l=:]>),region=<walls>))"
 
-CONSTANT <a_lengthscale> "cellmax(<ls_minimum_boundary_distance>,region=<domain>)" # an estimate of the mesh lengthscale (channel half-width) based on the minimum domain -> wall distance
-CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
+<<nolengthscalecomment>>CONSTANT <a_lengthscale> "cellmax(<ls_minimum_boundary_distance>,region=<domain>)" # an estimate of the mesh lengthscale (channel half-width) based on the minimum domain -> wall distance
+<<nolengthscalecomment>>CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number

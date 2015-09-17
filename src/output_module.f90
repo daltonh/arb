@@ -356,21 +356,26 @@ do ntype = 1, ubound(var_types,1)
   do nvar = 1, allocatable_size(var_list(var_list_number(centring="all",type=type))%list) ! by default regions are not included in these lists
     m = var_list(var_list_number(centring="all",type=type))%list(nvar)
 
-    max_loc = 1
-    min_loc = 1
-    do ns = 2, ubound(var(m)%funk,1)
-      if (var(m)%funk(ns)%v > var(m)%funk(max_loc)%v) max_loc = ns
-      if (var(m)%funk(ns)%v < var(m)%funk(min_loc)%v) min_loc = ns
-    end do
-  ! new textline formulation
-    formatline = '(a,'//trim(realformat)//',a,'//trim(dindexformat(ijkvar(m,max_loc)))//',a,'//trim(realformat)//',a,'// &
-      trim(dindexformat(ijkvar(m,min_loc)))//')'
-    write(textline,fmt=formatline) "variable "//trim(var(m)%type)//' '//trim(var(m)%name)//': max = ', &
-      trunk_dble(var(m)%funk(max_loc)%v),' at '//trim(var(m)%centring)//' ', &
-      ijkvar(m,max_loc),': min = ',trunk_dble(var(m)%funk(min_loc)%v),' at '//trim(var(m)%centring)//' ',ijkvar(m,min_loc)
-    if (trim(var(m)%type) == 'equation' .or. trim(var(m)%type) == 'unknown') then
-      formatline = '(a,'//trim(realformat)//')'
-      write(textline,fmt=formatline) trim(textline)//': magnitude = ',var(m)%magnitude
+    if (size(var(m)%funk) == 0) then
+      write(textline,fmt=formatline) "variable "//trim(var(m)%type)//' '//trim(var(m)%name)//': contains no elements'
+    else
+    
+      max_loc = 1
+      min_loc = 1
+      do ns = 2, ubound(var(m)%funk,1)
+        if (var(m)%funk(ns)%v > var(m)%funk(max_loc)%v) max_loc = ns
+        if (var(m)%funk(ns)%v < var(m)%funk(min_loc)%v) min_loc = ns
+      end do
+    ! new textline formulation
+      formatline = '(a,'//trim(realformat)//',a,'//trim(dindexformat(ijkvar(m,max_loc)))//',a,'//trim(realformat)//',a,'// &
+        trim(dindexformat(ijkvar(m,min_loc)))//')'
+      write(textline,fmt=formatline) "variable "//trim(var(m)%type)//' '//trim(var(m)%name)//': max = ', &
+        trunk_dble(var(m)%funk(max_loc)%v),' at '//trim(var(m)%centring)//' ', &
+        ijkvar(m,max_loc),': min = ',trunk_dble(var(m)%funk(min_loc)%v),' at '//trim(var(m)%centring)//' ',ijkvar(m,min_loc)
+      if (trim(var(m)%type) == 'equation' .or. trim(var(m)%type) == 'unknown') then
+        formatline = '(a,'//trim(realformat)//')'
+        write(textline,fmt=formatline) trim(textline)//': magnitude = ',var(m)%magnitude
+      end if
     end if
 
 ! ref: update times ref: time ref: timing ref: variable_update_times
