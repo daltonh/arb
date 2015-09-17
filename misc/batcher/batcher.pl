@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 # perl script to run sequential arb simulations, changing text in both arb and geo files, and then extracting data from the output files
 
 # usage

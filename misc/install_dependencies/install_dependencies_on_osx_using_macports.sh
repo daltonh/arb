@@ -3,7 +3,7 @@
 # this script just installs the macports packages that are required for arb
 # this file is specific to osx
 # run as sudo, as in 'sudo ./install_dependencies_on_osx_using_macports.sh' after you have:
-# 1) installed Xcode with the command line utilities, including doing `xcode-select --install`
+# 1) installed Xcode with the command line utilities, including opening up the GUI first and accepting the licence agreements, and then doing `xcode-select --install` on the command line
 # 2) installed macports following instructions at https://guide.macports.org/#installing
 
 # other things you might like to do after this install has completed:

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 
 # this little script reads a msh (v2) file produced by engrid, and modifies it by renaming and reordering the physical regions in it to correspond to arb-suitable names
 # usage: engridtoarb inputfile.msh outputfile.msh

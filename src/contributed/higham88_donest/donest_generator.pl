@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 # file src/contributed/higham88_sonest/donest_generator.pl
 #
 # Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)

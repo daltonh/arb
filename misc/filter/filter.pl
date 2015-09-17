@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 # This file is called filter.pl
 # from Lachlan, 12/8/14
 
