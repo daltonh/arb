@@ -5046,7 +5046,7 @@ call random_seed(size=seed_size)
 allocate(seed(seed_size))
 do n = 1, seed_size
   call system_clock(clock)
-  seed(n)=int(clock)
+  seed(n)=clock
 end do
 call random_seed(put=seed) ! for gnu compiler need to generate unique seed, put needs to be random itself...
 deallocate(seed)
