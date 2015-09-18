@@ -5887,7 +5887,7 @@ sub create_system_variables {
     $variable{"system"}[$m{"system"}]{"fortran"} = "cell(i)%x($l)";
     $variable{"system"}[$m{"system"}]{"units"} = $lengthunit;
     $m{"system"}++;
-    $variable{"system"}[$m{"system"}]{"name"} = "<celldx[l=$l]>"; # cell centred location vector
+    $variable{"system"}[$m{"system"}]{"name"} = "<celldx[l=$l]>"; # cell centred size vector
     $variable{"system"}[$m{"system"}]{"centring"} = "cell";
     $variable{"system"}[$m{"system"}]{"maxima"} = "celldx[i,$l]";
     $variable{"system"}[$m{"system"}]{"fortran"} = "cell(i)%dx($l)";

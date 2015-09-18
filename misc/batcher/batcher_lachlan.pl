@@ -172,8 +172,9 @@ for my $n ( 0 .. $#case ) {
     if (!($fffilename)) { next; }
     print "DEBUG: msh files fffilename = $fffilename\n";
     foreach my $ffilename (bsd_glob("$fffilename")) {
-      $ffilename =~ /((.+)\.(msh))$/;
-      my $filename=$1;
+#     $ffilename =~ /((.+)\.(msh))$/;
+#     my $filename=$1;
+      my $filename=$ffilename; # mshfile array is not only for .msh files - see batcher_setup.pm
       print "BATCHER INFO: copying msh file $filename\n";
       copy($filename,$msh_store_dir) or error_stop("could not copy $filename to msh store directory $msh_store_dir");
     }
