@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 # perl script to run sequential arb simulations, changing text in both arb and geo files, and then extracting data from the output files
 
 # usage
@@ -198,6 +198,12 @@ for my $n ( 0 .. $#case ) {
   my $module_load_maxima = '';
 
   if ($pbs) {
+    # check that queue exists
+    my $queue_search;
+    $queue_search = `qstat -Q | grep $pbs_queue_name`;
+    if (not $queue_search) {
+      die "BATCHER ERROR: pbs queue $pbs_queue_name could not be found\n"; 
+    } 
     (my $pbs_job_contents = qq{#!/bin/bash
     #PBS -S /bin/bash
     ##PBS -M skink.notification\@gmail.com
