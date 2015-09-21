@@ -192,6 +192,13 @@ for my $n ( 0 .. $#case ) {
     my $specified_arboptions = $case[$n]{'arboptions'};
     if ($specified_arboptions =~ /omp(\d+)/) { $nthreads = $1;}
   }
+  
+  # set ppn (number of requested processors) to be half the number of threads
+  my $ncores;
+  $nthreads = int($nthreads);
+  if ($nthreads != 1) {
+    $ncores = int($nthreads/2) ;
+  }
 
   my $hostname = `'hostname'`;
   my $module_load_intel = '';
@@ -211,7 +218,7 @@ for my $n ( 0 .. $#case ) {
     #PBS -N $pbs_jobname\_run\_$ndir
     
     # ensure job spans only one node
-    #PBS -l nodes=1:ppn=$nthreads
+    #PBS -l nodes=1:ppn=$ncores
     #PBS -l walltime=$pbs_walltime
     #PBS -l pmem=$pbs_pmem
     #PBS -q $pbs_queue_name
