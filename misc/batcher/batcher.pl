@@ -23,20 +23,8 @@ use File::Glob ':glob'; # deals with whitespace better
 use Thread; # for simultaneous jobs
 use batcher_setup qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name $pbs_module_load_commands $prune_output_structure); # brings in the user-written module that defines case-specific data
 
-our $run_in_main = 1;
-if ($parallel) {
-  $run_in_main = 0;
-}
-if ($pbs) {
-  $run_in_main = 0;
-  $parallel = 0;
-}
-if ($parallel) {
-  $run_in_main = 0;
-}
-
 use lib './misc/batcher';
-use common qw(arbthread chompm empty nonempty protect protectarray error_stop copy_back_input_files);
+use common qw(arbthread chompm empty nonempty protect protectarray error_stop);
 
 my @threads;
 my $systemcall;
@@ -79,7 +67,7 @@ my @run_dirs = bsd_glob("$output_dir/run_*");
 if (@run_dirs) {
   for my $run_dir ( @run_dirs ) {
     if ($run_dir =~ /run_(\d+)$/) {
-      print "BATCHER INFO: found previous run directory $run_dir\n";
+      print "BATCHER INFO:  found previous run directory $run_dir\n";
       if ($1+1 > $nstart) {$nstart = $1+1;}
     }
   }
@@ -98,7 +86,7 @@ for my $n ( 0 .. $#case ) {
   mkpath($run_record_dir) or error_stop("could not create $run_record_dir");
 
 # and create msh store directory
-  my $msh_store_dir = "$run_record_dir/input_mesh"; 
+  our $msh_store_dir = "$run_record_dir/input_mesh"; 
   mkpath($msh_store_dir) or error_stop("could not create $msh_store_dir");
 
 # check that arbfile contains something, otherwise default to *.arb
@@ -121,70 +109,11 @@ for my $n ( 0 .. $#case ) {
   print PBS Data::Dumper->Dump([$prune_output_structure], ['*prune_output_structure']);
   close(PBS);
 
-#-----------------
-# deal with substitutions
-# loop through each arbfile, geofile and otherfile in the input_dir, copying them over to the working directory while doing the substitutions (and also copying them to the run_record_dirs)
-  foreach my $fffilename ( protectarray(@{$case[$n]{"arbfile"}}), protectarray(@{$case[$n]{"geofile"}}), protectarray(@{$case[$n]{"otherfile"}}) ) { 
-    if (!($fffilename)) { next; }
-#   print "DEBUG: subtitution files fffilename = $fffilename\n";
-    foreach my $ffilename (bsd_glob("$input_dir/".$fffilename)) {
-      $ffilename =~ /(.*)\/((.+?)\.(.+?))$/;
-      my $filename=$2;
-      print "BATCHER INFO: performing substitutions on $filename\n";
-      open(INFILE, ">".$filename) or error_stop("can't open substitute input file $filename");
-      open(ORIGINAL, "<".$ffilename) or error_stop("can't open original input file $ffilename");
-      while (my $line=<ORIGINAL>) {
-        if ($case[$n]{"replacements"}) {
-          for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
-# now stopping replacements if the string is mentioned as a replacement keyword
-            if ($line !~ /\s(R|REPLACE)\s+("|'|)\Q$key\E("|'|\s|$)/) {
-              $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
-            }
-          }
-        }
-        print INFILE $line;
-      }
-      close(INFILE);
-      close(ORIGINAL);
-      copy($filename,$run_record_dir) or error_stop("could not copy $filename to run record directory $run_record_dir");
-    }
-  }
+  # make a snapshot of original arb directory
+  $systemcall="rsync -au * $run_record_dir --exclude batcher_output --exclude batcher_setup.pm";
+  (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
 #-----------------
-# deal with geo files that need to have msh files generated from, now located within the working directory, with substitutions already taken place
-  foreach my $fffilename ( protectarray(@{$case[$n]{"geofile"}}) ) { 
-    if (!($fffilename)) { next; }
-#   print "DEBUG: geo files fffilename = $fffilename\n";
-    foreach my $ffilename (bsd_glob("$fffilename")) {
-      $ffilename =~ /((.+)\.(geo))$/;
-      my $filename=$1;
-      my $mshname=$2.".msh";
-      print "BATCHER INFO: creating msh file $mshname from $filename\n";
-      $systemcall="./misc/create_msh/create_msh $filename"; #use ./misc/create_mesh/create_mesh script
-      (!(system("$systemcall"))) or error_stop("could not $systemcall");
-      copy($mshname,$msh_store_dir) or error_stop("could not copy $mshname to msh store directory $msh_store_dir");
-    }
-  }
-
-#-----------------
-# deal with msh files that are listed to be used in this simulation, with no substitutions
-  foreach my $fffilename ( protectarray(@{$case[$n]{"mshfile"}}) ) { 
-    if (!($fffilename)) { next; }
-    print "DEBUG: msh files fffilename = $fffilename\n";
-    foreach my $ffilename (bsd_glob("$fffilename")) {
-#     $ffilename =~ /((.+)\.(msh))$/;
-#     my $filename=$1;
-      my $filename=$ffilename; # mshfile array is not only for .msh files - see batcher_setup.pm
-      print "BATCHER INFO: copying msh file $filename\n";
-      copy($filename,$msh_store_dir) or error_stop("could not copy $filename to msh store directory $msh_store_dir");
-    }
-  }
-
-#-----------------
-  if (not $run_in_main) {
-    $systemcall="rsync -au * $run_record_dir --exclude batcher_output --exclude batcher_setup.pm";
-    (!(system("$systemcall"))) or error_stop("could not $systemcall");
-  }
 
   # extract requested number of threads, if it exists
   my $nthreads = 1;
@@ -258,9 +187,7 @@ for my $n ( 0 .. $#case ) {
     open(PBSFILE,">",$pbs_job_file);
     print PBSFILE $pbs_job_contents;
     close(PBSFILE);
-    #system("./misc/batcher/run_and_collect.pl $ndir");
     system("qsub $run_record_dir/job.pbs");
-    copy_back_input_files();
   } elsif ($parallel) { # run arb jobs in parallel
     print "DEBUG running in non-pbs parallel mode\n";
     # copy everything needed to run_record_dir
@@ -268,12 +195,10 @@ for my $n ( 0 .. $#case ) {
     push(@threads,$t); 
   } else { # run arb jobs in series
     # run only a single thread and wait for it to finish before moving onto the next job
-    print "DEBUG running in series mode\n";
+    print "DEBUG: running in series mode\n";
     &arbthread(\@case, $n, $ndir, $run_record_dir);
   }   
 }
-
-copy_back_input_files();
 
 if ($parallel) {
   # wait for all threads to finish
