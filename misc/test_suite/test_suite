@@ -166,7 +166,8 @@ for dir_name in ${TESTCASES[@]} ; do
     echo "INFO: skipping directory $subdir as it does not exist" >>$log_file;
     continue;
   fi
-  if [ ! -f $subdir/*.arb -o -L $subdir ] ; then
+  arbfiles=`ls $subdir/*.arb 2>/dev/null`; # create a single string which lists all arb files in this subdirectory, ignoring errors (and creating empty string) if nothing present
+  if [ -z "${arbfiles}" -o -L $subdir ] ; then
     echo "INFO: skipping directory $subdir as it is a link to another directory or does not contain an arb input file";
     echo "INFO: skipping directory $subdir as it is a link to another directory or does not contain an arb input file" >>$log_file;
     continue;
