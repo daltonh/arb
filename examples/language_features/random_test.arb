@@ -1,0 +1,4 @@
+# <random> creates a random variable in the range 0 <= <random> < 1, which is unique to each call
+NONE_CONSTANT <random1> "<random>"
+NONE_CONSTANT <random2> "<random>"
+NONE_CONSTANT <random3> "<random>"
