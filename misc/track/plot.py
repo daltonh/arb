@@ -1145,7 +1145,11 @@ if __name__ == "__main__":
     parser.add_argument("-b","--batcher", action="store_true", default=False, 
             help='batcher mode: load batch_data.csv files instead of output_step.csv files'
             ) 
+    parser.add_argument("-p","--previous", action="store_true", default=False, 
+            help='previous mode: allow output_step.csv files from directories named "previous" to be shown'
+            ) 
     args = parser.parse_args()
+
 
     # check if step_file was specified in command line arguments
     myargs = vars(args)
@@ -1211,9 +1215,8 @@ if __name__ == "__main__":
             if (args.batcher and match_batch) or (not args.batcher and match_step): # path to csv file has been specified
                 to_test = os.path.join(target)
                 if (os.path.isfile(to_test)):
-                    print 'INFO: loading {}'.format(target)
-                    data_files_to_show.append(target)
-                    
+                        print 'INFO: loading {}'.format(target)
+                        data_files_to_show.append(target)
                 else:
                     print "ERROR: Nothing to plot, this is where I looked:\n\t./{0}".format(to_test)
                     sys.exit()
@@ -1228,8 +1231,16 @@ if __name__ == "__main__":
                 if data_files:
                     print "INFO: loading the following from ./{}".format(target) 
                     for data_file in data_files:
-                        print "\t./{}".format(data_file)
-                    data_files_to_show.extend(data_files)
+                        if not args.previous:
+                            if re.search('previous', data_file):
+                                print "\tNOTE: skipping {}, use --previous option to show".format(data_file)
+                            else:
+                                print "\t./{}".format(data_file)
+                                data_files_to_show.append(data_file)
+                        else:
+                            print "\t./{}".format(data_file)
+                            data_files_to_show.append(data_file)
+    
                 elif os.path.isdir(target):
                     print "INFO: no files found in ./{}".format(target)
 
