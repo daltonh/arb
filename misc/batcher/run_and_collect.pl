@@ -7,12 +7,10 @@ use Thread;
 use File::Glob ':glob'; # deals with whitespace better
 
 use lib './misc/batcher';
-use common qw(arbthread chompm empty nonempty protect protectarray error_stop copy_back_input_files);
+use common qw(arbthread chompm empty nonempty protect protectarray error_stop);
 
 my $run_id; # this will be passed to the script as a command line option
 $run_id = int($ARGV[0]); # batcher.pl will call via `run_and_collect $run_id`
-
-our $run_in_main = 0;
 
 my %present_case = ();
 my $run_record_dir;
@@ -34,6 +32,4 @@ $/="\n"; # $/ is the input file record separator
 my $stopfile = 'batcher_stop';
 $case[$n] = \%present_case; # this is a case that is passed to the thread
 
-# we're already in a pbs queue 
-# so only submit a single thread here
 &arbthread(\@case, $n, $ndir, $run_record_dir);
