@@ -464,7 +464,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
     end do
 
     nsregion = 0
-    do ns = 1, allocatable_integer_size(region(region(m)%part_of)%ijk) ! just set the elements within the part_of region to be true
+    outer: do ns = 1, allocatable_integer_size(region(region(m)%part_of)%ijk) ! just set the elements within the part_of region to be true
       ijk = region(region(m)%part_of)%ijk(ns)
       if (ijk == 0) cycle ! allow for zero elements in ijk
       if (region(m)%centring == "cell") then
@@ -474,12 +474,12 @@ else if (trim(region(m)%type) /= 'gmsh') then
       else
         x = node(ijk)%x
       end if
-      do l = 1, 3
-        if ((x(l)-xmin(l))*(xmax(l)-x(l)) < 0.d0) cycle
-      end do
+      inner: do l = 1, 3
+        if ((x(l)-xmin(l))*(xmax(l)-x(l)) < 0.d0) cycle outer
+      end do inner
       nsregion = nsregion + 1
       region(m)%ns(ijk) = nsregion
-    end do
+    end do outer
 
 !---------------------
 ! ref: normal region, only face centred
