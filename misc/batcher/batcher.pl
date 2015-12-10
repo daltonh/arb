@@ -26,6 +26,9 @@ use batcher_setup qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_wa
 use lib './misc/batcher';
 use common qw(arbthread chompm empty nonempty protect protectarray error_stop);
 
+# whether system using sun grid engine (in place of pbs)
+my $sge_variant = 0;
+
 my @threads;
 my $systemcall;
 our $output_dir="batcher_output"; # this directory will store all of the output
@@ -136,11 +139,19 @@ for my $n ( 0 .. $#case ) {
   if ($pbs) {
     # check that queue exists
     my $queue_search;
-    $queue_search = `qstat -Q | grep $pbs_queue_name`;
+    if ($sge_variant) {
+      $queue_search = `qconf -sql | grep $pbs_queue_name`;
+    } else {
+      $queue_search = `qstat -Q | grep $pbs_queue_name`;
+    }
+    
     if (not $queue_search) {
       die "BATCHER ERROR: pbs queue $pbs_queue_name could not be found\n"; 
     } 
-    (my $pbs_job_contents = qq{#!/bin/bash
+
+    my $pbs_job_contents='';
+    if (not $sge_variant) {
+    ($pbs_job_contents = qq{#!/bin/bash
     #PBS -S /bin/bash
     ##PBS -M skink.notification\@gmail.com
     ##PBS -m bea
@@ -183,11 +194,62 @@ for my $n ( 0 .. $#case ) {
     echo "FINISHED"
     exit 0
     }) =~ s/^ {4}//mg; # m implies treat as multiple lines (http://perldoc.perl.org/perlre.html#Modifiers)
+    }
+    
+    if ($sge_variant) { # note leave indentation as is for {4} replacement below
+    ($pbs_job_contents = qq{#!/bin/sh
+    #\$ -S /bin/sh   
+    #\$ -N $pbs_jobname\_run\_$ndir
+    #\$ -cwd
+    #\$ -j y
+    
+    # ensure job spans only one node
+    #\$ -q $pbs_queue_name
+    
+    # even though job will run in eg. \$PBS_O_WORKDIR/batcher_output/run_0
+    # the script ./misc/run_and_collect.pl is designed to be called from \$PBS_O_WORKDIR
+    rundir=\$SGE_O_WORKDIR/
+    
+    echo '\$PATH:' \$PATH
+    echo '\$SHELL:' \$SHELL
+    echo '\$JOBID: ' \$JOBID
+    echo '\$SGE_O_HOST: ' \$SGE_O_HOST
+    echo '\$rundir: ' \$rundir
+    echo 'uname -a: ' `uname -a`
+    echo 'STARTING DATE ' `date`
+    echo
+
+    # load modules if specified (not required for borg)
+
+    # move to rundir
+    cd \$rundir
+    # run job
+    ./misc/batcher/run_and_collect.pl $ndir
+
+    echo 'ENDING DATE ' `date`
+    echo "FINISHED"
+    exit 0
+    }) =~ s/^ {4}//mg; # m implies treat as multiple lines (http://perldoc.perl.org/perlre.html#Modifiers)
+    }
+
     my $pbs_job_file = "$run_record_dir/job.pbs";
+
     open(PBSFILE,">",$pbs_job_file);
     print PBSFILE $pbs_job_contents;
     close(PBSFILE);
-    system("qsub $run_record_dir/job.pbs");
+
+    if ($sge_variant) {
+      system("chmod +x $pbs_job_file"); # make executable on borg
+    }
+
+    my $qsub_call = '';
+    if ($sge_variant) {
+      $qsub_call = "qsub -clear -V -q maxima.q -cwd ./$run_record_dir/job.pbs";
+    } else {
+      $qsub_call = "qsub $run_record_dir/job.pbs";
+    }
+    system($qsub_call);
+
   } elsif ($parallel) { # run arb jobs in parallel
     print "DEBUG running in non-pbs parallel mode\n";
     # copy everything needed to run_record_dir
