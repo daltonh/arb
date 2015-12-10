@@ -480,6 +480,20 @@ ifeq "$(strip $(suitesparse))" "present"
       endif
     endif
   endif
+  
+  ifeq "$(wildcard $(suitesparselib))" ""
+    suitesparse = not present
+  # on redhat library path is here 
+  # (provided suiteparse, suitesparse-devel, suitesparse-static
+  # are installed using rpm package manager)
+    ifneq "$(os_type)" "Darwin"
+      suitesparselib = /usr/lib64/libumfpack.a
+      ifneq "$(wildcard $(suitesparselib))" ""
+        suitesparse = present
+      endif
+    endif
+  endif
+
 endif
 suitesparsedir = $(srcdir)/contributed/suitesparse
 ifeq "$(strip $(suitesparse))" "present"
