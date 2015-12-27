@@ -80,6 +80,8 @@ usage () {
   echo "  --no-debug: do not compile fortran using debug options, only useful to overwrite debug option that is applied when a debugger is specified";
   echo "  --omp: compile fortran using open mp, and use default (maximum) number of processors";
   echo "  --ompN: compile fortran using open mp and specify N processors to use";
+  echo "  -ml|-mlN|--memory-logging|--memory-loggingN: log amount of memory being used to output/output_memory_log.csv, using an interval of N seconds (defaults to 1s if not specified).  Shows resident set size (see rss in ps manual) in 1024 byte units";
+  echo "  --no-memory-logging: turn off memory logging (default)";
   echo "  --ilp|--long-integer: compile with long integer support (ifort only)";
   echo "  -O|--opt: turn on compiler optimsation level 2";
   echo "  -O0|--no-opt: turn off compiler optimsation";
@@ -98,6 +100,21 @@ usage () {
   echo "  --help|-h: display this HELP INFO";
   echo;
   exit 1;
+}
+#-------------------------------------------------------------------------------
+# function to log memory of a process via pid, taken from http://stackoverflow.com/questions/774556/peak-memory-usage-of-a-linux-unix-process
+function logmemory {
+  pid=$1 interval=$2 file=$3 peak=0 sample=0
+# echo "pid = $pid";
+  echo '# "memory usage (rss, 1024 byte units)"' >$MEMORYLOGFILE;
+  echo $sample >>$MEMORYLOGFILE;
+  while true; do
+    sleep $interval;
+    sample="$(ps -o rss= $pid 2> /dev/null)" || break;
+    echo $sample >>$MEMORYLOGFILE;
+    let peak='sample > peak ? sample : peak';
+  done
+  echo "INFO: peak memory usage for arb (rss) was $peak" 1>&2
 }
 #-------------------------------------------------------------------------------
 # announce our arrival
@@ -128,6 +145,9 @@ DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:src/contributed/pardiso"
 # location where previously run output files will be stored
 PREVIOUS_RUN=output/previous
 
+# memory log file
+MEMORYLOGFILE="output/output_memory_log.csv";
+
 # stacksize for OMP runs, not properly tested but probably necessary as recursion grows under ifort
 #OMP_STACKSIZE="100000000"; # not sure whether it is KMP or OMP...., so set both to very large numbers
 KMP_STACKSIZE="97660k"; # http://wiki.seas.harvard.edu/geos-chem/index.php/Intel_Fortran_Compiler#Resetting_stacksize_for_Linux
@@ -151,6 +171,7 @@ OOPT=1; # default is optimsation level 1
 OILP="off";
 OPARDISO="present";
 OSUITESPARSE="present";
+OMEMORYLOGGING=0; # a value greater than 0 means that memory will be logged at this interval (s)
 COMPILER="default";
 unset ARBFILES; # the input files that will be passed to setup_equations.pl - unset array first
 unset EXTERNALS; # a list of external fortran files that will be included in equation_module.f90
@@ -187,6 +208,10 @@ do
 #   "--omp") OOMP=1;;
 #   "--omp"*) OOMP=1; export OMP_NUM_THREADS=${i:5};; # this extracts from character position 6 and onwards (NB ${i:6:10} would extract characters 7 -> 10 or thereabouts)
     "--omp"*) OOMP=1; export OMP_NUM_THREADS=${i:5}; export MKL_NUM_THREADS=${i:5};; # this extracts from character position 6 and onwards (NB ${i:6:10} would extract characters 7 -> 10 or thereabouts)
+    "-ml"|"--memory-logging") OMEMORYLOGGING="1";; # note, could be a float
+    "--memory-logging"*) OMEMORYLOGGING=${i:16};;
+    "-ml"*) OMEMORYLOGGING=${i:3};;
+    "--no-memory-logging") OMEMORYLOGGING=0;;
     "-O"|"--opt") OOPT=2;; # if requested with no level, optimisation level is 2
     "--ilp"|"--long-integer") OILP="on";;
     "--no-opt") OOPT=0;; # this is optimisation turned off
@@ -202,7 +227,7 @@ do
 done ;
 
 # annouce options
-echo "INFO: script run with options: clean=$OCLEAN, clean-setup=$OCLEANSETUP, clean-compile=$OCLEANCOMPILE, setup=$OSETUP, compile=$OCOMPILE, run=$ORUN, quiet=$OQUIET, continue=$OCONTINUE, debug=$ODEBUG, compiler=$COMPILER, debugger=$DEBUGGER, omp=$OOMP, opt=$OOPT, quietmake=$OQUIETMAKE";
+echo "INFO: script run with options: clean=$OCLEAN, clean-setup=$OCLEANSETUP, clean-compile=$OCLEANCOMPILE, setup=$OSETUP, compile=$OCOMPILE, run=$ORUN, quiet=$OQUIET, continue=$OCONTINUE, debug=$ODEBUG, compiler=$COMPILER, debugger=$DEBUGGER, omp=$OOMP, opt=$OOPT, quiet-make=$OQUIETMAKE, memory-logging=$OMEMORYLOGGING";
 if [ -n "${OMP_NUM_THREADS}" ] ; then echo "INFO: arb running with $OMP_NUM_THREADS omp threads" ; fi ;
 
 # check for input files.  If none have been set, then use any *.arb files that exist in the working directory, and failing that, any *.in files
@@ -472,12 +497,20 @@ if [ $ORUN -eq 1 ] ; then
       eval $DEBUGGER $AOUT $RUNOUTPUT;
     fi
   else
-    eval $AOUT $RUNOUTPUT;
+    if [ $OMEMORYLOGGING -eq 0 ] ; then
+      eval $AOUT $RUNOUTPUT; # standard invocation
+    else # invocation of job when logging memory is a little different
+      set -m; # need to enable job control within bash to allow backgrounding and foregrounding of arb process
+      eval "$AOUT $RUNOUTPUT &"; # initially placing arb in the background, so that we can get pid and use it to start memory logger
+      ARBPID=$!;
+      echo "INFO: arb pid is $ARBPID"
+      logmemory $ARBPID $OMEMORYLOGGING $MEMORYLOGFILE &
+      fg 1; # now pull job back into the foreground so that killing the script also kills the subprocess (arb)
+    fi;
   fi ;
   echo "INFO: finishing running arb";
 fi ;
 
 exit 0 ;
-
 # done
 #-------------------------------------------------------------------------------
