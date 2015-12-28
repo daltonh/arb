@@ -104,31 +104,17 @@ usage () {
 #-------------------------------------------------------------------------------
 # function to log memory of a process via pid, with basics of idea taken from http://stackoverflow.com/questions/774556/peak-memory-usage-of-a-linux-unix-process
 function logmemory {
-  pid=$1;
-  interval=$2;
-  file=$3;
-  mempeak=0;
-  memcurrent=0;
-  walltime=0;
-  psstats='0 0 0 0';
-  echo '# "approximate walltime (s)", "memory usage (rss, 1024 byte units)", "memory usage (%)", "cputime", "cpu load (%)"' >$MEMORYLOGFILE;
-  echo "0,0,0,0,0" >>$MEMORYLOGFILE;
+  pid=$1; interval=$2; file=$3; mempeak=0; memcurrent=0; walltime=0;
+  echo '# "approximate walltime (s)", "peak memory usage (rss, 1024 byte units)", "memory usage (rss, 1024 byte units)", "memory usage (%)", "cputime", "cpu load (%)"' >$MEMORYLOGFILE;
+  echo "0,0,0,0,0,0" >>$MEMORYLOGFILE;
   while true; do
     sleep $interval;
     psstats="$(ps -o rss=,%mem=,cputime=,%cpu= $pid 2> /dev/null)" || break;
-    psstatsarray=($psstats); # convert to an array to remove unnecessary spaces
-    psstats=${psstats#[[:space:]]}; # strip leading space, noting that the hash removes shortest match of the following substring from the start of the variable
-#    set $psstats;
-#    memcurrent="${var#"${var%%[![:space:]]*}"}";
-#    echo "|$psstats|";
-#    echo "part string ${psstats%%[[:space:]]*}";
-#    memcurrent="${psstats%%[[:space:]]*}"; # strip all from the first space to the end of the string, noting that %% removes longest match of trailing substring
-    memcurrent=${psstatsarray[0]}; # first element will be memory
-#    echo "psstats = $psstats: memcurrent = $memcurrent";
     walltime=$(($walltime+$interval)); # arithmetic algebra
-#    sample="$(ps -o rss= $pid 2> /dev/null)" || break;
-    echo "$walltime,${psstatsarray[0]},${psstatsarray[1]},${psstatsarray[2]},${psstatsarray[3]}" >>$MEMORYLOGFILE; # // replaces all occurances of substring
-    let mempeak='memcurrent > mempeak ? memcurrent : mempeak';
+    psstatsarray=($psstats); # convert to an array to remove unnecessary spaces and to pull out first element
+    memcurrent=${psstatsarray[0]}; # first element will be rss memory
+    let mempeak='memcurrent > mempeak ? memcurrent : mempeak'; # find peak memory
+    echo "$walltime,$mempeak,${psstatsarray[0]},${psstatsarray[1]},${psstatsarray[2]},${psstatsarray[3]}" >>$MEMORYLOGFILE; # output comman delimited values for css file
   done
   echo "INFO: peak memory usage for arb (rss) was $mempeak" 1>&2
 }
