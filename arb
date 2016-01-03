@@ -509,6 +509,8 @@ if [ $ORUN -eq 1 ] ; then
       eval 'echo "INFO: arb pid is $ARBPID"' $RUNOUTPUT;
       logmemory $ARBPID $OMEMORYLOGGING $MEMORYLOGFILE &
       fg 1; # now pull job back into the foreground so that killing the script also kills the subprocess (arb)
+      sleep $OMEMORYLOGGING; # have to wait a bit so that output.scr is still there when logging command writes to it
+      sleep 1;
     fi;
   fi ;
   echo "INFO: finishing running arb";
