@@ -116,7 +116,7 @@ function logmemory {
     let mempeak='memcurrent > mempeak ? memcurrent : mempeak'; # find peak memory
     echo "$walltime,$mempeak,${psstatsarray[0]},${psstatsarray[1]},${psstatsarray[2]},${psstatsarray[3]}" >>$MEMORYLOGFILE; # output comman delimited values for css file
   done
-  echo "INFO: peak memory usage for arb (rss) was $mempeak" 1>&2
+  eval 'echo "INFO: peak memory usage for arb (rss) was $mempeak"' $RUNOUTPUT;
 }
 #-------------------------------------------------------------------------------
 # announce our arrival
@@ -228,7 +228,7 @@ do
   esac
 done ;
 
-# annouce options
+# announce options
 echo "INFO: script run with options: clean=$OCLEAN, clean-setup=$OCLEANSETUP, clean-compile=$OCLEANCOMPILE, setup=$OSETUP, compile=$OCOMPILE, run=$ORUN, quiet=$OQUIET, continue=$OCONTINUE, debug=$ODEBUG, compiler=$COMPILER, debugger=$DEBUGGER, omp=$OOMP, opt=$OOPT, quiet-make=$OQUIETMAKE, memory-logging=$OMEMORYLOGGING";
 if [ -n "${OMP_NUM_THREADS}" ] ; then echo "INFO: arb running with $OMP_NUM_THREADS omp threads" ; fi ;
 
@@ -503,9 +503,10 @@ if [ $ORUN -eq 1 ] ; then
       eval $AOUT $RUNOUTPUT; # standard invocation
     else # invocation of job when logging memory is a little different
       set -m; # need to enable job control within bash to allow backgrounding and foregrounding of arb process
-      eval "$AOUT $RUNOUTPUT &"; # initially placing arb in the background, so that we can get pid and use it to start memory logger
+# this is bad scripting - need to spend more time on eval throughout.  Here need to work out why command is echoed to screen
+      eval $AOUT $RUNOUTPUT & # initially placing arb in the background, so that we can get pid and use it to start memory logger
       ARBPID=$!;
-      echo "INFO: arb pid is $ARBPID"
+      eval 'echo "INFO: arb pid is $ARBPID"' $RUNOUTPUT;
       logmemory $ARBPID $OMEMORYLOGGING $MEMORYLOGFILE &
       fg 1; # now pull job back into the foreground so that killing the script also kills the subprocess (arb)
     fi;

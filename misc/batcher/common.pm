@@ -135,6 +135,7 @@ sub arbthread {
       if ($line =~ /^TIMING: total wall time =\s+(\S+)\s*: total cpu time =\s+(\S+)/) { $output{"walltime"} = $1; $output{"cputime"} = $2; }
       if ($line =~ /^INFO: the maximum number of dimensions of any region is\s+(\S+)/) { $output{"dimensions"} = $1; }
       if ($line =~ /^INFO: total number of kernel elements =\s+(\S+)/) { $output{"kernel_elements"} = $1; }
+      if ($line =~ /^INFO: peak memory usage for arb (rss) was\s+(\S+)/) { $output{"memoryrss"} = $1; }
       if ($line =~ /^SUCCESS: the simulation finished gracefully/) { $output{"success"} = 1; }
     }
     close(INPUT);
