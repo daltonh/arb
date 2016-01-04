@@ -135,7 +135,7 @@ sub arbthread {
       if ($line =~ /^TIMING: total wall time =\s+(\S+)\s*: total cpu time =\s+(\S+)/) { $output{"walltime"} = $1; $output{"cputime"} = $2; }
       if ($line =~ /^INFO: the maximum number of dimensions of any region is\s+(\S+)/) { $output{"dimensions"} = $1; }
       if ($line =~ /^INFO: total number of kernel elements =\s+(\S+)/) { $output{"kernel_elements"} = $1; }
-      if ($line =~ /^INFO: peak memory usage for arb (rss) was\s+(\S+)/) { $output{"memoryrss"} = $1; }
+      if ($line =~ /^INFO: peak memory usage for arb \(rss\) was\s+(\S+)/) { $output{"memoryrss"} = $1; }
       if ($line =~ /^SUCCESS: the simulation finished gracefully/) { $output{"success"} = 1; }
     }
     close(INPUT);
@@ -205,7 +205,7 @@ sub arbthread {
     }
     
 
-    my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/convergence_details.txt", "tmp/setup/current_unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt");
+    my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/output_memory_log.csv", "output/convergence_details.txt", "tmp/setup/current_unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt");
 
     my @output_msh_files = bsd_glob("$run_record_dir/output/output*.msh");
     foreach my $item (@output_msh_files) {
