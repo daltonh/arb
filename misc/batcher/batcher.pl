@@ -252,13 +252,13 @@ for my $n ( 0 .. $#case ) {
     system($qsub_call);
 
   } elsif ($parallel) { # run arb jobs in parallel
-    print "DEBUG running in non-pbs parallel mode\n";
+    print "BATCHER DEBUG: running in non-pbs parallel mode\n";
     # copy everything needed to run_record_dir
     my $t = threads->new(\&arbthread, \@case, $n, $ndir, $run_record_dir);
     push(@threads,$t); 
   } else { # run arb jobs in series
     # run only a single thread and wait for it to finish before moving onto the next job
-    print "DEBUG: running in series mode\n";
+    print "BATCHER DEBUG: running in series mode\n";
     &arbthread(\@case, $n, $ndir, $run_record_dir);
   }   
 }

@@ -45,14 +45,14 @@ sub arbthread {
   # loop through each arbfile, geofile and otherfile in the input_dir, copying them over to the working directory while doing the substitutions (and also copying them to the run_record_dirs)
   foreach my $fffilename ( protectarray(@{$case[$n]{"arbfile"}}), protectarray(@{$case[$n]{"geofile"}}), protectarray(@{$case[$n]{"otherfile"}}) ) { 
     if (!("$fffilename")) { next; }
-    #print "DEBUG: subtitution files fffilename = $fffilename\n";
+    #print "BATCHER DEBUG: subtitution files fffilename = $fffilename\n";
     foreach my $ffilename (bsd_glob("$main::input_dir/".$fffilename)) {
       $ffilename =~ /(.*)\/((.+?)\.(.+?))$/;
       my $filename=$2;
       $filename = "$run_record_dir/".$filename;
       print "BATCHER INFO: performing substitutions on $filename\n";
-      #print "DEBUG: input \$ffilename = $ffilename\n";
-      #print "DEBUG: output \$filename = $filename\n";
+      #print "BATCHER DEBUG: input \$ffilename = $ffilename\n";
+      #print "BATCHER DEBUG: output \$filename = $filename\n";
       open(INFILE, ">".$filename) or error_stop("can't open substitute input file $filename");
       open(ORIGINAL, "<".$ffilename) or error_stop("can't open original input file $ffilename");
       while (my $line=<ORIGINAL>) {
@@ -75,21 +75,21 @@ sub arbthread {
   # deal with geo files that need to have msh files generated from, now located within the working directory, with substitutions already taken place
   foreach my $fffilename ( protectarray(@{$case[$n]{"geofile"}}) ) { 
     if (!($fffilename)) { next; }
-#   print "DEBUG: geo files fffilename = $fffilename\n";
+#   print "BATCHER DEBUG: geo files fffilename = $fffilename\n";
     foreach my $ffilename (bsd_glob("$run_record_dir/$fffilename")) {
       $ffilename =~ /((.+)\.(geo))$/;
       my $filename=$1;
       my $mshname=$2.".msh";
       print "BATCHER INFO: creating msh file $mshname from $filename\n";
-      #print "DEBUG: running create_msh on $filename\n";
-      #print "DEBUG: \$fffilename = $fffilename\n";
-      #print "DEBUG: \$ffilename = $ffilename\n";
-      #print "DEBUG: \$filename = $filename\n";
+      #print "BATCHER DEBUG: running create_msh on $filename\n";
+      #print "BATCHER DEBUG: \$fffilename = $fffilename\n";
+      #print "BATCHER DEBUG: \$ffilename = $ffilename\n";
+      #print "BATCHER DEBUG: \$filename = $filename\n";
       my $systemcall="cd $run_record_dir; ../../misc/create_msh/create_msh $fffilename"; #use ./misc/create_mesh/create_mesh script
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
-      #print "DEBUG: \$mshname = $mshname\n";
-      #print "DEBUG: \$msh_store_dir = $msh_store_dir\n";
+      #print "BATCHER DEBUG: \$mshname = $mshname\n";
+      #print "BATCHER DEBUG: \$msh_store_dir = $msh_store_dir\n";
 
       copy($mshname,$msh_store_dir) or error_stop("could not copy $mshname to msh store directory $msh_store_dir");
     }
@@ -99,7 +99,7 @@ sub arbthread {
   # deal with msh files that are listed to be used in this simulation, with no substitutions
   foreach my $fffilename ( protectarray(@{$case[$n]{"mshfile"}}) ) { 
     if (!($fffilename)) { next; }
-    print "DEBUG: msh files fffilename = $fffilename\n";
+    print "BATCHER DEBUG: msh files fffilename = $fffilename\n";
     foreach my $ffilename (bsd_glob("$fffilename")) {
 #     $ffilename =~ /((.+)\.(msh))$/;
 #     my $filename=$1;
@@ -109,7 +109,7 @@ sub arbthread {
     }
   }
 
-  my $systemcall="./arb --quiet --quiet-make ".protect($case[$n]{"arboptions"});
+  my $systemcall="./arb --quiet ".protect($case[$n]{"arboptions"});
   for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
     $systemcall=$systemcall." ".bsd_glob($ffilename);
   }
@@ -195,7 +195,7 @@ sub arbthread {
     opendir(RUNDIR, $run_record_dir) or die "BATCHER ERROR: could not open $run_record_dir\n";
     my @to_delete = grep(!/^\.+|output|tmp|input_mesh|batcher_info.txt|batcher_pbs_variables.txt|job.pbs|\.arb$/, readdir(RUNDIR));
     closedir(RUNDIR);
-    print "BATCHER_INFO: cleaning files in $run_record_dir\n";
+    print "BATCHER INFO: cleaning files in $run_record_dir\n";
     for my $entry (@to_delete) {
       if (-f "$run_record_dir/$entry") {
         unlink("$run_record_dir/$entry");
@@ -218,7 +218,7 @@ sub arbthread {
       #my $ls_command = "ls $run_record_dir/output";
       #system($ls_command);
       if (-e "$run_record_dir/$output_file") {
-        #print "BATCHER_DEBUG: moving $run_record_dir/$output_file to $run_record_dir\n";
+        #print "BATCHER DEBUG: moving $run_record_dir/$output_file to $run_record_dir\n";
         move("$run_record_dir/$output_file",$run_record_dir) or error_stop("could not copy $run_record_dir/$output_file to run record directory $run_record_dir");
       } 
     }

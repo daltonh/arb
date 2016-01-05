@@ -74,7 +74,6 @@ usage () {
   echo "  --run: run the program (default)";
   echo "  --no-run: don't run the program";
   echo "  -q|--quiet: send arb screen output to output/output.scr";
-  echo "  --quiet-make: send screen output of make command to output/output_make.scr";
   echo "  -c|--continue: do not delete previous output files (used when continuing on from a previous run)";
   echo "  -d|--debug: compile fortran using debug options and start executable within the specified (or default) debugging environment";
   echo "  --no-debug: do not compile fortran using debug options, only useful to overwrite debug option that is applied when a debugger is specified";
@@ -116,15 +115,13 @@ function logprocess {
     let mempeak='memcurrent > mempeak ? memcurrent : mempeak'; # find peak memory
     echo "$walltime,$mempeak,${psstatsarray[0]},${psstatsarray[1]},${psstatsarray[2]},${psstatsarray[3]}" >>$PROCESSLOGFILE; # output comman delimited values for css file
   done
-  eval 'echo "INFO: peak memory usage for arb (rss) was $mempeak"' $RUNOUTPUT;
+  echo "INFO: peak memory usage for arb (rss) was $mempeak";
 }
 #-------------------------------------------------------------------------------
-# announce our arrival
-echo "arb finite volume solver wrapper script, Copyright Dalton Harvie (see licence directory)"
-echo
-echo "INFO: for usage options, try ./arb --help"
+# main script:
 
-# initial setup
+#---------------------------
+# default variable setup
 # define some commands to avoid path problems
 RM='rm -f';
 MV='mv';
@@ -150,19 +147,21 @@ PREVIOUS_RUN=output/previous
 # memory log file
 PROCESSLOGFILE="output/output_process_log.csv";
 
+# quiet output file
+SCROUTPUT="output/output.scr";
+
 # stacksize for OMP runs, not properly tested but probably necessary as recursion grows under ifort
 #OMP_STACKSIZE="100000000"; # not sure whether it is KMP or OMP...., so set both to very large numbers
 KMP_STACKSIZE="97660k"; # http://wiki.seas.harvard.edu/geos-chem/index.php/Intel_Fortran_Compiler#Resetting_stacksize_for_Linux
 ulimit -s 65000; # set stacksize using ulimit, up to apparently hard limit that exists on osx
 
-#-------------------------------------------------------------------------------
+#---------------------------
 # loop through options and set flags to say what has to be done
 
 OCLEAN=0;
 OCLEANCOMPILE=0;
 OCLEANSETUP=0;
 OSETUP=1;
-OQUIETMAKE=0;
 OCOMPILE=1;
 ORUN=1;
 OQUIET=0;
@@ -182,6 +181,8 @@ EXTERNALS=( `ls src/*_functions.f90 2> /dev/null` ); # all functions files withi
 for i in $*
 do
   case $i in
+    "-q"|"--quiet") OQUIET=1;; # this is `actioned' below after output directory has been readied for writing
+    "--quiet-make") echo "quiet-make option now depreciated, just use quiet instead which now captures make output too";;
     "--clean") OCLEAN=1;;
     "--clean-compile") OCLEANCOMPILE=1;;
     "--clean-setup") OCLEANSETUP=1;;
@@ -191,9 +192,6 @@ do
     "--no-compile") OCOMPILE=0;;
     "--run") ORUN=1;;
     "--no-run") ORUN=0;;
-    "-qq") OQUIET=1; OQUIETMAKE=1;;
-    "--quiet-make"|"-qm") OQUIETMAKE=1;;
-    "-q"|"--quiet") OQUIET=1;;
     "-c"|"--continue") OCONTINUE=1;;
     "-d"|"--debug") ODEBUG=1; DEBUGGER="default";; # ODEBUG specifies whether code is compiled with debugging options (including -g) - valgrind is now considered as a type of debugger
     "--no-debug") ODEBUG=0;;
@@ -223,14 +221,45 @@ do
 # TODO - additional external
 #   "--externals*".") echo "INFO: found arb input file $i"; ARBFILES[${#ARBFILES[@]}]=$i;;
     "--"*|"-"*) echo "ERROR: unknown option $i passed to arb"; usage;;
-    *".arb"|*".in") echo "INFO: found arb input file $i"; ARBFILES[${#ARBFILES[@]}]=$i;;
+    *".arb"|*".in") ARBFILES[${#ARBFILES[@]}]=$i;;
     *) echo "ERROR: unknown command line entry $i"; usage;;
   esac
 done ;
 
-# announce options
-echo "INFO: script run with options: clean=$OCLEAN, clean-setup=$OCLEANSETUP, clean-compile=$OCLEANCOMPILE, setup=$OSETUP, compile=$OCOMPILE, run=$ORUN, quiet=$OQUIET, continue=$OCONTINUE, debug=$ODEBUG, compiler=$COMPILER, debugger=$DEBUGGER, omp=$OOMP, opt=$OOPT, quiet-make=$OQUIETMAKE, process-logging=$OPROCESSLOGGING";
-if [ -n "${OMP_NUM_THREADS}" ] ; then echo "INFO: arb running with $OMP_NUM_THREADS omp threads" ; fi ;
+#---------------------------
+# ready output directory for writing
+
+# create it if it doesn't already exist
+if [ ! -d output ] ; then mkdir output ; fi ;
+# always keep copy of previous output
+if [ ! -d $PREVIOUS_RUN ] ; then mkdir -p $PREVIOUS_RUN ; fi ;
+$RM $PREVIOUS_RUN/* >/dev/null 2>/dev/null ;
+# delete other output, debug and communication files always, quietly
+for i in fort.* output/debug*.msh output/*_warnings.txt output/*_details.txt kill stop stopback stopnewt stoptime halt dump dumpnewt dumptime
+do
+  $RM $i >/dev/null 2>/dev/null ;
+done ;
+# place old output and gmsh files in previous_run directory that are needed to restart the run
+for i in output/output*.txt output/output*.csv output/output*.scr output/output*.stat output/*.msh output/*.vtk output/*.dat       
+do
+  if [ $OCONTINUE -eq 0 ] ; then
+    $MV $i $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
+  else
+    $CP -R $i $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
+  fi ;
+done ;
+
+#---------------------------
+# now that output directory is ready for writing redirect stdout and stderr to output.scr
+if [ $OQUIET -eq 1 ] ; then
+  exec > $SCROUTPUT 2>&1;
+fi
+
+# now that quiet option has been dealt with, announce our arrival and list options etc
+echo "arb finite volume solver wrapper script, Copyright Dalton Harvie (see licence directory)"
+echo
+echo "INFO: for usage options, try ./arb --help"
+echo "INFO: script run with options: clean=$OCLEAN, clean-setup=$OCLEANSETUP, clean-compile=$OCLEANCOMPILE, setup=$OSETUP, compile=$OCOMPILE, run=$ORUN, quiet=$OQUIET, continue=$OCONTINUE, debug=$ODEBUG, compiler=$COMPILER, debugger=$DEBUGGER, omp=$OOMP, opt=$OOPT, process-logging=$OPROCESSLOGGING";
 
 # check for input files.  If none have been set, then use any *.arb files that exist in the working directory, and failing that, any *.in files
 if [ -z "${ARBFILES[0]}" ] ; then ARBFILES=( `ls *.arb 2> /dev/null` ); fi ;
@@ -253,8 +282,11 @@ for FILE in "${ARBFILES[@]}" ; do
   echo "INCLUDE_WORKING \"$FILE\"" >>build/root_input.arb ;
   echo $FILE_SEPARATOR >>build/root_input.arb ;
 done
-
 echo "INFO: the file build/root_input.arb has been created" ;
+
+# create intel pardiso ooc temp directory and clear its contents
+if [ ! -d $MKL_PARDISO_OOC_DIR ] ; then mkdir -p $MKL_PARDISO_OOC_DIR ; fi ;
+$RM $MKL_PARDISO_OOC_DIR/* >/dev/null 2>/dev/null ;
 
 # export any variables that are required upstream, just in case they haven't been before
 # OSTYPE and MACHTYPE are now set directly within make using uname output
@@ -266,55 +298,19 @@ export LD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH
 export OMP_STACKSIZE
 export KMP_STACKSIZE
-echo "DYLD_LIBRARY_PATH = $DYLD_LIBRARY_PATH"
-echo "OMP_NUM_THREADS = $OMP_NUM_THREADS"
+echo "INFO: environment variable DYLD_LIBRARY_PATH = $DYLD_LIBRARY_PATH"
+echo "INFO: environment variable OMP_NUM_THREADS = $OMP_NUM_THREADS"
 
-# create output directory if it doesn't already exist
-if [ ! -d output ] ; then mkdir output ; fi ;
-# always keep copy of previous output
-if [ ! -d $PREVIOUS_RUN ] ; then mkdir -p $PREVIOUS_RUN ; fi ;
-$RM $PREVIOUS_RUN/* >/dev/null 2>/dev/null ;
-# delete other output, debug and communication files always, quietly
-for i in fort.* output/debug*.msh output/*_warnings.txt output/*_details.txt kill stop stopback stopnewt stoptime halt dump dumpnewt dumptime
-do
-  $RM $i >/dev/null 2>/dev/null ;
-done ;
-# place old output and gmsh files in previous_run directory that are needed to restart the run
-if [ $OCONTINUE -eq 0 ] ; then
-  $MV output/output*.txt $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $MV output/output*.csv $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $MV output/output*.scr $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $MV output/output*.stat $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $MV output/*.msh $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $MV output/*.vtk $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $MV output/*.dat $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-else
-  $CP -R output/output*.txt $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $CP -R output/output*.csv $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $CP -R output/output*.scr $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $CP -R output/output*.stat $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $CP -R output/*.msh $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $CP -R output/*.vtk $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-  $CP -R output/*.dat $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
-fi ;
-
-# create intel pardiso ooc temp directory and clear its contents
-if [ ! -d $MKL_PARDISO_OOC_DIR ] ; then mkdir -p $MKL_PARDISO_OOC_DIR ; fi ;
-$RM $MKL_PARDISO_OOC_DIR/* >/dev/null 2>/dev/null ;
+if [ -n "${OMP_NUM_THREADS}" ] ; then echo "INFO: arb running with $OMP_NUM_THREADS omp threads" ; fi ;
 
 # move to build directory
+echo "INFO: moving to build directory"
 cd build
-
-# setup destination for make output
-MAKEOUTPUT=""; # to terminal
-if [ $OQUIETMAKE -eq 1 ] ; then
-  MAKEOUTPUT=">>../output/output_make.scr 2>>../output/output_make.scr"; # to file
-fi
 
 # do clean operations first
 if [ $OCLEAN -eq 1 ] ; then
 # do a complete clean if requested
-  eval make compiler=$COMPILER clean $MAKEOUTPUT; # eval is necessary so that MAKEOUTPUT is as typed in, not an extra argument to make
+  make compiler=$COMPILER clean;
   if [ "$?" -ne 0 ] ; then
     echo "ERROR: problem cleaning files from the build directory" ;
     cd ..
@@ -322,7 +318,7 @@ if [ $OCLEAN -eq 1 ] ; then
   fi ;
 else
   if [ $OCLEANSETUP -eq 1 ] ; then
-    eval make compiler=$COMPILER clean_setup $MAKEOUTPUT;
+    make compiler=$COMPILER clean_setup;
     if [ "$?" -ne 0 ] ; then
       echo "ERROR: problem cleaning setup files from the build directory" ;
       cd ..
@@ -330,7 +326,7 @@ else
     fi ;
   fi ;
   if [ $OCLEANCOMPILE -eq 1 ] ; then
-    eval make compiler=$COMPILER clean_compile $MAKEOUTPUT;
+    make compiler=$COMPILER clean_compile;
     if [ "$?" -ne 0 ] ; then
       echo "ERROR: problem cleaning compilation files from the build directory" ;
       cd ..
@@ -406,7 +402,7 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
   # check to see whether open mp was used last time, and if different, make clean
     if [ ! -e last_compiler_was_$COMPILER -o ! -e last_compile_had_debugging_$ODEBUG -o ! -e last_compile_had_omp_$OOMP -o ! -e last_compile_had_opt_$OOPT -o ! -e last_compile_had_ilp_$OILP ] ; then
       echo "INFO: cleaning of compilation files required as compile options different from previous run";
-      eval make compiler=$COMPILER clean_compile $MAKEOUTPUT;
+      make compiler=$COMPILER clean_compile;
       if [ "$?" -ne 0 ] ; then
         echo "ERROR: problem cleaning compilation files from the build directory due to different compilation options" ;
         cd ..
@@ -425,7 +421,6 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
 
 # assemble makeline and make
   MAKELINE="make opt=$OOPT ilp=$OILP pardiso_from_arb=\"$OPARDISO\" suitesparse_from_arb=\"$OSUITESPARSE\"";
-# MAKELINE="make opt=$OOPT ilp=$OILP";
   if [ $OSETUP -eq 0 ] ; then
     MAKELINE="$MAKELINE compile_only" ;
   else
@@ -446,9 +441,10 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
 
 # echo "MAKELINE = $MAKELINE";
 
-  MAKELINE="$MAKELINE compiler=$COMPILER $MAKEOUTPUT";
-  echo "INFO: running make using commands: $MAKELINE";
+  MAKELINE="$MAKELINE compiler=$COMPILER";
+  echo "INFO: running make using commands: $MAKELINE"; echo
   eval $MAKELINE;
+  echo "INFO: finished running make"; echo
 
   if [ "$?" -ne 0 ] ; then
     echo "ERROR: problem compiling/settting up arb" ;
@@ -460,23 +456,17 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
 fi ;
 
 # move back to working directory
+echo "INFO: moving back to working directory"
 cd ..
 
 # finally run program
 if [ $ORUN -eq 1 ] ; then
 
-  echo "INFO: running arb executable"
+  echo "INFO: running arb executable"; echo
 
   if [ ! -e $AOUT ] ; then
     echo "ERROR: arb executable does not exist" ;
     exit 1 ;
-  fi
-
-  if [ $OQUIET -eq 1 ] ; then
-    RUNOUTPUT=">>output/output.scr 2>>output/output.scr";
-  else
-    RUNOUTPUT="";
-    echo
   fi
 
   if [ ! $DEBUGGER = "none" ] ; then # DEBUGGER specifies purely what environment code is to run, and is now strictly separate to ODEBUG
@@ -494,31 +484,21 @@ if [ $ORUN -eq 1 ] ; then
       exit 1;
     fi
     if [ $DEBUGGER = "valgrind" ]; then
-      eval "$DEBUGGER $AOUT --track-origins=yes --leak-check=full -v $RUNOUTPUT";
+      $DEBUGGER $AOUT --track-origins=yes --leak-check=full -v;
     else
-      eval $DEBUGGER $AOUT $RUNOUTPUT;
+      $DEBUGGER $AOUT;
     fi
   else
     if [ $OPROCESSLOGGING -eq 0 ] ; then
-      eval $AOUT $RUNOUTPUT; # standard invocation
-    else # invocation of job when logging process statistics is a little different
+      $AOUT; # standard invocation
+    else # invocation of job while logging process statistics
       set -m; # need to enable job control within bash to allow backgrounding and foregrounding of arb process
-# this is bad scripting - need to spend more time on eval throughout.  Here need to work out why command is echoed to screen
-      echo "AOUT = $AOUT";
-      eval "$AOUT $RUNOUTPUT &" # initially placing arb in the background, so that we can get pid and use it to start memory logger.  Placing & within job string is required so that $! reports pid of the build/arb process, rather than pid of eval process which is its parent
-      ARBPID=$!;
-      eval 'echo "INFO: arb pid is $ARBPID"' $RUNOUTPUT;
+      $AOUT & # initially placing arb in the background, so that we can get pid and use it to start memory logger
+      ARBPID=$!; # $! reports pid of the last backgrounded job, in this case the build/arb process
       echo "INFO: arb pid is $ARBPID";
-      echo "jobs before starting logging is:"
-      jobs;
-      ps -f;
       logprocess $ARBPID $OPROCESSLOGGING $PROCESSLOGFILE &
-      echo "jobs after starting logging is:"
-      jobs;
-      ps -f;
-      fg 1; # now pull job back into the foreground so that killing the script also kills the subprocess (arb)
-      sleep $OPROCESSLOGGING; # have to wait a bit so that output.scr is still there when logging command writes to it
-      sleep 1;
+      fg 1 >/dev/null; # now pull job back into the foreground so that killing the script also kills the subprocess (arb)
+      sleep $(($OPROCESSLOGGING+1)); # have to wait for a logging interval after the job has finished so that output.scr is still there when logging command writes to it (batcher may move it immediately when arb script ends)
     fi;
   fi ;
   echo "INFO: finishing running arb";
