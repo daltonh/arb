@@ -21,7 +21,6 @@ sub arbthread {
   my %output = %main::output; # local copy
   my $output_dir = $main::output_dir; # local copy
   my $parallel = $main::parallel; # local copy
-  my $msh_store_dir = $main::msh_store_dir; # local copy
   my $prune_output_structure = $main::prune_output_structure; # local copy
   my $stopfile = 'batcher_stop';
 
@@ -42,15 +41,14 @@ sub arbthread {
 
   #-----------------
   # deal with substitutions
-  # loop through each arbfile, geofile and otherfile specified by the user, copying them over to the working directory while doing the substitutions (and also copying them to the run_record_dirs)
+  # loop through each arbfile, geofile and otherfile specified by the user, copying them over to the run directories while doing the substitutions
   foreach my $fffilename ( protectarray(@{$case[$n]{"arbfile"}}), protectarray(@{$case[$n]{"geofile"}}), protectarray(@{$case[$n]{"otherfile"}}) ) { 
     if (!("$fffilename")) { next; }
-    #print "BATCHER DEBUG: subtitution files fffilename = $fffilename\n";
+    print "BATCHER DEBUG: substitution files fffilename = $fffilename\n";
     foreach my $ffilename (bsd_glob($fffilename)) {
-      $ffilename =~ /(.*)\/((.+?)\.(.+?))$/;
-      my $filename=$2;
-      $filename = "$run_record_dir/".$filename;
-      print "BATCHER INFO: performing substitutions on $filename\n";
+#     print "BATCHER DEBUG: substitution files ffilename = $ffilename\n";
+      my $filename = "$run_record_dir/".$ffilename;
+      print "BATCHER INFO: performing substitutions on $ffilename\n";
       #print "BATCHER DEBUG: input \$ffilename = $ffilename\n";
       #print "BATCHER DEBUG: output \$filename = $filename\n";
       open(INFILE, ">".$filename) or error_stop("can't open substitute input file $filename");
@@ -77,21 +75,18 @@ sub arbthread {
     if (!($fffilename)) { next; }
 #   print "BATCHER DEBUG: geo files fffilename = $fffilename\n";
     foreach my $ffilename (bsd_glob("$run_record_dir/$fffilename")) {
-      $ffilename =~ /((.+)\.(geo))$/;
-      my $filename=$1;
+      $ffilename =~ /(.*)\/((.+)\.(geo))$/;
+      my $filename=$2;
       my $mshname=$2.".msh";
       print "BATCHER INFO: creating msh file $mshname from $filename\n";
       #print "BATCHER DEBUG: running create_msh on $filename\n";
       #print "BATCHER DEBUG: \$fffilename = $fffilename\n";
       #print "BATCHER DEBUG: \$ffilename = $ffilename\n";
       #print "BATCHER DEBUG: \$filename = $filename\n";
-      my $systemcall="cd $run_record_dir; ../../misc/create_msh/create_msh $fffilename"; #use ./misc/create_mesh/create_mesh script
+      my $systemcall="cd $run_record_dir; ./misc/create_msh/create_msh $filename"; # use ./misc/create_mesh/create_mesh script
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
       #print "BATCHER DEBUG: \$mshname = $mshname\n";
-      #print "BATCHER DEBUG: \$msh_store_dir = $msh_store_dir\n";
-
-      copy($mshname,$msh_store_dir) or error_stop("could not copy $mshname to msh store directory $msh_store_dir");
     }
   }
 
@@ -101,11 +96,8 @@ sub arbthread {
     if (!($fffilename)) { next; }
     print "BATCHER DEBUG: msh files fffilename = $fffilename\n";
     foreach my $ffilename (bsd_glob("$fffilename")) {
-#     $ffilename =~ /((.+)\.(msh))$/;
-#     my $filename=$1;
-      my $filename="$run_record_dir/$ffilename"; # mshfile array is not only for .msh files - see batcher_setup.pm
-      print "BATCHER INFO: copying msh file $filename\n";
-      copy($filename,$msh_store_dir) or error_stop("could not copy $filename to msh store directory $msh_store_dir");
+      print "BATCHER INFO: copying msh file $ffilename\n";
+      copy($ffilename,$run_record_dir) or error_stop("could not copy $ffilename to run directory $run_record_dir");
     }
   }
 
@@ -193,7 +185,7 @@ sub arbthread {
     # remove files/directories from run_record_dir
     # though, anything in the following grep pattern is *retained*
     opendir(RUNDIR, $run_record_dir) or die "BATCHER ERROR: could not open $run_record_dir\n";
-    my @to_delete = grep(!/^\.+|output|tmp|input_mesh|batcher_info.txt|batcher_pbs_variables.txt|job.pbs|\.arb$/, readdir(RUNDIR));
+    my @to_delete = grep(!/^\.+|output|tmp|batcher_info.txt|batcher_pbs_variables.txt|job.pbs|\.arb|\.geo|\.msh$/, readdir(RUNDIR));
     closedir(RUNDIR);
     print "BATCHER INFO: cleaning files in $run_record_dir\n";
     for my $entry (@to_delete) {

@@ -61,7 +61,7 @@ my @run_dirs = bsd_glob("$output_dir/run_*");
 if (@run_dirs) {
   for my $run_dir ( @run_dirs ) {
     if ($run_dir =~ /run_(\d+)$/) {
-      print "BATCHER INFO:  found previous run directory $run_dir\n";
+      print "BATCHER INFO: found previous run directory $run_dir\n";
       if ($1+1 > $nstart) {$nstart = $1+1;}
     }
   }
@@ -75,19 +75,17 @@ print "BATCHER INFO: looping through runs ".$nstart." to ".scalar($#case+$nstart
 for my $n ( 0 .. $#case ) {
 
   my $ndir = scalar($n+$nstart);
-# create output directory to record run
   my $run_record_dir = "$output_dir/run_$ndir";
-  mkpath($run_record_dir) or error_stop("could not create $run_record_dir");
-
-# and create msh store directory
-  our $msh_store_dir = "$run_record_dir/input_mesh"; 
-  mkpath($msh_store_dir) or error_stop("could not create $msh_store_dir");
+# make a snapshot of original arb directory, now using the pack script to only include the base distribution, plus any necessary third party files in the contributed directory
+# using pack avoids copying over unneccesary files/directories
+  $systemcall="./pack --no-input --contributed --unpack $run_record_dir";
+  (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
 # check that arbfile contains something, otherwise default to *.arb
   if (!(@{$case[$n]{"arbfile"}})) { push(@{$case[$n]{"arbfile"}},"*.arb"); };
 
 #-----------------
-# dump case into into run directory
+# dump case into run directory
   open(DUMPER, ">$run_record_dir/batcher_info.txt") or error_stop("can't open batcher_info.txt file in $run_record_dir");
   print DUMPER "run: n = $n: ndir = $ndir\ncase[$n] = ".Dumper($case[$n])."\n";
   close(DUMPER);
@@ -102,11 +100,6 @@ for my $n ( 0 .. $#case ) {
   print PBS Data::Dumper->Dump([$ndir], ['*ndir']);
   print PBS Data::Dumper->Dump([$prune_output_structure], ['*prune_output_structure']);
   close(PBS);
-
-  # make a snapshot of original arb directory, now excluding anything that starts with batcher_output
-# need to discuss use cases
-  $systemcall="rsync -au * $run_record_dir --exclude 'batcher_output*' --exclude batcher_setup.pm";
-  (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
 #-----------------
 
