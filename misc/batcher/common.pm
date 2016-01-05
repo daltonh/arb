@@ -205,7 +205,7 @@ sub arbthread {
     }
     
 
-    my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/output_memory_log.csv", "output/convergence_details.txt", "tmp/setup/current_unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt");
+    my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/output_process_log.csv", "output/convergence_details.txt", "tmp/setup/current_unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt");
 
     my @output_msh_files = bsd_glob("$run_record_dir/output/output*.msh");
     foreach my $item (@output_msh_files) {

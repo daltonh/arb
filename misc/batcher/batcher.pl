@@ -112,8 +112,9 @@ for my $n ( 0 .. $#case ) {
   print PBS Data::Dumper->Dump([$prune_output_structure], ['*prune_output_structure']);
   close(PBS);
 
-  # make a snapshot of original arb directory
-  $systemcall="rsync -au * $run_record_dir --exclude batcher_output --exclude batcher_setup.pm";
+  # make a snapshot of original arb directory, now excluding anything that starts with batcher_output
+# need to discuss use cases
+  $systemcall="rsync -au * $run_record_dir --exclude 'batcher_output*' --exclude batcher_setup.pm";
   (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
 #-----------------
