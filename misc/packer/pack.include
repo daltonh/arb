@@ -11,10 +11,6 @@
 - code_scraps
 - resources
 - .*
-+ /*.in
-+ /*.arb
-+ /*.geo
-+ /*.msh
 + /arb
 + /todo
 + /pack
@@ -69,6 +65,7 @@
 + /licence/*.pdf
 + /misc/
 + /misc/batcher/***
++ /misc/convert_msh_file_format/***
 + /misc/create_msh/***
 + /misc/engridtoarb/***
 + /misc/file_utilities/***

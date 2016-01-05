@@ -55,12 +55,6 @@ my $cwd = cwd(); # http://perldoc.perl.org/Cwd.html
 # create a list of first level directories that must be created regardless of existing contents
 my @directories=( 'src','doc','build','output','tmp','examples','misc','templates' );
 
-# these are includes which are additional to the pack.include list
-my $includes = "";
-
-# unless distribute is on, the following free GPL packages are also be included
-$includes = $includes.' --include="src/" --include="src/contributed/" --include="src/contributed/suitesparse/" --include="src/contributed/suitesparse/*.tar.gz"';
-
 # do sanity check that the directories exist, indicating that we are in the root directory
 foreach $directory (@directories) {
   if (!(-d $directory)) {
@@ -73,17 +67,23 @@ foreach $directory (@directories) {
 my $include_file = "misc/packer/pack.include";
 if (!(-e $include_file)) { die "ERROR: include file $include_file not found\n"; }
 
+# these are includes which are additional to the pack.include list
+my $includes = "";
+
+# by default all arb, geo and msh files in the root archive are also included, although will be scrapped using -d or -ni
+$includes = $includes.' --include="*.in" --include="*.arb" --include "*.geo" --include "*.msh"';
+
 # read through all command line arguments
 foreach $argument ( @ARGV )  # first loop looks for distributable files and help request
 {
   if ( $argument eq '-h' || $argument eq '--help' ) {
     usage();
   } elsif ( $argument eq '-d' || $argument eq '--distribute') {
-    print "INFO: no contributed files included, example problem setup in root directory and version recorded to licence/version.txt file\n";
+    print "INFO: no contributed files included (default anyway), example problem setup in root directory and version recorded to licence/version.txt file\n";
     $includes = "";
     $example_inputs = 1;
-  } elsif ( $argument eq '-nc' || $argument eq '--no-contributed') {
-    print "INFO: no contributed files are included in the archive\n";
+  } elsif ( $argument eq '-ni' || $argument eq '--no-input') {
+    print "INFO: no working directory input files included\n";
     $includes = "";
   }
 }
@@ -195,14 +195,10 @@ $systemcall='echo "PACK operation completed on `hostname -f` by `whoami` on `dat
 $systemcall="echo ".$dated_version." >".$archive_root."licence/version";
 (!(system($systemcall))) or die "ERROR: could not perform $systemcall\n";
 
-# if distribute, include example files in working directory
+# if distribute, include the tutorial example files in working directory
 if ($example_inputs) {
   print "INFO: placing example input files\n";
   chdir "$archive_root" or die "ERROR: could not move into $archive_root\n";
-  foreach my $file (bsd_glob('*.{arb,in,msh,geo}')) { # remove any exisiting input files
-    $systemcall="rm $file";
-    (!(system($systemcall))) or die "ERROR: could not perform $systemcall\n";
-  }
   $systemcall="cp $example_directory/*.arb .";
   (!(system($systemcall))) or die "ERROR: could not perform $systemcall\n";
   $systemcall="cp $example_directory/*.msh .";
@@ -256,16 +252,15 @@ sub usage {
         "which must not already exist\n\n".
         "options include:\n".
         " -h or --help = produce this message\n".
-        " -e or --examples = include all files within the examples directory\n".
-        " -c or --contributed = include all files within the src/contributed directory\n".
+        " -e or --examples = include all files within the examples directory (in addition to the defaults)\n".
+        " -c or --contributed = include all files within the src/contributed directory (in addition to the defaults, that is, includes possibly non-GPLed files)\n".
         " -b or --build = include all files within the build directory\n".
-        " -m or --misc = include all files within the misc directory\n".
+        " -m or --misc = include all files within the misc directory (in addition to the defaults)\n".
         " -a or --all = equivalent to --examples --misc --contributed\n".
         " -s or --setup = setup related working files in the build directory will be included\n".
-        " -o or --output = output files in the output directory required for a restart will be included\n".
-        " -nc or --no-contributed = only native arb files will be included in the archive\n".
-        "      (subject to the other options).  Without this option GPL software in contributed is included.\n".
-        " -d or --distribute = implies -nc, plus example input files will be placed in the working directory\n".
+        " -o or --output = output files in the output directory required for a restart will be included (that is, output*.*)\n".
+        " -ni or --no-input = arb, geo and msh input files within working directory will not be copied over (default is to copy these files with the archive)\n".
+        " -d or --distribute = implies -ni, plus example input files will be placed in the working directory and version number recorded\n".
         " -nt or --no-tar = don't tar up the archive\n".
         " -u or --unpack = unpack straight away, ready to run (implies -nt)\n\n".
         "pack must be called from the root directory of a simulation\n";

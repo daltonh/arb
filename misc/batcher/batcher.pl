@@ -32,9 +32,6 @@ my $sge_variant = 0;
 my @threads;
 my $systemcall;
 our $output_dir="batcher_output"; # this directory will store all of the output
-our $input_dir="$output_dir/input_files"; # this will contain copies of the original arb, geo and msh input files
-my $input_file=""; # set this below to a specific file name or glob pattern if you don't want all the *.arb files within the working directory to be used as input
-my $geo_file=""; # set this below to a specific file name or glob pattern if you don't want all the *.geo files within the working directory to be used
 my $continue=1; # set this to true (1) to allow continuation from a previous run, with new (additional) runs to take place - now this is 1 by default, which will append to previous batcher_output directories
 my @case=case_setup(); # array that specifies information about each case that is being run that is initialised using case_setup within batcher_setup.pm
 my @output_keys=output_setup(); # create list output keys of variables to be output that is also initialised within batcher_setup.pm
@@ -51,17 +48,11 @@ if (! -d "build") { die "BATCHER ERROR: call this script from working directory\
 our $stopfile="batcher_stop";
 if (-e $stopfile) { unlink($stopfile) or die "BATCHER ERROR: could not remove $stopfile stop file from the previous run\n"; }
 
-# make output directory and copy over original arb, geo, msh and pm files
+# make output directory
 if (-d $output_dir && !($continue)) { # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
   die "BATCHER ERROR: batcher will not run unless batcher_output directory is empty or non-existent (this is a safety feature!) or the continue flag is on\n";
 } elsif (! -d $output_dir) {
   mkpath($output_dir) or die "BATCHER ERROR: could not create $output_dir\n";
-}
-if (! -d $input_dir) { mkpath($input_dir) or die "BATCHER ERROR: could not create $input_dir\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
-else { unlink(bsd_glob("$input_dir/*")); } # get rid of old files
-# copy over all possible files to input_dir
-foreach my $filename (bsd_glob("*.arb"),bsd_glob("*.geo"),bsd_glob("*.msh"),bsd_glob("*.pm")) {
-  copy($filename,$input_dir) or die "BATCHER ERROR: could not copy $filename to directory $input_dir\n";
 }
 
 # find starting run index if this is a continuation run

@@ -42,11 +42,11 @@ sub arbthread {
 
   #-----------------
   # deal with substitutions
-  # loop through each arbfile, geofile and otherfile in the input_dir, copying them over to the working directory while doing the substitutions (and also copying them to the run_record_dirs)
+  # loop through each arbfile, geofile and otherfile specified by the user, copying them over to the working directory while doing the substitutions (and also copying them to the run_record_dirs)
   foreach my $fffilename ( protectarray(@{$case[$n]{"arbfile"}}), protectarray(@{$case[$n]{"geofile"}}), protectarray(@{$case[$n]{"otherfile"}}) ) { 
     if (!("$fffilename")) { next; }
     #print "BATCHER DEBUG: subtitution files fffilename = $fffilename\n";
-    foreach my $ffilename (bsd_glob("$main::input_dir/".$fffilename)) {
+    foreach my $ffilename (bsd_glob($fffilename)) {
       $ffilename =~ /(.*)\/((.+?)\.(.+?))$/;
       my $filename=$2;
       $filename = "$run_record_dir/".$filename;
@@ -203,7 +203,6 @@ sub arbthread {
         rmtree("$run_record_dir/$entry");
       }
     }
-    
 
     my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/output_process_log.csv", "output/convergence_details.txt", "tmp/setup/current_unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt");
 
