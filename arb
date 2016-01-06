@@ -104,7 +104,10 @@ usage () {
 # function to log process statistics via pid, with basics of idea taken from http://stackoverflow.com/questions/774556/peak-memory-usage-of-a-linux-unix-process
 function logprocess {
   pid=$1; interval=$2; file=$3; mempeak=0; memcurrent=0; walltime=0;
-  echo '# "approximate walltime (s)", "peak memory usage (rss, 1024 byte units)", "memory usage (rss, 1024 byte units)", "memory usage (%)", "cputime", "cpu load (%)"' >$PROCESSLOGFILE;
+# echo '# "approximate walltime (s)", "peak memory usage (rss, 1024 byte units)", "memory usage (rss, 1024 byte units)", "memory usage (%)", "cputime", "cpu load (%)"' >$PROCESSLOGFILE;
+# print out column labels to be consistent with output_step.csv file, allowing existing plotting functions to be used
+  echo '"<approximate walltime>","<peak rss memory usage>","<rss memory usage>","<relative memory usage>","<cputime>","<relative cpu load>"' >>$PROCESSLOGFILE;
+  echo '"[s]","[1024 byte units]","[1024 byte units]","[%]","[h:m:s]","[%]"' >>$PROCESSLOGFILE;
   echo "0,0,0,0,0,0" >>$PROCESSLOGFILE;
   while true; do
     sleep $interval;
