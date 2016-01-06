@@ -38,6 +38,7 @@
 # requires: perl, rsync (>=2.6.7), tar, gzip
 
 use strict;
+use warnings;
 use Cwd;
 #use File::Basename;
 use File::Glob ':glob'; # deals with whitespace better

@@ -35,6 +35,7 @@
 # perl script to create equation f90 module for arb
 
 use strict;
+use warnings;
 use File::Basename;
 #use File::Path qw(make_path);
 use File::Path qw(mkpath); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html

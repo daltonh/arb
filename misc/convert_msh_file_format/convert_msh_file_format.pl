@@ -3,6 +3,8 @@
 # simple script which is passed a msh file and produces an arb input file which can be used to convert the file to other formats
 # 
 
+use strict;
+use warnings;
 use File::Path qw(mkpath); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 my $vtk=0; # whether converting to vtk file (for e.g. paraview)
 my $dat=0; # whether converting to dat file (tecplot)

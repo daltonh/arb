@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 # file src/contributed/higham88_sonest/donest_generator.pl
 #
 # Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
@@ -36,6 +36,7 @@
 #  to use double precision rather than reals
 
 use strict;
+use warnings;
 my ($line);
 
 my $found_sonest = 0;

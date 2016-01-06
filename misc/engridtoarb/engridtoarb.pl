@@ -1,9 +1,10 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 
 # this little script reads a msh (v2) file produced by engrid, and modifies it by renaming and reordering the physical regions in it to correspond to arb-suitable names
 # usage: engridtoarb inputfile.msh outputfile.msh
 
 use strict;
+use warnings;
 my ($line, $nelement, $n, $nregion, $gtype, $region_number, $following, $m, $dimension, $name);
 # define an array of hashes specifying how physical region numbers in the engrid file are to be renamed
 my @regions = ();

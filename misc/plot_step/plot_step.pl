@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 # file misc/plot_step/plot_step.pl
 #
 # Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
@@ -50,6 +50,7 @@
 # 3) if data is not specified for x, then column 1 will be used, or column 2 for y, or if 2nd : present, column 3 for y2
 
 use strict;
+use warnings;
 use List::Util qw(min max);
 use File::Path qw(mkpath); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 use File::Glob ':glob'; # deals with whitespace better
