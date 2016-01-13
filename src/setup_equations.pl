@@ -621,7 +621,7 @@ sub read_input_files {
   my ($file, $oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
     $handle, $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
-    $condition, $key, $append, $cancel, $default, $masread);
+    $condition, $key, $append, $cancel, $default, $masread, $lineremainder);
 
   my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
   my $default_options = ""; # default options prepended to each statement read in
@@ -645,27 +645,48 @@ sub read_input_files {
 
     while ($oline=<$handle>) { chompm($oline); if ($oline) { $oline=~s/^\s*// }; # remove linefeed from end and space from the start
 
-# do file-specific replacements on file before anything else
-# for v0.42 and onwards not doing replacements on any statements that define replacements (including include statements)
-      if (!($oline =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i)) {
-        foreach my $n1 ( reverse( 0 .. $#input_files ) ) {
-          foreach my $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
-            replace_substrings($oline,$input_files[$n1]{"replacements"}[$n2]{"search"},$input_files[$n1]{"replacements"}[$n2]{"replace"});
+# now splitting input line at the include/replacements keywords (wherever they are) and only doing replacements before this
+      my $lineremainder = '';
+      if ($oline =~ /^\s*(.*?)(\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s))/i) {
+        print DEBUG "INFO: found string that possibly needs part replacements: oline = $oline\n";
+        my $linestart = $1;
+        $lineremainder = $2.$';
+        $oline = '';
+        if (!($linestart)) {
+          print DEBUG "INFO: include/replacement string is bare, so do not perform any replacements on this line\n";
+        } else {
+          print DEBUG "INFO: attempting to remove any replacement strings from the start of this line\n";
+          while ($linestart =~ /^(\s*<<.*?>>\s*)/) { $oline=$oline.$1; $linestart=$'; }
+          print DEBUG "INFO: after splitting and looking for replace strings: oline = $oline: linestart = $linestart; lineremainder = $lineremainder\n";
+          if (nonempty($linestart)) {
+# there is more than string replacements at the start
+# to be consistent with previous behaviour do replacements on the entire string
+            $oline=$oline.$linestart.$lineremainder;
+            $lineremainder='';
+            print DEBUG "INFO: search/replace going ahead on entire oline as preamble to include/replacement keywords contains more than only <<>> delimited strings\n";
+          } else {
+            print DEBUG "INFO: search/replace going ahead on preamble oline only as preamble to include/replacement keywords contains only <<>> delimited strings\n";
           }
         }
       }
-      
-# now do general replacements, with latest defined replacements taking precedence
-# don't do general replacements on general_replacement or include lines
-      if (!($oline =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i)) {
-        foreach my $n1 ( reverse( 0 .. $#general_replacements ) ) {
-          replace_substrings($oline,$general_replacements[$n1]{"search"},$general_replacements[$n1]{"replace"});
+
+# do file-specific replacements on file before anything else
+      foreach my $n1 ( reverse( 0 .. $#input_files ) ) {
+        foreach my $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
+          replace_substrings($oline,$input_files[$n1]{"replacements"}[$n2]{"search"},$input_files[$n1]{"replacements"}[$n2]{"replace"});
         }
       }
+      foreach my $n1 ( reverse( 0 .. $#general_replacements ) ) {
+        replace_substrings($oline,$general_replacements[$n1]{"search"},$general_replacements[$n1]{"replace"});
+      }
+
+# and now reconstruct the entire line
+      $oline = $oline.$lineremainder;
+      if ($lineremainder) { print DEBUG "INFO: after replacements and reconstructing: oline = $oline\n"; }
 
       $line = $oline;
 # keep a record of what arb is doing in UNWRAPPED_INPUT, commenting out any INCLUDE or GENERAL_REPLACMENTS statements so that this file could be read again by arb directly
-      if ($line =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT $indent x $#input_files,"#$line\n"; } else { print UNWRAPPED_INPUT $indent x $#input_files,"$line\n"; }
+      if ($line =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT $indent x $#input_files,"#(hash added during unwrap)$line\n"; } else { print UNWRAPPED_INPUT $indent x $#input_files,"$line\n"; }
 
 # now process guts of statement
 # for the time being, have to handle trailing comments on the input lines

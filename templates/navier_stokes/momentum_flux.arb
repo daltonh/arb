@@ -1,11 +1,14 @@
 # flux of momentum over and in the direction of each face
 
-<<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+<J_advection_f[l=1]>" ON <all faces> # component of momentum transport from stress and advection
-<<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+<J_advection_f[l=2]>" ON <all faces> # component of momentum transport from stress and advection
-<<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)+<J_advection_f[l=3]>" ON <all faces> # component of momentum transport from stress and advection
+# set these strings to defaults if not already set
+GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
 
-# to remove advection flux contribution (for stokes equations for example) preset this string to empty
-GENERAL_REPLACEMENTS D "<<noadvectionfluxcomment>>" W "#"
-<<noadvectionfluxcomment>><<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <all faces> # component of momentum transport from stress and advection
-<<noadvectionfluxcomment>><<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <all faces> # component of momentum transport from stress and advection
-<<noadvectionfluxcomment>><<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <all faces> # component of momentum transport from stress and advection
+# navier-stokes version
+<<navierstokescomment>><<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+<J_advection_f[l=1]>" ON <all faces> # component of momentum transport from stress and advection
+<<navierstokescomment>><<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+<J_advection_f[l=2]>" ON <all faces> # component of momentum transport from stress and advection
+<<navierstokescomment>><<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)+<J_advection_f[l=3]>" ON <all faces> # component of momentum transport from stress and advection
+
+# stokes version
+<<stokescomment>><<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <all faces> # component of momentum transport from stress and advection
+<<stokescomment>><<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <all faces> # component of momentum transport from stress and advection
+<<stokescomment>><<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <all faces> # component of momentum transport from stress and advection

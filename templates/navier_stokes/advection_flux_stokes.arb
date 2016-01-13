@@ -1,1 +1,3 @@
-advection_flux_off.arb
+# this file works by presetting the replacement string that is used within the momentum_flux template
+# the advective flux vector <J_advection_f[l=:]> is now never set
+GENERAL_REPLACEMENTS R "<<noadvectionfluxcomment>>" W ""
