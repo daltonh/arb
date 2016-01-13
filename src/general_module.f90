@@ -303,7 +303,7 @@ integer :: idomain, iboundary, itotal ! number of domain (type 1) and boundary (
 integer :: jdomain, jboundary, jtotal ! number of domain (type 1) and boundary (type 2) faces, also total
 integer :: kdomain, kboundary, ktotal ! number of domain (type 1) and boundary (type 2) nodes, also total
 integer :: ptotal ! number of equations and unknowns
-double precision, dimension(:), allocatable, save :: delphiold, delphi ! single dimension unknown-sized variables for newton proceedure
+double precision, dimension(:), allocatable, save :: phiold, delphi ! single dimension unknown-sized variables for newton proceedure
 integer :: transient_relstepmax ! maximum relstep value for all transients (variables and dynamic regions)
 integer :: newtient_relstepmax ! maximum relstep value for all newtients (variables and dynamic regions)
 double precision :: newtres = 0.d0 ! last evaluated value of the newton residual
@@ -394,7 +394,7 @@ character(len=100) :: output_step_file = "default" ! whether to print output.ste
 !character(len=100) :: output_step_file = "newtstep" ! whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
 logical, parameter :: output_timings = .true. ! (.true.) whether to time processes and output results to screen (see subroutine time_process)
 logical, parameter :: output_timings_on_mesh_write = .false. ! (.false.) output timings each time a mesh file is written - requires that output_timings be on
-logical, parameter :: output_detailed_timings = .false. ! (.false.) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
+logical, parameter :: output_detailed_timings = .true. ! (.false.) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
 logical, parameter :: output_variable_update_times = .true. ! (.true.) time how long it takes to update each variable (on average) and report in output.stat
 logical, parameter :: output_region_update_times = .true. ! (.true.) time how long it takes to update each dynamic region (on average) and report in output.stat
 logical, parameter :: ignore_initial_update_times = .true. ! (.true.) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)

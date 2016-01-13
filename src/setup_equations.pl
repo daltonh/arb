@@ -53,7 +53,8 @@ my $src_dir="$working_dir/src";
 my $build_dir=".";
 my $template_dir="$working_dir/templates";
 my $tmp_dir="$working_dir/tmp/setup";
-my $variable_file = "$tmp_dir/variable_list.txt";
+my $variable_list_file = "$tmp_dir/variable_list.txt";
+my $variable_arb_file = "$tmp_dir/variable_list.arb";
 my $region_file = "$tmp_dir/region_list.txt";
 my $tmp_file_number=0;
 our $maxima_bin='maxima'; # use this if the maxima executable is in your path
@@ -72,7 +73,7 @@ my $version_file="$working_dir/licence/version";
 if (! -d $tmp_dir) { mkpath($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 my $filename;
 foreach $filename (bsd_glob("$tmp_dir/*")) {
-  if ($filename eq $variable_file || $filename eq $region_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
+  if ($filename eq $variable_arb_file || $filename eq $variable_list_file || $filename eq $region_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
   if (-f $filename) {unlink($filename) or die "ERROR: could not remove $filename in directory $tmp_dir\n";}
 }
 
@@ -299,12 +300,13 @@ sub dump_variable_dependency_info {
 }
 
 #-------------------------------------------------------------------------------
-# dump the variables as an ordered list
+# dump the variables as an ordered list, and now also as a list in the arb format
 
 sub output_variable_list {
 
   use strict;
-  open(VARIABLE, ">$variable_file") or die "ERROR: problem opening temporary variable file $variable_file: something funny is going on: check permissions??\n";
+  open(VARIABLE, ">$variable_list_file") or die "ERROR: problem opening temporary variable file $variable_list_file: something funny is going on: check permissions??\n";
+  print VARIABLE "# List of the variables:\n";
   for my $key ( keys(%variable) ) {
     print VARIABLE "-" x 80,"\n";
     print VARIABLE "List of $key variables:\n";
@@ -322,6 +324,31 @@ sub output_variable_list {
     }
   }
   print VARIABLE "-" x 80,"\n";
+  close(VARIABLE);
+
+  open(VARIABLE, ">$variable_arb_file") or die "ERROR: problem opening temporary variable file $variable_arb_file: something funny is going on: check permissions??\n";
+  print VARIABLE "# Reconstructed list of the variables in arb format:\n";
+  for my $key ( @user_types ) {
+    print VARIABLE "#","-" x 80,"\n";
+    print VARIABLE "# $key variables:\n";
+    for my $mvar ( 1 .. $#{$variable{$key}} ) {
+      print VARIABLE "\U$variable{$key}[$mvar]{centring}_$key "."$variable{$key}[$mvar]{name} [$variable{$key}[$mvar]{units}]";
+      if ($key =~ /ient$/) { print VARIABLE " \"".$variable{"initial_$key"}[$mvar]{equation}."\""; }
+      if ($key eq "constant" && !($variable{$key}[$mvar]{equation})) { print VARIABLE " \"numerical constant rather than an equation\"" } else { print VARIABLE " \"$variable{$key}[$mvar]{equation}\"" };
+      if ($variable{$key}[$mvar]{centring} ne "none") { print VARIABLE " ON $variable{$key}[$mvar]{region}"; }
+      print VARIABLE " # other information:";
+      for my $infokey ( qw( deriv newtstepmax newtstepmin comments )) {
+        print VARIABLE ": $infokey = ";
+        if (empty($variable{$key}[$mvar]{$infokey})) {
+          print VARIABLE "empty"
+        } else {
+          print VARIABLE "$variable{$key}[$mvar]{$infokey}";
+        }
+      }
+      print VARIABLE "\n";
+    }
+  }
+  print VARIABLE "#","-" x 80,"\n";
   close(VARIABLE);
 
 }
@@ -880,7 +907,7 @@ sub read_input_files {
             print "INFO: based on a GLUE_FACES statement setting $search general_replacements string to $replace\n";
           }
         }
-        print FORTRAN_INPUT $keyword; if (nonempty($line)) {print FORTRAN_INPUT " ".$line}; print FORTRAN_INPUT "\n"; # print line to fortran input file, making sure that the keyword is uppercase there
+        print FORTRAN_INPUT $keyword; if (nonempty($line)) {print FORTRAN_INPUT " ".$line}; print FORTRAN_INPUT "\n"; # print line to fortran input file
         next;
       }
 

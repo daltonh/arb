@@ -107,7 +107,7 @@ time_loop: do while ( &
     end if
     call time_process
     call update_and_check_transients(ierror=ierror)
-    call time_process(description='start of timestep transients')
+    call time_process(description='start of timestep update and check transients')
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing update_and_check_transients'
       exit time_loop
@@ -116,7 +116,7 @@ time_loop: do while ( &
     if (newtient_simulation) then
       call time_process
       call update_and_check_initial_newtients(ierror=ierror)
-      call time_process(description='start of timestep initial newtients')
+      call time_process(description='start of timestep update and check initial newtients')
       if (ierror /= 0) then
         write(*,'(a)') 'ERROR: problem completing update_and_check_initial_newtients'
         exit time_loop
@@ -124,7 +124,7 @@ time_loop: do while ( &
     end if
     call time_process
     call update_and_check_derived_and_equations(ierror=ierror)
-    call time_process(description='start of timestep derived and equations')
+    call time_process(description='start of timestep update and check derived and equations')
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing update_and_check_derived_and_equations'
       exit time_loop
@@ -162,7 +162,7 @@ time_loop: do while ( &
 ! calculate and check on the equation magnitudes
     call time_process
     call update_magnitudes(ierror)
-    call time_process(description='calculating variable magnitudes')
+    call time_process(description='start of newtstep calculating variable magnitudes')
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing update_magnitudes'
       exit newt_loop
@@ -171,7 +171,7 @@ time_loop: do while ( &
 ! calculate the latest residual, based on the new variable magnitudes
     call time_process
     call residual(ierror=ierror)
-    call time_process(description='calculating residual')
+    call time_process(description='start of newtstep calculating residual')
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing residual calculation'
       exit newt_loop
@@ -181,6 +181,7 @@ time_loop: do while ( &
       "INFO: initial newton loop newtres = ",newtres," after updating variable magnitudes"
 
     call newtsolver(ierror) ! uses newton's method to solve equations - assumes update has been done and that there is valid magnitudes and a newtres
+
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing newtsolver'
       exit newt_loop
@@ -200,14 +201,14 @@ time_loop: do while ( &
       end if
       call time_process
       call update_and_check_newtients(ierror=ierror)
-      call time_process(description='intermediate newton step newtient update')
+      call time_process(description='intermediate newton step update and check newtients')
       if (ierror /= 0) then
         write(*,'(a)') 'ERROR: problem completing update_and_check_newtients in newtient update section'
         exit newt_loop
       end if
       call time_process
       call update_and_check_derived_and_equations(ierror=ierror)
-      call time_process(description='intermediate newton step update of derived and equations after newtient update')
+      call time_process(description='intermediate newton step update and check derived and equations after newtient update')
       if (ierror /= 0) then
         write(*,'(a)') 'ERROR: problem completing update_and_check_derived_and_equations in newtient update section'
         exit newt_loop
