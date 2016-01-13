@@ -19,17 +19,10 @@ GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystate
 CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
 CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
 
+# find an estimate of the domain size using general template
+INCLUDE_ROOT "general"
+INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
+
 # for reference calculate some nondimensional quantities
 # these should be overwritten by real nondimensional quantities if this is a nondimensional problem
-
-# this bit of code taken from level set routines, and identical
-# finds minimum distance to walls
-# overwrite the following with a comment to remove this part, eg, if there are no <walls> present
-GENERAL_REPLACEMENTS D "<<nolengthscalecomment>>" W ""
-<<nolengthscalecomment>><<dim1comment>>FACE_LOCAL <ls_boundary_vector[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
-<<nolengthscalecomment>><<dim2comment>>FACE_LOCAL <ls_boundary_vector[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
-<<nolengthscalecomment>><<dim3comment>>FACE_LOCAL <ls_boundary_vector[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
-<<nolengthscalecomment>>CELL_LOCAL <ls_minimum_boundary_distance> "sqrt(facemin(dot(<ls_boundary_vector[l=:]>,<ls_boundary_vector[l=:]>),region=<walls>))"
-
-<<nolengthscalecomment>>CONSTANT <a_lengthscale> "cellmax(<ls_minimum_boundary_distance>,region=<domain>)" # an estimate of the mesh lengthscale (channel half-width) based on the minimum domain -> wall distance
-<<nolengthscalecomment>>CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
+CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number

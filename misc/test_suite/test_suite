@@ -188,10 +188,10 @@ for dir_name in ${TESTCASES[@]} ; do
     local_log_file="$results_dir/test_suite.log";
     cp $subdir/*.arb $cwd >>$local_log_file 2>>$local_log_file;
     cp $subdir/*.msh $cwd >>$local_log_file 2>>$local_log_file;
-    ./arb $arb_options --quiet --quiet-make --compiler-$compiler >>$local_log_file 2>>$local_log_file;
+    ./arb $arb_options --quiet --compiler-$compiler >>$local_log_file 2>>$local_log_file;
     keyword=ERROR_IN_MAKE;
     if [ -e output/output.scr ] ; then
-      last_line=`tail -n 1 output/output.scr`;
+      last_line=`tail -n 2 output/output.scr`; # with change to quiet behaviour of arb, the SUCCESS statement is now on the second last line of output.scr
       keyword=`echo $last_line | cut -c 1-7`;
       if [[ ! "$keyword" == "SUCCESS" ]] ; then keyword="ERROR_IN_RUN"; fi
     fi

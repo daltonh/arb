@@ -22,14 +22,7 @@ CONSTANT <BK^2/Re^2> [1] 1.d0 # this is a dummy variable that is only used in th
 
 # for reference and possible use in estimate_initial_potential, calculate some nondimensional quantities
 # these should be overwritten by real nondimensional quantities if this is a nondimensional problem
+# assumes that <a_lengthscale> has been calculated previously (probably within navier-stokes constants file)
 
-# this bit of code taken from level set routines, and identical
-# finds minimum distance to walls
-<<dim1comment>>FACE_LOCAL <ls_boundary_vector[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
-<<dim2comment>>FACE_LOCAL <ls_boundary_vector[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
-<<dim3comment>>FACE_LOCAL <ls_boundary_vector[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
-CELL_LOCAL <ls_minimum_boundary_distance> "sqrt(facemin(dot(<ls_boundary_vector[l=:]>,<ls_boundary_vector[l=:]>),region=<walls>))"
-
-CONSTANT <a_lengthscale> "cellmax(<ls_minimum_boundary_distance>,region=<domain>)" # an estimate of the mesh lengthscale (channel half-width) based on the minimum domain -> wall distance
 CONSTANT <K> "<a_lengthscale>*sqrt(2.d0*<e>^2*<average ion z>^2*<average ion n>/(<eps_o>*<eps_fluid>*<k>*<T>))" # nondimensional channel half-width
 CONSTANT <S> "<wall charge>*<e>*<average ion z>*<a_lengthscale>/(<eps_o>*<eps_fluid>*<k>*<T>)" # nondimensional surface charge
