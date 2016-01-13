@@ -55,7 +55,8 @@ my $template_dir="$working_dir/templates";
 my $tmp_dir="$working_dir/tmp/setup";
 my $variable_list_file = "$tmp_dir/variable_list.txt";
 my $variable_arb_file = "$tmp_dir/variable_list.arb";
-my $region_file = "$tmp_dir/region_list.txt";
+my $region_list_file = "$tmp_dir/region_list.txt";
+my $region_arb_file = "$tmp_dir/region_list.arb";
 my $tmp_file_number=0;
 our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='/sw/bin/maxima'; # if all else fails specify the actual location - fink
@@ -73,7 +74,7 @@ my $version_file="$working_dir/licence/version";
 if (! -d $tmp_dir) { mkpath($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 my $filename;
 foreach $filename (bsd_glob("$tmp_dir/*")) {
-  if ($filename eq $variable_arb_file || $filename eq $variable_list_file || $filename eq $region_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
+  if ($filename eq $variable_arb_file || $filename eq $variable_list_file || $filename eq $region_arb_file || $filename eq $region_list_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
   if (-f $filename) {unlink($filename) or die "ERROR: could not remove $filename in directory $tmp_dir\n";}
 }
 
@@ -334,9 +335,9 @@ sub output_variable_list {
     for my $mvar ( 1 .. $#{$variable{$key}} ) {
       print VARIABLE "\U$variable{$key}[$mvar]{centring}_$key "."$variable{$key}[$mvar]{name} [$variable{$key}[$mvar]{units}]";
       if ($key =~ /ient$/) { print VARIABLE " \"".$variable{"initial_$key"}[$mvar]{equation}."\""; }
-      if ($key eq "constant" && !($variable{$key}[$mvar]{equation})) { print VARIABLE " \"numerical constant rather than an equation\"" } else { print VARIABLE " \"$variable{$key}[$mvar]{equation}\"" };
+      if ($key eq "constant" && empty($variable{$key}[$mvar]{equation})) { print VARIABLE " \"numerical constant rather than an equation\"" } else { print VARIABLE " \"$variable{$key}[$mvar]{equation}\"" };
       if ($variable{$key}[$mvar]{centring} ne "none") { print VARIABLE " ON $variable{$key}[$mvar]{region}"; }
-      print VARIABLE " # other information:";
+      print VARIABLE " # other information";
       for my $infokey ( qw( deriv newtstepmax newtstepmin comments )) {
         print VARIABLE ": $infokey = ";
         if (empty($variable{$key}[$mvar]{$infokey})) {
@@ -360,7 +361,7 @@ sub output_region_list {
   use strict;
   use Data::Dumper;
   my @types=(qw( system setup gmsh constant transient newtient derived equation output condition )); # list of region types
-  open(REGION, ">$region_file") or die "ERROR: problem opening temporary region file $region_file: something funny is going on: check permissions??\n";
+  open(REGION, ">$region_list_file") or die "ERROR: problem opening temporary region file $region_list_file: something funny is going on: check permissions??\n";
 
   for my $type ( @types ) {
     print REGION "-" x 80,"\n";
@@ -368,7 +369,7 @@ sub output_region_list {
     for my $n ( 0 .. $#region ) {
       if ($region[$n]{"type"} ne $type) { next; }
       print REGION "$n";
-      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread definitions location initial_location options newtstepmax newtstepmin)) {
+      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread location initial_location newtstepmax newtstepmin)) {
         print REGION ": $key = ";
         if (empty($region[$n]{$key})) {
           print REGION "empty";
@@ -382,6 +383,35 @@ sub output_region_list {
     }
   }
   print REGION "-" x 80,"\n";
+  close(REGION);
+
+  open(REGION, ">$region_arb_file") or die "ERROR: problem opening temporary region file $region_arb_file: something funny is going on: check permissions??\n";
+  print REGION "# Reconstructed list of the regions in arb format:\n";
+  for my $type ( @types ) {
+    if ($type eq "system") { next; } # don't output system types to the arb file
+
+    print REGION "#","-" x 80,"\n";
+    print REGION "# $type regions:\n";
+    for my $n ( 0 .. $#region ) {
+      if ($region[$n]{"type"} ne $type) { next; }
+
+      print REGION "\U$region[$n]{centring}_$type"."_REGION "."$region[$n]{name}";
+      if ($type =~ /ient$/ && nonempty($region[$n]{initial_location}{description})) { print REGION " \"".$region[$n]{initial_location}{description}."\""; } 
+      if (nonempty($region[$n]{location}{description})) { print REGION " \"".$region[$n]{location}{description}."\""; }
+      if (nonempty($region[$n]{part_of})) { print REGION " ON $region[$n]{part_of}"; }
+      print REGION " # other information";
+      for my $infokey (qw(user dynamic parent rindex fortran part_of_fortran parent_fortran last_variable_masread newtstepmax newtstepmin)) {
+        print REGION ": $infokey = ";
+        if (empty($region[$n]{$infokey})) {
+          print REGION "empty"
+        } else {
+          print REGION "$region[$n]{$infokey}";
+        }
+      }
+      print REGION "\n";
+    }
+  }
+  print REGION "#","-" x 80,"\n";
   close(REGION);
 
 }
@@ -597,6 +627,7 @@ sub read_input_files {
   my $default_options = ""; # default options prepended to each statement read in
   my $override_options = ""; # override options appended to each statement read in
   my $skip = 0; # flag to indicate whether we are in comments section or not
+  my $indent = "   "; # amount to indent the unwrapped input file for each level of file inclusion
 
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
   open(UNWRAPPED_INPUT, ">$current_unwrapped_input_file");
@@ -634,7 +665,7 @@ sub read_input_files {
 
       $line = $oline;
 # keep a record of what arb is doing in UNWRAPPED_INPUT, commenting out any INCLUDE or GENERAL_REPLACMENTS statements so that this file could be read again by arb directly
-      if ($line =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT "#$line\n"; } else { print UNWRAPPED_INPUT "$line\n"; }
+      if ($line =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT $indent x $#input_files,"#$line\n"; } else { print UNWRAPPED_INPUT $indent x $#input_files,"$line\n"; }
 
 # now process guts of statement
 # for the time being, have to handle trailing comments on the input lines
@@ -683,7 +714,7 @@ sub read_input_files {
         } else {
           print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
           print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
-          print UNWRAPPED_INPUT "#++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n# the following is INCLUDED from $input_files[$#input_files]{name}";
+          print UNWRAPPED_INPUT $indent x $#input_files,"#++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"# the following is INCLUDED from $input_files[$#input_files]{name}";
 # ref: FILENAME
 # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
           if (empty($simulation_info{"filename"})) {
@@ -735,7 +766,7 @@ sub read_input_files {
           $input_files[$#input_files]{"include_root"} = extract_first($line,$error);
           if ($error) {error_stop("matching delimiters not found in the following:\nfile = $file: line = $oline")}
         }
-        print UNWRAPPED_INPUT "# INFO: setting include root directory to $input_files[$#input_files]{include_root}\n";
+        print UNWRAPPED_INPUT $indent x $#input_files,"# INFO: setting include root directory to $input_files[$#input_files]{include_root}\n";
         next;
 
 # extract any general replacements, pushing them onto the back of the existing list
@@ -1347,7 +1378,7 @@ sub read_input_files {
     } # end of loop for this input file
 
     close($handle);
-    if ($#input_files) { print UNWRAPPED_INPUT "# INCLUDE FINISHED for $input_files[$#input_files]{name}\n#--------------------------------------------------------\n"; }
+    if ($#input_files) { print UNWRAPPED_INPUT $indent x $#input_files,"# INCLUDE FINISHED for $input_files[$#input_files]{name}\n",$indent x $#input_files,"#--------------------------------------------------------\n"; }
     pop(@input_files);
   } # end of loop for all input files
 
