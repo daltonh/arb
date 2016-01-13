@@ -180,7 +180,16 @@ time_loop: do while ( &
     if (convergence_details_file) write(fconverge,'(a,g16.9,a)') &
       "INFO: initial newton loop newtres = ",newtres," after updating variable magnitudes"
 
-    call newtsolver(ierror) ! uses newton's method to solve equations - assumes update has been done and that there is valid magnitudes and a newtres
+    if (newtres < newtrestol) then
+      write(*,'(a,g10.3,a)') "INFO: skipping newtsolver as newtres/newtrestol = ",newtres/newtrestol," using existing unknowns"
+      if (convergence_details_file) write(fconverge,'(a,g10.3,a)') "INFO: skipping newtsolver as newtres/newtrestol = ", &
+        newtres/newtrestol," using existing unknowns"
+    else if (ptotal == 0) then
+      write(*,'(a)') 'INFO: skipping newtsolver as no equations are being solved'
+      if (convergence_details_file) write(fconverge,'(a)') 'INFO: skipping netsolver as no equations are being solved'
+    else
+      call newtsolver(ierror) ! uses newton's method to solve equations - assumes update has been done and that there is valid magnitudes and a newtres
+    end if
 
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing newtsolver'

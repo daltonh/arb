@@ -82,7 +82,6 @@ double precision :: newtresold, lambda, varmax, vartmp, varave
 double precision :: active_lambdamin = 0.d0
 double precision, save :: lambda_previous_step = -1.d0 ! lambda saved from previous newton step - negative indicates not set yet
 character(len=1000) :: formatline
-logical :: skip_mainsolver ! now checking on newtres comming in and if convergence criterion is already satisfied, skip mainsolver routine
 logical :: first_delphi_error = .true.
 logical, parameter :: manual_lambda = .false. ! debugging option to allow entering lambda manually
 logical, parameter :: debug = .false.
@@ -93,103 +92,90 @@ ierror = 0
 lambda = 1.d0
 !lambda = 1.d-9
 newtresold = newtres ! save this for convergence comparison
-! default these logging variables that are updated once mainsolver is called
-p = 0
-merr = 0
-nserr = 0
-varmax = 0.d0
-varave = 0.d0
-
 if (lambda_previous_step > 0.d0.and.sticky_lambda) lambda = min(dfloat(2**sticky_lambda_increase)*lambda_previous_step,1.d0) ! try twice the lambda used previously
 
 ! call a debugging routine to find which equation is most dependent upon it
 if (.false.) call find_sensitive_equation(varname='<n+>',icell=6447)
 
-if (newtres < newtrestol) then
-  write(*,'(a,g10.3,a)') "INFO: skipping mainsolver as newtres/newtrestol = ",newtres/newtrestol," using existing unknowns"
-  write(fconverge,'(a,g10.3,a)') "INFO: skipping mainsolver as newtres/newtrestol = ",newtres/newtrestol," using existing unknowns"
-  skip_mainsolver = .true.
-else if (ptotal == 0) then
-  write(*,'(a)') 'INFO: skipping mainsolver skipped as no equations are being solved'
-  write(fconverge,'(a)') 'INFO: skipping mainsolver skipped as no equations are being solved'
-  skip_mainsolver = .true.
-else
-
 ! save old unknown values as phiold
-  do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
-    m = var_list(var_list_number_unknown)%list(n)
-    do ns = 1, ubound(var(m)%funk,1)
-      phiold(var(m)%funk(ns)%pp(1)) = var(m)%funk(ns)%v ! as pp(1) is the sequential index of the unknown
-    end do
+do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(n)
+  do ns = 1, ubound(var(m)%funk,1)
+    phiold(var(m)%funk(ns)%pp(1)) = var(m)%funk(ns)%v ! as pp(1) is the sequential index of the unknown
   end do
+end do
 
 ! call the main linear solver routines if atleast one equation is being solved
 
-  if (debug) write(*,*) 'calling mainsolver'
-  !call time_process
-  call mainsolver(ierror)
-  !call time_process(description='mainsolver')
+if (debug) write(*,*) 'calling mainsolver'
+!call time_process
+call mainsolver(ierror)
+!call time_process(description='mainsolver')
 ! if there is a problem with the linear matrix solver then return
-  if (debug) write(*,*) 'in newtsolver after mainsolver, ierror = ',ierror
-  if (ierror /= 0) return
+if (debug) write(*,*) 'in newtsolver after mainsolver, ierror = ',ierror
+if (ierror /= 0) return
 
-  ! temp &&&&
-  !if (newtstep == 1) then
-  !  delphi(15) = 1.d+14
-  !  delphi(5) = 1.d+16
-  !end if
+! temp &&&&
+!if (newtstep == 1) then
+!  delphi(15) = 1.d+14
+!  delphi(5) = 1.d+16
+!end if
 
-  ! check on validity of delphi and for convergence file find largest normalised magnitude delphi
-  do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
-    m = var_list(var_list_number_unknown)%list(n)
-    do ns = 1, ubound(var(m)%funk,1)
-      p = p + 1
-      if (.not.number_is_valid(delphi(p)).or.delphi(p)*lambdamin > var(m)%magnitude*normalised_variable_limit) then
-        if (first_delphi_error) then
-          write(*,'(a/2x,a/2x,a/2x,a)') 'ERROR: the update for unknown variable '//trim(var(m)%name)//' is not valid (NaN, infty, '// &
-            'or very large) after the Newton-Raphson solver.','Something is amiss with the equations when evaluated using the '// &
-            'current unknown variable estimates as','the Newton-Raphson method is trying to change '//trim(var(m)%name)// &
-            ' by an unreasonable amount to satisfy the system.','It is likely that a dependency between this variable '// &
-            'and one of the equations has been lost or is very weak.'
-          write(*,'(a,g11.4,a)') '  Wayward value is ',delphi(p),' at ',trim(variable_location_string(m,ns))
-          write(*,'(a)') '  There may be multiple delphi problems (only one error message is output to stdout).  To debug set '// &
-            'convergence_details_file = .true. in general_module.f90 as this file will then contain the locations of all the '// &
-            'delphi errors.  Also set the delphi debugging logicals at the top of solver_module.f90 to be true for more '// &
-            'debugging output.'
-          first_delphi_error = .false. ! only write long error to screen for first problem
-        end if
-        if (convergence_details_file) then
-          write(fconverge,'(a)') 'ERROR: the update for unknown variable '//trim(var(m)%name)//' is not valid (NaN, infty or '// &
-            'very large) after the Newton-Raphson solver.'
-          write(fconverge,'(a,g11.4,a)') '  Wayward value is ',delphi(p),' at ',trim(variable_location_string(m,ns))
-        end if
-        if (.false.) then
-          write(*,*) 'WARNING: continuing anyway with this update zeroed'
-          delphi(p) = 0.d0
-        else if (print_all_equations_on_delphi_error.or.print_dependent_equations_on_delphi_error) then
+! check on validity of delphi and for convergence file find largest normalised magnitude delphi
+p = 0
+merr = 0
+nserr = 0
+varmax = 0.d0
+varave = 0.d0
+do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+  m = var_list(var_list_number_unknown)%list(n)
+  do ns = 1, ubound(var(m)%funk,1)
+    p = p + 1
+    if (.not.number_is_valid(delphi(p)).or.delphi(p)*lambdamin > var(m)%magnitude*normalised_variable_limit) then
+      if (first_delphi_error) then
+        write(*,'(a/2x,a/2x,a/2x,a)') 'ERROR: the update for unknown variable '//trim(var(m)%name)//' is not valid (NaN, infty, '// &
+          'or very large) after the Newton-Raphson solver.','Something is amiss with the equations when evaluated using the '// &
+          'current unknown variable estimates as','the Newton-Raphson method is trying to change '//trim(var(m)%name)// &
+          ' by an unreasonable amount to satisfy the system.','It is likely that a dependency between this variable '// &
+          'and one of the equations has been lost or is very weak.'
+        write(*,'(a,g11.4,a)') '  Wayward value is ',delphi(p),' at ',trim(variable_location_string(m,ns))
+        write(*,'(a)') '  There may be multiple delphi problems (only one error message is output to stdout).  To debug set '// &
+          'convergence_details_file = .true. in general_module.f90 as this file will then contain the locations of all the '// &
+          'delphi errors.  Also set the delphi debugging logicals at the top of solver_module.f90 to be true for more '// &
+          'debugging output.'
+        first_delphi_error = .false. ! only write long error to screen for first problem
+      end if
+      if (convergence_details_file) then
+        write(fconverge,'(a)') 'ERROR: the update for unknown variable '//trim(var(m)%name)//' is not valid (NaN, infty or '// &
+          'very large) after the Newton-Raphson solver.'
+        write(fconverge,'(a,g11.4,a)') '  Wayward value is ',delphi(p),' at ',trim(variable_location_string(m,ns))
+      end if
+      if (.false.) then
+        write(*,*) 'WARNING: continuing anyway with this update zeroed'
+        delphi(p) = 0.d0
+      else if (print_all_equations_on_delphi_error.or.print_dependent_equations_on_delphi_error) then
 ! this error is terminal, so diagnose by constructing a list of the problem equations
-          ierror = 1
-          call push_integer_array(array=debug_list_p,new_element=p)
-        else ! return immediately
-          ierror = 1
-          return
-        end if
+        ierror = 1
+        call push_integer_array(array=debug_list_p,new_element=p)
+      else ! return immediately
+        ierror = 1
+        return
       end if
+    end if
 
-  ! find variable that has the largest normalised change
-      vartmp = delphi(p)/var(m)%magnitude
-      varave = varave + vartmp**2
-      if (abs(vartmp) > abs(varmax)) then
-        merr = m
-        nserr = ns
-        varmax = vartmp
-      end if
-    end do
+! find variable that has the largest normalised change
+    vartmp = delphi(p)/var(m)%magnitude
+    varave = varave + vartmp**2
+    if (abs(vartmp) > abs(varmax)) then
+      merr = m
+      nserr = ns
+      varmax = vartmp
+    end if
   end do
-  varave = sqrt(varave/dble(max(ptotal,1)))
+end do
+varave = sqrt(varave/dble(max(ptotal,1)))
 
-  if (debug) write(*,*) 'in newtsolver after checking validity'
-end if
+if (debug) write(*,*) 'in newtsolver after checking validity'
 
 if (convergence_details_file) then
   if (merr /= 0.and.nserr /= 0) then
@@ -243,23 +229,21 @@ back_loop: do ! entrance point for repeat steps
 
   if (debug) write(*,*) 'in newtsolver before update with ierror = ',ierror
 
-  if (.not.skip_mainsolver) then
-    call time_process
-    call update_and_check_unknowns(initial=.false.,lambda=lambda,ierror=ierror)
-    call time_process(description='within newtsolver update and check unknowns')
-    if (debug) write(*,*) 'in newtsolver after update and check unknowns: ierror = ',ierror
+  call time_process
+  call update_and_check_unknowns(initial=.false.,lambda=lambda,ierror=ierror)
+  call time_process(description='within newtsolver update and check unknowns')
+  if (debug) write(*,*) 'in newtsolver after update and check unknowns: ierror = ',ierror
 
-    call time_process
-    if (ierror == 0) call update_and_check_derived_and_equations(ierror=ierror)
-    call time_process(description='within newtsolver update and check derived and equations')
-    if (debug) write(*,*) 'in newtsolver after update and check derived and equations: ierror = ',ierror
+  call time_process
+  if (ierror == 0) call update_and_check_derived_and_equations(ierror=ierror)
+  call time_process(description='within newtsolver update and check derived and equations')
+  if (debug) write(*,*) 'in newtsolver after update and check derived and equations: ierror = ',ierror
 
-    if (ierror == 0) then
-      call residual(ierror=ierror)
-      if (debug) write(*,*) 'in newtsolver after residual: ierror = ',ierror
-    else
-      if (debug) write(*,*) 'residual not called as ierror not zero'
-    end if
+  if (ierror == 0) then
+    call residual(ierror=ierror)
+    if (debug) write(*,*) 'in newtsolver after residual: ierror = ',ierror
+  else
+    if (debug) write(*,*) 'residual not called as ierror not zero'
   end if
 
   if (manual_lambda) then
