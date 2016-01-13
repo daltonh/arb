@@ -1124,17 +1124,23 @@ sub read_input_files {
             $tmp2 = extract_first($line,$error);
             if ($error) { error_stop("some type of syntax problem with the second expression in the following variable definition:\nfile = $file: line = $oline"); }
 # if we are here then tmp1 corresponds to the initial_equation, and tmp2 to the equation
-#           if (nonempty($tmp1)) { $asread_variable[$masread]{"initial_equation"} = $tmp1; print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n"; }
-#           if (nonempty($tmp2)) { $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n"; }
-# empty and undef now have different meanings - empty ("") now means to repeat the full equation, whereas undef means to give it a value of zero
-            $asread_variable[$masread]{"initial_equation"} = $tmp1; print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n";
-#           $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n";
+# Note that later when these equations are processed (in organise_user_variables), empty and undef now have different meanings
+# depending on variable type and r index, empty ("") now means to repeat the full equation, whereas undef means to give it a value of zero
+            my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"initial_equation"})) { $previous_equation = $asread_variable[$masread]{"initial_equation"}; }
+            $asread_variable[$masread]{"initial_equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$previous_equation,$oline);
+            print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n";
 # incase we need to only set the initial_equation of a variable, keeping the previous equation value, only set equation if it is actually nonempty (ie, not "")
-            if (nonempty($tmp2)) { $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n"; }
+            if (nonempty($tmp2)) {
+              my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"equation"})) { $previous_equation = $asread_variable[$masread]{"equation"}; }
+              $asread_variable[$masread]{"initial_equation"} = expand_equation($tmp2,$asread_variable[$masread]{"name"},$previous_equation,$oline);
+              print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n";
+            }
           } else {
 # if we are here then tmp1 corresponds to the equation
-#           if (nonempty($tmp1)) { $asread_variable[$masread]{"equation"} = $tmp1; print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n"; }
-            $asread_variable[$masread]{"equation"} = $tmp1; print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n";
+# save previous equation for possible self-reference replacement, passing an empty string if it hasn't been previously defined
+            my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"equation"})) { $previous_equation = $asread_variable[$masread]{"equation"}; }
+            $asread_variable[$masread]{"equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$previous_equation,$oline);
+            print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n";
           }
 # check/set defaults for these later, after all variable definitions have been read in
         }
@@ -2443,8 +2449,7 @@ sub create_mequations {
       $variable{$type}[$mvar]{"mequation"}="";
       if (empty($variable{$type}[$mvar]{"equation"})) { next; }
       print DEBUG "equation = $variable{$type}[$mvar]{equation}\n";
-      $variable{$type}[$mvar]{"mequation"}=$variable{$type}[$mvar]{"equation"};
-      name_to_maxima($variable{$type}[$mvar]{"mequation"},$type,$mvar);
+      $variable{$type}[$mvar]{"mequation"}=equation_to_mequation($variable{$type}[$mvar]{"equation"},$type,$mvar);
       print DEBUG "mequation = $variable{$type}[$mvar]{mequation}\n";
 #     if ($type eq "local") { $variable{$type}[$mvar]{oequation} = $variable{$type}[$mvar]{mequation}; } # store original mequation for use later for locals
       $variable{$type}[$mvar]{oequation} = $variable{$type}[$mvar]{mequation}; # store original mequation for substitution of dependencies later
@@ -4249,30 +4254,83 @@ sub run_maxima_simplify {
 }
 
 #-------------------------------------------------------------------------------
-# takes a string which contains user defined <> delimited names and replaces with maxima names
-# second and third arguments are calling type and mvar, respectively
+# takes a string which contains consistent <> delimited arb variables and replaces these with maxima names
 
-sub name_to_maxima {
+sub equation_to_mequation {
 
   use strict;
-  use Text::Balanced qw ( extract_bracketed );
-  my ($type, $mvar, $otype, $omvar, $withdots, $withoutdots);
-  my ($pre, $post, $operator, $midl, $midr, $midrnovar, $n1, $n2, $name, $original, $consistent_name);
-  $withdots = $_[0];
-  $otype = $_[1];
-  $omvar = $_[2];
+      
+# on input:
+  my $original = $_[0]; # equation, unchanged
+  my $otype = $_[1]; # second and third arguments are calling type and mvar, respectively, just used for error message
+  my $omvar = $_[2];
+# on output:
+  my $mequation = ''; # will be returned
 
-  print DEBUG "in name_to_maxima: before _[0] = ",$_[0],"\n";
+  print DEBUG "in equation_to_mequation before original = $original\n";
+
+# loop through and replace variables with standardised names
+  while ($original =~ /(<(.*?)>)/) {
+    my $pre = $`;
+    my $post = $';
+    my $name = $1;
+    if (empty($2)) { error_stop("empty name found in equation for $otype $variable{$otype}[$omvar]{name}:\n$variable{$otype}[$omvar]{equation}"); }
+    my $consistent_name = examine_name($name,"name");
+# now replace this with the maxima name if it is identified as a variable (it could be a region)
+    MATCH_LOOP: {
+      foreach my $type (@user_types,"empty","system") {
+        foreach my $mvar ( 1 .. $m{$type} ) {
+          if ($consistent_name eq $variable{$type}[$mvar]{"name"}) {
+            print DEBUG "found a match between a name and maxima name: name = $name: consistent_name = $consistent_name: maxima = $variable{$type}[$mvar]{maxima}\n";
+            $name = $variable{$type}[$mvar]{"maxima"};
+            last MATCH_LOOP;
+          }
+        }
+      }
+    }
+    $mequation = $mequation.$pre.$name;
+    $original = $post;
+  }
+  if (nonempty($original)) { $mequation = $mequation.$original; }
+
+  print DEBUG "in equation_to_mequation after mequation = $mequation\n";
+
+  return $mequation;
+
+}
+
+#-------------------------------------------------------------------------------
+# takes an arb equation and
+# 1) expands the dot and ddot operators
+# 2) replaces a reference to itself with the previous equation
+# copies all input arguments and returns new equation
+# $asread_variable[$masread]{"equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$asread_variable[$masread]{"equation"},$oline);
+
+sub expand_equation {
+
+  use strict;
+  my $raw_equation = $_[0]; # the first argument is the raw equation, which is copied and unchanged
+  my $variable_name = $_[1]; # the second argument is the variable name
+  my $previous_equation = $_[2]; # the third argument is the previous equation (previously expanded) used for substitution if referenced
+  my $oline = $_[3]; # forth argument is just for error message
+
+  my $expanded_equation = ''; # this is the final variable that will be returned
+
+  use Text::Balanced qw ( extract_bracketed );
+  my ($name, $consistent_name);
+
+  print DEBUG "in expand_equation: raw_equation = $raw_equation\n";
 
 # look for any dot and ddot operators and replace with scalar mathematics
 # coding cannot handle nested ddot or dot operators
 # move string from $withdots to $withoutdots while doing replacements
-  $withoutdots = '';
+  my $withdots = $raw_equation;
+  my $withoutdots = '';
 
   while ($withdots =~ /(<.*?>)|ddot\(|dot\(/) {
-    $pre = $`;
-    $post = $';
-    $operator = $&;
+    my $pre = $`;
+    my $post = $';
+    my $operator = $&;
 # move over any variable and region names
     if ($1) { $withdots = $post; $withoutdots = $withoutdots.$pre.$operator; next; }
     $operator =~ s/\($//;
@@ -4280,7 +4338,7 @@ sub name_to_maxima {
     print DEBUG "found operator $operator in $withdots\n";
     print DEBUG "pre = $pre: post = $post\n";
 
-    $midl = "";
+    my $midl = "";
     while ( $post =~ /(<.+?>)|(\,)/ ) {
       $post = $';
       if ($1) {
@@ -4292,8 +4350,8 @@ sub name_to_maxima {
     }
     print DEBUG "left side finalised: midl = $midl: post = $post\n";
         
-    $midr = "";
-    $midrnovar = "";
+    my $midr = "";
+    my $midrnovar = "";
     while ( $post =~ /(<.+?>)|(\))/ ) {
       $post = $';
       if ($1) {
@@ -4329,18 +4387,18 @@ sub name_to_maxima {
 
     my $mid = "(";
     if ($operator eq "dot") {
-      if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in dot product in $otype $variable{$otype}[$omvar]{name}: check the variables' [l=:] syntax"); } # scalar(@posl) is number of elements of posl array
-      foreach $n1 ( 1 .. 3 ) {
+      if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in dot product in $variable_name equation on the following line: check the variables' [l=:] syntax\noline = $oline"); } # scalar(@posl) is number of elements of posl array
+      foreach my $n1 ( 1 .. 3 ) {
         substr($midl, $posl[0]-1, 1, $n1); #replace blank with correct index
         substr($midr, $posr[0]-1, 1, $n1); #replace blank with correct index
         $mid = $mid." + (".$midl.")*(".$midr.")";
       }
     } else { # double dot product
-      if (@posl != 2 || @posr != 2) { error_stop("wrong number of colons in ddot product in $otype $variable{$otype}[$omvar]{name}: check the variables' [l=:,:]/[l=:] syntax"); } # scalar(@posl) is number of elements of posl array
-      foreach $n1 ( 1 .. 3 ) {
+      if (@posl != 2 || @posr != 2) { error_stop("wrong number of colons in ddot product in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax\noline = $oline"); } # scalar(@posl) is number of elements of posl array
+      foreach my $n1 ( 1 .. 3 ) {
         substr($midl, $posl[0]-1, 1, $n1); #replace blank with correct index
         substr($midr, $posr[1]-1, 1, $n1); #replace blank with correct index
-        foreach $n2 ( 1 .. 3 ) {
+        foreach my $n2 ( 1 .. 3 ) {
           substr($midl, $posl[1]-1, 1, $n2); #replace blank with correct index
           substr($midr, $posr[0]-1, 1, $n2); #replace blank with correct index
           $mid = $mid." + (".$midl.")*(".$midr.")";
@@ -4359,35 +4417,41 @@ sub name_to_maxima {
   }
 
 # reconstruct string including final unmatched bits
-  $_[0] = $withoutdots.$withdots;
+  my $processing_equation = $withoutdots.$withdots;
+  my $number_of_self_references = 0;
       
-# loop through and replace variables with standardised names
-  $original = $_[0];
-  $_[0] = "";
-  while ($original =~ /(<(.*?)>)/) {
-    $pre = $`;
-    $post = $';
-    $name = $1;
-    if (empty($2)) { error_stop("empty name found in equation for $otype $variable{$otype}[$omvar]{name}:\n$variable{$otype}[$omvar]{equation}"); }
-    $consistent_name = examine_name($name,"name");
-# now replace this with the maxima name if it is identified as a variable (it could be a region)
-    MATCH_LOOP: {
-      foreach $type (@user_types,"empty","system") {
-        foreach $mvar ( 1 .. $m{$type} ) {
-          if ($consistent_name eq $variable{$type}[$mvar]{"name"}) {
-            print DEBUG "found a match between a name and maxima name: name = $name: consistent_name = $consistent_name: maxima = $variable{$type}[$mvar]{maxima}\n";
-            $name = $variable{$type}[$mvar]{"maxima"};
-            last MATCH_LOOP;
-          }
-        }
+# now loop through the expanded equation, looking for self references and replacing by the previous equation
+  while ($processing_equation =~ /(<(.*?)>)/) {
+    my $pre = $`;
+    my $post = $';
+    my $name = $1;
+    if (empty($2)) { error_stop("empty name found in equation for $variable_name on following line: expanded_equation = $expanded_equation\noline = $oline"); }
+    my $consistent_name = examine_name($name,"name");
+    if ($consistent_name eq $variable_name) {
+# found a match with the previous equation
+      $number_of_self_references++;
+      print DEBUG "INFO: found a self-reference in an equation for variable $variable_name: raw_equation = $raw_equation: previous_equation = $previous_equation\noline = $oline\n";
+      if ($previous_equation eq '') {
+        $name = "0.d0"; # if the previous equation is empty, then replace with a zero value
+        print DEBUG "INFO: replacing self-reference with 0.d0 as previous_equation is empty\n";
+        print "WARNING: replacing a self-reference to $variable_name with 0.d0 in $raw_equation as the equation was not previously defined\n";
+      } else {
+        $name = $previous_equation;
+        print DEBUG "INFO: replacing self-reference with $name\n";
       }
     }
-    $_[0] = $_[0].$pre.$name;
-    $original = $post;
+    $expanded_equation = $expanded_equation.$pre.$name;
+    $processing_equation = $post;
   }
-  if (nonempty($original)) { $_[0] = $_[0].$original; }
+  if (nonempty($processing_equation)) { $expanded_equation = $expanded_equation.$processing_equation; $processing_equation = ''; }
 
-  print DEBUG "in name_to_maxima: after _[0] = ",$_[0],"\n";
+  if ($number_of_self_references) {
+    print "INFO: found $number_of_self_references self-references in an equation for variable $variable_name: raw_equation = $raw_equation: previous_equation = $previous_equation: expanded_equation = $expanded_equation\n";
+  }
+
+  print DEBUG "in expand_equation: after expanded_equation = $expanded_equation\n";
+
+  return $expanded_equation;
 
 }
 
@@ -6292,29 +6356,6 @@ sub get_system_mvar {
   if ($mvar > $m{"system"}) {die "ERROR: system variable $_[0] not found in get_system_mvar\n";}
 
   return $mvar;
-
-}
-
-#-------------------------------------------------------------------------------
-# takes a string which contains maxima names and replaces with user defined names
-# this subroutine possibly not used
-
-sub maxima_to_name {
-
-  my $type;
-  my $mvar;
-
-  print DEBUG "in maxima_to_name: before _[0] = ",$_[0],"\n";
-
-# substitute user names with maxima names
-  foreach $type (@user_types,"system","empty") {
-    foreach $mvar ( 1 .. $m{$type} ) {
-      replace_substrings($_[0],$variable{$type}[$mvar]{"maxima"},$variable{$type}[$mvar]{"name"});
-    }
-  }
-
-  print DEBUG "in maxima_to_name: after _[0] = ",$_[0],"\n";
-  return $_[0];
 
 }
 
