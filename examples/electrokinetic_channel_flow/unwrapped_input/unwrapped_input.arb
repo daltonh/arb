@@ -3,992 +3,170 @@
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: electrokinetic_channel.arb
-#INCLUDE_WORKING "electrokinetic_channel.arb"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../electrokinetic_channel.arb without any search/replace combinations
-# arb finite volume solver
-# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
-#
-# arb is released under the GNU GPL.  For full details see the license directory.
-#
-#-------------------------------------------------------------------
-# file equations.in
-VERSION 0.53
-
-INFO_TITLE "Fully-developed electrokinetic flow"
-INFO_DESCRIPTION "Now setup for electroviscous flow with zero total current"
-INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "22/4/15" # interpreted as the last modification date
-
-# choose coordinate system
-# for cartesian slit flow include the following:
-#GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
-#GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centreline is horizontal need to include reflect=2 when differentiating of averaging any l=2 vector components
-INFO_DESCRIPTION+ ": cartesian slit flow"
-# for cylindrical pipe flow include the following:
-#INCLUDE_ROOT "general"
-#INCLUDE "cylindrical_reflect_r2z1"
-#INFO_DESCRIPTION+ ": cylindrical pipe flow (note, analytical expressions are not correct for this yet)"
-
-# for both coordinate systems the centreline is normal to the x_2 (ie, y) axis, so glue this back on itself while setting the reflection direction to use
-GLUE_FACES <centreline> reflect=2 # glue the centreline back on itself (while reflecting the y indicies of the mesh), creating a horizontal axis of symmetry along the bottom of the domain
-
-#----------------------------------------------------------------------------
-# solver options
-
-# for electrokinetic problems, higher order kernels give significantly better results (these are now the default anyway)
-KERNEL_OPTIONS polynomialaverageorder=2,polynomialorder=2 # specifies that when averaging/differentiating quantities to/at faces, ensure that function fits a second order polynomial
-
-#-------------------------------------------------------------------
-# geometry
-
-# CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
-# where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
-# where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
-# where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
-# where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
-# where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
-# where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
-
-FACE_REGION <walls> "COMPOUND <boundaries>-<inlet>-<outlet>-<centreline>"
-FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
-FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
-FACE_REGION <inlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <inlet>"
-FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
-
-# MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
-# output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
-# input options are: input,centringinput,meshinput,centringmeshinput,noinput
-# data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
-#MSH_FILE "electrokinetic_channel_structured.msh"
-MSH_FILE "electrokinetic_channel_structured_nonuniform.msh"
-#MSH_FILE "electrokinetic_channel_unstructured.msh"
-
-# use templates from the electrokinetics template directory to build up problem
-# use these for a dimensional problem
-#INCLUDE_ROOT "navier_stokes"
-#INCLUDE "constants" # specify physical and numerical constants
-#INCLUDE_ROOT "electrokinetics"
-#INCLUDE "constants" # and the same for the electrokinetic equations
-# or these for a nondimensional problem
-#INCLUDE_ROOT "navier_stokes"
-# INFO: setting include root directory to navier_stokes
-#INCLUDE "nondimensional_constants" # specify physical and numerical constants
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/nondimensional_constants.arb without any search/replace combinations
-# use this constants file if solving nondimensionally
-
-#INCLUDE "constants"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/constants.arb without any search/replace combinations
-# physical data
-CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
-CONSTANT <rho> [kg/m^3] 1.d0 # density
-CONSTANT <u_av> [m/s] 1.d0 # required average inlet velocity (if used, sets flowrate through inlet)
-
-# replace any references to the face centred fluid properties with the constant values
-# get rid of these replacements and define alternative statements for the face centred fluid properties if they do vary
-#GENERAL_REPLACEMENTS REPLACE "<mu_f>" WITH "<mu>" REPLACE "<rho_f>" WITH "<rho>"
-
-# setup transient and steady-state general replacements that are specific to navier-stokes equations, based on simulation type
-# NB, this could be overwritten if using a transient simulation of the steady-state equations for example
-##GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
-#GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W ""
-
-# now just assume that simulation is steady-state, overwriting this with the transient replacments in the transient_setup files
-#GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W ""
-
-# numerical data
-CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
-CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
-
-# find an estimate of the domain size using general template
-#INCLUDE_ROOT "general"
-# INFO: setting include root directory to general
-#INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/general/domain_lengthscale.arb without any search/replace combinations
-# find an estimate of the domain size
-# here we use the maximum domain length in each dimension
-# previously used a more accurate but expensive formulation (see minimum_face_boundary_distance)
-#INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/general/domain_lengths.arb without any search/replace combinations
-# based on node locations, here we calculate the maximum length of the domain in each dimension
-# these loops could be conducted over <boundary nodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
-# as this is only a single loop through each node this isn't an expensive calculation anyway (unlike the levelset-based minimum boundary distance)
-NONE_CONSTANT <nodexmax[l=1]> "nodemax(<nodex[l=1]>,region=<all nodes>)"
-NONE_CONSTANT <nodexmax[l=2]> "nodemax(<nodex[l=2]>,region=<all nodes>)"
-#NONE_CONSTANT <nodexmax[l=3]> "nodemax(<nodex[l=3]>,region=<all nodes>)"
-NONE_CONSTANT <nodexmin[l=1]> "nodemin(<nodex[l=1]>,region=<all nodes>)"
-NONE_CONSTANT <nodexmin[l=2]> "nodemin(<nodex[l=2]>,region=<all nodes>)"
-#NONE_CONSTANT <nodexmin[l=3]> "nodemin(<nodex[l=3]>,region=<all nodes>)"
-NONE_CONSTANT <domain_length[l=1]> "<nodexmax[l=1]>-<nodexmin[l=1]>"
-NONE_CONSTANT <domain_length[l=2]> "<nodexmax[l=2]>-<nodexmin[l=2]>"
-#NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"
-# INCLUDE FINISHED for ../templates/general/domain_lengths.arb
-#--------------------------------------------------------
-NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"
-# INCLUDE FINISHED for ../templates/general/domain_lengthscale.arb
-#--------------------------------------------------------
-
-# for reference calculate some nondimensional quantities
-# these should be overwritten by real nondimensional quantities if this is a nondimensional problem
-CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
-# INCLUDE FINISHED for ../templates/navier_stokes/constants.arb
-#--------------------------------------------------------
-
-# set Reynolds number here to a value so that it isn't left as a function of <mu> from constants
-CONSTANT <Re> [1] 1.d-2 # Reynolds number, overwrite this after this file is included
-
-# convert dimensional parameters to nondimensional
-CONSTANT <mu> "1.d0/<Re>"
-CONSTANT <rho> 1.d0
-CONSTANT <u_av> 1.d0
-# INCLUDE FINISHED for ../templates/navier_stokes/nondimensional_constants.arb
-#--------------------------------------------------------
-#INCLUDE_ROOT "electrokinetics"
-# INFO: setting include root directory to electrokinetics
-#INCLUDE "nondimensional_constants" # and the same for the electrokinetic equations
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/nondimensional_constants.arb without any search/replace combinations
-# general setup for nondimensional electrokinetic problems
-
-#INCLUDE "constants"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/constants.arb without any search/replace combinations
-# general setup for electrokinetic problems
-
-CONSTANT <average ion n molarity> [molarity] 1.d-3 # molarity = mol/l
-CONSTANT <T> [K] 298.15 # temperature
-CONSTANT <eps_fluid> [1] 78.0d0 # relatic static permittivity
-CONSTANT <wall charge> [C/m^2] -60.d-3 # wall surface charge
-CONSTANT <I_total> [A] 0.d0 # specify the total amount of current flowing through the inlet.  Default is for electroviscous flow
-CONSTANT <average ion D> [m^2/s] 1.d-9 # average ion diffusivities
-CONSTANT <average ion z> [1] 1.d0 # average ion valency magnitude
-
-# fundamental constants
-CONSTANT <e> [C] 1.60210d-19 # charge of an electron
-CONSTANT <N_A> [1/mol] 6.02252d23 # avogadro's number
-CONSTANT <eps_o> [F/m] 8.854187817d-12 # vacuum permittivity
-CONSTANT <k> [J/K] 1.38054d-23 # boltzmann's constant
-
-# some derived constants
-CONSTANT <average ion n> [molecules/m^3] "<average ion n molarity>*<N_A>*1.d3" # note units
-CONSTANT <e/kT> "<e>/(<k>*<T>)" # this is a dummy variable that is only used in the dimensional form of the equations
-CONSTANT <K^2/2> [1] 1.d0 # this is a dummy variable that is only used in the nondimensional form of the equations
-CONSTANT <BK^2/Re^2> [1] 1.d0 # this is a dummy variable that is only used in the nondimensional form of the equations
-
-# for reference and possible use in estimate_initial_potential, calculate some nondimensional quantities
-# these should be overwritten by real nondimensional quantities if this is a nondimensional problem
-# assumes that <a_lengthscale> has been calculated previously (probably within navier-stokes constants file)
-
-CONSTANT <K> "<a_lengthscale>*sqrt(2.d0*<e>^2*<average ion z>^2*<average ion n>/(<eps_o>*<eps_fluid>*<k>*<T>))" # nondimensional channel half-width
-CONSTANT <S> "<wall charge>*<e>*<average ion z>*<a_lengthscale>/(<eps_o>*<eps_fluid>*<k>*<T>)" # nondimensional surface charge
-# INCLUDE FINISHED for ../templates/electrokinetics/constants.arb
-#--------------------------------------------------------
-
-# physical data
-CONSTANT <Re> [1] 1.d-2 # Reynolds number.  Overwrites value set in nondimensional_constants
-CONSTANT <Sc> [1] 1.d+3 # Schmidt number
-CONSTANT <B> [1] 2.34d-4 # B number
-CONSTANT <K> [1] 1.d-1 # K
-CONSTANT <S> [1] -2.d+1 # S (signed)
-CONSTANT <I_total> [1] 0.d0 # total current passing through domain
-
-# calculate derived constants and make dummy ones unity
-CONSTANT <u_av> [1] 1.d0
-CONSTANT <average ion n> [1] 1.d0
-CONSTANT <Pe> [1] "<Re>*<Sc>" # Peclet number
-CONSTANT <average ion D> [1] "1/<Pe>"
-CONSTANT <K^2/2> [1] "<K>^2/2.d0"
-CONSTANT <BK^2/Re^2> [1] "<B>*<K>^2/(<Re>^2)"
-CONSTANT <eps_fluid> [1] 1.d0
-CONSTANT <wall charge> [1] "<S>"
-CONSTANT <e> [1] 1.d0
-CONSTANT <eps_o> [1] 1.d0
-CONSTANT <e/kT> [1] 1.d0
-
-# zero some undefined dimensional constants
-CONSTANT <average ion n molarity> 0.d0
-CONSTANT <T> 0.d0
-
-# lengthscale of the mesh - for nondimensional problems this needs to be 1
-CONSTANT <a_lengthscale> "1.d0"
-# INCLUDE FINISHED for ../templates/electrokinetics/nondimensional_constants.arb
-#--------------------------------------------------------
-
-# some concentrations and charges required in other equations, and also the face centred potential required in the dynamic_force calculation
-#INCLUDE "binary_ion_combinations"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/binary_ion_combinations.arb without any search/replace combinations
-# these are relationships that involve combinations of ion properties
-# here they are specific to a binary system of <ion+ n> and <ion- n>, so need overwriting for more complex systems
-# include this early on, before p_error inclusion
-
-# include positive ion concentrations
-#INCLUDE "ion_concentrations" REPLACE "<ion" WITH "<ion+"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_concentrations.arb with the following search/replace combinations: replace <ion with <ion+
-# these are some derived concentrations
-
-CELL_LOCAL <ion+ n pos> "cellmax(<ion+ n>,0.d0)"
-FACE_DERIVED <ion+ n_hf> "faceave[harmonicweighted](<ion+ n pos>)" ON <all faces> # face centred concentrations used in pressure correction (p_error) and in nernst-planck ion transport
-#FACE_DERIVED <ion+ n_hf> "faceave[harmonic](<ion+ n pos>)" ON <all faces>
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_concentrations.arb
-#--------------------------------------------------------
-# include negative ion concentrations
-#INCLUDE "ion_concentrations" REPLACE "<ion" WITH "<ion-"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_concentrations.arb with the following search/replace combinations: replace <ion with <ion-
-# these are some derived concentrations
-
-CELL_LOCAL <ion- n pos> "cellmax(<ion- n>,0.d0)"
-FACE_DERIVED <ion- n_hf> "faceave[harmonicweighted](<ion- n pos>)" ON <all faces> # face centred concentrations used in pressure correction (p_error) and in nernst-planck ion transport
-#FACE_DERIVED <ion- n_hf> "faceave[harmonic](<ion- n pos>)" ON <all faces>
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_concentrations.arb
-#--------------------------------------------------------
-
-# also define the following locals
-CELL_LOCAL <rho_e> "<e>*(<ion+ z>*<ion+ n>+<ion- z>*<ion- n>)" ON <all cells> # used on right of poisson equation
-CELL_LOCAL <rho_e pos> "<e>*(<ion+ z>*<ion+ n pos>+<ion- z>*<ion- n pos>)" ON <all cells> # used in momentum balance (navier-stokes)
-FACE_LOCAL <rho_e_hf> "<e>*(<ion+ z>*<ion+ n_hf>+<ion- z>*<ion- n_hf>)" ON <all faces> output
-CELL_LOCAL <n_0^2 signed> "cellmin(<ion+ n>,<ion- n>)*abs(cellmax(<ion+ n>,<ion- n>))" ON <all cells>
-
-# for error checking
-#CELL_OUTPUT <rho_e error> "<rho_e>-<rho_e pos>" ON <all cells>
-
-# this face-averaged potential is needed early on in the derived calculations (for dynamic_force_c) so include it here
-FACE_DERIVED <U_f> "faceave(<U>)" ON <all faces> # this is needed in <dynamic_force_c> which will be calculated in p_error_dxunit
-# INCLUDE FINISHED for ../templates/electrokinetics/binary_ion_combinations.arb
-#--------------------------------------------------------
-
-# now the flow parts
-#INCLUDE_ROOT "navier_stokes"
-# INFO: setting include root directory to navier_stokes
-#INCLUDE "domain"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/domain.arb without any search/replace combinations
-#INCLUDE "unknowns" # no .arb suffix is required
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/unknowns.arb without any search/replace combinations
-# unknown variables used for flow problems
-CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
-CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
-#CELL_UNKNOWN <u[l=3]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
-CELL_UNKNOWN <p> [] "1.d0" ON <all cells> # pressure
-# INCLUDE FINISHED for ../templates/navier_stokes/unknowns.arb
-#--------------------------------------------------------
-#INCLUDE "total_stress"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/total_stress.arb without any search/replace combinations
-# total stress tensor
-#INCLUDE "u_gradient_tensor"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/u_gradient_tensor.arb without any search/replace combinations
-# a tensor of face centred gradients that respects any reflections
-# used in the total stress and boundary conditions now
-# as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
-               FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,](<u[l=1]>)" ON <all faces>
-FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,reflect=2](<u[l=2]>)" ON <all faces>
-#FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <all faces>
-FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,](<u[l=1]>)" ON <all faces>
-               FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,reflect=2](<u[l=2]>)" ON <all faces>
-#FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <all faces>
-#FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,](<u[l=1]>)" ON <all faces>
-#FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,reflect=2](<u[l=2]>)" ON <all faces>
-#               FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,](<u[l=3]>)" ON <all faces>
-
-# now at the same time calculate the velocity divergence (numerical) on each face
-#FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <all faces>
-# this is a now a placeholder for where this should be calculated
-# to include this contribution just include u_divergence_face somewhere after this file and <udiv_f> will be correctly calculated
-FACE_DERIVED <udiv_f> "0.d0" ON <all faces>
-# INCLUDE FINISHED for ../templates/navier_stokes/u_gradient_tensor.arb
-#--------------------------------------------------------
-
-# no both cartesian and cylindrical stresses don't include pressure
-# without the numerical velocity divergence
-# FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*<ugrad_f[l=1,1]>" ON <all faces>
-# FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*<ugrad_f[l=2,2]>" ON <all faces>
-## FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*<ugrad_f[l=3,3]>" ON <all faces>
-# with the numerical velocity divergence (although it is generally set to zero in u_gradient_tensor anyway)
-# Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
- FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <all faces>
- FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <all faces>
-# FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <all faces>
-FACE_LOCAL <tau[l=1,2]> "-<mu>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <all faces>
-#FACE_LOCAL <tau[l=1,3]> "-<mu>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <all faces>
-#FACE_LOCAL <tau[l=2,3]> "-<mu>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <all faces>
-FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <all faces>
-#FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <all faces>
-#FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <all faces>
-# INCLUDE FINISHED for ../templates/navier_stokes/total_stress.arb
-#--------------------------------------------------------
-#INCLUDE "combined_fluxes"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/combined_fluxes.arb without any search/replace combinations
-# this calculated all fluxes now, including the rhie-chow stuff
-# by default this will work for steady-state (or implicit) simulations with constant rho
-# for other cases include files separately, using alternative files for momentum_flux.arb and doing specific face-centred property replacements in advection_flux.arb
-#INCLUDE "advection_flux"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/advection_flux.arb without any search/replace combinations
-# uses a rhie-chow type interpolation method to calculate the fluid flux (velocity) over and in the direction of each face
-
-#INCLUDE "p_error"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/p_error.arb without any search/replace combinations
-# a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
-# pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
-
-#INCLUDE "dynamic_force" # cell centred dynamic force
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/dynamic_force.arb without any search/replace combinations
-# dynamic force is the pressure force that could cause fluid movement
-# it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
-# dynamic force now has the physically correct sign!
-
-FACE_DERIVED <p_f> "faceave(<p>)" ON <all faces>
-CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <all cells>
-CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <all cells>
-#CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <all cells>
-# interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
-FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[,adjacentcells](<dynamic_force_c[l=1]>)"
-FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[reflect=2,adjacentcells](<dynamic_force_c[l=2]>)"
-#FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
-# INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
-#--------------------------------------------------------
-FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
-FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
-# INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
-#--------------------------------------------------------
-#INCLUDE "u_f"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/u_f.arb without any search/replace combinations
-# calculate the Rhie-Chow type velocity correction, only applied (nonzero) on the domain faces
-FACE_LOCAL <u_f_vect[l=1]> "faceave[](<u[l=1]>)"
-FACE_LOCAL <u_f_vect[l=2]> "faceave[reflect=2](<u[l=2]>)"
-#FACE_LOCAL <u_f_vect[l=3]> "faceave[](<u[l=3]>)"
-FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <all faces> # volume (velocity) transport
-FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domain faces>
-FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domain faces>
-
-# advection limiter
-# alternative v0.5 method based on average velocity magnitude
-#CELL_DERIVED <u_mag2> "dot(<u[l=:]>,<u[l=:]>)" ON <all cells>
-#FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <domain faces>
-#FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<rho>)" ON <domain faces>
-# pre v0.5 method based on component of velocity in direction of face normal
-FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domain faces>
-#FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho>)" ON <domain faces>
-
-# viscous limiter
-# this didn't seem to work
-#FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
-## additional contribution to velocity interpolation from cylindrical hoop-stress term
-##FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<mu>,<eps_p>*1.d0^2/(2.d0*<mu>))" ON <domain faces>
-FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
-
-# this file now does both steady-state and transient using transient comments string replacements, which are set in constants.arb
-
-# transient limiter
-# this is the equivalent time that the limiter has been moving in the one direction
-# noting that the variables (<u_f_{correction}> and <eps>) here are previous timestep ones
-#FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <domain faces>
-# need to save previous pressure error sign
-#FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <domain faces>
-#FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <domain faces>
-
-# combined limiter, using one of two possible methods
-# use a straight minimum of the three or two correction velocities
-##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
-# alternatively, average the reciprocal of the three of two correction velocities
-# in pre v0.53 these weren't limited using <tinyish> which could case a problem if one is zero
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
-FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
-# it isn't clear which of the above two methods is better: the reciprocal version can be slightly more expensive to calculate, but as it varies more continuously, can (sometimes, possibly, etc etc) lead to slightly faster overall simulation times.  Doesn't seem to be much in it though.
-# unfortunately in versions around v0.52 the steady-state and transient cases were accidentally handled using different methods (transient with reciprocal averaging, steady-state with straight minimum)
-# for debugging set the correction velocity to be solely only one of the three possibilities
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <domain faces>
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <domain faces>
-
-# final face velocity
-FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
-
-#FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
-
-# this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
-# save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
-# if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
-#GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
-##NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
-##NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
-# INCLUDE FINISHED for ../templates/navier_stokes/u_f.arb
-#--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/navier_stokes/advection_flux.arb
-#--------------------------------------------------------
-#INCLUDE "momentum_flux"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/momentum_flux.arb without any search/replace combinations
-# flux of momentum over and in the direction of each face
-
-# flux now split to allow easier overwriting of the advection component
-# default is for steady-state (or fully implicit) with constant rho
-FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
-FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,reflect=2](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
-#FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,](<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
-
-FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+<J_advection_f[l=1]>" ON <all faces> # component of momentum transport from stress and advection
-FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+<J_advection_f[l=2]>" ON <all faces> # component of momentum transport from stress and advection
-#FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)+<J_advection_f[l=3]>" ON <all faces> # component of momentum transport from stress and advection
-# INCLUDE FINISHED for ../templates/navier_stokes/momentum_flux.arb
-#--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/navier_stokes/combined_fluxes.arb
-#--------------------------------------------------------
-#INCLUDE "conservation"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/conservation.arb without any search/replace combinations
-# this now chooses between the steady-state and transient conservation files based on the transient navier-stokes comment string
-# these comment strings should be set from either constants, transient_setup or transient_dynamic_setup
-# both files assume constant density for now, otherwise overwrite with conservation_incompressible_transient_varying_rho specifically
-#INCLUDE "conservation_incompressible_transient_constant_rho"
-#INCLUDE "conservation_incompressible_steady_state"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/conservation_incompressible_steady_state.arb without any search/replace combinations
-# conservation equations solved over each domain cell (finite volume method)
-
-# cartesian
-CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
-CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
-CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
-#CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
-
-# cylindrical
-#CELL_EQUATION <continuity> "celldiv(1.d0*<u_f>)/1.d0" ON <domain> # continuity
-##CELL_EQUATION <momentum[l=1]> "celldiv(1.d0*<J_f[l=1]>)/1.d0-<dynamic_force_c[l=1]>" ON <domain> # momentum component
-##CELL_EQUATION <momentum[l=2]> "celldiv(1.d0*<J_f[l=2]>)/1.d0-<dynamic_force_c[l=2]>" ON <domain> # momentum component
-###CELL_EQUATION <momentum[l=3]> "celldiv(1.d0*<J_f[l=3]>)/1.d0-<dynamic_force_c[l=3]>" ON <domain> # momentum component
-# these also include the hoop stress terms when <<radiusdim?flag>> is appropriately set
-#CELL_EQUATION <momentum[l=1]> "celldiv(1.d0*<J_f[l=1]>)/1.d0-<dynamic_force_c[l=1]>+0*2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)" ON <domain> # momentum component
-#CELL_EQUATION <momentum[l=2]> "celldiv(1.d0*<J_f[l=2]>)/1.d0-<dynamic_force_c[l=2]>+0*2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)" ON <domain> # momentum component
-##CELL_EQUATION <momentum[l=3]> "celldiv(1.d0*<J_f[l=3]>)/1.d0-<dynamic_force_c[l=3]>+0*2.d0*<u[l=3]>*<mu>/(<cellx[l=3]>**2)" ON <domain> # momentum component
-# INCLUDE FINISHED for ../templates/navier_stokes/conservation_incompressible_steady_state.arb
-#--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/navier_stokes/conservation.arb
-#--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/navier_stokes/domain.arb
-#--------------------------------------------------------
-#INCLUDE_ROOT "electrokinetics"
-# INFO: setting include root directory to electrokinetics
-#INCLUDE "dynamic_force" # overwrite the dynamic_force used in the navier-stokes equations to include an electrical forcing term
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/dynamic_force.arb without any search/replace combinations
-# this overwrites the dynamic forces calculated for the navier_stokes equations to include the electrical forcing terms
-# dynamic force is included in the navier-stokes conservation equations, so they don't need any other modification
-# <U_f> should also be defined previously
-
-CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=1](<U_f>)" ON <all cells>
-CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=2](<U_f>)" ON <all cells>
-#CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=3](<U_f>)" ON <all cells>
-FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)-<BK^2/Re^2>*<rho_e_hf>*facegrad[dxunit](<U>)" ON <all faces>
-# INCLUDE FINISHED for ../templates/electrokinetics/dynamic_force.arb
-#--------------------------------------------------------
-
-# and the flow boundary conditions
-#INCLUDE_ROOT "navier_stokes"
-# INFO: setting include root directory to navier_stokes
-#INCLUDE "walls_noslip" # nonslip walls BC
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/walls_noslip.arb without any search/replace combinations
-# boundary conditions on nonslip walls
-#INCLUDE "noflux" REPLACE "<region>" WITH "<walls>" REPLACE "<equation>" WITH "<walls noflux>"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/noflux.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls noflux>
-FACE_EQUATION <walls noflux> "<u_f>" ON <walls> # no flux normal to region
-# INCLUDE FINISHED for ../templates/navier_stokes/noflux.arb
-#--------------------------------------------------------
-#INCLUDE "noslip" REPLACE "<region>" WITH "<walls>" REPLACE "<equation" WITH "<walls noslip" # noslip now detects whether it is a 3D or 2D problem
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation with <walls noslip
-FACE_EQUATION <walls noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
-#FACE_EQUATION <walls noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
-# INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
-#--------------------------------------------------------
-#INCLUDE "p_extrapolation" REPLACE "<region>" WITH "<walls>" REPLACE "<equation>" WITH "<walls p_extrapolation>"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/p_extrapolation.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls p_extrapolation>
-FACE_EQUATION <walls p_extrapolation> "<dynamic_force_f>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
-# INCLUDE FINISHED for ../templates/navier_stokes/p_extrapolation.arb
-#--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/navier_stokes/walls_noslip.arb
-#--------------------------------------------------------
-#INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure gradient to give using <u_av>
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/inlet_u_fully_developed.arb without any search/replace combinations
-# boundary conditions on inlet - fully developed flow
-#INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/u_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation> with <inlet fully developed>
-#FACE_EQUATION <inlet fully developed> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <inlet> # normal velocity component is fully developed
-FACE_EQUATION <inlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <inlet> # normal velocity component is fully developed
-# INCLUDE FINISHED for ../templates/navier_stokes/u_fully_developed.arb
-#--------------------------------------------------------
-#INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation with <inlet no slip
-FACE_EQUATION <inlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <inlet> # no component tangential to the face
-#FACE_EQUATION <inlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <inlet> # no component tangential to the face in the second tangential direction
-# INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
-#--------------------------------------------------------
-
-# alternatively, set uniform inlet pressure giving required average velocity
-NONE_DERIVED <u_av_calc> "facesum(-<u_f>*<facearea>,<inlet>)/facesum(<facearea>,<inlet>)" # calculate average velocity directed into the domain
-#NONE_DERIVED <u_av_calc> "facesum(-<u_f>*<facearea>*1.d0,<inlet>)/facesum(<facearea>*1.d0,<inlet>)" # calculate average velocity directed into the domain
-
-# now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <inlet sans centreline> and <inlet centreline>
-NONE_EQUATION <inlet centreline flowrate equation> "<u_av_calc>-<u_av>" # set flowrate through inlet to give required average velocity
-NONE_DERIVED <inlet centreline gradp> "facesum(<dynamic_force_f>,region=<inlet centreline>)"
-FACE_EQUATION <inlet flowrate equation> "<dynamic_force_f>-<inlet centreline gradp>" ON <inlet sans centreline> # apply specified pressure over inlet
-# INCLUDE FINISHED for ../templates/navier_stokes/inlet_u_fully_developed.arb
-#--------------------------------------------------------
-#INCLUDE "outlet_u_fully_developed" # fully developed velocity profile, setting pressure at centreline to zero and a uniform pressure gradient
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/outlet_u_fully_developed.arb without any search/replace combinations
-# boundary conditions on outlet - fully developed flow
-#INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<outlet>" REPLACE "<equation>" WITH "<outlet fully developed>"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/u_fully_developed.arb with the following search/replace combinations: replace <region> with <outlet>: replace <equation> with <outlet fully developed>
-#FACE_EQUATION <outlet fully developed> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <outlet> # normal velocity component is fully developed
-FACE_EQUATION <outlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <outlet> # normal velocity component is fully developed
-# INCLUDE FINISHED for ../templates/navier_stokes/u_fully_developed.arb
-#--------------------------------------------------------
-#INCLUDE "noslip" REPLACE "<region>" WITH "<outlet>" REPLACE "<equation" WITH "<outlet no slip"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <outlet>: replace <equation with <outlet no slip
-FACE_EQUATION <outlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to the face
-#FACE_EQUATION <outlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <outlet> # no component tangential to the face in the second tangential direction
-# INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
-#--------------------------------------------------------
-
-# now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <outlet sans centreline> and <outlet centreline>
-NONE_EQUATION <outlet centreline flowrate equation> "facesum(<p_f>,region=<outlet centreline>)" # set pressure at centreline to be zero
-NONE_DERIVED <outlet centreline gradp> "facesum(<dynamic_force_f>,region=<outlet centreline>)"
-FACE_EQUATION <outlet flowrate equation> "<dynamic_force_f>-<outlet centreline gradp>" ON <outlet sans centreline> # apply specified pressure over outlet
-# INCLUDE FINISHED for ../templates/navier_stokes/outlet_u_fully_developed.arb
-#--------------------------------------------------------
-
-# now ion transport and potential equation
-#INCLUDE_ROOT "electrokinetics"
-# INFO: setting include root directory to electrokinetics
-#INCLUDE "binary_ion_equations" # transport of binary electrolyte (positive and negative ions), including boundary conditions
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/binary_ion_equations.arb without any search/replace combinations
-# equations required for the transport of a binary univalent electrolyte
-# include statements for binary combinations should be included earlier before p_error calculation (binary_ion_combinations)
-
-# include positive ion transport equations
-#INCLUDE "ion_equations" REPLACE "<ion" WITH "<ion+"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_equations.arb with the following search/replace combinations: replace <ion with <ion+
-#INCLUDE "ion_constants"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_constants.arb without any search/replace combinations
-# ion constants for one specific ion species
-# all variables start with <ion+ so this can be replaced to make specific ions
-
-CONSTANT <ion+ z> [1] "<average ion z>" # valency of ion
-CONSTANT <ion+ D> [m^2/s] "<average ion D>" # diffusivity of ion
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_constants.arb
-#--------------------------------------------------------
-#INCLUDE "ion_domain"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_domain.arb without any search/replace combinations
-# ion transport equations for one specific ion species
-# all variables start with <ion+ so this can be replaced to make specific ions
-
-#CELL_LOCAL <ion+ n initial> "<average ion n>"
-# initial value now based on initial potential, so the potential expression will be unwrapped to use here
-CELL_LOCAL <ion+ n initial> "<average ion n>*exp(-<ion+ z>*<e/kT>*<U>)"
-CELL_UNKNOWN <ion+ n> [molecules/m^3] "<ion+ n initial>" ON <all cells> # ion concentration, note units
-
-#CELL_TRANSIENT <ion+ n[r=1]> "<ion+ n initial>" "<ion+ n>" ON <all cells>
-CELL_DERIVED <ion+ limiter> [1] "celllimiter[lower](<ion+ n>,cellmin(<ion+ n>,,<cellicells>),celllimiter[upper](<ion+ n>,cellmax(<ion+ n>,,<cellicells>)))" ON <all cells> # relative limits
-FACE_LOCAL <ion+ n_f> "faceave[advection](<ion+ n>,<u_f>,<ion+ limiter>*<adv_limiter>)" ON <all faces> # face advection-interpolated concentration
-FACE_DERIVED <ion+ J_f> [molecules/(m^2.s)] "<ion+ n_f>*<u_f>-<ion+ D>*(facegrad(<ion+ n>)+<ion+ z>*<e/kT>*<ion+ n_hf>*facegrad(<U>))" ON <all faces> # flux of ions across each face
-
-# conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
-# cartesian only
-CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "celldiv(<ion+ J_f>-faceave[lastcell](<ion+ n>)*<u_f>)" ON <domain>
-# cylindrical and cartesian
-#CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "celldiv(1.d0*(<ion+ J_f>-faceave[lastcell](<ion+ n>)*<u_f>))/1.d0" ON <domain>
-
-# cartesian only
-#CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "(<ion+ n>-<ion+ n[r=1]>)/<dt>+celldiv(<ion+ J_f>-faceave[lastcell](<ion+ n>)*<u_f>)" ON <domain>
-# cylindrical and cartesian
-##CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "(<ion+ n>-<ion+ n[r=1]>)/<dt>+celldiv(1.d0*(<ion+ J_f>-faceave[lastcell](<ion+ n>)*<u_f>))/1.d0" ON <domain>
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_domain.arb
-#--------------------------------------------------------
-#INCLUDE "ion_walls"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_walls.arb without any search/replace combinations
-# ion wall boundary conditions for one specific ion species
-# all variables start with <ion+ so this can be replaced to make specific ions
-
-FACE_EQUATION <ion+ walls> "<ion+ J_f>" ON <walls> # no flux of ions through walls
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_walls.arb
-#--------------------------------------------------------
-#INCLUDE "ion_fully_developed" REPLACE "<region>" WITH "<outlet>" REPLACE "<ion equation>" WITH "<ion outlet>"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_fully_developed.arb with the following search/replace combinations: replace <region> with <outlet>: replace <ion equation> with <ion outlet>
-# ion transport equations for one specific ion species
-# all variables start with <ion+ so this can be replaced to make specific ions
-
-FACE_EQUATION <ion+ outlet> "facegrad(<ion+ n>)" ON <outlet> # fully developed flow
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_fully_developed.arb
-#--------------------------------------------------------
-#INCLUDE "ion_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<ion equation>" WITH "<ion inlet>"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <ion equation> with <ion inlet>
-# ion transport equations for one specific ion species
-# all variables start with <ion+ so this can be replaced to make specific ions
-
-FACE_EQUATION <ion+ inlet> "facegrad(<ion+ n>)" ON <inlet> # fully developed flow
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_fully_developed.arb
-#--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_equations.arb
-#--------------------------------------------------------
-# include negative ion transport equations, correcting valency to be negative
-#INCLUDE "ion_equations" REPLACE "<ion" WITH "<ion-"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_equations.arb with the following search/replace combinations: replace <ion with <ion-
-#INCLUDE "ion_constants"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_constants.arb without any search/replace combinations
-# ion constants for one specific ion species
-# all variables start with <ion- so this can be replaced to make specific ions
-
-CONSTANT <ion- z> [1] "<average ion z>" # valency of ion
-CONSTANT <ion- D> [m^2/s] "<average ion D>" # diffusivity of ion
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_constants.arb
-#--------------------------------------------------------
-#INCLUDE "ion_domain"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_domain.arb without any search/replace combinations
-# ion transport equations for one specific ion species
-# all variables start with <ion- so this can be replaced to make specific ions
-
-#CELL_LOCAL <ion- n initial> "<average ion n>"
-# initial value now based on initial potential, so the potential expression will be unwrapped to use here
-CELL_LOCAL <ion- n initial> "<average ion n>*exp(-<ion- z>*<e/kT>*<U>)"
-CELL_UNKNOWN <ion- n> [molecules/m^3] "<ion- n initial>" ON <all cells> # ion concentration, note units
-
-#CELL_TRANSIENT <ion- n[r=1]> "<ion- n initial>" "<ion- n>" ON <all cells>
-CELL_DERIVED <ion- limiter> [1] "celllimiter[lower](<ion- n>,cellmin(<ion- n>,,<cellicells>),celllimiter[upper](<ion- n>,cellmax(<ion- n>,,<cellicells>)))" ON <all cells> # relative limits
-FACE_LOCAL <ion- n_f> "faceave[advection](<ion- n>,<u_f>,<ion- limiter>*<adv_limiter>)" ON <all faces> # face advection-interpolated concentration
-FACE_DERIVED <ion- J_f> [molecules/(m^2.s)] "<ion- n_f>*<u_f>-<ion- D>*(facegrad(<ion- n>)+<ion- z>*<e/kT>*<ion- n_hf>*facegrad(<U>))" ON <all faces> # flux of ions across each face
-
-# conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
-# cartesian only
-CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "celldiv(<ion- J_f>-faceave[lastcell](<ion- n>)*<u_f>)" ON <domain>
-# cylindrical and cartesian
-#CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "celldiv(1.d0*(<ion- J_f>-faceave[lastcell](<ion- n>)*<u_f>))/1.d0" ON <domain>
-
-# cartesian only
-#CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "(<ion- n>-<ion- n[r=1]>)/<dt>+celldiv(<ion- J_f>-faceave[lastcell](<ion- n>)*<u_f>)" ON <domain>
-# cylindrical and cartesian
-##CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "(<ion- n>-<ion- n[r=1]>)/<dt>+celldiv(1.d0*(<ion- J_f>-faceave[lastcell](<ion- n>)*<u_f>))/1.d0" ON <domain>
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_domain.arb
-#--------------------------------------------------------
-#INCLUDE "ion_walls"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_walls.arb without any search/replace combinations
-# ion wall boundary conditions for one specific ion species
-# all variables start with <ion- so this can be replaced to make specific ions
-
-FACE_EQUATION <ion- walls> "<ion- J_f>" ON <walls> # no flux of ions through walls
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_walls.arb
-#--------------------------------------------------------
-#INCLUDE "ion_fully_developed" REPLACE "<region>" WITH "<outlet>" REPLACE "<ion equation>" WITH "<ion outlet>"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_fully_developed.arb with the following search/replace combinations: replace <region> with <outlet>: replace <ion equation> with <ion outlet>
-# ion transport equations for one specific ion species
-# all variables start with <ion- so this can be replaced to make specific ions
-
-FACE_EQUATION <ion- outlet> "facegrad(<ion- n>)" ON <outlet> # fully developed flow
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_fully_developed.arb
-#--------------------------------------------------------
-#INCLUDE "ion_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<ion equation>" WITH "<ion inlet>"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/ion_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <ion equation> with <ion inlet>
-# ion transport equations for one specific ion species
-# all variables start with <ion- so this can be replaced to make specific ions
-
-FACE_EQUATION <ion- inlet> "facegrad(<ion- n>)" ON <inlet> # fully developed flow
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_fully_developed.arb
-#--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/electrokinetics/ion_equations.arb
-#--------------------------------------------------------
-CONSTANT <ion- z> [1] "-<average ion z>" # valency of ion-
-
-# calculate currents crossing into domain over inlet, most probably used in potential boundary conditions
-# cartesian
-NONE_DERIVED <I+> "-<e>*<ion+ z>*facesum(<ion+ J_f>*<facearea>,<inlet>)"
-NONE_DERIVED <I-> "-<e>*<ion- z>*facesum(<ion- J_f>*<facearea>,<inlet>)"
-# cylindrical
-#NONE_DERIVED <I+> "-<e>*<ion+ z>*facesum(<ion+ J_f>*<facearea>*1.d0,<inlet>)*2.d0*<pi>"
-#NONE_DERIVED <I-> "-<e>*<ion- z>*facesum(<ion- J_f>*<facearea>*1.d0,<inlet>)*2.d0*<pi>"
-NONE_DERIVED <I_total_calc> "<I+>+<I->"
-
-# overwrite inlet conditions to set concentration and a concentration gradient
-FACE_EQUATION <ion+ inlet> "<n_0^2 signed>-<average ion n>^2"
-#FACE_EQUATION <ion- inlet> "facegrad(<ion+ n>)^2+facegrad(<ion- n>)^2" # (if combined is difficult to converge then use only one species)
-#FACE_EQUATION <ion- inlet> "facegrad(<ion+ n>)" # this should be more stable for a negative surface charge
-FACE_EQUATION <ion- inlet> "faceif(<S>,facegrad(<ion- n>),facegrad(<ion+ n>))" # boundary condition is applied on the major ion species
-# INCLUDE FINISHED for ../templates/electrokinetics/binary_ion_equations.arb
-#--------------------------------------------------------
-#INCLUDE "potential_equations" # electrical poisson equation for potential, including boundary conditions
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/potential_equations.arb without any search/replace combinations
-#INCLUDE "potential_domain"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/potential_domain.arb without any search/replace combinations
-# potential equations
-CELL_UNKNOWN <U> "1.d0" ON <all cells> # electrical potential
-# cartesian only
-CELL_EQUATION <U poisson equation> "<eps_o>*celldiv(<eps_fluid>*facegrad(<U>))+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
-# cylindrical and cartesian
-#CELL_EQUATION <U poisson equation> "<eps_o>*celldiv(1.d0*<eps_fluid>*facegrad(<U>))/1.d0+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
-# INCLUDE FINISHED for ../templates/electrokinetics/potential_domain.arb
-#--------------------------------------------------------
-#INCLUDE "potential_charged_walls"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/potential_charged_walls.arb without any search/replace combinations
-FACE_EQUATION <U charged walls> "<eps_o>*<eps_fluid>*facegrad(<U>)-<wall charge>" ON <walls>
-# INCLUDE FINISHED for ../templates/electrokinetics/potential_charged_walls.arb
-#--------------------------------------------------------
-#INCLUDE "potential_outlet"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/potential_outlet.arb without any search/replace combinations
-# these equations need <outlet>, <outlet centreline> and <outlet sans centreline> to be defined, by (eg)
-#FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
-#FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
-
-# set uniform potential gradient over outlet to the gradient that exists in the centreline
-NONE_DERIVED <outlet centreline gradU> "facesum(facegrad(<U>),region=<outlet centreline>)" # find the potential gradient near the centreline as a variable with no centring
-FACE_EQUATION <outlet potential equation> "facegrad(<U>)-<outlet centreline gradU>" ON <outlet sans centreline>
-
-# and set the average potential at the outlet to zero
-#NONE_DERIVED <outlet average U> "facesum(<U>*<facearea>,<outlet>)/facesum(<facearea>,<outlet>)" # find the average potential over the whole outlet
-#NONE_EQUATION <outlet centreline potential equation> "<outlet average U>" # and set this to zero
-
-# or set potential at centreline to zero
-NONE_EQUATION <outlet centreline potential equation> "facesum(<U>,region=<outlet centreline>)" # use this none centred form so that if this equation has to be overwritten, the overwritten equation can be none centred (eg, specify total current)
-# INCLUDE FINISHED for ../templates/electrokinetics/potential_outlet.arb
-#--------------------------------------------------------
-#INCLUDE "potential_inlet"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/potential_inlet.arb without any search/replace combinations
-# these are similar to the outlet equations, except for setting level of potential
-
-#INCLUDE "potential_outlet.arb" REPLACE "outlet" WITH "inlet"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/potential_outlet.arb with the following search/replace combinations: replace outlet with inlet
-# these equations need <inlet>, <inlet centreline> and <inlet sans centreline> to be defined, by (eg)
-#FACE_REGION <inlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <inlet>"
-#FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
-
-# set uniform potential gradient over inlet to the gradient that exists in the centreline
-NONE_DERIVED <inlet centreline gradU> "facesum(facegrad(<U>),region=<inlet centreline>)" # find the potential gradient near the centreline as a variable with no centring
-FACE_EQUATION <inlet potential equation> "facegrad(<U>)-<inlet centreline gradU>" ON <inlet sans centreline>
-
-# and set the average potential at the inlet to zero
-#NONE_DERIVED <inlet average U> "facesum(<U>*<facearea>,<inlet>)/facesum(<facearea>,<inlet>)" # find the average potential over the whole inlet
-#NONE_EQUATION <inlet centreline potential equation> "<inlet average U>" # and set this to zero
-
-# or set potential at centreline to zero
-NONE_EQUATION <inlet centreline potential equation> "facesum(<U>,region=<inlet centreline>)" # use this none centred form so that if this equation has to be overwritten, the overwritten equation can be none centred (eg, specify total current)
-# INCLUDE FINISHED for ../templates/electrokinetics/potential_outlet.arb
-#--------------------------------------------------------
-
-# replace potential setting condition with an equation specifying total current
-NONE_EQUATION <inlet centreline potential equation> "<I_total_calc>-<I_total>" 
-# INCLUDE FINISHED for ../templates/electrokinetics/potential_inlet.arb
-#--------------------------------------------------------
-# INCLUDE FINISHED for ../templates/electrokinetics/potential_equations.arb
-#--------------------------------------------------------
-
-# giving a better initial estimate leads to faster and more reliable convergence
-#INCLUDE "estimate_initial_potential" # sets the initial potential using a very rough correlation.  Initial ion concentrations reference this potential.
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/electrokinetics/estimate_initial_potential.arb without any search/replace combinations
-# based on the nondimensional parameters <S>, <K> and <a_lengthscale>, roughly estimate the initial potential field
-# include this after the potential unknown equation
-
-# very rough estimate of the zeta potential based on correlations in dhjcis11, doi:10.1016/j.jcis.2011.07.076 
-CONSTANT <alpha_large_S> "(3.d0*abs(<S>)+<pi>^2+6.d0-sqrt(nonemax(3.d0*(3.d0*<S>^2+12.d0*abs(<S>)+4.d0*<pi>^2+12.d0),0.d0)))/(2.d0*<pi>)"
-CONSTANT <alpha_small_S> "sqrt(nonemax(-1.5d0+sqrt(2.25d0+1.5d0*abs(<S>)),0.d0))"
-CONSTANT <alpha> "nonemin(<alpha_large_S>,<alpha_small_S>)"
-CONSTANT <Z estimate> "signum(<S>)*nonemin(abs(<S>)*coth(<K>)/<K>,-2.d0*log(cos(<alpha>)))" # signed, nondimensional zeta potential, taken as minimum between low and high potential solutions
-
-#INCLUDE_ROOT "general"
-# INFO: setting include root directory to general
-#INCLUDE "domain_lengthscale_face_boundary_distance" # use this formulation of <a_lengthscale> as it needs to be consistent with <minimum_face_boundary_distance>
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/general/domain_lengthscale_face_boundary_distance.arb without any search/replace combinations
-# find an estimate of the domain size
-# here we use a more accurate estimate of the domain size based on minimum_face_boundary_distance (used in electrokinetic routines for example)
-#INCLUDE "minimum_face_boundary_distance" # this will find a constant vector domain length in each dimension
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../templates/general/minimum_face_boundary_distance.arb without any search/replace combinations
-# this bit of code taken from older level set routines, with a few name changes
-# finds minimum distance to walls, but is expensive to calculate
-FACE_LOCAL <face_from_cell_boundary_vector[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
-FACE_LOCAL <face_from_cell_boundary_vector[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
-#FACE_LOCAL <face_from_cell_boundary_vector[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
-CELL_LOCAL <minimum_face_boundary_distance> "sqrt(facemin(dot(<face_from_cell_boundary_vector[l=:]>,<face_from_cell_boundary_vector[l=:]>),region=<walls>))"
-
-# see domain_lengthscale_face_boundary_distance for a <a_lengthscale> calculated from this
-# INCLUDE FINISHED for ../templates/general/minimum_face_boundary_distance.arb
-#--------------------------------------------------------
-CONSTANT <a_lengthscale> "cellmax(<minimum_face_boundary_distance>,region=<domain>)" # an estimate of the mesh lengthscale (channel half-width) based on the minimum domain -> wall distance
-# INCLUDE FINISHED for ../templates/general/domain_lengthscale_face_boundary_distance.arb
-#--------------------------------------------------------
-CELL_CONSTANT <U initial> "cellif(1.d0/<K>-<minimum_face_boundary_distance>/<a_lengthscale>,<Z estimate>*<K>*(1.d0/<K>-<minimum_face_boundary_distance>/<a_lengthscale>),0.d0)/<e/kT>" ON <all cells> output
-CELL_UNKNOWN <U> "<U initial>" # adopts region etc from real definition on the unknown <U>
-# INCLUDE FINISHED for ../templates/electrokinetics/estimate_initial_potential.arb
-#--------------------------------------------------------
-
-#-------------------------------------------------------------------
-# correct some magnitudes
-CELL_UNKNOWN <p> magnitude=1.d+5
-# the following magnitudes are resonably well calculated from the initial potential estimate, so don't bother setting explicitly
-#CELL_UNKNOWN <U> magnitude=1.d+1
-#CELL_UNKNOWN <ion+ n> magnitude=1.d+4
-#CELL_UNKNOWN <ion- n> magnitude=1.d+0
-
-# set nondimensional constants (these are based on a previous test case)
-CONSTANT <Re>  0.28089888E-03
-CONSTANT <Sc>   445.00000    
-CONSTANT <B>  0.29522318E-03 
-CONSTANT <K>   2.6488688     
-CONSTANT <S>  -27.453590     
-CONSTANT <I_total> [1] 0.d0 # total current passing through domain
-
-# output a flag telling us which term limited the correction velocity
-#FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
-# and turn some outputs on
-FACE_DERIVED <u_f_{correction}> output
-FACE_DERIVED <u_f_{raw}> output
-FACE_DERIVED <u_f> output
-FACE_DERIVED <J_f[l=1]> output
-FACE_LOCAL <tau[l=1,1]> output
-
-# putting in exact initial conditions
-CELL_UNKNOWN <u[l=1]> "0.d0"
-CELL_UNKNOWN <u[l=2]> "0.d0"
-CELL_UNKNOWN <p> "0.d0"
-FACE_DERIVED <p_error> output
-#CONSTANT <adv_limiter> 0.d0
-
-#-------------------------------------------------------------------
-# some alternative discretisations:
-
-# enforce uniform celldivgrads for p and U in cells next to the inlet/outlet, rather than on the boundaries themselves
-#INCLUDE "inlet_u_fully_developed_celldivgrad" # fully developed velocity profile, setting a uniform pressure gradient to give using <u_av>
-#INCLUDE "outlet_u_fully_developed_celldivgrad" # fully developed velocity profile, setting pressure at centreline to zero and a uniform pressure gradient
-#INCLUDE "potential_outlet_celldivgrad"
-#INCLUDE "potential_inlet_celldivgrad"
-
-# apply concentration condition on cells next to inlet, rather than on boundary cells
-#FACE_EQUATION <ion+ inlet> "faceave[downcell](<n_0^2 signed>)-<average ion n>^2"
-
-# apply concentration condition on outlet instead of minor species facegrad
-# only use if outlet concentration is known
-# marginally more accurate calculated pressure/potential gradients for fully developed flow
-#FACE_EQUATION <ion+ outlet> "<n_0^2 signed>-<average ion n>^2"
-#FACE_EQUATION <ion- outlet> "faceif(<S>,facegrad(<ion- n>),facegrad(<ion+ n>))" # boundary condition is applied on the major ion species
-
-# include conduction of ions in the advection velocity, calculating the advection concentrations appropriately using upwinding
-#INCLUDE "ion_domain_ionuf" R "<ion" W "<ion+"
-#INCLUDE "ion_domain_ionuf" R "<ion" W "<ion-"
-
-#-------------------------------------------------------------------
-# output statistics
-
-# -----------
-# compare pressure/potential gradients against exact 1D solution, calculated numerically
-# Accompaniment to paper, `Microfluidic circuit analysis - Flowrate and
-# ion current relationships for thin slits and pipes'
-# by Dalton J.E. Harvie, Christian J.C. Biscombe and Malcolm R. Davidson
-# outputs from the electrokinetic flow solver (ekfs), using jmax = 10002
-# -----------
-#   SETTING KKK TO 2.6488688
-#   SETTING SSS TO -27.453590
-#   SETTING DDD(+1) TO 1.0848474
-#   SETTING DDD(-1) TO 1.0848474
-# CREATING NONDIMENSIONAL FLOWRATE AND CURRENT EXPRESSIONS
-#     1      = [-0.3333333    ]xDELP + [-0.9525616    ]xDELPHI
-#     III(+1 = [ -1.104795    ]xDELPPP + [ -12.90186    ]xDELPHIPHI
-#     III(-1 = [ 0.1522337    ]xDELPPP + [ 0.9042310E-02]xDELPHIPHI
-#     III_TO = [-0.9525617    ]xDELPPP + [ -12.89281    ]xDELPHIPHI
-#     ELECTROVISCOUS CASE: DELPPP =  -3.8029309546    : DELPHIPHI =  0.28097253761    
-# -----------
-
-CONSTANT <ekfs_ppp> -3.8029309546    
-CONSTANT <ekfs_fff> 0.28097253761    
-CONSTANT <axial pressure gradient analytical> "<ekfs_ppp>/<Re>" # actually based on ekfs results
-CONSTANT <axial potential gradient analytical> "<ekfs_fff>*<Re>/(<K>^2*<B>)"
-
-NONE_CONSTANT <X max> "facemax(<facex[l=1]>,,<all faces>)"
-NONE_CONSTANT <X min> "facemin(<facex[l=1]>,,<all faces>)"
-NONE_CONSTANT <Y max> "facemax(<facex[l=2]>,,<all faces>)"
-NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<all faces>)"
-
-CELL_OUTPUT <axial pressure gradient> "celldivgrad[l=1](<p>)" elementdata
-CELL_OUTPUT <axial pressure gradient error> "abs(<axial pressure gradient>-<axial pressure gradient analytical>)" elementdata
-NONE_OUTPUT <axial pressure gradient L2 norm> "sqrt(cellsum(<axial pressure gradient error>^2,<domain>)/cellsum(1.d0,<domain>))"
-NONE_OUTPUT <axial pressure gradient L1 norm> "cellsum(<axial pressure gradient error>,<domain>)/cellsum(1.d0,<domain>)"
-NONE_OUTPUT <axial pressure gradient Linfty norm> "cellmax(<axial pressure gradient error>,region=<domain>)"
-NONE_OUTPUT <average inlet pressure> "facesum(<p>*<facearea>,<inlet>)/facesum(<facearea>,<inlet>)"
-NONE_OUTPUT <average outlet pressure> "facesum(<p>*<facearea>,<outlet>)/facesum(<facearea>,<outlet>)"
-NONE_OUTPUT <overall pressure difference error> "abs(1.d0 - (<average outlet pressure> - <average inlet pressure>)/(<axial pressure gradient analytical>*(<X max>-<X min>)))"
-NONE_OUTPUT <centreline inlet pressure> "facesum(<p>,region=<inlet centreline>)"
-NONE_OUTPUT <centreline outlet pressure> "facesum(<p>,region=<outlet centreline>)"
-NONE_OUTPUT <centreline pressure difference error> "abs(1.d0 - (<centreline outlet pressure> - <centreline inlet pressure>)/(<axial pressure gradient analytical>*(<X max>-<X min>)))"
-NONE_OUTPUT <centreline pressure gradient> "(<centreline outlet pressure> - <centreline inlet pressure>)/(<X max>-<X min>)"
-NONE_OUTPUT <average pressure gradient> "(<average outlet pressure> - <average inlet pressure>)/(<X max>-<X min>)"
-
-CELL_OUTPUT <axial potential gradient> "celldivgrad[l=1](<U>)" elementdata
-CELL_OUTPUT <axial potential gradient error> "abs(<axial potential gradient>-<axial potential gradient analytical>)" elementdata
-NONE_OUTPUT <axial potential gradient L2 norm> "sqrt(cellsum(<axial potential gradient error>^2,<domain>)/cellsum(1.d0,<domain>))"
-NONE_OUTPUT <axial potential gradient L1 norm> "cellsum(<axial potential gradient error>,<domain>)/cellsum(1.d0,<domain>)"
-NONE_OUTPUT <axial potential gradient Linfty norm> "cellmax(<axial potential gradient error>,region=<domain>)"
-NONE_OUTPUT <average inlet potential> "facesum(<U>*<facearea>,<inlet>)/facesum(<facearea>,<inlet>)"
-NONE_OUTPUT <average outlet potential> "facesum(<U>*<facearea>,<outlet>)/facesum(<facearea>,<outlet>)"
-NONE_OUTPUT <overall potential difference error> "abs(1.d0 - (<average outlet potential> - <average inlet potential>)/(<axial potential gradient analytical>*(<X max>-<X min>)))"
-NONE_OUTPUT <centreline inlet potential> "facesum(<U>,region=<inlet centreline>)"
-NONE_OUTPUT <centreline outlet potential> "facesum(<U>,region=<outlet centreline>)"
-NONE_OUTPUT <centreline potential difference error> "abs(1.d0 - (<centreline outlet potential> - <centreline inlet potential>)/(<axial potential gradient analytical>*(<X max>-<X min>)))"
-NONE_OUTPUT <centreline potential gradient> "(<centreline outlet potential> - <centreline inlet potential>)/(<X max>-<X min>)"
-NONE_OUTPUT <average potential gradient> "(<average outlet potential> - <average inlet potential>)/(<X max>-<X min>)"
-
-CELL_OUTPUT <icell output> "<icell>"
-FACE_OUTPUT <jface output> "<jface>"
-
-CELL_OUTPUT <n_0> "sqrt(cellmax(<ion+ n>*<ion- n>,0.d0))"
-CELL_OUTPUT <n_0^2 negative error> "-cellmin(<ion+ n>*<ion- n>,0.d0)"
-CELL_LOCAL <rho_e> ON <all cells> output
-
-CELL_OUTPUT <n_0 error> "abs(<n_0>-1.d0)" elementdata
-NONE_OUTPUT <n_0 L2 norm> "sqrt(cellsum(<n_0 error>^2,<domain>)/cellsum(1.d0,<domain>))"
-NONE_OUTPUT <n_0 L1 norm> "cellsum(<n_0 error>,<domain>)/cellsum(1.d0,<domain>)"
-NONE_OUTPUT <n_0 Linfty norm> "cellmax(<n_0 error>,region=<domain>)"
-
-#-------------------------------------------------------------------
-# INCLUDE FINISHED for ../electrokinetic_channel.arb
-#--------------------------------------------------------
+# the following working directory files found by the arb script: dynamic_region_test.arb
+#INCLUDE_WORKING "dynamic_region_test.arb"
+   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   # the following is INCLUDED from ../dynamic_region_test.arb without any search/replace combinations
+   # arb finite volume solver
+   # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+   #
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #-------------------------------------------------------------------
+   # file equations.in
+   VERSION 0.53
+   
+   # the following strings describe the simulation and are passed to the output files
+   INFO_TITLE "Dynamic region test"
+   INFO_DESCRIPTION "Just a whole load of regions and variables defined (loosely around a 2D droplet) for testing the region syntax and updating, especially dynamic regions"
+   INFO_DESCRIPTION "Although file is marked as post v0.52, it also contains old region syntax for testing"
+   INFO_AUTHOR "Dalton Harvie"
+   INFO_DATE "12/3/15" # interpreted as the last modification date
+   
+   #-------------------------------------------------------------------
+   # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+   # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+   # input options are: input,centringinput,meshinput,centringmeshinput,noinput
+   # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+   # vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
+   # dat file output options are: dat_output,centringdat_output,meshdat_output,centringmeshdat_output,nodat_output (nodat_output is the default)
+   MSH_FILE "free_surface_halfplane_extruded_structured_fluid.msh" nooutput
+   
+   #-------------------------------------------------------------------
+   # geometry stuff
+   
+   GLUE_FACES <fluid west> reflect=1
+   #GLUE_FACES <face test> reflect=1 # this generates an error as only gmsh read regions can be glued
+   
+   #-------------------------------------------------------------------
+   # user-defined constants
+   
+   # these statements only necessary in cartesian as already included in above files, but GENERAL_REPLACEMENT statements can't be commented out by other strings, so just repeat them
+   #GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+   #GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
+   
+   # vof based CSF
+   #INCLUDE_ROOT "volume_of_fluid"
+   #INCLUDE "setup"
+   CONSTANT <vof_phi_tol> 1.d-8
+   
+   CELL_REGION <fluid domain> # this should still be marked as a gmsh type region as no location is specified
+   REGION <fluid north> "gmsh" # this does the same thing, but leaving the centring to be decided when the gmsh is read in (dangerous really, but works)
+   GMSH_REGION <fluid north> # this does the same thing as above, setting the type to gmsh using the definition instead
+   
+   # define real initial vof
+   NONE_CONSTANT <vof_phi_initial_tol> 1.d-4 # accuracy in computing initial shapes (in terms of volume fraction per cell)
+   # circle (cylinder/sphere)
+   CONSTANT <radius1> 1.0d0
+   CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[sphere](size[l=1]=2.d0*<radius1>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <all cells> output,elementdata
+   # ellipse
+   #CONSTANT <radius_a> 0.9d0
+   #CONSTANT <radius_b> 1.1d0
+   #CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius_a>,size[l=2]=2.d0*<radius_b>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <all cells> output,elementdata
+   CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi_initial_saved>,1.d0),0.d0)" ON <all cells>
+   CELL_DERIVED <vof_interface> "cellif(cellmax(<vof_phi_lim>,region=<adjacentcellicells>)-cellmin(<vof_phi_lim>,region=<adjacentcellicells>)-<vof_phi_tol>,1.d0,0.d0)" ON <all cells>
+   
+   # some dynamic regions, and improvements to static regions
+   # the ON keyword now replaces the PART OF phrase previously used with AT regions, but now is for both dynamic and static regions.  If left out defaults to the largest possible region in centring - ie, <all cells>
+   CELL_DERIVED_REGION <vof_interface_mask> "variable(<vof_interface>)" ON <domain>
+   CELL_DERIVED_REGION <vof_interface_mask old> "VARIABLE <vof_interface>" ON <domain> newtstepmax=3,newtstepmin=0
+   FACE_DERIVED_REGION <vof_interface_mask_face> "associatedwith(<vof_interface_mask>)" newtstepmax=5
+   FACE_CONSTANT_REGION <sacrificial region> "all" ON <all faces> newtstepmax=2
+   CELL_DERIVED <derived junk> "<cellx[l=1]>" noderivative,newtstepmax=7
+   CELL_DERIVED_REGION <vof_interface_mask_cell> "associatedwith(<vof_interface_mask_face>)" newtstepmin=1
+   CELL_TRANSIENT_REGION <vof_expanded_mask[r=2]> "all" "expand[maxseparation=1](<vof_interface_mask>)" ON <all cells>
+   CELL_TRANSIENT_REGION <vof_expanded_mask2[r=2]> "all" "expand[maxseparation=1](<vof_expanded_mask[r=2]>)" ON <all cells>
+   CELL_TRANSIENT_REGION <vof_expanded_mask4[r=2]> "all" "expand[maxseparation=2](<vof_expanded_mask2[r=2]>)" ON <all cells>
+   CELL_TRANSIENT_REGION <vof_expanded_mask5 face[r=2]> "all" "expand[maxseparation=1,faceseparation](<vof_expanded_mask4[r=2]>)" ON <all cells>
+   CELL_OUTPUT <vof_interface_mask output> "1.d0" ON <vof_interface_mask>
+   CELL_OUTPUT <vof_expanded_mask output> "1.d0" ON <vof_expanded_mask[r=2]>
+   CELL_OUTPUT <vof_expanded_mask2 output> "1.d0" ON <vof_expanded_mask2[r=2]>
+   CELL_OUTPUT <vof_expanded_mask4 output> "1.d0" ON <vof_expanded_mask4[r=2]>
+   CELL_OUTPUT <vof_expanded_mask5 face output> "1.d0" ON <vof_expanded_mask5 face[r=2]>
+   CELL_TRANSIENT_REGION <vof_expanded_mask[r=1]> "all" "surrounds(<vof_interface_mask>)" ON <all cells>
+   CELL_NEWTIENT_REGION <vof_expanded_mask_newtient[r=1]> "none" "surrounds(<vof_interface_mask>)" ON <all cells>
+   CELL_CONSTANT_REGION <cell test> "none" ON <domain>
+   CELL_STATIC_REGION <cell test all> "all" ON <boundary cells>
+   CELL_STATIC_REGION <cell test none> "none"
+   CELL_SETUP_REGION <cell test all2> "all" ON <domain>
+   FACE_STATIC_REGION <face test> "withinbox(0.d0,0.d0,0.d0,1.d0,1.d0,1.d0)" ON <boundaries>
+   STATIC_REGION <face test> CANCEL
+   FACE_STATIC_REGION <face test> "at(0.d0,0.d0,0.d0)" ON <boundaries> # some junk description
+   #FACE_STATIC_REGION <face test> "at(0.d0,0.d0,0.d0)" ON <boundaries> newtstepmax=2 # setting newtstepmax where not applicable now generates an error
+   FACE_STATIC_REGION <face test3> "at(0.d0,0.d0,0.d0)" ON <boundaries> # some junk description
+   FACE_STATIC_REGION <face test old> "AT 0.d0 0.d0 0.d0" ON <boundaries> # some junk description
+   FACE_STATIC_REGION <face test2> "withinbox(0.d0,0.d0,0.d0,1.d0,1.d0,1.d0)" ON <boundaries> # some junk description
+   FACE_STATIC_REGION <face test2 old> "WITHIN BOX 0.d0 0.d0 0.d0 1.d0 1.d0 1.d0" ON <boundaries> # some junk description
+   REGION <face test3> CANCEL
+   REGION <sacrificial region> CANCEL
+   VARIABLE <derived junk> CANCEL # this cancellation should make <vof_interface_mask_cell> come after <vof_interface>
+   
+   NEWTSTEPMIN 4
+   NEWTSTEPOUT 2
+   TRANSIENT_SIMULATION
+   TIMESTEPMAX 2
+   NONE_TRANSIENT <some none centred transient> "1.d0" "<timestep>"
+   CELL_DERIVED <dynamic region test> "cellif(celldelta(<vof_interface_mask>),1.d0,0.d0)" ON <all cells> output,newtstepmax=3
+   FACE_DERIVED <face dynamic region test> "faceif(facedelta(<vof_interface_mask_face>),1.d0,0.d0)" ON <all faces> output,newtstepmin=1,newtstepmax=4
+   CELL_DERIVED <cell dynamic region test> "cellif(celldelta(<vof_interface_mask_cell>),1.d0,0.d0)" ON <all cells> output,newtstepmin=2
+   FACE_DERIVED <face gmsh delta region test> "faceif(facedelta(<fluid south>),1.d0,0.d0)" ON <all faces>
+   CELL_DERIVED <masked dynamic region test> "1.d0" ON <vof_interface_mask> output
+   FACE_DERIVED <masked face dynamic region test> "1.d0" ON <vof_interface_mask_face> output,newtstepmin=2
+   CELL_DERIVED <masked cell dynamic region test> "1.d0" ON <vof_interface_mask_cell> output
+   FACE_DERIVED <masked face gmsh delta region test> "1.d0" ON <fluid south> output
+   NODE_REGION <one node> "at(0.d0,1.d0,2.d0)" ON <domain nodes>
+   NODE_REGION <one node old> "AT 0.d0 1.d0 2.d0 PART OF <domain nodes>"
+   NODE_REGION <node compound> "compound(<all nodes>-<one node>-<boundary nodes>)"
+   NODE_REGION <node compound old> "COMPOUND <all nodes>-<one node>-<boundary nodes>"
+   
+   CELL_DERIVED <a variable> "<cellx[l=1]>" ON <all cells>
+   CELL_DERIVED <another variable> "<cellx[l=1]>" ON <vof_interface_mask> output
+   VARIABLE <a variable> CANCEL
+   
+   #NONE_OUTPUT <mask sum test 1> "cellsum(<masked dynamic region test>,region=<all cells>)" # this will flag an error as the parent of the region <vof_interface_mask> over which this summed variable is defined is only <domain>
+   NONE_OUTPUT <mask sum test 1> "cellsum(<masked dynamic region test>,region=<domain>)"
+   NONE_OUTPUT <mask sum test 2> "cellsum(<masked dynamic region test>,region=<vof_interface_mask>)"
+   NONE_OUTPUT <mask sum test 3> "cellsum(1.d0,region=<vof_interface_mask>)"
+   CELL_OUTPUT_REGION <one cell> "at(8.d0,8.d0,0.d0)" ON <vof_interface_mask>
+   NONE_OUTPUT <mask sum test 4.0> "cellsum(cellsum[maxseparation=0](1.d0,region=<vof_interface_mask>),region=<one cell>)"
+   NONE_OUTPUT <mask sum test 4.1> "cellsum(cellsum[maxseparation=1](1.d0,region=<vof_interface_mask>),region=<one cell>)"
+   NONE_OUTPUT <mask sum test 4.1 faceseparation> "cellsum(cellsum[maxseparation=1,faceseparation](1.d0,region=<vof_interface_mask>),region=<one cell>)"
+   NONE_OUTPUT <mask sum test 4.2> "cellsum(cellsum[maxseparation=2](1.d0,region=<vof_interface_mask>),region=<one cell>)"
+   NONE_OUTPUT <mask sum test 4.5> "cellsum(cellsum[maxseparation=5](1.d0,region=<vof_interface_mask>),region=<one cell>)"
+   NONE_OUTPUT <mask sum test 4.20> "cellsum(cellsum[maxseparation=20](1.d0,region=<vof_interface_mask>),region=<one cell>)" # this will only equal the non-separation calculations above if the glue_faces reflect is removed, so that separation loop doesn't move through reflect boundary
+   NONE_OUTPUT <mask sum test 4.20 faceseparation> "cellsum(cellsum[maxseparation=20,faceseparation](1.d0,region=<vof_interface_mask>),region=<one cell>)" # this will only equal the non-separation calculations above if the glue_faces reflect is removed, so that separation loop doesn't move through reflect boundary
+   #NONE_OUTPUT <mask sum test 4 error> "cellsum[maxseparation=20](1.d0,region=<vof_interface_mask>)" # this generates an error as the context isn't a cell region
+   CELL_OUTPUT <one cell output> "1.d0" ON <one cell>
+   
+   # the following are errors, as unknowns and equations cannot be defined on dynamic regions
+   #CELL_UNKNOWN <some dynamic unknown> "1.d0" ON <vof_interface_mask>
+   #CELL_EQUATION <some dynamic equation> "1.d0" ON <vof_interface_mask>
+   
+   # testing dynamic unknown regions
+   CELL_UNKNOWN <some unknown> "1.d0" ON <domain>
+   CELL_EQUATION <some equation> "<some unknown>-<cellx[l=1]>+<cellx[l=2]>" ON <domain>
+   #CELL_EQUATION <some equation> "1.d0/<some unknown>" ON <domain> # test of error handling when unknowns become NAN
+   CELL_UNKNOWN_REGION <some unknown region> "variable(<some unknown>)" ON <all cells>
+   CELL_OUTPUT <some unknown region output> "1.d0" ON <some unknown region> # this is an easy way to visualise a dynamic_region, by just outputing 1.d0 over it
+   
+   # test of automatic operator centring interpolation
+   CELL_OUTPUT <test1> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
+   CELL_OUTPUT <test2> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
+   FACE_OUTPUT <test3> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
+   FACE_OUTPUT <test4> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
+   NODE_OUTPUT <test5> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
+   NODE_OUTPUT <test6> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
+   FACE_OUTPUT <south test> "1.d0" ON <fluid south>
+   CELL_OUTPUT <domain test> "2.d0" ON <fluid domain>
+   
+   CELL_OUTPUT <link test> "celltofacelink(<facex[l=1]>,localregion=<all cells>,remoteregion=<boundaries>)" ON <all cells>
+   #CELL_OUTPUT <link test> "celltofacelink(<facex[l=1]>,localregion=<vof_interface_mask_cell>,remoteregion=<boundaries>)" ON <all cells> # this generates an error as links are only allowed between static regions
+   
+   # check to see whether these still work
+   REGION_LIST <boundary cells> <all cells> <domain>
+   CELL_REGION_CONSTANT <cell region constant> 1.d0 2.d0 3.d0 output
+   NODE_REGION_LIST <boundary nodes> <domain nodes>
+   NODE_REGION_CONSTANT <node region constant> 4.d0 5.d0 output
+   # INCLUDE FINISHED for ../dynamic_region_test.arb
+   #--------------------------------------------------------
 ##################################################################################

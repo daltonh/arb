@@ -5,168 +5,168 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: dynamic_region_test.arb
 #INCLUDE_WORKING "dynamic_region_test.arb"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../dynamic_region_test.arb without any search/replace combinations
-# arb finite volume solver
-# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
-#
-# arb is released under the GNU GPL.  For full details see the license directory.
-#
-#-------------------------------------------------------------------
-# file equations.in
-VERSION 0.53
-
-# the following strings describe the simulation and are passed to the output files
-INFO_TITLE "Dynamic region test"
-INFO_DESCRIPTION "Just a whole load of regions and variables defined (loosely around a 2D droplet) for testing the region syntax and updating, especially dynamic regions"
-INFO_DESCRIPTION "Although file is marked as post v0.52, it also contains old region syntax for testing"
-INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "12/3/15" # interpreted as the last modification date
-
-#-------------------------------------------------------------------
-# MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
-# output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
-# input options are: input,centringinput,meshinput,centringmeshinput,noinput
-# data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
-# vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
-# dat file output options are: dat_output,centringdat_output,meshdat_output,centringmeshdat_output,nodat_output (nodat_output is the default)
-MSH_FILE "free_surface_halfplane_extruded_structured_fluid.msh" nooutput
-
-#-------------------------------------------------------------------
-# geometry stuff
-
-GLUE_FACES <fluid west> reflect=1
-#GLUE_FACES <face test> reflect=1 # this generates an error as only gmsh read regions can be glued
-
-#-------------------------------------------------------------------
-# user-defined constants
-
-# these statements only necessary in cartesian as already included in above files, but GENERAL_REPLACEMENT statements can't be commented out by other strings, so just repeat them
-#GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
-#GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
-
-# vof based CSF
-#INCLUDE_ROOT "volume_of_fluid"
-#INCLUDE "setup"
-CONSTANT <vof_phi_tol> 1.d-8
-
-CELL_REGION <fluid domain> # this should still be marked as a gmsh type region as no location is specified
-REGION <fluid north> "gmsh" # this does the same thing, but leaving the centring to be decided when the gmsh is read in (dangerous really, but works)
-GMSH_REGION <fluid north> # this does the same thing as above, setting the type to gmsh using the definition instead
-
-# define real initial vof
-NONE_CONSTANT <vof_phi_initial_tol> 1.d-4 # accuracy in computing initial shapes (in terms of volume fraction per cell)
-# circle (cylinder/sphere)
-CONSTANT <radius1> 1.0d0
-CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[sphere](size[l=1]=2.d0*<radius1>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <all cells> output,elementdata
-# ellipse
-#CONSTANT <radius_a> 0.9d0
-#CONSTANT <radius_b> 1.1d0
-#CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius_a>,size[l=2]=2.d0*<radius_b>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <all cells> output,elementdata
-CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi_initial_saved>,1.d0),0.d0)" ON <all cells>
-CELL_DERIVED <vof_interface> "cellif(cellmax(<vof_phi_lim>,region=<adjacentcellicells>)-cellmin(<vof_phi_lim>,region=<adjacentcellicells>)-<vof_phi_tol>,1.d0,0.d0)" ON <all cells>
-
-# some dynamic regions, and improvements to static regions
-# the ON keyword now replaces the PART OF phrase previously used with AT regions, but now is for both dynamic and static regions.  If left out defaults to the largest possible region in centring - ie, <all cells>
-CELL_DERIVED_REGION <vof_interface_mask> "variable(<vof_interface>)" ON <domain>
-CELL_DERIVED_REGION <vof_interface_mask old> "VARIABLE <vof_interface>" ON <domain> newtstepmax=3,newtstepmin=0
-FACE_DERIVED_REGION <vof_interface_mask_face> "associatedwith(<vof_interface_mask>)" newtstepmax=5
-FACE_CONSTANT_REGION <sacrificial region> "all" ON <all faces> newtstepmax=2
-CELL_DERIVED <derived junk> "<cellx[l=1]>" noderivative,newtstepmax=7
-CELL_DERIVED_REGION <vof_interface_mask_cell> "associatedwith(<vof_interface_mask_face>)" newtstepmin=1
-CELL_TRANSIENT_REGION <vof_expanded_mask[r=2]> "all" "expand[maxseparation=1](<vof_interface_mask>)" ON <all cells>
-CELL_TRANSIENT_REGION <vof_expanded_mask2[r=2]> "all" "expand[maxseparation=1](<vof_expanded_mask[r=2]>)" ON <all cells>
-CELL_TRANSIENT_REGION <vof_expanded_mask4[r=2]> "all" "expand[maxseparation=2](<vof_expanded_mask2[r=2]>)" ON <all cells>
-CELL_TRANSIENT_REGION <vof_expanded_mask5 face[r=2]> "all" "expand[maxseparation=1,faceseparation](<vof_expanded_mask4[r=2]>)" ON <all cells>
-CELL_OUTPUT <vof_interface_mask output> "1.d0" ON <vof_interface_mask>
-CELL_OUTPUT <vof_expanded_mask output> "1.d0" ON <vof_expanded_mask[r=2]>
-CELL_OUTPUT <vof_expanded_mask2 output> "1.d0" ON <vof_expanded_mask2[r=2]>
-CELL_OUTPUT <vof_expanded_mask4 output> "1.d0" ON <vof_expanded_mask4[r=2]>
-CELL_OUTPUT <vof_expanded_mask5 face output> "1.d0" ON <vof_expanded_mask5 face[r=2]>
-CELL_TRANSIENT_REGION <vof_expanded_mask[r=1]> "all" "surrounds(<vof_interface_mask>)" ON <all cells>
-CELL_NEWTIENT_REGION <vof_expanded_mask_newtient[r=1]> "none" "surrounds(<vof_interface_mask>)" ON <all cells>
-CELL_CONSTANT_REGION <cell test> "none" ON <domain>
-CELL_STATIC_REGION <cell test all> "all" ON <boundary cells>
-CELL_STATIC_REGION <cell test none> "none"
-CELL_SETUP_REGION <cell test all2> "all" ON <domain>
-FACE_STATIC_REGION <face test> "withinbox(0.d0,0.d0,0.d0,1.d0,1.d0,1.d0)" ON <boundaries>
-STATIC_REGION <face test> CANCEL
-FACE_STATIC_REGION <face test> "at(0.d0,0.d0,0.d0)" ON <boundaries> # some junk description
-#FACE_STATIC_REGION <face test> "at(0.d0,0.d0,0.d0)" ON <boundaries> newtstepmax=2 # setting newtstepmax where not applicable now generates an error
-FACE_STATIC_REGION <face test3> "at(0.d0,0.d0,0.d0)" ON <boundaries> # some junk description
-FACE_STATIC_REGION <face test old> "AT 0.d0 0.d0 0.d0" ON <boundaries> # some junk description
-FACE_STATIC_REGION <face test2> "withinbox(0.d0,0.d0,0.d0,1.d0,1.d0,1.d0)" ON <boundaries> # some junk description
-FACE_STATIC_REGION <face test2 old> "WITHIN BOX 0.d0 0.d0 0.d0 1.d0 1.d0 1.d0" ON <boundaries> # some junk description
-REGION <face test3> CANCEL
-REGION <sacrificial region> CANCEL
-VARIABLE <derived junk> CANCEL # this cancellation should make <vof_interface_mask_cell> come after <vof_interface>
-
-NEWTSTEPMIN 4
-NEWTSTEPOUT 2
-TRANSIENT_SIMULATION
-TIMESTEPMAX 2
-NONE_TRANSIENT <some none centred transient> "1.d0" "<timestep>"
-CELL_DERIVED <dynamic region test> "cellif(celldelta(<vof_interface_mask>),1.d0,0.d0)" ON <all cells> output,newtstepmax=3
-FACE_DERIVED <face dynamic region test> "faceif(facedelta(<vof_interface_mask_face>),1.d0,0.d0)" ON <all faces> output,newtstepmin=1,newtstepmax=4
-CELL_DERIVED <cell dynamic region test> "cellif(celldelta(<vof_interface_mask_cell>),1.d0,0.d0)" ON <all cells> output,newtstepmin=2
-FACE_DERIVED <face gmsh delta region test> "faceif(facedelta(<fluid south>),1.d0,0.d0)" ON <all faces>
-CELL_DERIVED <masked dynamic region test> "1.d0" ON <vof_interface_mask> output
-FACE_DERIVED <masked face dynamic region test> "1.d0" ON <vof_interface_mask_face> output,newtstepmin=2
-CELL_DERIVED <masked cell dynamic region test> "1.d0" ON <vof_interface_mask_cell> output
-FACE_DERIVED <masked face gmsh delta region test> "1.d0" ON <fluid south> output
-NODE_REGION <one node> "at(0.d0,1.d0,2.d0)" ON <domain nodes>
-NODE_REGION <one node old> "AT 0.d0 1.d0 2.d0 PART OF <domain nodes>"
-NODE_REGION <node compound> "compound(<all nodes>-<one node>-<boundary nodes>)"
-NODE_REGION <node compound old> "COMPOUND <all nodes>-<one node>-<boundary nodes>"
-
-CELL_DERIVED <a variable> "<cellx[l=1]>" ON <all cells>
-CELL_DERIVED <another variable> "<cellx[l=1]>" ON <vof_interface_mask> output
-VARIABLE <a variable> CANCEL
-
-#NONE_OUTPUT <mask sum test 1> "cellsum(<masked dynamic region test>,region=<all cells>)" # this will flag an error as the parent of the region <vof_interface_mask> over which this summed variable is defined is only <domain>
-NONE_OUTPUT <mask sum test 1> "cellsum(<masked dynamic region test>,region=<domain>)"
-NONE_OUTPUT <mask sum test 2> "cellsum(<masked dynamic region test>,region=<vof_interface_mask>)"
-NONE_OUTPUT <mask sum test 3> "cellsum(1.d0,region=<vof_interface_mask>)"
-CELL_OUTPUT_REGION <one cell> "at(8.d0,8.d0,0.d0)" ON <vof_interface_mask>
-NONE_OUTPUT <mask sum test 4.0> "cellsum(cellsum[maxseparation=0](1.d0,region=<vof_interface_mask>),region=<one cell>)"
-NONE_OUTPUT <mask sum test 4.1> "cellsum(cellsum[maxseparation=1](1.d0,region=<vof_interface_mask>),region=<one cell>)"
-NONE_OUTPUT <mask sum test 4.1 faceseparation> "cellsum(cellsum[maxseparation=1,faceseparation](1.d0,region=<vof_interface_mask>),region=<one cell>)"
-NONE_OUTPUT <mask sum test 4.2> "cellsum(cellsum[maxseparation=2](1.d0,region=<vof_interface_mask>),region=<one cell>)"
-NONE_OUTPUT <mask sum test 4.5> "cellsum(cellsum[maxseparation=5](1.d0,region=<vof_interface_mask>),region=<one cell>)"
-NONE_OUTPUT <mask sum test 4.20> "cellsum(cellsum[maxseparation=20](1.d0,region=<vof_interface_mask>),region=<one cell>)" # this will only equal the non-separation calculations above if the glue_faces reflect is removed, so that separation loop doesn't move through reflect boundary
-NONE_OUTPUT <mask sum test 4.20 faceseparation> "cellsum(cellsum[maxseparation=20,faceseparation](1.d0,region=<vof_interface_mask>),region=<one cell>)" # this will only equal the non-separation calculations above if the glue_faces reflect is removed, so that separation loop doesn't move through reflect boundary
-#NONE_OUTPUT <mask sum test 4 error> "cellsum[maxseparation=20](1.d0,region=<vof_interface_mask>)" # this generates an error as the context isn't a cell region
-CELL_OUTPUT <one cell output> "1.d0" ON <one cell>
-
-# the following are errors, as unknowns and equations cannot be defined on dynamic regions
-#CELL_UNKNOWN <some dynamic unknown> "1.d0" ON <vof_interface_mask>
-#CELL_EQUATION <some dynamic equation> "1.d0" ON <vof_interface_mask>
-
-# testing dynamic unknown regions
-CELL_UNKNOWN <some unknown> "1.d0" ON <domain>
-CELL_EQUATION <some equation> "<some unknown>-<cellx[l=1]>+<cellx[l=2]>" ON <domain>
-#CELL_EQUATION <some equation> "1.d0/<some unknown>" ON <domain> # test of error handling when unknowns become NAN
-CELL_UNKNOWN_REGION <some unknown region> "variable(<some unknown>)" ON <all cells>
-CELL_OUTPUT <some unknown region output> "1.d0" ON <some unknown region> # this is an easy way to visualise a dynamic_region, by just outputing 1.d0 over it
-
-# test of automatic operator centring interpolation
-CELL_OUTPUT <test1> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
-CELL_OUTPUT <test2> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
-FACE_OUTPUT <test3> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
-FACE_OUTPUT <test4> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
-NODE_OUTPUT <test5> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
-NODE_OUTPUT <test6> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
-FACE_OUTPUT <south test> "1.d0" ON <fluid south>
-CELL_OUTPUT <domain test> "2.d0" ON <fluid domain>
-
-CELL_OUTPUT <link test> "celltofacelink(<facex[l=1]>,localregion=<all cells>,remoteregion=<boundaries>)" ON <all cells>
-#CELL_OUTPUT <link test> "celltofacelink(<facex[l=1]>,localregion=<vof_interface_mask_cell>,remoteregion=<boundaries>)" ON <all cells> # this generates an error as links are only allowed between static regions
-
-# check to see whether these still work
-REGION_LIST <boundary cells> <all cells> <domain>
-CELL_REGION_CONSTANT <cell region constant> 1.d0 2.d0 3.d0 output
-NODE_REGION_LIST <boundary nodes> <domain nodes>
-NODE_REGION_CONSTANT <node region constant> 4.d0 5.d0 output
-# INCLUDE FINISHED for ../dynamic_region_test.arb
-#--------------------------------------------------------
+   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   # the following is INCLUDED from ../dynamic_region_test.arb without any search/replace combinations
+   # arb finite volume solver
+   # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+   #
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #-------------------------------------------------------------------
+   # file equations.in
+   VERSION 0.53
+   
+   # the following strings describe the simulation and are passed to the output files
+   INFO_TITLE "Dynamic region test"
+   INFO_DESCRIPTION "Just a whole load of regions and variables defined (loosely around a 2D droplet) for testing the region syntax and updating, especially dynamic regions"
+   INFO_DESCRIPTION "Although file is marked as post v0.52, it also contains old region syntax for testing"
+   INFO_AUTHOR "Dalton Harvie"
+   INFO_DATE "12/3/15" # interpreted as the last modification date
+   
+   #-------------------------------------------------------------------
+   # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+   # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+   # input options are: input,centringinput,meshinput,centringmeshinput,noinput
+   # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+   # vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
+   # dat file output options are: dat_output,centringdat_output,meshdat_output,centringmeshdat_output,nodat_output (nodat_output is the default)
+   MSH_FILE "free_surface_halfplane_extruded_structured_fluid.msh" nooutput
+   
+   #-------------------------------------------------------------------
+   # geometry stuff
+   
+   GLUE_FACES <fluid west> reflect=1
+   #GLUE_FACES <face test> reflect=1 # this generates an error as only gmsh read regions can be glued
+   
+   #-------------------------------------------------------------------
+   # user-defined constants
+   
+   # these statements only necessary in cartesian as already included in above files, but GENERAL_REPLACEMENT statements can't be commented out by other strings, so just repeat them
+   #GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+   #GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
+   
+   # vof based CSF
+   #INCLUDE_ROOT "volume_of_fluid"
+   #INCLUDE "setup"
+   CONSTANT <vof_phi_tol> 1.d-8
+   
+   CELL_REGION <fluid domain> # this should still be marked as a gmsh type region as no location is specified
+   REGION <fluid north> "gmsh" # this does the same thing, but leaving the centring to be decided when the gmsh is read in (dangerous really, but works)
+   GMSH_REGION <fluid north> # this does the same thing as above, setting the type to gmsh using the definition instead
+   
+   # define real initial vof
+   NONE_CONSTANT <vof_phi_initial_tol> 1.d-4 # accuracy in computing initial shapes (in terms of volume fraction per cell)
+   # circle (cylinder/sphere)
+   CONSTANT <radius1> 1.0d0
+   CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[sphere](size[l=1]=2.d0*<radius1>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <all cells> output,elementdata
+   # ellipse
+   #CONSTANT <radius_a> 0.9d0
+   #CONSTANT <radius_b> 1.1d0
+   #CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius_a>,size[l=2]=2.d0*<radius_b>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <all cells> output,elementdata
+   CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi_initial_saved>,1.d0),0.d0)" ON <all cells>
+   CELL_DERIVED <vof_interface> "cellif(cellmax(<vof_phi_lim>,region=<adjacentcellicells>)-cellmin(<vof_phi_lim>,region=<adjacentcellicells>)-<vof_phi_tol>,1.d0,0.d0)" ON <all cells>
+   
+   # some dynamic regions, and improvements to static regions
+   # the ON keyword now replaces the PART OF phrase previously used with AT regions, but now is for both dynamic and static regions.  If left out defaults to the largest possible region in centring - ie, <all cells>
+   CELL_DERIVED_REGION <vof_interface_mask> "variable(<vof_interface>)" ON <domain>
+   CELL_DERIVED_REGION <vof_interface_mask old> "VARIABLE <vof_interface>" ON <domain> newtstepmax=3,newtstepmin=0
+   FACE_DERIVED_REGION <vof_interface_mask_face> "associatedwith(<vof_interface_mask>)" newtstepmax=5
+   FACE_CONSTANT_REGION <sacrificial region> "all" ON <all faces> newtstepmax=2
+   CELL_DERIVED <derived junk> "<cellx[l=1]>" noderivative,newtstepmax=7
+   CELL_DERIVED_REGION <vof_interface_mask_cell> "associatedwith(<vof_interface_mask_face>)" newtstepmin=1
+   CELL_TRANSIENT_REGION <vof_expanded_mask[r=2]> "all" "expand[maxseparation=1](<vof_interface_mask>)" ON <all cells>
+   CELL_TRANSIENT_REGION <vof_expanded_mask2[r=2]> "all" "expand[maxseparation=1](<vof_expanded_mask[r=2]>)" ON <all cells>
+   CELL_TRANSIENT_REGION <vof_expanded_mask4[r=2]> "all" "expand[maxseparation=2](<vof_expanded_mask2[r=2]>)" ON <all cells>
+   CELL_TRANSIENT_REGION <vof_expanded_mask5 face[r=2]> "all" "expand[maxseparation=1,faceseparation](<vof_expanded_mask4[r=2]>)" ON <all cells>
+   CELL_OUTPUT <vof_interface_mask output> "1.d0" ON <vof_interface_mask>
+   CELL_OUTPUT <vof_expanded_mask output> "1.d0" ON <vof_expanded_mask[r=2]>
+   CELL_OUTPUT <vof_expanded_mask2 output> "1.d0" ON <vof_expanded_mask2[r=2]>
+   CELL_OUTPUT <vof_expanded_mask4 output> "1.d0" ON <vof_expanded_mask4[r=2]>
+   CELL_OUTPUT <vof_expanded_mask5 face output> "1.d0" ON <vof_expanded_mask5 face[r=2]>
+   CELL_TRANSIENT_REGION <vof_expanded_mask[r=1]> "all" "surrounds(<vof_interface_mask>)" ON <all cells>
+   CELL_NEWTIENT_REGION <vof_expanded_mask_newtient[r=1]> "none" "surrounds(<vof_interface_mask>)" ON <all cells>
+   CELL_CONSTANT_REGION <cell test> "none" ON <domain>
+   CELL_STATIC_REGION <cell test all> "all" ON <boundary cells>
+   CELL_STATIC_REGION <cell test none> "none"
+   CELL_SETUP_REGION <cell test all2> "all" ON <domain>
+   FACE_STATIC_REGION <face test> "withinbox(0.d0,0.d0,0.d0,1.d0,1.d0,1.d0)" ON <boundaries>
+   STATIC_REGION <face test> CANCEL
+   FACE_STATIC_REGION <face test> "at(0.d0,0.d0,0.d0)" ON <boundaries> # some junk description
+   #FACE_STATIC_REGION <face test> "at(0.d0,0.d0,0.d0)" ON <boundaries> newtstepmax=2 # setting newtstepmax where not applicable now generates an error
+   FACE_STATIC_REGION <face test3> "at(0.d0,0.d0,0.d0)" ON <boundaries> # some junk description
+   FACE_STATIC_REGION <face test old> "AT 0.d0 0.d0 0.d0" ON <boundaries> # some junk description
+   FACE_STATIC_REGION <face test2> "withinbox(0.d0,0.d0,0.d0,1.d0,1.d0,1.d0)" ON <boundaries> # some junk description
+   FACE_STATIC_REGION <face test2 old> "WITHIN BOX 0.d0 0.d0 0.d0 1.d0 1.d0 1.d0" ON <boundaries> # some junk description
+   REGION <face test3> CANCEL
+   REGION <sacrificial region> CANCEL
+   VARIABLE <derived junk> CANCEL # this cancellation should make <vof_interface_mask_cell> come after <vof_interface>
+   
+   NEWTSTEPMIN 4
+   NEWTSTEPOUT 2
+   TRANSIENT_SIMULATION
+   TIMESTEPMAX 2
+   NONE_TRANSIENT <some none centred transient> "1.d0" "<timestep>"
+   CELL_DERIVED <dynamic region test> "cellif(celldelta(<vof_interface_mask>),1.d0,0.d0)" ON <all cells> output,newtstepmax=3
+   FACE_DERIVED <face dynamic region test> "faceif(facedelta(<vof_interface_mask_face>),1.d0,0.d0)" ON <all faces> output,newtstepmin=1,newtstepmax=4
+   CELL_DERIVED <cell dynamic region test> "cellif(celldelta(<vof_interface_mask_cell>),1.d0,0.d0)" ON <all cells> output,newtstepmin=2
+   FACE_DERIVED <face gmsh delta region test> "faceif(facedelta(<fluid south>),1.d0,0.d0)" ON <all faces>
+   CELL_DERIVED <masked dynamic region test> "1.d0" ON <vof_interface_mask> output
+   FACE_DERIVED <masked face dynamic region test> "1.d0" ON <vof_interface_mask_face> output,newtstepmin=2
+   CELL_DERIVED <masked cell dynamic region test> "1.d0" ON <vof_interface_mask_cell> output
+   FACE_DERIVED <masked face gmsh delta region test> "1.d0" ON <fluid south> output
+   NODE_REGION <one node> "at(0.d0,1.d0,2.d0)" ON <domain nodes>
+   NODE_REGION <one node old> "AT 0.d0 1.d0 2.d0 PART OF <domain nodes>"
+   NODE_REGION <node compound> "compound(<all nodes>-<one node>-<boundary nodes>)"
+   NODE_REGION <node compound old> "COMPOUND <all nodes>-<one node>-<boundary nodes>"
+   
+   CELL_DERIVED <a variable> "<cellx[l=1]>" ON <all cells>
+   CELL_DERIVED <another variable> "<cellx[l=1]>" ON <vof_interface_mask> output
+   VARIABLE <a variable> CANCEL
+   
+   #NONE_OUTPUT <mask sum test 1> "cellsum(<masked dynamic region test>,region=<all cells>)" # this will flag an error as the parent of the region <vof_interface_mask> over which this summed variable is defined is only <domain>
+   NONE_OUTPUT <mask sum test 1> "cellsum(<masked dynamic region test>,region=<domain>)"
+   NONE_OUTPUT <mask sum test 2> "cellsum(<masked dynamic region test>,region=<vof_interface_mask>)"
+   NONE_OUTPUT <mask sum test 3> "cellsum(1.d0,region=<vof_interface_mask>)"
+   CELL_OUTPUT_REGION <one cell> "at(8.d0,8.d0,0.d0)" ON <vof_interface_mask>
+   NONE_OUTPUT <mask sum test 4.0> "cellsum(cellsum[maxseparation=0](1.d0,region=<vof_interface_mask>),region=<one cell>)"
+   NONE_OUTPUT <mask sum test 4.1> "cellsum(cellsum[maxseparation=1](1.d0,region=<vof_interface_mask>),region=<one cell>)"
+   NONE_OUTPUT <mask sum test 4.1 faceseparation> "cellsum(cellsum[maxseparation=1,faceseparation](1.d0,region=<vof_interface_mask>),region=<one cell>)"
+   NONE_OUTPUT <mask sum test 4.2> "cellsum(cellsum[maxseparation=2](1.d0,region=<vof_interface_mask>),region=<one cell>)"
+   NONE_OUTPUT <mask sum test 4.5> "cellsum(cellsum[maxseparation=5](1.d0,region=<vof_interface_mask>),region=<one cell>)"
+   NONE_OUTPUT <mask sum test 4.20> "cellsum(cellsum[maxseparation=20](1.d0,region=<vof_interface_mask>),region=<one cell>)" # this will only equal the non-separation calculations above if the glue_faces reflect is removed, so that separation loop doesn't move through reflect boundary
+   NONE_OUTPUT <mask sum test 4.20 faceseparation> "cellsum(cellsum[maxseparation=20,faceseparation](1.d0,region=<vof_interface_mask>),region=<one cell>)" # this will only equal the non-separation calculations above if the glue_faces reflect is removed, so that separation loop doesn't move through reflect boundary
+   #NONE_OUTPUT <mask sum test 4 error> "cellsum[maxseparation=20](1.d0,region=<vof_interface_mask>)" # this generates an error as the context isn't a cell region
+   CELL_OUTPUT <one cell output> "1.d0" ON <one cell>
+   
+   # the following are errors, as unknowns and equations cannot be defined on dynamic regions
+   #CELL_UNKNOWN <some dynamic unknown> "1.d0" ON <vof_interface_mask>
+   #CELL_EQUATION <some dynamic equation> "1.d0" ON <vof_interface_mask>
+   
+   # testing dynamic unknown regions
+   CELL_UNKNOWN <some unknown> "1.d0" ON <domain>
+   CELL_EQUATION <some equation> "<some unknown>-<cellx[l=1]>+<cellx[l=2]>" ON <domain>
+   #CELL_EQUATION <some equation> "1.d0/<some unknown>" ON <domain> # test of error handling when unknowns become NAN
+   CELL_UNKNOWN_REGION <some unknown region> "variable(<some unknown>)" ON <all cells>
+   CELL_OUTPUT <some unknown region output> "1.d0" ON <some unknown region> # this is an easy way to visualise a dynamic_region, by just outputing 1.d0 over it
+   
+   # test of automatic operator centring interpolation
+   CELL_OUTPUT <test1> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
+   CELL_OUTPUT <test2> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
+   FACE_OUTPUT <test3> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
+   FACE_OUTPUT <test4> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
+   NODE_OUTPUT <test5> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
+   NODE_OUTPUT <test6> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
+   FACE_OUTPUT <south test> "1.d0" ON <fluid south>
+   CELL_OUTPUT <domain test> "2.d0" ON <fluid domain>
+   
+   CELL_OUTPUT <link test> "celltofacelink(<facex[l=1]>,localregion=<all cells>,remoteregion=<boundaries>)" ON <all cells>
+   #CELL_OUTPUT <link test> "celltofacelink(<facex[l=1]>,localregion=<vof_interface_mask_cell>,remoteregion=<boundaries>)" ON <all cells> # this generates an error as links are only allowed between static regions
+   
+   # check to see whether these still work
+   REGION_LIST <boundary cells> <all cells> <domain>
+   CELL_REGION_CONSTANT <cell region constant> 1.d0 2.d0 3.d0 output
+   NODE_REGION_LIST <boundary nodes> <domain nodes>
+   NODE_REGION_CONSTANT <node region constant> 4.d0 5.d0 output
+   # INCLUDE FINISHED for ../dynamic_region_test.arb
+   #--------------------------------------------------------
 ##################################################################################
