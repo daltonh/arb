@@ -1,0 +1,12 @@
+# based on node locations, here we calculate the maximum length of the domain in each dimension
+# these loops could be conducted over <boundary nodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
+# as this is only a single loop through each node this isn't an expensive calculation anyway (unlike the levelset-based minimum boundary distance)
+<<dim1comment>>NONE_CONSTANT <nodexmax[l=1]> "nodemax(<nodex[l=1]>,region=<all nodes>)"
+<<dim2comment>>NONE_CONSTANT <nodexmax[l=2]> "nodemax(<nodex[l=2]>,region=<all nodes>)"
+<<dim3comment>>NONE_CONSTANT <nodexmax[l=3]> "nodemax(<nodex[l=3]>,region=<all nodes>)"
+<<dim1comment>>NONE_CONSTANT <nodexmin[l=1]> "nodemin(<nodex[l=1]>,region=<all nodes>)"
+<<dim2comment>>NONE_CONSTANT <nodexmin[l=2]> "nodemin(<nodex[l=2]>,region=<all nodes>)"
+<<dim3comment>>NONE_CONSTANT <nodexmin[l=3]> "nodemin(<nodex[l=3]>,region=<all nodes>)"
+<<dim1comment>>NONE_CONSTANT <domain_length[l=1]> "<nodexmax[l=1]>-<nodexmin[l=1]>"
+<<dim2comment>>NONE_CONSTANT <domain_length[l=2]> "<nodexmax[l=2]>-<nodexmin[l=2]>"
+<<dim3comment>>NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"

@@ -1,0 +1,5 @@
+# find an estimate of the domain size
+# here we use the maximum domain length in each dimension
+# previously used a more accurate but expensive formulation (see minimum_face_boundary_distance)
+INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
+NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"

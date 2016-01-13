@@ -1,0 +1,4 @@
+# find an estimate of the domain size
+# here we use a more accurate estimate of the domain size based on minimum_face_boundary_distance (used in electrokinetic routines for example)
+INCLUDE "minimum_face_boundary_distance" # this will find a constant vector domain length in each dimension
+CONSTANT <a_lengthscale> "cellmax(<minimum_face_boundary_distance>,region=<domain>)" # an estimate of the mesh lengthscale (channel half-width) based on the minimum domain -> wall distance

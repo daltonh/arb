@@ -1,0 +1,8 @@
+# this bit of code taken from older level set routines, with a few name changes
+# finds minimum distance to walls, but is expensive to calculate
+<<dim1comment>>FACE_LOCAL <face_from_cell_boundary_vector[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
+<<dim2comment>>FACE_LOCAL <face_from_cell_boundary_vector[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
+<<dim3comment>>FACE_LOCAL <face_from_cell_boundary_vector[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
+CELL_LOCAL <minimum_face_boundary_distance> "sqrt(facemin(dot(<face_from_cell_boundary_vector[l=:]>,<face_from_cell_boundary_vector[l=:]>),region=<walls>))"
+
+# see domain_lengthscale_face_boundary_distance for a <a_lengthscale> calculated from this

@@ -447,15 +447,16 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
   MAKELINE="$MAKELINE compiler=$COMPILER";
   echo "INFO: running make using commands: $MAKELINE"; echo
   eval $MAKELINE;
-  echo "INFO: finished running make"; echo
 
   if [ "$?" -ne 0 ] ; then
-    echo "ERROR: problem compiling/settting up arb" ;
+    echo "ERROR: problem compiling/setting up arb using make" ;
     cd ..
     exit 1 ;
   else
     echo "INFO: arb make/setup successful" ;
   fi ;
+  echo
+
 fi ;
 
 # move back to working directory
