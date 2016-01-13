@@ -44,7 +44,7 @@ use File::Glob ':glob'; # deals with whitespace better
 #use Time::Piece; # removed for portability
 use Sys::Hostname;
 
-my $version="0.54";
+my $version="0.55";
 my $minimum_version="0.40";
 
 # now called from build directory

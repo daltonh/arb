@@ -38,7 +38,7 @@ This information is now basically hosted on our local gitlab server - this file 
 ***************************************************************
 CURRENT VERSION:
 
-v0.54
+v0.55
 
 -------------------------------
 LONG TERM DESIRABLES:
@@ -277,5 +277,6 @@ v0.53 - major rewrite of region treatment, including dynamic regions
 * node centred variables
 * dynamic masks for ls and vof
 * clsvof capability
+v0.54 - mainly bugfixes
 
 -------------------------------
