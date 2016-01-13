@@ -5,91 +5,91 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: heat_conduction_around_ellipse.arb
 #INCLUDE_WORKING "heat_conduction_around_ellipse.arb"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../heat_conduction_around_ellipse.arb without any search/replace combinations
-# arb finite volume solver
-# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
-#
-# arb is released under the GNU GPL.  For full details see the license directory.
-#
-#----------------------------------------------------------------------------
-VERSION 0.51
-
-# the following strings describe the simulation and are passed to the output files
-INFO_TITLE "Steady state heat diffusion around an ellipse"
-INFO_DESCRIPTION "Tutorial 1: Example problem demonstrating how to setup a Laplace equation, with associated flux (Neuman) and absolute (Dirichlet) boundary conditions on the walls.  Two dimensional, with an unstructured mesh."
-INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "8/3/15" # interpreted as the last modification date
-
-#-------------------------------------------------------------------
-#NEWTRESTOL 1.d-12 # convergence criterion for newton solver
-#NEWTSTEPMAX 10 # maximum number of steps for newton solver
-
-#-------------------------------------------------------------------
-# geometry
-
-# CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
-# where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
-# where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
-# where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
-# where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
-# where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
-# where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
-FACE_REGION <walls> "COMPOUND +<boundaries>-<hole>"
-
-# MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
-# output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
-# input options are: input,centringinput,meshinput,centringmeshinput,noinput
-# data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
-# vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
-# dat file output options are: datoutput,centringdatoutput,meshdatoutput,centringmeshdatoutput,nodatoutput (nodatoutput is the default)
-MSH_FILE "rectangle_with_ellipse.msh"
-
-#-------------------------------------------------------------------
-# variables
-
-# variable definition reference:
-# (CELL_|FACE_|NODE_|)REGION_LIST <region_1> <region_2> ... <region_n> # comments: line has the ordered names of any regions
-# (CELL_|FACE_|NODE_)REGION_CONSTANT <name> [multiplier*units] numerical_value_for_region_1 .. value_for_region_n options # comments: sets a constant that varies with region
-# (CELL_|FACE_|NODE_|NONE_|)CONSTANT <name> [multiplier*units] numerical_value ON <region> options # comments: sets a constant specific to one region or no regions and has the form
-# (CELL_|FACE_|NODE_|NONE|)CONSTANT <name> [units] "expression (involving only constants)" ON <region> options # comments
-# (CELL_|FACE_|NODE_|NONE|)TRANSIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
-# (CELL_|FACE_|NODE_|NONE|)NEWTIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
-# (CELL_|FACE_|NODE_|NONE|)DERIVED <name> [units] "expression" ON <region> options # comments
-# (CELL_|FACE_|NODE_|NONE|)UNKNOWN <name> [units] "expression (initial value, optional)" ON <region> options # comments
-# (CELL_|FACE_|NODE_|NONE|)EQUATION <name> [units] "expression (equation equaling zero)" ON <region> options # comments
-# (CELL_|FACE_|NODE_|NONE|)OUTPUT <name> [units] "expression" ON <region> options # comments
-# (CELL_|FACE_|NODE_|NONE|)CONDITION <name> [units] "expression" ON <region> options # comments
-# (CELL_|FACE_|NODE_|NONE|)LOCAL <name> [units] "expression" ON <region> options # comments
-
-# options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
-#p  derivative/noderivative - for DERIVED, EQUATION, LOCAL : do or do not calculate Jacobian derivatives for this variable
-#p  positive/negative/nocheck - for DERIVED, UNKNOWN, EQUATION, LOCAL : check at each iteration that variable is positive/negative
-#f  output/nooutput - for ALL : output compound to msh files
-#f  componentoutput/nocomponentoutput - for ALL : output just this component to msh files
-#f  stepoutput/stepoutputnoupdate/nostepoutput - for ALL : output compound to step file.  The noupdate one does not update the variable when the step file is written (needed for recording when output occurred for example).
-#f  componentstepoutput/componentstepoutputnoupdate/nocomponentstepoutput - for ALL : output just this component to step files
-#f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
-#f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
-#f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component)
-#p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
-#f  magnitude=value - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
-#f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
-#f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
-#   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
-
-# ---------------------------
-
-CONSTANT <D> [W/(K.m)] 1.d-3 # diffusivity, actually thermal conductivity (k) given the other units
-CONSTANT <hole flux> [W/m^2] -1.d+1 # heat flux around surface of hole
-CELL_UNKNOWN <T> [K] "1.d0" ON <all cells> # temperature
-FACE_DERIVED <q_f> [W/m^2] "-<D>*facegrad(<T>)" ON <all faces> output # flux of heat across each face, in the direction of the face normal
-CELL_EQUATION <T transport> "celldiv(<q_f>)" ON <domain> # diffusion equation, giving conservation of heat on each cell within the domain
-FACE_EQUATION <T hole> "<q_f>-<hole flux>" ON <hole> # specified heat flux through hole surface: Note, face normals on boundary faces all point outwards, so this equation specifies a flux equal to <hole flux> directed out of the domain.  However, <hole flux> is set to a negative number above, giving a (physical) flux directed into the domain
-FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on the walls of the domain 
-NONE_OUTPUT <T average> [K] "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
-
-#-------------------------------------------------------------------
-# INCLUDE FINISHED for ../heat_conduction_around_ellipse.arb
-#--------------------------------------------------------
+   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   # the following is INCLUDED from ../heat_conduction_around_ellipse.arb without any search/replace combinations
+   # arb finite volume solver
+   # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+   #
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #----------------------------------------------------------------------------
+   VERSION 0.51
+   
+   # the following strings describe the simulation and are passed to the output files
+   INFO_TITLE "Steady state heat diffusion around an ellipse"
+   INFO_DESCRIPTION "Tutorial 1: Example problem demonstrating how to setup a Laplace equation, with associated flux (Neuman) and absolute (Dirichlet) boundary conditions on the walls.  Two dimensional, with an unstructured mesh."
+   INFO_AUTHOR "Dalton Harvie"
+   INFO_DATE "8/3/15" # interpreted as the last modification date
+   
+   #-------------------------------------------------------------------
+   #NEWTRESTOL 1.d-12 # convergence criterion for newton solver
+   #NEWTSTEPMAX 10 # maximum number of steps for newton solver
+   
+   #-------------------------------------------------------------------
+   # geometry
+   
+   # CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+   # where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
+   # where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+   # where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
+   # where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
+   # where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
+   # where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
+   FACE_REGION <walls> "COMPOUND +<boundaries>-<hole>"
+   
+   # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+   # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+   # input options are: input,centringinput,meshinput,centringmeshinput,noinput
+   # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+   # vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
+   # dat file output options are: datoutput,centringdatoutput,meshdatoutput,centringmeshdatoutput,nodatoutput (nodatoutput is the default)
+   MSH_FILE "rectangle_with_ellipse.msh"
+   
+   #-------------------------------------------------------------------
+   # variables
+   
+   # variable definition reference:
+   # (CELL_|FACE_|NODE_|)REGION_LIST <region_1> <region_2> ... <region_n> # comments: line has the ordered names of any regions
+   # (CELL_|FACE_|NODE_)REGION_CONSTANT <name> [multiplier*units] numerical_value_for_region_1 .. value_for_region_n options # comments: sets a constant that varies with region
+   # (CELL_|FACE_|NODE_|NONE_|)CONSTANT <name> [multiplier*units] numerical_value ON <region> options # comments: sets a constant specific to one region or no regions and has the form
+   # (CELL_|FACE_|NODE_|NONE|)CONSTANT <name> [units] "expression (involving only constants)" ON <region> options # comments
+   # (CELL_|FACE_|NODE_|NONE|)TRANSIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+   # (CELL_|FACE_|NODE_|NONE|)NEWTIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+   # (CELL_|FACE_|NODE_|NONE|)DERIVED <name> [units] "expression" ON <region> options # comments
+   # (CELL_|FACE_|NODE_|NONE|)UNKNOWN <name> [units] "expression (initial value, optional)" ON <region> options # comments
+   # (CELL_|FACE_|NODE_|NONE|)EQUATION <name> [units] "expression (equation equaling zero)" ON <region> options # comments
+   # (CELL_|FACE_|NODE_|NONE|)OUTPUT <name> [units] "expression" ON <region> options # comments
+   # (CELL_|FACE_|NODE_|NONE|)CONDITION <name> [units] "expression" ON <region> options # comments
+   # (CELL_|FACE_|NODE_|NONE|)LOCAL <name> [units] "expression" ON <region> options # comments
+   
+   # options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
+   #p  derivative/noderivative - for DERIVED, EQUATION, LOCAL : do or do not calculate Jacobian derivatives for this variable
+   #p  positive/negative/nocheck - for DERIVED, UNKNOWN, EQUATION, LOCAL : check at each iteration that variable is positive/negative
+   #f  output/nooutput - for ALL : output compound to msh files
+   #f  componentoutput/nocomponentoutput - for ALL : output just this component to msh files
+   #f  stepoutput/stepoutputnoupdate/nostepoutput - for ALL : output compound to step file.  The noupdate one does not update the variable when the step file is written (needed for recording when output occurred for example).
+   #f  componentstepoutput/componentstepoutputnoupdate/nocomponentstepoutput - for ALL : output just this component to step files
+   #f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
+   #f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
+   #f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component)
+   #p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
+   #f  magnitude=value - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
+   #f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
+   #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
+   #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
+   
+   # ---------------------------
+   
+   CONSTANT <D> [W/(K.m)] 1.d-3 # diffusivity, actually thermal conductivity (k) given the other units
+   CONSTANT <hole flux> [W/m^2] -1.d+1 # heat flux around surface of hole
+   CELL_UNKNOWN <T> [K] "1.d0" ON <all cells> # temperature
+   FACE_DERIVED <q_f> [W/m^2] "-<D>*facegrad(<T>)" ON <all faces> output # flux of heat across each face, in the direction of the face normal
+   CELL_EQUATION <T transport> "celldiv(<q_f>)" ON <domain> # diffusion equation, giving conservation of heat on each cell within the domain
+   FACE_EQUATION <T hole> "<q_f>-<hole flux>" ON <hole> # specified heat flux through hole surface: Note, face normals on boundary faces all point outwards, so this equation specifies a flux equal to <hole flux> directed out of the domain.  However, <hole flux> is set to a negative number above, giving a (physical) flux directed into the domain
+   FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on the walls of the domain 
+   NONE_OUTPUT <T average> [K] "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
+   
+   #-------------------------------------------------------------------
+   # INCLUDE FINISHED for ../heat_conduction_around_ellipse.arb
+   #--------------------------------------------------------
 ##################################################################################

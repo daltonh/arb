@@ -3,29 +3,29 @@
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: steady_state_channel_flow_with_cylinder.arb
-#INCLUDE_WORKING "steady_state_channel_flow_with_cylinder.arb"
+# the following working directory files found by the arb script: steady_state_stokes_channel_flow_with_cylinder.arb
+#INCLUDE_WORKING "steady_state_stokes_channel_flow_with_cylinder.arb"
    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../steady_state_channel_flow_with_cylinder.arb without any search/replace combinations
+   # the following is INCLUDED from ../steady_state_stokes_channel_flow_with_cylinder.arb without any search/replace combinations
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
    # arb is released under the GNU GPL.  For full details see the license directory.
    #
    #-------------------------------------------------------------------
-   VERSION 0.53 # the version of syntax used in this file
+   VERSION 0.54 # the version of syntax used in this file
    
    # the following strings describe the simulation and are passed to the output files
-   INFO_TITLE "Steady state flow around an offset cylinder within a channel"
-   INFO_DESCRIPTION "Tutorial 3: Here the steady-state Navier-Stokes equations are solved in 2D, using an unstructured mesh.  The Reynolds number for the problem based on the cylinder diameter and maximum inlet velocity is 20.  This is a CFD benchmark problem.  The problem is not physical however, as the inlet has an imposed parabolic profile but is also very close to the cylinder."
+   INFO_TITLE "Steady state flow around an offset cylinder within a channel, here using stokes equations"
+   INFO_DESCRIPTION "Here the steady-state Stokes equations are solved in 2D, using an unstructured mesh.  A uniform pressure is set along the upstream boundary (which is still very close to the cylinder BTW), which is a bit different to the set flowrate condition used in tutorial_3."
    INFO_AUTHOR "Dalton Harvie"
-   INFO_DATE "14/5/14" # interpreted as the last modification date
+   INFO_DATE "13/1/16" # interpreted as the last modification date
    
    #-------------------------------------------------------------------
    # system constants
    
-   #KERNEL_OPTIONS polynomialorder=3 # setting order of kernel function for face derivatives
-   #KERNEL_OPTIONS checkminw=.true.,minimumminw=0.8d0 # reducing the minw a bit which will decrease the size of the kernels
+   #KERNEL_OPTIONS polynomialorder=1,polynomialaverageorder=1 # setting order of kernel function for face derivatives
+   #KERNEL_OPTIONS checkminw=.true.,minimumminw=0.5d0 # reducing the minw a bit which will decrease the size of the kernels
    
    #-------------------------------------------------------------------
    # geometry
@@ -47,7 +47,6 @@ EXTERNALS "src/free_surface_functions.f90"
    # vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
    # dat file output options are: datoutput,centringdatoutput,meshdatoutput,centringmeshdatoutput,nodatoutput (nodatoutput is the default)
    MSH_FILE "steady_state_channel_flow_with_cylinder.msh"
-   MSH_FILE "output/output.msh" centringvtkoutput,datoutput
    
    #-------------------------------------------------------------------
    # variable definition reference:
@@ -146,10 +145,13 @@ EXTERNALS "src/free_surface_functions.f90"
       CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
       # INCLUDE FINISHED for ../templates/navier_stokes/constants.arb
       #--------------------------------------------------------
-   #INCLUDE "domain" # equations to be solved within the domain
+   
+   # the only change to get the Stokes rather than Navier-Stokes equations is to include the domain_stokes template file here instead of domain
+   #INCLUDE "domain_stokes" # equations to be solved within the domain
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/navier_stokes/domain.arb without any search/replace combinations
-      #INCLUDE "unknowns" # no .arb suffix is required
+      # the following is INCLUDED from ../templates/navier_stokes/domain_stokes.arb without any search/replace combinations
+      # this is the stokes equations equivalent of the domain file
+      #INCLUDE "unknowns"
          #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
          # the following is INCLUDED from ../templates/navier_stokes/unknowns.arb without any search/replace combinations
          # unknown variables used for flow problems
@@ -204,110 +206,120 @@ EXTERNALS "src/free_surface_functions.f90"
          #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <all faces>
          # INCLUDE FINISHED for ../templates/navier_stokes/total_stress.arb
          #--------------------------------------------------------
-      #INCLUDE "u_f"
+      #INCLUDE "u_f_stokes"
          #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/navier_stokes/u_f.arb without any search/replace combinations
-         # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
-         
-         # start by calculating the difference between the local face centred (dynamic) pressure gradient and average of cell centred (dynamic) pressure gradients in the face direction
-         # `dynamic' pressure here means the pressure that is able to cause fluid flow, ie, possibly accounting for hydrostatic pressure variations (for example)
-         #INCLUDE "p_error"
+         # the following is INCLUDED from ../templates/navier_stokes/u_f_stokes.arb without any search/replace combinations
+         # the equivalent of the u_f template file but for the stokes equations
+         #INCLUDE "u_f"
             #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            # the following is INCLUDED from ../templates/navier_stokes/p_error.arb without any search/replace combinations
-            # a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
-            # pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
+            # the following is INCLUDED from ../templates/navier_stokes/u_f.arb without any search/replace combinations
+            # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
             
-            #INCLUDE "dynamic_force" # cell centred dynamic force
+            # start by calculating the difference between the local face centred (dynamic) pressure gradient and average of cell centred (dynamic) pressure gradients in the face direction
+            # `dynamic' pressure here means the pressure that is able to cause fluid flow, ie, possibly accounting for hydrostatic pressure variations (for example)
+            #INCLUDE "p_error"
                #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-               # the following is INCLUDED from ../templates/navier_stokes/dynamic_force.arb without any search/replace combinations
-               # dynamic force is the pressure force that could cause fluid movement
-               # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
-               # dynamic force now has the physically correct sign!
+               # the following is INCLUDED from ../templates/navier_stokes/p_error.arb without any search/replace combinations
+               # a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
+               # pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
                
-               FACE_DERIVED <p_f> "faceave(<p>)" ON <all faces>
-               CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <all cells>
-               CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <all cells>
-               #CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <all cells>
-               # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
-               FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[,adjacentcells](<dynamic_force_c[l=1]>)"
-               FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[,adjacentcells](<dynamic_force_c[l=2]>)"
-               #FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
-               # INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
+               #INCLUDE "dynamic_force" # cell centred dynamic force
+                  #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                  # the following is INCLUDED from ../templates/navier_stokes/dynamic_force.arb without any search/replace combinations
+                  # dynamic force is the pressure force that could cause fluid movement
+                  # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
+                  # dynamic force now has the physically correct sign!
+                  
+                  FACE_DERIVED <p_f> "faceave(<p>)" ON <all faces>
+                  CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <all cells>
+                  CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <all cells>
+                  #CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <all cells>
+                  # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
+                  FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[,adjacentcells](<dynamic_force_c[l=1]>)"
+                  FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[,adjacentcells](<dynamic_force_c[l=2]>)"
+                  #FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
+                  # INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
+                  #--------------------------------------------------------
+               FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
+               FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
+               # INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
                #--------------------------------------------------------
-            FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
-            FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
-            # INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
+            
+            FACE_LOCAL <u_f_vect[l=1]> "faceave[](<u[l=1]>)"
+            FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)"
+            #FACE_LOCAL <u_f_vect[l=3]> "faceave[](<u[l=3]>)"
+            FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <all faces> # volume (velocity) transport
+            FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domain faces>
+            FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domain faces>
+            
+            # advection limiter
+            # alternative v0.5 method based on average velocity magnitude
+            #CELL_DERIVED <u_mag2> "dot(<u[l=:]>,<u[l=:]>)" ON <all cells>
+            #FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <domain faces>
+            #FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<rho>)" ON <domain faces>
+            # pre v0.5 method based on component of velocity in direction of face normal
+            FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domain faces>
+            #FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho>)" ON <domain faces>
+            
+            # viscous limiter
+            # this didn't seem to work
+            #FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
+            ## additional contribution to velocity interpolation from cylindrical hoop-stress term
+            ##FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<mu>,<eps_p>*1.d0^2/(2.d0*<mu>))" ON <domain faces>
+            FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
+            
+            # this file now does both steady-state and transient using transient comments string replacements, which are set in constants.arb
+            
+            # transient limiter
+            # this is the equivalent time that the limiter has been moving in the one direction
+            # noting that the variables (<u_f_{correction}> and <eps>) here are previous timestep ones
+            #FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <domain faces>
+            # need to save previous pressure error sign
+            #FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <domain faces>
+            #FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <domain faces>
+            
+            # combined limiter, using one of two possible methods
+            # use a straight minimum of the three or two correction velocities
+            ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
+            #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
+            # alternatively, average the reciprocal of the three of two correction velocities
+            # in pre v0.53 these weren't limited using <tinyish> which could case a problem if one is zero
+            #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+            FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+            # it isn't clear which of the above two methods is better: the reciprocal version can be slightly more expensive to calculate, but as it varies more continuously, can (sometimes, possibly, etc etc) lead to slightly faster overall simulation times.  Doesn't seem to be much in it though.
+            # unfortunately in versions around v0.52 the steady-state and transient cases were accidentally handled using different methods (transient with reciprocal averaging, steady-state with straight minimum)
+            # for debugging set the correction velocity to be solely only one of the three possibilities
+            #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <domain faces>
+            #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
+            #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <domain faces>
+            
+            # final face velocity
+            FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
+            
+            #FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+            
+            # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
+            # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
+            # if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
+            #GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+            ##NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
+            ##NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
+            # INCLUDE FINISHED for ../templates/navier_stokes/u_f.arb
             #--------------------------------------------------------
          
-         FACE_LOCAL <u_f_vect[l=1]> "faceave[](<u[l=1]>)"
-         FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)"
-         #FACE_LOCAL <u_f_vect[l=3]> "faceave[](<u[l=3]>)"
-         FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <all faces> # volume (velocity) transport
-         FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domain faces>
-         FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domain faces>
-         
-         # advection limiter
-         # alternative v0.5 method based on average velocity magnitude
-         #CELL_DERIVED <u_mag2> "dot(<u[l=:]>,<u[l=:]>)" ON <all cells>
-         #FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <domain faces>
-         #FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<rho>)" ON <domain faces>
-         # pre v0.5 method based on component of velocity in direction of face normal
-         FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domain faces>
-         #FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho>)" ON <domain faces>
-         
-         # viscous limiter
-         # this didn't seem to work
-         #FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
-         ## additional contribution to velocity interpolation from cylindrical hoop-stress term
-         ##FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<mu>,<eps_p>*1.d0^2/(2.d0*<mu>))" ON <domain faces>
-         FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
-         
-         # this file now does both steady-state and transient using transient comments string replacements, which are set in constants.arb
-         
-         # transient limiter
-         # this is the equivalent time that the limiter has been moving in the one direction
-         # noting that the variables (<u_f_{correction}> and <eps>) here are previous timestep ones
-         #FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <domain faces>
-         # need to save previous pressure error sign
-         #FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <domain faces>
-         #FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <domain faces>
-         
-         # combined limiter, using one of two possible methods
-         # use a straight minimum of the three or two correction velocities
-         ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
-         # alternatively, average the reciprocal of the three of two correction velocities
-         # in pre v0.53 these weren't limited using <tinyish> which could case a problem if one is zero
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
-         FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
-         # it isn't clear which of the above two methods is better: the reciprocal version can be slightly more expensive to calculate, but as it varies more continuously, can (sometimes, possibly, etc etc) lead to slightly faster overall simulation times.  Doesn't seem to be much in it though.
-         # unfortunately in versions around v0.52 the steady-state and transient cases were accidentally handled using different methods (transient with reciprocal averaging, steady-state with straight minimum)
-         # for debugging set the correction velocity to be solely only one of the three possibilities
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <domain faces>
+         NONE_CONSTANT <u_mf_{adv}> "<hugeish>" # this constraint on the timestep is removed by making it hugeish
+         # an alternative is to explicitly remove this contribution and recode up the correction velocity - less portable however given that u_f could change
          #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <domain faces>
-         
-         # final face velocity
-         FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
-         
-         #FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
-         
-         # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
-         # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
-         # if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
-         #GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
-         ##NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
-         ##NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
-         # INCLUDE FINISHED for ../templates/navier_stokes/u_f.arb
+         #NONE_CONSTANT <u_mf_{adv}> CANCEL
+         # INCLUDE FINISHED for ../templates/navier_stokes/u_f_stokes.arb
          #--------------------------------------------------------
-      #INCLUDE "advection_flux"
+      #INCLUDE "advection_flux_off" # this bypasses the definition of <J_advection_f[l=:]> and sets the a string flag telling momentum flux to not include this contribution
          #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/navier_stokes/advection_flux.arb without any search/replace combinations
-         # flux of momentum over and in the direction of each face due to advection
-         FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
-         FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
-         #FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,](<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
-         # INCLUDE FINISHED for ../templates/navier_stokes/advection_flux.arb
+         # the following is INCLUDED from ../templates/navier_stokes/advection_flux_off.arb without any search/replace combinations
+         # this file works by presetting the replacement string that is used within the momentum_flux template
+         # the advective flux vector <J_advection_f[l=:]> is now never set
+         #GENERAL_REPLACEMENTS R "<<noadvectionfluxcomment>>" W ""
+         # INCLUDE FINISHED for ../templates/navier_stokes/advection_flux_off.arb
          #--------------------------------------------------------
       #INCLUDE "momentum_flux"
          #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -320,9 +332,9 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # to remove advection flux contribution (for stokes equations for example) preset this string to empty
          #GENERAL_REPLACEMENTS D "<<noadvectionfluxcomment>>" W "#"
-         #FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <all faces> # component of momentum transport from stress and advection
-         #FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <all faces> # component of momentum transport from stress and advection
-         ##FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <all faces> # component of momentum transport from stress and advection
+         FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <all faces> # component of momentum transport from stress and advection
+         FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <all faces> # component of momentum transport from stress and advection
+         #FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <all faces> # component of momentum transport from stress and advection
          # INCLUDE FINISHED for ../templates/navier_stokes/momentum_flux.arb
          #--------------------------------------------------------
       #INCLUDE "conservation"
@@ -356,8 +368,9 @@ EXTERNALS "src/free_surface_functions.f90"
             #--------------------------------------------------------
          # INCLUDE FINISHED for ../templates/navier_stokes/conservation.arb
          #--------------------------------------------------------
-      # INCLUDE FINISHED for ../templates/navier_stokes/domain.arb
+      # INCLUDE FINISHED for ../templates/navier_stokes/domain_stokes.arb
       #--------------------------------------------------------
+   
    #INCLUDE "outlet_p_set" # outlet BC
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/navier_stokes/outlet_p_set.arb without any search/replace combinations
@@ -411,11 +424,11 @@ EXTERNALS "src/free_surface_functions.f90"
       # INCLUDE FINISHED for ../templates/navier_stokes/walls.arb
       #--------------------------------------------------------
    
-   # inlet BCs have to be special cased a bit
-   #INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure to give using <u_av>
-   #INCLUDE "inlet_u_set" # velocity profile set as uniform <u_av>
+   # set pressure to a uniform value over inlet
+   CONSTANT <p_in> 5.6d0
+   #INCLUDE "inlet_p_set"
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/navier_stokes/inlet_u_set.arb without any search/replace combinations
+      # the following is INCLUDED from ../templates/navier_stokes/inlet_p_set.arb without any search/replace combinations
       # boundary conditions on inlet - fully developed flow
       #INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
          #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -432,17 +445,19 @@ EXTERNALS "src/free_surface_functions.f90"
          # INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
          #--------------------------------------------------------
       
-      # set velocity distribution corresponding to fully developed Cartesian flow
-      #FACE_EQUATION <inlet flowrate equation> "<u_f>+6.d0*<u_av>*<cellx[l=2]>*(0.41d0-<cellx[l=2]>)/(0.41d0^2)" ON <inlet> # specified velocity distribution
-      # set plug flow velocity directed inwards
-      FACE_EQUATION <inlet flowrate equation> "<u_f>+<u_av>" ON <inlet> # specified velocity distribution
-      # INCLUDE FINISHED for ../templates/navier_stokes/inlet_u_set.arb
+      FACE_EQUATION <inlet flowrate equation> "<p_f>-<p_in>" ON <inlet> # specified pressure
+      # INCLUDE FINISHED for ../templates/navier_stokes/inlet_p_set.arb
       #--------------------------------------------------------
-   # overwritting the uniform profile with the parabolic one from the test problem
-   FACE_EQUATION <inlet flowrate equation> "<u_f>+6.d0*<u_av>*<cellx[l=2]>*(0.41d0-<cellx[l=2]>)/(0.41d0^2)" ON <inlet>
+   
+   # explicitly set variable magnitudes using numerical constants
+   VARIABLE <p> magnitude=<p_in>
+   VARIABLE <u[l=1]> magnitude=<u_av>
+   VARIABLE <u[l=2]> magnitude=<u_av>
    
    # overwrite previous properties with the following
-   CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
+   CONSTANT <mu> [Pa.s] 1.d-1 # viscosity of liquid
+   
+   # density is still specified - it may be used in a transient dimensional problem for example
    CONSTANT <rho> [kg/m^3] 1.d0 # density
    CONSTANT <u_av> [m/s] 0.2d0 # average inlet velocity
    
@@ -452,8 +467,6 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_OUTPUT <C_drag> "2.d0*<F_drag>/(<rho>*<u_av>^2*0.1d0)" # drag coefficient
    NONE_OUTPUT <C_lift> "2.d0*<F_lift>/(<rho>*<u_av>^2*0.1d0)" # lift coefficient
    
-   # output a flag telling us which term limited the correction velocity
-   FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
    # and turn some outputs on using the generic VARIABLE statement that picks up the last type and centring
    VARIABLE <u_f_{correction}> output
    VARIABLE <u_f_{raw}> output
@@ -464,6 +477,6 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE_ROOT "navier_stokes"
    #INCLUDE "strain_rate_magnitude"
    #-------------------------------------------------------------------
-   # INCLUDE FINISHED for ../steady_state_channel_flow_with_cylinder.arb
+   # INCLUDE FINISHED for ../steady_state_stokes_channel_flow_with_cylinder.arb
    #--------------------------------------------------------
 ##################################################################################

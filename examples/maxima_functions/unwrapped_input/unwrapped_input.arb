@@ -5,16 +5,16 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: maxima_functions.arb
 #INCLUDE_WORKING "maxima_functions.arb"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../maxima_functions.arb without any search/replace combinations
-# here we test the implementation of some maxima functions
-# no idea what the solutions to these equations are - point is just to make sure that we can calculate the derivatives to these functions without error
-
-CONSTANT <a> 1.d0
-NONE_UNKNOWN <x> "1.d0"
-NONE_EQUATION <x eq> "mod(<x>,<a>)+<x>"
-NONE_UNKNOWN <y> "1.2d0"
-NONE_EQUATION <y eq> "floor(<y>)+<y>"
-# INCLUDE FINISHED for ../maxima_functions.arb
-#--------------------------------------------------------
+   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   # the following is INCLUDED from ../maxima_functions.arb without any search/replace combinations
+   # here we test the implementation of some maxima functions
+   # no idea what the solutions to these equations are - point is just to make sure that we can calculate the derivatives to these functions without error
+   
+   CONSTANT <a> 1.d0
+   NONE_UNKNOWN <x> "1.d0"
+   NONE_EQUATION <x eq> "mod(<x>,<a>)+<x>"
+   NONE_UNKNOWN <y> "1.2d0"
+   NONE_EQUATION <y eq> "floor(<y>)+<y>"
+   # INCLUDE FINISHED for ../maxima_functions.arb
+   #--------------------------------------------------------
 ##################################################################################
