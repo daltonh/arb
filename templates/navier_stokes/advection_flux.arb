@@ -1,4 +1,1 @@
-# uses a rhie-chow type interpolation method to calculate the fluid flux (velocity) over and in the direction of each face
-
-INCLUDE "p_error"
-INCLUDE "u_f"
+advection_flux_steady_state_constant_rho.arb

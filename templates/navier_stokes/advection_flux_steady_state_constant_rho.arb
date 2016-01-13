@@ -1,0 +1,6 @@
+# this now chooses between the steady-state and transient advection_flux files based on the transient navier-stokes comment string
+# these comment strings should be set from either constants, transient_setup or transient_dynamic_setup
+# both files assume constant density for now, otherwise overwrite with advection_flux_transient_varying_rho specifically
+# similar to the proceedure as used in conservation.arb
+<<transientnavierstokescomment>>INCLUDE "advection_flux_transient_constant_rho"
+<<steadystatenavierstokescomment>>INCLUDE "advection_flux_steady_state_constant_rho"

@@ -1,5 +1,0 @@
-# use these to convert a navier-stokes problem into a stokes one by removing the advection terms
-FACE_LOCAL <J_advection_f[l=1]> "0.d0" ON <all faces>
-FACE_LOCAL <J_advection_f[l=2]> "0.d0" ON <all faces>
-FACE_LOCAL <J_advection_f[l=3]> "0.d0" ON <all faces>
-FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
