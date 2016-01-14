@@ -3,578 +3,108 @@
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: oscillating_level_set_drop_with_reflect.arb
-#(hash added during unwrap)INCLUDE_WORKING "oscillating_level_set_drop_with_reflect.arb"
+# the following working directory files found by the arb script: transient_explicit_stokes_channel_flow_with_cylinder.arb
+#(hash added during unwrap)INCLUDE_WORKING "transient_explicit_stokes_channel_flow_with_cylinder.arb"
    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../oscillating_level_set_drop_with_reflect.arb without any search/replace combinations
+   # the following is INCLUDED from ../transient_explicit_stokes_channel_flow_with_cylinder.arb without any search/replace combinations
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
    # arb is released under the GNU GPL.  For full details see the license directory.
    #
    #-------------------------------------------------------------------
-   # file equations.in
-   VERSION 0.55 # although this file has been updated to work with v0.55, the level-set templates need updating
+   VERSION 0.55 # the version of syntax used in this file
    
-   INFO_TITLE "Osciallating droplet on a half-plane calculated using level-set"
-   INFO_DESCRIPTION "Uniform properties (rho and mu)"
-   INFO_DESCRIPTION+ ": setup for cylindrical (default) or cartesian"
+   # the following strings describe the simulation and are passed to the output files
+   INFO_TITLE "Transient Stokes flow around an offset cylinder within a channel"
+   INFO_DESCRIPTION "Here the transient Stokes equations are solved in 2D, using an unstructured mesh.  A uniform pressure is set along the upstream boundary (which is still very close to the cylinder BTW), which is a bit different to the set flowrate condition used in tutorial_3.  The viscous stress terms are treated explicitly, which means less memory is used, but the timestep is limited.  The convergence tolerance is set lower so that matrix inversion is often avoided, but this comes at a cost of transient accuracy."
+   INFO_AUTHOR "Dalton Harvie"
+   INFO_DATE "15/1/16" # interpreted as the last modification date
    
    #-------------------------------------------------------------------
-   # user-defined constants
+   # system constants
    
-   #KERNEL_OPTIONS polynomialorder=2
+   #KERNEL_OPTIONS polynomialorder=1,polynomialaverageorder=1 # setting order of kernel function for face derivatives
+   #KERNEL_OPTIONS checkminw=.true.,minimumminw=0.5d0 # reducing the minw a bit which will decrease the size of the kernels
    
-   # setup basic cylindrical general replacements
-   #(hash added during unwrap)INCLUDE_ROOT "general"
-   # INFO: setting include root directory to general
-   #(hash added during unwrap)INCLUDE "cylindrical_reflect_r1z2"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/general/cylindrical_reflect_r1z2.arb without any search/replace combinations
-      # sets general replacements for cylindrical 2D coordinates with the 2-axis being the centreline (z) and 1-axis being radius (r)
-      #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
-      #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1" # centreline is normal to the 1 axis
-      
-      #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<cartesiancomment>>" WITH "#" REPLACE "<<cylindricalcomment>>" WITH "" # activate cylindrical specific definitions
-      #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<cartesianflag>>" WITH "0" REPLACE "<<cylindricalflag>>" WITH "1"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<radius_f>>" WITH "<facex[l=1]>" REPLACE "<<radius_c>>" WITH "<cellx[l=1]>" REPLACE "<<radiusdim1flag>>" WITH "1"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<radialdim>>" WITH "1" REPLACE "<<axialdim>>" WITH "2"
-      # INCLUDE FINISHED for ../templates/general/cylindrical_reflect_r1z2.arb
-      #--------------------------------------------------------
-   # or, setup basic cartesian reflect general replacements
-   #GENERAL_REPLACEMENTS REPLACE "#" WITH "#" # comment out any references to the third dimension in any included files
-   #GENERAL_REPLACEMENTS REPLACE "reflect=1" WITH "reflect=1" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
+   #-------------------------------------------------------------------
+   # geometry
    
-   # bring in default physical and numerical constants
-   #(hash added during unwrap)INCLUDE_ROOT "navier_stokes"
-   # INFO: setting include root directory to navier_stokes
-   #(hash added during unwrap)INCLUDE "nondimensional_constants"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/navier_stokes/nondimensional_constants.arb without any search/replace combinations
-      # use this constants file if solving nondimensionally
-      
-      #(hash added during unwrap)INCLUDE "constants"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/navier_stokes/constants.arb without any search/replace combinations
-         # physical data
-         CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
-         CONSTANT <rho> [kg/m^3] 1.d0 # density
-         CONSTANT <u_av> [m/s] 1.d0 # required average inlet velocity (if used, sets flowrate through inlet)
-         
-         #-------------
-         # set default strings using the following template file, which sets up a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-         # see below for appropriate statements to change these decisions
-         # strings can also be set when calling the template files using per-file replacements
-         #(hash added during unwrap)INCLUDE "default_string_replacements"
-            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
-            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
-            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
-            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
-            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
-            # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
-            #--------------------------------------------------------
-         
-         # use the following to setup a transient simulation
-         #GENERAL_REPLACEMENTS R "#" W "" R "" W "#"
-         
-         # could set the transient status based on what type of arb simulation it is, but inadvisable really
-         ##GENERAL_REPLACEMENTS R "#" W "" R "" W "#"
-         #GENERAL_REPLACEMENTS R "#" W "#" R "" W ""
-         
-         # use the following to specify the stokes equations
-         #GENERAL_REPLACEMENTS R "#" W "" R "" W "#"
-         
-         # use the following to specify nonuniform viscosity
-         #GENERAL_REPLACEMENTS R "" W "#" R "#" W ""
-         
-         # use the following to specify nonuniform density
-         #GENERAL_REPLACEMENTS R "" W "#" R "#" W ""
-         #-------------
-         
-         # replace any references to the face centred fluid properties with the constant values if they don't vary
-         # get rid of these replacements and define alternative statements for the face centred fluid properties if they do vary
-         #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<mu_f>" WITH "<mu>"
-         #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<rho_f>" WITH "<rho>"
-         
-         # numerical data
-         CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
-         CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
-         
-         # find an estimate of the domain size using general template
-         #(hash added during unwrap)INCLUDE_ROOT "general"
-         # INFO: setting include root directory to general
-         #(hash added during unwrap)INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
-            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            # the following is INCLUDED from ../templates/general/domain_lengthscale.arb without any search/replace combinations
-            # find an estimate of the domain size
-            # here we use the maximum domain length in each dimension
-            # previously used a more accurate but expensive formulation (see minimum_face_boundary_distance)
-            #(hash added during unwrap)INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
-               #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-               # the following is INCLUDED from ../templates/general/domain_lengths.arb without any search/replace combinations
-               # based on node locations, here we calculate the maximum length of the domain in each dimension
-               # these loops could be conducted over <boundary nodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
-               # as this is only a single loop through each node this isn't an expensive calculation anyway (unlike the levelset-based minimum boundary distance)
-               NONE_CONSTANT <nodexmax[l=1]> "nodemax(<nodex[l=1]>,region=<all nodes>)"
-               NONE_CONSTANT <nodexmax[l=2]> "nodemax(<nodex[l=2]>,region=<all nodes>)"
-               #NONE_CONSTANT <nodexmax[l=3]> "nodemax(<nodex[l=3]>,region=<all nodes>)"
-               NONE_CONSTANT <nodexmin[l=1]> "nodemin(<nodex[l=1]>,region=<all nodes>)"
-               NONE_CONSTANT <nodexmin[l=2]> "nodemin(<nodex[l=2]>,region=<all nodes>)"
-               #NONE_CONSTANT <nodexmin[l=3]> "nodemin(<nodex[l=3]>,region=<all nodes>)"
-               NONE_CONSTANT <domain_length[l=1]> "<nodexmax[l=1]>-<nodexmin[l=1]>"
-               NONE_CONSTANT <domain_length[l=2]> "<nodexmax[l=2]>-<nodexmin[l=2]>"
-               #NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"
-               # INCLUDE FINISHED for ../templates/general/domain_lengths.arb
-               #--------------------------------------------------------
-            NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"
-            # INCLUDE FINISHED for ../templates/general/domain_lengthscale.arb
-            #--------------------------------------------------------
-         
-         # for reference calculate some nondimensional quantities
-         # these should be overwritten by real nondimensional quantities if this is a nondimensional problem
-         CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
-         # INCLUDE FINISHED for ../templates/navier_stokes/constants.arb
-         #--------------------------------------------------------
-      
-      # set Reynolds number here to a value so that it isn't left as a function of <mu> from constants
-      CONSTANT <Re> [1] 1.d-2 # Reynolds number, overwrite this after this file is included
-      
-      # convert dimensional parameters to nondimensional
-      CONSTANT <mu> "1.d0/<Re>"
-      CONSTANT <rho> 1.d0
-      CONSTANT <u_av> 1.d0
-      # INCLUDE FINISHED for ../templates/navier_stokes/nondimensional_constants.arb
-      #--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE_ROOT "level_set"
-   # INFO: setting include root directory to level_set
-   #(hash added during unwrap)INCLUDE "nondimensional_constants"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/free_surface/level_set/nondimensional_constants.arb without any search/replace combinations
-      # use this constants file if solving nondimensionally
-      
-      #(hash added during unwrap)INCLUDE "constants"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/free_surface/level_set/constants.arb without any search/replace combinations
-         # physical data
-         CONSTANT <sigma> [N/m] 0.072d0 # surface tension coefficient
-         
-         # now define some nondimensional reference data
-         CONSTANT <Ca> "<u_av>*<mu>/<sigma>"
-         CONSTANT <We> "<Ca>*<Re>"
-         CONSTANT <S> "1.d0/(<We>+<Ca>)"
-         # INCLUDE FINISHED for ../templates/free_surface/level_set/constants.arb
-         #--------------------------------------------------------
-      
-      CONSTANT <S> 1.d+3 # surface tension strength nondimensional number, see harvie 2004
-      
-      # calc these from the above and <Re> (should be set explicitly from navier_stokes/nondimensional_constants)
-      CONSTANT <We> "1.d0/(<S>*(1.d0+1.d0/<Re>))"
-      CONSTANT <Ca> "<We>/<Re>"
-      
-      # convert dimensional parameters to nondimensional, using inertial scaling for pressure and surface tension
-      CONSTANT <sigma> [1] "1.d0/<We>"
-      CONSTANT <mu> "1.d0/<Re>"
-      CONSTANT <rho> 1.d0
-      CONSTANT <u_av> 1.d0
-      # INCLUDE FINISHED for ../templates/free_surface/level_set/nondimensional_constants.arb
-      #--------------------------------------------------------
+   # CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+   # where location string could be: "at(x1,x2,x3)" for a single point closest to these coordinates
+   # where location string could be: "withinbox(x1_min,x2_min,x3_min,x1_max,x2_max,x3_max)" for all elements within a box defined by the minimum and maximum coordinate values
+   # where location string could be: "compound(+<a region>-<another region>)" for a + and - compound region list
+   # where location string could be: "boundaryof(<a region>)" - boundary faces/cells contained within or surrounding <a region>
+   # where location string could be: "domainof(<a region>)" - domain faces/cells contained within <a region>
+   # where location string could be: "associatedwith( <a region>)" - faces/cells both contained within and surrounding <a region>
    
-   # physical data, now for nondimensional uniform properties
-   # set these
-   CONSTANT <Re> 1.d+0
-   CONSTANT <S> 1.d+3 # surface tension strength nondimensional number, see harvie 2004
-   
-   #CONSTANT <t_end> [] 1.d+2 # time for simulation to stop
-   CONSTANT <t_end> [] 1.d0 # time for simulation to stop
-   #CONSTANT <t_end> [] 1.d-2 # time for simulation to stop
-   CONSTANT <celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)" # average cell dimension
-   CONSTANT <dt_initial> [] "1.d-3*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
-   CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
-   # dynamic timestep constants
-   CONSTANT <dt_increase> 1.2d0
-   CONSTANT <dt_max> "<dt_initial>*1.d3"
-   CONSTANT <dt_min> "<dt_initial>*1.d-3"
-   CONSTANT <CFL_max> 0.25d0
-   
-   # for test simulation just do a few timesteps
-   TIMESTEPOUT 2
-   TIMESTEPMAX 4
-   
-   # in case of error kill simulation
-   NEWTSTEPMAX 20
+   FACE_REGION <walls> "compound(<boundaries>-<inlet>-<outlet>)"
    
    # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
    # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
    # input options are: input,centringinput,meshinput,centringmeshinput,noinput
    # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
    # vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
-   # dat file output options are: dat_output,centringdat_output,meshdat_output,centringmeshdat_output,nodat_output (nodat_output is the default)
-   MSH_FILE "surface.msh"
+   # dat file output options are: datoutput,centringdatoutput,meshdatoutput,centringmeshdatoutput,nodatoutput (nodatoutput is the default)
+   MSH_FILE "steady_state_channel_flow_with_cylinder.msh"
    
    #-------------------------------------------------------------------
-   # geometry
+   # variable definition reference:
+   # REGION_LIST <region_1> <region_2> ... <region_n> # comments: line has the ordered names of any regions
+   # (CELL_|FACE_)REGION_CONSTANT <name> [multiplier*units] numerical_value_for_region_1 .. value_for_region_n options # comments: sets a constant that varies with region
+   # (CELL_|FACE_|NONE_|)CONSTANT <name> [multiplier*units] numerical_value ON <region> options # comments: sets a constant specific to one region or no regions and has the form
+   # (CELL_|FACE_|NONE|)CONSTANT <name> [units] "expression (involving only constants)" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)TRANSIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)NEWTIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)DERIVED <name> [units] "expression" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)UNKNOWN <name> [units] "expression (initial value, optional)" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)EQUATION <name> [units] "expression (equation equaling zero)" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)OUTPUT <name> [units] "expression" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)CONDITION <name> [units] "expression" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)LOCAL <name> [units] "expression" ON <region> options # comments
    
-   GLUE_FACES <fluid west> reflect=1
-   GLUE_FACES <level set west> reflect=1
-   GLUE_FACES <level set centre west> reflect=1
+   # options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
+   #p  derivative/noderivative - for DERIVED, EQUATION, LOCAL : do or do not calculate Jacobian derivatives for this variable
+   #p  positive/negative/nocheck - for DERIVED, UNKNOWN, EQUATION, LOCAL : check at each iteration that variable is positive/negative
+   #f  output/nooutput - for ALL : output compound to msh files
+   #f  componentoutput/nocomponentoutput - for ALL : output just this component to msh files
+   #f  stepoutput/stepoutputnoupdate/nostepoutput - for ALL : output compound to step file.  The noupdate one does not update the variable when the step file is written (needed for recording when output occurred for example).
+   #f  componentstepoutput/componentstepoutputnoupdate/nocomponentstepoutput - for ALL : output just this component to step files
+   #f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
+   #f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
+   #f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component)
+   #p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
+   #f  magnitude=value - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
+   #f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
+   #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
+   #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
    
-   # CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
-   # where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
-   # where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
-   # where location string could be: "compound(+<a region>-<another region>" for a + and - compound region list
-   # where location string could be: "boundaryof(<a region>" - boundary faces/cells contained within or surrounding <a region>
-   # where location string could be: "domainof(<a region>" - domain faces/cells contained within <a region>
-   # where location string could be: "associatedwith(<a region>" - faces/cells both contained within and surrounding <a region>
-   # where location string could be: "SURROUNDS <a region>" - faces/cells that surround <a region>, irrespective of whether they are boundary or domain elements - right now only works when <a region> is cell centred
+   #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
    
-   # regions specific to level set mesh
-   CELL_REGION <level set domain> "compound(<level set centre>+<level set edge>)"
-   CELL_REGION <level set all cells> "associatedwith(<level set domain>)"
-   FACE_REGION <level set all faces> "associatedwith(<level set domain>)"
-   FACE_REGION <level set boundaries> "boundaryof(<level set domain>)"
-   FACE_REGION <level set centre domain faces> "domainof(<level set centre>)"
-   FACE_REGION <level set centre all faces> "associatedwith(<level set centre>)"
-   FACE_REGION <level set walls> "compound(<level set top>+<level set bottom>+<level set east>)"
-   FACE_REGION <level set centre boundaries> "surrounds(<level set centre>)"
+   # variables etc
    
-   # regions specific to fluid mesh
-   CELL_REGION <fluid all cells> "associatedwith(<fluid domain>)"
-   FACE_REGION <fluid boundaries> "boundaryof(<fluid domain>)"
-   CELL_REGION <fluid boundary cells> "boundaryof(<fluid domain>)"
-   FACE_REGION <fluid all faces> "associatedwith(<fluid domain>)"
-   FACE_REGION <fluid domain faces> "domainof(<fluid domain>)"
-   FACE_REGION <fluid walls> "compound(<fluid top>+<fluid bottom>+<fluid east>)"
-   FACE_REGION <one face> "at(1.d+4,1.d+4,0.d0)" ON <fluid walls>
-   FACE_REGION <walls sans one face> "compound(<fluid walls>-<one face>)"
-   
-   #-------------------------------------------------------------------
-   
-   # transient bits
-   TRANSIENT_SIMULATION
-   #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
-   
-   # dynamic timestep, next 2 lines
-   NONE_TRANSIENT <CFL[r=1]> "<CFL>" "<CFL>" stepoutput # at this stage this will be the CFL from the last timestep, as it will be evaluated before any r=0 updates
-   NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
-   # constant timestep, next 1 line
-   #NONE_CONSTANT <dt> "<dt_initial>"
-   
-   NONE_TRANSIENT <dt[r=1]> "<dt>" "<dt>" stepoutput
-   NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
-   NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
-   NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition # this will be true (>0.) whenever we are <dt_out> from last output
-   NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
-   NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
-   
-   # unknown variables used for flow problems
-   CELL_UNKNOWN <p> [] "(2.d0^1)*<ls_phi_fluid>/<We>" ON <fluid all cells> elementdata # pressure
-   CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <fluid all cells> magnitude=1.d0 # velocity component
-   CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <fluid all cells> magnitude=1.d0 # velocity component
-   
-   CELL_TRANSIENT <u[l=1,r=1]> "0.d0" "<u[l=1]>" ON <fluid all cells>
-   CELL_TRANSIENT <u[l=2,r=1]> "0.d0" "<u[l=2]>" ON <fluid all cells>
-   
-   FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <fluid all faces>
-   #FACE_TRANSIENT <u_f[r=1]> "0.d0" "0.d0" ON <fluid all faces>
-   
-   # CSF based levelset formulation with reinitialisation
-   #(hash added during unwrap)INCLUDE_ROOT "level_set"
-   # INFO: setting include root directory to level_set
-   #(hash added during unwrap)INCLUDE "setup" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/free_surface/level_set/setup.arb with the following search/replace combinations: replace <domain> with <level set domain>: replace <all cells> with <level set all cells>: replace <walls> with <level set walls>: replace <all faces> with <level set all faces>
-      # first set up some constants relating to the discretisation
-      # all of these constants are in terms of `non-dimensional' ls values:  that is, the actual ls value divided by the <ls_celldxmax>.  For now <ls_celldxmax> is set to the maximum cell dimension (<celldxmax> = maximum node to node distance for each cell) within the domain.  For meshes with greatly varying cell sizes <ls_celldxmax> should vary with location.
-      
-      # need to specify first order kernels as the level-set method doesn't currently work consistently with higher order kernels
-      # Note that as of v0.50 2nd order kernels are the default, hence this statement is now essential
-      KERNEL_OPTIONS polynomialorder=1,polynomialaverageorder=1
-      
-      # the number of cells over which <ls_phi> will vary from 0 to 1 will be approximately twice this.  Smaller values give a tighter interface region, containing correspondingly larger surface tension forces
-      CONSTANT <ls_phi_max> 1.0d0
-      
-      # these define the size of the weight region where the reinitialisation does not occur.  For <ls> < <ls_weight_min> no reinitialisation will occur, while for <ls> > <ls_weight_max> the <ls> function will be completely determined by the reinitialisation function.  Reinitialisation tends to decrease mass conservation, so making either of these numbers higher (especially <ls_weight_min>) will increase mass conservation.  Conversely, if reinitialisation is suppressed, the <ls> field may become inaccurate due to interface shearing and stretching, which could lead to surface tension calculation errors
-      # if <ls_weight_min> is too small the reinitialisation mechanism may cause the interface to stick to particular (long) cells
-      CONSTANT <ls_weight_min> 0.5d0
-      CONSTANT <ls_weight_max> 1.5d0
-      
-      # when advecting the <ls> function, order of discretisation used (0 or 1)
-      #CONSTANT <ls_advection_limiter> 1.0d0
-      # now we look at the quality of the local kernels and base ls_advection_limiter on that - particularly important for poor quality meshes
-      # the ideas come from the advection limiter templates
-      # ideally these should sum to 0.5, but we should be able to go over a bit without convergence problems and so economise on mesh cells
-      #NONE_CONSTANT <ls_limiter_crosskernel_max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
-      NONE_CONSTANT <ls_limiter_crosskernel_max> 0.5d0 # the maximum multiplier for any cell value that is not the central cell
-      NONE_CONSTANT <ls_limiter_centralkernel_max> 0.05d0 # the maximum multiplier for the central cell value
-      CELL_LOCAL <ls_limiter_crosskernel> "cellif(<crosskernel>-<ls_limiter_crosskernel_max>,<ls_limiter_crosskernel_max>/<crosskernel>,1.d0)"
-      CELL_LOCAL <ls_limiter_centralkernel> "cellif(<centralkernel>-<ls_limiter_centralkernel_max>,<ls_limiter_centralkernel_max>/<centralkernel>,1.d0)"
-      CELL_CONSTANT <ls_advection_limiter> "cellmin(<ls_limiter_crosskernel>,<ls_limiter_centralkernel>)" ON <level set all cells> output,elementdata
-      
-      # this is the maximum <ls> value which is expected to affect the interface behaviour (ie, affect the calculation of the surface force).
-      CONSTANT <ls_maximum_kernel_separation> 2.3d0 # take this from what is reported about the kernels (or used in kernel_module.f90), to work out an estimate for <ls_validity_max>
-      
-      CONSTANT <ls_extra_validity_spacing> 0.d0 # expand or contract <ls_validity_max> by cell size multiples
-      CONSTANT <ls_validity_max> "3.d0+<ls_phi_max>+2*<ls_maximum_kernel_separation>+<ls_extra_validity_spacing>" # first 1 cell accounts for the difference between the explicit and implicit values of <ls>, <ls_phi_max> takes us to the edge of the constant <phi> region where <ls_kappa_c> is required, plus 1 cell to get to <ls_kappa_f>, plus 1 separation (averaging) to get to <ls_kappa_c2>, plus 1 cell to get to <ls_n_f>, plus 1 separation (derivative) to get to <ls>
-      CONSTANT <ls_validity_max_extra> "<ls_validity_max>+<ls_maximum_kernel_separation>" # this is one kernel separation beyond where values for <ls> could conceivable be used
-      
-      # this is the level set function, defined on all cells
-      CELL_UNKNOWN <ls> [] "<ls_initial>" ON <level set all cells> magnitude=1.d0,elementnodedata
-      CELL_TRANSIENT <ls[r=1]> "<ls>" "<ls>" ON <level set all cells> nooutput,elementnodedata
-      
-      #CELL_CONSTANT <ls_celldxmax> "cellmax(<celldxmax>,region=<adjacentcellicells>)" elementdata # this is a possible basis for making this locally varying
-      CONSTANT <ls_celldxmax> "cellmax(<celldxmax>,region=<level set domain>)" elementdata # otherwise for roughly uniformly-sized meshes this will do
-      
-      # define a background ls function upon which other initial conditions can be built
-      # this function is the ls from each of the walls, plus the default wall ls value
-      # the region <level set walls> specifically excludes centrelines, inlet/outlet ports, and wetted areas
-      CONSTANT <ls_walls> "-<ls_validity_max_extra>*<ls_celldxmax>" # <ls> is set to this on the walls
-      FACE_LOCAL <ls_boundary_vector[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
-      FACE_LOCAL <ls_boundary_vector[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
-      #FACE_LOCAL <ls_boundary_vector[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
-      CELL_LOCAL <ls_minimum_boundary_distance> "sqrt(facemin(dot(<ls_boundary_vector[l=:]>,<ls_boundary_vector[l=:]>),region=<level set walls>))"
-      CELL_LOCAL <ls_background> "<ls_walls>-<ls_minimum_boundary_distance>"
-      CELL_LOCAL <ls_initial> "<ls_background>" # default initial condition for ls is the background function - real ls function should be defined in main problem file as the maximum of this and any real fluid <ls> functions (assuming <ls> > 0 for the disperse phase)
-      
-      # for reference a phi can be calculated from ls using a sinusoidal heaviside function
-      CELL_LOCAL <ls_normalised> "<ls>/<ls_celldxmax>"
-      CELL_DERIVED <ls_phi> "cellif(abs(<ls_normalised>)-<ls_phi_max>,cellif(<ls>,1.d0,0.d0),(sin(<ls_normalised>*<pi>/(2.d0*<ls_phi_max>))+1.d0)/2.d0)" ON <level set all cells> output
-      # INCLUDE FINISHED for ../templates/free_surface/level_set/setup.arb
-      #--------------------------------------------------------
-   
-   CELL_LOCAL <ls_phi_fluid> "cellif(celldelta(<fluid domain>),celltocelllink(expression=<ls_phi>,localregion=<fluid domain>,remoteregion=<level set centre>),0.d0)+cellif(celldelta(<fluid boundary cells>),celltofacelink(expression=<ls_phi>,localregion=<fluid boundary cells>,remoteregion=<level set centre boundaries>),0.d0)" ON <fluid all cells> output,elementdata
-   
-   # define real initial ls conditions
-   # circle (cylinder/sphere)
-   #CONSTANT <radius1> 1.0d0
-   #CELL_LOCAL <ls_initial1> "<radius1> - sqrt((<cellx[l=1]>)^2+(<cellx[l=2]>)^2)" # drop 1 centred at (0,0)
-   #CELL_LOCAL <ls_initial1> "<radius1> - sqrt((<cellx[l=1]>+2.d0)^2+(<cellx[l=2]>)^2)" # drop 1 centred at (-2,0)
-   # ellipse
-   CONSTANT <radius_a> 0.7d0
-   CONSTANT <radius_b> 1.4d0
-   CELL_LOCAL <ls_initial1> "1.d0 - sqrt((<cellx[l=1]>/<radius_a>)^2+(<cellx[l=2]>/<radius_b>)^2)"
-   # compounds
-   CELL_LOCAL <ls_initial> "<ls_initial1>" ON <level set all cells> output
-   
-   #(hash added during unwrap)INCLUDE "curvature" R "<all cells>" W "<level set all cells>" R "<all faces>" W "<level set all faces>"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/free_surface/level_set/curvature.arb with the following search/replace combinations: replace <all cells> with <level set all cells>: replace <all faces> with <level set all faces>
-      # within this file we calculate the curvature
-      
-      # many difference curvature calculation methods have been tried - Method 8 gives the best results
-      
-      # Method 1 - celldiv around cell centres, averaged to faces
-      #FACE_LOCAL <ls_n_f[l=1]> "facegrad[l=1](<ls>)" output
-      #FACE_LOCAL <ls_n_f[l=2]> "facegrad[l=2](<ls>)"
-      ##FACE_LOCAL <ls_n_f[l=3]> "facegrad[l=3](<ls>)"
-      #FACE_DERIVED <ls_n_f mag> "sqrt(dot(<ls_n_f[l=:]>,<ls_n_f[l=:]>))" output,elementdata
-      #CELL_DERIVED <ls_kappa_c> "-celldiv(facegrad(<ls>)/<ls_n_f mag>)" ON <level set all cells> output,elementdata
-      #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" output
-      
-      # Method 2 - face centred calculation, averaged to cell centres
-      #CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <level set all cells>
-      ##CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <level set all cells>
-      #CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <level set all cells> output
-      #CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <level set all cells>
-      ##CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <level set all cells>
-      #FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <level set all faces> output
-      #CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" output
-      
-      # Method 3 - cell centred calculation, using cellgrad instead of celldiv, then averaged to faces
-      #CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <level set all cells>
-      ##CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <level set all cells>
-      #CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <level set all cells> output
-      #CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <level set all cells>
-      ##CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <level set all cells>
-      #CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <level set all cells> output
-      #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" output
-      
-      # Method 4 - as per method 2, but with more smoothing
-      #CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <level set all cells>
-      ##CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <level set all cells>
-      #CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <level set all cells> output
-      #CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <level set all cells>
-      ##CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <level set all cells>
-      #FACE_DERIVED <ls_kappa_f2> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <level set all faces> output
-      #CELL_DERIVED <ls_kappa_c> "<ls_kappa_f2>" output
-      #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" output
-      
-      # Method 5 - face and cell calculated separately from same cell centred unit normals
-      #CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <level set all cells>
-      ##CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <level set all cells>
-      #CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <level set all cells> output
-      #CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <level set all cells>
-      ##CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <level set all cells>
-      #FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <level set all faces> output
-      #CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <level set all cells> output
-      
-      # Method 6 - as per method 1 but not normalising unit vectors
-      #CELL_DERIVED <ls_kappa_c> "-celldiv(facegrad(<ls>))" ON <level set all cells> output,elementdata
-      #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" output
-      
-      # Method 7 - as per method 6 but more smoothing
-      #CELL_DERIVED <ls_kappa_c2> "-celldiv(facegrad(<ls>))" ON <level set all cells> output,elementdata
-      #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c2>" output
-      #CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" output,elementdata
-      
-      # Method 8 - as per method 1 but more smoothing
-      FACE_LOCAL <ls_n_f[l=1]> "facegrad[l=1](<ls>)"
-      FACE_LOCAL <ls_n_f[l=2]> "facegrad[l=2](<ls>)"
-      #FACE_LOCAL <ls_n_f[l=3]> "facegrad[l=3](<ls>)"
-      FACE_LOCAL <ls_n_f mag> "sqrt(dot(<ls_n_f[l=:]>,<ls_n_f[l=:]>))" elementdata
-      FACE_DERIVED <ls_n_f_scalar> "facegrad(<ls>)/<ls_n_f mag>" ON <level set all faces> nooutput
-      CELL_DERIVED <ls_kappa_c2> "-celldiv(<facex[l=1]>*<ls_n_f_scalar>/faceave[lastcell](<cellx[l=1]>))" ON <level set all cells> nooutput,elementdata
-      #CELL_DERIVED <ls_kappa_c2> "-celldiv(<ls_n_f_scalar>)" ON <level set all cells> nooutput,elementdata
-      FACE_DERIVED <ls_kappa_f> "<ls_kappa_c2>" ON <level set all faces>
-      CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" ON <level set all cells> output,elementdata
-      #CELL_DERIVED <ls_kappa_c> "<ls_kappa_c2>" ON <level set all cells> output,elementdata
-      
-      # Method 9 - face and cell calculated separately, cell from celldiv, face from cell centred normals
-      #CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <level set all cells>
-      ##CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <level set all cells>
-      #CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <level set all cells> output
-      #CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <level set all cells>
-      ##CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <level set all cells>
-      #FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <level set all faces> output
-      #CELL_DERIVED <ls_kappa_c> "-celldiv(facegrad(<ls>))" ON <level set all cells> output,elementdata
-      
-      # Method 10 - as per method 2, but cell centred unit normals calculated from celldivgrads
-      #CELL_DERIVED <ls_n_c[l=1]> "celldivgrad[l=1](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c[l=2]> "celldivgrad[l=2](<ls>)" ON <level set all cells>
-      ##CELL_DERIVED <ls_n_c[l=3]> "celldivgrad[l=3](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <level set all cells>
-      #CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <level set all cells> output
-      #CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <level set all cells>
-      ##CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <level set all cells>
-      #FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <level set all faces> output
-      #CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" output
-      
-      # Method 11 - face and cell calculated separately from same cell centred unit normals, now calculated with celldivgrad
-      #CELL_DERIVED <ls_n_c[l=1]> "celldivgrad[l=1](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c[l=2]> "celldivgrad[l=2](<ls>)" ON <level set all cells>
-      ##CELL_DERIVED <ls_n_c[l=3]> "celldivgrad[l=3](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <level set all cells>
-      #CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <level set all cells> output
-      #CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <level set all cells>
-      ##CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <level set all cells>
-      #FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <level set all faces> output
-      #CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <level set all cells> output
-      
-      # Method 12 - as per method 3, but cell centred normals calculated using celldivgrad
-      #CELL_DERIVED <ls_n_c[l=1]> "celldivgrad[l=1](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c[l=2]> "celldivgrad[l=2](<ls>)" ON <level set all cells>
-      ##CELL_DERIVED <ls_n_c[l=3]> "celldivgrad[l=3](<ls>)" ON <level set all cells>
-      #CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <level set all cells>
-      #CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <level set all cells> output
-      #CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <level set all cells>
-      ##CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <level set all cells>
-      #CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <level set all cells> output
-      #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" output
-      
-      # # Method 13 - as per method 8 but <ls_kappa_f> is calculated from <ls_kappa_c>, rather than the other way around (ie, more smoothing on this)
-      # FACE_LOCAL <ls_n_f[l=1]> "facegrad[l=1](<ls>)"
-      # FACE_LOCAL <ls_n_f[l=2]> "facegrad[l=2](<ls>)"
-      # #FACE_LOCAL <ls_n_f[l=3]> "facegrad[l=3](<ls>)"
-      # FACE_LOCAL <ls_n_f mag> "sqrt(dot(<ls_n_f[l=:]>,<ls_n_f[l=:]>))" elementdata
-      # FACE_DERIVED <ls_n_f_scalar> "facegrad(<ls>)/<ls_n_f mag>" ON <level set all faces> nooutput
-      # #CELL_DERIVED <ls_kappa_c2> "-celldiv(facegrad(<ls>)/<ls_n_f mag>)" ON <level set all cells> output,elementdata
-      # CELL_DERIVED <ls_kappa_c2> "-celldiv(<facex[l=1]>*<ls_n_f_scalar>/faceave[lastcell](<cellx[l=1]>))" ON <level set all cells> nooutput,elementdata
-      # #CELL_DERIVED <ls_kappa_c2> "-celldiv(<ls_n_f_scalar>)" ON <level set all cells> nooutput,elementdata
-      # FACE_LOCAL <ls_kappa_f2> "<ls_kappa_c2>"
-      # CELL_DERIVED <ls_kappa_c> "<ls_kappa_f2>" ON <level set all cells> output,elementdata
-      # FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" ON <level set all faces>
-      
-      # INCLUDE FINISHED for ../templates/free_surface/level_set/curvature.arb
-      #--------------------------------------------------------
-   #INCLUDE "curvature_corrected" R "<all cells>" W "<level set all cells>" R "<all faces>" W "<level set all faces>"
-   #(hash added during unwrap)INCLUDE "force" R "<all cells>" W "<level set all cells>" R "<all faces>" W "<level set centre all faces>"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/free_surface/level_set/force.arb with the following search/replace combinations: replace <all cells> with <level set all cells>: replace <all faces> with <level set centre all faces>
-      # within this file we calculate the cell centred surface force and face centred force used in the <u_f> interpolation
-      
-      CELL_LOCAL <ls_F_c[l=1]> "<ls_kappa_c>*celldivgrad[l=1](<ls_phi>)" ON <level set all cells>
-      CELL_LOCAL <ls_F_c[l=2]> "<ls_kappa_c>*celldivgrad[l=2](<ls_phi>)" ON <level set all cells>
-      #CELL_LOCAL <ls_F_c[l=3]> "<ls_kappa_c>*celldivgrad[l=3](<ls_phi>)" ON <level set all cells>
-      
-      # differencing type used here must match that in the p_error calc
-      FACE_LOCAL <ls_F_f> "<ls_kappa_f>*facegrad[dxunit](<ls_phi>)" ON <level set centre all faces>
-      # INCLUDE FINISHED for ../templates/free_surface/level_set/force.arb
-      #--------------------------------------------------------
-   
-   # create surface tension force on all fluid cells, including fluid boundary cells which grab their values from adjacent domain cells (as per celldivgrad(p))
-   CELL_LOCAL <ls_F_c_fluid_domain[l=1]> "celltocelllink(expression=<ls_F_c[l=1]>,localregion=<fluid domain>,remoteregion=<level set centre>)" ON <fluid domain>
-   CELL_LOCAL <ls_F_c_fluid_domain[l=2]> "celltocelllink(expression=<ls_F_c[l=2]>,localregion=<fluid domain>,remoteregion=<level set centre>)" ON <fluid domain>
-   #CELL_LOCAL <ls_F_c_fluid_domain[l=3]> "celltocelllink(expression=<ls_F_c[l=3]>,localregion=<fluid domain>,remoteregion=<level set centre>)" ON <fluid domain>
-   CELL_LOCAL <ls_F_c_fluid[l=1]> "cellif(celldelta(<fluid domain>),<ls_F_c_fluid_domain[l=1]>,0.d0)+cellif(celldelta(<fluid boundary cells>),cellave[reflect=1](faceave[downcell,reflect=1](<ls_F_c_fluid_domain[l=1]>)),0.d0)" ON <fluid all cells> output
-   CELL_LOCAL <ls_F_c_fluid[l=2]> "cellif(celldelta(<fluid domain>),<ls_F_c_fluid_domain[l=2]>,0.d0)+cellif(celldelta(<fluid boundary cells>),cellave[](faceave[downcell,](<ls_F_c_fluid_domain[l=2]>)),0.d0)" ON <fluid all cells>
-   #CELL_LOCAL <ls_F_c_fluid[l=3]> "cellif(celldelta(<fluid domain>),<ls_F_c_fluid_domain[l=3]>,0.d0)+cellif(celldelta(<fluid boundary cells>),cellave[](faceave[downcell,](<ls_F_c_fluid_domain[l=3]>)),0.d0)" ON <fluid all cells>
-   
-   # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
-   #(hash added during unwrap)INCLUDE_ROOT "navier_stokes"
+   # use templates from the navier_stokes directory to build up problem
+   #(hash added during unwrap)INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
    # INFO: setting include root directory to navier_stokes
-   #(hash added during unwrap)INCLUDE "total_stress" R "<all faces>" W "<fluid all faces>"
+   #(hash added during unwrap)INCLUDE "stokes"
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/navier_stokes/total_stress.arb with the following search/replace combinations: replace <all faces> with <fluid all faces>
-      # total stress tensor
-      #(hash added during unwrap)INCLUDE "u_gradient_tensor"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/navier_stokes/u_gradient_tensor.arb without any search/replace combinations
-         # a tensor of face centred gradients that respects any reflections
-         # used in the total stress and boundary conditions now
-         # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
-                        FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,reflect=1](<u[l=1]>)" ON <fluid all faces>
-         FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,](<u[l=2]>)" ON <fluid all faces>
-         #FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <fluid all faces>
-         FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,reflect=1](<u[l=1]>)" ON <fluid all faces>
-                        FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,](<u[l=2]>)" ON <fluid all faces>
-         #FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <fluid all faces>
-         #FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,reflect=1](<u[l=1]>)" ON <fluid all faces>
-         #FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,](<u[l=2]>)" ON <fluid all faces>
-         #               FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,](<u[l=3]>)" ON <fluid all faces>
-         # INCLUDE FINISHED for ../templates/navier_stokes/u_gradient_tensor.arb
-         #--------------------------------------------------------
-      
-      # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
-      #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<udivfcomment>>" W "#"
-      # calculate the velocity divergence (numerical) on each face
-      #FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <fluid all faces>
-      
-      # no both cartesian and cylindrical stresses don't include pressure
-      # without the numerical velocity divergence
-      FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*<ugrad_f[l=1,1]>" ON <fluid all faces>
-      FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*<ugrad_f[l=2,2]>" ON <fluid all faces>
-      #FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*<ugrad_f[l=3,3]>" ON <fluid all faces>
-      # overwrite theses if the numerical velocity divergence is to be included, see # string replacement above
-      # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
-      #FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <fluid all faces>
-      #FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <fluid all faces>
-      ##FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <fluid all faces>
-      FACE_LOCAL <tau[l=1,2]> "-<mu>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <fluid all faces>
-      #FACE_LOCAL <tau[l=1,3]> "-<mu>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <fluid all faces>
-      #FACE_LOCAL <tau[l=2,3]> "-<mu>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <fluid all faces>
-      FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <fluid all faces>
-      #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <fluid all faces>
-      #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <fluid all faces>
-      # INCLUDE FINISHED for ../templates/navier_stokes/total_stress.arb
+      # the following is INCLUDED from ../templates/navier_stokes/stokes.arb without any search/replace combinations
+      # call this file before constants to specify the stokes equations
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<stokescomment>>" W "" R "<<navierstokescomment>>" W "#"
+      # INCLUDE FINISHED for ../templates/navier_stokes/stokes.arb
       #--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "u_f" R "<all cells>" W "<fluid all cells>" R "<domain faces>" W "<fluid domain faces>" R "<all faces>" W "<fluid all faces>"
+   #(hash added during unwrap)INCLUDE "constants" # specify physical and numerical constants
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/navier_stokes/u_f.arb with the following search/replace combinations: replace <all cells> with <fluid all cells>: replace <domain faces> with <fluid domain faces>: replace <all faces> with <fluid all faces>
-      # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
+      # the following is INCLUDED from ../templates/navier_stokes/constants.arb without any search/replace combinations
+      # physical data
+      CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
+      CONSTANT <rho> [kg/m^3] 1.d0 # density
+      CONSTANT <u_av> [m/s] 1.d0 # required average inlet velocity (if used, sets flowrate through inlet)
       
-      # check default strings are set
+      #-------------
+      # set default strings using the following template file, which sets up a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+      # see below for appropriate statements to change these decisions
+      # strings can also be set when calling the template files using per-file replacements
       #(hash added during unwrap)INCLUDE "default_string_replacements"
          #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
          # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
@@ -587,8 +117,241 @@ EXTERNALS "src/free_surface_functions.f90"
          # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
          #--------------------------------------------------------
       
-      # start by calculating the difference between the local face centred (dynamic) pressure gradient and average of cell centred (dynamic) pressure gradients in the face direction
-      # `dynamic' pressure here means the pressure that is able to cause fluid flow, ie, possibly accounting for hydrostatic pressure variations (for example)
+      # use the following to setup a transient simulation
+      #GENERAL_REPLACEMENTS R "#" W "" R "" W "#"
+      
+      # could set the transient status based on what type of arb simulation it is, but inadvisable really
+      ##GENERAL_REPLACEMENTS R "#" W "" R "" W "#"
+      #GENERAL_REPLACEMENTS R "#" W "#" R "" W ""
+      
+      # use the following to specify the stokes equations
+      #GENERAL_REPLACEMENTS R "" W "" R "#" W "#"
+      
+      # use the following to specify nonuniform viscosity
+      #GENERAL_REPLACEMENTS R "" W "#" R "#" W ""
+      
+      # use the following to specify nonuniform density
+      #GENERAL_REPLACEMENTS R "" W "#" R "#" W ""
+      #-------------
+      
+      # replace any references to the face centred fluid properties with the constant values if they don't vary
+      # get rid of these replacements and define alternative statements for the face centred fluid properties if they do vary
+      #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<mu_f>" WITH "<mu>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<rho_f>" WITH "<rho>"
+      
+      # numerical data
+      CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
+      CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
+      
+      # find an estimate of the domain size using general template
+      #(hash added during unwrap)INCLUDE_ROOT "general"
+      # INFO: setting include root directory to general
+      #(hash added during unwrap)INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/general/domain_lengthscale.arb without any search/replace combinations
+         # find an estimate of the domain size
+         # here we use the maximum domain length in each dimension
+         # previously used a more accurate but expensive formulation (see minimum_face_boundary_distance)
+         #(hash added during unwrap)INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/general/domain_lengths.arb without any search/replace combinations
+            # based on node locations, here we calculate the maximum length of the domain in each dimension
+            # these loops could be conducted over <boundary nodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
+            # as this is only a single loop through each node this isn't an expensive calculation anyway (unlike the levelset-based minimum boundary distance)
+            NONE_CONSTANT <nodexmax[l=1]> "nodemax(<nodex[l=1]>,region=<all nodes>)"
+            NONE_CONSTANT <nodexmax[l=2]> "nodemax(<nodex[l=2]>,region=<all nodes>)"
+            #NONE_CONSTANT <nodexmax[l=3]> "nodemax(<nodex[l=3]>,region=<all nodes>)"
+            NONE_CONSTANT <nodexmin[l=1]> "nodemin(<nodex[l=1]>,region=<all nodes>)"
+            NONE_CONSTANT <nodexmin[l=2]> "nodemin(<nodex[l=2]>,region=<all nodes>)"
+            #NONE_CONSTANT <nodexmin[l=3]> "nodemin(<nodex[l=3]>,region=<all nodes>)"
+            NONE_CONSTANT <domain_length[l=1]> "<nodexmax[l=1]>-<nodexmin[l=1]>"
+            NONE_CONSTANT <domain_length[l=2]> "<nodexmax[l=2]>-<nodexmin[l=2]>"
+            #NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"
+            # INCLUDE FINISHED for ../templates/general/domain_lengths.arb
+            #--------------------------------------------------------
+         NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"
+         # INCLUDE FINISHED for ../templates/general/domain_lengthscale.arb
+         #--------------------------------------------------------
+      
+      # for reference calculate some nondimensional quantities
+      # these should be overwritten by real nondimensional quantities if this is a nondimensional problem
+      CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
+      # INCLUDE FINISHED for ../templates/navier_stokes/constants.arb
+      #--------------------------------------------------------
+   #(hash added during unwrap)INCLUDE "transient_constant_setup" # sets up timestep and time variables, and saves previous timestep velocities
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/navier_stokes/transient_constant_setup.arb without any search/replace combinations
+      # use this file to initial a transient Navier-Stokes simulation using constant timestepping
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<dynamictimestepcomment>>" W "#" R "<<constanttimestepcomment>>" W ""
+      #(hash added during unwrap)INCLUDE "transient_all_setup"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/transient_all_setup.arb without any search/replace combinations
+         # setup things needed for transient flow
+         # this file works for either dynamic or constant timestepping
+         # designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
+         # string replacements default to constant timestepping, or if dynamic timestepping is specified, explicit dynamic timestepping
+         # choice should be made by general replacements set from the calling files
+         
+         # <dt_initial> is used to set the intial timestep during dynamic timestepping or constant timestep otherwise
+         
+         CONSTANT <t_end> [] 1.d2 # time for simulation to stop
+         CONSTANT <celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)" # average cell dimension
+         CONSTANT <CFL_initial> 1.d-2 # enter a CFL number to set the initial timestep (roughly) - depending on the geometry of cells and non-uniformity of mesh, this may significantly underestimate the actual CFL that results - ie, you may need to choose a smaller number 
+         CONSTANT <dt_initial> [] "<CFL_initial>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
+         CONSTANT <CFL_out> 10.d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity
+         CONSTANT <dt_out> [] "<CFL_out>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
+         #CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
+         
+         # transient bits
+         TRANSIENT_SIMULATION
+         #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+         
+         # the default is for constant as opposed to dynamic timestepping
+         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<constanttimestepcomment>>" W "" DEFAULT "<<dynamictimestepcomment>>" W "#"
+         
+         #---------------------------------------------------------------------------------------------------------
+         # dynamic timestepping
+         
+         # by default there is a explicit newtstep timestep limitation - to remove it reverse the following string replacement
+         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "" DEFAULT "<<nonnewtsteptimestepcomment>>" W "#"
+         
+         # dynamic timestep constants
+         #CONSTANT <dt_increase> 1.2d0
+         #CONSTANT <dt_decrease> 0.7d0
+         #CONSTANT <dt_max> "<dt_initial>*1.d4"
+         #CONSTANT <dt_min> "<dt_initial>*1.d-3"
+         #CONSTANT <CFL_max> 0.25d0
+         #CONSTANT <newtstepdtlimiterlow> 4.d0 # explicitly calculated timestep is only increased if <newtstep[r=1]> is <= than this value
+         #CONSTANT <newtstepdtlimiterhigh> 8.d0 # explicitly calculated timestep is decreased if <newtstep[r=1]> is > than this value
+         #NONE_TRANSIENT <newtstep[r=1]> "0.d0" "<newtstep>" # we save the previous timestep <newtstep> for the above explicit timestep calculation
+         #NONE_TRANSIENT <dt_newtstep_increase[r=1]> "1.d0" "noneif(<newtstep[r=1]>-<newtstepdtlimiterhigh>,<dt_decrease>,noneif(<newtstep[r=1]>-<newtstepdtlimiterlow>,1.d0,<dt_increase>))" # apply this to the previous timestep to keep newtstep roughly between high/low ranges
+         ##NONE_LOCAL <dt_newtstep_increase[r=1]> "<dt_increase>" # placeholder for nonnewtsteplimited timestepping
+         
+         # the default is for explicit timestepping, but implicit can also be enabled by reversing the following strings
+         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+         
+         #NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
+         #FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces> # don't actually need this for implicit timestepping, but it is used in input files for some of the problems for output, so in the interests of not breaking things...
+         
+         # explicit
+         # use CFL_number template, but make the calculation explicit - ie, based on r=1 values
+         #INCLUDE "CFL_number" R "<CFL local/dt>" W "<CFL local/dt[r=1]>" R "<u_f>" W "<u_f[r=1]>" R "<CFL local>" W "<CFL local[r=1]>" R "<dt>" W "<dt[r=1]>" R "NONE_OUTPUT <CFL>" W 'NONE_TRANSIENT <CFL[r=1]> ""'
+         ##NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
+         #NONE_TRANSIENT <CFL[r=1]> output,stepoutput
+         #NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+         
+         # implicit
+         # note, a newtstepmax may be applied to <dt_target> within u_f.arb (unfortunately this must be done after <u_f> derived has been calculated, hence, newtstepmax can't be applied here)
+         ##INCLUDE "CFL_number"
+         ##NONE_UNKNOWN <dt[r=0]> "<dt_initial>" stepoutput,input
+         # straight minimum
+         # advantage of straight minimum is that provided convergence is achieved the CFL constraint will be rigorously obeyed
+         ##NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
+         # harmonically averaged, for smoother convergence than the straight minimum which can bounce around
+         # disadvantage of the particular harmonic function used is for a factor of two (see below) the dt could be up to twice what the CFL criterion dictates, but using a factor of one can unreasonably decrease timestep below the CFL limit for many timestep combinations
+         ###NONE_LOCAL <dt_explicit_target> "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
+         ###NONE_LOCAL <dt_CFL_target> "nonemax(<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>),<dt_min>)" stepoutput
+         # using two factor here which really doesn't respect dt_increase and CFL_max values correctly, but performs best when both timescales are about the same - ie, more thought required
+         ###NONE_LOCAL <dt_target> "2.d0/(1.d0/<dt_explicit_target>+1.d0/<dt_CFL_target>)" stepoutput
+         ##NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
+         
+         #---------------------------------------------------------------------------------------------------------
+         # constant timestep, next 1 line
+         NONE_CONSTANT <dt> "<dt_initial>"
+         #---------------------------------------------------------------------------------------------------------
+         
+         NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
+         NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
+         NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition # this will be true (>0.) whenever we are <dt_out> from last output
+         NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
+         NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
+         
+         # the initial values are blank, which means they will be set equal to the r=0 components, which when updated will mean that they will be set to the initial values for the r=0 components
+         CELL_TRANSIENT <u[l=1,r=1]> "" "<u[l=1]>" ON <all cells>
+         CELL_TRANSIENT <u[l=2,r=1]> "" "<u[l=2]>" ON <all cells>
+         #CELL_TRANSIENT <u[l=3,r=1]> "" "<u[l=3]>" ON <all cells>
+         
+         # INCLUDE FINISHED for ../templates/navier_stokes/transient_all_setup.arb
+         #--------------------------------------------------------
+      # INCLUDE FINISHED for ../templates/navier_stokes/transient_constant_setup.arb
+      #--------------------------------------------------------
+   
+   # the change to get the explicit formulation is to include the appropriate domain template file
+   #(hash added during unwrap)INCLUDE "domain_explicit" # equations to be solved within the domain
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/navier_stokes/domain_explicit.arb without any search/replace combinations
+      # this is the stokes equations equivalent of the domain file
+      
+      # as <u[l=:]> is now a derived, the initial velocity must be explicitly set for <u[r=1,l=:]>
+      VARIABLE <u[r=1,l=1]> "0.d0" ""
+      VARIABLE <u[r=1,l=2]> "0.d0" "" 
+      #VARIABLE <u[r=1,l=3]> "0.d0" "" 
+      
+      # include only the pressure variable as an unknown, with the velocity calculated later
+      #(hash added during unwrap)INCLUDE "unknowns"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/unknowns.arb without any search/replace combinations
+         # unknown variables used for flow problems
+         CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
+         CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
+         #CELL_UNKNOWN <u[l=3]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
+         CELL_UNKNOWN <p> [] "1.d0" ON <all cells> # pressure
+         # INCLUDE FINISHED for ../templates/navier_stokes/unknowns.arb
+         #--------------------------------------------------------
+      VARIABLE <u[l=1]> CANCEL # these are now deriveds
+      VARIABLE <u[l=2]> CANCEL 
+      #VARIABLE <u[l=3]> CANCEL 
+      
+      # the stress is calculated completely explicitly
+      #(hash added during unwrap)INCLUDE "total_stress" R "<u[l" W "<u[r=1,l" R "DERIVED" W "TRANSIENT" R "<ugrad_f[l" W "<ugrad_f[r=1,l" R "<tau[" W "<tau[r=1,"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/total_stress.arb with the following search/replace combinations: replace <u[l with <u[r=1,l: replace DERIVED with TRANSIENT: replace <ugrad_f[l with <ugrad_f[r=1,l: replace <tau[ with <tau[r=1,
+         # total stress tensor
+         #(hash added during unwrap)INCLUDE "u_gradient_tensor"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/u_gradient_tensor.arb without any search/replace combinations
+            # a tensor of face centred gradients that respects any reflections
+            # used in the total stress and boundary conditions now
+            # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
+                           FACE_TRANSIENT <ugrad_f[r=1,l=1,1]> "facegrad[l=1,](<u[r=1,l=1]>)" ON <all faces>
+            FACE_TRANSIENT <ugrad_f[r=1,l=1,2]> "facegrad[l=1,](<u[r=1,l=2]>)" ON <all faces>
+            #FACE_TRANSIENT <ugrad_f[r=1,l=1,3]> "facegrad[l=1,](<u[r=1,l=3]>)" ON <all faces>
+            FACE_TRANSIENT <ugrad_f[r=1,l=2,1]> "facegrad[l=2,](<u[r=1,l=1]>)" ON <all faces>
+                           FACE_TRANSIENT <ugrad_f[r=1,l=2,2]> "facegrad[l=2,](<u[r=1,l=2]>)" ON <all faces>
+            #FACE_TRANSIENT <ugrad_f[r=1,l=2,3]> "facegrad[l=2,](<u[r=1,l=3]>)" ON <all faces>
+            #FACE_TRANSIENT <ugrad_f[r=1,l=3,1]> "facegrad[l=3,](<u[r=1,l=1]>)" ON <all faces>
+            #FACE_TRANSIENT <ugrad_f[r=1,l=3,2]> "facegrad[l=3,](<u[r=1,l=2]>)" ON <all faces>
+            #               FACE_TRANSIENT <ugrad_f[r=1,l=3,3]> "facegrad[l=3,](<u[r=1,l=3]>)" ON <all faces>
+            # INCLUDE FINISHED for ../templates/navier_stokes/u_gradient_tensor.arb
+            #--------------------------------------------------------
+         
+         # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
+         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<udivfcomment>>" W "#"
+         # calculate the velocity divergence (numerical) on each face
+         #FACE_TRANSIENT <udiv_f> "<ugrad_f[r=1,l=1,1]>+<ugrad_f[r=1,l=2,2]>+<ugrad_f[r=1,l=3,3]>" ON <all faces>
+         
+         # no both cartesian and cylindrical stresses don't include pressure
+         # without the numerical velocity divergence
+         FACE_LOCAL <tau[r=1,l=1,1]> "-<mu>*2.d0*<ugrad_f[r=1,l=1,1]>" ON <all faces>
+         FACE_LOCAL <tau[r=1,l=2,2]> "-<mu>*2.d0*<ugrad_f[r=1,l=2,2]>" ON <all faces>
+         #FACE_LOCAL <tau[r=1,l=3,3]> "-<mu>*2.d0*<ugrad_f[r=1,l=3,3]>" ON <all faces>
+         # overwrite theses if the numerical velocity divergence is to be included, see # string replacement above
+         # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
+         #FACE_LOCAL <tau[r=1,l=1,1]> "-<mu>*2.d0*(<ugrad_f[r=1,l=1,1]>-<udiv_f>/3.d0)" ON <all faces>
+         #FACE_LOCAL <tau[r=1,l=2,2]> "-<mu>*2.d0*(<ugrad_f[r=1,l=2,2]>-<udiv_f>/3.d0)" ON <all faces>
+         ##FACE_LOCAL <tau[r=1,l=3,3]> "-<mu>*2.d0*(<ugrad_f[r=1,l=3,3]>-<udiv_f>/3.d0)" ON <all faces>
+         FACE_LOCAL <tau[r=1,l=1,2]> "-<mu>*(<ugrad_f[r=1,l=1,2]>+<ugrad_f[r=1,l=2,1]>)" ON <all faces>
+         #FACE_LOCAL <tau[r=1,l=1,3]> "-<mu>*(<ugrad_f[r=1,l=1,3]>+<ugrad_f[r=1,l=3,1]>)" ON <all faces>
+         #FACE_LOCAL <tau[r=1,l=2,3]> "-<mu>*(<ugrad_f[r=1,l=2,3]>+<ugrad_f[r=1,l=3,2]>)" ON <all faces>
+         FACE_LOCAL <tau[r=1,l=2,1]> "<tau[r=1,l=1,2]>" ON <all faces>
+         #FACE_LOCAL <tau[r=1,l=3,1]> "<tau[r=1,l=1,3]>" ON <all faces>
+         #FACE_LOCAL <tau[r=1,l=3,2]> "<tau[r=1,l=2,3]>" ON <all faces>
+         # INCLUDE FINISHED for ../templates/navier_stokes/total_stress.arb
+         #--------------------------------------------------------
+      # the last fancy replacement targets setting just the initial values of the velocity gradient to zero - actually not necessary or a good idea if initial velocity field is nonzero
+      #INCLUDE "total_stress" R "<u[l" W "<u[r=1,l" R "DERIVED" W "TRANSIENT" R "<ugrad_f[l" W "<ugrad_f[r=1,l" R "<tau[" W "<tau[r=1," R ']> "facegrad' W ']> "0.d0" "facegrad'
+      
+      # calculate p_error and dynamic_forces
       #(hash added during unwrap)INCLUDE "p_error"
          #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
          # the following is INCLUDED from ../templates/navier_stokes/p_error.arb without any search/replace combinations
@@ -602,413 +365,314 @@ EXTERNALS "src/free_surface_functions.f90"
             # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
             # dynamic force now has the physically correct sign!
             
-            FACE_DERIVED <p_f> "faceave(<p>)" ON <fluid all faces>
-            CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <fluid all cells>
-            CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <fluid all cells>
-            #CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <fluid all cells>
+            FACE_DERIVED <p_f> "faceave(<p>)" ON <all faces>
+            CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <all cells>
+            CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <all cells>
+            #CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <all cells>
             # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
-            FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[reflect=1,adjacentcells](<dynamic_force_c[l=1]>)"
+            FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[,adjacentcells](<dynamic_force_c[l=1]>)"
             FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[,adjacentcells](<dynamic_force_c[l=2]>)"
             #FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
             # INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
             #--------------------------------------------------------
-         FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <fluid all faces> # now defined on <fluid all faces> to allow use as a BC
-         FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <fluid domain faces>
+         FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
+         FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
          # INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
          #--------------------------------------------------------
       
-      FACE_LOCAL <u_f_vect[l=1]> "faceave[reflect=1](<u[l=1]>)"
-      FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)"
-      #FACE_LOCAL <u_f_vect[l=3]> "faceave[](<u[l=3]>)"
-      FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <fluid all faces> # volume (velocity) transport
-      FACE_LOCAL <eps_p> "abs(<p_error>)" ON <fluid domain faces>
-      FACE_LOCAL <sign_p> "signum(<p_error>)" ON <fluid domain faces>
-      
-      # advection limiter
-      # alternative v0.5 method based on average velocity magnitude
-      #CELL_DERIVED <u_mag2> "dot(<u[l=:]>,<u[l=:]>)" ON <fluid all cells>
-      #FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <fluid domain faces>
-      #FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<rho>)" ON <fluid domain faces>
-      # pre v0.5 method based on component of velocity in direction of face normal
-      FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <fluid domain faces>
-      #FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho>)" ON <fluid domain faces>
-      
-      # viscous limiter
-      # this didn't seem to work
-      ##FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <fluid domain faces>
-      ## additional contribution to velocity interpolation from cylindrical hoop-stress term
-      #FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<mu>,<eps_p>*<facex[l=1]>^2/(2.d0*<mu>))" ON <fluid domain faces>
-      FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <fluid domain faces>
-      
-      # this file now does both steady-state and transient using transient comments string replacements, which are set in constants.arb
-      
-      # transient limiter
-      # this is the equivalent time that the limiter has been moving in the one direction
-      # noting that the variables (<u_f_{correction}> and <eps>) here are previous timestep ones
-      FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <fluid domain faces>
-      # need to save previous pressure error sign
-      FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <fluid domain faces>
-      FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <fluid domain faces>
-      
-      # combined limiter, using one of two possible methods
-      # use a straight minimum of the three or two correction velocities
-      #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <fluid domain faces>
-      ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <fluid domain faces>
-      # alternatively, average the reciprocal of the three of two correction velocities
-      # in pre v0.53 these weren't limited using <tinyish> which could case a problem if one is zero
-      # navier-stokes
-      FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <fluid domain faces>
-      #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <fluid domain faces>
-      # stokes
-      #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <fluid domain faces>
-      ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <fluid domain faces>
-      # it isn't clear which of the above two methods is better: the reciprocal version can be slightly more expensive to calculate, but as it varies more continuously, can (sometimes, possibly, etc etc) lead to slightly faster overall simulation times.  Doesn't seem to be much in it though.
-      # unfortunately in versions around v0.52 the steady-state and transient cases were accidentally handled using different methods (transient with reciprocal averaging, steady-state with straight minimum)
-      
-      # for debugging set the correction velocity to be solely only one of the three possibilities
-      #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <fluid domain faces>
-      #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <fluid domain faces>
-      #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <fluid domain faces>
-      
-      # final face velocity
-      FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<fluid domain faces>),<u_f_{correction}>,0.d0)" ON <fluid all faces> # volume (velocity) transport
-      
-      #FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <fluid domain faces> # is 1 where advection component is limiting velocity correction
-      
-      # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
-      # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
-      # if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
-      #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
-      #NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
-      #NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
-      # INCLUDE FINISHED for ../templates/navier_stokes/u_f.arb
-      #--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "advection_flux" R "<all faces>" W "<fluid all faces>"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/navier_stokes/advection_flux.arb with the following search/replace combinations: replace <all faces> with <fluid all faces>
-      # flux of momentum over and in the direction of each face due to advection
-      # which one is chosen depends on the comment strings
-      # all require navierstokes equations to be current
-      
-      # check default strings are set
-      #(hash added during unwrap)INCLUDE "default_string_replacements"
+      # calculate the momentum fluxes as transients
+      # TODO: this file will be able to also handle the navier-stokes equations once an explicit <u_f> is saved
+      #ERROR "the template file domain_explicit cannot handle the navier-stokes equations yet"
+      #INCLUDE "advection_flux"
+      #(hash added during unwrap)INCLUDE "momentum_flux" R "<J_f[l" W "<J_f[r=1,l" R "DERIVED" W "TRANSIENT" R "<tau[" W "<tau[r=1,"
          #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
-         # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-         # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
-         # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
-         #--------------------------------------------------------
-      #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<advectionlimiterdim1>>" W "<adv_limiter>" D "<<advectionlimiterdim2>>" W "<adv_limiter>" D "<<advectionlimiterdim3>>" W "<adv_limiter>"
-      
-      # steady-state and uniform density
-      #FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,reflect=1](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      #FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      ##FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,](<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      # steady-state and varying density
-      ##FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,reflect=1](<rho>*<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      ##FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,](<rho>*<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      ###FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho>*<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      # transient and uniform density
-      FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,reflect=1](<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      #FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,](<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      # transient and varying density
-      #FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,reflect=1](<rho[r=1]>*<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      #FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      ##FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
-      # INCLUDE FINISHED for ../templates/navier_stokes/advection_flux.arb
-      #--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "momentum_flux" R "<all faces>" W "<fluid all faces>"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/navier_stokes/momentum_flux.arb with the following search/replace combinations: replace <all faces> with <fluid all faces>
-      # flux of momentum over and in the direction of each face
-      
-      # check default strings are set
-      #(hash added during unwrap)INCLUDE "default_string_replacements"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
-         # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-         # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
-         # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
+         # the following is INCLUDED from ../templates/navier_stokes/momentum_flux.arb with the following search/replace combinations: replace <J_f[l with <J_f[r=1,l: replace DERIVED with TRANSIENT: replace <tau[ with <tau[r=1,
+         # flux of momentum over and in the direction of each face
+         
+         # check default strings are set
+         #(hash added during unwrap)INCLUDE "default_string_replacements"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
+            # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
+            #--------------------------------------------------------
+         
+         # start by placing in viscous momentum transport, applicable to both the stokes and navier-stokes equations
+         FACE_TRANSIENT <J_f[r=1,l=1]> "dot(<facenorm[l=:]>,<tau[r=1,l=:,1]>)" ON <all faces>
+         FACE_TRANSIENT <J_f[r=1,l=2]> "dot(<facenorm[l=:]>,<tau[r=1,l=:,2]>)" ON <all faces>
+         #FACE_TRANSIENT <J_f[r=1,l=3]> "dot(<facenorm[l=:]>,<tau[r=1,l=:,3]>)" ON <all faces>
+         
+         # and now add advection momentum transport for just the navier-stokes equations using self-referencing
+         #VARIABLE <J_f[r=1,l=1]> "<J_f[r=1,l=1]>+<J_advection_f[l=1]>"
+         #VARIABLE <J_f[r=1,l=2]> "<J_f[r=1,l=2]>+<J_advection_f[l=2]>"
+         ##VARIABLE <J_f[r=1,l=3]> "<J_f[r=1,l=3]>+<J_advection_f[l=3]>"
+         # INCLUDE FINISHED for ../templates/navier_stokes/momentum_flux.arb
          #--------------------------------------------------------
       
-      # start by placing in viscous momentum transport, applicable to both the stokes and navier-stokes equations
-      FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <fluid all faces>
-      FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <fluid all faces>
-      #FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <fluid all faces>
+      # this is an explicit update of the velocity
+      CELL_LOCAL <u_explicit[l=1]> "<u[r=1,l=1]>-(<dt>/<rho>)*(celldiv(<J_f[r=1,l=1]>)-<dynamic_force_c[l=1]>)" ON <domain>
+      CELL_LOCAL <u_explicit[l=2]> "<u[r=1,l=2]>-(<dt>/<rho>)*(celldiv(<J_f[r=1,l=2]>)-<dynamic_force_c[l=2]>)" ON <domain>
+      #CELL_LOCAL <u_explicit[l=3]> "<u[r=1,l=3]>-(<dt>/<rho>)*(celldiv(<J_f[r=1,l=3]>)-<dynamic_force_c[l=3]>)" ON <domain>
       
-      # and now add advection momentum transport for just the navier-stokes equations using self-referencing
-      VARIABLE <J_f[l=1]> "<J_f[l=1]>+<J_advection_f[l=1]>"
-      VARIABLE <J_f[l=2]> "<J_f[l=2]>+<J_advection_f[l=2]>"
-      #VARIABLE <J_f[l=3]> "<J_f[l=3]>+<J_advection_f[l=3]>"
-      # INCLUDE FINISHED for ../templates/navier_stokes/momentum_flux.arb
-      #--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "conservation" R "<domain>" W "<fluid domain>"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/navier_stokes/conservation.arb with the following search/replace combinations: replace <domain> with <fluid domain>
-      # conservation equations solved over each domain cell (finite volume method)
+      # within the domain, update the velocity explicitly
+      # on the walls, set the velocity to zero
+      # at any remaining boundaries, set the velocity to be that of the neighbouring domain cell
+      CELL_DERIVED <u[l=1]> "cellif(celldelta(<domain>),<u_explicit[l=1]>,cellif(facedelta(<walls>),0.d0,cellave(faceave[downcell](<u_explicit[l=1]>))))" ON <all cells>
+      CELL_DERIVED <u[l=2]> "cellif(celldelta(<domain>),<u_explicit[l=2]>,cellif(facedelta(<walls>),0.d0,cellave(faceave[downcell](<u_explicit[l=2]>))))" ON <all cells>
+      #CELL_DERIVED <u[l=3]> "cellif(celldelta(<domain>),<u_explicit[l=3]>,cellif(facedelta(<walls>),0.d0,cellave(faceave[downcell](<u_explicit[l=3]>))))" ON <all cells>
       
-      # check default strings are set
-      #(hash added during unwrap)INCLUDE "default_string_replacements"
+      # now just use previous file to calculate interpolated face centred velocity fluxes
+      #(hash added during unwrap)INCLUDE "u_f"
          #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
-         # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-         # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
-         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
-         # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
+         # the following is INCLUDED from ../templates/navier_stokes/u_f.arb without any search/replace combinations
+         # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
+         
+         # check default strings are set
+         #(hash added during unwrap)INCLUDE "default_string_replacements"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
+            # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
+            #--------------------------------------------------------
+         
+         # start by calculating the difference between the local face centred (dynamic) pressure gradient and average of cell centred (dynamic) pressure gradients in the face direction
+         # `dynamic' pressure here means the pressure that is able to cause fluid flow, ie, possibly accounting for hydrostatic pressure variations (for example)
+         #(hash added during unwrap)INCLUDE "p_error"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/p_error.arb without any search/replace combinations
+            # a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
+            # pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
+            
+            #(hash added during unwrap)INCLUDE "dynamic_force" # cell centred dynamic force
+               #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+               # the following is INCLUDED from ../templates/navier_stokes/dynamic_force.arb without any search/replace combinations
+               # dynamic force is the pressure force that could cause fluid movement
+               # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
+               # dynamic force now has the physically correct sign!
+               
+               FACE_DERIVED <p_f> "faceave(<p>)" ON <all faces>
+               CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <all cells>
+               CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <all cells>
+               #CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <all cells>
+               # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
+               FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[,adjacentcells](<dynamic_force_c[l=1]>)"
+               FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[,adjacentcells](<dynamic_force_c[l=2]>)"
+               #FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
+               # INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
+               #--------------------------------------------------------
+            FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
+            FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
+            # INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
+            #--------------------------------------------------------
+         
+         FACE_LOCAL <u_f_vect[l=1]> "faceave[](<u[l=1]>)"
+         FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)"
+         #FACE_LOCAL <u_f_vect[l=3]> "faceave[](<u[l=3]>)"
+         FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <all faces> # volume (velocity) transport
+         FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domain faces>
+         FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domain faces>
+         
+         # advection limiter
+         # alternative v0.5 method based on average velocity magnitude
+         #CELL_DERIVED <u_mag2> "dot(<u[l=:]>,<u[l=:]>)" ON <all cells>
+         #FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <domain faces>
+         #FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<rho>)" ON <domain faces>
+         # pre v0.5 method based on component of velocity in direction of face normal
+         #FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domain faces>
+         #FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho>)" ON <domain faces>
+         
+         # viscous limiter
+         # this didn't seem to work
+         #FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
+         ## additional contribution to velocity interpolation from cylindrical hoop-stress term
+         ##FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<mu>,<eps_p>*1.d0^2/(2.d0*<mu>))" ON <domain faces>
+         FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
+         
+         # this file now does both steady-state and transient using transient comments string replacements, which are set in constants.arb
+         
+         # transient limiter
+         # this is the equivalent time that the limiter has been moving in the one direction
+         # noting that the variables (<u_f_{correction}> and <eps>) here are previous timestep ones
+         FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <domain faces>
+         # need to save previous pressure error sign
+         FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <domain faces>
+         FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <domain faces>
+         
+         # combined limiter, using one of two possible methods
+         # use a straight minimum of the three or two correction velocities
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
+         ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
+         # alternatively, average the reciprocal of the three of two correction velocities
+         # in pre v0.53 these weren't limited using <tinyish> which could case a problem if one is zero
+         # navier-stokes
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+         ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+         # stokes
+         FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
+         # it isn't clear which of the above two methods is better: the reciprocal version can be slightly more expensive to calculate, but as it varies more continuously, can (sometimes, possibly, etc etc) lead to slightly faster overall simulation times.  Doesn't seem to be much in it though.
+         # unfortunately in versions around v0.52 the steady-state and transient cases were accidentally handled using different methods (transient with reciprocal averaging, steady-state with straight minimum)
+         
+         # for debugging set the correction velocity to be solely only one of the three possibilities
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <domain faces>
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <domain faces>
+         
+         # final face velocity
+         FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
+         
+         #FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+         
+         # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
+         # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
+         # if # hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
+         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+         #NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
+         #NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
+         # INCLUDE FINISHED for ../templates/navier_stokes/u_f.arb
          #--------------------------------------------------------
       
-      # cartesian specific
-      #CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <fluid domain> # continuity
-      #CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <fluid domain> # momentum component
-      #CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <fluid domain> # momentum component
-      ##CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <fluid domain> # momentum component
+      # previous idea based on simpler transient timestep that 
+      # # there are too many changes to u_f to warrant inclusion, so just bring in the following
+      # FACE_LOCAL <u_f_vect[l=1]> "faceave[](<u[l=1]>)"
+      # FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)"
+      # #FACE_LOCAL <u_f_vect[l=3]> "faceave[](<u[l=3]>)"
+      # FACE_LOCAL <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <all faces> # volume (velocity) transport
       
-      # cylindrical specific
-      CELL_EQUATION <continuity> "celldiv(<facex[l=1]>*<u_f>)/<cellx[l=1]>" ON <fluid domain> # continuity
-      # these also include the hoop stress terms when <<radiusdim?flag>> is appropriately set
-      CELL_EQUATION <momentum[l=1]> "celldiv(<facex[l=1]>*<J_f[l=1]>)/<cellx[l=1]>-<dynamic_force_c[l=1]>+1*2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)" ON <fluid domain> # momentum component
-      CELL_EQUATION <momentum[l=2]> "celldiv(<facex[l=1]>*<J_f[l=2]>)/<cellx[l=1]>-<dynamic_force_c[l=2]>+0*2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)" ON <fluid domain> # momentum component
-      #CELL_EQUATION <momentum[l=3]> "celldiv(<facex[l=1]>*<J_f[l=3]>)/<cellx[l=1]>-<dynamic_force_c[l=3]>+0*2.d0*<u[l=3]>*<mu>/(<cellx[l=3]>**2)" ON <fluid domain> # momentum component
+      # # note that as <dt> is limited by the explicit timestep constraint anyway, this condition also ensures that the correction velocity scales with the viscous term
+      # FACE_LOCAL <u_f_{correction}> "-<C_{Rhie-Chow}>*<dt>*<p_error>/<rho>" ON <domain faces>
+      # CONSTANT <C_{Rhie-Chow}> 5.d0 # increase this for the explicit method from 1.d0
+      # # final face velocity
+      # FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
       
-      # add transient term which is independent on cartesian or cylindrical coordinates
-      VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-      VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-      #VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
-      #VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-      #VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-      ##VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
-      # INCLUDE FINISHED for ../templates/navier_stokes/conservation.arb
-      #--------------------------------------------------------
-   
-   # overwrite dynamic forces to include surface tension
-   VARIABLE <dynamic_force_c[l=1]> "<dynamic_force_c[l=1]>+<sigma>*<ls_F_c_fluid[l=1]>" output
-   VARIABLE <dynamic_force_c[l=2]> "<dynamic_force_c[l=2]>+<sigma>*<ls_F_c_fluid[l=2]>"
-   #VARIABLE <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>+<sigma>*<ls_F_c_fluid[l=3]>"
-   VARIABLE <dynamic_force_f> "<dynamic_force_f>+<sigma>*facetofacelink(expression=<ls_F_f>,localregion=<fluid all faces>,remoteregion=<level set centre all faces>)"
-   
-   VARIABLE <ls_F_c[l=1]> output # set output on
-   
-   #(hash added during unwrap)INCLUDE_ROOT "level_set"
-   # INFO: setting include root directory to level_set
-   # need to generalise this in the future to cope with slip walls by extrapolating <u_f> out into <level set edge region>
-   FACE_LOCAL <ls_u_f> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
-   FACE_LOCAL <ls_u_f[r=1]> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f[r=1]>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
-   #(hash added during unwrap)INCLUDE "equation" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>" R "<u_f" W "<ls_u_f"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/free_surface/level_set/equation.arb with the following search/replace combinations: replace <domain> with <level set domain>: replace <all cells> with <level set all cells>: replace <walls> with <level set walls>: replace <all faces> with <level set all faces>: replace <u_f with <ls_u_f
-      # three types of end-of-timestep <ls> functions are referenced:
-      # 1) <ls> is the fully implicit one, with reinitialisation applied away from the interface
-      # 2) <ls_advected> is also implicit, but without any reinitialisation
-      # 3) <ls_explicit> is explicitly calculated using <ls_u_f[r=1]>, also without any reinitialisation.  It is used for some decision variables (<ls_weight>, <ls_sign>) as it does not change between newton loops
-      
-      # <ls_explicit>
-      # these are transients as they are fully explicit
-      FACE_TRANSIENT <ls_f_explicit[r=0]> "<ls[r=1]>" "faceave[advection](<ls[r=1]>,<ls_u_f[r=1]>,<ls_advection_limiter>)" ON <level set all faces> nooutput
-      #CELL_TRANSIENT <ls_explicit[r=0]> "<ls[r=1]>" "<ls[r=1]>-<dt>*celldiv(<ls_f_explicit>*<ls_u_f[r=1]>)" ON <level set all cells> nooutput
-      # note: guarding against destabilising effects of non-zero divergence after first timestep
-      CELL_TRANSIENT <ls_explicit[r=0]> "<ls[r=1]>" "<ls[r=1]>-<dt>*celldiv((<ls_f_explicit>-faceave[lastcell](<ls[r=1]>))*<ls_u_f[r=1]>)" ON <level set all cells> nooutput
-      
-      # <ls_advected> - here fully implicit
-      #FACE_DERIVED <ls_f_advected> "faceave[advection](<ls>,<ls_u_f>,<ls_advection_limiter>)" ON <level set all faces> nooutput
-      ##CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv(<ls_f_advected>*<ls_u_f>)" ON <level set all cells> nooutput
-      ## note: guarding against destabilising effects of non-zero divergence enroute to convergence
-      #CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv((<ls_f_advected>-faceave[lastcell](<ls>))*<ls_u_f>)" ON <level set all cells> nooutput
-      
-      # <ls_advected> - here using explicit <ls>, implicit <ls_u_f>
-      # v0.42, this changed to the default
-      FACE_DERIVED <ls_f_advected> "faceave[advection](<ls[r=1]>,<ls_u_f>,<ls_advection_limiter>)" ON <level set all faces> nooutput
-      #CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv(<ls_f_advected>*<ls_u_f>)" ON <level set all cells> nooutput
-      # note: guarding against destabilising effects of non-zero divergence enroute to convergence
-      CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv((<ls_f_advected>-faceave[lastcell](<ls[r=1]>))*<ls_u_f>)" ON <level set all cells> nooutput
-      
-      # <ls_advected> - here using crank-nicholson for both <ls> and <ls_u_f>
-      #FACE_DERIVED <ls_f_advected> "faceave[advection]((<ls[r=1]>+<ls>)*0.5d0,(<ls_u_f>+<ls_u_f[r=1]>)*0.5d0,<ls_advection_limiter>)" ON <level set all faces> nooutput
-      ##CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv(<ls_f_advected>*<ls_u_f>)" ON <level set all cells> nooutput
-      ## note: guarding against destabilising effects of non-zero divergence enroute to convergence
-      #CELL_DERIVED <ls_advected> "<ls[r=1]>-<dt>*celldiv((<ls_f_advected>-faceave[lastcell](<ls[r=1]>+<ls>)*0.5d0)*(<ls_u_f>+<ls_u_f[r=1]>)*0.5d0)" ON <level set all cells> nooutput
-      
-      # <ls_advected> - completely explicit
-      #CELL_LOCAL <ls_advected> "<ls_explicit[r=0]>"
-      
-      # the following depend only on <ls_explicit> and hence are constant for each timestep
-      CELL_LOCAL <ls_sign> "cellif(<ls_explicit>,1.d0,-1.d0)"
-      CELL_TRANSIENT <ls_explicit_normalised> "<ls_explicit>/<ls_celldxmax>" ON <level set all cells> nooutput
-      # this weight variable determines whether the <ls> value will locally be reinitialised or not.  For <ls_weight> = 0, no reinitialisation will occur (typical of on or near the interface).  For <ls_weight> = 1, as much reinitialisation will occur as possible, but probably at the expense of mass conservation.  Overwriting this with 0 will stop the reinitialisation from occurring everywhere.
-      CELL_TRANSIENT <ls_weight[r=0]> "cellif(abs(<ls_explicit_normalised>)-<ls_weight_max>,1.d0,cellif(abs(<ls_explicit_normalised>)-<ls_weight_min>,(1.d0-cos((abs(<ls_explicit_normalised>)-<ls_weight_min>)*<pi>/(<ls_weight_max>-<ls_weight_min>)))/2.d0,0.d0))" ON <level set all cells> elementdata # this will be initialised at timestep=0 as 0.d0
-      
-      # this section is concerned with calculating the mod of grad s, which should equal 1 for a level set function.  This is the basis for the reinitialisation proceedure
-      # the mod(grad(<ls>)) is split into two cell divergences, using a pseudo advection velocity which is directed away from the interface
-      # the order of discretisation for the calculation of this velocity, and the face averaged advection <ls> functions is important - high order must be used to get increasing accuracy of the surface tension force with increasing mesh refinement
-      # however, near boundaries, high order discretisation can be hard to converge (often giving numerically singular matrices), depending on the boundary condition employed
-      # as a solution, we use high order discretisations near the interface, and low order away from the interface and near any walls
-      # this is the maximum discretisation order used (between 0 and 1, not the actual order, but a flag indicating high or low order)
-      # if you're having problems with convergence, try setting this variable to 0.d0 to give the most forgiving formulation (then look at boundary conditions...)
-      CONSTANT <ls_reinitialisation_order_max> 1.d0
-      #CELL_CONSTANT <ls_reinitialisation_order_max> "<ls_advection_limiter>" ON <level set all cells>
-      # this is a function which is 0 next to walls, and 1 otherwise
-      CELL_CONSTANT <ls_reinitialisation_order_walls> "1.d0-facemax(facedelta(<level set walls>),region=<celljfaces>)" ON <level set all cells> elementdata
-      CELL_LOCAL <ls_reinitialisation_order_small> "cellmin(cellif(abs(<ls_explicit_normalised>)-(<ls_validity_max>+1.d0),0.d0,<ls_reinitialisation_order_max>),<ls_reinitialisation_order_walls>)" elementdata
-      # this determines the discretisation of the advection face centred values of <ls> will be calculated - from experience this must switch to low order before <ls_reinitialisation_order_f>, hence the wrapping of this function in a loop
-      #CELL_TRANSIENT <ls_reinitialisation_order> "cellmin(cellmin(<ls_reinitialisation_order_small>,region=<cellicells>),region=<cellicells>)" ON <level set all cells> elementdata
-      #CELL_TRANSIENT <ls_reinitialisation_order> "cellmin(<ls_reinitialisation_order_small>,region=<cellicells>)" ON <level set all cells> elementdata
-      CELL_TRANSIENT <ls_reinitialisation_order> "cellmin(cellmin(<ls_reinitialisation_order_small>,region=<cellicells>),<ls_advection_limiter>)" ON <level set all cells> elementdata
-      # this determines how the face centred pseudo advection velocity will be calculated
-      FACE_TRANSIENT <ls_reinitialisation_order_f> "cellmin(<ls_reinitialisation_order_small>,region=<adjacentfaceicells>)" ON <level set all faces>
-      
-      # include the grad_ls dot products for both the positive and negative sides of the interface
-      # the mod(grad(<ls>)) functions are calculated in these
-      #(hash added during unwrap)INCLUDE "ls_grad_dot_pos" R "<<sign>>" W "+"
+      # include just the continuity equation
+      #(hash added during unwrap)INCLUDE "conservation"
          #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/free_surface/level_set/ls_grad_dot_pos.arb with the following search/replace combinations: replace <<sign>> with +
-         # this file calculates all level set quantities for the positive level-set side of the interface, for the calculation of mod(grad(<ls>)) and mod(grad(<ls_advected>))
-         # all variables used here include `_pos' in their name, which is replaced by `_neg' when used on the other side of the interface
+         # the following is INCLUDED from ../templates/navier_stokes/conservation.arb without any search/replace combinations
+         # conservation equations solved over each domain cell (finite volume method)
          
-         # calculate mod(grad(<ls_advected>)), taking into account requested discretisation orders
-         # this is the pseudo advection velocity that points away from the interface
-         FACE_DERIVED <ls_u_advected_pos> "+(faceif(<ls_reinitialisation_order_f>,facegrad(<ls_advected>),facegrad[adjacentcells](<ls_advected>)))" ON <level set all faces>
-         # this is the face averaged <ls> value that will be used in the cell divergences
-         FACE_DERIVED <ls_f_advected_pos> "faceave[advection](<ls_advected>,<ls_u_advected_pos>,<ls_reinitialisation_order>)" ON <level set all faces>
-         #CELL_LOCAL <ls_grad_dot_advected_pos> "+(celldiv(<ls_f_advected_pos>*<ls_u_advected_pos>)-<ls_advected>*celldiv(<ls_u_advected_pos>))"
-         # and this is mod(grad(<ls_advected>))
-         # faster?
-         CELL_LOCAL <ls_grad_dot_advected_pos> "+(celldiv((<ls_f_advected_pos>-faceave[lastcell](<ls_advected>))*<ls_u_advected_pos>))"
+         # check default strings are set
+         #(hash added during unwrap)INCLUDE "default_string_replacements"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
+            # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
+            #--------------------------------------------------------
          
-         # define an implicit <ls> function on the positive side of the interface which is anchored at the interface to the ls_advect values
-         CELL_DERIVED <ls_pos> "cellif(+<ls_sign>,<ls>,<ls_advected>)" ON <level set all cells> nooutput
+         # cartesian specific
+         CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
+         CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
+         CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
+         #CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
          
-         # the exact above three steps are repeated for <ls_pos> to find mod(grad(<ls_pos>))
-         FACE_DERIVED <ls_u_pos> "+(faceif(<ls_reinitialisation_order_f>,facegrad(<ls_pos>),facegrad[adjacentcells](<ls_pos>)))" ON <level set all faces>
-         FACE_DERIVED <ls_f_pos> "faceave[advection](<ls_pos>,<ls_u_pos>,<ls_reinitialisation_order>)" ON <level set all faces>
-         #CELL_LOCAL <ls_grad_dot_pos> "+(celldiv(<ls_f_pos>*<ls_u_pos>)-<ls_pos>*celldiv(<ls_u_pos>))" output,elementdata
-         CELL_LOCAL <ls_grad_dot_pos> "+(celldiv((<ls_f_pos>-faceave[lastcell](<ls_pos>))*<ls_u_pos>))"
+         # cylindrical specific
+         #CELL_EQUATION <continuity> "celldiv(1.d0*<u_f>)/1.d0" ON <domain> # continuity
+         # these also include the hoop stress terms when <<radiusdim?flag>> is appropriately set
+         #CELL_EQUATION <momentum[l=1]> "celldiv(1.d0*<J_f[l=1]>)/1.d0-<dynamic_force_c[l=1]>+0*2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)" ON <domain> # momentum component
+         #CELL_EQUATION <momentum[l=2]> "celldiv(1.d0*<J_f[l=2]>)/1.d0-<dynamic_force_c[l=2]>+0*2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)" ON <domain> # momentum component
+         ##CELL_EQUATION <momentum[l=3]> "celldiv(1.d0*<J_f[l=3]>)/1.d0-<dynamic_force_c[l=3]>+0*2.d0*<u[l=3]>*<mu>/(<cellx[l=3]>**2)" ON <domain> # momentum component
          
-         # also calculate the minimum pseudo velocity out of the cell (ie, -max(velocity into the cell)).  If this is positive then no ls velocity is directed into the cell and if upwinding is used then the equations will become degenerate.  Currently no decent solution to keep simulation progressing.
-         CELL_OUTPUT <ls_u_min_pos> "facemin(<ls_u_pos>*<facefromcelldirection>,region=<celljfaces>)" ON <level set domain> elementdata
-         # INCLUDE FINISHED for ../templates/free_surface/level_set/ls_grad_dot_pos.arb
+         # add transient term which is independent on cartesian or cylindrical coordinates
+         VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+         VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+         #VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+         #VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+         #VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+         ##VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+         # INCLUDE FINISHED for ../templates/navier_stokes/conservation.arb
          #--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "ls_grad_dot_pos" R "<<sign>>" W "-" R "_pos" W "_neg"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/free_surface/level_set/ls_grad_dot_pos.arb with the following search/replace combinations: replace <<sign>> with -: replace _pos with _neg
-         # this file calculates all level set quantities for the positive level-set side of the interface, for the calculation of mod(grad(<ls>)) and mod(grad(<ls_advected>))
-         # all variables used here include `_neg' in their name, which is replaced by `_neg' when used on the other side of the interface
-         
-         # calculate mod(grad(<ls_advected>)), taking into account requested discretisation orders
-         # this is the pseudo advection velocity that points away from the interface
-         FACE_DERIVED <ls_u_advected_neg> "-(faceif(<ls_reinitialisation_order_f>,facegrad(<ls_advected>),facegrad[adjacentcells](<ls_advected>)))" ON <level set all faces>
-         # this is the face averaged <ls> value that will be used in the cell divergences
-         FACE_DERIVED <ls_f_advected_neg> "faceave[advection](<ls_advected>,<ls_u_advected_neg>,<ls_reinitialisation_order>)" ON <level set all faces>
-         #CELL_LOCAL <ls_grad_dot_advected_neg> "-(celldiv(<ls_f_advected_neg>*<ls_u_advected_neg>)-<ls_advected>*celldiv(<ls_u_advected_neg>))"
-         # and this is mod(grad(<ls_advected>))
-         # faster?
-         CELL_LOCAL <ls_grad_dot_advected_neg> "-(celldiv((<ls_f_advected_neg>-faceave[lastcell](<ls_advected>))*<ls_u_advected_neg>))"
-         
-         # define an implicit <ls> function on the positive side of the interface which is anchored at the interface to the ls_advect values
-         CELL_DERIVED <ls_neg> "cellif(-<ls_sign>,<ls>,<ls_advected>)" ON <level set all cells> nooutput
-         
-         # the exact above three steps are repeated for <ls_neg> to find mod(grad(<ls_neg>))
-         FACE_DERIVED <ls_u_neg> "-(faceif(<ls_reinitialisation_order_f>,facegrad(<ls_neg>),facegrad[adjacentcells](<ls_neg>)))" ON <level set all faces>
-         FACE_DERIVED <ls_f_neg> "faceave[advection](<ls_neg>,<ls_u_neg>,<ls_reinitialisation_order>)" ON <level set all faces>
-         #CELL_LOCAL <ls_grad_dot_neg> "-(celldiv(<ls_f_neg>*<ls_u_neg>)-<ls_neg>*celldiv(<ls_u_neg>))" output,elementdata
-         CELL_LOCAL <ls_grad_dot_neg> "-(celldiv((<ls_f_neg>-faceave[lastcell](<ls_neg>))*<ls_u_neg>))"
-         
-         # also calculate the minimum pseudo velocity out of the cell (ie, -max(velocity into the cell)).  If this is positive then no ls velocity is directed into the cell and if upwinding is used then the equations will become degenerate.  Currently no decent solution to keep simulation progressing.
-         CELL_OUTPUT <ls_u_min_neg> "facemin(<ls_u_neg>*<facefromcelldirection>,region=<celljfaces>)" ON <level set domain> elementdata
-         # INCLUDE FINISHED for ../templates/free_surface/level_set/ls_grad_dot_pos.arb
-         #--------------------------------------------------------
+      VARIABLE <momentum[l=1]> CANCEL
+      VARIABLE <momentum[l=2]> CANCEL
+      #VARIABLE <momentum[l=3]> CANCEL
       
-      # domain equation
-      # actual equation used to update ls - away from the interface (<ls_weight> = 1) mod(grad(<ls>)) = 1, while close to the interface (<ls_weight> = 0) mod(grad(<ls>)) = mod(grad(<ls_advected>))
-      CELL_LOCAL <ls_grad_dot> "cellif(<ls_sign>,<ls_grad_dot_pos>,<ls_grad_dot_neg>)"
-      CELL_LOCAL <ls_grad_dot_advected> "cellif(<ls_sign>,<ls_grad_dot_advected_pos>,<ls_grad_dot_advected_neg>)"
-      CELL_EQUATION <ls_equation_domain> "<ls_grad_dot>-(<ls_weight>+(1.d0-<ls_weight>)*<ls_grad_dot_advected>)" ON <level set domain>
+      # for walls use the following BC to be consistent with the implicit version
+      # FACE_EQUATION <p_walls> "<dynamic_force_f>" ON <walls>
       
-      # wall and boundary equations now done in separate template files
-      # INCLUDE FINISHED for ../templates/free_surface/level_set/equation.arb
+      # timestep has to be modified to include the explicit viscous stability condition
+      CONSTANT <c_mu_explicit> 0.10d0 # multiplier for explicit viscous term stability timestep constraint - this is a conservative value
+      # based on celldxmax
+      #CONSTANT <celldxmaxmin> "cellmin(<celldxmax>,region=<domain>)" # minimum of the maximum cell dimensions
+      #CONSTANT <dt_mu_explicit> "<c_mu_explicit>*<rho>*<celldxmaxmin>^2/<mu>" stepoutput
+      # based on facedx, upon which <u_mf_{vis}> is also based
+      CONSTANT <facedxmin> "facemin(<facedx>,region=<domain faces>)" # minimum of non-zero <facedx>'s
+      CONSTANT <dt_mu_explicit> "<c_mu_explicit>*<rho>*<facedxmin>^2/<mu>" stepoutput
+      CONSTANT <dt_initial> [] "<dt_mu_explicit>" stepoutput
+      #CONSTANT <CFL_initial> 0.25d0
+      #CONSTANT <dt_CFL> "<CFL_initial>*<celldxmaxmin>/<u_av>" stepoutput # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
+      #CONSTANT <dt_initial> [] "nonemin(<dt_CFL>,<dt_mu_explicit>)" stepoutput
+      # INCLUDE FINISHED for ../templates/navier_stokes/domain_explicit.arb
       #--------------------------------------------------------
    
-   # fluid boundary conditions on nonslip walls
-   #(hash added during unwrap)INCLUDE "walls_ls_grad_set" R "<walls>" W "<level set walls>"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/free_surface/level_set/walls_ls_grad_set.arb with the following search/replace combinations: replace <walls> with <level set walls>
-      # boundary equations for walls
-      # The most stable and forgiving equation to used on the walls is to set <ls> to a low (negative, continuous phase) value that is beyond anything that could affect the surface force calculation.
-      # One advantage of this is that even if there is no fluid in the vicinity of the wall, the <ls> function is still conceptually defined
-      # The disadvantage is that if the fluid gets too close to the wall, then the force will be in error - hence, the domain on which the <ls> function is calculated should be bigger than that over which the momentum equations are calculated
-      # If using this boundary condition, then use <ls_background> as the starting point for <ls_initial>
-      #FACE_EQUATION <ls_equation_walls> "<ls>-<ls_walls>" ON <level set walls>
-      
-      # Alternatively, a form of mod(grad(<ls>))=1 can be set on the walls, but this requires that the <ls> is well defined in the adjacent domain.
-      # Again, errors will occur (although smaller than the above) if the fluid gets too close to the walls, so fluid and level set calcs should be performed on separate domains.
-      # Like the last equation, this requires low order differencing near the walls, otherwise the jacobian matrix may become singular as when using higher order differencing, this equation could be almost identical to that solved within the adjacent cell
-      # If using this boundary condition, do not use <ls_background> as the starting point for <ls_initial>, instead use the true <ls_initial> right up to the walls
-      FACE_LOCAL <ls_dlsdx[l=1]> "facegrad[l=1](<ls>)"
-      FACE_LOCAL <ls_dlsdx[l=2]> "facegrad[l=2](<ls>)"
-      #FACE_LOCAL <ls_dlsdx[l=3]> "facegrad[l=3](<ls>)"
-      FACE_EQUATION <ls_equation_walls> "dot(<ls_dlsdx[l=:]>,<ls_dlsdx[l=:]>)-1.d0" ON <level set walls>
-      
-      # INCLUDE FINISHED for ../templates/free_surface/level_set/walls_ls_grad_set.arb
-      #--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE_ROOT "navier_stokes"
-   # INFO: setting include root directory to navier_stokes
-   #(hash added during unwrap)INCLUDE "walls_p_set" R "<walls>" W "<fluid walls>"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/navier_stokes/walls_p_set.arb with the following search/replace combinations: replace <walls> with <fluid walls>
-      # same as walls, but we have one face which is used to set pressure
-      # uses the two extra face regions which are contained within <fluid walls>, <walls sans one face> and <one face>
-      #(hash added during unwrap)INCLUDE "p_extrapolation" R "<region>" W "<walls>" R "<equation>" W "<p_walls>"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/navier_stokes/p_extrapolation.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <p_walls>
-         FACE_EQUATION <p_walls> "<dynamic_force_f>" ON <fluid walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
-         # INCLUDE FINISHED for ../templates/navier_stokes/p_extrapolation.arb
-         #--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "noflux" R "<region>" W "<walls sans one face>" R "<equation>" W "<noflux_walls>"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/navier_stokes/noflux.arb with the following search/replace combinations: replace <region> with <walls sans one face>: replace <equation> with <noflux_walls>
-         FACE_EQUATION <noflux_walls> "<u_f>" ON <walls sans one face> # no flux normal to region
-         # INCLUDE FINISHED for ../templates/navier_stokes/noflux.arb
-         #--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "noslip" R "<region>" W "<walls>" R "<equation>" W "<noslip_walls>"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <noslip_walls>
-         FACE_EQUATION <equation1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <fluid walls> # no component tangential to the face
-         #FACE_EQUATION <equation2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <fluid walls> # no component tangential to the face in the second tangential direction
-         # INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
-         #--------------------------------------------------------
-      FACE_EQUATION <one face p set> "<p>" ON <one face>
-      # INCLUDE FINISHED for ../templates/navier_stokes/walls_p_set.arb
-      #--------------------------------------------------------
+   # set the three boundary conditions on pressure:
+   # set pressure to a uniform value over inlet
+   CONSTANT <p_in> 5.6d0
+   FACE_EQUATION <inlet flowrate equation> "<p_f>-<p_in>" ON <inlet> # specified pressure
    
+   # set pressure to a uniform value over outlet
+   FACE_EQUATION <outlet flowrate equation> "<p_f>" ON <outlet> # specified pressure
+   
+   # and on walls set the dynamic_force to zero
+   FACE_EQUATION <p_walls> "<dynamic_force_f>" ON <walls>
+   
+   # explicitly set variable magnitudes using numerical constants
+   VARIABLE <p> magnitude=<p_in>
+   VARIABLE <u[l=1]> magnitude=<u_av>
+   VARIABLE <u[l=2]> magnitude=<u_av>
+   
+   # overwrite previous properties with the following
+   CONSTANT <mu> [Pa.s] 1.d-1 # viscosity of liquid
+   
+   # density is still specified - it may be used in a transient dimensional problem for example
+   CONSTANT <rho> [kg/m^3] 1.d0 # density
+   CONSTANT <u_av> [m/s] 0.2d0 # average inlet velocity
+   
+   # this parameter controls how conservative the timestep is - set to a low number (<<1) to ensure stability
+   # if simulations become unstable, reduce this
+   # actually has to be pretty low it seems, certainly 0.5d0 gives stability problems
+   CONSTANT <c_mu_explicit> 0.25d0 # multiplier for explicit viscous term stability timestep constraint
+   
+   # also push this tolerance to a higher level to speed things up, if only trying to get a steady-state solution
+   NEWTRESTOL 1.d-5
+   INFO "simulations will not be time accurate with a large NEWTRESTOL being set"
+   
+   # decrease time between outputs
+   CONSTANT <CFL_out> 0.1d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity
+   
+   # for this example file limit the total number of iterations
+   TIMESTEPMAX 10
+   TIMESTEPOUT 5
+   
+   # calculate drag and lift on object
+   NONE_OUTPUT <F_drag> [N] "facesum(<facearea>*dot(<facenorm[l=:]>,<tau[r=1,l=:,1]>),<cylinder>)" # force on object in axial direction
+   NONE_OUTPUT <F_lift> [N] "facesum(<facearea>*dot(<facenorm[l=:]>,<tau[r=1,l=:,2]>),<cylinder>)" # force on object in vertical direction
+   NONE_OUTPUT <C_drag> "2.d0*<F_drag>/(<rho>*<u_av>^2*0.1d0)" # drag coefficient
+   NONE_OUTPUT <C_lift> "2.d0*<F_lift>/(<rho>*<u_av>^2*0.1d0)" # lift coefficient
+   
+   # and turn some outputs on using the generic VARIABLE statement that picks up the last type and centring
+   VARIABLE <u_f_{correction}> output
+   VARIABLE <u_f_{raw}> output
+   VARIABLE <u_f> output
+   VARIABLE <J_f[r=1,l=1]> output
+   VARIABLE <tau[r=1,l=1,1]> output
+   
+   #INCLUDE_ROOT "navier_stokes"
+   #INCLUDE "strain_rate_magnitude"
    #-------------------------------------------------------------------
-   NONE_OUTPUT <integrated volume> "cellsum(<ls_phi>*<cellvol>,<level set domain>)"
-   
-   CELL_LOCAL <u_mag> "sqrt(cellmax(dot(<u[l=:]>,<u[l=:]>),<tinyish>))"
-   NONE_DERIVED <u_max> "cellmax(<u_mag>,region=<fluid domain>)" stepoutput
-   NONE_DERIVED <CFL> "cellmax(<u_mag>*<dt>/<celldxkernel>,region=<fluid domain>)" stepoutput
-   
-   NONE_OUTPUT <centroid[l=1]> "cellsum(<cellvol>*<cellx[l=1]>*<ls_phi>,region=<level set domain>)/cellsum(<cellvol>*<ls_phi>,region=<level set domain>)"
-   NONE_OUTPUT <centroid[l=2]> "cellsum(<cellvol>*<cellx[l=2]>*<ls_phi>,region=<level set domain>)/cellsum(<cellvol>*<ls_phi>,region=<level set domain>)"
-   NONE_OUTPUT <stretch[l=1]> "sqrt(cellsum(<cellvol>*(<cellx[l=1]>-<centroid[l=1]>)^2*<ls_phi>,region=<level set domain>)/cellsum(<cellvol>*<ls_phi>,region=<level set domain>))"
-   NONE_OUTPUT <stretch[l=2]> "sqrt(cellsum(<cellvol>*(<cellx[l=2]>-<centroid[l=2]>)^2*<ls_phi>,region=<level set domain>)/cellsum(<cellvol>*<ls_phi>,region=<level set domain>))"
-   
-   CELL_LOCAL <central flag> "cellif(celltocelllink(expression=<ls_normalised>-<ls_phi_max>,localregion=<fluid domain>,remoteregion=<level set domain>),1.d0,0.d0)"
-   NONE_OUTPUT <p central> "cellsum(<central flag>*<cellvol>*<p>,region=<fluid domain>)/cellsum(<central flag>*<cellvol>,region=<fluid domain>)"
-   NONE_OUTPUT <p central We> "<p central>*<We>*(2.d0^1)"
-   NONE_OUTPUT <p central We err> "abs(<p central>*<We>-1.d0)"
-   NONE_OUTPUT <u rms> "sqrt(cellsum(<cellvol>*<u_mag>^2,region=<fluid domain>)/cellsum(<cellvol>,region=<fluid domain>))"
-   NONE_OUTPUT <minimum boundary ls> "facemin(-<ls>,region=<level set boundaries>)/<ls_celldxmax>"
-   #-------------------------------------------------------------------
-   # INCLUDE FINISHED for ../oscillating_level_set_drop_with_reflect.arb
+   # INCLUDE FINISHED for ../transient_explicit_stokes_channel_flow_with_cylinder.arb
    #--------------------------------------------------------
 ##################################################################################
