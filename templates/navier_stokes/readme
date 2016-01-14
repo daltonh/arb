@@ -32,6 +32,6 @@ complete -> | constants -> | <mu>
                        | no_slip
                        | p_extrapolation
 
-The Stokes equations can be solved by replacing u_f with u_f_stokes and advection_flux with advection_flux_stokes.  Alternatively, replacing domain with domain_stokes (which just does these two changes).
+Changes to the equations are mainly done by string replacements now, changing the form of or activating various terms.  In general these strings should be set before calling constants for the first time.  EG, for the stokes equations call stokes before anything else.
 
 These can now be used for any combination of dimensions, by replacing the flags <<dim1comment>>, <<dim2comment>> and <<dim3comment>> either by an empty character (if the dimension is relevant) or a comment character # (if the dimension is not relevant).  Cylindrical coordinates can also be done - using the templates in the general template directory is the easiest way to do this.

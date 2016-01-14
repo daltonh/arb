@@ -1,0 +1,20 @@
+# this file should setup an advection limiter to use on the momentum flux
+# call before advection_flux
+
+INCLUDE "default_string_replacements"
+
+# setup string replacements to include limiters in flux calculation
+GENERAL_REPLACEMENTS R "<<advectionlimiterdim1>>" W "<u_adv_limiter[l=1]>"
+GENERAL_REPLACEMENTS R "<<advectionlimiterdim2>>" W "<u_adv_limiter[l=2]>"
+GENERAL_REPLACEMENTS R "<<advectionlimiterdim3>>" W "<u_adv_limiter[l=3]>"
+
+# the following includes whatever limiter is specified in the limiter_components template file, specific to the type of simulation
+# steady-state and uniform density
+<<navierstokescomment>><<steadystatenavierstokescomment>><<uniformdensitycomment>>INCLUDE "advection_flux_limiter_components"
+# steady-state and varying density
+<<navierstokescomment>><<steadystatenavierstokescomment>><<nonuniformdensitycomment>>INCLUDE "advection_flux_limiter_components" R "<u[l" W "<rho>*<u[l"
+# transient and uniform density
+<<navierstokescomment>><<transientnavierstokescomment>><<uniformdensitycomment>>INCLUDE "advection_flux_limiter_components" R "<u[l" W "<u[r=1,l" R "DERIVED" W "TRANSIENT"
+# transient and varying density
+<<navierstokescomment>><<transientnavierstokescomment>><<nonuniformdensitycomment>>INCLUDE "advection_flux_limiter_components" R "<u[l" W "<rho[r=1]>*<u[r=1,l" R "DERIVED" W "TRANSIENT"
+

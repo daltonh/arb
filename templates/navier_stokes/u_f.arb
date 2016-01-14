@@ -1,5 +1,8 @@
 # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
 
+# check default strings are set
+INCLUDE "default_string_replacements"
+
 # start by calculating the difference between the local face centred (dynamic) pressure gradient and average of cell centred (dynamic) pressure gradients in the face direction
 # `dynamic' pressure here means the pressure that is able to cause fluid flow, ie, possibly accounting for hydrostatic pressure variations (for example)
 INCLUDE "p_error"
@@ -12,7 +15,6 @@ FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domain faces>
 FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domain faces>
 
 # advection limiter
-GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W "" # not required for stokes equations
 # alternative v0.5 method based on average velocity magnitude
 #CELL_DERIVED <u_mag2> "dot(<u[l=:]>,<u[l=:]>)" ON <all cells>
 #FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <domain faces>
@@ -52,6 +54,7 @@ FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu_f>" ON <domain faces>
 <<stokescomment>><<steadystatenavierstokescomment>>FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
 # it isn't clear which of the above two methods is better: the reciprocal version can be slightly more expensive to calculate, but as it varies more continuously, can (sometimes, possibly, etc etc) lead to slightly faster overall simulation times.  Doesn't seem to be much in it though.
 # unfortunately in versions around v0.52 the steady-state and transient cases were accidentally handled using different methods (transient with reciprocal averaging, steady-state with straight minimum)
+
 # for debugging set the correction velocity to be solely only one of the three possibilities
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <domain faces>
 #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>

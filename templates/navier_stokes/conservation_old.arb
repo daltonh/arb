@@ -1,5 +1,0 @@
-# this now chooses between the steady-state and transient conservation files based on the transient navier-stokes comment string
-# these comment strings should be set from either constants, transient_setup or transient_dynamic_setup
-# both files assume constant density for now, otherwise overwrite with conservation_incompressible_transient_varying_rho specifically
-<<transientnavierstokescomment>>INCLUDE "conservation_incompressible_transient_constant_rho"
-<<steadystatenavierstokescomment>>INCLUDE "conservation_incompressible_steady_state"

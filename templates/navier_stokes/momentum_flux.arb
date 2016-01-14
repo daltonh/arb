@@ -1,7 +1,7 @@
 # flux of momentum over and in the direction of each face
 
-# set these strings to defaults if not already set
-GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
+# check default strings are set
+INCLUDE "default_string_replacements"
 
 # start by placing in viscous momentum transport, applicable to both the stokes and navier-stokes equations
 <<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <all faces>
