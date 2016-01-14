@@ -3,22 +3,26 @@
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: heat_conduction_with_linked_regions.arb
-#(hash added during unwrap)INCLUDE_WORKING "heat_conduction_with_linked_regions.arb"
+# the following working directory files found by the arb script: inviscid_burgers_equation.arb
+#(hash added during unwrap)INCLUDE_WORKING "inviscid_burgers_equation.arb"
    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../heat_conduction_with_linked_regions.arb without any search/replace combinations
+   # the following is INCLUDED from ../inviscid_burgers_equation.arb without any search/replace combinations
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
    # arb is released under the GNU GPL.  For full details see the license directory.
    #
-   #----------------------------------------------------------------------------
+   #-------------------------------------------------------------------
+   # file equations.in
    VERSION 0.40
    #----------------------------------------------------------------------------
    
-   # physical data
-   CONSTANT <D> [m^2/s] 1.d-3 # diffusivity
-   CONSTANT <hole flux> [W/m^2] -1.d+1 # heat flux around surface of hole
+   # numerical constants
+   CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
+   CONSTANT <dt> [] 0.2d-2 # constant timestep
+   CONSTANT <dtout> [] 5.d-2 # time between output
+   CONSTANT <tend> [] 1.0d+0 # time for simulation to stop
+   CONSTANT <advection limiter> 1.d0 # whether to use high order (1.d0) or low order (0.d0) upwinding
    
    #-------------------------------------------------------------------
    # geometry
@@ -26,29 +30,38 @@ EXTERNALS "src/free_surface_functions.f90"
    # CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
    # where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
    # where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+   # where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
    # where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
    # where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
    # where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
-   # where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
-   FACE_REGION <walls> "COMPOUND +<boundaries>-<hole>-<inlet>-<outlet>"
    
    # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
    # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
    # input options are: input,centringinput,meshinput,centringmeshinput,noinput
    # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
-   MSH_FILE "surface.msh"
+   MSH_FILE "line.msh"
+   MSH_FILE "output/output.msh" elementdata
    
-   CELL_UNKNOWN <T> [K] "1.d0" magnitude=1.d+2 # temperature
-   FACE_DERIVED <T flux> "-<D>*facegrad(<T>)" ON <all faces>
-   CELL_EQUATION <T transport> "celldiv(<T flux>)" ON <domain> # diffusion equation
-   FACE_EQUATION <T hole> "-<D>*facegrad(<T>)-<hole flux>" ON <hole> # specified heat flux through hole surface
-   FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on walls
-   FACE_EQUATION <T periodic> "<T>-facelink(<T>,<inlet>,<outlet>)" ON <inlet> # set temperature on inlet equal to temperature on outlet
-   #FACE_EQUATION <T periodic> "<T>-facelink(<T>,<outlet>,<inlet>)" ON <outlet> # set temperature on outlet equal to temperature on inlet (equivalent statement to the above)
-   FACE_EQUATION <T flux periodic> "<T flux>+facelink(<T flux>,<inlet>,<outlet>)" ON <inlet> # set heat flux on inlet equal to flux on outlet
-   NONE_OUTPUT <T average> "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
    
-   #-------------------------------------------------------------------
-   # INCLUDE FINISHED for ../heat_conduction_with_linked_regions.arb
+   TRANSIENT_SIMULATION
+   NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt>" # time
+   NONE_TRANSIENT <t[r=1]> "<t>-<dt>" "<t>" # time at last step
+   NONE_CONDITION <output test> "<t>-<tout>-<dtout>" outputcondition # this will be true (>0.) whenever we are <dtout> from last output
+   NONE_OUTPUT <tout> "<t>" stepoutputnoupdate # this will record the time of the last output
+   NONE_CONDITION <stop test> "<t>-<tend>" stopcondition # when this becomes true (>0.) the simulation stops
+   
+   #CELL_CONSTANT <u initial> "0.45d0*cellif(<cellx[l=1]>-2.d0,4.d0-<cellx[l=1]>,<cellx[l=1]>)+0.1d0" # triangular wave - BCs not implemented correctly for this to work
+   CELL_CONSTANT <u initial> "cellif(2.5d0-<cellx[l=1]>,cellif(<cellx[l=1]>-1.5d0,1.d0,0.d0),0.d0)" # square wave
+   CELL_UNKNOWN <u> "<u initial>" magnitude=1.d0
+   CELL_TRANSIENT <u[r=1]> "<u>" "<u>"
+   CELL_DERIVED <u mid> "(<u>+<u[r=1]>)/2.d0" # mid-timestep velocity
+   FACE_DERIVED <u_f> "<u mid>*<facenorm[l=1]>" output
+   #CELL_DERIVED <u limiter> "celllimiter[lower](<u mid>,0.d0,celllimiter[upper](<u mid>,1.d0))" output # absolute limits
+   CELL_DERIVED <u limiter> "celllimiter[lower](<u mid>,cellmin(<u mid>,,<adjacentcellicells>),celllimiter[upper](<u mid>,cellmax(<u mid>,,<adjacentcellicells>)))" output # relative limits
+   FACE_DERIVED <u advection> "faceave[advection](<u mid>,<u_f>,<u limiter>*<advection limiter>)" output
+   CELL_EQUATION <u equation> "(<u>-<u[r=1]>)/<dt>+celldiv(<u advection>^2*<facenorm[l=1]>)/2.d0" ON <domain>
+   FACE_EQUATION <u boundaries> "<u>-<u initial>" ON <boundaries>
+   NONE_OUTPUT <CFL> "cellmax(abs(<u>),,<domain>)*<dt>/cellmin(<cellvol>,,<domain>)"
+   # INCLUDE FINISHED for ../inviscid_burgers_equation.arb
    #--------------------------------------------------------
 ##################################################################################

@@ -3,29 +3,1226 @@
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: syntax_test.arb
-#(hash added during unwrap)INCLUDE_WORKING "syntax_test.arb"
+# the following working directory files found by the arb script: turbulent_channel_containing_cylinder_2d.arb
+#(hash added during unwrap)INCLUDE_WORKING "turbulent_channel_containing_cylinder_2d.arb"
    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../syntax_test.arb without any search/replace combinations
-   # this file just tests the syntax parsing
+   # the following is INCLUDED from ../turbulent_channel_containing_cylinder_2d.arb without any search/replace combinations
+   # arb finite volume solver
+   # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+   #
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #-------------------------------------------------------------------
+   VERSION 0.50 # the version of syntax used in this file
    
-   CELL_REGION <awful name ddot( () []> "COMPOUND +<domain>-<all cells>+<domain>"
-   CELL_REGION <another awful [ =,] name> "COMPOUND +<domain>-<all cells>+<domain>"
-   CONSTANT <jibber dot(> "1.d0"
-   CONSTANT <jibber ddot(> "<jibber dot(>"
-   CONSTANT <jibber3> "cellsum(cellsum(<jibber ddot(>,region=<awful name ddot( () []>),<another awful [ =,] name>)"
+   # setup turbulence model variables first
+   #(hash added during unwrap)INCLUDE_ROOT "turbulence/general"
+   # INFO: setting include root directory to turbulence/general
+   # include one of the three models:
+   # prandtl zero equation model:
+   #INCLUDE "setup_prandtl_zero_equation"
+   # prandtl one equation model:
+   #INCLUDE "setup_prandtl_one_equation"
+   # wilcox88 model:
+   #(hash added during unwrap)INCLUDE "setup_wilcox88"
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/general/setup_wilcox88.arb without any search/replace combinations
+      # commands to setup a wilcox88 simulation
+      #(hash added during unwrap)INCLUDE "setup_none"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/turbulence/general/setup_none.arb without any search/replace combinations
+         # here we replace all turbulence model comments with the comment character
+         #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<turbwilcox88comment>>" W "#"
+         #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<turbprandtl0comment>>" W "#"
+         #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<turbprandtl1comment>>" W "#"
+         # INCLUDE FINISHED for ../templates/turbulence/general/setup_none.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<turbwilcox88comment>>" W ""
+      # INCLUDE FINISHED for ../templates/turbulence/general/setup_wilcox88.arb
+      #--------------------------------------------------------
    
-   # some tests on redefining variables
-   VARIABLE <jibber2> nooutput # now we can even initialise a variable without a type
-   CELL_CONSTANT <jibber2> "cellsum(<jibber dot(>,region=<awful name ddot( () []>)" ON <all cells>
-   NONE_DERIVED <jibber2> # this should cancel the region definition already
-   CELL_OUTPUT <jibber2> ON <boundary cells>
-   CELL_CONSTANT <jibber2> 1.d0 # this should cancel the previous equation expression
-   NONE_OUTPUT <jibber2> ON <none> # this should cancel the previous constant_list
-   CELL_TRANSIENT <jibber2> "<jibber dot(>" "<jibber dot(>" ON <all cells>
-   CELL_OUTPUT <jibber2> "1.d0" # this will cancel the initial_equation expression
-   FACE_VARIABLE <jibber2>
-   NONE_VARIABLE <jibber2> # after all of the replacements, <jibber2> should be a NONE_OUTPUT
-   # INCLUDE FINISHED for ../syntax_test.arb
+   # the following strings describe the simulation and are passed to the output files
+   INFO_TITLE "Steady state turbulent flow around a cylinder within a channel"
+   INFO_DESCRIPTION "Very course mesh.  Turbulence model is"
+   #INFO_DESCRIPTION+ ": prandtl zero equation model"
+   #INFO_DESCRIPTION+ ": prandtl one equation model"
+   INFO_DESCRIPTION+ ": wilcox88 two equation model"
+   INFO_AUTHOR "Dalton Harvie"
+   INFO_DATE "28/11/14" # interpreted as the last modification date
+   
+   #-------------------------------------------------------------------
+   # system constants
+   
+   # some kernel options
+   #KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2 # setting order of kernel function for face derivatives
+   #KERNEL_OPTIONS polynomialorder=3 # setting order of kernel function for face derivatives
+   #KERNEL_OPTIONS checkminw=.true.,minimumminw=0.8d0 # reducing the minw a bit which will decrease the size of the kernels
+   
+   # frequency of output etc
+   #NEWTSTEPSTART 1
+   #NEWTSTEPMAX 60
+   #NEWTSTEPOUT 1
+   TIMESTEPOUT 1
+   
+   # solver options
+   #SOLVER_OPTIONS lambdamin=0.2d0
+   #SOLVER_OPTIONS lambdalimitfalseroot=.false.
+   #SOLVER_OPTIONS lambdalimitfalserootfactor=1.d-2
+   # puts an increase in weight on large errors in the newton residual, to guard against individual equations becoming worse at the expense of the average error
+   #SOLVER_OPTIONS weightlargeequationerrors=.true.,weightlargeequationerrorsfactor=1.d+0
+   # this controls how aggressive the increase in lambda is (the underrelaxation factor used in backstepping)
+   SOLVER_OPTIONS stickylambdaincrease=2
+   #-------------------------------------------------------------------
+   # geometry
+   
+   # CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+   # where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
+   # where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+   # where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
+   # where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
+   # where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
+   # where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
+   
+   FACE_REGION <walls> "COMPOUND <boundaries>-<inlet>-<outlet>"
+   FACE_REGION <inlet centreline> "AT 0.d0 0.5d0 0.d0 PART OF <inlet>"
+   FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
+   FACE_REGION <outlet centreline> "AT 100.d0 0.5d0 0.d0 PART OF <outlet>"
+   FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
+   
+   # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+   # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput,outputscale=N,outputinversescale=N
+   # input options are: input,centringinput,meshinput,centringmeshinput,noinput,inputscale=N,inputinversescale=N
+   # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+   # vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
+   # dat file output options are: datoutput,centringdatoutput,meshdatoutput,centringmeshdatoutput,nodatoutput (nodatoutput is the default)
+   MSH_FILE "turbulent_channel_containing_cylinder_2d_coarse.msh" inputscale=0.5d0 # make it a bit smaller by scaling the coordinates on read
+   
+   #-------------------------------------------------------------------
+   # variable definition reference:
+   # REGION_LIST <region_1> <region_2> ... <region_n> # comments: line has the ordered names of any regions
+   # (CELL_|FACE_)REGION_CONSTANT <name> [multiplier*units] numerical_value_for_region_1 .. value_for_region_n options # comments: sets a constant that varies with region
+   # (CELL_|FACE_|NONE_|)CONSTANT <name> [multiplier*units] numerical_value ON <region> options # comments: sets a constant specific to one region or no regions and has the form
+   # (CELL_|FACE_|NONE|)CONSTANT <name> [units] "expression (involving only constants)" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)TRANSIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)NEWTIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)DERIVED <name> [units] "expression" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)UNKNOWN <name> [units] "expression (initial value, optional)" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)EQUATION <name> [units] "expression (equation equaling zero)" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)OUTPUT <name> [units] "expression" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)CONDITION <name> [units] "expression" ON <region> options # comments
+   # (CELL_|FACE_|NONE|)LOCAL <name> [units] "expression" ON <region> options # comments
+   
+   # options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
+   #p  derivative/noderivative - for DERIVED, EQUATION, LOCAL : do or do not calculate Jacobian derivatives for this variable
+   #p  positive/negative/nocheck - for DERIVED, UNKNOWN, EQUATION, LOCAL : check at each iteration that variable is positive/negative
+   #f  output/nooutput - for ALL : output compound to msh files
+   #f  componentoutput/nocomponentoutput - for ALL : output just this component to msh files
+   #f  stepoutput/stepoutputnoupdate/nostepoutput - for ALL : output compound to step file.  The noupdate one does not update the variable when the step file is written (needed for recording when output occurred for example).
+   #f  componentstepoutput/componentstepoutputnoupdate/nocomponentstepoutput - for ALL : output just this component to step files
+   #f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
+   #f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
+   #f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component)
+   #p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
+   #f  magnitude=value - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
+   #f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
+   #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
+   #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
+   
+   #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+   
+   # variables etc
+   
+   # use templates from the navier_stokes directory to build up problem
+   #(hash added during unwrap)INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+   # INFO: setting include root directory to navier_stokes
+   #(hash added during unwrap)INCLUDE "constants" # specify physical and numerical constants
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/navier_stokes/constants.arb without any search/replace combinations
+      # physical data
+      CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
+      CONSTANT <rho> [kg/m^3] 1.d0 # density
+      CONSTANT <u_av> [m/s] 1.d0 # required average inlet velocity (if used, sets flowrate through inlet)
+      
+      #-------------
+      # set default strings using the following template file, which sets up a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+      # see below for appropriate statements to change these decisions
+      # strings can also be set when calling the template files using per-file replacements
+      #(hash added during unwrap)INCLUDE "default_string_replacements"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+         # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+         # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
+         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
+         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
+         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
+         # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
+         #--------------------------------------------------------
+      
+      # use the following to setup a transient simulation
+      #GENERAL_REPLACEMENTS R "#" W "" R "" W "#"
+      
+      # could set the transient status based on what type of arb simulation it is, but inadvisable really
+      ##GENERAL_REPLACEMENTS R "#" W "" R "" W "#"
+      #GENERAL_REPLACEMENTS R "#" W "#" R "" W ""
+      
+      # use the following to specify the stokes equations
+      #GENERAL_REPLACEMENTS R "#" W "" R "" W "#"
+      
+      # use the following to specify nonuniform viscosity
+      #GENERAL_REPLACEMENTS R "" W "#" R "#" W ""
+      
+      # use the following to specify nonuniform density
+      #GENERAL_REPLACEMENTS R "" W "#" R "#" W ""
+      #-------------
+      
+      # replace any references to the face centred fluid properties with the constant values if they don't vary
+      # get rid of these replacements and define alternative statements for the face centred fluid properties if they do vary
+      #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<mu_f>" WITH "<mu>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<rho_f>" WITH "<rho>"
+      
+      # numerical data
+      CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
+      CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
+      
+      # find an estimate of the domain size using general template
+      #(hash added during unwrap)INCLUDE_ROOT "general"
+      # INFO: setting include root directory to general
+      #(hash added during unwrap)INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/general/domain_lengthscale.arb without any search/replace combinations
+         # find an estimate of the domain size
+         # here we use the maximum domain length in each dimension
+         # previously used a more accurate but expensive formulation (see minimum_face_boundary_distance)
+         #(hash added during unwrap)INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/general/domain_lengths.arb without any search/replace combinations
+            # based on node locations, here we calculate the maximum length of the domain in each dimension
+            # these loops could be conducted over <boundary nodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
+            # as this is only a single loop through each node this isn't an expensive calculation anyway (unlike the levelset-based minimum boundary distance)
+            NONE_CONSTANT <nodexmax[l=1]> "nodemax(<nodex[l=1]>,region=<all nodes>)"
+            NONE_CONSTANT <nodexmax[l=2]> "nodemax(<nodex[l=2]>,region=<all nodes>)"
+            #NONE_CONSTANT <nodexmax[l=3]> "nodemax(<nodex[l=3]>,region=<all nodes>)"
+            NONE_CONSTANT <nodexmin[l=1]> "nodemin(<nodex[l=1]>,region=<all nodes>)"
+            NONE_CONSTANT <nodexmin[l=2]> "nodemin(<nodex[l=2]>,region=<all nodes>)"
+            #NONE_CONSTANT <nodexmin[l=3]> "nodemin(<nodex[l=3]>,region=<all nodes>)"
+            NONE_CONSTANT <domain_length[l=1]> "<nodexmax[l=1]>-<nodexmin[l=1]>"
+            NONE_CONSTANT <domain_length[l=2]> "<nodexmax[l=2]>-<nodexmin[l=2]>"
+            #NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"
+            # INCLUDE FINISHED for ../templates/general/domain_lengths.arb
+            #--------------------------------------------------------
+         NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"
+         # INCLUDE FINISHED for ../templates/general/domain_lengthscale.arb
+         #--------------------------------------------------------
+      
+      # for reference calculate some nondimensional quantities
+      # these should be overwritten by real nondimensional quantities if this is a nondimensional problem
+      CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
+      # INCLUDE FINISHED for ../templates/navier_stokes/constants.arb
+      #--------------------------------------------------------
+   
+   # more turbulence setup
+   #(hash added during unwrap)INCLUDE_ROOT "turbulence/wilcox88"
+   # INFO: setting include root directory to turbulence/wilcox88
+   #INCLUDE_ROOT "turbulence/prandtl_one_equation"
+   #INCLUDE_ROOT "turbulence/prandtl_zero_equation"
+   #(hash added during unwrap)INCLUDE "constants" # common to all methods
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/constants.arb without any search/replace combinations
+      # k-omega turbulence model constants for wilcox06 standard model
+      # see http://turbmodels.larc.nasa.gov/wilcox.html
+      # wilcox06 reference refers to 'Turbulence Modeling for CFD', by David C. Wilcox, 2nd edition, 2010, p126-7
+      
+      #CONSTANT <turb_sigma_k> 0.6d0 # constant in k versions of effective viscosity (\omega^* in wilcox06) 2006 version
+      CONSTANT <turb_sigma_k> 0.5d0 # 1988 version
+      CONSTANT <turb_sigma_omega> 0.5d0 # constant in omega versions of effective viscosity (\omega in wilcox06) 2006 and 1988
+      CONSTANT <turb_beta_star> 0.09d0 # 2006 and 1988
+      #CONSTANT <turb_gamma> "13.d0/25.d0" # (\alpha in wilcox06) 2006 version
+      CONSTANT <turb_gamma> "5.d0/9.d0" # (\alpha in wilcox06) 1988 version
+      CONSTANT <turb_beta> "3.d0/40.d0" # 1988 (2006 it varies)
+      
+      #CONSTANT <turb_C_D> 0.08d0 # prandtl model constant, used in limiter, initial and boundary conditions
+      CONSTANT <turb_C_D> "<turb_beta>/<turb_gamma>" # prandtl model constant, used in limiter, initial and boundary conditions, but now defined in terms of wilcox88 constants
+      
+      # for now this just cancels the general variable property replacements done in constants.arb
+      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<mu_f>" # as viscosity now varies
+      
+      # these are some numerical constants
+      # proportion of uniform, steady-state solution (based on approximated strain rate) to use initially
+      CONSTANT <turb_k_rel_initial> 1.d+0
+      CONSTANT <turb_omega_rel_initial> 1.d+0
+      CONSTANT <turb_2SS_rel_initial> 1.d+0
+      # proportion of uniform, steady-state solution (based on approximated strain rate) to use at inlet
+      CONSTANT <turb_k_rel_inlet> 1.d+0
+      CONSTANT <turb_omega_rel_inlet> 1.d+0
+      CONSTANT <turb_2SS_rel_inlet> 1.d+0
+      # minimum strain rate squared to be used in production term, as a proportion of some order of magnitude of the strain rate squared within the domain
+      CONSTANT <turb_2SS_rel_min> 1.d-2
+      CONSTANT <turb_mu_t_small_rel> 1.d-2
+      
+      # omega cutoff, as an absolute number
+      #CONSTANT <turb_omega_lower> 1.d-2
+      #CONSTANT <turb_omega_lower> "1.d-6*nonemagnitude(<turb_omega>)"
+      # k cutoff, as an absolute number
+      #CONSTANT <turb_k_lower> 1.d-2
+      #CONSTANT <turb_k_lower> "1.d-6*nonemagnitude(<turb_k>)"
+      
+      # how low k that is used in some of the equations is allowed to be, relative to the steady-state, uniform value
+      # if <turb_k_lower_lim_error> > 0 this parameter needs to be reduced
+      # 0 = no limit to how low k can be (ie, >0)
+      # 1 = limit of guaranteed numerical stability
+      # 3 = effective k is not allowed to fall below the local dissipation=generation amount
+      CONSTANT <turb_k_rel_lower> 2.d-1
+      # this specifies how much lower the k used in mu can be than k_lower.  In practive for small <k_rel_lower> this needs to be 1 for reliable convergence.
+      CONSTANT <turb_mu_rel_limit> 1.0d0
+      # advection limiter used in the turbulence equations
+      CONSTANT <turb_adv_limiter> 0.d0
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/constants.arb
+      #--------------------------------------------------------
+   #(hash added during unwrap)INCLUDE "transients"
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/transients.arb without any search/replace combinations
+      CELL_TRANSIENT <turb_k[r=1]> "<turb_k_background>" "<turb_k>" ON <all cells> elementdata,output,input
+      CELL_TRANSIENT <turb_omega[r=1]> "<turb_omega_background>" "<turb_omega>" ON <all cells> elementdata,output,input
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/transients.arb
+      #--------------------------------------------------------
+   #(hash added during unwrap)INCLUDE "viscosity" # common to all methods
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/viscosity.arb without any search/replace combinations
+      # wilcox06 model
+      # http://www.cfd-online.com/Wiki/Prandtl%27s_one-equation_model
+      
+      #(hash added during unwrap)INCLUDE_ROOT "turbulence/general"
+      # INFO: setting include root directory to turbulence/general
+      #(hash added during unwrap)INCLUDE "strain_rate_complete"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/turbulence/general/strain_rate_complete.arb without any search/replace combinations
+         # here both the real and background strain rates are calculated, with the latter requiring the prandtl viscous lengths
+         
+         # calculate all of the lengths
+         #(hash added during unwrap)INCLUDE "distance_to_wall"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/turbulence/general/distance_to_wall.arb without any search/replace combinations
+            # construct minimum distance to any wall
+            
+            # based on cell to face and cell to node vectors:
+            # cell to face vectors
+            CELL_LOCAL <turb_l_wall_face_vect[l=1]> "celltofacelink(<facex[l=1]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=1]>"
+            CELL_LOCAL <turb_l_wall_face_vect[l=2]> "celltofacelink(<facex[l=2]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=2]>"
+            #CELL_LOCAL <turb_l_wall_face_vect[l=3]> "celltofacelink(<facex[l=3]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=3]>"
+            CELL_CONSTANT <turb_l_wall_face2> "dot(<turb_l_wall_face_vect[l=:]>,<turb_l_wall_face_vect[l=:]>)" ON <all cells>
+            # cell to node vectors
+            NODE_REGION <wall nodes> "ASSOCIATED WITH <walls>"
+            CELL_LOCAL <turb_l_wall_node_vect[l=1]> "celltonodelink(<nodex[l=1]>,localregion=<all cells>,remoteregion=<wall nodes>)-<cellx[l=1]>"
+            CELL_LOCAL <turb_l_wall_node_vect[l=2]> "celltonodelink(<nodex[l=2]>,localregion=<all cells>,remoteregion=<wall nodes>)-<cellx[l=2]>"
+            #CELL_LOCAL <turb_l_wall_node_vect[l=3]> "celltonodelink(<nodex[l=3]>,localregion=<all cells>,remoteregion=<wall nodes>)-<cellx[l=3]>"
+            CELL_CONSTANT <turb_l_wall_node2> "dot(<turb_l_wall_node_vect[l=:]>,<turb_l_wall_node_vect[l=:]>)" ON <all cells>
+            CELL_CONSTANT <turb_l_wall2> "cellmin(<turb_l_wall_node2>,<turb_l_wall_face2> )" ON <all cells>
+            
+            # based on cell to face vectors only (may be inconsistent along inlets next to boundary layer meshes)
+            #CELL_LOCAL <turb_l_wall_vect[l=1]> "celltofacelink(<facex[l=1]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=1]>"
+            #CELL_LOCAL <turb_l_wall_vect[l=2]> "celltofacelink(<facex[l=2]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=2]>"
+            ##CELL_LOCAL <turb_l_wall_vect[l=3]> "celltofacelink(<facex[l=3]>,localregion=<all cells>,remoteregion=<walls>)-<cellx[l=3]>"
+            #CELL_CONSTANT <turb_l_wall2> "dot(<turb_l_wall_vect[l=:]>,<turb_l_wall_vect[l=:]>)" ON <all cells> output
+            
+            # maximum distance within domain
+            CONSTANT <turb_l_wall_max> "sqrt(cellmax(<turb_l_wall2>,region=<all cells>))"
+            # INCLUDE FINISHED for ../templates/turbulence/general/distance_to_wall.arb
+            #--------------------------------------------------------
+         #(hash added during unwrap)INCLUDE "prandtl_length"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/turbulence/general/prandtl_length.arb without any search/replace combinations
+            # find <turb_l_prandtl2> which is the square of the prandtl mixing length (also the maximum of the non-squared, <turb_l_prandtl_max>)
+            # uses <turb_l_wall2> which is the minimum distance to any wall, and <turb_l_wall_max> which is the maximum of those minimum distances
+            
+            # this particular expression just grabbed from the following Nikuradse expression apparently for a pipe
+            # http://web2.clarkson.edu/projects/fluidflow/courses/me639/downloads/32_Prandtl.pdf
+            # obviously this has not been validated to be physically correct for all situations, but used here as an example
+            CONSTANT <turb_l_prandtl_boundary_layer_thickness> "<turb_l_wall_max>" # by default this is set to the maximum distance from any wall within the domain, but can be overwritten to be (say) shorter representing a boundary layer that is thinner
+            CELL_LOCAL <turb_l_wall> "sqrt(cellmax(<turb_l_wall2>,0.d0))"
+            CELL_LOCAL <turb_l_wall_nd> "cellmin(cellmax(1.d0-<turb_l_wall>/<turb_l_prandtl_boundary_layer_thickness>,0.d0),1.d0)"
+            # these need fixing, as to how these are scaled when <turb_l_wall_max> /= <turb_l_prandtl_boundary_layer_thickness>
+            #CELL_LOCAL <turb_l_prandtl> "cellmax(<turb_l_prandtl_boundary_layer_thickness>*(0.14d0-0.08d0*<turb_l_wall_nd>^2-0.06d0*<turb_l_wall_nd>^4),0.d0)"
+            CELL_LOCAL <turb_l_prandtl> "cellmax(<turb_l_wall_max>*(0.14d0-0.08d0*<turb_l_wall_nd>^2-0.06d0*<turb_l_wall_nd>^4),0.d0)"
+            CELL_CONSTANT <turb_l_prandtl2> "<turb_l_prandtl>^2" ON <all cells>
+            FACE_CONSTANT <turb_l_prandtl2_f> "faceave[adjacentcells](<turb_l_prandtl2>)" ON <all faces>
+            NONE_CONSTANT <turb_l_prandtl_max> "cellmax(<turb_l_prandtl>,region=<all cells>)"
+            
+            # set viscous sublayer thickness, used in the background shear stress calculation
+            #CONSTANT <turb_prandtl_viscous_layer_thickness> "1.d-2*<turb_l_wall_max>" # constant multiple of the geometry dimension
+            #CONSTANT <turb_prandtl_viscous_layer_thickness> "<mu>/(<u_av>*<rho>)"
+            # now setting approximately to y+=30
+            #CONSTANT <turb_prandtl_viscous_layer_thickness> "(30.d0^2)*<mu>/(<u_av>*<rho>)"
+            # now setting approximately to y+=5
+            CONSTANT <turb_prandtl_viscous_layer_thickness> "(5.d0^2)*<mu>/(<u_av>*<rho>)"
+            # INCLUDE FINISHED for ../templates/turbulence/general/prandtl_length.arb
+            #--------------------------------------------------------
+         
+         # this is a lower average strain rate
+         NONE_CONSTANT <turb_2SS_average> "2.d0*(<u_av>/<turb_l_wall_max>)^2"
+         NONE_CONSTANT <turb_2SS_min_relative> 1.d-8
+         NONE_CONSTANT <turb_2SS_min> "<turb_2SS_min_relative>*<turb_2SS_average>"
+         
+         # the background strain rate is based on the average inlet velocity
+         FACE_CONSTANT <turb_2SS_background_walls> "facemax(2.d0*(<u_av>/facemax(<facedx>,<turb_prandtl_viscous_layer_thickness>))**2,<turb_2SS_min>)" ON <walls>
+         FACE_CONSTANT <turb_2SS_background> "facemax(facemin(facetofacelink(<turb_2SS_background_walls>,localregion=<all faces>,remoteregion=<walls>),2.d0*(<u_av>**2)/facemax(faceave[adjacentcells](<turb_l_wall2>),1.d-20)),<turb_2SS_min>)" ON <all faces>
+         CELL_CONSTANT <turb_2SS_background_c> "cellmax(cellmin(celltofacelink(<turb_2SS_background_walls>,localregion=<all cells>,remoteregion=<walls>),2.d0*(<u_av>**2)/cellmax(<turb_l_wall2>,1.d-20)),<turb_2SS_min>)" ON <all cells>
+         
+         # calculate the local varying strain rate tensor and also its second invariant <turb_2SS>
+         #(hash added during unwrap)INCLUDE "strain_rate_raw"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/turbulence/general/strain_rate_raw.arb without any search/replace combinations
+            # calculate the turbulence production term, divided by the viscosity
+            
+            # now using total stress as a template for this
+            #(hash added during unwrap)INCLUDE "total_stress" R "<tau" W "<turb_tau_nomu" R "<mu_f>" W "(-1.d0)"
+               #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+               # the following is INCLUDED from ../templates/turbulence/general/total_stress.arb with the following search/replace combinations: replace <tau with <turb_tau_nomu: replace <mu_f> with (-1.d0)
+               # total stress tensor
+               #(hash added during unwrap)INCLUDE "u_gradient_tensor"
+                  #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                  # the following is INCLUDED from ../templates/turbulence/general/u_gradient_tensor.arb without any search/replace combinations
+                  # a tensor of face centred gradients that respects any reflections
+                  # used in the total stress and boundary conditions now
+                  # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
+                                 FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,](<u[l=1]>)" ON <all faces>
+                  FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,](<u[l=2]>)" ON <all faces>
+                  #FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <all faces>
+                  FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,](<u[l=1]>)" ON <all faces>
+                                 FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,](<u[l=2]>)" ON <all faces>
+                  #FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <all faces>
+                  #FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,](<u[l=1]>)" ON <all faces>
+                  #FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,](<u[l=2]>)" ON <all faces>
+                  #               FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,](<u[l=3]>)" ON <all faces>
+                  # INCLUDE FINISHED for ../templates/turbulence/general/u_gradient_tensor.arb
+                  #--------------------------------------------------------
+               
+               # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
+               #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<udivfcomment>>" W "#"
+               # calculate the velocity divergence (numerical) on each face
+               #FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <all faces>
+               
+               # no both cartesian and cylindrical stresses don't include pressure
+               # without the numerical velocity divergence
+               FACE_LOCAL <turb_tau_nomu[l=1,1]> "-(-1.d0)*2.d0*<ugrad_f[l=1,1]>" ON <all faces>
+               FACE_LOCAL <turb_tau_nomu[l=2,2]> "-(-1.d0)*2.d0*<ugrad_f[l=2,2]>" ON <all faces>
+               #FACE_LOCAL <turb_tau_nomu[l=3,3]> "-(-1.d0)*2.d0*<ugrad_f[l=3,3]>" ON <all faces>
+               # overwrite theses if the numerical velocity divergence is to be included, see # string replacement above
+               # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
+               #FACE_LOCAL <turb_tau_nomu[l=1,1]> "-(-1.d0)*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <all faces>
+               #FACE_LOCAL <turb_tau_nomu[l=2,2]> "-(-1.d0)*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <all faces>
+               ##FACE_LOCAL <turb_tau_nomu[l=3,3]> "-(-1.d0)*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <all faces>
+               FACE_LOCAL <turb_tau_nomu[l=1,2]> "-(-1.d0)*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <all faces>
+               #FACE_LOCAL <turb_tau_nomu[l=1,3]> "-(-1.d0)*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <all faces>
+               #FACE_LOCAL <turb_tau_nomu[l=2,3]> "-(-1.d0)*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <all faces>
+               FACE_LOCAL <turb_tau_nomu[l=2,1]> "<turb_tau_nomu[l=1,2]>" ON <all faces>
+               #FACE_LOCAL <turb_tau_nomu[l=3,1]> "<turb_tau_nomu[l=1,3]>" ON <all faces>
+               #FACE_LOCAL <turb_tau_nomu[l=3,2]> "<turb_tau_nomu[l=2,3]>" ON <all faces>
+               # INCLUDE FINISHED for ../templates/turbulence/general/total_stress.arb
+               #--------------------------------------------------------
+            
+            FACE_LOCAL <turb_2SS_raw> "ddot(<turb_tau_nomu[l=:,:]>,<ugrad_f[l=:,:]>)"
+            FACE_DERIVED <turb_2SS> "<turb_2SS_raw>" ON <all faces>
+            # INCLUDE FINISHED for ../templates/turbulence/general/strain_rate_raw.arb
+            #--------------------------------------------------------
+         
+         # overwrite <turb_2SS> with one stabilised on the inlet
+         #FACE_DERIVED <turb_2SS> "faceif(facedelta(<inlet>),<turb_2SS_background>,facemax(<turb_2SS_raw>,<turb_2SS_min>))" ON <all faces>
+         # now just make sure strain rate is greater than a small value
+         FACE_DERIVED <turb_2SS> "facemax(<turb_2SS_raw>,<turb_2SS_min>)" ON <all faces>
+         # INCLUDE FINISHED for ../templates/turbulence/general/strain_rate_complete.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE_ROOT # reset back to present file's location
+      # INFO: setting include root directory to turbulence/wilcox88
+      
+      # cell centred strain rate
+      CELL_DERIVED <turb_2SS_c> "cellmax(<turb_2SS>,<turb_2SS_min>)" ON <all cells> elementdata # double limited, incase averaging kernels are very very poor
+      
+      # lower limits to both of the turbulence unknowns, based on the minimum 2SS
+      # use these to guard against divide by zeros and roundoff errors
+      CELL_CONSTANT <turb_k_small> "cellmax(<turb_2SS_min>*<turb_l_prandtl2>/<turb_C_D>,1.d-10)" ON <all cells> elementdata
+      CELL_CONSTANT <turb_omega_small> "sqrt(<turb_2SS_min>/<turb_C_D>)" ON <all cells> elementdata
+      NONE_CONSTANT <turb_mu_t_small> "<mu>*<turb_mu_t_small_rel>"
+      
+      # background k and omega values, based on prandtl zero equation model
+      # now also mu_t
+      CELL_CONSTANT <turb_k_background> "<turb_2SS_background_c>*<turb_l_prandtl2>/<turb_C_D>" ON <all cells> elementdata,output
+      CELL_CONSTANT <turb_omega_background> "sqrt(<turb_2SS_background_c>/<turb_C_D>)" ON <all cells> elementdata,output
+      CELL_CONSTANT <turb_mu_t_background> "<rho>*<turb_k_background>/<turb_omega_background>" ON <all cells> elementdata,output
+      
+      # the cell centred turbulence viscosity
+      # setup and smooth mu_t
+      CELL_TRANSIENT <turb_mu_t[r=1]> "<turb_mu_t_background>" "<turb_mu_t_smoothed>" ON <all cells> elementdata,output,input
+      CELL_LOCAL <turb_mu_t_base> "cellmax(<turb_mu_t[r=1]>,<turb_mu_t_small>)" ON <all cells>
+      CELL_DERIVED <turb_mu_t_raw> "<rho>*<turb_k>/cellmax(<turb_omega>,<turb_omega_small>)" ON <all cells> elementdata # turbulent viscosity, cell centred
+      #(hash added during unwrap)INCLUDE_ROOT "smoothing"
+      # INFO: setting include root directory to smoothing
+      #(hash added during unwrap)INCLUDE "smoothed_variable" R "<variable_smoothed>" W "<turb_mu_t_smoothed>" R "<variable>" W "<turb_mu_t_raw>" R "<variable" W "<turb_mu_t"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/smoothing/smoothed_variable.arb with the following search/replace combinations: replace <variable_smoothed> with <turb_mu_t_smoothed>: replace <variable> with <turb_mu_t_raw>: replace <variable with <turb_mu_t
+         # these now strictly non-dimensional distances
+         # distance over which function moves from one gradient to zero
+         #CONSTANT <turb_mu_t_dl> 0.5d0
+         #CONSTANT <turb_mu_t_du> 0.5d0
+         # distance below and above base point over which gradient stays one
+         #CONSTANT <turb_mu_t_el> 0.5d0
+         #CONSTANT <turb_mu_t_eu> 0.5d0
+         CONSTANT <turb_mu_t_dl> 2.d-1 # now all based on this parameter - setting this to 1 gives gentlest functions, and towards 0 gives steepest
+         CONSTANT <turb_mu_t_el> "(1.d0-<turb_mu_t_dl>)*0.95d0" # keep it from going to zero by decreasing linear range a bit
+         CONSTANT <turb_mu_t_du> "1.d0/<turb_mu_t_dl>"
+         CONSTANT <turb_mu_t_eu> "<turb_mu_t_du>-1.d0"
+         
+         # keep turb_el + turb_dl < 1 for non-negative results
+         CELL_LOCAL <turb_mu_t_basel> "<turb_mu_t_base>*(1.d0-<turb_mu_t_el>)"
+         CELL_LOCAL <turb_mu_t_baseu> "<turb_mu_t_base>*(1.d0+<turb_mu_t_eu>)"
+         CELL_LOCAL <turb_mu_t_cl> "2.d0*<turb_mu_t_base>*<turb_mu_t_dl>/<pi>"
+         CELL_LOCAL <turb_mu_t_cu> "2.d0*<turb_mu_t_base>*<turb_mu_t_du>/<pi>"
+         CELL_LOCAL <turb_mu_t_smoothedl> "<turb_mu_t_cl>*atan((<turb_mu_t_raw>-<turb_mu_t_basel>)/<turb_mu_t_cl>)+<turb_mu_t_basel>"
+         CELL_LOCAL <turb_mu_t_smoothedu> "<turb_mu_t_cu>*atan((<turb_mu_t_raw>-<turb_mu_t_baseu>)/<turb_mu_t_cu>)+<turb_mu_t_baseu>"
+         CELL_DERIVED <turb_mu_t_smoothed> "cellif(<turb_mu_t_raw>-<turb_mu_t_basel>,cellif(<turb_mu_t_raw>-<turb_mu_t_baseu>,<turb_mu_t_smoothedu>,<turb_mu_t_raw>),<turb_mu_t_smoothedl>)" ON <all cells> output
+         # INCLUDE FINISHED for ../templates/smoothing/smoothed_variable.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE_ROOT
+      # INFO: setting include root directory to 
+      
+      # make the smoothing constants tighter to keep mu_t away from zero more
+      CONSTANT <turb_mu_t_dl> 0.4d0
+      CONSTANT <turb_mu_t_el> 0.1d0
+      
+      CELL_DERIVED <turb_mu_t> "<turb_mu_t_smoothed>" ON <all cells> # this can be replaced by the nonsmoothed version using nonsmoothed_mu_t.arb
+      
+      # the cell centred turbulence viscosity
+      
+      # turbulent viscosity, face centred
+      # turns out that it is important to increase this from zero at the walls, otherwise k equation can become unstable - as k increases within domain, so does viscosity and k source term.  However diffusion of k through walls doesn't increase unless linked somehow to a domain k value, hence the adjacentcellsevenweighting on the walls
+      FACE_DERIVED <turb_mu_t_f> "faceif(facedelta(<walls>),faceave[adjacentcellsevenweighting](<turb_mu_t>),faceave[adjacentcells](<turb_mu_t>))" ON <all faces>
+      #FACE_DERIVED <turb_mu_t_f> "faceif(facedelta(<walls>),faceave[adjacentcellsevenweighting](<turb_mu_t>),faceave[harmonic](<turb_mu_t>))" ON <all faces>
+      #FACE_DERIVED <turb_mu_t_f> "<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_background>/<turb_C_D>)" ON <all faces>
+      # effective (total) viscosity, face centred, used in momentum equation
+      FACE_DERIVED <turb_mu_u_f> "<mu>+<turb_mu_t_f>" ON <all faces> output
+      # effective (total) viscosity, cell centred, used in momentum equation
+      CELL_LOCAL <turb_mu_u_c> "<mu>+<turb_mu_t>" elementdata
+      
+      # in the wilcox88 model the viscosities are all not-tilded
+      # find total turbulent diffusivity, face centred, used in the k equation
+      FACE_DERIVED <turb_mu_k_f> "<turb_mu_t_f>*<turb_sigma_k>+<mu>" ON <all faces> output
+      # find total turbulent diffusivity, face centred, used in the omega equation
+      FACE_DERIVED <turb_mu_omega_f> "<turb_mu_t_f>*<turb_sigma_omega>+<mu>" ON <all faces> output
+      
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/viscosity.arb
+      #--------------------------------------------------------
+   
+   # for prandtl zero equation
+   #INCLUDE "viscosity_face" # this is the standard discretisation for the prandtl zero method, which is linked to viscosity there
+   #INCLUDE "viscosity_cell" # a different discretisation of the turbulence equations, with cell centred mu_t as per the one/two equation models
+   
+   # for prandtl one equation
+   
+   # for wilcox88
+   #(hash added during unwrap)INCLUDE "limited_transient"
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/limited_transient.arb without any search/replace combinations
+      # uses a transient simulation to limit current turbulence values, enroute to steady-state solution
+      TRANSIENT_SIMULATION
+      TIMESTEPADDITIONAL 1 # on the first (restart or scratch) step there will be no difference between turb_k[r=0] and turb_k[r=1] so need to do atleast one step
+      CELL_OUTPUT <turb_k_change> "<turb_k>-<turb_k[r=1]>" ON <domain> output
+      CELL_DERIVED <turb_k_rel_change> "(<turb_k>-<turb_k[r=1]>)/cellmax(<turb_k>,<turb_k[r=1]>)" ON <domain> output
+      NONE_DERIVED <turb_k_rel_change_min> "cellmin(<turb_k_rel_change>,region=<domain>)"
+      NONE_DERIVED <turb_k_rel_change_max> "cellmax(<turb_k_rel_change>,region=<domain>)"
+      NONE_DERIVED <turb_k_rel_change_abs> "nonemax(abs(<turb_k_rel_change_min>),abs(<turb_k_rel_change_max>))"
+      CELL_OUTPUT <turb_omega_change> "<turb_omega>-<turb_omega[r=1]>" ON <domain> output
+      CELL_DERIVED <turb_omega_rel_change> "(<turb_omega>-<turb_omega[r=1]>)/cellmax(<turb_omega>,<turb_omega[r=1]>)" ON <domain> output
+      NONE_DERIVED <turb_omega_rel_change_min> "cellmin(<turb_omega_rel_change>,region=<domain>)"
+      NONE_DERIVED <turb_omega_rel_change_max> "cellmax(<turb_omega_rel_change>,region=<domain>)"
+      NONE_DERIVED <turb_omega_rel_change_abs> "nonemax(abs(<turb_omega_rel_change_min>),abs(<turb_omega_rel_change_max>))"
+      NONE_DERIVED <rel_change> "nonemax(<turb_k_rel_change_abs>,<turb_omega_rel_change_abs>)"
+      NONE_CONSTANT <rel_change_stop> 1.d-10 # controls relative change in both k and omega that signals convergence
+      NONE_CONDITION <stop condition> "-<rel_change>+<rel_change_stop>" stopcondition
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/limited_transient.arb
+      #--------------------------------------------------------
+   #(hash added during unwrap)INCLUDE "base_equals_background_limited_mu_t" # now base of mu_t smoothing function is set to be decreasing multiple of background mu_t
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/base_equals_background_limited_mu_t.arb without any search/replace combinations
+      # base of mu_t smoothing function is set to be decreasing multiple of background mu_t
+      NONE_CONDITION <stop condition> "-(<turb_mu_t_base_rel_limiter>-<turb_mu_t_base_rel_limiter_stop>)" stopcondition # overwrite previous stop condition
+      #(hash added during unwrap)INCLUDE "base_limited_mu_t"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/turbulence/wilcox88/base_limited_mu_t.arb without any search/replace combinations
+         # limit the base_mu_t around which the smoothing is based to be a multiple of the background mu_t
+         NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.4d0 # set this, which with this file, will be used throughout
+         NONE_TRANSIENT <turb_mu_t_base_rel_limiter> "<turb_mu_t_base_rel_limiter_initial>" "<turb_mu_t_base_rel_limiter_initial>" # this transient is actually just constant here
+         CELL_LOCAL <turb_mu_t_base> "cellmax(cellmax(<turb_mu_t[r=1]>,<turb_mu_t_small>),<turb_mu_t_base_rel_limiter>*<turb_mu_t_background>)" ON <all cells>
+         # and some diagnostics
+         CELL_OUTPUT <turb_mu_t/background> "<turb_mu_t>/<turb_mu_t_background>" ON <all cells>
+         NONE_OUTPUT <turb_mu_t/background min> "cellmin(<turb_mu_t/background>,region=<all cells>)"
+         NONE_OUTPUT <turb_mu_t/background max> "cellmax(<turb_mu_t/background>,region=<all cells>)"
+         # INCLUDE FINISHED for ../templates/turbulence/wilcox88/base_limited_mu_t.arb
+         #--------------------------------------------------------
+      NONE_TRANSIENT <turb_mu_t_base_rel_limiter> "<turb_mu_t_base_rel_limiter_initial>/<turb_mu_t_base_rel_limiter_decrease>" "<turb_mu_t_base_rel_limiter[r=1]>*<turb_mu_t_base_rel_limiter_decrease>" output,input
+      NONE_TRANSIENT <turb_mu_t_base_rel_limiter[r=1]> "<turb_mu_t_base_rel_limiter_initial>/<turb_mu_t_base_rel_limiter_decrease>" "<turb_mu_t_base_rel_limiter>" output,input
+      NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.35d0
+      NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.75d0 # experience is that if this is set close to 1, simulations can push to lower rel_limiters
+      NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.01d0
+      # and overwrite base equation
+      CELL_LOCAL <turb_mu_t_base> "cellmax(<turb_mu_t_small>,<turb_mu_t_base_rel_limiter>*<turb_mu_t_background>)"
+      
+      # also need to remove higher smoothing range on mu_t
+      VARIABLE <turb_mu_t_smoothedu> "<turb_mu_t_raw>"
+      VARIABLE <turb_mu_t_baseu> "<hugeish>"
+      VARIABLE <turb_mu_t_cu> "0.d0"
+      VARIABLE <turb_mu_t_smoothed> "cellif(<turb_mu_t_raw>-<turb_mu_t_basel>,<turb_mu_t_raw>,<turb_mu_t_smoothedl>)"
+      VARIABLE <turb_mu_t_du> "0.d0"
+      VARIABLE <turb_mu_t_eu> "0.d0"
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/base_equals_background_limited_mu_t.arb
+      #--------------------------------------------------------
+   # the following can be used to change the way the viscosity limiter decreases with timestep - these are the default values
+   #NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.35d0
+   #NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.75d0 # experience is that if this is set close to 1, simulations can push to lower rel_limiters
+   #NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.01d0
+   # following are used to speed up the test problem and should be commented out for a real problem
+   NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.20d0
+   NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.5d0
+   NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.09d0
+   # an alternative constant limiting of the turbulence viscosity
+   #INCLUDE "base_limited_mu_t" # limit base_mu_t as a multiple of the background mu_t to avoid transient solutions etc
+   #NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.4d0
+   
+   #(hash added during unwrap)INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+   # INFO: setting include root directory to navier_stokes
+   #(hash added during unwrap)INCLUDE "domain" R "<mu_f>" W "<turb_mu_u_f>" R "<mu>" W "<turb_mu_u_c>" # equations to be solved within the domain 
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/navier_stokes/domain.arb with the following search/replace combinations: replace <mu_f> with <turb_mu_u_f>: replace <mu> with <turb_mu_u_c>
+      #(hash added during unwrap)INCLUDE "unknowns" # no .arb suffix is required
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/unknowns.arb without any search/replace combinations
+         # unknown variables used for flow problems
+         CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
+         CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
+         #CELL_UNKNOWN <u[l=3]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
+         CELL_UNKNOWN <p> [] "1.d0" ON <all cells> # pressure
+         # INCLUDE FINISHED for ../templates/navier_stokes/unknowns.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE "total_stress"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/total_stress.arb without any search/replace combinations
+         # total stress tensor
+         #(hash added during unwrap)INCLUDE "u_gradient_tensor"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/u_gradient_tensor.arb without any search/replace combinations
+            # a tensor of face centred gradients that respects any reflections
+            # used in the total stress and boundary conditions now
+            # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
+                           FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,](<u[l=1]>)" ON <all faces>
+            FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,](<u[l=2]>)" ON <all faces>
+            #FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <all faces>
+            FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,](<u[l=1]>)" ON <all faces>
+                           FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,](<u[l=2]>)" ON <all faces>
+            #FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <all faces>
+            #FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,](<u[l=1]>)" ON <all faces>
+            #FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,](<u[l=2]>)" ON <all faces>
+            #               FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,](<u[l=3]>)" ON <all faces>
+            # INCLUDE FINISHED for ../templates/navier_stokes/u_gradient_tensor.arb
+            #--------------------------------------------------------
+         
+         # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
+         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<udivfcomment>>" W "#"
+         # calculate the velocity divergence (numerical) on each face
+         #FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <all faces>
+         
+         # no both cartesian and cylindrical stresses don't include pressure
+         # without the numerical velocity divergence
+         FACE_LOCAL <tau[l=1,1]> "-<turb_mu_u_f>*2.d0*<ugrad_f[l=1,1]>" ON <all faces>
+         FACE_LOCAL <tau[l=2,2]> "-<turb_mu_u_f>*2.d0*<ugrad_f[l=2,2]>" ON <all faces>
+         #FACE_LOCAL <tau[l=3,3]> "-<turb_mu_u_f>*2.d0*<ugrad_f[l=3,3]>" ON <all faces>
+         # overwrite theses if the numerical velocity divergence is to be included, see # string replacement above
+         # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
+         #FACE_LOCAL <tau[l=1,1]> "-<turb_mu_u_f>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <all faces>
+         #FACE_LOCAL <tau[l=2,2]> "-<turb_mu_u_f>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <all faces>
+         ##FACE_LOCAL <tau[l=3,3]> "-<turb_mu_u_f>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <all faces>
+         FACE_LOCAL <tau[l=1,2]> "-<turb_mu_u_f>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <all faces>
+         #FACE_LOCAL <tau[l=1,3]> "-<turb_mu_u_f>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <all faces>
+         #FACE_LOCAL <tau[l=2,3]> "-<turb_mu_u_f>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <all faces>
+         FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <all faces>
+         #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <all faces>
+         #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <all faces>
+         # INCLUDE FINISHED for ../templates/navier_stokes/total_stress.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE "u_f"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/u_f.arb without any search/replace combinations
+         # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
+         
+         # check default strings are set
+         #(hash added during unwrap)INCLUDE "default_string_replacements"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
+            # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
+            #--------------------------------------------------------
+         
+         # start by calculating the difference between the local face centred (dynamic) pressure gradient and average of cell centred (dynamic) pressure gradients in the face direction
+         # `dynamic' pressure here means the pressure that is able to cause fluid flow, ie, possibly accounting for hydrostatic pressure variations (for example)
+         #(hash added during unwrap)INCLUDE "p_error"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/p_error.arb without any search/replace combinations
+            # a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
+            # pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
+            
+            #(hash added during unwrap)INCLUDE "dynamic_force" # cell centred dynamic force
+               #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+               # the following is INCLUDED from ../templates/navier_stokes/dynamic_force.arb without any search/replace combinations
+               # dynamic force is the pressure force that could cause fluid movement
+               # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
+               # dynamic force now has the physically correct sign!
+               
+               FACE_DERIVED <p_f> "faceave(<p>)" ON <all faces>
+               CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <all cells>
+               CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <all cells>
+               #CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <all cells>
+               # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
+               FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[,adjacentcells](<dynamic_force_c[l=1]>)"
+               FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[,adjacentcells](<dynamic_force_c[l=2]>)"
+               #FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
+               # INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
+               #--------------------------------------------------------
+            FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
+            FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
+            # INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
+            #--------------------------------------------------------
+         
+         FACE_LOCAL <u_f_vect[l=1]> "faceave[](<u[l=1]>)"
+         FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)"
+         #FACE_LOCAL <u_f_vect[l=3]> "faceave[](<u[l=3]>)"
+         FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <all faces> # volume (velocity) transport
+         FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domain faces>
+         FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domain faces>
+         
+         # advection limiter
+         # alternative v0.5 method based on average velocity magnitude
+         #CELL_DERIVED <u_mag2> "dot(<u[l=:]>,<u[l=:]>)" ON <all cells>
+         #FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <domain faces>
+         #FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<rho>)" ON <domain faces>
+         # pre v0.5 method based on component of velocity in direction of face normal
+         FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domain faces>
+         #FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho>)" ON <domain faces>
+         
+         # viscous limiter
+         # this didn't seem to work
+         #FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<turb_mu_u_f>" ON <domain faces>
+         ## additional contribution to velocity interpolation from cylindrical hoop-stress term
+         ##FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<turb_mu_u_f>,<eps_p>*1.d0^2/(2.d0*<turb_mu_u_f>))" ON <domain faces>
+         FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<turb_mu_u_f>" ON <domain faces>
+         
+         # this file now does both steady-state and transient using transient comments string replacements, which are set in constants.arb
+         
+         # transient limiter
+         # this is the equivalent time that the limiter has been moving in the one direction
+         # noting that the variables (<u_f_{correction}> and <eps>) here are previous timestep ones
+         #FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <domain faces>
+         # need to save previous pressure error sign
+         #FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <domain faces>
+         #FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <domain faces>
+         
+         # combined limiter, using one of two possible methods
+         # use a straight minimum of the three or two correction velocities
+         ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
+         # alternatively, average the reciprocal of the three of two correction velocities
+         # in pre v0.53 these weren't limited using <tinyish> which could case a problem if one is zero
+         # navier-stokes
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+         FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+         # stokes
+         ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
+         # it isn't clear which of the above two methods is better: the reciprocal version can be slightly more expensive to calculate, but as it varies more continuously, can (sometimes, possibly, etc etc) lead to slightly faster overall simulation times.  Doesn't seem to be much in it though.
+         # unfortunately in versions around v0.52 the steady-state and transient cases were accidentally handled using different methods (transient with reciprocal averaging, steady-state with straight minimum)
+         
+         # for debugging set the correction velocity to be solely only one of the three possibilities
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <domain faces>
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
+         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <domain faces>
+         
+         # final face velocity
+         FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
+         
+         #FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+         
+         # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
+         # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
+         # if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
+         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+         ##NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
+         ##NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
+         # INCLUDE FINISHED for ../templates/navier_stokes/u_f.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE "advection_flux" # even though this is called for the stokes equations, no terms will be created
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/advection_flux.arb without any search/replace combinations
+         # flux of momentum over and in the direction of each face due to advection
+         # which one is chosen depends on the comment strings
+         # all require navierstokes equations to be current
+         
+         # check default strings are set
+         #(hash added during unwrap)INCLUDE "default_string_replacements"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
+            # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
+            #--------------------------------------------------------
+         #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<advectionlimiterdim1>>" W "<adv_limiter>" D "<<advectionlimiterdim2>>" W "<adv_limiter>" D "<<advectionlimiterdim3>>" W "<adv_limiter>"
+         
+         # steady-state and uniform density
+         FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         #FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,](<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         # steady-state and varying density
+         #FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,](<rho>*<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         #FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,](<rho>*<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         ##FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho>*<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         # transient and uniform density
+         #FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         #FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         ##FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,](<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         # transient and varying density
+         ##FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,](<rho[r=1]>*<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         ##FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         ###FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+         # INCLUDE FINISHED for ../templates/navier_stokes/advection_flux.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE "momentum_flux"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/momentum_flux.arb without any search/replace combinations
+         # flux of momentum over and in the direction of each face
+         
+         # check default strings are set
+         #(hash added during unwrap)INCLUDE "default_string_replacements"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
+            # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
+            #--------------------------------------------------------
+         
+         # start by placing in viscous momentum transport, applicable to both the stokes and navier-stokes equations
+         FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <all faces>
+         FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <all faces>
+         #FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <all faces>
+         
+         # and now add advection momentum transport for just the navier-stokes equations using self-referencing
+         VARIABLE <J_f[l=1]> "<J_f[l=1]>+<J_advection_f[l=1]>"
+         VARIABLE <J_f[l=2]> "<J_f[l=2]>+<J_advection_f[l=2]>"
+         #VARIABLE <J_f[l=3]> "<J_f[l=3]>+<J_advection_f[l=3]>"
+         # INCLUDE FINISHED for ../templates/navier_stokes/momentum_flux.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE "conservation"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/conservation.arb without any search/replace combinations
+         # conservation equations solved over each domain cell (finite volume method)
+         
+         # check default strings are set
+         #(hash added during unwrap)INCLUDE "default_string_replacements"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"
+            # INCLUDE FINISHED for ../templates/navier_stokes/default_string_replacements.arb
+            #--------------------------------------------------------
+         
+         # cartesian specific
+         CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
+         CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
+         CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
+         #CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
+         
+         # cylindrical specific
+         #CELL_EQUATION <continuity> "celldiv(1.d0*<u_f>)/1.d0" ON <domain> # continuity
+         # these also include the hoop stress terms when <<radiusdim?flag>> is appropriately set
+         #CELL_EQUATION <momentum[l=1]> "celldiv(1.d0*<J_f[l=1]>)/1.d0-<dynamic_force_c[l=1]>+0*2.d0*<u[l=1]>*<turb_mu_u_c>/(<cellx[l=1]>**2)" ON <domain> # momentum component
+         #CELL_EQUATION <momentum[l=2]> "celldiv(1.d0*<J_f[l=2]>)/1.d0-<dynamic_force_c[l=2]>+0*2.d0*<u[l=2]>*<turb_mu_u_c>/(<cellx[l=2]>**2)" ON <domain> # momentum component
+         ##CELL_EQUATION <momentum[l=3]> "celldiv(1.d0*<J_f[l=3]>)/1.d0-<dynamic_force_c[l=3]>+0*2.d0*<u[l=3]>*<turb_mu_u_c>/(<cellx[l=3]>**2)" ON <domain> # momentum component
+         
+         # add transient term which is independent on cartesian or cylindrical coordinates
+         #VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+         #VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+         ##VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+         ##VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+         ##VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+         ###VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+         # INCLUDE FINISHED for ../templates/navier_stokes/conservation.arb
+         #--------------------------------------------------------
+      # INCLUDE FINISHED for ../templates/navier_stokes/domain.arb
+      #--------------------------------------------------------
+   
+   #(hash added during unwrap)INCLUDE_ROOT "turbulence/general"
+   # INFO: setting include root directory to turbulence/general
+   #(hash added during unwrap)INCLUDE "u_f_turbulence" # the rhie-chow interpolation is given the same prandtl zero equation based viscosity, regardless of turbulence tehcnique
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/general/u_f_turbulence.arb without any search/replace combinations
+      # include this after the navier-stokes u_f file
+      
+      # based on the average flowrate and maximum wall distance, this calculates a viscosity magnitude to use in the face centred velocity interpolation
+      # setting this above one will increase the viscosity, decrease u_f_{viscous} and so short-circuit the correction, leading to checkerboarding
+      # setting this too low will decrease the viscosity, increase u_v_{viscous} and eventually cause the advective term to limit the correction - not bad necessarily, but making convergence slower
+      CONSTANT <turb_mu_u_correction_rel> 1.d0
+      # based on an average strain rate
+      #FACE_CONSTANT <turb_mu_u_correction_f> "<turb_mu_u_correction_rel>*<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_average>/<turb_C_D>)+<mu>" ON <domain faces> # turbulent viscosity, face centred
+      # based on the background local strain rate which is calculated using a prandtl viscous length assumption
+      FACE_CONSTANT <turb_mu_u_correction_f> "<turb_mu_u_correction_rel>*<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_background>/<turb_C_D>)+<mu>" ON <domain faces> # turbulent viscosity, face centred
+      
+      # finally overwrite the correction expression
+      FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<turb_mu_u_correction_f>" ON <domain faces>
+      # INCLUDE FINISHED for ../templates/turbulence/general/u_f_turbulence.arb
+      #--------------------------------------------------------
+   
+   #INCLUDE_ROOT "turbulence/prandtl_one_equation"
+   #INCLUDE "domain_steady_state"
+   #INCLUDE "inlet"
+   #INCLUDE "outlet"
+   #INCLUDE "walls"
+   
+   #(hash added during unwrap)INCLUDE_ROOT "turbulence/wilcox88"
+   # INFO: setting include root directory to turbulence/wilcox88
+   #(hash added during unwrap)INCLUDE "domain_steady_state"
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/domain_steady_state.arb without any search/replace combinations
+      #(hash added during unwrap)INCLUDE "unknowns"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/turbulence/wilcox88/unknowns.arb without any search/replace combinations
+         # k unknown
+         # initial value based on prandtl model
+         CELL_UNKNOWN <turb_k> "<turb_k_rel_initial>*<turb_2SS_rel_initial>*<turb_k_background>" ON <all cells> elementdata
+         
+         # define limited ks
+         CELL_LOCAL <turb_k_pos> "cellmax(<turb_k>,0.d0)"
+         
+         # omega unknown
+         CELL_UNKNOWN <turb_omega> "<turb_omega_rel_initial>*sqrt(<turb_2SS_rel_initial>)*<turb_omega_background>" ON <all cells> elementdata
+         
+         # define limited omegas
+         CELL_LOCAL <turb_omega_pos> "cellmax(<turb_omega>,0.d0)"
+         
+         # INCLUDE FINISHED for ../templates/turbulence/wilcox88/unknowns.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE "equations_setup"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/turbulence/wilcox88/equations_setup.arb without any search/replace combinations
+         # these are variables that are used in both the transient and steady-state equations
+         
+         # face averaged advection components
+         FACE_DERIVED <turb_k_rho_f> "faceave[advection](<turb_k>*<rho>,<u_f>,<turb_adv_limiter>)" ON <all faces>
+         FACE_DERIVED <turb_omega_rho_f> "faceave[advection](<turb_omega>*<rho>,<u_f>,<turb_adv_limiter>)" ON <all faces>
+         
+         CELL_DERIVED <turb_R_k> "<turb_mu_t>*<turb_2SS_c>-<rho>*<turb_beta_star>*<turb_k_pos>*<turb_omega_pos>" ON <domain> output
+         CELL_DERIVED <turb_R_omega> "<rho>*(<turb_gamma>*<turb_2SS_c> - <turb_beta>*<turb_omega_pos>^2)" ON <domain> output
+         
+         # choose method to use for the facegradient of k, used in the diffusion of k and the outlet boundary condition
+         # need to use adjacentcells option on facegrad if the mesh is not super refined and/or structured, otherwise checkerboarding may result in areas of high gradients
+         FACE_LOCAL <turb_k_facegrad> "facegrad[adjacentcells](<turb_k>)"
+         FACE_LOCAL <turb_omega_facegrad> "facegrad[adjacentcells](<turb_omega>)"
+         # alternative more accurate evaluation
+         #FACE_LOCAL <turb_k_facegrad> "facegrad(<turb_k>)"
+         #FACE_LOCAL <turb_omega_facegrad> "facegrad(<turb_omega>)"
+         
+         # INCLUDE FINISHED for ../templates/turbulence/wilcox88/equations_setup.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE "equations_steady_state"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/turbulence/wilcox88/equations_steady_state.arb without any search/replace combinations
+         # k equation
+         
+         # now for the equation to solve
+         # just the source and dissipation terms only
+         #CELL_EQUATION <turb_k_equation> "<turb_R_k>" ON <domain>
+         # source, dissipation and diffusion
+         #CELL_EQUATION <turb_k_equation> "celldiv(-<turb_mu_k_f>*<turb_k_facegrad>)-<turb_R_k>" ON <domain>
+         # source, dissipation, diffusion and advection
+         #CELL_EQUATION <turb_k_equation> "celldiv(<turb_k_rho_f>*<u_f>-<turb_mu_k_f>*<turb_k_facegrad>)-<turb_R_k>" ON <domain>
+         CELL_EQUATION <turb_k_equation> "celldiv((<turb_k_rho_f>-faceave[lastcell](<turb_k>*<rho>))*<u_f>-<turb_mu_k_f>*<turb_k_facegrad>)-<turb_R_k>" ON <domain>
+         
+         # omega equation
+         
+         # now for the equation to solve
+         # just the source and dissipation terms only
+         #CELL_EQUATION <turb_omega_equation> "<turb_R_omega>" ON <domain>
+         # source, dissipation and diffusion
+         #CELL_EQUATION <turb_omega_equation> "celldiv(-<turb_mu_omega_f>*<turb_omega_facegrad>)-<turb_R_omega>" ON <domain>
+         # source, dissipation, diffusion and advection
+         CELL_EQUATION <turb_omega_equation> "celldiv((<turb_omega_rho_f>-faceave[lastcell](<turb_omega>*<rho>))*<u_f>-<turb_mu_omega_f>*<turb_omega_facegrad>)-<turb_R_omega>" ON <domain>
+         
+         # INCLUDE FINISHED for ../templates/turbulence/wilcox88/equations_steady_state.arb
+         #--------------------------------------------------------
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/domain_steady_state.arb
+      #--------------------------------------------------------
+   #(hash added during unwrap)INCLUDE "inlet"
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/inlet.arb without any search/replace combinations
+      # turbulent boundary conditions
+      
+      # based on turbulence intensity
+      #CONSTANT <turb_inlet_intensity> 1.d-3 # turbulence intensity at the inlet
+      #NONE_CONSTANT <turb_k_inlet> "2.d0/3.d0*(<u_av>*<turb_inlet_intensity>)**2" # inlet turbulence kinetic energy
+      #FACE_CONSTANT <turb_omega_inlet> "sqrt(<turb_k_inlet>)/<turb_l_prandtl_max>" # inlet turbulence specific dissipation rate
+      
+      # based on some proportion of the average strain rate
+      #CONSTANT <turb_2SS_inlet> "(<u_av>/<turb_l_wall_max>)^2"
+      #FACE_CONSTANT <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS_inlet>*<turb_l_prandtl2>/<turb_C_D>" ON <inlet> # based on prandtl
+      #NONE_CONSTANT <turb_omega_inlet> "sqrt(<turb_gamma>*<turb_2SS_min>/<turb_beta>)*<turb_omega_rel_inlet>" # inlet turbulence specific dissipation rate
+      
+      # hydrid of both
+      #CONSTANT <turb_2SS_inlet> "(<u_av>/<turb_l_wall_max>)^2"
+      #FACE_CONSTANT <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS_inlet>*<turb_l_prandtl2>/<turb_C_D>" ON <inlet> # based on prandtl
+      #NONE_CONSTANT <turb_omega_inlet> "sqrt(<turb_2SS_inlet>/<turb_C_D>)" # inlet turbulence specific dissipation rate
+      
+      # based on prandtl zero equation and local turb_2SS
+      #FACE_DERIVED <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS>*<turb_l_prandtl2_f>/<turb_C_D>" ON <inlet> # based on prandtl
+      #FACE_DERIVED <turb_omega_inlet> "<turb_omega_rel_inlet>*sqrt(<turb_2SS>/<turb_C_D>)" ON <inlet> # based on prandtl
+      
+      # based on prandtl zero equation and background turb_2SS
+      #FACE_DERIVED <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS_rel_inlet>*<turb_2SS_background>*<turb_l_prandtl2_f>/<turb_C_D>" ON <inlet> # based on prandtl
+      #FACE_DERIVED <turb_omega_inlet> "<turb_omega_rel_inlet>*sqrt(<turb_2SS_rel_inlet>*<turb_2SS_background>/<turb_C_D>)" ON <inlet> # based on prandtl
+      FACE_DERIVED <turb_k_inlet> "<turb_k_rel_inlet>*<turb_2SS_rel_inlet>*<turb_k_background>" ON <inlet> # based on prandtl
+      FACE_DERIVED <turb_omega_inlet> "<turb_omega_rel_inlet>*sqrt(<turb_2SS_rel_inlet>)*<turb_omega_background>" ON <inlet> # based on prandtl
+      
+      FACE_EQUATION <turb_k_inlet_equation> "<turb_k>-<turb_k_inlet>" ON <inlet>
+      FACE_EQUATION <turb_omega_inlet_equation> "<turb_omega>-<turb_omega_inlet>" ON <inlet>
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/inlet.arb
+      #--------------------------------------------------------
+   #(hash added during unwrap)INCLUDE "outlet"
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/outlet.arb without any search/replace combinations
+      FACE_EQUATION <turb_k_outlet_equation> "<turb_k_facegrad>" ON <outlet>
+      FACE_EQUATION <turb_omega_outlet_equation> "<turb_omega_facegrad>" ON <outlet>
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/outlet.arb
+      #--------------------------------------------------------
+   #(hash added during unwrap)INCLUDE "walls"
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/walls.arb without any search/replace combinations
+      # boundary conditions on walls
+      
+      FACE_EQUATION <turb_k_walls_equation> "<turb_k>" ON <walls>
+      
+      # local velocities for use in boundary conditions etc
+      #CELL_LOCAL <turb_u_n> "dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>))" # component of velocity normal to wall
+      #CELL_LOCAL <turb_u_t1> "dot(<u[l=:]>,cellave[lastface](<facetang1[l=:]>))" # component of velocity tangential to wall
+      #CELL_LOCAL <turb_u_t2> "dot(<u[l=:]>,cellave[lastface](<facetang2[l=:]>))" # component of velocity tangential to wall
+      
+      #FACE_LOCAL <turb_tau_w> "<mu>*sqrt(facegrad(<turb_u_t1>)**2+facegrad(<turb_u_t2>)**2)" ON <walls> # need to check this works OK in 2D with second gradient zero
+      #FACE_DERIVED <turb_u_tau> "sqrt(<turb_tau_w>/<rho>)" ON <walls> output
+      
+      #FACE_EQUATION <turb_k_walls_equation> "facegrad(<k>)" ON <walls> # as suggested by hrenya95
+      #FACE_EQUATION <turb_k_walls_equation> "<k>" ON <walls> # as suggested by wilcox93
+      #FACE_EQUATION <turb_omega_walls_equation> "<omega>-<u_tau>**2*2.5d3*<rho>/<mu_eff_f>" ON <walls> # slightly rough surface boundary condition, Wilcox93, p278
+      #FACE_DERIVED <turb_omega_walls> "<turb_u_tau>**2*2.5d3*<rho>/<mu>" ON <walls>
+      #FACE_DERIVED <turb_omega_walls> "sqrt(<turb_2SS>/<turb_C_D>)" ON <walls> output # based on prandtl
+      
+      
+      # static boundary condition on omega (anything based on <turb_2SS> seems to be unstable)
+      CONSTANT <turb_2SS_rel_walls> 1.00d+0
+      FACE_DERIVED <turb_omega_walls> "sqrt(<turb_2SS_rel_walls>*<turb_2SS_background>/<turb_C_D>)" ON <walls> # based on prandtl, but turb_C_D has been no redefined as <turb_beta>/<turb_gamma>
+      #FACE_DERIVED <turb_omega_walls> "sqrt(<turb_2SS_rel_walls>*<turb_2SS_background>*<turb_gamma>/<turb_beta>)" ON <walls> # based on wilcox88 omega equation
+      # more standard type of boundary condition
+      #FACE_DERIVED <turb_omega_walls> "60.d0*<mu>/(<rho>*0.075d0*<facedx>**2)" ON <walls> output # based on prandtl
+      
+      FACE_EQUATION <turb_omega_walls_equation> "<turb_omega>-<turb_omega_walls>" ON <walls> # slightly rough surface boundary condition, Wilcox93, p278
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/walls.arb
+      #--------------------------------------------------------
+   
+   #(hash added during unwrap)INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+   # INFO: setting include root directory to navier_stokes
+   #(hash added during unwrap)INCLUDE "outlet_p_set" # outlet BC
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/navier_stokes/outlet_p_set.arb without any search/replace combinations
+      #(hash added during unwrap)INCLUDE "inlet_p_set" REPLACE "inlet" WITH "outlet" REPLACE "<p_in>" WITH "0.d0"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/inlet_p_set.arb with the following search/replace combinations: replace inlet with outlet: replace <p_in> with 0.d0
+         # boundary conditions on outlet - fully developed flow
+         #(hash added during unwrap)INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/u_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation> with <inlet fully developed>
+            #FACE_EQUATION <outlet fully developed> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <outlet> # normal velocity component is fully developed
+            FACE_EQUATION <outlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <outlet> # normal velocity component is fully developed
+            # INCLUDE FINISHED for ../templates/navier_stokes/u_fully_developed.arb
+            #--------------------------------------------------------
+         #(hash added during unwrap)INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # the following is INCLUDED from ../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation with <inlet no slip
+            FACE_EQUATION <outlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to the face
+            #FACE_EQUATION <outlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <outlet> # no component tangential to the face in the second tangential direction
+            # INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
+            #--------------------------------------------------------
+         
+         FACE_EQUATION <outlet flowrate equation> "<p_f>-0.d0" ON <outlet> # specified pressure
+         # INCLUDE FINISHED for ../templates/navier_stokes/inlet_p_set.arb
+         #--------------------------------------------------------
+      # INCLUDE FINISHED for ../templates/navier_stokes/outlet_p_set.arb
+      #--------------------------------------------------------
+   #(hash added during unwrap)INCLUDE "walls" # nonslip walls BC
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/navier_stokes/walls.arb without any search/replace combinations
+      # boundary conditions on nonslip walls
+      #(hash added during unwrap)INCLUDE "noflux" REPLACE "<region>" WITH "<walls>" REPLACE "<equation>" WITH "<walls noflux>"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/noflux.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls noflux>
+         FACE_EQUATION <walls noflux> "<u_f>" ON <walls> # no flux normal to region
+         # INCLUDE FINISHED for ../templates/navier_stokes/noflux.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE "noslip" REPLACE "<region>" WITH "<walls>" REPLACE "<equation" WITH "<walls noslip" # noslip now detects whether it is a 3D or 2D problem
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation with <walls noslip
+         FACE_EQUATION <walls noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
+         #FACE_EQUATION <walls noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
+         # INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE "p_extrapolation" REPLACE "<region>" WITH "<walls>" REPLACE "<equation>" WITH "<walls p_extrapolation>"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/p_extrapolation.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls p_extrapolation>
+         FACE_EQUATION <walls p_extrapolation> "<dynamic_force_f>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+         # INCLUDE FINISHED for ../templates/navier_stokes/p_extrapolation.arb
+         #--------------------------------------------------------
+      # INCLUDE FINISHED for ../templates/navier_stokes/walls.arb
+      #--------------------------------------------------------
+   
+   # inlet BCs have to be special cased a bit
+   #INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure gradient to give <u_av>
+   #INCLUDE "inlet_u_set" # flat velocity profile
+   #(hash added during unwrap)INCLUDE "inlet_u_fully_developed_uniform_p" # fully developed velocity profile, setting a uniform pressure to give <u_av>
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/navier_stokes/inlet_u_fully_developed_uniform_p.arb without any search/replace combinations
+      # boundary conditions on inlet - fully developed flow
+      #(hash added during unwrap)INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/u_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation> with <inlet fully developed>
+         #FACE_EQUATION <inlet fully developed> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <inlet> # normal velocity component is fully developed
+         FACE_EQUATION <inlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <inlet> # normal velocity component is fully developed
+         # INCLUDE FINISHED for ../templates/navier_stokes/u_fully_developed.arb
+         #--------------------------------------------------------
+      #(hash added during unwrap)INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation with <inlet no slip
+         FACE_EQUATION <inlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <inlet> # no component tangential to the face
+         #FACE_EQUATION <inlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <inlet> # no component tangential to the face in the second tangential direction
+         # INCLUDE FINISHED for ../templates/navier_stokes/noslip.arb
+         #--------------------------------------------------------
+      
+      # alternatively, set uniform inlet pressure giving required average velocity
+      NONE_DERIVED <u_av_calc> "facesum(-<u_f>*<facearea>,<inlet>)/facesum(<facearea>,<inlet>)" # calculate average velocity directed into the domain
+      #NONE_DERIVED <u_av_calc> "facesum(-<u_f>*<facearea>*1.d0,<inlet>)/facesum(<facearea>*1.d0,<inlet>)" # calculate average velocity directed into the domain
+      
+      # now reference pressure at centreline directly, removing one unknown and equation, but requiring <inlet sans centreline> and <inlet centreline>
+      NONE_EQUATION <inlet centreline flowrate equation> "<u_av_calc>-<u_av>" # set flowrate through inlet to give required average velocity
+      NONE_DERIVED <inlet centreline p> "facesum(<p_f>,region=<inlet centreline>)"
+      FACE_EQUATION <inlet flowrate equation> "<p_f>-<inlet centreline p>" ON <inlet sans centreline> # apply specified pressure over inlet
+      # INCLUDE FINISHED for ../templates/navier_stokes/inlet_u_fully_developed_uniform_p.arb
+      #--------------------------------------------------------
+   
+   # overwrite previous properties with the following
+   #CONSTANT <Re_pipe> 1.0d+5
+   #CONSTANT <mu> [Pa.s] "1/<Re_pipe>" # viscosity of liquid
+   #CONSTANT <rho> [kg/m^3] 1.d0 # density
+   #CONSTANT <u_av> [m/s] 1.d0 # average inlet velocity
+   
+   # these numbers roughly correspond to hot air
+   CONSTANT <rho> [kg/m^3] 0.664d0 output # density
+   CONSTANT <mu> [Pa.s] 2.75d-5 output # viscosity of liquid
+   CONSTANT <u_av> [m/s] 14.25d0 # average inlet velocity
+   # decrease turbulence intensity in the inlet for all models that support this
+   CONSTANT <turb_k_rel_inlet> 1.d-2
+   CONSTANT <turb_omega_rel_inlet> 1.d-2
+   
+   # output a flag telling us which term limited the correction velocity
+   FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+   # and turn some outputs on using the generic VARIABLE statement that picks up the last type and centring
+   VARIABLE <u_f_{correction}> output
+   VARIABLE <u_f_{raw}> output
+   VARIABLE <u_f> output
+   VARIABLE <J_f[l=1]> output
+   VARIABLE <tau[l=1,1]> output
+   VARIABLE <turb_mu_t> output
+   VARIABLE <turb_mu_t_f> output
+   VARIABLE <turb_2SS_c> output
+   VARIABLE <turb_mu_t> output
+   VARIABLE <turb_mu_t_f> output
+   VARIABLE <turb_l_prandtl2> output
+   VARIABLE <turb_mu_u_correction_f> output
+   VARIABLE <turb_2SS_background> output
+   VARIABLE <turb_2SS> output
+   
+   # use low order upwinding in these tests
+   CONSTANT <adv_limiter> [] 0.d0 # multiplier used to limit gradients when calculating advection fluxes
+   
+   # some diagnostics
+   #(hash added during unwrap)INCLUDE_ROOT "turbulence/wilcox88"
+   # INFO: setting include root directory to turbulence/wilcox88
+   #(hash added during unwrap)INCLUDE "smoothed_mu_t_diagnostics"
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/smoothed_mu_t_diagnostics.arb without any search/replace combinations
+      #(hash added during unwrap)INCLUDE_ROOT "smoothing"
+      # INFO: setting include root directory to smoothing
+      #(hash added during unwrap)INCLUDE "smoothed_variable_diagnostics" R "<variable" W "<turb_mu_t"
+         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         # the following is INCLUDED from ../templates/smoothing/smoothed_variable_diagnostics.arb with the following search/replace combinations: replace <variable with <turb_mu_t
+         CELL_OUTPUT <turb_mu_t_smoothed_position> "<turb_mu_t_smoothed>/<turb_mu_t_base>" ON <all cells>
+         CELL_OUTPUT <turb_mu_t_inside_linear_range> "cellif(<turb_mu_t>-<turb_mu_t_baseu>,<turb_mu_t>-<turb_mu_t_baseu>,cellif(-(<turb_mu_t>-<turb_mu_t_basel>),<turb_mu_t>-<turb_mu_t_basel>,0.d0))" ON <all cells>
+         #VARIABLE <turb_mu_t_base> output
+         #VARIABLE <turb_mu_t_basel> output
+         #VARIABLE <turb_mu_t_baseu> output
+         CELL_OUTPUT <turb_mu_t_change> "<turb_mu_t>-<turb_mu_t[r=1]>" ON <all cells> output
+         CELL_OUTPUT <turb_mu_t_rel_change> "(<turb_mu_t>-<turb_mu_t[r=1]>)/<turb_mu_t_base>" ON <all cells> output
+         NONE_OUTPUT <turb_mu_t_rel_change_min> "cellmin(<turb_mu_t_rel_change>,region=<all cells>)"
+         NONE_OUTPUT <turb_mu_t_rel_change_max> "cellmax(<turb_mu_t_rel_change>,region=<all cells>)"
+         NONE_OUTPUT <turb_mu_t_rel_change_abs> "nonemax(abs(<turb_mu_t_rel_change_min>),abs(<turb_mu_t_rel_change_max>))"
+         # INCLUDE FINISHED for ../templates/smoothing/smoothed_variable_diagnostics.arb
+         #--------------------------------------------------------
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/smoothed_mu_t_diagnostics.arb
+      #--------------------------------------------------------
+   #(hash added during unwrap)INCLUDE "wall_diagnostics"
+      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      # the following is INCLUDED from ../templates/turbulence/wilcox88/wall_diagnostics.arb without any search/replace combinations
+      
+      VARIABLE <turb_omega_walls> output
+      FACE_OUTPUT <turb_omega_walls_standard_high_Re> "60.d0*<mu>/(<rho>*0.075d0*<facedx>**2)" ON <walls> # fairly standard high Re boundary condition
+      FACE_OUTPUT <turb_omega_walls_standard_high_Re rel> "<turb_omega_walls_standard_high_Re>/<turb_omega_walls>" ON <walls>
+      FACE_OUTPUT <turb_y> "<facedx>" ON <walls>
+      FACE_OUTPUT <turb_y/turb_prandtl_viscous_layer_thickness> "<facedx>/<turb_prandtl_viscous_layer_thickness>" ON <walls>
+      FACE_OUTPUT <turb_y+> "sqrt(<facedx>*<u_av>*<rho>/<mu>)" ON <walls>
+      # INCLUDE FINISHED for ../templates/turbulence/wilcox88/wall_diagnostics.arb
+      #--------------------------------------------------------
+   
+   # some debugging ideas
+   #INCLUDE "explicit_mu_t"
+   #INCLUDE "strain_rate_background"
+   
+   # output some info about the mesh
+   #INCLUDE_ROOT "general"
+   #INCLUDE "cell_aspect_ratio"
+   #INCLUDE "element_indicies"
+   
+   # some statistics
+   NONE_OUTPUT <p_av_inlet> "facesum(<p_f>*<facearea>,region=<inlet>)/facesum(<facearea>,region=<inlet>)"
+   NONE_OUTPUT <p_av_outlet> "facesum(<p_f>*<facearea>,region=<outlet>)/facesum(<facearea>,region=<outlet>)"
+   NONE_OUTPUT <p_centreline_inlet> "facesum(<p_f>,region=<inlet centreline>)"
+   NONE_OUTPUT <p_centreline_outlet> "facesum(<p_f>,region=<outlet centreline>)"
+   
+   #-------------------------------------------------------------------
+   # INCLUDE FINISHED for ../turbulent_channel_containing_cylinder_2d.arb
    #--------------------------------------------------------
 ##################################################################################
