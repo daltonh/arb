@@ -1,0 +1,7 @@
+# the equivalent of the u_f template file but for the stokes equations
+INCLUDE "u_f"
+
+NONE_CONSTANT <u_mf_{adv}> "<hugeish>" # this constraint on the timestep is removed by making it hugeish
+# an alternative is to explicitly remove this contribution and recode up the correction velocity - less portable however given that u_f could change
+#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
+#NONE_CONSTANT <u_mf_{adv}> CANCEL

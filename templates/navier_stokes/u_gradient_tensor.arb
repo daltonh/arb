@@ -10,9 +10,3 @@
 <<dim3comment>><<dim1comment>>FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,<<reflect=1>>](<u[l=1]>)" ON <all faces>
 <<dim3comment>><<dim2comment>>FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,<<reflect=2>>](<u[l=2]>)" ON <all faces>
 <<dim3comment>>               FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,<<reflect=3>>](<u[l=3]>)" ON <all faces>
-
-# now at the same time calculate the velocity divergence (numerical) on each face
-#FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <all faces>
-# this is a now a placeholder for where this should be calculated
-# to include this contribution just include u_divergence_face somewhere after this file and <udiv_f> will be correctly calculated
-FACE_DERIVED <udiv_f> "0.d0" ON <all faces>

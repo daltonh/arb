@@ -303,7 +303,7 @@ integer :: idomain, iboundary, itotal ! number of domain (type 1) and boundary (
 integer :: jdomain, jboundary, jtotal ! number of domain (type 1) and boundary (type 2) faces, also total
 integer :: kdomain, kboundary, ktotal ! number of domain (type 1) and boundary (type 2) nodes, also total
 integer :: ptotal ! number of equations and unknowns
-double precision, dimension(:), allocatable, save :: delphiold, delphi ! single dimension unknown-sized variables for newton proceedure
+double precision, dimension(:), allocatable, save :: phiold, delphi ! single dimension unknown-sized variables for newton proceedure
 integer :: transient_relstepmax ! maximum relstep value for all transients (variables and dynamic regions)
 integer :: newtient_relstepmax ! maximum relstep value for all newtients (variables and dynamic regions)
 double precision :: newtres = 0.d0 ! last evaluated value of the newton residual

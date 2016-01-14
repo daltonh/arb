@@ -53,8 +53,10 @@ my $src_dir="$working_dir/src";
 my $build_dir=".";
 my $template_dir="$working_dir/templates";
 my $tmp_dir="$working_dir/tmp/setup";
-my $variable_file = "$tmp_dir/variable_list.txt";
-my $region_file = "$tmp_dir/region_list.txt";
+my $variable_list_file = "$tmp_dir/variable_list.txt";
+my $variable_arb_file = "$tmp_dir/variable_list.arb";
+my $region_list_file = "$tmp_dir/region_list.txt";
+my $region_arb_file = "$tmp_dir/region_list.arb";
 my $tmp_file_number=0;
 our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='/sw/bin/maxima'; # if all else fails specify the actual location - fink
@@ -72,7 +74,7 @@ my $version_file="$working_dir/licence/version";
 if (! -d $tmp_dir) { mkpath($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 my $filename;
 foreach $filename (bsd_glob("$tmp_dir/*")) {
-  if ($filename eq $variable_file || $filename eq $region_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
+  if ($filename eq $variable_arb_file || $filename eq $variable_list_file || $filename eq $region_arb_file || $filename eq $region_list_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
   if (-f $filename) {unlink($filename) or die "ERROR: could not remove $filename in directory $tmp_dir\n";}
 }
 
@@ -299,12 +301,13 @@ sub dump_variable_dependency_info {
 }
 
 #-------------------------------------------------------------------------------
-# dump the variables as an ordered list
+# dump the variables as an ordered list, and now also as a list in the arb format
 
 sub output_variable_list {
 
   use strict;
-  open(VARIABLE, ">$variable_file") or die "ERROR: problem opening temporary variable file $variable_file: something funny is going on: check permissions??\n";
+  open(VARIABLE, ">$variable_list_file") or die "ERROR: problem opening temporary variable file $variable_list_file: something funny is going on: check permissions??\n";
+  print VARIABLE "# List of the variables:\n";
   for my $key ( keys(%variable) ) {
     print VARIABLE "-" x 80,"\n";
     print VARIABLE "List of $key variables:\n";
@@ -324,6 +327,31 @@ sub output_variable_list {
   print VARIABLE "-" x 80,"\n";
   close(VARIABLE);
 
+  open(VARIABLE, ">$variable_arb_file") or die "ERROR: problem opening temporary variable file $variable_arb_file: something funny is going on: check permissions??\n";
+  print VARIABLE "# Reconstructed list of the variables in arb format:\n";
+  for my $key ( @user_types ) {
+    print VARIABLE "#","-" x 80,"\n";
+    print VARIABLE "# $key variables:\n";
+    for my $mvar ( 1 .. $#{$variable{$key}} ) {
+      print VARIABLE "\U$variable{$key}[$mvar]{centring}_$key "."$variable{$key}[$mvar]{name} [$variable{$key}[$mvar]{units}]";
+      if ($key =~ /ient$/) { print VARIABLE " \"".$variable{"initial_$key"}[$mvar]{equation}."\""; }
+      if ($key eq "constant" && empty($variable{$key}[$mvar]{equation})) { print VARIABLE " \"numerical constant rather than an equation\"" } else { print VARIABLE " \"$variable{$key}[$mvar]{equation}\"" };
+      if ($variable{$key}[$mvar]{centring} ne "none") { print VARIABLE " ON $variable{$key}[$mvar]{region}"; }
+      print VARIABLE " # other information";
+      for my $infokey ( qw( deriv newtstepmax newtstepmin comments )) {
+        print VARIABLE ": $infokey = ";
+        if (empty($variable{$key}[$mvar]{$infokey})) {
+          print VARIABLE "empty"
+        } else {
+          print VARIABLE "$variable{$key}[$mvar]{$infokey}";
+        }
+      }
+      print VARIABLE "\n";
+    }
+  }
+  print VARIABLE "#","-" x 80,"\n";
+  close(VARIABLE);
+
 }
 #-------------------------------------------------------------------------------
 # dump the regions as an ordered list
@@ -333,7 +361,7 @@ sub output_region_list {
   use strict;
   use Data::Dumper;
   my @types=(qw( system setup gmsh constant transient newtient derived equation output condition )); # list of region types
-  open(REGION, ">$region_file") or die "ERROR: problem opening temporary region file $region_file: something funny is going on: check permissions??\n";
+  open(REGION, ">$region_list_file") or die "ERROR: problem opening temporary region file $region_list_file: something funny is going on: check permissions??\n";
 
   for my $type ( @types ) {
     print REGION "-" x 80,"\n";
@@ -341,7 +369,7 @@ sub output_region_list {
     for my $n ( 0 .. $#region ) {
       if ($region[$n]{"type"} ne $type) { next; }
       print REGION "$n";
-      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread definitions location initial_location options newtstepmax newtstepmin)) {
+      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread location initial_location newtstepmax newtstepmin)) {
         print REGION ": $key = ";
         if (empty($region[$n]{$key})) {
           print REGION "empty";
@@ -355,6 +383,35 @@ sub output_region_list {
     }
   }
   print REGION "-" x 80,"\n";
+  close(REGION);
+
+  open(REGION, ">$region_arb_file") or die "ERROR: problem opening temporary region file $region_arb_file: something funny is going on: check permissions??\n";
+  print REGION "# Reconstructed list of the regions in arb format:\n";
+  for my $type ( @types ) {
+    if ($type eq "system") { next; } # don't output system types to the arb file
+
+    print REGION "#","-" x 80,"\n";
+    print REGION "# $type regions:\n";
+    for my $n ( 0 .. $#region ) {
+      if ($region[$n]{"type"} ne $type) { next; }
+
+      print REGION "\U$region[$n]{centring}_$type"."_REGION "."$region[$n]{name}";
+      if ($type =~ /ient$/ && nonempty($region[$n]{initial_location}{description})) { print REGION " \"".$region[$n]{initial_location}{description}."\""; } 
+      if (nonempty($region[$n]{location}{description})) { print REGION " \"".$region[$n]{location}{description}."\""; }
+      if (nonempty($region[$n]{part_of})) { print REGION " ON $region[$n]{part_of}"; }
+      print REGION " # other information";
+      for my $infokey (qw(user dynamic parent rindex fortran part_of_fortran parent_fortran last_variable_masread newtstepmax newtstepmin)) {
+        print REGION ": $infokey = ";
+        if (empty($region[$n]{$infokey})) {
+          print REGION "empty"
+        } else {
+          print REGION "$region[$n]{$infokey}";
+        }
+      }
+      print REGION "\n";
+    }
+  }
+  print REGION "#","-" x 80,"\n";
   close(REGION);
 
 }
@@ -564,12 +621,13 @@ sub read_input_files {
   my ($file, $oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
     $handle, $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
-    $condition, $key, $append, $cancel, $default, $masread);
+    $condition, $key, $append, $cancel, $default, $masread, $lineremainder);
 
   my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
   my $default_options = ""; # default options prepended to each statement read in
   my $override_options = ""; # override options appended to each statement read in
   my $skip = 0; # flag to indicate whether we are in comments section or not
+  my $indent = "   "; # amount to indent the unwrapped input file for each level of file inclusion
 
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
   open(UNWRAPPED_INPUT, ">$current_unwrapped_input_file");
@@ -587,27 +645,48 @@ sub read_input_files {
 
     while ($oline=<$handle>) { chompm($oline); if ($oline) { $oline=~s/^\s*// }; # remove linefeed from end and space from the start
 
-# do file-specific replacements on file before anything else
-# for v0.42 and onwards not doing replacements on any statements that define replacements (including include statements)
-      if (!($oline =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i)) {
-        foreach my $n1 ( reverse( 0 .. $#input_files ) ) {
-          foreach my $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
-            replace_substrings($oline,$input_files[$n1]{"replacements"}[$n2]{"search"},$input_files[$n1]{"replacements"}[$n2]{"replace"});
+# now splitting input line at the include/replacements keywords (wherever they are) and only doing replacements before this
+      my $lineremainder = '';
+      if ($oline =~ /^\s*(.*?)(\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s))/i) {
+        print DEBUG "INFO: found string that possibly needs part replacements: oline = $oline\n";
+        my $linestart = $1;
+        $lineremainder = $2.$';
+        $oline = '';
+        if (!($linestart)) {
+          print DEBUG "INFO: include/replacement string is bare, so do not perform any replacements on this line\n";
+        } else {
+          print DEBUG "INFO: attempting to remove any replacement strings from the start of this line\n";
+          while ($linestart =~ /^(\s*<<.*?>>\s*)/) { $oline=$oline.$1; $linestart=$'; }
+          print DEBUG "INFO: after splitting and looking for replace strings: oline = $oline: linestart = $linestart; lineremainder = $lineremainder\n";
+          if (nonempty($linestart)) {
+# there is more than string replacements at the start
+# to be consistent with previous behaviour do replacements on the entire string
+            $oline=$oline.$linestart.$lineremainder;
+            $lineremainder='';
+            print DEBUG "INFO: search/replace going ahead on entire oline as preamble to include/replacement keywords contains more than only <<>> delimited strings\n";
+          } else {
+            print DEBUG "INFO: search/replace going ahead on preamble oline only as preamble to include/replacement keywords contains only <<>> delimited strings\n";
           }
         }
       }
-      
-# now do general replacements, with latest defined replacements taking precedence
-# don't do general replacements on general_replacement or include lines
-      if (!($oline =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i)) {
-        foreach my $n1 ( reverse( 0 .. $#general_replacements ) ) {
-          replace_substrings($oline,$general_replacements[$n1]{"search"},$general_replacements[$n1]{"replace"});
+
+# do file-specific replacements on file before anything else
+      foreach my $n1 ( reverse( 0 .. $#input_files ) ) {
+        foreach my $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
+          replace_substrings($oline,$input_files[$n1]{"replacements"}[$n2]{"search"},$input_files[$n1]{"replacements"}[$n2]{"replace"});
         }
       }
+      foreach my $n1 ( reverse( 0 .. $#general_replacements ) ) {
+        replace_substrings($oline,$general_replacements[$n1]{"search"},$general_replacements[$n1]{"replace"});
+      }
+
+# and now reconstruct the entire line
+      $oline = $oline.$lineremainder;
+      if ($lineremainder) { print DEBUG "INFO: after replacements and reconstructing: oline = $oline\n"; }
 
       $line = $oline;
 # keep a record of what arb is doing in UNWRAPPED_INPUT, commenting out any INCLUDE or GENERAL_REPLACMENTS statements so that this file could be read again by arb directly
-      if ($line =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT "#$line\n"; } else { print UNWRAPPED_INPUT "$line\n"; }
+      if ($line =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT $indent x $#input_files,"#(hash added during unwrap)$line\n"; } else { print UNWRAPPED_INPUT $indent x $#input_files,"$line\n"; }
 
 # now process guts of statement
 # for the time being, have to handle trailing comments on the input lines
@@ -656,7 +735,7 @@ sub read_input_files {
         } else {
           print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
           print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
-          print UNWRAPPED_INPUT "#++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n# the following is INCLUDED from $input_files[$#input_files]{name}";
+          print UNWRAPPED_INPUT $indent x $#input_files,"#++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"# the following is INCLUDED from $input_files[$#input_files]{name}";
 # ref: FILENAME
 # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
           if (empty($simulation_info{"filename"})) {
@@ -708,7 +787,7 @@ sub read_input_files {
           $input_files[$#input_files]{"include_root"} = extract_first($line,$error);
           if ($error) {error_stop("matching delimiters not found in the following:\nfile = $file: line = $oline")}
         }
-        print UNWRAPPED_INPUT "# INFO: setting include root directory to $input_files[$#input_files]{include_root}\n";
+        print UNWRAPPED_INPUT $indent x $#input_files,"# INFO: setting include root directory to $input_files[$#input_files]{include_root}\n";
         next;
 
 # extract any general replacements, pushing them onto the back of the existing list
@@ -880,7 +959,7 @@ sub read_input_files {
             print "INFO: based on a GLUE_FACES statement setting $search general_replacements string to $replace\n";
           }
         }
-        print FORTRAN_INPUT $keyword; if (nonempty($line)) {print FORTRAN_INPUT " ".$line}; print FORTRAN_INPUT "\n"; # print line to fortran input file, making sure that the keyword is uppercase there
+        print FORTRAN_INPUT $keyword; if (nonempty($line)) {print FORTRAN_INPUT " ".$line}; print FORTRAN_INPUT "\n"; # print line to fortran input file
         next;
       }
 
@@ -1326,7 +1405,7 @@ sub read_input_files {
     } # end of loop for this input file
 
     close($handle);
-    if ($#input_files) { print UNWRAPPED_INPUT "# INCLUDE FINISHED for $input_files[$#input_files]{name}\n#--------------------------------------------------------\n"; }
+    if ($#input_files) { print UNWRAPPED_INPUT $indent x $#input_files,"# INCLUDE FINISHED for $input_files[$#input_files]{name}\n",$indent x $#input_files,"#--------------------------------------------------------\n"; }
     pop(@input_files);
   } # end of loop for all input files
 
@@ -2211,8 +2290,8 @@ sub organise_user_variables {
 #f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component) (equivalently compoundelementdata,compoundelementnodedata,compoundelementnodelimiteddata)
 #p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
 #f  magnitude=[value|<a none centred constant>] - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
-#f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
-#f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
+#f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude (default is dynamic for equations, and static for unknowns)
+#f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next) (default is 1.1 for equations, 2.0 for unknowns)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 
 # general rule with options is that they don't include any underscores between words

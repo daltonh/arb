@@ -1,0 +1,4 @@
+# flux of momentum over and in the direction of each face due to advection
+<<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,<<reflect=1>>](<rho[r=1]>*<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+<<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,<<reflect=2>>](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+<<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,<<reflect=3>>](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>

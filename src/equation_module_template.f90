@@ -431,7 +431,7 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
 ! backstepping update
       do ns = 1, ubound(var(m)%funk,1)
         p = var(m)%funk(ns)%pp(1)
-        var(m)%funk(ns)%v = delphiold(p) + lambda*delphi(p)
+        var(m)%funk(ns)%v = phiold(p) + lambda*delphi(p)
       end do
 
     end if 
