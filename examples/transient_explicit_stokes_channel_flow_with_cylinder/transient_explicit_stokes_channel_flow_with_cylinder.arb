@@ -113,6 +113,7 @@ CONSTANT <c_mu_explicit> 0.25d0 # multiplier for explicit viscous term stability
 
 # also push this tolerance to a higher level to speed things up, if only trying to get a steady-state solution
 NEWTRESTOL 1.d-5
+INFO "simulations will not be time accurate with a large NEWTRESTOL being set"
 
 # decrease time between outputs
 CONSTANT <CFL_out> 0.1d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity

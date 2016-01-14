@@ -856,13 +856,13 @@ sub read_input_files {
       if ($line =~ /^\s*END($|\s)/i) { print "INFO: found END statement in file = $file\n"; last; }
 
 # check for the user ERROR or WARNING statements that signifies that there is a known problem with a file
-      elsif ($line =~ /^\s*(ERROR|WARNING)(\s|$)/i) {
+      elsif ($line =~ /^\s*(ERROR|WARNING|INFO)(\s|$)/i) {
         $key="\L$1"; $line=$';
 # pull out any string that follows this keyword if there is one
         $tmp = extract_first($line,$error);
         if (empty($tmp)) { $tmp = "no explanation provided"; }
-        if ($key eq "error") { error_stop("user error found in $file: $tmp"); }
-        else { print "WARNING: user warning found in $file: $tmp\n"; }
+        if ($key eq "error") { error_stop("user error statement found in $file: $tmp"); }
+        else { print "\U$key",": user ","\L$key"," statement found in $file: $tmp\n"; }
       }
 
 # check on file version
