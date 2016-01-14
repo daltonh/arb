@@ -1,0 +1,2 @@
+NONE_DERIVED <linked> "noneif(<trigger_logical>-(<linked_on_trigger_occurrence>-0.1),noneif((<linked_on_trigger_occurrence>+0.1)-<trigger_logical>,noneif(abs(<trigger_logical>-<trigger_logical[r=1]>)-1.d-10,<linked_variable_to_store>,<linked[r=1]>),<linked[r=1]>),<linked[r=1]>)" stepoutput
+NONE_TRANSIENT <linked[r=1]> "0.d0" "<linked>"

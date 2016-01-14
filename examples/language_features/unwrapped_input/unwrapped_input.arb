@@ -1,0 +1,63 @@
+# root_input.arb file created by the arb script
+##################################################################################
+# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
+EXTERNALS "src/free_surface_functions.f90"
+##################################################################################
+# the following working directory files found by the arb script: ddot_test.arb random_test.arb
+#INCLUDE_WORKING "ddot_test.arb"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../ddot_test.arb without any search/replace combinations
+# this demonstrates how to take a double dot product and how to use a template file to perform a tensor transpose
+
+NONE_CONSTANT <A[l=1,1]> "11"
+NONE_CONSTANT <A[l=1,2]> "12"
+NONE_CONSTANT <A[l=1,3]> "13"
+NONE_CONSTANT <A[l=2,1]> "21"
+NONE_CONSTANT <A[l=2,2]> "22"
+NONE_CONSTANT <A[l=2,3]> "23"
+NONE_CONSTANT <A[l=3,1]> "31"
+NONE_CONSTANT <A[l=3,2]> "32"
+NONE_CONSTANT <A[l=3,3]> "33"
+NONE_CONSTANT <B[l=1,1]> "111"
+NONE_CONSTANT <B[l=1,2]> "112"
+NONE_CONSTANT <B[l=1,3]> "113"
+NONE_CONSTANT <B[l=2,1]> "121"
+NONE_CONSTANT <B[l=2,2]> "122"
+NONE_CONSTANT <B[l=2,3]> "123"
+NONE_CONSTANT <B[l=3,1]> "131"
+NONE_CONSTANT <B[l=3,2]> "132"
+NONE_CONSTANT <B[l=3,3]> "133"
+NONE_CONSTANT <ddot(A,B)> "ddot(<A[l=:,:]>,<B[l=:,:]>)"
+#INCLUDE_ROOT "general"
+# INFO: setting include root directory to general
+#INCLUDE "tensor_transpose" R "CELL_LOCAL" W "NONE_LOCAL" R "<tensor" W "<B"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/general/tensor_transpose.arb with the following search/replace combinations: replace CELL_LOCAL with NONE_LOCAL: replace <tensor with <B
+# little code snippet to create a transpose of a tensor as a local variable
+# NOTE, may need to correct centring of variable when calling
+
+NONE_LOCAL <B_transpose[l=1,1]> "<B[l=1,1]>"
+NONE_LOCAL <B_transpose[l=2,2]> "<B[l=2,2]>"
+NONE_LOCAL <B_transpose[l=3,3]> "<B[l=3,3]>"
+NONE_LOCAL <B_transpose[l=1,2]> "<B[l=2,1]>"
+NONE_LOCAL <B_transpose[l=1,3]> "<B[l=3,1]>"
+NONE_LOCAL <B_transpose[l=2,3]> "<B[l=3,2]>"
+NONE_LOCAL <B_transpose[l=2,1]> "<B[l=1,2]>"
+NONE_LOCAL <B_transpose[l=3,1]> "<B[l=1,3]>"
+NONE_LOCAL <B_transpose[l=3,2]> "<B[l=2,3]>"
+# INCLUDE FINISHED for ../templates/general/tensor_transpose.arb
+#--------------------------------------------------------
+NONE_CONSTANT <ddot(A,B_transpose)> "ddot(<A[l=:,:]>,<B_transpose[l=:,:]>)"
+# INCLUDE FINISHED for ../ddot_test.arb
+#--------------------------------------------------------
+##################################################################################
+#INCLUDE_WORKING "random_test.arb"
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../random_test.arb without any search/replace combinations
+# <random> creates a random variable in the range 0 <= <random> < 1, which is unique to each call
+NONE_CONSTANT <random1> "<random>"
+NONE_CONSTANT <random2> "<random>"
+NONE_CONSTANT <random3> "<random>"
+# INCLUDE FINISHED for ../random_test.arb
+#--------------------------------------------------------
+##################################################################################

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 # This file is called filter.pl
 # from Lachlan, 12/8/14
 
@@ -10,6 +10,7 @@
 # modified to work with all files that glob to output*.msh, daltonh, 12/8/14
 
 use strict;
+use warnings;
 use File::Glob ':glob';
 use Getopt::Long;
 

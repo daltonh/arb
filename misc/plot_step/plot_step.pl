@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 # file misc/plot_step/plot_step.pl
 #
 # Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
@@ -50,6 +50,7 @@
 # 3) if data is not specified for x, then column 1 will be used, or column 2 for y, or if 2nd : present, column 3 for y2
 
 use strict;
+use warnings;
 use List::Util qw(min max);
 use File::Path qw(mkpath); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 use File::Glob ':glob'; # deals with whitespace better
@@ -95,6 +96,7 @@ my $batcher = 0; # if batcher is true then plot batcher_output/run_*/output_step
 my $refresh_interval = 5; # seconds between plot refreshes
 my $label_characters = 50; # maximum number of y label characters before a line break
 my $pointinterval = 0; # default interval between points when using linespoints
+my $process = 0; # whether we are looking for an output_process_log.csv file or an output_step.csv file
 
 # loop through command line bits looking for file name ($step_file) and plotting command ($command)
 $n = 0;
@@ -105,6 +107,8 @@ while ( $n <= $#ARGV ) {
     $step_file = $ARGV[$n];
   } elsif ($ARGV[$n] eq '-r' || $ARGV[$n] eq '--refresh') {
     $refresh = 1;
+  } elsif ($ARGV[$n] eq '-p' || $ARGV[$n] eq '--process') {
+    $process = 1;
   } elsif ($ARGV[$n] =~ /^(-r|--refresh)(\d+)$/) {
     $refresh = 1;
     $refresh_interval = $2;
@@ -162,10 +166,12 @@ if (!(-d 'misc/plot_step')) { die "PLOTSTEP ERROR: plot_step.pl must be called f
 
 # check that we can find the step_file
 if (!($step_file)) {
+  my $outputfile="output_step.csv";
+  if ($process) { $outputfile="output_process_log.csv"; }
   if ($batcher) {
-    $step_file="batcher_output/run_0/output_step.csv";
+    $step_file="batcher_output/run_0/".$outputfile;
   } else {
-    $step_file="output/output_step.csv";
+    $step_file="output/".$outputfile;
   }
   if (!(-e $step_file)) { die "PLOTSTEP ERROR: could not find the step file $step_file: plot_step.pl reads in this file after a simulation has been successfully run\n"; }
 } else {
@@ -541,6 +547,7 @@ sub usage {
   print "  Note:  two colons must be given for y2 data to be specified\n";
   print "OPTIONS:\n";
   print " -f|--file <inputfile.csv>: call from any working directory with specific reference to another file\n";
+  print " -p|--process: looking for a process log file rather than stp file, the default of which is output/output_process_log.csv\n";
   print " -r|--refresh: continuously refresh the plot, using the default refresh interval (5s)\n";
   print " -rN|--refreshN: continuously refresh the plot, using an interval of Ns\n";
   print " -b|--batcher: plot data from batcher_output/run_* directories\n";

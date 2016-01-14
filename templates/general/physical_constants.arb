@@ -1,0 +1,3 @@
+CONSTANT <k_boltzmann> [J/K] 1.3806488d-23 # boltzmann's constant, wiki
+CONSTANT <N_avagadro> [1/mol] 6.022140857d+23 # avagadro's constant, wiki
+CONSTANT <R_gas_constant> [J/K.mol] "<k_boltzmann>*<N_avagadro>"

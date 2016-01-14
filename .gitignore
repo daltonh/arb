@@ -12,10 +12,11 @@
 !/misc/
 !/output/
 !/pack
-!/plot_step
+!/plot
 !/src/
 !/templates/
 !/tmp/
+!/track
 
 # object files
 *.[ao]

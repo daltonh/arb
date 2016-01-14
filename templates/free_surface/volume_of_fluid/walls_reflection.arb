@@ -1,0 +1,2 @@
+# boundary equations for walls, here approximating a reflection BC
+FACE_EQUATION <vof_equation_walls> "facegrad[adjacentcells](<vof_phi>)" ON <walls>

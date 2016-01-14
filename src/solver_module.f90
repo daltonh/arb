@@ -2008,10 +2008,10 @@ end do
 if (trim(linear_solver) == "default") then
   if (intel_pardiso_linear_solver_check()) then
     linear_solver = "intelpardiso"
-  else if (pardiso_linear_solver_check()) then
-    linear_solver = "pardiso"
   else if (suitesparse_linear_solver_check()) then
     linear_solver = "suitesparse"
+  else if (pardiso_linear_solver_check()) then
+    linear_solver = "pardiso"
   else if (hsl_ma28_linear_solver_check()) then
     linear_solver = "hslma28"
   else

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 # file src/setup_equations.pl
 #
 # Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
@@ -35,6 +35,7 @@
 # perl script to create equation f90 module for arb
 
 use strict;
+use warnings;
 use File::Basename;
 #use File::Path qw(make_path);
 use File::Path qw(mkpath); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
@@ -43,7 +44,7 @@ use File::Glob ':glob'; # deals with whitespace better
 #use Time::Piece; # removed for portability
 use Sys::Hostname;
 
-my $version="0.53";
+my $version="0.54";
 my $minimum_version="0.40";
 
 # now called from build directory
@@ -5887,7 +5888,7 @@ sub create_system_variables {
     $variable{"system"}[$m{"system"}]{"fortran"} = "cell(i)%x($l)";
     $variable{"system"}[$m{"system"}]{"units"} = $lengthunit;
     $m{"system"}++;
-    $variable{"system"}[$m{"system"}]{"name"} = "<celldx[l=$l]>"; # cell centred location vector
+    $variable{"system"}[$m{"system"}]{"name"} = "<celldx[l=$l]>"; # cell centred size vector
     $variable{"system"}[$m{"system"}]{"centring"} = "cell";
     $variable{"system"}[$m{"system"}]{"maxima"} = "celldx[i,$l]";
     $variable{"system"}[$m{"system"}]{"fortran"} = "cell(i)%dx($l)";
@@ -6218,6 +6219,10 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"maxima"} = "hugeish";
 # $variable{"system"}[$m{"system"}]{"fortran"} = "(1.d-2*sqrt(huge(0.d0)))";
   $variable{"system"}[$m{"system"}]{"fortran"} = "hugeish";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<random>"; # a random number within the range 0 <= random < 1
+  $variable{"system"}[$m{"system"}]{"maxima"} = "random";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "random()";
   $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtstep>"; # double precision representation of newtstep
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtstep";

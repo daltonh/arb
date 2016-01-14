@@ -381,9 +381,9 @@ logical :: kernel_availability_nodegrad = .false.
 logical :: kernel_availability_nodeave = .false.
 
 ! code version details
-real, parameter :: version = 0.53 ! current version
+real, parameter :: version = 0.54 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
-character(len=100), parameter :: versionname = "flexible freddy"
+character(len=100), parameter :: versionname = "flexible freda"
 
 ! the following are default values for various parameters which can be altered here (and not via user input options)
 double precision, parameter :: limitertolerance = 1.d-10 ! (1.d-10) tolerance used when calculating advection gradient limiting - set to small positive number
@@ -2371,6 +2371,18 @@ else
 end if
 
 end function heaviside
+
+!-----------------------------------------------------------------
+
+function random()
+
+! this generates a random number in the range 0 <= random < 1
+
+double precision :: random
+
+call random_number(random) ! this is an intrinsic function apparently
+
+end function random
 
 !-----------------------------------------------------------------
 
@@ -5020,6 +5032,26 @@ else
 end if
 
 end function facefromcelldirection
+
+!-----------------------------------------------------------------
+
+subroutine initialise_random_number
+
+! call the random_seed subroutine with a set of integers based on the time
+
+integer :: clock, seed_size, n ! for random seed
+integer, dimension(:), allocatable :: seed
+
+call random_seed(size=seed_size)
+allocate(seed(seed_size))
+do n = 1, seed_size
+  call system_clock(clock)
+  seed(n)=clock
+end do
+call random_seed(put=seed) ! for gnu compiler need to generate unique seed, put needs to be random itself...
+deallocate(seed)
+
+end subroutine initialise_random_number
 
 !-----------------------------------------------------------------
 

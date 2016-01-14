@@ -2,7 +2,11 @@
 # this dangerous little script will recursively remove all arb output and object files from a directory hierarchy
 echo "You are about to remove the following files:";
 filestring="-name output.* -or -name debug* -or -name fort* -or -name kernel_*.txt -or -name mesh_*.txt -or -name output*.csv -or -name convergence_details.txt -or -name latest.* -or -name *.so -or -name *.o -or -name *.dylib -or -name *.mod";
-find . -depth \( $filestring \) -printf "%p:%skb\n";
+if which gfind >/dev/null 2>/dev/null ; then
+  gfind . -depth \( $filestring \) -printf "%p:%skb\n";
+else
+  find . -depth \( $filestring \) -printf "%p:%skb\n";
+fi
 read -p "Press y to continue, or any other key to quit without the ensuing massacre: " answer;
 if [ "$answer" == "y" ]; then
   echo 'Deleting files:';

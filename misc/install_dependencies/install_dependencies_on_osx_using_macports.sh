@@ -3,22 +3,22 @@
 # this script just installs the macports packages that are required for arb
 # this file is specific to osx
 # run as sudo, as in 'sudo ./install_dependencies_on_osx_using_macports.sh' after you have:
-# 1) installed Xcode with the command line utilities, including doing `xcode-select --install`
+# 1) installed Xcode with the command line utilities, including opening up the GUI first and accepting the licence agreements, and then doing `xcode-select --install` on the command line
 # 2) installed macports following instructions at https://guide.macports.org/#installing
 
-# other things you might like to do:
-# install gmsh using their binaries from http://geuz.org/gmsh/#Download
-# get syntax highlighting working in vim - see misc/vim_syntax
-# install some other linear solvers - see (e.g.) src/contributed/pardiso
-# use this with ifort (intel's fortran compiler) - just installing it should allow it as an option
-# install paraview as an alternative post-processor to gmsh
+# other things you might like to do after this install has completed:
+# 1) install gmsh using their binaries from http://geuz.org/gmsh/#Download
+# 2) get syntax highlighting working in vim - see misc/vim_syntax
+# 3) install some other linear solvers - see (e.g.) src/contributed/pardiso
+# 4) install ifort (if you have a licence)
+# 5) install paraview as an alternative post-processor to gmsh
+# 6) install wxmaxima for a maxima GUI interface
+#       port install wxmaxima
 
 ######################
 
 # basic arb dependencies
 port install maxima gnuplot
-# optional 
-#port install wxmaxima
 # install gfortran
 port install gcc49 +gfortran
 # install SuiteSparse
@@ -34,19 +34,21 @@ port select --set python python27
 #https://guide.macports.org
 #http://truongtx.me/2014/02/25/mac-os-install-python-pip-virtualenv-using-macports/
 
-# finally, link the (strange) macports gfortran name to a standard name within an accessible bin directory
-echo "INFO: creating a link to gfortran within /usr/local/bin";
+# the following directories and link are the only non-ports things done in this install script
+# finally, link the particular macports gfortran version name to a standard name within an accessible bin directory
+echo "INFO: setting up a link to gfortran within /usr/local/bin";
 if [ ! -d "/usr/local/bin" ] ; then 
-echo "INFO: first creating /usr/local/bin directory";
-mkdir -p "/usr/local/bin" ;
+  echo "INFO: first creating /usr/local/bin directory";
+  mkdir -p "/usr/local/bin" ;
 fi ;
-echo "UNINSTALL: to get rid of this link do rm /usr/local/bin/gfortran";
-echo "WARNING: this link will not work if you have multiple gfortran versions installed via macports - remote the older ones or just create the link manually"
-#ln -s /opt/local/bin/gfortran-mp-4.9 /usr/local/bin/gfortran
-ln -s /opt/local/bin/gfortran-mp-* /usr/local/bin/gfortran
-
-# this is now done differently, and based on the mumfpack routine which is automatically downloaded if required
-#echo "INFO: you may now want to install the free suitesparse linear solver umfpack fortran 90 wrapper routine.  If so, cd src/contributed/suitesparse and type make";
-
-# think that this should have already been installed prior to macports actually working, so the following message is redundant?
-#echo "INFO: if you haven't already done so install Xcode with the command line utilities, and the Xquartz x11 server";
+# find all of the gfortran versions, and link to the latest one
+gfortran_versions=( `ls /opt/local/bin/gfortran-mp-* 2> /dev/null` );
+echo "INFO: found the following gfortran versions: ${gfortran_versions[@]}";
+if [ ${#gfortran_versions[@]} -ne 0 ]; then
+  if [ -h "/usr/local/bin/gfortran" ] ; then 
+    rm /usr/local/bin/gfortran;
+  fi;
+  echo "INFO: linking from ${gfortran_versions[${#gfortran_versions[@]}-1]} to /usr/local/bin/gfortran";
+  ln -s ${gfortran_versions[${#gfortran_versions[@]}-1]} /usr/local/bin/gfortran;
+  echo "UNINSTALL: to get rid of this link do rm /usr/local/bin/gfortran";
+fi;

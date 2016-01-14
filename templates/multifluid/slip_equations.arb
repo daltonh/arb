@@ -1,0 +1,24 @@
+FACE_DERIVED <phi_s_f_adv> "faceave[advection](<phi_s>,<u_f>,0.d0)" ON <all faces>
+
+FACE_DERIVED <M_Pi_sum_s_f> "-facegrad[dxunit](<Pi_sum_s>)" ON <all faces> # differenced the same low order way that dynamic_force_f is to ensure boundedness
+CONSTANT <beta_star_D_s> "9.d0*<mu>/(2.d0*<a_s>^2)" # stokes regime drag on spherical particle
+
+FACE_DERIVED <j_s_f> "<phi_s_f_adv>*<u_f>+<M_Pi_sum_s_f>/<beta_star_D_s>" ON <all faces>
+
+CONSTANT <phi_s_source> "0.d0" # overwrite this with volume reactions from other species
+# implicit timestepping right now
+<<steadystatecomment>>CELL_EQUATION <phi_s_domain_equation> "celldiv(<j_s_f>) - <phi_s_source>" ON <domain>
+<<transientcomment>>CELL_EQUATION <phi_s_domain_equation> "(<phi_s>-<phi_s[r=1]>)/<dt> + celldiv(<j_s_f>) - <phi_s_source>" ON <domain>
+
+FACE_EQUATION <phi_s_walls_equation> "<j_s_f>" ON <walls>
+# here are some ideas re how to change the inlet concentration with time
+CONSTANT <phi_s_inlet> 0.2d0
+#NONE_TRANSIENT <phi_s_inlet> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<phi_s_inlet_conc>,0.d0))" # injection of species
+#NONE_TRANSIENT <phi_s_inlet> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<phi_s_inlet_conc>,0.d0))" # injection of species
+FACE_EQUATION <phi_s_inlet_equation> "<phi_s>-<phi_s_inlet>" ON <inlet>
+FACE_EQUATION <phi_s_outlet_equation> "faceif(<u_f>,facegrad[dxunit](<phi_s>),<phi_s>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+
+NONE_OUTPUT <phi_s_bulk ave outlet> "abs(facesum(<phi_s>*<facearea>*<u_f>,region=<outlet>))/nonemax(abs(facesum(<facearea>*<u_f>,region=<outlet>)),1.d-10)"
+NONE_OUTPUT <phi_s_bulk ave inlet> "abs(facesum(<phi_s>*<facearea>*<u_f>,region=<inlet>))/nonemax(abs(facesum(<facearea>*<u_f>,region=<inlet>)),1.d-10)"
+NONE_OUTPUT <phi_s_maximum> "cellmax(<phi_s>,region=<all cells>)"
+NONE_OUTPUT <phi_s_minimum> "cellmin(<phi_s>,region=<all cells>)"
