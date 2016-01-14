@@ -4,7 +4,7 @@
 # arb is released under the GNU GPL.  For full details see the license directory.
 #
 #-------------------------------------------------------------------
-VERSION 0.54 # the version of syntax used in this file
+VERSION 0.55 # the version of syntax used in this file
 
 # the following strings describe the simulation and are passed to the output files
 INFO_TITLE "Steady state flow around an offset cylinder within a channel, here using stokes equations"
@@ -76,11 +76,12 @@ GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any refere
 
 # use templates from the navier_stokes directory to build up problem
 INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+
+# the only change to get the Stokes rather than Navier-Stokes equations is to include the stokes template file here to set the <<stokescomment>> replacement string
+INCLUDE "stokes"
+
 INCLUDE "constants" # specify physical and numerical constants
-
-# the only change to get the Stokes rather than Navier-Stokes equations is to include the domain_stokes template file here instead of domain
-INCLUDE "domain_stokes" # equations to be solved within the domain
-
+INCLUDE "domain"
 INCLUDE "outlet_p_set" # outlet BC
 INCLUDE "walls" # nonslip walls BC
 
