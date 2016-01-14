@@ -37,7 +37,7 @@ sub case_setup {
   # now uses case hash which is specific to each run and can accept the following fields (all filenames accept glob patterns and now default to empty if not used):
   # arbfile = array of arb files used for each run, for which replacements will take place
   # geofile = array of geo files used for each run which need to be meshed, for which replacements will take place
-  # otherfile = array of other files which are copied over to working directory WITH REPLACEMENTS, commonly used for arb or geo files which are parents of the ones that are specified to arb or create_mesh
+  # includefile = array of other files which are copied over to working directory WITH REPLACEMENTS, commonly used for arb or geo files which are parents of the ones that are specified to arb or create_mesh
   # mshfile = array of other files which are copied over to working directory WITHOUT REPLACEMENTS, commonly used for a premade msh file (actually, non-msh files listed here don't have any actions performed on them)
   # replacements = hash of string replacements, now used across both geo and arb files
   # arboptions = arb options to be used for the specific run, noting that quiet and quiet-make are already included
