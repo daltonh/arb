@@ -183,17 +183,38 @@ CONSTANT <u_av> [m/s] 1.d0 # required average inlet velocity (if used, sets flow
 CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
 CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
 
+# find an estimate of the domain size using general template
+#INCLUDE_ROOT "general"
+# INFO: setting include root directory to general
+#INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/general/domain_lengthscale.arb without any search/replace combinations
+# find an estimate of the domain size
+# here we use the maximum domain length in each dimension
+# previously used a more accurate but expensive formulation (see minimum_face_boundary_distance)
+#INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# the following is INCLUDED from ../templates/general/domain_lengths.arb without any search/replace combinations
+# based on node locations, here we calculate the maximum length of the domain in each dimension
+# these loops could be conducted over <boundary nodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
+# as this is only a single loop through each node this isn't an expensive calculation anyway (unlike the levelset-based minimum boundary distance)
+NONE_CONSTANT <nodexmax[l=1]> "nodemax(<nodex[l=1]>,region=<all nodes>)"
+NONE_CONSTANT <nodexmax[l=2]> "nodemax(<nodex[l=2]>,region=<all nodes>)"
+#NONE_CONSTANT <nodexmax[l=3]> "nodemax(<nodex[l=3]>,region=<all nodes>)"
+NONE_CONSTANT <nodexmin[l=1]> "nodemin(<nodex[l=1]>,region=<all nodes>)"
+NONE_CONSTANT <nodexmin[l=2]> "nodemin(<nodex[l=2]>,region=<all nodes>)"
+#NONE_CONSTANT <nodexmin[l=3]> "nodemin(<nodex[l=3]>,region=<all nodes>)"
+NONE_CONSTANT <domain_length[l=1]> "<nodexmax[l=1]>-<nodexmin[l=1]>"
+NONE_CONSTANT <domain_length[l=2]> "<nodexmax[l=2]>-<nodexmin[l=2]>"
+#NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"
+# INCLUDE FINISHED for ../templates/general/domain_lengths.arb
+#--------------------------------------------------------
+NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"
+# INCLUDE FINISHED for ../templates/general/domain_lengthscale.arb
+#--------------------------------------------------------
+
 # for reference calculate some nondimensional quantities
 # these should be overwritten by real nondimensional quantities if this is a nondimensional problem
-
-# this bit of code taken from level set routines, and identical
-# finds minimum distance to walls
-FACE_LOCAL <ls_boundary_vector[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
-FACE_LOCAL <ls_boundary_vector[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
-#FACE_LOCAL <ls_boundary_vector[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
-CELL_LOCAL <ls_minimum_boundary_distance> "sqrt(facemin(dot(<ls_boundary_vector[l=:]>,<ls_boundary_vector[l=:]>),region=<walls>))"
-
-CONSTANT <a_lengthscale> "cellmax(<ls_minimum_boundary_distance>,region=<fluid domain>)" # an estimate of the mesh lengthscale (channel half-width) based on the minimum domain -> wall distance
 CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
 # INCLUDE FINISHED for ../templates/navier_stokes/constants.arb
 #--------------------------------------------------------
