@@ -1,0 +1,5 @@
+# this calculated all fluxes now, including the rhie-chow stuff
+# by default this will work for steady-state (or implicit) simulations with constant rho
+# for other cases include files separately, using alternative files for momentum_flux.arb and doing specific face-centred property replacements in advection_flux.arb
+INCLUDE "advection_flux"
+INCLUDE "momentum_flux"

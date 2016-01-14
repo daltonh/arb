@@ -1,0 +1,1 @@
+FACE_EQUATION <equation> "facegrad(<p>)" ON <region> # set pressure gradient next to wall equal to zero

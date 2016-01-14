@@ -1,0 +1,4 @@
+INCLUDE "domain" # no .arb suffix is required
+INCLUDE "inlet_u_fully_developed"
+INCLUDE "outlet_u_fully_developed"
+INCLUDE "walls"

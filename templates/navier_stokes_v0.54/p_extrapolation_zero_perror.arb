@@ -1,0 +1,3 @@
+#FACE_EQUATION <equation> "<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>)" ON <region> # pressure gradient next to wall set so that p_error would be zero, and hence <u_f> = <u_f_{raw}>
+#FACE_EQUATION <equation> "<dynamic_force_f> - faceave(dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>)))" ON <region> # pressure gradient next to wall set so that p_error would be zero, and hence <u_f> = <u_f_{raw}>
+FACE_EQUATION <equation> "<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>)" ON <region> # pressure gradient next to wall set so that p_error would be zero, and hence <u_f> = <u_f_{raw}>
