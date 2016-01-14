@@ -3,12 +3,12 @@
 # set these strings to defaults if not already set
 GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
 
-# navier-stokes version
-<<navierstokescomment>><<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+<J_advection_f[l=1]>" ON <all faces> # component of momentum transport from stress and advection
-<<navierstokescomment>><<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+<J_advection_f[l=2]>" ON <all faces> # component of momentum transport from stress and advection
-<<navierstokescomment>><<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)+<J_advection_f[l=3]>" ON <all faces> # component of momentum transport from stress and advection
+# start by placing in viscous momentum transport, applicable to both the stokes and navier-stokes equations
+<<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <all faces>
+<<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <all faces>
+<<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <all faces>
 
-# stokes version
-<<stokescomment>><<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <all faces> # component of momentum transport from stress and advection
-<<stokescomment>><<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <all faces> # component of momentum transport from stress and advection
-<<stokescomment>><<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <all faces> # component of momentum transport from stress and advection
+# and now add advection momentum transport for just the navier-stokes equations using self-referencing
+<<navierstokescomment>><<dim1comment>>VARIABLE <J_f[l=1]> "<J_f[l=1]>+<J_advection_f[l=1]>"
+<<navierstokescomment>><<dim2comment>>VARIABLE <J_f[l=2]> "<J_f[l=2]>+<J_advection_f[l=2]>"
+<<navierstokescomment>><<dim3comment>>VARIABLE <J_f[l=3]> "<J_f[l=3]>+<J_advection_f[l=3]>"
