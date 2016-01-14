@@ -3,136 +3,65 @@
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: minimal_kernel_example.arb
-#(hash added during unwrap)INCLUDE_WORKING "minimal_kernel_example.arb"
+# the following working directory files found by the arb script: inviscid_burgers_equation.arb
+#(hash added during unwrap)INCLUDE_WORKING "inviscid_burgers_equation.arb"
    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../minimal_kernel_example.arb without any search/replace combinations
-   VERSION 0.51 # the version of syntax used in this file
+   # the following is INCLUDED from ../inviscid_burgers_equation.arb without any search/replace combinations
+   # arb finite volume solver
+   # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+   #
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #-------------------------------------------------------------------
+   # file equations.in
+   VERSION 0.40
+   #----------------------------------------------------------------------------
    
-   # the following strings describe the simulation and are passed to the output files
-   INFO_TITLE "Simple file containing equations that only need minimal kernels to be calculated"
-   INFO_DESCRIPTION "Used to bugtest kernel_availability"
-   INFO_AUTHOR "Dalton Harvie"
-   INFO_DATE "11/2/15" # interpreted as the last modification date
+   # numerical constants
+   CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
+   CONSTANT <dt> [] 0.2d-2 # constant timestep
+   CONSTANT <dtout> [] 5.d-2 # time between output
+   CONSTANT <tend> [] 1.0d+0 # time for simulation to stop
+   CONSTANT <advection limiter> 1.d0 # whether to use high order (1.d0) or low order (0.d0) upwinding
    
-   MSH_FILE "surface.msh"
+   #-------------------------------------------------------------------
+   # geometry
    
-   # cell based:
-   CELL_UNKNOWN <phi_c> "1.d0" ON <all cells>
-   #NONE_CONSTANT <source> 1.d0
+   # CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+   # where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
+   # where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+   # where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
+   # where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
+   # where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
+   # where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
    
-   # the following only needs facegrad
-   #CELL_EQUATION <phi_c domain> "celldiv(facegrad(<phi_c>))-<source>" ON <domain>
+   # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+   # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+   # input options are: input,centringinput,meshinput,centringmeshinput,noinput
+   # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+   MSH_FILE "line.msh"
+   MSH_FILE "output/output.msh" elementdata
    
-   # the following needs no kernels
-   #CELL_EQUATION <phi_c domain> "<phi_c>-<source>" ON <domain>
-   #CELL_EQUATION <phi_c boundaries> "<phi_c>" ON <boundary cells>
    
-   # the following needs cellfromnodeave
-   CELL_EQUATION <phi_c equation> "<phi_c>-cellfromnodeave(<nodex[l=1]>)" ON <all cells>
-   CELL_OUTPUT <phi_c error> "<phi_c>-<cellx[l=1]>" ON <all cells>
+   TRANSIENT_SIMULATION
+   NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt>" # time
+   NONE_TRANSIENT <t[r=1]> "<t>-<dt>" "<t>" # time at last step
+   NONE_CONDITION <output test> "<t>-<tout>-<dtout>" outputcondition # this will be true (>0.) whenever we are <dtout> from last output
+   NONE_OUTPUT <tout> "<t>" stepoutputnoupdate # this will record the time of the last output
+   NONE_CONDITION <stop test> "<t>-<tend>" stopcondition # when this becomes true (>0.) the simulation stops
    
-   # node based:
-   NODE_UNKNOWN <phi_n> "1.d0" ON <all nodes>
-   # the following needs nodegrad
-   NODE_EQUATION <phi_n equation> "<phi_n>-nodegrad[l=1](<cellx[l=1]>)" ON <all nodes>
-   # the following needs nodeave
-   #NODE_EQUATION <phi_n equation> "<phi_n>-nodeave(<cellx[l=1]>)" ON <all nodes>
-   
-   # face based:
-   #FACE_UNKNOWN <phi_f> "1.d0" ON <all faces>
-   # the following needs facegrad
-   #FACE_EQUATION <phi_f equation> "<phi_f>-facegrad[l=1](<cellx[l=1]>)" ON <all faces>
-   # the following needs faceave
-   #FACE_EQUATION <phi_f equation> "<phi_f>-faceave(<cellx[l=1]>)" ON <all faces>
-   
-   #(hash added during unwrap)INCLUDE_ROOT "general"
-   # INFO: setting include root directory to general
-   #(hash added during unwrap)INCLUDE "element_information"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/general/element_information.arb without any search/replace combinations
-      # includes all element information files from general
-      #(hash added during unwrap)INCLUDE "element_coordinates.arb"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/element_coordinates.arb without any search/replace combinations
-         CELL_OUTPUT <cellx output[l=1]> "<cellx[l=1]>" ON <all cells>
-         CELL_OUTPUT <cellx output[l=2]> "<cellx[l=2]>" ON <all cells>
-         CELL_OUTPUT <cellx output[l=3]> "<cellx[l=3]>" ON <all cells>
-         FACE_OUTPUT <facex output[l=1]> "<facex[l=1]>" ON <all faces>
-         FACE_OUTPUT <facex output[l=2]> "<facex[l=2]>" ON <all faces>
-         FACE_OUTPUT <facex output[l=3]> "<facex[l=3]>" ON <all faces>
-         NODE_OUTPUT <nodex output[l=1]> "<nodex[l=1]>" ON <all nodes>
-         NODE_OUTPUT <nodex output[l=2]> "<nodex[l=2]>" ON <all nodes>
-         NODE_OUTPUT <nodex output[l=3]> "<nodex[l=3]>" ON <all nodes>
-         # INCLUDE FINISHED for ../templates/general/element_coordinates.arb
-         #--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "element_counts.arb"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/element_counts.arb without any search/replace combinations
-         FACE_OUTPUT <face_nodes> "nodesum(1.d0,region=<faceknodes>)" ON <all faces>
-         CELL_OUTPUT <cell_nodes> "nodesum(1.d0,region=<cellknodes>)" ON <all cells>
-         CELL_OUTPUT <cell_faces> "facesum(1.d0,region=<celljfaces>)" ON <all cells>
-         # INCLUDE FINISHED for ../templates/general/element_counts.arb
-         #--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "element_dimensions.arb"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/element_dimensions.arb without any search/replace combinations
-         CELL_OUTPUT <celldx output[l=1]> "<celldx[l=1]>" ON <all cells>
-         CELL_OUTPUT <celldx output[l=2]> "<celldx[l=2]>" ON <all cells>
-         CELL_OUTPUT <celldx output[l=3]> "<celldx[l=3]>" ON <all cells>
-         CELL_OUTPUT <celldxmax output> "<celldxmax>" ON <all cells>
-         CELL_OUTPUT <cellvol output> "<cellvol>" ON <all cells>
-         FACE_OUTPUT <facedx output> "<facedx>" ON <all faces>
-         FACE_OUTPUT <facearea output> "<facearea>" ON <all faces>
-         # INCLUDE FINISHED for ../templates/general/element_dimensions.arb
-         #--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "element_indices.arb"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/element_indices.arb without any search/replace combinations
-         CELL_OUTPUT <icell output> "<icell>" ON <all cells>
-         FACE_OUTPUT <jface output> "<jface>" ON <all faces>
-         NODE_OUTPUT <knode output> "<knode>" ON <all nodes>
-         # INCLUDE FINISHED for ../templates/general/element_indices.arb
-         #--------------------------------------------------------
-      # INCLUDE FINISHED for ../templates/general/element_information.arb
-      #--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "kernel_information"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/general/kernel_information.arb without any search/replace combinations
-      CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <all cells>
-      CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <all cells>
-      CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <all cells>
-      CELL_OUTPUT <cell deriv kernel elements output> "cellsum(1.d0,region=<cellkernelregion[l=1]>)" ON <all cells>
-      FACE_OUTPUT <face deriv kernel elements output> "cellsum(1.d0,region=<facekernelregion[l=1]>)" ON <all faces>
-      NODE_OUTPUT <node deriv kernel elements output> "cellsum(1.d0,region=<nodekernelregion[l=1]>)" ON <all nodes>
-      CELL_OUTPUT <celldxkernel output> "<celldxkernel>" ON <all cells>
-      FACE_OUTPUT <facedxkernel output> "<facedxkernel>" ON <all faces>
-      NODE_OUTPUT <nodedxkernel output> "<nodedxkernel>" ON <all nodes>
-      # INCLUDE FINISHED for ../templates/general/kernel_information.arb
-      #--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "mesh_quality"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/general/mesh_quality.arb without any search/replace combinations
-      # some metrics on mesh quality
-      #(hash added during unwrap)INCLUDE "cell_aspect_ratio" # keep < 100 say for structured meshes, or as close to 1 as possible
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/cell_aspect_ratio.arb without any search/replace combinations
-         CELL_OUTPUT <cell aspect ratio> "facemax(<facearea>,region=<celljfaces>)/cellmax(facemin(<facearea>,region=<celljfaces>),<tinyish>)" ON <domain>
-         NONE_OUTPUT <maximum cell aspect ratio> "cellmax(<cell aspect ratio>,region=<domain>)"
-         # INCLUDE FINISHED for ../templates/general/cell_aspect_ratio.arb
-         #--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "cell_adjacent_volume_ratio" # keep < 1.2 say, or as close to 1 as possible
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/cell_adjacent_volume_ratio.arb without any search/replace combinations
-         # for each cell within the domain, this is the ratio between the maximum surround cell volume and the cell's volume, indicating how uniform cell sizes are
-         #CELL_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<nocadjacentcellicells>)/<cellvol>" ON <domain> # NB boundary cells have cellvol = 0 so will not contribute to this calculation, as required
-         #NONE_OUTPUT <maximum cell adjacent volume ratio> "cellmax(<cell adjacent volume ratio>,region=<domain>)"
-         FACE_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<adjacentfaceicells>)/cellmin(<cellvol>,default=<hugeish>,region=<adjacentfaceicells>)" ON <domain faces>
-         NONE_OUTPUT <maximum cell adjacent volume ratio> "facemax(<cell adjacent volume ratio>,region=<domain faces>)"
-         # INCLUDE FINISHED for ../templates/general/cell_adjacent_volume_ratio.arb
-         #--------------------------------------------------------
-      # INCLUDE FINISHED for ../templates/general/mesh_quality.arb
-      #--------------------------------------------------------
-   # INCLUDE FINISHED for ../minimal_kernel_example.arb
+   #CELL_CONSTANT <u initial> "0.45d0*cellif(<cellx[l=1]>-2.d0,4.d0-<cellx[l=1]>,<cellx[l=1]>)+0.1d0" # triangular wave - BCs not implemented correctly for this to work
+   CELL_CONSTANT <u initial> "cellif(2.5d0-<cellx[l=1]>,cellif(<cellx[l=1]>-1.5d0,1.d0,0.d0),0.d0)" # square wave
+   CELL_UNKNOWN <u> "<u initial>" magnitude=1.d0
+   CELL_TRANSIENT <u[r=1]> "<u>" "<u>"
+   CELL_DERIVED <u mid> "(<u>+<u[r=1]>)/2.d0" # mid-timestep velocity
+   FACE_DERIVED <u_f> "<u mid>*<facenorm[l=1]>" output
+   #CELL_DERIVED <u limiter> "celllimiter[lower](<u mid>,0.d0,celllimiter[upper](<u mid>,1.d0))" output # absolute limits
+   CELL_DERIVED <u limiter> "celllimiter[lower](<u mid>,cellmin(<u mid>,,<adjacentcellicells>),celllimiter[upper](<u mid>,cellmax(<u mid>,,<adjacentcellicells>)))" output # relative limits
+   FACE_DERIVED <u advection> "faceave[advection](<u mid>,<u_f>,<u limiter>*<advection limiter>)" output
+   CELL_EQUATION <u equation> "(<u>-<u[r=1]>)/<dt>+celldiv(<u advection>^2*<facenorm[l=1]>)/2.d0" ON <domain>
+   FACE_EQUATION <u boundaries> "<u>-<u initial>" ON <boundaries>
+   NONE_OUTPUT <CFL> "cellmax(abs(<u>),,<domain>)*<dt>/cellmin(<cellvol>,,<domain>)"
+   # INCLUDE FINISHED for ../inviscid_burgers_equation.arb
    #--------------------------------------------------------
 ##################################################################################
