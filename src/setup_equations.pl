@@ -1678,6 +1678,19 @@ sub process_regions {
   }
 
 #-------------
+# check that no regions and variables have the same name
+
+  foreach $n ( 0 .. $#region ) {
+    foreach $type (@user_types,"system","empty") {
+      foreach $mvar ( 1 .. $m{$type} ) {
+        if (match_region($n,$variable{$type}[$mvar]{"name"})) {
+          error_stop("an attempt is being made to use the same name for a region and a variable - these names must be unique: variable = $variable{$type}[$mvar]{name}: region = $region[$n]{name}");
+        }
+      }
+    }
+  }
+
+#-------------
 # update any missing variables, set part_of region and fortran number
 
   foreach $n ( 0 .. $#region ) {
@@ -2008,6 +2021,7 @@ sub location_description_scan {
 # sees if a given region name ($_[0]) matches that of another region,
 #  if so returns region number
 #  if not returns -1
+#  as input takes a regionname in consistent format
 
 sub find_region {
 
@@ -2022,7 +2036,7 @@ sub find_region {
     }
   }
   
-  return ($match);
+  return $match;
 
 }
 #-------------------------------------------------------------------------------
