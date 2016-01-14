@@ -242,8 +242,13 @@ for my $n ( 0 .. $#case ) {
     push(@threads,$t); 
   } else { # run arb jobs in series
     # run only a single thread and wait for it to finish before moving onto the next job
+# create link to current directory
+    if (-e "$output_dir/run_current") { unlink("$output_dir/run_current"); }
+    symlink("run_$ndir","$output_dir/run_current");
     print "BATCHER DEBUG: running in series mode\n";
     &arbthread(\@case, $n, $ndir, $run_record_dir);
+# and remove the link once we are done
+    if (-e "$output_dir/run_current") { unlink("$output_dir/run_current"); }
   }   
 }
 

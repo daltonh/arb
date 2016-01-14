@@ -41,49 +41,50 @@ sub arbthread {
 
   #-----------------
   # deal with substitutions
-  # loop through each arbfile, geofile and otherfile specified by the user, copying them over to the run directories while doing the substitutions
-  foreach my $fffilename ( protectarray(@{$case[$n]{"arbfile"}}), protectarray(@{$case[$n]{"geofile"}}), protectarray(@{$case[$n]{"otherfile"}}) ) { 
-    if (!("$fffilename")) { next; }
-    print "BATCHER DEBUG: substitution files fffilename = $fffilename\n";
-    foreach my $ffilename (bsd_glob($fffilename)) {
-#     print "BATCHER DEBUG: substitution files ffilename = $ffilename\n";
-      my $filename = "$run_record_dir/".$ffilename;
-      print "BATCHER INFO: performing substitutions on $ffilename\n";
-      #print "BATCHER DEBUG: input \$ffilename = $ffilename\n";
-      #print "BATCHER DEBUG: output \$filename = $filename\n";
-      open(INFILE, ">".$filename) or error_stop("can't open substitute input file $filename");
-      open(ORIGINAL, "<".$ffilename) or error_stop("can't open original input file $ffilename");
-      while (my $line=<ORIGINAL>) {
-        if ($case[$n]{"replacements"}) {
-          for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
-  # now stopping replacements if the string is mentioned as a replacement keyword
-            if ($line !~ /\s(R|REPLACE)\s+("|'|)\Q$key\E("|'|\s|$)/) {
-              $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
+  # loop through each arbfile, geofile and includefile specified by the user, copying them over to the directories which are in the same location in each run directory relative to the working directory while doing the substitutions
+  foreach my $filetype ( "arbfile", "geofile", "includefile" ) {
+    foreach my $fffilename ( protectarray(@{$case[$n]{$filetype}}) ) { 
+      if (!("$fffilename")) { next; }
+#     print "BATCHER DEBUG: substitution files fffilename = $fffilename\n";
+      foreach my $ffilename (bsd_glob($fffilename)) {
+        print "BATCHER INFO: performing substitutions on $filetype $ffilename\n";
+        open(ORIGINAL, "<".$ffilename) or error_stop("can't open the original $filetype input file $ffilename within the working directory for some reason");
+# create directory structure if this isn't going to be placed directly in the run directory
+        if ($ffilename =~ /^(.+)\/(.+?)$/) {
+          my $create_path = "$run_record_dir/".$1;
+          print "BATCHER INFO: create_path = $create_path\n";
+          mkpath($create_path) or error_stop("could not create path $create_path required to place $filetype input file $ffilename correctly in the run directory");
+        }
+        my $filename = "$run_record_dir/".$ffilename;
+#       print "BATCHER DEBUG: substitution files filename = $filename\n";
+        open(INFILE, ">".$filename) or error_stop("can't open substitute $filetype input file $filename");
+        while (my $line=<ORIGINAL>) {
+          if ($case[$n]{"replacements"}) {
+            for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
+    # now stopping replacements if the string is mentioned as a replacement keyword
+              if ($line !~ /\s(R|REPLACE)\s+("|'|)\Q$key\E("|'|\s|$)/) {
+                $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
+              }
             }
           }
+          print INFILE $line;
         }
-        print INFILE $line;
+        close(INFILE);
+        close(ORIGINAL);
       }
-      close(INFILE);
-      close(ORIGINAL);
     }
   }
 
   #-----------------
-  # deal with geo files that need to have msh files generated from, now located within the working directory, with substitutions already taken place
+  # create msh files from any geofiles using the run directory's local create_mesh script which will place the msh files at the same location as the geo file
   foreach my $fffilename ( protectarray(@{$case[$n]{"geofile"}}) ) { 
     if (!($fffilename)) { next; }
 #   print "BATCHER DEBUG: geo files fffilename = $fffilename\n";
-    foreach my $ffilename (bsd_glob("$run_record_dir/$fffilename")) {
-      $ffilename =~ /(.*)\/((.+)\.(geo))$/;
-      my $filename=$2;
-      my $mshname=$2.".msh";
-      print "BATCHER INFO: creating msh file $mshname from $filename\n";
-      #print "BATCHER DEBUG: running create_msh on $filename\n";
-      #print "BATCHER DEBUG: \$fffilename = $fffilename\n";
-      #print "BATCHER DEBUG: \$ffilename = $ffilename\n";
-      #print "BATCHER DEBUG: \$filename = $filename\n";
-      my $systemcall="cd $run_record_dir; ./misc/create_msh/create_msh $filename"; # use ./misc/create_mesh/create_mesh script
+    foreach my $ffilename (bsd_glob("$fffilename")) {
+      $ffilename =~ /(.+)\.geo$/;
+      my $mshname=$1.".msh";
+      print "BATCHER INFO: creating msh file $mshname from $ffilename within $run_record_dir\n";
+      my $systemcall="cd $run_record_dir; ./misc/create_msh/create_msh $ffilename"; # use ./misc/create_mesh/create_mesh script
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
       #print "BATCHER DEBUG: \$mshname = $mshname\n";
@@ -91,13 +92,21 @@ sub arbthread {
   }
 
   #-----------------
-  # deal with msh files that are listed to be used in this simulation, with no substitutions
+  # deal with msh files and now whole directories that are listed to be used in this simulation, with no substitutions
   foreach my $fffilename ( protectarray(@{$case[$n]{"mshfile"}}) ) { 
     if (!($fffilename)) { next; }
-    print "BATCHER DEBUG: msh files fffilename = $fffilename\n";
+#   print "BATCHER DEBUG: msh files fffilename = $fffilename\n";
     foreach my $ffilename (bsd_glob("$fffilename")) {
-      print "BATCHER INFO: copying msh file $ffilename\n";
-      copy($ffilename,$run_record_dir) or error_stop("could not copy $ffilename to run directory $run_record_dir");
+      print "BATCHER INFO: copying msh file or directory $ffilename\n";
+# create directory structure if this isn't going to be placed directly in the run directory
+      if ($ffilename =~ /^(.+)\/(.+?)$/) {
+        my $create_path = "$run_record_dir/".$1;
+        print "BATCHER INFO: create_path = $create_path\n";
+        mkpath($create_path) or error_stop("could not create path $create_path required to place mshfile input file or directory $ffilename correctly in the run directory");
+      }
+      my $filename = "$run_record_dir/".$ffilename;
+      my $systemcall="cp -R $ffilename $filename"; # using system cp function instead of the perl one as the perl version on osx can't handle recursive copying
+      (!(system("$systemcall"))) or error_stop("could not $systemcall");
     }
   }
 
