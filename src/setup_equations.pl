@@ -1200,28 +1200,28 @@ sub read_input_files {
 # read in expressions, noting that only if the expression is nonempty do we overide previously stored expression
 # this allows initial_equation to be reset independently of the equation for transient/newtient variables
           $tmp1 = extract_first($line,$error);
-          if ($error) { error_stop("some type of syntax problem with the (first) expression in the following variable definition:\nfile = $file: line = $oline"); }
+          if ($error) { error_stop("some type of syntax problem with the (first) expression in the following $type $name variable definition:\nfile = $file: line = $oline"); }
           if (($type eq "transient" || $type eq "newtient") && $line =~ /^\s*["']/) { # to set the intial expression the type must be known at read-in time
             $tmp2 = extract_first($line,$error);
-            if ($error) { error_stop("some type of syntax problem with the second expression in the following variable definition:\nfile = $file: line = $oline"); }
+            if ($error) { error_stop("some type of syntax problem with the second expression in the following $type $name variable definition:\nfile = $file: line = $oline"); }
 # if we are here then tmp1 corresponds to the initial_equation, and tmp2 to the equation
 # Note that later when these equations are processed (in organise_user_variables), empty and undef now have different meanings
 # depending on variable type and r index, empty ("") now means to repeat the full equation, whereas undef means to give it a value of zero
             my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"initial_equation"})) { $previous_equation = $asread_variable[$masread]{"initial_equation"}; }
             $asread_variable[$masread]{"initial_equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$previous_equation,$oline,$asread_variable[$masread]{"selfreferences"});
-            print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n";
+            print DEBUG "INFO: setting the $type $name initial_equation to $asread_variable[$masread]{initial_equation} based on:\nfile = $file: line = $oline\n";
 # incase we need to only set the initial_equation of a variable, keeping the previous equation value, only set equation if it is actually nonempty (ie, not "")
             if (nonempty($tmp2)) {
               my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"equation"})) { $previous_equation = $asread_variable[$masread]{"equation"}; }
-              $asread_variable[$masread]{"initial_equation"} = expand_equation($tmp2,$asread_variable[$masread]{"name"},$previous_equation,$oline,$asread_variable[$masread]{"selfreferences"});
-              print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n";
+              $asread_variable[$masread]{"equation"} = expand_equation($tmp2,$asread_variable[$masread]{"name"},$previous_equation,$oline,$asread_variable[$masread]{"selfreferences"});
+              print DEBUG "INFO: setting the $type $name equation to $asread_variable[$masread]{equation} based on:\nfile = $file: line = $oline\n";
             }
           } else {
 # if we are here then tmp1 corresponds to the equation
 # save previous equation for possible selfreference replacement, passing an empty string if it hasn't been previously defined
             my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"equation"})) { $previous_equation = $asread_variable[$masread]{"equation"}; }
             $asread_variable[$masread]{"equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$previous_equation,$oline,$asread_variable[$masread]{"selfreferences"});
-            print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n";
+            print DEBUG "INFO: setting the $type $name equation to $asread_variable[$masread]{equation} based on:\nfile = $file: line = $oline\n";
           }
 # check/set defaults for these later, after all variable definitions have been read in
         }
