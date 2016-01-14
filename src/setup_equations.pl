@@ -44,7 +44,7 @@ use File::Glob ':glob'; # deals with whitespace better
 #use Time::Piece; # removed for portability
 use Sys::Hostname;
 
-my $version="0.54";
+my $version="0.55";
 my $minimum_version="0.40";
 
 # now called from build directory
@@ -53,8 +53,10 @@ my $src_dir="$working_dir/src";
 my $build_dir=".";
 my $template_dir="$working_dir/templates";
 my $tmp_dir="$working_dir/tmp/setup";
-my $variable_file = "$tmp_dir/variable_list.txt";
-my $region_file = "$tmp_dir/region_list.txt";
+my $variable_list_file = "$tmp_dir/variable_list.txt";
+my $variable_arb_file = "$tmp_dir/variable_list.arb";
+my $region_list_file = "$tmp_dir/region_list.txt";
+my $region_arb_file = "$tmp_dir/region_list.arb";
 my $tmp_file_number=0;
 our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='/sw/bin/maxima'; # if all else fails specify the actual location - fink
@@ -72,7 +74,7 @@ my $version_file="$working_dir/licence/version";
 if (! -d $tmp_dir) { mkpath($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 my $filename;
 foreach $filename (bsd_glob("$tmp_dir/*")) {
-  if ($filename eq $variable_file || $filename eq $region_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
+  if ($filename eq $variable_arb_file || $filename eq $variable_list_file || $filename eq $region_arb_file || $filename eq $region_list_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
   if (-f $filename) {unlink($filename) or die "ERROR: could not remove $filename in directory $tmp_dir\n";}
 }
 
@@ -148,7 +150,7 @@ my %external_operators=();
 # the replacement strings
 my @general_replacements = ();
 
-my %statement_repeats = ( 'definitions' => 0, 'typechanges' => 0, 'centringchanges' => 0 );
+my %statement_repeats = ( 'redefinitions' => 0, 'typechanges' => 0, 'centringchanges' => 0, 'selfreferences' => 0 );
 
 # kernels are now only calculated when needed
 # these settings can be overwritten (only making true, not turning off) in general_module.f90
@@ -202,9 +204,9 @@ output_variable_list(); # dump info about variables in a single file
 output_region_list(); # dump info about regions in a single file
 
 # final warning about multiple definitions
-if ($statement_repeats{"definitions"} > 1) { print "NOTE: at least one variable was defined multiple times.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
-if ($statement_repeats{"typechanges"} > 1) { print "NOTE: at least one variable had its type changed.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
-if ($statement_repeats{"centringchanges"} > 1) { print "NOTE: at least one variable had its centring changed.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
+foreach my $repeats (keys(%statement_repeats)) {
+  if ($statement_repeats{$repeats} > 0) { print "NOTE: at least one variable had $repeats.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
+}
 if ($number_of_lousysubstitutes > 0) { print "WARNING: some variable substitutions had to be performed that may result in very inefficient code being generated.  These lousy substitutions ".
   "could be avoided by a careful reordering of some of the input statements.  Details are given above (or in the file $debug_info_file by searching for 'lousy substitution').\n"; }
 print "SUCCESS: equation_module.f90 has been created\n";
@@ -299,12 +301,13 @@ sub dump_variable_dependency_info {
 }
 
 #-------------------------------------------------------------------------------
-# dump the variables as an ordered list
+# dump the variables as an ordered list, and now also as a list in the arb format
 
 sub output_variable_list {
 
   use strict;
-  open(VARIABLE, ">$variable_file") or die "ERROR: problem opening temporary variable file $variable_file: something funny is going on: check permissions??\n";
+  open(VARIABLE, ">$variable_list_file") or die "ERROR: problem opening temporary variable file $variable_list_file: something funny is going on: check permissions??\n";
+  print VARIABLE "# List of the variables:\n";
   for my $key ( keys(%variable) ) {
     print VARIABLE "-" x 80,"\n";
     print VARIABLE "List of $key variables:\n";
@@ -324,6 +327,31 @@ sub output_variable_list {
   print VARIABLE "-" x 80,"\n";
   close(VARIABLE);
 
+  open(VARIABLE, ">$variable_arb_file") or die "ERROR: problem opening temporary variable file $variable_arb_file: something funny is going on: check permissions??\n";
+  print VARIABLE "# Reconstructed list of the variables in arb format:\n";
+  for my $key ( @user_types ) {
+    print VARIABLE "#","-" x 80,"\n";
+    print VARIABLE "# $key variables:\n";
+    for my $mvar ( 1 .. $#{$variable{$key}} ) {
+      print VARIABLE "\U$variable{$key}[$mvar]{centring}_$key "."$variable{$key}[$mvar]{name} [$variable{$key}[$mvar]{units}]";
+      if ($key =~ /ient$/) { print VARIABLE " \"".$variable{"initial_$key"}[$mvar]{equation}."\""; }
+      if ($key eq "constant" && empty($variable{$key}[$mvar]{equation})) { print VARIABLE " \"numerical constant rather than an equation\"" } else { print VARIABLE " \"$variable{$key}[$mvar]{equation}\"" };
+      if ($variable{$key}[$mvar]{centring} ne "none") { print VARIABLE " ON $variable{$key}[$mvar]{region}"; }
+      print VARIABLE " # other information";
+      for my $infokey ( qw( deriv newtstepmax newtstepmin comments )) {
+        print VARIABLE ": $infokey = ";
+        if (empty($variable{$key}[$mvar]{$infokey})) {
+          print VARIABLE "empty"
+        } else {
+          print VARIABLE "$variable{$key}[$mvar]{$infokey}";
+        }
+      }
+      print VARIABLE "\n";
+    }
+  }
+  print VARIABLE "#","-" x 80,"\n";
+  close(VARIABLE);
+
 }
 #-------------------------------------------------------------------------------
 # dump the regions as an ordered list
@@ -333,7 +361,7 @@ sub output_region_list {
   use strict;
   use Data::Dumper;
   my @types=(qw( system setup gmsh constant transient newtient derived equation output condition )); # list of region types
-  open(REGION, ">$region_file") or die "ERROR: problem opening temporary region file $region_file: something funny is going on: check permissions??\n";
+  open(REGION, ">$region_list_file") or die "ERROR: problem opening temporary region file $region_list_file: something funny is going on: check permissions??\n";
 
   for my $type ( @types ) {
     print REGION "-" x 80,"\n";
@@ -341,7 +369,7 @@ sub output_region_list {
     for my $n ( 0 .. $#region ) {
       if ($region[$n]{"type"} ne $type) { next; }
       print REGION "$n";
-      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread definitions location initial_location options newtstepmax newtstepmin)) {
+      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread location initial_location newtstepmax newtstepmin)) {
         print REGION ": $key = ";
         if (empty($region[$n]{$key})) {
           print REGION "empty";
@@ -355,6 +383,35 @@ sub output_region_list {
     }
   }
   print REGION "-" x 80,"\n";
+  close(REGION);
+
+  open(REGION, ">$region_arb_file") or die "ERROR: problem opening temporary region file $region_arb_file: something funny is going on: check permissions??\n";
+  print REGION "# Reconstructed list of the regions in arb format:\n";
+  for my $type ( @types ) {
+    if ($type eq "system") { next; } # don't output system types to the arb file
+
+    print REGION "#","-" x 80,"\n";
+    print REGION "# $type regions:\n";
+    for my $n ( 0 .. $#region ) {
+      if ($region[$n]{"type"} ne $type) { next; }
+
+      print REGION "\U$region[$n]{centring}_$type"."_REGION "."$region[$n]{name}";
+      if ($type =~ /ient$/ && nonempty($region[$n]{initial_location}{description})) { print REGION " \"".$region[$n]{initial_location}{description}."\""; } 
+      if (nonempty($region[$n]{location}{description})) { print REGION " \"".$region[$n]{location}{description}."\""; }
+      if (nonempty($region[$n]{part_of})) { print REGION " ON $region[$n]{part_of}"; }
+      print REGION " # other information";
+      for my $infokey (qw(user dynamic parent rindex fortran part_of_fortran parent_fortran last_variable_masread newtstepmax newtstepmin)) {
+        print REGION ": $infokey = ";
+        if (empty($region[$n]{$infokey})) {
+          print REGION "empty"
+        } else {
+          print REGION "$region[$n]{$infokey}";
+        }
+      }
+      print REGION "\n";
+    }
+  }
+  print REGION "#","-" x 80,"\n";
   close(REGION);
 
 }
@@ -374,7 +431,9 @@ sub check_variable_status {
       delete $variable{$type}[$mvar]{"options"}; # delete removes value and key for a hash
       delete $variable{$type}[$mvar]{"comments"}; # delete removes value and key for a hash
       delete $variable{$type}[$mvar]{"constant_list"}; # delete removes value and key for a hash
-      delete $variable{$type}[$mvar]{"definitions"}; # delete removes value and key for a hash
+      foreach my $repeats (keys(%statement_repeats)) {
+        delete $variable{$type}[$mvar]{$repeats}; # delete removes value and key for a hash
+      }
     }
   }
 
@@ -382,7 +441,7 @@ sub check_variable_status {
   foreach $n ( 1 .. $#region ) {
     delete $region[$n]{"options"}; # delete removes value and key for a hash
     delete $region[$n]{"comments"}; # delete removes value and key for a hash
-    delete $region[$n]{"definitions"}; # delete removes value and key for a hash
+    delete $region[$n]{"redefinitions"}; # delete removes value and key for a hash
   }
 
   $Storable::canonical=1; # the data structure will have its keys sorted before being created
@@ -416,9 +475,9 @@ sub check_variable_status {
     print "INFO: setup_equations data has not changed since the last run: exiting immediately\n";
     print DEBUG "INFO: setup_equations data not has changed since the last run: exiting immediately\n";
 # final warning about multiple statements
-    if ($statement_repeats{"definitions"} > 1) { print "NOTE: at least one variable was defined multiple times.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
-    if ($statement_repeats{"typechanges"} > 1) { print "NOTE: at least one variable had its type changed.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
-    if ($statement_repeats{"centringchanges"} > 1) { print "NOTE: at least one variable had its centring changed.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
+    foreach my $repeats (keys(%statement_repeats)) {
+      if ($statement_repeats{$repeats} > 0) { print "NOTE: at least one variable had $repeats.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
+    }
     print "SUCCESS: equation_module.f90 was already up-to-date\n";
     print DEBUG "SUCCESS: equation_module.f90 was already up-to-date\n";
     exit;
@@ -564,12 +623,13 @@ sub read_input_files {
   my ($file, $oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
     $handle, $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
-    $condition, $key, $append, $cancel, $default, $masread);
+    $condition, $key, $append, $cancel, $default, $masread, $lineremainder, $repeats);
 
   my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
   my $default_options = ""; # default options prepended to each statement read in
   my $override_options = ""; # override options appended to each statement read in
   my $skip = 0; # flag to indicate whether we are in comments section or not
+  my $indent = "   "; # amount to indent the unwrapped input file for each level of file inclusion
 
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
   open(UNWRAPPED_INPUT, ">$current_unwrapped_input_file");
@@ -587,27 +647,48 @@ sub read_input_files {
 
     while ($oline=<$handle>) { chompm($oline); if ($oline) { $oline=~s/^\s*// }; # remove linefeed from end and space from the start
 
-# do file-specific replacements on file before anything else
-# for v0.42 and onwards not doing replacements on any statements that define replacements (including include statements)
-      if (!($oline =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i)) {
-        foreach my $n1 ( reverse( 0 .. $#input_files ) ) {
-          foreach my $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
-            replace_substrings($oline,$input_files[$n1]{"replacements"}[$n2]{"search"},$input_files[$n1]{"replacements"}[$n2]{"replace"});
+# now splitting input line at the include/replacements keywords (wherever they are) and only doing replacements before this
+      my $lineremainder = '';
+      if ($oline =~ /^\s*(.*?)(\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s))/i) {
+        print DEBUG "INFO: found string that possibly needs part replacements: oline = $oline\n";
+        my $linestart = $1;
+        $lineremainder = $2.$';
+        $oline = '';
+        if (!($linestart)) {
+          print DEBUG "INFO: include/replacement string is bare, so do not perform any replacements on this line\n";
+        } else {
+          print DEBUG "INFO: attempting to remove any replacement strings from the start of this line\n";
+          while ($linestart =~ /^(\s*<<.*?>>\s*)/) { $oline=$oline.$1; $linestart=$'; }
+          print DEBUG "INFO: after splitting and looking for replace strings: oline = $oline: linestart = $linestart; lineremainder = $lineremainder\n";
+          if (nonempty($linestart)) {
+# there is more than string replacements at the start
+# to be consistent with previous behaviour do replacements on the entire string
+            $oline=$oline.$linestart.$lineremainder;
+            $lineremainder='';
+            print DEBUG "INFO: search/replace going ahead on entire oline as preamble to include/replacement keywords contains more than only <<>> delimited strings\n";
+          } else {
+            print DEBUG "INFO: search/replace going ahead on preamble oline only as preamble to include/replacement keywords contains only <<>> delimited strings\n";
           }
         }
       }
-      
-# now do general replacements, with latest defined replacements taking precedence
-# don't do general replacements on general_replacement or include lines
-      if (!($oline =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i)) {
-        foreach my $n1 ( reverse( 0 .. $#general_replacements ) ) {
-          replace_substrings($oline,$general_replacements[$n1]{"search"},$general_replacements[$n1]{"replace"});
+
+# do file-specific replacements on file before anything else
+      foreach my $n1 ( reverse( 0 .. $#input_files ) ) {
+        foreach my $n2 ( 0 .. $#{$input_files[$n1]{"replacements"}} ) {
+          replace_substrings($oline,$input_files[$n1]{"replacements"}[$n2]{"search"},$input_files[$n1]{"replacements"}[$n2]{"replace"});
         }
       }
+      foreach my $n1 ( reverse( 0 .. $#general_replacements ) ) {
+        replace_substrings($oline,$general_replacements[$n1]{"search"},$general_replacements[$n1]{"replace"});
+      }
+
+# and now reconstruct the entire line
+      $oline = $oline.$lineremainder;
+      if ($lineremainder) { print DEBUG "INFO: after replacements and reconstructing: oline = $oline\n"; }
 
       $line = $oline;
 # keep a record of what arb is doing in UNWRAPPED_INPUT, commenting out any INCLUDE or GENERAL_REPLACMENTS statements so that this file could be read again by arb directly
-      if ($line =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT "#$line\n"; } else { print UNWRAPPED_INPUT "$line\n"; }
+      if ($line =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT $indent x $#input_files,"#(hash added during unwrap)$line\n"; } else { print UNWRAPPED_INPUT $indent x $#input_files,"$line\n"; }
 
 # now process guts of statement
 # for the time being, have to handle trailing comments on the input lines
@@ -656,7 +737,7 @@ sub read_input_files {
         } else {
           print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
           print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
-          print UNWRAPPED_INPUT "#++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n# the following is INCLUDED from $input_files[$#input_files]{name}";
+          print UNWRAPPED_INPUT $indent x $#input_files,"#++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"# the following is INCLUDED from $input_files[$#input_files]{name}";
 # ref: FILENAME
 # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
           if (empty($simulation_info{"filename"})) {
@@ -708,7 +789,7 @@ sub read_input_files {
           $input_files[$#input_files]{"include_root"} = extract_first($line,$error);
           if ($error) {error_stop("matching delimiters not found in the following:\nfile = $file: line = $oline")}
         }
-        print UNWRAPPED_INPUT "# INFO: setting include root directory to $input_files[$#input_files]{include_root}\n";
+        print UNWRAPPED_INPUT $indent x $#input_files,"# INFO: setting include root directory to $input_files[$#input_files]{include_root}\n";
         next;
 
 # extract any general replacements, pushing them onto the back of the existing list
@@ -773,6 +854,16 @@ sub read_input_files {
 
 # check for END statement
       if ($line =~ /^\s*END($|\s)/i) { print "INFO: found END statement in file = $file\n"; last; }
+
+# check for the user ERROR or WARNING statements that signifies that there is a known problem with a file
+      elsif ($line =~ /^\s*(ERROR|WARNING|INFO)(\s|$)/i) {
+        $key="\L$1"; $line=$';
+# pull out any string that follows this keyword if there is one
+        $tmp = extract_first($line,$error);
+        if (empty($tmp)) { $tmp = "no explanation provided"; }
+        if ($key eq "error") { error_stop("user error statement found in $file: $tmp"); }
+        else { print "\U$key",": user ","\L$key"," statement found in $file: $tmp\n"; }
+      }
 
 # check on file version
       elsif ($line =~ /^\s*VERSION\s+(\S*)/i) {
@@ -880,7 +971,7 @@ sub read_input_files {
             print "INFO: based on a GLUE_FACES statement setting $search general_replacements string to $replace\n";
           }
         }
-        print FORTRAN_INPUT $keyword; if (nonempty($line)) {print FORTRAN_INPUT " ".$line}; print FORTRAN_INPUT "\n"; # print line to fortran input file, making sure that the keyword is uppercase there
+        print FORTRAN_INPUT $keyword; if (nonempty($line)) {print FORTRAN_INPUT " ".$line}; print FORTRAN_INPUT "\n"; # print line to fortran input file
         next;
       }
 
@@ -994,9 +1085,9 @@ sub read_input_files {
 
 # now create or update variable type and centring
         if ($masread >= 0) {
-          $asread_variable[$masread]{"definitions"}++; 
-          print "INFO: a secondary definition statement (number $asread_variable[$masread]{definitions}) for variable $name has been found in file = $file\n";
-          print DEBUG "INFO: a secondary definition statement (number $asread_variable[$masread]{definitions}) for variable $name has been found based on:\nfile = $file: line = $oline\n";
+          $asread_variable[$masread]{"redefinitions"}++; 
+          print "INFO: a secondary definition statement (repeat number $asread_variable[$masread]{redefinitions}) for variable $name has been found in file = $file\n";
+          print DEBUG "INFO: a secondary definition statement (repeat number $asread_variable[$masread]{redefinitions}) for variable $name has been found based on:\nfile = $file: line = $oline\n";
 # a variable has been identified, now check whether the type has changed
           if (nonempty($type)) {
             if ($type ne $asread_variable[$masread]{"type"} && nonempty($asread_variable[$masread]{"type"})) {
@@ -1040,9 +1131,9 @@ sub read_input_files {
           $asread_variable[$masread]{"rindex"}=examine_name($name,"rindex"); # this is based on name so doesn't change with repeat definitions
           $asread_variable[$masread]{"comments"}=$comments;
           $asread_variable[$masread]{"region"}='';
-          $asread_variable[$masread]{"definitions"}=1;
-          $asread_variable[$masread]{"typechanges"}=0;
-          $asread_variable[$masread]{"centringchanges"}=0;
+          foreach $repeats (keys(%statement_repeats)) {
+            $asread_variable[$masread]{$repeats}=0;
+          }
           $asread_variable[$masread]{"options"} = '';
         }
 
@@ -1119,22 +1210,28 @@ sub read_input_files {
 # read in expressions, noting that only if the expression is nonempty do we overide previously stored expression
 # this allows initial_equation to be reset independently of the equation for transient/newtient variables
           $tmp1 = extract_first($line,$error);
-          if ($error) { error_stop("some type of syntax problem with the (first) expression in the following variable definition:\nfile = $file: line = $oline"); }
+          if ($error) { error_stop("some type of syntax problem with the (first) expression in the following $type $name variable definition:\nfile = $file: line = $oline"); }
           if (($type eq "transient" || $type eq "newtient") && $line =~ /^\s*["']/) { # to set the intial expression the type must be known at read-in time
             $tmp2 = extract_first($line,$error);
-            if ($error) { error_stop("some type of syntax problem with the second expression in the following variable definition:\nfile = $file: line = $oline"); }
+            if ($error) { error_stop("some type of syntax problem with the second expression in the following $type $name variable definition:\nfile = $file: line = $oline"); }
 # if we are here then tmp1 corresponds to the initial_equation, and tmp2 to the equation
-#           if (nonempty($tmp1)) { $asread_variable[$masread]{"initial_equation"} = $tmp1; print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n"; }
-#           if (nonempty($tmp2)) { $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n"; }
-# empty and undef now have different meanings - empty ("") now means to repeat the full equation, whereas undef means to give it a value of zero
-            $asread_variable[$masread]{"initial_equation"} = $tmp1; print DEBUG "INFO: setting the $type variable initial_equation to $tmp1 based on:\nfile = $file: line = $oline\n";
-#           $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n";
+# Note that later when these equations are processed (in organise_user_variables), empty and undef now have different meanings
+# depending on variable type and r index, empty ("") now means to repeat the full equation, whereas undef means to give it a value of zero
+            my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"initial_equation"})) { $previous_equation = $asread_variable[$masread]{"initial_equation"}; }
+            $asread_variable[$masread]{"initial_equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$previous_equation,$oline,$asread_variable[$masread]{"selfreferences"});
+            print DEBUG "INFO: setting the $type $name initial_equation to $asread_variable[$masread]{initial_equation} based on:\nfile = $file: line = $oline\n";
 # incase we need to only set the initial_equation of a variable, keeping the previous equation value, only set equation if it is actually nonempty (ie, not "")
-            if (nonempty($tmp2)) { $asread_variable[$masread]{"equation"} = $tmp2; print DEBUG "INFO: setting the $type variable equation to $tmp2 based on:\nfile = $file: line = $oline\n"; }
+            if (nonempty($tmp2)) {
+              my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"equation"})) { $previous_equation = $asread_variable[$masread]{"equation"}; }
+              $asread_variable[$masread]{"equation"} = expand_equation($tmp2,$asread_variable[$masread]{"name"},$previous_equation,$oline,$asread_variable[$masread]{"selfreferences"});
+              print DEBUG "INFO: setting the $type $name equation to $asread_variable[$masread]{equation} based on:\nfile = $file: line = $oline\n";
+            }
           } else {
 # if we are here then tmp1 corresponds to the equation
-#           if (nonempty($tmp1)) { $asread_variable[$masread]{"equation"} = $tmp1; print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n"; }
-            $asread_variable[$masread]{"equation"} = $tmp1; print DEBUG "INFO: setting the $type variable equation to $tmp1 based on:\nfile = $file: line = $oline\n";
+# save previous equation for possible selfreference replacement, passing an empty string if it hasn't been previously defined
+            my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"equation"})) { $previous_equation = $asread_variable[$masread]{"equation"}; }
+            $asread_variable[$masread]{"equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$previous_equation,$oline,$asread_variable[$masread]{"selfreferences"});
+            print DEBUG "INFO: setting the $type $name equation to $asread_variable[$masread]{equation} based on:\nfile = $file: line = $oline\n";
           }
 # check/set defaults for these later, after all variable definitions have been read in
         }
@@ -1210,7 +1307,7 @@ sub read_input_files {
 
 # now create or update region type and centring
         if ($masread >= 0) {
-          $region[$masread]{"definitions"}++; 
+          $region[$masread]{"redefinitions"}++; 
           print "INFO: a secondary definition statement (number $region[$masread]{definitions}) for region $name has been found in file = $file\n";
           print DEBUG "INFO: a secondary definition statement (number $region[$masread]{definitions}) for region $name has been found based on:\nfile = $file: line = $oline\n";
 # a variable has been identified, now check whether the centring has changed
@@ -1245,7 +1342,7 @@ sub read_input_files {
           $region[$masread]{"centring"}=$centring; # maybe blank
           $region[$masread]{"type"}=$type; # maybe blank
           $region[$masread]{"comments"}=$comments;
-          $region[$masread]{"definitions"}=1;
+          $region[$masread]{"redefinitions"}=0;
           $region[$masread]{"part_of"}='';
           $region[$masread]{"options"}='';
           $region[$masread]{"location"}{"description"}='';
@@ -1320,7 +1417,7 @@ sub read_input_files {
     } # end of loop for this input file
 
     close($handle);
-    if ($#input_files) { print UNWRAPPED_INPUT "# INCLUDE FINISHED for $input_files[$#input_files]{name}\n#--------------------------------------------------------\n"; }
+    if ($#input_files) { print UNWRAPPED_INPUT $indent x $#input_files,"# INCLUDE FINISHED for $input_files[$#input_files]{name}\n",$indent x $#input_files,"#--------------------------------------------------------\n"; }
     pop(@input_files);
   } # end of loop for all input files
 
@@ -1672,6 +1769,19 @@ sub process_regions {
   }
 
 #-------------
+# check that no regions and variables have the same name
+
+  foreach $n ( 0 .. $#region ) {
+    foreach $type (@user_types,"system","empty") {
+      foreach $mvar ( 1 .. $m{$type} ) {
+        if (match_region($n,$variable{$type}[$mvar]{"name"})) {
+          error_stop("an attempt is being made to use the same name for a region and a variable - these names must be unique: variable = $variable{$type}[$mvar]{name}: region = $region[$n]{name}");
+        }
+      }
+    }
+  }
+
+#-------------
 # update any missing variables, set part_of region and fortran number
 
   foreach $n ( 0 .. $#region ) {
@@ -2002,6 +2112,7 @@ sub location_description_scan {
 # sees if a given region name ($_[0]) matches that of another region,
 #  if so returns region number
 #  if not returns -1
+#  as input takes a regionname in consistent format
 
 sub find_region {
 
@@ -2016,7 +2127,7 @@ sub find_region {
     }
   }
   
-  return ($match);
+  return $match;
 
 }
 #-------------------------------------------------------------------------------
@@ -2160,14 +2271,14 @@ sub organise_user_variables {
       }
     }
 
-# calculate maximum repeats of the definitions, and centring and type changes
+# calculate maximum repeats of the definitions, and centring, type changes and selfreferences
     foreach $repeats ( keys(%statement_repeats) ) {
       $statement_repeats{$repeats} = max($statement_repeats{$repeats},$variable{$type}[$mvar]{$repeats});
     }
       
 # print some summary stuff now about the single line read
-    print "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: definitions = $variable{$type}[$mvar]{definitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}\n";
-    print DEBUG "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: definitions = $variable{$type}[$mvar]{definitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}\n";
+    print "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: redefinitions = $variable{$type}[$mvar]{redefinitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}: selfreferences = $variable{$type}[$mvar]{selfreferences}\n";
+    print DEBUG "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: redefinitions = $variable{$type}[$mvar]{redefinitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}: selfreferences = $variable{$type}[$mvar]{selfreferences}\n";
 
 # process variable options, removing clearoptions statements and creating individual variable options lists
     if ($asread_variable[$masread]{"options"} =~ /.*(^|\,)\s*clearoptions\s*(\,|$)/i) { # match the last occurrence of this option by putting a greedy match of anything on the left
@@ -2191,8 +2302,8 @@ sub organise_user_variables {
 #f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component) (equivalently compoundelementdata,compoundelementnodedata,compoundelementnodelimiteddata)
 #p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
 #f  magnitude=[value|<a none centred constant>] - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
-#f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
-#f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
+#f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude (default is dynamic for equations, and static for unknowns)
+#f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next) (default is 1.1 for equations, 2.0 for unknowns)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 
 # general rule with options is that they don't include any underscores between words
@@ -2356,12 +2467,12 @@ sub organise_user_variables {
 
 # tell the user if multiple definitions were used anywhere
   foreach $repeats (keys(%statement_repeats)) {
-    if ($statement_repeats{$repeats} > 1) {
-      print "NOTE: the following variables had multiple $repeats - make sure that this is what you intended:\n";
-      print DEBUG "NOTE: the following variables had multiple $repeats - make sure that this is what you intended:\n";
+    if ($statement_repeats{$repeats} > 0) {
+      print "NOTE: the following variables had $repeats - make sure that this is what you intended:\n";
+      print DEBUG "NOTE: the following variables had $repeats - make sure that this is what you intended:\n";
       foreach $type ( @user_types ) {
         foreach $mvar ( 1 .. $m{$type} ) {
-          if ($variable{$type}[$mvar]{$repeats} > 1) {
+          if ($variable{$type}[$mvar]{$repeats} > 0) {
             print "  $type $variable{$type}[$mvar]{name} had $variable{$type}[$mvar]{$repeats} $repeats\n";
             print DEBUG "  $type $variable{$type}[$mvar]{name} had $variable{$type}[$mvar]{$repeats} $repeats\n";
           }
@@ -2443,8 +2554,7 @@ sub create_mequations {
       $variable{$type}[$mvar]{"mequation"}="";
       if (empty($variable{$type}[$mvar]{"equation"})) { next; }
       print DEBUG "equation = $variable{$type}[$mvar]{equation}\n";
-      $variable{$type}[$mvar]{"mequation"}=$variable{$type}[$mvar]{"equation"};
-      name_to_maxima($variable{$type}[$mvar]{"mequation"},$type,$mvar);
+      $variable{$type}[$mvar]{"mequation"}=equation_to_mequation($variable{$type}[$mvar]{"equation"},$type,$mvar);
       print DEBUG "mequation = $variable{$type}[$mvar]{mequation}\n";
 #     if ($type eq "local") { $variable{$type}[$mvar]{oequation} = $variable{$type}[$mvar]{mequation}; } # store original mequation for use later for locals
       $variable{$type}[$mvar]{oequation} = $variable{$type}[$mvar]{mequation}; # store original mequation for substitution of dependencies later
@@ -4249,38 +4359,93 @@ sub run_maxima_simplify {
 }
 
 #-------------------------------------------------------------------------------
-# takes a string which contains user defined <> delimited names and replaces with maxima names
-# second and third arguments are calling type and mvar, respectively
+# takes a string which contains consistent <> delimited arb variables and replaces these with maxima names
 
-sub name_to_maxima {
+sub equation_to_mequation {
 
   use strict;
-  use Text::Balanced qw ( extract_bracketed );
-  my ($type, $mvar, $otype, $omvar, $withdots, $withoutdots);
-  my ($pre, $post, $operator, $midl, $midr, $midrnovar, $n1, $n2, $name, $original, $consistent_name);
-  $withdots = $_[0];
-  $otype = $_[1];
-  $omvar = $_[2];
+      
+# on input:
+  my $original = $_[0]; # equation, unchanged
+  my $otype = $_[1]; # second and third arguments are calling type and mvar, respectively, just used for error message
+  my $omvar = $_[2];
+# on output:
+  my $mequation = ''; # will be returned
 
-  print DEBUG "in name_to_maxima: before _[0] = ",$_[0],"\n";
+  print DEBUG "in equation_to_mequation before original = $original\n";
+
+# loop through and replace variables with standardised names
+  while ($original =~ /(<(.*?)>)/) {
+    my $pre = $`;
+    my $post = $';
+    my $name = $1;
+    if (empty($2)) { error_stop("empty name found in equation for $otype $variable{$otype}[$omvar]{name}:\n$variable{$otype}[$omvar]{equation}"); }
+    my $consistent_name = examine_name($name,"name");
+# now replace this with the maxima name if it is identified as a variable (it could be a region)
+    MATCH_LOOP: {
+      foreach my $type (@user_types,"empty","system") {
+        foreach my $mvar ( 1 .. $m{$type} ) {
+          if ($consistent_name eq $variable{$type}[$mvar]{"name"}) {
+            print DEBUG "found a match between a name and maxima name: name = $name: consistent_name = $consistent_name: maxima = $variable{$type}[$mvar]{maxima}\n";
+            $name = $variable{$type}[$mvar]{"maxima"};
+            last MATCH_LOOP;
+          }
+        }
+      }
+    }
+    $mequation = $mequation.$pre.$name;
+    $original = $post;
+  }
+  if (nonempty($original)) { $mequation = $mequation.$original; }
+
+  print DEBUG "in equation_to_mequation after mequation = $mequation\n";
+
+  return $mequation;
+
+}
+
+#-------------------------------------------------------------------------------
+# takes an arb equation and
+# 1) expands the dot and ddot operators
+# 2) replaces a reference to itself with the previous equation
+# copies all but the last input arguments and returns new equation
+# last argument is the number of selfreferences that have been made in total by this variable, and is incremented by this routine
+# $asread_variable[$masread]{"equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$asread_variable[$masread]{"equation"},$oline,$asread_variable[$masread]{"selfreferences"});
+
+sub expand_equation {
+
+  use strict;
+  my $raw_equation = $_[0]; # the first argument is the raw equation, which is copied and unchanged
+  my $variable_name = $_[1]; # the second argument is the variable name
+  my $previous_equation = $_[2]; # the third argument is the previous equation (previously expanded) used for substitution if referenced
+  my $oline = $_[3]; # forth argument is just for error message
+# $_[4] holds the total number of selfreferences and may be changed
+
+  my $expanded_equation = ''; # this is the final variable that will be returned
+
+  use Text::Balanced qw ( extract_bracketed );
+  my ($name, $consistent_name);
+
+  print DEBUG "in expand_equation: raw_equation = $raw_equation\n";
 
 # look for any dot and ddot operators and replace with scalar mathematics
 # coding cannot handle nested ddot or dot operators
 # move string from $withdots to $withoutdots while doing replacements
-  $withoutdots = '';
+  my $withdots = $raw_equation;
+  my $withoutdots = '';
 
   while ($withdots =~ /(<.*?>)|ddot\(|dot\(/) {
-    $pre = $`;
-    $post = $';
-    $operator = $&;
+    my $pre = $`;
+    my $post = $';
+    my $operator = $&;
 # move over any variable and region names
     if ($1) { $withdots = $post; $withoutdots = $withoutdots.$pre.$operator; next; }
     $operator =~ s/\($//;
-    print "INFO: found operator $operator in $withdots\n";
-    print DEBUG "found operator $operator in $withdots\n";
+    print "INFO: found operator $operator in $raw_equation\n";
+    print DEBUG "found operator $operator in $withdots that is part of raw_equation = $raw_equation\n";
     print DEBUG "pre = $pre: post = $post\n";
 
-    $midl = "";
+    my $midl = "";
     while ( $post =~ /(<.+?>)|(\,)/ ) {
       $post = $';
       if ($1) {
@@ -4292,8 +4457,8 @@ sub name_to_maxima {
     }
     print DEBUG "left side finalised: midl = $midl: post = $post\n";
         
-    $midr = "";
-    $midrnovar = "";
+    my $midr = "";
+    my $midrnovar = "";
     while ( $post =~ /(<.+?>)|(\))/ ) {
       $post = $';
       if ($1) {
@@ -4329,18 +4494,18 @@ sub name_to_maxima {
 
     my $mid = "(";
     if ($operator eq "dot") {
-      if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in dot product in $otype $variable{$otype}[$omvar]{name}: check the variables' [l=:] syntax"); } # scalar(@posl) is number of elements of posl array
-      foreach $n1 ( 1 .. 3 ) {
+      if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in dot product in $variable_name equation on the following line: check the variables' [l=:] syntax\noline = $oline"); } # scalar(@posl) is number of elements of posl array
+      foreach my $n1 ( 1 .. 3 ) {
         substr($midl, $posl[0]-1, 1, $n1); #replace blank with correct index
         substr($midr, $posr[0]-1, 1, $n1); #replace blank with correct index
         $mid = $mid." + (".$midl.")*(".$midr.")";
       }
     } else { # double dot product
-      if (@posl != 2 || @posr != 2) { error_stop("wrong number of colons in ddot product in $otype $variable{$otype}[$omvar]{name}: check the variables' [l=:,:]/[l=:] syntax"); } # scalar(@posl) is number of elements of posl array
-      foreach $n1 ( 1 .. 3 ) {
+      if (@posl != 2 || @posr != 2) { error_stop("wrong number of colons in ddot product in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax\noline = $oline"); } # scalar(@posl) is number of elements of posl array
+      foreach my $n1 ( 1 .. 3 ) {
         substr($midl, $posl[0]-1, 1, $n1); #replace blank with correct index
         substr($midr, $posr[1]-1, 1, $n1); #replace blank with correct index
-        foreach $n2 ( 1 .. 3 ) {
+        foreach my $n2 ( 1 .. 3 ) {
           substr($midl, $posl[1]-1, 1, $n2); #replace blank with correct index
           substr($midr, $posr[0]-1, 1, $n2); #replace blank with correct index
           $mid = $mid." + (".$midl.")*(".$midr.")";
@@ -4359,35 +4524,42 @@ sub name_to_maxima {
   }
 
 # reconstruct string including final unmatched bits
-  $_[0] = $withoutdots.$withdots;
+  my $processing_equation = $withoutdots.$withdots;
+  my $number_of_self_references = 0;
       
-# loop through and replace variables with standardised names
-  $original = $_[0];
-  $_[0] = "";
-  while ($original =~ /(<(.*?)>)/) {
-    $pre = $`;
-    $post = $';
-    $name = $1;
-    if (empty($2)) { error_stop("empty name found in equation for $otype $variable{$otype}[$omvar]{name}:\n$variable{$otype}[$omvar]{equation}"); }
-    $consistent_name = examine_name($name,"name");
-# now replace this with the maxima name if it is identified as a variable (it could be a region)
-    MATCH_LOOP: {
-      foreach $type (@user_types,"empty","system") {
-        foreach $mvar ( 1 .. $m{$type} ) {
-          if ($consistent_name eq $variable{$type}[$mvar]{"name"}) {
-            print DEBUG "found a match between a name and maxima name: name = $name: consistent_name = $consistent_name: maxima = $variable{$type}[$mvar]{maxima}\n";
-            $name = $variable{$type}[$mvar]{"maxima"};
-            last MATCH_LOOP;
-          }
-        }
+# now loop through the expanded equation, looking for self references and replacing by the previous equation
+  while ($processing_equation =~ /(<(.*?)>)/) {
+    my $pre = $`;
+    my $post = $';
+    my $name = $1;
+    if (empty($2)) { error_stop("empty name found in equation for $variable_name on following line: expanded_equation = $expanded_equation\noline = $oline"); }
+    my $consistent_name = examine_name($name,"name");
+    if ($consistent_name eq $variable_name) {
+# found a match with the previous equation
+      $number_of_self_references++;
+      print DEBUG "INFO: found a selfreference in an equation for variable $variable_name: raw_equation = $raw_equation: previous_equation = $previous_equation\noline = $oline\n";
+      if ($previous_equation eq '') {
+        $name = "0.d0"; # if the previous equation is empty, then replace with a zero value
+        print DEBUG "INFO: replacing selfreference with 0.d0 as previous_equation is empty\n";
+        print "WARNING: replacing a selfreference to $variable_name with 0.d0 in $raw_equation as the equation was not previously defined\n";
+      } else {
+        $name = $previous_equation;
+        print DEBUG "INFO: replacing selfreference with $name\n";
       }
     }
-    $_[0] = $_[0].$pre.$name;
-    $original = $post;
+    $expanded_equation = $expanded_equation.$pre.$name;
+    $processing_equation = $post;
   }
-  if (nonempty($original)) { $_[0] = $_[0].$original; }
+  if (nonempty($processing_equation)) { $expanded_equation = $expanded_equation.$processing_equation; $processing_equation = ''; }
 
-  print DEBUG "in name_to_maxima: after _[0] = ",$_[0],"\n";
+  if ($number_of_self_references) {
+    $_[4] = $_[4] + $number_of_self_references;
+    print "INFO: found $number_of_self_references selfreferences in an equation for variable $variable_name: raw_equation = $raw_equation: previous_equation = $previous_equation: expanded_equation = $expanded_equation\n";
+  }
+
+  print DEBUG "in expand_equation: after expanded_equation = $expanded_equation\n";
+
+  return $expanded_equation;
 
 }
 
@@ -6292,29 +6464,6 @@ sub get_system_mvar {
   if ($mvar > $m{"system"}) {die "ERROR: system variable $_[0] not found in get_system_mvar\n";}
 
   return $mvar;
-
-}
-
-#-------------------------------------------------------------------------------
-# takes a string which contains maxima names and replaces with user defined names
-# this subroutine possibly not used
-
-sub maxima_to_name {
-
-  my $type;
-  my $mvar;
-
-  print DEBUG "in maxima_to_name: before _[0] = ",$_[0],"\n";
-
-# substitute user names with maxima names
-  foreach $type (@user_types,"system","empty") {
-    foreach $mvar ( 1 .. $m{$type} ) {
-      replace_substrings($_[0],$variable{$type}[$mvar]{"maxima"},$variable{$type}[$mvar]{"name"});
-    }
-  }
-
-  print DEBUG "in maxima_to_name: after _[0] = ",$_[0],"\n";
-  return $_[0];
 
 }
 

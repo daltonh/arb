@@ -4,51 +4,51 @@
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: heat_conduction_with_linked_regions.arb
-#INCLUDE_WORKING "heat_conduction_with_linked_regions.arb"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../heat_conduction_with_linked_regions.arb without any search/replace combinations
-# arb finite volume solver
-# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
-#
-# arb is released under the GNU GPL.  For full details see the license directory.
-#
-#----------------------------------------------------------------------------
-VERSION 0.40
-#----------------------------------------------------------------------------
-
-# physical data
-CONSTANT <D> [m^2/s] 1.d-3 # diffusivity
-CONSTANT <hole flux> [W/m^2] -1.d+1 # heat flux around surface of hole
-
-#-------------------------------------------------------------------
-# geometry
-
-# CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
-# where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
-# where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
-# where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
-# where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
-# where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
-# where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
-FACE_REGION <walls> "COMPOUND +<boundaries>-<hole>-<inlet>-<outlet>"
-
-# MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
-# output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
-# input options are: input,centringinput,meshinput,centringmeshinput,noinput
-# data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
-MSH_FILE "surface.msh"
-
-CELL_UNKNOWN <T> [K] "1.d0" magnitude=1.d+2 # temperature
-FACE_DERIVED <T flux> "-<D>*facegrad(<T>)" ON <all faces>
-CELL_EQUATION <T transport> "celldiv(<T flux>)" ON <domain> # diffusion equation
-FACE_EQUATION <T hole> "-<D>*facegrad(<T>)-<hole flux>" ON <hole> # specified heat flux through hole surface
-FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on walls
-FACE_EQUATION <T periodic> "<T>-facelink(<T>,<inlet>,<outlet>)" ON <inlet> # set temperature on inlet equal to temperature on outlet
-#FACE_EQUATION <T periodic> "<T>-facelink(<T>,<outlet>,<inlet>)" ON <outlet> # set temperature on outlet equal to temperature on inlet (equivalent statement to the above)
-FACE_EQUATION <T flux periodic> "<T flux>+facelink(<T flux>,<inlet>,<outlet>)" ON <inlet> # set heat flux on inlet equal to flux on outlet
-NONE_OUTPUT <T average> "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
-
-#-------------------------------------------------------------------
-# INCLUDE FINISHED for ../heat_conduction_with_linked_regions.arb
-#--------------------------------------------------------
+#(hash added during unwrap)INCLUDE_WORKING "heat_conduction_with_linked_regions.arb"
+   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   # the following is INCLUDED from ../heat_conduction_with_linked_regions.arb without any search/replace combinations
+   # arb finite volume solver
+   # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+   #
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #----------------------------------------------------------------------------
+   VERSION 0.40
+   #----------------------------------------------------------------------------
+   
+   # physical data
+   CONSTANT <D> [m^2/s] 1.d-3 # diffusivity
+   CONSTANT <hole flux> [W/m^2] -1.d+1 # heat flux around surface of hole
+   
+   #-------------------------------------------------------------------
+   # geometry
+   
+   # CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+   # where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
+   # where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+   # where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
+   # where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
+   # where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
+   # where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
+   FACE_REGION <walls> "COMPOUND +<boundaries>-<hole>-<inlet>-<outlet>"
+   
+   # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+   # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+   # input options are: input,centringinput,meshinput,centringmeshinput,noinput
+   # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+   MSH_FILE "surface.msh"
+   
+   CELL_UNKNOWN <T> [K] "1.d0" magnitude=1.d+2 # temperature
+   FACE_DERIVED <T flux> "-<D>*facegrad(<T>)" ON <all faces>
+   CELL_EQUATION <T transport> "celldiv(<T flux>)" ON <domain> # diffusion equation
+   FACE_EQUATION <T hole> "-<D>*facegrad(<T>)-<hole flux>" ON <hole> # specified heat flux through hole surface
+   FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on walls
+   FACE_EQUATION <T periodic> "<T>-facelink(<T>,<inlet>,<outlet>)" ON <inlet> # set temperature on inlet equal to temperature on outlet
+   #FACE_EQUATION <T periodic> "<T>-facelink(<T>,<outlet>,<inlet>)" ON <outlet> # set temperature on outlet equal to temperature on inlet (equivalent statement to the above)
+   FACE_EQUATION <T flux periodic> "<T flux>+facelink(<T flux>,<inlet>,<outlet>)" ON <inlet> # set heat flux on inlet equal to flux on outlet
+   NONE_OUTPUT <T average> "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
+   
+   #-------------------------------------------------------------------
+   # INCLUDE FINISHED for ../heat_conduction_with_linked_regions.arb
+   #--------------------------------------------------------
 ##################################################################################

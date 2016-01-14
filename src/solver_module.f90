@@ -97,28 +97,23 @@ if (lambda_previous_step > 0.d0.and.sticky_lambda) lambda = min(dfloat(2**sticky
 ! call a debugging routine to find which equation is most dependent upon it
 if (.false.) call find_sensitive_equation(varname='<n+>',icell=6447)
 
-! save old unknown values as delphiold
+! save old unknown values as phiold
 do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
   m = var_list(var_list_number_unknown)%list(n)
   do ns = 1, ubound(var(m)%funk,1)
-    delphiold(var(m)%funk(ns)%pp(1)) = var(m)%funk(ns)%v ! as pp(1) is the sequential index of the unknown
+    phiold(var(m)%funk(ns)%pp(1)) = var(m)%funk(ns)%v ! as pp(1) is the sequential index of the unknown
   end do
 end do
 
 ! call the main linear solver routines if atleast one equation is being solved
 
-if (ptotal > 0) then
-  if (debug) write(*,*) 'calling mainsolver'
-  !call time_process
-  call mainsolver(ierror)
-  !call time_process(description='mainsolver')
+if (debug) write(*,*) 'calling mainsolver'
+!call time_process
+call mainsolver(ierror)
+!call time_process(description='mainsolver')
 ! if there is a problem with the linear matrix solver then return
-  if (debug) write(*,*) 'in newtsolver after mainsolver, ierror = ',ierror
-  if (ierror /= 0) return
-else
-  if (debug) write(*,*) 'mainsolver skipped as no equations are being solved'
-  ierror = 0
-end if
+if (debug) write(*,*) 'in newtsolver after mainsolver, ierror = ',ierror
+if (ierror /= 0) return
 
 ! temp &&&&
 !if (newtstep == 1) then
@@ -230,29 +225,18 @@ back_loop: do ! entrance point for repeat steps
     read(*,*) lambda
   end if
 
-! call update_unknowns(initial=.false.,lambda=lambda)
-! increment delvar changes to derived variables using possible backstepping
-! do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
-!   m = var_list(var_list_number_unknown)%list(n)
-! TODO: place unknown dynamic region update in here too
-!   do ns = 1, ubound(var(m)%funk,1)
-!     p = var(m)%funk(ns)%pp(1)
-!     var(m)%funk(ns)%v = delphiold(p) + lambda*delphi(p)
-!   end do
-! end do
-
 ! update all vars/derivatives and calculate new newtres value
 
   if (debug) write(*,*) 'in newtsolver before update with ierror = ',ierror
 
   call time_process
   call update_and_check_unknowns(initial=.false.,lambda=lambda,ierror=ierror)
-  call time_process(description='update and check unknowns in newtsolve')
+  call time_process(description='within newtsolver update and check unknowns')
   if (debug) write(*,*) 'in newtsolver after update and check unknowns: ierror = ',ierror
 
   call time_process
   if (ierror == 0) call update_and_check_derived_and_equations(ierror=ierror)
-  call time_process(description='update and check derived and equations in newtsolve')
+  call time_process(description='within newtsolver update and check derived and equations')
   if (debug) write(*,*) 'in newtsolver after update and check derived and equations: ierror = ',ierror
 
   if (ierror == 0) then
@@ -417,7 +401,7 @@ if (manage_funk_dv_memory) then
   call time_process
   if (debug_sparse) write(*,*) 'deallocating derived funk dvs'
   call memory_manage_dvs(type="derived",action="deallocate")
-  call time_process(description='deallocating funk memory')
+  call time_process(description='deallocating derived funk memory')
 end if
 
 ! sparse matrix produced is stored in compressed sparse row format (3 array variation), with 1 indexing (csr1)
@@ -577,8 +561,10 @@ if (diagonal_dominance) then
 end if
 
 if (manage_funk_dv_memory) then
+  call time_process
   if (debug_sparse) write(*,*) 'deallocating equation funk dvs'
   call memory_manage_dvs(type="equation",action="deallocate")
+  call time_process(description='deallocating equation funk memory')
 end if
 
 !if (condition_number_estimate) then
@@ -685,8 +671,10 @@ if (allocated(jaa)) deallocate(jaa)
   
 if (manage_funk_dv_memory) then
   if (debug_sparse) write(*,*) 'reallocating derived and equation funk dvs'
+  call time_process
   call memory_manage_dvs(type="derived",action="reallocate")
   call memory_manage_dvs(type="equation",action="reallocate")
+  call time_process(description='allocating derived and equation funk memory')
 end if
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine mainsolver'

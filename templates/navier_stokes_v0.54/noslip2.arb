@@ -1,0 +1,1 @@
+FACE_EQUATION <equation> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <region> # no component tangential (2) to the face

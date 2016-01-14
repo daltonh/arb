@@ -1,1 +1,37 @@
-These can now be used for any combination of dimensions, but replacing the flags <<dim1flag>>, <<dim2flag>> and <<dim3flag>> either by a space (if the dimension is relevant) or a comment character # (if the dimension is not relevant)
+These template files are for constructing the Navier-Stokes or Stokes equations.
+
+The layout of these files for a steady-state Navier-Stokes simulation can be visualised as the following, where | represents the include of another templates file and any variable names (just the major ones) specify where these are defined:
+
+complete -> | constants -> | <mu>
+                           | <rho>
+                           | etc
+            | complete_equations -> | domain -> | unknowns -> | <p>
+                                                              | <u>
+                                                | totalstress -> | u_gradient_tensor
+                                                                 | <tau>
+                                                | u_f -> | p_error -> | dynamic_force -> | <p_f>
+                                                                                         | <dynamic_force_c>
+                                                                                         | <dynamic_force_c_f>
+                                                                      | <dynamic_force_f>
+                                                                      | <p_error>
+                                                         | <u_f>
+                                                         | etc
+                                                | advection_flux -> | <J_advection_f>
+                                                | momentum_flux -> | <J_f>
+                                                | conservation -> | <continuity>
+                                                                  | <momentum>
+            | inlet_u_fully_developed -> | u_fully_developed
+                                         | no_slip
+                                         | <inlet flowrate equation>
+                                         | etc
+            | outlet_u_fully_developed ->  | u_fully_developed
+                                           | no_slip
+                                           | <inlet flowrate equation>
+                                           | etc
+            | walls -> | no_flux
+                       | no_slip
+                       | p_extrapolation
+
+Changes to the equations are mainly done by string replacements now, changing the form of or activating various terms.  In general these strings should be set before calling constants for the first time.  EG, for the stokes equations call stokes before anything else.
+
+These can now be used for any combination of dimensions, by replacing the flags <<dim1comment>>, <<dim2comment>> and <<dim3comment>> either by an empty character (if the dimension is relevant) or a comment character # (if the dimension is not relevant).  Cylindrical coordinates can also be done - using the templates in the general template directory is the easiest way to do this.

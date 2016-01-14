@@ -1,0 +1,4 @@
+#FACE_EQUATION <equation1> "facegrad(dot(<u[l=:]>,cellave[lastface](<facetang1[l=:]>)))" ON <region> # no derivative of component tangential to the face
+FACE_EQUATION <equation1> "ddot(<ugrad_f[l=:,:]>,<facetang1[l=:]>*<facenorm[l=:]>)" ON <region> # no derivative of component tangential to the face
+#<<dim1comment>><<dim2comment>><<dim3comment>>FACE_EQUATION <equation> "facegrad(dot(<u[l=:]>,cellave[lastface](<facetang2[l=:]>)))" ON <region> # no derivative of component tangential to the face, but here in the second tangent direction
+<<dim1comment>><<dim2comment>><<dim3comment>>FACE_EQUATION <equation2> "ddot(<ugrad_f[l=:,:]>,<facetang2[l=:]>*<facenorm[l=:]>)" ON <region> # no derivative of component tangential to the face, but here in the second tangent direction

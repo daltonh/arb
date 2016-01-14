@@ -1,0 +1,6 @@
+These template files will be removed in the future.  See the readme file in the new navier_stokes templates file for the new templates file structure.
+
+The main changes between v0.54 and v0.55 are:
+1) changes to u_f, advection_flux and momentum_flux files, such that all three need to be included now (as opposed to advection_flux calling u_f in v0.54)
+2) reliance now on default string replacements to pick up transient, stokes, nonuniform property etc terms
+3) use of self-referencing in variable equations, so that equations can be built up

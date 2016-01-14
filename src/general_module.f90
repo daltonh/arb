@@ -303,7 +303,7 @@ integer :: idomain, iboundary, itotal ! number of domain (type 1) and boundary (
 integer :: jdomain, jboundary, jtotal ! number of domain (type 1) and boundary (type 2) faces, also total
 integer :: kdomain, kboundary, ktotal ! number of domain (type 1) and boundary (type 2) nodes, also total
 integer :: ptotal ! number of equations and unknowns
-double precision, dimension(:), allocatable, save :: delphiold, delphi ! single dimension unknown-sized variables for newton proceedure
+double precision, dimension(:), allocatable, save :: phiold, delphi ! single dimension unknown-sized variables for newton proceedure
 integer :: transient_relstepmax ! maximum relstep value for all transients (variables and dynamic regions)
 integer :: newtient_relstepmax ! maximum relstep value for all newtients (variables and dynamic regions)
 double precision :: newtres = 0.d0 ! last evaluated value of the newton residual
@@ -381,9 +381,9 @@ logical :: kernel_availability_nodegrad = .false.
 logical :: kernel_availability_nodeave = .false.
 
 ! code version details
-real, parameter :: version = 0.54 ! current version
+real, parameter :: version = 0.55 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
-character(len=100), parameter :: versionname = "flexible freda"
+character(len=100), parameter :: versionname = "flexible frogger"
 
 ! the following are default values for various parameters which can be altered here (and not via user input options)
 double precision, parameter :: limitertolerance = 1.d-10 ! (1.d-10) tolerance used when calculating advection gradient limiting - set to small positive number

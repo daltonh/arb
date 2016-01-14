@@ -1288,10 +1288,10 @@ do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
 end do
 
 ! allocate newton solver working variables
-if (.not.allocated(delphiold)) allocate(delphiold(ptotal))
+if (.not.allocated(phiold)) allocate(phiold(ptotal))
 if (.not.allocated(delphi)) allocate(delphi(ptotal))
 delphi = 0.d0
-delphiold = 0.d0
+phiold = 0.d0
 
 ! initialise and place values in the fast lookup array unknown_var_from_pp
 allocate(unknown_var_from_pp(ptotal))

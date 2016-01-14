@@ -1,0 +1,84 @@
+# setup things needed for transient flow
+# this file works for either dynamic or constant timestepping
+# designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
+# string replacements default to constant timestepping, or if dynamic timestepping is specified, explicit dynamic timestepping
+# choice should be made by general replacements set from the calling files
+
+# <dt_initial> is used to set the intial timestep during dynamic timestepping or constant timestep otherwise
+
+CONSTANT <t_end> [] 1.d2 # time for simulation to stop
+CONSTANT <celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)" # average cell dimension
+CONSTANT <CFL_initial> 1.d-2 # enter a CFL number to set the initial timestep (roughly) - depending on the geometry of cells and non-uniformity of mesh, this may significantly underestimate the actual CFL that results - ie, you may need to choose a smaller number 
+CONSTANT <dt_initial> [] "<CFL_initial>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
+CONSTANT <CFL_out> 10.d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity
+CONSTANT <dt_out> [] "<CFL_out>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
+#CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
+
+# transient bits
+TRANSIENT_SIMULATION
+GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+
+# the default is for constant as opposed to dynamic timestepping
+GENERAL_REPLACEMENTS DEFAULT "<<constanttimestepcomment>>" W "" DEFAULT "<<dynamictimestepcomment>>" W "#"
+
+#---------------------------------------------------------------------------------------------------------
+# dynamic timestepping
+
+# by default there is a explicit newtstep timestep limitation - to remove it reverse the following string replacement
+GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "" DEFAULT "<<nonnewtsteptimestepcomment>>" W "#"
+
+# dynamic timestep constants
+<<dynamictimestepcomment>>CONSTANT <dt_increase> 1.2d0
+<<newtsteptimestepcomment>><<dynamictimestepcomment>>CONSTANT <dt_decrease> 0.7d0
+<<dynamictimestepcomment>>CONSTANT <dt_max> "<dt_initial>*1.d4"
+<<dynamictimestepcomment>>CONSTANT <dt_min> "<dt_initial>*1.d-3"
+<<dynamictimestepcomment>>CONSTANT <CFL_max> 0.25d0
+<<newtsteptimestepcomment>><<dynamictimestepcomment>>CONSTANT <newtstepdtlimiterlow> 4.d0 # explicitly calculated timestep is only increased if <newtstep[r=1]> is <= than this value
+<<newtsteptimestepcomment>><<dynamictimestepcomment>>CONSTANT <newtstepdtlimiterhigh> 8.d0 # explicitly calculated timestep is decreased if <newtstep[r=1]> is > than this value
+<<newtsteptimestepcomment>><<dynamictimestepcomment>>NONE_TRANSIENT <newtstep[r=1]> "0.d0" "<newtstep>" # we save the previous timestep <newtstep> for the above explicit timestep calculation
+<<newtsteptimestepcomment>><<dynamictimestepcomment>>NONE_TRANSIENT <dt_newtstep_increase[r=1]> "1.d0" "noneif(<newtstep[r=1]>-<newtstepdtlimiterhigh>,<dt_decrease>,noneif(<newtstep[r=1]>-<newtstepdtlimiterlow>,1.d0,<dt_increase>))" # apply this to the previous timestep to keep newtstep roughly between high/low ranges
+<<nonnewtsteptimestepcomment>><<dynamictimestepcomment>>NONE_LOCAL <dt_newtstep_increase[r=1]> "<dt_increase>" # placeholder for nonnewtsteplimited timestepping
+
+# the default is for explicit timestepping, but implicit can also be enabled by reversing the following strings
+GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+
+<<dynamictimestepcomment>>NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
+<<dynamictimestepcomment>>FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces> # don't actually need this for implicit timestepping, but it is used in input files for some of the problems for output, so in the interests of not breaking things...
+
+# explicit
+# use CFL_number template, but make the calculation explicit - ie, based on r=1 values
+<<dynamictimestepcomment>><<explicittimestepcomment>>INCLUDE "CFL_number" R "<CFL local/dt>" W "<CFL local/dt[r=1]>" R "<u_f>" W "<u_f[r=1]>" R "<CFL local>" W "<CFL local[r=1]>" R "<dt>" W "<dt[r=1]>" R "NONE_OUTPUT <CFL>" W 'NONE_TRANSIENT <CFL[r=1]> ""'
+#<<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
+<<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <CFL[r=1]> output,stepoutput
+<<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+
+# implicit
+# note, a newtstepmax may be applied to <dt_target> within u_f.arb (unfortunately this must be done after <u_f> derived has been calculated, hence, newtstepmax can't be applied here)
+<<dynamictimestepcomment>><<implicittimestepcomment>>INCLUDE "CFL_number"
+<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_UNKNOWN <dt[r=0]> "<dt_initial>" stepoutput,input
+# straight minimum
+# advantage of straight minimum is that provided convergence is achieved the CFL constraint will be rigorously obeyed
+<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
+# harmonically averaged, for smoother convergence than the straight minimum which can bounce around
+# disadvantage of the particular harmonic function used is for a factor of two (see below) the dt could be up to twice what the CFL criterion dictates, but using a factor of one can unreasonably decrease timestep below the CFL limit for many timestep combinations
+#<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_explicit_target> "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
+#<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_CFL_target> "nonemax(<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>),<dt_min>)" stepoutput
+# using two factor here which really doesn't respect dt_increase and CFL_max values correctly, but performs best when both timescales are about the same - ie, more thought required
+#<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_target> "2.d0/(1.d0/<dt_explicit_target>+1.d0/<dt_CFL_target>)" stepoutput
+<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
+
+#---------------------------------------------------------------------------------------------------------
+# constant timestep, next 1 line
+<<constanttimestepcomment>>NONE_CONSTANT <dt> "<dt_initial>"
+#---------------------------------------------------------------------------------------------------------
+
+NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
+NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
+NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition # this will be true (>0.) whenever we are <dt_out> from last output
+NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
+NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
+
+<<dim1comment>>CELL_TRANSIENT <u[l=1,r=1]> "" "<u[l=1]>" ON <all cells>
+<<dim2comment>>CELL_TRANSIENT <u[l=2,r=1]> "" "<u[l=2]>" ON <all cells>
+<<dim3comment>>CELL_TRANSIENT <u[l=3,r=1]> "" "<u[l=3]>" ON <all cells>
+

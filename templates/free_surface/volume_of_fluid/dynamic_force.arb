@@ -1,10 +1,7 @@
-# standard lines to overwrite dynamic_force_c and dynamic_force_f from navier_stokes p_error_facegrad file to include surface tension force in p_error calculation
-
-<<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "-(celldivgrad[l=1](<p_f>)-<sigma>*<vof_F_c[l=1]>)" ON <all cells>
-<<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-(celldivgrad[l=2](<p_f>)-<sigma>*<vof_F_c[l=2]>)" ON <all cells>
-<<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "-(celldivgrad[l=3](<p_f>)-<sigma>*<vof_F_c[l=3]>)" ON <all cells>
+# now uses selfreferencing to just add surface tension force to existing dynamic forces
+<<dim1comment>>VARIABLE <dynamic_force_c[l=1]> "<dynamic_force_c[l=1]>+<sigma>*<vof_F_c[l=1]>"
+<<dim2comment>>VARIABLE <dynamic_force_c[l=2]> "<dynamic_force_c[l=2]>+<sigma>*<vof_F_c[l=2]>"
+<<dim3comment>>VARIABLE <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>+<sigma>*<vof_F_c[l=3]>"
 # differencing has to be consistent with that used for <vof_F_f>
-# now on all faces to allow use as a BC too
-FACE_LOCAL <dynamic_force_f> "-(facegrad[dxunit](<p>)-<sigma>*<vof_F_f>)" ON <all faces>
-#FACE_LOCAL <dynamic_force_f> "-(facegrad(<p>)-<sigma>*<vof_F_f>)" ON <all faces>
+VARIABLE <dynamic_force_f> "<dynamic_force_f>+<sigma>*<vof_F_f>"
 
