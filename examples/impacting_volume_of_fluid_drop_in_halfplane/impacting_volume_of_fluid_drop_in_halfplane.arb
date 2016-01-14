@@ -157,7 +157,6 @@ INCLUDE "high_order_interface_geometry"
 INCLUDE "force" # force done back on the fluid mesh
 
 # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
-# in pre v0.55 versions the advection flux is based on <u[l=:]> rather than <u[l=:,r=1]> as is done here
 INCLUDE_ROOT "navier_stokes"
 # nonuniform
 <<nonuniformcomment>>INCLUDE "total_stress" R "<mu_f>" W "<vof_mu_harmonic_f>"

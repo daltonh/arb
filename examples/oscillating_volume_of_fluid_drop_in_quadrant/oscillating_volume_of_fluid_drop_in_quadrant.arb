@@ -25,9 +25,9 @@ INFO_DATE "14/1/16" # interpreted as the last modification date
 GENERAL_REPLACEMENTS R "<<uniformcomment>>" W "#" R "<<nonuniformcomment>>" W ""
 
 # for a single mesh domain (all on the fluid mesh) include the following
-#GENERAL_REPLACEMENTS R "<<singledomaincomment>>" W "" R "<<doubledomaincomment>>" W "#"
+GENERAL_REPLACEMENTS R "<<singledomaincomment>>" W "" R "<<doubledomaincomment>>" W "#"
 # for a double mesh domain everything except the curvature calculation (and its dependent smoothed phi and normals) is done on the fluid domain, and the rest on the free surface domain which is coincident and larger
-GENERAL_REPLACEMENTS R "<<singledomaincomment>>" W "#" R "<<doubledomaincomment>>" W ""
+#GENERAL_REPLACEMENTS R "<<singledomaincomment>>" W "#" R "<<doubledomaincomment>>" W ""
 
 # the default is for normals calculated at nodes, and then averaged to surrounding cells
 # to use normals based on cellgrad directly include the following which alters the behaviour within the normals templates file:
@@ -162,7 +162,6 @@ INCLUDE "high_order_interface_geometry"
 INCLUDE "force" # force done back on the fluid mesh
 
 # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
-# in pre v0.55 versions the advection flux is based on <u[l=:]> rather than <u[l=:,r=1]> as is done here
 INCLUDE_ROOT "navier_stokes"
 # nonuniform
 <<nonuniformcomment>>INCLUDE "total_stress" R "<mu_f>" W "<vof_mu_harmonic_f>"
