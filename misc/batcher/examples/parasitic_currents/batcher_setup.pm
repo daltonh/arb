@@ -66,7 +66,7 @@ sub case_setup {
 
           my $m=$#case+1;
 
-          push(@{$case[$m]{"arbfile"}},'parasitic_currents_200415.arb');
+          push(@{$case[$m]{"arbfile"}},'parasitic_currents_150116.arb');
           $case[$m]{"arboptions"}='--omp2 --opt -pl'; # using process logging (-pl) here allows memory use (memoryrss) to be reported
 
           $case[$m]{"replacements"}{"//lc = <<lc>>;"} = "lc = ".scalar(0.125/(2**$lcscale)).";";

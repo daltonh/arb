@@ -62,6 +62,8 @@ sub arbthread {
           if ($case[$n]{"replacements"}) {
             for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
     # now stopping replacements if the string is mentioned as a replacement keyword
+# TODO: this needs to be more precise, possibly looking for preceding INCLUDE* or GENERAL_REPLACEMENTS, dealing with case, and dealing with default D|DEFAULT?
+# and match delimiters
               if ($line !~ /\s(R|REPLACE)\s+("|'|)\Q$key\E("|'|\s|$)/) {
                 $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
               }
