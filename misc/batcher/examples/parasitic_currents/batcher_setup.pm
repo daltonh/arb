@@ -69,6 +69,9 @@ sub case_setup {
           push(@{$case[$m]{"arbfile"}},'parasitic_currents_150116.arb');
           $case[$m]{"arboptions"}='--omp2 --opt -pl'; # using process logging (-pl) here allows memory use (memoryrss) to be reported
 
+# always include these now, complementing automatic arb strings
+          $case[$m]{"replacements"}{"<<batchercomment>>"} = '';
+          $case[$m]{"replacements"}{"<<nobatchercomment>>"} = '#';
           $case[$m]{"replacements"}{"//lc = <<lc>>;"} = "lc = ".scalar(0.125/(2**$lcscale)).";";
           $case[$m]{"replacements"}{"<<batcherRe>>"} = 10.**$rescale;
           $case[$m]{"replacements"}{"<<batcherS>>"} = 10.**$sscale;
