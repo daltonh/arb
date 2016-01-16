@@ -1,0 +1,1 @@
+KERNEL_OPTIONS checkminw=.true.,minimumminw=0.2d0 # reducing the minw (default = 1) which will decrease the size of the kernels
