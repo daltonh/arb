@@ -97,7 +97,7 @@ CONSTANT <t_end> [] 2.d1 # time for simulation to stop
 CONSTANT <dt_initial> [] "1.d-4*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
 CONSTANT <dt_out> [] 1.d-1 # time between output
 
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_ROOT "free_surface/volume_of_fluid"
 INCLUDE "nondimensional_constants"
 # calculate the mac2 cartesian vof velocity errors for reference (http://dx.doi.org/10.1016/j.apm.2005.08.015)
 <<uniformcomment>>INCLUDE "parasitic_mac2_correlation"
@@ -126,7 +126,7 @@ CELL_TRANSIENT <u[l=1,r=1]> "0.d0" "<u[l=1]>" ON <all cells>
 CELL_TRANSIENT <u[l=2,r=1]> "-<u impact>*<vof_phi>" "<u[l=2]>" ON <all cells>
 
 # vof based CSF
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_ROOT "free_surface/volume_of_fluid"
 INCLUDE "setup"
 
 # define real initial vof
@@ -167,7 +167,7 @@ INCLUDE_ROOT "navier_stokes"
 <<uniformcomment>>INCLUDE "u_f"
 <<uniformcomment>>INCLUDE "advection_flux"
 
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_ROOT "free_surface/volume_of_fluid"
 INCLUDE "dynamic_force"
 INCLUDE "equation" # all phi advection done on fluid mesh
 
@@ -179,7 +179,7 @@ INCLUDE "momentum_flux"
 <<uniformcomment>>INCLUDE "conservation"
 
 # fluid boundary conditions on nonslip walls
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_ROOT "free_surface/volume_of_fluid"
 INCLUDE "walls_nonwetting" # NB: BC applied on fluid walls
 INCLUDE_ROOT "navier_stokes"
 INCLUDE "walls_p_set"
@@ -239,7 +239,7 @@ VARIABLE <vof_phi_adjust[r=1]> output
 #VARIABLE <vof_phi_adjust[r=1]> newtstepmax=50
 
 # to show the interface masks include this file
-#INCLUDE_ROOT "volume_of_fluid"
+#INCLUDE_ROOT "free_surface/volume_of_fluid"
 #INCLUDE "output_masks"
 
 # for the high order method only, adjust the interface width
