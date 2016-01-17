@@ -1,5 +1,5 @@
 KERNEL_OPTIONS polynomialorder=1,polynomialaverageorder=1 # setting order of kernel function for face averages and derivatives
 KERNEL_OPTIONS automaximumseparation=.false.
-KERNEL_OPTIONS checkminw=.true.,minimumminw=0.5d0 # reducing the minw a bit which will decrease the size of the kernels
 KERNEL_OPTIONS minimumseparation=1,maximumseparation=3
+INCLUDE "kernel_compact_minw.arb"
 

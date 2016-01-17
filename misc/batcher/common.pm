@@ -64,9 +64,12 @@ sub arbthread {
     # now stopping replacements if the string is mentioned as a replacement keyword
 # TODO: this needs to be more precise, possibly looking for preceding INCLUDE* or GENERAL_REPLACEMENTS, dealing with case, and dealing with default D|DEFAULT?
 # and match delimiters
-              if ($line !~ /\s(R|REPLACE)\s+("|'|)\Q$key\E("|'|\s|$)/) {
-                $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
-              }
+#             if ($line !~ /\s(R|REPLACE)\s+("|'|)\Q$key\E("|'|\s|$)/) {
+#               $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
+#             }
+# removing this regex now as it would also introduce the possibility of false matches
+# instead use <<batchercomment>> and <<nobatchercomment>> (see ref: general_replacements in setup_equations) for more consistent and controllable behaviour
+              $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
             }
           }
           print INFILE $line;

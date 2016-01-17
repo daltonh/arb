@@ -13,20 +13,29 @@ INFO_DESCRIPTION "Stationary 2D droplet calculated using the volume of fluid met
 INFO_AUTHOR "Dalton Harvie"
 INFO_DATE "13/4/15" # interpreted as the last modification date
 
-# some strings to be set by the batcher script
+# some strings to be set by the batcher script or otherwise defaulted
+<<batchercomment>>INFO_DESCRIPTION+ ": batcher run"
+# the idea here is that if this file is run natively (ie, not through batcher) then the following replacements will be active
+# if this file is run through batcher, then these replacement lines will be commented out, and the batcher replacements become active
 #<<batchercylindricalcomment>>
 #<<batchercartesiancomment>>
-GENERAL_REPLACEMENTS R "<<batchercylindricalcomment>>" W "#" R "<<batchercartesiancomment>>" W ""
+<<nobatchercomment>>GENERAL_REPLACEMENTS R "<<batchercylindricalcomment>>" W "#" R "<<batchercartesiancomment>>" W ""
 #<<batcherstructureddomaincomment>>
 #<<batcherunstructureddomaincomment>>
-GENERAL_REPLACEMENTS R "<<batcherstructureddomaincomment>>" W "#" R "<<batcherunstructureddomaincomment>>" W ""
+<<nobatchercomment>>GENERAL_REPLACEMENTS R "<<batcherstructureddomaincomment>>" W "#" R "<<batcherunstructureddomaincomment>>" W ""
 # fluid properties
-GENERAL_REPLACEMENTS R "<<batcherRe>>" W "1.d0"
-GENERAL_REPLACEMENTS R "<<batcherS>>" W "1.d0"
-GENERAL_REPLACEMENTS R "<<batcherrho>>" W "1.d0"
-GENERAL_REPLACEMENTS R "<<batchermu>>" W "1.d0"
-GENERAL_REPLACEMENTS R "<<batcherdudtstop>>" W "1.d-3"
-GENERAL_REPLACEMENTS R "<<batcherinterfacewidth>>" W "2.d0"
+#<<batcherRe>>
+#<<batcherS>>
+#<<batcherrho>>
+#<<batchermu>>
+#<<batcherdudtstop>>
+#<<batcherinterfacewidth>>
+<<nobatchercomment>>GENERAL_REPLACEMENTS R "<<batcherRe>>" W "1.d0"
+<<nobatchercomment>>GENERAL_REPLACEMENTS R "<<batcherS>>" W "1.d0"
+<<nobatchercomment>>GENERAL_REPLACEMENTS R "<<batcherrho>>" W "1.d0"
+<<nobatchercomment>>GENERAL_REPLACEMENTS R "<<batchermu>>" W "1.d0"
+<<nobatchercomment>>GENERAL_REPLACEMENTS R "<<batcherdudtstop>>" W "1.d-3"
+<<nobatchercomment>>GENERAL_REPLACEMENTS R "<<batcherinterfacewidth>>" W "2.d0"
 
 # for a cylindrical droplet
 <<batchercylindricalcomment>>GENERAL_REPLACEMENTS R "<<cylindricalcomment>>" W "" R "<<cartesiancomment>>" W "#"

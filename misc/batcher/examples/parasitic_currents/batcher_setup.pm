@@ -69,9 +69,19 @@ sub case_setup {
           push(@{$case[$m]{"arbfile"}},'parasitic_currents_150116.arb');
           $case[$m]{"arboptions"}='--omp2 --opt -pl'; # using process logging (-pl) here allows memory use (memoryrss) to be reported
 
+# always include these now, complementing automatic arb strings
+          $case[$m]{"replacements"}{"<<batchercomment>>"} = '';
+          $case[$m]{"replacements"}{"<<nobatchercomment>>"} = '#';
+
+          $case[$m]{"replacements"}{"<<batchercartesiancomment>>"} = '';
+          $case[$m]{"replacements"}{"<<batchercylindricalcomment>>"} = '#';
           $case[$m]{"replacements"}{"//lc = <<lc>>;"} = "lc = ".scalar(0.125/(2**$lcscale)).";";
           $case[$m]{"replacements"}{"<<batcherRe>>"} = 10.**$rescale;
           $case[$m]{"replacements"}{"<<batcherS>>"} = 10.**$sscale;
+          $case[$m]{"replacements"}{"<<batcherrho>>"} = "1.d0";
+          $case[$m]{"replacements"}{"<<batchermu>>"} = "1.d0";
+          $case[$m]{"replacements"}{"<<batcherdudtstop>>"} = "1.d-3";
+          $case[$m]{"replacements"}{"<<batcherinterfacewidth>>"} = "2.d0";
           if ($meshtype eq "structured") {
             $case[$m]{"replacements"}{"<<batcherstructureddomaincomment>>"} = "";
             $case[$m]{"replacements"}{"<<batcherunstructureddomaincomment>>"} = "#";

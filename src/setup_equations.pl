@@ -580,6 +580,10 @@ sub setup_general_replacements {
 # setup default general_replacements
 # loose convention is that replacement strings be delimited by <<>>, however any strings can (and will) be matched/replaced
 # convention is that replacement names that end with "comment" are meant to preceed statements in the files, converting them to comments if they are not relevant
+# this string is for batcher integration - if a file is run through batcher, this string will be replaced by an empty string, so can be used to precede arb lines that are specific to the batcher runs
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<batchercomment>>", replace => "#" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<nobatchercomment>>", replace => "" );
+# geometry and equation related
   %{$general_replacements[$#general_replacements+1]} = ( search => "<<dim1comment>>", replace => "" );
   %{$general_replacements[$#general_replacements+1]} = ( search => "<<dim2comment>>", replace => "" );
   %{$general_replacements[$#general_replacements+1]} = ( search => "<<dim3comment>>", replace => "" );
