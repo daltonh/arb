@@ -42,12 +42,12 @@ syn keyword arbStatement INCLUDE INCLUDE_FROM INCLUDE_ROOT INCLUDE_WORKING MSH_F
 syn match arbStatement "\<\(EXTERNALS\=\)\>" nextgroup=arbString,arbFilename skipwhite
 syn keyword arbStatement C CANCEL D DEFAULT R REPLACE W WITH nextgroup=arbString,arbUnquotedString,arbComment skipwhite
 syn match arbStatement "\<\(INFO_AUTHOR\|INFO_DATE\|INFO_DESCRIPTION\|INFO_FILENAME\|INFO_RUNDATE\|INFO_RUNHOST\|INFO_RUNVERSION\|INFO_TITLE\|INFO_VERSION\)\>\(+\|-\)\=" nextgroup=arbString,arbUnquotedString skipwhite
-syn match arbStatement "\(\)\<GENERAL\(_OPTIONS\=\)\=\>"
 syn keyword arbStatement COMPOUND_OPTIONS NEWTIENT_SIMULATION NONNEWTIENT_SIMULATION STEADYSTATE_SIMULATION TRANSIENT_SIMULATION NONTRANSIENT_SIMULATION VARIABLE_OPTIONS
 syn match arbStatement "\(\)\<STEADY-STATE_SIMULATION\>"
+syn match arbOmniList "\(GENERAL_OPTIONS\|KERNEL_OPTIONS\|SOLVER_OPTIONS\)"
+syn match arbStatement "\(\)\<GENERAL\(_OPTIONS\=\)\=\>"
 syn region arbKernelStatement matchgroup=arbStatement start="^\s*KERNEL\(S\|_OPTIONS\=\)\=" end="$" contains=arbComment,arbDeprecated,arbKernelOption,arbLogical,arbNumber,arbOperator,arbSystemFlag,arbUserFlag keepend
 syn region arbSolverStatement matchgroup=arbStatement start="^\s*SOLVER\(S\|_OPTIONS\=\)\=" end="$" contains=arbComment,arbLogical,arbNumber,arbOperator,arbSolverOption,arbSystemFlag,arbUserFlag keepend
-syn match arbOmniList "\(GENERAL_OPTIONS\|KERNEL_OPTIONS\|SOLVER_OPTIONS\)"
 syn keyword arbDeprecated DIMENSIONS READ_GMSH
 syn match arbDeprecated "\<LINEAR_SOLVER\(\s\+\(DEFAULT\|HSL_MA28\|INTEL_PARDISO\(_OOC\)\=\|SUITESPARSE_UMF\)\)\=\>"
 
