@@ -4999,15 +4999,22 @@ end function celltoseparationicellrsquared
 
 function facereflect(j,l,error_string)
 
-! arb variable <facereflect[l=:]>
+! arb variable <facereflect[l=:]>, returning -1 is face is reflected in that direction, or 1 if not
+! now also returns whether face is reflected at all, using l=0 index
 
 integer :: j ! face index
 integer :: l ! dimension
 character(len=1000) :: error_string ! compulsory here!
 double precision :: facereflect
 
-if (l < 1 .or. l > 3 .or. j < 0 .or. j > jtotal) call error_stop('problem with facereflect: '//trim(error_string))
-if (l == face(j)%glue_reflect) then
+if (l < 0 .or. l > 3 .or. j < 0 .or. j > jtotal) call error_stop('problem with facereflect: '//trim(error_string))
+if (l == 0) then
+  if (face(j)%glue_reflect > 0) then
+    facereflect = -1.d0 ! face is reflected
+  else
+    facereflect = 1.d0 ! face is not
+  end if
+else if (l == face(j)%glue_reflect) then
   facereflect = -1.d0
 else
   facereflect = 1.d0

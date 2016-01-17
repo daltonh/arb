@@ -6097,6 +6097,11 @@ sub create_system_variables {
     $variable{"system"}[$m{"system"}]{"maxima"} = "facereflect[j,$l]";
     $variable{"system"}[$m{"system"}]{"fortran"} = "facereflect(j=j,l=$l,error_string=error_string)";
   }
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<facereflectnorm>"; # either 1 (no reflect) or -1 (reflect), depending on whether the face is a reflection face or not
+  $variable{"system"}[$m{"system"}]{"centring"} = "face";
+  $variable{"system"}[$m{"system"}]{"maxima"} = "facereflectnorm[j]";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "facereflect(j=j,l=0,error_string=error_string)";
 # TODO: fix implementation of these
   foreach $l ( 1 .. 3 ) {
     $m{"system"}++;
