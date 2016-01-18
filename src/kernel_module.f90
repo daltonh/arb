@@ -3495,7 +3495,7 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 ! print out some summary statements for each kernel and separation level combo
   if (.true.) then
     write(fwarn,'(a)') &
-      'FACE: maximum abs kernel values at each separation level normalised by maximum abs values over all separation levels:'
+      'FACE: maximum abs kernel values at each separation level normalised by maximum abs values over all separation levels before removing small elements:'
     do l = 0, ubound(face(j)%kernel,1)
       do separation = 1, ubound(max_rel_kernel,2)
         write(fwarn,'(a,i1,a,i1,a,g10.3,a,i8)') 'l = ',l,': separation = ',separation,': max_rel_kernel = ', &
@@ -3994,7 +3994,7 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 ! print out some summary statements for each kernel and separation level combo
   if (.true.) then
     write(fwarn,'(a)') &
-      'CELL: maximum abs kernel values at each separation level normalised by maximum abs values over all separation levels:'
+      'CELL: maximum abs kernel values at each separation level normalised by maximum abs values over all separation levels before removing small elements:'
     do l = 0, ubound(cell(i)%kernel,1)
       do separation = 1, ubound(max_rel_kernel,2)
         write(fwarn,'(a,i1,a,i1,a,g10.3,a,i8)') 'l = ',l,': separation = ',separation,': max_rel_kernel = ', &
@@ -4434,7 +4434,7 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 ! print out some summary statements for each kernel and separation level combo
   if (.true.) then
     write(fwarn,'(a)') &
-      'NODE: maximum abs kernel values at each separation level normalised by maximum abs values over all separation levels:'
+      'NODE: maximum abs kernel values at each separation level normalised by maximum abs values over all separation levels before removing small elements:'
     do l = 0, ubound(node(k)%kernel,1)
       do separation = 1, ubound(max_rel_kernel,2)
         write(fwarn,'(a,i1,a,i1,a,g10.3,a,i8)') 'l = ',l,': separation = ',separation,': max_rel_kernel = ', &
