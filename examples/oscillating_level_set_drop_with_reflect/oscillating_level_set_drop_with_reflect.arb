@@ -26,7 +26,7 @@ INCLUDE "cylindrical_reflect_r1z2"
 # bring in default physical and numerical constants
 INCLUDE_ROOT "navier_stokes"
 INCLUDE "nondimensional_constants"
-INCLUDE_ROOT "level_set"
+INCLUDE_ROOT "free_surface/level_set"
 INCLUDE "nondimensional_constants"
 
 # physical data, now for nondimensional uniform properties
@@ -128,7 +128,7 @@ FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <fluid all faces>
 #FACE_TRANSIENT <u_f[r=1]> "0.d0" "0.d0" ON <fluid all faces>
 
 # CSF based levelset formulation with reinitialisation
-INCLUDE_ROOT "level_set"
+INCLUDE_ROOT "free_surface/level_set"
 INCLUDE "setup" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>"
 
 CELL_LOCAL <ls_phi_fluid> "cellif(celldelta(<fluid domain>),celltocelllink(expression=<ls_phi>,localregion=<fluid domain>,remoteregion=<level set centre>),0.d0)+cellif(celldelta(<fluid boundary cells>),celltofacelink(expression=<ls_phi>,localregion=<fluid boundary cells>,remoteregion=<level set centre boundaries>),0.d0)" ON <fluid all cells> output,elementdata
@@ -173,7 +173,7 @@ VARIABLE <dynamic_force_f> "<dynamic_force_f>+<sigma>*facetofacelink(expression=
 
 VARIABLE <ls_F_c[l=1]> output # set output on
 
-INCLUDE_ROOT "level_set"
+INCLUDE_ROOT "free_surface/level_set"
 # need to generalise this in the future to cope with slip walls by extrapolating <u_f> out into <level set edge region>
 FACE_LOCAL <ls_u_f> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
 FACE_LOCAL <ls_u_f[r=1]> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f[r=1]>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
