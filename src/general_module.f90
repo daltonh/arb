@@ -159,7 +159,7 @@ type region_type
   type(region_location_type) :: initial_location ! initial_location of region if a dynamic transient or newtient region
   integer :: part_of ! fortran region index of the dynamic or static region that this region is solely contained within, for user (ie, non system) regions only
   integer :: parent ! fortran region index of the static region that this region is solely contained within, for user (ie, non system) regions only
-  integer, dimension(:), allocatable :: ijk ! array of cell (i), face (j) or node (k) indices that are within this region - dimension of this is number of elements in region - for dynamic regions size of ijk is determined by parent static region, with some indices being zero
+  integer, dimension(:), allocatable :: ijk ! array of cell (i), face (j) or node (k) indices that are within this region - dimension of this is number of elements in region (seems to be true for dynamic regions too)
   integer, dimension(:), allocatable :: ns ! array that specifies data number from i, j or k index - dimension of this is either itotal, jtotal or ktotal - for all regions an ns(ijk) of zero indicates that the particular ijk element is not in the region
   real :: update_time = 0.d0 ! total cpu time that has been spent on updating this region (only for dynamic variables)
   integer :: update_number = 0 ! total number of times that this region has been updated (only for dynamic variables)
