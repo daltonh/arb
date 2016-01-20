@@ -148,8 +148,8 @@ EXTERNALS "src/free_surface_functions.f90"
       CONSTANT <u_av> 1.d0
       # INCLUDE FINISHED for ../templates/navier_stokes/nondimensional_constants.arb
       #--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE_ROOT "level_set"
-   # INFO: setting include root directory to level_set
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/level_set"
+   # INFO: setting include root directory to free_surface/level_set
    #(hash added during unwrap)INCLUDE "nondimensional_constants"
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/free_surface/level_set/nondimensional_constants.arb without any search/replace combinations
@@ -281,8 +281,8 @@ EXTERNALS "src/free_surface_functions.f90"
    #FACE_TRANSIENT <u_f[r=1]> "0.d0" "0.d0" ON <fluid all faces>
    
    # CSF based levelset formulation with reinitialisation
-   #(hash added during unwrap)INCLUDE_ROOT "level_set"
-   # INFO: setting include root directory to level_set
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/level_set"
+   # INFO: setting include root directory to free_surface/level_set
    #(hash added during unwrap)INCLUDE "setup" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>"
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/free_surface/level_set/setup.arb with the following search/replace combinations: replace <domain> with <level set domain>: replace <all cells> with <level set all cells>: replace <walls> with <level set walls>: replace <all faces> with <level set all faces>
@@ -613,7 +613,8 @@ EXTERNALS "src/free_surface_functions.f90"
             # INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
             #--------------------------------------------------------
          FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <fluid all faces> # now defined on <fluid all faces> to allow use as a BC
-         FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <fluid domain faces>
+         FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <fluid domain faces>
+         FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <fluid domain faces>
          # INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
          #--------------------------------------------------------
       
@@ -800,8 +801,8 @@ EXTERNALS "src/free_surface_functions.f90"
    
    VARIABLE <ls_F_c[l=1]> output # set output on
    
-   #(hash added during unwrap)INCLUDE_ROOT "level_set"
-   # INFO: setting include root directory to level_set
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/level_set"
+   # INFO: setting include root directory to free_surface/level_set
    # need to generalise this in the future to cope with slip walls by extrapolating <u_f> out into <level set edge region>
    FACE_LOCAL <ls_u_f> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
    FACE_LOCAL <ls_u_f[r=1]> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f[r=1]>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>

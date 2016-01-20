@@ -376,7 +376,8 @@ EXTERNALS "src/free_surface_functions.f90"
             # INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
             #--------------------------------------------------------
          FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
-         FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
+         FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
+         FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domain faces>
          # INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
          #--------------------------------------------------------
       
@@ -471,7 +472,8 @@ EXTERNALS "src/free_surface_functions.f90"
                # INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
                #--------------------------------------------------------
             FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
-            FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
+            FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
+            FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domain faces>
             # INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
             #--------------------------------------------------------
          

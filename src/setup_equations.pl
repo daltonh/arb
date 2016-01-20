@@ -216,8 +216,8 @@ print DEBUG "SUCCESS: equation_module.f90 has been created\n";
 print DEBUG "INFO: moving setup_equation_data to build directory\n";
 move("$tmp_dir/setup_equation_data","$build_dir/last_setup_equation_data") or die "could not move $tmp_dir/setup_equation_data to $build_dir/last_setup_equation_data\n";
 # and also keep a copy of the debugging and unwrapped file which acts as a record from the last successful setup
-copy("$current_debug_info_file","$debug_info_file") or  die "could not save $current_debug_info_file as $debug_info_file\n";
-copy("$current_unwrapped_input_file","$unwrapped_input_file") or  die "could not save $current_unwrapped_input_file as $unwrapped_input_file\n";
+copy("$current_debug_info_file","$debug_info_file") or die "could not save $current_debug_info_file as $debug_info_file\n";
+copy("$current_unwrapped_input_file","$unwrapped_input_file") or die "could not save $current_unwrapped_input_file as $unwrapped_input_file\n";
 
 close(DEBUG);
 
