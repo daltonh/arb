@@ -314,8 +314,8 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<mu_f>" CANCEL "<rho_f>"
       # INCLUDE FINISHED for ../templates/navier_stokes_v0.54/nonuniform_properties.arb
       #--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE_ROOT "volume_of_fluid"
-   # INFO: setting include root directory to volume_of_fluid
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/volume_of_fluid"
+   # INFO: setting include root directory to free_surface/volume_of_fluid
    #(hash added during unwrap)INCLUDE "nondimensional_constants"
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/nondimensional_constants.arb without any search/replace combinations
@@ -423,8 +423,8 @@ EXTERNALS "src/free_surface_functions.f90"
    CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
    
    # CSF based levelset formulation with reinitialisation
-   #(hash added during unwrap)INCLUDE_ROOT "volume_of_fluid"
-   # INFO: setting include root directory to volume_of_fluid
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/volume_of_fluid"
+   # INFO: setting include root directory to free_surface/volume_of_fluid
    #(hash added during unwrap)INCLUDE "setup"
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/setup.arb without any search/replace combinations
@@ -748,8 +748,8 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE "total_stress"
    #INCLUDE "advection_flux"
    
-   #(hash added during unwrap)INCLUDE_ROOT "volume_of_fluid"
-   # INFO: setting include root directory to volume_of_fluid
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/volume_of_fluid"
+   # INFO: setting include root directory to free_surface/volume_of_fluid
    #(hash added during unwrap)INCLUDE "dynamic_force"
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/dynamic_force.arb without any search/replace combinations
@@ -866,8 +866,8 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE "conservation_incompressible_transient_constant_rho"
    
    # fluid boundary conditions on nonslip walls
-   #(hash added during unwrap)INCLUDE_ROOT "volume_of_fluid"
-   # INFO: setting include root directory to volume_of_fluid
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/volume_of_fluid"
+   # INFO: setting include root directory to free_surface/volume_of_fluid
    #(hash added during unwrap)INCLUDE "walls_nonwetting" # NB: BC applied on fluid walls
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/walls_nonwetting.arb without any search/replace combinations
@@ -960,7 +960,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #VARIABLE <vof_phi_adjust[r=1]> newtstepmax=50
    
    # to show the interface masks include this file
-   #INCLUDE_ROOT "volume_of_fluid"
+   #INCLUDE_ROOT "free_surface/volume_of_fluid"
    #INCLUDE "output_masks"
    
    # for the high order method only, adjust the interface width

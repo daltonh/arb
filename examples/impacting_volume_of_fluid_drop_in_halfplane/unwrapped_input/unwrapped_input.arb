@@ -384,8 +384,8 @@ EXTERNALS "src/free_surface_functions.f90"
    CONSTANT <dt_initial> [] "1.d-4*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
    CONSTANT <dt_out> [] 1.d-1 # time between output
    
-   #(hash added during unwrap)INCLUDE_ROOT "volume_of_fluid"
-   # INFO: setting include root directory to volume_of_fluid
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/volume_of_fluid"
+   # INFO: setting include root directory to free_surface/volume_of_fluid
    #(hash added during unwrap)INCLUDE "nondimensional_constants"
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/nondimensional_constants.arb without any search/replace combinations
@@ -500,8 +500,8 @@ EXTERNALS "src/free_surface_functions.f90"
    CELL_TRANSIENT <u[l=2,r=1]> "-<u impact>*<vof_phi>" "<u[l=2]>" ON <fluid all cells>
    
    # vof based CSF
-   #(hash added during unwrap)INCLUDE_ROOT "volume_of_fluid"
-   # INFO: setting include root directory to volume_of_fluid
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/volume_of_fluid"
+   # INFO: setting include root directory to free_surface/volume_of_fluid
    #(hash added during unwrap)INCLUDE "setup"
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/setup.arb without any search/replace combinations
@@ -765,7 +765,6 @@ EXTERNALS "src/free_surface_functions.f90"
       #--------------------------------------------------------
    
    # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
-   # in pre v0.55 versions the advection flux is based on <u[l=:]> rather than <u[l=:,r=1]> as is done here
    #(hash added during unwrap)INCLUDE_ROOT "navier_stokes"
    # INFO: setting include root directory to navier_stokes
    # nonuniform
@@ -858,7 +857,8 @@ EXTERNALS "src/free_surface_functions.f90"
             # INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
             #--------------------------------------------------------
          FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <fluid all faces> # now defined on <fluid all faces> to allow use as a BC
-         FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <fluid domain faces>
+         FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <fluid domain faces>
+         FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <fluid domain faces>
          # INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
          #--------------------------------------------------------
       
@@ -972,8 +972,8 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE "u_f"
    #INCLUDE "advection_flux"
    
-   #(hash added during unwrap)INCLUDE_ROOT "volume_of_fluid"
-   # INFO: setting include root directory to volume_of_fluid
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/volume_of_fluid"
+   # INFO: setting include root directory to free_surface/volume_of_fluid
    #(hash added during unwrap)INCLUDE "dynamic_force"
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/dynamic_force.arb without any search/replace combinations
@@ -1112,8 +1112,8 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE "conservation"
    
    # fluid boundary conditions on nonslip walls
-   #(hash added during unwrap)INCLUDE_ROOT "volume_of_fluid"
-   # INFO: setting include root directory to volume_of_fluid
+   #(hash added during unwrap)INCLUDE_ROOT "free_surface/volume_of_fluid"
+   # INFO: setting include root directory to free_surface/volume_of_fluid
    #(hash added during unwrap)INCLUDE "walls_nonwetting" # NB: BC applied on fluid walls
       #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/walls_nonwetting.arb without any search/replace combinations
@@ -1207,7 +1207,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #VARIABLE <vof_phi_adjust[r=1]> newtstepmax=50
    
    # to show the interface masks include this file
-   #INCLUDE_ROOT "volume_of_fluid"
+   #INCLUDE_ROOT "free_surface/volume_of_fluid"
    #INCLUDE "output_masks"
    
    # for the high order method only, adjust the interface width
