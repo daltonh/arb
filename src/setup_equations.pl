@@ -1544,6 +1544,8 @@ sub organise_regions {
               $region[$n]{$option_name} = $match;
             }
           } else { error_stop("option $option specified for region $type $region[$n]{name} cannot be used for this type of region"); }
+        } else {
+          error_stop("the option $option specified for region $type $region[$n]{name} is not valid");
         }
       }
     }
