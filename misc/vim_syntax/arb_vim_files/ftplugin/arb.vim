@@ -1,7 +1,7 @@
 " Vim settings file for arb finite volume solver
 " Language:     arb
-" Version:      0.54
-" Modified:     2016/01/17
+" Version:      0.55
+" Modified:     2016/01/20
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 " Maintainer:   Christian Biscombe
 
@@ -48,56 +48,72 @@ if !exists("*ArbIncludes")
     let arg = a:0 ? a:1 : 'o' " default to 'o' if no argument given
     if arg =~ '\<\(a\|i\|t\)\>'
       new ArbIncludes
-      call append(0,getbufline('#',1,'$'))
+      call append(1,getbufline('#',1,'$'))
       if arg == 'i'
-        silent v/^[^#]*INCLUDE\(_ROOT\)\=\>/d
+        silent v/^[^#]*INCLUDE\(_ROOT\|_WORKING\)\=\>/d
         call append(0,'')
       endif
     else " default case
       let position = winsaveview()
       call cursor(line('.'),1)
-      let lnum_include = search('^[^#]*INCLUDE\>','c')
-      let lnum_root = search('^[^#]*INCLUDE_ROOT\>','bW')
+      let line = getline(search('^[^#]*INCLUDE\(_WORKING\)\=\>','c'))
+      if line =~ '^[^#]*INCLUDE_WORKING'
+        let root_line = ''
+      else
+        let root_line = getline(search('^[^#]*INCLUDE_ROOT\>','bW'))
+      endif
       call winrestview(position)
       new ArbIncludes
-      call append(0,getbufline('#',lnum_root))
-      call append(1,getbufline('#',lnum_include))
+      call append(0,root_line)
+      call append(1,line)
     endif
   
     " Read included files, performing replacements as needed, and add contents to new window
     let count_includes = 0
     let include_lines = []
     let root = ''
+    let first_root = 1
     call cursor(1,1)
-    while search('^[^#]*INCLUDE\>','W') " scan through file for INCLUDE statements
+    while search('^[^#]*INCLUDE\(_WORKING\)\=\>','W') " scan through file for INCLUDE statements
       let count_includes += 1
+      let line = getline('.')
       if len(include_lines) < count_includes
-        call add(include_lines,getline('.'))
+        call add(include_lines,line)
       endif
-      let line = substitute(getline('.'),"\\(\\s*$\\|\\s*#[^'\"].*$\\)",'','') " strip trailing spaces and comments from INCLUDE lines (noting that '#' may appear in replacements)
-      let file = substitute(line,".*INCLUDE\\s\\+\\('\\|\"\\)\\([^\.'\"]*\\)\\(\\.arb\\)\\=\\('\\|\"\\).*",'\2.arb','') " get name (basename + suffix) of included file
-      let root_line = substitute(getline(search('^[^#]*INCLUDE_ROOT\>','bnW')),'#.*$','','') " strip comments from preceding INCLUDE_ROOT line (if present)
-      if root_line == '' " no INCLUDE_ROOT line
-        let root = ''
-      elseif root_line !~ "\\('\\|\"\\)" " INCLUDE_ROOT reset; revert to previous root
-        let root = previous_root
-      else " root specified (usual case)
-        let previous_root = root
-        let root = substitute(root_line,".*INCLUDE_ROOT\\s\\+\\('\\|\"\\)\\([^'\"]*\\).*",'\2/','')
+      let line = substitute(line,"\\(\\s*$\\|\\s*#[^'\"].*$\\)",'','') " strip trailing spaces and comments from INCLUDE lines (noting that '#' may appear in replacements)
+      let file = substitute(line,".*INCLUDE\\(_WORKING\\)\\=\\s\\+\\('\\|\"\\)\\([^\.'\"]*\\)\\(\\.arb\\)\\=\\('\\|\"\\).*",'\3.arb','') " get name (basename + suffix) of included file
+      if line =~ '^[^#]*INCLUDE_WORKING'
+        let dir = ''
+        let file = findfile(file,'**;')
+      else
+        let root_line = substitute(getline(search('^[^#]*INCLUDE_ROOT\>','bnW')),'#.*$','','') " strip comments from preceding INCLUDE_ROOT line (if present)
+        if root_line == '' " no INCLUDE_ROOT line
+          let root = ''
+        elseif root_line !~ "\\('\\|\"\\)" " INCLUDE_ROOT reset; revert to previous root
+          let root = previous_root
+        else " root specified (usual case)
+          let new_root = substitute(root_line,".*INCLUDE_ROOT\\s\\+\\('\\|\"\\)\\([^'\"]*\\).*",'\2/','')
+          let previous_root = root == new_root ? previous_root : root
+          let root = new_root
+        endif
+        if first_root
+          let first_root = 0
+          let previous_root = root
+        endif
+        let dir = finddir('templates/' . root,'**;') " find directory containing the included file
       endif
-      let dir = finddir('templates/' . root,'**;') " find directory containing the included file
       if filereadable(dir . file)
         let include_file = readfile(dir . file) " read included file
       else " flags (<<>>) can make it difficult to identify root directory correctly; just throw a warning and continue
         echohl WarningMsg
         echom "WARNING: Could not find included file " . dir . file 
-        echom "  Probably inferred incorrect root."
+        echom "  Skipping it and continuing."
         echohl None
         continue
       endif
       let indent = repeat(' ',match(line,'INCLUDE')) " work out indentation level
       call map(include_file, 'indent . "  " . v:val') " add indent to all lines of included file
-      let repl = substitute(line,'.*INCLUDE\s\+\S\+\s*','','') " get replacements (if present)
+      let repl = substitute(line,'.*INCLUDE\(_WORKING\)\=\s\+\S\+\s*','','') " get replacements (if present)
       if len(repl) != 0 " need to make replacements in included file
         " Create list containing REPLACE and WITH items in sequence
         let tmp = repl
@@ -112,15 +128,20 @@ if !exists("*ArbIncludes")
           endif
         endwhile
         " Perform replacements
+        let count_nested = 0
         for i in range(0,len(include_file)-1)
           for j in range(0,len(rwlist)-1,2)
             let include_file[i] = substitute(include_file[i],'\M' . rwlist[j],rwlist[j+1],'g') " make replacements, treating special vim characters as literals (\M)
           endfor
-          if include_file[i] =~ '^[^#]*INCLUDE\>' " nested includes
-            call add(include_lines,include_file[i])
-            let include_file[i] = substitute(include_file[i],'\(INCLUDE\s\+\S\+\)\(.*\)','\1 ' . repl . '\2','') " carry over upstream replacements (will be removed below)
+          if include_file[i] =~ '^[^#]*INCLUDE\(_WORKING\)\=\>' " nested includes
+            call insert(include_lines,include_file[i],count_includes + count_nested)
+            let count_nested += 1
+            let include_file[i] = substitute(include_file[i],'\(INCLUDE\(_WORKING\)\=\s\+\S\+\)\(.*\)','\1 ' . repl . '\3','') " carry over upstream replacements (will be removed below)
           endif
         endfor
+      endif
+      if join(include_file) =~ '\<INCLUDE_ROOT\>' " reset root after include with a dummy INCLUDE_ROOT line
+        call add(include_file,'INCLUDE_ROOT "' . substitute(root,'/$','','') . '" # ArbIncludes')
       endif
       " Insert contents of included file
       call append(line('.'),include_file)
@@ -130,20 +151,21 @@ if !exists("*ArbIncludes")
       endif
     endwhile
 
-    " Remove any nested replacements and restore end-of-line comments in include lines
+    " Cover our tracks!
     call cursor(1,1)
-    while search('^[^#]*INCLUDE\>','W')
-      call setline('.',include_lines[0])
+    while search('^[^#]*INCLUDE\(_WORKING\)\=\>','W') 
+      call setline('.',include_lines[0]) " remove any nested replacements and restore end-of-line comments in include lines
       call remove(include_lines,0)
     endwhile
+    silent g/^INCLUDE_ROOT\>.*# ArbIncludes$/d " remove dummy INCLUDE_ROOTs
 
     " Remove unwanted lines in 'i' and 't' modes
-    if arg == 't'
-      silent v/^[^#]*INCLUDE\(_ROOT\)\=\>/d
-    endif
-    if arg =~ '\(i\|t\)'
-      silent v/^[^#]*INCLUDE_ROOT\>/s/\(.*\)/  \1/
-    endif
+     if arg == 't'
+       silent v/^[^#]*INCLUDE\(_ROOT\|_WORKING\)\=\>/d
+     endif
+     if arg =~ '\(i\|t\)'
+       silent v/^[^#]*INCLUDE_ROOT\>/s/\(.*\)/  \1/
+     endif
 
     " Adjust window settings
     call cursor(1,1)
@@ -151,7 +173,7 @@ if !exists("*ArbIncludes")
     setlocal foldmarker={=====,}=====
     setlocal filetype=arb
     setlocal nomodifiable
-    setlocal readonly
+    setlocal buftype=nofile
     setlocal bufhidden=wipe
 
   endfunction
