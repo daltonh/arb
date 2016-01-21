@@ -35,8 +35,9 @@ NONE_OUTPUT <uphi_av_mag> "sqrt(dot(<uphi_av[l=:]>,<uphi_av[l=:]>))"
 <<dim3comment>>NONE_CONSTANT <pressure_gradient_hat[l=3]> "<pressure_gradient[l=3]>/nonemax(<pressure_gradient_mag>,<tinyish>)"
 NONE_OUTPUT <pressure_gradient_uphi_av_dot> "noneif(<uphi_av_mag>-<tinyish>,-dot(<pressure_gradient_hat[l=:]>,<uphi_av_hat[l=:]>),1.d0)" 
 NONE_OUTPUT <pressure_gradient_uphi_av_angle> [rad] "acos(nonemax(nonemin(<pressure_gradient_uphi_av_dot>,1.d0),-1.d0))" # this is the angle between the negative (driving) pressure gradient and resulting average velocity
-NONE_OUTPUT <magnitude permeability> "<uphi_av_mag>*<mu>/nonemax(<pressure_gradient_mag>,<tinyish>)" # note, that this is not the correct definition for a tensor permeability
-NONE_OUTPUT <magnitude ndpermeability> "<uphi_av_mag>*<mu>/(nonemax(<pressure_gradient_mag>,<tinyish>)*<l>**2)"
+# name changed to be consistent with other magnitudes
+NONE_OUTPUT <permeability_mag> "<uphi_av_mag>*<mu>/nonemax(<pressure_gradient_mag>,<tinyish>)" # note, that this is not the correct definition for a tensor permeability
+NONE_OUTPUT <ndpermeability_mag> "<uphi_av_mag>*<mu>/(nonemax(<pressure_gradient_mag>,<tinyish>)*<l>**2)"
 
 # also express angles in degrees
 NONE_OUTPUT <pressure_gradient_phi_degrees> [degrees] "<pressure_gradient_phi>*180.d0/<pi>"
