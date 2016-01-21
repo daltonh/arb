@@ -1,0 +1,2 @@
+# calculate porosity
+NONE_CONSTANT <porosity> "cellsum(<cellvol>*<phi>,region=<domain>)/cellsum(<cellvol>,region=<domain>)"

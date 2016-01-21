@@ -1,0 +1,163 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+# these are the generic equations to solve for network channel flow, in either 2D (x-y) or 3D (x-y-z)
+
+VERSION 0.55 # the version of syntax used in this file
+
+# this equation file now handles both fully periodic and non-periodic domains
+# the default behaviour is for periodic domains, however this can be changed by setting the replacement string <<periodicdomaincomment>> to a comment character either by a preceding general replacement or calling include replacement
+GENERAL_REPLACEMENTS D "<<periodicdomaincomment>>" W "" # default behaviour is for a nonperiodic domain
+
+# <<nonperiodicdomaincomment>> is set to be consistent with <<periodicdomaincomment>>
+GENERAL_REPLACEMENTS R "<<nonperiodicdomaincomment>>" W "" # default behaviour is for a nonperiodic domain
+<<periodicdomaincomment>>GENERAL_REPLACEMENTS R "<<nonperiodicdomaincomment>>" W "#"
+
+<<periodicdomaincomment>>INFO_DESCRIPTION+ ": periodic domain"
+<<nonperiodicdomaincomment>>INFO_DESCRIPTION+ ": nonperiodic domain"
+#--------------------
+# do any periodic/nonperiodic geometry changes
+
+<<nonperiodicdomaincomment>>FACE_REGION <walls> "all" ON <boundaries> # this is needed in the navier-stokes setup files only
+
+# for periodic domain glue the opposing domain boundaries together
+
+<<periodicdomaincomment>><<dim1comment>>GLUE_FACES <east> <west>
+<<periodicdomaincomment>><<dim2comment>>GLUE_FACES <north> <south>
+<<periodicdomaincomment>><<dim3comment>>GLUE_FACES <top> <bottom>
+
+#--------------------
+# setup normals etc to the solid interface using vof methodology
+
+# and setup some masks based on the vof methodolgy
+CONSTANT <phi_tol> 1.d-4 # this is how small the fluid volume fraction is before a cell is classified as solid only
+CELL_CONSTANT <interface_mask_indicator> "cellif(<phi>-<phi_tol>,cellif(1.d0-<phi_tol>-<phi>,1.d0,0.d0),0.d0)" ON <domain> output, elementdata
+CELL_CONSTANT_REGION <interface_mask> "variable(<interface_mask_indicator>)" ON <domain> # note, mask will not include boundary cells now, so reconstructed phi on boundary cells will just equal input phi
+NODE_CONSTANT_REGION <interface_mask_n> "associatedwith(<interface_mask>)" ON <all nodes> 
+
+# now generate normals and face volume fractions based on vof methodolgy
+INCLUDE_ROOT "volume_of_fluid"
+# default now is for normals to be based on cellgrad in the interests of memory, determined by <<vofnodenormalscomment>>
+GENERAL_REPLACEMENTS DEFAULT "<<vofnodenormalscomment>>" W "#"
+# set the anti-string, <<vofcellnormalscomment>>, to be consistent and opposite
+GENERAL_REPLACEMENTS R "<<vofcellnormalscomment>>" W ""
+<<vofnodenormalscomment>>GENERAL_REPLACEMENTS R "<<vofcellnormalscomment>>" W "#"
+# normals based on cellgrad
+<<vofcellnormalscomment>>INCLUDE "normals" R "<<vofmaskcomment>>" W "#" R "<<vofnodenormalscomment>>" W "#" R "<<vofcellnormalscomment>>" W "" R "DERIVED" W "CONSTANT" R "<vof_phigrad_mask[r=1]>" W "<interface_mask>" R "<vof_phi_smoothed>" W "<phi>" R "<vof_phi" W "<phi"
+# normals based on nodegrad - better
+<<vofnodenormalscomment>>INCLUDE "normals" R "<<vofmaskcomment>>" W "#" R "DERIVED" W "CONSTANT" R "<vof_phigrad_mask[r=1]>" W "<interface_mask>" R "<vof_phigrad_mask_n[r=1]>" W "<interface_mask_n>" R "<vof_phi_smoothed>" W "<phi>" R "<vof_phi" W "<phi"
+# now calculate <phi_f> after reconstructing the interfaces where necessary
+# strictly 2D
+#CELL_CONSTANT <vof_d> "cellvofd[best](phi=<phi>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,phitol=<phi_tol>)" ON <interface_mask>
+# 3D too
+CELL_CONSTANT <vof_d> "cellvofd[best](phi=<phi>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)" ON <interface_mask>
+# max based
+#FACE_CONSTANT <phi_f_raw> "cellmax(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)" ON <all faces> output
+# ave based
+#FACE_CONSTANT <phi_f_raw> "cellsum(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)/2.d0" ON <all faces> output
+# faceave[adjacentcells] based
+FACE_CONSTANT <phi_f_raw> "faceave[adjacentcells](cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>))" ON <all faces>
+#FACE_OUTPUT <phi_f_simple> "faceave[adjacentcells](<phi>)" ON <all faces>
+#FACE_OUTPUT <phi_f_simple difference> "abs(<phi_f_simple>-<phi_f_raw>)" ON <all faces>
+
+FACE_CONSTANT <fluid_mask_f_indicator> "faceif(<phi_f_raw>-<phi_tol>,1.d0,0.d0)" ON <all faces> output
+FACE_CONSTANT_REGION <fluid_mask_f> "variable(<fluid_mask_f_indicator>)" ON <all faces>
+FACE_CONSTANT <phi_f> "faceif(facedelta(<fluid_mask_f>),<phi_f_raw>,0.d0)" ON <all faces> output # now only >0 where the mask indicates that it should be
+CELL_CONSTANT_REGION <fluid_mask> "associatedwith(<fluid_mask_f>)" ON <all cells>
+<<nonperiodicdomaincomment>>FACE_CONSTANT_REGION <fluid_boundaries> "compound(<fluid_mask_f>)" ON <boundaries>
+#FACE_CONSTANT_REGION <fluid_inlet> "compound(<inlet>)" ON <fluid_boundaries>
+#FACE_CONSTANT_REGION <fluid_outlet> "compound(<outlet>)" ON <fluid_boundaries>
+#FACE_CONSTANT <fluid_inlet_indicator> "1.d0" ON <fluid_inlet> output
+#FACE_CONSTANT <fluid_outlet_indicator> "1.d0" ON <fluid_outlet> output
+<<nonperiodicdomaincomment>>FACE_CONSTANT <fluid_boundaries_indicator> "1.d0" ON <fluid_boundaries> output
+CELL_CONSTANT <fluid_mask_indicator> "1.d0" ON <fluid_mask> output
+
+#--------------------
+# now to solve for the fluid flow
+# use templates from the navier_stokes directory to build up problem
+INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE "stokes" # sets the stokes comment string to remove advective momentum terms
+INCLUDE "constants" # specify physical and numerical constants
+INCLUDE "domain" # equations to be solved within the domain
+
+# overwrite some variables to represent network channel flow, noting that all variables (ie, u, p, phi) are fluid properties
+
+# the continuity equation is now for the fluid phase, so include the fluid phase volume fraction
+# also include a pressure anchoring term which takes over within the solid phase, and also where a fluid volume becomes disconnected from the main flow
+CONSTANT <pressure_anchoring_factor> 1.d-8 # set this number to be small relative to one, but large enough so that pressure is linked everywhere still
+VARIABLE <continuity> "cellif(celldelta(<fluid_mask>),<continuity>,0.d0)-<pressure_anchoring_factor>*(<celldxmax>^2/<mu>)*celldiv(facegrad[dxunit](<p>))"
+
+# and also modify momentum equations, which are only solved within fluid region
+<<dim1comment>>VARIABLE <momentum[l=1]> "cellif(celldelta(<fluid_mask>),<momentum[l=1]>,<u[l=1]>)"
+<<dim2comment>>VARIABLE <momentum[l=2]> "cellif(celldelta(<fluid_mask>),<momentum[l=2]>,<u[l=2]>)"
+<<dim3comment>>VARIABLE <momentum[l=3]> "cellif(celldelta(<fluid_mask>),<momentum[l=3]>,<u[l=3]>)"
+
+# redo dynamic force parts to include this body force
+<<dim1comment>>VARIABLE <dynamic_force_c[l=1]> "<dynamic_force_c[l=1]>-<pressure_gradient[l=1]>"
+<<dim2comment>>VARIABLE <dynamic_force_c[l=2]> "<dynamic_force_c[l=2]>-<pressure_gradient[l=2]>"
+<<dim3comment>>VARIABLE <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>-<pressure_gradient[l=3]>"
+VARIABLE <dynamic_force_f> "<dynamic_force_f>-dot(<facedxunit[l=:]>,<pressure_gradient[l=:]>)"
+
+#INCLUDE "p_error_remove_dynamic_force_c_f" # try this to reduce memory
+
+#--------------------
+# boundary conditions for non-periodic or pressure anchoring for periodic domains
+
+# these boundary conditions are set up for 2D flow in the x-y plane, or 3D flow
+#FACE_EQUATION <u_bc_norm> "faceif(facedelta(<fluid_boundaries>),ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>),dot(<facenorm[l=:]>,<u_f_vect[l=:]>))" ON <boundaries>
+#FACE_EQUATION <u_bc_tang1> "dot(<facetang1[l=:]>,<u_f_vect[l=:]>)" ON <boundaries>
+#<<dim3comment>>FACE_EQUATION <u_bc_tang2> "dot(<facetang2[l=:]>,<u_f_vect[l=:]>)" ON <boundaries> # for 3D problems, assuming that the third dimension is the z one
+##FACE_EQUATION <p_bc> "faceif(facedelta(<inlet>),<p_f>-<p_in>,faceif(facedelta(<outlet>),<p_f>,facegrad[dxunit](<p>)))" ON <boundaries>
+#FACE_EQUATION <p_bc> "faceif(facedelta(<inlet>),<p_f>-<p_in>,faceif(facedelta(<outlet>),<p_f>,0.d0))" ON <boundaries> # an equation of 0.d0 should flag an error
+
+<<nonperiodicdomaincomment>>FACE_EQUATION <u_bc_norm> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <boundaries>
+<<nonperiodicdomaincomment>>FACE_EQUATION <u_bc_tang1> "ddot(<ugrad_f[l=:,:]>,<facetang1[l=:]>*<facenorm[l=:]>)" ON <boundaries>
+<<nonperiodicdomaincomment>><<dim1comment>><<dim2comment>><<dim3comment>>FACE_EQUATION <u_bc_tang2> "ddot(<ugrad_f[l=:,:]>,<facetang2[l=:]>*<facenorm[l=:]>)" ON <boundaries> # for 3D problems, assuming that the third dimension is the z one
+<<nonperiodicdomaincomment>>FACE_EQUATION <p_bc> "<p_f>" ON <boundaries> # an equation of 0.d0 should flag an error
+
+<<periodicdomaincomment>>CELL_REGION <one cell> "at(0.d0,0.d0,0.d0)" ON <domain> 
+<<periodicdomaincomment>>CELL_REGION <domain sans one cell> "compound(<domain>-<one cell>)" ON <domain> 
+<<periodicdomaincomment>>VARIABLE <continuity> ON <domain sans one cell>
+<<periodicdomaincomment>>CELL_EQUATION <p_set> "<p>" ON <one cell>
+
+#--------------------
+# include driving pressure gradient as a body force
+
+NONE_CONSTANT <pressure_gradient_mag> 1.d-8
+# these may be overwritten after include in calling file (or converted to transients etc)
+NONE_CONSTANT <pressure_gradient_phi> "<pi>/4.d0" # can vary between 0 and 2*<pi> in either 2D or 3D
+<<dim3comment>>NONE_CONSTANT <pressure_gradient_theta> "<pi>/2.d0" # only valid for 3D, and varies between 0 and <pi>
+
+# 2D
+<<dim1comment>>NONE_CONSTANT <pressure_gradient[l=1]> [Pa/m] "cos(<pressure_gradient_phi>)*<pressure_gradient_mag>" output,stepoutput
+<<dim2comment>>NONE_CONSTANT <pressure_gradient[l=2]> [Pa/m] "sin(<pressure_gradient_phi>)*<pressure_gradient_mag>"
+
+# 3D
+<<dim3comment>><<dim1comment>>NONE_CONSTANT <pressure_gradient[l=1]> [Pa/m] "cos(<pressure_gradient_phi>)*sin(<pressure_gradient_theta>)*<pressure_gradient_mag>" output,stepoutput
+<<dim3comment>><<dim2comment>>NONE_CONSTANT <pressure_gradient[l=2]> [Pa/m] "sin(<pressure_gradient_phi>)*sin(<pressure_gradient_theta>)*<pressure_gradient_mag>"
+<<dim3comment>>NONE_CONSTANT <pressure_gradient[l=3]> [Pa/m] "cos(<pressure_gradient_theta>)*<pressure_gradient_mag>"
+
+#-------------------------------------------------------------------
+# set pressure magnitude based on B vector and mesh lengthscale now
+NONE_CONSTANT <p_magnitude> "<pressure_gradient_mag>*<a_lengthscale>"
+VARIABLE <p> magnitude=<p_magnitude>
+
+# set velocity magnitude too based on B vector and order of magnitude estimate
+NONE_CONSTANT <u_magnitude> "<pressure_gradient_mag>*<a_lengthscale>^2/<mu>"
+<<dim1comment>>VARIABLE <u[l=1]> magnitude=<u_magnitude>
+<<dim2comment>>VARIABLE <u[l=2]> magnitude=<u_magnitude>
+<<dim3comment>>VARIABLE <u[l=3]> magnitude=<u_magnitude>
+
+#-------------------------------------------------------------------
+
+# turn off some outputs
+VARIABLE <phigrad[l=1]> nooutput
+<<vofnodenormalscomment>>VARIABLE <phigrad_n[l=1]> nooutput
+VARIABLE <vof_d> nooutput
+VARIABLE <phi_f_raw> nooutput
+VARIABLE <dynamic_force_c[l=1]> nooutput
+
+#-------------------------------------------------------------------
