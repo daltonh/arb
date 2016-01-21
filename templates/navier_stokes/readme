@@ -11,7 +11,6 @@ complete -> | constants -> | <mu>
                                                                  | <tau>
                                                 | u_f -> | p_error -> | dynamic_force -> | <p_f>
                                                                                          | <dynamic_force_c>
-                                                                                         | <dynamic_force_c_f>
                                                                       | <dynamic_force_f>
                                                                       | <p_error>
                                                          | <u_f>
