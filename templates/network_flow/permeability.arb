@@ -47,4 +47,5 @@ NONE_OUTPUT <pressure_gradient_uphi_av_angle_degrees> [degrees] "<pressure_gradi
 <<dim1comment>>NONE_OUTPUT <nduphi_av[l=1]> "<uphi_av[l=1]>*<mu>/(nonemax(<pressure_gradient_mag>,<tinyish>)*<l>**2)" stepoutput
 <<dim2comment>>NONE_OUTPUT <nduphi_av[l=2]> "<uphi_av[l=2]>*<mu>/(nonemax(<pressure_gradient_mag>,<tinyish>)*<l>**2)"
 <<dim3comment>>NONE_OUTPUT <nduphi_av[l=3]> "<uphi_av[l=3]>*<mu>/(nonemax(<pressure_gradient_mag>,<tinyish>)*<l>**2)"
+NONE_OUTPUT <nduphi_av_mag> "sqrt(dot(<nduphi_av[l=:]>,<nduphi_av[l=:]>))"
 # non-dimensional pressure gradient is already given as <pressure_gradient_hat[l=:]>
