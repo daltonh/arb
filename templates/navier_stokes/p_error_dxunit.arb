@@ -5,3 +5,9 @@ INCLUDE "dynamic_force" # cell centred dynamic force
 FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
 FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
 FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domain faces>
+
+# seems that using <dynamic_force_c_f[l=:]> usually consumes more memory and takes more time to compute, so remove it by default by including the following
+# in the future if nobody complains <dynamic_force_c_f[l=:]> may just disappear into the night
+# to bring back <dynamic_force_c_f[l=:]> set this string to # using a general replacement or on calling
+GENERAL_REPLACEMENTS D "<<nodynamicforcecfcomment>>" W ""
+<<nodynamicforcecfcomment>>INCLUDE "p_error_remove_dynamic_force_c_f"
