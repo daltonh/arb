@@ -371,14 +371,14 @@ logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], a
   array_mask3 = [.false.,.false.,.true.]
 
 ! kernel availability (whether they are calculated or not) is calculated by the setup_equations.pl script, however, the settings can be overwritten (as true) here
-logical :: kernel_availability_faceave = .false. ! needed for varcdivgrad, but this routine itself is not needed until normal circumstances, so set false
-logical :: kernel_availability_facegrad = .false.
-logical :: kernel_availability_cellfromnodegrad = .false.
-logical :: kernel_availability_cellgrad = .true. ! needed for varcgrad used in variable output (for elementnodedata) so always keep on
-logical :: kernel_availability_cellave = .false.
-logical :: kernel_availability_cellfromnodeave = .true. ! needed when reading in elementnodedata so always keep on
-logical :: kernel_availability_nodegrad = .false.
-logical :: kernel_availability_nodeave = .false.
+logical :: kernel_availability_faceave = .false. ! (.false.) needed for varcdivgrad, but this routine itself is not needed under normal circumstances, so set false
+logical :: kernel_availability_facegrad = .false. ! (.false.)
+logical :: kernel_availability_cellfromnodegrad = .false. ! (.false.)
+logical :: kernel_availability_cellgrad = .true. ! (.true.) needed for varcgrad used in variable output (for elementnodedata) so always keep on
+logical :: kernel_availability_cellave = .false. ! (.false.)
+logical :: kernel_availability_cellfromnodeave = .true. ! (.true.) needed when reading in elementnodedata so always keep on
+logical :: kernel_availability_nodegrad = .false. ! (.false.)
+logical :: kernel_availability_nodeave = .false. ! (.false.)
 
 ! code version details
 real, parameter :: version = 0.55 ! current version

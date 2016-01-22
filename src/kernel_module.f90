@@ -79,7 +79,7 @@ logical, parameter :: remove_small_elements = .true. ! (.true.) kernel values be
 double precision, parameter :: small_element_minimum = 1.d-10 ! (1.d-10) minimum kernel size allowed (otherwise set kernel element to zero to save memory) - also used throughout at a nonzero kernel test
 logical, parameter :: conservative_weighting = .false. ! (.false.) use a conservation principle to calculate weights that are connected, otherwise use formula based on absolute separation
 logical, parameter :: orientation_dependent_weights = .true. ! (.true.) the kernel weights are different depending on the direction of the kernel
-logical, parameter :: zero_nonoriented_weights = .false. ! (.false.) for the orientation_dependent_weights and face kernels, zero cell weights that do not have the highest weighting importance.  In effect this will compact face kernels, but may increase the number of negative elements.  Probably a good idea on structured meshes which generally have a high degree of symmetry.
+logical :: zero_nonoriented_weights = .false. ! (.false., userable) for the orientation_dependent_weights and face kernels, zero cell weights that do not have the highest weighting importance.  In effect this will compact face kernels, but may increase the number of negative elements.  Probably a good idea on structured meshes which generally have a high degree of symmetry.
 
 ! partial_hyperbolic_kernel for v0.42 (040614)
 !logical :: partial_hyperbolic_kernel = .true. ! (.true., userable) use hyperbolic kernel for boundary elements, or averaging domain elements, but not for domain derivative kernels
@@ -116,9 +116,9 @@ logical, parameter :: zero_nonoriented_weights = .false. ! (.false.) for the ori
 ! v0.50 defaults:
 ! the default is now the v0.41 nonhyperbolic kernels
 ! sometimes better alternative to the nonhyperbolic kernels, producing stronger gradient functions at boundaries
-logical :: hyperbolic_kernel = .false. ! (.true., userable) use a hyperbolic radial weighting function, with the optimisation process changed to suit - only for optimisation kernels (not mls)
+logical :: hyperbolic_kernel = .false. ! (.false., userable) use a hyperbolic radial weighting function, with the optimisation process changed to suit - only for optimisation kernels (not mls)
 ! rarely successful combination of the hyperbolic kernels for averaging everywhere and all kernels on the boundary elements, nonhyperbolic everywhere else
-logical :: partial_hyperbolic_kernel = .false. ! (.true., userable) use hyperbolic kernel for boundary elements, or averaging domain elements, but not for domain derivative kernels
+logical :: partial_hyperbolic_kernel = .false. ! (.false., userable) use hyperbolic kernel for boundary elements, or averaging domain elements, but not for domain derivative kernels
 ! hyperbolic and nonhyperbolic parameters:
 ! this was increased for v0.42 to 0.5d0 from 0.3d0 (accidentally, which was a disaster). Now decreased to 0.2 which seems to be OK for both hyperbolic and nonhyperbolic kernels
 double precision :: weight_separation_multiplier = 0.2d0 ! (0.2d0, userable) for non-centred kernels this specifies the how the weights of each separation are related - the smaller the number, the tighter the kernel - use is slightly different for conservative and nonconservative weighting - for conservative_weighting this is the proportion of each cell weight that is fluxed to further away neighbours - now not used if radial_kernel_weighting on
@@ -141,12 +141,12 @@ logical :: check_minw = .true. ! (.true., userable) check that the minw value is
 double precision :: minimum_minw = 1.0d0 ! (1.0d0, userable, changed default from 1.d0 to 0.5d0, and then back to 1.d0 for v0.50) minimum value of SVD minw allowed for mask to be acceptable when using adaptive_mask_size
 
 ! optimisation options:
-logical, parameter :: optimise_positise = .false. ! constrain kernel values in an attempt at getting positive kernels
-logical, parameter :: optimise_positise_cautiously = .false. ! only allow change to kernel if it directly reduces negative index of kernel
-double precision, parameter :: optimise_positise_cautiously_multiplier = 1.d0 ! when optimising cautiously, allow changes if negative index is less than this multiple of last negative index - a large number reproduces a non-cautious approach - 1.d0 is a cautious approach - less than one will be super cautious (ie, the kernel will not be changed much)
-integer, parameter :: optimise_additional_elements = 0 ! setting this to zero will mean that each kernel has at least as many elements present as in the minimum separation level - a large negative number will give the smallest kernel, a positive number will increase the kernel size (really needs positise on for /= 0 on this variable - setting to a negative number is not advisable as kernel may not be structurally symmetric)
-logical, parameter :: optimise_positise_sum_index = .true. ! base negative index (which measures kernel positivity) on sum of negative elements, rather than maximum negative element
-double precision, parameter :: small_pp = 1.d-8 ! used as a cut-off for elements of the polynomial basis
+logical, parameter :: optimise_positise = .false. ! (.false.) constrain kernel values in an attempt at getting positive kernels
+logical, parameter :: optimise_positise_cautiously = .false. ! (.false.) only allow change to kernel if it directly reduces negative index of kernel
+double precision, parameter :: optimise_positise_cautiously_multiplier = 1.d0 ! (1.d0) when optimising cautiously, allow changes if negative index is less than this multiple of last negative index - a large number reproduces a non-cautious approach - 1.d0 is a cautious approach - less than one will be super cautious (ie, the kernel will not be changed much)
+integer, parameter :: optimise_additional_elements = 0 ! (0) setting this to zero will mean that each kernel has at least as many elements present as in the minimum separation level - a large negative number will give the smallest kernel, a positive number will increase the kernel size (really needs positise on for /= 0 on this variable - setting to a negative number is not advisable as kernel may not be structurally symmetric)
+logical, parameter :: optimise_positise_sum_index = .true. ! (.true.) base negative index (which measures kernel positivity) on sum of negative elements, rather than maximum negative element
+double precision, parameter :: small_pp = 1.d-8 ! (1.d-8) used as a cut-off for elements of the polynomial basis
 
 ! kernel usage notes:
 ! 1) zero_wayward_boundary_weights only needs to be set for mls, or optimisation with optimise_positise off
@@ -3096,6 +3096,12 @@ do n = 1, allocatable_character_size(kernel_options) ! precedence is now as read
     shift_boundary_weight_centre = extract_option_logical(kernel_options(n),error)
     if (error) call error_stop("could not determine the shiftboundaryweightcentre from the kernel option "//trim(kernel_options(n)))
     write(*,'(a,l1)') 'INFO: setting kernel shiftboundaryweightcentre = ',shift_boundary_weight_centre
+  else if (trim(option_name) == "zerononorientedweights") then
+! zero_nonoriented_weights
+    zero_nonoriented_weights = extract_option_logical(kernel_options(n),error)
+    if (error) call error_stop("could not determine the zerononorientedweights from the kernel option "// &
+      trim(kernel_options(n)))
+    write(*,'(a,l1)') 'INFO: setting kernel zerononorientedweights = ',zero_nonoriented_weights
   else
 !   write(*,'(a)') "WARNING: "//trim(option_name)//" is not a (valid) kernel option that can be set from the input file"
     call error_stop(trim(option_name)//" is not a (valid) kernel option that can be set from the input file")
