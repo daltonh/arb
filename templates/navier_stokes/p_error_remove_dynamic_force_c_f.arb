@@ -1,9 +1,0 @@
-# modification to calculation of p_error to remove need for <dynamic_force_c_f[l=:]>
-<<dim1comment>>VARIABLE <dynamic_force_c_f[l=1]> CANCEL
-<<dim2comment>>VARIABLE <dynamic_force_c_f[l=2]> CANCEL
-<<dim3comment>>VARIABLE <dynamic_force_c_f[l=3]> CANCEL
-
-# the following won't work with reflections
-#FACE_DERIVED <p_error> "(-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>" ON <domain faces>
-# this should work with reflections, but not tested
-FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domain faces>

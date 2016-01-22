@@ -1,1 +1,52 @@
-p_error_dxunit.arb
+# a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
+# pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
+
+INCLUDE "dynamic_force" # cell centred dynamic force
+
+# seems that using <dynamic_force_c_f[l=:]> usually consumes more memory and takes more time to compute, so remove it by default by including the following
+# in the far off future if nobody complains <dynamic_force_c_f[l=:]> may just disappear into the night
+# to bring back <dynamic_force_c_f[l=:]> set this string to empty using a general replacement or on calling
+# nodynamicforcecf should work with reflections, but not tested like heaps and heaps and heaps yet
+GENERAL_REPLACEMENTS D "<<dynamicforcecfcomment>>" W "#"
+# set the opposite automatically
+GENERAL_REPLACEMENTS R "<<nodynamicforcecfcomment>>" W ""
+<<dynamicforcecfcomment>>GENERAL_REPLACEMENTS R "<<nodynamicforcecfcomment>>" W "#"
+
+# for evaluating the face centred dynamic force there are three options: dxunit, facegrad and adjacentcells
+# uncomment the comment string corresponding to the one you want
+# default is dxunit
+# remember to set all of these strings on entry if changing from the default, with only the requested one uncommented
+GENERAL_REPLACEMENTS D "<<dynamicforcefdxunitcomment>>" W "" D "<<dynamicforceffacegradcomment>>" W "#" D "<<dynamicforcefadjacentcellscomment>>" W "#"
+
+# calculate <dynamic_force_c_f[l=:]> if requested
+# interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
+<<dynamicforcecfcomment>><<dim1comment>>FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[<<reflect=1>>,adjacentcells](<dynamic_force_c[l=1]>)"
+<<dynamicforcecfcomment>><<dim2comment>>FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[<<reflect=2>>,adjacentcells](<dynamic_force_c[l=2]>)"
+<<dynamicforcecfcomment>><<dim3comment>>FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[<<reflect=3>>,adjacentcells](<dynamic_force_c[l=3]>)"
+
+# dxunit method
+<<dynamicforcefdxunitcomment>>FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
+<<dynamicforcefdxunitcomment>>FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
+# dxunit + dynamicforcecf
+<<dynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domain faces>
+# dxunit - dynamicforcecf
+<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domain faces>
+
+# facegrad method
+<<dynamicforceffacegradcomment>>FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <all faces>
+# facegrad + dynamicforcecf
+<<dynamicforcecfcomment>><<dynamicforceffacegradcomment>>FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domain faces>
+# facegrad - dynamicforcecf
+<<nodynamicforcecfcomment>><<dynamicforceffacegradcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domain faces>
+
+# adjacentcells method
+<<dynamicforcefadjacentcellscomment>>FACE_LOCAL <dynamic_force_f> "-facegrad[adjacentcells](<p>)" ON <all faces>
+# adjacentcells + dynamicforcecf
+<<dynamicforcecfcomment>><<dynamicforcefadjacentcellscomment>>FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domain faces>
+# adjacentcells - dynamicforcecf
+<<nodynamicforcecfcomment>><<dynamicforcefadjacentcellscomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domain faces>
+
+# the following are two template lines for setting the strings prior to entering this file
+#GENERAL_REPLACEMENTS R "<<dynamicforcecfcomment>>" W "#"
+#GENERAL_REPLACEMENTS R "<<dynamicforcefdxunitcomment>>" W "#" R "<<dynamicforceffacegradcomment>>" W "#" R "<<dynamicforcefadjacentcellscomment>>" W "#"
+
