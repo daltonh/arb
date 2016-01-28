@@ -4,9 +4,9 @@
 
 # evaluate a velocity gradient under the assumption that the velocity is zero at the closest reconstructed interface point
 CONSTANT <celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)" # average cell dimension, same as in navier_stokes/transient_all_setup
-NONE_CONSTANT <d_min_multiplier> 1.d-3
-NONE_CONSTANT <d_min> "<a_lengthscale>*<d_min_multiplier>" # based on domain size
-#NONE_CONSTANT <d_min> "<celldxave>*<d_min_multiplier>" # based on a cell size
+NONE_CONSTANT <d_min_multiplier> 1.d-5 # if this is too large then instabilities arise around the interface.  Set to 1.d-3 or lower based on cell size.
+#NONE_CONSTANT <d_min> "<a_lengthscale>*<d_min_multiplier>" # based on domain size - not a good idea as instabilities can arise as mesh is refined and this number stays static
+NONE_CONSTANT <d_min> "<celldxave>*<d_min_multiplier>" # based on a cell size
 FACE_CONSTANT_REGION <interface_mask_f> "associatedwith(<interface_mask>)" ON <all faces>
 #FACE_CONSTANT <interface_mask_f_indicator> "1.d0" ON <interface_mask_f>
 #FACE_CONSTANT <interface_mask_f_check> "<interface_mask_f_indicator>-cellmax(celldelta(<interface_mask>),region=<adjacentfaceicells>)" ON <all faces>

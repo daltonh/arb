@@ -1,0 +1,2 @@
+KERNEL_OPTIONS polynomialorder=1,polynomialaverageorder=1 # setting order of kernel function for face averages and derivatives
+KERNEL_OPTIONS zerononorientedweights=.true.,limitkernelmasktosharednodes=.true.
