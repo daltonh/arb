@@ -1,7 +1,7 @@
 " Vim syntax file for arb finite volume solver
 " Language:     arb
 " Version:      0.55
-" Modified:     2016/01/24
+" Modified:     2016/01/31
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 " Maintainer:   Christian Biscombe
 
@@ -17,13 +17,6 @@ endif
 
 syn case match
 
-syn match arbComment "#.*$" contains=arbTodo
-syn match arbOmniList "\%(BEGIN_COMMENTS\|START_COMMENTS\|END_COMMENTS\|STOP_COMMENTS\)"
-syn region arbComment matchgroup=arbStatement start="^\s*\%(BEGIN\|START\)_\%(COMMENTS\=\|SKIP\)\>" end="^\s*\%(END\|STOP\)_\%(COMMENTS\=\|SKIP\)\>" contains=arbTodo
-syn sync match arbCommentSync grouphere arbComment "^\s*\%(BEGIN\|START\)_\%(COMMENTS\=\|SKIP\)\>"
-syn sync match arbCommentSync groupthere NONE "^\s*\%(END\|STOP\)_\%(COMMENTS\=\|SKIP\)\>"
-syn region arbTodo start="\%(FIXME\|TODO\|XXX\)" end="$" contained
-
 syn match arbNumber "\<\d\+\.\=\d*\%([DEde][-+]\=\d\+\>\)\="
 syn match arbOperator "\%(+\|-\|\*\|/\|\^\|=\)" " for some reason, / here adds 'match' to the omni completion list - a bug in syntaxcomplete.vim (v. 13.0)
 syn region arbName start="<" end=">" contains=arbSystemFlag,arbUserFlag contained nextgroup=arbUnit skipwhite
@@ -37,17 +30,23 @@ syn match arbFilename "\%(\w\|/\)\+" contained
 syn region arbExpression start=/"/ end=/"/ contains=arbDeprecated,arbFunction,arbFortranFunction,arbNumber,arbOperator,arbStatement,arbSystemFlag,arbSystemVar,arbUserFlag,arbUserVar
 syn match arbLogical "\.\%(true\|false\)\." contained
 
-syn keyword arbStatement DEFAULT_OPTIONS END GENERAL_REPLACEMENTS GLUE_FACES NEWTRESTOL NEWTSTEPADDITIONAL NEWTSTEPDEBUGOUT NEWTSTEPMAX NEWTSTEPMIN NEWTSTEPOUT NEWTSTEPSTART ON OVERRIDE_OPTIONS REPLACEMENTS TIMESTEPADDITIONAL TIMESTEPMAX TIMESTEPMIN TIMESTEPOUT TIMESTEPSTART VERSION
+syn match arbComment "#.*$" contains=arbTodo
+syn match arbOmniList "\%(BEGIN_COMMENTS\|START_COMMENTS\|END_COMMENTS\|STOP_COMMENTS\)"
+syn region arbComment matchgroup=arbStatement start="^\s*\zs\%(BEGIN\|START\)_\%(COMMENTS\=\|SKIP\)\>" end="^\s*\zs\%(END\|STOP\)_\%(COMMENTS\=\|SKIP\)\>"
+syn sync match arbCommentSync grouphere arbComment "\%(BEGIN\|START\)_\%(COMMENTS\=\|SKIP\)"
+syn sync match arbCommentSync groupthere NONE "\%(END\|STOP\)_\%(COMMENTS\=\|SKIP\)"
+syn region arbTodo start="\%(FIXME\|TODO\|XXX\)" end="$" contained
+
+syn keyword arbStatement COMPOUND_OPTIONS DEFAULT_OPTIONS END GENERAL GENERAL_OPTIONS GENERAL_REPLACEMENTS GLUE_FACES NEWTIENT_SIMULATION NONNEWTIENT_SIMULATION NEWTRESTOL NEWTSTEPADDITIONAL NEWTSTEPDEBUGOUT NEWTSTEPMAX NEWTSTEPMIN NEWTSTEPOUT NEWTSTEPSTART ON OVERRIDE_OPTIONS REPLACEMENTS STEADYSTATE_SIMULATION TIMESTEPADDITIONAL TIMESTEPMAX TIMESTEPMIN TIMESTEPOUT TIMESTEPSTART TRANSIENT_SIMULATION NONTRANSIENT_SIMULATION VARIABLE_OPTIONS VERSION
+syn match arbStatement "\%(\)\<STEADY-STATE_SIMULATION\>"
 syn keyword arbStatement INCLUDE INCLUDE_FROM INCLUDE_ROOT INCLUDE_WORKING MSH_FILE nextgroup=arbString,arbFilename skipwhite
 syn match arbStatement "\<\%(EXTERNALS\=\)\>" nextgroup=arbString,arbFilename skipwhite
 syn keyword arbStatement C CANCEL D DEFAULT R REPLACE W WITH nextgroup=arbString,arbUnquotedString,arbComment skipwhite
 syn match arbStatement "\<\%(INFO_AUTHOR\|INFO_DATE\|INFO_DESCRIPTION\|INFO_FILENAME\|INFO_RUNDATE\|INFO_RUNHOST\|INFO_RUNVERSION\|INFO_TITLE\|INFO_VERSION\)\>\%(+\|-\)\=" nextgroup=arbString,arbUnquotedString skipwhite
-syn keyword arbStatement COMPOUND_OPTIONS NEWTIENT_SIMULATION NONNEWTIENT_SIMULATION STEADYSTATE_SIMULATION TRANSIENT_SIMULATION NONTRANSIENT_SIMULATION VARIABLE_OPTIONS
-syn match arbStatement "\%(\)\<STEADY-STATE_SIMULATION\>"
-syn match arbOmniList "\%(GENERAL_OPTIONS\|KERNEL_OPTIONS\|SOLVER_OPTIONS\)"
-syn match arbStatement "\%(\)\<GENERAL\%(_OPTIONS\=\)\=\>"
-syn region arbKernelStatement matchgroup=arbStatement start="^\s*KERNEL\%(S\|_OPTIONS\=\)\=" end="$" contains=arbComment,arbDeprecated,arbKernelOption,arbLogical,arbNumber,arbOperator,arbSystemFlag,arbUserFlag keepend
-syn region arbSolverStatement matchgroup=arbStatement start="^\s*SOLVER\%(S\|_OPTIONS\=\)\=" end="$" contains=arbComment,arbLogical,arbNumber,arbOperator,arbSolverOption,arbSystemFlag,arbUserFlag keepend
+syn keyword arbStatement ERROR INFO WARNING nextgroup=arbString skipwhite
+syn match arbOmniList "\%(KERNEL_OPTIONS\|SOLVER_OPTIONS\)"
+syn region arbKernelStatement matchgroup=arbStatement start="\<KERNEL\%(S\|_OPTIONS\=\)\=" end="$" contains=arbComment,arbDeprecated,arbKernelOption,arbLogical,arbNumber,arbOperator,arbSystemFlag,arbUserFlag keepend
+syn region arbSolverStatement matchgroup=arbStatement start="\<SOLVER\%(S\|_OPTIONS\=\)\=" end="$" contains=arbComment,arbLogical,arbNumber,arbOperator,arbSolverOption,arbSystemFlag,arbUserFlag keepend
 syn keyword arbDeprecated DIMENSIONS READ_GMSH
 syn match arbDeprecated "\<LINEAR_SOLVER\%(\s\+\%(DEFAULT\|HSL_MA28\|INTEL_PARDISO\%(_OOC\)\=\|SUITESPARSE_UMF\)\)\=\>"
 
@@ -74,18 +73,20 @@ syn match arbDeprecated "\<\%(minimum\|maximum\)_\%(boundary\|domain\)_separatio
 syn match arbDeprecated "\<polynomial\%(_average\)\=_order\>" contained
 
 syn match arbSystemVar "\%(\)<\%(all\|boundary\|domain\) \%(cells\|faces\|nodes\)>" 
-syn match arbSystemVar "<\%(adjacentcellicells\|adjacentcellsignns\|adjacentfacedowncell\|adjacentfaceicells\|adjacentfaceothercell\|adjacentfaceupcell\|boundaries\|celldxkernel\|celldxmax\|celldxmin\|cellicells\|cellknodes\|cellvol\|centralkernel\|crosskernel\|celljfaces\|domain\|downwindfaceicells\|facearea\|facedx\|facedxkernel\|facedivop\|facefromcelldirection\|faceicells\|faceknodes\|glueface\|huge\|hugeish\|icell\|jface\|kernelsum\|knode\|lastface\|limitercontgrad\|limitertolerance\|newtientdelta\|newtres\|newtstep\|nobcelljfaces\|nocadjacentcellicells\|nodedxkernel\|nodeicells\|noloop\|pi\|random\|separation\|separationcentre\d*\|timestep\|tiny\|tinyish\|transientdelta\|upwindfaceicells\)>"
+syn match arbSystemVar "<\%(adjacentcellicells\|adjacentcellsignns\|adjacentfacedowncell\|adjacentfaceicells\|adjacentfaceothercell\|adjacentfaceupcell\|boundaries\|celldxkernel\|celldxmax\|celldxmin\|cellicells\|cellknodes\|cellvol\|centralkernel\|crosskernel\|celljfaces\|domain\|downwindfaceicells\|facearea\|facedx\|facedxkernel\|facedivop\|facefromcelldirection\|faceicells\|faceknodes\|glueface\|huge\|hugeish\|icell\|jface\|kernelsum\|knode\|lastface\|limitercontgrad\|limitertolerance\|newtientdelta\|newtres\|nobcelljfaces\|nocadjacentcellicells\|nodedxkernel\|nodeicells\|noloop\|pi\|random\|separation\|separationcentre\d*\|tiny\|tinyish\|transientdelta\|upwindfaceicells\)>"
+syn match arbSystemVar "<\%(newtstep\|timestep\)\%(\[r=\d\+\]\)\=>"
 syn match arbSystemVar "<\%(celldx\|cellfromcellx\|cellfromfacex\|cellkernel\|cellkernelregion\|celltoicellr\|celltoseparationicellr\|celltoseparationicellreflect\|celltoseparationicellrsquared\|cellx\)\[l=\%(\d\|:\)\]>"
 syn match arbSystemVar "<\%(facedxup\|facedxdown\|facedxunit\|facekernel\|facekernelregion\|facenorm\|facereflect\|facereflectnorm\|facetang1\|facetang2\|facetoicellr\|facex\)\[l=\%(\d\|:\)\]>"
 syn match arbSystemVar "<\%(nodekernel\|nodekernelregion\|nodex\)\[l=\%(\d\|:\)\]>"
 syn match arbSystemVar "<\%(delta\)\[l=\%(\d,\d\|:\)\]>"
 syn match arbNameError "\%(\)<\%(all\|boundary\|domain\) \%(cells\|faces\|nodes\)>" contained nextgroup=arbUnit skipwhite
-syn match arbNameError "<\%(adjacentcellicells\|adjacentcellsignns\|adjacentfacedowncell\|adjacentfaceicells\|adjacentfaceothercell\|adjacentfaceupcell\|boundaries\|celldxkernel\|celldxmax\|celldxmin\|cellicells\|cellknodes\|cellvol\|centralkernel\|crosskernel\|celljfaces\|domain\|downwindfaceicells\|facearea\|facedx\|facedxkernel\|facedivop\|facefromcelldirection\|faceicells\|faceknodes\|glueface\|huge\|hugeish\|icell\|jface\|kernelsum\|knode\|lastface\|limitercontgrad\|limitertolerance\|newtientdelta\|newtres\|newtstep\|nobcelljfaces\|nocadjacentcellicells\|nodedxkernel\|nodeicells\|noloop\|pi\|random\|separation\|separationcentre\d*\|timestep\|tiny\|tinyish\|transientdelta\|upwindfaceicells\)>" contained nextgroup=arbUnit skipwhite
+syn match arbNameError "<\%(adjacentcellicells\|adjacentcellsignns\|adjacentfacedowncell\|adjacentfaceicells\|adjacentfaceothercell\|adjacentfaceupcell\|boundaries\|celldxkernel\|celldxmax\|celldxmin\|cellicells\|cellknodes\|cellvol\|centralkernel\|crosskernel\|celljfaces\|domain\|downwindfaceicells\|facearea\|facedx\|facedxkernel\|facedivop\|facefromcelldirection\|faceicells\|faceknodes\|glueface\|huge\|hugeish\|icell\|jface\|kernelsum\|knode\|lastface\|limitercontgrad\|limitertolerance\|newtientdelta\|newtres\|nobcelljfaces\|nocadjacentcellicells\|nodedxkernel\|nodeicells\|noloop\|pi\|random\|separation\|separationcentre\d*\|tiny\|tinyish\|transientdelta\|upwindfaceicells\)>" contained nextgroup=arbUnit skipwhite
+syn match arbSystemVar "<\%(newtstep\|timestep\)\%(\[r=\d\+\]\)\=>"
 syn match arbNameError "<\%(celldx\|cellkernel\|cellkernelregion\|celltoicellr\|celltoseparationicellr\|celltoseparationicellreflect\|celltoseparationicellrsquared\|cellx\)\[l=\%(\d\|:\)\]>" contained nextgroup=arbUnit skipwhite
 syn match arbNameError "<\%(facedxup\|facedxdown\|facedxunit\|facekernel\|facekernelregion\|facenorm\|facereflect\|facereflectnorm\|facetang1\|facetang2\|facetoicellr\|facex\)\[l=\%(\d\|:\)\]>" contained nextgroup=arbUnit skipwhite
 syn match arbNameError "<\%(nodekernel\|nodekernelregion\|nodex\)\[l=\%(\d\|:\)\]>" contained nextgroup=arbUnit skipwhite
 syn match arbNameError "<\%(delta\)\[l=\%(\d,\d\|:\)\]>" contained nextgroup=arbUnit skipwhite
-syn match arbSystemFlag "<<\%(axialdim\|cartesiancomment\|cartesianflag\|cylindricalcomment\|cylindricalflag\|dim1comment\|dim2comment\|dim3comment\|radialdim\|radius_c\|radius_f\|radius_n\|radiusdim1flag\|radiusdim2flag\|radiusdim3flag\|reflect=[1-3]\|steadystatecomment\|steadystateflag\|transientcomment\|transientflag\)>>"
+syn match arbSystemFlag "<<\%(axialdim\|batchercomment\|cartesiancomment\|cartesianflag\|cylindricalcomment\|cylindricalflag\|dim1comment\|dim2comment\|dim3comment\|nobatchercomment\|radialdim\|radius_c\|radius_f\|radius_n\|radiusdim1flag\|radiusdim2flag\|radiusdim3flag\|reflect=[1-3]\|steadystatecomment\|steadystateflag\|transientcomment\|transientflag\)>>"
 
 syn keyword arbFunction all associatedwith at boundaryof common compound domainof dot ddot gmsh heaviside intersection none normal signum surrounds union variable withinbox contained nextgroup=arbFunctionParen
 syn keyword arbFunction cellave cellboundangle celldelta celldiv celldivgrad cellfromcellave                  cellfromfaceave cellfromfacediv cellfromfacedivgrad cellfromfacegrad cellfromnodeave cellfromnodegrad cellgrad cellif celllimiter celllink cellmagnitude cellmax cellmin cellnewtonupdate cellproduct cellsum celltocelllink celltofacelink celltonodelink contained nextgroup=arbFunctionBracket,arbFunctionParen
@@ -98,7 +99,7 @@ syn region arbFunctionParen start="(" end=")" contained contains=arbFunction,arb
 syn keyword arbFunctionOption adjacentcells adjacentcellsevenweighting adjacentcellsweighted advection best box circle cube cylinder downcell dxunit ellipse ellipsoid exact exactpiecewise faceseparation glueface harmonic harmonicweighted highorder lastcell lastface lastfacenoglue limitedharmonic linear linearone lineartwo lower maximumseparation minimumseparation noderivative nodeseparation nonlimitedharmonic noseparation othercell parabolic rectangle reflect separationcentre sphere square upcell upper contained
 syn match arbFunctionOption "\%(\)\<sep\%(aration\)\=cent\%(er\|re\)\=\d*" contained
 syn match arbFunctionOption "\%(\)\<\%(max\|min\)separation\>" contained
-syn match arbFunctionOption "\<l=[1-6:]" contained
+syn match arbFunctionOption "\<\%(l\|r\)\ze=\%(\d\|:\)" contained
 syn keyword arbFunctionParameter d default dt expression faceseparationflag flux fromregion localregion phif phitol region remoteregion toregion unknown contained
 syn match arbFunctionParameter "\<\%(axis\|centre\|gradient\|normal\|size\)\[l=\%(\d\|:\)\]" contained
 syn match arbFunctionParameter "\<\%(phi\)\%(\[r=1\]\)\=" contained
