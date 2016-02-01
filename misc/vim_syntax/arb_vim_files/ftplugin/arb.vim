@@ -1,7 +1,7 @@
 " Vim settings file for arb finite volume solver
 " Language:     arb
 " Version:      0.55
-" Modified:     2016/01/31
+" Modified:     2016/02/01
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 " Maintainer:   Christian Biscombe
 
@@ -57,6 +57,7 @@ function ArbIncludes(...)
   endif
   let lnum = line('.')
   new ArbIncludes
+  setlocal nofoldenable
   call append(1,getbufline('#',1,'$'))
   call cursor(lnum+1,1)
   if arg == 't' " move cursor to next replacement or include line
@@ -153,7 +154,7 @@ function ArbIncludes(...)
     silent %s/^# ArbIncludes: //e " remove block comment markers
   endif
   silent %s/# ArbIncludes start//e " set cursor position
-  setlocal nomodifiable buftype=nofile bufhidden=wipe foldmethod=marker foldmarker={=====,}===== filetype=arb " ArbIncludes window settings
+  setlocal nomodifiable buftype=nofile bufhidden=wipe foldenable foldmethod=marker foldmarker={=====,}===== filetype=arb " ArbIncludes window settings
 
 endfunction
 
