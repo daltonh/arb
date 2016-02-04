@@ -1683,9 +1683,14 @@ use general_module
 use equation_module
 integer, optional :: ierror
 integer :: ierrorl
+logical, parameter :: debug = .false.
 
+if (debug) write(*,'(80(1h+)/a)') 'subroutine update_and_check_constants'
+
+if (debug) write(*,*) 'INFO: about to update_constants'
 call update_constants
 
+if (debug) write(*,*) 'INFO: about to check_variable_validity for constants'
 call check_variable_validity(type='constant',ierror=ierrorl)
 if (ierrorl /= 0) then
   if (present(ierror)) then
@@ -1697,6 +1702,8 @@ if (ierrorl /= 0) then
 end if
 
 if (present(ierror)) ierror = 0
+
+if (debug) write(*,'(a/80(1h-))') 'subroutine update_and_check_constants'
 
 end subroutine update_and_check_constants
 

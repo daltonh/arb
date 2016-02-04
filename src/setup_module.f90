@@ -1429,21 +1429,30 @@ do n = 1, ubound(compound,1)
 end do
 
 ! run through constants reading in file values and then setting any equation determined ones
+if (debug) write(*,*) 'INFO: about to read_constants'
 call read_constants
+if (debug) write(*,*) 'INFO: about to update_and_check_constants'
 call update_and_check_constants
+if (debug) write(*,*) 'INFO: about to read_initial_outputs'
 call read_initial_outputs
 
 ! run through unknowns setting initial values
+if (debug) write(*,*) 'INFO: about to update_and_check_unknowns(initial=.true.)'
 call update_and_check_unknowns(initial=.true.)
 
 ! run through transients setting initial values
+if (transient_simulation.and.debug) write(*,*) 'INFO: about to update_and_check_initial_transients'
 if (transient_simulation) call update_and_check_initial_transients
 
 ! run through newtients setting initial values
+if (newtient_simulation.and.debug) write(*,*) 'INFO: about to update_and_check_initial_newtients'
 if (newtient_simulation) call update_and_check_initial_newtients
 
 ! run through setting initial derived and equation variables
+if (debug) write(*,*) 'INFO: about to update_and_check_derived_and_equations(setup=.true.)'
 call update_and_check_derived_and_equations(setup=.true.)
+
+if (debug) write(*,*) 'INFO: done with the updating - about to output some information on the variables'
 
 ! spray out some info about all the var variables
 if (debug_sparse) then
