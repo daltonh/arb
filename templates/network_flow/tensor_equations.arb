@@ -97,7 +97,7 @@ CELL_CONSTANT_REGION <vof_stress_mask> "variable(<vof_stress_mask_indicator>)" O
 # estimate of the distance between cell averaged velocity and interface
 # use this string to choose between the two methods
 GENERAL_REPLACEMENTS DEFAULT "<<vofbasedstresslcomment>>" W ""
-NONE_CONSTANT <vof_stress_l_constant> 2.d0
+NONE_CONSTANT <vof_stress_l_constant> 4.d0
 # simple, based on phi and celldxmin
 CELL_CONSTANT <vof_stress_l> "<phi_c>*<celldxmin>/<vof_stress_l_constant>" ON <vof_stress_mask> output
 # more accurate, taking into account interface orientation, but requiring normals throughout <vof_stress_mask>
