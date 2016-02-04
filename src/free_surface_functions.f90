@@ -168,11 +168,6 @@ if (phi < phitol.or.phi > 1.d0-phitol) then
   return
 end if
 
-if (phi < phitol.or.phi > 1.d0-phitol) then
-  someloop(thread)%funk(m)%v = 0.d0 ! set the final d to zero and silently exit
-  return
-end if
-
 ! if phi is small, swap calculation around to reduce geometric calculations
 reciprocal_sign = 1.d0
 if (reciprocal) then
