@@ -180,7 +180,7 @@ time_loop: do while ( &
     if (convergence_details_file) write(fconverge,'(a,g16.9,a)') &
       "INFO: initial newton loop newtres = ",newtres," after updating variable magnitudes"
 
-    if (newtres < newtrestol) then
+    if (newtres < newtrestol.and.newtstep > newtstepmin) then
       write(*,'(a,g10.3,a)') "INFO: skipping newtsolver as newtres/newtrestol = ",newtres/newtrestol," using existing unknowns"
       if (convergence_details_file) write(fconverge,'(a,g10.3,a)') "INFO: skipping newtsolver as newtres/newtrestol = ", &
         newtres/newtrestol," using existing unknowns"
