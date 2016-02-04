@@ -21,7 +21,6 @@ GENERAL_REPLACEMENTS R "<<nonperiodicdomaincomment>>" W "" # default behaviour i
 #--------------------
 # do any periodic/nonperiodic geometry changes
 
-<<nonperiodicdomaincomment>>ERROR "nonperiodic domain not implemented in tensor_equations_new yet"
 <<nonperiodicdomaincomment>>FACE_REGION <walls> "all" ON <boundaries> # this is needed in the navier-stokes setup files only
 
 # for periodic domain glue the opposing domain boundaries together
@@ -55,21 +54,26 @@ GENERAL_REPLACEMENTS R "<<vofcellnormalscomment>>" W ""
 #CELL_CONSTANT <vof_d> "cellvofd[best](phi=<phi>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,phitol=<phi_tol>)" ON <interface_mask>
 # 3D too
 CELL_CONSTANT <vof_d> "cellvofd[best](phi=<phi>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)" ON <interface_mask>
-
-# now define face centred phi function
-# min based
-FACE_CONSTANT <phi_f> "cellmin(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)" ON <all faces> output
+# max based
+#FACE_CONSTANT <phi_f_raw> "cellmax(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)" ON <all faces> output
 # ave based
-#FACE_CONSTANT <phi_f> "cellsum(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)/2.d0" ON <all faces> output
+#FACE_CONSTANT <phi_f_raw> "cellsum(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)/2.d0" ON <all faces> output
 # faceave[adjacentcells] based
-#FACE_CONSTANT <phi_f> "faceave[adjacentcells](cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>))" ON <all faces> output
-# nonvof simple implementation
-#FACE_OUTPUT <phi_f> "faceave[adjacentcells](<phi>)" ON <all faces>
+FACE_CONSTANT <phi_f_raw> "faceave[adjacentcells](cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>))" ON <all faces>
+#FACE_OUTPUT <phi_f_simple> "faceave[adjacentcells](<phi>)" ON <all faces>
+#FACE_OUTPUT <phi_f_simple difference> "abs(<phi_f_simple>-<phi_f_raw>)" ON <all faces>
 
-# and from the face centred function, define cell centred phi, and an associated fluid mask
-CELL_CONSTANT <phi_c> "<phi_f>" ON <all cells>
-CELL_CONSTANT <fluid_mask_indicator> "cellif(<phi_c>-<phi_tol>,1.d0,0.d0)" ON <all cells> output
-CELL_CONSTANT_REGION <fluid_mask> "variable(<fluid_mask_indicator>)" ON <all cells>
+FACE_CONSTANT <fluid_mask_f_indicator> "faceif(<phi_f_raw>-<phi_tol>,1.d0,0.d0)" ON <all faces> output
+FACE_CONSTANT_REGION <fluid_mask_f> "variable(<fluid_mask_f_indicator>)" ON <all faces>
+FACE_CONSTANT <phi_f> "faceif(facedelta(<fluid_mask_f>),<phi_f_raw>,0.d0)" ON <all faces> output # now only >0 where the mask indicates that it should be
+CELL_CONSTANT_REGION <fluid_mask> "associatedwith(<fluid_mask_f>)" ON <all cells>
+<<nonperiodicdomaincomment>>FACE_CONSTANT_REGION <fluid_boundaries> "compound(<fluid_mask_f>)" ON <boundaries>
+#FACE_CONSTANT_REGION <fluid_inlet> "compound(<inlet>)" ON <fluid_boundaries>
+#FACE_CONSTANT_REGION <fluid_outlet> "compound(<outlet>)" ON <fluid_boundaries>
+#FACE_CONSTANT <fluid_inlet_indicator> "1.d0" ON <fluid_inlet> output
+#FACE_CONSTANT <fluid_outlet_indicator> "1.d0" ON <fluid_outlet> output
+<<nonperiodicdomaincomment>>FACE_CONSTANT <fluid_boundaries_indicator> "1.d0" ON <fluid_boundaries> output
+CELL_CONSTANT <fluid_mask_indicator> "1.d0" ON <fluid_mask> output
 
 #--------------------
 # now to solve for the fluid flow
@@ -84,52 +88,7 @@ INCLUDE "domain" # equations to be solved within the domain
 # the continuity equation is now for the fluid phase, so include the fluid phase volume fraction
 # also include a pressure anchoring term which takes over within the solid phase, and also where a fluid volume becomes disconnected from the main flow
 CONSTANT <pressure_anchoring_factor> 1.d-8 # set this number to be small relative to one, but large enough so that pressure is linked everywhere still
-VARIABLE <continuity> "cellif(celldelta(<fluid_mask>),celldiv(<phi_f>*<u_f>),0.d0)-<pressure_anchoring_factor>*(<celldxmax>^2/<mu>)*celldiv(facegrad[dxunit](<p>))"
-
-# create cell centred stress that represents stress acting across vof interface
-<<dim1comment>>CELL_CONSTANT <phi_normal_c[l=1]> "celldivgrad[l=1](<phi_f>)" ON <fluid_mask> output
-<<dim2comment>>CELL_CONSTANT <phi_normal_c[l=2]> "celldivgrad[l=2](<phi_f>)" ON <fluid_mask>
-<<dim3comment>>CELL_CONSTANT <phi_normal_c[l=3]> "celldivgrad[l=3](<phi_f>)" ON <fluid_mask>
-CELL_CONSTANT <phi_normal_c_mag> "sqrt(cellmax(dot(<phi_normal_c[l=:]>,<phi_normal_c[l=:]>),<tinyish>))" ON <fluid_mask> output
-CELL_CONSTANT <vof_stress_mask_indicator> "cellif(<phi_normal_c_mag>-<phi_tol>/<celldxmin>,1.d0,0.d0)" ON <fluid_mask> output
-CELL_CONSTANT_REGION <vof_stress_mask> "variable(<vof_stress_mask_indicator>)" ON <fluid_mask>
-
-# estimate of the distance between cell averaged velocity and interface
-# use this string to choose between the two methods
-GENERAL_REPLACEMENTS DEFAULT "<<vofbasedstresslcomment>>" W ""
-NONE_CONSTANT <vof_stress_l_constant> 2.d0
-# simple, based on phi and celldxmin
-CELL_CONSTANT <vof_stress_l> "<phi_c>*<celldxmin>/<vof_stress_l_constant>" ON <vof_stress_mask> output
-# more accurate, taking into account interface orientation, but requiring normals throughout <vof_stress_mask>
-<<vofbasedstresslcomment>>CELL_LOCAL <vof_d_stress> "cellvofd[best](phi=<phi_c>,normal[l=1]=<phi_normal_c[l=1]>/<phi_normal_c_mag>,normal[l=2]=<phi_normal_c[l=2]>/<phi_normal_c_mag>,normal[l=3]=<phi_normal_c[l=3]>/<phi_normal_c_mag>,phitol=<phi_tol>)" ON <vof_stress_mask> nooutput
-#<<vofbasedstresslcomment>>CELL_LOCAL <vof_d_stress_full> "cellvofd[best](phi=<phi_tol>*1.d-1,normal[l=1]=<phi_normal_c[l=1]>/<phi_normal_c_mag>,normal[l=2]=<phi_normal_c[l=2]>/<phi_normal_c_mag>,normal[l=3]=<phi_normal_c[l=3]>/<phi_normal_c_mag>,phitol=<phi_tol>*1.d-2)" ON <vof_stress_mask> nooutput
-<<vofbasedstresslcomment>>CELL_LOCAL <vof_d_stress_full> "cellvofd[linearone](phi=0.d0,normal[l=1]=<phi_normal_c[l=1]>/<phi_normal_c_mag>,normal[l=2]=<phi_normal_c[l=2]>/<phi_normal_c_mag>,normal[l=3]=<phi_normal_c[l=3]>/<phi_normal_c_mag>,phitol=-1.d0)" ON <vof_stress_mask> nooutput # giving a negative phitol forces the tolerance to be ignored, and linearone will pull out the extreme d safely
-<<vofbasedstresslcomment>>CELL_CONSTANT <vof_stress_l> "(<vof_d_stress_full>-<vof_d_stress>)/<vof_stress_l_constant>" ON <vof_stress_mask> output
-
-<<dim1comment>>               CELL_DERIVED <ugrad_vof_c[l=1,1]> "<phi_normal_c[l=1]>*<u[l=1]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim1comment>><<dim2comment>>CELL_DERIVED <ugrad_vof_c[l=1,2]> "<phi_normal_c[l=1]>*<u[l=2]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim1comment>><<dim3comment>>CELL_DERIVED <ugrad_vof_c[l=1,3]> "<phi_normal_c[l=1]>*<u[l=3]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim2comment>><<dim1comment>>CELL_DERIVED <ugrad_vof_c[l=2,1]> "<phi_normal_c[l=2]>*<u[l=1]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim2comment>>               CELL_DERIVED <ugrad_vof_c[l=2,2]> "<phi_normal_c[l=2]>*<u[l=2]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim2comment>><<dim3comment>>CELL_DERIVED <ugrad_vof_c[l=2,3]> "<phi_normal_c[l=2]>*<u[l=3]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim3comment>><<dim1comment>>CELL_DERIVED <ugrad_vof_c[l=3,1]> "<phi_normal_c[l=3]>*<u[l=1]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim3comment>><<dim2comment>>CELL_DERIVED <ugrad_vof_c[l=3,2]> "<phi_normal_c[l=3]>*<u[l=2]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim3comment>>               CELL_DERIVED <ugrad_vof_c[l=3,3]> "<phi_normal_c[l=3]>*<u[l=3]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-
-<<dim1comment>>CELL_LOCAL <tau_vof_c[l=1,1]> "-<mu>*2.d0*<ugrad_vof_c[l=1,1]>" ON <vof_stress_mask> componentoutput,output
-<<dim2comment>>CELL_LOCAL <tau_vof_c[l=2,2]> "-<mu>*2.d0*<ugrad_vof_c[l=2,2]>" ON <vof_stress_mask>
-<<dim3comment>>CELL_LOCAL <tau_vof_c[l=3,3]> "-<mu>*2.d0*<ugrad_vof_c[l=3,3]>" ON <vof_stress_mask>
-<<dim1comment>><<dim2comment>>CELL_LOCAL <tau_vof_c[l=1,2]> "-<mu>*(<ugrad_vof_c[l=1,2]>+<ugrad_vof_c[l=2,1]>)" ON <vof_stress_mask>
-<<dim1comment>><<dim3comment>>CELL_LOCAL <tau_vof_c[l=1,3]> "-<mu>*(<ugrad_vof_c[l=1,3]>+<ugrad_vof_c[l=3,1]>)" ON <vof_stress_mask>
-<<dim2comment>><<dim3comment>>CELL_LOCAL <tau_vof_c[l=2,3]> "-<mu>*(<ugrad_vof_c[l=2,3]>+<ugrad_vof_c[l=3,2]>)" ON <vof_stress_mask>
-<<dim2comment>><<dim1comment>>CELL_LOCAL <tau_vof_c[l=2,1]> "<tau_vof_c[l=1,2]>" ON <vof_stress_mask>
-<<dim3comment>><<dim1comment>>CELL_LOCAL <tau_vof_c[l=3,1]> "<tau_vof_c[l=1,3]>" ON <vof_stress_mask>
-<<dim3comment>><<dim2comment>>CELL_LOCAL <tau_vof_c[l=3,2]> "<tau_vof_c[l=2,3]>" ON <vof_stress_mask>
-
-# and also modify momentum equations, which are only solved within fluid region
-<<dim1comment>>CELL_EQUATION <momentum[l=1]> "celldiv(<phi_f>*dot(<facenorm[l=:]>,<tau[l=:,1]>))-<phi_c>*<dynamic_force_c[l=1]>-cellif(celldelta(<vof_stress_mask>),dot(<phi_normal_c[l=:]>,<tau_vof_c[l=:,1]>))"
-<<dim2comment>>CELL_EQUATION <momentum[l=2]> "celldiv(<phi_f>*dot(<facenorm[l=:]>,<tau[l=:,2]>))-<phi_c>*<dynamic_force_c[l=2]>-cellif(celldelta(<vof_stress_mask>),dot(<phi_normal_c[l=:]>,<tau_vof_c[l=:,2]>))"
-<<dim3comment>>CELL_EQUATION <momentum[l=3]> "celldiv(<phi_f>*dot(<facenorm[l=:]>,<tau[l=:,3]>))-<phi_c>*<dynamic_force_c[l=3]>-cellif(celldelta(<vof_stress_mask>),dot(<phi_normal_c[l=:]>,<tau_vof_c[l=:,3]>))"
+VARIABLE <continuity> "cellif(celldelta(<fluid_mask>),<continuity>,0.d0)-<pressure_anchoring_factor>*(<celldxmax>^2/<mu>)*celldiv(facegrad[dxunit](<p>))"
 
 # and also modify momentum equations, which are only solved within fluid region
 <<dim1comment>>VARIABLE <momentum[l=1]> "cellif(celldelta(<fluid_mask>),<momentum[l=1]>,<u[l=1]>)"
@@ -198,6 +157,7 @@ NONE_CONSTANT <u_magnitude> "<pressure_gradient_mag>*<a_lengthscale>^2/<mu>"
 VARIABLE <phigrad[l=1]> nooutput
 <<vofnodenormalscomment>>VARIABLE <phigrad_n[l=1]> nooutput
 VARIABLE <vof_d> nooutput
+VARIABLE <phi_f_raw> nooutput
 VARIABLE <dynamic_force_c[l=1]> nooutput
 
 #-------------------------------------------------------------------
