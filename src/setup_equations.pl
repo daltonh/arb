@@ -3993,7 +3993,9 @@ sub mequation_interpolation {
 # constants
         } elsif ($otype eq "constant") {
           if ($type eq "condition" || $type eq "output" || $type eq "equation" || $type eq "derived" || $type eq "initial_newtient" || 
-            $type eq "initial_transient" || $type eq "unknown" || ( $type eq "constant" && $mvar > $omvar ) ) { $substitute = 1; }
+            $type eq "initial_transient" || $type eq "unknown" || ( $type eq "constant" && $mvar > $omvar ) ) { $substitute = 1;
+            if ($type eq "constant" && $mvar > $omvar) { $lousysubstitute = 1; }
+          }
 
         }
 
