@@ -369,15 +369,15 @@ ifeq "$(strip $(pardiso))" "present"
         libs := -L$(pardisodir) -lpardiso500-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
       endif
     else
-      ifeq "$(and $(wildcard $(pardisodir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU461-X86-64.so) )" ""
-        pardiso = not present
-      else
-# can't get this to work with the iterative solver
-#       libs += -L$(pardisodir) -lpardiso500-GNU461-X86-64 -fopenmp -lpthread -lm
-#       libs += -L$(pardisodir) -lpardiso500-GNU461-X86-64 -lblas -llapack -fopenmp
+# allow for two versions of the gnu pardiso libraries right now, 4.61 and 4.81
+      ifneq "$(and $(wildcard $(pardisodir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU461-X86-64.so) )" ""
         libs := -L$(pardisodir) -lpardiso500-GNU461-X86-64 $(oldlibs) -fopenmp -lpthread -lm
-#       libs := -L$(pardisodir) -lpardiso500-GNU472-X86-64 -lblas -llapack -fopenmp -lpthread -lm
-#       libs += -L$(pardisodir) -lpardiso500-GNU461-X86-64 -fopenmp
+      else
+        ifneq "$(and $(wildcard $(pardisodir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU481-X86-64.so) )" ""
+          libs := -L$(pardisodir) -lpardiso500-GNU481-X86-64 $(oldlibs) -fopenmp -lpthread -lm
+        else
+          pardiso = not present
+        endif
       endif
     endif
   endif
