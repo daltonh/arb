@@ -114,6 +114,9 @@ while ( $n <= $#ARGV ) {
     $refresh_interval = $2;
   } elsif ($ARGV[$n] eq '-b' || $ARGV[$n] eq '--batcher') {
     $batcher = 1;
+  } elsif ($ARGV[$n] eq '--x11') {
+    $plot_file_pre="$plot_step_dir/plot_step_pre_x11.plot";
+    $plot_file_post="$plot_step_dir/plot_step_post_x11.plot";
   } elsif ($ARGV[$n] eq '--linespoints') {
     push(@gnuplot_options,"set style data linespoints");
     if (!($pointinterval)) {$pointinterval = -1;} # a negative here specifies that this should be calculated based on the number of data points
