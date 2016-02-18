@@ -563,6 +563,7 @@ sub usage {
   print " --keybelow: place key within plot\n";
   print " --linespoints: include points as well as lines on the graph\n";
   print " --pointinterval n: this specifies the skip between points when drawing linespoints.  A negative value (default) tries to use about 25 points across the graph\n";
+  print " --x11: use x11 terminal type within gnuplot, rather than default for operating system (required if default isn't available)\n";
   print " --logy: log y axis\n";
   print " --logy2: log y2 axis\n";
   print " --gnuplotoption \"set key some gnuplot option\": some option that is passed to gnuplot just before the plot command. ".
