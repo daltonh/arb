@@ -37,11 +37,11 @@ foreach my $filename (bsd_glob("{output*.msh}")) {
   open(OUTPUT,">",$output_filename);
 
   while (<DATA>) {
-    if (/^\$(ElementData|ElementNodeData)/) {
+    if (/^\$(Data|ElementData|ElementNodeData)/) {
       $data_type = $1;
       process_data();
       $switch = 0;
-    } elsif (/^\$(Data|arbData|arbElementData|arbElementNodeData)/) {
+    } elsif (/^\$(arbData|arbElementData|arbElementNodeData)/) {
       skip_data()
     } else {
       print OUTPUT;
@@ -50,7 +50,7 @@ foreach my $filename (bsd_glob("{output*.msh}")) {
 
   sub process_data {
     my $line;
-    while ($line = <DATA>, $line !~ /^\$(EndElementData|EndElementNodeData)/) {
+    while ($line = <DATA>, $line !~ /^\$(EndData|EndElementData|EndElementNodeData)/) {
       foreach (@views) {
         if ($line =~ /^\"$_/) {
           print OUTPUT "\$$data_type\n1\n";
@@ -68,7 +68,7 @@ foreach my $filename (bsd_glob("{output*.msh}")) {
 
   sub skip_data {
     my $line;
-    while ($line = <DATA>, $line !~ /^\$End(Data|arbElementData|arbData|arbElementNodeData)/) {
+    while ($line = <DATA>, $line !~ /^\$End(arbElementData|arbData|arbElementNodeData)/) {
       #do nothing
     }
   }
