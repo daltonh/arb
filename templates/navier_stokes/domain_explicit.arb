@@ -68,8 +68,9 @@ CONSTANT <c_mu_explicit> 0.10d0 # multiplier for explicit viscous term stability
 #CONSTANT <celldxmaxmin> "cellmin(<celldxmax>,region=<domain>)" # minimum of the maximum cell dimensions
 #CONSTANT <dt_mu_explicit> "<c_mu_explicit>*<rho>*<celldxmaxmin>^2/<mu>" stepoutput
 # based on facedx, upon which <u_mf_{vis}> is also based
-CONSTANT <facedxmin> "facemin(<facedx>,region=<domain faces>)" # minimum of non-zero <facedx>'s
-CONSTANT <dt_mu_explicit> "<c_mu_explicit>*<rho>*<facedxmin>^2/<mu>" stepoutput
+# defining these as locals to avoid lousy substitution message - alternative is to cancel <dt> and <dt_initial> and redefine here, or reorder (requires another include though)
+NONE_LOCAL <facedxmin> "facemin(<facedx>,region=<domain faces>)" # minimum of non-zero <facedx>'s
+NONE_LOCAL <dt_mu_explicit> "<c_mu_explicit>*<rho>*<facedxmin>^2/<mu>" stepoutput
 CONSTANT <dt_initial> [] "<dt_mu_explicit>" stepoutput
 #CONSTANT <CFL_initial> 0.25d0
 #CONSTANT <dt_CFL> "<CFL_initial>*<celldxmaxmin>/<u_av>" stepoutput # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
