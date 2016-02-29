@@ -40,7 +40,7 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparseumf, hslma28
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, iterative
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
@@ -107,12 +107,36 @@ end do
 
 ! call the main linear solver routines if atleast one equation is being solved
 
-if (debug) write(*,*) 'calling mainsolver'
-!call time_process
-call mainsolver(ierror)
-!call time_process(description='mainsolver')
-! if there is a problem with the linear matrix solver then return
-if (debug) write(*,*) 'in newtsolver after mainsolver, ierror = ',ierror
+if (manage_funk_dv_memory) then
+  call time_process
+  if (debug) write(*,*) 'deallocating derived funk dvs'
+  call memory_manage_dvs(type="derived",action="deallocate")
+  call time_process(description='deallocating derived funk memory')
+end if
+
+if (trim(linear_solver) == "iterative") then
+  if (debug) write(*,*) 'calling iterative_mainsolver'
+  call time_process
+  call iterative_mainsolver(ierror)
+  call time_process(description='iterative mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after iterative_mainsolver, ierror = ',ierror
+else
+  if (debug) write(*,*) 'calling mainsolver'
+  !call time_process
+  call mainsolver(ierror)
+  !call time_process(description='mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after mainsolver, ierror = ',ierror
+end if
+
+if (manage_funk_dv_memory) then
+  if (debug) write(*,*) 'reallocating derived funk dvs'
+  call time_process
+  call memory_manage_dvs(type="derived",action="reallocate")
+  call time_process(description='reallocating derived funk memory')
+end if
+
 if (ierror /= 0) return
 
 ! temp &&&&
@@ -397,13 +421,6 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine mainsolver'
 
 ierror = 1
 
-if (manage_funk_dv_memory) then
-  call time_process
-  if (debug_sparse) write(*,*) 'deallocating derived funk dvs'
-  call memory_manage_dvs(type="derived",action="deallocate")
-  call time_process(description='deallocating derived funk memory')
-end if
-
 ! sparse matrix produced is stored in compressed sparse row format (3 array variation), with 1 indexing (csr1)
 ! aa is value (length nz)
 ! jaa is column index (length nz)
@@ -670,16 +687,158 @@ if (allocated(iaa)) deallocate(iaa)
 if (allocated(jaa)) deallocate(jaa)
   
 if (manage_funk_dv_memory) then
-  if (debug_sparse) write(*,*) 'reallocating derived and equation funk dvs'
+  if (debug_sparse) write(*,*) 'reallocating equation funk dvs'
   call time_process
-  call memory_manage_dvs(type="derived",action="reallocate")
   call memory_manage_dvs(type="equation",action="reallocate")
-  call time_process(description='allocating derived and equation funk memory')
+  call time_process(description='reallocating equation funk memory')
 end if
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine mainsolver'
 
 end subroutine mainsolver
+
+!-----------------------------------------------------------------
+
+subroutine iterative_mainsolver(ierror)
+
+! here we use a homegrown iterative technique to solve the linear system, using equation funk data directly
+
+use general_module
+use equation_module
+
+integer :: nn, m, ns, i, j, iterstep, ierror, ii
+double precision :: alpha_ff, beta_ff, f, f_old, lambda_ff
+character(len=1000) :: formatline
+double precision, allocatable, dimension(:) :: deldelphi, ff, alpha_delphi, beta_delphi, ff_m, delff
+logical :: singular
+logical, parameter :: matrix_test = .false. ! do a test matrix inversion using a made-up test matrix instead of solving PDE system
+logical, parameter :: dump_matrix = .false. ! dump contents and solution to matrix in fort.91
+integer, parameter :: dump_matrix_max = 1000 ! maximum number of elements to include when dumping matrix
+logical, parameter :: debug = .false.
+logical :: debug_sparse = .false.
+
+if (debug) debug_sparse = .true.
+if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine iterative_mainsolver'
+
+ierror = 1
+
+! check on allocations
+if (.not.allocated(deldelphi)) then
+  allocate(deldelphi(ptotal),ff(ptotal),delff(ptotal),alpha_delphi(ptotal),beta_delphi(ptotal),ff_m(ptotal))
+end if
+
+! set initial ff array (linear equation error array) from newton's equations
+! also set residual multiplier, ff_m
+j = 0
+do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nn)
+  do ns = 1, ubound(var(m)%funk,1)
+    j = j + 1
+    ff(j) = var(m)%funk(ns)%v
+    ff_m(j) = 1.d0/(var(m)%magnitude**2)
+  end do
+end do
+
+! calculate initial residual
+f = ff_residual(ff_m,ff)
+
+! calculate alpha_delphi
+alpha_delphi = 0
+j = 0
+do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nn)
+  do ns = 1, ubound(var(m)%funk,1)
+    j = j + 1
+    do ii = 1, var(m)%funk(ns)%ndv
+      i = var(m)%funk(ns)%pp(ii)
+      alpha_delphi(i) = alpha_delphi(i) + var(m)%funk(ns)%dv(ii)**2*ff_m(j)
+    end do
+  end do
+end do
+
+write(*,*) 'iterstep,f'
+write(*,*) 0,f
+
+! start iteration loop
+iteration_loop: do iterstep = 1, 1000
+
+! calculate beta_delphi
+  beta_delphi = 0
+  j = 0
+  do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
+    m = var_list(var_list_number_equation)%list(nn)
+    do ns = 1, ubound(var(m)%funk,1)
+      j = j + 1
+      do ii = 1, var(m)%funk(ns)%ndv
+        i = var(m)%funk(ns)%pp(ii)
+        beta_delphi(i) = beta_delphi(i) + var(m)%funk(ns)%dv(ii)*ff(j)*ff_m(j)
+      end do
+    end do
+  end do
+  
+! calculate change to delphi, deldelphi
+  do i = 1, ptotal
+    if (abs(alpha_delphi(i)) < 1.d-20) call error_stop("problem alpha_delphi(i)")
+    deldelphi(i) = -beta_delphi(i)/alpha_delphi(i)
+  end do
+
+! calculate corresponding change to ff
+! and at the same time, calculate the alpha_ff and beta_ff factors required to calculate lambda_ff
+  delff = 0
+  alpha_ff = 0
+  beta_ff = 0
+  j = 0
+  do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
+    m = var_list(var_list_number_equation)%list(nn)
+    do ns = 1, ubound(var(m)%funk,1)
+      j = j + 1
+      do ii = 1, var(m)%funk(ns)%ndv
+        i = var(m)%funk(ns)%pp(ii)
+        delff(j) = delff(j) + var(m)%funk(ns)%dv(ii)*deldelphi(i)
+      end do
+      alpha_ff = alpha_ff + delff(j)**2*ff_m(j)
+      beta_ff = beta_ff + delff(j)*ff(j)*ff_m(j)
+    end do
+  end do
+  if (abs(alpha_ff) < 1.d-20) call error_stop("problem alpha_ff")
+  lambda_ff = -beta_ff/alpha_ff
+
+! update ff, delpha and residual f
+  do j = 1, ptotal
+    ff(j) = ff(j) + lambda_ff*delff(j)
+    delphi(j) = delphi(j) + lambda_ff*deldelphi(j)
+  end do
+  f = ff_residual(ff_m,ff)
+
+  write(*,*) 'iterstep,f,lambda_ff'
+  write(*,*) iterstep,f,lambda_ff
+
+end do iteration_loop
+  
+ierror = 0
+
+stop
+
+if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine iterative_mainsolver'
+
+end subroutine iterative_mainsolver
+
+!-----------------------------------------------------------------
+
+double precision function ff_residual(ff_m,ff)
+
+use general_module
+double precision, allocatable, dimension(:) :: ff ! the array of linear equation errors
+double precision, allocatable, dimension(:) :: ff_m ! a multiplier for each equation
+integer :: j
+
+ff_residual = 0.d0
+do j = 1, ubound(ff,1)
+  ff_residual = ff_residual + ff(j)**2*ff_m(j)
+end do
+ff_residual = sqrt(max(ff_residual,0.d0)/dble(max(ptotal,1)))
+
+end function ff_residual
 
 !-----------------------------------------------------------------
 
@@ -2016,7 +2175,7 @@ if (trim(linear_solver) == "default") then
   write(*,'(a)') 'INFO: choosing '//trim(linear_solver)//' linear solver'
 else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "intelpardisoooc".or. &
   trim(linear_solver) == "suitesparse".or.trim(linear_solver) == "hslma28".or.trim(linear_solver) == "pardiso".or. &
-  trim(linear_solver) == "pardisoiterative".or.trim(linear_solver) == "none")) then
+  trim(linear_solver) == "pardisoiterative".or.trim(linear_solver) == "iterative".or.trim(linear_solver) == "none")) then
   call error_stop('unknown linear solver specified: '//trim(linear_solver))
 end if
 
