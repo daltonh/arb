@@ -707,7 +707,7 @@ use general_module
 use equation_module
 
 integer :: nn, m, ns, i, j, iterstep, ierror, ii
-double precision :: alpha_ff, beta_ff, f, f_old, lambda_ff
+double precision :: alpha_ff, beta_ff, f, f_old, lambda_ff, lambda_used
 character(len=1000) :: formatline
 double precision, allocatable, dimension(:) :: deldelphi, ff, alpha_delphi, beta_delphi, ff_m, delff
 logical :: singular
@@ -740,7 +740,7 @@ do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
 end do
 
 ! calculate initial residual
-f = ff_residual(ff_m,ff)
+f_old = ff_residual(ff_m,ff)
 
 ! calculate alpha_delphi
 alpha_delphi = 0
@@ -757,10 +757,10 @@ do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
 end do
 
 write(*,*) 'iterstep,f'
-write(*,*) 0,f
+write(*,*) 0,f_old
 
 ! start iteration loop
-iteration_loop: do iterstep = 1, 1000
+iteration_loop: do iterstep = 1, 2
 
 ! calculate beta_delphi
   beta_delphi = 0
@@ -778,7 +778,7 @@ iteration_loop: do iterstep = 1, 1000
   
 ! calculate change to delphi, deldelphi
   do i = 1, ptotal
-    if (abs(alpha_delphi(i)) < 1.d-20) call error_stop("problem alpha_delphi(i)")
+    if (abs(alpha_delphi(i)) < 1.d-60) call error_stop("problem alpha_delphi(i)")
     deldelphi(i) = -beta_delphi(i)/alpha_delphi(i)
   end do
 
@@ -800,24 +800,30 @@ iteration_loop: do iterstep = 1, 1000
       beta_ff = beta_ff + delff(j)*ff(j)*ff_m(j)
     end do
   end do
-  if (abs(alpha_ff) < 1.d-20) call error_stop("problem alpha_ff")
+  if (abs(alpha_ff) < 1.d-60) call error_stop("problem alpha_ff")
   lambda_ff = -beta_ff/alpha_ff
+
+! lambda_used = max(lambda_ff,1.d0)
+  lambda_used = lambda_ff
 
 ! update ff, delpha and residual f
   do j = 1, ptotal
-    ff(j) = ff(j) + lambda_ff*delff(j)
-    delphi(j) = delphi(j) + lambda_ff*deldelphi(j)
+    ff(j) = ff(j) + lambda_used*delff(j)
+    delphi(j) = delphi(j) + lambda_used*deldelphi(j)
   end do
   f = ff_residual(ff_m,ff)
 
-  write(*,*) 'iterstep,f,lambda_ff'
-  write(*,*) iterstep,f,lambda_ff
+! if (mod(iterstep,1000) == 0) then
+    write(*,*) 'iterstep,f,lambda_ff,lambda_used'
+    write(*,*) iterstep,f,lambda_ff,lambda_used
+! end if
+
+  if (f/f_old < 1.d-12) exit
 
 end do iteration_loop
   
+write(*,*) 'decrease in residual = ',f/f_old
 ierror = 0
-
-stop
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine iterative_mainsolver'
 
