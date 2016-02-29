@@ -3469,27 +3469,34 @@ sub mequation_interpolation {
 # ref: magnitude
 # newtonupdate is used for debugging
 # it evaluates as the latest (unbackstepped) newton update for the named unknown variable
-# magnitude gives the magnitude for an unknown variable
-# both functions only accept an unknown name as an argument (ie, not an expression)
+# magnitude gives the magnitude for an unknown or equation variable
+# both functions only accept an unknown (or equation) name as an argument (ie, not an expression)
     } elsif ($operator_type eq "newtonupdate" || $operator_type eq "magnitude") {
 
-      ($unknown,$name) = search_operator_contents("unknown",$next_contents_number); # the only argument to this function should be a reference to one unknown variable
-      if (empty($unknown)) { error_stop("unknown variable name for $operator in $otype $variable{$otype}[$omvar]{name} not found:\n  operator_contents = ".Dumper(\%operator_contents)); }
+      my $maxima_name='';
+      ($maxima_name,$name) = search_operator_contents("variable",$next_contents_number); # the only argument to this function should be a reference to one variable name (checking on whether unknown or equation later)
+      if (empty($maxima_name)) { error_stop("variable name for $operator in $otype $variable{$otype}[$omvar]{name} not found:\n  operator_contents = ".Dumper(\%operator_contents)); }
+
 # now find the unknown number and check on it's centring
       $mvar = 0;
-      foreach $mcheck ( 1 .. $m{"unknown"} ) {
-        if ($unknown eq $variable{"unknown"}[$mcheck]{"maxima"}) { $mvar = $mcheck; last; }
+      $type = '';
+      TYPE_LOOP: foreach my $typecheck ( @user_types ) {
+        foreach $mcheck ( 1 .. $m{$typecheck} ) {
+          if ($maxima_name eq $variable{$typecheck}[$mcheck]{"maxima"}) { $mvar = $mcheck; $type = $typecheck; last TYPE_LOOP; }
+        }
       }
-      if (!($mvar)) { error_stop("variable (maxima) name $unknown found in $operator in $otype $variable{$otype}[$omvar]{name} is not identified as an unknown variable:\n  operator_contents = ".Dumper(\%operator_contents)); }
+      if (!($mvar)) { error_stop("variable (maxima) name $maxima_name found in $operator in $otype $variable{$otype}[$omvar]{name} is not known:\n  operator_contents = ".Dumper(\%operator_contents)); }
 
       if ($operator_type eq "newtonupdate") {
+        if ($type ne "unknown") { error_stop("variable $variable{$type}[$mvar]{name} found in $operator in $otype $variable{$otype}[$omvar]{name} is a $type rather than unknown variable"); }
 # for the newtonupdate the centrings have to be consistent
-        if ($centring ne $variable{"unknown"}[$mvar]{"centring"})  { error_stop("unknown variable $variable{unknown}[$mvar]{name} which is found in $operator in $otype $variable{$otype}[$omvar]{name} does not have the same centring as the newtonupdate operator"); }
-        $inbit[$nbits] = "newtonupdate[$variable{unknown}[$mvar]{fortran_number},".ijkstring($centring)."]";
+        if ($centring ne $variable{$type}[$mvar]{"centring"})  { error_stop("$type variable $variable{$type}[$mvar]{name} found in $operator in $otype $variable{$otype}[$omvar]{name} does not have the same centring as the newtonupdate operator"); }
+        $inbit[$nbits] = "newtonupdate[$variable{$type}[$mvar]{fortran_number},".ijkstring($centring)."]";
       } else {
 # for the magnitude the centring must be none
+        if ($type ne "unknown" and $type ne "equation") { error_stop("$type variable $variable{$type}[$mvar]{name} found in $operator in $otype $variable{$otype}[$omvar]{name} is a $type rather than unknown or equation variable"); }
         if ($centring ne "none") { error_stop("none centring must be used for the $operator operator which is found in the expression for $otype $variable{$otype}[$omvar]{name}"); }
-        $inbit[$nbits] = "magnitude[$variable{unknown}[$mvar]{fortran_number}]";
+        $inbit[$nbits] = "magnitude[$variable{$type}[$mvar]{fortran_number}]";
       }
 
 #---------------------

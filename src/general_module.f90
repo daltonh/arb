@@ -2459,13 +2459,14 @@ end function newtonupdate
 
 function magnitude(m)
 
-! this function returns the magnitude for the unknown variable m
+! this function returns the magnitude for the unknown or equation variable m
 
 double precision :: magnitude
 integer :: m
 
 ! sanity check on unknown variable identification
-if (trim(var(m)%type) /= "unknown") call error_stop("magnitude has been called with an m index that does not refer to an unknown")
+if (trim(var(m)%type) /= "unknown" .and. trim(var(m)%type) /= "equation") &
+  call error_stop("magnitude has been called with an m index that does not refer to an unknown or equation variable")
 magnitude = max(var(m)%magnitude,0.d0)
 
 end function magnitude
