@@ -64,6 +64,7 @@ intel_version = 13
 # long integer used in intel compilation (ie, ilp64 instead of lp64)
 ilp = off
 
+# for the following we want to control this behaviour using the arb script, thinking about library compatibility or download access (suitesparse and mgmres both need to download files)
 # native pardiso solver
 # use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
 pardiso_from_arb = present
@@ -71,6 +72,10 @@ pardiso_from_arb = present
 # suitesparse solver
 # use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
 suitesparse_from_arb = present
+
+# mgmres solver
+# use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
+mgmres_from_arb = present
 
 #------------------------------------------------------------------------------
 # variables below this should be automagically set within this makefile
@@ -84,6 +89,7 @@ donest = present
 intel_pardiso = present
 pardiso := $(pardiso_from_arb)
 suitesparse := $(suitesparse_from_arb)
+mgmres := $(mgmres_from_arb)
 
 # additional libraries to link in
 libs =		
@@ -443,6 +449,18 @@ else
 endif
 
 #----------------
+# setup mgmres interface module
+ifeq "$(strip $(mgmres))" "present"
+  objects += mgmres_solver.o mgmres_module.o
+  linear_solver_modules += mgmres_solver.o mgmres_module.o
+  files_to_delete += mgmres_dummy_module.o
+else
+  objects += mgmres_dummy_module.o
+  linear_solver_modules += mgmres_dummy_module.o
+  files_to_delete += mgmres_solver.o mgmres_module.o
+endif
+
+#----------------
 # check for existence of hsl_ma28d routines and setup variables
 ifeq "$(strip $(hsl_ma28d))" "present"
   ifeq "$(and $(wildcard $(srcdir)/contributed/hsl_ma28d/ma28d.f), $(wildcard $(srcdir)/contributed/hsl_ma28d/ddeps.f) )" ""
@@ -557,6 +575,7 @@ print :
 	@echo " pardiso (native) linear solver is: $(pardiso)"
 	@echo " hsl_ma28d linear solver is: $(hsl_ma28d)"
 	@echo " suitesparse linear solver is: $(suitesparse)"
+	@echo " mgmres linear solver is: $(mgmres)"
 	@echo " higham88 one norm estimator (donest) is: $(donest)"
 	@echo " mklpath is: $(mklpath)"
 	@echo " openmp is: $(omp)"
@@ -655,6 +674,18 @@ intel_pardiso_module.o : $(srcdir)/contributed/intel_pardiso/intel_pardiso_modul
 	$(fcomp) $(cflags) $< $(logme) -o $@
 else
 intel_pardiso_dummy_module.o : $(srcdir)/contributed/intel_pardiso/intel_pardiso_dummy_module.f90
+	$(fcomp) $(cflags) $< $(logme) -o $@
+endif
+
+ifeq "$(strip $(mgmres))" "present"
+$(srcdir)/contributed/mgmres/mgmres_solver.f90 :  		
+	make -C $(srcdir)/contributed/mgmres
+mgmres_solver.o : $(srcdir)/contributed/mgmres/mgmres_solver.f90
+	$(fcomp) $(cflags) $< $(logme) -o $@
+mgmres_module.o : $(srcdir)/contributed/mgmres/mgmres_module.f90
+	$(fcomp) $(cflags) $< $(logme) -o $@
+else
+mgmres_dummy_module.o : $(srcdir)/contributed/mgmres/mgmres_dummy_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 endif
 
