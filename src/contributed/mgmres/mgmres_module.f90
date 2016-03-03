@@ -59,7 +59,7 @@ integer ( kind = 4 ) itr_used
 character(len=1000) :: formatline
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
-logical :: mgmres_debug = .false.
+logical :: mgmres_debug = .true.
 
 if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine mgmres_linear_solver'
@@ -100,7 +100,8 @@ end if
 
 ! set some parameters
 itr_max = 1000
-mr = n
+!mr = n
+mr = max(int(real(n)/10.e0),1)
 !mr = 10
 tol_abs = 1.d-10
 tol_rel = 1.d-10
