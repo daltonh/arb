@@ -59,7 +59,7 @@ integer ( kind = 4 ) itr_used
 character(len=1000) :: formatline
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
-logical :: mgmres_debug = .true.
+logical :: mgmres_debug = .false.
 
 if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine mgmres_linear_solver'
@@ -114,7 +114,7 @@ formatline = '(a,i10,a,g12.5)'
 write(*,fmt=formatline) 'INFO: mgmres solver used ',itr_used,' iterations and achieved a residual of ',rho
 deallocate(iaa,jaa,rhs)
 
-ierror = 0
+if (itr_used < itr_max) ierror = 0 ! assume that convergence was achieved if iterations used is less than maximum iterations (if these are equal then this is wrong, but is close anyway...)
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine mgmres_linear_solver'
 

@@ -48,7 +48,9 @@ integer, dimension(:), allocatable :: iaa_csr1, jaa ! already allocated
 integer :: ierror
 
 write(*,*)
-write(*,*) 'ERROR: the mgmres routines have not been linked into the arb executable'
+write(*,*) 'ERROR: the mgmres routines have not been linked into the arb executable.'
+write(*,*) 'The default behaviour is now that this routine is not downloaded,'
+write(*,*) 'so to include it, pass arb the --mgmres option'
 stop
 
 end subroutine mgmres_linear_solver

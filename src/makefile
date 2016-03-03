@@ -450,10 +450,16 @@ endif
 
 #----------------
 # setup mgmres interface module
+cflagsmgmres := $(cflags)
 ifeq "$(strip $(mgmres))" "present"
   objects += mgmres_solver.o mgmres_module.o
   linear_solver_modules += mgmres_solver.o mgmres_module.o
   files_to_delete += mgmres_dummy_module.o
+# the mgmres routine uses a heap of dummy arrays, so need to put these on the heap rather than the stack
+# see https://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors
+  ifeq "$(compiler)" "intel"
+    cflagsmgmres += -heap-arrays
+  endif
 else
   objects += mgmres_dummy_module.o
   linear_solver_modules += mgmres_dummy_module.o
@@ -681,7 +687,7 @@ ifeq "$(strip $(mgmres))" "present"
 $(srcdir)/contributed/mgmres/mgmres_solver.f90 :  		
 	make -C $(srcdir)/contributed/mgmres
 mgmres_solver.o : $(srcdir)/contributed/mgmres/mgmres_solver.f90
-	$(fcomp) $(cflags) $< $(logme) -o $@
+	$(fcomp) $(cflagsmgmres) $< $(logme) -o $@
 mgmres_module.o : $(srcdir)/contributed/mgmres/mgmres_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 else

@@ -95,7 +95,8 @@ usage () {
   echo "          all debugger options turn debug on, but that can be overwritten using the --no-debug option given after";
   echo "  --no-pardiso: do not link in the native pardiso routines, allowing the intel pardiso routines to be used instead";
   echo "  --no-suitesparse: do not download the fortran 90 suitesparse interface or link in the packaged suitesparse routines";
-  echo "  --no-mgmres: do not download the fortran 90 mgmres libraries and link these in";
+  echo "  --mgmres: download the fortran 90 mgmres libraries and link these in";
+  echo "  --no-mgmres: do not download the fortran 90 mgmres libraries and link these in (default)";
   echo "  --no-downloads: do not download any files during the compilation process (equivalent to --no-suitesparse and --no-mgmres)";
 # echo "  --externals|-e: incorporate the following user fortran external file into the equation_module";
   echo "  --help|-h: display this HELP INFO";
@@ -177,7 +178,7 @@ OOPT=1; # default is optimsation level 1
 OILP="off";
 OPARDISO="present";
 OSUITESPARSE="present";
-OMGMRES="present";
+OMGMRES="not present";
 OPROCESSLOGGING=0; # a value greater than 0 means that process statistics will be logged at this interval (s)
 COMPILER="default";
 unset ARBFILES; # the input files that will be passed to setup_equations.pl - unset array first
@@ -210,6 +211,7 @@ do
     "--debugger-none") DEBUGGER="none"; ODEBUG=1;;
     "--no-pardiso") OPARDISO="not present";;
     "--no-suitesparse") OSUITESPARSE="not present";;
+    "--mgmres") OMGMRES="present";;
     "--no-mgmres") OMGMRES="not present";;
     "--no-downloads") OSUITESPARSE="not present"; OMGMRES="not present";;
     "--omp") OOMP=1; unset OMP_NUM_THREADS;;
