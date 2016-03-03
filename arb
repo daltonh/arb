@@ -479,13 +479,13 @@ if [ $ORUN -eq 1 ] ; then
   fi
 
   if [ ! $DEBUGGER = "none" ] ; then # DEBUGGER specifies purely what environment code is to run, and is now strictly separate to ODEBUG
-    if [ $DEBUGGER = "default" ]; then
+    if [ $DEBUGGER = "default" ] ; then
       if [ $COMPILER = "gnu" ] ; then # if DEBUGGER is not explicitly set, set it to be consistent with the compiler
         DEBUGGER="gdb";
       else
         DEBUGGER="idb";
       fi;
-    fi
+    fi;
     if [ $DEBUGGER = "gdb" ] ; then # macports now uses ggdb to refer to gdb, so try this if gdb isn't found
       if ! which $DEBUGGER >/dev/null ; then
         DEBUGGER="ggdb";
