@@ -482,13 +482,15 @@ if [ $ORUN -eq 1 ] ; then
     if [ $DEBUGGER = "default" ]; then
       if [ $COMPILER = "gnu" ] ; then # if DEBUGGER is not explicitly set, set it to be consistent with the compiler
         DEBUGGER="gdb";
-        if ! which $DEBUGGER >/dev/null ; then # macports now uses ggdb to refer to gdb, so try this if gdb isn't found
-          DEBUGGER="ggdb";
-        fi;
       else
         DEBUGGER="idb";
       fi;
     fi
+    if [ $DEBUGGER = "gdb" ] ; then # macports now uses ggdb to refer to gdb, so try this if gdb isn't found
+      if ! which $DEBUGGER >/dev/null ; then
+        DEBUGGER="ggdb";
+      fi;
+    fi;
     if which $DEBUGGER >/dev/null ; then
       echo "INFO: found $DEBUGGER at `which $DEBUGGER`";
     else
