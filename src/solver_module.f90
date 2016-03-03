@@ -40,7 +40,11 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
+<<<<<<< HEAD
 character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, iterative
+=======
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparseumf, hslma28, mgmres
+>>>>>>> develop
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
@@ -396,6 +400,7 @@ use intel_pardiso_module
 use pardiso_module
 use hsl_ma28d_module
 use suitesparse_module
+use mgmres_module
 
 double precision, dimension(:), allocatable :: aa
 integer, dimension(:), allocatable :: iaa, jaa
@@ -630,6 +635,11 @@ else if (trim(linear_solver) == "suitesparse") then
 
   call suitesparse_linear_solver(aa,iaa,jaa,delphi,ierror)
   if (ierror == 1) singular = .true.
+
+else if (trim(linear_solver) == "mgmres") then
+! mgmres iterative solver
+
+  call mgmres_linear_solver(aa,iaa,jaa,delphi,ierror)
 
 else if (trim(linear_solver) == "hslma28") then
 ! hsl_ma28 solver
@@ -2181,7 +2191,8 @@ if (trim(linear_solver) == "default") then
   write(*,'(a)') 'INFO: choosing '//trim(linear_solver)//' linear solver'
 else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "intelpardisoooc".or. &
   trim(linear_solver) == "suitesparse".or.trim(linear_solver) == "hslma28".or.trim(linear_solver) == "pardiso".or. &
-  trim(linear_solver) == "pardisoiterative".or.trim(linear_solver) == "iterative".or.trim(linear_solver) == "none")) then
+  trim(linear_solver) == "pardisoiterative".or.trim(linear_solver) == "iterative".or. &
+  trim(linear_solver) == "mgmres".or.trim(linear_solver) == "none")) then
   call error_stop('unknown linear solver specified: '//trim(linear_solver))
 end if
 
