@@ -114,7 +114,7 @@ formatline = '(a,i10,a,g12.5)'
 write(*,fmt=formatline) 'INFO: mgmres solver used ',itr_used,' iterations and achieved a residual of ',rho
 deallocate(iaa,jaa,rhs)
 
-if (itr_used < itr_max) ierror = 0 ! assume that convergence was achieved if iterations used is less than maximum iterations (if these are equal then this is wrong, but is close anyway...)
+if (itr_used < itr_max*mr) ierror = 0 ! assume that convergence was achieved if iterations used is less than maximum iterations (if these are equal then this is wrong, but is close anyway...)
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine mgmres_linear_solver'
 
