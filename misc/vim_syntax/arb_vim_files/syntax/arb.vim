@@ -1,7 +1,7 @@
 " Vim syntax file for arb finite volume solver
 " Language:     arb
 " Version:      0.55
-" Modified:     2016/01/31
+" Modified:     2016/03/03
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 " Maintainer:   Christian Biscombe
 
@@ -67,14 +67,13 @@ syn keyword arbOption centringinput centringmeshinput centringoutput centringmes
 syn keyword arbOption  compoundelementdata  compoundelementnodedata  compoundelementnodelimiteddata  compoundinput  nocompoundinput  compoundoutput  nocompoundoutput  compoundstepoutput  nocompoundstepoutput  compoundstepoutputnoupdate  nocompoundstepoutputnoupdate
 syn keyword arbOption componentelementdata componentelementnodedata componentelementnodelimiteddata componentinput nocomponentinput componentoutput nocomponentoutput componentstepoutput nocomponentstepoutput componentstepoutputnoupdate nocomponentstepoutputnoupdate
 syn keyword arbKernelOption automaximumseparation boundarynodeseparations checkminw hyperbolicb hyperbolickernel kernelmethod limitkernelmasktosharednodes maximumseparation maximumcellseparation minimumminw minimumseparation mls none optimisation partialhyperbolickernel polynomialorder polynomialaverageorder polynomialcellorder polynomialnodeorder separationmultipliedtrialkernels shiftboundaryweightcentre shifthyperbolicdistance simple weightseparationmultiplier zerononorientedweights contained
-syn keyword arbSolverOption backstepping default hslma28 mgmres intelpardiso intelpardisoooc lambdalimitfalseroot lambdalimitfalserootfactor lambdamin linearsolver none pardiso pardisoiterative stickylambda stickylambdaincrease suitesparse weightlargeequationerrors weightlargeequationerrorsfactor contained
+syn keyword arbSolverOption backstepping default hslma28 intelpardiso intelpardisoooc lambdalimitfalseroot lambdalimitfalserootfactor lambdamin linearsolver mgmres none pardiso pardisoiterative stickylambda stickylambdaincrease suitesparse weightlargeequationerrors weightlargeequationerrorsfactor contained
 syn match arbDeprecated "\<\%(check_minw\|kernel_method\|limit_mask_to_icell\|minimum_minw\|weight_separation_multiplier\)\>" contained
 syn match arbDeprecated "\<\%(minimum\|maximum\)_\%(boundary\|domain\)_separation\>" contained
 syn match arbDeprecated "\<polynomial\%(_average\)\=_order\>" contained
 
 syn match arbSystemVar "\%(\)<\%(all\|boundary\|domain\) \%(cells\|faces\|nodes\)>" 
-syn match arbSystemVar "<\%(adjacentcellicells\|adjacentcellsignns\|adjacentfacedowncell\|adjacentfaceicells\|adjacentfaceothercell\|adjacentfaceupcell\|boundaries\|celldxkernel\|celldxmax\|celldxmin\|cellicells\|cellknodes\|cellvol\|centralkernel\|crosskernel\|celljfaces\|domain\|downwindfaceicells\|facearea\|facedx\|facedxkernel\|facedivop\|facefromcelldirection\|faceicells\|faceknodes\|glueface\|huge\|hugeish\|icell\|jface\|kernelsum\|knode\|lastface\|limitercontgrad\|limitertolerance\|newtientdelta\|newtres\|nobcelljfaces\|nocadjacentcellicells\|nodedxkernel\|nodeicells\|noloop\|pi\|random\|separation\|separationcentre\d*\|tiny\|tinyish\|transientdelta\|upwindfaceicells\)>"
-syn match arbSystemVar "<\%(newtstep\|timestep\)\%(\[r=\d\+\]\)\=>"
+syn match arbSystemVar "<\%(adjacentcellicells\|adjacentcellsignns\|adjacentfacedowncell\|adjacentfaceicells\|adjacentfaceothercell\|adjacentfaceupcell\|boundaries\|celldxkernel\|celldxmax\|celldxmin\|cellicells\|cellknodes\|cellvol\|centralkernel\|crosskernel\|celljfaces\|domain\|downwindfaceicells\|facearea\|facedx\|facedxkernel\|facedivop\|facefromcelldirection\|faceicells\|faceknodes\|glueface\|huge\|hugeish\|icell\|jface\|kernelsum\|knode\|lastface\|limitercontgrad\|limitertolerance\|newtientdelta\|newtres\|newtstep\|nobcelljfaces\|nocadjacentcellicells\|nodedxkernel\|nodeicells\|noloop\|pi\|random\|separation\|separationcentre\d*\|timestep\|tiny\|tinyish\|transientdelta\|upwindfaceicells\)>"
 syn match arbSystemVar "<\%(celldx\|cellfromcellx\|cellfromfacex\|cellkernel\|cellkernelregion\|celltoicellr\|celltoseparationicellr\|celltoseparationicellreflect\|celltoseparationicellrsquared\|cellx\)\[l=\%(\d\|:\)\]>"
 syn match arbSystemVar "<\%(facedxup\|facedxdown\|facedxunit\|facekernel\|facekernelregion\|facenorm\|facereflect\|facereflectnorm\|facetang1\|facetang2\|facetoicellr\|facex\)\[l=\%(\d\|:\)\]>"
 syn match arbSystemVar "<\%(nodekernel\|nodekernelregion\|nodex\)\[l=\%(\d\|:\)\]>"
@@ -100,10 +99,10 @@ syn keyword arbFunctionOption adjacentcells adjacentcellsevenweighting adjacentc
 syn match arbFunctionOption "\%(\)\<sep\%(aration\)\=cent\%(er\|re\)\=\d*" contained
 syn match arbFunctionOption "\%(\)\<\%(max\|min\)separation\>" contained
 syn match arbFunctionOption "\<\%(l\|r\)\ze=\%(\d\|:\)" contained
-syn keyword arbFunctionParameter d default dt expression faceseparationflag flux fromregion localregion phif phitol region remoteregion toregion unknown contained
+syn keyword arbFunctionParameter bound condition d default dt expression faceseparationflag false flux fromregion limiter localregion phif phitol region remoteregion toregion true unknown contained
 syn match arbFunctionParameter "\<\%(axis\|centre\|gradient\|normal\|size\)\[l=\%(\d\|:\)\]" contained
 syn match arbFunctionParameter "\<\%(phi\)\%(\[r=1\]\)\=" contained
-syn keyword arbFortranFunction abs acos aimag aint anint asin atan atan2 ceiling char cmplx conjg cos cosh dim dprod exp floor ichar index int log log10 max min mod modulo nint sign sin sinh sqrt tan tanh contained
+syn keyword arbFortranFunction abs acos aint anint asin atan atan2 bit_size ceiling cos cosh dble digits dim dprod epsilon exp exponent floor fraction huge iachar ichar index int len len_trim log log10 max maxexponent min minexponent mod modulo nearest nint precision radix range real rrspacing scale scan set_exponent sign sin sinh spacing sqrt system_clock tan tanh tiny verify contained
 syn keyword arbDeprecated AT COMMON COMPOUND GMSH INTERSECTION SURROUNDS UNION VARIABLE contained
 syn match arbDeprecated "\<\%(ASSOCIATED WITH\|BOUNDARY OF\|DOMAIN OF\|PART OF\|WITHIN BOX\)\>" contained
 syn match arbDeprecated "\<\%(associated with\|boundary of\|domain of\)\>" contained nextgroup=arbFunctionBracket,arbFunctionParen
