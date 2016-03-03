@@ -40,11 +40,7 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
-<<<<<<< HEAD
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, iterative
-=======
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparseumf, hslma28, mgmres
->>>>>>> develop
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, iterative, mgmres
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
@@ -717,20 +713,23 @@ use general_module
 use equation_module
 
 integer :: nn, m, ns, i, j, iterstep, ierror, ii
-double precision :: alpha_ff, beta_ff, f, f_old, lambda_ff, lambda_used
+double precision :: alpha_ff, beta_ff, iterres, iterres_old, lambda_ff, lambda_used
 character(len=1000) :: formatline
 double precision, allocatable, dimension(:) :: deldelphi, ff, alpha_delphi, beta_delphi, ff_m, delff
 logical :: singular
 logical, parameter :: matrix_test = .false. ! do a test matrix inversion using a made-up test matrix instead of solving PDE system
 logical, parameter :: dump_matrix = .false. ! dump contents and solution to matrix in fort.91
 integer, parameter :: dump_matrix_max = 1000 ! maximum number of elements to include when dumping matrix
+integer, parameter :: iterstepmax = 1000000 ! maximum number of iterations to take
+integer, parameter :: iterstepcheck = 100 ! after this many iterations check for kill file, output residual etc
+double precision, parameter :: iterrestol = 1.d-10
 logical, parameter :: debug = .false.
-logical :: debug_sparse = .false.
+logical :: debug_sparse = .true.
 
 if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine iterative_mainsolver'
 
-ierror = 1
+ierror = 1 ! this signals an error
 
 ! check on allocations
 if (.not.allocated(deldelphi)) then
@@ -750,7 +749,8 @@ do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
 end do
 
 ! calculate initial residual
-f_old = ff_residual(ff_m,ff)
+iterres_old = ff_residual(ff_m,ff)
+iterres = iterres_old
 
 ! calculate alpha_delphi
 alpha_delphi = 0
@@ -766,11 +766,14 @@ do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
   end do
 end do
 
-write(*,*) 'iterstep,f'
-write(*,*) 0,f_old
+if (debug_sparse) then
+  write(*,'(a,i12,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+  if (convergence_details_file) &
+    write(fconverge,'(a,i12,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+end if
 
 ! start iteration loop
-iteration_loop: do iterstep = 1, 2
+iteration_loop: do iterstep = 1, iterstepmax
 
 ! calculate beta_delphi
   beta_delphi = 0
@@ -813,27 +816,56 @@ iteration_loop: do iterstep = 1, 2
   if (abs(alpha_ff) < 1.d-60) call error_stop("problem alpha_ff")
   lambda_ff = -beta_ff/alpha_ff
 
-! lambda_used = max(lambda_ff,1.d0)
-  lambda_used = lambda_ff
-
 ! update ff, delpha and residual f
   do j = 1, ptotal
-    ff(j) = ff(j) + lambda_used*delff(j)
-    delphi(j) = delphi(j) + lambda_used*deldelphi(j)
+    ff(j) = ff(j) + lambda_ff*delff(j)
+    delphi(j) = delphi(j) + lambda_ff*deldelphi(j)
   end do
-  f = ff_residual(ff_m,ff)
+  iterres = ff_residual(ff_m,ff)
 
-! if (mod(iterstep,1000) == 0) then
-    write(*,*) 'iterstep,f,lambda_ff,lambda_used'
-    write(*,*) iterstep,f,lambda_ff,lambda_used
-! end if
+  if (debug_sparse) then
+    if (mod(iterstep,iterstepcheck) == 0) then
+      write(*,'(a,i12,3(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
+        iterres/iterres_old,": lambda_ff = ",lambda_ff
+      if (convergence_details_file) &
+        write(fconverge,'(a,i12,3(a,g14.7))') &
+          "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
+          iterres/iterres_old,": lambda_ff = ",lambda_ff
+    end if
+  end if
 
-  if (f/f_old < 1.d-12) exit
+  if (iterres/iterres_old < iterrestol) then
+    ierror = 0
+    exit iteration_loop
+  end if
+
+  if (mod(iterstep,iterstepcheck) == 0) then
+    if (check_stopfile("stopback")) then
+      write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+      ierror = 2
+      exit iteration_loop
+    end if
+  end if
 
 end do iteration_loop
   
-write(*,*) 'decrease in residual = ',f/f_old
-ierror = 0
+if (ierror == 0) then
+  if (debug_sparse) then
+    write(*,'(a,i12,3(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
+      iterres/iterres_old,": lambda_ff = ",lambda_ff
+    if (convergence_details_file) &
+      write(fconverge,'(a,i12,3(a,g14.7))') &
+        "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
+        iterres/iterres_old,": lambda_ff = ",lambda_ff
+  end if
+else
+  write(*,'(a,i12,3(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
+    iterres/iterres_old,": lambda_ff = ",lambda_ff
+  if (convergence_details_file) &
+    write(fconverge,'(a,i12,3(a,g14.7))') &
+      "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
+      iterres/iterres_old,": lambda_ff = ",lambda_ff
+end if
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine iterative_mainsolver'
 
