@@ -273,7 +273,7 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_OUTPUT <norm 8> "(cellsum(abs(<local equation>)^8,<all cells>)/cellsum(1.d0,<all cells>))^(1/8)"
    NONE_OUTPUT <norm infty> "cellmax(abs(<local equation>),region=<all cells>)"
    
-   CELL_OUTPUT <foo newtonupdate> "cellnewtonupdate(unknown=<foo>)" ON <all cells>
+   CELL_OUTPUT <foo newtonupdate> "cellnewtonupdate(variable=<foo>)" ON <all cells>
    
    END
    # INCLUDE FINISHED for ../advection_2d_box_test.arb
