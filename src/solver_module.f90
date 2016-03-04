@@ -720,9 +720,6 @@ logical :: singular
 logical, parameter :: matrix_test = .false. ! do a test matrix inversion using a made-up test matrix instead of solving PDE system
 logical, parameter :: dump_matrix = .false. ! dump contents and solution to matrix in fort.91
 integer, parameter :: dump_matrix_max = 1000 ! maximum number of elements to include when dumping matrix
-integer, parameter :: iterstepmax = 1000000 ! maximum number of iterations to take
-integer, parameter :: iterstepcheck = 100 ! after this many iterations check for kill file, output residual etc
-double precision, parameter :: iterrestol = 1.d-10
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -775,25 +772,32 @@ end if
 ! start iteration loop
 iteration_loop: do iterstep = 1, iterstepmax
 
-! calculate beta_delphi
-  beta_delphi = 0
-  j = 0
-  do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
-    m = var_list(var_list_number_equation)%list(nn)
-    do ns = 1, ubound(var(m)%funk,1)
-      j = j + 1
-      do ii = 1, var(m)%funk(ns)%ndv
-        i = var(m)%funk(ns)%pp(ii)
-        beta_delphi(i) = beta_delphi(i) + var(m)%funk(ns)%dv(ii)*ff(j)*ff_m(j)
+  if (.true.) then
+  ! calculate beta_delphi
+    beta_delphi = 0
+    j = 0
+    do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
+      m = var_list(var_list_number_equation)%list(nn)
+      do ns = 1, ubound(var(m)%funk,1)
+        j = j + 1
+        do ii = 1, var(m)%funk(ns)%ndv
+          i = var(m)%funk(ns)%pp(ii)
+          beta_delphi(i) = beta_delphi(i) + var(m)%funk(ns)%dv(ii)*ff(j)*ff_m(j)
+        end do
       end do
     end do
-  end do
-  
-! calculate change to delphi, deldelphi
-  do i = 1, ptotal
-    if (abs(alpha_delphi(i)) < 1.d-60) call error_stop("problem alpha_delphi(i)")
-    deldelphi(i) = -beta_delphi(i)/alpha_delphi(i)
-  end do
+    
+  ! calculate change to delphi, deldelphi
+    do i = 1, ptotal
+      if (abs(alpha_delphi(i)) < 1.d-60) call error_stop("problem alpha_delphi(i)")
+      deldelphi(i) = -beta_delphi(i)/alpha_delphi(i)
+    end do
+  else
+! left-field random update for deldelphi
+    do i = 1, ptotal
+      deldelphi(i) = random()
+    end do
+  end if
 
 ! calculate corresponding change to ff
 ! and at the same time, calculate the alpha_ff and beta_ff factors required to calculate lambda_ff
@@ -821,16 +825,17 @@ iteration_loop: do iterstep = 1, iterstepmax
     ff(j) = ff(j) + lambda_ff*delff(j)
     delphi(j) = delphi(j) + lambda_ff*deldelphi(j)
   end do
+
   iterres = ff_residual(ff_m,ff)
 
   if (debug_sparse) then
     if (mod(iterstep,iterstepcheck) == 0) then
-      write(*,'(a,i12,3(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
-        iterres/iterres_old,": lambda_ff = ",lambda_ff
+      write(*,'(a,i12,3(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": 1-iterres/iterres_old = ", &
+        1.d0-iterres/iterres_old,": lambda_ff = ",lambda_ff
       if (convergence_details_file) &
         write(fconverge,'(a,i12,3(a,g14.7))') &
-          "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
-          iterres/iterres_old,": lambda_ff = ",lambda_ff
+          "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": 1-iterres/iterres_old = ", &
+          1.d0-iterres/iterres_old,": lambda_ff = ",lambda_ff
     end if
   end if
 

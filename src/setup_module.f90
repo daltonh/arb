@@ -339,6 +339,35 @@ fileloop: do
   end if
 
 !---------------
+! iterrestol
+
+  if (trim(keyword) == 'ITERRESTOL') then
+    read(textline,*,iostat=ierror) iterrestol
+    if (ierror /= 0) call error_stop('problem reading in iteration loop tolerance from line '//otextline)
+    write(*,'(a,g14.6)') 'INFO: iterrestol = ',iterrestol
+  end if
+
+!---------------
+! iterstepmax
+
+  if (trim(keyword) == 'ITERSTEPMAX') then
+    read(textline,*,iostat=ierror) iterstepmax
+    if (ierror /= 0) call error_stop('problem reading in maximum number of iteration steps from line '//otextline)
+    formatline = '(a,'//trim(dindexformat(iterstepmax))//')'
+    write(*,fmt=formatline) 'INFO: iterstepmax = ',iterstepmax
+  end if
+
+!---------------
+! iterstepcheck
+
+  if (trim(keyword) == 'ITERSTEPCHECK') then
+    read(textline,*,iostat=ierror) iterstepcheck
+    if (ierror /= 0) call error_stop('problem reading in number of iteration steps between output/checks from line '//otextline)
+    formatline = '(a,'//trim(dindexformat(iterstepcheck))//')'
+    write(*,fmt=formatline) 'INFO: iterstepcheck = ',iterstepcheck
+  end if
+
+!---------------
 ! version
 
   if (trim(keyword) == 'VERSION') then
