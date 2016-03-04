@@ -343,7 +343,7 @@ vpath	%.f	$(srcdir)
 # object files are derived here based on source files
 #objects := $(patsubst %.f,%.o,$(patsubst %.f90,%.o,$(notdir $(wildcard $(srcdir)/*.f*))))
 #objects := $(patsubst %.f90,%.o,$(notdir $(wildcard $(srcdir)/*.f90)))
-objects = equation_module.o general_module.o main.o setup_module.o solver_module.o gmesh_module.o output_module.o kernel_module.o region_module.o
+objects = equation_module.o general_module.o main.o setup_module.o solver_module.o gmesh_module.o output_module.o kernel_module.o region_module.o linear_module.o
 
 #----------------
 # check for existence of pardiso (native, not intel mkl version) libraries
@@ -637,7 +637,10 @@ setup_module.o: setup_module.f90 general_module.o equation_module.o gmesh_module
 kernel_module.o: kernel_module.f90 general_module.o $(lapack_module) $(numerical_recipes_module)
 	$(fcomp) $(cflagsnoomp) $< $(logme) -o $@
 
-solver_module.o: solver_module.f90 general_module.o equation_module.o $(linear_solver_modules)
+linear_module.o: linear_module.f90 general_module.o equation_module.o
+	$(fcomp) $(cflags) $< $(logme) -o $@
+
+solver_module.o: solver_module.f90 general_module.o equation_module.o $(linear_solver_modules) linear_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
 intel_mkl_solver.o:	$(intel_mkl_subroutine)
