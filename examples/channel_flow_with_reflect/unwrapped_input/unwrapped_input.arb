@@ -158,7 +158,10 @@ EXTERNALS "src/free_surface_functions.f90"
                #NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"
                # INCLUDE FINISHED for ../templates/general/domain_lengths.arb
                #--------------------------------------------------------
-            NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"
+            # this is based on a vector from the minimum to the maximum coordinates
+            #NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"
+            # this is based on the maximum domain length over the three dimensions
+            NONE_CONSTANT <a_lengthscale> "nonemax(<domain_length[l=1]>,nonemax(<domain_length[l=2]>,<domain_length[l=3]>))"
             # INCLUDE FINISHED for ../templates/general/domain_lengthscale.arb
             #--------------------------------------------------------
          
@@ -272,15 +275,56 @@ EXTERNALS "src/free_surface_functions.f90"
                CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <all cells>
                CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <all cells>
                #CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <all cells>
-               # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
-               FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[,adjacentcells](<dynamic_force_c[l=1]>)"
-               FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[reflect=2,adjacentcells](<dynamic_force_c[l=2]>)"
-               #FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
                # INCLUDE FINISHED for ../templates/navier_stokes/dynamic_force.arb
                #--------------------------------------------------------
+            
+            # seems that using <dynamic_force_c_f[l=:]> usually consumes more memory and takes more time to compute, so remove it by default by including the following
+            # in the far off future if nobody complains <dynamic_force_c_f[l=:]> may just disappear into the night
+            # to bring back <dynamic_force_c_f[l=:]> set this string to empty using a general replacement or on calling
+            # nodynamicforcecf should work with reflections, but not tested like heaps and heaps and heaps yet
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<dynamicforcecfcomment>>" W "#"
+            # set the opposite automatically
+            #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<nodynamicforcecfcomment>>" W ""
+            #GENERAL_REPLACEMENTS R "<<nodynamicforcecfcomment>>" W "#"
+            
+            # for evaluating the face centred dynamic force there are three options: dxunit, facegrad and adjacentcells
+            # uncomment the comment string corresponding to the one you want
+            # default is dxunit
+            # remember to set all of these strings on entry if changing from the default, with only the requested one uncommented
+            #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<dynamicforcefdxunitcomment>>" W "" D "<<dynamicforceffacegradcomment>>" W "#" D "<<dynamicforcefadjacentcellscomment>>" W "#"
+            
+            # calculate <dynamic_force_c_f[l=:]> if requested
+            # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
+            #FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[,adjacentcells](<dynamic_force_c[l=1]>)"
+            #FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[reflect=2,adjacentcells](<dynamic_force_c[l=2]>)"
+            ##FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
+            
+            # dxunit method
             FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <all faces> # now defined on <all faces> to allow use as a BC
             FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domain faces>
-            FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domain faces>
+            # dxunit + dynamicforcecf
+            #FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domain faces>
+            # dxunit - dynamicforcecf
+            FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domain faces>
+            
+            # facegrad method
+            #FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <all faces>
+            # facegrad + dynamicforcecf
+            ##FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domain faces>
+            # facegrad - dynamicforcecf
+            #FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domain faces>
+            
+            # adjacentcells method
+            #FACE_LOCAL <dynamic_force_f> "-facegrad[adjacentcells](<p>)" ON <all faces>
+            # adjacentcells + dynamicforcecf
+            ##FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domain faces>
+            # adjacentcells - dynamicforcecf
+            #FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domain faces>
+            
+            # the following are two template lines for setting the strings prior to entering this file
+            #GENERAL_REPLACEMENTS R "#" W "#"
+            #GENERAL_REPLACEMENTS R "" W "#" R "#" W "#" R "#" W "#"
+            
             # INCLUDE FINISHED for ../templates/navier_stokes/p_error.arb
             #--------------------------------------------------------
          

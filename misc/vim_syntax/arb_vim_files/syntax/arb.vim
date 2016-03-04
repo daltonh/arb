@@ -100,7 +100,7 @@ syn keyword arbFunctionOption adjacentcells adjacentcellsevenweighting adjacentc
 syn match arbFunctionOption "\%(\)\<sep\%(aration\)\=cent\%(er\|re\)\=\d*" contained
 syn match arbFunctionOption "\%(\)\<\%(max\|min\)separation\>" contained
 syn match arbFunctionOption "\<\%(l\|r\)\ze=\%(\d\|:\)" contained
-syn keyword arbFunctionParameter d default dt expression faceseparationflag flux fromregion localregion phif phitol region remoteregion toregion unknown contained
+syn keyword arbFunctionParameter d default dt expression faceseparationflag flux fromregion localregion phif phitol region remoteregion toregion variable contained
 syn match arbFunctionParameter "\<\%(axis\|centre\|gradient\|normal\|size\)\[l=\%(\d\|:\)\]" contained
 syn match arbFunctionParameter "\<\%(phi\)\%(\[r=1\]\)\=" contained
 syn keyword arbFortranFunction abs acos aimag aint anint asin atan atan2 ceiling char cmplx conjg cos cosh dim dprod exp floor ichar index int log log10 max min mod modulo nint sign sin sinh sqrt tan tanh contained
