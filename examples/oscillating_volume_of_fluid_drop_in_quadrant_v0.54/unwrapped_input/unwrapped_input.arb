@@ -167,7 +167,10 @@ EXTERNALS "src/free_surface_functions.f90"
                #NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"
                # INCLUDE FINISHED for ../templates/general/domain_lengths.arb
                #--------------------------------------------------------
-            NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"
+            # this is based on a vector from the minimum to the maximum coordinates
+            #NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"
+            # this is based on the maximum domain length over the three dimensions
+            NONE_CONSTANT <a_lengthscale> "nonemax(<domain_length[l=1]>,nonemax(<domain_length[l=2]>,<domain_length[l=3]>))"
             # INCLUDE FINISHED for ../templates/general/domain_lengthscale.arb
             #--------------------------------------------------------
          
