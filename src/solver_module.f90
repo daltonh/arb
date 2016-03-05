@@ -40,7 +40,7 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, iterative, mgmres
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, multigrid, iterative, mgmres
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
@@ -115,7 +115,14 @@ if (manage_funk_dv_memory) then
   call time_process(description='deallocating derived funk memory')
 end if
 
-if (trim(linear_solver) == "iterative") then
+if (trim(linear_solver) == "multigrid") then
+  if (debug) write(*,*) 'calling multigrid_mainsolver'
+  call time_process
+  call multigrid_mainsolver(ierror)
+  call time_process(description='multigrid mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after multigrid_mainsolver, ierror = ',ierror
+else if (trim(linear_solver) == "iterative") then
   if (debug) write(*,*) 'calling iterative_mainsolver'
   call time_process
   call iterative_mainsolver(ierror)
@@ -2039,7 +2046,7 @@ if (trim(linear_solver) == "default") then
   write(*,'(a)') 'INFO: choosing '//trim(linear_solver)//' linear solver'
 else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "intelpardisoooc".or. &
   trim(linear_solver) == "suitesparse".or.trim(linear_solver) == "hslma28".or.trim(linear_solver) == "pardiso".or. &
-  trim(linear_solver) == "pardisoiterative".or.trim(linear_solver) == "iterative".or. &
+  trim(linear_solver) == "pardisoiterative".or.trim(linear_solver) == "iterative".or.trim(linear_solver) == "multigrid".or. &
   trim(linear_solver) == "mgmres".or.trim(linear_solver) == "none")) then
   call error_stop('unknown linear solver specified: '//trim(linear_solver))
 end if
