@@ -1174,6 +1174,8 @@ end subroutine unshift_integer_array
 
 subroutine push_integer_array(array,new_element,reverse)
 
+! push a new element on to the back (or front, if reverse is specified) of an array
+
 integer, dimension(:), allocatable :: array
 integer :: new_element
 logical, optional :: reverse
