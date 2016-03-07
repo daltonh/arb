@@ -39,6 +39,9 @@ implicit none
 
 ! allow all subroutines and functions to be public
 
+! all variables referenced in the general_module should be saved
+save ! note, under the 2008 fortran standard, I have read that all allocatable arrays in a module would automatically be saved anyway, but now including this specifically
+
 integer, parameter :: totaldimensions=3 ! this is maximum number of dimensions, possibly hardcode in future
 
 ! a generic kernel for calculating averages and derivatives
@@ -303,7 +306,7 @@ integer :: idomain, iboundary, itotal ! number of domain (type 1) and boundary (
 integer :: jdomain, jboundary, jtotal ! number of domain (type 1) and boundary (type 2) faces, also total
 integer :: kdomain, kboundary, ktotal ! number of domain (type 1) and boundary (type 2) nodes, also total
 integer :: ptotal ! number of equations and unknowns
-double precision, dimension(:), allocatable, save :: phiold, delphi ! single dimension unknown-sized variables for newton proceedure
+double precision, dimension(:), allocatable :: phiold, delphi ! single dimension unknown-sized variables for newton proceedure
 integer :: transient_relstepmax ! maximum relstep value for all transients (variables and dynamic regions)
 integer :: newtient_relstepmax ! maximum relstep value for all newtients (variables and dynamic regions)
 double precision :: newtres = 0.d0 ! last evaluated value of the newton residual
