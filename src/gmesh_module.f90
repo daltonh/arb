@@ -63,7 +63,7 @@ type gtype_list_type
 end type gtype_list_type
 
 ! reference list of all the gtypes
-type(gtype_list_type), public, dimension(:), allocatable :: gtype_list
+type(gtype_list_type), public, dimension(:), allocatable, save :: gtype_list
 
 ! info about each of the gelements
 type gelement_type
@@ -99,7 +99,7 @@ type gmesh_type
 end type gmesh_type
 
 ! gmsh meshes
-type(gmesh_type), public, dimension(:), allocatable :: gmesh
+type(gmesh_type), public, dimension(:), allocatable, save :: gmesh
 
 ! some gmsh node parameters
 integer, parameter, public :: node_gtype = 15 ! save the node gtype for safekeeping

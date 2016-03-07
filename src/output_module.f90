@@ -46,7 +46,7 @@ type output_step_variable_type
 end type output_step_variable_type
 
 ! reference list of all the gtypes
-type(output_step_variable_type), dimension(:), allocatable :: output_step_variable
+type(output_step_variable_type), dimension(:), allocatable, save :: output_step_variable
 
 !-----------------------------------------------------------------
 contains

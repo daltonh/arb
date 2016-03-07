@@ -64,7 +64,7 @@ logical, parameter :: manage_funk_dv_memory = .true. ! (.true.) whether to deall
 logical, parameter :: check_solution_accuracy = .false. ! (.false.) calculate how well solution satisfies linear equation - requires manage_funk_dv_memory to be false
 
 ! debugging array:
-integer, dimension(:), allocatable :: debug_list_p ! debug_list_p is a list of all unknown delphis that have a problem, referenced by their p index
+integer, dimension(:), allocatable, save :: debug_list_p ! debug_list_p is a list of all unknown delphis that have a problem, referenced by their p index
 
 !-----------------------------------------------------------------
 contains

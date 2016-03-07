@@ -39,6 +39,8 @@ implicit none
 private
 public setup_kernels
 
+! no need to save this stuff as it is only called once
+
 ! type for weight fluxing
 type weight_flux_type
   integer :: ndonating ! the number of faces that are donating from this cell
