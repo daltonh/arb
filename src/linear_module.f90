@@ -45,55 +45,10 @@ type equation_from_unknown_type
   integer :: nequation_index ! the number of valid elements within equation_index (equation_index expands, but does not decrease in size during a computation, to reduce memory allocation/array copying events)
 end type equation_from_unknown_type
 
-type (equation_from_unknown_type), dimension(:), allocatable :: equation_from_unknown ! array specifying an equation from unknown lookup structure
+type (equation_from_unknown_type), dimension(:), allocatable, save :: equation_from_unknown ! array specifying an equation from unknown lookup structure
 
 !-----------------------------------------------------------------
 contains
-
-!-----------------------------------------------------------------
-
-subroutine calc_equation_from_unknown
-
-! here we create/update the equation from unknown lookup structure
-
-use general_module
-
-integer :: n, nn, m, ns, ppp, pp
-logical :: debug_sparse = .true.
-
-if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine calc_equation_from_unknown'
-
-! first create structure
-if (.not.allocated(equation_from_unknown)) allocate(equation_from_unknown(ptotal))
-
-! always zero valid number of elements (noting that equation_index array sizes only expand, and are never deallocated)
-do n = 1, ptotal
-  equation_from_unknown(n)%nequation_index = 0
-end do
-
-! loop through each equation, building reverse lookup lists
-n = 0
-do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(nn)
-  do ns = 1, ubound(var(m)%funk,1)
-    n = n + 1 ! this is the equation number
-    do ppp = 1, ubound(var(m)%funk(ns)%pp,1) ! here we cycle through all the unknowns that are referenced within this equation
-      pp = var(m)%funk(ns)%pp(ppp) ! this is the unknown number
-      equation_from_unknown(pp)%nequation_index = equation_from_unknown(pp)%nequation_index + 1 ! increase the valid number of elements in the lookup array
-      if (allocatable_integer_size(equation_from_unknown(pp)%equation_index) < equation_from_unknown(pp)%nequation_index) then
-        call push_integer_array(array=equation_from_unknown(pp)%equation_index,new_element=n)
-        call push_integer_array(array=equation_from_unknown(pp)%unknown_within_equation_index,new_element=ppp)
-      else
-        equation_from_unknown(pp)%equation_index(equation_from_unknown(pp)%nequation_index)=n
-        equation_from_unknown(pp)%unknown_within_equation_index(equation_from_unknown(pp)%nequation_index)=ppp
-      end if
-    end do
-  end do
-end do
-
-if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine calc_equation_from_unknown'
-
-end subroutine calc_equation_from_unknown
 
 !-----------------------------------------------------------------
 
@@ -465,6 +420,51 @@ end if
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine multigrid_mainsolver'
 
 end subroutine multigrid_mainsolver
+
+!-----------------------------------------------------------------
+
+subroutine calc_equation_from_unknown
+
+! here we create/update the equation from unknown lookup structure
+
+use general_module
+
+integer :: n, nn, m, ns, ppp, pp
+logical :: debug_sparse = .true.
+
+if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine calc_equation_from_unknown'
+
+! first create structure
+if (.not.allocated(equation_from_unknown)) allocate(equation_from_unknown(ptotal))
+
+! always zero valid number of elements (noting that equation_index array sizes only expand, and are never deallocated)
+do n = 1, ptotal
+  equation_from_unknown(n)%nequation_index = 0
+end do
+
+! loop through each equation, building reverse lookup lists
+n = 0
+do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(nn)
+  do ns = 1, ubound(var(m)%funk,1)
+    n = n + 1 ! this is the equation number
+    do ppp = 1, ubound(var(m)%funk(ns)%pp,1) ! here we cycle through all the unknowns that are referenced within this equation
+      pp = var(m)%funk(ns)%pp(ppp) ! this is the unknown number
+      equation_from_unknown(pp)%nequation_index = equation_from_unknown(pp)%nequation_index + 1 ! increase the valid number of elements in the lookup array
+      if (allocatable_integer_size(equation_from_unknown(pp)%equation_index) < equation_from_unknown(pp)%nequation_index) then
+        call push_integer_array(array=equation_from_unknown(pp)%equation_index,new_element=n)
+        call push_integer_array(array=equation_from_unknown(pp)%unknown_within_equation_index,new_element=ppp)
+      else
+        equation_from_unknown(pp)%equation_index(equation_from_unknown(pp)%nequation_index)=n
+        equation_from_unknown(pp)%unknown_within_equation_index(equation_from_unknown(pp)%nequation_index)=ppp
+      end if
+    end do
+  end do
+end do
+
+if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine calc_equation_from_unknown'
+
+end subroutine calc_equation_from_unknown
 
 !-----------------------------------------------------------------
 
