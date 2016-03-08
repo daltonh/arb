@@ -38,15 +38,33 @@ implicit none
 private
 public iterative_mainsolver, multigrid_mainsolver
 
-! this is an object that stores the equation indices that each unknown references
+! this is an object that stores details of the equations that each unknown references
 type equation_from_unknown_type
-  integer, dimension(:), allocatable :: equation_index ! an equation that uses this unknown
-  integer, dimension(:), allocatable :: unknown_within_equation_index ! having a one-to-one correspondance with equation_index, gives the element index within the equation array that corresponds to this unknown
-  integer :: nequation_index ! the number of valid elements within equation_index (equation_index expands, but does not decrease in size during a computation, to reduce memory allocation/array copying events)
+  integer, dimension(:), allocatable :: equation_pp ! raw equation number that this unknown refers to
+  integer, dimension(:), allocatable :: equation_m ! m (var number) for this equation
+  integer, dimension(:), allocatable :: equation_ns ! element number within the region corresponding to this equation
+  integer, dimension(:), allocatable :: within_equation_index ! element of dv that this unknown refers to, within var(m)%funk(ns)%dv
+  integer :: nequation ! the number of valid elements within all of these arrays, which all have the same size and corresponding elements (all include but do not decrease in size during a computation, to reduce memory allocation/array copying events)
 end type equation_from_unknown_type
 
 type (equation_from_unknown_type), dimension(:), allocatable, save :: equation_from_unknown ! array specifying an equation from unknown lookup structure
 
+! this is an object which stores information about an individual grid (of unknowns), which becomes part of the multigrid array
+type grid_type
+  integer, dimension(:), allocatable :: unknown_elements ! stores a list of the (pp) unknown indices contained with this particular grid
+  integer :: nunknown_elements ! the number of current elements in unknown_elements, noting that we only increase the size of unknown_elements presently to save computational time
+  double precision, dimension(:), allocatable :: delff ! values for the vector ff array, stored in a compact format
+  integer, dimension(:), allocatable :: delff_elements ! in a one-to-one correspondance with delff, specifies what elements each value of delff refers to
+  integer :: ndelff ! current number of valid elements in delff
+end type grid_type
+
+! inidividual grids of unknowns corresponding to a particular level are grouped together within one multigrid
+type multigrid_type
+  type(grid_type), dimension(:), allocatable :: grid ! an array of grids contained within the particular multigrid level
+end type multigrid_type
+  
+type (multigrid_type), dimension(:), allocatable :: multigrid ! an array of of the multigrid levels
+  
 !-----------------------------------------------------------------
 contains
 
@@ -268,6 +286,8 @@ ierror = 1 ! this signals an error
 ! first create reverse lookup table of equations from unknowns
 call calc_equation_from_unknown
 
+! now create (multi)grids, stored in multigrid array
+call calc_multigrid
 
 !---------------------
 !---------------------
@@ -429,7 +449,7 @@ subroutine calc_equation_from_unknown
 
 use general_module
 
-integer :: n, nn, m, ns, ppp, pp
+integer :: ppe, mm, m, ns, pppu, ppu
 logical :: debug_sparse = .true.
 
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine calc_equation_from_unknown'
@@ -438,25 +458,29 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine calc_equation_from_unknown'
 if (.not.allocated(equation_from_unknown)) allocate(equation_from_unknown(ptotal))
 
 ! always zero valid number of elements (noting that equation_index array sizes only expand, and are never deallocated)
-do n = 1, ptotal
-  equation_from_unknown(n)%nequation_index = 0
+do ppu = 1, ptotal
+  equation_from_unknown(ppu)%nequation = 0
 end do
 
 ! loop through each equation, building reverse lookup lists
-n = 0
-do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(nn)
+ppe = 0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
   do ns = 1, ubound(var(m)%funk,1)
-    n = n + 1 ! this is the equation number
-    do ppp = 1, ubound(var(m)%funk(ns)%pp,1) ! here we cycle through all the unknowns that are referenced within this equation
-      pp = var(m)%funk(ns)%pp(ppp) ! this is the unknown number
-      equation_from_unknown(pp)%nequation_index = equation_from_unknown(pp)%nequation_index + 1 ! increase the valid number of elements in the lookup array
-      if (allocatable_integer_size(equation_from_unknown(pp)%equation_index) < equation_from_unknown(pp)%nequation_index) then
-        call push_integer_array(array=equation_from_unknown(pp)%equation_index,new_element=n)
-        call push_integer_array(array=equation_from_unknown(pp)%unknown_within_equation_index,new_element=ppp)
+    ppe = ppe + 1 ! this is the equation pp number
+    do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
+      ppu = var(m)%funk(ns)%pp(pppu) ! this is the unknown pp number
+      equation_from_unknown(ppu)%nequation = equation_from_unknown(ppu)%nequation + 1 ! increase the valid number of elements in the lookup array
+      if (allocatable_integer_size(equation_from_unknown(ppu)%equation_pp) < equation_from_unknown(ppu)%nequation) then
+        call push_integer_array(array=equation_from_unknown(ppu)%equation_m,new_element=m)
+        call push_integer_array(array=equation_from_unknown(ppu)%equation_ns,new_element=ns)
+        call push_integer_array(array=equation_from_unknown(ppu)%within_equation_index,new_element=pppu)
+        call push_integer_array(array=equation_from_unknown(ppu)%equation_pp,new_element=pppe)
       else
-        equation_from_unknown(pp)%equation_index(equation_from_unknown(pp)%nequation_index)=n
-        equation_from_unknown(pp)%unknown_within_equation_index(equation_from_unknown(pp)%nequation_index)=ppp
+        equation_from_unknown(ppu)%equation_m(equation_from_unknown(ppu)%nequation_index)=m
+        equation_from_unknown(ppu)%equation_ns(equation_from_unknown(ppu)%nequation_index)=ns
+        equation_from_unknown(ppu)%within_equation_index(equation_from_unknown(ppu)%nequation_index)=pppu
+        equation_from_unknown(ppu)%equation_pp(equation_from_unknown(ppu)%nequation_index)=pppe
       end if
     end do
   end do
@@ -465,6 +489,100 @@ end do
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine calc_equation_from_unknown'
 
 end subroutine calc_equation_from_unknown
+
+!-----------------------------------------------------------------
+
+! this is an object which stores information about an individual grid (of unknowns), which becomes part of the multigrid array
+type grid_type
+  integer, dimension(:), allocatable :: unknown_elements ! stores a list of the (pp) unknown indices contained with this particular grid
+  integer :: nunknown_elements ! the number of current elements in unknown_elements, noting that we only increase the size of unknown_elements presently to save computational time
+  double precision, dimension(:), allocatable :: delff ! values for the vector ff array, stored in a compact format
+  integer, dimension(:), allocatable :: delff_elements ! in a one-to-one correspondance with delff, specifies what elements each value of delff refers to
+  integer :: ndelff ! current number of valid elements in delff
+end type grid_type
+
+! inidividual grids of unknowns corresponding to a particular level are grouped together within one multigrid
+type multigrid_type
+  type(grid_type), dimension(:), allocatable :: grid ! an array of grids contained within the particular multigrid level
+end type multigrid_type
+  
+type (multigrid_type), dimension(:), allocatable :: multigrid ! an array of of the multigrid levels
+
+
+
+
+subroutine calc_multigrid
+
+! here we create/update the multigrid structure
+
+use general_module
+
+integer :: nmultigrid, ncells
+logical :: debug_sparse = .true.
+
+if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine calc_multigrid'
+
+! first create structure, calculating the number of levels
+if (.not.allocated(multigrid)) then
+! nmultigrid = 1 + ceiling(log(dble(ptotal))/log(dble(2.d0)))
+! to avoid roundoff errors etc, calculate the number of levels by calculating the series explicitly
+  ncells = 1
+  nmultigrid = 1
+  do while (ncells <= ptotal)
+    nmultigrid = nmultigrid + 1
+    ncells = ncells*2
+  end do
+  allocate(multigrid(nmultigrid))
+! multigrid(1) contains all of the unknowns, as one single grid, and initialise
+  allocate(multigrid(1)%grid(1))
+  allocate(multigrid(1)%grid(1)%unknown_elements(ptotal))
+  multigrid(1)%grid(1)%unknown_elements = 0
+  multigrid(1)%grid(1)%nunknown_elements = 0
+end do
+
+! create multigrid(1)%grid(1) grid first, which contains all unknown elements, in an order in which neighboring elements are strongly related
+multigrid(1)%grid(1)%unknown_elements(1) = 1
+multigrid(1)%grid(1)%nunknown_elements = 1
+allocate(unknowns_marker(ptotal)) ! create a temporary array which we use as a marker to say whether elements have been included or not, and the index of their inclusion
+unknowns_marker = 0
+unknowns_marker(1) = 1 ! unknown (pp) 1 is our starting point
+last_unallocated_unknown = 2 ! so the first unallocated unknown is the next one, ie, 2
+do while (multigrid(1)%grid(1)%nunknown_elements < ptotal)
+  ppu_next = 0
+  next_coefficient_strength = -1.d0
+  ppu_last = multigrid(1)%grid(1)%unknown_elements(multigrid(1)%grid(1)%nunknown_elements)
+  do pppe = 1, equation_from_unknown(ppu_last)%nequation ! loop through all equations that this last unknown references
+    ppe = equation_from_unknown(ppu_last)%equation_pp(pppe) ! equation pp number
+    m = equation_from_unknown(ppu_last)%equation_m(ppe)
+    ns = equation_from_unknown(ppu_last)%equation_ns(ppe)
+    do pppu = 1, var(m)%funk(ns)%ndv
+      ppu = var(m)%funk(ns)%pp(pppu) ! unknown pp number
+      if (unknowns_marker(ppu) /= 0) next
+      coefficient_strength = abs(var(m)%funk(ns)%dv(equation_from_unknown(ppu_last)%within_equation_index(pppe))* &
+        var(m)%funk(ns)%dv(pppu))
+      if (coefficient_strength > next_coefficient_strength) then
+        next_coefficient_strength = coefficient_strength
+        ppu_next = ppu
+      end if
+    end do
+  end do
+
+! at this point there are two possibilities:
+! 1) next_coefficient_strength > 0 and ppu_next is defined
+! 2) ppu_next is not defined, meaning that all unknowns that are referenced by equations that our last unknown references have already been added to the list
+! in this case loop through unknowns marker looking for unallocated elements
+
+end do
+
+deallocate(unknowns_marker)
+      
+
+end do
+
+
+if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine calc_multigrid'
+
+end subroutine calc_multigrid
 
 !-----------------------------------------------------------------
 
