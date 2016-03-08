@@ -289,6 +289,7 @@ call calc_equation_from_unknown
 ! now create (multi)grids, stored in multigrid array
 call calc_multigrid
 
+stop
 !---------------------
 !---------------------
 
@@ -475,12 +476,12 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
         call push_integer_array(array=equation_from_unknown(ppu)%equation_m,new_element=m)
         call push_integer_array(array=equation_from_unknown(ppu)%equation_ns,new_element=ns)
         call push_integer_array(array=equation_from_unknown(ppu)%within_equation_index,new_element=pppu)
-        call push_integer_array(array=equation_from_unknown(ppu)%equation_pp,new_element=pppe)
+        call push_integer_array(array=equation_from_unknown(ppu)%equation_pp,new_element=ppe)
       else
-        equation_from_unknown(ppu)%equation_m(equation_from_unknown(ppu)%nequation_index)=m
-        equation_from_unknown(ppu)%equation_ns(equation_from_unknown(ppu)%nequation_index)=ns
-        equation_from_unknown(ppu)%within_equation_index(equation_from_unknown(ppu)%nequation_index)=pppu
-        equation_from_unknown(ppu)%equation_pp(equation_from_unknown(ppu)%nequation_index)=pppe
+        equation_from_unknown(ppu)%equation_m(equation_from_unknown(ppu)%nequation)=m
+        equation_from_unknown(ppu)%equation_ns(equation_from_unknown(ppu)%nequation)=ns
+        equation_from_unknown(ppu)%within_equation_index(equation_from_unknown(ppu)%nequation)=pppu
+        equation_from_unknown(ppu)%equation_pp(equation_from_unknown(ppu)%nequation)=ppe
       end if
     end do
   end do
@@ -492,37 +493,22 @@ end subroutine calc_equation_from_unknown
 
 !-----------------------------------------------------------------
 
-! this is an object which stores information about an individual grid (of unknowns), which becomes part of the multigrid array
-type grid_type
-  integer, dimension(:), allocatable :: unknown_elements ! stores a list of the (pp) unknown indices contained with this particular grid
-  integer :: nunknown_elements ! the number of current elements in unknown_elements, noting that we only increase the size of unknown_elements presently to save computational time
-  double precision, dimension(:), allocatable :: delff ! values for the vector ff array, stored in a compact format
-  integer, dimension(:), allocatable :: delff_elements ! in a one-to-one correspondance with delff, specifies what elements each value of delff refers to
-  integer :: ndelff ! current number of valid elements in delff
-end type grid_type
-
-! inidividual grids of unknowns corresponding to a particular level are grouped together within one multigrid
-type multigrid_type
-  type(grid_type), dimension(:), allocatable :: grid ! an array of grids contained within the particular multigrid level
-end type multigrid_type
-  
-type (multigrid_type), dimension(:), allocatable :: multigrid ! an array of of the multigrid levels
-
-
-
-
 subroutine calc_multigrid
 
 ! here we create/update the multigrid structure
 
 use general_module
 
-integer :: nmultigrid, ncells
+integer :: nmultigrid, ncells, ppu_next, ppu_unallocated, ppu_last, pppe, ppe, m, ns, pppu, ppu, nm, ng, pp
+integer, dimension(:), allocatable :: unknowns_marker
+double precision :: coefficient_strength, next_coefficient_strength
 logical :: debug_sparse = .true.
+logical, parameter :: debug = .true.
 
+if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine calc_multigrid'
 
-! first create structure, calculating the number of levels
+! first create structure of multigrid array, calculating the number of levels
 if (.not.allocated(multigrid)) then
 ! nmultigrid = 1 + ceiling(log(dble(ptotal))/log(dble(2.d0)))
 ! to avoid roundoff errors etc, calculate the number of levels by calculating the series explicitly
@@ -532,53 +518,117 @@ if (.not.allocated(multigrid)) then
     nmultigrid = nmultigrid + 1
     ncells = ncells*2
   end do
+  if (debug_sparse) write(*,'(a,i2,2(a,i10))') 'INFO: calculated nmultigrid = ',nmultigrid,' based on ptotal = ', &
+    ptotal,' and ncells = ',ncells
   allocate(multigrid(nmultigrid))
 ! multigrid(1) contains all of the unknowns, as one single grid, and initialise
   allocate(multigrid(1)%grid(1))
   allocate(multigrid(1)%grid(1)%unknown_elements(ptotal))
-  multigrid(1)%grid(1)%unknown_elements = 0
-  multigrid(1)%grid(1)%nunknown_elements = 0
-end do
+end if
 
-! create multigrid(1)%grid(1) grid first, which contains all unknown elements, in an order in which neighboring elements are strongly related
-multigrid(1)%grid(1)%unknown_elements(1) = 1
+! next create multigrid(1)%grid(1) grid, which contains all unknown elements, in an order in which neighboring elements are strongly related
+! zero previous results
+multigrid(1)%grid(1)%unknown_elements = 0
+multigrid(1)%grid(1)%nunknown_elements = 0
+! set starting point
+ppu_next = 1 ! this is the first unknown to be allocated
+ppu_unallocated = 2 ! so the first unallocated unknown is the next one, ie, 2
+! set first elements of arrays using these
+multigrid(1)%grid(1)%unknown_elements(1) = ppu_next
 multigrid(1)%grid(1)%nunknown_elements = 1
-allocate(unknowns_marker(ptotal)) ! create a temporary array which we use as a marker to say whether elements have been included or not, and the index of their inclusion
+! create a temporary array which we use as a marker to say whether elements have been included or not
+allocate(unknowns_marker(ptotal))
 unknowns_marker = 0
-unknowns_marker(1) = 1 ! unknown (pp) 1 is our starting point
-last_unallocated_unknown = 2 ! so the first unallocated unknown is the next one, ie, 2
+unknowns_marker(ppu_next) = 1 ! unknown ppu_next is our starting point
+if (debug_sparse) write(*,'(a)') &
+  'INFO: setting up multigrid(1) which contains all unknowns in a single neighbourly-related list'
+! loop through the number of unknowns
 do while (multigrid(1)%grid(1)%nunknown_elements < ptotal)
-  ppu_next = 0
+! object here is to find ppu_next, so that it can be added to multigrid(1)%grid(1)%unknown_elements
+  ppu_last = ppu_next ! save last added ppu
+  if (debug) then
+    write(92,'(a)') repeat('_',80)
+    write(92,'(a,i10)') 'multigrid(1)%grid(1)%nunknown_elements = ',multigrid(1)%grid(1)%nunknown_elements
+    write(92,'(a,i10)') 'ppu_last = ',ppu_last
+    write(92,'(a,i10)') 'ppu_unallocated = ',ppu_unallocated
+  end if
+  ppu_next = 0 ! zero this to indicate that it isn't allocated
   next_coefficient_strength = -1.d0
-  ppu_last = multigrid(1)%grid(1)%unknown_elements(multigrid(1)%grid(1)%nunknown_elements)
-  do pppe = 1, equation_from_unknown(ppu_last)%nequation ! loop through all equations that this last unknown references
+! loop through all equations that this last unknown ppu_last references
+  do pppe = 1, equation_from_unknown(ppu_last)%nequation
     ppe = equation_from_unknown(ppu_last)%equation_pp(pppe) ! equation pp number
-    m = equation_from_unknown(ppu_last)%equation_m(ppe)
-    ns = equation_from_unknown(ppu_last)%equation_ns(ppe)
+    m = equation_from_unknown(ppu_last)%equation_m(pppe) ! equation var m
+    ns = equation_from_unknown(ppu_last)%equation_ns(pppe) ! and corresponding equation region index ns
+    if (debug) write(92,'(a,i10,a,i4,a,i10)') &
+      'found equation referenced by ppu_last: ppe = ',ppe,': m = ',m,': ns = ',ns
+! now loop through all unknowns that this equation references, finding unknown that has the strongest relationship with ppu_last, indicated by the product of their jacobian entries
     do pppu = 1, var(m)%funk(ns)%ndv
-      ppu = var(m)%funk(ns)%pp(pppu) ! unknown pp number
-      if (unknowns_marker(ppu) /= 0) next
+      ppu = var(m)%funk(ns)%pp(pppu) ! unknown pp number to be checked for coefficient strength
+      if (debug) write(92,'(2(a,i10),a,i1)') 'ppu = ',ppu,': ppu_next = ',ppu_next,': unknowns_marker(ppu) = ', &
+        unknowns_marker(ppu) 
+      if (unknowns_marker(ppu) /= 0) cycle ! if this unknown is already in the list, then move on
       coefficient_strength = abs(var(m)%funk(ns)%dv(equation_from_unknown(ppu_last)%within_equation_index(pppe))* &
         var(m)%funk(ns)%dv(pppu))
+      if (debug) write(92,'(2(a,g14.7))') 'coefficient_strength = ',coefficient_strength, &
+        ': next_coefficient_strength = ',next_coefficient_strength
       if (coefficient_strength > next_coefficient_strength) then
         next_coefficient_strength = coefficient_strength
         ppu_next = ppu
       end if
+      if (debug) write(92,'(a,i10)') 'after comparison ppu_next = ',ppu_next
     end do
   end do
 
 ! at this point there are two possibilities:
 ! 1) next_coefficient_strength > 0 and ppu_next is defined
-! 2) ppu_next is not defined, meaning that all unknowns that are referenced by equations that our last unknown references have already been added to the list
-! in this case loop through unknowns marker looking for unallocated elements
+! 2) ppu_next is not defined, meaning that all unknowns that are referenced by equations that our last unknown references have already been added to the list, so set ppu_next = ppu_unallocated
+
+  if (debug) write(92,'(a,i10)') 'after searching for ppu_next: ppu_next = ',ppu_next
+  if (ppu_next == 0) ppu_next = ppu_unallocated
+    
+! now add ppu_next to the list of allocated elements
+  multigrid(1)%grid(1)%nunknown_elements = multigrid(1)%grid(1)%nunknown_elements + 1
+  multigrid(1)%grid(1)%unknown_elements(multigrid(1)%grid(1)%nunknown_elements) = ppu_next
+  unknowns_marker(ppu_next) = 1 ! mark this unknown as allocated
+    
+! now check that ppu_unallocated is infact, still unallocated
+  if (ppu_next == ppu_unallocated) then
+    ppu_unallocated = 0
+    do pp = ppu_next+1, ptotal
+      if (unknowns_marker(pp) == 0) then
+        ppu_unallocated = pp
+        exit
+      end if
+    end do
+  end if
+
+  if (debug) write(92,'(a,i10)') 'at end of loop: ppu_unallocated = ',ppu_unallocated
 
 end do
 
+if (debug) write(92,'(a,i1)') 'check - minimum of unknowns_marker should be 1 = ',minval(unknowns_marker)
 deallocate(unknowns_marker)
       
-
-end do
-
+! TODO : write out equation and unknown names and locations using ijkindicies
+if (debug) then
+  write(92,'(/a/a)') repeat('-',80),'PRINTING out multigrid details'
+  do nm = 1, ubound(multigrid,1)
+    if (.not.allocated(multigrid(nm)%grid)) then
+      write(92,'(a,i4)') 'multigrid = ',nm,': has no grids allocated'
+    else
+      do ng = 1, ubound(multigrid(nm)%grid,1)
+        if (.not.allocated(multigrid(nm)%grid(ng)%unknown_elements)) then
+          write(92,'(a,i4,a,i10)') 'multigrid = ',nm,': grid = ',ng,': has no elements allocated'
+        else
+          do pppu = 1, multigrid(nm)%grid(ng)%nunknown_elements
+            ppu = multigrid(nm)%grid(ng)%unknown_elements(pppu)
+            write(92,'(a,i4,2(a,i10))') 'multigrid = ',nm,': grid = ',ng,': ppu = ',ppu
+          end do
+        end if
+      end do
+    end if
+  end do
+end if
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine calc_multigrid'
 
