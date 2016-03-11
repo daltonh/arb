@@ -54,8 +54,9 @@ type grid_type
   integer, dimension(:), allocatable :: unknown_elements ! stores a list of the (pp) unknown indices contained with this particular grid
   integer :: nunknown_elements ! the number of current elements in unknown_elements, noting that we only increase the size of unknown_elements presently to save computational time
   double precision, dimension(:), allocatable :: delff ! values for the vector ff array, stored in a compact format
-  integer, dimension(:), allocatable :: delff_elements ! in a one-to-one correspondance with delff, specifies what elements each value of delff refers to
+  integer, dimension(:), allocatable :: delff_elements ! in a one-to-one correspondance with delff, specifies what elements (ppe) each value of delff refers to
   integer :: ndelff ! current number of valid elements in delff
+  double precision :: minus_reciprocal_delff_dot_delff ! what it says, the reciprocal of the mag^2 of delff, x -1
 end type grid_type
 
 ! inidividual grids of unknowns corresponding to a particular level are grouped together within one multigrid
@@ -263,12 +264,10 @@ subroutine multigrid_mainsolver(ierror)
 use general_module
 use equation_module
 
-integer :: nm, ng, ierror, n, m, ns, nu, ppe, pppe, ppu, ndelff_element_list
+integer :: ierror, mm, m, ns, j, nl, ng, pppe, ppe, pppu, ppu, iterstep
 character(len=1000) :: formatline
-! the following are used as temporary arrys when finding delff contained within multigrid
-double precision, dimension(:), allocatable :: delff_linear ! the delff values
-logical, dimension(:), allocatable :: delff_marker ! a marker array showing what elements are used
-integer, dimension(:), allocatable :: delff_element_list ! and list of the elements
+double precision, dimension(:), allocatable :: deldelphi, ff
+double precision :: deldelphi_grid, iterres, iterres_old
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -277,209 +276,143 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine multigrid_mainsolver'
 
 ierror = 1 ! this signals an error
 
-!---------------------
-! first create reverse lookup table of equations from unknowns
+! create reverse lookup table of equations from unknowns
 call calc_equation_from_unknown
 
-!---------------------
-! now create (multi)grids, stored in multigrid array
+! nondimensionalise equations and their derivatives (forward = .true. implies that we are nondimensionalising)
+call nondimensionalise_equations(forward=.true.)
+
+! now create (multi)grids, stored in multigrid array, with corresponding contained delff
 call calc_multigrid
 
 !---------------------
-! now move through each grid within each multigrid calculating delff
-allocate(delff_linear(ptotal),delff_marker(ptotal),delff_element_list(ptotal))
-delff_linear = 0.d0
-delff_marker = .false.
-delff_element_list = 0
-ndelff_element_list = 0
-do nm = 1, ubound(multigrid,1)
-  do ng = 1, multigrid(nm)%ngrid
+! initialise and allocate loop variables
 
-! cycle through all unknowns in this grid, and all corresponding equations
-    do nu = 1, multigrid(nm)%grid(ng)%nunknown_elements
-      ppu = multigrid(nm)%grid(ng)%unknown_elements(nu)
-      do pppe = 1, equation_from_unknown(ppu)%nequation
-        ppe = equation_from_unknown(ppu)%equation_pp(pppe)
-        m = equation_from_unknown(ppu)%equation_m(pppe)
-        ns = equation_from_unknown(ppu)%equation_ns(pppe)
-        n = equation_from_unknown(ppu)%within_equation_index(pppe)
-        delff_linear(ppe) = delff_linear(ppe) + var(m)%funk(ns)%dv(n)
-        if (.not.delff_marker(ppe)) then
-          ndelff_element_list = ndelff_element_list + 1
-          delff_element_list(ndelff_element_list) = ppe
-          delff_marker(ppe) = .true.
-        end if
-      end do
-    end do
+! delphi is the global solution to the linear equations vector
+! deldelphi is the update for delphi, nondimensional
+! ff is the current (ie, final from previous loop) equation error array, nondimensional
 
-! now transfer back into multigrid structure
-    multigrid(nm)%grid(ng)%ndelff = ndelff_element_list
-    if (allocatable_integer_size(multigrid(nm)%grid(ng)%delff_elements) < ndelff_element_list) then
-      call resize_integer_array(array=multigrid(nm)%grid(ng)%delff_elements,new_size=ndelff_element_list, &
-        keep_data=.false.)
-      call resize_double_precision_array(array=multigrid(nm)%grid(ng)%delff,new_size=ndelff_element_list, &
-        keep_data=.false.)
-    end if
-    multigrid(nm)%grid(ng)%delff_elements(1:ndelff_element_list) = delff_element_list
-! now assemble delff from delff_linear, while also resetting the temporary delff arrays
-    do n = 1, ndelff_element_list
-      multigrid(nm)%grid(ng)%delff(n) = delff_linear(delff_element_list(n))
-      delff_marker(delff_element_list(n)) = .false.
-      delff_linear(delff_element_list(n)) = 0.d0
-      delff_element_list(n) = 0
-    end do
-    ndelff_element_list = 0
-    
+if (.not.allocated(deldelphi)) allocate(deldelphi(ptotal),ff(ptotal))
+
+deldelphi = 0.d0
+delphi = 0.d0 ! for now this is nondimensionalised, but will dimensionalise before leaving the routine
+
+! set initial ff array (linear equation error array) from newton's equations
+j = 0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
+  do ns = 1, ubound(var(m)%funk,1)
+    j = j + 1
+    ff(j) = var(m)%funk(ns)%v
   end do
 end do
 
-! !---------------------
-! !---------------------
-!
-!
-! ! check on allocations
-! if (.not.allocated(deldelphi)) then
-!   allocate(deldelphi(ptotal),ff(ptotal),delff(ptotal),alpha_delphi(ptotal),beta_delphi(ptotal),ff_m(ptotal))
-! end if
-!
-! ! set initial ff array (linear equation error array) from newton's equations
-! ! also set residual multiplier, ff_m
-! j = 0
-! do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
-!   m = var_list(var_list_number_equation)%list(nn)
-!   do ns = 1, ubound(var(m)%funk,1)
-!     j = j + 1
-!     ff(j) = var(m)%funk(ns)%v
-!     ff_m(j) = 1.d0/(var(m)%magnitude**2)
-!   end do
-! end do
-!
-! ! calculate initial residual
-! iterres_old = ff_residual(ff_m,ff)
-! iterres = iterres_old
-!
-! ! calculate alpha_delphi
-! alpha_delphi = 0
-! j = 0
-! do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
-!   m = var_list(var_list_number_equation)%list(nn)
-!   do ns = 1, ubound(var(m)%funk,1)
-!     j = j + 1
-!     do ii = 1, var(m)%funk(ns)%ndv
-!       i = var(m)%funk(ns)%pp(ii)
-!       alpha_delphi(i) = alpha_delphi(i) + var(m)%funk(ns)%dv(ii)**2*ff_m(j)
-!     end do
-!   end do
-! end do
-!
-! if (debug_sparse) then
-!   write(*,'(a,i12,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
-!   if (convergence_details_file) &
-!     write(fconverge,'(a,i12,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
-! end if
-!
-! ! start iteration loop
-! iteration_loop: do iterstep = 1, iterstepmax
-!
-!   if (.true.) then
-!   ! calculate beta_delphi
-!     beta_delphi = 0
-!     j = 0
-!     do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
-!       m = var_list(var_list_number_equation)%list(nn)
-!       do ns = 1, ubound(var(m)%funk,1)
-!         j = j + 1
-!         do ii = 1, var(m)%funk(ns)%ndv
-!           i = var(m)%funk(ns)%pp(ii)
-!           beta_delphi(i) = beta_delphi(i) + var(m)%funk(ns)%dv(ii)*ff(j)*ff_m(j)
-!         end do
-!       end do
-!     end do
-!     
-!   ! calculate change to delphi, deldelphi
-!     do i = 1, ptotal
-!       if (abs(alpha_delphi(i)) < 1.d-60) call error_stop("problem alpha_delphi(i)")
-!       deldelphi(i) = -beta_delphi(i)/alpha_delphi(i)
-!     end do
-!   else
-! ! left-field random update for deldelphi
-!     do i = 1, ptotal
-!       deldelphi(i) = random()
-!     end do
-!   end if
-!
-! ! calculate corresponding change to ff
-! ! and at the same time, calculate the alpha_ff and beta_ff factors required to calculate lambda_ff
-!   delff = 0
-!   alpha_ff = 0
-!   beta_ff = 0
-!   j = 0
-!   do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
-!     m = var_list(var_list_number_equation)%list(nn)
-!     do ns = 1, ubound(var(m)%funk,1)
-!       j = j + 1
-!       do ii = 1, var(m)%funk(ns)%ndv
-!         i = var(m)%funk(ns)%pp(ii)
-!         delff(j) = delff(j) + var(m)%funk(ns)%dv(ii)*deldelphi(i)
-!       end do
-!       alpha_ff = alpha_ff + delff(j)**2*ff_m(j)
-!       beta_ff = beta_ff + delff(j)*ff(j)*ff_m(j)
-!     end do
-!   end do
-!   if (abs(alpha_ff) < 1.d-60) call error_stop("problem alpha_ff")
-!   lambda_ff = -beta_ff/alpha_ff
-!
-! ! update ff, delpha and residual f
-!   do j = 1, ptotal
-!     ff(j) = ff(j) + lambda_ff*delff(j)
-!     delphi(j) = delphi(j) + lambda_ff*deldelphi(j)
-!   end do
-!
-!   iterres = ff_residual(ff_m,ff)
-!
-!   if (debug_sparse) then
-!     if (mod(iterstep,iterstepcheck) == 0) then
-!       write(*,'(a,i12,3(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": 1-iterres/iterres_old = ", &
-!         1.d0-iterres/iterres_old,": lambda_ff = ",lambda_ff
-!       if (convergence_details_file) &
-!         write(fconverge,'(a,i12,3(a,g14.7))') &
-!           "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": 1-iterres/iterres_old = ", &
-!           1.d0-iterres/iterres_old,": lambda_ff = ",lambda_ff
-!     end if
-!   end if
-!
-!   if (iterres/iterres_old < iterrestol) then
-!     ierror = 0
-!     exit iteration_loop
-!   end if
-!
-!   if (mod(iterstep,iterstepcheck) == 0) then
-!     if (check_stopfile("stopback")) then
-!       write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-!       ierror = 2
-!       exit iteration_loop
-!     end if
-!   end if
-!
-! end do iteration_loop
-!   
-! if (ierror == 0) then
-!   if (debug_sparse) then
-!     write(*,'(a,i12,3(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
-!       iterres/iterres_old,": lambda_ff = ",lambda_ff
-!     if (convergence_details_file) &
-!       write(fconverge,'(a,i12,3(a,g14.7))') &
-!         "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
-!         iterres/iterres_old,": lambda_ff = ",lambda_ff
-!   end if
-! else
-!   write(*,'(a,i12,3(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
-!     iterres/iterres_old,": lambda_ff = ",lambda_ff
-!   if (convergence_details_file) &
-!     write(fconverge,'(a,i12,3(a,g14.7))') &
-!       "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
-!       iterres/iterres_old,": lambda_ff = ",lambda_ff
-! end if
+iterres = sqrt(dot_product(ff,ff)) ! initialise the residual
+
+if (debug_sparse) then
+  write(*,'(a,i12,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+  if (convergence_details_file) &
+    write(fconverge,'(a,i12,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+end if
+
+! start iteration loop
+iteration_loop: do iterstep = 1, iterstepmax
+
+! loop through all grids
+  do nl = 1, ubound(multigrid,1)
+    do ng = 1, multigrid(nl)%ngrid
+
+! first calculate update to deldelphi for this grid
+      deldelphi_grid = 0.d0
+      do pppe = 1, multigrid(nl)%grid(ng)%ndelff
+        ppe = multigrid(nl)%grid(ng)%delff_elements(pppe)
+        deldelphi_grid = deldelphi_grid + multigrid(nl)%grid(ng)%delff(pppe)*ff(ppe)
+      end do
+      deldelphi_grid = deldelphi_grid*multigrid(nl)%grid(ng)%minus_reciprocal_delff_dot_delff
+
+! now apply this update to all delphis in this grid
+      do pppu = 1, multigrid(nl)%grid(ng)%nunknown_elements
+        ppu = multigrid(nl)%grid(ng)%unknown_elements(pppu)
+        delphi(ppu) = delphi(ppu) + deldelphi_grid
+      end do
+
+! calculate new ff and residual
+      iterres_old = iterres
+      if (.true.) then
+! noroundoff brute-force method for calculating new ff and iterres
+        j = 0
+        do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+          m = var_list(var_list_number_equation)%list(mm)
+          do ns = 1, ubound(var(m)%funk,1)
+            j = j + 1
+            ff(j) = var(m)%funk(ns)%v
+            do pppu = 1, var(m)%funk(ns)%ndv
+              ff(j) = ff(j) + var(m)%funk(ns)%dv(pppu)*delphi(var(m)%funk(ns)%pp(pppu))
+            end do
+          end do
+        end do
+        iterres = sqrt(dot_product(ff,ff)) ! initialise the residual
+      end if
+
+!     write(*,'(2(a,i6),a,g14.7)') 'nl = ',nl,': ng = ',ng,': iterres = ',iterres
+    end do
+    
+    if (debug_sparse) then
+      if (mod(iterstep,iterstepcheck) == 0) then
+        write(*,'(2(a,i12),2(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": level = ",nl, &
+          ": iterres = ",iterres,": del iterres = ", &
+          iterres_old-iterres
+        if (convergence_details_file) &
+          write(fconverge,'(2(a,i12),2(a,g14.7))') &
+            "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": level = ",nl,": del iterres = ", &
+            iterres_old-iterres
+      end if
+    end if
+
+    if (iterres < iterrestol) then
+      ierror = 0
+      exit iteration_loop
+    end if
+
+    if (mod(iterstep,iterstepcheck) == 0) then
+      if (check_stopfile("stopback")) then
+        write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+        ierror = 2
+        exit iteration_loop
+      end if
+    end if
+
+  end do
+
+end do iteration_loop
+  
+if (ierror == 0) then
+  if (debug_sparse) then
+    write(*,'(a,i12,2(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres
+    if (convergence_details_file) &
+      write(fconverge,'(a,i12,2(a,g14.7))') &
+        "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres
+  end if
+else
+  write(*,'(a,i12,2(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+  if (convergence_details_file) &
+    write(fconverge,'(a,i12,2(a,g14.7))') &
+      "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+end if
+
+!---------------------
+! redimensionalise results
+
+! not sure if this is actually needed, but for safety redimensionalise the equations
+call nondimensionalise_equations(forward=.false.)
+
+! and dimensionalise delphi
+do ppu = 1, ptotal
+  m = unknown_var_from_pp(ppu)
+  delphi(ppu) = delphi(ppu)*var(m)%magnitude
+end do
+
+!---------------------
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine multigrid_mainsolver'
 
@@ -538,14 +471,18 @@ end subroutine calc_equation_from_unknown
 
 subroutine calc_multigrid
 
-! here we create/update the multigrid structure
+! here we create/update the multigrid structure and the contained delff arrays
 
 use general_module
 
 integer :: nmultigrid, ncells, ppu_next, ppu_unallocated, ppu_last, pppe, ppe, m, ns, pppu, ppu, nm, ng, pp, mu, nsu, &
-  nu, default_grid_size, delnu, ngsub
+  nu, default_grid_size, delnu, ngsub, n, ndelff_element_list
 integer, dimension(:), allocatable :: unknowns_marker
-double precision :: coefficient_strength, next_coefficient_strength
+double precision :: coefficient_strength, next_coefficient_strength, delff_dot_delff
+! the following are used as temporary arrays when finding delff contained within multigrid
+double precision, dimension(:), allocatable :: delff_linear ! the delff values
+logical, dimension(:), allocatable :: delff_marker ! a marker array showing what elements are used
+integer, dimension(:), allocatable :: delff_element_list ! and list of the elements
 logical :: debug_sparse = .true.
 logical, parameter :: debug = .true.
 
@@ -640,9 +577,6 @@ do while (multigrid(1)%grid(1)%nunknown_elements < ptotal)
       if (unknowns_marker(ppu) /= 0) cycle ! if this unknown is already in the list, then move on
       coefficient_strength = abs(var(m)%funk(ns)%dv(equation_from_unknown(ppu_last)%within_equation_index(pppe))* &
         var(m)%funk(ns)%dv(pppu))
-      if (debug) write(92,'(a,g14.7)') 'unnormalised coefficient_strength = ',coefficient_strength
-      coefficient_strength = coefficient_strength*var(unknown_var_from_pp(ppu))%magnitude* &
-        var(unknown_var_from_pp(ppu_last))%magnitude/(var(m)%magnitude**2)
       if (debug) write(92,'(2(a,g14.7))') 'coefficient_strength = ',coefficient_strength, &
         ': next_coefficient_strength = ',next_coefficient_strength
       if (coefficient_strength > next_coefficient_strength) then
@@ -726,9 +660,96 @@ if (debug) then
   end do
 end if
 
+!---------------------
+! now move through each grid within each multigrid calculating delff
+allocate(delff_linear(ptotal),delff_marker(ptotal),delff_element_list(ptotal))
+delff_linear = 0.d0
+delff_marker = .false.
+delff_element_list = 0
+ndelff_element_list = 0
+do nm = 1, ubound(multigrid,1)
+  do ng = 1, multigrid(nm)%ngrid
+
+! cycle through all unknowns in this grid, and all corresponding equations
+    do nu = 1, multigrid(nm)%grid(ng)%nunknown_elements
+      ppu = multigrid(nm)%grid(ng)%unknown_elements(nu)
+      do pppe = 1, equation_from_unknown(ppu)%nequation
+        ppe = equation_from_unknown(ppu)%equation_pp(pppe)
+        m = equation_from_unknown(ppu)%equation_m(pppe)
+        ns = equation_from_unknown(ppu)%equation_ns(pppe)
+        n = equation_from_unknown(ppu)%within_equation_index(pppe)
+        delff_linear(ppe) = delff_linear(ppe) + var(m)%funk(ns)%dv(n)
+        if (.not.delff_marker(ppe)) then
+          ndelff_element_list = ndelff_element_list + 1
+          delff_element_list(ndelff_element_list) = ppe
+          delff_marker(ppe) = .true.
+        end if
+      end do
+    end do
+
+! now transfer back into multigrid structure
+    multigrid(nm)%grid(ng)%ndelff = ndelff_element_list
+    if (allocatable_integer_size(multigrid(nm)%grid(ng)%delff_elements) < ndelff_element_list) then
+      call resize_integer_array(array=multigrid(nm)%grid(ng)%delff_elements,new_size=ndelff_element_list, &
+        keep_data=.false.)
+      call resize_double_precision_array(array=multigrid(nm)%grid(ng)%delff,new_size=ndelff_element_list, &
+        keep_data=.false.)
+    end if
+    multigrid(nm)%grid(ng)%delff_elements(1:ndelff_element_list) = delff_element_list
+! now assemble delff from delff_linear, while also resetting the temporary delff arrays
+! and also calculating minus_reciprocal_delff_dot_delff
+    delff_dot_delff = 0.d0
+    do n = 1, ndelff_element_list
+      multigrid(nm)%grid(ng)%delff(n) = delff_linear(delff_element_list(n))
+      delff_marker(delff_element_list(n)) = .false.
+      delff_linear(delff_element_list(n)) = 0.d0
+      delff_element_list(n) = 0
+      delff_dot_delff = delff_dot_delff + multigrid(nm)%grid(ng)%delff(n)**2
+    end do
+    if (delff_dot_delff < tiny(1.d0)) call error_stop("delff_dot_delff is <= tiny in subroutine calc multigrid")
+    multigrid(nm)%grid(ng)%minus_reciprocal_delff_dot_delff = -1.d0/delff_dot_delff
+    ndelff_element_list = 0
+    
+  end do
+end do
+deallocate(delff_linear,delff_marker,delff_element_list)
+
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine calc_multigrid'
 
 end subroutine calc_multigrid
+
+!-----------------------------------------------------------------
+
+subroutine nondimensionalise_equations(forward)
+
+! here we nondimensionalise the equations and their derivatives, so that we are working in nondimensional space when solving the linear system
+
+use general_module
+
+integer :: mm, m, ns, pppu, ppu, mu
+logical :: forward ! if true, then we are nondimensionalising the equations, otherwise, if false, we are dimensionalising them again
+
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm) ! equation var number
+  do ns = 1, ubound(var(m)%funk,1)
+    if (forward) then
+      var(m)%funk(ns)%v = var(m)%funk(ns)%v/var(m)%magnitude
+    else
+      var(m)%funk(ns)%v = var(m)%funk(ns)%v*var(m)%magnitude
+    end if
+    do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
+      ppu = var(m)%funk(ns)%pp(pppu) ! this is the unknown pp number
+      mu = unknown_var_from_pp(ppu) ! unknown var number
+      if (forward) then
+        var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude/var(m)%magnitude
+      else
+        var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*var(m)%magnitude/var(mu)%magnitude
+      end if
+    end do
+  end do
+end do
+
+end subroutine nondimensionalise_equations
 
 !-----------------------------------------------------------------
 
