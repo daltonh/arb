@@ -266,8 +266,8 @@ use equation_module
 
 integer :: ierror, mm, m, ns, j, nl, ng, pppe, ppe, pppu, ppu, iterstep
 character(len=1000) :: formatline
-double precision, dimension(:), allocatable :: deldelphi, ff
-double precision :: deldelphi_grid, iterres, iterres_old
+double precision, dimension(:), allocatable :: deldelphi, ff, delff
+double precision :: deldelphi_grid, iterres, iterres_old, delff2, ffdelff, lambda
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -292,9 +292,8 @@ call calc_multigrid
 ! deldelphi is the update for delphi, nondimensional
 ! ff is the current (ie, final from previous loop) equation error array, nondimensional
 
-if (.not.allocated(deldelphi)) allocate(deldelphi(ptotal),ff(ptotal))
+if (.not.allocated(deldelphi)) allocate(deldelphi(ptotal),ff(ptotal),delff(ptotal))
 
-deldelphi = 0.d0
 delphi = 0.d0 ! for now this is nondimensionalised, but will dimensionalise before leaving the routine
 
 ! set initial ff array (linear equation error array) from newton's equations
@@ -320,52 +319,85 @@ iteration_loop: do iterstep = 1, iterstepmax
 
 ! loop through all grids
   do nl = 1, ubound(multigrid,1)
+! do nl = ubound(multigrid,1), ubound(multigrid,1)
+
+    deldelphi = 0.d0
+
+! loop through all levels within this grid
     do ng = 1, multigrid(nl)%ngrid
 
 ! first calculate update to deldelphi for this grid
       deldelphi_grid = 0.d0
       do pppe = 1, multigrid(nl)%grid(ng)%ndelff
         ppe = multigrid(nl)%grid(ng)%delff_elements(pppe)
-        deldelphi_grid = deldelphi_grid + multigrid(nl)%grid(ng)%delff(pppe)*ff(ppe)
+        deldelphi_grid = deldelphi_grid - multigrid(nl)%grid(ng)%delff(pppe)*ff(ppe)
       end do
-      deldelphi_grid = deldelphi_grid*multigrid(nl)%grid(ng)%minus_reciprocal_delff_dot_delff
 
 ! now apply this update to all delphis in this grid
       do pppu = 1, multigrid(nl)%grid(ng)%nunknown_elements
         ppu = multigrid(nl)%grid(ng)%unknown_elements(pppu)
-        delphi(ppu) = delphi(ppu) + deldelphi_grid
+        deldelphi(ppu) = deldelphi(ppu) + deldelphi_grid
       end do
 
+    end do
+
+! calculate the direction of change for ff based on this deldelphi
+    delff = 0.d0 ! vector
+    delff2 = 0.d0 ! scalar
+    ffdelff = 0.d0 ! scalar
+    ppe = 0
+    do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+      m = var_list(var_list_number_equation)%list(mm)
+      do ns = 1, ubound(var(m)%funk,1)
+        ppe = ppe + 1
+        do pppu = 1, var(m)%funk(ns)%ndv
+          ppu = var(m)%funk(ns)%pp(pppu)
+          delff(ppe) = delff(ppe) + var(m)%funk(ns)%dv(pppu)*deldelphi(ppu)
+        end do
+        delff2 = delff2 + delff(ppe)**2
+        ffdelff = ffdelff + ff(ppe)*delff(ppe)
+      end do
+    end do
+
+! now look at delff2 and ffdelff and then calculate lambda
+    if (delff2 < tiny(1.d0)) call error_stop('delff2 is too small')
+    lambda = -ffdelff/delff2
+    if (lambda < tiny(1.d0)) call error_stop('lambda is very small or negative')
+
+! update delphi
+    delphi = delphi + lambda*deldelphi
+
 ! calculate new ff and residual
-      iterres_old = iterres
-      if (.true.) then
+    iterres_old = iterres
+    if (.true.) then
 ! noroundoff brute-force method for calculating new ff and iterres
-        j = 0
-        do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-          m = var_list(var_list_number_equation)%list(mm)
-          do ns = 1, ubound(var(m)%funk,1)
-            j = j + 1
-            ff(j) = var(m)%funk(ns)%v
-            do pppu = 1, var(m)%funk(ns)%ndv
-              ff(j) = ff(j) + var(m)%funk(ns)%dv(pppu)*delphi(var(m)%funk(ns)%pp(pppu))
-            end do
+      j = 0
+      do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+        m = var_list(var_list_number_equation)%list(mm)
+        do ns = 1, ubound(var(m)%funk,1)
+          j = j + 1
+          ff(j) = var(m)%funk(ns)%v
+          do pppu = 1, var(m)%funk(ns)%ndv
+            ff(j) = ff(j) + var(m)%funk(ns)%dv(pppu)*delphi(var(m)%funk(ns)%pp(pppu))
           end do
         end do
-        iterres = sqrt(dot_product(ff,ff)) ! initialise the residual
-      end if
+      end do
+    else
+      ff = ff + lambda*delff
+    end if
+    iterres = sqrt(dot_product(ff,ff)) ! initialise the residual
 
 !     write(*,'(2(a,i6),a,g14.7)') 'nl = ',nl,': ng = ',ng,': iterres = ',iterres
-    end do
     
     if (debug_sparse) then
       if (mod(iterstep,iterstepcheck) == 0) then
-        write(*,'(2(a,i12),2(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": level = ",nl, &
+        write(*,'(2(a,i12),3(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": level = ",nl, &
           ": iterres = ",iterres,": del iterres = ", &
-          iterres_old-iterres
+          iterres_old-iterres,": lambda = ",lambda
         if (convergence_details_file) &
-          write(fconverge,'(2(a,i12),2(a,g14.7))') &
+          write(fconverge,'(2(a,i12),3(a,g14.7))') &
             "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": level = ",nl,": del iterres = ", &
-            iterres_old-iterres
+            iterres_old-iterres,": lambda = ",lambda
       end if
     end if
 
