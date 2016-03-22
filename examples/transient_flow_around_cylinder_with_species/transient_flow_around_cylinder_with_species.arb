@@ -120,7 +120,7 @@ VARIABLE <u[l=2]> magnitude=2.d0
 # some numerical values
 #VARIABLE <adv_limiter> 0.d0 # this is the most stable - ie, first order upwinding on momentum advection
 VARIABLE <adv_limiter> 1.d0 # this is the least stable but quite accurate - ie, high order non-limited upwinding on momentum advection
-CONSTANT <dt_initial> [] 5.d-2 # now taking huge timestep, overwriting the default timestep used in transient_constant_setup which is roughly based on a CFL number
+CONSTANT <dt_initial> [] 5.d-3 # now taking largish timestep, overwriting the default timestep used in transient_constant_setup which is roughly based on a CFL number
 CONSTANT <dt_out> [] 3.d-1
 
 # some monitoring variables
