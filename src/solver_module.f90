@@ -118,8 +118,15 @@ end if
 if (trim(linear_solver) == "multigrid") then
   if (debug) write(*,*) 'calling multigrid_mainsolver'
   call time_process
-  call multigrid_mainsolver(ierror)
+  call multigrid_mainsolver(ierror,singlegrid=.false.)
   call time_process(description='multigrid mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after multigrid_mainsolver, ierror = ',ierror
+else if (trim(linear_solver) == "singlegrid") then
+  if (debug) write(*,*) 'calling multigrid_mainsolver'
+  call time_process
+  call multigrid_mainsolver(ierror,singlegrid=.true.)
+  call time_process(description='multigrid mainsolver using singlegrid')
   ! if there is a problem with the linear matrix solver then return
   if (debug) write(*,*) 'in newtsolver after multigrid_mainsolver, ierror = ',ierror
 else if (trim(linear_solver) == "iterative") then
@@ -2046,7 +2053,8 @@ if (trim(linear_solver) == "default") then
   write(*,'(a)') 'INFO: choosing '//trim(linear_solver)//' linear solver'
 else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "intelpardisoooc".or. &
   trim(linear_solver) == "suitesparse".or.trim(linear_solver) == "hslma28".or.trim(linear_solver) == "pardiso".or. &
-  trim(linear_solver) == "pardisoiterative".or.trim(linear_solver) == "iterative".or.trim(linear_solver) == "multigrid".or. &
+  trim(linear_solver) == "pardisoiterative".or.trim(linear_solver) == "iterative".or. &
+  trim(linear_solver) == "multigrid".or.trim(linear_solver) == "singlegrid".or. &
   trim(linear_solver) == "mgmres".or.trim(linear_solver) == "none")) then
   call error_stop('unknown linear solver specified: '//trim(linear_solver))
 end if

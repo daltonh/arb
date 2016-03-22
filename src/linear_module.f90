@@ -66,6 +66,8 @@ type multigrid_type
 end type multigrid_type
   
 type (multigrid_type), dimension(:), allocatable :: multigrid ! an array of of the multigrid levels
+
+integer, save :: nmultigrid ! number of levels within the multigrid structure, calculated when the multigrid structure is calculated
   
 !-----------------------------------------------------------------
 contains
@@ -126,9 +128,9 @@ do nn = 1, allocatable_size(var_list(var_list_number_equation)%list)
 end do
 
 if (debug_sparse) then
-  write(*,'(a,i12,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+  write(*,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
   if (convergence_details_file) &
-    write(fconverge,'(a,i12,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+    write(fconverge,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
 end if
 
 ! start iteration loop
@@ -192,10 +194,10 @@ iteration_loop: do iterstep = 1, iterstepmax
 
   if (debug_sparse) then
     if (mod(iterstep,iterstepcheck) == 0) then
-      write(*,'(a,i12,3(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": 1-iterres/iterres_old = ", &
+      write(*,'(a,i8,3(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": 1-iterres/iterres_old = ", &
         1.d0-iterres/iterres_old,": lambda_ff = ",lambda_ff
       if (convergence_details_file) &
-        write(fconverge,'(a,i12,3(a,g14.7))') &
+        write(fconverge,'(a,i8,3(a,g14.7))') &
           "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": 1-iterres/iterres_old = ", &
           1.d0-iterres/iterres_old,": lambda_ff = ",lambda_ff
     end if
@@ -218,18 +220,18 @@ end do iteration_loop
   
 if (ierror == 0) then
   if (debug_sparse) then
-    write(*,'(a,i12,3(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
+    write(*,'(a,i8,3(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
       iterres/iterres_old,": lambda_ff = ",lambda_ff
     if (convergence_details_file) &
-      write(fconverge,'(a,i12,3(a,g14.7))') &
+      write(fconverge,'(a,i8,3(a,g14.7))') &
         "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
         iterres/iterres_old,": lambda_ff = ",lambda_ff
   end if
 else
-  write(*,'(a,i12,3(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
+  write(*,'(a,i8,3(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
     iterres/iterres_old,": lambda_ff = ",lambda_ff
   if (convergence_details_file) &
-    write(fconverge,'(a,i12,3(a,g14.7))') &
+    write(fconverge,'(a,i8,3(a,g14.7))') &
       "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres,": iterres/iterres_old = ", &
       iterres/iterres_old,": lambda_ff = ",lambda_ff
 end if
@@ -257,18 +259,19 @@ end function ff_residual
 
 !-----------------------------------------------------------------
 
-subroutine multigrid_mainsolver(ierror)
+subroutine multigrid_mainsolver(ierror,singlegrid)
 
 ! here we use a homegrown multigrid technique to solve the linear system, using equation funk data directly
 
 use general_module
 use equation_module
 
-integer :: ierror, mm, m, ns, j, nl, ng, pppe, ppe, pppu, ppu, iterstep
+integer :: ierror, mm, m, ns, j, nl, ng, pppe, ppe, pppu, ppu, iterstep, nl_lower, pp
 character(len=1000) :: formatline
 double precision, dimension(:), allocatable :: deldelphi, ff, delff
 double precision :: deldelphi_grid, iterres, iterres_old, delff2, ffdelff, lambda
-logical, parameter :: debug = .false.
+logical :: singlegrid ! if true then only the low level grid is used
+logical, parameter :: debug = .true.
 logical :: debug_sparse = .true.
 
 if (debug) debug_sparse = .true.
@@ -306,20 +309,25 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   end do
 end do
 
-iterres = sqrt(dot_product(ff,ff)) ! initialise the residual
+iterres = sqrt(dot_product(ff,ff)/dble(ptotal)) ! initialise the residual
 
 if (debug_sparse) then
-  write(*,'(a,i12,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+  write(*,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
   if (convergence_details_file) &
-    write(fconverge,'(a,i12,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+    write(fconverge,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+end if
+
+if (singlegrid) then
+  nl_lower = nmultigrid
+else
+  nl_lower = 1
 end if
 
 ! start iteration loop
 iteration_loop: do iterstep = 1, iterstepmax
 
-! loop through all grids
-  do nl = 1, ubound(multigrid,1)
-! do nl = ubound(multigrid,1), ubound(multigrid,1)
+! loop through all grids, depending on whether called with multigrid or not
+  do nl = nl_lower, nmultigrid
 
     deldelphi = 0.d0
 
@@ -360,9 +368,24 @@ iteration_loop: do iterstep = 1, iterstepmax
     end do
 
 ! now look at delff2 and ffdelff and then calculate lambda
-    if (delff2 < tiny(1.d0)) call error_stop('delff2 is too small')
-    lambda = -ffdelff/delff2
-    if (lambda < tiny(1.d0)) call error_stop('lambda is very small or negative')
+!   if (delff2 < tiny(1.d0)) then
+!     write(*,'(2(a,g14.7))') 'delff2 = ',delff2,': ffdelff = ',ffdelff
+!     call error_stop('delff2 is too small in subroutine multigrid mainsolver')
+!   end if
+
+    if (delff2 < 1.d-60) then
+      write(*,'(2(a,g14.7))') 'WARNING: delff2 is small, so setting lambda = 0.d0: delff2 = ',delff2,': ffdelff = ',ffdelff
+      lambda = 0.d0
+    else
+      lambda = -ffdelff/delff2
+      if (lambda < tiny(1.d0)) write(*,'(3(a,g14.7))') 'WARNING: lambda is small: delff2 = ',delff2, &
+        ': ffdelff = ',ffdelff,': lambda = ',lambda
+    end if
+
+!   if (lambda < tiny(1.d0)) then
+!     write(*,'(3(a,g14.7))') 'delff2 = ',delff2,': ffdelff = ',ffdelff,': lambda = ',lambda
+!     call error_stop('lambda is very small or negative in subroutine multigrid mainsolver')
+!   end if
 
 ! update delphi
     delphi = delphi + lambda*deldelphi
@@ -385,17 +408,29 @@ iteration_loop: do iterstep = 1, iterstepmax
     else
       ff = ff + lambda*delff
     end if
-    iterres = sqrt(dot_product(ff,ff)) ! initialise the residual
+    iterres = sqrt(dot_product(ff,ff)/dble(ptotal)) ! initialise the residual
 
 !     write(*,'(2(a,i6),a,g14.7)') 'nl = ',nl,': ng = ',ng,': iterres = ',iterres
     
+    if (debug) then
+      write(93,*) 'MMMMMMMMMMMMMMMMMMMMM'
+      write(93,'(2(a,i8))') "iterstep = ",iterstep,": level = ",nl
+      write(93,'(3(a,g14.7))') "iterres = ",iterres,": iterres_old = ",iterres_old,": lambda = ",lambda
+      write(93,'(3(a,g14.7))') 'delff2 = ',delff2,': ffdelff = ',ffdelff
+      write(93,'(a)') 'pp,delphi(old),deldelphi,delphi,ff(old),delff,ff'
+      do pp = 1, ptotal
+        write(93,'(i10,6(g14.7))') pp,delphi(pp)-lambda*deldelphi(pp),deldelphi(pp),delphi(pp),ff(pp)-lambda*delff(pp), &
+          delff(pp),ff(pp)
+      end do
+    end if
+
     if (debug_sparse) then
       if (mod(iterstep,iterstepcheck) == 0) then
-        write(*,'(2(a,i12),3(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": level = ",nl, &
+        write(*,'(2(a,i8),3(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep,": level = ",nl, &
           ": iterres = ",iterres,": del iterres = ", &
           iterres_old-iterres,": lambda = ",lambda
         if (convergence_details_file) &
-          write(fconverge,'(2(a,i12),3(a,g14.7))') &
+          write(fconverge,'(2(a,i8),3(a,g14.7))') &
             "ITERATIONS: intermediate iterstep = ",iterstep,": iterres = ",iterres,": level = ",nl,": del iterres = ", &
             iterres_old-iterres,": lambda = ",lambda
       end if
@@ -420,15 +455,15 @@ end do iteration_loop
   
 if (ierror == 0) then
   if (debug_sparse) then
-    write(*,'(a,i12,2(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres
+    write(*,'(a,i8,2(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres
     if (convergence_details_file) &
-      write(fconverge,'(a,i12,2(a,g14.7))') &
+      write(fconverge,'(a,i8,2(a,g14.7))') &
         "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres
   end if
 else
-  write(*,'(a,i12,2(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+  write(*,'(a,i8,2(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
   if (convergence_details_file) &
-    write(fconverge,'(a,i12,2(a,g14.7))') &
+    write(fconverge,'(a,i8,2(a,g14.7))') &
       "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
 end if
 
@@ -507,7 +542,7 @@ subroutine calc_multigrid
 
 use general_module
 
-integer :: nmultigrid, ncells, ppu_next, ppu_unallocated, ppu_last, pppe, ppe, m, ns, pppu, ppu, nm, ng, pp, mu, nsu, &
+integer :: ncells, ppu_next, ppu_unallocated, ppu_last, pppe, ppe, m, ns, pppu, ppu, nm, ng, pp, mu, nsu, &
   nu, default_grid_size, delnu, ngsub, n, ndelff_element_list
 integer, dimension(:), allocatable :: unknowns_marker
 double precision :: coefficient_strength, next_coefficient_strength, delff_dot_delff
@@ -527,7 +562,7 @@ if (.not.allocated(multigrid)) then
 ! to avoid roundoff errors etc, calculate the number of levels by calculating the series explicitly
   ncells = 1
   nmultigrid = 1
-  do while (ncells <= ptotal)
+  do while (ncells < ptotal)
     nmultigrid = nmultigrid + 1
     ncells = ncells*2
   end do
