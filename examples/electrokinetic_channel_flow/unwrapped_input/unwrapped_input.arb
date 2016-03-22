@@ -448,59 +448,46 @@ EXTERNALS "src/free_surface_functions.f90"
          FACE_LOCAL <u_f_vect[l=2]> "faceave[reflect=2](<u[l=2]>)"
          #FACE_LOCAL <u_f_vect[l=3]> "faceave[](<u[l=3]>)"
          FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <all faces> # volume (velocity) transport
-         FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domain faces>
-         FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domain faces>
-         
-         # advection limiter
-         # alternative v0.5 method based on average velocity magnitude
-         #CELL_DERIVED <u_mag2> "dot(<u[l=:]>,<u[l=:]>)" ON <all cells>
-         #FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <domain faces>
-         #FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<rho>)" ON <domain faces>
-         # pre v0.5 method based on component of velocity in direction of face normal
-         FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domain faces>
-         #FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho>)" ON <domain faces>
-         
-         # viscous limiter
-         # this didn't seem to work
-         #FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
-         ## additional contribution to velocity interpolation from cylindrical hoop-stress term
-         ##FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<mu>,<eps_p>*1.d0^2/(2.d0*<mu>))" ON <domain faces>
-         FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
          
          # this file now does both steady-state and transient using transient comments string replacements, which are set in constants.arb
          
-         # transient limiter
-         # this is the equivalent time that the limiter has been moving in the one direction
-         # noting that the variables (<u_f_{correction}> and <eps>) here are previous timestep ones
-         #FACE_TRANSIENT <t_{Rhie-Chow}[r=1]> "0.d0" "abs(<u_f_{correction}>)*<rho>/facemax(<eps_p>*<C_{Rhie-Chow}>,1.d-20)" ON <domain faces>
-         # need to save previous pressure error sign
-         #FACE_TRANSIENT <sign_p[r=1]> "0.d0" "<sign_p>" ON <domain faces>
-         #FACE_LOCAL <u_mf_{transient}> "<eps_p>*(faceif(<sign_p>*<sign_p[r=1]>,<t_{Rhie-Chow}[r=1]>,0.d0)+<dt>)/<rho>" ON <domain faces>
+         # save old correction velocity for transient calculations
+         #FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <domain faces>
          
-         # combined limiter, using one of two possible methods
-         # use a straight minimum of the three or two correction velocities
-         ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces>
-         # alternatively, average the reciprocal of the three of two correction velocities
-         # in pre v0.53 these weren't limited using <tinyish> which could case a problem if one is zero
-         # navier-stokes
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
-         FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
-         # stokes
-         ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domain faces>
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
-         # it isn't clear which of the above two methods is better: the reciprocal version can be slightly more expensive to calculate, but as it varies more continuously, can (sometimes, possibly, etc etc) lead to slightly faster overall simulation times.  Doesn't seem to be much in it though.
-         # unfortunately in versions around v0.52 the steady-state and transient cases were accidentally handled using different methods (transient with reciprocal averaging, steady-state with straight minimum)
+         # assemble <u_f_{correction}>, taking advantage of variable reuse so that only one expression is formed for <u_f_{correction}> (to maximise code efficiency and maxima expression simplifications)
          
-         # for debugging set the correction velocity to be solely only one of the three possibilities
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{transient}>" ON <domain faces>
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{vis}>" ON <domain faces>
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*<u_mf_{adv}>" ON <domain faces>
+         # first assemble demoninator of expression:
+         
+         # all equation variants here have viscous contribution, so add this first
+         # the rf stands for reciprocal and face centred
+         FACE_LOCAL <u_rf_{vis}> "<mu>/<facedx>^2" ON <domain faces>
+         FACE_DERIVED <u_f_{correction}> "<u_rf_{vis}>" ON <domain faces>
+         
+         # advective contribution can be either simple or more complex (set by <<ufadvectioncomplexcomment>>)
+         # the default behaviour is to use the simple advective contribution
+         #(hash added during unwrap)GENERAL_REPLACEMENTS D <<ufadvectioncomplexcomment>> W "#"
+         # include the following line in your input file prior to loading this template file to access the more complex contribution
+         #GENERAL_REPLACEMENTS R # W ""
+         
+         # form opposite string to be consistent with # 
+         #(hash added during unwrap)GENERAL_REPLACEMENTS R <<ufadvectionsimplecomment>> W "" 
+         #GENERAL_REPLACEMENTS R <<ufadvectionsimplecomment>> W "#" 
+         # next add simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
+         FACE_LOCAL <u_rf_{adv}> "2.d0*<rho>*abs(<u_f_{raw}>)/<facedx>" ON <domain faces>
+         # or more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
+         #FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <domain faces>
+         #FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>))" ON <domain faces>
+         
+         FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
+         
+         # for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
+         #FACE_LOCAL <u_rf_{transient}> "<rho>/<dt>" ON <domain faces>
+         #FACE_DERIVED <u_f_{correction}> "(-<C_{Rhie-Chow}>*<p_error>+<u_rf_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_{correction}>+<u_rf_{transient}>)"
+         # for steady-state just take reciprocal and add pressure contribution
+         FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<p_error>/(<u_f_{correction}>)"
          
          # final face velocity
          FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
-         
-         #FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
          
          # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
          # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
