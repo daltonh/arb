@@ -1,2 +1,4 @@
 to use this linear solver, dump ddeps.f and ma28d.f in here
-see http://hsl.rl.ac.uk/archive/cou.html
+see:
+http://www.hsl.rl.ac.uk/archive/specs/ma28.pdf
+http://www.hsl.rl.ac.uk/download/MA28/latest/

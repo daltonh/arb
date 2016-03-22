@@ -99,8 +99,6 @@ NONE_OUTPUT <F_lift> [N] "facesum(<facearea>*dot(<facenorm[l=:]>,<tau[l=:,2]>),<
 NONE_OUTPUT <C_drag> "2.d0*<F_drag>/(<rho>*<u_av>^2*0.1d0)" # drag coefficient
 NONE_OUTPUT <C_lift> "2.d0*<F_lift>/(<rho>*<u_av>^2*0.1d0)" # lift coefficient
 
-# output a flag telling us which term limited the correction velocity
-FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
 # and turn some outputs on using the generic VARIABLE statement that picks up the last type and centring
 VARIABLE <u_f_{correction}> output
 VARIABLE <u_f_{raw}> output
