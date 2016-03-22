@@ -3471,6 +3471,7 @@ sub mequation_interpolation {
 # it evaluates as the latest (unbackstepped) newton update for the named unknown variable
 # magnitude gives the magnitude for an unknown or equation variable
 # both functions only accept an unknown (or equation) name as an argument (ie, not an expression), now (v0.55) referenced as a 'variable' as opposed to previously an 'unknown' = ie, variable = <some unknown>
+# both functions need a specific centring (as all arb functions do) - eg, cellnewtonupdate
     } elsif ($operator_type eq "newtonupdate" || $operator_type eq "magnitude") {
 
       my $maxima_name='';
