@@ -245,8 +245,6 @@ VARIABLE <vof_phi_adjust[r=1]> output
 # for the high order method only, adjust the interface width
 #VARIABLE <vof_s_interface_width> 1.d0 # default is 1.d0
 
-# try alternative correction velocity expression - actually slower
-#FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domain faces>
 #-------------------------------------------------------------------
 # numerical options
 NEWTSTEPMAX 100

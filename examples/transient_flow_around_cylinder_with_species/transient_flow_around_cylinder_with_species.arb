@@ -106,8 +106,6 @@ CONSTANT <rho> [1] 1.d0 # density
 CONSTANT <u_av> [1] 1.0d0 # average inlet velocity
 CONSTANT <mu> [1] "<rho>*<u_av>*<cylinder size>/<Re>" # viscosity of liquid, NB, whole problem is nondimensional
 
-# output a flag telling us which term limited the correction velocity
-#FACE_OUTPUT <advection correction limited> "faceif(<u_mf_{adv}>-<u_mf_{vis}>,0.d0,1.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
 # and turn some outputs on using the generic VARIABLE statement that picks up the last type and centring
 VARIABLE <u_f_{correction}> output
 VARIABLE <u_f_{raw}> output
