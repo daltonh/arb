@@ -36,7 +36,7 @@ module linear_module
 
 implicit none
 private
-public iterative_mainsolver, multigrid_mainsolver
+public iterative_mainsolver, multigrid_mainsolver, bicg_mainsolver
 
 ! this is an object that stores details of the equations that each unknown references
 type equation_from_unknown_type
@@ -817,6 +817,231 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
 end do
 
 end subroutine nondimensionalise_equations
+
+!-----------------------------------------------------------------
+
+subroutine bicg_mainsolver(ierror)
+
+! here we use a unpreconditioned bicg technique to solve the linear system, using equation funk data directly
+! routine is based on numerical recipes recipe, p77
+
+use general_module
+use equation_module
+
+integer :: ierror, mm, m, ns, j, iterstep, ppu
+character(len=1000) :: formatline
+double precision, dimension(:), allocatable :: r1_o, r2_o, r1_n, r2_n, p1, p2, tmp_product
+double precision :: alpha, beta, iterres, iterres_old, alpha_demoninator, beta_demoninator, r_n_product
+logical, parameter :: debug = .true.
+logical :: debug_sparse = .true.
+
+if (debug) debug_sparse = .true.
+if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine bicg_mainsolver'
+
+ierror = 1 ! this signals an error
+
+! nondimensionalise equations and their derivatives (forward = .true. implies that we are nondimensionalising)
+call nondimensionalise_equations(forward=.true.)
+
+!---------------------
+! initialise and allocate loop variables
+if (.not.allocated(r1_o)) allocate(r1_o(ptotal),r2_o(ptotal),r1_n(ptotal),r2_n(ptotal),p1(ptotal),p2(ptotal), &
+  tmp_product(ptotal))
+
+! initial guess for delphi is the zero vector
+delphi = 0.d0
+
+! calculate initial residual r1_n
+call aa_dot_vector(delphi,r1_n) ! calculate the product of the equation matrix (A) with the initial solution vector (delphi), and store in r1_n
+! form the initial residual as b - A.x, but with b = -equation and A.x stored as r1_n
+! set initial ff array (linear equation error array) from newton's equations
+j = 0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
+  do ns = 1, ubound(var(m)%funk,1)
+    j = j + 1
+    r1_n(j) = -var(m)%funk(ns)%v - r1_n(j)
+  end do
+end do
+r2_n = r1_n
+r_n_product = dot_product(r1_n,r2_n)
+p1 = r1_n 
+p2 = r2_n 
+
+iterres = sqrt(dot_product(r1_n,r1_n)/dble(ptotal)) ! initialise the residual
+
+if (debug_sparse) then
+  write(*,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+  if (convergence_details_file) &
+    write(fconverge,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+end if
+
+! start iteration loop
+iteration_loop: do iterstep = 1, iterstepmax
+
+! increment r's
+  r1_o = r1_n
+  r2_o = r2_n
+! and save beta_product
+  beta_demoninator = r_n_product
+
+! calculate alpha = (r2_o.r1_o)/(p2.A.p1)
+  call aa_dot_vector(p1,tmp_product)
+  alpha_demoninator = dot_product(p2,tmp_product)
+  if (abs(alpha_demoninator) < 1.d-60) call error_stop('small alpha_demoninator in bicg_mainsolver')
+  alpha = dot_product(r2_o,r1_o)/alpha_demoninator
+
+! update r's
+! r1_n = r1_o - alpha*A.p1
+! tmp_product already stores A.p1
+  r1_n = r1_o - alpha*tmp_product
+! r2_n = r2_o - alpha*A^T.p2
+  call aa_transpose_dot_vector(p2,tmp_product)
+  r2_n = r2_o - alpha*tmp_product
+! and calculate corresponding product
+  r_n_product = dot_product(r1_n,r2_n)
+
+! update delphi
+  delphi = delphi + alpha*p1
+
+! check on convergence, noting that r1_n is the residual vector
+  iterres_old = iterres
+  iterres = sqrt(dot_product(r1_n,r1_n)/dble(ptotal))
+  
+  if (debug) then
+    write(93,*) 'MMMMMMMMMMMMMMMMMMMMM'
+    write(93,'(1(a,i8))') "iterstep = ",iterstep
+    write(93,'(2(a,g14.7))') "iterres = ",iterres,": iterres_old = ",iterres_old
+!   write(93,'(a)') 'pp,delphi(old),deldelphi,delphi,ff(old),delff,ff'
+!   do pp = 1, ptotal
+!     write(93,'(i10,6(g14.7))') pp,delphi(pp)-lambda*deldelphi(pp),deldelphi(pp),delphi(pp),ff(pp)-lambda*delff(pp), &
+!       delff(pp),ff(pp)
+!   end do
+  end if
+
+  if (debug_sparse) then
+    if (mod(iterstep,iterstepcheck) == 0) then
+      write(*,'(1(a,i8),2(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep, &
+        ": iterres = ",iterres,": del iterres = ",iterres_old-iterres
+      if (convergence_details_file) &
+        write(fconverge,'(1(a,i8),2(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep, &
+          ": iterres = ",iterres,": del iterres = ",iterres_old-iterres
+    end if
+  end if
+
+  if (iterres < iterrestol) then
+    ierror = 0
+    exit iteration_loop
+  end if
+
+  if (mod(iterstep,iterstepcheck) == 0) then
+    if (check_stopfile("stopback")) then
+      write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+      ierror = 2
+      exit iteration_loop
+    end if
+  end if
+
+! calculate beta
+  if (abs(beta_demoninator) < 1.d-60) call error_stop('small beta_demoninator in bicg_mainsolver')
+  beta = r_n_product/beta_demoninator
+
+! update p's
+  p1 = r1_o + beta*p1
+  p2 = r2_o + beta*p2
+
+end do iteration_loop
+  
+if (ierror == 0) then
+  if (debug_sparse) then
+    write(*,'(a,i8,2(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres
+    if (convergence_details_file) &
+      write(fconverge,'(a,i8,2(a,g14.7))') &
+        "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres
+  end if
+else
+  write(*,'(a,i8,2(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+  if (convergence_details_file) &
+    write(fconverge,'(a,i8,2(a,g14.7))') &
+      "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+end if
+
+!---------------------
+! redimensionalise results
+
+! not sure if this is actually needed, but for safety redimensionalise the equations
+call nondimensionalise_equations(forward=.false.)
+
+! and dimensionalise delphi
+do ppu = 1, ptotal
+  m = unknown_var_from_pp(ppu)
+  delphi(ppu) = delphi(ppu)*var(m)%magnitude
+end do
+
+!---------------------
+
+if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine bicg_mainsolver'
+
+end subroutine bicg_mainsolver
+
+!-----------------------------------------------------------------
+
+subroutine aa_dot_vector(vector_to_multiply,vector_product)
+
+! here we multiply a vector (vector_to_multiply) with the jacobian matrix stored as equation data,
+!  forming the product vector (vector_product)
+
+use general_module
+double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
+double precision, dimension(:), allocatable :: vector_product
+integer :: ppe, pppu, ppu, mm, m, ns
+
+!---------------------
+
+ppe = 0
+vector_product = 0.d0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
+  do ns = 1, ubound(var(m)%funk,1)
+    ppe = ppe + 1
+    do pppu = 1, var(m)%funk(ns)%ndv
+      ppu = var(m)%funk(ns)%pp(pppu)
+      vector_product(ppe) = vector_product(ppe) + var(m)%funk(ns)%dv(pppu)*vector_to_multiply(ppu)
+    end do
+  end do
+end do
+
+end subroutine aa_dot_vector
+
+!-----------------------------------------------------------------
+
+subroutine aa_transpose_dot_vector(vector_to_multiply,vector_product)
+
+! here we multiply a vector (vector_to_multiply) with the jacobian matrix stored as equation data,
+!  forming the product vector (vector_product)
+! here we use the transpose of the jacobian, as a separate routine copied in the interests of speed
+
+use general_module
+double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
+double precision, dimension(:), allocatable :: vector_product
+integer :: ppe, pppu, ppu, mm, m, ns
+
+!---------------------
+
+ppe = 0
+vector_product = 0.d0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
+  do ns = 1, ubound(var(m)%funk,1)
+    ppe = ppe + 1
+    do pppu = 1, var(m)%funk(ns)%ndv
+      ppu = var(m)%funk(ns)%pp(pppu)
+      vector_product(ppu) = vector_product(ppu) + var(m)%funk(ns)%dv(pppu)*vector_to_multiply(ppe)
+    end do
+  end do
+end do
+
+end subroutine aa_transpose_dot_vector
 
 !-----------------------------------------------------------------
 
