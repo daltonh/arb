@@ -823,16 +823,17 @@ end subroutine nondimensionalise_equations
 subroutine bicg_mainsolver(ierror)
 
 ! here we use a unpreconditioned bicg technique to solve the linear system, using equation funk data directly
-! routine is based on numerical recipes recipe, p77
+! routine is based on numerical recipes recipe, p77, noting typo in p update lines
 
 use general_module
 use equation_module
 
 integer :: ierror, mm, m, ns, j, iterstep, ppu
 character(len=1000) :: formatline
-double precision, dimension(:), allocatable :: r1_o, r2_o, r1_n, r2_n, p1, p2, tmp_product
+double precision, dimension(:), allocatable, save :: r1, r2, p1, p2, tmp_product ! allocate these once, and then keep using them
 double precision :: alpha, beta, iterres, iterres_old, alpha_demoninator, beta_demoninator, r_n_product
-logical, parameter :: debug = .true.
+double precision, parameter :: alpha_max = 1.d6, alpha_demoninator_min = 1.d-60, beta_demoninator_min = 1.d-60
+logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
 if (debug) debug_sparse = .true.
@@ -845,34 +846,34 @@ call nondimensionalise_equations(forward=.true.)
 
 !---------------------
 ! initialise and allocate loop variables
-if (.not.allocated(r1_o)) allocate(r1_o(ptotal),r2_o(ptotal),r1_n(ptotal),r2_n(ptotal),p1(ptotal),p2(ptotal), &
-  tmp_product(ptotal))
+if (.not.allocated(r1)) allocate(r1(ptotal),r2(ptotal),p1(ptotal),p2(ptotal),tmp_product(ptotal))
 
 ! initial guess for delphi is the zero vector
 delphi = 0.d0
 
-! calculate initial residual r1_n
-call aa_dot_vector(delphi,r1_n) ! calculate the product of the equation matrix (A) with the initial solution vector (delphi), and store in r1_n
-! form the initial residual as b - A.x, but with b = -equation and A.x stored as r1_n
+! calculate initial residual r1
+call aa_dot_vector(delphi,r1) ! calculate the product of the equation matrix (A) with the initial solution vector (delphi), and store in r1
+! form the initial residual as b - A.x, but with b = -equation and A.x stored as r1
 ! set initial ff array (linear equation error array) from newton's equations
 j = 0
 do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   m = var_list(var_list_number_equation)%list(mm)
   do ns = 1, ubound(var(m)%funk,1)
     j = j + 1
-    r1_n(j) = -var(m)%funk(ns)%v - r1_n(j)
+    r1(j) = -var(m)%funk(ns)%v - r1(j)
   end do
 end do
-r2_n = r1_n
-r_n_product = dot_product(r1_n,r2_n)
-p1 = r1_n 
-p2 = r2_n 
+r2 = r1
+r_n_product = dot_product(r1,r2)
+p1 = r1 
+p2 = r2 
 
-iterres = sqrt(dot_product(r1_n,r1_n)/dble(ptotal)) ! initialise the residual
+iterres = sqrt(dot_product(r1,r1)/dble(ptotal)) ! initialise the residual
 
 if (debug) then
-  call print_debug_vector(r1_n,"r1_n at start")
-  call print_debug_vector(r2_n,"r2_n at start")
+  call print_jacobian_matrix
+  call print_debug_vector(r1,"r1 at start")
+  call print_debug_vector(r2,"r2 at start")
   call print_debug_vector(p1,"p1 at start")
   call print_debug_vector(p2,"p2 at start")
   call print_debug_vector(delphi,"delphi at start")
@@ -891,13 +892,10 @@ iteration_loop: do iterstep = 1, iterstepmax
 
   if (debug) write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
 
-! increment r's
-  r1_o = r1_n
-  r2_o = r2_n
-! and save beta_product
+! save beta_product from the previous iteration as the beta_demoninator
   beta_demoninator = r_n_product
 
-! calculate alpha = (r2_o.r1_o)/(p2.A.p1)
+! calculate alpha = (r2.r1)/(p2.A.p1)
   if (debug) write(93,'(a)') 'calculating alpha'
   call aa_dot_vector(p1,tmp_product)
   alpha_demoninator = dot_product(p2,tmp_product)
@@ -906,27 +904,38 @@ iteration_loop: do iterstep = 1, iterstepmax
     call print_debug_vector(tmp_product,"A.p1")
     write(93,'(a,g11.3)') 'alpha_demoninator = ',alpha_demoninator
   end if
-  if (abs(alpha_demoninator) < 1.d-60) call error_stop('small alpha_demoninator in bicg_mainsolver')
-  alpha = dot_product(r2_o,r1_o)/alpha_demoninator
+  if (abs(alpha_demoninator) < alpha_demoninator_min) then
+    write(*,'(a)') "WARNING: alpha_demoninator small in bicg, so size has been limited"
+    write(*,'(a,g11.3)') 'before limiting: alpha_demoninator = ',alpha_demoninator
+    alpha_demoninator = sign(alpha_demoninator_min,alpha_demoninator)
+    write(*,'(a,g11.3)') 'after limiting: alpha_demoninator = ',alpha_demoninator
+  end if
+  alpha = dot_product(r2,r1)/alpha_demoninator
+  if (abs(alpha) > alpha_max) then
+    write(*,'(a)') "WARNING: alpha large in bicg, so size has been limited"
+    write(*,'(a,g11.3)') 'before limiting: alpha = ',alpha
+    alpha = sign(alpha_max,alpha)
+    write(*,'(a,g11.3)') 'after limiting: alpha = ',alpha
+  end if
   if (debug) then
-    call print_debug_vector(r1_o,"r1_o")
-    call print_debug_vector(r2_o,"r2_o")
+    call print_debug_vector(r1,"r1")
+    call print_debug_vector(r2,"r2")
     write(93,'(a,g11.3)') 'alpha = ',alpha
   end if
 
 ! update r's
-! r1_n = r1_o - alpha*A.p1
+! r1 = r1 - alpha*A.p1
 ! tmp_product already stores A.p1
   if (debug) write(93,'(a)') 'updating rs'
-  r1_n = r1_o - alpha*tmp_product
-! r2_n = r2_o - alpha*A^T.p2
+  r1 = r1 - alpha*tmp_product
+! r2 = r2 - alpha*A^T.p2
   call aa_transpose_dot_vector(p2,tmp_product)
-  r2_n = r2_o - alpha*tmp_product
+  r2 = r2 - alpha*tmp_product
 ! and calculate corresponding product
-  r_n_product = dot_product(r1_n,r2_n)
+  r_n_product = dot_product(r1,r2)
   if (debug) then
-    call print_debug_vector(r1_n,"r1_n")
-    call print_debug_vector(r2_n,"r2_n")
+    call print_debug_vector(r1,"r1")
+    call print_debug_vector(r2,"r2")
     call print_debug_vector(tmp_product,"A^T.p2")
     write(93,'(a,g11.3)') 'r_n_product = ',r_n_product
   end if
@@ -935,9 +944,9 @@ iteration_loop: do iterstep = 1, iterstepmax
   delphi = delphi + alpha*p1
   if (debug) call print_debug_vector(delphi,"delphi updated")
 
-! check on convergence, noting that r1_n is the residual vector
+! check on convergence, noting that r1 is the residual vector
   iterres_old = iterres
-  iterres = sqrt(dot_product(r1_n,r1_n)/dble(ptotal))
+  iterres = sqrt(dot_product(r1,r1)/dble(ptotal))
   
   if (debug) then
     write(93,'(1(a,i8))') "iterstep = ",iterstep
@@ -968,7 +977,12 @@ iteration_loop: do iterstep = 1, iterstepmax
   end if
 
 ! calculate beta
-  if (abs(beta_demoninator) < 1.d-60) call error_stop('small beta_demoninator in bicg_mainsolver')
+  if (abs(beta_demoninator) < beta_demoninator_min) then
+    write(*,'(a)') "WARNING: beta_demoninator small in bicg, so size has been limited"
+    write(*,'(a,g11.3)') 'before limiting: beta_demoninator = ',beta_demoninator
+    beta_demoninator = sign(beta_demoninator_min,beta_demoninator)
+    write(*,'(a,g11.3)') 'after limiting: beta_demoninator = ',beta_demoninator
+  end if
   beta = r_n_product/beta_demoninator
   if (debug) then
     write(93,'(a,g11.3)') 'r_n_product = ',r_n_product
@@ -977,8 +991,8 @@ iteration_loop: do iterstep = 1, iterstepmax
   end if
 
 ! update p's
-  p1 = r1_n + beta*p1
-  p2 = r2_n + beta*p2
+  p1 = r1 + beta*p1
+  p2 = r2 + beta*p2
   if (debug) then
     write(93,'(a)') 'updating ps'
     call print_debug_vector(p1,"p1")
@@ -1097,6 +1111,30 @@ end do
 write(93,'(a)') repeat('-',10)
 
 end subroutine print_debug_vector
+
+!-----------------------------------------------------------------
+
+subroutine print_jacobian_matrix
+
+use general_module
+integer :: ppe, mm, m, ns, pppu
+character(len=1000) :: formatline
+character(len=20) :: ptotalformat
+
+ptotalformat=trim(dindexformat(ptotal))
+write(93,'(a/a)') repeat('+',10),"jacobian matrix"
+ppe = 0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
+  do ns = 1, ubound(var(m)%funk,1)
+    ppe = ppe + 1
+    write(formatline,*) '('//trim(ptotalformat)//',',var(m)%funk(ns)%ndv,'(g11.3,a1,'//trim(ptotalformat)//',a1))'
+    write(93,fmt=formatline) ppe,(var(m)%funk(ns)%dv(pppu),'(',var(m)%funk(ns)%pp(pppu),')',pppu=1,var(m)%funk(ns)%ndv)
+  end do
+end do
+write(93,'(a)') repeat('-',10)
+
+end subroutine print_jacobian_matrix
 
 !-----------------------------------------------------------------
 
