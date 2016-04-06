@@ -870,6 +870,16 @@ p2 = r2_n
 
 iterres = sqrt(dot_product(r1_n,r1_n)/dble(ptotal)) ! initialise the residual
 
+if (debug) then
+  call print_debug_vector(r1_n,"r1_n at start")
+  call print_debug_vector(r2_n,"r2_n at start")
+  call print_debug_vector(p1,"p1 at start")
+  call print_debug_vector(p2,"p2 at start")
+  call print_debug_vector(delphi,"delphi at start")
+  write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
+  write(93,'(a)') repeat('-',80)
+end if
+
 if (debug_sparse) then
   write(*,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
   if (convergence_details_file) &
@@ -879,6 +889,8 @@ end if
 ! start iteration loop
 iteration_loop: do iterstep = 1, iterstepmax
 
+  if (debug) write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
+
 ! increment r's
   r1_o = r1_n
   r2_o = r2_n
@@ -886,37 +898,50 @@ iteration_loop: do iterstep = 1, iterstepmax
   beta_demoninator = r_n_product
 
 ! calculate alpha = (r2_o.r1_o)/(p2.A.p1)
+  if (debug) write(93,'(a)') 'calculating alpha'
   call aa_dot_vector(p1,tmp_product)
   alpha_demoninator = dot_product(p2,tmp_product)
+  if (debug) then
+    call print_debug_vector(p1,"p1")
+    call print_debug_vector(tmp_product,"A.p1")
+    write(93,'(a,g11.3)') 'alpha_demoninator = ',alpha_demoninator
+  end if
   if (abs(alpha_demoninator) < 1.d-60) call error_stop('small alpha_demoninator in bicg_mainsolver')
   alpha = dot_product(r2_o,r1_o)/alpha_demoninator
+  if (debug) then
+    call print_debug_vector(r1_o,"r1_o")
+    call print_debug_vector(r2_o,"r2_o")
+    write(93,'(a,g11.3)') 'alpha = ',alpha
+  end if
 
 ! update r's
 ! r1_n = r1_o - alpha*A.p1
 ! tmp_product already stores A.p1
+  if (debug) write(93,'(a)') 'updating rs'
   r1_n = r1_o - alpha*tmp_product
 ! r2_n = r2_o - alpha*A^T.p2
   call aa_transpose_dot_vector(p2,tmp_product)
   r2_n = r2_o - alpha*tmp_product
 ! and calculate corresponding product
   r_n_product = dot_product(r1_n,r2_n)
+  if (debug) then
+    call print_debug_vector(r1_n,"r1_n")
+    call print_debug_vector(r2_n,"r2_n")
+    call print_debug_vector(tmp_product,"A^T.p2")
+    write(93,'(a,g11.3)') 'r_n_product = ',r_n_product
+  end if
 
 ! update delphi
   delphi = delphi + alpha*p1
+  if (debug) call print_debug_vector(delphi,"delphi updated")
 
 ! check on convergence, noting that r1_n is the residual vector
   iterres_old = iterres
   iterres = sqrt(dot_product(r1_n,r1_n)/dble(ptotal))
   
   if (debug) then
-    write(93,*) 'MMMMMMMMMMMMMMMMMMMMM'
     write(93,'(1(a,i8))') "iterstep = ",iterstep
     write(93,'(2(a,g14.7))') "iterres = ",iterres,": iterres_old = ",iterres_old
-!   write(93,'(a)') 'pp,delphi(old),deldelphi,delphi,ff(old),delff,ff'
-!   do pp = 1, ptotal
-!     write(93,'(i10,6(g14.7))') pp,delphi(pp)-lambda*deldelphi(pp),deldelphi(pp),delphi(pp),ff(pp)-lambda*delff(pp), &
-!       delff(pp),ff(pp)
-!   end do
   end if
 
   if (debug_sparse) then
@@ -945,10 +970,20 @@ iteration_loop: do iterstep = 1, iterstepmax
 ! calculate beta
   if (abs(beta_demoninator) < 1.d-60) call error_stop('small beta_demoninator in bicg_mainsolver')
   beta = r_n_product/beta_demoninator
+  if (debug) then
+    write(93,'(a,g11.3)') 'r_n_product = ',r_n_product
+    write(93,'(a,g11.3)') 'beta_demoninator = ',beta_demoninator
+    write(93,'(a,g11.3)') 'beta = ',beta
+  end if
 
 ! update p's
-  p1 = r1_o + beta*p1
-  p2 = r2_o + beta*p2
+  p1 = r1_n + beta*p1
+  p2 = r2_n + beta*p2
+  if (debug) then
+    write(93,'(a)') 'updating ps'
+    call print_debug_vector(p1,"p1")
+    call print_debug_vector(p2,"p2")
+  end if
 
 end do iteration_loop
   
@@ -1042,6 +1077,26 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
 end do
 
 end subroutine aa_transpose_dot_vector
+
+!-----------------------------------------------------------------
+
+subroutine print_debug_vector(vector,description)
+
+use general_module
+double precision, dimension(:), allocatable :: vector
+character(len=*) :: description
+integer :: n, nmax
+character(len=1000) :: formatline
+
+write(93,'(a/a)') repeat('+',10),description
+nmax = ubound(vector,1)
+formatline = '('//trim(dindexformat(nmax))//',a,g11.3)'
+do n = 1, nmax
+  write(93,fmt=formatline) n," = ",vector(n)
+end do
+write(93,'(a)') repeat('-',10)
+
+end subroutine print_debug_vector
 
 !-----------------------------------------------------------------
 
