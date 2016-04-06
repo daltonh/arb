@@ -823,7 +823,7 @@ end subroutine nondimensionalise_equations
 subroutine bicg_mainsolver(ierror)
 
 ! here we use a unpreconditioned bicg technique to solve the linear system, using equation funk data directly
-! routine is based on numerical recipes recipe, p77, noting typo in p update lines
+! routine is based on pseudo-code from H. A. van der Vorst, SIAM J. Sci. and Stat. Comput., 13(2), 631–644., DOI:10.1137/0913035
 
 use general_module
 use equation_module
