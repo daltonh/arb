@@ -820,20 +820,23 @@ end subroutine nondimensionalise_equations
 
 !-----------------------------------------------------------------
 
-subroutine bicg_mainsolver(ierror)
+subroutine bicg_mainsolver(ierror,stabilised)
 
 ! here we use a unpreconditioned bicg technique to solve the linear system, using equation funk data directly
 ! routine is based on pseudo-code from H. A. van der Vorst, SIAM J. Sci. and Stat. Comput., 13(2), 631–644., DOI:10.1137/0913035
+! the logical stabilised determines whether bicg or bicgstab is used
 
 use general_module
 use equation_module
 
+logical :: stabilised
 integer :: ierror, mm, m, ns, j, iterstep, ppu
 character(len=1000) :: formatline
-double precision, dimension(:), allocatable, save :: r1, r2, p1, p2, v ! allocate these once as their size doesn't change
-double precision :: alpha, beta, iterres, iterres_old, alpha_demoninator, rho_o, rho
-double precision, parameter :: alpha_max = 1.d6, beta_max = 1.d6, alpha_demoninator_min = tiny(1.d0), rho_o_min = tiny(1.d0), &
-  increment_multiplier = 1.d-1
+double precision, dimension(:), allocatable, save :: r1, r2, p1, p2, v, t, s ! allocate these once as their size doesn't change
+double precision :: alpha, beta, iterres, iterres_old, alpha_demoninator, rho_o, rho, omega, omega_demoninator
+double precision, parameter :: alpha_max = 1.d6, beta_max = 1.d6, omega_max = 1.d6, &
+  alpha_demoninator_min = tiny(1.d0), rho_o_min = tiny(1.d0), increment_multiplier = 1.d-1, omega_min = tiny(1.d0), &
+  omega_demoninator_min = tiny(1.d0)
 logical :: restart ! this is a flag to indicate that solution needs to be restarted
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
@@ -848,39 +851,24 @@ call nondimensionalise_equations(forward=.true.)
 
 !---------------------
 ! initialise and allocate loop variables
-if (.not.allocated(r1)) allocate(r1(ptotal),r2(ptotal),p1(ptotal),p2(ptotal),v(ptotal))
+if (.not.allocated(r1)) then
+  if (stabilised) then
+    allocate(r1(ptotal),r2(ptotal),p1(ptotal),v(ptotal),t(ptotal),s(ptotal))
+  else
+    allocate(r1(ptotal),r2(ptotal),p1(ptotal),p2(ptotal),v(ptotal))
+  end if
+end if
+
+restart = .false.
 
 ! initial guess for delphi is the zero vector
 delphi = 0.d0
 
-! calculate initial residual r1
-call aa_dot_vector(delphi,r1) ! calculate the product of the equation matrix (A) with the initial solution vector (delphi), and store in r1
-! form the initial residual as b - A.x, but with b = -equation (=-var(m)%funk(ns)%v) and A.x stored as r1 from above
-! set initial ff array (linear equation error array) from newton's equations
-j = 0
-do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(mm)
-  do ns = 1, ubound(var(m)%funk,1)
-    j = j + 1
-    r1(j) = -var(m)%funk(ns)%v - r1(j)
-  end do
-end do
-r2 = r1
-!rho = dot_product(r1,r2)
-rho = 1.d0
-p1 = 0.d0 
-p2 = 0.d0 
-
-iterres = sqrt(dot_product(r1,r1)/dble(ptotal)) ! initialise the residual
-restart = .false.
+! setup the vectors
+call initialise_bicg(stabilised,r1,r2,p1,p2,v,rho,alpha,omega,iterres,debug)
 
 if (debug) then
   call print_jacobian_matrix
-  call print_debug_vector(r1,"r1 at start")
-  call print_debug_vector(r2,"r2 at start")
-  call print_debug_vector(p1,"p1 at start")
-  call print_debug_vector(p2,"p2 at start")
-  call print_debug_vector(delphi,"delphi at start")
   write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
   write(93,'(a)') repeat('-',80)
 end if
@@ -896,33 +884,11 @@ iteration_loop: do
     iterstep = iterstep + 1
     if (debug) write(93,'(a)') 'RRRRR RESTART REQUESTED'
     do j = 1, ptotal
-      delphi(j) = delphi(j) + increment_multiplier*random() ! add a random increment onto delphi, noting that delphi should be normalised
-!     delphi(j) = random() ! overwrite delphi with a random increment, noting that delphi should be normalised
+!     delphi(j) = delphi(j) + increment_multiplier*random() ! add a random increment onto delphi, noting that delphi should be normalised
+      delphi(j) = random() ! overwrite delphi with a random increment, noting that delphi should be normalised
     end do
-    call aa_dot_vector(delphi,r1)
-    j = 0
-    do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-      m = var_list(var_list_number_equation)%list(mm)
-      do ns = 1, ubound(var(m)%funk,1)
-        j = j + 1
-        r1(j) = -var(m)%funk(ns)%v - r1(j)
-      end do
-    end do
-    r2 = r1
-!   rho = dot_product(r1,r2)
-    rho = 1.d0
-    p1 = 0.d0 
-    p2 = 0.d0 
-    iterres = sqrt(dot_product(r1,r1)/dble(ptotal)) ! initialise the residual
+    call initialise_bicg(stabilised,r1,r2,p1,p2,v,rho,alpha,omega,iterres,debug)
     restart = .false.
-    if (debug) then
-      call print_jacobian_matrix
-      call print_debug_vector(r1,"r1 at restart")
-      call print_debug_vector(r2,"r2 at restart")
-      call print_debug_vector(p1,"p1 at restart")
-      call print_debug_vector(p2,"p2 at restart")
-      call print_debug_vector(delphi,"delphi at restart")
-    end if
   end if
 
 ! check on convergence, noting that r1 is the residual vector
@@ -977,6 +943,14 @@ iteration_loop: do
     cycle iteration_loop
   end if
   beta = rho/rho_o
+  if (stabilised) then
+    if (abs(omega) < omega_min) then
+      write(*,'(a)') "WARNING: omega small in bicg, restarting iterations"
+      restart = .true.
+      cycle iteration_loop
+    end if
+    beta = beta*(alpha/omega)
+  end if
   if (debug) then
     write(93,'(a,g11.3)') 'rho = ',rho
     write(93,'(a,g11.3)') 'rho_o = ',rho_o
@@ -989,23 +963,32 @@ iteration_loop: do
   end if
 
 ! update p's
-  p1 = r1 + beta*p1
-  p2 = r2 + beta*p2
-  if (debug) then
-    write(93,'(a)') 'updating ps'
-    call print_debug_vector(p1,"p1")
-    call print_debug_vector(p2,"p2")
+  if (stabilised) then
+    p1 = r1 + beta*(p1-omega*v)
+    if (debug) then
+      write(93,'(a)') 'updating p1'
+      call print_debug_vector(p1,"p1")
+    end if
+  else
+    p1 = r1 + beta*p1
+    p2 = r2 + beta*p2
+    if (debug) then
+      write(93,'(a)') 'updating ps'
+      call print_debug_vector(p1,"p1")
+      call print_debug_vector(p2,"p2")
+    end if
   end if
 
 ! calculate alpha = (r2.r1)/(p2.A.p1)
   if (debug) write(93,'(a)') 'calculating alpha'
   call aa_dot_vector(p1,v) ! v = A.p1
-  alpha_demoninator = dot_product(p2,v)
-  if (debug) then
-    call print_debug_vector(p1,"p1")
-    call print_debug_vector(v,"A.p1")
-    write(93,'(a,g11.3)') 'alpha_demoninator = ',alpha_demoninator
+  if (debug) call print_debug_vector(v,"A.p1")
+  if (stabilised) then
+    alpha_demoninator = dot_product(r2,v)
+  else
+    alpha_demoninator = dot_product(p2,v)
   end if
+  if (debug) write(93,'(a,g11.3)') 'alpha_demoninator = ',alpha_demoninator
   if (abs(alpha_demoninator) < alpha_demoninator_min) then
     write(*,'(a)') "WARNING: alpha_demoninator small in bicg, restarting iterations"
     restart = .true.
@@ -1022,22 +1005,58 @@ iteration_loop: do
     write(93,'(a,g11.3)') 'alpha = ',alpha
   end if
 
+  if (stabilised) then
+! bicgstab update
+
+! calculate s, t, and omega
+    s = r1 - alpha*v
+    if (debug) call print_debug_vector(s,"s updated")
+    call aa_dot_vector(s,t)
+    if (debug) call print_debug_vector(t,"t updated")
+    omega_demoninator = dot_product(t,t)
+    if (debug) write(93,'(a,g11.3)') 'omega_demoninator = ',omega_demoninator
+    if (abs(omega_demoninator) < omega_demoninator_min) then
+      write(*,'(a)') "WARNING: omega_demoninator small in bicg, restarting iterations"
+      restart = .true.
+      cycle iteration_loop
+    end if
+    omega = dot_product(t,s)/omega_demoninator
+    if (debug) write(93,'(a,g11.3)') 'omega = ',omega
+    if (abs(omega) > omega_max) then
+      write(*,'(a)') "WARNING: omega large in bicg, restarting iterations"
+      restart = .true.
+      cycle iteration_loop
+    end if
+
 ! update delphi
-  delphi = delphi + alpha*p1
-  if (debug) call print_debug_vector(delphi,"delphi updated")
+    delphi = delphi + alpha*p1 + omega*s
+    if (debug) call print_debug_vector(delphi,"delphi updated")
+
+! update r1
+    r1 = s - omega*t
+    if (debug) call print_debug_vector(r1,"r1 updated")
+
+  else
+! bicg update
+
+! update delphi
+    delphi = delphi + alpha*p1
+    if (debug) call print_debug_vector(delphi,"delphi updated")
 
 ! update r's
 ! r1 = r1 - alpha*A.p1
 ! v already stores A.p1
-  if (debug) write(93,'(a)') 'updating rs'
-  r1 = r1 - alpha*v
+    if (debug) write(93,'(a)') 'updating rs'
+    r1 = r1 - alpha*v
 ! r2 = r2 - alpha*A^T.p2
-  call aa_transpose_dot_vector(p2,v) ! temporarily use v to store A^T.p2
-  r2 = r2 - alpha*v
-  if (debug) then
-    call print_debug_vector(v,"A^T.p2")
-    call print_debug_vector(r1,"r1")
-    call print_debug_vector(r2,"r2")
+    call aa_transpose_dot_vector(p2,v) ! temporarily use v to store A^T.p2
+    r2 = r2 - alpha*v
+    if (debug) then
+      call print_debug_vector(v,"A^T.p2")
+      call print_debug_vector(r1,"r1")
+      call print_debug_vector(r2,"r2")
+    end if
+
   end if
 
   iterstep = iterstep + 1 ! update the number of iterations counter
@@ -1075,6 +1094,60 @@ end do
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine bicg_mainsolver'
 
 end subroutine bicg_mainsolver
+
+!-----------------------------------------------------------------
+
+subroutine initialise_bicg(stabilised,r1,r2,p1,p2,v,rho,alpha,omega,iterres,debug)
+
+! setup start/restart of bicg given set/reset delphi
+
+use general_module
+use equation_module
+
+logical :: stabilised,debug
+integer :: mm, m, ns, j
+double precision, dimension(:), allocatable :: r1, r2, p1, p2, v
+double precision :: alpha, iterres, rho, omega
+
+! calculate initial residual r1
+call aa_dot_vector(delphi,r1) ! calculate the product of the equation matrix (A) with the initial solution vector (delphi), and store in r1
+! form the initial residual as b - A.x, but with b = -equation (=-var(m)%funk(ns)%v) and A.x stored as r1 from above
+! set initial ff array (linear equation error array) from newton's equations
+j = 0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
+  do ns = 1, ubound(var(m)%funk,1)
+    j = j + 1
+    r1(j) = -var(m)%funk(ns)%v - r1(j)
+  end do
+end do
+r2 = r1
+!rho = dot_product(r1,r2)
+rho = 1.d0
+p1 = 0.d0 
+if (stabilised) then
+  alpha = 1.d0
+  omega = 1.d0
+  v = 0.d0 
+else
+  p2 = 0.d0 
+end if
+
+if (debug) then
+  call print_debug_vector(r1,"r1 in initialise_bicg")
+  call print_debug_vector(r2,"r2 in initialise_bicg")
+  call print_debug_vector(p1,"p1 in initialise_bicg")
+  if (stabilised) then
+    call print_debug_vector(v,"v in initialise_bicg")
+  else
+    call print_debug_vector(p2,"p2 in initialise_bicg")
+  end if
+  call print_debug_vector(delphi,"delphi in initialise_bicg")
+end if
+
+iterres = sqrt(dot_product(r1,r1)/dble(ptotal)) ! initialise the residual
+
+end subroutine initialise_bicg
 
 !-----------------------------------------------------------------
 
