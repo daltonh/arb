@@ -830,9 +830,11 @@ use equation_module
 
 integer :: ierror, mm, m, ns, j, iterstep, ppu
 character(len=1000) :: formatline
-double precision, dimension(:), allocatable, save :: r1, r2, p1, p2, tmp_product ! allocate these once, and then keep using them
-double precision :: alpha, beta, iterres, iterres_old, alpha_demoninator, beta_demoninator, r_n_product
-double precision, parameter :: alpha_max = 1.d6, alpha_demoninator_min = 1.d-60, beta_demoninator_min = 1.d-60
+double precision, dimension(:), allocatable, save :: r1, r2, p1, p2, v ! allocate these once as their size doesn't change
+double precision :: alpha, beta, iterres, iterres_old, alpha_demoninator, rho_o, rho
+double precision, parameter :: alpha_max = 1.d6, beta_max = 1.d6, alpha_demoninator_min = tiny(1.d0), rho_o_min = tiny(1.d0), &
+  increment_multiplier = 1.d-1
+logical :: restart ! this is a flag to indicate that solution needs to be restarted
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -846,14 +848,14 @@ call nondimensionalise_equations(forward=.true.)
 
 !---------------------
 ! initialise and allocate loop variables
-if (.not.allocated(r1)) allocate(r1(ptotal),r2(ptotal),p1(ptotal),p2(ptotal),tmp_product(ptotal))
+if (.not.allocated(r1)) allocate(r1(ptotal),r2(ptotal),p1(ptotal),p2(ptotal),v(ptotal))
 
 ! initial guess for delphi is the zero vector
 delphi = 0.d0
 
 ! calculate initial residual r1
 call aa_dot_vector(delphi,r1) ! calculate the product of the equation matrix (A) with the initial solution vector (delphi), and store in r1
-! form the initial residual as b - A.x, but with b = -equation and A.x stored as r1
+! form the initial residual as b - A.x, but with b = -equation (=-var(m)%funk(ns)%v) and A.x stored as r1 from above
 ! set initial ff array (linear equation error array) from newton's equations
 j = 0
 do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
@@ -864,11 +866,13 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   end do
 end do
 r2 = r1
-r_n_product = dot_product(r1,r2)
-p1 = r1 
-p2 = r2 
+!rho = dot_product(r1,r2)
+rho = 1.d0
+p1 = 0.d0 
+p2 = 0.d0 
 
 iterres = sqrt(dot_product(r1,r1)/dble(ptotal)) ! initialise the residual
+restart = .false.
 
 if (debug) then
   call print_jacobian_matrix
@@ -881,68 +885,45 @@ if (debug) then
   write(93,'(a)') repeat('-',80)
 end if
 
-if (debug_sparse) then
-  write(*,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
-  if (convergence_details_file) &
-    write(fconverge,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
-end if
-
 ! start iteration loop
-iteration_loop: do iterstep = 1, iterstepmax
+iterstep = 0
+iteration_loop: do
 
   if (debug) write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
 
-! save beta_product from the previous iteration as the beta_demoninator
-  beta_demoninator = r_n_product
-
-! calculate alpha = (r2.r1)/(p2.A.p1)
-  if (debug) write(93,'(a)') 'calculating alpha'
-  call aa_dot_vector(p1,tmp_product)
-  alpha_demoninator = dot_product(p2,tmp_product)
-  if (debug) then
-    call print_debug_vector(p1,"p1")
-    call print_debug_vector(tmp_product,"A.p1")
-    write(93,'(a,g11.3)') 'alpha_demoninator = ',alpha_demoninator
+! if restart has been requested, do so now
+  if (restart) then
+    iterstep = iterstep + 1
+    if (debug) write(93,'(a)') 'RRRRR RESTART REQUESTED'
+    do j = 1, ptotal
+      delphi(j) = delphi(j) + increment_multiplier*random() ! add a random increment onto delphi, noting that delphi should be normalised
+!     delphi(j) = random() ! overwrite delphi with a random increment, noting that delphi should be normalised
+    end do
+    call aa_dot_vector(delphi,r1)
+    j = 0
+    do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+      m = var_list(var_list_number_equation)%list(mm)
+      do ns = 1, ubound(var(m)%funk,1)
+        j = j + 1
+        r1(j) = -var(m)%funk(ns)%v - r1(j)
+      end do
+    end do
+    r2 = r1
+!   rho = dot_product(r1,r2)
+    rho = 1.d0
+    p1 = 0.d0 
+    p2 = 0.d0 
+    iterres = sqrt(dot_product(r1,r1)/dble(ptotal)) ! initialise the residual
+    restart = .false.
+    if (debug) then
+      call print_jacobian_matrix
+      call print_debug_vector(r1,"r1 at restart")
+      call print_debug_vector(r2,"r2 at restart")
+      call print_debug_vector(p1,"p1 at restart")
+      call print_debug_vector(p2,"p2 at restart")
+      call print_debug_vector(delphi,"delphi at restart")
+    end if
   end if
-  if (abs(alpha_demoninator) < alpha_demoninator_min) then
-    write(*,'(a)') "WARNING: alpha_demoninator small in bicg, so size has been limited"
-    write(*,'(a,g11.3)') 'before limiting: alpha_demoninator = ',alpha_demoninator
-    alpha_demoninator = sign(alpha_demoninator_min,alpha_demoninator)
-    write(*,'(a,g11.3)') 'after limiting: alpha_demoninator = ',alpha_demoninator
-  end if
-  alpha = dot_product(r2,r1)/alpha_demoninator
-  if (abs(alpha) > alpha_max) then
-    write(*,'(a)') "WARNING: alpha large in bicg, so size has been limited"
-    write(*,'(a,g11.3)') 'before limiting: alpha = ',alpha
-    alpha = sign(alpha_max,alpha)
-    write(*,'(a,g11.3)') 'after limiting: alpha = ',alpha
-  end if
-  if (debug) then
-    call print_debug_vector(r1,"r1")
-    call print_debug_vector(r2,"r2")
-    write(93,'(a,g11.3)') 'alpha = ',alpha
-  end if
-
-! update r's
-! r1 = r1 - alpha*A.p1
-! tmp_product already stores A.p1
-  if (debug) write(93,'(a)') 'updating rs'
-  r1 = r1 - alpha*tmp_product
-! r2 = r2 - alpha*A^T.p2
-  call aa_transpose_dot_vector(p2,tmp_product)
-  r2 = r2 - alpha*tmp_product
-! and calculate corresponding product
-  r_n_product = dot_product(r1,r2)
-  if (debug) then
-    call print_debug_vector(r1,"r1")
-    call print_debug_vector(r2,"r2")
-    call print_debug_vector(tmp_product,"A^T.p2")
-    write(93,'(a,g11.3)') 'r_n_product = ',r_n_product
-  end if
-
-! update delphi
-  delphi = delphi + alpha*p1
-  if (debug) call print_debug_vector(delphi,"delphi updated")
 
 ! check on convergence, noting that r1 is the residual vector
   iterres_old = iterres
@@ -955,20 +936,20 @@ iteration_loop: do iterstep = 1, iterstepmax
 
   if (debug_sparse) then
     if (mod(iterstep,iterstepcheck) == 0) then
-      write(*,'(1(a,i8),2(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep, &
+      write(*,'(1(a,i8),2(a,g14.7))') "ITERATIONS: iterstep = ",iterstep, &
         ": iterres = ",iterres,": del iterres = ",iterres_old-iterres
       if (convergence_details_file) &
-        write(fconverge,'(1(a,i8),2(a,g14.7))') "ITERATIONS: intermediate iterstep = ",iterstep, &
+        write(fconverge,'(1(a,i8),2(a,g14.7))') "ITERATIONS: iterstep = ",iterstep, &
           ": iterres = ",iterres,": del iterres = ",iterres_old-iterres
     end if
   end if
 
-  if (iterres < iterrestol) then
+  if (iterres < iterrestol) then ! iterations have converged
     ierror = 0
     exit iteration_loop
   end if
 
-  if (mod(iterstep,iterstepcheck) == 0) then
+  if (mod(iterstep,iterstepcheck) == 0) then ! user has requested stop, flag with ierror=2
     if (check_stopfile("stopback")) then
       write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
       ierror = 2
@@ -976,18 +957,35 @@ iteration_loop: do iterstep = 1, iterstepmax
     end if
   end if
 
-! calculate beta
-  if (abs(beta_demoninator) < beta_demoninator_min) then
-    write(*,'(a)') "WARNING: beta_demoninator small in bicg, so size has been limited"
-    write(*,'(a,g11.3)') 'before limiting: beta_demoninator = ',beta_demoninator
-    beta_demoninator = sign(beta_demoninator_min,beta_demoninator)
-    write(*,'(a,g11.3)') 'after limiting: beta_demoninator = ',beta_demoninator
+  if (iterstep == iterstepmax) then ! maximum iterations have been performed without convergence
+    exit iteration_loop
   end if
-  beta = r_n_product/beta_demoninator
+
+! save rho from the previous iteration as rho_o
+  rho_o = rho
+! and calculate the new rho
+  rho = dot_product(r1,r2)
   if (debug) then
-    write(93,'(a,g11.3)') 'r_n_product = ',r_n_product
-    write(93,'(a,g11.3)') 'beta_demoninator = ',beta_demoninator
+    write(93,'(a,g11.3)') 'rho_o = ',rho_o
+    write(93,'(a,g11.3)') 'rho = ',rho
+  end if
+
+! calculate beta
+  if (abs(rho_o) < rho_o_min) then
+    write(*,'(a)') "WARNING: rho_o small in bicg, restarting iterations"
+    restart = .true.
+    cycle iteration_loop
+  end if
+  beta = rho/rho_o
+  if (debug) then
+    write(93,'(a,g11.3)') 'rho = ',rho
+    write(93,'(a,g11.3)') 'rho_o = ',rho_o
     write(93,'(a,g11.3)') 'beta = ',beta
+  end if
+  if (abs(beta) > beta_max) then
+    write(*,'(a)') "WARNING: beta large in bicg, restarting iterations"
+    restart = .true.
+    cycle iteration_loop
   end if
 
 ! update p's
@@ -998,6 +996,51 @@ iteration_loop: do iterstep = 1, iterstepmax
     call print_debug_vector(p1,"p1")
     call print_debug_vector(p2,"p2")
   end if
+
+! calculate alpha = (r2.r1)/(p2.A.p1)
+  if (debug) write(93,'(a)') 'calculating alpha'
+  call aa_dot_vector(p1,v) ! v = A.p1
+  alpha_demoninator = dot_product(p2,v)
+  if (debug) then
+    call print_debug_vector(p1,"p1")
+    call print_debug_vector(v,"A.p1")
+    write(93,'(a,g11.3)') 'alpha_demoninator = ',alpha_demoninator
+  end if
+  if (abs(alpha_demoninator) < alpha_demoninator_min) then
+    write(*,'(a)') "WARNING: alpha_demoninator small in bicg, restarting iterations"
+    restart = .true.
+    cycle iteration_loop
+  end if
+  alpha = rho/alpha_demoninator
+  if (abs(alpha) > alpha_max) then
+    write(*,'(a)') "WARNING: alpha large in bicg, restarting iterations"
+    restart = .true.
+    cycle iteration_loop
+  end if
+  if (debug) then
+    write(93,'(a,g11.3)') 'rho = ',rho
+    write(93,'(a,g11.3)') 'alpha = ',alpha
+  end if
+
+! update delphi
+  delphi = delphi + alpha*p1
+  if (debug) call print_debug_vector(delphi,"delphi updated")
+
+! update r's
+! r1 = r1 - alpha*A.p1
+! v already stores A.p1
+  if (debug) write(93,'(a)') 'updating rs'
+  r1 = r1 - alpha*v
+! r2 = r2 - alpha*A^T.p2
+  call aa_transpose_dot_vector(p2,v) ! temporarily use v to store A^T.p2
+  r2 = r2 - alpha*v
+  if (debug) then
+    call print_debug_vector(v,"A^T.p2")
+    call print_debug_vector(r1,"r1")
+    call print_debug_vector(r2,"r2")
+  end if
+
+  iterstep = iterstep + 1 ! update the number of iterations counter
 
 end do iteration_loop
   
