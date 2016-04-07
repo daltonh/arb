@@ -67,6 +67,8 @@ end type multigrid_type
   
 type (multigrid_type), dimension(:), allocatable :: multigrid ! an array of of the multigrid levels
 
+double precision, dimension(:), allocatable, save :: e_scale ! scaling factor when normalising the equations for some iterative methods
+
 integer, save :: nmultigrid ! number of levels within the multigrid structure, calculated when the multigrid structure is calculated
   
 !-----------------------------------------------------------------
@@ -271,7 +273,7 @@ character(len=1000) :: formatline
 double precision, dimension(:), allocatable :: deldelphi, ff, delff
 double precision :: deldelphi_grid, iterres, iterres_old, delff2, ffdelff, lambda
 logical :: singlegrid ! if true then only the low level grid is used
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
 if (debug) debug_sparse = .true.
@@ -309,7 +311,8 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   end do
 end do
 
-iterres = sqrt(dot_product(ff,ff)/dble(ptotal)) ! initialise the residual
+!iterres = sqrt(dot_product(ff,ff)/dble(ptotal)) ! initialise the residual
+iterres = iterres_calc(ff)
 
 if (debug_sparse) then
   write(*,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
@@ -408,7 +411,8 @@ iteration_loop: do iterstep = 1, iterstepmax
     else
       ff = ff + lambda*delff
     end if
-    iterres = sqrt(dot_product(ff,ff)/dble(ptotal)) ! initialise the residual
+!   iterres = sqrt(dot_product(ff,ff)/dble(ptotal)) ! initialise the residual
+    iterres = iterres_calc(ff)
 
 !     write(*,'(2(a,i6),a,g14.7)') 'nl = ',nl,': ng = ',ng,': iterres = ',iterres
     
@@ -551,7 +555,7 @@ double precision, dimension(:), allocatable :: delff_linear ! the delff values
 logical, dimension(:), allocatable :: delff_marker ! a marker array showing what elements are used
 integer, dimension(:), allocatable :: delff_element_list ! and list of the elements
 logical :: debug_sparse = .true.
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 
 if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine calc_multigrid'
@@ -793,12 +797,23 @@ subroutine nondimensionalise_equations(forward)
 
 use general_module
 
-integer :: mm, m, ns, pppu, ppu, mu
+integer :: mm, m, ns, pppu, ppu, mu, ppe
 logical :: forward ! if true, then we are nondimensionalising the equations, otherwise, if false, we are dimensionalising them again
+logical, parameter :: normalise = .true. ! do additional normalisation, so that each equation/derivative is scaled so that the largest magnitude jacobian element per row becomes (positive) 1.d0, with a corresponding change to the rhs (ie, equation value)
 
+if (.not.allocated(e_scale)) then
+  allocate(e_scale(ptotal))
+  e_scale = 1.d0 ! if normalise isn't used then e_scale is set to 1
+end if
+if (normalise) then
+  if (forward) e_scale = 0.d0
+end if
+
+ppe = 0
 do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   m = var_list(var_list_number_equation)%list(mm) ! equation var number
   do ns = 1, ubound(var(m)%funk,1)
+    ppe = ppe + 1
     if (forward) then
       var(m)%funk(ns)%v = var(m)%funk(ns)%v/var(m)%magnitude
     else
@@ -809,12 +824,37 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
       mu = unknown_var_from_pp(ppu) ! unknown var number
       if (forward) then
         var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude/var(m)%magnitude
+        if (normalise) then
+          if (abs(var(m)%funk(ns)%dv(pppu)) > abs(e_scale(ppe))) e_scale(ppe) = var(m)%funk(ns)%dv(pppu)
+        end if
       else
         var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*var(m)%magnitude/var(mu)%magnitude
       end if
     end do
   end do
 end do
+
+if (normalise) then
+  ppe = 0
+  do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+    m = var_list(var_list_number_equation)%list(mm) ! equation var number
+    do ns = 1, ubound(var(m)%funk,1)
+      ppe = ppe + 1
+      if (forward) then
+        var(m)%funk(ns)%v = var(m)%funk(ns)%v/e_scale(ppe)
+      else
+        var(m)%funk(ns)%v = var(m)%funk(ns)%v*e_scale(ppe)
+      end if
+      do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
+        if (forward) then
+          var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)/e_scale(ppe)
+        else
+          var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*e_scale(ppe)
+        end if
+      end do
+    end do
+  end do
+end if
 
 end subroutine nondimensionalise_equations
 
@@ -835,7 +875,7 @@ character(len=1000) :: formatline
 double precision, dimension(:), allocatable, save :: r1, r2, p1, p2, v, t, s ! allocate these once as their size doesn't change
 double precision :: alpha, beta, iterres, iterres_old, alpha_demoninator, rho_o, rho, omega, omega_demoninator
 double precision, parameter :: alpha_max = 1.d6, beta_max = 1.d6, omega_max = 1.d6, &
-  alpha_demoninator_min = tiny(1.d0), rho_o_min = tiny(1.d0), increment_multiplier = 1.d-1, omega_min = tiny(1.d0), &
+  alpha_demoninator_min = tiny(1.d0), rho_o_min = tiny(1.d0), increment_multiplier = 1.d-3, omega_min = tiny(1.d0), &
   omega_demoninator_min = tiny(1.d0)
 logical :: restart ! this is a flag to indicate that solution needs to be restarted
 logical, parameter :: debug = .false.
@@ -893,7 +933,7 @@ iteration_loop: do
 
 ! check on convergence, noting that r1 is the residual vector
   iterres_old = iterres
-  iterres = sqrt(dot_product(r1,r1)/dble(ptotal))
+  iterres = iterres_calc(r1)
   
   if (debug) then
     write(93,'(1(a,i8))') "iterstep = ",iterstep
@@ -1145,9 +1185,21 @@ if (debug) then
   call print_debug_vector(delphi,"delphi in initialise_bicg")
 end if
 
-iterres = sqrt(dot_product(r1,r1)/dble(ptotal)) ! initialise the residual
+iterres = iterres_calc(r1)
 
 end subroutine initialise_bicg
+
+!-----------------------------------------------------------------
+
+double precision function iterres_calc(r)
+
+use general_module
+double precision, dimension(:), allocatable :: r
+
+! calculate the residual, here noting that r*e_scale in fortran does element by element multiplication
+iterres_calc = sqrt(dot_product(r*abs(e_scale),r*abs(e_scale))/dble(ptotal))
+
+end function iterres_calc
 
 !-----------------------------------------------------------------
 
