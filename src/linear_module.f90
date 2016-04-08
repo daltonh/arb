@@ -36,7 +36,7 @@ module linear_module
 
 implicit none
 private
-public iterative_mainsolver, multigrid_mainsolver, bicg_mainsolver
+public iterative_mainsolver, multigrid_mainsolver, bicg_mainsolver, quasinewton_mainsolver
 
 ! this is an object that stores details of the equations that each unknown references
 type equation_from_unknown_type
@@ -1279,7 +1279,7 @@ character(len=1000) :: formatline
 
 write(93,'(a/a)') repeat('+',10),description
 nmax = ubound(vector,1)
-formatline = '('//trim(dindexformat(nmax))//',a,g11.3)'
+formatline = '('//trim(dindexformat(nmax))//',a,g14.6)'
 do n = 1, nmax
   write(93,fmt=formatline) n," = ",vector(n)
 end do
@@ -1310,6 +1310,261 @@ end do
 write(93,'(a)') repeat('-',10)
 
 end subroutine print_jacobian_matrix
+
+!-----------------------------------------------------------------
+
+subroutine quasinewton_mainsolver(ierror)
+
+! here we use an unpreconditioned quasi-newton technique to solve the linear system, using equation funk data directly
+
+use general_module
+use equation_module
+
+integer :: ierror, mm, m, ns, j, iterstep, ppu
+character(len=1000) :: formatline
+double precision, dimension(:), allocatable, save :: e, v_o, p, x, p_o, x_o, delv, v, w  ! allocate these once as their size doesn't change
+double precision :: rrr, rrr_tol, rrr_o, lambda, alpha, beta, gamma, delrrr, iterres, delrrr_o
+double precision, parameter :: beta_min = 1.d-10, lambda_min = 1.d-2
+logical, parameter :: debug = .true.
+logical :: debug_sparse = .true.
+
+if (debug) debug_sparse = .true.
+if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine quasinewton_mainsolver'
+
+ierror = 1 ! this signals an error
+
+! nondimensionalise equations and their derivatives (forward = .true. implies that we are nondimensionalising)
+call nondimensionalise_equations(normalise=.false.,forward=.true.)
+
+!---------------------
+! initialise and allocate loop variables
+if (.not.allocated(e)) allocate(e(ptotal),v_o(ptotal),p(ptotal),x(ptotal),p_o(ptotal),x_o(ptotal), &
+  delv(ptotal),v(ptotal),w(ptotal))
+
+! initial guess for delphi is the zero vector
+delphi = 0.d0
+! form the initial e = E (ie, the equation values)
+j = 0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
+  do ns = 1, ubound(var(m)%funk,1)
+    j = j + 1
+    e(j) = var(m)%funk(ns)%v
+  end do
+end do
+rrr = dot_product(e,e)
+rrr_tol = dble(ptotal)*(iterrestol**2) ! form equivalent rrr tolerance
+
+if (debug) then
+  call print_debug_vector(e,"e")
+  call print_jacobian_matrix
+  write(93,'(a,g14.6)') 'rrr_tol = ',rrr_tol
+  write(93,'(a,g14.6)') 'rrr = ',rrr
+  write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": rrr = ",rrr
+  write(93,'(a)') repeat('-',80)
+end if
+
+! start iteration loop
+iterstep = 0
+outer_loop: do
+
+! recalculate rrr to guard against roundoff errors
+  rrr = dot_product(e,e)
+
+  if (debug) write(93,'(a,i10)') 'At start of outer iteration_loop, iterstep = ',iterstep
+
+! check on convergence, noting that r1 is the residual vector
+  
+  if (debug) then
+    iterres = sqrt(rrr/dble(ptotal))
+    write(93,'(2(a,g14.7))') "iterres = ",iterres,": rrr = ",rrr
+  end if
+
+  if (debug_sparse) then
+    if (mod(iterstep,iterstepcheck) == 0) then
+      iterres = sqrt(rrr/dble(ptotal))
+      write(*,'(1(a,i8),1(a,g14.7))') "OUTER ITERATIONS: iterstep = ",iterstep, &
+        ": iterres = ",iterres
+      if (convergence_details_file) &
+        write(fconverge,'(1(a,i8),1(a,g14.7))') "OUTER ITERATIONS: iterstep = ",iterstep, &
+          ": iterres = ",iterres
+    end if
+  end if
+
+  if (rrr < rrr_tol) then ! iterations have converged
+    ierror = 0
+    exit outer_loop
+  end if
+
+! if (mod(iterstep,iterstepcheck) == 0) then ! user has requested stop, flag with ierror=2
+!   if (check_stopfile("stopback")) then
+!     write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+!     ierror = 2
+!     exit iteration_loop
+!   end if
+! end if
+
+  if (iterstep == iterstepmax) then ! maximum iterations have been performed without convergence
+    exit outer_loop
+  end if
+
+  rrr_o = rrr ! save previous rrr
+! calculate v_o = 2*J^T.e
+  call aa_transpose_dot_vector(e,v_o) ! v_o = A.p1
+  v_o = 2.d0*v_o
+  p = 0.d0
+  x = 0.d0
+  delrrr_o = 0.d0
+  if (debug) then
+    write(93,'(a,g14.6)') 'rrr_o = ',rrr_o
+    call print_debug_vector(v_o,"v_o")
+    call print_debug_vector(p,"p")
+    call print_debug_vector(x,"x")
+    write(93,'(a,g14.6)') 'delrrr_o = ',delrrr_o
+  end if
+
+  inner_loop: do
+
+    iterstep = iterstep + 1 ! increment iteration number
+    lambda = 1.d0 ! reset backstepping parameter
+    p_o = p ! save previous projection direction
+    x_o = x ! save previous solution
+
+    if (debug) then
+      write(93,'(a)') 'start of inner loop:'
+      write(93,'(a,g14.6)') 'lambda = ',lambda
+      call print_debug_vector(p_o,"p_o")
+      call print_debug_vector(x_o,"x_o")
+    end if
+
+    lambda_loop: do
+  
+      p = lambda*x_o + (1.d0-lambda)*p_o ! new trial projection direction
+! calculate delv = J^T.(J.p)
+      call aa_dot_vector(p,v) ! use v here as temporary storage
+      call aa_transpose_dot_vector(v,delv)
+      v = v_o + delv
+      alpha = dot_product(v_o,v)
+      call aa_dot_vector(v,w)
+      beta = dot_product(w,w)
+      
+      if (debug) then
+        write(93,'(a)') 'start of lambda loop:'
+        write(93,'(a,g14.6)') 'lambda = ',lambda
+        call print_debug_vector(p,"p")
+        call print_debug_vector(delv,"delv")
+        call print_debug_vector(v,"v")
+        write(93,'(a,g14.6)') 'alpha = ',alpha
+        call print_debug_vector(w,"w")
+        write(93,'(a,g14.6)') 'beta = ',beta
+      end if
+
+      if (beta < beta_min) call error_stop('beta small in quasinewton_mainsolver')
+
+      gamma = alpha/(2.d0*beta)
+      delrrr = -alpha*gamma + beta*(gamma**2)
+
+      if (debug) then
+        write(93,'(a)') 'within lambda loop:'
+        write(93,'(a,g14.6)') 'gamma = ',gamma
+        write(93,'(a,g14.6)') 'delrrr = ',delrrr
+        write(93,'(a,g14.6)') 'delrrr_o = ',delrrr_o
+      end if
+
+! check whether residual has decreased
+      if (delrrr <= delrrr_o) exit lambda_loop 
+
+! otherwise decrease lambda and try again
+      lambda = lambda/2.d0
+      if (debug) then
+        write(93,'(a)') 'lambda has been decreased at end of lambda loop:'
+        write(93,'(a,g14.6)') 'lambda = ',lambda
+      end if
+
+    end do lambda_loop
+
+    if (debug) then
+      write(93,'(a)') 'exited lambda loop with:'
+      write(93,'(a,g14.6)') 'lambda = ',lambda
+    end if
+
+! update x
+    x = -gamma*v
+    rrr = rrr_o + delrrr
+    delrrr_o = delrrr
+    if (debug) then
+      call print_debug_vector(x,"x")
+      write(93,'(a,g14.6)') 'rrr = ',rrr
+    end if
+
+    if (debug_sparse) then
+      if (mod(iterstep,iterstepcheck) == 0) then
+        iterres = sqrt(rrr/dble(ptotal))
+        write(*,'(1(a,i8),2(a,g14.7))') "INNER ITERATIONS: iterstep = ",iterstep, &
+          ": iterres = ",iterres,": lambda = ",lambda
+        if (convergence_details_file) &
+          write(fconverge,'(1(a,i8),2(a,g14.7))') "INNER ITERATIONS: iterstep = ",iterstep, &
+            ": iterres = ",iterres,": lambda = ",lambda
+      end if
+    end if
+
+! if lambda is too small, cycle outer loop
+    if (lambda < lambda_min) exit inner_loop
+
+! if tolerance has been reached, exit inner_loop
+    if (rrr < rrr_tol) exit inner_loop
+
+! if maximum number of iterations have passed, also exit inner_loop
+    if (iterstep == iterstepmax) exit inner_loop
+
+  end do inner_loop
+
+  if (debug) write(93,'(a)') 'exited inner_loop'
+
+! update solution
+  delphi = delphi + x
+  e = e - gamma*w
+
+  if (debug) then
+    call print_debug_vector(delphi,"delphi")
+    call print_debug_vector(e,"e")
+  end if
+
+end do outer_loop
+  
+iterres = sqrt(rrr/dble(ptotal))
+
+if (ierror == 0) then
+  if (debug_sparse) then
+    write(*,'(a,i8,2(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres
+    if (convergence_details_file) &
+      write(fconverge,'(a,i8,2(a,g14.7))') &
+        "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres
+  end if
+else
+  write(*,'(a,i8,2(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+  if (convergence_details_file) &
+    write(fconverge,'(a,i8,2(a,g14.7))') &
+      "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+end if
+
+!---------------------
+! redimensionalise results
+
+! not sure if this is actually needed, but for safety redimensionalise the equations
+call nondimensionalise_equations(normalise=.false.,forward=.false.)
+
+! and dimensionalise delphi
+do ppu = 1, ptotal
+  m = unknown_var_from_pp(ppu)
+  delphi(ppu) = delphi(ppu)*var(m)%magnitude
+end do
+
+!---------------------
+
+if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine quasinewton_mainsolver'
+
+end subroutine quasinewton_mainsolver
 
 !-----------------------------------------------------------------
 
