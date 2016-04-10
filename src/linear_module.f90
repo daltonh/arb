@@ -1368,9 +1368,6 @@ end if
 iterstep = 0
 outer_loop: do
 
-! recalculate rrr to guard against roundoff errors
-  rrr = dot_product(e,e)
-
   if (debug) write(93,'(a,i10)') 'At start of outer iteration_loop, iterstep = ',iterstep
 
 ! check on convergence, noting that r1 is the residual vector
@@ -1440,10 +1437,14 @@ outer_loop: do
     lambda_loop: do
   
       p = lambda*x_o + (1.d0-lambda)*p_o ! new trial projection direction
+! temp &&&
+!     p = [1.d0, 2.d0]
+!     write(*,*) 'overwriting p'
 ! calculate delv = J^T.(J.p)
       call aa_dot_vector(p,v) ! use v here as temporary storage
       call aa_transpose_dot_vector(v,delv)
-      v = v_o + delv
+!     v = v_o + delv
+      v = v_o + 2.d0*delv
       alpha = dot_product(v_o,v)
       call aa_dot_vector(v,w)
       beta = dot_product(w,w)
@@ -1469,6 +1470,7 @@ outer_loop: do
         write(93,'(a,g14.6)') 'gamma = ',gamma
         write(93,'(a,g14.6)') 'delrrr = ',delrrr
         write(93,'(a,g14.6)') 'delrrr_o = ',delrrr_o
+        write(93,'(a,g14.6)') 'delrrr-delrrr_o = ',delrrr-delrrr_o
       end if
 
 ! check whether residual has decreased
@@ -1481,6 +1483,8 @@ outer_loop: do
         write(93,'(a,g14.6)') 'lambda = ',lambda
       end if
 
+      if (lambda < lambda_min) exit lambda_loop 
+
     end do lambda_loop
 
     if (debug) then
@@ -1489,7 +1493,13 @@ outer_loop: do
     end if
 
 ! update x
-    x = -gamma*v
+    if (lambda < lambda_min) then
+      x = x_o ! if lambda became too small then lambda loop was not successful, so instead use previous inner loop iteration
+      delrrr = delrrr_o
+      lambda = 0.d0
+    else
+      x = -gamma*v
+    end if
     rrr = rrr_o + delrrr
     delrrr_o = delrrr
     if (debug) then
@@ -1523,7 +1533,12 @@ outer_loop: do
 
 ! update solution
   delphi = delphi + x
-  e = e - gamma*w
+! e = e - gamma*w ! w may not reflect last iteration
+! use v as temporary storage
+  call aa_dot_vector(x,v)
+  e = e + v
+! recalculate rrr to guard against roundoff errors
+  rrr = dot_product(e,e)
 
   if (debug) then
     call print_debug_vector(delphi,"delphi")
