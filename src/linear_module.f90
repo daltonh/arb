@@ -36,7 +36,7 @@ module linear_module
 
 implicit none
 private
-public iterative_mainsolver, multigrid_mainsolver, bicg_mainsolver, quasinewton_mainsolver, dogleg_mainsolver
+public iterative_mainsolver, multigrid_mainsolver, bicg_mainsolver, quasinewton_mainsolver, dogleg_mainsolver, descent_mainsolver
 
 ! this is an object that stores details of the equations that each unknown references
 type equation_from_unknown_type
@@ -795,6 +795,7 @@ end subroutine calc_multigrid
 subroutine nondimensionalise_equations(normalise,forward)
 
 ! here we nondimensionalise the equations and their derivatives, so that we are working in nondimensional space when solving the linear system
+! fix me so that iterres_calc is correct
 
 use general_module
 
@@ -1988,6 +1989,245 @@ dfddelta = ((2*a_pp*delta**2+4*a_xp*delta+2*a_xx)*gamma+a_vp*delta+a_vx)*deldelg
   (2*a_pp*delta**2+4*a_xp*delta+2*a_xx)*(delgamma)**2+((8*a_pp*delta+8*a_xp)*gamma+2*a_vp)*delgamma+2*a_pp*gamma**2
 
 end subroutine update_dogleg_function
+
+!-----------------------------------------------------------------
+
+subroutine descent_mainsolver(ierror,dogleg)
+
+! here we use a descent algorithm to solve the linear system, using equation funk data directly
+! depending on the dogleg logical, a proportion of the previous update vector may also be included in each update
+
+use general_module
+use equation_module
+
+integer :: ierror, mm, m, ns, j, iterstep, ppu
+logical :: dogleg ! if this is false, then a pure descent algorithm is used
+logical :: dogleg_l ! per iteration version of dogleg
+character(len=1000) :: formatline
+double precision, dimension(:), allocatable, save :: delx, ee, w_x, delp, w_p, r ! allocate these once as their size doesn't change
+double precision :: rrr, delrrr, delta, gamma, rrr_o, d, iterres
+double precision :: a_xx, a_rx, a_rp, a_pp, a_xp ! these are mainly dot_products
+double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+2
+logical, parameter :: normalise = .true.
+logical, parameter :: debug = .false.
+logical :: debug_sparse = .true.
+
+if (debug) debug_sparse = .true.
+if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine descent_mainsolver'
+
+ierror = 1 ! this signals an error
+
+! nondimensionalise equations and their derivatives (forward = .true. implies that we are nondimensionalising)
+call nondimensionalise_equations(normalise,forward=.true.)
+
+!---------------------
+! initialise and allocate loop variables
+if (.not.allocated(delx)) allocate(delx(ptotal),ee(ptotal),w_x(ptotal),delp(ptotal),w_p(ptotal),r(ptotal))
+
+! initial guess for delphi is the zero vector
+delphi = 0.d0
+! put the equation values in a more accessible form of ee (E)
+j = 0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm)
+  do ns = 1, ubound(var(m)%funk,1)
+    j = j + 1
+    ee(j) = var(m)%funk(ns)%v
+  end do
+end do
+! initialise other variables
+delx = 0.d0
+w_x = 0.d0
+r = ee
+rrr = dot_product(r,r)
+a_xx = 0.d0
+a_rx = 0.d0
+gamma = 0.d0
+rrr_o = rrr ! rrr_o is the last time the coefficients were calculated explicitly from r
+
+if (debug) then
+  call print_debug_vector(ee,"ee")
+  call print_debug_vector(r,"r")
+  call print_jacobian_matrix
+  write(93,'(a,g14.6)') 'rrr = ',rrr
+  write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": rrr = ",rrr
+  write(93,'(a)') repeat('-',80)
+end if
+
+! start iteration loop
+iterstep = 0
+do
+
+  if (debug) write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
+
+! check on convergence
+  
+  iterres = iterres_calc(r,normalise)
+
+  if (debug) write(93,'(2(a,g14.7))') "iterres = ",iterres,": rrr = ",rrr
+
+  if (debug_sparse) then
+    if (mod(iterstep,iterstepcheck) == 0) then
+      iterres = sqrt(rrr/dble(ptotal))
+      write(*,'(1(a,i8),2(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
+        ": iterres = ",iterres,": rrr = ",rrr
+      if (convergence_details_file) &
+        write(fconverge,'(1(a,i8),2(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
+          ": iterres = ",iterres,": rrr = ",rrr
+    end if
+  end if
+
+  if (iterres < iterrestol) then ! iterations have converged
+    ierror = 0
+    exit
+  end if
+
+  if (mod(iterstep,iterstepcheck) == 0) then ! user has requested stop, flag with ierror=2
+    if (check_stopfile("stopback")) then
+      write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+      ierror = 2
+      exit
+    end if
+  end if
+
+  if (iterstep == iterstepmax) exit ! maximum iterations have been performed without convergence
+
+! now do the updates
+  iterstep = iterstep + 1
+! delp = -2*J^T.r 
+  call aa_transpose_dot_vector(r,delp)
+  delp = -2.d0*delp
+! w_p = J.delp
+  call aa_dot_vector(delp,w_p) 
+  a_rp = dot_product(r,w_p)
+  a_pp = dot_product(w_p,w_p)
+
+  if (debug) then
+    write(93,'(a,i4)') 'iterstep = ',iterstep
+    call print_debug_vector(delp,"delp")
+    call print_debug_vector(w_p,"w_p")
+    write(93,'(a,g14.6)') 'a_rp = ',a_rp
+    write(93,'(a,g14.6)') 'a_pp = ',a_pp
+    write(93,'(a,g14.6)') 'a_xx = ',a_xx
+    write(93,'(a,g14.6)') 'a_xp = ',a_xp
+  end if
+
+  if (a_pp < d_min) then
+    if (debug) write(93,'(a)') 'a_pp too small, so exiting iteration loop, presumably after convergence'
+    exit
+  end if
+
+  dogleg_l = .false.
+  if (dogleg) then
+    if (a_xx > d_min) then
+      a_xp = dot_product(w_x,w_p)
+      d = (a_pp*a_xx-a_xp**2)
+      if (abs(d) > d_min) dogleg_l = .true.
+    end if
+  end if
+
+  if (dogleg_l) then
+    delta = -(a_rp*a_xx-a_rx*a_xp)/d
+    gamma = -(a_xp*delta+a_rx)/a_xx
+    delrrr = a_xx*gamma**2+(2.d0*a_xp*delta+2.d0*a_rx)*gamma+a_pp*delta**2+2.d0*a_rp*delta
+  else
+    delta = -a_rp/a_pp
+    gamma = 0.d0
+    delrrr = a_pp*delta**2+2.d0*a_rp*delta
+  end if
+
+  if (debug) then
+    write(93,'(a)') 'after calculating delta/gamma'
+    write(93,'(a,l)') 'dogleg_l = ',dogleg_l
+    write(93,'(a,g14.6)') 'delta = ',delta
+    write(93,'(a,g14.6)') 'gamma = ',gamma
+    write(93,'(a,g14.6)') 'delrrr = ',delrrr
+  end if
+
+  if (dogleg) then
+    a_xx = a_xx*gamma**2 + 2.d0*delta*gamma*a_xp + delta**2*a_pp
+    a_rx = a_xx + delta*a_rp + gamma*a_rx
+    w_x = delta*w_p + gamma*w_x
+    delx = delta*delp + gamma*delx
+  else
+! a_xx = a_rx = 0.d0 under the non-dogleg scheme, always
+    w_x = delta*w_p
+    delx = delta*delp
+  end if
+
+  if (debug) then
+    write(93,'(a)') 'after updating w_x/delx'
+    write(93,'(a,g14.6)') 'a_xx = ',a_xx
+    write(93,'(a,g14.6)') 'a_rx = ',a_rx
+    call print_debug_vector(w_x,"w_x")
+    call print_debug_vector(delx,"delx")
+  end if
+
+  r = r + w_x
+  delphi = delphi + delx
+  rrr = rrr + delrrr
+
+  if (debug) then
+    write(93,'(a)') 'after updating r/delphi'
+    call print_debug_vector(r,"r")
+    call print_debug_vector(delphi,"delphi")
+    write(93,'(a,g14.6)') 'rrr = ',rrr
+    write(93,'(a,g14.6)') 'rrr_o = ',rrr_o
+  end if
+
+! if residual has decreased significantly, then recalculate the factors to guard against roundoff errors
+! do this before convergence check, incase roundoff error has infected convergence
+  if (rrr_o/rrr > roundoff_trigger) then
+    rrr_o = rrr
+    call aa_dot_vector(delphi,r) 
+    r = ee + r
+    rrr = dot_product(r,r)
+    call aa_dot_vector(delx,w_x) 
+    a_xx = dot_product(w_x,w_x)
+    a_rx = dot_product(r,w_x)
+    if (debug) then
+      write(93,'(a)') 'in roundoff_trigger'
+      call print_debug_vector(r,"r")
+      write(93,'(a,g14.6)') 'rrr = ',rrr
+      call print_debug_vector(w_x,"w_x")
+      write(93,'(a,g14.6)') 'a_xx = ',a_xx
+      write(93,'(a,g14.6)') 'a_rx = ',a_rx
+    end if
+  end if
+
+end do
+  
+if (ierror == 0) then
+  if (debug_sparse) then
+    write(*,'(a,i8,2(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres
+    if (convergence_details_file) &
+      write(fconverge,'(a,i8,2(a,g14.7))') &
+        "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres
+  end if
+else
+  write(*,'(a,i8,2(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+  if (convergence_details_file) &
+    write(fconverge,'(a,i8,2(a,g14.7))') &
+      "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+end if
+
+!---------------------
+! redimensionalise results
+
+! not sure if this is actually needed, but for safety redimensionalise the equations
+call nondimensionalise_equations(normalise,forward=.false.)
+
+! and dimensionalise delphi
+do ppu = 1, ptotal
+  m = unknown_var_from_pp(ppu)
+  delphi(ppu) = delphi(ppu)*var(m)%magnitude
+end do
+
+!---------------------
+
+if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine descent_mainsolver'
+
+end subroutine descent_mainsolver
 
 !-----------------------------------------------------------------
 
