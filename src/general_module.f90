@@ -400,7 +400,7 @@ character(len=100) :: output_step_file = "default" ! whether to print output.ste
 !character(len=100) :: output_step_file = "newtstep" ! whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
 logical, parameter :: output_timings = .true. ! (.true.) whether to time processes and output results to screen (see subroutine time_process)
 logical, parameter :: output_timings_on_mesh_write = .false. ! (.false.) output timings each time a mesh file is written - requires that output_timings be on
-logical, parameter :: output_detailed_timings = .false. ! (.false.) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
+logical, parameter :: output_detailed_timings = .true. ! (.false.) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
 logical, parameter :: output_variable_update_times = .true. ! (.true.) time how long it takes to update each variable (on average) and report in output.stat
 logical, parameter :: output_region_update_times = .true. ! (.true.) time how long it takes to update each dynamic region (on average) and report in output.stat
 logical, parameter :: ignore_initial_update_times = .true. ! (.true.) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)

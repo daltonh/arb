@@ -1314,684 +1314,6 @@ end subroutine print_jacobian_matrix
 
 !-----------------------------------------------------------------
 
-subroutine quasinewton_mainsolver(ierror)
-
-! here we use an unpreconditioned quasi-newton technique to solve the linear system, using equation funk data directly
-
-use general_module
-use equation_module
-
-integer :: ierror, mm, m, ns, j, iterstep, ppu
-character(len=1000) :: formatline
-double precision, dimension(:), allocatable, save :: e, v_o, p, x, p_o, x_o, delv, v, w  ! allocate these once as their size doesn't change
-double precision :: rrr, rrr_tol, rrr_o, lambda, alpha, beta, gamma, delrrr, iterres, delrrr_o
-double precision, parameter :: beta_min = 1.d-10, lambda_min = 1.d-2
-logical, parameter :: debug = .false.
-logical :: debug_sparse = .true.
-
-if (debug) debug_sparse = .true.
-if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine quasinewton_mainsolver'
-
-ierror = 1 ! this signals an error
-
-! nondimensionalise equations and their derivatives (forward = .true. implies that we are nondimensionalising)
-call nondimensionalise_equations(normalise=.false.,forward=.true.)
-
-!---------------------
-! initialise and allocate loop variables
-if (.not.allocated(e)) allocate(e(ptotal),v_o(ptotal),p(ptotal),x(ptotal),p_o(ptotal),x_o(ptotal), &
-  delv(ptotal),v(ptotal),w(ptotal))
-
-! initial guess for delphi is the zero vector
-delphi = 0.d0
-! form the initial e = E (ie, the equation values)
-j = 0
-do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(mm)
-  do ns = 1, ubound(var(m)%funk,1)
-    j = j + 1
-    e(j) = var(m)%funk(ns)%v
-  end do
-end do
-rrr = dot_product(e,e)
-rrr_tol = dble(ptotal)*(iterrestol**2) ! form equivalent rrr tolerance
-
-if (debug) then
-  call print_debug_vector(e,"e")
-  call print_jacobian_matrix
-  write(93,'(a,g14.6)') 'rrr_tol = ',rrr_tol
-  write(93,'(a,g14.6)') 'rrr = ',rrr
-  write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": rrr = ",rrr
-  write(93,'(a)') repeat('-',80)
-end if
-
-! start iteration loop
-iterstep = 0
-outer_loop: do
-
-  if (debug) write(93,'(a,i10)') 'At start of outer iteration_loop, iterstep = ',iterstep
-
-! check on convergence, noting that r1 is the residual vector
-  
-  if (debug) then
-    iterres = sqrt(rrr/dble(ptotal))
-    write(93,'(2(a,g14.7))') "iterres = ",iterres,": rrr = ",rrr
-  end if
-
-  if (debug_sparse) then
-    if (mod(iterstep,iterstepcheck) == 0) then
-      iterres = sqrt(rrr/dble(ptotal))
-      write(*,'(1(a,i8),1(a,g14.7))') "OUTER ITERATIONS: iterstep = ",iterstep, &
-        ": iterres = ",iterres
-      if (convergence_details_file) &
-        write(fconverge,'(1(a,i8),1(a,g14.7))') "OUTER ITERATIONS: iterstep = ",iterstep, &
-          ": iterres = ",iterres
-    end if
-  end if
-
-  if (rrr < rrr_tol) then ! iterations have converged
-    ierror = 0
-    exit outer_loop
-  end if
-
-! if (mod(iterstep,iterstepcheck) == 0) then ! user has requested stop, flag with ierror=2
-!   if (check_stopfile("stopback")) then
-!     write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-!     ierror = 2
-!     exit iteration_loop
-!   end if
-! end if
-
-  if (iterstep == iterstepmax) then ! maximum iterations have been performed without convergence
-    exit outer_loop
-  end if
-
-  rrr_o = rrr ! save previous rrr
-! calculate v_o = 2*J^T.e
-  call aa_transpose_dot_vector(e,v_o) ! v_o = A.p1
-  v_o = 2.d0*v_o
-  p = 0.d0
-  x = 0.d0
-  delrrr_o = 0.d0
-  if (debug) then
-    write(93,'(a,g14.6)') 'rrr_o = ',rrr_o
-    call print_debug_vector(v_o,"v_o")
-    call print_debug_vector(p,"p")
-    call print_debug_vector(x,"x")
-    write(93,'(a,g14.6)') 'delrrr_o = ',delrrr_o
-  end if
-
-  inner_loop: do
-
-    iterstep = iterstep + 1 ! increment iteration number
-    lambda = 1.d0 ! reset backstepping parameter
-    p_o = p ! save previous projection direction
-    x_o = x ! save previous solution
-
-    if (debug) then
-      write(93,'(a)') 'start of inner loop:'
-      write(93,'(a,g14.6)') 'lambda = ',lambda
-      call print_debug_vector(p_o,"p_o")
-      call print_debug_vector(x_o,"x_o")
-    end if
-
-    lambda_loop: do
-  
-      p = lambda*x_o + (1.d0-lambda)*p_o ! new trial projection direction
-! temp &&&
-!     p = [1.d0, 2.d0]
-!     write(*,*) 'overwriting p'
-! calculate delv = J^T.(J.p)
-      call aa_dot_vector(p,v) ! use v here as temporary storage
-      call aa_transpose_dot_vector(v,delv)
-!     v = v_o + delv
-      v = v_o + 2.d0*delv
-      alpha = dot_product(v_o,v)
-      call aa_dot_vector(v,w)
-      beta = dot_product(w,w)
-      
-      if (debug) then
-        write(93,'(a)') 'start of lambda loop:'
-        write(93,'(a,g14.6)') 'lambda = ',lambda
-        call print_debug_vector(p,"p")
-        call print_debug_vector(delv,"delv")
-        call print_debug_vector(v,"v")
-        write(93,'(a,g14.6)') 'alpha = ',alpha
-        call print_debug_vector(w,"w")
-        write(93,'(a,g14.6)') 'beta = ',beta
-      end if
-
-      if (beta < beta_min) call error_stop('beta small in quasinewton_mainsolver')
-
-      gamma = alpha/(2.d0*beta)
-      delrrr = -alpha*gamma + beta*(gamma**2)
-
-      if (debug) then
-        write(93,'(a)') 'within lambda loop:'
-        write(93,'(a,g14.6)') 'gamma = ',gamma
-        write(93,'(a,g14.6)') 'delrrr = ',delrrr
-        write(93,'(a,g14.6)') 'delrrr_o = ',delrrr_o
-        write(93,'(a,g14.6)') 'delrrr-delrrr_o = ',delrrr-delrrr_o
-      end if
-
-! check whether residual has decreased
-      if (delrrr <= delrrr_o) exit lambda_loop 
-
-! otherwise decrease lambda and try again
-      lambda = lambda/2.d0
-      if (debug) then
-        write(93,'(a)') 'lambda has been decreased at end of lambda loop:'
-        write(93,'(a,g14.6)') 'lambda = ',lambda
-      end if
-
-      if (lambda < lambda_min) exit lambda_loop 
-
-    end do lambda_loop
-
-    if (debug) then
-      write(93,'(a)') 'exited lambda loop with:'
-      write(93,'(a,g14.6)') 'lambda = ',lambda
-    end if
-
-! update x
-    if (lambda < lambda_min) then
-      x = x_o ! if lambda became too small then lambda loop was not successful, so instead use previous inner loop iteration
-      delrrr = delrrr_o
-      lambda = 0.d0
-    else
-      x = -gamma*v
-    end if
-    rrr = rrr_o + delrrr
-    delrrr_o = delrrr
-    if (debug) then
-      call print_debug_vector(x,"x")
-      write(93,'(a,g14.6)') 'rrr = ',rrr
-    end if
-
-    if (debug_sparse) then
-      if (mod(iterstep,iterstepcheck) == 0) then
-        iterres = sqrt(rrr/dble(ptotal))
-        write(*,'(1(a,i8),2(a,g14.7))') "INNER ITERATIONS: iterstep = ",iterstep, &
-          ": iterres = ",iterres,": lambda = ",lambda
-        if (convergence_details_file) &
-          write(fconverge,'(1(a,i8),2(a,g14.7))') "INNER ITERATIONS: iterstep = ",iterstep, &
-            ": iterres = ",iterres,": lambda = ",lambda
-      end if
-    end if
-
-! if lambda is too small, cycle outer loop
-    if (lambda < lambda_min) exit inner_loop
-
-! if tolerance has been reached, exit inner_loop
-    if (rrr < rrr_tol) exit inner_loop
-
-! if maximum number of iterations have passed, also exit inner_loop
-    if (iterstep == iterstepmax) exit inner_loop
-
-  end do inner_loop
-
-  if (debug) write(93,'(a)') 'exited inner_loop'
-
-! update solution
-  delphi = delphi + x
-! e = e - gamma*w ! w may not reflect last iteration
-! use v as temporary storage
-  call aa_dot_vector(x,v)
-  e = e + v
-! recalculate rrr to guard against roundoff errors
-  rrr = dot_product(e,e)
-
-  if (debug) then
-    call print_debug_vector(delphi,"delphi")
-    call print_debug_vector(e,"e")
-  end if
-
-end do outer_loop
-  
-iterres = sqrt(rrr/dble(ptotal))
-
-if (ierror == 0) then
-  if (debug_sparse) then
-    write(*,'(a,i8,2(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres
-    if (convergence_details_file) &
-      write(fconverge,'(a,i8,2(a,g14.7))') &
-        "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres
-  end if
-else
-  write(*,'(a,i8,2(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
-  if (convergence_details_file) &
-    write(fconverge,'(a,i8,2(a,g14.7))') &
-      "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
-end if
-
-!---------------------
-! redimensionalise results
-
-! not sure if this is actually needed, but for safety redimensionalise the equations
-call nondimensionalise_equations(normalise=.false.,forward=.false.)
-
-! and dimensionalise delphi
-do ppu = 1, ptotal
-  m = unknown_var_from_pp(ppu)
-  delphi(ppu) = delphi(ppu)*var(m)%magnitude
-end do
-
-!---------------------
-
-if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine quasinewton_mainsolver'
-
-end subroutine quasinewton_mainsolver
-
-!-----------------------------------------------------------------
-
-subroutine dogleg_mainsolver(ierror)
-
-! here we use an unpreconditioned quasi-newton technique to solve the linear system, using equation funk data directly
-
-use general_module
-use equation_module
-
-integer :: ierror, mm, m, ns, j, iterstep, ppu, newtsteplocal, n, inneriterstep
-character(len=1000) :: formatline
-double precision, dimension(:), allocatable, save :: e, ee, v_o, x, x_o, delv, v, w_x, w_p, delp, delx, delx_unit ! allocate these once as their size doesn't change
-double precision, dimension(:), allocatable, save :: x_check, w_x_check
-double precision :: rrr, rrr_tol, rrr_o, lambda, alpha, beta, gamma, delrrr, iterres, a_vx, a_vp, a_xx, a_xp, a_pp, &
-  delp_mag2, delta, f, dfddelta, f_o, delta_o, ddelta, delrrr_check, delta_tmp, delrrr_tmp, delx_mag
-double precision, parameter :: beta_min = 1.d-10, lambda_min = 1.d-2, dfddelta_min = 1.d-16, f_tol = 1.d-16, delta_bound_multiplier=0.9d0
-integer, parameter :: newtsteplocalmax = 10, inneriterstepmax = 10
-logical, parameter :: debug = .true.
-logical :: debug_sparse = .true.
-
-if (debug) debug_sparse = .true.
-if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine dogleg_mainsolver'
-
-ierror = 1 ! this signals an error
-
-! nondimensionalise equations and their derivatives (forward = .true. implies that we are nondimensionalising)
-call nondimensionalise_equations(normalise=.false.,forward=.true.)
-
-!---------------------
-! initialise and allocate loop variables
-if (.not.allocated(e)) allocate(e(ptotal),v_o(ptotal),x(ptotal),w_p(ptotal),w_x(ptotal),x_o(ptotal), &
-  delv(ptotal),v(ptotal),delp(ptotal),ee(ptotal),delx(ptotal),delx_unit(ptotal))
-
-! initial guess for delphi is the zero vector
-delphi = 0.d0
-! form the initial e = E (ie, the equation values)
-j = 0
-do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(mm)
-  do ns = 1, ubound(var(m)%funk,1)
-    j = j + 1
-    ee(j) = var(m)%funk(ns)%v
-  end do
-end do
-e = ee
-rrr = dot_product(e,e)
-rrr_tol = dble(ptotal)*(iterrestol**2) ! form equivalent rrr tolerance
-! calculate v_o = 2*J^T.e
-call aa_transpose_dot_vector(e,v_o)
-v_o = 2.d0*v_o
-
-if (debug) then
-  call print_debug_vector(e,"e")
-  call print_debug_vector(v_o,"v_o")
-  call print_jacobian_matrix
-  write(93,'(a,g14.6)') 'rrr_tol = ',rrr_tol
-  write(93,'(a,g14.6)') 'rrr = ',rrr
-  write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": rrr = ",rrr
-  write(93,'(a)') repeat('-',80)
-end if
-
-! start iteration loop
-iterstep = 0
-outer_loop: do
-
-  if (debug) write(93,'(a,i10)') 'At start of outer iteration_loop, iterstep = ',iterstep
-
-! check on convergence, noting that r1 is the residual vector
-  
-  if (debug) then
-    iterres = sqrt(rrr/dble(ptotal))
-    write(93,'(2(a,g14.7))') "iterres = ",iterres,": rrr = ",rrr
-  end if
-
-  if (debug_sparse) then
-    if (mod(iterstep,iterstepcheck) == 0) then
-      iterres = sqrt(rrr/dble(ptotal))
-      write(*,'(1(a,i8),1(a,g14.7))') "OUTER ITERATIONS: iterstep = ",iterstep, &
-        ": iterres = ",iterres
-      if (convergence_details_file) &
-        write(fconverge,'(1(a,i8),1(a,g14.7))') "OUTER ITERATIONS: iterstep = ",iterstep, &
-          ": iterres = ",iterres
-    end if
-  end if
-
-  if (rrr < rrr_tol) then ! iterations have converged
-    ierror = 0
-    exit outer_loop
-  end if
-
-! if (mod(iterstep,iterstepcheck) == 0) then ! user has requested stop, flag with ierror=2
-!   if (check_stopfile("stopback")) then
-!     write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-!     ierror = 2
-!     exit iteration_loop
-!   end if
-! end if
-
-  if (iterstep == iterstepmax) then ! maximum iterations have been performed without convergence
-    exit outer_loop
-  end if
-
-  rrr_o = rrr ! save previous rrr
-  x = 0.d0
-  w_x = 0.d0
-  a_vx = 0.d0
-  a_xx = 0.d0
-  delv = 0.d0
-  delrrr = 0.d0
-  if (debug) then
-    write(93,'(a,g14.6)') 'rrr_o = ',rrr_o
-    call print_debug_vector(x,"x")
-    call print_debug_vector(w_x,"w_x")
-    call print_debug_vector(delv,"delv")
-    write(93,'(a,g14.6)') 'a_xx = ',a_xx
-    write(93,'(a,g14.6)') 'a_vx = ',a_vx
-    write(93,'(a,g14.6)') 'delrrr = ',delrrr
-  end if
-
-  inneriterstep = 0
-  inner_loop: do
-
-    iterstep = iterstep + 1 ! increment iteration number
-    inneriterstep = inneriterstep + 1 ! increment iteration number
-    
-! update new search direction vectors
-    delp = -(v_o + 2.d0*delv)
-    call aa_dot_vector(delp,w_p)
-! and scalars
-    a_vp = dot_product(v_o,delp)
-    a_xp = dot_product(w_x,w_p)
-    a_pp = dot_product(w_p,w_p)
-
-    if (debug) then
-      write(93,'(a)') 'start of inner loop:'
-      call print_debug_vector(delp,"delp")
-      call print_debug_vector(w_p,"w_p")
-      write(93,'(a,g14.6)') 'a_vp = ',a_vp
-      write(93,'(a,g14.6)') 'a_xp = ',a_xp
-      write(93,'(a,g14.6)') 'a_pp = ',a_pp
-    end if
-
-! find search direction gradient
-    delp_mag2 = dot_product(delp,delp)
-    if (debug) then
-      write(93,'(a,g14.6)') 'delp_mag2 = ',delp_mag2
-      if (delp_mag2 < 1.d-60) write(93,'(a)') 'delp_mag2 too small, so exiting inner loop'
-    end if
-    if (delp_mag2 < 1.d-60) exit inner_loop
-
-! find initial search length
-    delta = rrr/delp_mag2
-    if (debug) write(93,'(a,g14.6)') 'delta (initial estimate based on rrr) = ',delta
-
-! plot out f, gamma, rrr, dfddelta around initial delta estimate
-    if (debug) then
-      write(93,'(a/a)') 'PPPPPPPPPPPPPPPPPPP','PLOTTING variation around delta initial'
-      write(93,'(a,i4)') 'iterstep = ',iterstep
-      write(93,'(a,g14.6)') 'rrr = ',rrr
-      write(93,'(a)') "n,delta_tmp,gamma,delrrr_tmp,f,dfddelta"
-      do n = -20, 20
-        delta_tmp = (1.2d0**n)*delta
-        call update_dogleg_function(a_vx,a_vp,a_xx,a_xp,a_pp,delta_tmp,f,dfddelta,gamma)
-        delrrr_tmp = a_vx*(gamma-1.d0)+a_xx*(gamma**2-1.d0)+delta_tmp*gamma*(a_vp+gamma*(2.d0*a_xp+a_pp*delta_tmp))
-        write(93,'(i3,5(1x,g14.6))') n,delta_tmp,gamma,delrrr_tmp,f,dfddelta
-      end do
-      write(93,'(a)') 'PPPPPPPPPPPPPPPPPPP'
-    end if
-
-! find new newton residual
-    f_o = huge(1.d0)
-    call update_dogleg_function(a_vx,a_vp,a_xx,a_xp,a_pp,delta,f,dfddelta,gamma)
-    if (.true.) then
-! make sure that initial delta results in a decrease in rrr
-      do
-        delrrr_tmp = a_vx*(gamma-1.d0)+a_xx*(gamma**2-1.d0)+delta*gamma*(a_vp+gamma*(2.d0*a_xp+a_pp*delta))
-        if (delrrr_tmp < 0.d0) exit
-        delta = delta*delta_bound_multiplier
-        call update_dogleg_function(a_vx,a_vp,a_xx,a_xp,a_pp,delta,f,dfddelta,gamma)
-      end do
-      if (debug) write(93,'(a,g14.6)') 'delta (initial estimate bound by dddrrr) = ',delta
-    end if
-
-    newtsteplocal = 0
-    newton_loop: do
-
-      if (debug) then
-        write(93,'(a)') 'NNNNNNNNNNNNNNNNNNNNNN'
-        write(93,'(a,i3)') 'at start of newton_loop: newtsteplocal = ',newtsteplocal
-        write(93,'(a,g14.6)') 'f = ',f
-        write(93,'(a,g14.6)') 'f-f_o = ',f-f_o
-        write(93,'(a,g14.6)') 'dfddelta = ',dfddelta
-        write(93,'(a,g14.6)') 'delta = ',delta
-        write(93,'(a,g14.6)') 'gamma = ',gamma
-      end if
-        
-      if (abs(f) < f_tol) exit newton_loop
-      if (abs(f-f_o) < tiny(1.d0)) exit newton_loop
-      if (newtsteplocal >= newtsteplocalmax) exit newton_loop
-      newtsteplocal = newtsteplocal + 1
-      f_o = f
-      delta_o = delta
-      if (abs(dfddelta) < dfddelta_min) exit newton_loop
-      ddelta = -f/dfddelta
-      if (debug) then
-        write(93,'(a,g14.6)') 'f_o = ',f_o
-        write(93,'(a,g14.6)') 'ddelta = ',ddelta
-      end if
-      lambda = 1.d0
-
-      lambda_loop: do
-        delta = delta_o + lambda*ddelta
-! if delta is going negative, reset lambda so that it doesn't
-        if (delta < 0.d0) then
-          lambda = -delta_o/(ddelta*2.d0)
-          delta = delta_o + lambda*ddelta
-        end if
-        call update_dogleg_function(a_vx,a_vp,a_xx,a_xp,a_pp,delta,f,dfddelta,gamma)
-        if (debug) then
-          write(93,'(a)') 'lllllllll'
-          write(93,'(a,i3)') 'within lambda loop after dogleg update'
-          write(93,'(a,g14.6)') 'lambda = ',lambda
-          write(93,'(a,g14.6)') 'f = ',f
-          write(93,'(a,g14.6)') 'delta = ',delta
-          write(93,'(a,g14.6)') 'gamma = ',gamma
-        end if
-        if (abs(f) <= abs(f_o)) exit lambda_loop
-        lambda = lambda/2.d0
-        if (lambda < lambda_min) exit lambda_loop
-      end do lambda_loop
-
-    end do newton_loop
-
-    delrrr = a_vx*(gamma-1.d0)+a_xx*(gamma**2-1.d0)+delta*gamma*(a_vp+gamma*(2.d0*a_xp+a_pp*delta))
-    if (debug) then
-      write(93,'(a)') 'after newton_loop'
-      write(93,'(a,g14.6)') 'gamma = ',gamma
-      write(93,'(a,g14.6)') 'delta = ',delta
-      write(93,'(a,g14.6)') 'delrrr = ',delrrr
-      if (delrrr >= 0) write(93,'(a)') 'inner_loop was unsuccessful, so exiting without updating x'
-      if (.true.) then
-        if (.not.allocated(x_check)) allocate(x_check(ptotal),w_x_check(ptotal))
-        write(93,'(a)') 'checking on delrrr'
-        x_check = gamma*( x + delta*delp )
-        call aa_dot_vector(x_check,w_x_check)
-        call print_debug_vector(x_check,"x_check")
-        call print_debug_vector(w_x_check,"w_x_check")
-        delrrr_check = 2.d0*dot_product(w_x_check-w_x,e)+dot_product(w_x_check,w_x_check)-dot_product(w_x,w_x)
-        write(93,'(a,g14.6)') 'delrrr_check = ',delrrr_check
-        write(93,'(a,g14.6)') 'delrrr_error = ',delrrr-delrrr_check
-      end if
-    end if
-    if (delrrr >= 0) then
-      if (debug_sparse) then
-        if (debug) write(93,'(1(a,i8))') "INNER ITERATIONS (UNSUCCESSFUL delrrr >= 0): iterstep = ",iterstep
-        if (mod(iterstep,iterstepcheck) == 0) then
-          write(*,'(1(a,i8))') "INNER ITERATIONS (UNSUCCESSFUL): iterstep = ",iterstep
-          if (convergence_details_file) &
-            write(fconverge,'(1(a,i8))') "INNER ITERATIONS (UNSUCCESSFUL): iterstep = ",iterstep
-        end if
-      end if
-      exit inner_loop
-    end if
-  
-! reduction in rrr has taken place, so update x, which is now best estimate of solution, relative to delphi
-    rrr = rrr + delrrr
-    if (debug) x_o = x
-    x = gamma*( x + delta*delp )
-    if (debug) then
-      delx = x - x_o
-      write(93,'(a)') 'after updating x:'
-      delx_mag = sqrt(dot_product(delx,delx))
-      call print_debug_vector(x_o,"x_o")
-      call print_debug_vector(delx,"delx")
-      write(93,'(a,g14.6)') 'delx_mag = ',delx_mag
-      delx_unit = delx/delx_mag
-      call print_debug_vector(delx_unit,"delx_unit")
-    end if
-      
-! update x related factors at the same time
-    w_x = gamma*( w_x + delta*w_p )
-    a_vx = gamma*( a_vx + delta*a_vp )
-    a_xx = gamma**2*( a_xx + 2.d0*delta*a_xp + delta**2*a_pp )
-    call aa_transpose_dot_vector(w_x,delv)
-        
-    if (debug) then
-      write(93,'(a)') 'at end of inner loop, updating x'
-      write(93,'(a,g14.6)') 'rrr = ',rrr
-      write(93,'(a,g14.6)') 'rrr_o = ',rrr_o
-      call print_debug_vector(x,"x")
-      call print_debug_vector(w_x,"w_x")
-      call print_debug_vector(delv,"delv")
-      write(93,'(a,g14.6)') 'a_vx = ',a_vx
-      write(93,'(a,g14.6)') 'a_xx = ',a_xx
-    end if
-
-    if (debug_sparse) then
-      if (mod(iterstep,iterstepcheck) == 0) then
-        iterres = sqrt(rrr/dble(ptotal))
-        write(*,'(1(a,i8),2(a,g14.7))') "INNER ITERATIONS: iterstep = ",iterstep, &
-          ": iterres = ",iterres,": lambda = ",lambda
-        if (convergence_details_file) &
-          write(fconverge,'(1(a,i8),2(a,g14.7))') "INNER ITERATIONS: iterstep = ",iterstep, &
-            ": iterres = ",iterres,": lambda = ",lambda
-      end if
-    end if
-
-! if tolerance has been reached, exit inner_loop
-    if (rrr < rrr_tol) exit inner_loop
-
-! residual is not reducing sufficiently
-    if (-delrrr < rrr_tol) exit inner_loop
-
-! if maximum number of iterations have passed, also exit inner_loop
-    if (iterstep == iterstepmax) exit inner_loop
-
-! if maximum number of inner iterations have passed, also exit inner_loop
-    if (inneriterstep == inneriterstepmax) exit inner_loop
-
-  end do inner_loop
-
-  if (debug) write(93,'(a)') 'exited inner_loop'
-
-! update solution
-  delphi = delphi + x
-  if (.false.) then
-! incrementally
-    e = e + w_x
-    v_o = v_o + 2.d0*delv
-  else
-! from scratch, based on new delphi
-    call aa_dot_vector(delphi,e)
-    e = ee + e
-    rrr = dot_product(e,e)
-    call aa_transpose_dot_vector(e,v_o)
-    v_o = 2.d0*v_o
-  end if
-
-! e = e - gamma*w ! w may not reflect last iteration
-! use v as temporary storage
-! call aa_dot_vector(x,v)
-! e = e + v
-! recalculate rrr to guard against roundoff errors
-! rrr = dot_product(e,e)
-
-  if (debug) then
-    call print_debug_vector(delphi,"delphi")
-    call print_debug_vector(e,"e")
-    call print_debug_vector(v_o,"v_o")
-  end if
-
-end do outer_loop
-  
-iterres = sqrt(rrr/dble(ptotal))
-
-if (ierror == 0) then
-  if (debug_sparse) then
-    write(*,'(a,i8,2(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres
-    if (convergence_details_file) &
-      write(fconverge,'(a,i8,2(a,g14.7))') &
-        "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres
-  end if
-else
-  write(*,'(a,i8,2(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
-  if (convergence_details_file) &
-    write(fconverge,'(a,i8,2(a,g14.7))') &
-      "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
-end if
-
-!---------------------
-! redimensionalise results
-
-! not sure if this is actually needed, but for safety redimensionalise the equations
-call nondimensionalise_equations(normalise=.false.,forward=.false.)
-
-! and dimensionalise delphi
-do ppu = 1, ptotal
-  m = unknown_var_from_pp(ppu)
-  delphi(ppu) = delphi(ppu)*var(m)%magnitude
-end do
-
-!---------------------
-
-if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine dogleg_mainsolver'
-
-end subroutine dogleg_mainsolver
-
-!-----------------------------------------------------------------
-
-subroutine update_dogleg_function(a_vx,a_vp,a_xx,a_xp,a_pp,delta,f,dfddelta,gamma)
-
-double precision :: a_vx, a_vp, a_xx, a_xp, a_pp, delta, f, dfddelta, gamma
-double precision :: d, deld, deldeld, delgamma, deldelgamma
-
-d = 2*a_pp*delta**2+4*a_xp*delta+2*a_xx
-deld = 4*a_pp*delta+4*a_xp
-deldeld = 4*a_pp
-
-gamma = ((-a_vp*delta)-a_vx)/d
-delgamma = (a_vp*deld*delta+a_vx*deld-a_vp*d)/d**2
-deldelgamma = ((a_vp*d*deldeld-2*a_vp*(deld)**2)*delta+a_vx*d*deldeld-2*a_vx*(deld)**2+2*a_vp*d*deld)/d**3
-
-f = ((2*a_pp*delta**2+4*a_xp*delta+2*a_xx)*gamma+a_vp*delta+a_vx)*delgamma+(2*a_pp*delta+2*a_xp)*gamma**2+a_vp*gamma
-dfddelta = ((2*a_pp*delta**2+4*a_xp*delta+2*a_xx)*gamma+a_vp*delta+a_vx)*deldelgamma+ &
-  (2*a_pp*delta**2+4*a_xp*delta+2*a_xx)*(delgamma)**2+((8*a_pp*delta+8*a_xp)*gamma+2*a_vp)*delgamma+2*a_pp*gamma**2
-
-end subroutine update_dogleg_function
-
-!-----------------------------------------------------------------
-
 subroutine descent_mainsolver(ierror,dogleg)
 
 ! here we use a descent algorithm to solve the linear system, using equation funk data directly
@@ -2228,6 +1550,77 @@ end do
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine descent_mainsolver'
 
 end subroutine descent_mainsolver
+
+!-----------------------------------------------------------------
+
+subroutine setup_jacobian
+
+! here we nondimensionalise the equations and their derivatives, so that we are working in nondimensional space when solving the linear system
+! with this process we create e_scale and e_scale_min
+! at the same time, create a fast lookup array for the jacobian
+
+use general_module
+
+integer :: mm, m, ns, pppu, ppu, mu, ppe
+logical :: forward ! if true, then we are nondimensionalising the equations, otherwise, if false, we are dimensionalising them again
+logical :: normalise ! do additional normalisation, so that each equation/derivative is scaled so that the largest magnitude jacobian element per row becomes (positive) 1.d0, with a corresponding change to the rhs (ie, equation value)
+
+if (.not.allocated(e_scale)) then
+  allocate(e_scale(ptotal))
+  e_scale = 1.d0 ! if normalise isn't used then e_scale is set to 1
+end if
+if (normalise) then
+  if (forward) e_scale = 0.d0
+end if
+
+ppe = 0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm) ! equation var number
+  do ns = 1, ubound(var(m)%funk,1)
+    ppe = ppe + 1
+    if (forward) then
+      var(m)%funk(ns)%v = var(m)%funk(ns)%v/var(m)%magnitude
+    else
+      var(m)%funk(ns)%v = var(m)%funk(ns)%v*var(m)%magnitude
+    end if
+    do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
+      ppu = var(m)%funk(ns)%pp(pppu) ! this is the unknown pp number
+      mu = unknown_var_from_pp(ppu) ! unknown var number
+      if (forward) then
+        var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude/var(m)%magnitude
+        if (normalise) then
+          if (abs(var(m)%funk(ns)%dv(pppu)) > abs(e_scale(ppe))) e_scale(ppe) = var(m)%funk(ns)%dv(pppu)
+        end if
+      else
+        var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*var(m)%magnitude/var(mu)%magnitude
+      end if
+    end do
+  end do
+end do
+
+if (normalise) then
+  ppe = 0
+  do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+    m = var_list(var_list_number_equation)%list(mm) ! equation var number
+    do ns = 1, ubound(var(m)%funk,1)
+      ppe = ppe + 1
+      if (forward) then
+        var(m)%funk(ns)%v = var(m)%funk(ns)%v/e_scale(ppe)
+      else
+        var(m)%funk(ns)%v = var(m)%funk(ns)%v*e_scale(ppe)
+      end if
+      do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
+        if (forward) then
+          var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)/e_scale(ppe)
+        else
+          var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*e_scale(ppe)
+        end if
+      end do
+    end do
+  end do
+end if
+
+end subroutine nondimensionalise_equations
 
 !-----------------------------------------------------------------
 
