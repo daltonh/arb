@@ -1329,8 +1329,9 @@ subroutine descent_mainsolver(ierror,dogleg)
 
 use general_module
 use equation_module
+!$ use omp_lib
 
-integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext, itersteproundoffnext
+integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext, itersteproundoffnext, n, thread
 logical :: dogleg ! if this is false, then a pure descent algorithm is used
 logical :: dogleg_l ! per iteration version of dogleg
 character(len=1000) :: formatline
@@ -1395,13 +1396,13 @@ do
 
   if (debug) then
     write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
-    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale,ptotal)
     write(93,'(2(a,g14.7))') "rrr_newt = ",rrr_newt,": rrr = ",rrr
   end if
 
   if (iterstepchecknext == iterstep) then
     iterstepchecknext = iterstepchecknext + iterstepcheck
-    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale,ptotal)
 
     if (debug_sparse) then
       iterres = sqrt(rrr_newt/dble(ptotal))
@@ -1426,7 +1427,7 @@ do
   end if
 
   if (rrr < rrr_tol) then ! iterations have converged based on rrr
-    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale,ptotal)
     ierror = 0
     exit
   end if
@@ -1440,8 +1441,21 @@ do
   delp = -2.d0*delp
 ! w_p = J.delp
   call aa_dot_vector_jacobian(jacobian,delp,w_p) 
-  a_rp = dot_product(r,w_p)
-  a_pp = dot_product_with_itself(w_p,ptotal)
+  if (.true.) then
+    a_rp = dot_product(r,w_p)
+    a_pp = dot_product_with_itself(w_p,ptotal)
+    a_xp = dot_product(w_x,w_p) ! not needed for non-dogleg, but efficiency for that case isn't a priority
+  else
+! ever so slightly faster to do a single loop for the three dot products
+    a_rp = 0.d0
+    a_pp = 0.d0
+    a_xp = 0.d0
+    do n = 1, ptotal
+      a_rp = a_rp + r(n)*w_p(n)
+      a_pp = a_pp + w_p(n)**2
+      a_xp = a_xp + w_x(n)*w_p(n)
+    end do
+  end if
 
   if (debug) then
     write(93,'(a,i4)') 'iterstep = ',iterstep
@@ -1460,7 +1474,6 @@ do
   dogleg_l = .false.
   if (dogleg) then
     if (a_xx > d_min) then
-      a_xp = dot_product(w_x,w_p)
       d = (a_pp*a_xx-a_xp**2)
       if (abs(d) > d_min) dogleg_l = .true.
     end if
@@ -1494,8 +1507,21 @@ do
     a_xx = a_xx*gamma**2 + 2.d0*delta*gamma*a_xp + delta**2*a_pp
     a_rx = a_xx + delta*a_rp + gamma*a_rx
     delrrr = a_xx + 2.d0*(delta*a_rp + gamma*a_rx)
-    w_x = delta*w_p + gamma*w_x
-    delx = delta*delp + gamma*delx
+    if (.true.) then
+      w_x = delta*w_p + gamma*w_x
+      delx = delta*delp + gamma*delx
+    else
+!     !$omp parallel do shared(ptotal,delta,gamma,w_x,w_p,delx,delp) private(n)
+      !$omp parallel do private(n)
+      do n = 1, ptotal
+!       !$ thread = omp_get_thread_num() + 1
+!       write(94,'(2(a,i))') 'thread = ',thread,': n = ',n
+        w_x(n) = delta*w_p(n) + gamma*w_x(n)
+        delx(n) = delta*delp(n) + gamma*delx(n)
+      end do
+      !$omp end parallel do
+!     write(94,*)
+    end if
   else
 ! a_xx = a_rx = 0.d0 under the non-dogleg scheme, always
     delrrr = (a_pp*delta+2.d0*a_rp)*delta
@@ -1664,6 +1690,7 @@ subroutine aa_dot_vector_jacobian(jacobian,vector_to_multiply,vector_product)
 ! here we multiply a vector (vector_to_multiply) with the jacobian matrix stored as the jacobian entity
 !  forming the product vector (vector_product)
 
+!$ use omp_lib
 double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
 double precision, dimension(:), allocatable :: vector_product
 type(jacobian_type), intent(in) :: jacobian
@@ -1672,10 +1699,12 @@ integer :: ppe, n
 !---------------------
 
 vector_product = 0.d0
+!$omp parallel do private(n,ppe) reduction(+:vector_product)
 do n = 1, jacobian%n
   ppe = jacobian%ppe(n)
   vector_product(ppe) = vector_product(ppe) + jacobian%v(n)*vector_to_multiply(jacobian%ppu(n))
 end do
+!$omp end parallel do
 
 end subroutine aa_dot_vector_jacobian
 
@@ -1686,6 +1715,7 @@ subroutine aa_transpose_dot_vector_jacobian(jacobian,vector_to_multiply,vector_p
 ! here we multiply a vector (vector_to_multiply) with the jacobian matrix (transpose) stored as the jacobian entity
 !  forming the product vector (vector_product)
 
+!$ use omp_lib
 double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
 double precision, dimension(:), allocatable :: vector_product
 type(jacobian_type), intent(in) :: jacobian
@@ -1694,10 +1724,12 @@ integer :: ppu, n
 !---------------------
 
 vector_product = 0.d0
+!$omp parallel do private(n,ppu) reduction(+:vector_product)
 do n = 1, jacobian%n
   ppu = jacobian%ppu(n)
   vector_product(ppu) = vector_product(ppu) + jacobian%v(n)*vector_to_multiply(jacobian%ppe(n))
 end do
+!$omp end parallel do
 
 end subroutine aa_transpose_dot_vector_jacobian
 
@@ -1750,14 +1782,14 @@ end function dot_product_with_itself
 
 !-----------------------------------------------------------------
 
-function dot_product_with_itself_scaled(vector,vector_scale)
+function dot_product_with_itself_scaled(vector,vector_scale,length)
 
 double precision, dimension(:), allocatable, intent(in) :: vector, vector_scale
 double precision :: dot_product_with_itself_scaled
-integer :: n
+integer :: n, length
 
 dot_product_with_itself_scaled = 0.d0
-do n = 1, ubound(vector,1)
+do n = 1, length
   dot_product_with_itself_scaled = dot_product_with_itself_scaled + (vector(n)*vector_scale(n))**2
 end do
   
