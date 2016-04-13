@@ -1330,15 +1330,15 @@ subroutine descent_mainsolver(ierror,dogleg)
 use general_module
 use equation_module
 
-integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe
+integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext
 logical :: dogleg ! if this is false, then a pure descent algorithm is used
 logical :: dogleg_l ! per iteration version of dogleg
 character(len=1000) :: formatline
 double precision, dimension(:), allocatable, save :: delx, ee, w_x, delp, w_p, r, ee_scale ! allocate these once as their size doesn't change
 type(jacobian_type), save :: jacobian
-double precision :: rrr, delrrr, delta, gamma, rrr_o, d, iterres, ee_scale_min, rrr_newt_tol, rrr_tol, rrr_newt
+double precision :: rrr, delrrr, delta, gamma, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt
 double precision :: a_xx, a_rx, a_rp, a_pp, a_xp ! these are mainly dot_products
-double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+2
+double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -1351,7 +1351,7 @@ ierror = 1 ! this signals an error
 if (.not.allocated(delx)) allocate(delx(ptotal),ee(ptotal),w_x(ptotal),delp(ptotal),w_p(ptotal),r(ptotal),ee_scale(ptotal))
 
 ! nondimensionalise jacobian, and setup ee and ee_scale
-call setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_min)
+call setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_max)
 
 !---------------------
 ! initial guess for delphi is the zero vector
@@ -1360,9 +1360,9 @@ delphi = 0.d0
 delx = 0.d0
 w_x = 0.d0
 r = ee
-rrr = dot_product(r,r)
+rrr = dot_product_with_itself(r)
 rrr_newt_tol = ptotal*(iterrestol)**2
-rrr_tol = rrr_newt_tol/(ee_scale_min**2)
+rrr_tol = rrr_newt_tol/(ee_scale_max**2)
 a_xx = 0.d0
 a_xp = 0.d0
 a_rx = 0.d0
@@ -1378,52 +1378,52 @@ if (debug) then
   write(93,'(a,g14.6)') 'rrr = ',rrr
   write(93,'(a,g14.6)') 'rrr_newt_tol = ',rrr_newt_tol
   write(93,'(a,g14.6)') 'rrr_tol = ',rrr_tol
-  write(93,'(a,g14.6)') 'ee_scale_min = ',ee_scale_min
+  write(93,'(a,g14.6)') 'ee_scale_max = ',ee_scale_max
   write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": rrr = ",rrr
   write(93,'(a)') repeat('-',80)
 end if
 
 ! start iteration loop
 iterstep = 0
+iterstepchecknext = 0
 do
 
-  if (debug) write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
+  if (debug) then
+    write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
+    write(93,'(2(a,g14.7))') "rrr_newt = ",rrr_newt,": rrr = ",rrr
+  end if
 
-! check on convergence
-  
-! rrr_newt = dot_product(r*ee_scale,r*ee_scale)
-  rrr_newt = 0.d0
-  do ppe = 1, ptotal
-    rrr_newt = rrr_newt + (r(ppe)*ee_scale(ppe))**2
-  end do
-    
+  if (iterstepchecknext == iterstep) then
+    iterstepchecknext = iterstepchecknext + iterstepcheck
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
 
-  if (debug) write(93,'(2(a,g14.7))') "rrr_newt = ",rrr_newt,": rrr = ",rrr
-
-  if (debug_sparse) then
-    if (mod(iterstep,iterstepcheck) == 0) then
+    if (debug_sparse) then
       iterres = sqrt(rrr_newt/dble(ptotal))
-      write(*,'(1(a,i8),2(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
-        ": iterres = ",iterres,": rrr = ",rrr
+      write(*,'(1(a,i8),3(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
+        ": iterres = ",iterres,": rrr = ",rrr,": rrr_newt = ",rrr_newt
       if (convergence_details_file) &
-        write(fconverge,'(1(a,i8),2(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
-          ": iterres = ",iterres,": rrr = ",rrr
+        write(fconverge,'(1(a,i8),3(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
+          ": iterres = ",iterres,": rrr = ",rrr,": rrr_newt = ",rrr_newt
     end if
-  end if
 
-  iterres = sqrt(rrr_newt/dble(ptotal))
-! if (rrr < rrr_tol) then ! iterations have converged
-  if (iterres < iterrestol) then ! iterations have converged
-    ierror = 0
-    exit
-  end if
+    if (rrr_newt < rrr_newt_tol) then ! iterations have converged based on rrr_newt
+      ierror = 0
+      exit
+    end if
 
-  if (mod(iterstep,iterstepcheck) == 0) then ! user has requested stop, flag with ierror=2
     if (check_stopfile("stopback")) then
       write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
       ierror = 2
       exit
     end if
+
+  end if
+
+  if (rrr < rrr_tol) then ! iterations have converged based on rrr
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
+    ierror = 0
+    exit
   end if
 
   if (iterstep == iterstepmax) exit ! maximum iterations have been performed without convergence
@@ -1436,7 +1436,7 @@ do
 ! w_p = J.delp
   call aa_dot_vector_jacobian(jacobian,delp,w_p) 
   a_rp = dot_product(r,w_p)
-  a_pp = dot_product(w_p,w_p)
+  a_pp = dot_product_with_itself(w_p)
 
   if (debug) then
     write(93,'(a,i4)') 'iterstep = ',iterstep
@@ -1464,11 +1464,17 @@ do
   if (dogleg_l) then
     delta = -(a_rp*a_xx-a_rx*a_xp)/d
     gamma = -(a_xp*delta+a_rx)/a_xx
-    delrrr = a_xx*gamma**2+(2.d0*a_xp*delta+2.d0*a_rx)*gamma+a_pp*delta**2+2.d0*a_rp*delta
+!   a_xx = (a_xx*gamma + 2.d0*delta*a_xp)*gamma + delta**2*a_pp ! updating a_xx now
+!   a_rx = delta*a_rp + gamma*a_rx
+!   delrrr = a_xx+2.d0*a_rx
+!   a_rx = a_xx + a_rx
+    delrrr = (a_xx*gamma + 2.d0*delta*a_xp)*gamma + delta**2*a_pp + 2.d0*(delta*a_rp + gamma*a_rx)
   else
     delta = -a_rp/a_pp
     gamma = 0.d0
-    delrrr = a_pp*delta**2+2.d0*a_rp*delta
+!   a_xx = 0.d0
+!   a_rx = 0.d0
+    delrrr = (a_pp*delta+2.d0*a_rp)*delta
   end if
 
   if (debug) then
@@ -1520,9 +1526,9 @@ do
     rrr_o = rrr
     call aa_dot_vector_jacobian(jacobian,delphi,r) 
     r = ee + r
-    rrr = dot_product(r,r)
+    rrr = dot_product_with_itself(r)
     call aa_dot_vector_jacobian(jacobian,delx,w_x) 
-    a_xx = dot_product(w_x,w_x)
+    a_xx = dot_product_with_itself(w_x)
     a_rx = dot_product(r,w_x)
     if (debug) then
       write(93,'(a)') 'in roundoff_trigger'
@@ -1537,18 +1543,23 @@ do
 
 end do
   
+iterres = sqrt(rrr_newt/dble(ptotal))
 if (ierror == 0) then
   if (debug_sparse) then
-    write(*,'(a,i8,2(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres
+    write(*,'(a,i8,3(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres, &
+      ": rrr = ",rrr,": rrr_newt = ",rrr_newt
     if (convergence_details_file) &
-      write(fconverge,'(a,i8,2(a,g14.7))') &
-        "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres
+      write(fconverge,'(a,i8,3(a,g14.7))') &
+      "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres, &
+      ": rrr = ",rrr,": rrr_newt = ",rrr_newt
   end if
 else
-  write(*,'(a,i8,2(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+  write(*,'(a,i8,3(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres, &
+    ": rrr = ",rrr,": rrr_newt = ",rrr_newt
   if (convergence_details_file) &
-    write(fconverge,'(a,i8,2(a,g14.7))') &
-      "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+    write(fconverge,'(a,i8,3(a,g14.7))') &
+    "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres, &
+    ": rrr = ",rrr,": rrr_newt = ",rrr_newt
 end if
 
 !---------------------
@@ -1566,7 +1577,7 @@ end subroutine descent_mainsolver
 
 !-----------------------------------------------------------------
 
-subroutine setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_min)
+subroutine setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_max)
 
 ! here we nondimensionalise the equations and their derivatives, so that we are working in nondimensional space when solving the linear system
 ! with this process we create ee_scale
@@ -1575,7 +1586,7 @@ subroutine setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_min)
 use general_module
 
 integer :: mm, m, ns, pppu, ppu, mu, ppe, nelements
-double precision :: one_element, ee_scale_min
+double precision :: one_element, ee_scale_max
 double precision, dimension(:), allocatable :: ee, ee_scale
 type(jacobian_type) :: jacobian
 
@@ -1633,7 +1644,7 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   end do
 end do
 
-ee_scale_min = minval(ee_scale)
+ee_scale_max = maxval(ee_scale)
 
 end subroutine setup_iterative_equations
 
@@ -1700,6 +1711,36 @@ end do
 write(93,'(a)') repeat('-',10)
 
 end subroutine print_scaled_jacobian_matrix
+
+!-----------------------------------------------------------------
+
+function dot_product_with_itself(vector)
+
+double precision, dimension(:), allocatable, intent(in) :: vector
+double precision :: dot_product_with_itself
+integer :: n
+
+dot_product_with_itself = 0.d0
+do n = 1, ubound(vector,1)
+  dot_product_with_itself = dot_product_with_itself + vector(n)**2
+end do
+  
+end function dot_product_with_itself
+
+!-----------------------------------------------------------------
+
+function dot_product_with_itself_scaled(vector,vector_scale)
+
+double precision, dimension(:), allocatable, intent(in) :: vector, vector_scale
+double precision :: dot_product_with_itself_scaled
+integer :: n
+
+dot_product_with_itself_scaled = 0.d0
+do n = 1, ubound(vector,1)
+  dot_product_with_itself_scaled = dot_product_with_itself_scaled + (vector(n)*vector_scale(n))**2
+end do
+  
+end function dot_product_with_itself_scaled
 
 !-----------------------------------------------------------------
 
