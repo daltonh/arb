@@ -1330,7 +1330,7 @@ subroutine descent_mainsolver(ierror,dogleg)
 use general_module
 use equation_module
 
-integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext
+integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext, itersteproundoffnext
 logical :: dogleg ! if this is false, then a pure descent algorithm is used
 logical :: dogleg_l ! per iteration version of dogleg
 character(len=1000) :: formatline
@@ -1339,6 +1339,7 @@ type(jacobian_type), save :: jacobian
 double precision :: rrr, delrrr, delta, gamma, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt
 double precision :: a_xx, a_rx, a_rp, a_pp, a_xp ! these are mainly dot_products
 double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
+integer, parameter :: itersteproundoff = 50 ! this is a second criterion which triggers recalculation of the coefficients
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -1348,20 +1349,23 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine descent_mainsolver'
 ierror = 1 ! this signals an error
 
 ! initialise and allocate loop variables
-if (.not.allocated(delx)) allocate(delx(ptotal),ee(ptotal),w_x(ptotal),delp(ptotal),w_p(ptotal),r(ptotal),ee_scale(ptotal))
+if (.not.allocated(delx)) then
+  allocate(delx(ptotal),ee(ptotal),w_x(ptotal),delp(ptotal),w_p(ptotal),r(ptotal),ee_scale(ptotal))
+  delphi = 0.d0 ! zero on the first iteration only
+end if
 
 ! nondimensionalise jacobian, and setup ee and ee_scale
 call setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_max)
 
 !---------------------
 ! initial guess for delphi is the zero vector
-delphi = 0.d0
+! delphi = 0.d0 ! now keep previous solution as the first guess
 ! initialise other variables
 delx = 0.d0
 w_x = 0.d0
 r = ee
-rrr = dot_product_with_itself(r)
-rrr_newt_tol = ptotal*(iterrestol)**2
+rrr = dot_product_with_itself(r,ptotal)
+rrr_newt_tol = ptotal*(max(iterrestol,newtres*iterresreltol))**2
 rrr_tol = rrr_newt_tol/(ee_scale_max**2)
 a_xx = 0.d0
 a_xp = 0.d0
@@ -1386,6 +1390,7 @@ end if
 ! start iteration loop
 iterstep = 0
 iterstepchecknext = 0
+itersteproundoffnext = itersteproundoff
 do
 
   if (debug) then
@@ -1436,7 +1441,7 @@ do
 ! w_p = J.delp
   call aa_dot_vector_jacobian(jacobian,delp,w_p) 
   a_rp = dot_product(r,w_p)
-  a_pp = dot_product_with_itself(w_p)
+  a_pp = dot_product_with_itself(w_p,ptotal)
 
   if (debug) then
     write(93,'(a,i4)') 'iterstep = ',iterstep
@@ -1468,13 +1473,13 @@ do
 !   a_rx = delta*a_rp + gamma*a_rx
 !   delrrr = a_xx+2.d0*a_rx
 !   a_rx = a_xx + a_rx
-    delrrr = (a_xx*gamma + 2.d0*delta*a_xp)*gamma + delta**2*a_pp + 2.d0*(delta*a_rp + gamma*a_rx)
+!   delrrr = (a_xx*gamma + 2.d0*delta*a_xp)*gamma + delta**2*a_pp + 2.d0*(delta*a_rp + gamma*a_rx)
   else
     delta = -a_rp/a_pp
     gamma = 0.d0
 !   a_xx = 0.d0
 !   a_rx = 0.d0
-    delrrr = (a_pp*delta+2.d0*a_rp)*delta
+!   delrrr = (a_pp*delta+2.d0*a_rp)*delta
   end if
 
   if (debug) then
@@ -1488,10 +1493,12 @@ do
   if (dogleg) then
     a_xx = a_xx*gamma**2 + 2.d0*delta*gamma*a_xp + delta**2*a_pp
     a_rx = a_xx + delta*a_rp + gamma*a_rx
+    delrrr = a_xx + 2.d0*(delta*a_rp + gamma*a_rx)
     w_x = delta*w_p + gamma*w_x
     delx = delta*delp + gamma*delx
   else
 ! a_xx = a_rx = 0.d0 under the non-dogleg scheme, always
+    delrrr = (a_pp*delta+2.d0*a_rp)*delta
     w_x = delta*w_p
     delx = delta*delp
   end if
@@ -1522,13 +1529,14 @@ do
 
 ! if residual has decreased significantly, then recalculate the factors to guard against roundoff errors
 ! do this before convergence check, incase roundoff error has infected convergence
-  if (rrr_o/rrr > roundoff_trigger) then
+  if (rrr_o/rrr > roundoff_trigger.or.iterstep == itersteproundoffnext) then
+    itersteproundoffnext = itersteproundoffnext + itersteproundoff
     rrr_o = rrr
     call aa_dot_vector_jacobian(jacobian,delphi,r) 
     r = ee + r
-    rrr = dot_product_with_itself(r)
+    rrr = dot_product_with_itself(r,ptotal)
     call aa_dot_vector_jacobian(jacobian,delx,w_x) 
-    a_xx = dot_product_with_itself(w_x)
+    a_xx = dot_product_with_itself(w_x,ptotal)
     a_rx = dot_product(r,w_x)
     if (debug) then
       write(93,'(a)') 'in roundoff_trigger'
@@ -1538,7 +1546,8 @@ do
       write(93,'(a,g14.6)') 'a_xx = ',a_xx
       write(93,'(a,g14.6)') 'a_rx = ',a_rx
     end if
-    if (debug_sparse) write(*,'(a)') 'ITERATIONS: recalculating coefficients to avoid round-off errors'
+!   if (debug_sparse) write(*,'(a)') 'ITERATIONS: recalculating coefficients to avoid round-off errors'
+    if (debug) write(*,'(a)') 'ITERATIONS: recalculating coefficients to avoid round-off errors'
   end if
 
 end do
@@ -1714,16 +1723,28 @@ end subroutine print_scaled_jacobian_matrix
 
 !-----------------------------------------------------------------
 
-function dot_product_with_itself(vector)
+function dot_product_with_itself(vector,length)
 
+use general_module
 double precision, dimension(:), allocatable, intent(in) :: vector
-double precision :: dot_product_with_itself
-integer :: n
+double precision :: dot_product_with_itself, tmp
+integer :: n, length
 
-dot_product_with_itself = 0.d0
-do n = 1, ubound(vector,1)
-  dot_product_with_itself = dot_product_with_itself + vector(n)**2
-end do
+if (.false.) then
+  dot_product_with_itself = dot_product(vector,vector)
+else if (.true.) then
+  dot_product_with_itself = 0.d0
+  do n = 1, length
+    dot_product_with_itself = dot_product_with_itself + vector(n)**2
+  end do
+else
+  dot_product_with_itself = 0.d0
+  !$omp parallel do shared(length,vector) private(n) reduction(+:dot_product_with_itself)
+  do n = 1, length
+    dot_product_with_itself = dot_product_with_itself + vector(n)**2
+  end do
+  !$omp end parallel do
+end if
   
 end function dot_product_with_itself
 

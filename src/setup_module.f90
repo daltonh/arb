@@ -348,6 +348,15 @@ fileloop: do
   end if
 
 !---------------
+! iterresreltol
+
+  if (trim(keyword) == 'ITERRESRELTOL') then
+    read(textline,*,iostat=ierror) iterresreltol
+    if (ierror /= 0) call error_stop('problem reading in iteration loop relative tolerance from line '//otextline)
+    write(*,'(a,g14.6)') 'INFO: iterresreltol = ',iterresreltol
+  end if
+
+!---------------
 ! iterstepmax
 
   if (trim(keyword) == 'ITERSTEPMAX') then
