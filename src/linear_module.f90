@@ -36,7 +36,7 @@ module linear_module
 
 implicit none
 private
-public iterative_mainsolver, multigrid_mainsolver, bicg_mainsolver, quasinewton_mainsolver, dogleg_mainsolver, descent_mainsolver
+public iterative_mainsolver, multigrid_mainsolver, bicg_mainsolver, descent_mainsolver
 
 ! this is an object that stores details of the equations that each unknown references
 type equation_from_unknown_type
@@ -68,6 +68,14 @@ end type multigrid_type
 type (multigrid_type), dimension(:), allocatable :: multigrid ! an array of of the multigrid levels
 
 double precision, dimension(:), allocatable, save :: e_scale ! scaling factor when normalising the equations for some iterative methods
+
+! this is a sparse matrix structure (rows and columns stored) for storing the jacobian to allow for fast standard and transpose multiplications
+type jacobian_type
+  double precision, dimension(:), allocatable :: v
+  integer, dimension(:), allocatable :: ppu
+  integer, dimension(:), allocatable :: ppe
+  integer :: n ! number of active elements (matricies only increase in size)
+end type jacobian_type
 
 integer, save :: nmultigrid ! number of levels within the multigrid structure, calculated when the multigrid structure is calculated
   
@@ -1322,15 +1330,15 @@ subroutine descent_mainsolver(ierror,dogleg)
 use general_module
 use equation_module
 
-integer :: ierror, mm, m, ns, j, iterstep, ppu
+integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe
 logical :: dogleg ! if this is false, then a pure descent algorithm is used
 logical :: dogleg_l ! per iteration version of dogleg
 character(len=1000) :: formatline
-double precision, dimension(:), allocatable, save :: delx, ee, w_x, delp, w_p, r ! allocate these once as their size doesn't change
-double precision :: rrr, delrrr, delta, gamma, rrr_o, d, iterres
+double precision, dimension(:), allocatable, save :: delx, ee, w_x, delp, w_p, r, ee_scale ! allocate these once as their size doesn't change
+type(jacobian_type), save :: jacobian
+double precision :: rrr, delrrr, delta, gamma, rrr_o, d, iterres, ee_scale_min, rrr_newt_tol, rrr_tol, rrr_newt
 double precision :: a_xx, a_rx, a_rp, a_pp, a_xp ! these are mainly dot_products
 double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+2
-logical, parameter :: normalise = .true.
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -1339,39 +1347,38 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine descent_mainsolver'
 
 ierror = 1 ! this signals an error
 
-! nondimensionalise equations and their derivatives (forward = .true. implies that we are nondimensionalising)
-call nondimensionalise_equations(normalise,forward=.true.)
+! initialise and allocate loop variables
+if (.not.allocated(delx)) allocate(delx(ptotal),ee(ptotal),w_x(ptotal),delp(ptotal),w_p(ptotal),r(ptotal),ee_scale(ptotal))
+
+! nondimensionalise jacobian, and setup ee and ee_scale
+call setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_min)
 
 !---------------------
-! initialise and allocate loop variables
-if (.not.allocated(delx)) allocate(delx(ptotal),ee(ptotal),w_x(ptotal),delp(ptotal),w_p(ptotal),r(ptotal))
-
 ! initial guess for delphi is the zero vector
 delphi = 0.d0
-! put the equation values in a more accessible form of ee (E)
-j = 0
-do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(mm)
-  do ns = 1, ubound(var(m)%funk,1)
-    j = j + 1
-    ee(j) = var(m)%funk(ns)%v
-  end do
-end do
 ! initialise other variables
 delx = 0.d0
 w_x = 0.d0
 r = ee
 rrr = dot_product(r,r)
+rrr_newt_tol = ptotal*(iterrestol)**2
+rrr_tol = rrr_newt_tol/(ee_scale_min**2)
 a_xx = 0.d0
+a_xp = 0.d0
 a_rx = 0.d0
 gamma = 0.d0
 rrr_o = rrr ! rrr_o is the last time the coefficients were calculated explicitly from r
 
 if (debug) then
   call print_debug_vector(ee,"ee")
+  call print_debug_vector(ee_scale,"ee_scale")
   call print_debug_vector(r,"r")
   call print_jacobian_matrix
+  call print_scaled_jacobian_matrix(jacobian)
   write(93,'(a,g14.6)') 'rrr = ',rrr
+  write(93,'(a,g14.6)') 'rrr_newt_tol = ',rrr_newt_tol
+  write(93,'(a,g14.6)') 'rrr_tol = ',rrr_tol
+  write(93,'(a,g14.6)') 'ee_scale_min = ',ee_scale_min
   write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": rrr = ",rrr
   write(93,'(a)') repeat('-',80)
 end if
@@ -1384,13 +1391,18 @@ do
 
 ! check on convergence
   
-  iterres = iterres_calc(r,normalise)
+! rrr_newt = dot_product(r*ee_scale,r*ee_scale)
+  rrr_newt = 0.d0
+  do ppe = 1, ptotal
+    rrr_newt = rrr_newt + (r(ppe)*ee_scale(ppe))**2
+  end do
+    
 
-  if (debug) write(93,'(2(a,g14.7))') "iterres = ",iterres,": rrr = ",rrr
+  if (debug) write(93,'(2(a,g14.7))') "rrr_newt = ",rrr_newt,": rrr = ",rrr
 
   if (debug_sparse) then
     if (mod(iterstep,iterstepcheck) == 0) then
-      iterres = sqrt(rrr/dble(ptotal))
+      iterres = sqrt(rrr_newt/dble(ptotal))
       write(*,'(1(a,i8),2(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
         ": iterres = ",iterres,": rrr = ",rrr
       if (convergence_details_file) &
@@ -1399,6 +1411,8 @@ do
     end if
   end if
 
+  iterres = sqrt(rrr_newt/dble(ptotal))
+! if (rrr < rrr_tol) then ! iterations have converged
   if (iterres < iterrestol) then ! iterations have converged
     ierror = 0
     exit
@@ -1417,10 +1431,10 @@ do
 ! now do the updates
   iterstep = iterstep + 1
 ! delp = -2*J^T.r 
-  call aa_transpose_dot_vector(r,delp)
+  call aa_transpose_dot_vector_jacobian(jacobian,r,delp)
   delp = -2.d0*delp
 ! w_p = J.delp
-  call aa_dot_vector(delp,w_p) 
+  call aa_dot_vector_jacobian(jacobian,delp,w_p) 
   a_rp = dot_product(r,w_p)
   a_pp = dot_product(w_p,w_p)
 
@@ -1431,7 +1445,6 @@ do
     write(93,'(a,g14.6)') 'a_rp = ',a_rp
     write(93,'(a,g14.6)') 'a_pp = ',a_pp
     write(93,'(a,g14.6)') 'a_xx = ',a_xx
-    write(93,'(a,g14.6)') 'a_xp = ',a_xp
   end if
 
   if (a_pp < d_min) then
@@ -1485,6 +1498,10 @@ do
     call print_debug_vector(delx,"delx")
   end if
 
+  if (delrrr >= 0.d0) then
+    write(*,*) 'delrrr > 0.d0'
+  end if
+  
   r = r + w_x
   delphi = delphi + delx
   rrr = rrr + delrrr
@@ -1501,10 +1518,10 @@ do
 ! do this before convergence check, incase roundoff error has infected convergence
   if (rrr_o/rrr > roundoff_trigger) then
     rrr_o = rrr
-    call aa_dot_vector(delphi,r) 
+    call aa_dot_vector_jacobian(jacobian,delphi,r) 
     r = ee + r
     rrr = dot_product(r,r)
-    call aa_dot_vector(delx,w_x) 
+    call aa_dot_vector_jacobian(jacobian,delx,w_x) 
     a_xx = dot_product(w_x,w_x)
     a_rx = dot_product(r,w_x)
     if (debug) then
@@ -1515,6 +1532,7 @@ do
       write(93,'(a,g14.6)') 'a_xx = ',a_xx
       write(93,'(a,g14.6)') 'a_rx = ',a_rx
     end if
+    if (debug_sparse) write(*,'(a)') 'ITERATIONS: recalculating coefficients to avoid round-off errors'
   end if
 
 end do
@@ -1534,12 +1552,7 @@ else
 end if
 
 !---------------------
-! redimensionalise results
-
-! not sure if this is actually needed, but for safety redimensionalise the equations
-call nondimensionalise_equations(normalise,forward=.false.)
-
-! and dimensionalise delphi
+! redimensionalise delphi
 do ppu = 1, ptotal
   m = unknown_var_from_pp(ppu)
   delphi(ppu) = delphi(ppu)*var(m)%magnitude
@@ -1553,74 +1566,140 @@ end subroutine descent_mainsolver
 
 !-----------------------------------------------------------------
 
-subroutine setup_jacobian
+subroutine setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_min)
 
 ! here we nondimensionalise the equations and their derivatives, so that we are working in nondimensional space when solving the linear system
-! with this process we create e_scale and e_scale_min
-! at the same time, create a fast lookup array for the jacobian
+! with this process we create ee_scale
+! at the same time, create a fast lookup array for the jacobian (jacobian)
 
 use general_module
 
-integer :: mm, m, ns, pppu, ppu, mu, ppe
-logical :: forward ! if true, then we are nondimensionalising the equations, otherwise, if false, we are dimensionalising them again
-logical :: normalise ! do additional normalisation, so that each equation/derivative is scaled so that the largest magnitude jacobian element per row becomes (positive) 1.d0, with a corresponding change to the rhs (ie, equation value)
+integer :: mm, m, ns, pppu, ppu, mu, ppe, nelements
+double precision :: one_element, ee_scale_min
+double precision, dimension(:), allocatable :: ee, ee_scale
+type(jacobian_type) :: jacobian
 
-if (.not.allocated(e_scale)) then
-  allocate(e_scale(ptotal))
-  e_scale = 1.d0 ! if normalise isn't used then e_scale is set to 1
-end if
-if (normalise) then
-  if (forward) e_scale = 0.d0
-end if
+! first run through all elements maximum element size (stored in ee_scale) and counting total number of elements
 
 ppe = 0
+nelements = 0
+ee_scale = 0.d0
 do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   m = var_list(var_list_number_equation)%list(mm) ! equation var number
   do ns = 1, ubound(var(m)%funk,1)
     ppe = ppe + 1
-    if (forward) then
-      var(m)%funk(ns)%v = var(m)%funk(ns)%v/var(m)%magnitude
-    else
-      var(m)%funk(ns)%v = var(m)%funk(ns)%v*var(m)%magnitude
-    end if
     do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
       ppu = var(m)%funk(ns)%pp(pppu) ! this is the unknown pp number
       mu = unknown_var_from_pp(ppu) ! unknown var number
-      if (forward) then
-        var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude/var(m)%magnitude
-        if (normalise) then
-          if (abs(var(m)%funk(ns)%dv(pppu)) > abs(e_scale(ppe))) e_scale(ppe) = var(m)%funk(ns)%dv(pppu)
-        end if
+      nelements = nelements + 1
+      one_element = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude
+      if (.false.) then
+! scale without changing sign, and based on sum of row elements
+        ee_scale(ppe) = ee_scale(ppe) + abs(one_element) ! slower
       else
-        var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*var(m)%magnitude/var(mu)%magnitude
+! scale by largest (in magnitude) element, hence changing signs
+        if (abs(one_element) > abs(ee_scale(ppe))) ee_scale(ppe) = one_element
       end if
     end do
   end do
 end do
 
-if (normalise) then
-  ppe = 0
-  do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-    m = var_list(var_list_number_equation)%list(mm) ! equation var number
-    do ns = 1, ubound(var(m)%funk,1)
-      ppe = ppe + 1
-      if (forward) then
-        var(m)%funk(ns)%v = var(m)%funk(ns)%v/e_scale(ppe)
-      else
-        var(m)%funk(ns)%v = var(m)%funk(ns)%v*e_scale(ppe)
-      end if
-      do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
-        if (forward) then
-          var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)/e_scale(ppe)
-        else
-          var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*e_scale(ppe)
-        end if
-      end do
-    end do
-  end do
+! now allocate fast-lookup jacobian
+if (allocatable_integer_size(jacobian%ppu) < nelements) then
+  if (allocated(jacobian%ppu)) deallocate(jacobian%v,jacobian%ppu,jacobian%ppe)
+  allocate(jacobian%v(nelements),jacobian%ppu(nelements),jacobian%ppe(nelements))
 end if
+jacobian%n = nelements
 
-end subroutine nondimensionalise_equations
+! run through equations again forming jacobian, ee and scaling equations
+
+ppe = 0
+nelements = 0
+do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
+  m = var_list(var_list_number_equation)%list(mm) ! equation var number
+  do ns = 1, ubound(var(m)%funk,1)
+    ppe = ppe + 1
+    ee(ppe) = var(m)%funk(ns)%v/ee_scale(ppe)
+    do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
+      ppu = var(m)%funk(ns)%pp(pppu) ! this is the unknown pp number
+      mu = unknown_var_from_pp(ppu) ! unknown var number
+      nelements = nelements + 1
+      jacobian%v(nelements) = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude/ee_scale(ppe)
+      jacobian%ppu(nelements) = ppu
+      jacobian%ppe(nelements) = ppe
+    end do
+! ee_scale is now used to calculate the newton-compatible residual, so also needs to be divided by equation magnitude and abs
+    ee_scale(ppe) = abs(ee_scale(ppe))/var(m)%magnitude
+  end do
+end do
+
+ee_scale_min = minval(ee_scale)
+
+end subroutine setup_iterative_equations
+
+!-----------------------------------------------------------------
+
+subroutine aa_dot_vector_jacobian(jacobian,vector_to_multiply,vector_product)
+
+! here we multiply a vector (vector_to_multiply) with the jacobian matrix stored as the jacobian entity
+!  forming the product vector (vector_product)
+
+double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
+double precision, dimension(:), allocatable :: vector_product
+type(jacobian_type), intent(in) :: jacobian
+integer :: ppe, n
+
+!---------------------
+
+vector_product = 0.d0
+do n = 1, jacobian%n
+  ppe = jacobian%ppe(n)
+  vector_product(ppe) = vector_product(ppe) + jacobian%v(n)*vector_to_multiply(jacobian%ppu(n))
+end do
+
+end subroutine aa_dot_vector_jacobian
+
+!-----------------------------------------------------------------
+
+subroutine aa_transpose_dot_vector_jacobian(jacobian,vector_to_multiply,vector_product)
+
+! here we multiply a vector (vector_to_multiply) with the jacobian matrix (transpose) stored as the jacobian entity
+!  forming the product vector (vector_product)
+
+double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
+double precision, dimension(:), allocatable :: vector_product
+type(jacobian_type), intent(in) :: jacobian
+integer :: ppu, n
+
+!---------------------
+
+vector_product = 0.d0
+do n = 1, jacobian%n
+  ppu = jacobian%ppu(n)
+  vector_product(ppu) = vector_product(ppu) + jacobian%v(n)*vector_to_multiply(jacobian%ppe(n))
+end do
+
+end subroutine aa_transpose_dot_vector_jacobian
+
+!-----------------------------------------------------------------
+
+subroutine print_scaled_jacobian_matrix(jacobian)
+
+use general_module
+integer :: n
+character(len=1000) :: formatline
+character(len=20) :: ptotalformat
+type(jacobian_type) :: jacobian
+
+ptotalformat=dindexformat(ptotal)
+formatline = '(g14.6,2(a,'//trim(ptotalformat)//'),a)' 
+write(93,'(a/a)') repeat('+',10),"jacobian matrix"
+do n = 1, jacobian%n
+  write(93,fmt=formatline) jacobian%v(n),' (',jacobian%ppe(n),',',jacobian%ppu(n),')'
+end do
+write(93,'(a)') repeat('-',10)
+
+end subroutine print_scaled_jacobian_matrix
 
 !-----------------------------------------------------------------
 
