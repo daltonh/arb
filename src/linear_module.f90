@@ -69,11 +69,10 @@ type (multigrid_type), dimension(:), allocatable :: multigrid ! an array of of t
 
 double precision, dimension(:), allocatable, save :: e_scale ! scaling factor when normalising the equations for some iterative methods
 
-! this is a sparse matrix structure (rows and columns stored) for storing the jacobian to allow for fast standard and transpose multiplications
+! this is a sparse matrix structure (csr1) for storing the jacobian and jacobian_transpose
 type jacobian_type
   double precision, dimension(:), allocatable :: v
   integer, dimension(:), allocatable :: i
-  integer, dimension(:), allocatable :: j
   integer, dimension(:), allocatable :: ja
   integer :: n ! number of active elements (matricies only increase in size)
 end type jacobian_type
@@ -510,7 +509,7 @@ use general_module
 
 integer :: ppe, mm, m, ns, pppu, ppu
 logical :: ppeonly
-logical :: debug_sparse = .true.
+logical :: debug_sparse = .false.
 
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine calc_equation_from_unknown'
 
@@ -1372,7 +1371,7 @@ call setup_iterative_equations(jacobian,jacobian_transpose,ee,ee_scale,ee_scale_
 delx = 0.d0
 w_x = 0.d0
 r = ee
-rrr = dot_product_with_itself(r,ptotal)
+rrr = dot_product_with_itself(r)
 rrr_newt_tol = ptotal*(max(iterrestol,newtres*iterresreltol))**2
 rrr_tol = rrr_newt_tol/(ee_scale_max**2)
 a_xx = 0.d0
@@ -1403,13 +1402,13 @@ do
 
   if (debug) then
     write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
-    rrr_newt = dot_product_with_itself_scaled(r,ee_scale,ptotal)
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
     write(93,'(2(a,g14.7))') "rrr_newt = ",rrr_newt,": rrr = ",rrr
   end if
 
   if (iterstepchecknext == iterstep) then
     iterstepchecknext = iterstepchecknext + iterstepcheck
-    rrr_newt = dot_product_with_itself_scaled(r,ee_scale,ptotal)
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
 
     if (debug_sparse) then
       iterres = sqrt(rrr_newt/dble(ptotal))
@@ -1434,7 +1433,7 @@ do
   end if
 
   if (rrr < rrr_tol) then ! iterations have converged based on rrr
-    rrr_newt = dot_product_with_itself_scaled(r,ee_scale,ptotal)
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
     ierror = 0
     exit
   end if
@@ -1444,15 +1443,14 @@ do
 ! now do the updates
   iterstep = iterstep + 1
 ! delp = -2*J^T.r 
-! call aa_transpose_dot_vector_jacobian(jacobian,r,delp)
   call aa_dot_vector_jacobian(jacobian_transpose,r,delp)
   delp = -2.d0*delp
 ! w_p = J.delp
   call aa_dot_vector_jacobian(jacobian,delp,w_p) 
   if (.true.) then
-    a_rp = dot_product(r,w_p)
-    a_pp = dot_product_with_itself(w_p,ptotal)
-    a_xp = dot_product(w_x,w_p) ! not needed for non-dogleg, but efficiency for that case isn't a priority
+    a_rp = dot_product_local(r,w_p)
+    a_pp = dot_product_with_itself(w_p)
+    a_xp = dot_product_local(w_x,w_p) ! not needed for non-dogleg, but efficiency for that case isn't a priority
   else
 ! ever so slightly faster to do a single loop for the three dot products
     a_rp = 0.d0
@@ -1568,10 +1566,10 @@ do
     rrr_o = rrr
     call aa_dot_vector_jacobian(jacobian,delphi,r) 
     r = ee + r
-    rrr = dot_product_with_itself(r,ptotal)
+    rrr = dot_product_with_itself(r)
     call aa_dot_vector_jacobian(jacobian,delx,w_x) 
-    a_xx = dot_product_with_itself(w_x,ptotal)
-    a_rx = dot_product(r,w_x)
+    a_xx = dot_product_with_itself(w_x)
+    a_rx = dot_product_local(r,w_x)
     if (debug) then
       write(93,'(a)') 'in roundoff_trigger'
       call print_debug_vector(r,"r")
@@ -1659,12 +1657,12 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   end do
 end do
 
-! now allocate fast-lookup jacobian
+! now allocate fast-lookup jacobian and transpose matricies at the same time
+if (.not.allocated(jacobian%ja)) allocate(jacobian%ja(ptotal+1),jacobian_transpose%ja(ptotal+1))
 if (allocatable_integer_size(jacobian%i) < nelements) then
-  if (allocated(jacobian%i)) deallocate(jacobian%v,jacobian%i,jacobian%j,jacobian%ja)
-  allocate(jacobian%v(nelements),jacobian%i(nelements),jacobian%j(nelements),jacobian%ja(ptotal+1))
+  if (allocated(jacobian%i)) deallocate(jacobian%v,jacobian%i,jacobian_transpose%v,jacobian_transpose%i)
+  allocate(jacobian%v(nelements),jacobian%i(nelements),jacobian_transpose%v(nelements),jacobian_transpose%i(nelements))
 end if
-jacobian%n = nelements
 
 ! run through equations again forming jacobian, ee and scaling equations
 
@@ -1682,7 +1680,6 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
       n = n + 1
       jacobian%v(n) = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude/ee_scale(ppe)
       jacobian%i(n) = ppu
-      jacobian%j(n) = ppe ! we use j (ie, coo1 storage format) when constructing jacobian_tranpose
     end do
 ! ee_scale is now used to calculate the newton-compatible residual, so also needs to be divided by equation magnitude and abs
     ee_scale(ppe) = abs(ee_scale(ppe))/var(m)%magnitude
@@ -1693,16 +1690,7 @@ jacobian%ja(ptotal+1) = nelements + 1
 ee_scale_max = maxval(ee_scale)
 
 ! now form jacobian_transpose
-! allocate
-if (allocatable_integer_size(jacobian_transpose%i) < nelements) then
-  if (allocated(jacobian_transpose%i)) &
-    deallocate(jacobian_transpose%v,jacobian_transpose%i,jacobian_transpose%j,jacobian_transpose%ja)
-  allocate(jacobian_transpose%v(nelements),jacobian_transpose%i(nelements),jacobian_transpose%j(nelements), &
-    jacobian_transpose%ja(ptotal+1))
-end if
-jacobian_transpose%n = nelements
-
-! need reverse lookup structure, equation_from_unknown
+! top do this we need the reverse lookup structure, equation_from_unknown
 call calc_equation_from_unknown(ppeonly=.true.)
 
 ! using equation_from_unknown lookup form transpose
@@ -1728,6 +1716,8 @@ do ppu = 1, ptotal
 end do
 jacobian_transpose%ja(ptotal+1) = nelements + 1
 
+! keep equation_from_unknown allocated
+
 end subroutine setup_iterative_equations
 
 !-----------------------------------------------------------------
@@ -1742,62 +1732,27 @@ use general_module
 double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
 double precision, dimension(:), allocatable :: vector_product
 type(jacobian_type), intent(in) :: jacobian
-integer :: ppe, n, j
+integer :: n, j
 
 !---------------------
 
 vector_product = 0.d0
-! TODO: work out how to remove reduction from both this and transpose algorithms
-if (.false.) then
-  !$omp parallel do private(n,ppe) reduction(+:vector_product)
-  do n = 1, jacobian%n
-    ppe = jacobian%j(n)
-    vector_product(ppe) = vector_product(ppe) + jacobian%v(n)*vector_to_multiply(jacobian%i(n))
+!$omp parallel do private(j,n) shared(jacobian,vector_to_multiply,vector_product)
+do j = 1, ptotal
+  do n = jacobian%ja(j), jacobian%ja(j+1)-1
+    vector_product(j) = vector_product(j) + jacobian%v(n)*vector_to_multiply(jacobian%i(n))
   end do
-  !$omp end parallel do
-else
-  !$omp parallel do private(j,n) shared(jacobian,vector_to_multiply,vector_product)
-  do j = 1, ptotal
-    do n = jacobian%ja(j), jacobian%ja(j+1)-1
-      vector_product(j) = vector_product(j) + jacobian%v(n)*vector_to_multiply(jacobian%i(n))
-    end do
-  end do
-  !$omp end parallel do
-end if
-
-end subroutine aa_dot_vector_jacobian
-
-!-----------------------------------------------------------------
-
-subroutine aa_transpose_dot_vector_jacobian(jacobian,vector_to_multiply,vector_product)
-
-! here we multiply a vector (vector_to_multiply) with the jacobian matrix (transpose) stored as the jacobian entity
-!  forming the product vector (vector_product)
-
-!$ use omp_lib
-double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
-double precision, dimension(:), allocatable :: vector_product
-type(jacobian_type), intent(in) :: jacobian
-integer :: ppu, n
-
-!---------------------
-
-vector_product = 0.d0
-!$omp parallel do private(n,ppu) reduction(+:vector_product)
-do n = 1, jacobian%n
-  ppu = jacobian%i(n)
-  vector_product(ppu) = vector_product(ppu) + jacobian%v(n)*vector_to_multiply(jacobian%j(n))
 end do
 !$omp end parallel do
 
-end subroutine aa_transpose_dot_vector_jacobian
+end subroutine aa_dot_vector_jacobian
 
 !-----------------------------------------------------------------
 
 subroutine print_scaled_jacobian_matrix(jacobian)
 
 use general_module
-integer :: n
+integer :: n, j
 character(len=1000) :: formatline
 character(len=20) :: ptotalformat
 type(jacobian_type) :: jacobian
@@ -1805,8 +1760,10 @@ type(jacobian_type) :: jacobian
 ptotalformat=dindexformat(ptotal)
 formatline = '(g14.6,2(a,'//trim(ptotalformat)//'),a)' 
 write(93,'(a/a)') repeat('+',10),"jacobian matrix"
-do n = 1, jacobian%n
-  write(93,fmt=formatline) jacobian%v(n),' (',jacobian%j(n),',',jacobian%i(n),')'
+do j = 1, ptotal
+  do n = jacobian%ja(j), jacobian%ja(j+1)-1
+    write(93,fmt=formatline) jacobian%v(n),' (',j,',',jacobian%i(n),')'
+  end do
 end do
 write(93,'(a)') repeat('-',10)
 
@@ -1814,24 +1771,24 @@ end subroutine print_scaled_jacobian_matrix
 
 !-----------------------------------------------------------------
 
-function dot_product_with_itself(vector,length)
+function dot_product_with_itself(vector)
 
 use general_module
 double precision, dimension(:), allocatable, intent(in) :: vector
 double precision :: dot_product_with_itself, tmp
-integer :: n, length
+integer :: n
 
 if (.false.) then
   dot_product_with_itself = dot_product(vector,vector)
-else if (.true.) then
+else if (.false.) then
   dot_product_with_itself = 0.d0
-  do n = 1, length
+  do n = 1, ptotal
     dot_product_with_itself = dot_product_with_itself + vector(n)**2
   end do
 else
   dot_product_with_itself = 0.d0
-  !$omp parallel do shared(length,vector) private(n) reduction(+:dot_product_with_itself)
-  do n = 1, length
+  !$omp parallel do shared(vector) private(n) reduction(+:dot_product_with_itself)
+  do n = 1, ptotal
     dot_product_with_itself = dot_product_with_itself + vector(n)**2
   end do
   !$omp end parallel do
@@ -1841,18 +1798,55 @@ end function dot_product_with_itself
 
 !-----------------------------------------------------------------
 
-function dot_product_with_itself_scaled(vector,vector_scale,length)
+function dot_product_with_itself_scaled(vector,vector_scale)
 
+use general_module
 double precision, dimension(:), allocatable, intent(in) :: vector, vector_scale
 double precision :: dot_product_with_itself_scaled
-integer :: n, length
+integer :: n
 
-dot_product_with_itself_scaled = 0.d0
-do n = 1, length
-  dot_product_with_itself_scaled = dot_product_with_itself_scaled + (vector(n)*vector_scale(n))**2
-end do
+if (.false.) then
+  dot_product_with_itself_scaled = 0.d0
+  do n = 1, ptotal
+    dot_product_with_itself_scaled = dot_product_with_itself_scaled + (vector(n)*vector_scale(n))**2
+  end do
+else
+  dot_product_with_itself_scaled = 0.d0
+  !$omp parallel do shared(vector,vector_scale) private(n) reduction(+:dot_product_with_itself_scaled)
+  do n = 1, ptotal
+    dot_product_with_itself_scaled = dot_product_with_itself_scaled + (vector(n)*vector_scale(n))**2
+  end do
+  !$omp end parallel do
+end if
   
 end function dot_product_with_itself_scaled
+
+!-----------------------------------------------------------------
+
+function dot_product_local(vector1,vector2)
+
+use general_module
+double precision, dimension(:), allocatable, intent(in) :: vector1, vector2
+double precision :: dot_product_local, tmp
+integer :: n
+
+if (.false.) then
+  dot_product_local = dot_product(vector1,vector2)
+else if (.false.) then
+  dot_product_local = 0.d0
+  do n = 1, ptotal
+    dot_product_local = dot_product_local + vector1(n)*vector2(n)
+  end do
+else
+  dot_product_local = 0.d0
+  !$omp parallel do shared(vector1,vector2) private(n) reduction(+:dot_product_local)
+  do n = 1, ptotal
+    dot_product_local = dot_product_local + vector1(n)*vector2(n)
+  end do
+  !$omp end parallel do
+end if
+  
+end function dot_product_local
 
 !-----------------------------------------------------------------
 
