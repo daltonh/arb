@@ -292,7 +292,7 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine multigrid_mainsolver'
 ierror = 1 ! this signals an error
 
 ! create reverse lookup table of equations from unknowns
-call calc_equation_from_unknown
+call calc_equation_from_unknown(ppeonly=.false.)
 
 ! nondimensionalise equations and their derivatives (forward = .true. implies that we are nondimensionalising)
 call nondimensionalise_equations(normalise,forward=.true.)
@@ -501,13 +501,15 @@ end subroutine multigrid_mainsolver
 
 !-----------------------------------------------------------------
 
-subroutine calc_equation_from_unknown
+subroutine calc_equation_from_unknown(ppeonly)
 
 ! here we create/update the equation from unknown lookup structure
+! if ppeonly is true, then we only create pp array
 
 use general_module
 
 integer :: ppe, mm, m, ns, pppu, ppu
+logical :: ppeonly
 logical :: debug_sparse = .true.
 
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine calc_equation_from_unknown'
@@ -530,14 +532,18 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
       ppu = var(m)%funk(ns)%pp(pppu) ! this is the unknown pp number
       equation_from_unknown(ppu)%nequation = equation_from_unknown(ppu)%nequation + 1 ! increase the valid number of elements in the lookup array
       if (allocatable_integer_size(equation_from_unknown(ppu)%equation_pp) < equation_from_unknown(ppu)%nequation) then
-        call push_integer_array(array=equation_from_unknown(ppu)%equation_m,new_element=m)
-        call push_integer_array(array=equation_from_unknown(ppu)%equation_ns,new_element=ns)
-        call push_integer_array(array=equation_from_unknown(ppu)%within_equation_index,new_element=pppu)
+        if (.not.ppeonly) then
+          call push_integer_array(array=equation_from_unknown(ppu)%equation_m,new_element=m)
+          call push_integer_array(array=equation_from_unknown(ppu)%equation_ns,new_element=ns)
+          call push_integer_array(array=equation_from_unknown(ppu)%within_equation_index,new_element=pppu)
+        end if
         call push_integer_array(array=equation_from_unknown(ppu)%equation_pp,new_element=ppe)
       else
-        equation_from_unknown(ppu)%equation_m(equation_from_unknown(ppu)%nequation)=m
-        equation_from_unknown(ppu)%equation_ns(equation_from_unknown(ppu)%nequation)=ns
-        equation_from_unknown(ppu)%within_equation_index(equation_from_unknown(ppu)%nequation)=pppu
+        if (.not.ppeonly) then
+          equation_from_unknown(ppu)%equation_m(equation_from_unknown(ppu)%nequation)=m
+          equation_from_unknown(ppu)%equation_ns(equation_from_unknown(ppu)%nequation)=ns
+          equation_from_unknown(ppu)%within_equation_index(equation_from_unknown(ppu)%nequation)=pppu
+        end if
         equation_from_unknown(ppu)%equation_pp(equation_from_unknown(ppu)%nequation)=ppe
       end if
     end do
@@ -1337,7 +1343,7 @@ logical :: dogleg ! if this is false, then a pure descent algorithm is used
 logical :: dogleg_l ! per iteration version of dogleg
 character(len=1000) :: formatline
 double precision, dimension(:), allocatable, save :: delx, ee, w_x, delp, w_p, r, ee_scale ! allocate these once as their size doesn't change
-type(jacobian_type), save :: jacobian
+type(jacobian_type), save :: jacobian, jacobian_transpose
 double precision :: rrr, delrrr, delta, gamma, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt
 double precision :: a_xx, a_rx, a_rp, a_pp, a_xp ! these are mainly dot_products
 double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
@@ -1357,7 +1363,7 @@ if (.not.allocated(delx)) then
 end if
 
 ! nondimensionalise jacobian, and setup ee and ee_scale
-call setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_max)
+call setup_iterative_equations(jacobian,jacobian_transpose,ee,ee_scale,ee_scale_max)
 
 !---------------------
 ! initial guess for delphi is the zero vector
@@ -1438,7 +1444,8 @@ do
 ! now do the updates
   iterstep = iterstep + 1
 ! delp = -2*J^T.r 
-  call aa_transpose_dot_vector_jacobian(jacobian,r,delp)
+! call aa_transpose_dot_vector_jacobian(jacobian,r,delp)
+  call aa_dot_vector_jacobian(jacobian_transpose,r,delp)
   delp = -2.d0*delp
 ! w_p = J.delp
   call aa_dot_vector_jacobian(jacobian,delp,w_p) 
@@ -1613,7 +1620,7 @@ end subroutine descent_mainsolver
 
 !-----------------------------------------------------------------
 
-subroutine setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_max)
+subroutine setup_iterative_equations(jacobian,jacobian_transpose,ee,ee_scale,ee_scale_max)
 
 ! here we nondimensionalise the equations and their derivatives, so that we are working in nondimensional space when solving the linear system
 ! with this process we create ee_scale
@@ -1621,10 +1628,11 @@ subroutine setup_iterative_equations(jacobian,ee,ee_scale,ee_scale_max)
 
 use general_module
 
-integer :: mm, m, ns, pppu, ppu, mu, ppe, nelements
+integer :: mm, m, ns, pppu, ppu, mu, ppe, nelements, n, pppe, ii, i
 double precision :: one_element, ee_scale_max
 double precision, dimension(:), allocatable :: ee, ee_scale
-type(jacobian_type) :: jacobian
+type(jacobian_type) :: jacobian, jacobian_transpose
+logical :: found
 
 ! first run through all elements maximum element size (stored in ee_scale) and counting total number of elements
 
@@ -1661,20 +1669,20 @@ jacobian%n = nelements
 ! run through equations again forming jacobian, ee and scaling equations
 
 ppe = 0
-nelements = 0
+n = 0
 do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   m = var_list(var_list_number_equation)%list(mm) ! equation var number
   do ns = 1, ubound(var(m)%funk,1)
     ppe = ppe + 1
     ee(ppe) = var(m)%funk(ns)%v/ee_scale(ppe)
-    jacobian%ja(ppe) = nelements + 1 ! for normal jacobian now using compressed sparse row format (3 array variation), with 1 indexing (csr1) (as per mainsolver really)
+    jacobian%ja(ppe) = n + 1 ! for normal jacobian now using compressed sparse row format (3 array variation), with 1 indexing (csr1) (as per mainsolver really)
     do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
       ppu = var(m)%funk(ns)%pp(pppu) ! this is the unknown pp number
       mu = unknown_var_from_pp(ppu) ! unknown var number
-      nelements = nelements + 1
-      jacobian%v(nelements) = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude/ee_scale(ppe)
-      jacobian%i(nelements) = ppu
-      jacobian%j(nelements) = ppe
+      n = n + 1
+      jacobian%v(n) = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude/ee_scale(ppe)
+      jacobian%i(n) = ppu
+      jacobian%j(n) = ppe ! we use j (ie, coo1 storage format) when constructing jacobian_tranpose
     end do
 ! ee_scale is now used to calculate the newton-compatible residual, so also needs to be divided by equation magnitude and abs
     ee_scale(ppe) = abs(ee_scale(ppe))/var(m)%magnitude
@@ -1683,6 +1691,42 @@ end do
 jacobian%ja(ptotal+1) = nelements + 1
 
 ee_scale_max = maxval(ee_scale)
+
+! now form jacobian_transpose
+! allocate
+if (allocatable_integer_size(jacobian_transpose%i) < nelements) then
+  if (allocated(jacobian_transpose%i)) &
+    deallocate(jacobian_transpose%v,jacobian_transpose%i,jacobian_transpose%j,jacobian_transpose%ja)
+  allocate(jacobian_transpose%v(nelements),jacobian_transpose%i(nelements),jacobian_transpose%j(nelements), &
+    jacobian_transpose%ja(ptotal+1))
+end if
+jacobian_transpose%n = nelements
+
+! need reverse lookup structure, equation_from_unknown
+call calc_equation_from_unknown(ppeonly=.true.)
+
+! using equation_from_unknown lookup form transpose
+n = 0
+do ppu = 1, ptotal
+  jacobian_transpose%ja(ppu) = n + 1 ! for transpose jacobian also using compressed sparse row format (3 array variation), with 1 indexing (csr1) (as per mainsolver really)
+  do pppe = 1, equation_from_unknown(ppu)%nequation
+    n = n + 1
+    ppe = equation_from_unknown(ppu)%equation_pp(pppe)
+    jacobian_transpose%i(n) = ppe
+! search through jacobian matrix for value
+    found = .false.
+    do ii = jacobian%ja(ppe), jacobian%ja(ppe+1)-1
+      i = jacobian%i(ii)
+      if (i == ppu) then
+        jacobian_transpose%v(n) = jacobian%v(ii)
+        found = .true.
+        exit
+      end if
+    end do
+    if (.not.found) call error_stop('not found')
+  end do
+end do
+jacobian_transpose%ja(ptotal+1) = nelements + 1
 
 end subroutine setup_iterative_equations
 
