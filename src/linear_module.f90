@@ -1699,6 +1699,7 @@ integer :: ppe, n
 !---------------------
 
 vector_product = 0.d0
+! TODO: work out how to remove reduction from both this and transpose algorithms
 !$omp parallel do private(n,ppe) reduction(+:vector_product)
 do n = 1, jacobian%n
   ppe = jacobian%ppe(n)
