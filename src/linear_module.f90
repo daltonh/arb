@@ -72,8 +72,9 @@ double precision, dimension(:), allocatable, save :: e_scale ! scaling factor wh
 ! this is a sparse matrix structure (rows and columns stored) for storing the jacobian to allow for fast standard and transpose multiplications
 type jacobian_type
   double precision, dimension(:), allocatable :: v
-  integer, dimension(:), allocatable :: ppu
-  integer, dimension(:), allocatable :: ppe
+  integer, dimension(:), allocatable :: i
+  integer, dimension(:), allocatable :: j
+  integer, dimension(:), allocatable :: ja
   integer :: n ! number of active elements (matricies only increase in size)
 end type jacobian_type
 
@@ -1651,9 +1652,9 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
 end do
 
 ! now allocate fast-lookup jacobian
-if (allocatable_integer_size(jacobian%ppu) < nelements) then
-  if (allocated(jacobian%ppu)) deallocate(jacobian%v,jacobian%ppu,jacobian%ppe)
-  allocate(jacobian%v(nelements),jacobian%ppu(nelements),jacobian%ppe(nelements))
+if (allocatable_integer_size(jacobian%i) < nelements) then
+  if (allocated(jacobian%i)) deallocate(jacobian%v,jacobian%i,jacobian%j,jacobian%ja)
+  allocate(jacobian%v(nelements),jacobian%i(nelements),jacobian%j(nelements),jacobian%ja(ptotal+1))
 end if
 jacobian%n = nelements
 
@@ -1666,18 +1667,20 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   do ns = 1, ubound(var(m)%funk,1)
     ppe = ppe + 1
     ee(ppe) = var(m)%funk(ns)%v/ee_scale(ppe)
+    jacobian%ja(ppe) = nelements + 1 ! for normal jacobian now using compressed sparse row format (3 array variation), with 1 indexing (csr1) (as per mainsolver really)
     do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
       ppu = var(m)%funk(ns)%pp(pppu) ! this is the unknown pp number
       mu = unknown_var_from_pp(ppu) ! unknown var number
       nelements = nelements + 1
       jacobian%v(nelements) = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude/ee_scale(ppe)
-      jacobian%ppu(nelements) = ppu
-      jacobian%ppe(nelements) = ppe
+      jacobian%i(nelements) = ppu
+      jacobian%j(nelements) = ppe
     end do
 ! ee_scale is now used to calculate the newton-compatible residual, so also needs to be divided by equation magnitude and abs
     ee_scale(ppe) = abs(ee_scale(ppe))/var(m)%magnitude
   end do
 end do
+jacobian%ja(ptotal+1) = nelements + 1
 
 ee_scale_max = maxval(ee_scale)
 
@@ -1691,21 +1694,32 @@ subroutine aa_dot_vector_jacobian(jacobian,vector_to_multiply,vector_product)
 !  forming the product vector (vector_product)
 
 !$ use omp_lib
+use general_module
 double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
 double precision, dimension(:), allocatable :: vector_product
 type(jacobian_type), intent(in) :: jacobian
-integer :: ppe, n
+integer :: ppe, n, j
 
 !---------------------
 
 vector_product = 0.d0
 ! TODO: work out how to remove reduction from both this and transpose algorithms
-!$omp parallel do private(n,ppe) reduction(+:vector_product)
-do n = 1, jacobian%n
-  ppe = jacobian%ppe(n)
-  vector_product(ppe) = vector_product(ppe) + jacobian%v(n)*vector_to_multiply(jacobian%ppu(n))
-end do
-!$omp end parallel do
+if (.false.) then
+  !$omp parallel do private(n,ppe) reduction(+:vector_product)
+  do n = 1, jacobian%n
+    ppe = jacobian%j(n)
+    vector_product(ppe) = vector_product(ppe) + jacobian%v(n)*vector_to_multiply(jacobian%i(n))
+  end do
+  !$omp end parallel do
+else
+  !$omp parallel do private(j,n) shared(jacobian,vector_to_multiply,vector_product)
+  do j = 1, ptotal
+    do n = jacobian%ja(j), jacobian%ja(j+1)-1
+      vector_product(j) = vector_product(j) + jacobian%v(n)*vector_to_multiply(jacobian%i(n))
+    end do
+  end do
+  !$omp end parallel do
+end if
 
 end subroutine aa_dot_vector_jacobian
 
@@ -1727,8 +1741,8 @@ integer :: ppu, n
 vector_product = 0.d0
 !$omp parallel do private(n,ppu) reduction(+:vector_product)
 do n = 1, jacobian%n
-  ppu = jacobian%ppu(n)
-  vector_product(ppu) = vector_product(ppu) + jacobian%v(n)*vector_to_multiply(jacobian%ppe(n))
+  ppu = jacobian%i(n)
+  vector_product(ppu) = vector_product(ppu) + jacobian%v(n)*vector_to_multiply(jacobian%j(n))
 end do
 !$omp end parallel do
 
@@ -1748,7 +1762,7 @@ ptotalformat=dindexformat(ptotal)
 formatline = '(g14.6,2(a,'//trim(ptotalformat)//'),a)' 
 write(93,'(a/a)') repeat('+',10),"jacobian matrix"
 do n = 1, jacobian%n
-  write(93,fmt=formatline) jacobian%v(n),' (',jacobian%ppe(n),',',jacobian%ppu(n),')'
+  write(93,fmt=formatline) jacobian%v(n),' (',jacobian%j(n),',',jacobian%i(n),')'
 end do
 write(93,'(a)') repeat('-',10)
 
