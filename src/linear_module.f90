@@ -1347,6 +1347,7 @@ double precision :: rrr, delrrr, delta, gamma, rrr_o, d, iterres, ee_scale_max, 
 double precision :: a_xx, a_rx, a_rp, a_pp, a_xp ! these are mainly dot_products
 double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
 integer, parameter :: itersteproundoff = 50 ! this is a second criterion which triggers recalculation of the coefficients
+logical, parameter :: unwrap_vector_operations = .true.
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -1444,23 +1445,33 @@ do
   iterstep = iterstep + 1
 ! delp = -2*J^T.r 
   call aa_dot_vector_jacobian(jacobian_transpose,r,delp)
-  delp = -2.d0*delp
+  if (unwrap_vector_operations) then
+    !$omp parallel do private(n)
+    do n = 1, ptotal
+      delp(n) = -2.d0*delp(n)
+    end do
+    !$omp end parallel do
+  else
+    delp = -2.d0*delp
+  end if
 ! w_p = J.delp
   call aa_dot_vector_jacobian(jacobian,delp,w_p) 
-  if (.true.) then
-    a_rp = dot_product_local(r,w_p)
-    a_pp = dot_product_with_itself(w_p)
-    a_xp = dot_product_local(w_x,w_p) ! not needed for non-dogleg, but efficiency for that case isn't a priority
-  else
+  if (unwrap_vector_operations) then
 ! ever so slightly faster to do a single loop for the three dot products
     a_rp = 0.d0
     a_pp = 0.d0
     a_xp = 0.d0
+    !$omp parallel do private(n) reduction(+:a_rp,a_pp,a_xp)
     do n = 1, ptotal
       a_rp = a_rp + r(n)*w_p(n)
       a_pp = a_pp + w_p(n)**2
       a_xp = a_xp + w_x(n)*w_p(n)
     end do
+    !$omp end parallel do
+  else
+    a_rp = dot_product_local(r,w_p)
+    a_pp = dot_product_with_itself(w_p)
+    a_xp = dot_product_local(w_x,w_p) ! not needed for non-dogleg, but efficiency for that case isn't a priority
   end if
 
   if (debug) then
@@ -1513,45 +1524,38 @@ do
     a_xx = a_xx*gamma**2 + 2.d0*delta*gamma*a_xp + delta**2*a_pp
     a_rx = a_xx + delta*a_rp + gamma*a_rx
     delrrr = a_xx + 2.d0*(delta*a_rp + gamma*a_rx)
-    if (.true.) then
-      w_x = delta*w_p + gamma*w_x
-      delx = delta*delp + gamma*delx
-    else
-!     !$omp parallel do shared(ptotal,delta,gamma,w_x,w_p,delx,delp) private(n)
-      !$omp parallel do private(n)
+    if (unwrap_vector_operations) then
+      !$omp parallel do private(n) shared(delta,gamma)
       do n = 1, ptotal
-!       !$ thread = omp_get_thread_num() + 1
-!       write(94,'(2(a,i))') 'thread = ',thread,': n = ',n
         w_x(n) = delta*w_p(n) + gamma*w_x(n)
         delx(n) = delta*delp(n) + gamma*delx(n)
+        r(n) = r(n) + w_x(n)
+        delphi(n) = delphi(n) + delx(n)
       end do
       !$omp end parallel do
-!     write(94,*)
+    else
+      w_x = delta*w_p + gamma*w_x
+      delx = delta*delp + gamma*delx
+      r = r + w_x
+      delphi = delphi + delx
     end if
   else
 ! a_xx = a_rx = 0.d0 under the non-dogleg scheme, always
     delrrr = (a_pp*delta+2.d0*a_rp)*delta
     w_x = delta*w_p
     delx = delta*delp
+    r = r + w_x
+    delphi = delphi + delx
   end if
 
+  rrr = rrr + delrrr
+
   if (debug) then
-    write(93,'(a)') 'after updating w_x/delx'
+    write(93,'(a)') 'after updating w_x/delx and r/delphi'
     write(93,'(a,g14.6)') 'a_xx = ',a_xx
     write(93,'(a,g14.6)') 'a_rx = ',a_rx
     call print_debug_vector(w_x,"w_x")
     call print_debug_vector(delx,"delx")
-  end if
-
-  if (delrrr >= 0.d0) then
-    write(*,*) 'delrrr > 0.d0'
-  end if
-  
-  r = r + w_x
-  delphi = delphi + delx
-  rrr = rrr + delrrr
-
-  if (debug) then
     write(93,'(a)') 'after updating r/delphi'
     call print_debug_vector(r,"r")
     call print_debug_vector(delphi,"delphi")
@@ -1559,6 +1563,10 @@ do
     write(93,'(a,g14.6)') 'rrr_o = ',rrr_o
   end if
 
+  if (delrrr >= 0.d0) then
+    write(*,*) 'delrrr > 0.d0'
+  end if
+  
 ! if residual has decreased significantly, then recalculate the factors to guard against roundoff errors
 ! do this before convergence check, incase roundoff error has infected convergence
   if (rrr_o/rrr > roundoff_trigger.or.iterstep == itersteproundoffnext) then
