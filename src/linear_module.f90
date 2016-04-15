@@ -1443,17 +1443,8 @@ do
 
 ! now do the updates
   iterstep = iterstep + 1
-! delp = -2*J^T.r 
+! delp = J^T.r (actually delp^o in notation of notes)
   call aa_dot_vector_jacobian(jacobian_transpose,r,delp)
-  if (unwrap_vector_operations) then
-    !$omp parallel do private(n)
-    do n = 1, ptotal
-      delp(n) = -2.d0*delp(n)
-    end do
-    !$omp end parallel do
-  else
-    delp = -2.d0*delp
-  end if
 ! w_p = J.delp
   call aa_dot_vector_jacobian(jacobian,delp,w_p) 
   if (unwrap_vector_operations) then
