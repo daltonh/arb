@@ -36,7 +36,7 @@ module linear_module
 
 implicit none
 private
-public iterative_mainsolver, multigrid_mainsolver, bicg_mainsolver, descent_mainsolver
+public iterative_mainsolver, multigrid_mainsolver, bicg_mainsolver, descent_mainsolver, flexible_mainsolver
 
 ! this is an object that stores details of the equations that each unknown references
 type equation_from_unknown_type
@@ -1728,8 +1728,8 @@ subroutine aa_dot_vector_jacobian(jacobian,vector_to_multiply,vector_product)
 
 !$ use omp_lib
 use general_module
-double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
-double precision, dimension(:), allocatable :: vector_product
+double precision, dimension(:), intent(in) :: vector_to_multiply
+double precision, dimension(:) :: vector_product
 type(jacobian_type), intent(in) :: jacobian
 integer :: n, j
 
@@ -1773,7 +1773,7 @@ end subroutine print_scaled_jacobian_matrix
 function dot_product_with_itself(vector)
 
 use general_module
-double precision, dimension(:), allocatable, intent(in) :: vector
+double precision, dimension(:), intent(in) :: vector
 double precision :: dot_product_with_itself, tmp
 integer :: n
 
@@ -1800,7 +1800,7 @@ end function dot_product_with_itself
 function dot_product_with_itself_scaled(vector,vector_scale)
 
 use general_module
-double precision, dimension(:), allocatable, intent(in) :: vector, vector_scale
+double precision, dimension(:), intent(in) :: vector, vector_scale
 double precision :: dot_product_with_itself_scaled
 integer :: n
 
@@ -1825,7 +1825,7 @@ end function dot_product_with_itself_scaled
 function dot_product_local(vector1,vector2)
 
 use general_module
-double precision, dimension(:), allocatable, intent(in) :: vector1, vector2
+double precision, dimension(:), intent(in) :: vector1, vector2
 double precision :: dot_product_local, tmp
 integer :: n
 
@@ -1846,6 +1846,324 @@ else
 end if
   
 end function dot_product_local
+
+!-----------------------------------------------------------------
+
+subroutine flexible_mainsolver(ierror)
+
+! here we use a flexible algorithm to solve the linear system, using equation funk data directly
+
+use general_module
+use equation_module
+!$ use omp_lib
+
+integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext, itersteproundoffnext, n, thread, activerow, nvectors_l
+character(len=1000) :: formatline
+double precision, dimension(:), allocatable, save :: delx, ee, r, ee_scale, w_x ! allocate these once as their size doesn't change
+type(jacobian_type), save :: jacobian, jacobian_transpose
+double precision :: rrr, delrrr, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt, a_determinant
+double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
+integer, parameter :: itersteproundoff = 50 ! this is a second criterion which triggers recalculation of the coefficients
+integer, parameter :: nvectors = 1 ! number of vectors to be used in the update
+double precision, dimension(nvectors,nvectors) :: a_pp ! dot product of w_p's matrix
+double precision, dimension(nvectors,nvectors) :: b_pp ! matrix used to pass to determinant matrix
+double precision, dimension(nvectors) :: a_rp ! dot product of latest r_n with w_p's
+double precision, dimension(nvectors) :: alpha ! multipliers of delp
+double precision, dimension(:,:), allocatable, save :: delp, w_p ! increment directions (delp) and 
+logical, parameter :: unwrap_vector_operations = .false.
+logical, parameter :: savex = .true. ! rather than save previous delp, save previous delx
+logical, parameter :: debug = .false.
+logical :: debug_sparse = .true.
+
+if (debug) debug_sparse = .true.
+if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine flexible_mainsolver'
+
+ierror = 1 ! this signals an error
+
+! initialise and allocate loop variables
+if (.not.allocated(delx)) then
+  allocate(delx(ptotal),ee(ptotal),delp(nvectors,ptotal),w_p(nvectors,ptotal),r(ptotal),ee_scale(ptotal))
+  if (savex) allocate(w_x(ptotal))
+  delphi = 0.d0 ! zero on the first iteration only
+end if
+
+! nondimensionalise jacobian, and setup ee and ee_scale
+call setup_iterative_equations(jacobian,jacobian_transpose,ee,ee_scale,ee_scale_max)
+
+!---------------------
+! initial guess for delphi is the zero vector
+! delphi = 0.d0 ! now keep previous solution as the first guess
+! initialise other variables
+delx = 0.d0
+r = ee
+rrr = dot_product_with_itself(r)
+rrr_newt_tol = ptotal*(max(iterrestol,newtres*iterresreltol))**2
+rrr_tol = rrr_newt_tol/(ee_scale_max**2)
+a_pp = 0.d0
+a_rp = 0.d0
+alpha = 0.d0
+delp = 0.d0
+w_p = 0.d0
+rrr_o = rrr ! rrr_o is the last time the coefficients were calculated explicitly from r
+
+if (debug) then
+  call print_debug_vector(ee,"ee")
+  call print_debug_vector(ee_scale,"ee_scale")
+  call print_debug_vector(r,"r")
+  call print_scaled_jacobian_matrix(jacobian)
+  write(93,'(a,g14.6)') 'rrr = ',rrr
+  write(93,'(a,g14.6)') 'rrr_newt_tol = ',rrr_newt_tol
+  write(93,'(a,g14.6)') 'rrr_tol = ',rrr_tol
+  write(93,'(a,g14.6)') 'ee_scale_max = ',ee_scale_max
+  write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": rrr = ",rrr
+  write(93,'(a)') repeat('-',80)
+end if
+
+! start iteration loop
+iterstep = 0
+iterstepchecknext = 0
+itersteproundoffnext = itersteproundoff
+activerow = 0
+do
+
+  if (debug) then
+    write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
+    write(93,'(2(a,g14.7))') "rrr_newt = ",rrr_newt,": rrr = ",rrr
+  end if
+
+  if (iterstepchecknext == iterstep) then
+    iterstepchecknext = iterstepchecknext + iterstepcheck
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
+
+    if (debug_sparse) then
+      iterres = sqrt(rrr_newt/dble(ptotal))
+      write(*,'(1(a,i8),3(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
+        ": iterres = ",iterres,": rrr = ",rrr,": rrr_newt = ",rrr_newt
+      if (convergence_details_file) &
+        write(fconverge,'(1(a,i8),3(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
+          ": iterres = ",iterres,": rrr = ",rrr,": rrr_newt = ",rrr_newt
+    end if
+
+    if (rrr_newt < rrr_newt_tol) then ! iterations have converged based on rrr_newt
+      ierror = 0
+      exit
+    end if
+
+    if (check_stopfile("stopback")) then
+      write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+      ierror = 2
+      exit
+    end if
+
+  end if
+
+  if (rrr < rrr_tol) then ! iterations have converged based on rrr
+    rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
+    ierror = 0
+    exit
+  end if
+
+  if (iterstep == iterstepmax) exit ! maximum iterations have been performed without convergence
+
+! now do the updates
+  iterstep = iterstep + 1
+! activerow is the one that is getting the new delp
+  activerow = activerow + 1
+  if (activerow > nvectors) activerow = activerow - nvectors
+
+! calculate new gradient
+! delp = J^T.r (actually delp^o in notation of notes)
+  call aa_dot_vector_jacobian(jacobian_transpose,r,delp(activerow,:))
+! w_p = J.delp
+  call aa_dot_vector_jacobian(jacobian,delp(activerow,:),w_p(activerow,:)) 
+
+  if (savex) then
+    do m = 1, nvectors
+      a_rp(m) = dot_product(r,w_p(m,:))
+      do n = 1, nvectors
+        a_pp(m,n) = dot_product(w_p(m,:),w_p(n,:))
+      end do
+    end do
+  else
+  ! update dot products a_pp matrix and a_rp vector
+    do m = 1, nvectors
+      a_pp(activerow,m) = 0.d0
+      a_rp(m) = 0.d0
+    end do
+    !$omp parallel do private(n) reduction(+:a_rp,a_pp,a_xp)
+    do n = 1, ptotal
+      do m = 1, nvectors
+        a_pp(activerow,m) = a_pp(activerow,m) + w_p(activerow,n)*w_p(m,n)
+        a_rp(m) = a_rp(m) + r(n)*w_p(m,n)
+      end do
+    end do
+    !$omp end parallel do
+    do m = 1, nvectors
+      a_pp(m,activerow) = a_pp(activerow,m)
+    end do
+  end if
+
+! if (debug) then
+!   write(93,'(a,i4)') 'iterstep = ',iterstep
+!   call print_debug_vector(delp,"delp")
+!   call print_debug_vector(w_p,"w_p")
+!   write(93,'(a,g14.6)') 'a_rp = ',a_rp
+!   write(93,'(a,g14.6)') 'a_pp = ',a_pp
+!   write(93,'(a,g14.6)') 'a_xx = ',a_xx
+! end if
+
+  if (a_pp(activerow,activerow) < d_min) then
+    if (debug) write(93,'(a)') 'a_pp too small, so exiting iteration loop, presumably after convergence'
+    exit
+  end if
+
+! solve for alpha using cramer's rule
+  nvectors_l = min(nvectors,iterstep)
+  alpha = 0.d0
+  a_determinant = determinant(a_pp(1:nvectors_l,1:nvectors_l))
+  b_pp = a_pp
+  do n = 1, nvectors_l
+    b_pp(:,n) = -a_rp
+    alpha(n) = determinant(b_pp(1:nvectors_l,1:nvectors_l))/a_determinant
+    b_pp(:,n) = a_pp(:,n)
+  end do
+
+!
+
+  if (unwrap_vector_operations) then
+    !$omp parallel do private(n) shared(delta,gamma)
+    do n = 1, ptotal
+      delx(n) = 0.d0
+      do m = 1, nvectors_l
+        delx(n) = delx(n) + alpha(m)*delp(m,n)
+        r(n) = r(n) + alpha(m)*w_p(m,n)
+      end do
+      delphi(n) = delphi(n) + delx(n)
+    end do
+    !$omp end parallel do
+  else
+    delx = 0.d0
+    do m = 1, nvectors_l
+      delx = delx + alpha(m)*delp(m,:)
+      r = r + alpha(m)*w_p(m,:)
+    end do
+    delphi = delphi + delx
+  end if
+
+  rrr = dot_product_with_itself(r)
+
+  if (savex) then
+    delp(activerow,:) = delx
+    w_x = 0.d0
+    do m = 1, nvectors_l
+      w_x = w_x + alpha(m)*w_p(m,:)
+    end do
+    w_p(activerow,:) = w_x
+  end if
+
+! if (debug) then
+!   write(93,'(a)') 'after updating w_x/delx and r/delphi'
+!   write(93,'(a,g14.6)') 'a_xx = ',a_xx
+!   write(93,'(a,g14.6)') 'a_rx = ',a_rx
+!   call print_debug_vector(w_x,"w_x")
+!   call print_debug_vector(delx,"delx")
+!   write(93,'(a)') 'after updating r/delphi'
+!   call print_debug_vector(r,"r")
+!   call print_debug_vector(delphi,"delphi")
+!   write(93,'(a,g14.6)') 'rrr = ',rrr
+!   write(93,'(a,g14.6)') 'rrr_o = ',rrr_o
+! end if
+
+! if (delrrr >= 0.d0) then
+!   write(*,*) 'delrrr > 0.d0'
+! end if
+  
+! if residual has decreased significantly, then recalculate the factors to guard against roundoff errors
+! do this before convergence check, incase roundoff error has infected convergence
+  if (rrr_o/rrr > roundoff_trigger.or.iterstep == itersteproundoffnext) then
+    itersteproundoffnext = itersteproundoffnext + itersteproundoff
+    rrr_o = rrr
+    call aa_dot_vector_jacobian(jacobian,delphi,r) 
+    r = ee + r
+    rrr = dot_product_with_itself(r)
+!   call aa_dot_vector_jacobian(jacobian,delx,w_x) 
+!   a_xx = dot_product_with_itself(w_x)
+!   a_rx = dot_product_local(r,w_x)
+!   if (debug) then
+!     write(93,'(a)') 'in roundoff_trigger'
+!     call print_debug_vector(r,"r")
+!     write(93,'(a,g14.6)') 'rrr = ',rrr
+!     call print_debug_vector(w_x,"w_x")
+!     write(93,'(a,g14.6)') 'a_xx = ',a_xx
+!     write(93,'(a,g14.6)') 'a_rx = ',a_rx
+!   end if
+!   if (debug_sparse) write(*,'(a)') 'ITERATIONS: recalculating coefficients to avoid round-off errors'
+    if (debug) write(*,'(a)') 'ITERATIONS: recalculating coefficients to avoid round-off errors'
+  end if
+
+end do
+  
+iterres = sqrt(rrr_newt/dble(ptotal))
+if (ierror == 0) then
+  if (debug_sparse) then
+    write(*,'(a,i8,3(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres, &
+      ": rrr = ",rrr,": rrr_newt = ",rrr_newt
+    if (convergence_details_file) &
+      write(fconverge,'(a,i8,3(a,g14.7))') &
+      "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres, &
+      ": rrr = ",rrr,": rrr_newt = ",rrr_newt
+  end if
+else
+  write(*,'(a,i8,3(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres, &
+    ": rrr = ",rrr,": rrr_newt = ",rrr_newt
+  if (convergence_details_file) &
+    write(fconverge,'(a,i8,3(a,g14.7))') &
+    "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres, &
+    ": rrr = ",rrr,": rrr_newt = ",rrr_newt
+end if
+
+!---------------------
+! redimensionalise delphi
+do ppu = 1, ptotal
+  m = unknown_var_from_pp(ppu)
+  delphi(ppu) = delphi(ppu)*var(m)%magnitude
+end do
+
+!---------------------
+
+if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine flexible_mainsolver'
+
+end subroutine flexible_mainsolver
+
+!-----------------------------------------------------------------
+
+recursive function determinant(matrix) result(determinant_result)
+
+double precision :: determinant_result
+double precision, dimension(:,:) :: matrix
+double precision, dimension(:,:), allocatable :: reduced_matrix
+integer :: nsize, n, multiplier
+
+nsize = ubound(matrix,1)
+!if (ubound(matrix,2) /= nsize) stop 'matrix in determinant not square'
+if (nsize == 1) then
+  determinant_result = matrix(1,1)
+else
+  allocate(reduced_matrix(nsize-1,nsize-1))
+  determinant_result = 0.d0
+  multiplier = 1
+  reduced_matrix = matrix(2:nsize,2:nsize)
+  do n = 1, nsize
+    determinant_result = determinant_result + matrix(1,n)*dble(multiplier)*determinant(reduced_matrix)
+    if (n == nsize) exit
+    reduced_matrix(:,n) = matrix(2:nsize,n)
+    multiplier = -multiplier
+  end do
+  deallocate(reduced_matrix)
+end if
+
+end function determinant
 
 !-----------------------------------------------------------------
 

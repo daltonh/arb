@@ -40,7 +40,7 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, multigrid, iterative, mgmres, bicg, bicgstab, descent, doglegdescent
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, multigrid, iterative, mgmres, bicg, bicgstab, descent, doglegdescent, flexible
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
@@ -164,6 +164,13 @@ else if (trim(linear_solver) == "doglegdescent") then
   call time_process(description='descent mainsolver')
   ! if there is a problem with the linear matrix solver then return
   if (debug) write(*,*) 'in newtsolver after descent_mainsolver, ierror = ',ierror
+else if (trim(linear_solver) == "flexible") then
+  if (debug) write(*,*) 'calling flexible_mainsolver'
+  call time_process
+  call flexible_mainsolver(ierror)
+  call time_process(description='flexible mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after flexible_mainsolver, ierror = ',ierror
 else
   if (debug) write(*,*) 'calling mainsolver'
   !call time_process
@@ -2085,6 +2092,7 @@ else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "
   trim(linear_solver) == "multigrid".or.trim(linear_solver) == "singlegrid".or. &
   trim(linear_solver) == "bicg".or.trim(linear_solver) == "bicgstab".or. &
   trim(linear_solver) == "descent".or.trim(linear_solver) == "doglegdescent".or. &
+  trim(linear_solver) == "flexible".or. &
   trim(linear_solver) == "mgmres".or.trim(linear_solver) == "none")) then
   call error_stop('unknown linear solver specified: '//trim(linear_solver))
 end if
