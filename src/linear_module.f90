@@ -1851,28 +1851,33 @@ end function dot_product_local
 
 subroutine flexible_mainsolver(ierror)
 
-! here we use a flexible algorithm to solve the linear system, using equation funk data directly
+! here we use a flexible algorithm to solve the linear system
+! now based on normal and gradients of normal projection vectors
 
 use general_module
 use equation_module
+use lapack_module
 !$ use omp_lib
 
-integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext, itersteproundoffnext, n, thread, activerow, nvectors_l
+integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext, itersteproundoffnext, n, thread, nvectors_l, nvectors_ptotal
 character(len=1000) :: formatline
-double precision, dimension(:), allocatable, save :: delx, ee, r, ee_scale, w_x ! allocate these once as their size doesn't change
+double precision, dimension(:), allocatable, save :: delx, ee, r, ee_scale ! allocate these once as their size doesn't change
 type(jacobian_type), save :: jacobian, jacobian_transpose
-double precision :: rrr, delrrr, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt, a_determinant
+double precision :: rrr, delrrr, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt, a_determinant, delp_mag
 double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
 integer, parameter :: itersteproundoff = 50 ! this is a second criterion which triggers recalculation of the coefficients
-integer, parameter :: nvectors = 1 ! number of vectors to be used in the update
+integer, parameter :: nvectors = 6 ! number of vectors to be used in the update
 double precision, dimension(nvectors,nvectors) :: a_pp ! dot product of w_p's matrix
 double precision, dimension(nvectors,nvectors) :: b_pp ! matrix used to pass to determinant matrix
 double precision, dimension(nvectors) :: a_rp ! dot product of latest r_n with w_p's
 double precision, dimension(nvectors) :: alpha ! multipliers of delp
+double precision, dimension(nvectors,1) :: lapack_alpha ! shape required for lapack solver
+double precision, dimension(nvectors,nvectors) :: lapack_a ! a array for lapack_solver
+double precision, dimension(nvectors) :: a_pp_matrix_error ! error in a_pp matrix solution, only used for debugging
 double precision, dimension(:,:), allocatable, save :: delp, w_p ! increment directions (delp) and 
+logical :: lapack_error
 logical, parameter :: unwrap_vector_operations = .false.
-logical, parameter :: savex = .true. ! rather than save previous delp, save previous delx
-logical, parameter :: debug = .false.
+logical, parameter :: debug = .true.
 logical :: debug_sparse = .true.
 
 if (debug) debug_sparse = .true.
@@ -1883,7 +1888,6 @@ ierror = 1 ! this signals an error
 ! initialise and allocate loop variables
 if (.not.allocated(delx)) then
   allocate(delx(ptotal),ee(ptotal),delp(nvectors,ptotal),w_p(nvectors,ptotal),r(ptotal),ee_scale(ptotal))
-  if (savex) allocate(w_x(ptotal))
   delphi = 0.d0 ! zero on the first iteration only
 end if
 
@@ -1905,6 +1909,7 @@ alpha = 0.d0
 delp = 0.d0
 w_p = 0.d0
 rrr_o = rrr ! rrr_o is the last time the coefficients were calculated explicitly from r
+nvectors_ptotal = min(nvectors,ptotal) ! maximum number of vectors that we can have, recognising that it must be less than ptotal
 
 if (debug) then
   call print_debug_vector(ee,"ee")
@@ -1915,6 +1920,7 @@ if (debug) then
   write(93,'(a,g14.6)') 'rrr_newt_tol = ',rrr_newt_tol
   write(93,'(a,g14.6)') 'rrr_tol = ',rrr_tol
   write(93,'(a,g14.6)') 'ee_scale_max = ',ee_scale_max
+  write(93,'(a,g14.6)') 'nvectors_ptotal = ',nvectors_ptotal
   write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": rrr = ",rrr
   write(93,'(a)') repeat('-',80)
 end if
@@ -1923,8 +1929,7 @@ end if
 iterstep = 0
 iterstepchecknext = 0
 itersteproundoffnext = itersteproundoff
-activerow = 0
-do
+iteration_loop: do
 
   if (debug) then
     write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
@@ -1947,13 +1952,13 @@ do
 
     if (rrr_newt < rrr_newt_tol) then ! iterations have converged based on rrr_newt
       ierror = 0
-      exit
+      exit iteration_loop
     end if
 
     if (check_stopfile("stopback")) then
       write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
       ierror = 2
-      exit
+      exit iteration_loop
     end if
 
   end if
@@ -1961,48 +1966,75 @@ do
   if (rrr < rrr_tol) then ! iterations have converged based on rrr
     rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
     ierror = 0
-    exit
+    exit iteration_loop
   end if
 
-  if (iterstep == iterstepmax) exit ! maximum iterations have been performed without convergence
+  if (iterstep == iterstepmax) exit iteration_loop ! maximum iterations have been performed without convergence
 
 ! now do the updates
   iterstep = iterstep + 1
-! activerow is the one that is getting the new delp
-  activerow = activerow + 1
-  if (activerow > nvectors) activerow = activerow - nvectors
 
-! calculate new gradient
+! calculate new projection vectors
+! nvectors_l = min(nvectors_ptotal,iterstep) ! on the first iterations we need to limit the number of vectors
+  nvectors_l = nvectors_ptotal
+  do m = 1, nvectors_l
+    if (m == 1) then
 ! delp = J^T.r (actually delp^o in notation of notes)
-  call aa_dot_vector_jacobian(jacobian_transpose,r,delp(activerow,:))
+      call aa_dot_vector_jacobian(jacobian_transpose,r,delp(m,:))
+    else
+      call aa_dot_vector_jacobian(jacobian_transpose,w_p(m-1,:),delp(m,:)) 
+    end if
+    delp_mag = sqrt(dot_product(delp(m,:),delp(m,:)))
+    delp(m,:) = delp(m,:)/delp_mag
 ! w_p = J.delp
-  call aa_dot_vector_jacobian(jacobian,delp(activerow,:),w_p(activerow,:)) 
+    call aa_dot_vector_jacobian(jacobian,delp(m,:),w_p(m,:)) 
+  end do
 
-  if (savex) then
-    do m = 1, nvectors
-      a_rp(m) = dot_product(r,w_p(m,:))
-      do n = 1, nvectors
-        a_pp(m,n) = dot_product(w_p(m,:),w_p(n,:))
-      end do
-    end do
-  else
-  ! update dot products a_pp matrix and a_rp vector
-    do m = 1, nvectors
-      a_pp(activerow,m) = 0.d0
-      a_rp(m) = 0.d0
-    end do
-    !$omp parallel do private(n) reduction(+:a_rp,a_pp,a_xp)
+  if (debug) then
+    formatline = '(i8'//repeat(',1x,g14.6',nvectors_l)//')'
+    write(93,'(a)') 'delp vectors:'
     do n = 1, ptotal
-      do m = 1, nvectors
-        a_pp(activerow,m) = a_pp(activerow,m) + w_p(activerow,n)*w_p(m,n)
-        a_rp(m) = a_rp(m) + r(n)*w_p(m,n)
-      end do
+      write(93,fmt=formatline) n,(delp(m,n),m=1,nvectors_l)
     end do
-    !$omp end parallel do
-    do m = 1, nvectors
-      a_pp(m,activerow) = a_pp(activerow,m)
+    write(93,'(a)') 'w_p vectors:'
+    do n = 1, ptotal
+      write(93,fmt=formatline) n,(w_p(m,n),m=1,nvectors_l)
     end do
   end if
+
+! calculate new coefficients
+  do m = 1, nvectors_l
+    a_rp(m) = dot_product(r,w_p(m,:))
+    do n = 1, nvectors_l
+      a_pp(m,n) = dot_product(w_p(m,:),w_p(n,:))
+    end do
+  end do
+
+! if (savex) then
+!   do m = 1, nvectors
+!     a_rp(m) = dot_product(r,w_p(m,:))
+!     do n = 1, nvectors
+!       a_pp(m,n) = dot_product(w_p(m,:),w_p(n,:))
+!     end do
+!   end do
+! else
+! ! update dot products a_pp matrix and a_rp vector
+!   do m = 1, nvectors
+!     a_pp(activerow,m) = 0.d0
+!     a_rp(m) = 0.d0
+!   end do
+!   !$omp parallel do private(n) reduction(+:a_rp,a_pp,a_xp)
+!   do n = 1, ptotal
+!     do m = 1, nvectors
+!       a_pp(activerow,m) = a_pp(activerow,m) + w_p(activerow,n)*w_p(m,n)
+!       a_rp(m) = a_rp(m) + r(n)*w_p(m,n)
+!     end do
+!   end do
+!   !$omp end parallel do
+!   do m = 1, nvectors
+!     a_pp(m,activerow) = a_pp(activerow,m)
+!   end do
+! end if
 
 ! if (debug) then
 !   write(93,'(a,i4)') 'iterstep = ',iterstep
@@ -2013,23 +2045,54 @@ do
 !   write(93,'(a,g14.6)') 'a_xx = ',a_xx
 ! end if
 
-  if (a_pp(activerow,activerow) < d_min) then
-    if (debug) write(93,'(a)') 'a_pp too small, so exiting iteration loop, presumably after convergence'
-    exit
-  end if
 
 ! solve for alpha using cramer's rule
-  nvectors_l = min(nvectors,iterstep)
   alpha = 0.d0
-  a_determinant = determinant(a_pp(1:nvectors_l,1:nvectors_l))
-  b_pp = a_pp
-  do n = 1, nvectors_l
-    b_pp(:,n) = -a_rp
-    alpha(n) = determinant(b_pp(1:nvectors_l,1:nvectors_l))/a_determinant
-    b_pp(:,n) = a_pp(:,n)
+  do
+    a_determinant = determinant(a_pp(1:nvectors_l,1:nvectors_l))
+    if (a_determinant < d_min) then
+! if the determinant is too small then reduce the number of projection vectors
+      if (nvectors_l > 1) then
+        if (debug) write(93,'(a,i2)') 'a_determinant too small, so reducing nvectors_l to ',nvectors_l
+        nvectors_l = nvectors_l - 1
+      else
+        if (debug) write(93,'(a)') 'a_determinant too small, so exiting iteration loop, presumably after convergence'
+        exit iteration_loop
+      end if
+    else
+      exit
+    end if
   end do
+  if (.false.) then
+    b_pp = a_pp
+    do n = 1, nvectors_l
+      b_pp(:,n) = -a_rp
+      alpha(n) = determinant(b_pp(1:nvectors_l,1:nvectors_l))/a_determinant
+      b_pp(:,n) = a_pp(:,n)
+    end do
+  else
+!   call lapack_linear_solver(a=a_pp(1:nvectors_l,1:nvectors_l),b=-a_rp(1:nvectors_l),error=lapack_error)
+    lapack_alpha = 0.d0
+    lapack_alpha(1:nvectors_l,1) = -a_rp
+    lapack_a = 0.d0
+    do n = 1, nvectors
+      lapack_a(n,n) = 1.d0
+    end do
+    lapack_a(1:nvectors_l,1:nvectors_l) = a_pp(1:nvectors_l,1:nvectors_l)
+    call lapack_linear_solver(a=lapack_a,b=lapack_alpha,error=lapack_error)
+    if (lapack_error) call error_stop('error in lapack linear solver in flexible_mainsolver')
+    alpha = 0.d0
+    alpha(1:nvectors_l) = lapack_alpha(1:nvectors_l,1)
+  end if
 
-!
+  if (debug) then
+    a_pp_matrix_error = matmul(a_pp(1:nvectors_l,1:nvectors_l),alpha(1:nvectors_l))+a_rp(1:nvectors_l)
+    write(93,'(a,i2)') 'nvectors_l = ',nvectors_l
+    write(93,'(a,g14.7)') 'a_determinant = ',a_determinant
+    write(93,*) 'alpha = ',alpha(1:nvectors_l)
+    write(93,*) 'a_pp_matrix_error = ',a_pp_matrix_error(1:nvectors_l)
+    write(93,'(a,g14.7)') 'a_pp_matrix_error mag = ',sqrt(dot_product(a_pp_matrix_error(1:nvectors_l),a_pp_matrix_error(1:nvectors_l)))
+  end if
 
   if (unwrap_vector_operations) then
     !$omp parallel do private(n) shared(delta,gamma)
@@ -2053,14 +2116,14 @@ do
 
   rrr = dot_product_with_itself(r)
 
-  if (savex) then
-    delp(activerow,:) = delx
-    w_x = 0.d0
-    do m = 1, nvectors_l
-      w_x = w_x + alpha(m)*w_p(m,:)
-    end do
-    w_p(activerow,:) = w_x
-  end if
+! if (savex) then
+!   delp(activerow,:) = delx
+!   w_x = 0.d0
+!   do m = 1, nvectors_l
+!     w_x = w_x + alpha(m)*w_p(m,:)
+!   end do
+!   w_p(activerow,:) = w_x
+! end if
 
 ! if (debug) then
 !   write(93,'(a)') 'after updating w_x/delx and r/delphi'
@@ -2102,7 +2165,7 @@ do
     if (debug) write(*,'(a)') 'ITERATIONS: recalculating coefficients to avoid round-off errors'
   end if
 
-end do
+end do iteration_loop
   
 iterres = sqrt(rrr_newt/dble(ptotal))
 if (ierror == 0) then

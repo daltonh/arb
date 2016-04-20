@@ -637,7 +637,7 @@ setup_module.o: setup_module.f90 general_module.o equation_module.o gmesh_module
 kernel_module.o: kernel_module.f90 general_module.o $(lapack_module) $(numerical_recipes_module)
 	$(fcomp) $(cflagsnoomp) $< $(logme) -o $@
 
-linear_module.o: linear_module.f90 general_module.o equation_module.o
+linear_module.o: linear_module.f90 general_module.o equation_module.o $(lapack_module)
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
 solver_module.o: solver_module.f90 general_module.o equation_module.o $(linear_solver_modules) linear_module.o
