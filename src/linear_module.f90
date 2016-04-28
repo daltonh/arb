@@ -661,76 +661,6 @@ end subroutine calc_multigrid
 
 !-----------------------------------------------------------------
 
-subroutine nondimensionalise_equations(normalise,forward)
-
-! here we nondimensionalise the equations and their derivatives, so that we are working in nondimensional space when solving the linear system
-! fix me so that iterres_calc is correct
-
-use general_module
-
-integer :: mm, m, ns, pppu, ppu, mu, ppe
-logical :: forward ! if true, then we are nondimensionalising the equations, otherwise, if false, we are dimensionalising them again
-logical :: normalise ! do additional normalisation, so that each equation/derivative is scaled so that the largest magnitude jacobian element per row becomes (positive) 1.d0, with a corresponding change to the rhs (ie, equation value)
-
-if (.not.allocated(e_scale)) then
-  allocate(e_scale(ptotal))
-  e_scale = 1.d0 ! if normalise isn't used then e_scale is set to 1
-end if
-if (normalise) then
-  if (forward) e_scale = 0.d0
-end if
-
-ppe = 0
-do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(mm) ! equation var number
-  do ns = 1, ubound(var(m)%funk,1)
-    ppe = ppe + 1
-    if (forward) then
-      var(m)%funk(ns)%v = var(m)%funk(ns)%v/var(m)%magnitude
-    else
-      var(m)%funk(ns)%v = var(m)%funk(ns)%v*var(m)%magnitude
-    end if
-    do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
-      ppu = var(m)%funk(ns)%pp(pppu) ! this is the unknown pp number
-      mu = unknown_var_from_pp(ppu) ! unknown var number
-      if (forward) then
-        var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude/var(m)%magnitude
-        if (normalise) then
-          if (abs(var(m)%funk(ns)%dv(pppu)) > abs(e_scale(ppe))) e_scale(ppe) = var(m)%funk(ns)%dv(pppu)
-        end if
-      else
-        var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*var(m)%magnitude/var(mu)%magnitude
-      end if
-    end do
-  end do
-end do
-
-if (normalise) then
-  ppe = 0
-  do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-    m = var_list(var_list_number_equation)%list(mm) ! equation var number
-    do ns = 1, ubound(var(m)%funk,1)
-      ppe = ppe + 1
-      if (forward) then
-        var(m)%funk(ns)%v = var(m)%funk(ns)%v/e_scale(ppe)
-      else
-        var(m)%funk(ns)%v = var(m)%funk(ns)%v*e_scale(ppe)
-      end if
-      do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
-        if (forward) then
-          var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)/e_scale(ppe)
-        else
-          var(m)%funk(ns)%dv(pppu) = var(m)%funk(ns)%dv(pppu)*e_scale(ppe)
-        end if
-      end do
-    end do
-  end do
-end if
-
-end subroutine nondimensionalise_equations
-
-!-----------------------------------------------------------------
-
 subroutine bicg_mainsolver(ierror,stabilised)
 
 ! here we use a unpreconditioned bicg technique to solve the linear system, using equation funk data directly
@@ -741,15 +671,16 @@ use general_module
 use equation_module
 
 logical :: stabilised
-integer :: ierror, mm, m, ns, j, iterstep, ppu
+integer :: ierror, mm, m, ns, j, iterstep, ppu, nelements, iterstepchecknext
 character(len=1000) :: formatline
-double precision, dimension(:), allocatable, save :: r1, r2, p1, p2, v, t, s ! allocate these once as their size doesn't change
-double precision :: alpha, beta, iterres, iterres_old, alpha_demoninator, rho_o, rho, omega, omega_demoninator
+double precision, dimension(:), allocatable, save :: r1, r2, p1, p2, v, t, s, ee, ee_scale ! allocate these once as their size doesn't change
+double precision :: alpha, beta, iterres, iterres_old, alpha_demoninator, rho_o, rho, omega, omega_demoninator, ee_scale_max, &
+  rrr_newt, rrr_tol, rrr, rrr_newt_tol
 double precision, parameter :: alpha_max = 1.d6, beta_max = 1.d6, omega_max = 1.d6, &
   alpha_demoninator_min = tiny(1.d0), rho_o_min = tiny(1.d0), increment_multiplier = 1.d-3, omega_min = tiny(1.d0), &
   omega_demoninator_min = tiny(1.d0)
+type(jacobian_type), save :: jacobian, jacobian_transpose
 logical :: restart ! this is a flag to indicate that solution needs to be restarted
-logical, parameter :: normalise = .true. ! to normalise the equations based upon maximum per row jacobian value
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -758,91 +689,137 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine bicg_mainsolver'
 
 ierror = 1 ! this signals an error
 
-! nondimensionalise equations and their derivatives (forward = .true. implies that we are nondimensionalising)
-call nondimensionalise_equations(normalise,forward=.true.)
-
 !---------------------
 ! initialise and allocate loop variables
 if (.not.allocated(r1)) then
   if (stabilised) then
-    allocate(r1(ptotal),r2(ptotal),p1(ptotal),v(ptotal),t(ptotal),s(ptotal))
+    allocate(r1(ptotal),r2(ptotal),p1(ptotal),v(ptotal),t(ptotal),s(ptotal),ee(ptotal),ee_scale(ptotal))
   else
-    allocate(r1(ptotal),r2(ptotal),p1(ptotal),p2(ptotal),v(ptotal))
+    allocate(r1(ptotal),r2(ptotal),p1(ptotal),p2(ptotal),v(ptotal),ee(ptotal),ee_scale(ptotal))
   end if
 end if
+
+! we need the reverse lookup structure, equation_from_unknown, but only the ppe indicies, for forming the jacobian_transpose
+call calc_equation_from_unknown(ppeonly=.true.)
+
+! and calculate the normalisation (iterative preconditioning) vector
+call calc_ee_normalise(ee_scale,nelements)
+
+! nondimensionalise jacobian, and setup ee and ee_scale
+call setup_jacobians(jacobian,jacobian_transpose,ee_scale,nelements)
+
+! convert ee_scale into a preconditioned -> nondimensionalised scale factor, forming ee and finding ee_scale_max at the same time
+call calc_ee_scale(ee_scale,ee,ee_scale_max)
 
 restart = .false.
 
 ! initial guess for delphi is the zero vector
 delphi = 0.d0
-
-! setup the vectors
-call initialise_bicg(stabilised,r1,r2,p1,p2,v,rho,alpha,omega,iterres,debug,normalise)
+! form the initial residual as b - A.x, but with b = -equation (=-var(m)%funk(ns)%v) and A.x stored as r1 from above
+!   call aa_dot_vector_jacobian(jacobian,delphi,r1)
+!   r1 = -r1-ee
+r1 = -ee
+r2 = r1
+rho = 1.d0
+p1 = 0.d0 
+if (stabilised) then
+  alpha = 1.d0
+  omega = 1.d0
+  v = 0.d0 
+else
+  p2 = 0.d0 
+end if
+rrr = dot_product_with_itself(r1)
+rrr_newt_tol = ptotal*(max(iterrestol,newtres*iterresreltol))**2
+rrr_tol = rrr_newt_tol/(ee_scale_max**2)
 
 if (debug) then
-  call print_jacobian_matrix
-  write(93,'(a,i8,1(a,g14.7))') "ITERATIONS:        start iterstep = ",0,": iterres = ",iterres
-  write(93,'(a)') repeat('-',80)
+  call print_debug_vector(r1,"r1 in bicg_mainsolver")
+  call print_debug_vector(r2,"r2 in bicg_mainsolver")
+  call print_debug_vector(p1,"p1 in bicg_mainsolver")
+  if (stabilised) then
+    call print_debug_vector(v,"v in bicg_mainsolver")
+  else
+    call print_debug_vector(p2,"p2 in bicg_mainsolver")
+  end if
+  call print_debug_vector(delphi,"delphi in bicg_mainsolver")
 end if
 
 ! start iteration loop
 iterstep = 0
+iterstepchecknext = 0
 iteration_loop: do
-
-  if (debug) write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
 
 ! if restart has been requested, do so now
   if (restart) then
-    iterstep = iterstep + 1
     if (debug) write(93,'(a)') 'RRRRR RESTART REQUESTED'
     do j = 1, ptotal
 !     delphi(j) = delphi(j) + increment_multiplier*random() ! add a random increment onto delphi, noting that delphi should be normalised
       delphi(j) = random() ! overwrite delphi with a random increment, noting that delphi should be normalised
     end do
-    call initialise_bicg(stabilised,r1,r2,p1,p2,v,rho,alpha,omega,iterres,debug,normalise)
+! form the initial residual as b - A.x, but with b = -equation (=-var(m)%funk(ns)%v) and A.x stored as r1 from above
+    call aa_dot_vector_jacobian(jacobian,delphi,r1)
+    r1 = -r1-ee
+    r2 = r1
+    rho = 1.d0
+    p1 = 0.d0 
+    if (stabilised) then
+      alpha = 1.d0
+      omega = 1.d0
+      v = 0.d0 
+    else
+      p2 = 0.d0 
+    end if
     restart = .false.
   end if
 
-! check on convergence, noting that r1 is the residual vector
-  iterres_old = iterres
-  iterres = iterres_calc(r1,normalise)
-  
   if (debug) then
-    write(93,'(1(a,i8))') "iterstep = ",iterstep
-    write(93,'(2(a,g14.7))') "iterres = ",iterres,": iterres_old = ",iterres_old
+    write(93,'(a,i10)') 'At start of iteration_loop, iterstep = ',iterstep
+    rrr_newt = dot_product_with_itself_scaled(r1,ee_scale)
+    write(93,'(2(a,g14.7))') "rrr_newt = ",rrr_newt,": rrr = ",rrr
   end if
 
-  if (debug_sparse) then
-    if (mod(iterstep,iterstepcheck) == 0) then
-      write(*,'(1(a,i8),2(a,g14.7))') "ITERATIONS: iterstep = ",iterstep, &
-        ": iterres = ",iterres,": del iterres = ",iterres_old-iterres
+  if (iterstepchecknext == iterstep) then
+    iterstepchecknext = iterstepchecknext + iterstepcheck
+    rrr_newt = dot_product_with_itself_scaled(r1,ee_scale)
+
+    if (debug_sparse) then
+      iterres = sqrt(rrr_newt/dble(ptotal))
+      write(*,'(1(a,i8),3(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
+        ": iterres = ",iterres,": rrr = ",rrr,": rrr_newt = ",rrr_newt
       if (convergence_details_file) &
-        write(fconverge,'(1(a,i8),2(a,g14.7))') "ITERATIONS: iterstep = ",iterstep, &
-          ": iterres = ",iterres,": del iterres = ",iterres_old-iterres
+        write(fconverge,'(1(a,i8),3(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
+          ": iterres = ",iterres,": rrr = ",rrr,": rrr_newt = ",rrr_newt
     end if
-  end if
 
-  if (iterres < iterrestol) then ! iterations have converged
-    ierror = 0
-    exit iteration_loop
-  end if
+    if (rrr_newt < rrr_newt_tol) then ! iterations have converged based on rrr_newt
+      ierror = 0
+      exit
+    end if
 
-  if (mod(iterstep,iterstepcheck) == 0) then ! user has requested stop, flag with ierror=2
     if (check_stopfile("stopback")) then
       write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
       ierror = 2
-      exit iteration_loop
+      exit
     end if
+
   end if
 
-  if (iterstep == iterstepmax) then ! maximum iterations have been performed without convergence
-    exit iteration_loop
+  if (rrr < rrr_tol) then ! iterations have converged based on rrr
+    rrr_newt = dot_product_with_itself_scaled(r1,ee_scale)
+    ierror = 0
+    exit
   end if
+
+  if (iterstep == iterstepmax) exit ! maximum iterations have been performed without convergence
+
+! now do the updates
+  iterstep = iterstep + 1
 
 ! save rho from the previous iteration as rho_o
   rho_o = rho
 ! and calculate the new rho
-  rho = dot_product(r1,r2)
+  rho = dot_product_local(r1,r2)
   if (debug) then
     write(93,'(a,g11.3)') 'rho_o = ',rho_o
     write(93,'(a,g11.3)') 'rho = ',rho
@@ -893,12 +870,12 @@ iteration_loop: do
 
 ! calculate alpha = (r2.r1)/(p2.A.p1)
   if (debug) write(93,'(a)') 'calculating alpha'
-  call aa_dot_vector(p1,v) ! v = A.p1
+  call aa_dot_vector_jacobian(jacobian,p1,v) ! v = A.p1
   if (debug) call print_debug_vector(v,"A.p1")
   if (stabilised) then
-    alpha_demoninator = dot_product(r2,v)
+    alpha_demoninator = dot_product_local(r2,v)
   else
-    alpha_demoninator = dot_product(p2,v)
+    alpha_demoninator = dot_product_local(p2,v)
   end if
   if (debug) write(93,'(a,g11.3)') 'alpha_demoninator = ',alpha_demoninator
   if (abs(alpha_demoninator) < alpha_demoninator_min) then
@@ -923,16 +900,16 @@ iteration_loop: do
 ! calculate s, t, and omega
     s = r1 - alpha*v
     if (debug) call print_debug_vector(s,"s updated")
-    call aa_dot_vector(s,t)
+    call aa_dot_vector_jacobian(jacobian,s,t)
     if (debug) call print_debug_vector(t,"t updated")
-    omega_demoninator = dot_product(t,t)
+    omega_demoninator = dot_product_with_itself(t)
     if (debug) write(93,'(a,g11.3)') 'omega_demoninator = ',omega_demoninator
     if (abs(omega_demoninator) < omega_demoninator_min) then
       write(*,'(a)') "WARNING: omega_demoninator small in bicg, restarting iterations"
       restart = .true.
       cycle iteration_loop
     end if
-    omega = dot_product(t,s)/omega_demoninator
+    omega = dot_product_local(t,s)/omega_demoninator
     if (debug) write(93,'(a,g11.3)') 'omega = ',omega
     if (abs(omega) > omega_max) then
       write(*,'(a)') "WARNING: omega large in bicg, restarting iterations"
@@ -961,7 +938,7 @@ iteration_loop: do
     if (debug) write(93,'(a)') 'updating rs'
     r1 = r1 - alpha*v
 ! r2 = r2 - alpha*A^T.p2
-    call aa_transpose_dot_vector(p2,v) ! temporarily use v to store A^T.p2
+    call aa_dot_vector_jacobian(jacobian_transpose,p2,v) ! temporarily use v to store A^T.p2
     r2 = r2 - alpha*v
     if (debug) then
       call print_debug_vector(v,"A^T.p2")
@@ -971,31 +948,31 @@ iteration_loop: do
 
   end if
 
-  iterstep = iterstep + 1 ! update the number of iterations counter
+  rrr = dot_product_with_itself(r1)
 
 end do iteration_loop
   
+iterres = sqrt(rrr_newt/dble(ptotal))
 if (ierror == 0) then
   if (debug_sparse) then
-    write(*,'(a,i8,2(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres
+    write(*,'(a,i8,3(a,g14.7))') "ITERATIONS: convered iterstep = ",iterstep,": iterres = ",iterres, &
+      ": rrr = ",rrr,": rrr_newt = ",rrr_newt
     if (convergence_details_file) &
-      write(fconverge,'(a,i8,2(a,g14.7))') &
-        "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres
+      write(fconverge,'(a,i8,3(a,g14.7))') &
+      "ITERATIONS: converged iterstep = ",iterstep,": iterres = ",iterres, &
+      ": rrr = ",rrr,": rrr_newt = ",rrr_newt
   end if
 else
-  write(*,'(a,i8,2(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+  write(*,'(a,i8,3(a,g14.7))') "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres, &
+    ": rrr = ",rrr,": rrr_newt = ",rrr_newt
   if (convergence_details_file) &
-    write(fconverge,'(a,i8,2(a,g14.7))') &
-      "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres
+    write(fconverge,'(a,i8,3(a,g14.7))') &
+    "ITERATIONS WARNING: failed iterstep = ",iterstep,": iterres = ",iterres, &
+    ": rrr = ",rrr,": rrr_newt = ",rrr_newt
 end if
 
 !---------------------
-! redimensionalise results
-
-! not sure if this is actually needed, but for safety redimensionalise the equations
-call nondimensionalise_equations(normalise,forward=.false.)
-
-! and dimensionalise delphi
+! redimensionalise delphi
 do ppu = 1, ptotal
   m = unknown_var_from_pp(ppu)
   delphi(ppu) = delphi(ppu)*var(m)%magnitude
@@ -1006,139 +983,6 @@ end do
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine bicg_mainsolver'
 
 end subroutine bicg_mainsolver
-
-!-----------------------------------------------------------------
-
-subroutine initialise_bicg(stabilised,r1,r2,p1,p2,v,rho,alpha,omega,iterres,debug,normalise)
-
-! setup start/restart of bicg given set/reset delphi
-
-use general_module
-use equation_module
-
-logical :: stabilised, debug, normalise
-integer :: mm, m, ns, j
-double precision, dimension(:), allocatable :: r1, r2, p1, p2, v
-double precision :: alpha, iterres, rho, omega
-
-! calculate initial residual r1
-call aa_dot_vector(delphi,r1) ! calculate the product of the equation matrix (A) with the initial solution vector (delphi), and store in r1
-! form the initial residual as b - A.x, but with b = -equation (=-var(m)%funk(ns)%v) and A.x stored as r1 from above
-! set initial ff array (linear equation error array) from newton's equations
-j = 0
-do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(mm)
-  do ns = 1, ubound(var(m)%funk,1)
-    j = j + 1
-    r1(j) = -var(m)%funk(ns)%v - r1(j)
-  end do
-end do
-r2 = r1
-!rho = dot_product(r1,r2)
-rho = 1.d0
-p1 = 0.d0 
-if (stabilised) then
-  alpha = 1.d0
-  omega = 1.d0
-  v = 0.d0 
-else
-  p2 = 0.d0 
-end if
-
-if (debug) then
-  call print_debug_vector(r1,"r1 in initialise_bicg")
-  call print_debug_vector(r2,"r2 in initialise_bicg")
-  call print_debug_vector(p1,"p1 in initialise_bicg")
-  if (stabilised) then
-    call print_debug_vector(v,"v in initialise_bicg")
-  else
-    call print_debug_vector(p2,"p2 in initialise_bicg")
-  end if
-  call print_debug_vector(delphi,"delphi in initialise_bicg")
-end if
-
-iterres = iterres_calc(r1,normalise)
-
-end subroutine initialise_bicg
-
-!-----------------------------------------------------------------
-
-double precision function iterres_calc(r,normalise)
-
-use general_module
- 
-double precision, dimension(:), allocatable :: r
-logical :: normalise
-
-! calculate the residual, here noting that r*e_scale in fortran does element by element multiplication
-if (normalise) then
-  iterres_calc = sqrt(dot_product(r*abs(e_scale),r*abs(e_scale))/dble(ptotal))
-else
-  iterres_calc = sqrt(dot_product(r,r)/dble(ptotal))
-end if
-
-end function iterres_calc
-
-!-----------------------------------------------------------------
-
-subroutine aa_dot_vector(vector_to_multiply,vector_product)
-
-! here we multiply a vector (vector_to_multiply) with the jacobian matrix stored as equation data,
-!  forming the product vector (vector_product)
-
-use general_module
- 
-double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
-double precision, dimension(:), allocatable :: vector_product
-integer :: ppe, pppu, ppu, mm, m, ns
-
-!---------------------
-
-ppe = 0
-vector_product = 0.d0
-do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(mm)
-  do ns = 1, ubound(var(m)%funk,1)
-    ppe = ppe + 1
-    do pppu = 1, var(m)%funk(ns)%ndv
-      ppu = var(m)%funk(ns)%pp(pppu)
-      vector_product(ppe) = vector_product(ppe) + var(m)%funk(ns)%dv(pppu)*vector_to_multiply(ppu)
-    end do
-  end do
-end do
-
-end subroutine aa_dot_vector
-
-!-----------------------------------------------------------------
-
-subroutine aa_transpose_dot_vector(vector_to_multiply,vector_product)
-
-! here we multiply a vector (vector_to_multiply) with the jacobian matrix stored as equation data,
-!  forming the product vector (vector_product)
-! here we use the transpose of the jacobian, as a separate routine copied in the interests of speed
-
-use general_module
- 
-double precision, dimension(:), allocatable, intent(in) :: vector_to_multiply
-double precision, dimension(:), allocatable :: vector_product
-integer :: ppe, pppu, ppu, mm, m, ns
-
-!---------------------
-
-ppe = 0
-vector_product = 0.d0
-do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(mm)
-  do ns = 1, ubound(var(m)%funk,1)
-    ppe = ppe + 1
-    do pppu = 1, var(m)%funk(ns)%ndv
-      ppu = var(m)%funk(ns)%pp(pppu)
-      vector_product(ppu) = vector_product(ppu) + var(m)%funk(ns)%dv(pppu)*vector_to_multiply(ppe)
-    end do
-  end do
-end do
-
-end subroutine aa_transpose_dot_vector
 
 !-----------------------------------------------------------------
 
@@ -1160,31 +1004,6 @@ end do
 write(93,'(a)') repeat('-',10)
 
 end subroutine print_debug_vector
-
-!-----------------------------------------------------------------
-
-subroutine print_jacobian_matrix
-
-use general_module
-
-integer :: ppe, mm, m, ns, pppu
-character(len=1000) :: formatline
-character(len=20) :: ptotalformat
-
-ptotalformat=trim(dindexformat(ptotal))
-write(93,'(a/a)') repeat('+',10),"jacobian matrix"
-ppe = 0
-do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-  m = var_list(var_list_number_equation)%list(mm)
-  do ns = 1, ubound(var(m)%funk,1)
-    ppe = ppe + 1
-    write(formatline,*) '('//trim(ptotalformat)//',',var(m)%funk(ns)%ndv,'(g11.3,a1,'//trim(ptotalformat)//',a1))'
-    write(93,fmt=formatline) ppe,(var(m)%funk(ns)%dv(pppu),'(',var(m)%funk(ns)%pp(pppu),')',pppu=1,var(m)%funk(ns)%ndv)
-  end do
-end do
-write(93,'(a)') repeat('-',10)
-
-end subroutine print_jacobian_matrix
 
 !-----------------------------------------------------------------
 
@@ -1254,7 +1073,6 @@ if (debug) then
   call print_debug_vector(ee,"ee")
   call print_debug_vector(ee_scale,"ee_scale")
   call print_debug_vector(r,"r")
-  call print_jacobian_matrix
   call print_scaled_jacobian_matrix(jacobian)
   write(93,'(a,g14.6)') 'rrr = ',rrr
   write(93,'(a,g14.6)') 'rrr_newt_tol = ',rrr_newt_tol
@@ -1785,7 +1603,7 @@ double precision, dimension(nvectors) :: a_pp_matrix_error ! error in a_pp matri
 double precision, dimension(:,:), allocatable, save :: delp, w_p ! increment directions (delp) and 
 logical :: lapack_error
 logical, parameter :: unwrap_vector_operations = .false.
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
 if (debug) debug_sparse = .true.
