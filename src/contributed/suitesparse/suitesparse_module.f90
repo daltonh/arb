@@ -181,7 +181,7 @@ if (debug_sparse) write(*,*) 'symbolic analysis complete'
 if (debug) call umf4pinf (control, info)
 
 ! check umf4sym error condition
-ierror = info(UMFPACK_STATUS)
+ierror = int(info(UMFPACK_STATUS))
 if (ierror /= 0) then
   call deal_with_suitesparse_error(ierror,"umf4sym",iaa,jaa)
   return
@@ -196,7 +196,7 @@ if (debug_sparse) write(*,*) 'numerical factorisation complete'
 ! print statistics for the numeric factorization
 if (debug) call umf4pinf (control, info)
 
-ierror = info(UMFPACK_STATUS)
+ierror = int(info(UMFPACK_STATUS))
 if (ierror /= 0) then
   call deal_with_suitesparse_error(ierror,"umf4num",iaa,jaa)
   return
@@ -222,7 +222,7 @@ if (iterative) then
   !call umf4solr (sys, Ap, Ai, Ax, x, b, numeric, control, info)
   call umf4solr (sys, jaa, iaa, aa, xx, rhs, numeric, control, info)
   if (debug_sparse) write(*,*) 'system solved with iterative refinement'
-  ierror = info(UMFPACK_STATUS)
+  ierror = int(info(UMFPACK_STATUS))
   if (ierror /= 0) then
     call deal_with_suitesparse_error(ierror,"umf4solr",iaa,jaa,rhs)
     return
@@ -231,7 +231,7 @@ else
   ! call umf4sol (sys, x, b, numeric, control, info)
   call umf4sol (sys, xx, rhs, numeric, control, info)
   if (debug_sparse) write(*,*) 'system solved without iterative refinement'
-  ierror = info(UMFPACK_STATUS)
+  ierror = int(info(UMFPACK_STATUS))
   if (ierror /= 0) then
     call deal_with_suitesparse_error(ierror,"umf4sol",iaa,jaa,rhs)
     return

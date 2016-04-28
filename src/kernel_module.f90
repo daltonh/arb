@@ -2276,7 +2276,7 @@ constraint_loop: do
 
 ! run check on differential kernels
   if (.false.) then
-    call optimisation_kernel_check(pp,y,weight,weight_importance,separation_array,d,nn,mm,active)
+    call optimisation_kernel_check(pp,y,weight,weight_importance,d,nn,mm,active)
   end if
 
   call optimisation_kernel_constraints(pp,y,separation_array,minimum_separation,d,nn,mm, &
@@ -2453,7 +2453,7 @@ end subroutine optimisation_kernel_update
 
 !-----------------------------------------------------------------
 
-subroutine optimisation_kernel_check(pp,y,weight,weight_importance,separation_array,d,nn,mm,active)
+subroutine optimisation_kernel_check(pp,y,weight,weight_importance,d,nn,mm,active)
 
 ! here we check the analytical optimisaion kernel derivatives against differences
 
@@ -2463,7 +2463,6 @@ double precision, dimension(:), allocatable :: ll, ll_difference, ll_u, ll_d
 double precision, dimension(:), allocatable :: y, weight, y_difference
 double precision, dimension(:,:), allocatable :: pp, lll, lll_difference
 integer, dimension(:), allocatable :: active, weight_importance
-integer, dimension(:), allocatable :: separation_array
 double precision :: llnorm, l, l_u, l_d, ll_error, lll_error
 integer :: jj
 logical :: debug = .false.
@@ -4087,9 +4086,9 @@ subroutine setup_node_kernels
 ! setting up node kernels
 
 use general_module
-integer :: i, j, k, ii, l, l2, separation, minimum_separation_before, maximum_separation, minimum_separation, &
+integer :: i, j, k, ii, l, separation, minimum_separation_before, maximum_separation, minimum_separation, &
   local_polynomial_order, l_coor, n, nicell, sepd
-double precision :: dx_kernel, minw, value, dx1, dx2, maxvalue
+double precision :: dx_kernel, minw, value, maxvalue
 logical :: minw_error, hyperbolic_kernel_local, error, basis_constructed
 double precision, dimension(:,:), allocatable :: r, norm, pp
 integer, dimension(:), allocatable :: separation_index, separation_array

@@ -315,7 +315,11 @@ logical :: newtient_simulation = .false. ! whether simulation is newtient or not
 integer :: newtstepmax = 1000 ! maximum number of steps performed by newton proceedure
 integer :: newtstepdebugout = 990 ! after this many newtsteps newtstepout is set to 1 to produce debugging output
 integer :: newtstepmin = 1 ! minimum number of steps performed by newton proceedure
+integer :: iterstepmax = 1000000 ! maximum number of steps performed by linear iteration solver
+integer :: iterstepcheck = 100 ! how often linear iteration solver checks for kill file and outputs to screen residuals etc
 double precision :: newtrestol = 1.d-10 ! tolerance that indicates convergence of the newton proceedure
+double precision :: iterrestol = 1.d-11 ! tolerance that indicates convergence of the linear iteration solver
+double precision :: iterresreltol = 0.d0 ! tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres
 double precision, parameter :: tinyish = 1.d2*sqrt(tiny(0.d0)) ! something that is a bit bigger than tiny(0.d0)
 double precision, parameter :: hugeish = 1.d-2*sqrt(huge(0.d0)) ! something that is a bit smaller than huge(0.d0)
 integer :: timestepmax = huge(timestepmax) ! maximum number of timesteps performed
@@ -1173,6 +1177,8 @@ end subroutine unshift_integer_array
 !----------------------------------------------------------------------------
 
 subroutine push_integer_array(array,new_element,reverse)
+
+! push a new element on to the back (or front, if reverse is specified) of an array
 
 integer, dimension(:), allocatable :: array
 integer :: new_element

@@ -502,7 +502,7 @@ if [ $ORUN -eq 1 ] ; then
     if [ $DEBUGGER = "valgrind" ]; then
       $DEBUGGER $AOUT --track-origins=yes --leak-check=full -v;
     else
-      $DEBUGGER $AOUT;
+      $DEBUGGER -q -ex run $AOUT;
     fi
   else
     if [ $OPROCESSLOGGING -eq 0 ] ; then

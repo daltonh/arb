@@ -40,7 +40,7 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparseumf, hslma28, mgmres
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, multigrid, mgmres, bicg, bicgstab, descent, doglegdescent, flexible
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
@@ -77,6 +77,7 @@ subroutine newtsolver(ierror)
 
 use general_module
 use equation_module
+use linear_module
 integer :: m, ierror, p, n, ns, merr, nserr, backstep
 double precision :: newtresold, lambda, varmax, vartmp, varave
 double precision :: active_lambdamin = 0.d0
@@ -107,12 +108,78 @@ end do
 
 ! call the main linear solver routines if atleast one equation is being solved
 
-if (debug) write(*,*) 'calling mainsolver'
-!call time_process
-call mainsolver(ierror)
-!call time_process(description='mainsolver')
-! if there is a problem with the linear matrix solver then return
-if (debug) write(*,*) 'in newtsolver after mainsolver, ierror = ',ierror
+if (manage_funk_dv_memory) then
+  call time_process
+  if (debug) write(*,*) 'deallocating derived funk dvs'
+  call memory_manage_dvs(type="derived",action="deallocate")
+  call time_process(description='deallocating derived funk memory')
+end if
+
+if (trim(linear_solver) == "multigrid") then
+  if (debug) write(*,*) 'calling multigrid_mainsolver'
+  call time_process
+  call multigrid_mainsolver(ierror,singlegrid=.false.)
+  call time_process(description='multigrid mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after multigrid_mainsolver, ierror = ',ierror
+else if (trim(linear_solver) == "singlegrid") then
+  if (debug) write(*,*) 'calling multigrid_mainsolver'
+  call time_process
+  call multigrid_mainsolver(ierror,singlegrid=.true.)
+  call time_process(description='multigrid mainsolver using singlegrid')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after multigrid_mainsolver, ierror = ',ierror
+else if (trim(linear_solver) == "bicg") then
+  if (debug) write(*,*) 'calling bicg_mainsolver'
+  call time_process
+  call bicg_mainsolver(ierror,stabilised=.false.)
+  call time_process(description='bicg mainsolver with stabilised off')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after bicg_mainsolver, ierror = ',ierror
+else if (trim(linear_solver) == "bicgstab") then
+  if (debug) write(*,*) 'calling bicg_mainsolver with stabilised on'
+  call time_process
+  call bicg_mainsolver(ierror,stabilised=.true.)
+  call time_process(description='bicg mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after bicg_mainsolver, ierror = ',ierror
+else if (trim(linear_solver) == "descent") then
+  if (debug) write(*,*) 'calling descent_mainsolver without dogleg'
+  call time_process
+  call descent_mainsolver(ierror,dogleg=.false.)
+  call time_process(description='descent mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after descent_mainsolver, ierror = ',ierror
+else if (trim(linear_solver) == "doglegdescent") then
+  if (debug) write(*,*) 'calling descent_mainsolver with dogleg'
+  call time_process
+  call descent_mainsolver(ierror,dogleg=.true.)
+  call time_process(description='descent mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after descent_mainsolver, ierror = ',ierror
+else if (trim(linear_solver) == "flexible") then
+  if (debug) write(*,*) 'calling flexible_mainsolver'
+  call time_process
+  call flexible_mainsolver(ierror)
+  call time_process(description='flexible mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after flexible_mainsolver, ierror = ',ierror
+else
+  if (debug) write(*,*) 'calling mainsolver'
+  !call time_process
+  call mainsolver(ierror)
+  !call time_process(description='mainsolver')
+  ! if there is a problem with the linear matrix solver then return
+  if (debug) write(*,*) 'in newtsolver after mainsolver, ierror = ',ierror
+end if
+
+if (manage_funk_dv_memory) then
+  if (debug) write(*,*) 'reallocating derived funk dvs'
+  call time_process
+  call memory_manage_dvs(type="derived",action="reallocate")
+  call time_process(description='reallocating derived funk memory')
+end if
+
 if (ierror /= 0) return
 
 ! temp &&&&
@@ -398,13 +465,6 @@ if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine mainsolver'
 
 ierror = 1
 
-if (manage_funk_dv_memory) then
-  call time_process
-  if (debug_sparse) write(*,*) 'deallocating derived funk dvs'
-  call memory_manage_dvs(type="derived",action="deallocate")
-  call time_process(description='deallocating derived funk memory')
-end if
-
 ! sparse matrix produced is stored in compressed sparse row format (3 array variation), with 1 indexing (csr1)
 ! aa is value (length nz)
 ! jaa is column index (length nz)
@@ -676,11 +736,10 @@ if (allocated(iaa)) deallocate(iaa)
 if (allocated(jaa)) deallocate(jaa)
   
 if (manage_funk_dv_memory) then
-  if (debug_sparse) write(*,*) 'reallocating derived and equation funk dvs'
+  if (debug_sparse) write(*,*) 'reallocating equation funk dvs'
   call time_process
-  call memory_manage_dvs(type="derived",action="reallocate")
   call memory_manage_dvs(type="equation",action="reallocate")
-  call time_process(description='allocating derived and equation funk memory')
+  call time_process(description='reallocating equation funk memory')
 end if
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine mainsolver'
@@ -2006,23 +2065,34 @@ end do
 ! if the linear_solver has not been chosen then do it now
 ! also check on choice
 
-if (trim(linear_solver) == "default") then
-  if (intel_pardiso_linear_solver_check()) then
-    linear_solver = "intelpardiso"
-  else if (suitesparse_linear_solver_check()) then
-    linear_solver = "suitesparse"
-  else if (pardiso_linear_solver_check()) then
-    linear_solver = "pardiso"
-  else if (hsl_ma28_linear_solver_check()) then
-    linear_solver = "hslma28"
-  else
-    call error_stop('no linear solver available: you could try making the GPL licensed suitesparse '// &
-      'solver: instructions are within the src/contributed/suitesparse directory')
+if (trim(linear_solver) == "default" .or. trim(linear_solver) == "iterative" .or. trim(linear_solver) == "direct") then
+! the default is to try all direct solvers before resorting to the iterative solver
+  if (trim(linear_solver) == "default" .or. trim(linear_solver) == "direct") then
+    if (intel_pardiso_linear_solver_check()) then
+      linear_solver = "intelpardiso"
+    else if (suitesparse_linear_solver_check()) then
+      linear_solver = "suitesparse"
+    else if (pardiso_linear_solver_check()) then
+      linear_solver = "pardiso"
+    else if (hsl_ma28_linear_solver_check()) then
+      linear_solver = "hslma28"
+    else if (.not.trim(linear_solver) == "direct") then
+      linear_solver = "iterative"
+    else
+      call error_stop('no direct linear solver available: you could try making the GPL licensed suitesparse '// &
+        'solver: instructions are within the src/contributed/suitesparse directory, or switch to the iterative solver')
+    end if
   end if
+  if (trim(linear_solver) == "iterative") linear_solver = "doglegdescent" ! this is the default iterative solver
   write(*,'(a)') 'INFO: choosing '//trim(linear_solver)//' linear solver'
 else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "intelpardisoooc".or. &
   trim(linear_solver) == "suitesparse".or.trim(linear_solver) == "hslma28".or.trim(linear_solver) == "pardiso".or. &
-  trim(linear_solver) == "pardisoiterative".or.trim(linear_solver) == "mgmres".or.trim(linear_solver) == "none")) then
+  trim(linear_solver) == "pardisoiterative".or. &
+  trim(linear_solver) == "multigrid".or.trim(linear_solver) == "singlegrid".or. &
+  trim(linear_solver) == "bicg".or.trim(linear_solver) == "bicgstab".or. &
+  trim(linear_solver) == "descent".or.trim(linear_solver) == "doglegdescent".or. &
+  trim(linear_solver) == "flexible".or. &
+  trim(linear_solver) == "mgmres".or.trim(linear_solver) == "none")) then
   call error_stop('unknown linear solver specified: '//trim(linear_solver))
 end if
 
