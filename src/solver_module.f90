@@ -40,7 +40,7 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available.  Specific options are: none, intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, multigrid, iterative, mgmres, bicg, bicgstab, descent, doglegdescent, flexible
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, multigrid, mgmres, bicg, bicgstab, descent, doglegdescent, flexible
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
@@ -129,13 +129,6 @@ else if (trim(linear_solver) == "singlegrid") then
   call time_process(description='multigrid mainsolver using singlegrid')
   ! if there is a problem with the linear matrix solver then return
   if (debug) write(*,*) 'in newtsolver after multigrid_mainsolver, ierror = ',ierror
-else if (trim(linear_solver) == "iterative") then
-  if (debug) write(*,*) 'calling iterative_mainsolver'
-  call time_process
-  call iterative_mainsolver(ierror)
-  call time_process(description='iterative mainsolver')
-  ! if there is a problem with the linear matrix solver then return
-  if (debug) write(*,*) 'in newtsolver after iterative_mainsolver, ierror = ',ierror
 else if (trim(linear_solver) == "bicg") then
   if (debug) write(*,*) 'calling bicg_mainsolver'
   call time_process
@@ -2072,23 +2065,29 @@ end do
 ! if the linear_solver has not been chosen then do it now
 ! also check on choice
 
-if (trim(linear_solver) == "default") then
-  if (intel_pardiso_linear_solver_check()) then
-    linear_solver = "intelpardiso"
-  else if (suitesparse_linear_solver_check()) then
-    linear_solver = "suitesparse"
-  else if (pardiso_linear_solver_check()) then
-    linear_solver = "pardiso"
-  else if (hsl_ma28_linear_solver_check()) then
-    linear_solver = "hslma28"
-  else
-    call error_stop('no linear solver available: you could try making the GPL licensed suitesparse '// &
-      'solver: instructions are within the src/contributed/suitesparse directory')
+if (trim(linear_solver) == "default" .or. trim(linear_solver) == "iterative" .or. trim(linear_solver) == "direct") then
+! the default is to try all direct solvers before resorting to the iterative solver
+  if (trim(linear_solver) == "default" .or. trim(linear_solver) == "direct") then
+    if (intel_pardiso_linear_solver_check()) then
+      linear_solver = "intelpardiso"
+    else if (suitesparse_linear_solver_check()) then
+      linear_solver = "suitesparse"
+    else if (pardiso_linear_solver_check()) then
+      linear_solver = "pardiso"
+    else if (hsl_ma28_linear_solver_check()) then
+      linear_solver = "hslma28"
+    else if (.not.trim(linear_solver) == "direct") then
+      linear_solver = "iterative"
+    else
+      call error_stop('no direct linear solver available: you could try making the GPL licensed suitesparse '// &
+        'solver: instructions are within the src/contributed/suitesparse directory, or switch to the iterative solver')
+    end if
   end if
+  if (trim(linear_solver) == "iterative") linear_solver = "doglegdescent" ! this is the default iterative solver
   write(*,'(a)') 'INFO: choosing '//trim(linear_solver)//' linear solver'
 else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "intelpardisoooc".or. &
   trim(linear_solver) == "suitesparse".or.trim(linear_solver) == "hslma28".or.trim(linear_solver) == "pardiso".or. &
-  trim(linear_solver) == "pardisoiterative".or.trim(linear_solver) == "iterative".or. &
+  trim(linear_solver) == "pardisoiterative".or. &
   trim(linear_solver) == "multigrid".or.trim(linear_solver) == "singlegrid".or. &
   trim(linear_solver) == "bicg".or.trim(linear_solver) == "bicgstab".or. &
   trim(linear_solver) == "descent".or.trim(linear_solver) == "doglegdescent".or. &
