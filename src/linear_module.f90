@@ -1645,11 +1645,12 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
       mu = unknown_var_from_pp(ppu) ! unknown var number
       nelements = nelements + 1
       one_element = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude
+! calculate ee_scale, which is (according to notes of 28/4/16) actually a matrix normalisation factor
       if (.false.) then
-! scale without changing sign, and based on sum of row elements
+! normalise without changing sign, and based on sum of row elements
         ee_scale(ppe) = ee_scale(ppe) + abs(one_element) ! slower
       else
-! scale by largest (in magnitude) element, hence changing signs
+! normalise by largest (in magnitude) element, hence changing signs
         if (abs(one_element) > abs(ee_scale(ppe))) ee_scale(ppe) = one_element
       end if
     end do
