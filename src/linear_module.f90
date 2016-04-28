@@ -1863,7 +1863,8 @@ integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext, iterstep
 character(len=1000) :: formatline
 double precision, dimension(:), allocatable, save :: delx, ee, r, ee_scale ! allocate these once as their size doesn't change
 type(jacobian_type), save :: jacobian, jacobian_transpose
-double precision :: rrr, delrrr, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt, a_determinant, delp_mag
+double precision :: rrr, delrrr, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt, a_determinant, delp_mag, &
+  w_p_mag
 double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
 integer, parameter :: itersteproundoff = 50 ! this is a second criterion which triggers recalculation of the coefficients
 integer, parameter :: nvectors = 6 ! number of vectors to be used in the update
@@ -1983,7 +1984,10 @@ iteration_loop: do
       call aa_dot_vector_jacobian(jacobian_transpose,r,delp(m,:))
     else
       call aa_dot_vector_jacobian(jacobian_transpose,w_p(m-1,:),delp(m,:)) 
+      w_p_mag = dot_product(w_p(m-1,:),w_p(m-1,:))
+      delp(m,:) = -delp(m,:)+w_p_mag*delp(m-1,:)
     end if
+! normalise delp
     delp_mag = sqrt(dot_product(delp(m,:),delp(m,:)))
     delp(m,:) = delp(m,:)/delp_mag
 ! w_p = J.delp
