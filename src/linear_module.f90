@@ -1853,6 +1853,7 @@ subroutine flexible_mainsolver(ierror)
 
 ! here we use a flexible algorithm to solve the linear system
 ! now based on normal and gradients of normal projection vectors
+! this algorithm is not meant to be production ready - it is coded with flexibility as a priority over performance
 
 use general_module
 use equation_module
