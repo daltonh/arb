@@ -1233,10 +1233,10 @@ subroutine setup_vars
 use general_module
 use equation_module
 use solver_module
-integer :: m, ns, n, mc, o, pptotal, mtype, var_list_number_l, relstep
+integer :: m, ns, n, o, pptotal, mtype, var_list_number_l, relstep
 character(len=1000) :: formatline, component_list
 character(len=100) :: option_name
-logical :: first, error
+logical :: error
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 

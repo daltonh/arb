@@ -67,8 +67,6 @@ end type multigrid_type
   
 type (multigrid_type), dimension(:), allocatable :: multigrid ! an array of of the multigrid levels
 
-double precision, dimension(:), allocatable, save :: e_scale ! scaling factor when normalising the equations for some iterative methods
-
 ! this is a sparse matrix structure (csr1) for storing the jacobian and jacobian_transpose
 type jacobian_type
   double precision, dimension(:), allocatable :: v
@@ -91,9 +89,8 @@ subroutine multigrid_mainsolver(ierror,singlegrid)
 use general_module
 use equation_module
 
-integer :: ierror, mm, m, ns, j, nl, ng, pppe, ppe, pppu, ppu, iterstep, nl_lower, pp, iterstepchecknext, itersteproundoffnext, &
+integer :: ierror, m, nl, ng, pppe, ppe, pppu, ppu, iterstep, nl_lower, iterstepchecknext, itersteproundoffnext, &
   nelements
-character(len=1000) :: formatline
 double precision, dimension(:), allocatable :: ee, r, ee_scale, deldelphi, delr
 double precision :: ee_scale_max, rrr, rrr_newt_tol, rrr_tol, rrr_o, deldelphi_grid, rrr_newt, iterres, lambda
 logical :: singlegrid ! if true then only the low level grid is used
@@ -671,10 +668,9 @@ use general_module
 use equation_module
 
 logical :: stabilised
-integer :: ierror, mm, m, ns, j, iterstep, ppu, nelements, iterstepchecknext
-character(len=1000) :: formatline
+integer :: ierror, m, j, iterstep, ppu, nelements, iterstepchecknext
 double precision, dimension(:), allocatable, save :: r1, r2, p1, p2, v, t, s, ee, ee_scale ! allocate these once as their size doesn't change
-double precision :: alpha, beta, iterres, iterres_old, alpha_demoninator, rho_o, rho, omega, omega_demoninator, ee_scale_max, &
+double precision :: alpha, beta, iterres, alpha_demoninator, rho_o, rho, omega, omega_demoninator, ee_scale_max, &
   rrr_newt, rrr_tol, rrr, rrr_newt_tol
 double precision, parameter :: alpha_max = 1.d6, beta_max = 1.d6, omega_max = 1.d6, &
   alpha_demoninator_min = tiny(1.d0), rho_o_min = tiny(1.d0), increment_multiplier = 1.d-3, omega_min = tiny(1.d0), &
@@ -1016,10 +1012,9 @@ use general_module
 use equation_module
 !$ use omp_lib
 
-integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext, itersteproundoffnext, n, thread, nelements
+integer :: ierror, m, iterstep, ppu, iterstepchecknext, itersteproundoffnext, n, nelements
 logical :: dogleg ! if this is false, then a pure descent algorithm is used
 logical :: dogleg_l ! per iteration version of dogleg
-character(len=1000) :: formatline
 double precision, dimension(:), allocatable, save :: delx, ee, w_x, delp, w_p, r, ee_scale ! allocate these once as their size doesn't change
 type(jacobian_type), save :: jacobian, jacobian_transpose
 double precision :: rrr, delrrr, delta, gamma, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt
@@ -1038,7 +1033,7 @@ ierror = 1 ! this signals an error
 ! initialise and allocate loop variables
 if (.not.allocated(delx)) then
   allocate(delx(ptotal),ee(ptotal),w_x(ptotal),delp(ptotal),w_p(ptotal),r(ptotal),ee_scale(ptotal))
-  delphi = 0.d0 ! zero on the first iteration only
+! delphi = 0.d0 ! zero on the first iteration only
 end if
 
 ! we need the reverse lookup structure, equation_from_unknown, but only the ppe indicies, for forming the jacobian_transpose
@@ -1055,7 +1050,7 @@ call calc_ee_scale(ee_scale,ee,ee_scale_max)
 
 !---------------------
 ! initial guess for delphi is the zero vector
-! delphi = 0.d0 ! now keep previous solution as the first guess
+delphi = 0.d0 ! now keep previous solution as the first guess
 ! initialise other variables
 delx = 0.d0
 w_x = 0.d0
@@ -1315,7 +1310,6 @@ use general_module
 integer :: mm, m, ns, pppu, ppu, mu, ppe, nelements
 double precision :: one_element
 double precision, dimension(:) :: ee_scale
-logical :: found
 
 ! first run through all elements maximum element size (stored in ee_scale) and counting total number of elements
 
@@ -1497,7 +1491,7 @@ function dot_product_with_itself(vector)
 
 use general_module
 double precision, dimension(:), intent(in) :: vector
-double precision :: dot_product_with_itself, tmp
+double precision :: dot_product_with_itself
 integer :: n
 
 if (.false.) then
@@ -1549,7 +1543,7 @@ function dot_product_local(vector1,vector2)
 
 use general_module
 double precision, dimension(:), intent(in) :: vector1, vector2
-double precision :: dot_product_local, tmp
+double precision :: dot_product_local
 integer :: n
 
 if (.false.) then
@@ -1583,12 +1577,11 @@ use equation_module
 use lapack_module
 !$ use omp_lib
 
-integer :: ierror, mm, m, ns, j, iterstep, ppu, ppe, iterstepchecknext, itersteproundoffnext, n, thread, nvectors_l, &
-  nelements, nvectors_ptotal
+integer :: ierror, m, iterstep, ppu, iterstepchecknext, itersteproundoffnext, n, nvectors_l, nelements, nvectors_ptotal
 character(len=1000) :: formatline
 double precision, dimension(:), allocatable, save :: delx, ee, r, ee_scale ! allocate these once as their size doesn't change
 type(jacobian_type), save :: jacobian, jacobian_transpose
-double precision :: rrr, delrrr, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt, a_determinant, delp_mag, &
+double precision :: rrr, rrr_o, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt, a_determinant, delp_mag, &
   w_p_mag
 double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
 integer, parameter :: itersteproundoff = 50 ! this is a second criterion which triggers recalculation of the coefficients
@@ -1833,7 +1826,7 @@ iteration_loop: do
   end if
 
   if (unwrap_vector_operations) then
-    !$omp parallel do private(n) shared(delta,gamma)
+    !$omp parallel do private(n) shared(alpha)
     do n = 1, ptotal
       delx(n) = 0.d0
       do m = 1, nvectors_l
