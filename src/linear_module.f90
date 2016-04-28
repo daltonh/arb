@@ -100,7 +100,7 @@ logical :: singlegrid ! if true then only the low level grid is used
 integer, parameter :: itersteproundoff = 50 ! this is a second criterion which triggers recalculation of the coefficients
 double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
 logical, parameter :: single_update = .false. ! instead of updating delphi as each deldelphi_grid is calculated, assemble a deldelphi and do a line search using this - is more expensive, and seems to perform worse
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
 if (debug) debug_sparse = .true.
@@ -290,72 +290,6 @@ iteration_loop: do
       end if
 
     end if
-      
-
-
-! calculate the direction of change for ff based on this deldelphi
-!   delr = 0.d0 ! vector
-!   delr2 = 0.d0 ! scalar
-!   ffdelr = 0.d0 ! scalar
-!   ppe = 0
-!   do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-!     m = var_list(var_list_number_equation)%list(mm)
-!     do ns = 1, ubound(var(m)%funk,1)
-!       ppe = ppe + 1
-!       do pppu = 1, var(m)%funk(ns)%ndv
-!         ppu = var(m)%funk(ns)%pp(pppu)
-!         delr(ppe) = delr(ppe) + var(m)%funk(ns)%dv(pppu)*deldelphi(ppu)
-!       end do
-!       delr2 = delr2 + delr(ppe)**2
-!       ffdelr = ffdelr + ff(ppe)*delr(ppe)
-!     end do
-!   end do
-
-! now look at delr2 and ffdelr and then calculate lambda
-!   if (delr2 < tiny(1.d0)) then
-!     write(*,'(2(a,g14.7))') 'delr2 = ',delr2,': ffdelr = ',ffdelr
-!     call error_stop('delr2 is too small in subroutine multigrid mainsolver')
-!   end if
-
-!   if (delr2 < 1.d-60) then
-!     write(*,'(2(a,g14.7))') 'WARNING: delr2 is small, so setting lambda = 0.d0: delr2 = ',delr2,': ffdelr = ',ffdelr
-!     lambda = 0.d0
-!   else
-!     lambda = -ffdelr/delr2
-!     if (lambda < tiny(1.d0)) write(*,'(3(a,g14.7))') 'WARNING: lambda is small: delr2 = ',delr2, &
-!       ': ffdelr = ',ffdelr,': lambda = ',lambda
-!   end if
-
-!   if (lambda < tiny(1.d0)) then
-!     write(*,'(3(a,g14.7))') 'delr2 = ',delr2,': ffdelr = ',ffdelr,': lambda = ',lambda
-!     call error_stop('lambda is very small or negative in subroutine multigrid mainsolver')
-!   end if
-
-! update delphi
-!   delphi = delphi + lambda*deldelphi
-
-! calculate new ff and residual
-!   iterres_old = iterres
-!   if (.true.) then
-! noroundoff brute-force method for calculating new ff and iterres
-!     j = 0
-!     do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
-!       m = var_list(var_list_number_equation)%list(mm)
-!       do ns = 1, ubound(var(m)%funk,1)
-!         j = j + 1
-!         ff(j) = var(m)%funk(ns)%v
-!         do pppu = 1, var(m)%funk(ns)%ndv
-!           ff(j) = ff(j) + var(m)%funk(ns)%dv(pppu)*delphi(var(m)%funk(ns)%pp(pppu))
-!         end do
-!       end do
-!     end do
-!   else
-!     ff = ff + lambda*delr
-!   end if
-!   iterres = sqrt(dot_product(ff,ff)/dble(ptotal)) ! initialise the residual
-!   iterres = iterres_calc(ff,normalise)
-
-!     write(*,'(2(a,i6),a,g14.7)') 'nl = ',nl,': ng = ',ng,': iterres = ',iterres
     
   end do
 
