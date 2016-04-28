@@ -1307,9 +1307,28 @@ subroutine calc_ee_normalise(ee_scale,nelements)
 !  do this within calc_ee_scale
 
 use general_module
-integer :: mm, m, ns, pppu, ppu, mu, ppe, nelements
-double precision :: one_element
+integer :: mm, m, ns, pppu, ppu, mu, ppe, nelements, n_positive, n_negative
+double precision :: one_element, ee_positive, ee_negative
 double precision, dimension(:) :: ee_scale
+integer, parameter :: normalisation_method = 3 ! see below
+
+! performance of normalisation methods:
+! 0: no normalisation
+!    >60000 iterations for heat_conduction_around_ellipse test problem + doglegdescent
+! 1: normalise by largest (in magnitude) element, hence changing signs
+!    6593 iterations for heat_conduction_around_ellipse test problem + doglegdescent
+! 2: normalise without changing sign, and based on sum of row elements
+!    7300 iterations for heat_conduction_around_ellipse test problem + doglegdescent
+! 3: normalise with changing sign, and based on the sum of either positive or negative row elements, whichever is greater
+!    6121 iterations for heat_conduction_around_ellipse test problem + doglegdescent
+! 4: normalise with changing sign, and based on the average value of either positive or negative row elements, whichever is greater
+!    24775 iterations for heat_conduction_around_ellipse test problem + doglegdescent
+! 5: normalise with changing sign, and based on the sqrt of sum of squares of each of either positive or negative row elements, whichever is greater
+!    6576 iterations for heat_conduction_around_ellipse test problem + doglegdescent
+! 6: normalise with changing sign, and based on the rms value of either positive or negative row elements, whichever is greater
+!    12500 iterations for heat_conduction_around_ellipse test problem + doglegdescent
+! 7: as per 5, but doing sum of sqrts instead of sum of squares
+!    22159 iterations for heat_conduction_around_ellipse test problem + doglegdescent
 
 ! first run through all elements maximum element size (stored in ee_scale) and counting total number of elements
 
@@ -1320,20 +1339,80 @@ do mm = 1, allocatable_size(var_list(var_list_number_equation)%list)
   m = var_list(var_list_number_equation)%list(mm) ! equation var number
   do ns = 1, ubound(var(m)%funk,1)
     ppe = ppe + 1
+    if (normalisation_method == 0) ee_scale = 1.d0
+    if (normalisation_method >= 3) then
+      ee_positive = 0.d0
+      ee_negative = 0.d0
+    end if
+    if (normalisation_method == 4.or.normalisation_method == 6) then
+      n_positive = 0
+      n_negative = 0
+    end if
     do pppu = 1, var(m)%funk(ns)%ndv ! here we cycle through all the unknowns that are referenced within this equation
       ppu = var(m)%funk(ns)%pp(pppu) ! this is the unknown pp number
       mu = unknown_var_from_pp(ppu) ! unknown var number
       nelements = nelements + 1
+      if (normalisation_method == 0) cycle
       one_element = var(m)%funk(ns)%dv(pppu)*var(mu)%magnitude
 ! calculate ee_scale, which is (according to notes of 28/4/16) actually a matrix normalisation factor
-      if (.false.) then
-! normalise without changing sign, and based on sum of row elements
-        ee_scale(ppe) = ee_scale(ppe) + abs(one_element) ! slower
-      else
-! normalise by largest (in magnitude) element, hence changing signs
+      if (normalisation_method == 1) then
         if (abs(one_element) > abs(ee_scale(ppe))) ee_scale(ppe) = one_element
+      else if (normalisation_method == 2) then
+        ee_scale(ppe) = ee_scale(ppe) + abs(one_element)
+      else if (normalisation_method == 3) then
+        if (one_element > 0.d0) then
+          ee_positive = ee_positive + one_element
+        else
+          ee_negative = ee_negative - one_element
+        end if
+      else if (normalisation_method == 4) then
+        if (one_element > 0.d0) then
+          ee_positive = ee_positive + one_element
+          n_positive = n_positive + 1
+        else
+          ee_negative = ee_negative - one_element
+          n_negative = n_negative + 1
+        end if
+      else if (normalisation_method == 5) then
+        if (one_element > 0.d0) then
+          ee_positive = ee_positive + one_element**2
+        else
+          ee_negative = ee_negative + one_element**2
+        end if
+      else if (normalisation_method == 6) then
+        if (one_element > 0.d0) then
+          ee_positive = ee_positive + one_element**2
+          n_positive = n_positive + 1
+        else
+          ee_negative = ee_negative + one_element**2
+          n_negative = n_negative + 1
+        end if
+      else if (normalisation_method == 7) then
+        if (one_element > 0.d0) then
+          ee_positive = ee_positive + sqrt(one_element)
+        else
+          ee_negative = ee_negative + sqrt(-one_element)
+        end if
       end if
     end do
+    if (normalisation_method == 4.or.normalisation_method == 6) then
+      ee_positive = ee_positive/dble(max(n_positive,1))
+      ee_negative = ee_negative/dble(max(n_negative,1))
+    end if
+    if (normalisation_method >= 5 .and. normalisation_method <=6) then
+      ee_positive = sqrt(ee_positive)
+      ee_negative = sqrt(ee_negative)
+    else if (normalisation_method >= 7) then
+      ee_positive = ee_positive**2
+      ee_negative = ee_negative**2
+    end if
+    if (normalisation_method >= 3) then
+      if (ee_positive > ee_negative) then
+        ee_scale(ppe) = ee_positive
+      else
+        ee_scale(ppe) = -ee_negative
+      end if
+    end if
   end do
 end do
 
