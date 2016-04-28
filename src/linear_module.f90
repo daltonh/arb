@@ -94,12 +94,13 @@ use equation_module
 integer :: ierror, mm, m, ns, j, nl, ng, pppe, ppe, pppu, ppu, iterstep, nl_lower, pp, iterstepchecknext, itersteproundoffnext, &
   nelements
 character(len=1000) :: formatline
-double precision, dimension(:), allocatable :: ee, r, ee_scale
-double precision :: ee_scale_max, rrr, rrr_newt_tol, rrr_tol, rrr_o, deldelphi_grid, rrr_newt, iterres
+double precision, dimension(:), allocatable :: ee, r, ee_scale, deldelphi, delr
+double precision :: ee_scale_max, rrr, rrr_newt_tol, rrr_tol, rrr_o, deldelphi_grid, rrr_newt, iterres, lambda
 logical :: singlegrid ! if true then only the low level grid is used
 integer, parameter :: itersteproundoff = 50 ! this is a second criterion which triggers recalculation of the coefficients
-double precision, parameter :: roundoff_trigger = 1.d+4
-logical, parameter :: debug = .false.
+double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
+logical, parameter :: single_update = .false. ! instead of updating delphi as each deldelphi_grid is calculated, assemble a deldelphi and do a line search using this - is more expensive, and seems to perform worse
+logical, parameter :: debug = .true.
 logical :: debug_sparse = .true.
 
 if (debug) debug_sparse = .true.
@@ -114,6 +115,7 @@ ierror = 1 ! this signals an error
 if (.not.allocated(ee)) then
   allocate(ee(ptotal),r(ptotal),ee_scale(ptotal))
   delphi = 0.d0 ! zero on the first iteration only
+  if (single_update) allocate(deldelphi(ptotal),delr(ptotal))
 end if
 
 ! create reverse lookup table of equations from unknowns
@@ -205,7 +207,10 @@ iteration_loop: do
 ! loop through all grids, depending on whether called with multigrid or not
   do nl = nl_lower, nmultigrid
 
-!   deldelphi = 0.d0
+    if (single_update) then
+      deldelphi = 0.d0
+      delr = 0.d0
+    end if
 
 ! loop through all levels within this grid
     do ng = 1, multigrid(nl)%ngrid
@@ -221,16 +226,24 @@ iteration_loop: do
 ! now apply this update to all delphis in this grid
       do pppu = 1, multigrid(nl)%grid(ng)%nunknown_elements
         ppu = multigrid(nl)%grid(ng)%unknown_elements(pppu)
-        delphi(ppu) = delphi(ppu) + deldelphi_grid
+        if (single_update) then
+          deldelphi(ppu) = deldelphi(ppu) + deldelphi_grid
+        else
+          delphi(ppu) = delphi(ppu) + deldelphi_grid
+        end if
       end do
 
 ! and apply it to all residuals
       do pppe = 1, multigrid(nl)%grid(ng)%ndelr
         ppe = multigrid(nl)%grid(ng)%delr_elements(pppe)
-        r(ppe) = r(ppe) + deldelphi_grid*multigrid(nl)%grid(ng)%delr(pppe)
+        if (single_update) then
+          delr(ppe) = delr(ppe) + deldelphi_grid*multigrid(nl)%grid(ng)%delr(pppe)
+        else
+          r(ppe) = r(ppe) + deldelphi_grid*multigrid(nl)%grid(ng)%delr(pppe)
+        end if
       end do
 
-      if (debug) then
+      if (debug.and..not.single_update) then
         write(93,*) 'GGGGGGGGGGGGGGGGGGGGG'
         write(93,'(3(a,i8))') "iterstep = ",iterstep,": level = ",nl,": grid = ",ng
         write(93,'(a,g14.6)') "deldelphi_grid = ",deldelphi_grid
@@ -239,6 +252,46 @@ iteration_loop: do
       end if
 
     end do
+
+    if (single_update) then
+
+! perform a line search along the direction of deldelphi
+      lambda = dot_product_with_itself(delr)
+      if (lambda < d_min) then
+        if (debug) write(93,'(a)') 'lambda too small, so exiting grid loop (possibly after convergence)'
+        exit
+      end if
+      lambda = -dot_product_local(delr,r)/lambda
+
+      if (debug) then
+        write(93,*) 'MMMMMMMMMMMMMMMMMMMMM'
+        write(93,'(2(a,i8))') "iterstep = ",iterstep,": level = ",nl
+        write(93,'(a,g14.6)') "lambda = ",lambda
+        call print_debug_vector(delr,"delr")
+        call print_debug_vector(deldelphi,"deldelphi")
+      end if
+
+! now update solution based on this line search
+      delphi = delphi + lambda*deldelphi
+      r = r + lambda*delr
+
+      if (debug) then
+        call print_debug_vector(r,"r")
+        call print_debug_vector(delphi,"delphi")
+      end if
+
+    else
+
+      if (debug) then
+        write(93,*) 'MMMMMMMMMMMMMMMMMMMMM'
+        write(93,'(2(a,i8))') "iterstep = ",iterstep,": level = ",nl
+        call print_debug_vector(r,"r")
+        call print_debug_vector(delphi,"delphi")
+      end if
+
+    end if
+      
+
 
 ! calculate the direction of change for ff based on this deldelphi
 !   delr = 0.d0 ! vector
@@ -304,13 +357,6 @@ iteration_loop: do
 
 !     write(*,'(2(a,i6),a,g14.7)') 'nl = ',nl,': ng = ',ng,': iterres = ',iterres
     
-    if (debug) then
-      write(93,*) 'MMMMMMMMMMMMMMMMMMMMM'
-      write(93,'(2(a,i8))') "iterstep = ",iterstep,": level = ",nl
-      call print_debug_vector(r,"r")
-      call print_debug_vector(delphi,"delphi")
-    end if
-
   end do
 
   rrr = dot_product_with_itself(r) ! could calculate this incrementally
