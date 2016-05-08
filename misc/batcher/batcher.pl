@@ -40,6 +40,7 @@ our %output=();
 for my $key (@output_keys) {
   $output{$key} = '';
 }
+my $runcommand=''; # if this variable is non-empty, run this command instead of the arb script directly
 
 # sanity check to make sure that we are in the arb working directory
 if (! -d "build") { die "BATCHER ERROR: call this script from working directory\n"; }

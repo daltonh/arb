@@ -115,9 +115,13 @@ sub arbthread {
     }
   }
 
-  my $systemcall="./arb --quiet ".protect($case[$n]{"arboptions"});
-  for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
-    $systemcall=$systemcall." ".bsd_glob($ffilename);
+  if (nonempty($runcommand)) {
+    my $systemcall=$runcommand; # run this (probably) script instead of arb directly
+  } else {
+    my $systemcall="./arb --quiet ".protect($case[$n]{"arboptions"});
+    for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
+      $systemcall=$systemcall." ".bsd_glob($ffilename);
+    }
   }
   
   $systemcall = "cd $run_record_dir; ".$systemcall;

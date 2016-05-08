@@ -171,6 +171,7 @@ else
   !call time_process(description='mainsolver')
   ! if there is a problem with the linear matrix solver then return
   if (debug) write(*,*) 'in newtsolver after mainsolver, ierror = ',ierror
+  if (ierror /= 0) ierror = 4 ! standardised ierror that now says that packaged linear equations not converged due to problem
 end if
 
 if (manage_funk_dv_memory) then
@@ -275,18 +276,18 @@ backstep = 0
 back_loop: do ! entrance point for repeat steps
 
   backstep = backstep + 1 ! only used as an indicator of progress
-  ierror = 0
+    ierror = 0
 
-  if (backstepping.and.debug) then
-    formatline = "(a,"//trim(dindexformat(backstep))//",a)"
-    write(*,fmt=formatline) repeat('+',backline)//' backstep ',backstep,' starting '//repeat('+',backline)
-    if (convergence_details_file) then
-      write(fconverge,fmt=formatline) repeat('+',backline)//' backstep ',backstep,' starting '//repeat('+',backline)
-      call flush(fconverge)
+    if (backstepping.and.debug) then
+      formatline = "(a,"//trim(dindexformat(backstep))//",a)"
+      write(*,fmt=formatline) repeat('+',backline)//' backstep ',backstep,' starting '//repeat('+',backline)
+      if (convergence_details_file) then
+        write(fconverge,fmt=formatline) repeat('+',backline)//' backstep ',backstep,' starting '//repeat('+',backline)
+        call flush(fconverge)
+      end if
     end if
-  end if
 
-  if (manual_lambda) then
+    if (manual_lambda) then
     write(*,*) 'MANUAL_LAMBDA: current newtres = ',newtres,': previous lambda = ',lambda
     write(*,*) 'Enter new lambda:'
     read(*,*) lambda
@@ -322,12 +323,7 @@ back_loop: do ! entrance point for repeat steps
     end if
   end if
   
-  if (check_stopfile("stopback")) then
-
-    write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-    exit back_loop ! if not backstepping then exit backstepping loop
-
-  else if (backstepping) then
+if (backstepping) then
 
 ! save lambda that was used for next steps
     lambda_previous_step = lambda
@@ -418,6 +414,12 @@ back_loop: do ! entrance point for repeat steps
       write(fconverge,fmt=formatline) repeat('-',backline)//' backstep ',backstep,' ending '//repeat('-',backline+2)
       call flush(fconverge)
     end if
+  end if
+
+  if (check_stopfile("stopback")) then
+    write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+    ierror = -1 ! negative ierror indicates that user stopped arb before convergence complete
+    exit back_loop ! if not backstepping then exit backstepping loop
   end if
 
 end do back_loop

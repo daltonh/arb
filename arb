@@ -137,6 +137,7 @@ AOUT=build/arb;
 DEBUGGER=none;
 VALGRIND=valgrind;
 FILE_SEPARATOR="##################################################################################"
+ERRORSTATUS=0;
 
 # location of ooc temp files for out of core intel pardiso solver
 MKL_PARDISO_OOC_DIR=tmp/intel_pardiso_ooc
@@ -507,19 +508,21 @@ if [ $ORUN -eq 1 ] ; then
   else
     if [ $OPROCESSLOGGING -eq 0 ] ; then
       $AOUT; # standard invocation
+      if [ $? -ne 0 ] ; then ERRORSTATUS=2; fi # pickup exit status, noting that a nonzero value means that the code did not converge
     else # invocation of job while logging process statistics
       set -m; # need to enable job control within bash to allow backgrounding and foregrounding of arb process
       $AOUT & # initially placing arb in the background, so that we can get pid and use it to start memory logger
       ARBPID=$!; # $! reports pid of the last backgrounded job, in this case the build/arb process
       echo "INFO: arb pid is $ARBPID";
-      logprocess $ARBPID $OPROCESSLOGGING $PROCESSLOGFILE &
+      logprocess $ARBPID $OPROCESSLOGGING $PROCESSLOGFILE & # logprocess in the background
       fg 1 >/dev/null; # now pull job back into the foreground so that killing the script also kills the subprocess (arb)
+      if [ $? -ne 0 ] ; then ERRORSTATUS=2; fi
       sleep $(($OPROCESSLOGGING+1)); # have to wait for a logging interval after the job has finished so that output.scr is still there when logging command writes to it (batcher may move it immediately when arb script ends)
     fi;
   fi ;
   echo "INFO: finishing running arb";
 fi ;
 
-exit 0 ;
+exit $ERRORSTATUS ;
 # done
 #-------------------------------------------------------------------------------

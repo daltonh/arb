@@ -103,7 +103,7 @@ logical :: debug_sparse = .true.
 if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine multigrid_mainsolver'
 
-ierror = 1 ! this signals an error
+ierror = 4 ! this signals an error
 
 !---------------------
 ! initialise and allocate loop variables
@@ -184,7 +184,7 @@ iteration_loop: do
 
     if (check_stopfile("stopback")) then
       write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-      ierror = 2
+      ierror = -1
       exit iteration_loop
     end if
 
@@ -683,7 +683,7 @@ logical :: debug_sparse = .true.
 if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine bicg_mainsolver'
 
-ierror = 1 ! this signals an error
+ierror = 4 ! this signals an error
 
 !---------------------
 ! initialise and allocate loop variables
@@ -795,7 +795,7 @@ iteration_loop: do
 
     if (check_stopfile("stopback")) then
       write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-      ierror = 2
+      ierror = -1
       exit
     end if
 
@@ -1028,7 +1028,7 @@ logical :: debug_sparse = .true.
 if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine descent_mainsolver'
 
-ierror = 1 ! this signals an error
+ierror = 4 ! this signals an error
 
 ! initialise and allocate loop variables
 if (.not.allocated(delx)) then
@@ -1109,7 +1109,7 @@ do
 
     if (check_stopfile("stopback")) then
       write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-      ierror = 2
+      ierror = -1
       exit
     end if
 
@@ -1681,7 +1681,7 @@ logical :: debug_sparse = .true.
 if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine flexible_mainsolver'
 
-ierror = 1 ! this signals an error
+ierror = 4 ! this signals an error
 
 ! initialise and allocate loop variables
 if (.not.allocated(delx)) then
@@ -1764,7 +1764,7 @@ iteration_loop: do
 
     if (check_stopfile("stopback")) then
       write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-      ierror = 2
+      ierror = -1
       exit iteration_loop
     end if
 
