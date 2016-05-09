@@ -1,2 +1,7 @@
-# calculate porosity
-NONE_CONSTANT <porosity> "cellsum(<cellvol>*<phi>,region=<domain>)/cellsum(<cellvol>,region=<domain>)"
+# calculate porosity and some other averaged statistics, based on <phi>
+NONE_CONSTANT <fluid volume> "cellsum(<phi>*<cellvol>,region=<domain>)"
+NONE_CONSTANT <solid volume> "cellsum((1.d0-<phi>)*<cellvol>,region=<domain>)"
+NONE_CONSTANT <total volume> "cellsum(<cellvol>,region=<domain>)"
+NONE_CONSTANT <porosity> "<fluid volume>/<total volume>"
+NONE_CONSTANT <interfacial area> "cellsum(<phi_normal_c_mag>*<cellvol>,region=<domain>)"
+NONE_CONSTANT <pore length scale> "<fluid volume>/<interfacial area>"

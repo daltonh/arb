@@ -3263,7 +3263,7 @@ end if
 if (fconverge_opened) close(fconverge)
 if (foutputstep_opened) close(foutputstep)
 
-stop
+call exit(1) ! exit while setting error exit status
 
 end subroutine error_stop
 

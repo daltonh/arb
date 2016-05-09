@@ -1,0 +1,121 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+# here we find geometry related vof variables for use in tensor_equations.arb
+# we find the constants:
+# <phi_f>, <phi_c>, <phi_normal_c[l=:]>, <phi_normal_c_mag>, <vof_ugrad_l>, <vof_stress_mask> and <fluid_mask>
+# in addition <vof_stress_mask_indicator> and <fluid_mask_indicator> are also set to allow mask export
+
+VERSION 0.55 # the version of syntax used in this file
+
+OVERRIDE_OPTIONS nooutput
+
+# this equation file now handles both fully periodic and non-periodic domains
+# the default behaviour is for periodic domains, however this can be changed by setting the replacement string <<periodicdomaincomment>> to a comment character either by a preceding general replacement or calling include replacement
+GENERAL_REPLACEMENTS D "<<periodicdomaincomment>>" W "" # default behaviour is for a nonperiodic domain
+
+# <<nonperiodicdomaincomment>> is set to be consistent with <<periodicdomaincomment>>
+GENERAL_REPLACEMENTS R "<<nonperiodicdomaincomment>>" W "" # default behaviour is for a nonperiodic domain
+<<periodicdomaincomment>>GENERAL_REPLACEMENTS R "<<nonperiodicdomaincomment>>" W "#"
+
+<<periodicdomaincomment>>INFO_DESCRIPTION+ ": periodic domain"
+<<nonperiodicdomaincomment>>INFO_DESCRIPTION+ ": nonperiodic domain"
+#--------------------
+# do any periodic/nonperiodic geometry changes
+
+<<nonperiodicdomaincomment>>ERROR "nonperiodic domain not implemented in tensor_equations_new yet"
+<<nonperiodicdomaincomment>>FACE_REGION <walls> "all" ON <boundaries> # this is needed in the navier-stokes setup files only
+
+# for periodic domain glue the opposing domain boundaries together
+
+<<periodicdomaincomment>><<dim1comment>>GLUE_FACES <east> <west>
+<<periodicdomaincomment>><<dim2comment>>GLUE_FACES <north> <south>
+<<periodicdomaincomment>><<dim3comment>>GLUE_FACES <top> <bottom>
+
+#--------------------
+# setup normals etc to the solid interface using vof methodology
+
+# and setup some masks based on the vof methodolgy
+CONSTANT <phi_tol> 1.d-4 # this is how small the fluid volume fraction is before a cell is classified as solid only
+CELL_CONSTANT <interface_mask_indicator> "cellif(<phi>-<phi_tol>,cellif(1.d0-<phi_tol>-<phi>,1.d0,0.d0),0.d0)" ON <domain> output, elementdata
+CELL_CONSTANT_REGION <interface_mask> "variable(<interface_mask_indicator>)" ON <domain> # note, mask will not include boundary cells now, so reconstructed phi on boundary cells will just equal input phi
+NODE_CONSTANT_REGION <interface_mask_n> "associatedwith(<interface_mask>)" ON <all nodes> 
+
+# now generate normals and face volume fractions based on vof methodolgy
+INCLUDE_ROOT "volume_of_fluid"
+# default now is for normals to be based on cellgrad in the interests of memory, determined by <<vofnodenormalscomment>>
+GENERAL_REPLACEMENTS DEFAULT "<<vofnodenormalscomment>>" W "#"
+# set the anti-string, <<vofcellnormalscomment>>, to be consistent and opposite
+GENERAL_REPLACEMENTS R "<<vofcellnormalscomment>>" W ""
+<<vofnodenormalscomment>>GENERAL_REPLACEMENTS R "<<vofcellnormalscomment>>" W "#"
+# normals based on cellgrad
+<<vofcellnormalscomment>>INCLUDE "normals" R "<<vofmaskcomment>>" W "#" R "<<vofnodenormalscomment>>" W "#" R "<<vofcellnormalscomment>>" W "" R "DERIVED" W "CONSTANT" R "<vof_phigrad_mask[r=1]>" W "<interface_mask>" R "<vof_phi_smoothed>" W "<phi>" R "<vof_phi" W "<phi"
+# normals based on nodegrad - better
+<<vofnodenormalscomment>>INCLUDE "normals" R "<<vofmaskcomment>>" W "#" R "DERIVED" W "CONSTANT" R "<vof_phigrad_mask[r=1]>" W "<interface_mask>" R "<vof_phigrad_mask_n[r=1]>" W "<interface_mask_n>" R "<vof_phi_smoothed>" W "<phi>" R "<vof_phi" W "<phi"
+# now calculate <phi_f> after reconstructing the interfaces where necessary
+# strictly 2D
+#CELL_CONSTANT <vof_d> "cellvofd[best](phi=<phi>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,phitol=<phi_tol>)" ON <interface_mask>
+# 3D too
+CELL_CONSTANT <vof_d> "cellvofd[best](phi=<phi>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)" ON <interface_mask>
+
+# now define face centred phi function
+# min based
+FACE_CONSTANT <phi_f> "cellmin(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)" ON <all faces> output
+# ave based
+#FACE_CONSTANT <phi_f> "cellsum(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)/2.d0" ON <all faces> output
+# faceave[adjacentcells] based
+#FACE_CONSTANT <phi_f> "faceave[adjacentcells](cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>))" ON <all faces> output
+# nonvof simple implementation
+#FACE_OUTPUT <phi_f> "faceave[adjacentcells](<phi>)" ON <all faces>
+
+# and from the face centred function, define cell centred phi, and an associated fluid mask
+CELL_CONSTANT <phi_c> "<phi_f>" ON <all cells>
+CELL_CONSTANT <fluid_mask_indicator> "cellif(<phi_c>-<phi_tol>,1.d0,0.d0)" ON <all cells> output
+CELL_CONSTANT_REGION <fluid_mask> "variable(<fluid_mask_indicator>)" ON <all cells>
+
+#--------------------
+# need to create compact normals, that is used as a delta function when applying the stress (the previous normals are no good as there are based on smoothed vof/ls function)
+<<dim1comment>>CELL_CONSTANT <phi_normal_c[l=1]> "celldivgrad[l=1](<phi_f>)" ON <fluid_mask> output
+<<dim2comment>>CELL_CONSTANT <phi_normal_c[l=2]> "celldivgrad[l=2](<phi_f>)" ON <fluid_mask>
+<<dim3comment>>CELL_CONSTANT <phi_normal_c[l=3]> "celldivgrad[l=3](<phi_f>)" ON <fluid_mask>
+CELL_CONSTANT <phi_normal_c_mag> "sqrt(cellmax(dot(<phi_normal_c[l=:]>,<phi_normal_c[l=:]>),<tinyish>))" ON <fluid_mask> output
+CELL_CONSTANT <vof_stress_mask_indicator> "cellif(<phi_normal_c_mag>-<phi_tol>/<celldxmin>,1.d0,0.d0)" ON <fluid_mask> output
+CELL_CONSTANT_REGION <vof_stress_mask> "variable(<vof_stress_mask_indicator>)" ON <fluid_mask>
+
+# estimate of the distance between cell averaged velocity and interface
+# use this string to choose between the two methods
+GENERAL_REPLACEMENTS DEFAULT "<<vofbasedstresslcomment>>" W ""
+# simple, based on phi and celldxmin
+CELL_CONSTANT <vof_ugrad_l> "<phi_c>*<celldxmin>" ON <vof_stress_mask> output
+# more accurate, taking into account interface orientation, but requiring normals throughout <vof_stress_mask>
+<<vofbasedstresslcomment>>CELL_LOCAL <vof_ugrad_d> "cellvofd[best](phi=<phi_c>,normal[l=1]=<phi_normal_c[l=1]>/<phi_normal_c_mag>,normal[l=2]=<phi_normal_c[l=2]>/<phi_normal_c_mag>,normal[l=3]=<phi_normal_c[l=3]>/<phi_normal_c_mag>,phitol=<phi_tol>)" ON <vof_stress_mask> nooutput
+#<<vofbasedstresslcomment>>CELL_LOCAL <vof_ugrad_d_full> "cellvofd[best](phi=<phi_tol>*1.d-1,normal[l=1]=<phi_normal_c[l=1]>/<phi_normal_c_mag>,normal[l=2]=<phi_normal_c[l=2]>/<phi_normal_c_mag>,normal[l=3]=<phi_normal_c[l=3]>/<phi_normal_c_mag>,phitol=<phi_tol>*1.d-2)" ON <vof_stress_mask> nooutput
+<<vofbasedstresslcomment>>CELL_LOCAL <vof_ugrad_d_full> "cellvofd[linearone](phi=0.d0,normal[l=1]=<phi_normal_c[l=1]>/<phi_normal_c_mag>,normal[l=2]=<phi_normal_c[l=2]>/<phi_normal_c_mag>,normal[l=3]=<phi_normal_c[l=3]>/<phi_normal_c_mag>,phitol=-1.d0)" ON <vof_stress_mask> nooutput # giving a negative phitol forces the tolerance to be ignored, and linearone will pull out the extreme d safely
+<<vofbasedstresslcomment>>CELL_CONSTANT <vof_ugrad_l> "(<vof_ugrad_d_full>-<vof_ugrad_d>)" ON <vof_stress_mask> output
+
+#-------------------------------------------------------------------
+
+OVERRIDE_OPTIONS
+
+# turn on the specific outputs
+#VARIABLE <phigrad[l=1]> nooutput
+#<<vofnodenormalscomment>>VARIABLE <phigrad_n[l=1]> nooutput
+#VARIABLE <vof_d> nooutput
+
+OVERRIDE_OPTIONS output
+VARIABLE <phi_f>
+VARIABLE <phi_c>
+<<dim1comment>>VARIABLE <phi_normal_c[l=1]>
+<<dim2comment>>VARIABLE <phi_normal_c[l=2]>
+<<dim3comment>>VARIABLE <phi_normal_c[l=3]>
+VARIABLE <phi_normal_c_mag>
+VARIABLE <vof_ugrad_l>
+VARIABLE <vof_stress_mask_indicator>
+VARIABLE <fluid_mask_indicator>
+REGION <vof_stress_mask>
+REGION <fluid_mask>
+OVERRIDE_OPTIONS
+#-------------------------------------------------------------------

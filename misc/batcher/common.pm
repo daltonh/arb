@@ -115,8 +115,8 @@ sub arbthread {
     }
   }
 
-  if (nonempty($runcommand)) {
-    my $systemcall=$runcommand; # run this (probably) script instead of arb directly
+  if (nonempty($case[$n]{"runcommand"})) {
+    my $systemcall=protect($case[$n]{"runcommand"}); # run this (probably) script instead of arb directly
   } else {
     my $systemcall="./arb --quiet ".protect($case[$n]{"arboptions"});
     for my $ffilename ( @{$case[$n]{"arbfile"}} ) {

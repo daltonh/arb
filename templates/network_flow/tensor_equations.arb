@@ -31,45 +31,8 @@ GENERAL_REPLACEMENTS R "<<nonperiodicdomaincomment>>" W "" # default behaviour i
 <<periodicdomaincomment>><<dim3comment>>GLUE_FACES <top> <bottom>
 
 #--------------------
-# setup normals etc to the solid interface using vof methodology
-
-# and setup some masks based on the vof methodolgy
-CONSTANT <phi_tol> 1.d-4 # this is how small the fluid volume fraction is before a cell is classified as solid only
-CELL_CONSTANT <interface_mask_indicator> "cellif(<phi>-<phi_tol>,cellif(1.d0-<phi_tol>-<phi>,1.d0,0.d0),0.d0)" ON <domain> output, elementdata
-CELL_CONSTANT_REGION <interface_mask> "variable(<interface_mask_indicator>)" ON <domain> # note, mask will not include boundary cells now, so reconstructed phi on boundary cells will just equal input phi
-NODE_CONSTANT_REGION <interface_mask_n> "associatedwith(<interface_mask>)" ON <all nodes> 
-
-# now generate normals and face volume fractions based on vof methodolgy
-INCLUDE_ROOT "volume_of_fluid"
-# default now is for normals to be based on cellgrad in the interests of memory, determined by <<vofnodenormalscomment>>
-GENERAL_REPLACEMENTS DEFAULT "<<vofnodenormalscomment>>" W "#"
-# set the anti-string, <<vofcellnormalscomment>>, to be consistent and opposite
-GENERAL_REPLACEMENTS R "<<vofcellnormalscomment>>" W ""
-<<vofnodenormalscomment>>GENERAL_REPLACEMENTS R "<<vofcellnormalscomment>>" W "#"
-# normals based on cellgrad
-<<vofcellnormalscomment>>INCLUDE "normals" R "<<vofmaskcomment>>" W "#" R "<<vofnodenormalscomment>>" W "#" R "<<vofcellnormalscomment>>" W "" R "DERIVED" W "CONSTANT" R "<vof_phigrad_mask[r=1]>" W "<interface_mask>" R "<vof_phi_smoothed>" W "<phi>" R "<vof_phi" W "<phi"
-# normals based on nodegrad - better
-<<vofnodenormalscomment>>INCLUDE "normals" R "<<vofmaskcomment>>" W "#" R "DERIVED" W "CONSTANT" R "<vof_phigrad_mask[r=1]>" W "<interface_mask>" R "<vof_phigrad_mask_n[r=1]>" W "<interface_mask_n>" R "<vof_phi_smoothed>" W "<phi>" R "<vof_phi" W "<phi"
-# now calculate <phi_f> after reconstructing the interfaces where necessary
-# strictly 2D
-#CELL_CONSTANT <vof_d> "cellvofd[best](phi=<phi>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,phitol=<phi_tol>)" ON <interface_mask>
-# 3D too
-CELL_CONSTANT <vof_d> "cellvofd[best](phi=<phi>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)" ON <interface_mask>
-
-# now define face centred phi function
-# min based
-FACE_CONSTANT <phi_f> "cellmin(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)" ON <all faces> output
-# ave based
-#FACE_CONSTANT <phi_f> "cellsum(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)/2.d0" ON <all faces> output
-# faceave[adjacentcells] based
-#FACE_CONSTANT <phi_f> "faceave[adjacentcells](cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>))" ON <all faces> output
-# nonvof simple implementation
-#FACE_OUTPUT <phi_f> "faceave[adjacentcells](<phi>)" ON <all faces>
-
-# and from the face centred function, define cell centred phi, and an associated fluid mask
-CELL_CONSTANT <phi_c> "<phi_f>" ON <all cells>
-CELL_CONSTANT <fluid_mask_indicator> "cellif(<phi_c>-<phi_tol>,1.d0,0.d0)" ON <all cells> output
-CELL_CONSTANT_REGION <fluid_mask> "variable(<fluid_mask_indicator>)" ON <all cells>
+# assume that interface_geometry has already been called, that provides:
+# <phi_f>, <phi_c>, <phi_normal_c[l=:]>, <phi_normal_c_mag>, <vof_ugrad_l>, <vof_stress_mask> and <fluid_mask>
 
 #--------------------
 # now to solve for the fluid flow
@@ -87,36 +50,22 @@ CONSTANT <pressure_anchoring_factor> 1.d-8 # set this number to be small relativ
 VARIABLE <continuity> "cellif(celldelta(<fluid_mask>),celldiv(<phi_f>*<u_f>),0.d0)-<pressure_anchoring_factor>*(<celldxmax>^2/<mu>)*celldiv(facegrad[dxunit](<p>))"
 
 # create cell centred stress that represents stress acting across vof interface
-<<dim1comment>>CELL_CONSTANT <phi_normal_c[l=1]> "celldivgrad[l=1](<phi_f>)" ON <fluid_mask> output
-<<dim2comment>>CELL_CONSTANT <phi_normal_c[l=2]> "celldivgrad[l=2](<phi_f>)" ON <fluid_mask>
-<<dim3comment>>CELL_CONSTANT <phi_normal_c[l=3]> "celldivgrad[l=3](<phi_f>)" ON <fluid_mask>
-CELL_CONSTANT <phi_normal_c_mag> "sqrt(cellmax(dot(<phi_normal_c[l=:]>,<phi_normal_c[l=:]>),<tinyish>))" ON <fluid_mask> output
-CELL_CONSTANT <vof_stress_mask_indicator> "cellif(<phi_normal_c_mag>-<phi_tol>/<celldxmin>,1.d0,0.d0)" ON <fluid_mask> output
-CELL_CONSTANT_REGION <vof_stress_mask> "variable(<vof_stress_mask_indicator>)" ON <fluid_mask>
+# <vof_ugrad_l> and <phi_normal_c> and magnitude are already calculated
+NONE_CONSTANT <vof_ugrad_l_constant> 4.d0
+<<dim1comment>>CELL_CONSTANT <vof_ugrad_multiplier[l=1]> "<phi_normal_c[l=1]>*<vof_ugrad_l_constant>/(<vof_ugrad_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
+<<dim2comment>>CELL_CONSTANT <vof_ugrad_multiplier[l=2]> "<phi_normal_c[l=2]>*<vof_ugrad_l_constant>/(<vof_ugrad_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
+<<dim3comment>>CELL_CONSTANT <vof_ugrad_multiplier[l=3]> "<phi_normal_c[l=3]>*<vof_ugrad_l_constant>/(<vof_ugrad_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
+<<dim1comment>>               CELL_DERIVED <ugrad_vof_c[l=1,1]> "<vof_ugrad_multiplier[l=1]>*<u[l=1]>" ON <vof_stress_mask>
+<<dim1comment>><<dim2comment>>CELL_DERIVED <ugrad_vof_c[l=1,2]> "<vof_ugrad_multiplier[l=1]>*<u[l=2]>" ON <vof_stress_mask>
+<<dim1comment>><<dim3comment>>CELL_DERIVED <ugrad_vof_c[l=1,3]> "<vof_ugrad_multiplier[l=1]>*<u[l=3]>" ON <vof_stress_mask>
+<<dim2comment>><<dim1comment>>CELL_DERIVED <ugrad_vof_c[l=2,1]> "<vof_ugrad_multiplier[l=2]>*<u[l=1]>" ON <vof_stress_mask>
+<<dim2comment>>               CELL_DERIVED <ugrad_vof_c[l=2,2]> "<vof_ugrad_multiplier[l=2]>*<u[l=2]>" ON <vof_stress_mask>
+<<dim2comment>><<dim3comment>>CELL_DERIVED <ugrad_vof_c[l=2,3]> "<vof_ugrad_multiplier[l=2]>*<u[l=3]>" ON <vof_stress_mask>
+<<dim3comment>><<dim1comment>>CELL_DERIVED <ugrad_vof_c[l=3,1]> "<vof_ugrad_multiplier[l=3]>*<u[l=1]>" ON <vof_stress_mask>
+<<dim3comment>><<dim2comment>>CELL_DERIVED <ugrad_vof_c[l=3,2]> "<vof_ugrad_multiplier[l=3]>*<u[l=2]>" ON <vof_stress_mask>
+<<dim3comment>>               CELL_DERIVED <ugrad_vof_c[l=3,3]> "<vof_ugrad_multiplier[l=3]>*<u[l=3]>" ON <vof_stress_mask>
 
-# estimate of the distance between cell averaged velocity and interface
-# use this string to choose between the two methods
-GENERAL_REPLACEMENTS DEFAULT "<<vofbasedstresslcomment>>" W ""
-NONE_CONSTANT <vof_stress_l_constant> 4.d0
-# simple, based on phi and celldxmin
-CELL_CONSTANT <vof_stress_l> "<phi_c>*<celldxmin>/<vof_stress_l_constant>" ON <vof_stress_mask> output
-# more accurate, taking into account interface orientation, but requiring normals throughout <vof_stress_mask>
-<<vofbasedstresslcomment>>CELL_LOCAL <vof_d_stress> "cellvofd[best](phi=<phi_c>,normal[l=1]=<phi_normal_c[l=1]>/<phi_normal_c_mag>,normal[l=2]=<phi_normal_c[l=2]>/<phi_normal_c_mag>,normal[l=3]=<phi_normal_c[l=3]>/<phi_normal_c_mag>,phitol=<phi_tol>)" ON <vof_stress_mask> nooutput
-#<<vofbasedstresslcomment>>CELL_LOCAL <vof_d_stress_full> "cellvofd[best](phi=<phi_tol>*1.d-1,normal[l=1]=<phi_normal_c[l=1]>/<phi_normal_c_mag>,normal[l=2]=<phi_normal_c[l=2]>/<phi_normal_c_mag>,normal[l=3]=<phi_normal_c[l=3]>/<phi_normal_c_mag>,phitol=<phi_tol>*1.d-2)" ON <vof_stress_mask> nooutput
-<<vofbasedstresslcomment>>CELL_LOCAL <vof_d_stress_full> "cellvofd[linearone](phi=0.d0,normal[l=1]=<phi_normal_c[l=1]>/<phi_normal_c_mag>,normal[l=2]=<phi_normal_c[l=2]>/<phi_normal_c_mag>,normal[l=3]=<phi_normal_c[l=3]>/<phi_normal_c_mag>,phitol=-1.d0)" ON <vof_stress_mask> nooutput # giving a negative phitol forces the tolerance to be ignored, and linearone will pull out the extreme d safely
-<<vofbasedstresslcomment>>CELL_CONSTANT <vof_stress_l> "(<vof_d_stress_full>-<vof_d_stress>)/<vof_stress_l_constant>" ON <vof_stress_mask> output
-
-<<dim1comment>>               CELL_DERIVED <ugrad_vof_c[l=1,1]> "<phi_normal_c[l=1]>*<u[l=1]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim1comment>><<dim2comment>>CELL_DERIVED <ugrad_vof_c[l=1,2]> "<phi_normal_c[l=1]>*<u[l=2]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim1comment>><<dim3comment>>CELL_DERIVED <ugrad_vof_c[l=1,3]> "<phi_normal_c[l=1]>*<u[l=3]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim2comment>><<dim1comment>>CELL_DERIVED <ugrad_vof_c[l=2,1]> "<phi_normal_c[l=2]>*<u[l=1]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim2comment>>               CELL_DERIVED <ugrad_vof_c[l=2,2]> "<phi_normal_c[l=2]>*<u[l=2]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim2comment>><<dim3comment>>CELL_DERIVED <ugrad_vof_c[l=2,3]> "<phi_normal_c[l=2]>*<u[l=3]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim3comment>><<dim1comment>>CELL_DERIVED <ugrad_vof_c[l=3,1]> "<phi_normal_c[l=3]>*<u[l=1]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim3comment>><<dim2comment>>CELL_DERIVED <ugrad_vof_c[l=3,2]> "<phi_normal_c[l=3]>*<u[l=2]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim3comment>>               CELL_DERIVED <ugrad_vof_c[l=3,3]> "<phi_normal_c[l=3]>*<u[l=3]>/(<vof_stress_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-
-<<dim1comment>>CELL_LOCAL <tau_vof_c[l=1,1]> "-<mu>*2.d0*<ugrad_vof_c[l=1,1]>" ON <vof_stress_mask> componentoutput,output
+<<dim1comment>>CELL_LOCAL <tau_vof_c[l=1,1]> "-<mu>*2.d0*<ugrad_vof_c[l=1,1]>" ON <vof_stress_mask>
 <<dim2comment>>CELL_LOCAL <tau_vof_c[l=2,2]> "-<mu>*2.d0*<ugrad_vof_c[l=2,2]>" ON <vof_stress_mask>
 <<dim3comment>>CELL_LOCAL <tau_vof_c[l=3,3]> "-<mu>*2.d0*<ugrad_vof_c[l=3,3]>" ON <vof_stress_mask>
 <<dim1comment>><<dim2comment>>CELL_LOCAL <tau_vof_c[l=1,2]> "-<mu>*(<ugrad_vof_c[l=1,2]>+<ugrad_vof_c[l=2,1]>)" ON <vof_stress_mask>
@@ -141,8 +90,6 @@ CELL_CONSTANT <vof_stress_l> "<phi_c>*<celldxmin>/<vof_stress_l_constant>" ON <v
 <<dim2comment>>VARIABLE <dynamic_force_c[l=2]> "<dynamic_force_c[l=2]>-<pressure_gradient[l=2]>"
 <<dim3comment>>VARIABLE <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>-<pressure_gradient[l=3]>"
 VARIABLE <dynamic_force_f> "<dynamic_force_f>-dot(<facedxunit[l=:]>,<pressure_gradient[l=:]>)"
-
-#INCLUDE "p_error_remove_dynamic_force_c_f" # try this to reduce memory
 
 #--------------------
 # boundary conditions for non-periodic or pressure anchoring for periodic domains
@@ -195,9 +142,6 @@ NONE_CONSTANT <u_magnitude> "<pressure_gradient_mag>*<a_lengthscale>^2/<mu>"
 #-------------------------------------------------------------------
 
 # turn off some outputs
-VARIABLE <phigrad[l=1]> nooutput
-<<vofnodenormalscomment>>VARIABLE <phigrad_n[l=1]> nooutput
-VARIABLE <vof_d> nooutput
 VARIABLE <dynamic_force_c[l=1]> nooutput
 
 #-------------------------------------------------------------------
