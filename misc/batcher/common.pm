@@ -23,6 +23,7 @@ sub arbthread {
   my $parallel = $main::parallel; # local copy
   my $prune_output_structure = $main::prune_output_structure; # local copy
   my $stopfile = 'batcher_stop';
+  my $systemcall='';
 
   # write headers in $output_dir/batch_data.csv
   if (!($n)) {
@@ -89,7 +90,7 @@ sub arbthread {
       $ffilename =~ /(.+)\.geo$/;
       my $mshname=$1.".msh";
       print "BATCHER INFO: creating msh file $mshname from $ffilename within $run_record_dir\n";
-      my $systemcall="cd $run_record_dir; ./misc/create_msh/create_msh $ffilename"; # use ./misc/create_mesh/create_mesh script
+      $systemcall="cd $run_record_dir; ./misc/create_msh/create_msh $ffilename"; # use ./misc/create_mesh/create_mesh script
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
       #print "BATCHER DEBUG: \$mshname = $mshname\n";
@@ -110,15 +111,15 @@ sub arbthread {
         mkpath($create_path) or error_stop("could not create path $create_path required to place mshfile input file or directory $ffilename correctly in the run directory");
       }
       my $filename = "$run_record_dir/".$ffilename;
-      my $systemcall="cp -R $ffilename $filename"; # using system cp function instead of the perl one as the perl version on osx can't handle recursive copying
+      $systemcall="cp -R $ffilename $filename"; # using system cp function instead of the perl one as the perl version on osx can't handle recursive copying
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
     }
   }
 
   if (nonempty($case[$n]{"runcommand"})) {
-    my $systemcall=protect($case[$n]{"runcommand"}); # run this (probably) script instead of arb directly
+    $systemcall=protect($case[$n]{"runcommand"}); # run this (probably) script instead of arb directly
   } else {
-    my $systemcall="./arb --quiet ".protect($case[$n]{"arboptions"});
+    $systemcall="./arb --quiet ".protect($case[$n]{"arboptions"});
     for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
       $systemcall=$systemcall." ".bsd_glob($ffilename);
     }

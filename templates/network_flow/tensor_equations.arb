@@ -51,6 +51,7 @@ VARIABLE <continuity> "cellif(celldelta(<fluid_mask>),celldiv(<phi_f>*<u_f>),0.d
 
 # create cell centred stress that represents stress acting across vof interface and include this in the momentum balance
 GENERAL_REPLACEMENTS D "<<momentumwithvofstresscomment>>" W "" # default is on
+<<momentumwithvofstresscomment>>INCLUDE_ROOT "network_flow"
 <<momentumwithvofstresscomment>>INCLUDE "momentum_with_vof_stress"
 # without this the momentum equations remain unaltered
 
