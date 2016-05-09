@@ -1310,13 +1310,14 @@ use general_module
 integer :: mm, m, ns, pppu, ppu, mu, ppe, nelements, n_positive, n_negative
 double precision :: one_element, ee_positive, ee_negative
 double precision, dimension(:) :: ee_scale
-integer, parameter :: normalisation_method = 3 ! see below
+integer, parameter :: normalisation_method = 1 ! (1) see below
 
 ! performance of normalisation methods:
 ! 0: no normalisation
 !    >60000 iterations for heat_conduction_around_ellipse test problem + doglegdescent
 ! 1: normalise by largest (in magnitude) element, hence changing signs
 !    6593 iterations for heat_conduction_around_ellipse test problem + doglegdescent
+! DEFAULT: in this case this uses slightly more iterations than 3, but in other larger problems uses less and converges faster at the end
 ! 2: normalise without changing sign, and based on sum of row elements
 !    7300 iterations for heat_conduction_around_ellipse test problem + doglegdescent
 ! 3: normalise with changing sign, and based on the sum of either positive or negative row elements, whichever is greater
