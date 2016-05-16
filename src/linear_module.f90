@@ -1063,6 +1063,7 @@ a_xp = 0.d0
 a_rx = 0.d0
 gamma = 0.d0
 rrr_o = rrr ! rrr_o is the last time the coefficients were calculated explicitly from r
+delrrr = 0.d0
 
 if (debug) then
   call print_debug_vector(ee,"ee")
@@ -1095,11 +1096,11 @@ do
 
     if (debug_sparse) then
       iterres = sqrt(rrr_newt/dble(ptotal))
-      write(*,'(1(a,i8),3(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
-        ": iterres = ",iterres,": rrr = ",rrr,": rrr_newt = ",rrr_newt
+      write(*,'(1(a,i7),4(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
+        ": iterres = ",iterres,": rrr_newt = ",rrr_newt,": rrr = ",rrr,": delrrr = ",delrrr
       if (convergence_details_file) &
-        write(fconverge,'(1(a,i8),3(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
-          ": iterres = ",iterres,": rrr = ",rrr,": rrr_newt = ",rrr_newt
+        write(fconverge,'(1(a,i7),4(a,g14.7))') "ITERATION: iterstep = ",iterstep, &
+          ": iterres = ",iterres,": rrr_newt = ",rrr_newt,": rrr = ",rrr,": delrrr = ",delrrr
     end if
 
     if (rrr_newt < rrr_newt_tol) then ! iterations have converged based on rrr_newt
@@ -1259,6 +1260,14 @@ do
       write(93,'(a,g14.6)') 'a_xx = ',a_xx
       write(93,'(a,g14.6)') 'a_rx = ',a_rx
     end if
+! for output purposes, increment delrrr
+    delrrr = delrrr + rrr - rrr_o
+    if (delrrr >= 0.d0) then
+      write(*,'(1(a,i7),3(a,g14.7))') "RECALCULATING FINDING POSITIVE DELRRR: iterstep = ",iterstep, &
+        ": rrr = ",rrr,": delrrr = ",delrrr,": delrrr(roundoff) = ",rrr-rrr_o
+    end if
+! and now save rrr after reinitialisation
+    rrr_o = rrr
 !   if (debug_sparse) write(*,'(a)') 'ITERATIONS: recalculating coefficients to avoid round-off errors'
     if (debug) write(*,'(a)') 'ITERATIONS: recalculating coefficients to avoid round-off errors'
   end if
