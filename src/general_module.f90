@@ -371,8 +371,8 @@ character(len=100), dimension(3), parameter :: data_options = ["elementdata     
   "elementnodelimiteddata"]
 character(len=100), dimension(2), parameter :: input_options = ["input            ", "noinput          "]
 character(len=100), dimension(2), parameter :: magnitude_options = ["dynamicmagnitude", "staticmagnitude "]
-character(len=8), dimension(6), parameter :: stopfilelist = [ "kill    ", "stopback", "stopnewt", "stop    ", "stoptime", &
-  "halt    " ]
+character(len=8), dimension(7), parameter :: stopfilelist = [ "kill    ", "stopback", "stopiter", "stopnewt", "stop    ", &
+  "stoptime", "halt    " ]
 character(len=8), dimension(3), parameter :: dumpfilelist = [ "dumpnewt", "dump    ", "dumptime" ]
 logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], array_mask2 = [.false.,.true.,.false.], &
   array_mask3 = [.false.,.false.,.true.]
@@ -3305,16 +3305,20 @@ character(len=*), intent(in) :: action
 logical :: check_stopfile
 integer :: n, listlength
 ! depending on whether this is a transient simulation or not, stop may either be included or not in the stopfilelist
-! character(len=8), dimension(6), parameter :: stopfilelist = [ "kill   ", "stopback", "stopnewt", "stop    ", "stoptime", "halt    " ]
+! character(len=8), dimension(7), parameter :: stopfilelist = [ "kill   ", "stopback", "stopiter", "stopnewt", "stop    ", "stoptime", "halt    " ]
 
-if (trim(action) == 'stopback') then
-  listlength = 2 ! kill and stopback cause the fastest stop, interupting the backstepping loop
+if (trim(action) == 'kill') then
+  listlength = 1 ! kill causes the fastest stop, interupting at all checkpoints and not saving the last current solution estimate
+else if (trim(action) == 'stopback') then
+  listlength = 2 ! stopback is almost the same as kill, however kill also acts on the iterative solvers
+else if (trim(action) == 'stopiter') then
+  listlength = 3 ! stopiter will halt the iterative solvers but allows the backstepping operation to complete, so that the last current solution is saved
 else if (trim(action) == 'stopnewt'.and.transient_simulation) then
-  listlength = 3 ! for a transient sim, the above plus stopnewt will interupt the newton loop
+  listlength = 4 ! for a transient sim, the above plus stopnewt will interupt the newton loop
 else if (trim(action) == 'stopnewt') then
-  listlength = 4 ! for a steady-state sim, the above plus stop will interupt the newton loop
+  listlength = 5 ! for a steady-state sim, the above plus stop will interupt the newton loop
 else
-  listlength = 6 ! for a transient sim the above plus stop, stoptime and halt will halt the time loop
+  listlength = 7 ! for a transient sim the above plus stop, stoptime and halt will halt the time loop
 end if
 
 check_stopfile = .false.

@@ -182,9 +182,14 @@ iteration_loop: do
       exit iteration_loop
     end if
 
-    if (check_stopfile("stopback")) then
-      write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-      ierror = -1
+    if (check_stopfile("stopiter")) then
+      if (check_stopfile("stopback")) then
+        write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+        ierror = -1 ! this flags that the solution is to be discarded due to the user generated file
+      else
+        write(*,'(a)') 'INFO: user requested simulation stop via "stopiter" file'
+        ierror = 0 ! this flags that the solution is to be used
+      end if
       exit iteration_loop
     end if
 
@@ -793,9 +798,14 @@ iteration_loop: do
       exit
     end if
 
-    if (check_stopfile("stopback")) then
-      write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-      ierror = -1
+    if (check_stopfile("stopiter")) then
+      if (check_stopfile("stopback")) then
+        write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+        ierror = -1 ! this flags that the solution is to be discarded due to the user generated file
+      else
+        write(*,'(a)') 'INFO: user requested simulation stop via "stopiter" file'
+        ierror = 0 ! this flags that the solution is to be used
+      end if
       exit
     end if
 
@@ -1019,7 +1029,7 @@ double precision, dimension(:), allocatable, save :: delx, ee, w_x, delp, w_p, r
 type(jacobian_type), save :: jacobian, jacobian_transpose
 double precision :: rrr, delrrr, delta, gamma, rrr_o, d, iterres, ee_scale_max, rrr_newt_tol, rrr_tol, rrr_newt
 double precision :: a_xx, a_rx, a_rp, a_pp, a_xp ! these are mainly dot_products
-double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4
+double precision, parameter :: d_min = 1.d-60, roundoff_trigger = 1.d+4, delrrr_max = 1.d-30
 integer, parameter :: itersteproundoff = 50 ! this is a second criterion which triggers recalculation of the coefficients
 logical, parameter :: unwrap_vector_operations = .true.
 logical, parameter :: debug = .false.
@@ -1108,9 +1118,21 @@ do
       exit
     end if
 
-    if (check_stopfile("stopback")) then
-      write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-      ierror = -1
+    if (delrrr > delrrr_max) then
+      write(*,'(a,g14.7)') 'WARNING: delrrr has become significantly positive (>delrrr_max), indicating that round-off errors '// &
+        'are probably preventing further significant convergence: delrrr = ',delrrr
+      ierror = 0
+      exit
+    end if
+
+    if (check_stopfile("stopiter")) then
+      if (check_stopfile("stopback")) then
+        write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+        ierror = -1 ! this flags that the solution is to be discarded due to the user generated file
+      else
+        write(*,'(a)') 'INFO: user requested simulation stop via "stopiter" file'
+        ierror = 0 ! this flags that the solution is to be used
+      end if
       exit
     end if
 
@@ -1159,6 +1181,8 @@ do
 
   if (a_pp < d_min) then
     if (debug) write(93,'(a)') 'a_pp too small, so exiting iteration loop, presumably after convergence'
+    write(*,'(a)') 'WARNING: a_pp too small, so exiting iteration loop, presumably after convergence'
+    ierror = 0
     exit
   end if
 
@@ -1263,7 +1287,7 @@ do
 ! for output purposes, increment delrrr
     delrrr = delrrr + rrr - rrr_o
     if (delrrr >= 0.d0) then
-      write(*,'(1(a,i7),3(a,g14.7))') "RECALCULATING FINDING POSITIVE DELRRR: iterstep = ",iterstep, &
+      write(*,'(1(a,i7),3(a,g14.7))') "WARNING: delrrr is positive after recalculating r: iterstep = ",iterstep, &
         ": rrr = ",rrr,": delrrr = ",delrrr,": delrrr(roundoff) = ",rrr-rrr_o
     end if
 ! and now save rrr after reinitialisation
@@ -1772,9 +1796,14 @@ iteration_loop: do
       exit iteration_loop
     end if
 
-    if (check_stopfile("stopback")) then
-      write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-      ierror = -1
+    if (check_stopfile("stopiter")) then
+      if (check_stopfile("stopback")) then
+        write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+        ierror = -1 ! this flags that the solution is to be discarded due to the user generated file
+      else
+        write(*,'(a)') 'INFO: user requested simulation stop via "stopiter" file'
+        ierror = 0 ! this flags that the solution is to be used
+      end if
       exit iteration_loop
     end if
 

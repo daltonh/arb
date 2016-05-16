@@ -323,7 +323,7 @@ back_loop: do ! entrance point for repeat steps
     end if
   end if
   
-if (backstepping) then
+  if (backstepping) then
 
 ! save lambda that was used for next steps
     lambda_previous_step = lambda
@@ -418,7 +418,7 @@ if (backstepping) then
 
   if (check_stopfile("stopback")) then
     write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
-    ierror = -1 ! negative ierror indicates that user stopped arb before convergence complete
+    ierror = -1 ! negative ierror indicates that user stopped arb before convergence complete and that the solution is to be discarded
     exit back_loop ! if not backstepping then exit backstepping loop
   end if
 

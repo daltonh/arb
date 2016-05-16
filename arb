@@ -246,7 +246,7 @@ if [ ! -d output ] ; then mkdir output ; fi ;
 if [ ! -d $PREVIOUS_RUN ] ; then mkdir -p $PREVIOUS_RUN ; fi ;
 $RM $PREVIOUS_RUN/* >/dev/null 2>/dev/null ;
 # delete other output, debug and communication files always, quietly
-for i in fort.* output/debug*.msh output/*_warnings.txt output/*_details.txt kill stop stopback stopnewt stoptime halt dump dumpnewt dumptime
+for i in fort.* output/debug*.msh output/*_warnings.txt output/*_details.txt kill stop stopback stopiter stopnewt stoptime halt dump dumpnewt dumptime
 do
   $RM $i >/dev/null 2>/dev/null ;
 done ;
