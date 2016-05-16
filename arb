@@ -263,7 +263,7 @@ done ;
 #---------------------------
 # now that output directory is ready for writing redirect stdout and stderr to output.scr
 if [ $OQUIET -eq 1 ] ; then
-  exec > $SCROUTPUT 2>&1;
+  exec >> $SCROUTPUT 2>&1;
 fi
 
 # now that quiet option has been dealt with, announce our arrival and list options etc
