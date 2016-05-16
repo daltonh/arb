@@ -417,7 +417,7 @@ back_loop: do ! entrance point for repeat steps
   end if
 
   if (check_stopfile("stopback")) then
-    write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+    write(*,'(a)') 'INFO: user has requested simulation stop via a stop file'
     ierror = -1 ! negative ierror indicates that user stopped arb before convergence complete and that the solution is to be discarded
     exit back_loop ! if not backstepping then exit backstepping loop
   end if
