@@ -184,10 +184,10 @@ iteration_loop: do
 
     if (check_stopfile("stopiter")) then
       if (check_stopfile("stopback")) then
-        write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+        write(*,'(a)') 'INFO: user has requested simulation stop via a stop file, discarding current iterative solution'
         ierror = -1 ! this flags that the solution is to be discarded due to the user generated file
       else
-        write(*,'(a)') 'INFO: user requested simulation stop via "stopiter" file'
+        write(*,'(a)') 'INFO: user has requested simulation stop via a stop file, keeping current iterative solution'
         ierror = 0 ! this flags that the solution is to be used
       end if
       exit iteration_loop
@@ -800,10 +800,10 @@ iteration_loop: do
 
     if (check_stopfile("stopiter")) then
       if (check_stopfile("stopback")) then
-        write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+        write(*,'(a)') 'INFO: user has requested simulation stop via a stop file, discarding current iterative solution'
         ierror = -1 ! this flags that the solution is to be discarded due to the user generated file
       else
-        write(*,'(a)') 'INFO: user requested simulation stop via "stopiter" file'
+        write(*,'(a)') 'INFO: user has requested simulation stop via a stop file, keeping current iterative solution'
         ierror = 0 ! this flags that the solution is to be used
       end if
       exit
@@ -1038,7 +1038,7 @@ logical :: debug_sparse = .true.
 if (debug) debug_sparse = .true.
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine descent_mainsolver'
 
-ierror = 4 ! this signals an error
+ierror = 4 ! this signals a general error (actually not used now, as mostly routine trys to preserve solution)
 
 ! initialise and allocate loop variables
 if (.not.allocated(delx)) then
@@ -1101,7 +1101,7 @@ do
   end if
 
   if (iterstepchecknext == iterstep) then
-    iterstepchecknext = iterstepchecknext + iterstepcheck
+    iterstepchecknext = min(iterstepchecknext + iterstepcheck,iterstepmax)
     rrr_newt = dot_product_with_itself_scaled(r,ee_scale)
 
     if (debug_sparse) then
@@ -1118,19 +1118,18 @@ do
       exit
     end if
 
-    if (delrrr > delrrr_max) then
-      write(*,'(a,g14.7)') 'WARNING: delrrr has become significantly positive (>delrrr_max), indicating that round-off errors '// &
-        'are probably preventing further significant convergence: delrrr = ',delrrr
+    if (iterstep == iterstepmax) then
+      write(*,'(a)') 'WARNING: maximum iterstep has been reached without iterations converging'
       ierror = 0
-      exit
+      exit ! maximum iterations have been performed without convergence
     end if
 
     if (check_stopfile("stopiter")) then
       if (check_stopfile("stopback")) then
-        write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+        write(*,'(a)') 'INFO: user has requested simulation stop via a stop file, discarding current iterative solution'
         ierror = -1 ! this flags that the solution is to be discarded due to the user generated file
       else
-        write(*,'(a)') 'INFO: user requested simulation stop via "stopiter" file'
+        write(*,'(a)') 'INFO: user has requested simulation stop via a stop file, keeping current iterative solution'
         ierror = 0 ! this flags that the solution is to be used
       end if
       exit
@@ -1144,7 +1143,12 @@ do
     exit
   end if
 
-  if (iterstep == iterstepmax) exit ! maximum iterations have been performed without convergence
+  if (delrrr > delrrr_max) then
+    write(*,'(a,g14.7)') 'WARNING: delrrr has become significantly positive (>delrrr_max), indicating that round-off errors '// &
+      'are probably preventing further significant convergence: delrrr = ',delrrr
+    ierror = 0
+    exit
+  end if
 
 ! now do the updates
   iterstep = iterstep + 1
@@ -1261,9 +1265,9 @@ do
     write(93,'(a,g14.6)') 'rrr_o = ',rrr_o
   end if
 
-  if (delrrr >= 0.d0) then
-    write(*,*) 'delrrr > 0.d0'
-  end if
+! if (delrrr >= 0.d0) then
+!   write(*,*) 'delrrr > 0.d0'
+! end if
   
 ! if residual has decreased significantly, then recalculate the factors to guard against roundoff errors
 ! do this before convergence check, incase roundoff error has infected convergence
@@ -1798,10 +1802,10 @@ iteration_loop: do
 
     if (check_stopfile("stopiter")) then
       if (check_stopfile("stopback")) then
-        write(*,'(a)') 'INFO: user requested simulation stop via "kill" file'
+        write(*,'(a)') 'INFO: user has requested simulation stop via a stop file, discarding current iterative solution'
         ierror = -1 ! this flags that the solution is to be discarded due to the user generated file
       else
-        write(*,'(a)') 'INFO: user requested simulation stop via "stopiter" file'
+        write(*,'(a)') 'INFO: user has requested simulation stop via a stop file, keeping current iterative solution'
         ierror = 0 ! this flags that the solution is to be used
       end if
       exit iteration_loop

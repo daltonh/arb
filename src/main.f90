@@ -277,7 +277,7 @@ time_loop: do while ( &
 ! only check for stopfile if output isn't converged
     if (.not.newtconverged) then
       if (check_stopfile("stopnewt")) then
-        write(*,'(a)') 'INFO: user has requested simulation stop via stop file'
+        write(*,'(a)') 'INFO: user has requested simulation stop via a stop file'
         ierror = -1 ! negative ierror indicates that user stopped arb before convergence complete
       end if
     end if
@@ -314,7 +314,7 @@ time_loop: do while ( &
 
 ! if user has requested to halt then write message
   if (transient_simulation.and.check_stopfile("stoptime")) write(*,'(a)') &
-    'INFO: user has requested simulation stop via stop file'
+    'INFO: user has requested simulation stop via a stop file'
 
 ! silly bell functionality!
   if (check_condition("bell")) call ring_bell
@@ -323,7 +323,7 @@ time_loop: do while ( &
   if ((transient_simulation.and.(check_condition("output").or.(timestepout /= 0.and.mod(timestep,max(timestepout,1)) == 0).or. &
     check_condition("stop").or.timestep >= timestepmax.or.check_stopfile("stoptime").or.check_dumpfile("dumptime"))).or. &
     .not.transient_simulation) then
-    if (check_dumpfile("dumptime")) write(*,'(a)') 'INFO: user has requested output via dump file'
+    if (check_dumpfile("dumptime")) write(*,'(a)') 'INFO: user has requested output via a dump file'
     call time_process
     if (output_timings.and.output_timings_on_mesh_write.and.(timestepout /= 0.and.mod(timestep,max(timestepout,1)) == 0)) &
       write(*,'(2(a,g10.3))') 'TIMING: total wall time = ',total_wall_time,': total cpu time = ',total_cpu_time  
