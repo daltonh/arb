@@ -5,6 +5,11 @@
 #
 #-------------------------------------------------------------------
 # these are the generic equations to solve for network channel flow, in either 2D (x-y) or 3D (x-y-z)
+#
+# need to call in this order:
+# interface_geometry
+# tensor_equations (this may call momentum_with_vof_stress)
+# porosity and permeability
 
 VERSION 0.55 # the version of syntax used in this file
 
