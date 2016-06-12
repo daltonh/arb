@@ -19,7 +19,8 @@ STDERR->autoflush(1);
 STDOUT->autoflush(1);
 
 my $first = 0; # includes filename for first time licence is added to file
-my $workingdir = "../../../";
+#my $workingdir = "../../../"; # for licence/resources/licenser
+my $workingdir = "../../"; # now in licence/licenser rather than the above
 my $licencefile = $workingdir."licence/arb_licence.txt";
 my $tmpfile = $workingdir."tmp/licenser.tmp";
 
