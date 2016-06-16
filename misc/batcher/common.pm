@@ -125,9 +125,9 @@ sub arbthread {
     }
   }
   
-  $systemcall = "cd $run_record_dir; ".$systemcall;
+  $systemcall = "cd $run_record_dir; $systemcall";
   print "INFO: running `$systemcall`\n";
-  (!(system("$systemcall"))) or error_stop("could not $systemcall");
+  if (system($systemcall) == -1) { error_stop("error trying to run arb from batcher: stopping all batcher runs: could not $systemcall"); }
 
 #-----------------
 # now extract the data
