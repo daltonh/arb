@@ -38,7 +38,7 @@ This information is now basically hosted on our local gitlab server - this file 
 ***************************************************************
 CURRENT VERSION:
 
-v0.55
+v0.56
 
 -------------------------------
 LONG TERM DESIRABLES:
@@ -278,5 +278,6 @@ v0.53 - major rewrite of region treatment, including dynamic regions
 * dynamic masks for ls and vof
 * clsvof capability
 v0.54 - mainly bugfixes
+v0.55 - introduction of network flow templates and new suite of home-made iterative solvers
 
 -------------------------------

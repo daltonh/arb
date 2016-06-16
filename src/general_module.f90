@@ -388,7 +388,7 @@ logical :: kernel_availability_nodegrad = .false. ! (.false.)
 logical :: kernel_availability_nodeave = .false. ! (.false.)
 
 ! code version details
-real, parameter :: version = 0.55 ! current version
+real, parameter :: version = 0.56 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "flexible frogger"
 

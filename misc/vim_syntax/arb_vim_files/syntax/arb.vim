@@ -1,6 +1,6 @@
 " Vim syntax file for arb finite volume solver
 " Language:     arb
-" Version:      0.55
+" Version:      0.56
 " Modified:     2016/03/03
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 " Maintainer:   Christian Biscombe
