@@ -1,0 +1,1 @@
+KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2 # setting order of kernel function for face averages and derivatives

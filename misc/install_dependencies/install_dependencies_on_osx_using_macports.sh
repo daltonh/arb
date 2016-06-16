@@ -20,7 +20,7 @@
 # basic arb dependencies
 port install maxima gnuplot
 # install gfortran
-port install gcc49 +gfortran
+port install gcc49 +gfortran gdb
 # install SuiteSparse
 port install SuiteSparse
 
@@ -52,3 +52,15 @@ if [ ${#gfortran_versions[@]} -ne 0 ]; then
   ln -s ${gfortran_versions[${#gfortran_versions[@]}-1]} /usr/local/bin/gfortran;
   echo "UNINSTALL: to get rid of this link do rm /usr/local/bin/gfortran";
 fi;
+
+# this is info from the macports install of gdb:
+# You will need to make sure /System/Library/LaunchDaemons/com.apple.taskgated.plist has the '-p' option, e.g.
+#             <key>ProgramArguments</key>
+#             <array>
+#                     <string>/usr/libexec/taskgated</string>
+#                     <string>-sp</string>
+#             </array>
+#
+# Due to kernel caching, you usually need to restart Mac OS X for this option to effect.
+echo "INFO: doing a change to /System/Library/LaunchDaemons/com.apple.taskgated.plist to get ggdb (gnu debugger) to work, as advised by macports install - will apparently often require osx restart"
+/usr/bin/perl -p -i -e "s/<string>-s<\/string>/<string>-sp<\/string>/" /System/Library/LaunchDaemons/com.apple.taskgated.plist

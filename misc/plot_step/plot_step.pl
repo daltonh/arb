@@ -114,6 +114,9 @@ while ( $n <= $#ARGV ) {
     $refresh_interval = $2;
   } elsif ($ARGV[$n] eq '-b' || $ARGV[$n] eq '--batcher') {
     $batcher = 1;
+  } elsif ($ARGV[$n] eq '--x11') {
+    $plot_file_pre="$plot_step_dir/plot_step_pre_x11.plot";
+    $plot_file_post="$plot_step_dir/plot_step_post_x11.plot";
   } elsif ($ARGV[$n] eq '--linespoints') {
     push(@gnuplot_options,"set style data linespoints");
     if (!($pointinterval)) {$pointinterval = -1;} # a negative here specifies that this should be calculated based on the number of data points
@@ -560,6 +563,7 @@ sub usage {
   print " --keybelow: place key within plot\n";
   print " --linespoints: include points as well as lines on the graph\n";
   print " --pointinterval n: this specifies the skip between points when drawing linespoints.  A negative value (default) tries to use about 25 points across the graph\n";
+  print " --x11: use x11 terminal type within gnuplot, rather than default for operating system (required if default isn't available)\n";
   print " --logy: log y axis\n";
   print " --logy2: log y2 axis\n";
   print " --gnuplotoption \"set key some gnuplot option\": some option that is passed to gnuplot just before the plot command. ".

@@ -1,0 +1,1 @@
+FACE_EQUATION <equation> "<dynamic_force_f>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero

@@ -95,6 +95,9 @@ usage () {
   echo "          all debugger options turn debug on, but that can be overwritten using the --no-debug option given after";
   echo "  --no-pardiso: do not link in the native pardiso routines, allowing the intel pardiso routines to be used instead";
   echo "  --no-suitesparse: do not download the fortran 90 suitesparse interface or link in the packaged suitesparse routines";
+  echo "  --mgmres: download the fortran 90 mgmres libraries and link these in";
+  echo "  --no-mgmres: do not download the fortran 90 mgmres libraries and link these in (default)";
+  echo "  --no-downloads: do not download any files during the compilation process (equivalent to --no-suitesparse and --no-mgmres)";
 # echo "  --externals|-e: incorporate the following user fortran external file into the equation_module";
   echo "  --help|-h: display this HELP INFO";
   echo;
@@ -134,6 +137,7 @@ AOUT=build/arb;
 DEBUGGER=none;
 VALGRIND=valgrind;
 FILE_SEPARATOR="##################################################################################"
+ERRORSTATUS=0;
 
 # location of ooc temp files for out of core intel pardiso solver
 MKL_PARDISO_OOC_DIR=tmp/intel_pardiso_ooc
@@ -175,6 +179,7 @@ OOPT=1; # default is optimsation level 1
 OILP="off";
 OPARDISO="present";
 OSUITESPARSE="present";
+OMGMRES="not present";
 OPROCESSLOGGING=0; # a value greater than 0 means that process statistics will be logged at this interval (s)
 COMPILER="default";
 unset ARBFILES; # the input files that will be passed to setup_equations.pl - unset array first
@@ -207,6 +212,9 @@ do
     "--debugger-none") DEBUGGER="none"; ODEBUG=1;;
     "--no-pardiso") OPARDISO="not present";;
     "--no-suitesparse") OSUITESPARSE="not present";;
+    "--mgmres") OMGMRES="present";;
+    "--no-mgmres") OMGMRES="not present";;
+    "--no-downloads") OSUITESPARSE="not present"; OMGMRES="not present";;
     "--omp") OOMP=1; unset OMP_NUM_THREADS;;
 #   "--omp") OOMP=1;;
 #   "--omp"*) OOMP=1; export OMP_NUM_THREADS=${i:5};; # this extracts from character position 6 and onwards (NB ${i:6:10} would extract characters 7 -> 10 or thereabouts)
@@ -238,7 +246,7 @@ if [ ! -d output ] ; then mkdir output ; fi ;
 if [ ! -d $PREVIOUS_RUN ] ; then mkdir -p $PREVIOUS_RUN ; fi ;
 $RM $PREVIOUS_RUN/* >/dev/null 2>/dev/null ;
 # delete other output, debug and communication files always, quietly
-for i in fort.* output/debug*.msh output/*_warnings.txt output/*_details.txt kill stop stopback stopnewt stoptime halt dump dumpnewt dumptime
+for i in fort.* output/debug*.msh output/*_warnings.txt output/*_details.txt kill stop stopback stopiter stopnewt stoptime halt dump dumpnewt dumptime
 do
   $RM $i >/dev/null 2>/dev/null ;
 done ;
@@ -255,7 +263,7 @@ done ;
 #---------------------------
 # now that output directory is ready for writing redirect stdout and stderr to output.scr
 if [ $OQUIET -eq 1 ] ; then
-  exec > $SCROUTPUT 2>&1;
+  exec >> $SCROUTPUT 2>&1;
 fi
 
 # now that quiet option has been dealt with, announce our arrival and list options etc
@@ -423,7 +431,7 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
   fi
 
 # assemble makeline and make
-  MAKELINE="make opt=$OOPT ilp=$OILP pardiso_from_arb=\"$OPARDISO\" suitesparse_from_arb=\"$OSUITESPARSE\"";
+  MAKELINE="make opt=$OOPT ilp=$OILP pardiso_from_arb=\"$OPARDISO\" suitesparse_from_arb=\"$OSUITESPARSE\" mgmres_from_arb=\"$OMGMRES\"";
   if [ $OSETUP -eq 0 ] ; then
     MAKELINE="$MAKELINE compile_only" ;
   else
@@ -474,13 +482,18 @@ if [ $ORUN -eq 1 ] ; then
   fi
 
   if [ ! $DEBUGGER = "none" ] ; then # DEBUGGER specifies purely what environment code is to run, and is now strictly separate to ODEBUG
-    if [ $DEBUGGER = "default" ]; then
+    if [ $DEBUGGER = "default" ] ; then
       if [ $COMPILER = "gnu" ] ; then # if DEBUGGER is not explicitly set, set it to be consistent with the compiler
         DEBUGGER="gdb";
       else
         DEBUGGER="idb";
       fi;
-    fi
+    fi;
+    if [ $DEBUGGER = "gdb" ] ; then # macports now uses ggdb to refer to gdb, so try this if gdb isn't found
+      if ! which $DEBUGGER >/dev/null ; then
+        DEBUGGER="ggdb";
+      fi;
+    fi;
     if which $DEBUGGER >/dev/null ; then
       echo "INFO: found $DEBUGGER at `which $DEBUGGER`";
     else
@@ -490,24 +503,26 @@ if [ $ORUN -eq 1 ] ; then
     if [ $DEBUGGER = "valgrind" ]; then
       $DEBUGGER $AOUT --track-origins=yes --leak-check=full -v;
     else
-      $DEBUGGER $AOUT;
+      $DEBUGGER -q -ex run $AOUT;
     fi
   else
     if [ $OPROCESSLOGGING -eq 0 ] ; then
       $AOUT; # standard invocation
+      if [ $? -ne 0 ] ; then ERRORSTATUS=2; fi # pickup exit status, noting that a nonzero value means that the code did not converge
     else # invocation of job while logging process statistics
       set -m; # need to enable job control within bash to allow backgrounding and foregrounding of arb process
       $AOUT & # initially placing arb in the background, so that we can get pid and use it to start memory logger
       ARBPID=$!; # $! reports pid of the last backgrounded job, in this case the build/arb process
       echo "INFO: arb pid is $ARBPID";
-      logprocess $ARBPID $OPROCESSLOGGING $PROCESSLOGFILE &
+      logprocess $ARBPID $OPROCESSLOGGING $PROCESSLOGFILE & # logprocess in the background
       fg 1 >/dev/null; # now pull job back into the foreground so that killing the script also kills the subprocess (arb)
+      if [ $? -ne 0 ] ; then ERRORSTATUS=2; fi
       sleep $(($OPROCESSLOGGING+1)); # have to wait for a logging interval after the job has finished so that output.scr is still there when logging command writes to it (batcher may move it immediately when arb script ends)
     fi;
   fi ;
   echo "INFO: finishing running arb";
 fi ;
 
-exit 0 ;
+exit $ERRORSTATUS ;
 # done
 #-------------------------------------------------------------------------------

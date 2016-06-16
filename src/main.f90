@@ -46,6 +46,7 @@ use output_module
 implicit none
 character(len=1000) :: formatline
 integer :: ierror = 0
+logical :: newtconverged
 logical, parameter :: debug = .true.
 
 !---------------------------------------------------
@@ -107,7 +108,7 @@ time_loop: do while ( &
     end if
     call time_process
     call update_and_check_transients(ierror=ierror)
-    call time_process(description='start of timestep transients')
+    call time_process(description='start of timestep update and check transients')
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing update_and_check_transients'
       exit time_loop
@@ -116,7 +117,7 @@ time_loop: do while ( &
     if (newtient_simulation) then
       call time_process
       call update_and_check_initial_newtients(ierror=ierror)
-      call time_process(description='start of timestep initial newtients')
+      call time_process(description='start of timestep update and check initial newtients')
       if (ierror /= 0) then
         write(*,'(a)') 'ERROR: problem completing update_and_check_initial_newtients'
         exit time_loop
@@ -124,7 +125,7 @@ time_loop: do while ( &
     end if
     call time_process
     call update_and_check_derived_and_equations(ierror=ierror)
-    call time_process(description='start of timestep derived and equations')
+    call time_process(description='start of timestep update and check derived and equations')
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing update_and_check_derived_and_equations'
       exit time_loop
@@ -143,10 +144,16 @@ time_loop: do while ( &
   end if
 
 !--------------------
-! newt_loop: do while (.not.(check_condition("convergence").or.newtstep >= newtstepmax.or.newtres <= newtrestol.or. &
-!     check_stopfile("stopnewt")))
-  newt_loop: do while (((.not.check_condition("convergence").and.newtstep < newtstepmax.and.newtres > newtrestol).or. &
-      newtstep < newtstepmin).and..not.check_stopfile("stopnewt"))
+! newton loop
+
+  newtconverged = .false.
+  if (newtres <= newtrestol) newtconverged = .true.
+  if (.not.newtconverged) then
+    if (check_condition("convergence")) newtconverged = .true.
+  end if
+
+  newt_loop: do while (((.not.newtconverged.and.newtstep < newtstepmax).or. &
+      newtstep < newtstepmin).and.ierror == 0)
 
     newtstep = newtstep + 1
 
@@ -162,7 +169,7 @@ time_loop: do while ( &
 ! calculate and check on the equation magnitudes
     call time_process
     call update_magnitudes(ierror)
-    call time_process(description='calculating variable magnitudes')
+    call time_process(description='start of newtstep calculating variable magnitudes')
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing update_magnitudes'
       exit newt_loop
@@ -171,7 +178,7 @@ time_loop: do while ( &
 ! calculate the latest residual, based on the new variable magnitudes
     call time_process
     call residual(ierror=ierror)
-    call time_process(description='calculating residual')
+    call time_process(description='start of newtstep calculating residual')
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing residual calculation'
       exit newt_loop
@@ -180,12 +187,22 @@ time_loop: do while ( &
     if (convergence_details_file) write(fconverge,'(a,g16.9,a)') &
       "INFO: initial newton loop newtres = ",newtres," after updating variable magnitudes"
 
-    call newtsolver(ierror) ! uses newton's method to solve equations - assumes update has been done and that there is valid magnitudes and a newtres
+    if (newtconverged.and.newtstep > newtstepmin) then
+      write(*,'(a,g10.3,a)') "INFO: skipping newtsolver as newtres/newtrestol = ",newtres/newtrestol," using existing unknowns"
+      if (convergence_details_file) write(fconverge,'(a,g10.3,a)') "INFO: skipping newtsolver as newtres/newtrestol = ", &
+        newtres/newtrestol," using existing unknowns"
+    else if (ptotal == 0) then
+      write(*,'(a)') 'INFO: skipping newtsolver as no equations are being solved'
+      if (convergence_details_file) write(fconverge,'(a)') 'INFO: skipping netsolver as no equations are being solved'
+    else
+      call newtsolver(ierror) ! uses newton's method to solve equations - assumes update has been done and that there is valid magnitudes and a newtres
+    end if
+
+! if there is a problem in the newton loop (including a stop file prior to convergence), then exit newton loop here
     if (ierror /= 0) then
       write(*,'(a)') 'ERROR: problem completing newtsolver'
       exit newt_loop
     end if
-    if (check_stopfile("stopback")) exit newt_loop ! if we are thrown out of newtsolver because of stopback file then also should exit the newt_loop
 
 ! update any newtient variables if this is a newtient simulation
     if (newtient_simulation) then
@@ -200,14 +217,14 @@ time_loop: do while ( &
       end if
       call time_process
       call update_and_check_newtients(ierror=ierror)
-      call time_process(description='intermediate newton step newtient update')
+      call time_process(description='intermediate newton step update and check newtients')
       if (ierror /= 0) then
         write(*,'(a)') 'ERROR: problem completing update_and_check_newtients in newtient update section'
         exit newt_loop
       end if
       call time_process
       call update_and_check_derived_and_equations(ierror=ierror)
-      call time_process(description='intermediate newton step update of derived and equations after newtient update')
+      call time_process(description='intermediate newton step update and check derived and equations after newtient update')
       if (ierror /= 0) then
         write(*,'(a)') 'ERROR: problem completing update_and_check_derived_and_equations in newtient update section'
         exit newt_loop
@@ -251,7 +268,19 @@ time_loop: do while ( &
     end if
     if (convergence_details_file) call flush(fconverge)
 
-    if (check_stopfile("stopnewt")) write(*,'(a)') 'INFO: user has requested simulation stop via stop file'
+! check whether solution is converged
+    if (newtres <= newtrestol) newtconverged = .true.
+    if (.not.newtconverged) then
+      if (check_condition("convergence")) newtconverged = .true.
+    end if
+
+! only check for stopfile if output isn't converged
+    if (.not.newtconverged) then
+      if (check_stopfile("stopnewt")) then
+        write(*,'(a)') 'INFO: user has requested simulation stop via a stop file'
+        ierror = -1 ! negative ierror indicates that user stopped arb before convergence complete
+      end if
+    end if
 
     formatline = "(a,"//trim(dindexformat(newtstep))//",a)"
     write(*,fmt=formatline) repeat('-',newtline)//' newtstep ',newtstep,' ending '//repeat('-',totalline-newtline+2)
@@ -263,27 +292,29 @@ time_loop: do while ( &
   end do newt_loop
 !--------------------
 
-  if (ierror /= 0) then
+  if (ierror > 0) then
     formatline = "(a,"//trim(dindexformat(ierror))//")"
-    write(*,fmt=formatline) 'ERROR: problem in some solution routine: error number = ',ierror
+    write(*,fmt=formatline) 'ERROR: problem in some solution routine within newton loop: error number = ',ierror
     exit time_loop
-  else if (check_stopfile("stopnewt").or.check_stopfile("stopback")) then
+  else if (ierror < 0) then
     write(*,'(a)') 'ERROR: newton solver did not converge due to user created stop file'
     exit time_loop
-  else if (check_condition("convergence")) then
-    write(*,'(a)') &
-      'INFO: user-specified newton loop convergence condition satisfied'
-  else if (newtres > newtrestol) then
+  else if (newtconverged) then
+    if (newtres <= newtrestol) then
+      write(*,'(a)') 'INFO: newton iterations have converged due to newtres condition'
+    else
+      write(*,'(a)') &
+        'INFO: user-specified newton loop convergence condition satisfied'
+    end if
+  else
     write(*,'(a)') 'ERROR: newton solver did not converge'
-    ierror = 1
+    ierror = 5
     exit time_loop
-  else if (newtres <= newtrestol) then
-    write(*,'(a)') 'INFO: newton iterations have converged'
   end if
 
 ! if user has requested to halt then write message
   if (transient_simulation.and.check_stopfile("stoptime")) write(*,'(a)') &
-    'INFO: user has requested simulation stop via stop file'
+    'INFO: user has requested simulation stop via a stop file'
 
 ! silly bell functionality!
   if (check_condition("bell")) call ring_bell
@@ -292,7 +323,7 @@ time_loop: do while ( &
   if ((transient_simulation.and.(check_condition("output").or.(timestepout /= 0.and.mod(timestep,max(timestepout,1)) == 0).or. &
     check_condition("stop").or.timestep >= timestepmax.or.check_stopfile("stoptime").or.check_dumpfile("dumptime"))).or. &
     .not.transient_simulation) then
-    if (check_dumpfile("dumptime")) write(*,'(a)') 'INFO: user has requested output via dump file'
+    if (check_dumpfile("dumptime")) write(*,'(a)') 'INFO: user has requested output via a dump file'
     call time_process
     if (output_timings.and.output_timings_on_mesh_write.and.(timestepout /= 0.and.mod(timestep,max(timestepout,1)) == 0)) &
       write(*,'(2(a,g10.3))') 'TIMING: total wall time = ',total_wall_time,': total cpu time = ',total_cpu_time  
@@ -324,12 +355,7 @@ if (trim(output_step_file) == "final") call output_step(action="write")
 if (output_timings) write(*,'(2(a,g10.3))') 'TIMING: total wall time = ',total_wall_time,': total cpu time = ',total_cpu_time
 
 ! if there was an error or earlier stop requested then exit without closing timestep
-if (ierror /= 0.or.check_stopfile("stopnewt").or.check_stopfile("stopback")) then
-  if (ierror /= 0) then
-    write(*,'(a)') "ERROR: there was an error in one of the solver routines"
-  else
-    write(*,'(a)') 'WARNING: the simulation was stopped prematurely by the user using a stop file'
-  end if
+if (ierror /= 0) then
   write(*,'(a)') "WARNING: the last output is not converged"
   write(*,'(a)') 'INFO: a debug output file (output/debug.output.msh) is being written that contains the current values of '// &
     'all variable components'
@@ -342,6 +368,8 @@ end if
 
 if (convergence_details_file) close(fconverge)
 call output_step(action="close")
+
+if (ierror /= 0) call exit(ierror) ! exit while setting ierror as exit status
 
 end program arb
 

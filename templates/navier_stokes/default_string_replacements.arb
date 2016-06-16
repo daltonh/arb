@@ -1,0 +1,6 @@
+# these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+# they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
+GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W ""
+GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#"
+GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#"

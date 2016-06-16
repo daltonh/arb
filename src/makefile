@@ -64,6 +64,7 @@ intel_version = 13
 # long integer used in intel compilation (ie, ilp64 instead of lp64)
 ilp = off
 
+# for the following we want to control this behaviour using the arb script, thinking about library compatibility or download access (suitesparse and mgmres both need to download files)
 # native pardiso solver
 # use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
 pardiso_from_arb = present
@@ -71,6 +72,10 @@ pardiso_from_arb = present
 # suitesparse solver
 # use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
 suitesparse_from_arb = present
+
+# mgmres solver
+# use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
+mgmres_from_arb = present
 
 #------------------------------------------------------------------------------
 # variables below this should be automagically set within this makefile
@@ -84,6 +89,7 @@ donest = present
 intel_pardiso = present
 pardiso := $(pardiso_from_arb)
 suitesparse := $(suitesparse_from_arb)
+mgmres := $(mgmres_from_arb)
 
 # additional libraries to link in
 libs =		
@@ -337,7 +343,7 @@ vpath	%.f	$(srcdir)
 # object files are derived here based on source files
 #objects := $(patsubst %.f,%.o,$(patsubst %.f90,%.o,$(notdir $(wildcard $(srcdir)/*.f*))))
 #objects := $(patsubst %.f90,%.o,$(notdir $(wildcard $(srcdir)/*.f90)))
-objects = equation_module.o general_module.o main.o setup_module.o solver_module.o gmesh_module.o output_module.o kernel_module.o region_module.o
+objects = equation_module.o general_module.o main.o setup_module.o solver_module.o gmesh_module.o output_module.o kernel_module.o region_module.o linear_module.o
 
 #----------------
 # check for existence of pardiso (native, not intel mkl version) libraries
@@ -369,15 +375,15 @@ ifeq "$(strip $(pardiso))" "present"
         libs := -L$(pardisodir) -lpardiso500-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
       endif
     else
-      ifeq "$(and $(wildcard $(pardisodir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU461-X86-64.so) )" ""
-        pardiso = not present
-      else
-# can't get this to work with the iterative solver
-#       libs += -L$(pardisodir) -lpardiso500-GNU461-X86-64 -fopenmp -lpthread -lm
-#       libs += -L$(pardisodir) -lpardiso500-GNU461-X86-64 -lblas -llapack -fopenmp
+# allow for two versions of the gnu pardiso libraries right now, 4.61 and 4.81
+      ifneq "$(and $(wildcard $(pardisodir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU461-X86-64.so) )" ""
         libs := -L$(pardisodir) -lpardiso500-GNU461-X86-64 $(oldlibs) -fopenmp -lpthread -lm
-#       libs := -L$(pardisodir) -lpardiso500-GNU472-X86-64 -lblas -llapack -fopenmp -lpthread -lm
-#       libs += -L$(pardisodir) -lpardiso500-GNU461-X86-64 -fopenmp
+      else
+        ifneq "$(and $(wildcard $(pardisodir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU481-X86-64.so) )" ""
+          libs := -L$(pardisodir) -lpardiso500-GNU481-X86-64 $(oldlibs) -fopenmp -lpthread -lm
+        else
+          pardiso = not present
+        endif
       endif
     endif
   endif
@@ -440,6 +446,24 @@ else
   objects += numerical_recipes_dummy_module.o
   numerical_recipes_module += numerical_recipes_dummy_module.o
   files_to_delete += numerical_recipes_module.o dludcmp.o dlubksb.o dsvdcmp.o dpythag.o dsimp1.o dsimp2.o dsimp3.o dsimplx.o
+endif
+
+#----------------
+# setup mgmres interface module
+cflagsmgmres := $(cflags)
+ifeq "$(strip $(mgmres))" "present"
+  objects += mgmres_solver.o mgmres_module.o
+  linear_solver_modules += mgmres_solver.o mgmres_module.o
+  files_to_delete += mgmres_dummy_module.o
+# the mgmres routine uses a heap of dummy arrays, so need to put these on the heap rather than the stack
+# see https://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors
+  ifeq "$(compiler)" "intel"
+    cflagsmgmres += -heap-arrays
+  endif
+else
+  objects += mgmres_dummy_module.o
+  linear_solver_modules += mgmres_dummy_module.o
+  files_to_delete += mgmres_solver.o mgmres_module.o
 endif
 
 #----------------
@@ -557,6 +581,7 @@ print :
 	@echo " pardiso (native) linear solver is: $(pardiso)"
 	@echo " hsl_ma28d linear solver is: $(hsl_ma28d)"
 	@echo " suitesparse linear solver is: $(suitesparse)"
+	@echo " mgmres linear solver is: $(mgmres)"
 	@echo " higham88 one norm estimator (donest) is: $(donest)"
 	@echo " mklpath is: $(mklpath)"
 	@echo " openmp is: $(omp)"
@@ -612,7 +637,10 @@ setup_module.o: setup_module.f90 general_module.o equation_module.o gmesh_module
 kernel_module.o: kernel_module.f90 general_module.o $(lapack_module) $(numerical_recipes_module)
 	$(fcomp) $(cflagsnoomp) $< $(logme) -o $@
 
-solver_module.o: solver_module.f90 general_module.o equation_module.o $(linear_solver_modules)
+linear_module.o: linear_module.f90 general_module.o equation_module.o $(lapack_module)
+	$(fcomp) $(cflags) $< $(logme) -o $@
+
+solver_module.o: solver_module.f90 general_module.o equation_module.o $(linear_solver_modules) linear_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
 intel_mkl_solver.o:	$(intel_mkl_subroutine)
@@ -655,6 +683,18 @@ intel_pardiso_module.o : $(srcdir)/contributed/intel_pardiso/intel_pardiso_modul
 	$(fcomp) $(cflags) $< $(logme) -o $@
 else
 intel_pardiso_dummy_module.o : $(srcdir)/contributed/intel_pardiso/intel_pardiso_dummy_module.f90
+	$(fcomp) $(cflags) $< $(logme) -o $@
+endif
+
+ifeq "$(strip $(mgmres))" "present"
+$(srcdir)/contributed/mgmres/mgmres_solver.f90 :  		
+	make -C $(srcdir)/contributed/mgmres
+mgmres_solver.o : $(srcdir)/contributed/mgmres/mgmres_solver.f90
+	$(fcomp) $(cflagsmgmres) $< $(logme) -o $@
+mgmres_module.o : $(srcdir)/contributed/mgmres/mgmres_module.f90
+	$(fcomp) $(cflags) $< $(logme) -o $@
+else
+mgmres_dummy_module.o : $(srcdir)/contributed/mgmres/mgmres_dummy_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 endif
 

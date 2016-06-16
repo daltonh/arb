@@ -49,6 +49,10 @@
 + /src/contributed/higham88_donest/donest_generator.pl
 + /src/contributed/higham88_donest/readme
 + /src/contributed/higham88_donest/makefile
++ /src/contributed/mgmres/
++ /src/contributed/mgmres/*_module.f90
++ /src/contributed/mgmres/mgmres_additions_*.f90
++ /src/contributed/mgmres/makefile
 + /doc/
 + /doc/manual.pdf
 + /doc/manual/***

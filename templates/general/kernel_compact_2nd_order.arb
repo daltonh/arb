@@ -1,9 +1,0 @@
-#KERNEL_OPTIONS polynomialorder=3 # setting order of kernel function for face derivatives
-KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2 # setting order of kernel function for face derivatives
-#KERNEL_OPTIONS polynomialorder=2 # setting order of kernel function for face derivatives
-#KERNEL_OPTIONS polynomialaverageorder=2 # setting order of kernel function for face derivatives
-KERNEL_OPTIONS automaximumseparation=.false.
-#KERNEL_OPTIONS automaximumseparation=.false.,minimumseparation=2
-KERNEL_OPTIONS checkminw=.true.,minimumminw=0.2d0 # reducing the minw a bit which will decrease the size of the kernels
-KERNEL_OPTIONS minimumseparation=1,maximumseparation=3
-

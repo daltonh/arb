@@ -339,6 +339,44 @@ fileloop: do
   end if
 
 !---------------
+! iterrestol
+
+  if (trim(keyword) == 'ITERRESTOL') then
+    read(textline,*,iostat=ierror) iterrestol
+    if (ierror /= 0) call error_stop('problem reading in iteration loop tolerance from line '//otextline)
+    write(*,'(a,g14.6)') 'INFO: iterrestol = ',iterrestol
+  end if
+
+!---------------
+! iterresreltol
+
+  if (trim(keyword) == 'ITERRESRELTOL') then
+    read(textline,*,iostat=ierror) iterresreltol
+    if (ierror /= 0) call error_stop('problem reading in iteration loop relative tolerance from line '//otextline)
+    write(*,'(a,g14.6)') 'INFO: iterresreltol = ',iterresreltol
+  end if
+
+!---------------
+! iterstepmax
+
+  if (trim(keyword) == 'ITERSTEPMAX') then
+    read(textline,*,iostat=ierror) iterstepmax
+    if (ierror /= 0) call error_stop('problem reading in maximum number of iteration steps from line '//otextline)
+    formatline = '(a,'//trim(dindexformat(iterstepmax))//')'
+    write(*,fmt=formatline) 'INFO: iterstepmax = ',iterstepmax
+  end if
+
+!---------------
+! iterstepcheck
+
+  if (trim(keyword) == 'ITERSTEPCHECK') then
+    read(textline,*,iostat=ierror) iterstepcheck
+    if (ierror /= 0) call error_stop('problem reading in number of iteration steps between output/checks from line '//otextline)
+    formatline = '(a,'//trim(dindexformat(iterstepcheck))//')'
+    write(*,fmt=formatline) 'INFO: iterstepcheck = ',iterstepcheck
+  end if
+
+!---------------
 ! version
 
   if (trim(keyword) == 'VERSION') then
@@ -1195,10 +1233,10 @@ subroutine setup_vars
 use general_module
 use equation_module
 use solver_module
-integer :: m, ns, n, mc, o, pptotal, mtype, var_list_number_l, relstep
+integer :: m, ns, n, o, pptotal, mtype, var_list_number_l, relstep
 character(len=1000) :: formatline, component_list
 character(len=100) :: option_name
-logical :: first, error
+logical :: error
 logical, parameter :: debug = .false.
 logical :: debug_sparse = .true.
 
@@ -1288,10 +1326,10 @@ do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
 end do
 
 ! allocate newton solver working variables
-if (.not.allocated(delphiold)) allocate(delphiold(ptotal))
+if (.not.allocated(phiold)) allocate(phiold(ptotal))
 if (.not.allocated(delphi)) allocate(delphi(ptotal))
 delphi = 0.d0
-delphiold = 0.d0
+phiold = 0.d0
 
 ! initialise and place values in the fast lookup array unknown_var_from_pp
 allocate(unknown_var_from_pp(ptotal))
@@ -1429,21 +1467,30 @@ do n = 1, ubound(compound,1)
 end do
 
 ! run through constants reading in file values and then setting any equation determined ones
+if (debug) write(*,*) 'INFO: about to read_constants'
 call read_constants
+if (debug) write(*,*) 'INFO: about to update_and_check_constants'
 call update_and_check_constants
+if (debug) write(*,*) 'INFO: about to read_initial_outputs'
 call read_initial_outputs
 
 ! run through unknowns setting initial values
+if (debug) write(*,*) 'INFO: about to update_and_check_unknowns(initial=.true.)'
 call update_and_check_unknowns(initial=.true.)
 
 ! run through transients setting initial values
+if (transient_simulation.and.debug) write(*,*) 'INFO: about to update_and_check_initial_transients'
 if (transient_simulation) call update_and_check_initial_transients
 
 ! run through newtients setting initial values
+if (newtient_simulation.and.debug) write(*,*) 'INFO: about to update_and_check_initial_newtients'
 if (newtient_simulation) call update_and_check_initial_newtients
 
 ! run through setting initial derived and equation variables
+if (debug) write(*,*) 'INFO: about to update_and_check_derived_and_equations(setup=.true.)'
 call update_and_check_derived_and_equations(setup=.true.)
+
+if (debug) write(*,*) 'INFO: done with the updating - about to output some information on the variables'
 
 ! spray out some info about all the var variables
 if (debug_sparse) then

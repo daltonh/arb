@@ -1,4 +1,4 @@
 # regions specific to fluid mesh
-FACE_REGION <walls> "COMPOUND <boundaries>"
-FACE_REGION <one face> "AT 1.d+4 1.d+4 0.d0 PART OF <walls>"
-FACE_REGION <walls sans one face> "COMPOUND <walls>-<one face>"
+FACE_REGION <walls> "compound(<boundaries>)"
+FACE_REGION <one face> "at(1.d+4,1.d+4,0.d0)" ON <walls>
+FACE_REGION <walls sans one face> "compound(<walls>-<one face>)"

@@ -1,4 +1,6 @@
 INCLUDE "unknowns" # no .arb suffix is required
 INCLUDE "total_stress"
-INCLUDE "combined_fluxes"
+INCLUDE "u_f"
+INCLUDE "advection_flux" # even though this is called for the stokes equations, no terms will be created
+INCLUDE "momentum_flux"
 INCLUDE "conservation"

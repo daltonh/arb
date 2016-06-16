@@ -40,6 +40,7 @@ our %output=();
 for my $key (@output_keys) {
   $output{$key} = '';
 }
+my $runcommand=''; # if this variable is non-empty, run this command instead of the arb script directly
 
 # sanity check to make sure that we are in the arb working directory
 if (! -d "build") { die "BATCHER ERROR: call this script from working directory\n"; }
@@ -78,7 +79,8 @@ for my $n ( 0 .. $#case ) {
   my $run_record_dir = "$output_dir/run_$ndir";
 # make a snapshot of original arb directory, now using the pack script to only include the base distribution, plus any necessary third party files in the contributed directory
 # using pack avoids copying over unneccesary files/directories
-  $systemcall="./pack --no-input --contributed --unpack $run_record_dir";
+# now also includes build directory so that relevant object files can be reused if the executable isn't changing between runs - remember to compile with the same options as specified in batcher_setup.pm
+  $systemcall="./pack --no-input --contributed --build --unpack $run_record_dir";
   (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
 # check that arbfile contains something, otherwise default to *.arb

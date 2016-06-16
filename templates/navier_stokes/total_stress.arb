@@ -1,16 +1,21 @@
 # total stress tensor
 INCLUDE "u_gradient_tensor"
 
+# if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
+GENERAL_REPLACEMENTS DEFAULT "<<udivfcomment>>" W "#"
+# calculate the velocity divergence (numerical) on each face
+<<udivfcomment>>FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <all faces>
+
 # no both cartesian and cylindrical stresses don't include pressure
 # without the numerical velocity divergence
-#<<dim1comment>> FACE_LOCAL <tau[l=1,1]> "-<mu_f>*2.d0*<ugrad_f[l=1,1]>" ON <all faces>
-#<<dim2comment>> FACE_LOCAL <tau[l=2,2]> "-<mu_f>*2.d0*<ugrad_f[l=2,2]>" ON <all faces>
-#<<dim3comment>> FACE_LOCAL <tau[l=3,3]> "-<mu_f>*2.d0*<ugrad_f[l=3,3]>" ON <all faces>
-# with the numerical velocity divergence (although it is generally set to zero in u_gradient_tensor anyway)
+<<dim1comment>>FACE_LOCAL <tau[l=1,1]> "-<mu_f>*2.d0*<ugrad_f[l=1,1]>" ON <all faces>
+<<dim2comment>>FACE_LOCAL <tau[l=2,2]> "-<mu_f>*2.d0*<ugrad_f[l=2,2]>" ON <all faces>
+<<dim3comment>>FACE_LOCAL <tau[l=3,3]> "-<mu_f>*2.d0*<ugrad_f[l=3,3]>" ON <all faces>
+# overwrite theses if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
 # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
-<<dim1comment>> FACE_LOCAL <tau[l=1,1]> "-<mu_f>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <all faces>
-<<dim2comment>> FACE_LOCAL <tau[l=2,2]> "-<mu_f>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <all faces>
-<<dim3comment>> FACE_LOCAL <tau[l=3,3]> "-<mu_f>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <all faces>
+<<udivfcomment>><<dim1comment>>FACE_LOCAL <tau[l=1,1]> "-<mu_f>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <all faces>
+<<udivfcomment>><<dim2comment>>FACE_LOCAL <tau[l=2,2]> "-<mu_f>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <all faces>
+<<udivfcomment>><<dim3comment>>FACE_LOCAL <tau[l=3,3]> "-<mu_f>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <all faces>
 <<dim1comment>><<dim2comment>>FACE_LOCAL <tau[l=1,2]> "-<mu_f>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <all faces>
 <<dim1comment>><<dim3comment>>FACE_LOCAL <tau[l=1,3]> "-<mu_f>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <all faces>
 <<dim2comment>><<dim3comment>>FACE_LOCAL <tau[l=2,3]> "-<mu_f>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <all faces>

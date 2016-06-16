@@ -5,7 +5,7 @@
 #
 #-------------------------------------------------------------------
 # file equations.in
-VERSION 0.53
+VERSION 0.55
 
 # the following strings describe the simulation and are passed to the output files
 INFO_TITLE "Oscillating vof droplet"
@@ -13,7 +13,7 @@ INFO_DESCRIPTION "Oscillating 2D droplet calculated using the volume of fluid me
 INFO_DESCRIPTION+ ": Stationary droplet can be calculated using this but with circle instead of ellipse as initial phi"
 INFO_DESCRIPTION+ ": now works for cartesian or cylindrical"
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "04/2/15" # interpreted as the last modification date
+INFO_DATE "14/1/16" # interpreted as the last modification date
 
 # for a cylindrical droplet
 #GENERAL_REPLACEMENTS R "<<cylindricalcomment>>" W "" R "<<cartesiancomment>>" W "#"
@@ -85,14 +85,14 @@ INCLUDE_ROOT "free_surface/volume_of_fluid"
 # setup basic cylindrical general replacements by including the following two lines
 <<cylindricalcomment>>INCLUDE_ROOT "general"
 <<cylindricalcomment>>INCLUDE "cylindrical_reflect_r1z2"
-# these statements only necessary in cartesian as already included in above files, but GENERAL_REPLACEMENT statements can't be commented out by other strings, so just repeat them
-GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
-GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
+<<cartesiancomment>>GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+<<cartesiancomment>>GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
 # include this for both cylindrical and cartesian when using a quadrant
 GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2"
 
 # bring in default physical and numerical constants
 INCLUDE_ROOT "navier_stokes"
+<<nonuniformcomment>>INCLUDE "nonuniform_properties" # setup the density and viscosity uniform properties strings based on the <<uniformcomment>> string
 INCLUDE "nondimensional_constants"
 
 # v0.50 - now use transient setup files
@@ -109,8 +109,7 @@ CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
 #CONSTANT <dt_surf> "0.5d0*sqrt(0.5d0*<We>*<celldxave>^3/<pi>)"
 #NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
 
-<<nonuniformcomment>>INCLUDE "nonuniform_properties" # this just cancels the previous general property replacements on <mu_f> and <rho_f>
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_ROOT "free_surface/volume_of_fluid"
 INCLUDE "nondimensional_constants"
 # calculate the mac2 cartesian vof velocity errors for reference (http://dx.doi.org/10.1016/j.apm.2005.08.015)
 <<uniformcomment>>INCLUDE "parasitic_mac2_correlation"
@@ -132,7 +131,7 @@ CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity compone
 CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
 
 # CSF based levelset formulation with reinitialisation
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_ROOT "free_surface/volume_of_fluid"
 INCLUDE "setup"
 
 # define real initial vof
@@ -166,25 +165,26 @@ INCLUDE "force" # force done back on the fluid mesh
 INCLUDE_ROOT "navier_stokes"
 # nonuniform
 <<nonuniformcomment>>INCLUDE "total_stress" R "<mu_f>" W "<vof_mu_harmonic_f>"
-<<nonuniformcomment>>INCLUDE "advection_flux" R "<rho_f>" W "<vof_rho_f>" R "<mu_f>" W "<vof_mu_f>"
+<<nonuniformcomment>>INCLUDE "u_f" R "<rho_f>" W "<vof_rho_f>" R "<mu_f>" W "<vof_mu_f>"
+<<nonuniformcomment>>INCLUDE "advection_flux" R "<rho>" W "<vof_rho_advection_f[r=1]>" R "<<uniformdensitycomment>>" W "" R "<<nonuniformdensitycomment>>" W "#"
 # uniform
 <<uniformcomment>>INCLUDE "total_stress"
+<<uniformcomment>>INCLUDE "u_f"
 <<uniformcomment>>INCLUDE "advection_flux"
 
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_ROOT "free_surface/volume_of_fluid"
 INCLUDE "dynamic_force"
 INCLUDE "equation" # all phi advection done on fluid mesh
 
 INCLUDE_ROOT "navier_stokes"
+INCLUDE "momentum_flux"
 # nonuniform
-<<nonuniformcomment>>INCLUDE "momentum_flux_transient_constant_rho" R "<rho>" W "<vof_rho_advection_f[r=1]>"
-<<nonuniformcomment>>INCLUDE "conservation_incompressible_transient_varying_rho" R "<rho>" W "<vof_rho_c>" R "<rho[r=1]>" W "<vof_rho_c[r=1]>" R "<mu>" W "<vof_mu_c>"
+<<nonuniformcomment>>INCLUDE "conservation" R "<rho>" W "<vof_rho_c>" R "<rho[r=1]>" W "<vof_rho_c[r=1]>" R "<mu>" W "<vof_mu_c>"
 # uniform
-<<uniformcomment>>INCLUDE "momentum_flux_transient_constant_rho"
-<<uniformcomment>>INCLUDE "conservation_incompressible_transient_constant_rho"
+<<uniformcomment>>INCLUDE "conservation"
 
 # fluid boundary conditions on nonslip walls
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_ROOT "free_surface/volume_of_fluid"
 INCLUDE "walls_nonwetting" # NB: BC applied on fluid walls
 INCLUDE_ROOT "navier_stokes"
 INCLUDE "walls_p_set"
@@ -243,7 +243,7 @@ VARIABLE <vof_F_c[l=1]> output
 #VARIABLE <vof_phi_adjust[r=1]> newtstepmax=50
 
 # to show the interface masks include this file
-#INCLUDE_ROOT "volume_of_fluid"
+#INCLUDE_ROOT "free_surface/volume_of_fluid"
 #INCLUDE "output_masks"
 
 # for the high order method only, adjust the interface width

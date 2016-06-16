@@ -4,36 +4,36 @@
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: cube_laplacian_dhctac10_2012.arb
-#INCLUDE_WORKING "cube_laplacian_dhctac10_2012.arb"
-#++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# the following is INCLUDED from ../cube_laplacian_dhctac10_2012.arb without any search/replace combinations
-# arb finite volume solver
-# Copyright 2009-2011 Dalton Harvie (daltonh@unimelb.edu.au)
-#
-# arb is released under the GNU GPL.  For full details see the license directory.
-#
-#-------------------------------------------------------------------
-VERSION 0.40
-#----------------------------------------------------------------------------
-
-MSH_FILE "volume.msh"
-MSH_FILE "output/output.msh" elementdata
-
-CELL_UNKNOWN <phi> "1.d0" ON <all cells>
-FACE_DERIVED <Gamma> "<phi>^2" ON <all faces> output
-CELL_EQUATION <phi domain equation> "celldiv(<Gamma>*facegrad(<phi>))-<Lambda>" ON <domain>
-CELL_DERIVED <Lambda> "2.d0*<phi>^3*(1.d0/(<cellx[l=1]>+1.d0)^2+1.d0/(<cellx[l=2]>+1.d0)^2+1.d0/(<cellx[l=3]>+1.d0)^2)" ON <domain>
-CELL_CONSTANT <phi boundary> "(<cellx[l=1]>+1.d0)*(<cellx[l=2]>+1.d0)*(<cellx[l=3]>+1.d0)" ON <boundary cells>
-CELL_EQUATION <phi boundary equation> "<phi>-<phi boundary>" ON <boundary cells>
-
-CELL_CONSTANT <phi analytical> "(<cellx[l=1]>+1.d0)*(<cellx[l=2]>+1.d0)*(<cellx[l=3]>+1.d0)" ON <all cells>
-CELL_OUTPUT <phi error> "abs(<phi>-<phi analytical>)" ON <domain>
-
-NONE_OUTPUT <Linfty norm> "cellmax(<phi error>,,<domain>)" # infinity norm
-NONE_OUTPUT <L1 norm> "cellsum(<phi error>,<domain>)/cellsum(1,<domain>)" # L1 norm
-NONE_OUTPUT <L2 norm> "sqrt(cellsum(<phi error>**2,<domain>)/cellsum(1,<domain>))" # L2 norm
-
-#-------------------------------------------------------------------
-# INCLUDE FINISHED for ../cube_laplacian_dhctac10_2012.arb
-#--------------------------------------------------------
+#(hash added during unwrap)INCLUDE_WORKING "cube_laplacian_dhctac10_2012.arb"
+   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   # the following is INCLUDED from ../cube_laplacian_dhctac10_2012.arb without any search/replace combinations
+   # arb finite volume solver
+   # Copyright 2009-2011 Dalton Harvie (daltonh@unimelb.edu.au)
+   #
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #-------------------------------------------------------------------
+   VERSION 0.40
+   #----------------------------------------------------------------------------
+   
+   MSH_FILE "volume.msh"
+   MSH_FILE "output/output.msh" elementdata
+   
+   CELL_UNKNOWN <phi> "1.d0" ON <all cells>
+   FACE_DERIVED <Gamma> "<phi>^2" ON <all faces> output
+   CELL_EQUATION <phi domain equation> "celldiv(<Gamma>*facegrad(<phi>))-<Lambda>" ON <domain>
+   CELL_DERIVED <Lambda> "2.d0*<phi>^3*(1.d0/(<cellx[l=1]>+1.d0)^2+1.d0/(<cellx[l=2]>+1.d0)^2+1.d0/(<cellx[l=3]>+1.d0)^2)" ON <domain>
+   CELL_CONSTANT <phi boundary> "(<cellx[l=1]>+1.d0)*(<cellx[l=2]>+1.d0)*(<cellx[l=3]>+1.d0)" ON <boundary cells>
+   CELL_EQUATION <phi boundary equation> "<phi>-<phi boundary>" ON <boundary cells>
+   
+   CELL_CONSTANT <phi analytical> "(<cellx[l=1]>+1.d0)*(<cellx[l=2]>+1.d0)*(<cellx[l=3]>+1.d0)" ON <all cells>
+   CELL_OUTPUT <phi error> "abs(<phi>-<phi analytical>)" ON <domain>
+   
+   NONE_OUTPUT <Linfty norm> "cellmax(<phi error>,,<domain>)" # infinity norm
+   NONE_OUTPUT <L1 norm> "cellsum(<phi error>,<domain>)/cellsum(1,<domain>)" # L1 norm
+   NONE_OUTPUT <L2 norm> "sqrt(cellsum(<phi error>**2,<domain>)/cellsum(1,<domain>))" # L2 norm
+   
+   #-------------------------------------------------------------------
+   # INCLUDE FINISHED for ../cube_laplacian_dhctac10_2012.arb
+   #--------------------------------------------------------
 ##################################################################################

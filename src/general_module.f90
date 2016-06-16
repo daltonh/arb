@@ -39,6 +39,9 @@ implicit none
 
 ! allow all subroutines and functions to be public
 
+! all variables referenced in the general_module should be saved
+save ! note, under the 2008 fortran standard, I have read that all allocatable arrays in a module would automatically be saved anyway, but now including this specifically
+
 integer, parameter :: totaldimensions=3 ! this is maximum number of dimensions, possibly hardcode in future
 
 ! a generic kernel for calculating averages and derivatives
@@ -159,7 +162,7 @@ type region_type
   type(region_location_type) :: initial_location ! initial_location of region if a dynamic transient or newtient region
   integer :: part_of ! fortran region index of the dynamic or static region that this region is solely contained within, for user (ie, non system) regions only
   integer :: parent ! fortran region index of the static region that this region is solely contained within, for user (ie, non system) regions only
-  integer, dimension(:), allocatable :: ijk ! array of cell (i), face (j) or node (k) indices that are within this region - dimension of this is number of elements in region - for dynamic regions size of ijk is determined by parent static region, with some indices being zero
+  integer, dimension(:), allocatable :: ijk ! array of cell (i), face (j) or node (k) indices that are within this region - dimension of this is number of elements in region (seems to be true for dynamic regions too)
   integer, dimension(:), allocatable :: ns ! array that specifies data number from i, j or k index - dimension of this is either itotal, jtotal or ktotal - for all regions an ns(ijk) of zero indicates that the particular ijk element is not in the region
   real :: update_time = 0.d0 ! total cpu time that has been spent on updating this region (only for dynamic variables)
   integer :: update_number = 0 ! total number of times that this region has been updated (only for dynamic variables)
@@ -303,7 +306,7 @@ integer :: idomain, iboundary, itotal ! number of domain (type 1) and boundary (
 integer :: jdomain, jboundary, jtotal ! number of domain (type 1) and boundary (type 2) faces, also total
 integer :: kdomain, kboundary, ktotal ! number of domain (type 1) and boundary (type 2) nodes, also total
 integer :: ptotal ! number of equations and unknowns
-double precision, dimension(:), allocatable, save :: delphiold, delphi ! single dimension unknown-sized variables for newton proceedure
+double precision, dimension(:), allocatable :: phiold, delphi ! single dimension unknown-sized variables for newton proceedure
 integer :: transient_relstepmax ! maximum relstep value for all transients (variables and dynamic regions)
 integer :: newtient_relstepmax ! maximum relstep value for all newtients (variables and dynamic regions)
 double precision :: newtres = 0.d0 ! last evaluated value of the newton residual
@@ -311,8 +314,12 @@ logical :: transient_simulation = .false. ! whether simulation is transient or s
 logical :: newtient_simulation = .false. ! whether simulation is newtient or not (ie, has variables that are evaluated only outside of the newton loop)
 integer :: newtstepmax = 1000 ! maximum number of steps performed by newton proceedure
 integer :: newtstepdebugout = 990 ! after this many newtsteps newtstepout is set to 1 to produce debugging output
-integer :: newtstepmin = 0 ! minimum number of steps performed by newton proceedure
+integer :: newtstepmin = 1 ! minimum number of steps performed by newton proceedure
+integer :: iterstepmax = 1000000 ! maximum number of steps performed by linear iteration solver
+integer :: iterstepcheck = 100 ! how often linear iteration solver checks for kill file and outputs to screen residuals etc
 double precision :: newtrestol = 1.d-10 ! tolerance that indicates convergence of the newton proceedure
+double precision :: iterrestol = 1.d-11 ! tolerance that indicates convergence of the linear iteration solver
+double precision :: iterresreltol = 0.d0 ! tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres
 double precision, parameter :: tinyish = 1.d2*sqrt(tiny(0.d0)) ! something that is a bit bigger than tiny(0.d0)
 double precision, parameter :: hugeish = 1.d-2*sqrt(huge(0.d0)) ! something that is a bit smaller than huge(0.d0)
 integer :: timestepmax = huge(timestepmax) ! maximum number of timesteps performed
@@ -364,26 +371,26 @@ character(len=100), dimension(3), parameter :: data_options = ["elementdata     
   "elementnodelimiteddata"]
 character(len=100), dimension(2), parameter :: input_options = ["input            ", "noinput          "]
 character(len=100), dimension(2), parameter :: magnitude_options = ["dynamicmagnitude", "staticmagnitude "]
-character(len=8), dimension(6), parameter :: stopfilelist = [ "kill    ", "stopback", "stopnewt", "stop    ", "stoptime", &
-  "halt    " ]
+character(len=8), dimension(7), parameter :: stopfilelist = [ "kill    ", "stopback", "stopiter", "stopnewt", "stop    ", &
+  "stoptime", "halt    " ]
 character(len=8), dimension(3), parameter :: dumpfilelist = [ "dumpnewt", "dump    ", "dumptime" ]
 logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], array_mask2 = [.false.,.true.,.false.], &
   array_mask3 = [.false.,.false.,.true.]
 
 ! kernel availability (whether they are calculated or not) is calculated by the setup_equations.pl script, however, the settings can be overwritten (as true) here
-logical :: kernel_availability_faceave = .false. ! needed for varcdivgrad, but this routine itself is not needed until normal circumstances, so set false
-logical :: kernel_availability_facegrad = .false.
-logical :: kernel_availability_cellfromnodegrad = .false.
-logical :: kernel_availability_cellgrad = .true. ! needed for varcgrad used in variable output (for elementnodedata) so always keep on
-logical :: kernel_availability_cellave = .false.
-logical :: kernel_availability_cellfromnodeave = .true. ! needed when reading in elementnodedata so always keep on
-logical :: kernel_availability_nodegrad = .false.
-logical :: kernel_availability_nodeave = .false.
+logical :: kernel_availability_faceave = .false. ! (.false.) needed for varcdivgrad, but this routine itself is not needed under normal circumstances, so set false
+logical :: kernel_availability_facegrad = .false. ! (.false.)
+logical :: kernel_availability_cellfromnodegrad = .false. ! (.false.)
+logical :: kernel_availability_cellgrad = .true. ! (.true.) needed for varcgrad used in variable output (for elementnodedata) so always keep on
+logical :: kernel_availability_cellave = .false. ! (.false.)
+logical :: kernel_availability_cellfromnodeave = .true. ! (.true.) needed when reading in elementnodedata so always keep on
+logical :: kernel_availability_nodegrad = .false. ! (.false.)
+logical :: kernel_availability_nodeave = .false. ! (.false.)
 
 ! code version details
-real, parameter :: version = 0.54 ! current version
+real, parameter :: version = 0.55 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
-character(len=100), parameter :: versionname = "flexible freda"
+character(len=100), parameter :: versionname = "flexible frogger"
 
 ! the following are default values for various parameters which can be altered here (and not via user input options)
 double precision, parameter :: limitertolerance = 1.d-10 ! (1.d-10) tolerance used when calculating advection gradient limiting - set to small positive number
@@ -1170,6 +1177,8 @@ end subroutine unshift_integer_array
 !----------------------------------------------------------------------------
 
 subroutine push_integer_array(array,new_element,reverse)
+
+! push a new element on to the back (or front, if reverse is specified) of an array
 
 integer, dimension(:), allocatable :: array
 integer :: new_element
@@ -2459,13 +2468,14 @@ end function newtonupdate
 
 function magnitude(m)
 
-! this function returns the magnitude for the unknown variable m
+! this function returns the magnitude for the unknown or equation variable m
 
 double precision :: magnitude
 integer :: m
 
 ! sanity check on unknown variable identification
-if (trim(var(m)%type) /= "unknown") call error_stop("magnitude has been called with an m index that does not refer to an unknown")
+if (trim(var(m)%type) /= "unknown" .and. trim(var(m)%type) /= "equation") &
+  call error_stop("magnitude has been called with an m index that does not refer to an unknown or equation variable")
 magnitude = max(var(m)%magnitude,0.d0)
 
 end function magnitude
@@ -3253,7 +3263,7 @@ end if
 if (fconverge_opened) close(fconverge)
 if (foutputstep_opened) close(foutputstep)
 
-stop
+call exit(1) ! exit while setting error exit status
 
 end subroutine error_stop
 
@@ -3295,16 +3305,20 @@ character(len=*), intent(in) :: action
 logical :: check_stopfile
 integer :: n, listlength
 ! depending on whether this is a transient simulation or not, stop may either be included or not in the stopfilelist
-! character(len=8), dimension(6), parameter :: stopfilelist = [ "kill   ", "stopback", "stopnewt", "stop    ", "stoptime", "halt    " ]
+! character(len=8), dimension(7), parameter :: stopfilelist = [ "kill   ", "stopback", "stopiter", "stopnewt", "stop    ", "stoptime", "halt    " ]
 
-if (trim(action) == 'stopback') then
-  listlength = 2 ! kill and stopback cause the fastest stop, interupting the backstepping loop
+if (trim(action) == 'kill') then
+  listlength = 1 ! kill causes the fastest stop, interupting at all checkpoints and not saving the last current solution estimate
+else if (trim(action) == 'stopback') then
+  listlength = 2 ! stopback is almost the same as kill, however kill also acts on the iterative solvers
+else if (trim(action) == 'stopiter') then
+  listlength = 3 ! stopiter will halt the iterative solvers but allows the backstepping operation to complete, so that the last current solution is saved
 else if (trim(action) == 'stopnewt'.and.transient_simulation) then
-  listlength = 3 ! for a transient sim, the above plus stopnewt will interupt the newton loop
+  listlength = 4 ! for a transient sim, the above plus stopnewt will interupt the newton loop
 else if (trim(action) == 'stopnewt') then
-  listlength = 4 ! for a steady-state sim, the above plus stop will interupt the newton loop
+  listlength = 5 ! for a steady-state sim, the above plus stop will interupt the newton loop
 else
-  listlength = 6 ! for a transient sim the above plus stop, stoptime and halt will halt the time loop
+  listlength = 7 ! for a transient sim the above plus stop, stoptime and halt will halt the time loop
 end if
 
 check_stopfile = .false.
@@ -4999,15 +5013,22 @@ end function celltoseparationicellrsquared
 
 function facereflect(j,l,error_string)
 
-! arb variable <facereflect[l=:]>
+! arb variable <facereflect[l=:]>, returning -1 is face is reflected in that direction, or 1 if not
+! now also returns whether face is reflected at all, using l=0 index
 
 integer :: j ! face index
 integer :: l ! dimension
 character(len=1000) :: error_string ! compulsory here!
 double precision :: facereflect
 
-if (l < 1 .or. l > 3 .or. j < 0 .or. j > jtotal) call error_stop('problem with facereflect: '//trim(error_string))
-if (l == face(j)%glue_reflect) then
+if (l < 0 .or. l > 3 .or. j < 0 .or. j > jtotal) call error_stop('problem with facereflect: '//trim(error_string))
+if (l == 0) then
+  if (face(j)%glue_reflect > 0) then
+    facereflect = -1.d0 ! face is reflected
+  else
+    facereflect = 1.d0 ! face is not
+  end if
+else if (l == face(j)%glue_reflect) then
   facereflect = -1.d0
 else
   facereflect = 1.d0

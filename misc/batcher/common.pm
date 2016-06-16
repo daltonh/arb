@@ -23,6 +23,7 @@ sub arbthread {
   my $parallel = $main::parallel; # local copy
   my $prune_output_structure = $main::prune_output_structure; # local copy
   my $stopfile = 'batcher_stop';
+  my $systemcall='';
 
   # write headers in $output_dir/batch_data.csv
   if (!($n)) {
@@ -62,9 +63,14 @@ sub arbthread {
           if ($case[$n]{"replacements"}) {
             for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
     # now stopping replacements if the string is mentioned as a replacement keyword
-              if ($line !~ /\s(R|REPLACE)\s+("|'|)\Q$key\E("|'|\s|$)/) {
-                $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
-              }
+# TODO: this needs to be more precise, possibly looking for preceding INCLUDE* or GENERAL_REPLACEMENTS, dealing with case, and dealing with default D|DEFAULT?
+# and match delimiters
+#             if ($line !~ /\s(R|REPLACE)\s+("|'|)\Q$key\E("|'|\s|$)/) {
+#               $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
+#             }
+# removing this regex now as it would also introduce the possibility of false matches
+# instead use <<batchercomment>> and <<nobatchercomment>> (see ref: general_replacements in setup_equations) for more consistent and controllable behaviour
+              $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
             }
           }
           print INFILE $line;
@@ -84,7 +90,7 @@ sub arbthread {
       $ffilename =~ /(.+)\.geo$/;
       my $mshname=$1.".msh";
       print "BATCHER INFO: creating msh file $mshname from $ffilename within $run_record_dir\n";
-      my $systemcall="cd $run_record_dir; ./misc/create_msh/create_msh $ffilename"; # use ./misc/create_mesh/create_mesh script
+      $systemcall="cd $run_record_dir; ./misc/create_msh/create_msh $ffilename"; # use ./misc/create_mesh/create_mesh script
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
       #print "BATCHER DEBUG: \$mshname = $mshname\n";
@@ -105,14 +111,18 @@ sub arbthread {
         mkpath($create_path) or error_stop("could not create path $create_path required to place mshfile input file or directory $ffilename correctly in the run directory");
       }
       my $filename = "$run_record_dir/".$ffilename;
-      my $systemcall="cp -R $ffilename $filename"; # using system cp function instead of the perl one as the perl version on osx can't handle recursive copying
+      $systemcall="cp -R $ffilename $filename"; # using system cp function instead of the perl one as the perl version on osx can't handle recursive copying
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
     }
   }
 
-  my $systemcall="./arb --quiet ".protect($case[$n]{"arboptions"});
-  for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
-    $systemcall=$systemcall." ".bsd_glob($ffilename);
+  if (nonempty($case[$n]{"runcommand"})) {
+    $systemcall=protect($case[$n]{"runcommand"}); # run this (probably) script instead of arb directly
+  } else {
+    $systemcall="./arb --quiet ".protect($case[$n]{"arboptions"});
+    for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
+      $systemcall=$systemcall." ".bsd_glob($ffilename);
+    }
   }
   
   $systemcall = "cd $run_record_dir; ".$systemcall;

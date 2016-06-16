@@ -1,0 +1,1 @@
+KERNEL_OPTIONS checkminw=.true.,minimumminw=1.0d0

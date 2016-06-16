@@ -9,11 +9,8 @@ use File::Path qw(mkpath); # for File::Path version < 2.08, http://perldoc.perl.
 my $vtk=0; # whether converting to vtk file (for e.g. paraview)
 my $dat=0; # whether converting to dat file (tecplot)
 my $run=0; # whether to run arb as well
+my $arboptions="-q"; # options to pass to arb when running
 
-my $convert_arb_file=$working_dir."/convert_msh_file_format.arb";
-open(OUTFILE, ">$convert_arb_file");
-
-my ($line,$reading_info);
 # read through all command line arguments
 foreach my $argument ( @ARGV )  # first loop looks for distributable files and help request
 {
@@ -40,8 +37,9 @@ foreach my $argument ( @ARGV )  # first loop looks for distributable files and h
     if ($vtk) { print OUTFILE "MSH_FILE \"output/output.msh\" noinput,centringvtkoutput\n"; }
     if ($dat) { print OUTFILE "MSH_FILE \"output/output.msh\" noinput,centringdatoutput\n"; }
     open(INFILE, "<$msh_file");
-    $reading_info=0;
+    my $reading_info=0;
     my %variable_data=();
+    my $line;
     while ($line=<INFILE>) { chompm($line);
       if ($line=~/^\$arb(\S*)Data\s*$/) {
         $reading_info=1;
@@ -52,8 +50,9 @@ foreach my $argument ( @ARGV )  # first loop looks for distributable files and h
         if ($variable_data{"rank"} eq "scalar") {
           print OUTFILE "\U$variable_data{centring}"."_CONSTANT $variable_data{name} \"0.d0\" input,output\n";
         } else {
-          my ($basename) = $variable_data{"name"} =~ /^((<.*)(\[[r=\d,]\]){0,1})>$/;
-          if ($3) { $basename = chop($basename).","; } else { $basename = $basename."["; }
+          my $basename = $variable_data{"name"}; # note, this name will be in a standard format for a compound
+          chop($basename); # removes >
+          if ($basename =~ /\]$/) { $basename=$`.","; } else { $basename = $basename."["; } # noting that only if [] are present, they will only contain a r=\d reference in standardised format
           print "name = ".$variable_data{"name"}.": basename = $basename\n";
           if ($variable_data{"rank"} eq "vector") {
             foreach my $n ( 1 .. 3) {
@@ -81,7 +80,7 @@ foreach my $argument ( @ARGV )  # first loop looks for distributable files and h
       print "INFO: running arb to do the conversion\n";
       if (! -d "build") { die "ERROR: could not find the build directory.  Are you in an arb working directory?\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
       if (! -f "arb") { die "ERROR: could not find the arb script.  Are you in an arb working directory?\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
-      $systemcall="./arb $convert_arb_file";
+      my $systemcall="./arb $arboptions $convert_arb_file";
       (!(system("$systemcall"))) or die "ERROR: could not $systemcall\n";
     }
 
@@ -106,12 +105,12 @@ sub usage {
         "options include:\n".
         " -h or --help = produce this message\n".
         " -p or --paraview or -v or --vtk = produce vtk output suitable for paraview\n".
-        " --noparaview or --novtk = do not produce vtk output\n".
+        " --noparaview or --novtk = do not produce vtk output (default)\n".
         " -t or --tecplot or -d or --dat = produce dat output suitable for tecplot\n".
-        " --noparaview or --novtk = do not produce vtk output\n".
+        " --notecplot or --nodat = do not produce dat output (default)\n".
         " -r or --run = run arb after producing each convert_msh_file_format.arb\n".
-        " --norun = do not run but just produce convert_msh_file_format.arb\n\n".
-        "pack must be called from the root directory of a simulation\n";
+        " --norun = do not run but just produce convert_msh_file_format.arb (default)\n\n".
+        "script must be called from the root directory of a simulation\n";
   exit;
 }
 

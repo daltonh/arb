@@ -1,2 +1,6 @@
-# for now this just cancels the general variable property replacements done in constants.arb
-GENERAL_REPLACEMENTS CANCEL "<mu_f>" CANCEL "<rho_f>"
+# call this file before constants to specify nonuniform properties
+GENERAL_REPLACEMENTS R "<<uniformviscositycomment>>" W "#" R "<<nonuniformviscositycomment>>" W ""
+GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W ""
+# these are really just placeholders, and more accurate expressions should be used
+FACE_LOCAL <rho_f> "<rho>" ON <all faces>
+FACE_LOCAL <mu_f> "<mu>" ON <all faces>

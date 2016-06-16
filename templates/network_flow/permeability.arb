@@ -1,0 +1,57 @@
+#--------------------
+# calculate some outputs and stats, and specifically the permeability
+
+# find flowrates
+#NONE_OUTPUT <permeability multiplier> "<outlet velocity>/<p_in>"
+#NONE_OUTPUT <inlet area> "facesum(<facearea>,region=<inlet>)"
+#NONE_OUTPUT <outlet area> "facesum(<facearea>,region=<outlet>)"
+#NONE_OUTPUT <fluid inlet area> "facesum(<phi_f>*<facearea>,region=<fluid_inlet>)"
+#NONE_OUTPUT <fluid outlet area> "facesum(<phi_f>*<facearea>,region=<fluid_outlet>)"
+#NONE_OUTPUT <inlet flowrate> "facesum(-<phi_f>*<u_f>*<facearea>,region=<fluid_inlet>)"
+#NONE_OUTPUT <outlet flowrate> "facesum(<phi_f>*<u_f>*<facearea>,region=<fluid_outlet>)"
+#NONE_OUTPUT <inlet average velocity> "<inlet flowrate>/nonemax(<fluid inlet area>,default=<tinyish>)"
+#NONE_OUTPUT <outlet average velocity> "<outlet flowrate>/nonemax(<fluid outlet area>,default=<tinyish>)"
+
+VARIABLE <u_f_vect[l=1]> output
+#VARIABLE <u_f> output
+#VARIABLE <u_f_{raw}> output
+#VARIABLE <u_f_{correction}> output
+#VARIABLE <p_error> output
+<<dim1comment>>CELL_OUTPUT <uphi[l=1]> "<u[l=1]>*<phi_c>" ON <all cells>
+<<dim2comment>>CELL_OUTPUT <uphi[l=2]> "<u[l=2]>*<phi_c>" ON <all cells>
+<<dim3comment>>CELL_OUTPUT <uphi[l=3]> "<u[l=3]>*<phi_c>" ON <all cells>
+
+# find average velocity, and then normal of this and B vector, and angle between them
+<<dim1comment>>NONE_OUTPUT <uphi_av[l=1]> "cellsum(<uphi[l=1]>*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>)"
+<<dim2comment>>NONE_OUTPUT <uphi_av[l=2]> "cellsum(<uphi[l=2]>*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>)"
+<<dim3comment>>NONE_OUTPUT <uphi_av[l=3]> "cellsum(<uphi[l=3]>*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>)"
+NONE_OUTPUT <uphi_av_mag> "sqrt(dot(<uphi_av[l=:]>,<uphi_av[l=:]>))"
+<<dim1comment>>NONE_OUTPUT <uphi_av_hat[l=1]> "<uphi_av[l=1]>/nonemax(<uphi_av_mag>,<tinyish>)" stepoutput
+<<dim2comment>>NONE_OUTPUT <uphi_av_hat[l=2]> "<uphi_av[l=2]>/nonemax(<uphi_av_mag>,<tinyish>)"
+<<dim3comment>>NONE_OUTPUT <uphi_av_hat[l=3]> "<uphi_av[l=3]>/nonemax(<uphi_av_mag>,<tinyish>)"
+#NONE_OUTPUT <pressure_gradient_mag> "sqrt(dot(<pressure_gradient[l=:]>,<pressure_gradient[l=:]>))"
+<<dim1comment>>NONE_CONSTANT <pressure_gradient_hat[l=1]> "<pressure_gradient[l=1]>/nonemax(<pressure_gradient_mag>,<tinyish>)"
+<<dim2comment>>NONE_CONSTANT <pressure_gradient_hat[l=2]> "<pressure_gradient[l=2]>/nonemax(<pressure_gradient_mag>,<tinyish>)"
+<<dim3comment>>NONE_CONSTANT <pressure_gradient_hat[l=3]> "<pressure_gradient[l=3]>/nonemax(<pressure_gradient_mag>,<tinyish>)"
+NONE_OUTPUT <pressure_gradient_uphi_av_dot> "noneif(<uphi_av_mag>-<tinyish>,-dot(<pressure_gradient_hat[l=:]>,<uphi_av_hat[l=:]>),1.d0)" 
+NONE_OUTPUT <pressure_gradient_uphi_av_angle> [rad] "acos(nonemax(nonemin(<pressure_gradient_uphi_av_dot>,1.d0),-1.d0))" # this is the angle between the negative (driving) pressure gradient and resulting average velocity
+# name changed to be consistent with other magnitudes
+# calculate a domain lengthscale (<a_lengthscale>) to be used in the nondimensionalisation
+# note: may need to replace this with say <l> for halfdomain studies (ie, 2x2 configurations in 2D)
+INCLUDE_ROOT "general"
+INCLUDE "domain_lengthscale"
+
+NONE_OUTPUT <permeability_mag> "<uphi_av_mag>*<mu>/nonemax(<pressure_gradient_mag>,<tinyish>)" # note, that this is not the correct definition for a tensor permeability
+NONE_OUTPUT <ndpermeability_mag> "<uphi_av_mag>*<mu>/(nonemax(<pressure_gradient_mag>,<tinyish>)*<a_lengthscale>**2)"
+
+# also express angles in degrees
+NONE_OUTPUT <pressure_gradient_phi_degrees> [degrees] "<pressure_gradient_phi>*180.d0/<pi>"
+<<dim3comment>>NONE_OUTPUT <pressure_gradient_theta_degrees> [degrees] "<pressure_gradient_theta>*180.d0/<pi>"
+NONE_OUTPUT <pressure_gradient_uphi_av_angle_degrees> [degrees] "<pressure_gradient_uphi_av_angle>*180.d0/<pi>"
+
+# also output average velocities non-dimensionally
+<<dim1comment>>NONE_OUTPUT <nduphi_av[l=1]> "<uphi_av[l=1]>*<mu>/(nonemax(<pressure_gradient_mag>,<tinyish>)*<a_lengthscale>**2)" stepoutput
+<<dim2comment>>NONE_OUTPUT <nduphi_av[l=2]> "<uphi_av[l=2]>*<mu>/(nonemax(<pressure_gradient_mag>,<tinyish>)*<a_lengthscale>**2)"
+<<dim3comment>>NONE_OUTPUT <nduphi_av[l=3]> "<uphi_av[l=3]>*<mu>/(nonemax(<pressure_gradient_mag>,<tinyish>)*<a_lengthscale>**2)"
+NONE_OUTPUT <nduphi_av_mag> "sqrt(dot(<nduphi_av[l=:]>,<nduphi_av[l=:]>))"
+# non-dimensional pressure gradient is already given as <pressure_gradient_hat[l=:]>

@@ -1,7 +1,7 @@
 " Vim settings file for arb finite volume solver
 " Language:     arb
-" Version:      0.54
-" Modified:     2016/01/17
+" Version:      0.55
+" Modified:     2016/02/01
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 " Maintainer:   Christian Biscombe
 
@@ -13,14 +13,11 @@ endif
 " Don't do other file type settings for this buffer
 let b:did_ftplugin = 1
 
-setlocal comments=:#
-setlocal cms=#%s
-" Enable angle bracket highlighting and matching with '%'
-setlocal mps+=<:>
+setlocal comments=:# cms=#%s mps+=<:>
 
 " Extensions for matchit plugin
 let b:match_ignorecase = 0
-let b:match_words='\<\(BEGIN\|START\)_\(COMMENTS\=\|SKIP\)\>:\<\(END\|STOP\)_\(COMMENTS\=\|SKIP\)\>'
+let b:match_words='\<\%(BEGIN\|START\)_\%(COMMENTS\=\|SKIP\)\>:\<\%(END\|STOP\)_\%(COMMENTS\=\|SKIP\)\>'
 
 " Omni completion (insert mode keyword completion) with CTRL-X CTRL-O
 if exists("+omnifunc")
@@ -30,129 +27,173 @@ if exists("+omnifunc")
   let g:omni_syntax_group_exclude_arb = 'arbDeprecated'
 endif
 
+if exists("*ArbIncludes")
+  finish
+endif
+
 " Show contents of included files (with replacements if present) in new window
-if !exists("*ArbIncludes")
-  function ArbIncludes(...)
-  " Accepts one optional argument, which may be:
-  " 'a': show all included files and all other lines too ('all')
-  " 'i': show all included files but nothing else ('includes')
-  " 'o': show only included file nearest the cursor ('only') [default if no/unrecognised optional argument given]
-  " 't': show only the inclusion tree/hierarchy; like 'i' but only file names shown ('tree')
+function ArbIncludes(...)
+" Accepts one optional argument, which may be:
+" 'a': show everything ('all') [default if no/unrecognised optional argument given]
+" 't': show only the inclusion tree/hierarchy ('tree')
 
-    " Clear ArbIncludes window if it already exists
-    if bufexists('ArbIncludes')
-      bw! ArbIncludes
-    endif
+  " Sanity check
+  let templates_dir = finddir('templates','**;') . '/'
+  if !isdirectory(templates_dir)
+    echoe 'Could not find templates directory. Aborting.'
+    return
+  endif
+   
+  " Determine mode (default to 'a')
+  if a:0
+    let arg = a:1 == 't' ? 't' : 'a'
+  else
+    let arg = 'a'
+  endif
 
-    " Determine mode ('a', 'i', 'o', 't') and set up accordingly
-    let arg = a:0 ? a:1 : 'o' " default to 'o' if no argument given
-    if arg =~ '\<\(a\|i\|t\)\>'
-      new ArbIncludes
-      call append(0,getbufline('#',1,'$'))
-      if arg == 'i'
-        silent v/^[^#]*INCLUDE\(_ROOT\)\=\>/d
-        call append(0,'')
-      endif
-    else " default case
-      let position = winsaveview()
-      call cursor(line('.'),1)
-      let lnum_include = search('^[^#]*INCLUDE\>','c')
-      let lnum_root = search('^[^#]*INCLUDE_ROOT\>','bW')
-      call winrestview(position)
-      new ArbIncludes
-      call append(0,getbufline('#',lnum_root))
-      call append(1,getbufline('#',lnum_include))
+  " Create new ArbIncludes window
+  if bufexists('ArbIncludes')
+    bw ArbIncludes
+  endif
+  let lnum = line('.')
+  new ArbIncludes
+  setlocal nofoldenable
+  call append(1,getbufline('#',1,'$'))
+  call cursor(lnum+1,1)
+  if arg == 't' " move cursor to next replacement or include line
+    call search('^\s*\%(<<.\{-}>>\s*\)*\%(\%(GENERAL_\)\=REPLACEMENTS\|INCLUDE\%(_ROOT\|_FROM\|_WORKING\)\=\)\>','c')
+  endif
+  call setline('.', getline('.') . '# ArbIncludes start') " append dummy comment to save cursor position
+
+  " Extract default replacements from setup_equations
+  let s:gen_rwlist = [[],[]] " [0] is list of strings to be replaced, [1] is corresponding list of replacements
+  let setup_equations = templates_dir . '../src/setup_equations.pl'
+  if filereadable(setup_equations)
+    let save_qflist = getqflist()
+    silent execute 'vimgrep /%{\$general_replacements\[\$#general_replacements+1\]} = ( search => ".*", replace => ".*" );/j ' . setup_equations
+    for item in getqflist()
+      let rwpair = matchlist(item.text,'\(''\|"\)\(.*\)\1.*\(''\|"\)\(.*\)\3') " [2] is string to be replaced, [4] is replacement
+      call add(s:gen_rwlist[0], rwpair[2])
+      call add(s:gen_rwlist[1], rwpair[4])
+    endfor
+    call setqflist(save_qflist)
+  else
+    echoe 'Could not find setup_equations.pl. Default replacements not done.'
+  endif
+
+  " Read each line of current file, doing replacements and including contents of other files as needed
+  let skip = 0
+  call cursor(1,1)
+  while search('^\s*[^#]','W') " skip comments and blank lines
+    if skip " mark and skip block comments
+      silent +,/^\s*\%(<<.\{-}>>\s*\)*\%(END\|STOP\)_\%(COMMENTS\=\|SKIP\)\>/-s/^/# ArbIncludes: /e
+      call cursor(line('.')+1,1)
     endif
-  
-    " Read included files, performing replacements as needed, and add contents to new window
-    let count_includes = 0
-    let include_lines = []
-    let root = ''
-    call cursor(1,1)
-    while search('^[^#]*INCLUDE\>','W') " scan through file for INCLUDE statements
-      let count_includes += 1
-      if len(include_lines) < count_includes
-        call add(include_lines,getline('.'))
-      endif
-      let line = substitute(getline('.'),"\\(\\s*$\\|\\s*#[^'\"].*$\\)",'','') " strip trailing spaces and comments from INCLUDE lines (noting that '#' may appear in replacements)
-      let file = substitute(line,".*INCLUDE\\s\\+\\('\\|\"\\)\\([^\.'\"]*\\)\\(\\.arb\\)\\=\\('\\|\"\\).*",'\2.arb','') " get name (basename + suffix) of included file
-      let root_line = substitute(getline(search('^[^#]*INCLUDE_ROOT\>','bnW')),'#.*$','','') " strip comments from preceding INCLUDE_ROOT line (if present)
-      if root_line == '' " no INCLUDE_ROOT line
-        let root = ''
-      elseif root_line !~ "\\('\\|\"\\)" " INCLUDE_ROOT reset; revert to previous root
-        let root = previous_root
-      else " root specified (usual case)
-        let previous_root = root
-        let root = substitute(root_line,".*INCLUDE_ROOT\\s\\+\\('\\|\"\\)\\([^'\"]*\\).*",'\2/','')
-      endif
-      let dir = finddir('templates/' . root,'**;') " find directory containing the included file
-      if filereadable(dir . file)
-        let include_file = readfile(dir . file) " read included file
-      else " flags (<<>>) can make it difficult to identify root directory correctly; just throw a warning and continue
-        echohl WarningMsg
-        echom "WARNING: Could not find included file " . dir . file 
-        echom "  Probably inferred incorrect root."
-        echohl None
+    let line = s:ArbDoRepl(getline('.'),s:gen_rwlist) " read line and do general replacements
+    call setline('.',line)
+    if line =~ '^\s*\%(GENERAL_\)\=REPLACEMENTS\>' " update general replacements list
+      call s:ArbGetRepl(line,s:gen_rwlist)
+    elseif line =~ '^\s*\%(BEGIN\|START\|END\|STOP\)_\%(COMMENTS\=\|SKIP\)\>' " set flag to skip block comment lines
+      let skip = !skip
+    elseif line =~ '^\s*TRANSIENT_SIMULATION\>' " overwrite default flags
+      call s:ArbGetRepl('GENERAL_REPLACEMENTS R "<<steadystatecomment>>" W "#" R "<<transientcomment>>" W ""',s:gen_rwlist)
+    endif
+    if line !~ '^\s*INCLUDE\%(_WORKING\)\=\>'
+      continue
+    endif " else ...
+
+    " Insert contents of included files (with replacements)
+    let iline = matchlist(line,'\(\s*\)\(\w*\)\s*\%(''\|"\)\(\S*\)\%(''\|"\)\s*\(\%(\w\+\s*\(''\|"\).\{-}\5\s*\)\+\)\=\%(#.*\)\=') " [0] is full line, [1] is indent, [2] is INCLUDE[_WORKING], [3] is filename, [4] is replacements
+    let file = iline[3] =~ '.arb$' ? iline[3] : iline[3] . '.arb' " get name (basename + suffix) of included file
+    let root_line = matchlist(getline(search('^\s*INCLUDE_\(ROOT\|FROM\)\>','bnW')),'\s*\w*\s*\%(\%(''\|"\)\(\S*\)\%(''\|"\)\)\=') " [0] is full line (minus comments), [1] is filename
+    if get(root_line,1,'') == '' " no INCLUDE_ROOT or root reset
+      let path = expand('#:p:h')
+      let root = path =~ '/templates/' ? substitute(path,'.*/templates/','','') : ''
+    else " root specified
+      let root = substitute(finddir(root_line[1], templates_dir . ',' . templates_dir . '**'),'.*templates/','','')
+    endif
+    if iline[2] == 'INCLUDE_WORKING'
+      let file = templates_dir . '../' . file
+    else
+      let file = findfile(file, templates_dir . root . '/**')
+    endif
+    if !filereadable(file)
+      echohl WarningMsg | echom 'WARNING: Could not find included file ' . iline[3] | echom '  Skipping it and continuing.' | echohl None
+      continue
+    endif
+    let include_file = readfile(file) " create list containing all lines of included file
+
+    " Perform linewise operations on included file
+    let file_rwlist = [[],[]] " [0] is list of strings to be replaced, [1] is corresponding list of replacements
+    call s:ArbGetRepl(iline[4],file_rwlist)
+    call map(include_file, '"  " . iline[1] . v:val') " indent contents of included file
+    for i in range(0,len(include_file)-1)
+      if include_file[i] =~ '^\s*\%(#\|$\)' " skip comments and blank lines
         continue
       endif
-      let indent = repeat(' ',match(line,'INCLUDE')) " work out indentation level
-      call map(include_file, 'indent . "  " . v:val') " add indent to all lines of included file
-      let repl = substitute(line,'.*INCLUDE\s\+\S\+\s*','','') " get replacements (if present)
-      if len(repl) != 0 " need to make replacements in included file
-        " Create list containing REPLACE and WITH items in sequence
-        let tmp = repl
-        let rwlist = []
-        while len(tmp) > 0
-          if or(match(tmp,'"') == -1, and(match(tmp,"'") != -1, match(tmp,"'") < match(tmp,'"'))) " next string is single quoted
-            call add(rwlist,substitute(tmp,"[^']*'\\([^']*\\).*",'\1','')) " add item to list
-            let tmp = substitute(tmp,"\\M\\[^']\\*'" . rwlist[-1] . "'",'','') " remove item from tmp string, treating special vim characters as literals (\M)
-          else " next string is double quoted
-            call add(rwlist,substitute(tmp,'[^"]*"\([^"]*\).*','\1','')) " add item to list
-            let tmp = substitute(tmp,'\M\[^"]\*"' . rwlist[-1] . '"','','') " remove item from tmp string, treating special vim characters as literals (\M)
-          endif
-        endwhile
-        " Perform replacements
-        for i in range(0,len(include_file)-1)
-          for j in range(0,len(rwlist)-1,2)
-            let include_file[i] = substitute(include_file[i],'\M' . rwlist[j],rwlist[j+1],'g') " make replacements, treating special vim characters as literals (\M)
-          endfor
-          if include_file[i] =~ '^[^#]*INCLUDE\>' " nested includes
-            call add(include_lines,include_file[i])
-            let include_file[i] = substitute(include_file[i],'\(INCLUDE\s\+\S\+\)\(.*\)','\1 ' . repl . '\2','') " carry over upstream replacements (will be removed below)
-          endif
-        endfor
+      let include_file[i] = s:ArbDoRepl(include_file[i],file_rwlist) " do file-specific replacements
+      if include_file[i] =~ '^\s*\%(<<.\{-}>>\s*\)*INCLUDE\%(_WORKING\)\=\>' " nested includes
+        let include_file[i] = substitute(include_file[i],'\(\s*\%(<<.\{-}>>\s*\)*\w*\s*\S*\s*\%(\%(\w\+\s*\(''\|"\).\{-}\2\s*\)\+\)\=\).*','\1 ','') . iline[4] . '# ArbIncludes:' . include_file[i] " carry over upstream replacements
       endif
-      " Insert contents of included file
-      call append(line('.'),include_file)
-      if or(arg != 'o', line('.') > 2) " insert fold markers
-        call append(line('.'), indent . '#{=====')
-        call append(line('.')+len(include_file)+1, indent . '#}=====')
+      if include_file[i] =~ '^\s*\%(<<.\{-}>>\s*\)*INCLUDE_\%(ROOT\|FROM\)\s*\%(#.*\)\=$' " INCLUDE_ROOT reset
+        let include_file[i] = substitute(include_file[i],'\(\s*\%(<<.\{-}>>\s*\)*\w*\).*', '\1 "','') . root . '" # ArbIncludes:' . include_file[i] " explicitly set root
       endif
-    endwhile
+    endfor
+    call insert(include_file, iline[1] . '#{=====', 0) " add opening fold marker
+    call extend(include_file, [iline[1] . '#}=====', 'INCLUDE_ROOT "' . root . '" # ArbIncludes']) " add closing fold marker and reset root with a dummy INCLUDE_ROOT line
+    call append(line('.'), include_file) " insert contents of included file into ArbIncludes window
+  endwhile
 
-    " Remove any nested replacements and restore end-of-line comments in include lines
-    call cursor(1,1)
-    while search('^[^#]*INCLUDE\>','W')
-      call setline('.',include_lines[0])
-      call remove(include_lines,0)
-    endwhile
+  " Cover our tracks!
+  silent 1d
+  silent %s/INCLUDE.*# ArbIncludes:\s*\%(<<.\{-}>>\s*\)*//e " remove dummy INCLUDEs and INCLUDE_ROOTs
+  silent g/# ArbIncludes$/d " remove dummy INCLUDE_ROOTs
+  if arg == 't'
+    silent v/^\s*\%(\%(GENERAL_\)\=REPLACEMENTS\|INCLUDE\%(_ROOT\|_FROM\|_WORKING\)\=\|\%(STEADY-\=STATE\|TRANSIENT\)_SIMULATION\)\>/d " only show inclusion tree in 't' mode
+  else
+    silent %s/^# ArbIncludes: //e " remove block comment markers
+  endif
+  silent %s/# ArbIncludes start//e " set cursor position
+  setlocal nomodifiable buftype=nofile bufhidden=wipe foldenable foldmethod=marker foldmarker={=====,}===== filetype=arb " ArbIncludes window settings
 
-    " Remove unwanted lines in 'i' and 't' modes
-    if arg == 't'
-      silent v/^[^#]*INCLUDE\(_ROOT\)\=\>/d
+endfunction
+
+" Perform replacements
+function s:ArbDoRepl(line,rwlist)
+  let line = a:line
+  for i in range(0,len(a:rwlist[0])-1) " perform replacements
+    if line =~ '^\s*\%(<<.\{-}>>\s*\)*\%(\%(GENERAL_\)\=REPLACEMENTS\|INCLUDE\%(_ROOT\|_FROM\|_WORKING\)\=\)\>' " only do replacements on flags before GENERAL_REPLACEMENTS and INCLUDEs
+      let split = matchlist(line,'\(\s*\%(<<.\{-}>>\s*\)*\)\(.*\)',) " [0] is full line, [1] is indent and flags, [2] is everything after that
+      let line = substitute(split[1], '\M' . a:rwlist[0][i], a:rwlist[1][i],'g') . split[2]
+    else
+      let line = substitute(line,'\M' . a:rwlist[0][i], a:rwlist[1][i],'g')
     endif
-    if arg =~ '\(i\|t\)'
-      silent v/^[^#]*INCLUDE_ROOT\>/s/\(.*\)/  \1/
+  endfor
+  return line
+endfunction
+
+" Process replacements
+function s:ArbGetRepl(line,rwlist)
+  let repl = substitute(a:line,'\s*\%(\w*REPLACEMENTS\|INCLUDE\w*\s*\S*\)\s*\(\%(\w\+\s*\(''\|"\).\{-}\2\s*\)\+\)\%(#.*\)\=','\1','') " string containing the list of replacements
+  while len(repl) > 0
+    if repl[0] == 'C' " CANCEL
+      let cancel = substitute(repl,'[^''"]*\(''\|"\)\(.\{-}\)\1.*','\2','')
+      let index = index(a:rwlist[0],cancel)
+      if index >= 0 " remove DEFAULT/REPLACE/WITH pair from replacements list
+        unlet a:rwlist[0][index]
+        unlet a:rwlist[1][index]
+      endif
+      let repl = substitute(repl,'.\{-}\(''\|"\)\M' . cancel . '\m\1\s*','','') " remove CANCEL item from repl string
+    else " DEFAULT or REPLACE
+      let rwpair = matchlist(repl,'\(\w*\)\s*\(''\|"\)\(.\{-}\)\2\s*\w*\s*\(''\|"\)\(.\{-}\)\4\s*') " [0] is next DEFAULT/REPLACE/WITH pair, [1] is DEFAULT or REPLACE, [3] is string to be replaced, [5] is replacement
+      let index = index(a:rwlist[0],rwpair[3])
+      if index < 0 " add DEFAULT/REPLACE/WITH pair to replacements list
+        call add(a:rwlist[0],rwpair[3])
+        call add(a:rwlist[1],rwpair[5])
+      elseif and(repl[0] == 'R', a:rwlist == s:gen_rwlist) " latest REPLACE wins
+        let a:rwlist[1][index] = rwpair[5]
+      endif
+      let repl = substitute(repl,'\M' . rwpair[0],'','') " remove DEFAULT/REPLACE/WITH pair from repl string
     endif
-
-    " Adjust window settings
-    call cursor(1,1)
-    setlocal foldmethod=marker
-    setlocal foldmarker={=====,}=====
-    setlocal filetype=arb
-    setlocal nomodifiable
-    setlocal readonly
-    setlocal bufhidden=wipe
-
-  endfunction
-endif
+  endwhile
+endfunction
