@@ -1,6 +1,4 @@
-#!/bin/sh
-# file packer/unpack
-#
+# arb finite volume solver
 # Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
@@ -32,30 +30,36 @@
 # <http://people.eng.unimelb.edu.au/daltonh/downloads/arb>.
 #
 #-------------------------------------------------------------------------
-# little script to unpack archive of arb files
-# daltonh, 300610
+# makefile for arb wiki
+# daltonh, v0.54
 
-rm -f licence;
-rm -f readme;
-rm -f version;
+rootdir = .
+bodydir = $(rootdir)/body
+bodycssfile = $(rootdir)/css/arb_body.css
 
-if [ -e archive ] ; then
-  mv archive/* . ;
-  rmdir archive
-elif [ -e archive.tar ] ; then
-  tar -x -f archive.tar
-  rm -r archive.tar
-elif [ -e archive.tar.gz ] ; then
-  tar -xz -f archive.tar.gz
-  rm -r archive.tar.gz
-else 
-  echo "ERROR: no archive file found, unpacking of arb not successful";
-  exit 1;
-fi ;
+# find all of the markdown files within the body directory and first level of body subdirectories
+markdownbodyfiles := $(wildcard $(bodydir)/*.md) $(wildcard $(bodydir)/*/*.md)
+htmlbodyfiles := $(patsubst %.md,%.html,$(markdownbodyfiles))
 
-rm -f unpack;
+all : createhtmlbodyfiles
 
-# record unpack info to packer/history file
-echo "UNPACK operation completed on `hostname -f` by `whoami` on `date`" >>licence/packer_history.txt;
+# print out some info
+print :
+	@echo "Compiling arb wiki with options:"
+	@echo " markdownbodyfiles: $(markdownbodyfiles)"
+	@echo " htmlbodyfiles: $(htmlbodyfiles)"
 
-exit 0;
+# this idea courtesy of http://lincolnmullen.com/blog/make-and-pandoc/
+createhtmlbodyfiles : $(htmlbodyfiles)
+
+# define generic rule to create the htmlbodyfiles
+#%.html : %.md
+#	pandoc -S -c ../../$(bodycssfile) --toc $< -o $@
+%.html : %.md makefile assembler/assembler.pl assembler/assembler_pre.html assembler/assembler_post.html
+	assembler/assembler.pl < $< > $@
+
+# clean all files
+clean : clean_html
+# clean all files created during setup process
+clean_html :
+	rm $(htmlbodyfiles)
