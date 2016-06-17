@@ -92,6 +92,9 @@ print DEBUG "dalton harvie, v$version\n\n";
 my @input_files;
 $input_files[0]{"ref_name"}="root_input.arb";
 $input_files[0]{"name"}="$build_dir/root_input.arb";
+# initial include_path used for searching for the file is the working directory
+# so, always the initial search path for files is the working_dir (even though root_input.arb sits in the build directory)
+$input_files[0]{"include_path"}[0] = $working_dir;
 
 # user_types are variables that can be defined by the user
 my @user_types = ("constant","transient","newtient","unknown","derived","equation","output","condition","local");
@@ -624,10 +627,12 @@ sub read_input_files {
   use List::Util qw( min max );
   use Data::Dumper;
   use Storable qw(dclone);
+  use File::Find; # for find
+# use File::Spec; # for the absolute path conversion routine
   my ($file, $oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
     $handle, $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
-    $condition, $key, $append, $cancel, $default, $masread, $lineremainder, $repeats);
+    $condition, $key, $append, $cancel, $default, $masread, $lineremainder, $repeats, $include_type);
 
   my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
   my $default_options = ""; # default options prepended to each statement read in
@@ -638,7 +643,6 @@ sub read_input_files {
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
   open(UNWRAPPED_INPUT, ">$current_unwrapped_input_file");
 
-  $input_files[$#input_files]{"include_root"} = ''; # initial include_root is blank
   $input_files[$#input_files]{"handle"} = FileHandle->new(); # make a filehandle for the first file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
   $handle = $input_files[$#input_files]{"handle"};
   open($handle, "<$input_files[$#input_files]{name}") or die "ERROR: problem opening arb input file $input_files[$#input_files]{name}\n";;
@@ -653,7 +657,7 @@ sub read_input_files {
 
 # now splitting input line at the include/replacements keywords (wherever they are) and only doing replacements before this
       my $lineremainder = '';
-      if ($oline =~ /^\s*(.*?)(\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s))/i) {
+      if ($oline =~ /^\s*(.*?)(\s*((INCLUDE(|_[A-Z]+))|((GENERAL_|)REPLACEMENTS))($|#|\s))/i) {
         print DEBUG "INFO: found string that possibly needs part replacements: oline = $oline\n";
         my $linestart = $1;
         $lineremainder = $2.$';
@@ -692,7 +696,7 @@ sub read_input_files {
 
       $line = $oline;
 # keep a record of what arb is doing in UNWRAPPED_INPUT, commenting out any INCLUDE or GENERAL_REPLACMENTS statements so that this file could be read again by arb directly
-      if ($line =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT $indent x $#input_files,"#(hash added during unwrap)$line\n"; } else { print UNWRAPPED_INPUT $indent x $#input_files,"$line\n"; }
+      if ($line =~ /^\s*((INCLUDE(|_[A-Z]+))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT $indent x $#input_files,"#(hash added during unwrap)$line\n"; } else { print UNWRAPPED_INPUT $indent x $#input_files,"$line\n"; }
 
 # now process guts of statement
 # for the time being, have to handle trailing comments on the input lines
@@ -703,51 +707,158 @@ sub read_input_files {
       elsif ($line =~ /^\s*((START|BEGIN)_(COMMENT(S){0,1}|SKIP))($|#|\s)/i) { print "INFO: found \L$1\E statement in $file\n"; $skip=1; next; }
 
 # check for include statement, possibly opening new file
-      elsif ($line =~ /^\s*INCLUDE(|_WORKING)($|(\s*#)|\s)/i) {
-        if ($2 =~ /#/) {$line = '';} else {$line = $';}
-        if ($1) { $working=1; } else { $working=0; } # if the working flag is on then we only look in the working directory for the file
-        $input_files[$#input_files+1]{"ref_name"} = extract_first($line,$error); # extract filename from line of text
-        if (empty($input_files[$#input_files]{ref_name}) || $error) {
-          error_stop("a valid filename could not be determined from the following:\nfile = $file: line = $oline");
+      elsif ($line =~ /^\s*INCLUDE(|_([A-Z]+))($|(\s*#)|\s)/i) {
+        if (nonempty($2)) {$include_type = "\L$2";} else { $include_type = ''; }
+# note to user re deprecation of INCLUDE_ROOT
+        if ($include_type eq "root") {
+          print "WARNING: INCLUDE_ROOT has been deprecated (from v0.56), and should be replaced by INCLUDE_TEMPLATE for setting the include path and/or including an arb file that both reside somewhere within the templates directory\n";
+          $include_type = "template";
         }
-        $input_files[$#input_files]{"include_root"} = $input_files[$#input_files-1]{"include_root"}; # copy over include_root from previous file
-        $input_files[$#input_files]{"name"} = '';
-# append arb suffix to ref_name if it isn't already there - for v0.52 onwards, only arb or in suffixes are allowed
-        if ( $input_files[$#input_files]{"ref_name"} !~ /.+\.(arb|in)$/ ) {
-          $input_files[$#input_files]{"ref_name"} = $input_files[$#input_files]{"ref_name"}.'.arb';
-        }
-# ref: include working
-        if ($working) {
-# look only in working directory for the file
-          if (-f "$working_dir/$input_files[$#input_files]{ref_name}") {
-            $input_files[$#input_files]{"name"} = "$working_dir/$input_files[$#input_files]{ref_name}";
+        if ($3 =~ /#/) {$line = '';} else {$line = $';}
+        my $new_file = extract_first($line,$error); # extract filename from line of text
+        if ($error) { error_stop("a valid file or directory name could not be determined from the following:\nfile = $file: line = $oline"); }
+
+        if (empty($new_file)) {
+          if (nonempty($include_type)) { error_stop("include_paths can only be pushed (last level removed) using the generic INCLUDE statement: error in the following:\nfile = $file: line = $oline"); }
+# an empty include statement means to remove one level off the search_path
+          if ($#{$input_files[$#input_files]{"include_path"}} > 0) {
+# this means to pull an item from the stack
+            pop(@{$input_files[$#input_files]{"include_path"}});
+            print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) after one has been removed, current include paths are @{$input_files[$#input_files]{include_path}}\n";
+          } else {
+            print "WARNING: an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: $input_files[$#input_files]{include_path}[0]\n";
+            print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) after failed removal attempt, only the single local (unremovable) path is left: $input_files[$#input_files]{include_path}[0]\n";
           }
-        } else {
-# prepend include_root directory to ref_name - no, now not looking in the working directory
-#          if (nonempty($include_root)) { $input_files[$#input_files]{"ref_name"} = $include_root."/".$input_files[$#input_files]{"ref_name"}; }
-# find location of the file, first looking in the specific template directory, then in all second and third level subsequent (sub)directories
-# TODO: look at perl's Find::File for the really lazy users who don't write out template directory names in full and like to gamble on where the included files come from....
-# ref: include
-          my $include_root = $input_files[$#input_files]{"include_root"};
-          foreach $try_dir ("$template_dir/$include_root",bsd_glob("$template_dir/*/$include_root"),bsd_glob("$template_dir/*/*/$include_root")) {
-            if (-f "$try_dir/$input_files[$#input_files]{ref_name}") {
-              $input_files[$#input_files]{"name"} = "$try_dir/$input_files[$#input_files]{ref_name}";
+          next; # move to next statement
+        }
+
+# otherwise we are creating either a new include file or adding to the current file's include_paths
+        my $found_name = ''; # this will hold the found file or directory
+        my $found_type = ''; # this will specify whether what was found was a file or directory
+        if (empty($include_type)) {
+# if this is a plain INCLUDE statement then we cycle through the list of paths looking for the file or directory
+          for my $search_path ( reverse( @{$input_files[$#input_files]{"include_path"}} ) ) {
+            ($found_name,$found_type) = check_for_arbfile_or_dir($search_path.'/'.$new_file);
+            if (nonempty($found_name)) {
+              print DEBUG "INFO: found include $found_type $new_file at $found_name\n";
               last;
             }
           }
-        }
-        if (empty($input_files[$#input_files]{"name"})) {
-          error_stop("cannot find the input file $input_files[$#input_files]{ref_name} referenced:\nfile = $file :line = $oline");
+          if (empty($found_name)) {
+            error_stop("could not find $new_file that is referenced in an INCLUDE statement in any of the current include paths: error in the following:\nfile = $file: line = $oline\n");
+          }
+        } elsif ($include_type eq "template") {
+# here we use find to cycle through template files
+          ($found_name,$found_type) = check_for_arbfile_or_dir($template_dir.'/'.$new_file);
+          if (empty($found_name)) {
+            error_stop("could not find $new_file that is referenced in an INCLUDE_TEMPLATE statement in any of template directories: error in the following:\nfile = $file: line = $oline\n");
+          }
         } else {
-          print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
-          print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
-          print UNWRAPPED_INPUT $indent x $#input_files,"#++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"# the following is INCLUDED from $input_files[$#input_files]{name}";
-# ref: FILENAME
-# set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
-          if (empty($simulation_info{"filename"})) {
-            $simulation_info{"filename"} = $input_files[$#input_files]{"ref_name"};
+          if ($include_type eq "absolute") {
+            ($found_name,$found_type) = check_for_arbfile_or_dir('/'.$new_file);
+          } elsif ($include_type eq "local") {
+            ($found_name,$found_type) = check_for_arbfile_or_dir($input_files[$#input_files]{"include_path"}[0].'/'.$new_file);
+          } elsif ($include_type eq "last") {
+            ($found_name,$found_type) = check_for_arbfile_or_dir($input_files[$#input_files]{"include_path"}[$#{$input_files[$#input_files]{"include_path"}}].'/'.$new_file);
+          } elsif ($include_type eq "working") {
+            ($found_name,$found_type) = check_for_arbfile_or_dir($working_dir.'/'.$new_file);
+          } else {
+            error_stop("keyword INCLUDE_"."\U$include_type"." is not understood: error in the following:\nfile = $file: line = $oline\n");
+          }
+          if (empty($found_name)) {
+            error_stop("could not find $new_file that is referenced in an INCLUDE_"."\U$include_type"." statement: error in the following:\nfile = $file: line = $oline\n");
           }
         }
+        print "INFO: found the following include $found_type $new_file at $found_name\n";
+        print DEBUG "INFO: found the following include $found_type $new_file at $found_name referenced from:\nfile = $file: line = $oline\n";
+
+# here we extract the path from the full found_name if we have found a file, or remove found_name (and store in found_dir) if we have found a directory
+        my $found_dir = '';
+        if ($found_type eq 'file' && $found_name =~ /\//) {
+          ($found_dir) = $found_name =~ /^(.*)\/.*?$/;
+        } elsif ($found_type eq 'directory') {
+          $found_dir = $found_name;
+          $found_name = '';
+        }
+
+# check whether this path is on the top of the current files's include_path list, and if not, add it
+        if (nonempty($found_dir)) {
+          if ($found_dir ne $input_files[$#input_files]{"include_path"}[$#{$input_files[$#input_files]{"include_path"}}]) {
+            push(@{$input_files[$#input_files]{"include_path"}},$found_dir);
+            print DEBUG "INFO: adding new include_path $found_dir, making include_path array = @{$input_files[$#input_files]{include_path}}\n";
+            print UNWRAPPED_INPUT $indent x $#input_files, "#(comment generated during unwrap) adding new include_path $found_dir, making include_path array = @{$input_files[$#input_files]{include_path}}\n";
+          } else {
+            print UNWRAPPED_INPUT $indent x $#input_files, "#(comment generated during unwrap) not adding new include_path $found_dir, as it is already on the top of include_path array = @{$input_files[$#input_files]{include_path}}\n";
+          }
+        }
+            
+# from here on, only concerned with actually including a file
+        if (empty($found_name)) {next;}
+
+# create the new include file
+        $input_files[$#input_files+1]{"ref_name"} = $new_file; # ref_name is recorded as the name specified in the INCLUDE statement
+        $input_files[$#input_files]{"name"} = $found_name; # name is the full path to the file
+        $input_files[$#input_files]{"include_path"}[0] = $input_files[$#input_files-1]{"include_path"}[$#{$input_files[$#input_files-1]{"include_path"}}]; # set local path to last path of calling file
+
+#         $input_files[$#input_files+1]{"ref_name"} = $new_file; # extract filename from line of text
+# first need to determine if the string specifies a file or directory, looking through the include_path directories
+# assemble possible arb_filename if the string doesn't have an .arb extension
+#         if ($input_files[$#input_files]{"ref_name"} !~ /\.(arb|in)$/) {
+#           $input_files[$#input_files]{"arb_name"} = $input_files[$#input_files]{"ref_name"}.".arb";
+#         }
+# now loop through each of the include_paths, in reverse order
+#       print "largest input_files index: $#input_files\n";
+#       print "input_files include_path: $input_files[$#input_files]{include_path}\n";
+#       print "include_path array for this input_file = @{$input_files[$#input_files]{include_path}}\n";
+#         for my $search_path ( reverse( @{$input_files[$#input_files]{"include_path"}} ) ) {
+
+#           my $calling_path_depth = ($search_path) =~ tr!/!!; # from http://www.perlmonks.org/?node_id=984804 
+#           my $found_name = '';
+#           find ({ wanted => sub { wanted($calling_path_depth,$input_files[$#input_files]{"ref_name"},$found_name); }, bydepth => 1, no_chdir => 1},$search_path);
+#           if (nonempty($found_name)) { print "found $found_name at $search_path\n"; exit; }
+
+#         }
+
+#       }
+#           $input_files[$#input_files]{"include_path"}[$#input_files[$#input_files]{"include_path"}] = $input_files[$#input_files]{"include_path"}[$#input_files[$#input_files]{"include_path"}] = $input_files[$#input_files-1]{"include_path"}; # copy over include_path from previous file
+#         $input_files[$#input_files]{"name"} = '';
+# # append arb suffix to ref_name if it isn't already there - for v0.52 onwards, only arb or in suffixes are allowed
+#         if ( $input_files[$#input_files]{"ref_name"} !~ /.+\.(arb|in)$/ ) {
+#           $input_files[$#input_files]{"ref_name"} = $input_files[$#input_files]{"ref_name"}.'.arb';
+#         }
+# # ref: include working
+#         if ($working) {
+# # look only in working directory for the file
+#           if (-f "$working_dir/$input_files[$#input_files]{ref_name}") {
+#             $input_files[$#input_files]{"name"} = "$working_dir/$input_files[$#input_files]{ref_name}";
+#           }
+#         } else {
+# # prepend include_path directory to ref_name - no, now not looking in the working directory
+# #          if (nonempty($include_path)) { $input_files[$#input_files]{"ref_name"} = $include_path."/".$input_files[$#input_files]{"ref_name"}; }
+# # find location of the file, first looking in the specific template directory, then in all second and third level subsequent (sub)directories
+# # TODO: look at perl's Find::File for the really lazy users who don't write out template directory names in full and like to gamble on where the included files come from....
+# # ref: include
+#           my $include_path = $input_files[$#input_files]{"include_path"};
+#           foreach $try_dir ("$template_dir/$include_path",bsd_glob("$template_dir/*/$include_path"),bsd_glob("$template_dir/*/*/$include_path")) {
+#             if (-f "$try_dir/$input_files[$#input_files]{ref_name}") {
+#               $input_files[$#input_files]{"name"} = "$try_dir/$input_files[$#input_files]{ref_name}";
+#               last;
+#             }
+#           }
+#         }
+#       if (empty($input_files[$#input_files]{"name"})) {
+#         error_stop("cannot find the input file $input_files[$#input_files]{ref_name} referenced:\nfile = $file :line = $oline");
+#       } else {
+#       print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
+#       print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
+        print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"#(comment generated during unwrap) the following is INCLUDED from $input_files[$#input_files]{name}";
+# ref: FILENAME
+# set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
+        if (empty($simulation_info{"filename"})) {
+          $simulation_info{"filename"} = $input_files[$#input_files]{"ref_name"};
+        }
+#       }
+
 # now extract replacements
         while (!($line=~/^\s*(|#.*)$/)) {
           ($search,$replace,$cancel,$default) = extract_replacements($line,$file,$oline);
@@ -779,22 +890,22 @@ sub read_input_files {
         open($handle, "<$input_files[$#input_files]{name}") or die "ERROR: problem opening arb input file $input_files[$#input_files]{name}\n";;
         next; # skip to reading the next line (in the included file)
 
-# set include_root
+# set include_path
 # ref: include root
-      } elsif ($line =~ /^\s*INCLUDE_(ROOT|FROM)\s*(($|#)|(.+))/i) {
-        if ($3) { # no string follows, so reset include_root back to parent value
-          if ($#input_files == 0) {
-            $input_files[$#input_files]{"include_root"} = '';
-          } else {
-            $input_files[$#input_files]{"include_root"} = $input_files[$#input_files-1]{"include_root"} 
-          }
-        } else {
-          $line = $4;
-          $input_files[$#input_files]{"include_root"} = extract_first($line,$error);
-          if ($error) {error_stop("matching delimiters not found in the following:\nfile = $file: line = $oline")}
-        }
-        print UNWRAPPED_INPUT $indent x $#input_files,"# INFO: setting include root directory to $input_files[$#input_files]{include_root}\n";
-        next;
+#     } elsif ($line =~ /^\s*INCLUDE_(ROOT|FROM)\s*(($|#)|(.+))/i) {
+#       if ($3) { # no string follows, so reset include_path back to parent value
+#         if ($#input_files == 0) {
+#           $input_files[$#input_files]{"include_path"} = '';
+#         } else {
+#           $input_files[$#input_files]{"include_path"} = $input_files[$#input_files-1]{"include_path"} 
+#         }
+#       } else {
+#         $line = $4;
+#         $input_files[$#input_files]{"include_path"} = extract_first($line,$error);
+#         if ($error) {error_stop("matching delimiters not found in the following:\nfile = $file: line = $oline")}
+#       }
+#       print UNWRAPPED_INPUT $indent x $#input_files,"# INFO: setting include root directory to $input_files[$#input_files]{include_path}\n";
+#       next;
 
 # extract any general replacements, pushing them onto the back of the existing list
 # replacements are performed in reverse order, so latest replacement definitions take precedence
@@ -1421,7 +1532,7 @@ sub read_input_files {
     } # end of loop for this input file
 
     close($handle);
-    if ($#input_files) { print UNWRAPPED_INPUT $indent x $#input_files,"# INCLUDE FINISHED for $input_files[$#input_files]{name}\n",$indent x $#input_files,"#--------------------------------------------------------\n"; }
+    if ($#input_files) { print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) INCLUDE finished for $input_files[$#input_files]{name}\n",$indent x $#input_files,"#(comment generated during unwrap)--------------------------------------------------------\n"; }
     pop(@input_files);
   } # end of loop for all input files
 
@@ -1436,6 +1547,70 @@ sub read_input_files {
     $sub_string{"simulation_info"} = $sub_string{"simulation_info"}."! SIMULATION INFO: "."\U$key"." = $simulation_info{$key}\n"; # and write the same to equation_module.f90
   }
 
+}
+
+#-------------------------------------------------------------------------------
+# little sub to determine whether input location is an arbfile or directory
+
+sub check_for_arbfile_or_dir {
+
+# input
+  my $search_file = $_[0];
+# output: ($found_name,$found_type)
+  my $found_name = '';
+  my $found_type = '';
+
+  if (-d $search_file) {
+# if a directory is found
+    $found_name = $search_file;
+    $found_type = 'directory';
+  } elsif ($search_file !~ /\/$/) {
+# if no trailing slash is present, then this could be a file
+    if (-f $search_file) {
+# and it could already have the appropriate extension
+      $found_name = $search_file;
+      $found_type = 'file';
+    } elsif ($search_file !~ /\.(arb|in)$/ && -f $search_file.'.arb') {
+# or if it has no extension then try searching for the name with the .arb extension
+      $found_name = $search_file.'.arb';
+      $found_type = 'file';
+    }
+  }
+# remove any trailing slashes from found_name
+  $found_name =~ s/\/$//;
+  print DEBUG "INFO: at end of check_for_arbfile_or_dir: search_file = $search_file: found_name = $found_name: found_type = $found_type\n";
+
+  return ($found_name,$found_type);
+}
+
+#-------------------------------------------------------------------------------
+# this is a little support routine used by find above
+sub wanted {
+# calling command: find ({ wanted => sub { wanted($calling_path_depth,$input_files[$#input_files]{"ref_name"},$found_name); }, bydepth => 1, no_chdir => 1},$search_path);
+# is passed calling_path_depth, input_file ref_name, and found_name
+  my $calling_path_depth = $_[0];
+  my $input_file = $_[1];
+  my $found_name = $_[2];
+
+# here we exclude certain names from the search
+  if (nonempty($found_name)) {
+# if a name has been found, prune all subsequent directories
+    return $File::Find::prune = 1; 
+# ignore these directories/links, as per the pack script
+  } elsif ($File::Find::dir =~ /resources$|code_scraps$|old$|recent$/) {
+    return $File::Find::prune = 1; 
+  } else {
+    my $local_path_depth = ( $File::Find::name ) =~ tr!/!!;
+    if ($local_path_depth > $calling_path_depth + 2) {
+      return $File::Find::prune = 1;
+    }
+    if ($File::Find::name =~ /$input_file$/) {$found_name = $File::Find::name;}
+    elsif ($input_file !~ /\.(arb|in)/) {
+      if ($File::Find::name =~ /$input_file\.arb$/) {$found_name = $File::Find::name;}
+    }
+    if (nonempty($found_name)) { print "found the following file or directory: $found_name\n"; }
+  }
+  $_[2] = $found_name; # return this in its original place, altered if the file has been found
 }
 
 #-------------------------------------------------------------------------------
