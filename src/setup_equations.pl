@@ -628,7 +628,6 @@ sub read_input_files {
   use Data::Dumper;
   use Storable qw(dclone);
   use File::Find; # for find
-# use File::Spec; # for the absolute path conversion routine
   my ($file, $oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
     $handle, $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
@@ -735,6 +734,7 @@ sub read_input_files {
 # otherwise we are creating either a new include file or adding to the current file's include_paths
         my $found_name = ''; # this will hold the found file or directory
         my $found_type = ''; # this will specify whether what was found was a file or directory
+        my $found_depth = 1; # this is used only for file::find used within the template include
         if (empty($include_type)) {
 # if this is a plain INCLUDE statement then we cycle through the list of paths looking for the file or directory
           for my $search_path ( reverse( @{$input_files[$#input_files]{"include_path"}} ) ) {
@@ -748,11 +748,15 @@ sub read_input_files {
             error_stop("could not find $new_file that is referenced in an INCLUDE statement in any of the current include paths: error in the following:\nfile = $file: line = $oline\n");
           }
         } elsif ($include_type eq "template") {
-# here we use find to cycle through template files
-          ($found_name,$found_type) = check_for_arbfile_or_dir($template_dir.'/'.$new_file);
+# the following ould only check in the templates directory
+#         ($found_name,$found_type) = check_for_arbfile_or_dir($template_dir.'/'.$new_file);
+# whereas this cycles through all subdirectories of the templates directory, using a depth-prioritised search
+# as file paths are relative to the build directory, don't chdir is required to reference filename
+          find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$template_dir);
           if (empty($found_name)) {
             error_stop("could not find $new_file that is referenced in an INCLUDE_TEMPLATE statement in any of template directories: error in the following:\nfile = $file: line = $oline\n");
           }
+#         if (-f $found_name) { $found_type = 'file'; } elsif (-d $found_name) { $found_type = 'directory'; }
         } else {
           if ($include_type eq "absolute") {
             ($found_name,$found_type) = check_for_arbfile_or_dir('/'.$new_file);
@@ -1586,31 +1590,70 @@ sub check_for_arbfile_or_dir {
 #-------------------------------------------------------------------------------
 # this is a little support routine used by find above
 sub wanted {
-# calling command: find ({ wanted => sub { wanted($calling_path_depth,$input_files[$#input_files]{"ref_name"},$found_name); }, bydepth => 1, no_chdir => 1},$search_path);
-# is passed calling_path_depth, input_file ref_name, and found_name
-  my $calling_path_depth = $_[0];
-  my $input_file = $_[1];
-  my $found_name = $_[2];
+# calling command: find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$template_dir);
+  my $new_file = $_[0];
+  my $found_name = $_[1];
+  my $found_type = $_[2];
+  my $found_depth = $_[3];
+  my $debug = 0;
 
-# here we exclude certain names from the search
-  if (nonempty($found_name)) {
-# if a name has been found, prune all subsequent directories
-    return $File::Find::prune = 1; 
+  my $local_depth = ($File::Find::name) =~ tr!/!!; # counts the number of slashes in the path, from http://www.perlmonks.org/?node_id=984804 
+  if ($debug) { print DEBUG "start of wanted: File::Find::name = $File::Find::name: File::Find::dir = $File::Find::dir\n".
+                            "  found_name = $found_name: found_type = $found_type: found_depth = $found_depth\n".
+                            "  new_file = $new_file: local_depth = $local_depth\n"; }
+
+# first check if it is at all possible that a name can be found that will overwrite already found name
+  if (nonempty($found_name) && ( $local_depth > $found_depth || ($found_type == 'directory' && $local_depth >= $found_depth) ) ) {
+    if ($debug) { print DEBUG "in wanted: nonempty found_name coupled with large local_depth (criterion on local_depth depends on found_type):".
+                              "found_type = $found_type: found_depth = $found_depth: local_depth = $local_depth\n"; }
+# if a name has been found, that is already at a lower depth, prune all subsequent directories
+    $File::Find::prune = 1; 
 # ignore these directories/links, as per the pack script
-  } elsif ($File::Find::dir =~ /resources$|code_scraps$|old$|recent$/) {
-    return $File::Find::prune = 1; 
+  } elsif ($File::Find::name =~ /(resources|code_scraps|old|recent)$/) {
+    if ($debug) { print DEBUG "in wanted: ignoring directory\n"; }
+    $File::Find::prune = 1; 
   } else {
-    my $local_path_depth = ( $File::Find::name ) =~ tr!/!!;
-    if ($local_path_depth > $calling_path_depth + 2) {
-      return $File::Find::prune = 1;
+
+  # now compare file::name with new_file
+    if ($new_file =~ /\/$/) {
+  # this is a directory due to the trailing slash
+      my $stripped_name = $new_file;
+      $stripped_name =~ s/\/$//; # create temporary name that has no trailing slash
+      if ($debug) { print DEBUG "in wanted: testing for directory as has a trailing slash: stripped_name = $stripped_name\n"; }
+      if ($File::Find::name =~ /$stripped_name$/ && -d $File::Find::name) {
+        $found_name = $File::Find::name;
+        $found_type = 'directory';
+        $found_depth = $local_depth;
+        $File::Find::prune = 1; # as this is a directory, do not go any deeper
+      }
+    } else {
+      if ($debug) { print DEBUG "in wanted: testing for plain name\n"; }
+      if ($File::Find::name =~ /$new_file$/) {
+        if ($debug) { print DEBUG "in wanted: matches to plain name\n"; }
+        $found_name = $File::Find::name;
+        if (-f $File::Find::name) {$found_type = 'file';} else {
+          $found_type = 'directory';
+          $File::Find::prune = 1; # as this is a directory, do not go any deeper
+        }
+        $found_depth = $local_depth;
+      } elsif ($new_file !~ /\.(arb|in)/) {
+        if ($debug) { print DEBUG "in wanted: testing for file with additional arb extension\n"; }
+  # if it is just a plain name then also try with .arb extension
+        if ($File::Find::name =~ /$new_file\.arb$/ && -f $File::Find::name) {
+          if ($debug) { print DEBUG "in wanted: matches to file with additional arb extension and is a file\n"; }
+          $found_name = $File::Find::name;
+          $found_type = 'file';
+          $found_depth = $local_depth;
+        }
+      }
     }
-    if ($File::Find::name =~ /$input_file$/) {$found_name = $File::Find::name;}
-    elsif ($input_file !~ /\.(arb|in)/) {
-      if ($File::Find::name =~ /$input_file\.arb$/) {$found_name = $File::Find::name;}
-    }
-    if (nonempty($found_name)) { print "found the following file or directory: $found_name\n"; }
   }
-  $_[2] = $found_name; # return this in its original place, altered if the file has been found
+
+  if ($debug) { print DEBUG "end of wanted: found_name = $found_name: found_type = $found_type: found_depth = $found_depth\n"; }
+    
+  $_[1] = $found_name; # return this in its original place, altered if the file has been found
+  $_[2] = $found_type; # return this in its original place, altered if the file has been found
+  $_[3] = $found_depth; # return this in its original place, altered if the file has been found
 }
 
 #-------------------------------------------------------------------------------
