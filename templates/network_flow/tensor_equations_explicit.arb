@@ -40,7 +40,7 @@ CELL_CONSTANT_REGION <interface_mask> "variable(<interface_mask_indicator>)" ON 
 NODE_CONSTANT_REGION <interface_mask_n> "associatedwith(<interface_mask>)" ON <all nodes> 
 
 # now generate normals and face volume fractions based on vof methodolgy
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_TEMPLATE "volume_of_fluid"
 # default now is for normals to be based on cellgrad in the interests of memory, determined by <<vofnodenormalscomment>>
 GENERAL_REPLACEMENTS DEFAULT "<<vofnodenormalscomment>>" W "#"
 # set the anti-string, <<vofcellnormalscomment>>, to be consistent and opposite
@@ -50,6 +50,7 @@ GENERAL_REPLACEMENTS R "<<vofcellnormalscomment>>" W ""
 <<vofcellnormalscomment>>INCLUDE "normals" R "<<vofmaskcomment>>" W "#" R "<<vofnodenormalscomment>>" W "#" R "<<vofcellnormalscomment>>" W "" R "DERIVED" W "CONSTANT" R "<vof_phigrad_mask[r=1]>" W "<interface_mask>" R "<vof_phi_smoothed>" W "<phi>" R "<vof_phi" W "<phi"
 # normals based on nodegrad - better
 <<vofnodenormalscomment>>INCLUDE "normals" R "<<vofmaskcomment>>" W "#" R "DERIVED" W "CONSTANT" R "<vof_phigrad_mask[r=1]>" W "<interface_mask>" R "<vof_phigrad_mask_n[r=1]>" W "<interface_mask_n>" R "<vof_phi_smoothed>" W "<phi>" R "<vof_phi" W "<phi"
+INCLUDE
 # now calculate <phi_f> after reconstructing the interfaces where necessary
 # strictly 2D
 #CELL_CONSTANT <vof_d> "cellvofd[best](phi=<phi>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,phitol=<phi_tol>)" ON <interface_mask>
@@ -74,20 +75,23 @@ CELL_CONSTANT_REGION <fluid_mask> "variable(<fluid_mask_indicator>)" ON <all cel
 #--------------------
 # now to solve for the fluid flow
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "stokes" # sets the stokes comment string to remove advective momentum terms
 INCLUDE "constants" # specify physical and numerical constants
+INCLUDE
 GENERAL_REPLACEMENTS D "<<networkexplicitcomment>>" W "" D "<<networkimplicitcomment>>" W "#"
 
 # calculate stress at interface
-INCLUDE_ROOT "network_flow"
+INCLUDE_TEMPLATE "network_flow"
 <<networkimplicitcomment>>INCLUDE "vof_tau"
 <<networkexplicitcomment>>INCLUDE "vof_tau" R "<u[l" W "<u[r=1,l" R "DERIVED" W "TRANSIENT" R "<ugrad_vof_c[l" W "<ugrad_vof_c[r=1,l" R "<tau_vof_c[" W "<tau_vof_c[r=1,"
+INCLUDE
 
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 <<networkexplicitcomment>>INCLUDE "transient_constant_setup" # sets up timestep and time variables, and saves previous timestep velocities
 <<networkexplicitcomment>>INCLUDE "domain_explicit" # equations to be solved within the domain
 <<networkimplicitcomment>>INCLUDE "domain" # equations to be solved within the domain
+INCLUDE
 
 
 # overwrite some variables to represent network channel flow, noting that all variables (ie, u, p, phi) are fluid properties

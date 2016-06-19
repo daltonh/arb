@@ -10,7 +10,7 @@ CELL_UNKNOWN <c> [1] "0.d0" ON <all cells> magnitude=1.d0 # remember to put in c
 CELL_LOCAL <c_pos> "cellmax(<c>,0.d0)" # may be needed for reactions
 <<transientcomment>>CELL_TRANSIENT <c[r=1]> "<c>" "<c>" ON <all cells>
 
-<<specieshighorderadvectioncomment>>INCLUDE_ROOT "advection_limiters/implicit"
+<<specieshighorderadvectioncomment>>INCLUDE_TEMPLATE "advection_limiters/implicit"
 <<specieshighorderadvectioncomment>><<steadystatecomment>>INCLUDE "relative_steady_state_limiter.arb" R "<phi" W "<c"
 <<specieshighorderadvectioncomment>><<transientcomment>>INCLUDE "relative_transient_limiter.arb" R "<phi" W "<c"
 <<specieshighorderadvectioncomment>>#INCLUDE "conservative_parameters" R "<phi" W "<c"

@@ -10,7 +10,7 @@
 # the following is some old code that was used for the fancier templates limiters
 # TODO: put options in this file to access alternative limiters based on string replacements
 # use these to use the template file limiter
-#INCLUDE_ROOT "advection_limiters/implicit"
+#INCLUDE_TEMPLATE "advection_limiters/implicit"
 #<<dim1comment>>INCLUDE "relative_limiter" R "<phi>" W "<u[l=1]>" R "<phi" W "<u_adv_1"
 #<<dim2comment>>INCLUDE "relative_limiter" R "<phi>" W "<u[l=2]>" R "<phi" W "<u_adv_2"
 #<<dim3comment>>INCLUDE "relative_limiter" R "<phi>" W "<u[l=3]>" R "<phi" W "<u_adv_3"

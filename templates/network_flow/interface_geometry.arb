@@ -45,7 +45,7 @@ CELL_CONSTANT_REGION <interface_mask> "variable(<interface_mask_indicator>)" ON 
 NODE_CONSTANT_REGION <interface_mask_n> "associatedwith(<interface_mask>)" ON <all nodes> 
 
 # now generate normals and face volume fractions based on vof methodolgy
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_TEMPLATE "volume_of_fluid"
 # default now is for normals to be based on cellgrad in the interests of memory, determined by <<vofnodenormalscomment>>
 GENERAL_REPLACEMENTS DEFAULT "<<vofnodenormalscomment>>" W "#"
 # set the anti-string, <<vofcellnormalscomment>>, to be consistent and opposite

@@ -1,5 +1,5 @@
 # basically doing multifluid equivalent of domain in navier-stokes
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "unknowns"
 INCLUDE "total_stress"
 INCLUDE "p_error" R "<p>" W "<p_tot>" R "<p_f>" W "<p_tot_f>"

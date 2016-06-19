@@ -1,7 +1,7 @@
 # here we define a diffusive osmotic pressure <Pi_s> based on <phi_s>
 
 # get boltzmann's constant
-INCLUDE_ROOT "general"
+INCLUDE_TEMPLATE "general"
 INCLUDE "physical_constants"
 
 CELL_DERIVED <Pi_diffusive_s> [Pa] "<phi_s>*<k_boltzmann>*<T>/<V_s>" ON <all cells>

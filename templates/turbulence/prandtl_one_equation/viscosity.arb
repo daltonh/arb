@@ -1,9 +1,9 @@
 # one equation prandtl model
 # http://www.cfd-online.com/Wiki/Prandtl%27s_one-equation_model
 
-INCLUDE_ROOT "turbulence/general"
+INCLUDE_TEMPLATE "turbulence/general"
 INCLUDE "strain_rate_complete"
-INCLUDE_ROOT # reset back to present file's location (although there are no more includes in this file)
+INCLUDE # reset back to present file's location (although there are no more includes in this file)
 
 CELL_DERIVED <turb_2SS_c> "cellmax(<turb_2SS>,<turb_2SS_min>)" ON <all cells> elementdata # double limited, incase averaging kernels are very very poor
 

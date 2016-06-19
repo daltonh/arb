@@ -42,10 +42,11 @@ GENERAL_REPLACEMENTS R "<<nonperiodicdomaincomment>>" W "" # default behaviour i
 #--------------------
 # now to solve for the fluid flow
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "stokes" # sets the stokes comment string to remove advective momentum terms
 INCLUDE "constants" # specify physical and numerical constants
 INCLUDE "domain" # equations to be solved within the domain
+INCLUDE
 
 # overwrite some variables to represent network channel flow, noting that all variables (ie, u, p, phi) are fluid properties
 
@@ -57,8 +58,9 @@ VARIABLE <continuity> "cellif(celldelta(<fluid_mask>),celldiv(<phi_f>*<u_f>),0.d
 
 # create cell centred stress that represents stress acting across vof interface and include this in the momentum balance
 GENERAL_REPLACEMENTS D "<<momentumwithvofstresscomment>>" W "" # default is on
-<<momentumwithvofstresscomment>>INCLUDE_ROOT "network_flow"
+<<momentumwithvofstresscomment>>INCLUDE_TEMPLATE "network_flow"
 <<momentumwithvofstresscomment>>INCLUDE "momentum_with_vof_stress"
+<<momentumwithvofstresscomment>>INCLUDE
 # without this the momentum equations remain unaltered
 
 # also for both stress approaches only solve momentum equations in the fluid mask
