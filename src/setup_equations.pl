@@ -710,8 +710,8 @@ sub read_input_files {
       elsif ($line =~ /^\s*INCLUDE(|_([A-Z]+))($|(\s*#)|\s)/i) {
         if (nonempty($2)) {$include_type = "\L$2";} else { $include_type = ''; }
 # note to user re deprecation of INCLUDE_ROOT
-        if ($include_type eq "root") {
-          print "WARNING: INCLUDE_ROOT has been deprecated (from v0.56), and should be replaced by INCLUDE_TEMPLATE for setting the include path and/or including an arb file that both reside somewhere within the templates directory\n";
+        if ($include_type eq "root" || $include_type eq "from") {
+          print "WARNING: INCLUDE_"."\U$include_type"." has been deprecated (from v0.56), and should be replaced by INCLUDE_TEMPLATE for setting the include path and/or including an arb file that both reside somewhere within the templates directory\n";
           $include_type = "template";
         }
         if ($3 =~ /#/) {$line = '';} else {$line = $';}
