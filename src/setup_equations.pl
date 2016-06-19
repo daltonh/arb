@@ -706,6 +706,7 @@ sub read_input_files {
       elsif ($line =~ /^\s*((START|BEGIN)_(COMMENT(S){0,1}|SKIP))($|#|\s)/i) { print "INFO: found \L$1\E statement in $file\n"; $skip=1; next; }
 
 # check for include statement, possibly opening new file
+# ref: include ref: include_template ref: include_local ref: include_absolute ref: include_working ref: include_last
       elsif ($line =~ /^\s*INCLUDE(|_([A-Z]+))($|(\s*#)|\s)/i) {
         if (nonempty($2)) {$include_type = "\L$2";} else { $include_type = ''; }
 # note to user re deprecation of INCLUDE_ROOT
@@ -723,10 +724,11 @@ sub read_input_files {
           if ($#{$input_files[$#input_files]{"include_path"}} > 0) {
 # this means to pull an item from the stack
             pop(@{$input_files[$#input_files]{"include_path"}});
-            print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) after one has been removed, current include paths are @{$input_files[$#input_files]{include_path}}\n";
+            print "INFO: an INCLUDE statement is removing an include_path from the stack, leaving: include_path = $input_files[$#input_files]{include_path}[0]\n";
+            print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) after one has been removed, currently: include_path = @{$input_files[$#input_files]{include_path}}\n";
           } else {
-            print "WARNING: an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: $input_files[$#input_files]{include_path}[0]\n";
-            print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) after failed removal attempt, only the single local (unremovable) path is left: $input_files[$#input_files]{include_path}[0]\n";
+            print "WARNING: an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $input_files[$#input_files]{include_path}[0]\n";
+            print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) after failed removal attempt, only the single local (unremovable) path is left: include_path = $input_files[$#input_files]{include_path}[0]\n";
           }
           next; # move to next statement
         }
@@ -789,7 +791,8 @@ sub read_input_files {
         if (nonempty($found_dir)) {
           if ($found_dir ne $input_files[$#input_files]{"include_path"}[$#{$input_files[$#input_files]{"include_path"}}]) {
             push(@{$input_files[$#input_files]{"include_path"}},$found_dir);
-            print DEBUG "INFO: adding new include_path $found_dir, making include_path array = @{$input_files[$#input_files]{include_path}}\n";
+            print "INFO: adding new include_path $found_dir, making: include_path = @{$input_files[$#input_files]{include_path}}\n";
+            print DEBUG "INFO: adding new include_path $found_dir, making: include_path = @{$input_files[$#input_files]{include_path}}\n";
             print UNWRAPPED_INPUT $indent x $#input_files, "#(comment generated during unwrap) adding new include_path $found_dir, making include_path array = @{$input_files[$#input_files]{include_path}}\n";
           } else {
             print UNWRAPPED_INPUT $indent x $#input_files, "#(comment generated during unwrap) not adding new include_path $found_dir, as it is already on the top of include_path array = @{$input_files[$#input_files]{include_path}}\n";
@@ -804,64 +807,14 @@ sub read_input_files {
         $input_files[$#input_files]{"name"} = $found_name; # name is the full path to the file
         $input_files[$#input_files]{"include_path"}[0] = $input_files[$#input_files-1]{"include_path"}[$#{$input_files[$#input_files-1]{"include_path"}}]; # set local path to last path of calling file
 
-#         $input_files[$#input_files+1]{"ref_name"} = $new_file; # extract filename from line of text
-# first need to determine if the string specifies a file or directory, looking through the include_path directories
-# assemble possible arb_filename if the string doesn't have an .arb extension
-#         if ($input_files[$#input_files]{"ref_name"} !~ /\.(arb|in)$/) {
-#           $input_files[$#input_files]{"arb_name"} = $input_files[$#input_files]{"ref_name"}.".arb";
-#         }
-# now loop through each of the include_paths, in reverse order
-#       print "largest input_files index: $#input_files\n";
-#       print "input_files include_path: $input_files[$#input_files]{include_path}\n";
-#       print "include_path array for this input_file = @{$input_files[$#input_files]{include_path}}\n";
-#         for my $search_path ( reverse( @{$input_files[$#input_files]{"include_path"}} ) ) {
-
-#           my $calling_path_depth = ($search_path) =~ tr!/!!; # from http://www.perlmonks.org/?node_id=984804 
-#           my $found_name = '';
-#           find ({ wanted => sub { wanted($calling_path_depth,$input_files[$#input_files]{"ref_name"},$found_name); }, bydepth => 1, no_chdir => 1},$search_path);
-#           if (nonempty($found_name)) { print "found $found_name at $search_path\n"; exit; }
-
-#         }
-
-#       }
-#           $input_files[$#input_files]{"include_path"}[$#input_files[$#input_files]{"include_path"}] = $input_files[$#input_files]{"include_path"}[$#input_files[$#input_files]{"include_path"}] = $input_files[$#input_files-1]{"include_path"}; # copy over include_path from previous file
-#         $input_files[$#input_files]{"name"} = '';
-# # append arb suffix to ref_name if it isn't already there - for v0.52 onwards, only arb or in suffixes are allowed
-#         if ( $input_files[$#input_files]{"ref_name"} !~ /.+\.(arb|in)$/ ) {
-#           $input_files[$#input_files]{"ref_name"} = $input_files[$#input_files]{"ref_name"}.'.arb';
-#         }
-# # ref: include working
-#         if ($working) {
-# # look only in working directory for the file
-#           if (-f "$working_dir/$input_files[$#input_files]{ref_name}") {
-#             $input_files[$#input_files]{"name"} = "$working_dir/$input_files[$#input_files]{ref_name}";
-#           }
-#         } else {
-# # prepend include_path directory to ref_name - no, now not looking in the working directory
-# #          if (nonempty($include_path)) { $input_files[$#input_files]{"ref_name"} = $include_path."/".$input_files[$#input_files]{"ref_name"}; }
-# # find location of the file, first looking in the specific template directory, then in all second and third level subsequent (sub)directories
-# # TODO: look at perl's Find::File for the really lazy users who don't write out template directory names in full and like to gamble on where the included files come from....
-# # ref: include
-#           my $include_path = $input_files[$#input_files]{"include_path"};
-#           foreach $try_dir ("$template_dir/$include_path",bsd_glob("$template_dir/*/$include_path"),bsd_glob("$template_dir/*/*/$include_path")) {
-#             if (-f "$try_dir/$input_files[$#input_files]{ref_name}") {
-#               $input_files[$#input_files]{"name"} = "$try_dir/$input_files[$#input_files]{ref_name}";
-#               last;
-#             }
-#           }
-#         }
-#       if (empty($input_files[$#input_files]{"name"})) {
-#         error_stop("cannot find the input file $input_files[$#input_files]{ref_name} referenced:\nfile = $file :line = $oline");
-#       } else {
-#       print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
-#       print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
+        print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
+        print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
         print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"#(comment generated during unwrap) the following is INCLUDED from $input_files[$#input_files]{name}";
 # ref: FILENAME
 # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
         if (empty($simulation_info{"filename"})) {
           $simulation_info{"filename"} = $input_files[$#input_files]{"ref_name"};
         }
-#       }
 
 # now extract replacements
         while (!($line=~/^\s*(|#.*)$/)) {
@@ -893,23 +846,6 @@ sub read_input_files {
         $file = $input_files[$#input_files]{"ref_name"};
         open($handle, "<$input_files[$#input_files]{name}") or die "ERROR: problem opening arb input file $input_files[$#input_files]{name}\n";;
         next; # skip to reading the next line (in the included file)
-
-# set include_path
-# ref: include root
-#     } elsif ($line =~ /^\s*INCLUDE_(ROOT|FROM)\s*(($|#)|(.+))/i) {
-#       if ($3) { # no string follows, so reset include_path back to parent value
-#         if ($#input_files == 0) {
-#           $input_files[$#input_files]{"include_path"} = '';
-#         } else {
-#           $input_files[$#input_files]{"include_path"} = $input_files[$#input_files-1]{"include_path"} 
-#         }
-#       } else {
-#         $line = $4;
-#         $input_files[$#input_files]{"include_path"} = extract_first($line,$error);
-#         if ($error) {error_stop("matching delimiters not found in the following:\nfile = $file: line = $oline")}
-#       }
-#       print UNWRAPPED_INPUT $indent x $#input_files,"# INFO: setting include root directory to $input_files[$#input_files]{include_path}\n";
-#       next;
 
 # extract any general replacements, pushing them onto the back of the existing list
 # replacements are performed in reverse order, so latest replacement definitions take precedence
@@ -1603,7 +1539,7 @@ sub wanted {
                             "  new_file = $new_file: local_depth = $local_depth\n"; }
 
 # first check if it is at all possible that a name can be found that will overwrite already found name
-  if (nonempty($found_name) && ( $local_depth > $found_depth || ($found_type == 'directory' && $local_depth >= $found_depth) ) ) {
+  if (nonempty($found_name) && ( $local_depth > $found_depth || ($found_type eq 'directory' && $local_depth >= $found_depth) ) ) {
     if ($debug) { print DEBUG "in wanted: nonempty found_name coupled with large local_depth (criterion on local_depth depends on found_type):".
                               "found_type = $found_type: found_depth = $found_depth: local_depth = $local_depth\n"; }
 # if a name has been found, that is already at a lower depth, prune all subsequent directories
