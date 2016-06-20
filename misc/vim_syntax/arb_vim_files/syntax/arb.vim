@@ -1,7 +1,7 @@
 " Vim syntax file for arb finite volume solver
 " Language:     arb
 " Version:      0.56
-" Modified:     2016/05/02
+" Modified:     2016/06/20
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 " Maintainer:   Christian Biscombe
 
@@ -39,7 +39,7 @@ syn region arbTodo start="\%(FIXME\|TODO\|XXX\)" end="$" contained
 
 syn keyword arbStatement COMPOUND_OPTIONS DEFAULT_OPTIONS END GENERAL GENERAL_OPTIONS GENERAL_REPLACEMENTS GLUE_FACES ITERRESRELTOL ITERRESTOL ITERSTEPCHECK ITERSTEPMAX NEWTIENT_SIMULATION NONNEWTIENT_SIMULATION NEWTRESTOL NEWTSTEPADDITIONAL NEWTSTEPDEBUGOUT NEWTSTEPMAX NEWTSTEPMIN NEWTSTEPOUT NEWTSTEPSTART ON OVERRIDE_OPTIONS REPLACEMENTS STEADYSTATE_SIMULATION TIMESTEPADDITIONAL TIMESTEPMAX TIMESTEPMIN TIMESTEPOUT TIMESTEPSTART TRANSIENT_SIMULATION NONTRANSIENT_SIMULATION VARIABLE_OPTIONS VERSION
 syn match arbStatement "\%(\)\<STEADY-STATE_SIMULATION\>"
-syn keyword arbStatement INCLUDE INCLUDE_LOCAL INCLUDE_LAST INCLUDE_WORKING INCLUDE_TEMPLATE INCLUDE_ABSOLUTE MSH_FILE nextgroup=arbString,arbFilename skipwhite
+syn keyword arbStatement INCLUDE INCLUDE_ABSOLUTE INCLUDE_LAST INCLUDE_LOCAL INCLUDE_TEMPLATE INCLUDE_WORKING MSH_FILE nextgroup=arbString,arbFilename skipwhite
 syn match arbStatement "\<\%(EXTERNALS\=\)\>" nextgroup=arbString,arbFilename skipwhite
 syn keyword arbStatement C CANCEL D DEFAULT R REPLACE W WITH nextgroup=arbString,arbUnquotedString,arbComment skipwhite
 syn match arbStatement "\<\%(INFO_AUTHOR\|INFO_DATE\|INFO_DESCRIPTION\|INFO_FILENAME\|INFO_RUNDATE\|INFO_RUNHOST\|INFO_RUNVERSION\|INFO_TITLE\|INFO_VERSION\)\>\%(+\|-\)\=" nextgroup=arbString,arbUnquotedString skipwhite
@@ -47,7 +47,8 @@ syn keyword arbStatement ERROR INFO WARNING nextgroup=arbString skipwhite
 syn match arbOmniList "\%(KERNEL_OPTIONS\|SOLVER_OPTIONS\)"
 syn region arbKernelStatement matchgroup=arbStatement start="\<KERNEL\%(S\|_OPTIONS\=\)\=" end="$" contains=arbComment,arbDeprecated,arbKernelOption,arbLogical,arbNumber,arbOperator,arbSystemFlag,arbUserFlag keepend
 syn region arbSolverStatement matchgroup=arbStatement start="\<SOLVER\%(S\|_OPTIONS\=\)\=" end="$" contains=arbComment,arbLogical,arbNumber,arbOperator,arbSolverOption,arbSystemFlag,arbUserFlag keepend
-syn keyword arbDeprecated DIMENSIONS READ_GMSH
+syn keyword arbDeprecated DIMENSIONS 
+syn keyword arbDeprecated INCLUDE_FROM INCLUDE_ROOT READ_GMSH nextgroup=arbString,arbFilename skipwhite
 syn match arbDeprecated "\<LINEAR_SOLVER\%(\s\+\%(DEFAULT\|HSL_MA28\|INTEL_PARDISO\%(_OOC\)\=\|SUITESPARSE_UMF\)\)\=\>"
 
 syn keyword arbStatement      CONDITION      CONSTANT      DERIVED      EQUATION      LOCAL      NEWTIENT      OUTPUT      REGION_CONSTANT      REGION_LIST      TRANSIENT      UNKNOWN      VARIABLE nextgroup=arbName,arbNameError skipwhite
