@@ -1708,16 +1708,38 @@ sub organise_regions {
 #-------------
 # add the SYSTEM regions to the start of the region array
 # SYSTEM regions are those that would be commonly used by a user and which have a corresponding fortran region entity
+
+  unshift(@region,{ name => '<boundarynodes>', type => 'system', centring => 'node', synonyms => ['<boundary nodes>'] });
+  unshift(@region,{ name => '<domainnodes>', type => 'system', centring => 'node', synonyms => ['<domain nodes>'] });
+  unshift(@region,{ name => '<allnodes>', type => 'system', centring => 'node', synonyms => ['<all nodes>'] });
+  unshift(@region,{ name => '<boundaries>', type => 'system', centring => 'face', synonyms => ['<boundaryfaces>', '<boundary faces>'] });
+  unshift(@region,{ name => '<domainfaces>', type => 'system', centring => 'face', synonyms => ['<domain faces>'] });
+  unshift(@region,{ name => '<allfaces>', type => 'system', centring => 'face', synonyms => ['<all faces>'] });
+  unshift(@region,{ name => '<boundarycells>', type => 'system', centring => 'cell', synonyms => ['<boundary cells>'] });
+  unshift(@region,{ name => '<domain>', type => 'system', centring => 'cell', synonyms => ['<domaincells>', '<domain cells>'] });
+  unshift(@region,{ name => '<allcells>', type => 'system', centring => 'cell', synonyms => ['<all cells>'] });
   
-  unshift(@region,{ name => '<boundarynodes>', type => 'system', centring => 'node', synonyms => ('<boundary nodes>') });
-  unshift(@region,{ name => '<domainnodes>', type => 'system', centring => 'node', synonyms => ('<domain nodes>') });
-  unshift(@region,{ name => '<allnodes>', type => 'system', centring => 'node', synonyms => ('<all nodes>') });
-  unshift(@region,{ name => '<boundaries>', type => 'system', centring => 'face', synonyms => ('<boundaryfaces>', '<boundary faces>') });
-  unshift(@region,{ name => '<domainfaces>', type => 'system', centring => 'face', synonyms => ('<domain faces>') });
-  unshift(@region,{ name => '<allfaces>', type => 'system', centring => 'face', synonyms => ('<all faces>') });
-  unshift(@region,{ name => '<boundarycells>', type => 'system', centring => 'cell', synonyms => ('<boundary cells>') });
-  unshift(@region,{ name => '<domain>', type => 'system', centring => 'cell', synonyms => ('<domaincells>', '<domain cells>') });
-  unshift(@region,{ name => '<allcells>', type => 'system', centring => 'cell', synonyms => ('<all cells>') });
+# unshift(@region,{ name => '<boundarynodes>', type => 'system', centring => 'node' });
+# push(@{$region[0]{"synonyms"}},'<boundary nodes>');
+# unshift(@region,{ name => '<domainnodes>', type => 'system', centring => 'node' });
+# push(@{$region[0]{"synonyms"}},'<domain nodes>');
+# unshift(@region,{ name => '<allnodes>', type => 'system', centring => 'node' });
+# push(@{$region[0]{"synonyms"}},'<all nodes>');
+# unshift(@region,{ name => '<boundaries>', type => 'system', centring => 'face' });
+# push(@{$region[0]{"synonyms"}},'<boundaryfaces>');
+# push(@{$region[0]{"synonyms"}},'<boundary faces>');
+# unshift(@region,{ name => '<domainfaces>', type => 'system', centring => 'face' });
+# push(@{$region[0]{"synonyms"}},'<domain faces>');
+# unshift(@region,{ name => '<allfaces>', type => 'system', centring => 'face' });
+# push(@{$region[0]{"synonyms"}},'<all faces>');
+# unshift(@region,{ name => '<boundarycells>', type => 'system', centring => 'cell' });
+# push(@{$region[0]{"synonyms"}},'<boundary cells>');
+# unshift(@region,{ name => '<domain>', type => 'system', centring => 'cell' });
+# push(@{$region[0]{"synonyms"}},'<domaincells>');
+# push(@{$region[0]{"synonyms"}},'<domain cells>');
+# unshift(@region,{ name => '<allcells>', type => 'system', centring => 'cell' });
+# push(@{$region[0]{"synonyms"}},'<jibbers2>');
+# push(@{$region[0]{"synonyms"}},'<all cells>');
 
 #-------------
 # now enter all INTERNAL regions, now at the end of the array
@@ -2298,7 +2320,16 @@ sub match_region {
   use strict;
   
   if ( ( $region[$_[0]]{'type'} eq 'internal' && $_[1] =~ /$region[$_[0]]{name}/ ) ||
-       ( $region[$_[0]]{'type'} ne 'internal' && $_[1] eq $region[$_[0]]{"name"}) ) {
+#      ( $region[$_[0]]{'type'} ne 'internal' && $_[1] eq $region[$_[0]]{"name"}) ) {
+       ( $region[$_[0]]{'type'} ne 'internal' && ( $_[1] eq $region[$_[0]]{"name"} || $_[1] ~~ @{$region[$_[0]]{"synonyms"}}) ) ) {
+#      ( $region[$_[0]]{'type'} ne 'internal' && ( $_[1] eq $region[$_[0]]{"name"} || $_[1] ~~ $region[$_[0]]{"synonyms"}) ) ) {
+
+    if ($_[1] ~~ @{$region[$_[0]]{"synonyms"}}) {
+#   if ($_[1] ~~ $region[$_[0]]{"synonyms"}) {
+      print DEBUG "INFO: synonym between $_[1] and one of: @{$region[$_[0]]{synonyms}}\n";
+#     print DEBUG "INFO: synonym between $_[1] and one of: $region[$_[0]]{synonyms}\n";
+    }
+
     return (1);
   } else {
     return (0);
