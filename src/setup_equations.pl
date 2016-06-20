@@ -1082,8 +1082,20 @@ sub read_input_files {
 # read in regions and store in an array
         while ($line =~ /^\s*(<.+?>)\s*/) { 
           $line = $';
-          push(@{$region_list{"regions"}},$1); # the regions hash contains an array of region names
+#         push(@{$region_list{"regions"}},$1); # the regions hash contains an array of region names
+          my $portable_region_name = $1;
+          my $nfound = find_region($portable_region_name);
+          if ($nfound >= 0) {
+            print DEBUG "INFO: synonym found on REGION_LIST read: portable_region_name = $portable_region_name: nfound = $nfound: region[$nfound]{name} = $region[$nfound]{name}\n";
+            $portable_region_name = $region[$nfound]{"name"};
+          }
+          push(@{$region_list{"regions"}},$portable_region_name); # the regions hash contains an array of region names
         }
+
+#           my $portable_region_name = $variable{$type}[$mvar]{region_list}[$n];
+#           my $nfound = find_region($portable_region_name);
+#           if ($nfound > 0) { 
+
         if ($line !~ /^\s*$/) {error_stop("there is a syntax error in the following REGION_LIST statement:\nfile = $file: line = $oline");}
         if (empty($region_list{"regions"})) {error_stop("the following REGION_LIST statement contains no regions:\nfile = $file: line = $oline");}
 # print some info about this
