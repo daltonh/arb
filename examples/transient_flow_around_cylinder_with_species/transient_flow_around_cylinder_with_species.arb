@@ -21,7 +21,7 @@ INFO_DATE "29/1/15" # interpreted as the last modification date
 #KERNEL_OPTIONS checkminw=.true.,minimumminw=0.8d0 # reducing the minw a bit which will decrease the size of the kernels
 
 # include to examine kernel quality
-#INCLUDE_ROOT "general"
+#INCLUDE_TEMPLATE "general"
 #INCLUDE "kernel_parameters"
 #-------------------------------------------------------------------
 # geometry
@@ -90,7 +90,7 @@ GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any refere
 NONE_CONSTANT <cylinder size> "nodemax(<nodex[l=2]>,region=<cylinder nodes>)-nodemin(<nodex[l=2]>,region=<cylinder nodes>)"
 
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "constants" # specify physical and numerical constants
 #INCLUDE "transient_dynamic_setup" # a dynamic timestep to keep the CFL number at a specified level
 INCLUDE "transient_constant_setup" # a constant timestep
@@ -139,7 +139,7 @@ INCLUDE "CFL_number" # this calculates the CFL number actually used
 #END # include to only do fluids problem
 #-------------------------------------------------------------------
 # also track a concentration field, which eminates from the cylinder surface (Dirichlet boundary condition)
-INCLUDE_ROOT "species_transport"
+INCLUDE_TEMPLATE "species_transport"
 
 # the following implements non-limited advection of <c>
 # without any change to <c limiter> this results in first order upwinding of <c>, which is stable, produces bounded results, but is not accurate
@@ -148,7 +148,7 @@ INCLUDE_ROOT "species_transport"
 # the following implements high order limited advection of <c>, with limits on the gradient found by looking upwind 2 levels of separation from each cell
 INCLUDE "equations" R "<<limiterupwindseparation>>" W "2" # 2 is the default, anymore is probably overboard, but it does demonstrates how to change this separation
 # further, modify the parameters used in the advection limiting routine to be less conservative (less stable, but more accurate by doing less gradient limiting)
-INCLUDE_ROOT "advection_limiters/implicit"
+INCLUDE_TEMPLATE "advection_limiters/implicit"
 INCLUDE "extreme_parameters" R "<phi" W "<c" # set higher accuracy but lower stability advection parameters
 VARIABLE <c limiter> output
 

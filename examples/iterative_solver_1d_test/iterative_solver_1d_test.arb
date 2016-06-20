@@ -25,7 +25,7 @@ NONE_OUTPUT <T average> [1] "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<
 ##FACE_OUTPUT <T right normalised> "<T right>/nonemagnitude(variable=<T right>)" ON <right>
 FACE_OUTPUT <T left normalised> "<T left>/nonemagnitude(variable=<T left>)" ON <left>
 
-#INCLUDE_ROOT "general"
+#INCLUDE_TEMPLATE "general"
 #INCLUDE "element_information"
 
 # there are many iterative solvers now, but doglegdescent is really the only viable one for reasonably sized problems

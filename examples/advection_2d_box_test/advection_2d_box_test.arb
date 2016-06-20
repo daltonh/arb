@@ -58,7 +58,7 @@ CELL_CONSTANT <foo theory> "cellif(abs(<x_phi>)-0.25d0,0.d0,1.d0)"
 # different limiter options
 
 # limiters are taken from the following template directory
-INCLUDE_ROOT "advection_limiters/implicit"
+INCLUDE_TEMPLATE "advection_limiters/implicit"
 
 #--------------------
 # absolute limiter, applied between 0 and 1 (default values)

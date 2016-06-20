@@ -47,13 +47,14 @@ NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<all faces>)"
 #GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
 
 # for pipe flow include the following, which deals with the number of dimensions and appropriate reflections
-INCLUDE_ROOT "general"
+INCLUDE_TEMPLATE "general"
 INCLUDE "cylindrical_reflect_r2z1"
+INCLUDE
 
 # variables etc
 
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "nondimensional_constants" # specify physical and numerical constants
 INCLUDE "domain" # equations to be solved within the domain
 INCLUDE "outlet_p_set" # outlet BC, fully developed u, setting pressure along each outlet cell to zero

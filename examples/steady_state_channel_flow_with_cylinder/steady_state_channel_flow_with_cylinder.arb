@@ -76,7 +76,7 @@ GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any refere
 # variables etc
 
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "constants" # specify physical and numerical constants
 INCLUDE "domain" # equations to be solved within the domain
 INCLUDE "outlet_p_set" # outlet BC
@@ -106,6 +106,6 @@ VARIABLE <u_f> output
 VARIABLE <J_f[l=1]> output
 VARIABLE <tau[l=1,1]> output
 
-#INCLUDE_ROOT "navier_stokes"
+#INCLUDE_TEMPLATE "navier_stokes"
 #INCLUDE "strain_rate_magnitude"
 #-------------------------------------------------------------------

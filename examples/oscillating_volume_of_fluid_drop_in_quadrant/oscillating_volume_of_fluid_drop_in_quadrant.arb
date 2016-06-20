@@ -72,7 +72,7 @@ GLUE_FACES <fluid south> reflect=2
 
 #-------------------------------------------------------------------
 
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 # commands to form the single mesh regions from the fluid msh file
 <<singledomaincomment>>INCLUDE "single_region_formation"
 # commands to form the double mesh regions from both the fluid and free surface msh files
@@ -83,7 +83,7 @@ INCLUDE_ROOT "free_surface/volume_of_fluid"
 <<doubledomaincomment>>INCLUDE "fluid_replacements"
 
 # setup basic cylindrical general replacements by including the following two lines
-<<cylindricalcomment>>INCLUDE_ROOT "general"
+<<cylindricalcomment>>INCLUDE_TEMPLATE "general"
 <<cylindricalcomment>>INCLUDE "cylindrical_reflect_r1z2"
 <<cartesiancomment>>GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
 <<cartesiancomment>>GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
@@ -91,7 +91,7 @@ INCLUDE_ROOT "free_surface/volume_of_fluid"
 GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2"
 
 # bring in default physical and numerical constants
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 <<nonuniformcomment>>INCLUDE "nonuniform_properties" # setup the density and viscosity uniform properties strings based on the <<uniformcomment>> string
 INCLUDE "nondimensional_constants"
 
@@ -109,7 +109,7 @@ CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
 #CONSTANT <dt_surf> "0.5d0*sqrt(0.5d0*<We>*<celldxave>^3/<pi>)"
 #NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
 
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 INCLUDE "nondimensional_constants"
 # calculate the mac2 cartesian vof velocity errors for reference (http://dx.doi.org/10.1016/j.apm.2005.08.015)
 <<uniformcomment>>INCLUDE "parasitic_mac2_correlation"
@@ -131,7 +131,7 @@ CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity compone
 CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
 
 # CSF based levelset formulation with reinitialisation
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 INCLUDE "setup"
 
 # define real initial vof
@@ -162,7 +162,7 @@ INCLUDE "high_order_interface_geometry"
 INCLUDE "force" # force done back on the fluid mesh
 
 # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 # nonuniform
 <<nonuniformcomment>>INCLUDE "total_stress" R "<mu_f>" W "<vof_mu_harmonic_f>"
 <<nonuniformcomment>>INCLUDE "u_f" R "<rho_f>" W "<vof_rho_f>" R "<mu_f>" W "<vof_mu_f>"
@@ -172,11 +172,11 @@ INCLUDE_ROOT "navier_stokes"
 <<uniformcomment>>INCLUDE "u_f"
 <<uniformcomment>>INCLUDE "advection_flux"
 
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 INCLUDE "dynamic_force"
 INCLUDE "equation" # all phi advection done on fluid mesh
 
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "momentum_flux"
 # nonuniform
 <<nonuniformcomment>>INCLUDE "conservation" R "<rho>" W "<vof_rho_c>" R "<rho[r=1]>" W "<vof_rho_c[r=1]>" R "<mu>" W "<vof_mu_c>"
@@ -184,9 +184,9 @@ INCLUDE "momentum_flux"
 <<uniformcomment>>INCLUDE "conservation"
 
 # fluid boundary conditions on nonslip walls
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 INCLUDE "walls_nonwetting" # NB: BC applied on fluid walls
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "walls_p_set"
 
 #-------------------------------------------------------------------
@@ -243,7 +243,7 @@ VARIABLE <vof_F_c[l=1]> output
 #VARIABLE <vof_phi_adjust[r=1]> newtstepmax=50
 
 # to show the interface masks include this file
-#INCLUDE_ROOT "free_surface/volume_of_fluid"
+#INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 #INCLUDE "output_masks"
 
 # for the high order method only, adjust the interface width

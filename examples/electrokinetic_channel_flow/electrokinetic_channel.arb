@@ -18,7 +18,7 @@ GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any refere
 GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centreline is horizontal need to include reflect=2 when differentiating of averaging any l=2 vector components
 INFO_DESCRIPTION+ ": cartesian slit flow"
 # for cylindrical pipe flow include the following:
-#INCLUDE_ROOT "general"
+#INCLUDE_TEMPLATE "general"
 #INCLUDE "cylindrical_reflect_r2z1"
 #INFO_DESCRIPTION+ ": cylindrical pipe flow (note, analytical expressions are not correct for this yet)"
 
@@ -58,33 +58,33 @@ MSH_FILE "electrokinetic_channel_structured_nonuniform.msh"
 
 # use templates from the electrokinetics template directory to build up problem
 # use these for a dimensional problem
-#INCLUDE_ROOT "navier_stokes"
+#INCLUDE_TEMPLATE "navier_stokes"
 #INCLUDE "constants" # specify physical and numerical constants
-#INCLUDE_ROOT "electrokinetics"
+#INCLUDE_TEMPLATE "electrokinetics"
 #INCLUDE "constants" # and the same for the electrokinetic equations
 # or these for a nondimensional problem
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "nondimensional_constants" # specify physical and numerical constants
-INCLUDE_ROOT "electrokinetics"
+INCLUDE_TEMPLATE "electrokinetics"
 INCLUDE "nondimensional_constants" # and the same for the electrokinetic equations
 
 # some concentrations and charges required in other equations, and also the face centred potential required in the dynamic_force calculation
 INCLUDE "binary_ion_combinations"
 
 # now the flow parts
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "domain"
-INCLUDE_ROOT "electrokinetics"
+INCLUDE_TEMPLATE "electrokinetics"
 INCLUDE "dynamic_force" # overwrite the dynamic_force used in the navier-stokes equations to include an electrical forcing term
 
 # and the flow boundary conditions
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "walls_noslip" # nonslip walls BC
 INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure gradient to give using <u_av>
 INCLUDE "outlet_u_fully_developed" # fully developed velocity profile, setting pressure at centreline to zero and a uniform pressure gradient
 
 # now ion transport and potential equation
-INCLUDE_ROOT "electrokinetics"
+INCLUDE_TEMPLATE "electrokinetics"
 INCLUDE "binary_ion_equations" # transport of binary electrolyte (positive and negative ions), including boundary conditions
 INCLUDE "potential_equations" # electrical poisson equation for potential, including boundary conditions
 

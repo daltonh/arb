@@ -7,7 +7,7 @@
 VERSION 0.50 # the version of syntax used in this file
 
 # setup turbulence model variables first
-INCLUDE_ROOT "turbulence/general"
+INCLUDE_TEMPLATE "turbulence/general"
 # include one of the three models:
 # prandtl zero equation model:
 #INCLUDE "setup_prandtl_zero_equation"
@@ -108,13 +108,13 @@ GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any refere
 # variables etc
 
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "constants" # specify physical and numerical constants
 
 # more turbulence setup
-<<turbwilcox88comment>>INCLUDE_ROOT "turbulence/wilcox88"
-<<turbprandtl1comment>>INCLUDE_ROOT "turbulence/prandtl_one_equation"
-<<turbprandtl0comment>>INCLUDE_ROOT "turbulence/prandtl_zero_equation"
+<<turbwilcox88comment>>INCLUDE_TEMPLATE "turbulence/wilcox88"
+<<turbprandtl1comment>>INCLUDE_TEMPLATE "turbulence/prandtl_one_equation"
+<<turbprandtl0comment>>INCLUDE_TEMPLATE "turbulence/prandtl_zero_equation"
 INCLUDE "constants" # common to all methods
 <<turbwilcox88comment>>INCLUDE "transients"
 INCLUDE "viscosity" # common to all methods
@@ -140,25 +140,25 @@ INCLUDE "viscosity" # common to all methods
 #INCLUDE "base_limited_mu_t" # limit base_mu_t as a multiple of the background mu_t to avoid transient solutions etc
 #NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.4d0
 
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "domain" R "<mu_f>" W "<turb_mu_u_f>" R "<mu>" W "<turb_mu_u_c>" # equations to be solved within the domain 
 
-INCLUDE_ROOT "turbulence/general"
+INCLUDE_TEMPLATE "turbulence/general"
 INCLUDE "u_f_turbulence" # the rhie-chow interpolation is given the same prandtl zero equation based viscosity, regardless of turbulence tehcnique
 
-<<turbprandtl1comment>>INCLUDE_ROOT "turbulence/prandtl_one_equation"
+<<turbprandtl1comment>>INCLUDE_TEMPLATE "turbulence/prandtl_one_equation"
 <<turbprandtl1comment>>INCLUDE "domain_steady_state"
 <<turbprandtl1comment>>INCLUDE "inlet"
 <<turbprandtl1comment>>INCLUDE "outlet"
 <<turbprandtl1comment>>INCLUDE "walls"
 
-<<turbwilcox88comment>>INCLUDE_ROOT "turbulence/wilcox88"
+<<turbwilcox88comment>>INCLUDE_TEMPLATE "turbulence/wilcox88"
 <<turbwilcox88comment>>INCLUDE "domain_steady_state"
 <<turbwilcox88comment>>INCLUDE "inlet"
 <<turbwilcox88comment>>INCLUDE "outlet"
 <<turbwilcox88comment>>INCLUDE "walls"
 
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "outlet_p_set" # outlet BC
 INCLUDE "walls" # nonslip walls BC
 
@@ -201,7 +201,7 @@ VARIABLE <turb_2SS> output
 CONSTANT <adv_limiter> [] 0.d0 # multiplier used to limit gradients when calculating advection fluxes
 
 # some diagnostics
-<<turbwilcox88comment>>INCLUDE_ROOT "turbulence/wilcox88"
+<<turbwilcox88comment>>INCLUDE_TEMPLATE "turbulence/wilcox88"
 <<turbwilcox88comment>>INCLUDE "smoothed_mu_t_diagnostics"
 <<turbwilcox88comment>>INCLUDE "wall_diagnostics"
 
@@ -210,7 +210,7 @@ CONSTANT <adv_limiter> [] 0.d0 # multiplier used to limit gradients when calcula
 #INCLUDE "strain_rate_background"
 
 # output some info about the mesh
-#INCLUDE_ROOT "general"
+#INCLUDE_TEMPLATE "general"
 #INCLUDE "cell_aspect_ratio"
 #INCLUDE "element_indicies"
 

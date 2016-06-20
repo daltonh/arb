@@ -69,7 +69,7 @@ NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition 
 NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
 NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
 
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 
 # the following is roughly similar to what is contained in setup within volume_of_fluid, but adapted for transient problem
 CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <all cells>

@@ -5,7 +5,7 @@ VERSION 0.42
 #KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2,polynomialcellorder=2
 
 # setup basic cylindrical general replacements
-#INCLUDE_ROOT "general"
+#INCLUDE_TEMPLATE "general"
 #INCLUDE "cylindrical_reflect_r1z2"
 # or, setup basic cartesian reflect general replacements
 GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files

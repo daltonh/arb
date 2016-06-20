@@ -37,7 +37,7 @@ NODE_EQUATION <phi_n equation> "<phi_n>-nodegrad[l=1](<cellx[l=1]>)" ON <all nod
 # the following needs faceave
 #FACE_EQUATION <phi_f equation> "<phi_f>-faceave(<cellx[l=1]>)" ON <all faces>
 
-INCLUDE_ROOT "general"
+INCLUDE_TEMPLATE "general"
 INCLUDE "element_information"
 INCLUDE "kernel_information"
 INCLUDE "mesh_quality"

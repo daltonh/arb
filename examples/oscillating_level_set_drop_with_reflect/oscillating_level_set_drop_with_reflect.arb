@@ -17,16 +17,16 @@ INFO_DESCRIPTION+ ": setup for cylindrical (default) or cartesian"
 #KERNEL_OPTIONS polynomialorder=2
 
 # setup basic cylindrical general replacements
-INCLUDE_ROOT "general"
+INCLUDE_TEMPLATE "general"
 INCLUDE "cylindrical_reflect_r1z2"
 # or, setup basic cartesian reflect general replacements
 #GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
 #GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
 
 # bring in default physical and numerical constants
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "nondimensional_constants"
-INCLUDE_ROOT "free_surface/level_set"
+INCLUDE_TEMPLATE "free_surface/level_set"
 INCLUDE "nondimensional_constants"
 
 # physical data, now for nondimensional uniform properties
@@ -128,7 +128,7 @@ FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <fluid all faces>
 #FACE_TRANSIENT <u_f[r=1]> "0.d0" "0.d0" ON <fluid all faces>
 
 # CSF based levelset formulation with reinitialisation
-INCLUDE_ROOT "free_surface/level_set"
+INCLUDE_TEMPLATE "free_surface/level_set"
 INCLUDE "setup" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>"
 
 CELL_LOCAL <ls_phi_fluid> "cellif(celldelta(<fluid domain>),celltocelllink(expression=<ls_phi>,localregion=<fluid domain>,remoteregion=<level set centre>),0.d0)+cellif(celldelta(<fluid boundary cells>),celltofacelink(expression=<ls_phi>,localregion=<fluid boundary cells>,remoteregion=<level set centre boundaries>),0.d0)" ON <fluid all cells> output,elementdata
@@ -158,7 +158,7 @@ INCLUDE "force" R "<all cells>" W "<level set all cells>" R "<all faces>" W "<le
 <<dim3comment>>CELL_LOCAL <ls_F_c_fluid[l=3]> "cellif(celldelta(<fluid domain>),<ls_F_c_fluid_domain[l=3]>,0.d0)+cellif(celldelta(<fluid boundary cells>),cellave[<<reflect=3>>](faceave[downcell,<<reflect=3>>](<ls_F_c_fluid_domain[l=3]>)),0.d0)" ON <fluid all cells>
 
 # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "total_stress" R "<all faces>" W "<fluid all faces>"
 INCLUDE "u_f" R "<all cells>" W "<fluid all cells>" R "<domain faces>" W "<fluid domain faces>" R "<all faces>" W "<fluid all faces>"
 INCLUDE "advection_flux" R "<all faces>" W "<fluid all faces>"
@@ -173,7 +173,7 @@ VARIABLE <dynamic_force_f> "<dynamic_force_f>+<sigma>*facetofacelink(expression=
 
 VARIABLE <ls_F_c[l=1]> output # set output on
 
-INCLUDE_ROOT "free_surface/level_set"
+INCLUDE_TEMPLATE "free_surface/level_set"
 # need to generalise this in the future to cope with slip walls by extrapolating <u_f> out into <level set edge region>
 FACE_LOCAL <ls_u_f> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
 FACE_LOCAL <ls_u_f[r=1]> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f[r=1]>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
@@ -181,7 +181,7 @@ INCLUDE "equation" R "<domain>" W "<level set domain>" R "<all cells>" W "<level
 
 # fluid boundary conditions on nonslip walls
 INCLUDE "walls_ls_grad_set" R "<walls>" W "<level set walls>"
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "walls_p_set" R "<walls>" W "<fluid walls>"
 
 #-------------------------------------------------------------------

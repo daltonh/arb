@@ -74,7 +74,7 @@ GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centrelin
 # variables etc
 
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "nondimensional_constants" # specify physical and numerical constants
 INCLUDE "domain" # equations to be solved within the domain
 

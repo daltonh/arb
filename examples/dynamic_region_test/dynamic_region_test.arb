@@ -37,7 +37,7 @@ GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any refere
 GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
 
 # vof based CSF
-#INCLUDE_ROOT "volume_of_fluid"
+#INCLUDE_TEMPLATE "volume_of_fluid"
 #INCLUDE "setup"
 CONSTANT <vof_phi_tol> 1.d-8
 
