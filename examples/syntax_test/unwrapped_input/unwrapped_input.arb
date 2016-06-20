@@ -5,8 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: syntax_test.arb
 #(hash added during unwrap)INCLUDE_WORKING "syntax_test.arb"
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../syntax_test.arb without any search/replace combinations
+#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
+   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   #(comment generated during unwrap) the following is INCLUDED from ../syntax_test.arb without any search/replace combinations
    # this file just tests the syntax parsing
    
    CELL_REGION <awful name ddot( () []> "COMPOUND +<domain>-<all cells>+<domain>"
@@ -26,6 +27,6 @@ EXTERNALS "src/free_surface_functions.f90"
    CELL_OUTPUT <jibber2> "1.d0" # this will cancel the initial_equation expression
    FACE_VARIABLE <jibber2>
    NONE_VARIABLE <jibber2> # after all of the replacements, <jibber2> should be a NONE_OUTPUT
-   # INCLUDE FINISHED for ../syntax_test.arb
-   #--------------------------------------------------------
+   #(comment generated during unwrap) INCLUDE finished for ../syntax_test.arb
+   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

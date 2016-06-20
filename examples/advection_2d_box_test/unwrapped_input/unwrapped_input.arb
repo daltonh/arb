@@ -5,8 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: advection_2d_box_test.arb
 #(hash added during unwrap)INCLUDE_WORKING "advection_2d_box_test.arb"
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../advection_2d_box_test.arb without any search/replace combinations
+#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
+   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   #(comment generated during unwrap) the following is INCLUDED from ../advection_2d_box_test.arb without any search/replace combinations
    # arb by dalton harvie
    # file equations.in
    #----------------------------------------------------------------------------
@@ -67,19 +68,20 @@ EXTERNALS "src/free_surface_functions.f90"
    # different limiter options
    
    # limiters are taken from the following template directory
-   #(hash added during unwrap)INCLUDE_ROOT "advection_limiters/implicit"
-   # INFO: setting include root directory to advection_limiters/implicit
+   #(hash added during unwrap)INCLUDE_TEMPLATE "advection_limiters/implicit"
+   #(comment generated during unwrap) adding new include_path ../templates/advection_limiters/implicit, making include_path array = .. ../templates/advection_limiters/implicit
    
    #--------------------
    # absolute limiter, applied between 0 and 1 (default values)
    
    #(hash added during unwrap)INCLUDE "absolute_limiter" R "<phi" W "<foo"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/advection_limiters/implicit/absolute_limiter.arb with the following search/replace combinations: replace <phi with <foo
+   #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = .. ../templates/advection_limiters/implicit
+      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/advection_limiters/implicit/absolute_limiter.arb with the following search/replace combinations: replace <phi with <foo
       # this file produces a limiter (<foo limiter>) that can be used to limit advective quantities
       
       # to use these limiters for a general cell-centred variable <foo> say you need to:
-      # INCLUDE_ROOT "limiters_2d"
+      # INCLUDE_TEMPLATE "limiters_2d"
       # INCLUDE "absolute_limiter" R <foo W <foo
       # these will produce a CELL_DERIVED <foo limiter> on <all cells>
       # a byproduct is the CELL_DERIVED <foo limiter grad[l=:]> vectors which can also be reused in the advection calculation, ie
@@ -109,24 +111,27 @@ EXTERNALS "src/free_surface_functions.f90"
       # do all the limiter calcs
       
       #(hash added during unwrap)INCLUDE "limiter"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/advection_limiters/implicit/limiter.arb without any search/replace combinations
+      #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
+         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         #(comment generated during unwrap) the following is INCLUDED from ../templates/advection_limiters/implicit/limiter.arb without any search/replace combinations
          # vector from centre to face within each cell
          # these will need  etc replaced either with spaces or comments, depending on which dimensions are being solved for
          #(hash added during unwrap)INCLUDE "centre_to_face_vector"
-            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            # the following is INCLUDED from ../templates/advection_limiters/implicit/centre_to_face_vector.arb without any search/replace combinations
+         #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
+            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            #(comment generated during unwrap) the following is INCLUDED from ../templates/advection_limiters/implicit/centre_to_face_vector.arb without any search/replace combinations
             # vector to the face from the last cell centre
             FACE_LOCAL <xc_to_xf[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
             FACE_LOCAL <xc_to_xf[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
             FACE_LOCAL <xc_to_xf[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
-            # INCLUDE FINISHED for ../templates/advection_limiters/implicit/centre_to_face_vector.arb
-            #--------------------------------------------------------
+            #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/centre_to_face_vector.arb
+            #(comment generated during unwrap)--------------------------------------------------------
          
          # calculate <foo limiter kernel> which is only limited to ensure that the kernel components are below certain maximums
          #(hash added during unwrap)INCLUDE "kernel_limiter"
-            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            # the following is INCLUDED from ../templates/advection_limiters/implicit/kernel_limiter.arb without any search/replace combinations
+         #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
+            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            #(comment generated during unwrap) the following is INCLUDED from ../templates/advection_limiters/implicit/kernel_limiter.arb without any search/replace combinations
             # this limiter ensures that the effective kernels used to calculate the face centred quantities within each cell are below certain maximums
             # making these numbers smaller will cause the method to become more upwind
             NONE_CONSTANT <foo limiter crosskernel max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
@@ -134,18 +139,19 @@ EXTERNALS "src/free_surface_functions.f90"
             CELL_LOCAL <foo limiter crosskernel> "cellif(<crosskernel>-<foo limiter crosskernel max>,<foo limiter crosskernel max>/<crosskernel>,1.d0)"
             CELL_LOCAL <foo limiter centralkernel> "cellif(<centralkernel>-<foo limiter centralkernel max>,<foo limiter centralkernel max>/<centralkernel>,1.d0)"
             CELL_CONSTANT <foo limiter kernel> "cellmin(<foo limiter crosskernel>,<foo limiter centralkernel>)" ON <all cells>
-            # INCLUDE FINISHED for ../templates/advection_limiters/implicit/kernel_limiter.arb
-            #--------------------------------------------------------
+            #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/kernel_limiter.arb
+            #(comment generated during unwrap)--------------------------------------------------------
          
          # calculate cell centred phi gradients
          #(hash added during unwrap)INCLUDE "limiter_gradients"
-            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            # the following is INCLUDED from ../templates/advection_limiters/implicit/limiter_gradients.arb without any search/replace combinations
+         #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
+            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            #(comment generated during unwrap) the following is INCLUDED from ../templates/advection_limiters/implicit/limiter_gradients.arb without any search/replace combinations
             CELL_DERIVED <foo limiter grad[l=1]> "cellgrad[l=1](<foo>)*<foo limiter kernel>" ON <all cells>
             CELL_DERIVED <foo limiter grad[l=2]> "cellgrad[l=2](<foo>)*<foo limiter kernel>" ON <all cells>
             CELL_DERIVED <foo limiter grad[l=3]> "cellgrad[l=3](<foo>)*<foo limiter kernel>" ON <all cells>
-            # INCLUDE FINISHED for ../templates/advection_limiters/implicit/limiter_gradients.arb
-            #--------------------------------------------------------
+            #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/limiter_gradients.arb
+            #(comment generated during unwrap)--------------------------------------------------------
          
          # <foo delta> is the change in phi from the lastcell to face centre, based on the unlimited gradient
          FACE_LOCAL <foo delta> "dot(<xc_to_xf[l=:]>,faceave[lastcell](<foo limiter grad[l=:]>))"
@@ -168,21 +174,22 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # overwrite various parameters that define how conservative (ie, stable) the limiter is
          #(hash added during unwrap)INCLUDE "default_parameters"
-            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            # the following is INCLUDED from ../templates/advection_limiters/implicit/default_parameters.arb without any search/replace combinations
+         #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
+            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            #(comment generated during unwrap) the following is INCLUDED from ../templates/advection_limiters/implicit/default_parameters.arb without any search/replace combinations
             # these are the parameters that are now standard (v0.50), and included at the end of the limiter file now, overwriting those in limiter.arb and kernel_limiter.arb
             NONE_CONSTANT <foo a> 4.0d0 # determines the gradient of the limiter
             NONE_CONSTANT <foo b> 0.25d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)
             NONE_CONSTANT <foo limiter crosskernel max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
             NONE_CONSTANT <foo limiter centralkernel max> 0.05d0 # the maximum multiplier for the central cell value
-            # INCLUDE FINISHED for ../templates/advection_limiters/implicit/default_parameters.arb
-            #--------------------------------------------------------
-         # INCLUDE FINISHED for ../templates/advection_limiters/implicit/limiter.arb
-         #--------------------------------------------------------
+            #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/default_parameters.arb
+            #(comment generated during unwrap)--------------------------------------------------------
+         #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/limiter.arb
+         #(comment generated during unwrap)--------------------------------------------------------
       
       #--------------------------------------------------------
-      # INCLUDE FINISHED for ../templates/advection_limiters/implicit/absolute_limiter.arb
-      #--------------------------------------------------------
+      #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/absolute_limiter.arb
+      #(comment generated during unwrap)--------------------------------------------------------
    
    # in addition, to remove upper bound
    #NONE_CONSTANT <foo upper bound> "<huge>"
@@ -276,6 +283,6 @@ EXTERNALS "src/free_surface_functions.f90"
    CELL_OUTPUT <foo newtonupdate> "cellnewtonupdate(variable=<foo>)" ON <all cells>
    
    END
-   # INCLUDE FINISHED for ../advection_2d_box_test.arb
-   #--------------------------------------------------------
+   #(comment generated during unwrap) INCLUDE finished for ../advection_2d_box_test.arb
+   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

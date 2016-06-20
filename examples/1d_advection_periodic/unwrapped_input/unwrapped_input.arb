@@ -5,8 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: 1d_advection_linked_boundaries.arb
 #(hash added during unwrap)INCLUDE_WORKING "1d_advection_linked_boundaries.arb"
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../1d_advection_linked_boundaries.arb without any search/replace combinations
+#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
+   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   #(comment generated during unwrap) the following is INCLUDED from ../1d_advection_linked_boundaries.arb without any search/replace combinations
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -46,6 +47,6 @@ EXTERNALS "src/free_surface_functions.f90"
    CELL_EQUATION <phi domain> "(<phi>-<phi[r=1]>)/<dt>+celldiv(<u_f>*<phi_f>)" ON <domain>
    FACE_EQUATION <phi left value> "<phi_f>-facetofacelink(expression=<phi_f>,localregion=<left>,remoteregion=<right>)" ON <left>
    FACE_EQUATION <phi left gradient> "facegrad(<phi>)*<facenorm[l=1]>-facetofacelink(expression=facegrad(<phi>)*<facenorm[l=1]>,localregion=<left>,remoteregion=<right>)" ON <left>
-   # INCLUDE FINISHED for ../1d_advection_linked_boundaries.arb
-   #--------------------------------------------------------
+   #(comment generated during unwrap) INCLUDE finished for ../1d_advection_linked_boundaries.arb
+   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

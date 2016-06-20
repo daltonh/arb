@@ -5,8 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: separation_syntax.arb
 #(hash added during unwrap)INCLUDE_WORKING "separation_syntax.arb"
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../separation_syntax.arb without any search/replace combinations
+#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
+   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   #(comment generated during unwrap) the following is INCLUDED from ../separation_syntax.arb without any search/replace combinations
    VERSION 0.42
    #-------------------------------------------------------------------
    # user-defined constants
@@ -14,7 +15,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2,polynomialcellorder=2
    
    # setup basic cylindrical general replacements
-   #INCLUDE_ROOT "general"
+   #INCLUDE_TEMPLATE "general"
    #INCLUDE "cylindrical_reflect_r1z2"
    # or, setup basic cartesian reflect general replacements
    #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
@@ -71,6 +72,6 @@ EXTERNALS "src/free_surface_functions.f90"
    # test of referencing separation cell centre properties
    CELL_CONSTANT <separation_loop_ave_separation_centre_icell> "cellsum[maxseparation=3,faceseparation](<icell>,region=<all cells>)/cellsum[maxseparation=3,faceseparation](1.d0,region=<all cells>)" ON <all cells> output
    CELL_CONSTANT <icell output> "<icell>" ON <all cells> output
-   # INCLUDE FINISHED for ../separation_syntax.arb
-   #--------------------------------------------------------
+   #(comment generated during unwrap) INCLUDE finished for ../separation_syntax.arb
+   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

@@ -5,8 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: chemical_reaction_ode.arb
 #(hash added during unwrap)INCLUDE_WORKING "chemical_reaction_ode.arb"
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../chemical_reaction_ode.arb without any search/replace combinations
+#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
+   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   #(comment generated during unwrap) the following is INCLUDED from ../chemical_reaction_ode.arb without any search/replace combinations
    # this file introduces the basics of solving a transient problem
    # it is 0D, hence, there is no distribution of quantities throughout space, and hence, there is no msh file is used and all variables are 'NONE' centred
    
@@ -53,6 +54,6 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_CONSTANT <c_1> "<k_a>*<c_A_0>*<c_B>" # constants can be defined using expressions (of other constants) as well as directly as numerical values.
    NONE_CONSTANT <c_2> "<k_a>*<c_B>-<k_d>"
    NONE_OUTPUT <c_AB_analytical> "<c_1>/<c_2>*( 1.d0 - exp(-<c_2>*<t>) )" # output variables are only evaluated when output files are written, and are handy for expressing simlation results in terms of things that we might be measureing or are interested in.
-   # INCLUDE FINISHED for ../chemical_reaction_ode.arb
-   #--------------------------------------------------------
+   #(comment generated during unwrap) INCLUDE finished for ../chemical_reaction_ode.arb
+   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################
