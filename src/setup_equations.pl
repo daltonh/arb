@@ -1719,28 +1719,6 @@ sub organise_regions {
   unshift(@region,{ name => '<domain>', type => 'system', centring => 'cell', synonyms => ['<domaincells>', '<domain cells>'] });
   unshift(@region,{ name => '<allcells>', type => 'system', centring => 'cell', synonyms => ['<all cells>'] });
   
-# unshift(@region,{ name => '<boundarynodes>', type => 'system', centring => 'node' });
-# push(@{$region[0]{"synonyms"}},'<boundary nodes>');
-# unshift(@region,{ name => '<domainnodes>', type => 'system', centring => 'node' });
-# push(@{$region[0]{"synonyms"}},'<domain nodes>');
-# unshift(@region,{ name => '<allnodes>', type => 'system', centring => 'node' });
-# push(@{$region[0]{"synonyms"}},'<all nodes>');
-# unshift(@region,{ name => '<boundaries>', type => 'system', centring => 'face' });
-# push(@{$region[0]{"synonyms"}},'<boundaryfaces>');
-# push(@{$region[0]{"synonyms"}},'<boundary faces>');
-# unshift(@region,{ name => '<domainfaces>', type => 'system', centring => 'face' });
-# push(@{$region[0]{"synonyms"}},'<domain faces>');
-# unshift(@region,{ name => '<allfaces>', type => 'system', centring => 'face' });
-# push(@{$region[0]{"synonyms"}},'<all faces>');
-# unshift(@region,{ name => '<boundarycells>', type => 'system', centring => 'cell' });
-# push(@{$region[0]{"synonyms"}},'<boundary cells>');
-# unshift(@region,{ name => '<domain>', type => 'system', centring => 'cell' });
-# push(@{$region[0]{"synonyms"}},'<domaincells>');
-# push(@{$region[0]{"synonyms"}},'<domain cells>');
-# unshift(@region,{ name => '<allcells>', type => 'system', centring => 'cell' });
-# push(@{$region[0]{"synonyms"}},'<jibbers2>');
-# push(@{$region[0]{"synonyms"}},'<all cells>');
-
 #-------------
 # now enter all INTERNAL regions, now at the end of the array
 # INTERNAL regions do not require fortran entities but are hard-coded into the create_fortran sub
@@ -2318,16 +2296,22 @@ sub find_region {
 sub match_region {
 
   use strict;
+  my $number = $_[0];
+  my $name = $_[1];
   
-  if ( ( $region[$_[0]]{'type'} eq 'internal' && $_[1] =~ /$region[$_[0]]{name}/ ) ||
-#      ( $region[$_[0]]{'type'} ne 'internal' && $_[1] eq $region[$_[0]]{"name"}) ) {
-       ( $region[$_[0]]{'type'} ne 'internal' && ( $_[1] eq $region[$_[0]]{"name"} || $_[1] ~~ @{$region[$_[0]]{"synonyms"}}) ) ) {
-#      ( $region[$_[0]]{'type'} ne 'internal' && ( $_[1] eq $region[$_[0]]{"name"} || $_[1] ~~ $region[$_[0]]{"synonyms"}) ) ) {
+  if ( ( $region[$number]{'type'} eq 'internal' && $name =~ /$region[$number]{name}/ ) ||
+# smart match may actually work here, but present_in_array sollution is already coded from previous problem
+# testing for presence of synonyms before checking to avoid allocating array
+       ( $region[$number]{'type'} ne 'internal' && ( $name eq $region[$number]{"name"} ||
+            ( $region[$number]{"synonyms"} && present_in_array($name,@{$region[$number]{"synonyms"}}) ) ) ) ) {
 
-    if ($_[1] ~~ @{$region[$_[0]]{"synonyms"}}) {
-#   if ($_[1] ~~ $region[$_[0]]{"synonyms"}) {
-      print DEBUG "INFO: synonym between $_[1] and one of: @{$region[$_[0]]{synonyms}}\n";
-#     print DEBUG "INFO: synonym between $_[1] and one of: $region[$_[0]]{synonyms}\n";
+    if ( $region[$number]{"synonyms"} && present_in_array($name,@{$region[$number]{"synonyms"}}) ) {
+      print DEBUG "INFO: region $region[$number]{name} is referred to by $name which is one of its synonyms: @{$region[$number]{synonyms}}\n";
+    }
+# print message to discourage use
+    if ($name =~ / /) {
+      print "WARNING: preferred name for region $name is now $region[$number]{name}\n";
+      print DEBUG "WARNING: preferred name for region $name is now $region[$number]{name}\n";
     }
 
     return (1);
@@ -4978,6 +4962,7 @@ sub create_compounds {
 #-------------------------------------------------------------------------------
 # does a string match on the elements in the array seeing if the first is present in the rest
 # can just use a smartmatch from perl 5.10 onwards, but this is for compatibility with older perl versions
+# comes in with first element as string to match ($_[0]) against remainder of the array 
 
 sub present_in_array {
 
