@@ -284,7 +284,7 @@ if (trim(region(m)%type) == 'system') then
 
   deallocate(region(m)%ijk) ! undo temporary allocation from setup
 
-  if (trim(region(m)%name) == '<all cells>') then
+  if (trim(region(m)%name) == '<allcells>') then
     allocate(region(m)%ijk(itotal))
     do n = 1, itotal
       region(m)%ijk(n) = n
@@ -298,7 +298,7 @@ if (trim(region(m)%type) == 'system') then
         region(m)%ijk(n) = i
       end if
     end do
-  else if (trim(region(m)%name) == '<boundary cells>') then
+  else if (trim(region(m)%name) == '<boundarycells>') then
     allocate(region(m)%ijk(iboundary))
     n = 0
     do i = 1, itotal
@@ -307,12 +307,12 @@ if (trim(region(m)%type) == 'system') then
         region(m)%ijk(n) = i
       end if
     end do
-  else if (trim(region(m)%name) == '<all faces>') then
+  else if (trim(region(m)%name) == '<allfaces>') then
     allocate(region(m)%ijk(jtotal))
     do n = 1, jtotal
       region(m)%ijk(n) = n
     end do
-  else if (trim(region(m)%name) == '<domain faces>') then
+  else if (trim(region(m)%name) == '<domainfaces>') then
     allocate(region(m)%ijk(jdomain))
     n = 0
     do j = 1, jtotal
@@ -330,12 +330,12 @@ if (trim(region(m)%type) == 'system') then
         region(m)%ijk(n) = j
       end if
     end do
-  else if (trim(region(m)%name) == '<all nodes>') then
+  else if (trim(region(m)%name) == '<allnodes>') then
     allocate(region(m)%ijk(ktotal))
     do n = 1, ktotal
       region(m)%ijk(n) = n
     end do
-  else if (trim(region(m)%name) == '<domain nodes>') then
+  else if (trim(region(m)%name) == '<domainnodes>') then
     allocate(region(m)%ijk(kdomain))
     n = 0
     do k = 1, ktotal
@@ -344,7 +344,7 @@ if (trim(region(m)%type) == 'system') then
         region(m)%ijk(n) = k
       end if
     end do
-  else if (trim(region(m)%name) == '<boundary nodes>') then
+  else if (trim(region(m)%name) == '<boundarynodes>') then
     allocate(region(m)%ijk(kboundary))
     n = 0
     do k = 1, ktotal

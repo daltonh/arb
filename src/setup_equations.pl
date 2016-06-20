@@ -1613,7 +1613,7 @@ sub organise_regions {
 # output     X        X     X        X                           updated as the output variables are updated (in the order of definition)
 # setup               X     X        X                           updated at the start of a simulation during the setup routines, only once, using location information
 # gmsh                      X        GMSH                        read in from a gmsh file, although centring and name can be declared within arb file (using no location string or 'GMSH')
-# system                    X        SYSTEM                      regions defined by the system, and available to users (such as <all cells>)
+# system                    X        SYSTEM                      regions defined by the system, and available to users (such as <allcells>)
 # internal                           INTERNAL                    regions that are special-cased within the fortran (such as <adjacentcellicells>)
 #---------------------------------------------------------------------------------
 # dynamic means that this is actually a region mask, which must have a parent region, and is evaluated in the chain of the same type of variable updates
@@ -1709,15 +1709,15 @@ sub organise_regions {
 # add the SYSTEM regions to the start of the region array
 # SYSTEM regions are those that would be commonly used by a user and which have a corresponding fortran region entity
   
-  unshift(@region,{ name => '<boundary nodes>', type => 'system', centring => 'node' });
-  unshift(@region,{ name => '<domain nodes>', type => 'system', centring => 'node' });
-  unshift(@region,{ name => '<all nodes>', type => 'system', centring => 'node' });
-  unshift(@region,{ name => '<boundaries>', type => 'system', centring => 'face' });
-  unshift(@region,{ name => '<domain faces>', type => 'system', centring => 'face' });
-  unshift(@region,{ name => '<all faces>', type => 'system', centring => 'face' });
-  unshift(@region,{ name => '<boundary cells>', type => 'system', centring => 'cell' });
-  unshift(@region,{ name => '<domain>', type => 'system', centring => 'cell' });
-  unshift(@region,{ name => '<all cells>', type => 'system', centring => 'cell' });
+  unshift(@region,{ name => '<boundarynodes>', type => 'system', centring => 'node', synonyms => ('<boundary nodes>') });
+  unshift(@region,{ name => '<domainnodes>', type => 'system', centring => 'node', synonyms => ('<domain nodes>') });
+  unshift(@region,{ name => '<allnodes>', type => 'system', centring => 'node', synonyms => ('<all nodes>') });
+  unshift(@region,{ name => '<boundaries>', type => 'system', centring => 'face', synonyms => ('<boundaryfaces>', '<boundary faces>') });
+  unshift(@region,{ name => '<domainfaces>', type => 'system', centring => 'face', synonyms => ('<domain faces>') });
+  unshift(@region,{ name => '<allfaces>', type => 'system', centring => 'face', synonyms => ('<all faces>') });
+  unshift(@region,{ name => '<boundarycells>', type => 'system', centring => 'cell', synonyms => ('<boundary cells>') });
+  unshift(@region,{ name => '<domain>', type => 'system', centring => 'cell', synonyms => ('<domaincells>', '<domain cells>') });
+  unshift(@region,{ name => '<allcells>', type => 'system', centring => 'cell', synonyms => ('<all cells>') });
 
 #-------------
 # now enter all INTERNAL regions, now at the end of the array
@@ -1956,11 +1956,11 @@ sub process_regions {
 # part_of regions default to largest static region based on size if not specified
 # note, these system regions will come at the start so don't need when each is calculated
       if ($region[$n]{'centring'} eq 'cell') {
-        $region[$n]{'part_of'} = '<all cells>';
+        $region[$n]{'part_of'} = '<allcells>';
       } elsif ($region[$n]{'centring'} eq 'face') {
-        $region[$n]{'part_of'} = '<all faces>';
+        $region[$n]{'part_of'} = '<allfaces>';
       } else {
-        $region[$n]{'part_of'} = '<all nodes>';
+        $region[$n]{'part_of'} = '<allnodes>';
       }
     }
 # and find fortran number for part_of region
@@ -2357,16 +2357,16 @@ sub organise_user_variables {
           if ($type eq "equation") {
             $variable{$type}[$mvar]{"region"} = "<domain>"; # default cell region for equations
           } else {
-            $variable{$type}[$mvar]{"region"} = "<all cells>"; # default cell region
+            $variable{$type}[$mvar]{"region"} = "<allcells>"; # default cell region
           }
         } elsif ($centring eq "face") {
           if ($type eq "equation") {
             $variable{$type}[$mvar]{"region"} = "<boundaries>"; # default face region for equations
           } else {
-            $variable{$type}[$mvar]{"region"} = "<all faces>"; # default face region
+            $variable{$type}[$mvar]{"region"} = "<allfaces>"; # default face region
           }
         } else { # elsif ($centring eq "node") {
-          $variable{$type}[$mvar]{"region"} = "<all nodes>"; # default node region
+          $variable{$type}[$mvar]{"region"} = "<allnodes>"; # default node region
         }
         print "INFO: region for $type variable $variable{$type}[$mvar]{name} not set:  Defaulting to $variable{$type}[$mvar]{region} based on $centring centring\n";
         print DEBUG "INFO: region for $type variable $variable{$type}[$mvar]{name} not set:  Defaulting to $variable{$type}[$mvar]{region} based on $centring centring\n";
@@ -3451,7 +3451,7 @@ sub mequation_interpolation {
         print DEBUG "INFO: location of $someregion has been found to $centring centred $operator_type operator used in $otype variable $variable{$otype}[$omvar]{name}\n";
       } elsif (empty($someregion)) {
         if ($minseparation >= 0) {
-          $someregion = "<all cells>"; # default region if separation options are specified is <all cells>
+          $someregion = "<allcells>"; # default region if separation options are specified is <allcells>
         } elsif (($operator_type eq "sum" || $operator_type eq "product") && $contextcentring eq "cell" && $centring eq "face") {
           $someregion = "<celljfaces>"; # default face loop around a cell
         } elsif (($operator_type eq "sum" || $operator_type eq "product") && $contextcentring eq "cell" && $centring eq "cell") {
@@ -6611,11 +6611,11 @@ sub create_system_variables {
     if (!($variable{"system"}[$mvar]{"centring"})) {$variable{"system"}[$mvar]{"centring"} = "none";}
     if (!($variable{"system"}[$mvar]{"region"})) {
       if ($variable{"system"}[$mvar]{"centring"} eq "cell") {
-        $variable{"system"}[$mvar]{"region"} = "<all cells>";
+        $variable{"system"}[$mvar]{"region"} = "<allcells>";
       } elsif ($variable{"system"}[$mvar]{"centring"} eq "face") {
-        $variable{"system"}[$mvar]{"region"} = "<all faces>";
+        $variable{"system"}[$mvar]{"region"} = "<allfaces>";
       } elsif ($variable{"system"}[$mvar]{"centring"} eq "node") {
-        $variable{"system"}[$mvar]{"region"} = "<all nodes>";
+        $variable{"system"}[$mvar]{"region"} = "<allnodes>";
       } else {
         $variable{"system"}[$mvar]{"region"} = "";
       }
