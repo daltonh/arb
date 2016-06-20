@@ -42,8 +42,8 @@ EXTERNALS "src/free_surface_functions.f90"
    FACE_EQUATION <phi top> "<phi>-0.5d0*( 1 - cos(2*<pi>*<cellx[l=1]>) )" ON <top> # specified phi profile along top of box
    FACE_EQUATION <phi walls> "<phi>-0.0d0" ON <walls> # set phi to zero on the other walls
    NONE_OUTPUT <phi average> "cellsum(<phi>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # average phi over entire domain
-   CELL_OUTPUT <phi analytical> "0.5d0*( 1 - cos(2*<pi>*<cellx[l=1]>) )*<cellx[l=2]>" ON <all cells> # analytical solution obtained by separation of variables
-   CELL_OUTPUT <phi difference> "abs(<phi>-<phi analytical>)" ON <all cells> # difference between analytical and numerical solution
+   CELL_OUTPUT <phi analytical> "0.5d0*( 1 - cos(2*<pi>*<cellx[l=1]>) )*<cellx[l=2]>" ON <allcells> # analytical solution obtained by separation of variables
+   CELL_OUTPUT <phi difference> "abs(<phi>-<phi analytical>)" ON <allcells> # difference between analytical and numerical solution
    NONE_OUTPUT <linfty norm> "cellmax(abs(<phi>-<phi analytical>),,<domain>)" # infinity norm
    NONE_OUTPUT <l1 norm> "cellsum(abs(<phi>-<phi analytical>),<domain>)/cellsum(1,<domain>)" # L1 norm
    NONE_OUTPUT <l2 norm> "sqrt(cellsum((<phi>-<phi analytical>)**2,<domain>)/cellsum(1,<domain>))" # L2 norm

@@ -26,10 +26,10 @@ EXTERNALS "src/free_surface_functions.f90"
    
    GLUE_FACES <left> reflect=1 # make problem periodic by glueing boundary faces together
    
-   #CELL_CONSTANT <phi> "(1.d0-cos(<cellx[l=1]>*2.d0*<pi>))/2.d0" ON <all cells> output
-   #CELL_CONSTANT <phi> "(1.d0-cos(<cellx[l=1]>*4.d0*<pi>))/2.d0" ON <all cells> output # half the wavelength
-   #CELL_CONSTANT <phi> "cellif(<cellx[l=1]>-0.5d0,<cellx[l=1]>-1.d0+4.d0,<cellx[l=1]>+4.d0)" ON <all cells> output
-   CELL_CONSTANT <phi> "cellif(<cellx[l=1]>-0.5d0,<cellx[l=1]>-1.d0,<cellx[l=1]>)" ON <all cells> output
+   #CELL_CONSTANT <phi> "(1.d0-cos(<cellx[l=1]>*2.d0*<pi>))/2.d0" ON <allcells> output
+   #CELL_CONSTANT <phi> "(1.d0-cos(<cellx[l=1]>*4.d0*<pi>))/2.d0" ON <allcells> output # half the wavelength
+   #CELL_CONSTANT <phi> "cellif(<cellx[l=1]>-0.5d0,<cellx[l=1]>-1.d0+4.d0,<cellx[l=1]>+4.d0)" ON <allcells> output
+   CELL_CONSTANT <phi> "cellif(<cellx[l=1]>-0.5d0,<cellx[l=1]>-1.d0,<cellx[l=1]>)" ON <allcells> output
    
    # output some variables to check face geometries over the glue
    FACE_OUTPUT <facedx output> "<facedx>"

@@ -24,8 +24,8 @@ EXTERNALS "src/free_surface_functions.f90"
    #-------------------------------------------------------------------
    MSH_FILE "line_with_uniform_spacing.msh"
    
-   CELL_UNKNOWN <T> [1] "1.d0" ON <all cells> magnitude=1.d0
-   FACE_DERIVED <q_f> [1] "-facegrad(<T>)" ON <all faces> output # flux of heat across each face, in the direction of the face normal
+   CELL_UNKNOWN <T> [1] "1.d0" ON <allcells> magnitude=1.d0
+   FACE_DERIVED <q_f> [1] "-facegrad(<T>)" ON <allfaces> output # flux of heat across each face, in the direction of the face normal
    CELL_EQUATION <T transport> "celldiv(<q_f>)" ON <domain> output #magnitude=1.d0 # diffusion equation, giving conservation of heat on each cell within the domain
    FACE_EQUATION <T right> "<q_f>+1.d0" ON <right> output #magnitude=1.d0 # specified heat flux through hole surface: Note, face normals on boundary faces all point outwards, so this equation specifies a flux equal to <hole flux> directed out of the domain.  However, <hole flux> is set to a negative number above, giving a (physical) flux directed into the domain
    FACE_EQUATION <T left> "<T>+0.d0" ON <left> output #magnitude=1.d0 # set temperature on the walls of the domain 

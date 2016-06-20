@@ -55,10 +55,10 @@ EXTERNALS "src/free_surface_functions.f90"
    MSH_FILE "surface.msh"
    #MSH_FILE "output/output.msh" input,centringoutput
    
-   NONE_CONSTANT <X max> "facemax(<facex[l=1]>,,<all faces>)"
-   NONE_CONSTANT <X min> "facemin(<facex[l=1]>,,<all faces>)"
-   NONE_CONSTANT <Y max> "facemax(<facex[l=2]>,,<all faces>)"
-   NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<all faces>)"
+   NONE_CONSTANT <X max> "facemax(<facex[l=1]>,,<allfaces>)"
+   NONE_CONSTANT <X min> "facemin(<facex[l=1]>,,<allfaces>)"
+   NONE_CONSTANT <Y max> "facemax(<facex[l=2]>,,<allfaces>)"
+   NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<allfaces>)"
    # unknown variables used for flow problems
    CELL_UNKNOWN <u[l=1]> [] "<u_av>" magnitude=1.d0 # velocity component
    CELL_UNKNOWN <u[l=2]> [] "0.d0" magnitude=1.d0 # velocity component
@@ -73,17 +73,17 @@ EXTERNALS "src/free_surface_functions.f90"
    # a Rhie-Chow-type correction is applied to the face velocities
    CELL_DERIVED <graddivp[l=1]> "celldivgrad[l=1](<p>)" # pressure gradient calculated via a divergence (consistent with momentum conservation)
    CELL_DERIVED <graddivp[l=2]> "celldivgrad[l=2](<p>)" # pressure gradient calculated via a divergence (consistent with momentum conservation)
-   FACE_DERIVED <p_error> "facegrad(<p>) - dot(<graddivp[l=:]>,<facenorm[l=:]>)" ON <domain faces> # difference between face centred and cell divergence type gradient at face and normal to the face
+   FACE_DERIVED <p_error> "facegrad(<p>) - dot(<graddivp[l=:]>,<facenorm[l=:]>)" ON <domainfaces> # difference between face centred and cell divergence type gradient at face and normal to the face
    
    # flux of mass (volume) and momentum components over each face
    # calculate the Rhie-Chow type velocity correction, only applied (nonzero) on the domain faces
    FACE_DERIVED <u_f_{raw}> "dot(<u[l=:]>,<facenorm[l=:]>)" # volume (velocity) transport
-   FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domain faces>
-   FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domain faces>
-   FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domain faces>
-   FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domain faces>
-   FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domain faces> output
-   FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" # volume (velocity) transport
+   FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domainfaces>
+   FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domainfaces>
+   FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domainfaces>
+   FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domainfaces>
+   FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domainfaces> output
+   FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domainfaces>),<u_f_{correction}>,0.d0)" # volume (velocity) transport
    FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+<rho>*faceave[advection](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" output # component of momentum transport from stress and advection
    FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+<rho>*faceave[advection](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" # component of momentum transport from stress and advection
    

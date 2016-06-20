@@ -80,16 +80,16 @@ EXTERNALS "src/free_surface_functions.f90"
    CONSTANT <T right> [C] 200.d0 # temperature
    
    CELL_UNKNOWN <T> [K] "1.d0" # temperature
-   CELL_DERIVED <D nonuniform> "celldelta(<all left>)*<D left>+celldelta(<all right>)*<D right>" ON <all cells>
-   FACE_DERIVED <D harmonic> "faceave[harmonic](<D nonuniform>)" ON <all faces> output
+   CELL_DERIVED <D nonuniform> "celldelta(<all left>)*<D left>+celldelta(<all right>)*<D right>" ON <allcells>
+   FACE_DERIVED <D harmonic> "faceave[harmonic](<D nonuniform>)" ON <allfaces> output
    CELL_EQUATION <T transport> "-celldiv(<D harmonic>*facegrad(<T>))" ON <domain> # diffusion equation
    FACE_EQUATION <T left bc> "<T>-<T left>" ON <left boundary> # set temperature on inlet
    FACE_EQUATION <T right bc> "<T>-<T right>" ON <right boundary> # set temperature on inlet
    
    NONE_OUTPUT <T average> "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
    
-   FACE_OUTPUT <D harmonic test> "2.*cellproduct(<D nonuniform>)/cellsum(<D nonuniform>)" ON <all faces> output
-   NONE_OUTPUT <D error infty norm> "facemax(abs(<D harmonic>-<D harmonic test>),,<all faces>)"
+   FACE_OUTPUT <D harmonic test> "2.*cellproduct(<D nonuniform>)/cellsum(<D nonuniform>)" ON <allfaces> output
+   NONE_OUTPUT <D error infty norm> "facemax(abs(<D harmonic>-<D harmonic test>),,<allfaces>)"
    
    NONE_OUTPUT <x left> "facesum(<cellx[l=1]>,<left boundary>)"
    NONE_OUTPUT <x centre> "facesum(<cellx[l=1]>,<centre>)"
@@ -99,7 +99,7 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_OUTPUT <q> "-(<T right>-<T left>)/(<L left>/<D left>+<L right>/<D right>)"
    CELL_OUTPUT <T analytical> "celldelta(<all left>)*(-<q>/<D left>*(<cellx[l=1]>-<x left>)+<T left>)+celldelta(<all right>)*(-<q>/<D right>*(<cellx[l=1]>-<x right>)+<T right>)"
    CELL_OUTPUT <T error> "<T>-<T analytical>"
-   NONE_OUTPUT <T error infty norm> "cellmax(abs(<T error>),,<all cells>)"
+   NONE_OUTPUT <T error infty norm> "cellmax(abs(<T error>),,<allcells>)"
    
    #-------------------------------------------------------------------
    #(comment generated during unwrap) INCLUDE finished for ../1d_nonuniform_diffusion.arb

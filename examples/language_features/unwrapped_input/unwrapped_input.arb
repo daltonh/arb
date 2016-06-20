@@ -81,7 +81,7 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_CONSTANT <c[l=1]> "dot(<c[l=:]>,<c[l=:]>)" # tricky self reference to variable within dot operator
    
    # the following statements should flag an error as variable and region names must be unique
-   #NONE_CONSTANT <all cells> "1.d0"
+   #NONE_CONSTANT <allcells> "1.d0"
    #NONE_CONSTANT <cellkernelregion[l=1]> "1.d0"
    #(comment generated during unwrap) INCLUDE finished for ../reuse.arb
    #(comment generated during unwrap)--------------------------------------------------------

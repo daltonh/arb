@@ -20,14 +20,14 @@ EXTERNALS "src/free_surface_functions.f90"
    MSH_FILE "volume.msh"
    MSH_FILE "output/output.msh" elementdata
    
-   CELL_UNKNOWN <phi> "1.d0" ON <all cells>
-   FACE_DERIVED <Gamma> "<phi>^2" ON <all faces> output
+   CELL_UNKNOWN <phi> "1.d0" ON <allcells>
+   FACE_DERIVED <Gamma> "<phi>^2" ON <allfaces> output
    CELL_EQUATION <phi domain equation> "celldiv(<Gamma>*facegrad(<phi>))-<Lambda>" ON <domain>
    CELL_DERIVED <Lambda> "2.d0*<phi>^3*(1.d0/(<cellx[l=1]>+1.d0)^2+1.d0/(<cellx[l=2]>+1.d0)^2+1.d0/(<cellx[l=3]>+1.d0)^2)" ON <domain>
-   CELL_CONSTANT <phi boundary> "(<cellx[l=1]>+1.d0)*(<cellx[l=2]>+1.d0)*(<cellx[l=3]>+1.d0)" ON <boundary cells>
-   CELL_EQUATION <phi boundary equation> "<phi>-<phi boundary>" ON <boundary cells>
+   CELL_CONSTANT <phi boundary> "(<cellx[l=1]>+1.d0)*(<cellx[l=2]>+1.d0)*(<cellx[l=3]>+1.d0)" ON <boundarycells>
+   CELL_EQUATION <phi boundary equation> "<phi>-<phi boundary>" ON <boundarycells>
    
-   CELL_CONSTANT <phi analytical> "(<cellx[l=1]>+1.d0)*(<cellx[l=2]>+1.d0)*(<cellx[l=3]>+1.d0)" ON <all cells>
+   CELL_CONSTANT <phi analytical> "(<cellx[l=1]>+1.d0)*(<cellx[l=2]>+1.d0)*(<cellx[l=3]>+1.d0)" ON <allcells>
    CELL_OUTPUT <phi error> "abs(<phi>-<phi analytical>)" ON <domain>
    
    NONE_OUTPUT <Linfty norm> "cellmax(<phi error>,,<domain>)" # infinity norm

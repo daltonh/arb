@@ -122,11 +122,11 @@ EXTERNALS "src/free_surface_functions.f90"
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/volume_of_fluid/fluid_replacements.arb without any search/replace combinations
       # replace the general regions with the fluid msh equivalents
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<all cells>" W "<fluid all cells>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<allcells>" W "<fluid all cells>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS R "<domain>" W "<fluid domain>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<boundary cells>" W "<fluid boundary cells>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<all faces>" W "<fluid all faces>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<domain faces>" W "<fluid domain faces>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<boundarycells>" W "<fluid boundary cells>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<allfaces>" W "<fluid all faces>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<domainfaces>" W "<fluid domain faces>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS R "<boundaries>" W "<fluid boundaries>"
       #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/fluid_replacements.arb
       #(comment generated during unwrap)--------------------------------------------------------
@@ -242,14 +242,14 @@ EXTERNALS "src/free_surface_functions.f90"
                #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                #(comment generated during unwrap) the following is INCLUDED from ../templates/general/domain_lengths.arb without any search/replace combinations
                # based on node locations, here we calculate the maximum length of the domain in each dimension
-               # these loops could be conducted over <boundary nodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
+               # these loops could be conducted over <boundarynodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
                # as this is only a single loop through each node this isn't an expensive calculation anyway (unlike the levelset-based minimum boundary distance)
-               NONE_CONSTANT <nodexmax[l=1]> "nodemax(<nodex[l=1]>,region=<all nodes>)"
-               NONE_CONSTANT <nodexmax[l=2]> "nodemax(<nodex[l=2]>,region=<all nodes>)"
-               #NONE_CONSTANT <nodexmax[l=3]> "nodemax(<nodex[l=3]>,region=<all nodes>)"
-               NONE_CONSTANT <nodexmin[l=1]> "nodemin(<nodex[l=1]>,region=<all nodes>)"
-               NONE_CONSTANT <nodexmin[l=2]> "nodemin(<nodex[l=2]>,region=<all nodes>)"
-               #NONE_CONSTANT <nodexmin[l=3]> "nodemin(<nodex[l=3]>,region=<all nodes>)"
+               NONE_CONSTANT <nodexmax[l=1]> "nodemax(<nodex[l=1]>,region=<allnodes>)"
+               NONE_CONSTANT <nodexmax[l=2]> "nodemax(<nodex[l=2]>,region=<allnodes>)"
+               #NONE_CONSTANT <nodexmax[l=3]> "nodemax(<nodex[l=3]>,region=<allnodes>)"
+               NONE_CONSTANT <nodexmin[l=1]> "nodemin(<nodex[l=1]>,region=<allnodes>)"
+               NONE_CONSTANT <nodexmin[l=2]> "nodemin(<nodex[l=2]>,region=<allnodes>)"
+               #NONE_CONSTANT <nodexmin[l=3]> "nodemin(<nodex[l=3]>,region=<allnodes>)"
                NONE_CONSTANT <domain_length[l=1]> "<nodexmax[l=1]>-<nodexmin[l=1]>"
                NONE_CONSTANT <domain_length[l=2]> "<nodexmax[l=2]>-<nodexmin[l=2]>"
                #NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"
@@ -606,11 +606,11 @@ EXTERNALS "src/free_surface_functions.f90"
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/volume_of_fluid/cancel_fluid_replacements.arb without any search/replace combinations
       # cancel the fluid region replacements
-      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<all cells>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<allcells>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<domain>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<boundary cells>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<all faces>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<domain faces>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<boundarycells>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<allfaces>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<domainfaces>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<boundaries>"
       #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/cancel_fluid_replacements.arb
       #(comment generated during unwrap)--------------------------------------------------------
@@ -655,13 +655,13 @@ EXTERNALS "src/free_surface_functions.f90"
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/volume_of_fluid/free_surface_replacements.arb without any search/replace combinations
       # replace the general regions with the fluid msh equivalents
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<all cells>" W "<free surface all cells>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<allcells>" W "<free surface all cells>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS R "<domain>" W "<free surface domain>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<boundary cells>" W "<free surface boundary cells>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<all faces>" W "<free surface all faces>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<domain faces>" W "<free surface domain faces>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<boundarycells>" W "<free surface boundary cells>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<allfaces>" W "<free surface all faces>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<domainfaces>" W "<free surface domain faces>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS R "<boundaries>" W "<free surface boundaries>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<all nodes>" W "<free surface all nodes>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<allnodes>" W "<free surface all nodes>"
       # and some variables too, to emphasise that these are defined on the free surface mesh
       #(hash added during unwrap)GENERAL_REPLACEMENTS R "<vof_phi_smooth" W "<vof_fs_phi_smooth"
       #(hash added during unwrap)GENERAL_REPLACEMENTS R "<vof_phi_interface>" W "<vof_fs_phi_interface>"
@@ -754,11 +754,11 @@ EXTERNALS "src/free_surface_functions.f90"
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/volume_of_fluid/cancel_free_surface_replacements.arb without any search/replace combinations
       # cancel these free surface replacements
-      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<all cells>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<allcells>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<domain>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<boundary cells>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<all faces>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<domain faces>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<boundarycells>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<allfaces>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<domainfaces>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<boundaries>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<vof_phi_smooth"
       #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<vof_phi_interface>"
@@ -772,11 +772,11 @@ EXTERNALS "src/free_surface_functions.f90"
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
       #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/volume_of_fluid/fluid_replacements.arb without any search/replace combinations
       # replace the general regions with the fluid msh equivalents
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<all cells>" W "<fluid all cells>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<allcells>" W "<fluid all cells>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS R "<domain>" W "<fluid domain>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<boundary cells>" W "<fluid boundary cells>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<all faces>" W "<fluid all faces>"
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<domain faces>" W "<fluid domain faces>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<boundarycells>" W "<fluid boundary cells>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<allfaces>" W "<fluid all faces>"
+      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<domainfaces>" W "<fluid domain faces>"
       #(hash added during unwrap)GENERAL_REPLACEMENTS R "<boundaries>" W "<fluid boundaries>"
       #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/fluid_replacements.arb
       #(comment generated during unwrap)--------------------------------------------------------

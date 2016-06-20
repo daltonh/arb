@@ -123,14 +123,14 @@ EXTERNALS "src/free_surface_functions.f90"
                #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                #(comment generated during unwrap) the following is INCLUDED from ../templates/general/domain_lengths.arb without any search/replace combinations
                # based on node locations, here we calculate the maximum length of the domain in each dimension
-               # these loops could be conducted over <boundary nodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
+               # these loops could be conducted over <boundarynodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
                # as this is only a single loop through each node this isn't an expensive calculation anyway (unlike the levelset-based minimum boundary distance)
-               NONE_CONSTANT <nodexmax[l=1]> "nodemax(<nodex[l=1]>,region=<all nodes>)"
-               NONE_CONSTANT <nodexmax[l=2]> "nodemax(<nodex[l=2]>,region=<all nodes>)"
-               #NONE_CONSTANT <nodexmax[l=3]> "nodemax(<nodex[l=3]>,region=<all nodes>)"
-               NONE_CONSTANT <nodexmin[l=1]> "nodemin(<nodex[l=1]>,region=<all nodes>)"
-               NONE_CONSTANT <nodexmin[l=2]> "nodemin(<nodex[l=2]>,region=<all nodes>)"
-               #NONE_CONSTANT <nodexmin[l=3]> "nodemin(<nodex[l=3]>,region=<all nodes>)"
+               NONE_CONSTANT <nodexmax[l=1]> "nodemax(<nodex[l=1]>,region=<allnodes>)"
+               NONE_CONSTANT <nodexmax[l=2]> "nodemax(<nodex[l=2]>,region=<allnodes>)"
+               #NONE_CONSTANT <nodexmax[l=3]> "nodemax(<nodex[l=3]>,region=<allnodes>)"
+               NONE_CONSTANT <nodexmin[l=1]> "nodemin(<nodex[l=1]>,region=<allnodes>)"
+               NONE_CONSTANT <nodexmin[l=2]> "nodemin(<nodex[l=2]>,region=<allnodes>)"
+               #NONE_CONSTANT <nodexmin[l=3]> "nodemin(<nodex[l=3]>,region=<allnodes>)"
                NONE_CONSTANT <domain_length[l=1]> "<nodexmax[l=1]>-<nodexmin[l=1]>"
                NONE_CONSTANT <domain_length[l=2]> "<nodexmax[l=2]>-<nodexmin[l=2]>"
                #NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"
@@ -295,10 +295,10 @@ EXTERNALS "src/free_surface_functions.f90"
    # CSF based levelset formulation with reinitialisation
    #(hash added during unwrap)INCLUDE_TEMPLATE "free_surface/level_set"
    #(comment generated during unwrap) not adding new include_path ../templates/free_surface/level_set, as it is already on the top of include_path array = .. ../templates/general ../templates/navier_stokes ../templates/free_surface/level_set
-   #(hash added during unwrap)INCLUDE "setup" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>"
+   #(hash added during unwrap)INCLUDE "setup" R "<domain>" W "<level set domain>" R "<allcells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<allfaces>" W "<level set all faces>"
    #(comment generated during unwrap) not adding new include_path ../templates/free_surface/level_set, as it is already on the top of include_path array = .. ../templates/general ../templates/navier_stokes ../templates/free_surface/level_set
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/level_set/setup.arb with the following search/replace combinations: replace <domain> with <level set domain>: replace <all cells> with <level set all cells>: replace <walls> with <level set walls>: replace <all faces> with <level set all faces>
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/level_set/setup.arb with the following search/replace combinations: replace <domain> with <level set domain>: replace <allcells> with <level set all cells>: replace <walls> with <level set walls>: replace <allfaces> with <level set all faces>
       # first set up some constants relating to the discretisation
       # all of these constants are in terms of `non-dimensional' ls values:  that is, the actual ls value divided by the <ls_celldxmax>.  For now <ls_celldxmax> is set to the maximum cell dimension (<celldxmax> = maximum node to node distance for each cell) within the domain.  For meshes with greatly varying cell sizes <ls_celldxmax> should vary with location.
       
@@ -371,10 +371,10 @@ EXTERNALS "src/free_surface_functions.f90"
    # compounds
    CELL_LOCAL <ls_initial> "<ls_initial1>" ON <level set all cells> output
    
-   #(hash added during unwrap)INCLUDE "curvature" R "<all cells>" W "<level set all cells>" R "<all faces>" W "<level set all faces>"
+   #(hash added during unwrap)INCLUDE "curvature" R "<allcells>" W "<level set all cells>" R "<allfaces>" W "<level set all faces>"
    #(comment generated during unwrap) not adding new include_path ../templates/free_surface/level_set, as it is already on the top of include_path array = .. ../templates/general ../templates/navier_stokes ../templates/free_surface/level_set
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/level_set/curvature.arb with the following search/replace combinations: replace <all cells> with <level set all cells>: replace <all faces> with <level set all faces>
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/level_set/curvature.arb with the following search/replace combinations: replace <allcells> with <level set all cells>: replace <allfaces> with <level set all faces>
       # within this file we calculate the curvature
       
       # many difference curvature calculation methods have been tried - Method 8 gives the best results
@@ -512,11 +512,11 @@ EXTERNALS "src/free_surface_functions.f90"
       
       #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/level_set/curvature.arb
       #(comment generated during unwrap)--------------------------------------------------------
-   #INCLUDE "curvature_corrected" R "<all cells>" W "<level set all cells>" R "<all faces>" W "<level set all faces>"
-   #(hash added during unwrap)INCLUDE "force" R "<all cells>" W "<level set all cells>" R "<all faces>" W "<level set centre all faces>"
+   #INCLUDE "curvature_corrected" R "<allcells>" W "<level set all cells>" R "<allfaces>" W "<level set all faces>"
+   #(hash added during unwrap)INCLUDE "force" R "<allcells>" W "<level set all cells>" R "<allfaces>" W "<level set centre all faces>"
    #(comment generated during unwrap) not adding new include_path ../templates/free_surface/level_set, as it is already on the top of include_path array = .. ../templates/general ../templates/navier_stokes ../templates/free_surface/level_set
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/level_set/force.arb with the following search/replace combinations: replace <all cells> with <level set all cells>: replace <all faces> with <level set centre all faces>
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/level_set/force.arb with the following search/replace combinations: replace <allcells> with <level set all cells>: replace <allfaces> with <level set centre all faces>
       # within this file we calculate the cell centred surface force and face centred force used in the <u_f> interpolation
       
       CELL_LOCAL <ls_F_c[l=1]> "<ls_kappa_c>*celldivgrad[l=1](<ls_phi>)" ON <level set all cells>
@@ -539,10 +539,10 @@ EXTERNALS "src/free_surface_functions.f90"
    # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
    #(hash added during unwrap)INCLUDE_TEMPLATE "navier_stokes"
    #(comment generated during unwrap) adding new include_path ../templates/navier_stokes, making include_path array = .. ../templates/general ../templates/navier_stokes ../templates/free_surface/level_set ../templates/navier_stokes
-   #(hash added during unwrap)INCLUDE "total_stress" R "<all faces>" W "<fluid all faces>"
+   #(hash added during unwrap)INCLUDE "total_stress" R "<allfaces>" W "<fluid all faces>"
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/general ../templates/navier_stokes ../templates/free_surface/level_set ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from ../templates/navier_stokes/total_stress.arb with the following search/replace combinations: replace <all faces> with <fluid all faces>
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/navier_stokes/total_stress.arb with the following search/replace combinations: replace <allfaces> with <fluid all faces>
       # total stress tensor
       #(hash added during unwrap)INCLUDE "u_gradient_tensor"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
@@ -586,10 +586,10 @@ EXTERNALS "src/free_surface_functions.f90"
       #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <fluid all faces>
       #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/total_stress.arb
       #(comment generated during unwrap)--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "u_f" R "<all cells>" W "<fluid all cells>" R "<domain faces>" W "<fluid domain faces>" R "<all faces>" W "<fluid all faces>"
+   #(hash added during unwrap)INCLUDE "u_f" R "<allcells>" W "<fluid all cells>" R "<domainfaces>" W "<fluid domain faces>" R "<allfaces>" W "<fluid all faces>"
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/general ../templates/navier_stokes ../templates/free_surface/level_set ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from ../templates/navier_stokes/u_f.arb with the following search/replace combinations: replace <all cells> with <fluid all cells>: replace <domain faces> with <fluid domain faces>: replace <all faces> with <fluid all faces>
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/navier_stokes/u_f.arb with the following search/replace combinations: replace <allcells> with <fluid all cells>: replace <domainfaces> with <fluid domain faces>: replace <allfaces> with <fluid all faces>
       # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
       
       # check default strings are set
@@ -735,10 +735,10 @@ EXTERNALS "src/free_surface_functions.f90"
       #NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
       #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/u_f.arb
       #(comment generated during unwrap)--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "advection_flux" R "<all faces>" W "<fluid all faces>"
+   #(hash added during unwrap)INCLUDE "advection_flux" R "<allfaces>" W "<fluid all faces>"
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/general ../templates/navier_stokes ../templates/free_surface/level_set ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from ../templates/navier_stokes/advection_flux.arb with the following search/replace combinations: replace <all faces> with <fluid all faces>
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/navier_stokes/advection_flux.arb with the following search/replace combinations: replace <allfaces> with <fluid all faces>
       # flux of momentum over and in the direction of each face due to advection
       # which one is chosen depends on the comment strings
       # all require navierstokes equations to be current
@@ -776,10 +776,10 @@ EXTERNALS "src/free_surface_functions.f90"
       ##FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <fluid all faces>
       #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/advection_flux.arb
       #(comment generated during unwrap)--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "momentum_flux" R "<all faces>" W "<fluid all faces>"
+   #(hash added during unwrap)INCLUDE "momentum_flux" R "<allfaces>" W "<fluid all faces>"
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/general ../templates/navier_stokes ../templates/free_surface/level_set ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from ../templates/navier_stokes/momentum_flux.arb with the following search/replace combinations: replace <all faces> with <fluid all faces>
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/navier_stokes/momentum_flux.arb with the following search/replace combinations: replace <allfaces> with <fluid all faces>
       # flux of momentum over and in the direction of each face
       
       # check default strings are set
@@ -863,10 +863,10 @@ EXTERNALS "src/free_surface_functions.f90"
    # need to generalise this in the future to cope with slip walls by extrapolating <u_f> out into <level set edge region>
    FACE_LOCAL <ls_u_f> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
    FACE_LOCAL <ls_u_f[r=1]> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f[r=1]>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
-   #(hash added during unwrap)INCLUDE "equation" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>" R "<u_f" W "<ls_u_f"
+   #(hash added during unwrap)INCLUDE "equation" R "<domain>" W "<level set domain>" R "<allcells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<allfaces>" W "<level set all faces>" R "<u_f" W "<ls_u_f"
    #(comment generated during unwrap) not adding new include_path ../templates/free_surface/level_set, as it is already on the top of include_path array = .. ../templates/general ../templates/navier_stokes ../templates/free_surface/level_set ../templates/navier_stokes ../templates/free_surface/level_set
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/level_set/equation.arb with the following search/replace combinations: replace <domain> with <level set domain>: replace <all cells> with <level set all cells>: replace <walls> with <level set walls>: replace <all faces> with <level set all faces>: replace <u_f with <ls_u_f
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/level_set/equation.arb with the following search/replace combinations: replace <domain> with <level set domain>: replace <allcells> with <level set all cells>: replace <walls> with <level set walls>: replace <allfaces> with <level set all faces>: replace <u_f with <ls_u_f
       # three types of end-of-timestep <ls> functions are referenced:
       # 1) <ls> is the fully implicit one, with reinitialisation applied away from the interface
       # 2) <ls_advected> is also implicit, but without any reinitialisation

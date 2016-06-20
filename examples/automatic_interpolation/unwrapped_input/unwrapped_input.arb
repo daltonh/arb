@@ -30,12 +30,12 @@ EXTERNALS "src/free_surface_functions.f90"
    
    # test of automatic operator centring interpolation
    # all of these variables should be 1 everywhere
-   CELL_OUTPUT <test1> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
-   CELL_OUTPUT <test2> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
-   FACE_OUTPUT <test3> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
-   FACE_OUTPUT <test4> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
-   NODE_OUTPUT <test5> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
-   NODE_OUTPUT <test6> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
+   CELL_OUTPUT <test1> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allcells>
+   CELL_OUTPUT <test2> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allcells>
+   FACE_OUTPUT <test3> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allfaces>
+   FACE_OUTPUT <test4> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <allfaces>
+   NODE_OUTPUT <test5> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allnodes>
+   NODE_OUTPUT <test6> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <allnodes>
    #(comment generated during unwrap) INCLUDE finished for ../automatic_interpolation.arb
    #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################
