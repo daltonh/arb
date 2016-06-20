@@ -5,8 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: vof_advection_streamtest.arb
 #(hash added during unwrap)INCLUDE_WORKING "vof_advection_streamtest.arb"
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../vof_advection_streamtest.arb without any search/replace combinations
+#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
+   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   #(comment generated during unwrap) the following is INCLUDED from ../vof_advection_streamtest.arb without any search/replace combinations
    VERSION 0.53
    
    # need to completely rethink the variable update order in this
@@ -78,8 +79,8 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
    NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
    
-   #(hash added during unwrap)INCLUDE_ROOT "free_surface/volume_of_fluid"
-   # INFO: setting include root directory to free_surface/volume_of_fluid
+   #(hash added during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+   #(comment generated during unwrap) adding new include_path ../templates/free_surface/volume_of_fluid, making include_path array = .. ../templates/free_surface/volume_of_fluid
    
    # the following is roughly similar to what is contained in setup within volume_of_fluid, but adapted for transient problem
    CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <all cells>
@@ -109,8 +110,9 @@ EXTERNALS "src/free_surface_functions.f90"
    
    # alternatively use high order normals
    #(hash added during unwrap)INCLUDE "implicit_reconstructed_levelset"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb without any search/replace combinations
+   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid
+      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb without any search/replace combinations
       # implicit reconstructed levelset idea
       CELL_UNKNOWN <vof_s> "2.d0*<vof_phi_interface>-1.d0" ON <all cells> magnitude=1.d0
       CONSTANT <vof_s_interface_width> 1.d0 # this controls the thickness of the interface, roughly in terms of the local cell width
@@ -120,12 +122,13 @@ EXTERNALS "src/free_surface_functions.f90"
       FACE_DERIVED <vof_s_j> "-<vof_s_D>*facegrad(<vof_s>)" ON <all faces>
       CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
       FACE_EQUATION <vof_s boundary> "2.d0*<vof_phi_interface>-1.d0-<vof_s>" ON <boundaries>
-      # INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb
-      #--------------------------------------------------------
+      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb
+      #(comment generated during unwrap)--------------------------------------------------------
    CELL_TRANSIENT <vof_s[r=1]> "" "<vof_s>" ON <all cells>
    #(hash added during unwrap)INCLUDE "normals" R "[l=" W "[r=1,l=" R "<vof_phi_smoothed>" W "<vof_s[r=1]>" R "<vof_phigrad_mag>" W "<vof_phigrad_mag[r=1]>" R "<vof_phigrad_mag^2>" W "<vof_phigrad_mag^2[r=1]>" R "DERIVED" W "TRANSIENT"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/normals.arb with the following search/replace combinations: replace [l= with [r=1,l=: replace <vof_phi_smoothed> with <vof_s[r=1]>: replace <vof_phigrad_mag> with <vof_phigrad_mag[r=1]>: replace <vof_phigrad_mag^2> with <vof_phigrad_mag^2[r=1]>: replace DERIVED with TRANSIENT
+   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid
+      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/volume_of_fluid/normals.arb with the following search/replace combinations: replace [l= with [r=1,l=: replace <vof_phi_smoothed> with <vof_s[r=1]>: replace <vof_phigrad_mag> with <vof_phigrad_mag[r=1]>: replace <vof_phigrad_mag^2> with <vof_phigrad_mag^2[r=1]>: replace DERIVED with TRANSIENT
       # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
       
       # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
@@ -151,8 +154,8 @@ EXTERNALS "src/free_surface_functions.f90"
       CELL_TRANSIENT <vof_phigrad_unit[r=1,l=1]> "<vof_phigrad[r=1,l=1]>/<vof_phigrad_mag[r=1]>" ON <vof_phigrad_mask[r=1]> output
       CELL_TRANSIENT <vof_phigrad_unit[r=1,l=2]> "<vof_phigrad[r=1,l=2]>/<vof_phigrad_mag[r=1]>" ON <vof_phigrad_mask[r=1]>
       #CELL_TRANSIENT <vof_phigrad_unit[r=1,l=3]> "<vof_phigrad[r=1,l=3]>/<vof_phigrad_mag[r=1]>" ON <vof_phigrad_mask[r=1]>
-      # INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/normals.arb
-      #--------------------------------------------------------
+      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/normals.arb
+      #(comment generated during unwrap)--------------------------------------------------------
    
    # now do the update, doing the equivalent of what volume_of_fluid/equation.arb does, but using transients
    CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[exact](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <vof_interface_mask[r=1]> output
@@ -166,8 +169,9 @@ EXTERNALS "src/free_surface_functions.f90"
    
    #-------------------------------------------------------------------
    #(hash added during unwrap)INCLUDE "output_masks"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/free_surface/volume_of_fluid/output_masks.arb without any search/replace combinations
+   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid
+      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/free_surface/volume_of_fluid/output_masks.arb without any search/replace combinations
       # this file contains variables that allow the outputing of the various dynamic region masks
       
       # have to cope with both single and double domain setups
@@ -186,8 +190,8 @@ EXTERNALS "src/free_surface_functions.f90"
       #FACE_OUTPUT <vof_fs_delta_mask_f_output[r=1]> "1.d0" ON <vof_fs_delta_mask_f[r=1]>
       #CELL_OUTPUT <vof_fs_phigrad_mask_output[r=1]> "1.d0" ON <vof_fs_phigrad_mask[r=1]>
       #NODE_OUTPUT <vof_fs_phigrad_mask_n_output[r=1]> "1.d0" ON <vof_fs_phigrad_mask_n[r=1]>
-      # INCLUDE FINISHED for ../templates/free_surface/volume_of_fluid/output_masks.arb
-      #--------------------------------------------------------
+      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/output_masks.arb
+      #(comment generated during unwrap)--------------------------------------------------------
    
    NONE_OUTPUT <integrated volume> "cellsum(<vof_phi>*<cellvol>,<domain>)"
    
@@ -213,6 +217,6 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_OUTPUT <error_final2> "cellsum(abs(<vof_phi>-<vof_phi_final2>),region=<domain>)/cellsum(<vof_phi>,region=<domain>)"
    
    #-------------------------------------------------------------------
-   # INCLUDE FINISHED for ../vof_advection_streamtest.arb
-   #--------------------------------------------------------
+   #(comment generated during unwrap) INCLUDE finished for ../vof_advection_streamtest.arb
+   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

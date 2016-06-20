@@ -5,8 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: minimal_kernel_example.arb
 #(hash added during unwrap)INCLUDE_WORKING "minimal_kernel_example.arb"
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../minimal_kernel_example.arb without any search/replace combinations
+#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
+   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   #(comment generated during unwrap) the following is INCLUDED from ../minimal_kernel_example.arb without any search/replace combinations
    VERSION 0.51 # the version of syntax used in this file
    
    # the following strings describe the simulation and are passed to the output files
@@ -46,15 +47,17 @@ EXTERNALS "src/free_surface_functions.f90"
    # the following needs faceave
    #FACE_EQUATION <phi_f equation> "<phi_f>-faceave(<cellx[l=1]>)" ON <all faces>
    
-   #(hash added during unwrap)INCLUDE_ROOT "general"
-   # INFO: setting include root directory to general
+   #(hash added during unwrap)INCLUDE_TEMPLATE "general"
+   #(comment generated during unwrap) adding new include_path ../templates/general, making include_path array = .. ../templates/general
    #(hash added during unwrap)INCLUDE "element_information"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/general/element_information.arb without any search/replace combinations
+   #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = .. ../templates/general
+      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/general/element_information.arb without any search/replace combinations
       # includes all element information files from general
       #(hash added during unwrap)INCLUDE "element_coordinates.arb"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/element_coordinates.arb without any search/replace combinations
+      #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
+         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         #(comment generated during unwrap) the following is INCLUDED from ../templates/general/element_coordinates.arb without any search/replace combinations
          CELL_OUTPUT <cellx output[l=1]> "<cellx[l=1]>" ON <all cells>
          CELL_OUTPUT <cellx output[l=2]> "<cellx[l=2]>" ON <all cells>
          CELL_OUTPUT <cellx output[l=3]> "<cellx[l=3]>" ON <all cells>
@@ -64,19 +67,21 @@ EXTERNALS "src/free_surface_functions.f90"
          NODE_OUTPUT <nodex output[l=1]> "<nodex[l=1]>" ON <all nodes>
          NODE_OUTPUT <nodex output[l=2]> "<nodex[l=2]>" ON <all nodes>
          NODE_OUTPUT <nodex output[l=3]> "<nodex[l=3]>" ON <all nodes>
-         # INCLUDE FINISHED for ../templates/general/element_coordinates.arb
-         #--------------------------------------------------------
+         #(comment generated during unwrap) INCLUDE finished for ../templates/general/element_coordinates.arb
+         #(comment generated during unwrap)--------------------------------------------------------
       #(hash added during unwrap)INCLUDE "element_counts.arb"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/element_counts.arb without any search/replace combinations
+      #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
+         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         #(comment generated during unwrap) the following is INCLUDED from ../templates/general/element_counts.arb without any search/replace combinations
          FACE_OUTPUT <face_nodes> "nodesum(1.d0,region=<faceknodes>)" ON <all faces>
          CELL_OUTPUT <cell_nodes> "nodesum(1.d0,region=<cellknodes>)" ON <all cells>
          CELL_OUTPUT <cell_faces> "facesum(1.d0,region=<celljfaces>)" ON <all cells>
-         # INCLUDE FINISHED for ../templates/general/element_counts.arb
-         #--------------------------------------------------------
+         #(comment generated during unwrap) INCLUDE finished for ../templates/general/element_counts.arb
+         #(comment generated during unwrap)--------------------------------------------------------
       #(hash added during unwrap)INCLUDE "element_dimensions.arb"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/element_dimensions.arb without any search/replace combinations
+      #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
+         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         #(comment generated during unwrap) the following is INCLUDED from ../templates/general/element_dimensions.arb without any search/replace combinations
          CELL_OUTPUT <celldx output[l=1]> "<celldx[l=1]>" ON <all cells>
          CELL_OUTPUT <celldx output[l=2]> "<celldx[l=2]>" ON <all cells>
          CELL_OUTPUT <celldx output[l=3]> "<celldx[l=3]>" ON <all cells>
@@ -84,21 +89,23 @@ EXTERNALS "src/free_surface_functions.f90"
          CELL_OUTPUT <cellvol output> "<cellvol>" ON <all cells>
          FACE_OUTPUT <facedx output> "<facedx>" ON <all faces>
          FACE_OUTPUT <facearea output> "<facearea>" ON <all faces>
-         # INCLUDE FINISHED for ../templates/general/element_dimensions.arb
-         #--------------------------------------------------------
+         #(comment generated during unwrap) INCLUDE finished for ../templates/general/element_dimensions.arb
+         #(comment generated during unwrap)--------------------------------------------------------
       #(hash added during unwrap)INCLUDE "element_indices.arb"
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/element_indices.arb without any search/replace combinations
+      #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
+         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         #(comment generated during unwrap) the following is INCLUDED from ../templates/general/element_indices.arb without any search/replace combinations
          CELL_OUTPUT <icell output> "<icell>" ON <all cells>
          FACE_OUTPUT <jface output> "<jface>" ON <all faces>
          NODE_OUTPUT <knode output> "<knode>" ON <all nodes>
-         # INCLUDE FINISHED for ../templates/general/element_indices.arb
-         #--------------------------------------------------------
-      # INCLUDE FINISHED for ../templates/general/element_information.arb
-      #--------------------------------------------------------
+         #(comment generated during unwrap) INCLUDE finished for ../templates/general/element_indices.arb
+         #(comment generated during unwrap)--------------------------------------------------------
+      #(comment generated during unwrap) INCLUDE finished for ../templates/general/element_information.arb
+      #(comment generated during unwrap)--------------------------------------------------------
    #(hash added during unwrap)INCLUDE "kernel_information"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/general/kernel_information.arb without any search/replace combinations
+   #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = .. ../templates/general
+      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/general/kernel_information.arb without any search/replace combinations
       CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <all cells>
       CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <all cells>
       CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <all cells>
@@ -108,31 +115,34 @@ EXTERNALS "src/free_surface_functions.f90"
       CELL_OUTPUT <celldxkernel output> "<celldxkernel>" ON <all cells>
       FACE_OUTPUT <facedxkernel output> "<facedxkernel>" ON <all faces>
       NODE_OUTPUT <nodedxkernel output> "<nodedxkernel>" ON <all nodes>
-      # INCLUDE FINISHED for ../templates/general/kernel_information.arb
-      #--------------------------------------------------------
+      #(comment generated during unwrap) INCLUDE finished for ../templates/general/kernel_information.arb
+      #(comment generated during unwrap)--------------------------------------------------------
    #(hash added during unwrap)INCLUDE "mesh_quality"
-      #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      # the following is INCLUDED from ../templates/general/mesh_quality.arb without any search/replace combinations
+   #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = .. ../templates/general
+      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+      #(comment generated during unwrap) the following is INCLUDED from ../templates/general/mesh_quality.arb without any search/replace combinations
       # some metrics on mesh quality
       #(hash added during unwrap)INCLUDE "cell_aspect_ratio" # keep < 100 say for structured meshes, or as close to 1 as possible
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/cell_aspect_ratio.arb without any search/replace combinations
+      #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
+         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         #(comment generated during unwrap) the following is INCLUDED from ../templates/general/cell_aspect_ratio.arb without any search/replace combinations
          CELL_OUTPUT <cell aspect ratio> "facemax(<facearea>,region=<celljfaces>)/cellmax(facemin(<facearea>,region=<celljfaces>),<tinyish>)" ON <domain>
          NONE_OUTPUT <maximum cell aspect ratio> "cellmax(<cell aspect ratio>,region=<domain>)"
-         # INCLUDE FINISHED for ../templates/general/cell_aspect_ratio.arb
-         #--------------------------------------------------------
+         #(comment generated during unwrap) INCLUDE finished for ../templates/general/cell_aspect_ratio.arb
+         #(comment generated during unwrap)--------------------------------------------------------
       #(hash added during unwrap)INCLUDE "cell_adjacent_volume_ratio" # keep < 1.2 say, or as close to 1 as possible
-         #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         # the following is INCLUDED from ../templates/general/cell_adjacent_volume_ratio.arb without any search/replace combinations
+      #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
+         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+         #(comment generated during unwrap) the following is INCLUDED from ../templates/general/cell_adjacent_volume_ratio.arb without any search/replace combinations
          # for each cell within the domain, this is the ratio between the maximum surround cell volume and the cell's volume, indicating how uniform cell sizes are
          #CELL_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<nocadjacentcellicells>)/<cellvol>" ON <domain> # NB boundary cells have cellvol = 0 so will not contribute to this calculation, as required
          #NONE_OUTPUT <maximum cell adjacent volume ratio> "cellmax(<cell adjacent volume ratio>,region=<domain>)"
          FACE_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<adjacentfaceicells>)/cellmin(<cellvol>,default=<hugeish>,region=<adjacentfaceicells>)" ON <domain faces>
          NONE_OUTPUT <maximum cell adjacent volume ratio> "facemax(<cell adjacent volume ratio>,region=<domain faces>)"
-         # INCLUDE FINISHED for ../templates/general/cell_adjacent_volume_ratio.arb
-         #--------------------------------------------------------
-      # INCLUDE FINISHED for ../templates/general/mesh_quality.arb
-      #--------------------------------------------------------
-   # INCLUDE FINISHED for ../minimal_kernel_example.arb
-   #--------------------------------------------------------
+         #(comment generated during unwrap) INCLUDE finished for ../templates/general/cell_adjacent_volume_ratio.arb
+         #(comment generated during unwrap)--------------------------------------------------------
+      #(comment generated during unwrap) INCLUDE finished for ../templates/general/mesh_quality.arb
+      #(comment generated during unwrap)--------------------------------------------------------
+   #(comment generated during unwrap) INCLUDE finished for ../minimal_kernel_example.arb
+   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################
