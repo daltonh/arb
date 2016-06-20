@@ -2,7 +2,7 @@
 # dynamic force is included in the navier-stokes conservation equations, so they don't need any other modification
 # <U_f> should also be defined previously
 
-<<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=1](<U_f>)" ON <all cells>
-<<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=2](<U_f>)" ON <all cells>
-<<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=3](<U_f>)" ON <all cells>
-FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)-<BK^2/Re^2>*<rho_e_hf>*facegrad[dxunit](<U>)" ON <all faces>
+<<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=1](<U_f>)" ON <allcells>
+<<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=2](<U_f>)" ON <allcells>
+<<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=3](<U_f>)" ON <allcells>
+FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)-<BK^2/Re^2>*<rho_e_hf>*facegrad[dxunit](<U>)" ON <allfaces>

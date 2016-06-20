@@ -1,9 +1,9 @@
 # replace the general regions with the fluid msh equivalents
-GENERAL_REPLACEMENTS R "<all cells>" W "<free surface all cells>"
+GENERAL_REPLACEMENTS R "<allcells>" W "<free surface all cells>"
 GENERAL_REPLACEMENTS R "<domain>" W "<free surface domain>"
-GENERAL_REPLACEMENTS R "<boundary cells>" W "<free surface boundary cells>"
-GENERAL_REPLACEMENTS R "<all faces>" W "<free surface all faces>"
-GENERAL_REPLACEMENTS R "<domain faces>" W "<free surface domain faces>"
+GENERAL_REPLACEMENTS R "<boundarycells>" W "<free surface boundary cells>"
+GENERAL_REPLACEMENTS R "<allfaces>" W "<free surface all faces>"
+GENERAL_REPLACEMENTS R "<domainfaces>" W "<free surface domain faces>"
 GENERAL_REPLACEMENTS R "<boundaries>" W "<free surface boundaries>"
 # and some variables too, to emphasise that these are defined on the free surface mesh
 GENERAL_REPLACEMENTS R "<vof_phi_smooth" W "<vof_fs_phi_smooth"

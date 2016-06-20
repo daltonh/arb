@@ -3,11 +3,11 @@
 # to use these limiters for a general cell-centred variable <foo> say you need to:
 # INCLUDE_TEMPLATE "limiters_2d"
 # INCLUDE "absolute_limiter" R <phi W <foo
-# these will produce a CELL_DERIVED <foo limiter> on <all cells>
+# these will produce a CELL_DERIVED <foo limiter> on <allcells>
 # a byproduct is the CELL_DERIVED <foo limiter grad[l=:]> vectors which can also be reused in the advection calculation, ie
 # FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,<foo limiter>,gradient[l=1]=<foo limiter grad[l=1]>,gradient[l=2]=<foo limiter grad[l=2]>,gradient[l=3]=<foo limiter grad[l=3]>)"
 
-# these statements reference the regions <domain>, <all cells> and <all faces> so if non-standard regions are being used these will also have to be replaced
+# these statements reference the regions <domain>, <allcells> and <allfaces> so if non-standard regions are being used these will also have to be replaced
 # the advective flux is assumed to be the face variable <u_f>, so again if this isn't used it will need to be replaced by an alternative velocity
 
 # finally, the magnitude of the <phi> variable needs to be stored in the NONE_CONSTANT <phi magnitude>

@@ -5,37 +5,37 @@ INCLUDE_TEMPLATE "turbulence/general"
 INCLUDE "strain_rate_complete"
 INCLUDE # reset back to present file's location (although there are no more includes in this file)
 
-CELL_DERIVED <turb_2SS_c> "cellmax(<turb_2SS>,<turb_2SS_min>)" ON <all cells> elementdata # double limited, incase averaging kernels are very very poor
+CELL_DERIVED <turb_2SS_c> "cellmax(<turb_2SS>,<turb_2SS_min>)" ON <allcells> elementdata # double limited, incase averaging kernels are very very poor
 
 # find a lower bound for k, assuming that local production (here determined by <turb_2SS_c>) equals dissipation, and multiplied by a constant of <turb_k_rel_lower>/3.d0
-CELL_DERIVED <turb_k_lower> "<turb_2SS_c>*<turb_l_prandtl2>*<turb_k_rel_lower>/(3.d0*<turb_C_D>)" ON <all cells> elementdata
-#CELL_DERIVED <turb_k_lower> "<turb_2SS_min>*<turb_l_prandtl2>/<turb_C_D>" ON <all cells>
+CELL_DERIVED <turb_k_lower> "<turb_2SS_c>*<turb_l_prandtl2>*<turb_k_rel_lower>/(3.d0*<turb_C_D>)" ON <allcells> elementdata
+#CELL_DERIVED <turb_k_lower> "<turb_2SS_min>*<turb_l_prandtl2>/<turb_C_D>" ON <allcells>
 
-CELL_DERIVED <turb_k_small> "<turb_2SS_min>*<turb_l_prandtl2>/<turb_C_D>" ON <all cells> elementdata
+CELL_DERIVED <turb_k_small> "<turb_2SS_min>*<turb_l_prandtl2>/<turb_C_D>" ON <allcells> elementdata
 
 # limit the turbulent viscosity to values greater than the corresponding <k_lower>
-#CELL_DERIVED <turb_mu_t> "<rho>*sqrt(<turb_l_prandtl2>*cellmax(<turb_mu_rel_limit>*<turb_k_lower>,<turb_k>))" ON <all cells> elementdata # turbulent viscosity, cell centred
-#CELL_DERIVED <turb_mu_t> "<rho>*sqrt(<turb_l_prandtl2>*<turb_k_lim>)" ON <all cells> elementdata # turbulent viscosity, cell centred
-CELL_DERIVED <turb_mu_t> "<rho>*sqrt(<turb_l_prandtl2>*cellmax(<turb_k>,<turb_k_small>))" ON <all cells> elementdata # turbulent viscosity, cell centred
+#CELL_DERIVED <turb_mu_t> "<rho>*sqrt(<turb_l_prandtl2>*cellmax(<turb_mu_rel_limit>*<turb_k_lower>,<turb_k>))" ON <allcells> elementdata # turbulent viscosity, cell centred
+#CELL_DERIVED <turb_mu_t> "<rho>*sqrt(<turb_l_prandtl2>*<turb_k_lim>)" ON <allcells> elementdata # turbulent viscosity, cell centred
+CELL_DERIVED <turb_mu_t> "<rho>*sqrt(<turb_l_prandtl2>*cellmax(<turb_k>,<turb_k_small>))" ON <allcells> elementdata # turbulent viscosity, cell centred
 
 # find <turb_mu_t_f>, which is the turbulent viscosity that is used in the momentum equations
 # interpolate proportional to sqrt(2SS) so that there is a direct link between the face centred <turb_2SS> and the employed turbulent viscosity
-#CELL_DERIVED <turb_mu_t_2SS> "<turb_mu_t>/sqrt(<turb_2SS_c>)" ON <all cells>
-#FACE_DERIVED <turb_mu_t_f> "faceave[harmonic](<turb_mu_t_2SS>)*sqrt(<turb_2SS>)" ON <all faces>
-#FACE_DERIVED <turb_mu_t_f> "faceave(<turb_mu_t_2SS>)*sqrt(<turb_2SS>)" ON <all faces>
+#CELL_DERIVED <turb_mu_t_2SS> "<turb_mu_t>/sqrt(<turb_2SS_c>)" ON <allcells>
+#FACE_DERIVED <turb_mu_t_f> "faceave[harmonic](<turb_mu_t_2SS>)*sqrt(<turb_2SS>)" ON <allfaces>
+#FACE_DERIVED <turb_mu_t_f> "faceave(<turb_mu_t_2SS>)*sqrt(<turb_2SS>)" ON <allfaces>
 # straight interpolation, various methods
-#FACE_DERIVED <turb_mu_t_f> "faceave[harmonic](<turb_mu_t>)" ON <all faces>
-#FACE_DERIVED <turb_mu_t_f> "faceave(<turb_mu_t>)" ON <all faces>
+#FACE_DERIVED <turb_mu_t_f> "faceave[harmonic](<turb_mu_t>)" ON <allfaces>
+#FACE_DERIVED <turb_mu_t_f> "faceave(<turb_mu_t>)" ON <allfaces>
 # most stable
-#FACE_DERIVED <turb_mu_t_f> "faceave[adjacentcells](<turb_mu_t>)" ON <all faces>
+#FACE_DERIVED <turb_mu_t_f> "faceave[adjacentcells](<turb_mu_t>)" ON <allfaces>
 # or do more conservative weighting as done with two equation modelling
-FACE_DERIVED <turb_mu_t_f> "faceif(facedelta(<walls>),faceave[adjacentcellsevenweighting](<turb_mu_t>),faceave[adjacentcells](<turb_mu_t>))" ON <all faces>
+FACE_DERIVED <turb_mu_t_f> "faceif(facedelta(<walls>),faceave[adjacentcellsevenweighting](<turb_mu_t>),faceave[adjacentcells](<turb_mu_t>))" ON <allfaces>
 
 # effective (total) viscosity, face centred, used in momentum equation
-FACE_DERIVED <turb_mu_u_f> "<mu>+<turb_mu_t_f>" ON <all faces> output
+FACE_DERIVED <turb_mu_u_f> "<mu>+<turb_mu_t_f>" ON <allfaces> output
 # effective (total) viscosity, cell centred, used in momentum equation
 CELL_LOCAL <turb_mu_u_c> "<mu>+<turb_mu_t>" elementdata
 
 # find <turb_mu_k_f>, which is the total turbulent diffusivity, face centred, used in the k equation
-#FACE_DERIVED <turb_mu_k_f> "faceave[harmonic](<turb_mu_t>/<turb_sigma_k>+<mu>)" ON <all faces> output
-FACE_DERIVED <turb_mu_k_f> "<turb_mu_t_f>/<turb_sigma_k>+<mu>" ON <all faces> output
+#FACE_DERIVED <turb_mu_k_f> "faceave[harmonic](<turb_mu_t>/<turb_sigma_k>+<mu>)" ON <allfaces> output
+FACE_DERIVED <turb_mu_k_f> "<turb_mu_t_f>/<turb_sigma_k>+<mu>" ON <allfaces> output

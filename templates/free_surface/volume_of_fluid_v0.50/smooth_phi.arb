@@ -24,8 +24,8 @@ NONE_CONSTANT <vof_smoothing_constant> 0.5d0
 # find normalised distance between cell in separation loop and cell centre
 # now varies locally
 CELL_LOCAL <vof_smoothing_dist^2> "dot(<celltoseparationicellr[l=:]>,<celltoseparationicellr[l=:]>)"
-CELL_CONSTANT <vof_smoothing_eps_centre^2> "cellmin(cellmin(<celldxmin>,region=<adjacentcellicells>),2.d0*<celldxkernel>)**2" ON <all cells>
-CELL_LOCAL <vof_smoothing_eps^2> "cellfromcellave[separationcentre](<vof_smoothing_eps_centre^2>)" ON <all cells>
+CELL_CONSTANT <vof_smoothing_eps_centre^2> "cellmin(cellmin(<celldxmin>,region=<adjacentcellicells>),2.d0*<celldxkernel>)**2" ON <allcells>
+CELL_LOCAL <vof_smoothing_eps^2> "cellfromcellave[separationcentre](<vof_smoothing_eps_centre^2>)" ON <allcells>
 
 # define a smoothing kernel, which is also used in smooth_normals.arb
 # hyperbolic
@@ -42,8 +42,8 @@ CELL_LOCAL <vof_smoothing_kernel> "1.d0/(sqrt(<vof_smoothing_dist^2>/<vof_smooth
 
 # now do the smoothing
 # looks like we need a minimum of maxseparation=3 to get enough valid normals (at the edge of the interface region) to avoid instabilities in the (curvature) surface tension calculation
-CELL_CONSTANT <vof_phi_smoothing_demoninator> "cellsum[maxseparation=3,faceseparation](<vof_smoothing_kernel>,region=<all cells>)" ON <all cells>
-CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=3,faceseparation](<vof_phi_lim>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells>
+CELL_CONSTANT <vof_phi_smoothing_demoninator> "cellsum[maxseparation=3,faceseparation](<vof_smoothing_kernel>,region=<allcells>)" ON <allcells>
+CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=3,faceseparation](<vof_phi_lim>*<vof_smoothing_kernel>,region=<allcells>)/<vof_phi_smoothing_demoninator>" ON <allcells>
 
 # save the smoothed phi for later - necessary?
-#CELL_TRANSIENT <vof_phi_smoothed[r=1]> "" "<vof_phi_smoothed>" ON <all cells> output
+#CELL_TRANSIENT <vof_phi_smoothed[r=1]> "" "<vof_phi_smoothed>" ON <allcells> output

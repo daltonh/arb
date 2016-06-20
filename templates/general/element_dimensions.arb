@@ -1,7 +1,7 @@
-CELL_OUTPUT <celldx output[l=1]> "<celldx[l=1]>" ON <all cells>
-CELL_OUTPUT <celldx output[l=2]> "<celldx[l=2]>" ON <all cells>
-CELL_OUTPUT <celldx output[l=3]> "<celldx[l=3]>" ON <all cells>
-CELL_OUTPUT <celldxmax output> "<celldxmax>" ON <all cells>
-CELL_OUTPUT <cellvol output> "<cellvol>" ON <all cells>
-FACE_OUTPUT <facedx output> "<facedx>" ON <all faces>
-FACE_OUTPUT <facearea output> "<facearea>" ON <all faces>
+CELL_OUTPUT <celldx output[l=1]> "<celldx[l=1]>" ON <allcells>
+CELL_OUTPUT <celldx output[l=2]> "<celldx[l=2]>" ON <allcells>
+CELL_OUTPUT <celldx output[l=3]> "<celldx[l=3]>" ON <allcells>
+CELL_OUTPUT <celldxmax output> "<celldxmax>" ON <allcells>
+CELL_OUTPUT <cellvol output> "<cellvol>" ON <allcells>
+FACE_OUTPUT <facedx output> "<facedx>" ON <allfaces>
+FACE_OUTPUT <facearea output> "<facearea>" ON <allfaces>

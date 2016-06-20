@@ -3,18 +3,18 @@
 
 # calculate mod(grad(<ls_advected>)), taking into account requested discretisation orders
 # this is the pseudo advection velocity that points away from the interface
-#FACE_DERIVED <ls_u_advected_pos> "<<sign>>(faceif(<ls_reinitialisation_order_f>,facegrad(<ls_advected>),facegrad[adjacentcells](<ls_advected>)))" ON <all faces>
+#FACE_DERIVED <ls_u_advected_pos> "<<sign>>(faceif(<ls_reinitialisation_order_f>,facegrad(<ls_advected>),facegrad[adjacentcells](<ls_advected>)))" ON <allfaces>
 FACE_LOCAL <ls_u_vect_advected_pos[l=1]> "<<sign>>(facegrad[l=1](<ls_advected>))" output
 FACE_LOCAL <ls_u_vect_advected_pos[l=2]> "<<sign>>(facegrad[l=2](<ls_advected>))"
 FACE_LOCAL <ls_u_vect_mag_advected_pos> "sqrt(dot(<ls_u_vect_advected_pos[l=:]>,<ls_u_vect_advected_pos[l=:]>))"
 FACE_DERIVED <ls_u_weight_advected_pos> "dot(<facenorm[l=:]>,<ls_u_vect_advected_pos[l=:]>)/<ls_u_vect_mag_advected_pos>" output
-FACE_DERIVED <ls_f_u_advected_pos> "faceave[advection](<ls_advected>,-<ls_u_weight_advected_pos>,<ls_reinitialisation_order>)" ON <all faces>
-FACE_DERIVED <ls_f_d_advected_pos> "faceave[advection](<ls_advected>,<ls_u_weight_advected_pos>,<ls_reinitialisation_order>)" ON <all faces>
-FACE_DERIVED <ls_f_advected_pos> "0.5d0*((<ls_u_weight_advected_pos>+1.d0)*<ls_f_d_advected_pos>-(<ls_u_weight_advected_pos>-1.d0)*<ls_f_u_advected_pos>)" ON <all faces> output
+FACE_DERIVED <ls_f_u_advected_pos> "faceave[advection](<ls_advected>,-<ls_u_weight_advected_pos>,<ls_reinitialisation_order>)" ON <allfaces>
+FACE_DERIVED <ls_f_d_advected_pos> "faceave[advection](<ls_advected>,<ls_u_weight_advected_pos>,<ls_reinitialisation_order>)" ON <allfaces>
+FACE_DERIVED <ls_f_advected_pos> "0.5d0*((<ls_u_weight_advected_pos>+1.d0)*<ls_f_d_advected_pos>-(<ls_u_weight_advected_pos>-1.d0)*<ls_f_u_advected_pos>)" ON <allfaces> output
 # this is the face averaged <ls> value that will be used in the cell divergences
-#FACE_DERIVED <ls_f_advected_pos> "faceave[advection](<ls_advected>,<ls_u_advected_pos>,<ls_reinitialisation_order>)" ON <all faces>
-#FACE_DERIVED <ls_f_advected_pos> "faceif(<ls_reinitialisation_order>-0.5,faceave(<ls_advected>),faceave[advection](<ls_advected>,<ls_u_advected_pos>,<ls_reinitialisation_order>))" ON <all faces>
-#FACE_DERIVED <ls_f_advected_pos> "faceave(<ls_advected>)" ON <all faces>
+#FACE_DERIVED <ls_f_advected_pos> "faceave[advection](<ls_advected>,<ls_u_advected_pos>,<ls_reinitialisation_order>)" ON <allfaces>
+#FACE_DERIVED <ls_f_advected_pos> "faceif(<ls_reinitialisation_order>-0.5,faceave(<ls_advected>),faceave[advection](<ls_advected>,<ls_u_advected_pos>,<ls_reinitialisation_order>))" ON <allfaces>
+#FACE_DERIVED <ls_f_advected_pos> "faceave(<ls_advected>)" ON <allfaces>
 #CELL_LOCAL <ls_grad_dot_advected_pos> "<<sign>>(celldiv(<ls_f_advected_pos>*<ls_u_advected_pos>)-<ls_advected>*celldiv(<ls_u_advected_pos>))"
 # and this is mod(grad(<ls_advected>))
 # faster?
@@ -24,26 +24,26 @@ CELL_LOCAL <ls_grad_advected_c_pos[l=2]> "celldivgrad[l=2](<ls_f_advected_pos>)"
 CELL_LOCAL <ls_grad_dot_advected_pos> "dot(<ls_grad_advected_c_pos[l=:]>,<ls_grad_advected_c_pos[l=:]>)"
 
 # define an implicit <ls> function on the positive side of the interface which is anchored at the interface to the ls_advect values
-CELL_DERIVED <ls_pos> "cellif(<<sign>><ls_sign>,<ls>,<ls_advected>)" ON <all cells> nooutput
+CELL_DERIVED <ls_pos> "cellif(<<sign>><ls_sign>,<ls>,<ls_advected>)" ON <allcells> nooutput
 
 # the exact above three steps are repeated for <ls_pos> to find mod(grad(<ls_pos>))
-#FACE_DERIVED <ls_u_pos> "<<sign>>(faceif(<ls_reinitialisation_order_f>,facegrad(<ls_pos>),facegrad[adjacentcells](<ls_pos>)))" ON <all faces>
+#FACE_DERIVED <ls_u_pos> "<<sign>>(faceif(<ls_reinitialisation_order_f>,facegrad(<ls_pos>),facegrad[adjacentcells](<ls_pos>)))" ON <allfaces>
 FACE_LOCAL <ls_u_vect_pos[l=1]> "<<sign>>(facegrad[l=1](<ls_pos>))" output
 FACE_LOCAL <ls_u_vect_pos[l=2]> "<<sign>>(facegrad[l=2](<ls_pos>))"
 FACE_LOCAL <ls_u_vect_mag_pos> "sqrt(dot(<ls_u_vect_pos[l=:]>,<ls_u_vect_pos[l=:]>))"
 #FACE_DERIVED <ls_u_weight_pos> "dot(<facenorm[l=:]>,<ls_u_vect_pos[l=:]>)/<ls_u_vect_mag_pos>" output
 FACE_DERIVED <ls_u_weight_pos> "<ls_u_weight_advected_pos>" output
-FACE_DERIVED <ls_f_u_pos> "faceave[advection](<ls_pos>,-<ls_u_weight_pos>,<ls_reinitialisation_order>)" ON <all faces>
-FACE_DERIVED <ls_f_d_pos> "faceave[advection](<ls_pos>,<ls_u_weight_pos>,<ls_reinitialisation_order>)" ON <all faces>
-FACE_DERIVED <ls_f_pos> "0.5d0*((<ls_u_weight_pos>+1.d0)*<ls_f_d_pos>-(<ls_u_weight_pos>-1.d0)*<ls_f_u_pos>)" ON <all faces> output
-#FACE_DERIVED <ls_f_pos> "faceif(<ls_reinitialisation_order>-0.5,faceave(<ls_pos>),faceave[advection](<ls_pos>,<ls_u_pos>,<ls_reinitialisation_order>))" ON <all faces>
-#FACE_DERIVED <ls_f_pos> "faceave(<ls_pos>)" ON <all faces>
+FACE_DERIVED <ls_f_u_pos> "faceave[advection](<ls_pos>,-<ls_u_weight_pos>,<ls_reinitialisation_order>)" ON <allfaces>
+FACE_DERIVED <ls_f_d_pos> "faceave[advection](<ls_pos>,<ls_u_weight_pos>,<ls_reinitialisation_order>)" ON <allfaces>
+FACE_DERIVED <ls_f_pos> "0.5d0*((<ls_u_weight_pos>+1.d0)*<ls_f_d_pos>-(<ls_u_weight_pos>-1.d0)*<ls_f_u_pos>)" ON <allfaces> output
+#FACE_DERIVED <ls_f_pos> "faceif(<ls_reinitialisation_order>-0.5,faceave(<ls_pos>),faceave[advection](<ls_pos>,<ls_u_pos>,<ls_reinitialisation_order>))" ON <allfaces>
+#FACE_DERIVED <ls_f_pos> "faceave(<ls_pos>)" ON <allfaces>
 #CELL_LOCAL <ls_grad_dot_pos> "<<sign>>(celldiv(<ls_f_pos>*<ls_u_pos>)-<ls_pos>*celldiv(<ls_u_pos>))" output,elementdata
 #CELL_LOCAL <ls_grad_dot_pos> "<<sign>>(celldiv((<ls_f_pos>-faceave[lastcell](<ls_pos>))*<ls_u_pos>))"
 CELL_LOCAL <ls_grad_c_pos[l=1]> "celldivgrad[l=1](<ls_f_pos>)"
 CELL_LOCAL <ls_grad_c_pos[l=2]> "celldivgrad[l=2](<ls_f_pos>)"
 CELL_LOCAL <ls_grad_dot_pos> "dot(<ls_grad_c_pos[l=:]>,<ls_grad_c_pos[l=:]>)"
 
-FACE_DERIVED <ls_u_pos> "<<sign>>(faceif(<ls_reinitialisation_order_f>,facegrad(<ls_pos>),facegrad[adjacentcells](<ls_pos>)))" ON <all faces>
+FACE_DERIVED <ls_u_pos> "<<sign>>(faceif(<ls_reinitialisation_order_f>,facegrad(<ls_pos>),facegrad[adjacentcells](<ls_pos>)))" ON <allfaces>
 # also calculate the minimum pseudo velocity out of the cell (ie, -max(velocity into the cell)).  If this is positive then no ls velocity is directed into the cell and if upwinding is used then the equations will become degenerate.  Currently no decent solution to keep simulation progressing.
 CELL_OUTPUT <ls_u_min_pos> "facemin(<ls_u_pos>*<facefromcelldirection>,region=<celljfaces>)" ON <domain> elementdata

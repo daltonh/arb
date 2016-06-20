@@ -4,4 +4,4 @@
 INCLUDE_TEMPLATE "general"
 INCLUDE "physical_constants"
 
-CELL_DERIVED <Pi_diffusive_s> [Pa] "<phi_s>*<k_boltzmann>*<T>/<V_s>" ON <all cells>
+CELL_DERIVED <Pi_diffusive_s> [Pa] "<phi_s>*<k_boltzmann>*<T>/<V_s>" ON <allcells>

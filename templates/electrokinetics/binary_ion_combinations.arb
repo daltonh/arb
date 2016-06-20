@@ -8,13 +8,13 @@ INCLUDE "ion_concentrations" REPLACE "<ion" WITH "<ion+"
 INCLUDE "ion_concentrations" REPLACE "<ion" WITH "<ion-"
 
 # also define the following locals
-CELL_LOCAL <rho_e> "<e>*(<ion+ z>*<ion+ n>+<ion- z>*<ion- n>)" ON <all cells> # used on right of poisson equation
-CELL_LOCAL <rho_e pos> "<e>*(<ion+ z>*<ion+ n pos>+<ion- z>*<ion- n pos>)" ON <all cells> # used in momentum balance (navier-stokes)
-FACE_LOCAL <rho_e_hf> "<e>*(<ion+ z>*<ion+ n_hf>+<ion- z>*<ion- n_hf>)" ON <all faces> output
-CELL_LOCAL <n_0^2 signed> "cellmin(<ion+ n>,<ion- n>)*abs(cellmax(<ion+ n>,<ion- n>))" ON <all cells>
+CELL_LOCAL <rho_e> "<e>*(<ion+ z>*<ion+ n>+<ion- z>*<ion- n>)" ON <allcells> # used on right of poisson equation
+CELL_LOCAL <rho_e pos> "<e>*(<ion+ z>*<ion+ n pos>+<ion- z>*<ion- n pos>)" ON <allcells> # used in momentum balance (navier-stokes)
+FACE_LOCAL <rho_e_hf> "<e>*(<ion+ z>*<ion+ n_hf>+<ion- z>*<ion- n_hf>)" ON <allfaces> output
+CELL_LOCAL <n_0^2 signed> "cellmin(<ion+ n>,<ion- n>)*abs(cellmax(<ion+ n>,<ion- n>))" ON <allcells>
 
 # for error checking
-#CELL_OUTPUT <rho_e error> "<rho_e>-<rho_e pos>" ON <all cells>
+#CELL_OUTPUT <rho_e error> "<rho_e>-<rho_e pos>" ON <allcells>
 
 # this face-averaged potential is needed early on in the derived calculations (for dynamic_force_c) so include it here
-FACE_DERIVED <U_f> "faceave(<U>)" ON <all faces> # this is needed in <dynamic_force_c> which will be calculated in p_error_dxunit
+FACE_DERIVED <U_f> "faceave(<U>)" ON <allfaces> # this is needed in <dynamic_force_c> which will be calculated in p_error_dxunit

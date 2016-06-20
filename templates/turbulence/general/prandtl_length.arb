@@ -10,9 +10,9 @@ CELL_LOCAL <turb_l_wall_nd> "cellmin(cellmax(1.d0-<turb_l_wall>/<turb_l_prandtl_
 # these need fixing, as to how these are scaled when <turb_l_wall_max> /= <turb_l_prandtl_boundary_layer_thickness>
 #CELL_LOCAL <turb_l_prandtl> "cellmax(<turb_l_prandtl_boundary_layer_thickness>*(0.14d0-0.08d0*<turb_l_wall_nd>^2-0.06d0*<turb_l_wall_nd>^4),0.d0)"
 CELL_LOCAL <turb_l_prandtl> "cellmax(<turb_l_wall_max>*(0.14d0-0.08d0*<turb_l_wall_nd>^2-0.06d0*<turb_l_wall_nd>^4),0.d0)"
-CELL_CONSTANT <turb_l_prandtl2> "<turb_l_prandtl>^2" ON <all cells>
-FACE_CONSTANT <turb_l_prandtl2_f> "faceave[adjacentcells](<turb_l_prandtl2>)" ON <all faces>
-NONE_CONSTANT <turb_l_prandtl_max> "cellmax(<turb_l_prandtl>,region=<all cells>)"
+CELL_CONSTANT <turb_l_prandtl2> "<turb_l_prandtl>^2" ON <allcells>
+FACE_CONSTANT <turb_l_prandtl2_f> "faceave[adjacentcells](<turb_l_prandtl2>)" ON <allfaces>
+NONE_CONSTANT <turb_l_prandtl_max> "cellmax(<turb_l_prandtl>,region=<allcells>)"
 
 # set viscous sublayer thickness, used in the background shear stress calculation
 #CONSTANT <turb_prandtl_viscous_layer_thickness> "1.d-2*<turb_l_wall_max>" # constant multiple of the geometry dimension

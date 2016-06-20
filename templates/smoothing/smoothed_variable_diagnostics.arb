@@ -1,10 +1,10 @@
-CELL_OUTPUT <variable_smoothed_position> "<variable_smoothed>/<variable_base>" ON <all cells>
-CELL_OUTPUT <variable_inside_linear_range> "cellif(<variable>-<variable_baseu>,<variable>-<variable_baseu>,cellif(-(<variable>-<variable_basel>),<variable>-<variable_basel>,0.d0))" ON <all cells>
+CELL_OUTPUT <variable_smoothed_position> "<variable_smoothed>/<variable_base>" ON <allcells>
+CELL_OUTPUT <variable_inside_linear_range> "cellif(<variable>-<variable_baseu>,<variable>-<variable_baseu>,cellif(-(<variable>-<variable_basel>),<variable>-<variable_basel>,0.d0))" ON <allcells>
 #VARIABLE <variable_base> output
 #VARIABLE <variable_basel> output
 #VARIABLE <variable_baseu> output
-CELL_OUTPUT <variable_change> "<variable>-<variable[r=1]>" ON <all cells> output
-CELL_OUTPUT <variable_rel_change> "(<variable>-<variable[r=1]>)/<variable_base>" ON <all cells> output
-NONE_OUTPUT <variable_rel_change_min> "cellmin(<variable_rel_change>,region=<all cells>)"
-NONE_OUTPUT <variable_rel_change_max> "cellmax(<variable_rel_change>,region=<all cells>)"
+CELL_OUTPUT <variable_change> "<variable>-<variable[r=1]>" ON <allcells> output
+CELL_OUTPUT <variable_rel_change> "(<variable>-<variable[r=1]>)/<variable_base>" ON <allcells> output
+NONE_OUTPUT <variable_rel_change_min> "cellmin(<variable_rel_change>,region=<allcells>)"
+NONE_OUTPUT <variable_rel_change_max> "cellmax(<variable_rel_change>,region=<allcells>)"
 NONE_OUTPUT <variable_rel_change_abs> "nonemax(abs(<variable_rel_change_min>),abs(<variable_rel_change_max>))"

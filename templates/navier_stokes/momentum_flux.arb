@@ -4,9 +4,9 @@
 INCLUDE "default_string_replacements"
 
 # start by placing in viscous momentum transport, applicable to both the stokes and navier-stokes equations
-<<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <all faces>
-<<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <all faces>
-<<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <all faces>
+<<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <allfaces>
+<<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <allfaces>
+<<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <allfaces>
 
 # and now add advection momentum transport for just the navier-stokes equations using self-referencing
 <<navierstokescomment>><<dim1comment>>VARIABLE <J_f[l=1]> "<J_f[l=1]>+<J_advection_f[l=1]>"

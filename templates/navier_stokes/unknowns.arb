@@ -1,5 +1,5 @@
 # unknown variables used for flow problems
-<<dim1comment>>CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
-<<dim2comment>>CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
-<<dim3comment>>CELL_UNKNOWN <u[l=3]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
-CELL_UNKNOWN <p> [] "1.d0" ON <all cells> # pressure
+<<dim1comment>>CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
+<<dim2comment>>CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
+<<dim3comment>>CELL_UNKNOWN <u[l=3]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
+CELL_UNKNOWN <p> [] "1.d0" ON <allcells> # pressure

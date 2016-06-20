@@ -1,4 +1,4 @@
 # idea here is to just output the face centred advection flux as a vector
-<<dim1comment>>FACE_OUTPUT <u_f_visualise[l=1]> "<u_f>*<facenorm[l=1]>" ON <all faces>
-<<dim2comment>>FACE_OUTPUT <u_f_visualise[l=2]> "<u_f>*<facenorm[l=2]>" ON <all faces>
-<<dim3comment>>FACE_OUTPUT <u_f_visualise[l=3]> "<u_f>*<facenorm[l=3]>" ON <all faces>
+<<dim1comment>>FACE_OUTPUT <u_f_visualise[l=1]> "<u_f>*<facenorm[l=1]>" ON <allfaces>
+<<dim2comment>>FACE_OUTPUT <u_f_visualise[l=2]> "<u_f>*<facenorm[l=2]>" ON <allfaces>
+<<dim3comment>>FACE_OUTPUT <u_f_visualise[l=3]> "<u_f>*<facenorm[l=3]>" ON <allfaces>

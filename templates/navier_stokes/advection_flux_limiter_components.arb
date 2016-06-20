@@ -2,9 +2,9 @@
 # it is assumed that this will be called from advection_flux_limiter with the appropriate string replacements acting on '<u[l'
 
 # the following is a standard relative limiter
-<<dim1comment>>CELL_DERIVED <u_adv_limiter[l=1]> [1] "celllimiter[lower](<u[l=1]>,cellmin(<u[l=1]>,,<cellicells>),celllimiter[upper](<u[l=1]>,cellmax(<u[l=1]>,,<cellicells>)))" ON <all cells>
-<<dim2comment>>CELL_DERIVED <u_adv_limiter[l=2]> [1] "celllimiter[lower](<u[l=2]>,cellmin(<u[l=2]>,,<cellicells>),celllimiter[upper](<u[l=2]>,cellmax(<u[l=2]>,,<cellicells>)))" ON <all cells>
-<<dim3comment>>CELL_DERIVED <u_adv_limiter[l=3]> [1] "celllimiter[lower](<u[l=3]>,cellmin(<u[l=3]>,,<cellicells>),celllimiter[upper](<u[l=3]>,cellmax(<u[l=3]>,,<cellicells>)))" ON <all cells>
+<<dim1comment>>CELL_DERIVED <u_adv_limiter[l=1]> [1] "celllimiter[lower](<u[l=1]>,cellmin(<u[l=1]>,,<cellicells>),celllimiter[upper](<u[l=1]>,cellmax(<u[l=1]>,,<cellicells>)))" ON <allcells>
+<<dim2comment>>CELL_DERIVED <u_adv_limiter[l=2]> [1] "celllimiter[lower](<u[l=2]>,cellmin(<u[l=2]>,,<cellicells>),celllimiter[upper](<u[l=2]>,cellmax(<u[l=2]>,,<cellicells>)))" ON <allcells>
+<<dim3comment>>CELL_DERIVED <u_adv_limiter[l=3]> [1] "celllimiter[lower](<u[l=3]>,cellmin(<u[l=3]>,,<cellicells>),celllimiter[upper](<u[l=3]>,cellmax(<u[l=3]>,,<cellicells>)))" ON <allcells>
 
 
 # the following is some old code that was used for the fancier templates limiters
@@ -17,6 +17,6 @@
 #<<dim1comment>>NONE_CONSTANT <u_adv_1 magnitude> "1.d0"
 #<<dim2comment>>NONE_CONSTANT <u_adv_2 magnitude> "1.d0"
 #<<dim3comment>>NONE_CONSTANT <u_adv_3 magnitude> "1.d0"
-#<<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+faceave[advection,<<reflect=1>>](<rho>*<u[l=1]>,<u_f>,<adv_limiter>*<u_adv_1 limiter>)*<u_f>" ON <all faces> # component of momentum transport from stress and advection
-#<<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+faceave[advection,<<reflect=2>>](<rho>*<u[l=2]>,<u_f>,<adv_limiter>*<u_adv_2 limiter>)*<u_f>" ON <all faces> # component of momentum transport from stress and advection
-#<<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)+faceave[advection,<<reflect=3>>](<rho>*<u[l=3]>,<u_f>,<adv_limiter>*<u_adv_3 limiter>)*<u_f>" ON <all faces> # component of momentum transport from stress and advection
+#<<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+faceave[advection,<<reflect=1>>](<rho>*<u[l=1]>,<u_f>,<adv_limiter>*<u_adv_1 limiter>)*<u_f>" ON <allfaces> # component of momentum transport from stress and advection
+#<<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+faceave[advection,<<reflect=2>>](<rho>*<u[l=2]>,<u_f>,<adv_limiter>*<u_adv_2 limiter>)*<u_f>" ON <allfaces> # component of momentum transport from stress and advection
+#<<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)+faceave[advection,<<reflect=3>>](<rho>*<u[l=3]>,<u_f>,<adv_limiter>*<u_adv_3 limiter>)*<u_f>" ON <allfaces> # component of momentum transport from stress and advection

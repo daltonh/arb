@@ -5,12 +5,12 @@
 <<dim2comment>>FACE_LOCAL <pf_n_f[l=2]> "facegrad[l=2](<pf_phi>)"
 <<dim3comment>>FACE_LOCAL <pf_n_f[l=3]> "facegrad[l=3](<pf_phi>)"
 FACE_LOCAL <pf_n_f mag> "sqrt(dot(<pf_n_f[l=:]>,<pf_n_f[l=:]>))" elementdata
-FACE_DERIVED <pf_n_f_scalar> "facegrad(<pf_phi>)/facemax(<pf_n_f mag>,<pf_phi_cutoff>/<facedx>)" ON <all faces> nooutput
-<<cylindricalcomment>>CELL_DERIVED <pf_kappa_c2> "-celldiv(<<radius_f>>*<pf_n_f_scalar>/faceave[lastcell](<<radius_c>>))" ON <all cells> nooutput,elementdata
-<<cartesiancomment>>CELL_DERIVED <pf_kappa_c2> "-celldiv(<pf_n_f_scalar>)" ON <all cells> nooutput,elementdata
-FACE_DERIVED <pf_kappa_f> "<pf_kappa_c2>" ON <all faces>
+FACE_DERIVED <pf_n_f_scalar> "facegrad(<pf_phi>)/facemax(<pf_n_f mag>,<pf_phi_cutoff>/<facedx>)" ON <allfaces> nooutput
+<<cylindricalcomment>>CELL_DERIVED <pf_kappa_c2> "-celldiv(<<radius_f>>*<pf_n_f_scalar>/faceave[lastcell](<<radius_c>>))" ON <allcells> nooutput,elementdata
+<<cartesiancomment>>CELL_DERIVED <pf_kappa_c2> "-celldiv(<pf_n_f_scalar>)" ON <allcells> nooutput,elementdata
+FACE_DERIVED <pf_kappa_f> "<pf_kappa_c2>" ON <allfaces>
 # cell centred curvature is interpolated from face centred values
-#CELL_DERIVED <pf_kappa_c> "<pf_kappa_f>" ON <all cells> output,elementdata
+#CELL_DERIVED <pf_kappa_c> "<pf_kappa_f>" ON <allcells> output,elementdata
 # cell centred curvature is taken directly from celldiv
-CELL_DERIVED <pf_kappa_c> "<pf_kappa_c2>" ON <all cells> output,elementdata
+CELL_DERIVED <pf_kappa_c> "<pf_kappa_c2>" ON <allcells> output,elementdata
 

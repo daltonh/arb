@@ -1,2 +1,2 @@
 # ignore the smoothed mu_t
-CELL_DERIVED <turb_mu_t> "<turb_mu_t_raw>" ON <all cells>
+CELL_DERIVED <turb_mu_t> "<turb_mu_t_raw>" ON <allcells>

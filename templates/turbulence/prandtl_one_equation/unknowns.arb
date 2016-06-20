@@ -1,10 +1,10 @@
 # k unknown
-#CELL_UNKNOWN <turb_k> "<u_av>*sqrt(<turb_l_prandtl2>)*<turb_k_rel_initial>" ON <all cells> magnitude=1.d0,elementdata
-#CELL_UNKNOWN <turb_k> "<u_av>*sqrt(<turb_l_prandtl2>)*<turb_k_rel_initial>" ON <all cells> elementdata
+#CELL_UNKNOWN <turb_k> "<u_av>*sqrt(<turb_l_prandtl2>)*<turb_k_rel_initial>" ON <allcells> magnitude=1.d0,elementdata
+#CELL_UNKNOWN <turb_k> "<u_av>*sqrt(<turb_l_prandtl2>)*<turb_k_rel_initial>" ON <allcells> elementdata
 #CONSTANT <turb_2SS_initial> "(<u_av>/<turb_l_wall_max>)^2"
-#CELL_UNKNOWN <turb_k> "<turb_k_rel_initial>*<turb_2SS_initial>*<turb_l_prandtl2>/<turb_C_D>" ON <all cells> elementdata
+#CELL_UNKNOWN <turb_k> "<turb_k_rel_initial>*<turb_2SS_initial>*<turb_l_prandtl2>/<turb_C_D>" ON <allcells> elementdata
 
-CELL_UNKNOWN <turb_k> "<turb_k_rel_initial>*<turb_l_prandtl2>*<turb_2SS_background>/<turb_C_D>" ON <all cells> elementdata
+CELL_UNKNOWN <turb_k> "<turb_k_rel_initial>*<turb_l_prandtl2>*<turb_2SS_background>/<turb_C_D>" ON <allcells> elementdata
 
 # define a limited k
 CELL_LOCAL <turb_k_pos> "cellmax(<turb_k>,0.d0)"

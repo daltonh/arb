@@ -6,7 +6,7 @@ INCLUDE "strain_rate_complete"
 INCLUDE # reset back to present file's location (although there are no more includes in this file)
 
 FACE_DERIVED <turb_mu_t_f> "<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS>/<turb_C_D>)" # turbulent viscosity, face centred
-CELL_LOCAL <turb_2SS_c> "cellmax(<turb_2SS>,<turb_2SS_min>)" ON <all cells>
+CELL_LOCAL <turb_2SS_c> "cellmax(<turb_2SS>,<turb_2SS_min>)" ON <allcells>
 CELL_LOCAL <turb_mu_t> "<rho>*<turb_l_prandtl2>*sqrt(<turb_2SS_c>/<turb_C_D>)" elementdata # turbulent viscosity, cell centred
 
 # effective (total) viscosity, face centred, used in momentum equation
@@ -15,4 +15,4 @@ FACE_DERIVED <turb_mu_u_f> "<mu>+<turb_mu_t_f>" output
 CELL_LOCAL <turb_mu_u_c> "<mu>+<turb_mu_t>" elementdata
 
 # for display or reload purposes only output a cell centred k
-CELL_OUTPUT <turb_k> "<turb_l_prandtl2>*<turb_2SS_c>/<turb_C_D>" ON <all cells>
+CELL_OUTPUT <turb_k> "<turb_l_prandtl2>*<turb_2SS_c>/<turb_C_D>" ON <allcells>

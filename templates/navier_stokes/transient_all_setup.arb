@@ -43,7 +43,7 @@ GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "" DEFAULT "<<nonne
 GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
 
 <<dynamictimestepcomment>>NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
-<<dynamictimestepcomment>>FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <all faces> # don't actually need this for implicit timestepping, but it is used in input files for some of the problems for output, so in the interests of not breaking things...
+<<dynamictimestepcomment>>FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <allfaces> # don't actually need this for implicit timestepping, but it is used in input files for some of the problems for output, so in the interests of not breaking things...
 
 # explicit
 # use CFL_number template, but make the calculation explicit - ie, based on r=1 values
@@ -79,7 +79,7 @@ NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the 
 NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
 
 # the initial values are blank, which means they will be set equal to the r=0 components, which when updated will mean that they will be set to the initial values for the r=0 components
-<<dim1comment>>CELL_TRANSIENT <u[l=1,r=1]> "" "<u[l=1]>" ON <all cells>
-<<dim2comment>>CELL_TRANSIENT <u[l=2,r=1]> "" "<u[l=2]>" ON <all cells>
-<<dim3comment>>CELL_TRANSIENT <u[l=3,r=1]> "" "<u[l=3]>" ON <all cells>
+<<dim1comment>>CELL_TRANSIENT <u[l=1,r=1]> "" "<u[l=1]>" ON <allcells>
+<<dim2comment>>CELL_TRANSIENT <u[l=2,r=1]> "" "<u[l=2]>" ON <allcells>
+<<dim3comment>>CELL_TRANSIENT <u[l=3,r=1]> "" "<u[l=3]>" ON <allcells>
 

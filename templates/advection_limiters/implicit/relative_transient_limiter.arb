@@ -9,8 +9,8 @@ GENERAL_REPLACEMENTS DEFAULT "<<limiterupwindseparation>>" W "2"
 INCLUDE "upwind_phi"
 
 # now using a separation loop that employs the faceseparationflag to look a number of separation levels upwind of the current cell
-CELL_DERIVED <phi upper bound> "cellmax[maxseparation=<<limiterupwindseparation>>,faceseparation](<phi_c low order>,default=<phi_c low order>,region=<all cells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> nooutput
-CELL_DERIVED <phi lower bound> "cellmin[maxseparation=<<limiterupwindseparation>>,faceseparation](<phi_c low order>,default=<phi_c low order>,region=<all cells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> nooutput
+CELL_DERIVED <phi upper bound> "cellmax[maxseparation=<<limiterupwindseparation>>,faceseparation](<phi_c low order>,default=<phi_c low order>,region=<allcells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> nooutput
+CELL_DERIVED <phi lower bound> "cellmin[maxseparation=<<limiterupwindseparation>>,faceseparation](<phi_c low order>,default=<phi_c low order>,region=<allcells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> nooutput
 
 #--------------------------------------------------------
 # do all the limiter calcs

@@ -23,7 +23,7 @@ NONE_CONSTANT <ls_limiter_crosskernel_max> 0.5d0 # the maximum multiplier for an
 NONE_CONSTANT <ls_limiter_centralkernel_max> 0.05d0 # the maximum multiplier for the central cell value
 CELL_LOCAL <ls_limiter_crosskernel> "cellif(<crosskernel>-<ls_limiter_crosskernel_max>,<ls_limiter_crosskernel_max>/<crosskernel>,1.d0)"
 CELL_LOCAL <ls_limiter_centralkernel> "cellif(<centralkernel>-<ls_limiter_centralkernel_max>,<ls_limiter_centralkernel_max>/<centralkernel>,1.d0)"
-CELL_CONSTANT <ls_advection_limiter> "cellmin(<ls_limiter_crosskernel>,<ls_limiter_centralkernel>)" ON <all cells> output,elementdata
+CELL_CONSTANT <ls_advection_limiter> "cellmin(<ls_limiter_crosskernel>,<ls_limiter_centralkernel>)" ON <allcells> output,elementdata
 
 # this is the maximum <ls> value which is expected to affect the interface behaviour (ie, affect the calculation of the surface force).
 CONSTANT <ls_maximum_kernel_separation> 2.3d0 # take this from what is reported about the kernels (or used in kernel_module.f90), to work out an estimate for <ls_validity_max>
@@ -33,8 +33,8 @@ CONSTANT <ls_validity_max> "3.d0+<ls_phi_max>+2*<ls_maximum_kernel_separation>+<
 CONSTANT <ls_validity_max_extra> "<ls_validity_max>+<ls_maximum_kernel_separation>" # this is one kernel separation beyond where values for <ls> could conceivable be used
 
 # this is the level set function, defined on all cells
-CELL_UNKNOWN <ls> [] "<ls_initial>" ON <all cells> magnitude=1.d0,elementnodedata
-CELL_TRANSIENT <ls[r=1]> "<ls>" "<ls>" ON <all cells> nooutput,elementnodedata
+CELL_UNKNOWN <ls> [] "<ls_initial>" ON <allcells> magnitude=1.d0,elementnodedata
+CELL_TRANSIENT <ls[r=1]> "<ls>" "<ls>" ON <allcells> nooutput,elementnodedata
 
 #CELL_CONSTANT <ls_celldxmax> "cellmax(<celldxmax>,region=<adjacentcellicells>)" elementdata # this is a possible basis for making this locally varying
 CONSTANT <ls_celldxmax> "cellmax(<celldxmax>,region=<domain>)" elementdata # otherwise for roughly uniformly-sized meshes this will do
@@ -52,4 +52,4 @@ CELL_LOCAL <ls_initial> "<ls_background>" # default initial condition for ls is 
 
 # for reference a phi can be calculated from ls using a sinusoidal heaviside function
 CELL_LOCAL <ls_normalised> "<ls>/<ls_celldxmax>"
-CELL_DERIVED <ls_phi> "cellif(abs(<ls_normalised>)-<ls_phi_max>,cellif(<ls>,1.d0,0.d0),(sin(<ls_normalised>*<pi>/(2.d0*<ls_phi_max>))+1.d0)/2.d0)" ON <all cells> output
+CELL_DERIVED <ls_phi> "cellif(abs(<ls_normalised>)-<ls_phi_max>,cellif(<ls>,1.d0,0.d0),(sin(<ls_normalised>*<pi>/(2.d0*<ls_phi_max>))+1.d0)/2.d0)" ON <allcells> output

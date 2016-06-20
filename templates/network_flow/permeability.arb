@@ -17,9 +17,9 @@ VARIABLE <u_f_vect[l=1]> output
 #VARIABLE <u_f_{raw}> output
 #VARIABLE <u_f_{correction}> output
 #VARIABLE <p_error> output
-<<dim1comment>>CELL_OUTPUT <uphi[l=1]> "<u[l=1]>*<phi_c>" ON <all cells>
-<<dim2comment>>CELL_OUTPUT <uphi[l=2]> "<u[l=2]>*<phi_c>" ON <all cells>
-<<dim3comment>>CELL_OUTPUT <uphi[l=3]> "<u[l=3]>*<phi_c>" ON <all cells>
+<<dim1comment>>CELL_OUTPUT <uphi[l=1]> "<u[l=1]>*<phi_c>" ON <allcells>
+<<dim2comment>>CELL_OUTPUT <uphi[l=2]> "<u[l=2]>*<phi_c>" ON <allcells>
+<<dim3comment>>CELL_OUTPUT <uphi[l=3]> "<u[l=3]>*<phi_c>" ON <allcells>
 
 # find average velocity, and then normal of this and B vector, and angle between them
 <<dim1comment>>NONE_OUTPUT <uphi_av[l=1]> "cellsum(<uphi[l=1]>*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>)"

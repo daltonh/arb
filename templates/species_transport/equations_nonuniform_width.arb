@@ -6,22 +6,22 @@ GENERAL_REPLACEMENTS DEFAULT "<<specieshighorderadvectioncomment>>" W "" DEFAULT
 CONSTANT <c_D> [1] 1.d0 # diffusivity of species
 CONSTANT <c_inlet_conc> [1] 1.d0 # inlet concentration of species
 
-CELL_UNKNOWN <c> [1] "0.d0" ON <all cells> magnitude=1.d0 # remember to put in characteristic magnitude later in the file if it isn't 1
+CELL_UNKNOWN <c> [1] "0.d0" ON <allcells> magnitude=1.d0 # remember to put in characteristic magnitude later in the file if it isn't 1
 CELL_LOCAL <c_pos> "cellmax(<c>,0.d0)" # may be needed for reactions
-<<transientcomment>>CELL_TRANSIENT <c[r=1]> "<c>" "<c>" ON <all cells>
+<<transientcomment>>CELL_TRANSIENT <c[r=1]> "<c>" "<c>" ON <allcells>
 
 <<specieshighorderadvectioncomment>>INCLUDE_TEMPLATE "advection_limiters/implicit"
 <<specieshighorderadvectioncomment>><<steadystatecomment>>INCLUDE "relative_steady_state_limiter.arb" R "<phi" W "<c"
 <<specieshighorderadvectioncomment>><<transientcomment>>INCLUDE "relative_transient_limiter.arb" R "<phi" W "<c"
 <<specieshighorderadvectioncomment>>#INCLUDE "conservative_parameters" R "<phi" W "<c"
 <<specieshighorderadvectioncomment>>NONE_CONSTANT <c magnitude> 1.d0
-<<specieshighorderadvectioncomment>>FACE_DERIVED <c_f> "faceave[advection](<c>,<u_f>,<c limiter>,gradient[l=1]=<c limiter grad[l=1]>,gradient[l=2]=<c limiter grad[l=2]>,gradient[l=3]=<c limiter grad[l=3]>)" ON <all faces>
+<<specieshighorderadvectioncomment>>FACE_DERIVED <c_f> "faceave[advection](<c>,<u_f>,<c limiter>,gradient[l=1]=<c limiter grad[l=1]>,gradient[l=2]=<c limiter grad[l=2]>,gradient[l=3]=<c limiter grad[l=3]>)" ON <allfaces>
 
 # to use low order (or non-limited high order) advection just include the following afterwards
 <<speciesloworderadvectioncomment>>NONE_CONSTANT <c limiter> 0.d0
-<<speciesloworderadvectioncomment>>FACE_DERIVED <c_f> "faceave[advection](<c>,<u_f>,<c limiter>)" ON <all faces>
+<<speciesloworderadvectioncomment>>FACE_DERIVED <c_f> "faceave[advection](<c>,<u_f>,<c limiter>)" ON <allfaces>
 
-FACE_DERIVED <c_j_f> "<c_f>*<u_f>-<c_D>*facegrad(<c>)" ON <all faces>
+FACE_DERIVED <c_j_f> "<c_f>*<u_f>-<c_D>*facegrad(<c>)" ON <allfaces>
 CELL_DERIVED <c_source> "0.d0" ON <domain> # overwrite this with volume reactions from other species
 # implicit timestepping right now
 <<steadystatecomment>>CELL_EQUATION <c equation> "celldiv(<W_f>*<c_j_f>)/<W_c> - <c_source>" ON <domain>
@@ -35,5 +35,5 @@ FACE_EQUATION <c outlet> "faceif(<u_f>,facegrad(<c>),<c>)" ON <outlet> # boundar
 
 NONE_OUTPUT <c bulk ave outlet> "abs(facesum(<c>*<facearea>*<W_f>*<u_f>,region=<outlet>))/nonemax(abs(facesum(<facearea>*<W_f>*<u_f>,region=<outlet>)),1.d-10)"
 NONE_OUTPUT <c bulk ave inlet> "abs(facesum(<c>*<facearea>*<W_f>*<u_f>,region=<inlet>))/nonemax(abs(facesum(<facearea>*<W_f>*<u_f>,region=<inlet>)),1.d-10)"
-NONE_OUTPUT <c maximum> "cellmax(<c>,region=<all cells>)"
-NONE_OUTPUT <c minimum> "cellmin(<c>,region=<all cells>)"
+NONE_OUTPUT <c maximum> "cellmax(<c>,region=<allcells>)"
+NONE_OUTPUT <c minimum> "cellmin(<c>,region=<allcells>)"

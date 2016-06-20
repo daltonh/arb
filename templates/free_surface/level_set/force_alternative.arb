@@ -4,20 +4,20 @@
 
 # the delta function now takes its direction from grad(<ls>), and its magnitude from grad(<ls_phi>)
 # seems to be worse, although suspect <ls_F_f> could be done better
-<<dim1comment>>CELL_LOCAL <ls_celldivgrad_phi[l=1]> "celldivgrad[l=1](<ls_phi>)" ON <all cells>
-<<dim2comment>>CELL_LOCAL <ls_celldivgrad_phi[l=2]> "celldivgrad[l=2](<ls_phi>)" ON <all cells>
-<<dim3comment>>CELL_LOCAL <ls_celldivgrad_phi[l=3]> "celldivgrad[l=3](<ls_phi>)" ON <all cells>
-CELL_LOCAL <ls_celldivgrad_phi_mag2> "dot(<ls_celldivgrad_phi[l=:]>,<ls_celldivgrad_phi[l=:]>)" ON <all cells>
-<<dim1comment>>CELL_LOCAL <ls_celldivgrad_ls[l=1]> "celldivgrad[l=1](<ls>)" ON <all cells>
-<<dim2comment>>CELL_LOCAL <ls_celldivgrad_ls[l=2]> "celldivgrad[l=2](<ls>)" ON <all cells>
-<<dim3comment>>CELL_LOCAL <ls_celldivgrad_ls[l=3]> "celldivgrad[l=3](<ls>)" ON <all cells>
-CELL_LOCAL <ls_celldivgrad_ls_mag2> "dot(<ls_celldivgrad_ls[l=:]>,<ls_celldivgrad_ls[l=:]>)" ON <all cells>
-CELL_DERIVED <ls_lsgrad_to_phigrad> "sqrt(<ls_celldivgrad_phi_mag2>/cellmax(<ls_celldivgrad_ls_mag2>,1.d-30))" ON <all cells> nooutput,elementdata
+<<dim1comment>>CELL_LOCAL <ls_celldivgrad_phi[l=1]> "celldivgrad[l=1](<ls_phi>)" ON <allcells>
+<<dim2comment>>CELL_LOCAL <ls_celldivgrad_phi[l=2]> "celldivgrad[l=2](<ls_phi>)" ON <allcells>
+<<dim3comment>>CELL_LOCAL <ls_celldivgrad_phi[l=3]> "celldivgrad[l=3](<ls_phi>)" ON <allcells>
+CELL_LOCAL <ls_celldivgrad_phi_mag2> "dot(<ls_celldivgrad_phi[l=:]>,<ls_celldivgrad_phi[l=:]>)" ON <allcells>
+<<dim1comment>>CELL_LOCAL <ls_celldivgrad_ls[l=1]> "celldivgrad[l=1](<ls>)" ON <allcells>
+<<dim2comment>>CELL_LOCAL <ls_celldivgrad_ls[l=2]> "celldivgrad[l=2](<ls>)" ON <allcells>
+<<dim3comment>>CELL_LOCAL <ls_celldivgrad_ls[l=3]> "celldivgrad[l=3](<ls>)" ON <allcells>
+CELL_LOCAL <ls_celldivgrad_ls_mag2> "dot(<ls_celldivgrad_ls[l=:]>,<ls_celldivgrad_ls[l=:]>)" ON <allcells>
+CELL_DERIVED <ls_lsgrad_to_phigrad> "sqrt(<ls_celldivgrad_phi_mag2>/cellmax(<ls_celldivgrad_ls_mag2>,1.d-30))" ON <allcells> nooutput,elementdata
 
-<<dim1comment>>CELL_LOCAL <ls_F_c[l=1]> "<ls_kappa_c>*<ls_celldivgrad_ls[l=1]>*<ls_lsgrad_to_phigrad>" ON <all cells>
-<<dim2comment>>CELL_LOCAL <ls_F_c[l=2]> "<ls_kappa_c>*<ls_celldivgrad_ls[l=2]>*<ls_lsgrad_to_phigrad>" ON <all cells>
-<<dim3comment>>CELL_LOCAL <ls_F_c[l=3]> "<ls_kappa_c>*<ls_celldivgrad_ls[l=3]>*<ls_lsgrad_to_phigrad>" ON <all cells>
+<<dim1comment>>CELL_LOCAL <ls_F_c[l=1]> "<ls_kappa_c>*<ls_celldivgrad_ls[l=1]>*<ls_lsgrad_to_phigrad>" ON <allcells>
+<<dim2comment>>CELL_LOCAL <ls_F_c[l=2]> "<ls_kappa_c>*<ls_celldivgrad_ls[l=2]>*<ls_lsgrad_to_phigrad>" ON <allcells>
+<<dim3comment>>CELL_LOCAL <ls_F_c[l=3]> "<ls_kappa_c>*<ls_celldivgrad_ls[l=3]>*<ls_lsgrad_to_phigrad>" ON <allcells>
 
 # differencing type used here must match that in the p_error calc
-FACE_LOCAL <ls_F_f> "<ls_kappa_f>*facegrad[dxunit](<ls_phi>)" ON <domain faces>
-#FACE_LOCAL <ls_F_f> "<ls_kappa_f>*facegrad[dxunit](<ls>)*faceave[adjacentcells](<ls_lsgrad_to_phigrad>)" ON <domain faces>
+FACE_LOCAL <ls_F_f> "<ls_kappa_f>*facegrad[dxunit](<ls_phi>)" ON <domainfaces>
+#FACE_LOCAL <ls_F_f> "<ls_kappa_f>*facegrad[dxunit](<ls>)*faceave[adjacentcells](<ls_lsgrad_to_phigrad>)" ON <domainfaces>
