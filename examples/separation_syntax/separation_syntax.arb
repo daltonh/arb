@@ -23,8 +23,8 @@ CELL_LOCAL <ls_initial> "1.d0 - sqrt((<cellx[l=1]>/<radius_a>)^2+(<cellx[l=2]>/<
 # for reference a phi can be calculated from ls using a sinusoidal heaviside function
 CELL_LOCAL <ls_initial_normalised> "<ls_initial>/<facedx>"
 CONSTANT <ls_phi_max> 4.0d0
-CELL_CONSTANT <vof_phi_initial1> "cellif(abs(<ls_initial_normalised>)-<ls_phi_max>,cellif(<ls_initial>,1.d0,0.d0),(sin(<ls_initial_normalised>*<pi>/(2.d0*<ls_phi_max>))+1.d0)/2.d0)" ON <all cells> output
-CELL_CONSTANT <vof_phi> "<vof_phi_initial1>" ON <all cells> output
+CELL_CONSTANT <vof_phi_initial1> "cellif(abs(<ls_initial_normalised>)-<ls_phi_max>,cellif(<ls_initial>,1.d0,0.d0),(sin(<ls_initial_normalised>*<pi>/(2.d0*<ls_phi_max>))+1.d0)/2.d0)" ON <allcells> output
+CELL_CONSTANT <vof_phi> "<vof_phi_initial1>" ON <allcells> output
 
 # separation notation for cellsum
 # separation, minseparation and minimumseparation are equivalent, with default value of -1 meaning do not loop in increasing order of separation
@@ -41,17 +41,17 @@ CELL_CONSTANT <vof_phi> "<vof_phi_initial1>" ON <all cells> output
 # the argument faceseparationflag=<some expression> is evaluated on each cell-separating face (faceseparation option is implied), with the loop only continuing if the flag evaluates as positive.  faceave[lastcell]() specified properties for the last cell in the loop.  Use faceave[othercell]() to access the next cell that could be in the loop.
 
 #START_SKIP
-CELL_CONSTANT <separation_test> "cellsum[minseparation=0,maxseparation=1](1.d0,region=<all cells>)" ON <all cells> output
-CELL_CONSTANT <separation_test_larger> "cellsum[minseparation=0,maxseparation=3](1.d0,region=<all cells>)" ON <all cells> output
-CELL_CONSTANT <separation_test_face> "cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<all cells>)" ON <all cells> output
-CELL_CONSTANT <separation_test_face_nested> "cellsum[minseparation=0,maxseparation=1,faceseparation](cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<all cells>),region=<all cells>)" ON <all cells> output
-CELL_CONSTANT <separation_test_face_vertical> "cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<all cells>,faceseparationflag=abs(<facenorm[l=2]>)-0.5d0)" ON <all cells> output
-CELL_CONSTANT <separation_test_face_horizontal> "cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<all cells>,faceseparationflag=abs(<facenorm[l=1]>)-0.5d0)" ON <all cells> output
-CELL_CONSTANT <separation_test_face_complex> "cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<all cells>,faceseparationflag=abs(facegrad(<cellx[l=1]>))-0.5d0)" ON <all cells> output
-CELL_CONSTANT <separation_test_face_complex_reflect> "cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<all cells>,faceseparationflag=abs(facegrad[reflect=1](<cellx[l=1]>))-0.5d0)" ON <all cells> output
+CELL_CONSTANT <separation_test> "cellsum[minseparation=0,maxseparation=1](1.d0,region=<allcells>)" ON <allcells> output
+CELL_CONSTANT <separation_test_larger> "cellsum[minseparation=0,maxseparation=3](1.d0,region=<allcells>)" ON <allcells> output
+CELL_CONSTANT <separation_test_face> "cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<allcells>)" ON <allcells> output
+CELL_CONSTANT <separation_test_face_nested> "cellsum[minseparation=0,maxseparation=1,faceseparation](cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<allcells>),region=<allcells>)" ON <allcells> output
+CELL_CONSTANT <separation_test_face_vertical> "cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<allcells>,faceseparationflag=abs(<facenorm[l=2]>)-0.5d0)" ON <allcells> output
+CELL_CONSTANT <separation_test_face_horizontal> "cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<allcells>,faceseparationflag=abs(<facenorm[l=1]>)-0.5d0)" ON <allcells> output
+CELL_CONSTANT <separation_test_face_complex> "cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<allcells>,faceseparationflag=abs(facegrad(<cellx[l=1]>))-0.5d0)" ON <allcells> output
+CELL_CONSTANT <separation_test_face_complex_reflect> "cellsum[minseparation=0,maxseparation=1,faceseparation](1.d0,region=<allcells>,faceseparationflag=abs(facegrad[reflect=1](<cellx[l=1]>))-0.5d0)" ON <allcells> output
 #END_SKIP
 
-CELL_CONSTANT <vertical_thickness> "cellsum[faceseparation](<vof_phi>*<celldx[l=2]>,region=<domain>,faceseparationflag=abs(<facenorm[l=2]>)-0.5d0)" ON <boundary cells> output
+CELL_CONSTANT <vertical_thickness> "cellsum[faceseparation](<vof_phi>*<celldx[l=2]>,region=<domain>,faceseparationflag=abs(<facenorm[l=2]>)-0.5d0)" ON <boundarycells> output
 FACE_CONSTANT <vertical_thickness_new> "faceave[upcell](cellsum[faceseparation](<vof_phi>*<celldx[l=2]>,region=<domain>,faceseparationflag=abs(<facenorm[l=2]>)-0.5d0))" ON <north> output
 FACE_CONSTANT <vertical_thickness_old> "cellsum(cellif(1.d-8-abs(<cellx[l=1]>-cellave[lastface](<facex[l=1]>)),<vof_phi>*<celldx[l=2]>,0.d0),region=<domain>)" ON <north> output
 FACE_CONSTANT <vertical_delta> "faceave[upcell](cellsum[faceseparation]((1.d0-<vof_phi>)*<celldx[l=2]>,region=<domain>,faceseparationflag=facemin(abs(<facenorm[l=2]>)-0.5d0,1.d0-faceave[othercell](<vof_phi>))))" ON <north> output
@@ -60,5 +60,5 @@ FACE_CONSTANT <vertical_delta2> "faceave[upcell](cellsum[faceseparation]((1.d0-<
 FACE_CONSTANT <vertical_delta2_number_of_cells> "faceave[upcell](cellsum[faceseparation](1.d0,region=<domain>,faceseparationflag=facemin(abs(<facenorm[l=2]>)-0.5d0,faceave[othercell](<vof_phi>)-faceave[lastcell](<vof_phi>)+1.d-8)))" ON <north> output
 
 # test of referencing separation cell centre properties
-CELL_CONSTANT <separation_loop_ave_separation_centre_icell> "cellsum[maxseparation=3,faceseparation](<icell>,region=<all cells>)/cellsum[maxseparation=3,faceseparation](1.d0,region=<all cells>)" ON <all cells> output
-CELL_CONSTANT <icell output> "<icell>" ON <all cells> output
+CELL_CONSTANT <separation_loop_ave_separation_centre_icell> "cellsum[maxseparation=3,faceseparation](<icell>,region=<allcells>)/cellsum[maxseparation=3,faceseparation](1.d0,region=<allcells>)" ON <allcells> output
+CELL_CONSTANT <icell output> "<icell>" ON <allcells> output

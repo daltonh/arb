@@ -126,7 +126,7 @@ CONSTANT <dt_out> [] 3.d-1
 # some monitoring variables
 NONE_OUTPUT <centreline inlet p> "facesum(<p_f>,region=<inlet centreline>)"
 NONE_OUTPUT <average inlet p> "facesum(<p_f>*<facearea>,region=<inlet>)/facesum(<facearea>,region=<inlet>)"
-CELL_OUTPUT <u mag> "sqrt(dot(<u[l=:]>,<u[l=:]>))" ON <all cells>
+CELL_OUTPUT <u mag> "sqrt(dot(<u[l=:]>,<u[l=:]>))" ON <allcells>
 NONE_OUTPUT <u ave[l=1]> "cellsum(<u[l=1]>*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>)"
 NONE_OUTPUT <u ave[l=2]> "cellsum(<u[l=2]>*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>)"
 NONE_OUTPUT <u mag ave> "cellsum(<u mag>*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>)"

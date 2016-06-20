@@ -108,7 +108,7 @@ CONSTANT <S>  -27.453590
 CONSTANT <I_total> [1] 0.d0 # total current passing through domain
 
 # output a flag telling us which term limited the correction velocity
-#FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+#FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domainfaces> # is 1 where advection component is limiting velocity correction
 # and turn some outputs on
 FACE_DERIVED <u_f_{correction}> output
 FACE_DERIVED <u_f_{raw}> output
@@ -172,10 +172,10 @@ CONSTANT <ekfs_fff> 0.28097253761
 CONSTANT <axial pressure gradient analytical> "<ekfs_ppp>/<Re>" # actually based on ekfs results
 CONSTANT <axial potential gradient analytical> "<ekfs_fff>*<Re>/(<K>^2*<B>)"
 
-NONE_CONSTANT <X max> "facemax(<facex[l=1]>,,<all faces>)"
-NONE_CONSTANT <X min> "facemin(<facex[l=1]>,,<all faces>)"
-NONE_CONSTANT <Y max> "facemax(<facex[l=2]>,,<all faces>)"
-NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<all faces>)"
+NONE_CONSTANT <X max> "facemax(<facex[l=1]>,,<allfaces>)"
+NONE_CONSTANT <X min> "facemin(<facex[l=1]>,,<allfaces>)"
+NONE_CONSTANT <Y max> "facemax(<facex[l=2]>,,<allfaces>)"
+NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<allfaces>)"
 
 CELL_OUTPUT <axial pressure gradient> "celldivgrad[l=1](<p>)" elementdata
 CELL_OUTPUT <axial pressure gradient error> "abs(<axial pressure gradient>-<axial pressure gradient analytical>)" elementdata
@@ -210,7 +210,7 @@ FACE_OUTPUT <jface output> "<jface>"
 
 CELL_OUTPUT <n_0> "sqrt(cellmax(<ion+ n>*<ion- n>,0.d0))"
 CELL_OUTPUT <n_0^2 negative error> "-cellmin(<ion+ n>*<ion- n>,0.d0)"
-CELL_LOCAL <rho_e> ON <all cells> output
+CELL_LOCAL <rho_e> ON <allcells> output
 
 CELL_OUTPUT <n_0 error> "abs(<n_0>-1.d0)" elementdata
 NONE_OUTPUT <n_0 L2 norm> "sqrt(cellsum(<n_0 error>^2,<domain>)/cellsum(1.d0,<domain>))"

@@ -30,7 +30,7 @@ FACE_REGION <walls> "COMPOUND +<boundaries>-<hole>-<inlet>-<outlet>"
 MSH_FILE "surface.msh"
 
 CELL_UNKNOWN <T> [K] "1.d0" magnitude=1.d+2 # temperature
-FACE_DERIVED <T flux> "-<D>*facegrad(<T>)" ON <all faces>
+FACE_DERIVED <T flux> "-<D>*facegrad(<T>)" ON <allfaces>
 CELL_EQUATION <T transport> "celldiv(<T flux>)" ON <domain> # diffusion equation
 FACE_EQUATION <T hole> "-<D>*facegrad(<T>)-<hole flux>" ON <hole> # specified heat flux through hole surface
 FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on walls

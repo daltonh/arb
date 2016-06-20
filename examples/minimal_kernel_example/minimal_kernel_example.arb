@@ -9,7 +9,7 @@ INFO_DATE "11/2/15" # interpreted as the last modification date
 MSH_FILE "surface.msh"
 
 # cell based:
-CELL_UNKNOWN <phi_c> "1.d0" ON <all cells>
+CELL_UNKNOWN <phi_c> "1.d0" ON <allcells>
 #NONE_CONSTANT <source> 1.d0
 
 # the following only needs facegrad
@@ -17,25 +17,25 @@ CELL_UNKNOWN <phi_c> "1.d0" ON <all cells>
 
 # the following needs no kernels
 #CELL_EQUATION <phi_c domain> "<phi_c>-<source>" ON <domain>
-#CELL_EQUATION <phi_c boundaries> "<phi_c>" ON <boundary cells>
+#CELL_EQUATION <phi_c boundaries> "<phi_c>" ON <boundarycells>
 
 # the following needs cellfromnodeave
-CELL_EQUATION <phi_c equation> "<phi_c>-cellfromnodeave(<nodex[l=1]>)" ON <all cells>
-CELL_OUTPUT <phi_c error> "<phi_c>-<cellx[l=1]>" ON <all cells>
+CELL_EQUATION <phi_c equation> "<phi_c>-cellfromnodeave(<nodex[l=1]>)" ON <allcells>
+CELL_OUTPUT <phi_c error> "<phi_c>-<cellx[l=1]>" ON <allcells>
 
 # node based:
-NODE_UNKNOWN <phi_n> "1.d0" ON <all nodes>
+NODE_UNKNOWN <phi_n> "1.d0" ON <allnodes>
 # the following needs nodegrad
-NODE_EQUATION <phi_n equation> "<phi_n>-nodegrad[l=1](<cellx[l=1]>)" ON <all nodes>
+NODE_EQUATION <phi_n equation> "<phi_n>-nodegrad[l=1](<cellx[l=1]>)" ON <allnodes>
 # the following needs nodeave
-#NODE_EQUATION <phi_n equation> "<phi_n>-nodeave(<cellx[l=1]>)" ON <all nodes>
+#NODE_EQUATION <phi_n equation> "<phi_n>-nodeave(<cellx[l=1]>)" ON <allnodes>
 
 # face based:
-#FACE_UNKNOWN <phi_f> "1.d0" ON <all faces>
+#FACE_UNKNOWN <phi_f> "1.d0" ON <allfaces>
 # the following needs facegrad
-#FACE_EQUATION <phi_f equation> "<phi_f>-facegrad[l=1](<cellx[l=1]>)" ON <all faces>
+#FACE_EQUATION <phi_f equation> "<phi_f>-facegrad[l=1](<cellx[l=1]>)" ON <allfaces>
 # the following needs faceave
-#FACE_EQUATION <phi_f equation> "<phi_f>-faceave(<cellx[l=1]>)" ON <all faces>
+#FACE_EQUATION <phi_f equation> "<phi_f>-faceave(<cellx[l=1]>)" ON <allfaces>
 
 INCLUDE_TEMPLATE "general"
 INCLUDE "element_information"

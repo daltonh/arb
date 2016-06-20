@@ -90,7 +90,7 @@ INCLUDE "absolute_limiter" R "<phi" W "<foo"
 #CELL_LOCAL <foo limiter domain> "cellif(<foo>-(<foo lower bound>+<foo upper bound>)/2.d0,<foo limiter upper>,<foo limiter lower>)" ON <domain>
 #CELL_LOCAL <foo limiter domain> "<foo limiter new>"
 #CELL_LOCAL <foo limiter domain> "cellmin(<foo limiter upper>,<foo limiter lower>)"
-#CELL_DERIVED <foo limiter> "cellif(celldelta(<domain>),<foo limiter domain>,0.d0)" ON <all cells>
+#CELL_DERIVED <foo limiter> "cellif(celldelta(<domain>),<foo limiter domain>,0.d0)" ON <allcells>
 
 # set some outputs
 CELL_CONSTANT <foo limiter kernel> output
@@ -99,9 +99,9 @@ CELL_CONSTANT <foo limiter kernel> output
 # modifications
 
 #NONE_CONSTANT <foo max crosskernel> 0.25d0 # if a crosskernel is larger than this, use a limit within the cell to reduce it to this size
-#CELL_DERIVED <foo limiter> "cellif(celldelta(<domain>),(1.d0-cos(<foo limiter domain>*<pi>))/2.d0,0.d0)" ON <all cells>
+#CELL_DERIVED <foo limiter> "cellif(celldelta(<domain>),(1.d0-cos(<foo limiter domain>*<pi>))/2.d0,0.d0)" ON <allcells>
 
-#CELL_CONSTANT <foo limiter crosskernel> "cellmin(0.95d0/cellmax(<kernelsum>,<tinyish>),1.d0)" ON <all cells> output
+#CELL_CONSTANT <foo limiter crosskernel> "cellmin(0.95d0/cellmax(<kernelsum>,<tinyish>),1.d0)" ON <allcells> output
 #NONE_CONSTANT <foo max kernelsum> 0.9d0
 #NONE_CONSTANT <foo eps> "<foo magnitude>*1.d-8" # a small phi value, used to calculate the smallest reliable <phi delta>
 #CELL_OUTPUT <foo bound marker> "cellif(<foo>-(<foo lower bound>+<foo upper bound>)/2.d0,1.d0,-1.d0)" ON <domain>
@@ -143,18 +143,18 @@ FACE_OUTPUT <facenorm output[l=2]> "<facenorm[l=2]>"
 FACE_OUTPUT <u_f vect[l=1]> "<facenorm[l=1]>*<u_f>"
 FACE_OUTPUT <u_f vect[l=2]> "<facenorm[l=2]>*<u_f>"
 
-CELL_LOCAL <local equation> "cellif(celldelta(<domain>),<foo advection>,0.d0)+cellif(celldelta(<inlet cells>),<foo inlet>,0.d0)+cellif(celldelta(<outlet cells>),<foo outlet>,0.d0)" ON <all cells> output
+CELL_LOCAL <local equation> "cellif(celldelta(<domain>),<foo advection>,0.d0)+cellif(celldelta(<inlet cells>),<foo inlet>,0.d0)+cellif(celldelta(<outlet cells>),<foo outlet>,0.d0)" ON <allcells> output
 CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <domain>
 CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <domain>
 CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <domain>
 
-NONE_OUTPUT <norm 1>  "cellsum(abs(<local equation>),<all cells>)/cellsum(1.d0,<all cells>)"
-NONE_OUTPUT <norm 2> "(cellsum(abs(<local equation>)^2,<all cells>)/cellsum(1.d0,<all cells>))^(1/2)"
-NONE_OUTPUT <norm 4> "(cellsum(abs(<local equation>)^4,<all cells>)/cellsum(1.d0,<all cells>))^(1/4)"
-NONE_OUTPUT <norm 8> "(cellsum(abs(<local equation>)^8,<all cells>)/cellsum(1.d0,<all cells>))^(1/8)"
-NONE_OUTPUT <norm infty> "cellmax(abs(<local equation>),region=<all cells>)"
+NONE_OUTPUT <norm 1>  "cellsum(abs(<local equation>),<allcells>)/cellsum(1.d0,<allcells>)"
+NONE_OUTPUT <norm 2> "(cellsum(abs(<local equation>)^2,<allcells>)/cellsum(1.d0,<allcells>))^(1/2)"
+NONE_OUTPUT <norm 4> "(cellsum(abs(<local equation>)^4,<allcells>)/cellsum(1.d0,<allcells>))^(1/4)"
+NONE_OUTPUT <norm 8> "(cellsum(abs(<local equation>)^8,<allcells>)/cellsum(1.d0,<allcells>))^(1/8)"
+NONE_OUTPUT <norm infty> "cellmax(abs(<local equation>),region=<allcells>)"
 
-CELL_OUTPUT <foo newtonupdate> "cellnewtonupdate(variable=<foo>)" ON <all cells>
+CELL_OUTPUT <foo newtonupdate> "cellnewtonupdate(variable=<foo>)" ON <allcells>
 
 END
 #--------------------------------------------------------

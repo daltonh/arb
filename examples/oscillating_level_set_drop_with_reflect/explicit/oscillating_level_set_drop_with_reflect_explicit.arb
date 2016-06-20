@@ -133,7 +133,7 @@ FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <fluid all faces>
 
 # CSF based levelset formulation with reinitialisation
 INCLUDE_ROOT "free_surface/level_set"
-INCLUDE "setup" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>"
+INCLUDE "setup" R "<domain>" W "<level set domain>" R "<allcells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<allfaces>" W "<level set all faces>"
 
 # explicit
 CELL_TRANSIENT <ls_phi[r=1]> "<ls_phi>" "<ls_phi>" ON <level set all cells>
@@ -153,8 +153,8 @@ CELL_LOCAL <ls_initial1> "1.d0 - sqrt((<cellx[l=1]>/<radius_a>)^2+(<cellx[l=2]>/
 CELL_LOCAL <ls_initial> "<ls_initial1>" ON <level set all cells> output
 
 # explicit treatment of surface tension force
-INCLUDE "curvature_explicit" R "<all cells>" W "<level set all cells>" R "<all faces>" W "<level set all faces>"
-INCLUDE "force_explicit" R "<all cells>" W "<level set all cells>" R "<domain faces>" W "<level set centre domain faces>"
+INCLUDE "curvature_explicit" R "<allcells>" W "<level set all cells>" R "<allfaces>" W "<level set all faces>"
+INCLUDE "force_explicit" R "<allcells>" W "<level set all cells>" R "<domainfaces>" W "<level set centre domain faces>"
 
 # create surface tension force on all fluid cells, including fluid boundary cells which grab their values from adjacent domain cells (as per celldivgrad(p))
 <<dim1comment>>CELL_LOCAL <ls_F_c_fluid_domain[l=1]> "celltocelllink(expression=<ls_F_c[l=1]>,localregion=<fluid domain>,remoteregion=<level set centre>)" ON <fluid domain>
@@ -167,15 +167,15 @@ INCLUDE "force_explicit" R "<all cells>" W "<level set all cells>" R "<domain fa
 
 # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
 INCLUDE_ROOT "navier_stokes"
-INCLUDE "total_stress" R "<all faces>" W "<fluid all faces>"
-INCLUDE "p_error" R "<all cells>" W "<fluid all cells>" R "<domain faces>" W "<fluid domain faces>"
+INCLUDE "total_stress" R "<allfaces>" W "<fluid all faces>"
+INCLUDE "p_error" R "<allcells>" W "<fluid all cells>" R "<domainfaces>" W "<fluid domain faces>"
 # overwrite dynamic forces to include surface tension
 <<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)+<sigma>*<ls_F_c_fluid[l=1]>" ON <fluid all cells> output
 <<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)+<sigma>*<ls_F_c_fluid[l=2]>" ON <fluid all cells>
 <<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)+<sigma>*<ls_F_c_fluid[l=3]>" ON <fluid all cells>
 FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)+<sigma>*facetofacelink(expression=<ls_F_f>,localregion=<fluid domain faces>,remoteregion=<level set centre domain faces>)" ON <fluid domain faces>
 
-INCLUDE "fluxes" R "<all faces>" W "<fluid all faces>" R "<domain faces>" W "<fluid domain faces>"
+INCLUDE "fluxes" R "<allfaces>" W "<fluid all faces>" R "<domainfaces>" W "<fluid domain faces>"
 # additional hoop-type-stress contribution to rhie-chow velocity interpolation
 <<cylindricalcomment>>FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<mu>,<eps_p>*<<radius_f>>**2/(2.d0*<mu>))" ON <fluid domain faces>
 
@@ -193,9 +193,9 @@ INCLUDE_ROOT "free_surface/level_set"
 # need to generalise this in the future to cope with slip walls by extrapolating <u_f> out into <level set edge region>
 FACE_LOCAL <ls_u_f> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
 FACE_LOCAL <ls_u_f[r=1]> "faceif(facedelta(<level set centre all faces>),facetofacelink(expression=<u_f[r=1]>,localregion=<level set centre all faces>,remoteregion=<fluid all faces>),0.d0)" ON <level set all faces>
-#INCLUDE "equation" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>" R "<u_f" W "<ls_u_f"
+#INCLUDE "equation" R "<domain>" W "<level set domain>" R "<allcells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<allfaces>" W "<level set all faces>" R "<u_f" W "<ls_u_f"
 # explicit treatment of ls advection
-INCLUDE "equation_explicit" R "<domain>" W "<level set domain>" R "<all cells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<all faces>" W "<level set all faces>" R "<u_f" W "<ls_u_f"
+INCLUDE "equation_explicit" R "<domain>" W "<level set domain>" R "<allcells>" W "<level set all cells>" R "<walls>" W "<level set walls>" R "<allfaces>" W "<level set all faces>" R "<u_f" W "<ls_u_f"
 
 # fluid boundary conditions on nonslip walls
 INCLUDE "walls_ls_grad_set" R "<walls>" W "<level set walls>"

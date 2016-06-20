@@ -117,13 +117,13 @@ CONSTANT <S> 1.d+1 # surface tension strength nondimensional number, see harvie 
 # unknown variables used for flow problems
 CONSTANT <u impact> 1.d0 # impact velocity
 
-CELL_UNKNOWN <p> [] "(2.d0^<<cylindricalflag>>)*<vof_phi>/<We>" ON <all cells> elementdata # pressure
-CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
-CELL_UNKNOWN <u[l=2]> [] "-<u impact>*<vof_phi>" ON <all cells> magnitude=1.d0 # velocity component
+CELL_UNKNOWN <p> [] "(2.d0^<<cylindricalflag>>)*<vof_phi>/<We>" ON <allcells> elementdata # pressure
+CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
+CELL_UNKNOWN <u[l=2]> [] "-<u impact>*<vof_phi>" ON <allcells> magnitude=1.d0 # velocity component
 
 # overwrite initial velocities
-CELL_TRANSIENT <u[l=1,r=1]> "0.d0" "<u[l=1]>" ON <all cells>
-CELL_TRANSIENT <u[l=2,r=1]> "-<u impact>*<vof_phi>" "<u[l=2]>" ON <all cells>
+CELL_TRANSIENT <u[l=1,r=1]> "0.d0" "<u[l=1]>" ON <allcells>
+CELL_TRANSIENT <u[l=2,r=1]> "-<u impact>*<vof_phi>" "<u[l=2]>" ON <allcells>
 
 # vof based CSF
 INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
@@ -133,12 +133,12 @@ INCLUDE "setup"
 NONE_CONSTANT <vof_phi_initial_tol> 1.d-4 # accuracy in computing initial shapes (in terms of volume fraction per cell)
 # circle (cylinder/sphere)
 CONSTANT <radius1> 1.0d0
-CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[sphere](size[l=1]=2.d0*<radius1>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <all cells> output,elementdata
+CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[sphere](size[l=1]=2.d0*<radius1>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <allcells> output,elementdata
 # ellipse
 #CONSTANT <radius_a> 0.9d0
 #CONSTANT <radius_b> 1.1d0
-#CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius_a>,size[l=2]=2.d0*<radius_b>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <all cells> output,elementdata
-CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <all cells>
+#CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius_a>,size[l=2]=2.d0*<radius_b>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <allcells> output,elementdata
+CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <allcells>
 
 # the following curvature and related cell centred unit normal and smooth phi calculations are done on the free surface mesh
 <<doubledomaincomment>>INCLUDE "cancel_fluid_replacements"
@@ -193,26 +193,26 @@ NONE_OUTPUT <centroid[l=2]> "cellsum(<cellvol>*<cellx[l=2]>*<vof_phi>,region=<do
 NONE_OUTPUT <stretch[l=1]> "sqrt(cellsum(<cellvol>*(<cellx[l=1]>-<centroid[l=1]>)^2*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>))"
 NONE_OUTPUT <stretch[l=2]> "sqrt(cellsum(<cellvol>*(<cellx[l=2]>-<centroid[l=2]>)^2*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>))"
 
-FACE_OUTPUT <u_f_vector[l=1,r=1]> "<u_f[r=1]>*<facenorm[l=1]>" ON <all faces>
-FACE_OUTPUT <u_f_vector[l=2,r=1]> "<u_f[r=1]>*<facenorm[l=2]>" ON <all faces>
-FACE_OUTPUT <u_f_vector[l=1,r=0]> "<u_f[r=0]>*<facenorm[l=1]>" ON <all faces>
-FACE_OUTPUT <u_f_vector[l=2,r=0]> "<u_f[r=0]>*<facenorm[l=2]>" ON <all faces>
+FACE_OUTPUT <u_f_vector[l=1,r=1]> "<u_f[r=1]>*<facenorm[l=1]>" ON <allfaces>
+FACE_OUTPUT <u_f_vector[l=2,r=1]> "<u_f[r=1]>*<facenorm[l=2]>" ON <allfaces>
+FACE_OUTPUT <u_f_vector[l=1,r=0]> "<u_f[r=0]>*<facenorm[l=1]>" ON <allfaces>
+FACE_OUTPUT <u_f_vector[l=2,r=0]> "<u_f[r=0]>*<facenorm[l=2]>" ON <allfaces>
 
-NONE_OUTPUT <u_f_max> "facemax(abs(<u_f>),region=<all faces>)"
+NONE_OUTPUT <u_f_max> "facemax(abs(<u_f>),region=<allfaces>)"
 NONE_OUTPUT <phi error> "sqrt(cellsum((<vof_phi>-<vof_phi_initial_saved>)**2*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>))"
 
 NONE_OUTPUT <vof_phi_max domain> "cellmax(<vof_phi>,region=<domain>)"
 NONE_OUTPUT <vof_phi_min domain> "cellmin(<vof_phi>,region=<domain>)"
-NONE_OUTPUT <vof_phi_max all cells> "cellmax(<vof_phi>,region=<all cells>)"
-NONE_OUTPUT <vof_phi_min all cells> "cellmin(<vof_phi>,region=<all cells>)"
-NONE_OUTPUT <vof_phi_adjust_max> "cellmax(<vof_phi_adjust[r=1]>,region=<all cells>)"
-NONE_OUTPUT <vof_phi_adjust_min> "cellmin(<vof_phi_adjust[r=1]>,region=<all cells>)"
+NONE_OUTPUT <vof_phi_max all cells> "cellmax(<vof_phi>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_min all cells> "cellmin(<vof_phi>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_adjust_max> "cellmax(<vof_phi_adjust[r=1]>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_adjust_min> "cellmin(<vof_phi_adjust[r=1]>,region=<allcells>)"
 NONE_OUTPUT <vof_phi_error domain> "nonemax(abs(<vof_phi_max domain>-1.d0),abs(<vof_phi_min domain>))"
 NONE_OUTPUT <vof_phi_error all cells> "nonemax(abs(<vof_phi_max all cells>-1.d0),abs(<vof_phi_min all cells>))"
 
 # save maximum and minimum velocities for t > t_save say
 NONE_CONSTANT <t_save> 20.d0
-NONE_LOCAL <u_f_max_local> "facemax(abs(<u_f>),region=<all faces>)"
+NONE_LOCAL <u_f_max_local> "facemax(abs(<u_f>),region=<allfaces>)"
 NONE_TRANSIENT <u_f_max_max> "0.d0" "noneif(<t>-<t_save>,nonemax(<u_f_max_local>,<u_f_max_max[r=1]>),<u_f_max_max[r=1]>)" output
 NONE_TRANSIENT <u_f_max_max[r=1]> "" "<u_f_max_max>"
 NONE_TRANSIENT <u_f_max_min> "1.d2" "noneif(<t>-<t_save>,nonemin(<u_f_max_local>,<u_f_max_min[r=1]>),<u_f_max_min[r=1]>)" output
