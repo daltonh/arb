@@ -6901,8 +6901,8 @@ sub examine_name {
       print DEBUG "WARNING: spaces in system names have been deprecated: $name has been replaced with <$1$2>\n";
       $name = "<$1$2>";
     }
-    if ($name eq "<boundary faces>") { $name = "<boundaries>"; }
-    if ($name eq "<domain cells>") { $name = "<domain>"; }
+    if ($name eq "<boundaryfaces>") { $name = "<boundaries>"; }
+    if ($name eq "<domaincells>") { $name = "<domain>"; }
     return ($name);
   }
 }
