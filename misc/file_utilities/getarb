@@ -9,8 +9,9 @@ user="daltonh";
 branch="master";
 server="vof.chemeng.unimelb.edu.au";
 directory="";
+local_directory="/Users/daltonh/codes/arb/development/current";
 port="8000";
-ssh=1;
+transport="ssh"; # default transport is ssh, but others are http and local
 #-------------------------------------------------------------------------------
 # usage function
 usage () {
@@ -22,9 +23,11 @@ usage () {
   echo "  -d|--directory: output directory name to use (default = arb_$branch)";
   echo "  -u|--user: user name that hosts arb project (default = $user)";
   echo "  -p|--port: port number of git server for http requests (default = $port)";
-  echo "  -s|--server: server name to use, only for ssh (default = $server)";
-  echo "  --http: use http transport from git rather than ssh";
-  echo "  --ssh: use ssh transport from git rather than http (default)";
+  echo "  --server: server name to use, only for ssh (default = $server)";
+  echo "  -h|--http: use http transport from git rather than ssh";
+  echo "  -s|--ssh: use ssh transport from git rather than http (default)";
+  echo "  -l|--local: clone from local directory: $local_directory";
+  echo "  --local-directory: local directory name to use, only for local (default = $local_directory)";
   echo "  -h|--help: display this HELP INFO";
   echo;
   exit 1;
@@ -35,11 +38,13 @@ while [ $# -gt 0 ]; do
   case "$1" in
     "-b"|"--branch") if [ ! -n "$2" ]; then echo "ERROR: branch not found"; usage; fi; branch=$2; shift;;
     "-u"|"--user") if [ ! -n "$2" ]; then echo "ERROR: user not found"; usage; fi; user=$2; shift;;
-    "-s"|"--server") if [ ! -n "$2" ]; then echo "ERROR: server not found"; usage; fi; server=$2; shift;;
+    "--server") if [ ! -n "$2" ]; then echo "ERROR: server not found"; usage; fi; server=$2; shift;;
+    "--local-directory") if [ ! -n "$2" ]; then echo "ERROR: local-directory not found"; usage; fi; local_directory=$2; shift;;
     "-d"|"--directory") if [ ! -n "$2" ]; then echo "ERROR: directory not found"; usage; fi; directory=$2; shift;;
     "-p"|"--port") if [ ! -n "$2" ]; then echo "ERROR: port not found"; usage; fi; port=$2; shift;;
-    "--http") ssh=0;;
-    "--ssh") ssh=1;;
+    "-h"|"--http") transport="http";;
+    "-s"|"--ssh") transport="ssh";;
+    "-l"|"--local") transport="local";;
     "-h"|"--help") usage;;
     "--"*|"-"*) echo "ERROR: unknown option $i passed to getarb"; usage;;
     *) echo "ERROR: unknown command line entry $i"; usage;;
@@ -49,10 +54,13 @@ done
 
 if [ "${directory}" = "" ]; then directory="arb_$branch"; echo "setting output directory based on branch to $directory"; fi;
 
-if [ $ssh -eq 1 ] ; then
+if [ $transport == "ssh" ] ; then
   echo "performing: git clone -b $branch git@$server:$user/arb.git $directory";
   git clone -b $branch git@$server:$user/arb.git $directory;
-else
+elif [ $transport == "http" ] ; then
   echo "performing: git clone -b $branch http://$server:$port/$user/arb.git $directory";
   git clone -b $branch http://$server:$port/$user/arb.git $directory;
+else
+  echo "performing: git clone -b $branch $local_directory $directory";
+  git clone -b $branch $local_directory $directory;
 fi
