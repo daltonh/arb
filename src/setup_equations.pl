@@ -246,6 +246,8 @@ if ($same_fortran_as_last_run) {
   print "SUCCESS: equation_module.f90 has been created\n";
   print DEBUG "SUCCESS: equation_module.f90 has been created\n";
 
+# TODO: do all of this file copying with wholeus-boleus directory creation and renames
+
 }
 
 close(DEBUG);
@@ -475,14 +477,14 @@ sub output_region_list {
 sub check_setup_status {
 
   use strict;
-  use Storable qw(freeze thaw); # routines for collapsing data structures into a single string
+  use Storable qw(freeze dclone); # routines for collapsing data structures into a single string
   use Data::Dumper; # for outputing data in readable format
   my $same=1; # flag to indicate whether this run and last are the same
   my ($type, $mvar, $n);
 
 # make a copy of both hash variable and array region which will have any non-essential data removed before being saved to file
-  my %variable_copy = %{ thaw(freeze(\%variable)) };
-  my @region_copy = @{ thaw(freeze(\@region)) };
+  my %variable_copy = %{ dclone(\%variable) };
+  my @region_copy = @{ dclone(\@region) };
 
 # first remove options, comments and numerical constants from variable structure, which are not used in the perl
   foreach $type (sort(keys %variable_copy)) {
@@ -1240,6 +1242,8 @@ sub read_input_files {
             $centring = $asread_variable[$masread]{"centring"};
           }
           $asread_variable[$masread]{"comments"}=$asread_variable[$masread]{"comments"}." ".$comments;
+          $asread_variable[$masread]{"filename"}=$asread_variable[$masread]{"filename"}." ".$file;
+          $asread_variable[$masread]{"absfilename"}=$asread_variable[$masread]{"absfilename"}." ".$input_files[$#input_files]{"abs_name"};
         } else {
           print "INFO: a primary definition statement for variable $name has been found in file = $file\n";
           print DEBUG "INFO: a primary definition statement for variable $name has been found based on:\nfile = $file: line = $oline\n";
@@ -1258,6 +1262,8 @@ sub read_input_files {
             $asread_variable[$masread]{$repeats}=0;
           }
           $asread_variable[$masread]{"options"} = '';
+          $asread_variable[$masread]{"filename"}=$file;
+          $asread_variable[$masread]{"absfilename"}=$input_files[$#input_files]{"abs_name"};
         }
 
 # units and multiplier (optional)
@@ -1459,6 +1465,8 @@ sub read_input_files {
             $type = $region[$masread]{"type"};
           }
           $region[$masread]{"comments"}=$region[$masread]{"comments"}." ".$comments;
+          $region[$masread]{"filename"}=$region[$masread]{"filename"}." ".$file;
+          $region[$masread]{"absfilename"}=$region[$masread]{"absfilename"}." ".$input_files[$#input_files]{"abs_name"};
         } else {
           print "INFO: a primary definition statement for region $name has been found in file = $file\n";
           print DEBUG "INFO: a primary definition statement for region $name has been found based on:\nfile = $file: line = $oline\n";
@@ -1476,6 +1484,8 @@ sub read_input_files {
           $region[$masread]{"location"}{"description"}='';
           $region[$masread]{"initial_location"}{"description"}='';
           $region[$masread]{"last_variable_masread"}=$#asread_variable; # this determines when a region will be evaluated, for dynamic regions - it will be -1 if no variables are defined yet
+          $region[$masread]{"filename"}=$file;
+          $region[$masread]{"absfilename"}=$input_files[$#input_files]{"abs_name"};
         }
 
 # extract the location string, and if two are present, also an initial_location string (to be used for transient and newtient dynamic regions)
