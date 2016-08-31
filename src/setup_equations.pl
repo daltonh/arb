@@ -68,6 +68,7 @@ my $unwrapped_input_file="$tmp_dir/unwrapped_input.arb"; # this is an unwrapped 
 my $current_debug_info_file="$tmp_dir/current_debugging_info.txt"; # this is where all the debugging info is dumped from this current call to setup_equations.pl
 my $debug_info_file="$tmp_dir/debugging_info.txt"; # this is where all the debugging info is stored from the last setup
 my $version_file="$working_dir/licence/version";
+my $run_status=0; # run_status signifies: -1=setup not required/repeated, 0=normal setup, >1=error status
 
 # create and clear out tmp directory of any files
 #if (! -d $tmp_dir) { make_path($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; }
@@ -189,54 +190,82 @@ dump_variable_setup_info(); # output all variable information into the debug fil
 
 #write_latex(); # produce a latexable summary file - NEEDS UPDATING!
 
-check_variable_status(); # dumps variable list to file (removing options and comments) and checks whether we need to proceed with equation construction
+my $same_fortran_as_last_run = check_setup_status(); # writes essential variable and region data to a file, and compares this against the previous run to see whether further setup is needed
 
-read_maxima_results_files(); # read in any old maxima results stored in files from previous runs
+if ($same_fortran_as_last_run) {
+# system hasn't changed in ways that fortran needs to be recreated, so skip
 
-create_mequations(); # create maxima type equations
+  print "INFO: setup_equations data has not changed since the last run: skipping fortran creation\n";
+  print DEBUG "INFO: setup_equations data not has changed since the last run: skipping fortran creation\n";
 
-process_regions(); # finalise all of the regions, checking any that haven't been included as variable regions, and create fortran allocations etc for them
+} else {
+# now only execute the fortran writing 
 
-create_allocations();  # create allocation statements
+  print "INFO: setup_equations data has changed since the last run: recreating fortran\n";
+  print DEBUG "INFO: setup_equations data has changed since the last run: recreating fortran\n";
 
-create_fortran_equations(); # generate fortran equations
+  read_maxima_results_files(); # read in any old maxima results stored in files from previous runs
 
-write_sub_strings(); # write out sub_strings and creating new fortran files
+  create_mequations(); # create maxima type equations
 
-write_maxima_results_files(); # write out maxima results for subsequent runs
+  process_regions(); # finalise all of the regions, checking any that haven't been included as variable regions, and create fortran allocations etc for them
 
-# TODO: write single post-processing output sub
+  create_allocations();  # create allocation statements
 
-dump_variable_dependency_info(); # dump all variable dependency info into the debug file, and also dump the raw variable arrays for possible post-processing
+  create_fortran_equations(); # generate fortran equations
 
-output_variable_list(); # dump info about variables in a single file
+  write_sub_strings(); # write out sub_strings and creating new fortran files
 
-output_region_list(); # dump info about regions in a single file
+  write_maxima_results_files(); # write out maxima results for subsequent runs
+
+  # TODO: write single post-processing output sub
+
+  dump_variable_dependency_info(); # dump all variable dependency info into the debug file, and also dump the raw variable arrays for possible post-processing
+
+  output_variable_list(); # dump info about variables in a single file
+
+  output_region_list(); # dump info about regions in a single file
+
+# lousysubstitutes already recorded
+  if ($number_of_lousysubstitutes > 0) { print "WARNING: some variable substitutions had to be performed that may result in very inefficient code being generated.  These lousy substitutions ".
+    "could be avoided by a careful reordering of some of the input statements.  Details are given above (or in the file $debug_info_file by searching for 'lousy substitution').\n"; }
+
+}
 
 # final warning about multiple definitions
 foreach my $repeats (keys(%statement_repeats)) {
   if ($statement_repeats{$repeats} > 0) { print "NOTE: at least one variable had $repeats.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
 }
-if ($number_of_lousysubstitutes > 0) { print "WARNING: some variable substitutions had to be performed that may result in very inefficient code being generated.  These lousy substitutions ".
-  "could be avoided by a careful reordering of some of the input statements.  Details are given above (or in the file $debug_info_file by searching for 'lousy substitution').\n"; }
-print "SUCCESS: equation_module.f90 has been created\n";
-print DEBUG "SUCCESS: equation_module.f90 has been created\n";
+
+if ($same_fortran_as_last_run) {
+
+  print "SUCCESS: equation_module.f90 was already up-to-date\n";
+  print DEBUG "SUCCESS: equation_module.f90 was already up-to-date\n";
+# TODO not sure how to specify this as negative means OK - google - maybe a change to makefile instead?
+#  $run_status=-1; # run_status signifies: -1=setup not required/repeated, 0=normal setup, >1=error status
+
+} else {
 
 # finally move equation data to build directory as a record of the successful run
-print DEBUG "INFO: moving setup_equation_data to build directory\n";
-move("$tmp_dir/setup_equation_data","$build_dir/last_setup_equation_data") or die "could not move $tmp_dir/setup_equation_data to $build_dir/last_setup_equation_data\n";
-# and also keep a copy of the debugging and unwrapped file which acts as a record from the last successful setup
-# TODO: find why this isn't copying whole file
-TODO
-# TODO: move variable and region list up the file, after creating copy of data structure for use in check_variable_status (renamed to check_setup_status) - work out what data is created when
-# TODO: integrate dump routines in single sub
-# TODO: carry filename and absfilename through variables/regions
-copy("$current_debug_info_file","$debug_info_file") or die "could not save $current_debug_info_file as $debug_info_file\n";
-copy("$current_unwrapped_input_file","$unwrapped_input_file") or die "could not save $current_unwrapped_input_file as $unwrapped_input_file\n";
+  print DEBUG "INFO: moving setup_equation_data to build directory\n";
+  move("$tmp_dir/setup_equation_data","$build_dir/last_setup_equation_data") or die "could not move $tmp_dir/setup_equation_data to $build_dir/last_setup_equation_data\n";
+  # and also keep a copy of the debugging and unwrapped file which acts as a record from the last successful setup
+  # TODO: find why this isn't copying whole file
+  #TODO
+  # TODO: move variable and region list up the file, after creating copy of data structure for use in check_variable_status (renamed to check_setup_status) - work out what data is created when
+  # TODO: integrate dump routines in single sub
+  # TODO: carry filename and absfilename through variables/regions
+  copy("$current_debug_info_file","$debug_info_file") or die "could not save $current_debug_info_file as $debug_info_file\n";
+  copy("$current_unwrapped_input_file","$unwrapped_input_file") or die "could not save $current_unwrapped_input_file as $unwrapped_input_file\n";
+
+  print "SUCCESS: equation_module.f90 has been created\n";
+  print DEBUG "SUCCESS: equation_module.f90 has been created\n";
+
+}
 
 close(DEBUG);
 
-exit;
+exit $run_status;
 
 #-------------------------------------------------------------------------------
 # dump all of the info about the variables that was read in for debugging purposes
@@ -436,27 +465,31 @@ sub output_region_list {
 sub check_setup_status {
 
   use strict;
-  use Storable qw(freeze); # routines for collapsing data structures into a single string
+  use Storable qw(freeze thaw); # routines for collapsing data structures into a single string
   my $same=1; # flag to indicate whether this run and last are the same
   my ($type, $mvar, $n);
 
+# make a copy of both hash variable and array region which will have any non-essential data removed before being saved to file
+  my %variable_copy = %{ thaw(freeze(\%variable)) };
+  my @region_copy = @{ thaw(freeze(\@region)) };
+
 # first remove options, comments and numerical constants from variable structure, which are not used in the perl
-  foreach $type (sort(keys %variable)) {
+  foreach $type (sort(keys %variable_copy)) {
     foreach $mvar ( 1 .. $m{$type} ) {
-      delete $variable{$type}[$mvar]{"options"}; # delete removes value and key for a hash
-      delete $variable{$type}[$mvar]{"comments"}; # delete removes value and key for a hash
-      delete $variable{$type}[$mvar]{"constant_list"}; # delete removes value and key for a hash
+      delete $variable_copy{$type}[$mvar]{"options"}; # delete removes value and key for a hash
+      delete $variable_copy{$type}[$mvar]{"comments"}; # delete removes value and key for a hash
+      delete $variable_copy{$type}[$mvar]{"constant_list"}; # delete removes value and key for a hash
       foreach my $repeats (keys(%statement_repeats)) {
-        delete $variable{$type}[$mvar]{$repeats}; # delete removes value and key for a hash
+        delete $variable_copy{$type}[$mvar]{$repeats}; # delete removes value and key for a hash
       }
     }
   }
 
-# also do similar for regions
-  foreach $n ( 1 .. $#region ) {
-    delete $region[$n]{"options"}; # delete removes value and key for a hash
-    delete $region[$n]{"comments"}; # delete removes value and key for a hash
-    delete $region[$n]{"redefinitions"}; # delete removes value and key for a hash
+# also do similar for region_copy
+  foreach $n ( 1 .. $#region_copy ) {
+    delete $region_copy[$n]{"options"}; # delete removes value and key for a hash
+    delete $region_copy[$n]{"comments"}; # delete removes value and key for a hash
+    delete $region_copy[$n]{"redefinitions"}; # delete removes value and key for a hash
   }
 
   $Storable::canonical=1; # the data structure will have its keys sorted before being created
@@ -464,7 +497,7 @@ sub check_setup_status {
 # my $new_data = freeze( \%variable ); # collapse variable hash and now externals array
 # tack any single variables on the end
 # $new_data = "$new_data\n$transient\n$newtient";
-  my $new_data = freeze( \%variable)."\n".freeze( \@externals )."\n".freeze( \@region )."\n$transient\n$newtient";
+  my $new_data = freeze( \%variable_copy)."\n".freeze( \@externals )."\n".freeze( \@region_copy )."\n$transient\n$newtient";
 # my $new_data = '';
 
 # open old file and compare string created last time
@@ -486,21 +519,7 @@ sub check_setup_status {
   print NEW_CHECK "$new_data";
   close(NEW_CHECK);
 
-  if ($same) {
-    print "INFO: setup_equations data has not changed since the last run: exiting immediately\n";
-    print DEBUG "INFO: setup_equations data not has changed since the last run: exiting immediately\n";
-# final warning about multiple statements
-    foreach my $repeats (keys(%statement_repeats)) {
-      if ($statement_repeats{$repeats} > 0) { print "NOTE: at least one variable had $repeats.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
-    }
-    print "SUCCESS: equation_module.f90 was already up-to-date\n";
-    print DEBUG "SUCCESS: equation_module.f90 was already up-to-date\n";
-    exit;
-  } else {
-    print "INFO: setup_equations data has changed since the last run: recreating fortran\n";
-    print DEBUG "INFO: setup_equations data has changed since the last run: recreating fortran\n";
-  }
-
+  return $same;
 }
 
 #-------------------------------------------------------------------------------
@@ -543,9 +562,9 @@ sub write_sub_strings {
 
     while ($line=<INFILE>) { chompm($line);
       if (($indent,$keyword) = $line =~ /^\!(\s*?)<sub_string:(.+)>/) { # substring lines are now commented out by default
-        print "INFO: found sub_string marker in fortran file with keyword $keyword\n";
+        print DEBUG "INFO: found sub_string marker in fortran file with keyword $keyword\n";
         if (empty($sub_string{$keyword})) {
-          print "NOTE: sub_string corresponding to keyword $keyword not set\n";
+          print DEBUG "NOTE: sub_string corresponding to keyword $keyword not set\n";
         } else {
           @strings = split("\n",$sub_string{$keyword});
           $sub_string{$keyword} = "";
@@ -7152,7 +7171,7 @@ sub error_stop {
 
   print "ERROR: $_[0]\n";
   print DEBUG "ERROR: $_[0]\n";
-  die;
+  die 1;
 
 }
 #-------------------------------------------------------------------------------
