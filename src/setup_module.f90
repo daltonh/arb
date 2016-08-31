@@ -490,6 +490,8 @@ fileloop: do
       simulation_info%runhost = name(1:200)
     else if (trim(keyword) == 'FILENAME') then
       simulation_info%filename = name(1:200)
+    else if (trim(keyword) == 'ABSFILENAME') then
+      simulation_info%absfilename = name(1:400)
     else
       call error_stop('simulation info keyword '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
     end if

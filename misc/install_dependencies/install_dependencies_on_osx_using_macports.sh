@@ -34,6 +34,9 @@ port select --set python python27
 #https://guide.macports.org
 #http://truongtx.me/2014/02/25/mac-os-install-python-pip-virtualenv-using-macports/
 
+# for graphviz and perl graphviz modules (GraphViz2)
+port install graphviz p5-graphviz2
+
 # the following directories and link are the only non-ports things done in this install script
 # finally, link the particular macports gfortran version name to a standard name within an accessible bin directory
 echo "INFO: setting up a link to gfortran within /usr/local/bin";

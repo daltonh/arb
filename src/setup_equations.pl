@@ -92,6 +92,7 @@ print DEBUG "dalton harvie, v$version\n\n";
 my @input_files;
 $input_files[0]{"ref_name"}="root_input.arb";
 $input_files[0]{"name"}="$build_dir/root_input.arb";
+$input_files[$#input_files]{"abs_name"} = File::Spec->rel2abs($input_files[0]{"name"}); # abs_name is always the absolute path to the file
 # initial include_path used for searching for the file is the working directory
 # so, always the initial search path for files is the working_dir (even though root_input.arb sits in the build directory)
 $input_files[0]{"include_path"}[0] = $working_dir;
@@ -133,7 +134,7 @@ my @maxima_simplify_results = (); # this will be an array of all maxima simplifi
 my @maxima_fortran_results = (); # this will be an array of all maxima fortran results, for reuse purposes
 
 # setup the simulation info, including grabbing the current code runversion, rundate and runhost
-my %simulation_info = ( "title" => '', "description" => '', "filename" => '', "author" => '', "date" => '', "version" => ''); # this hash will store some general info about the simulation
+my %simulation_info = ( "title" => '', "description" => '', "filename" => '', "absfilename" => '', "author" => '', "date" => '', "version" => ''); # this hash will store some general info about the simulation
 $simulation_info{"runversion"}='unknown';
 if (-e $version_file) {
   open(VERSION_FILE,"<$version_file") or die "could not open $version_file\n";
@@ -182,6 +183,8 @@ organise_regions(); # initialise all of the regions not already read in, organis
 
 create_compounds(); # create vector and tensor allocations
 
+# TODO: write single pre-processing output sub
+
 dump_variable_setup_info(); # output all variable information into the debug file
 
 #write_latex(); # produce a latexable summary file - NEEDS UPDATING!
@@ -202,6 +205,8 @@ write_sub_strings(); # write out sub_strings and creating new fortran files
 
 write_maxima_results_files(); # write out maxima results for subsequent runs
 
+# TODO: write single post-processing output sub
+
 dump_variable_dependency_info(); # dump all variable dependency info into the debug file, and also dump the raw variable arrays for possible post-processing
 
 output_variable_list(); # dump info about variables in a single file
@@ -221,6 +226,11 @@ print DEBUG "SUCCESS: equation_module.f90 has been created\n";
 print DEBUG "INFO: moving setup_equation_data to build directory\n";
 move("$tmp_dir/setup_equation_data","$build_dir/last_setup_equation_data") or die "could not move $tmp_dir/setup_equation_data to $build_dir/last_setup_equation_data\n";
 # and also keep a copy of the debugging and unwrapped file which acts as a record from the last successful setup
+# TODO: find why this isn't copying whole file
+TODO
+# TODO: move variable and region list up the file, after creating copy of data structure for use in check_variable_status (renamed to check_setup_status) - work out what data is created when
+# TODO: integrate dump routines in single sub
+# TODO: carry filename and absfilename through variables/regions
 copy("$current_debug_info_file","$debug_info_file") or die "could not save $current_debug_info_file as $debug_info_file\n";
 copy("$current_unwrapped_input_file","$unwrapped_input_file") or die "could not save $current_unwrapped_input_file as $unwrapped_input_file\n";
 
@@ -318,7 +328,7 @@ sub output_variable_list {
     print VARIABLE "List of $key variables:\n";
     for my $mvar ( 1 .. $#{$variable{$key}} ) {
       print VARIABLE "$mvar";
-        for my $infokey ( qw( name units centring region rank fortran_number component_list equation masread hasderiv deriv newtstepmax newtstepmin )) {
+        for my $infokey ( qw( name units centring region rank fortran_number component_list equation masread hasderiv deriv newtstepmax newtstepmin filename absfilename comments )) {
           print VARIABLE ": $infokey = ";
           if (empty($variable{$key}[$mvar]{$infokey})) {
             print VARIABLE "empty"
@@ -343,7 +353,7 @@ sub output_variable_list {
       if ($key eq "constant" && empty($variable{$key}[$mvar]{equation})) { print VARIABLE " \"numerical constant rather than an equation\"" } else { print VARIABLE " \"$variable{$key}[$mvar]{equation}\"" };
       if ($variable{$key}[$mvar]{centring} ne "none") { print VARIABLE " ON $variable{$key}[$mvar]{region}"; }
       print VARIABLE " # other information";
-      for my $infokey ( qw( deriv newtstepmax newtstepmin comments )) {
+      for my $infokey ( qw( deriv newtstepmax newtstepmin filename absfilename comments )) {
         print VARIABLE ": $infokey = ";
         if (empty($variable{$key}[$mvar]{$infokey})) {
           print VARIABLE "empty"
@@ -374,7 +384,7 @@ sub output_region_list {
     for my $n ( 0 .. $#region ) {
       if ($region[$n]{"type"} ne $type) { next; }
       print REGION "$n";
-      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread location initial_location newtstepmax newtstepmin)) {
+      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread location initial_location newtstepmax newtstepmin filename absfilename comments )) {
         print REGION ": $key = ";
         if (empty($region[$n]{$key})) {
           print REGION "empty";
@@ -405,7 +415,7 @@ sub output_region_list {
       if (nonempty($region[$n]{location}{description})) { print REGION " \"".$region[$n]{location}{description}."\""; }
       if (nonempty($region[$n]{part_of})) { print REGION " ON $region[$n]{part_of}"; }
       print REGION " # other information";
-      for my $infokey (qw(user dynamic parent rindex fortran part_of_fortran parent_fortran last_variable_masread newtstepmax newtstepmin)) {
+      for my $infokey (qw(user dynamic parent rindex fortran part_of_fortran parent_fortran last_variable_masread newtstepmax newtstepmin filename absfilename comments )) {
         print REGION ": $infokey = ";
         if (empty($region[$n]{$infokey})) {
           print REGION "empty"
@@ -421,9 +431,9 @@ sub output_region_list {
 
 }
 #-------------------------------------------------------------------------------
-# run through each variable checking whether anything has changed that requires the script to be rerun
+# run through all user entered variables and regions checking whether anything has changed that requires the script to be rerun
 
-sub check_variable_status {
+sub check_setup_status {
 
   use strict;
   use Storable qw(freeze); # routines for collapsing data structures into a single string
@@ -630,6 +640,7 @@ sub read_input_files {
   use Data::Dumper;
   use Storable qw(dclone);
   use File::Find; # for find
+  use File::Spec; # for rel2abs
   my ($file, $oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
     $handle, $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
@@ -752,7 +763,7 @@ sub read_input_files {
             error_stop("could not find $new_file that is referenced in an INCLUDE statement in any of the current include paths: error in the following:\nfile = $file: line = $oline\n");
           }
         } elsif ($include_type eq "template") {
-# the following ould only check in the templates directory
+# the following would only check in the templates directory
 #         ($found_name,$found_type) = check_for_arbfile_or_dir($template_dir.'/'.$new_file);
 # whereas this cycles through all subdirectories of the templates directory, using a depth-prioritised search
 # as file paths are relative to the build directory, don't chdir is required to reference filename
@@ -806,16 +817,18 @@ sub read_input_files {
 
 # create the new include file
         $input_files[$#input_files+1]{"ref_name"} = $new_file; # ref_name is recorded as the name specified in the INCLUDE statement
-        $input_files[$#input_files]{"name"} = $found_name; # name is the full path to the file
+        $input_files[$#input_files]{"name"} = $found_name; # name is the file name including the path, either relative to the build directory or absolute
+        $input_files[$#input_files]{"abs_name"} = File::Spec->rel2abs($found_name); # abs_name is the file name including the absolute path to the file, now just used for user information (see below output file location statement)
         $input_files[$#input_files]{"include_path"}[0] = $input_files[$#input_files-1]{"include_path"}[$#{$input_files[$#input_files-1]{"include_path"}}]; # set local path to last path of calling file
 
-        print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
-        print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
-        print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"#(comment generated during unwrap) the following is INCLUDED from $input_files[$#input_files]{name}";
+        print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{abs_name}\n";
+        print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{abs_name}\n";
+        print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"#(comment generated during unwrap) the following is INCLUDED from $input_files[$#input_files]{abs_name}";
 # ref: FILENAME
 # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
         if (empty($simulation_info{"filename"})) {
           $simulation_info{"filename"} = $input_files[$#input_files]{"ref_name"};
+          $simulation_info{"absfilename"} = $input_files[$#input_files]{"abs_name"};
         }
 
 # now extract replacements

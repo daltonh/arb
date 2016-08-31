@@ -293,6 +293,7 @@ type simulation_info_type
   character(len=200) :: version
   character(len=4000) :: description
   character(len=200) :: filename
+  character(len=400) :: absfilename
   character(len=200) :: rundate
   character(len=200) :: runversion
   character(len=200) :: runhost
@@ -4874,6 +4875,7 @@ if (simulation_info%date /= '') write(fileunit,'(a)') comment_l//' DATE = '//tri
 if (simulation_info%version /= '') write(fileunit,'(a)') comment_l//' VERSION = '//trim(simulation_info%version)
 if (simulation_info%description /= '') write(fileunit,'(a)') comment_l//' DESCRIPTION = '//trim(simulation_info%description)
 if (simulation_info%filename /= '') write(fileunit,'(a)') comment_l//' FILENAME = '//trim(simulation_info%filename)
+if (simulation_info%absfilename /= '') write(fileunit,'(a)') comment_l//' ABSFILENAME = '//trim(simulation_info%absfilename)
 if (simulation_info%rundate /= '') write(fileunit,'(a)') comment_l//' RUNDATE = '//trim(simulation_info%rundate)
 if (simulation_info%runversion /= '') write(fileunit,'(a)') comment_l//' RUNVERSION = '//trim(simulation_info%runversion)
 if (simulation_info%runhost /= '') write(fileunit,'(a)') comment_l//' RUNHOST = '//trim(simulation_info%runhost)
