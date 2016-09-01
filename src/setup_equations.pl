@@ -33,7 +33,7 @@
 #
 #-------------------------------------------------------------------------
 # perl script to create equation f90 module for arb
-# exit code signifies success: 0=signifies that either fortran was already up-to-date or that new fortran has been created, 1=fortran was not created
+# exit code: 0=signifies that either fortran was already up-to-date or that new fortran has been created (success), 1=fortran was not created (error)
 
 use strict;
 use warnings;
@@ -7212,7 +7212,7 @@ sub error_stop {
   if (-d $setup_creation_dir) { rmtree($setup_creation_dir) or print "ERROR: could not remove existing $setup_creation_dir\n"; } # using rmtree for older File::Path compatibility
   if (-f $setup_equation_file) {unlink($setup_equation_file) or print "ERROR: could not remove existing $setup_equation_file\n"; }
 
-  exit 1;
+  exit 1; # signifies that there was an error
 
 }
 #-------------------------------------------------------------------------------
