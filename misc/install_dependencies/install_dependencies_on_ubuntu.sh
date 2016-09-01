@@ -16,7 +16,7 @@ echo "INFO: no longer installing the ubuntu packaged version of gmsh, but you ca
 apt-get install paraview
 
 # for Lachlan's track script
-apt-get install python-pip python-dev python-wxgtk2.8 python-wxtools wx2.8-doc wx2.8-examples wx2.8-headers wx2.8-i18n python-matplotlib
+apt-get install python-pip python-dev python-wxgtk2.8 python-wxtools wx2.8-doc wx2.8-examples wx2.8-headers wx2.8-i18n python-matplotlib python-pydot
 pip install --upgrade numpy
 pip install --upgrade pandas
 pip install --upgrade numexpr
