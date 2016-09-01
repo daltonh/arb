@@ -20,13 +20,18 @@ class variable():
 
 import argparse
 
+setup_dir = './output/setup_data/'
+file_path = setup_dir + 'variable_list.arb'
+target_dir = setup_dir + 'dependency_trees/'
+
+# can we get file_path inside this description?
 description = """Generate dependency trees for equation variables
 Example usage:
     ./misc/dependency_trees/generate_dependency_trees.py
-        Make trees for all EQUATION entries in ./tmp/setup/variable_list.arb
+        Make trees for all EQUATION entries in ./output/setup_creation_run/variable_list.arb
 
     ./misc/dependency_trees/generate_dependency_trees.py "<equation_1>" "<derived_1>" "<derived_2>"
-        Make trees for EQUATION variable <equation_1>, DERIVED variable <derived_1> and DERIVED variable <derived_2> in ./tmp/setup/variable_list.arb
+        Make trees for EQUATION variable <equation_1>, DERIVED variable <derived_1> and DERIVED variable <derived_2> in ./output/setup_creation_run/variable_list.arb
 """
 
 parser = argparse.ArgumentParser(description)
@@ -39,14 +44,10 @@ variable_list = []
 equations_list = []
 lookup = {}
 
-
-file_path = './tmp/setup/variable_list.arb'
-
 if not os.path.isfile(file_path):
     print "INFO: {} does not exist".format(file_path)
     sys.exit()
 
-target_dir = './output/dependency_trees/'
 if not os.path.exists(target_dir):
     os.makedirs(target_dir)
 

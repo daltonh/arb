@@ -42,7 +42,7 @@ syn match arbStatement "\%(\)\<STEADY-STATE_SIMULATION\>"
 syn keyword arbStatement INCLUDE INCLUDE_ABSOLUTE INCLUDE_LAST INCLUDE_LOCAL INCLUDE_TEMPLATE INCLUDE_WORKING MSH_FILE nextgroup=arbString,arbFilename skipwhite
 syn match arbStatement "\<\%(EXTERNALS\=\)\>" nextgroup=arbString,arbFilename skipwhite
 syn keyword arbStatement C CANCEL D DEFAULT R REPLACE W WITH nextgroup=arbString,arbUnquotedString,arbComment skipwhite
-syn match arbStatement "\<\%(INFO_AUTHOR\|INFO_DATE\|INFO_DESCRIPTION\|INFO_FILENAME\|INFO_RUNDATE\|INFO_RUNHOST\|INFO_RUNVERSION\|INFO_TITLE\|INFO_VERSION\)\>\%(+\|-\)\=" nextgroup=arbString,arbUnquotedString skipwhite
+syn match arbStatement "\<\%(INFO_AUTHOR\|INFO_DATE\|INFO_DESCRIPTION\|INFO_FILENAME\|INFO_ABSFILENAME\|INFO_RUNDATE\|INFO_RUNHOST\|INFO_RUNVERSION\|INFO_TITLE\|INFO_VERSION\)\>\%(+\|-\)\=" nextgroup=arbString,arbUnquotedString skipwhite
 syn keyword arbStatement ERROR INFO WARNING nextgroup=arbString skipwhite
 syn match arbOmniList "\%(KERNEL_OPTIONS\|SOLVER_OPTIONS\)"
 syn region arbKernelStatement matchgroup=arbStatement start="\<KERNEL\%(S\|_OPTIONS\=\)\=" end="$" contains=arbComment,arbDeprecated,arbKernelOption,arbLogical,arbNumber,arbOperator,arbSystemFlag,arbUserFlag keepend
