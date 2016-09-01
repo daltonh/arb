@@ -11,12 +11,13 @@ import os
 import sys
 
 class variable():
-    def __init__(self, var_centring, var_kind, var_name, var_expression, var_dependencies):
+    def __init__(self, var_centring, var_kind, var_name, var_expression, var_dependencies, var_absfilename):
         self.centring = var_centring
         self.kind = var_kind
         self.name = var_name
         self.expession = var_expression
         self.dependencies = var_dependencies
+        self.absfilename = var_absfilename
 
 import argparse
 
@@ -55,15 +56,15 @@ with open(file_path) as f:
     for line in f:
         line = line.rstrip()
 
-        arb_input = re.search(r'(.*?)_(.*?) (<.*?>).*"(.*)"', line)
+        arb_input = re.search(r'(.*?)_(.*?) (<.*?>).*"(.*)".*absfilename = (.*?):', line)
         if arb_input:
-            var_centring, var_kind, var_name, var_expression = arb_input.groups()           
+            var_centring, var_kind, var_name, var_expression, var_absfilename = arb_input.groups()           
             var_dependencies = re.findall(r'(<.*?>)', var_expression)
             variable_list.append(var_name)
             # build equations list here, as later dicts don't retain parsing order
             if var_kind == "EQUATION":
                  equations_list.append(var_name)
-            a = variable(var_centring, var_kind, var_name, var_expression, var_dependencies)
+            a = variable(var_centring, var_kind, var_name, var_expression, var_dependencies, var_absfilename)
             lookup[var_name] = a
 
 # remove region names from dependencies
@@ -81,8 +82,8 @@ for key in lookup.keys():
         lookup[key].dependencies.remove(dep)
 
 
-for key in lookup.keys():
-    lookup[key].color_explicit = False
+#for key in lookup.keys():
+#    lookup[key].color_explicit = False
 
 #import graphviz as gv
 import pydot # use pydot as it supports clusters
@@ -101,6 +102,7 @@ color["CONSTANT"] = "yellow"
 def find_dependencies(var, last_n):
     global n
     global node_list
+    global force_explicit
 
     #print "find_dependencies()", var.kind, var.name, "with n = ", n, 'last_n = ', last_n # debug
     collected.append(var.name)
@@ -111,7 +113,7 @@ def find_dependencies(var, last_n):
             n+=1
             #print "creating node for {} with n = {}, last_n = {}".format(dep, n, last_n) # debug
             label = dep
-            
+           
             shape = 'rectangle'
             if lookup[dep].kind == "UNKNOWN":
                 shape = 'ellipse'
@@ -122,34 +124,43 @@ def find_dependencies(var, last_n):
             
             parent = node_list[last_n]
             
+            explicit = False
             if lookup[dep].kind == "TRANSIENT":
-                lookup[dep].color_explicit = True
+                explicit = True
 
-            # once explicit coloring has been activated, keep it activated until we reach the end of the tree branch
-            color_setting = color[lookup[dep].kind]
-            if lookup[dep].color_explicit or lookup[parent].color_explicit:
+            if force_explicit[last_n]:
+                explicit = True
+
+            if explicit:
                 color_setting = "gray"
-                lookup[dep].color_explicit = True 
+            else:
+                color_setting = color[lookup[dep].kind]
+            
+            node_list[n] = lookup[dep].name
+            force_explicit[n] = explicit # store for future reference
 
             tag = "{}_{}".format(cluster,n)
             last_tag = "{}_{}".format(cluster,last_n)
+
+            #print "{}\t{}\t{}".format(tag, lookup[dep].kind, dep) #debug
+            #print "\texplicit={}".format(explicit) #debug
+
             node = pydot.Node(tag, label=dep+" ", color=color_setting, shape=shape, style=node_style) # add " " space to avoid angle brackets at the beginning of the label string
             graph.add_node(node)
-            
-            node_list[n] = lookup[dep].name
+             
             #g.edge(last_tag, tag, constraint='true') # add connection from parent
-            graph.add_edge(pydot.Edge(last_tag, tag))
-            
+            headlabel = lookup[dep].absfilename
+            headlabel = headlabel.split(" ")[-1] # use the last path given in variable_list.arb
+            parts = headlabel.split("/")
+            headlabel = "/".join(parts[-2:])
 
+            graph.add_edge(pydot.Edge(last_tag, tag, headlabel=headlabel, fontname="inconsolata", fontsize='8'))
+            
             if lookup[dep].kind not in ['UNKNOWN', 'CONSTANT'] and lookup[dep].name not in collected:
                 find_dependencies(lookup[dep], n)
             else:
-                #print "Stop inner search as {} is UNKNOWN, CONSTANT, or in `collected` list".format(dep) # debug
                 collected.append(dep)
-                lookup[dep].color_explicit = False # reset to deal with duplicate nodes on the graph
     else:
-        #print "Stop outer search as {} is UNKNOWN or CONSTANT".format(var.name) # debug
-        lookup[dep].color_explicit = False # reset to deal with duplicate nodes on the graph
         return
 
 # show variables that are specified, otherwise show all equations
@@ -172,11 +183,13 @@ for var_to_show in list(variables_to_show):
     collected = []
     n = 0
     node_list = {}
+    force_explicit = {}
 
     node = pydot.Node("{}_{}".format(cluster,n), label=" "+var.name)
     graph.add_node(node)
     
     node_list[n] = var.name
+    force_explicit[n] = False
 
     find_dependencies(var, n)
     #graph_list.append(graph)
