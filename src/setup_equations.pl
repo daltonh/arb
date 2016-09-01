@@ -33,12 +33,13 @@
 #
 #-------------------------------------------------------------------------
 # perl script to create equation f90 module for arb
+# exit code signifies success: 0=signifies that either fortran was already up-to-date or that new fortran has been created, 1=fortran was not created
 
 use strict;
 use warnings;
 use File::Basename;
 #use File::Path qw(make_path);
-use File::Path qw(mkpath); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
+use File::Path qw(mkpath rmtree); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 use File::Copy qw(move copy);
 use File::Glob ':glob'; # deals with whitespace better
 #use Time::Piece; # removed for portability
@@ -50,40 +51,37 @@ my $minimum_version="0.40";
 # now called from build directory
 my $working_dir="..";
 my $src_dir="$working_dir/src";
+my $output_dir="$working_dir/output";
 my $build_dir=".";
 my $template_dir="$working_dir/templates";
-my $tmp_dir="$working_dir/tmp/setup";
-my $variable_list_file = "$tmp_dir/variable_list.txt";
-my $variable_arb_file = "$tmp_dir/variable_list.arb";
-my $region_list_file = "$tmp_dir/region_list.txt";
-my $region_arb_file = "$tmp_dir/region_list.arb";
+my $setup_current_dir="$output_dir/setup_current_run"; # this will be the location for output from this current run
+my $setup_creation_dir="$output_dir/setup_creation_run"; # at the end, if successful, the current run will be moved to the following location
+my $variable_list_file = "$setup_current_dir/variable_list.txt";
+my $variable_arb_file = "$setup_current_dir/variable_list.arb";
+my $region_list_file = "$setup_current_dir/region_list.txt";
+my $region_arb_file = "$setup_current_dir/region_list.arb";
+my $setup_dependency_file = "$setup_current_dir/setup_dependency_data";
 my $tmp_file_number=0;
 our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='/sw/bin/maxima'; # if all else fails specify the actual location - fink
 #our $maxima_bin='/usr/local/bin/maxima'; # if all else fails specify the actual location
 #our $maxima_bin='../misc/maxima_OsX/maxima'; # or the supplied script for the OsX binary, relative to the build directory
 my $fortran_input_file="$build_dir/fortran_input.arb"; # input file for the fortran executable, which is in a slightly different format to the user written input files
-my $current_unwrapped_input_file="$tmp_dir/current_unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
-my $unwrapped_input_file="$tmp_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
-my $current_debug_info_file="$tmp_dir/current_debugging_info.txt"; # this is where all the debugging info is dumped from this current call to setup_equations.pl
-my $debug_info_file="$tmp_dir/debugging_info.txt"; # this is where all the debugging info is stored from the last setup
+my $unwrapped_input_file="$setup_current_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
+my $debug_info_file="$setup_current_dir/debugging_info.txt"; # this is where all the debugging info is stored from the last setup
+my $setup_equation_file="$build_dir/last_setup_equation_data"; # this file is used to store all of the setup equation data prior to the (expensive) fortran generation
 my $version_file="$working_dir/licence/version";
-my $run_status=0; # run_status signifies: -1=setup not required/repeated, 0=normal setup, >1=error status
 
-# create and clear out tmp directory of any files
-#if (! -d $tmp_dir) { make_path($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; }
-if (! -d $tmp_dir) { mkpath($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
-my $filename;
-foreach $filename (bsd_glob("$tmp_dir/*")) {
-  if ($filename eq $variable_arb_file || $filename eq $variable_list_file || $filename eq $region_arb_file || $filename eq $region_list_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
-  if (-f $filename) {unlink($filename) or die "ERROR: could not remove $filename in directory $tmp_dir\n";}
-}
+# create and clear out setup directory of any files
+if (-d $setup_current_dir) { rmtree($setup_current_dir) or error_stop("could not remove existing $setup_current_dir\n"); } # using rmtree for older File::Path compatibility
+#if (! -d $setup_current_dir) { make_path($setup_current_dir) or die "ERROR: could not create $setup_current_dir\n"; }
+mkpath($setup_current_dir) or error_stop("could not create $setup_current_dir\n"); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 
 # remove stopfile from previous run if it exists
 my $stopfile="$working_dir/stop";
-if (-e $stopfile) { unlink($stopfile) or die "ERROR: could not remove $stopfile from previous run\n"; }
+if (-e $stopfile) { unlink($stopfile) or error_stop("could not remove $stopfile from previous run\n"); }
 
-open(DEBUG, ">$current_debug_info_file");
+open(DEBUG, ">$debug_info_file");
 print "\nperl setup_equations script to create f90 subroutines for arb\n";
 print "dalton harvie, v$version\n\n";
 print DEBUG "\nperl setup_equations script to create f90 subroutines for arb\n";
@@ -138,7 +136,7 @@ my @maxima_fortran_results = (); # this will be an array of all maxima fortran r
 my %simulation_info = ( "title" => '', "description" => '', "filename" => '', "absfilename" => '', "author" => '', "date" => '', "version" => ''); # this hash will store some general info about the simulation
 $simulation_info{"runversion"}='unknown';
 if (-e $version_file) {
-  open(VERSION_FILE,"<$version_file") or die "could not open $version_file\n";
+  open(VERSION_FILE,"<$version_file") or error_stop("could not open $version_file\n");
   $simulation_info{"runversion"}=<VERSION_FILE>;
   chompm($simulation_info{"runversion"});
   close(VERSION_FILE);
@@ -146,6 +144,7 @@ if (-e $version_file) {
 #$simulation_info{"rundate"} = Time::Piece->new; 
 $simulation_info{"rundate"} = localtime();
 $simulation_info{"runhost"} = hostname;
+print DEBUG "INFO: setup_equations run at: rundate = $simulation_info{rundate}: runhost = $simulation_info{runhost}\n";
 
 # now create an array of hashes, each for a different fortran external file
 my @externals=();
@@ -190,8 +189,8 @@ my $same_fortran_as_last_run = check_setup_status(); # writes essential variable
 if ($same_fortran_as_last_run) {
 # system hasn't changed in ways that fortran needs to be recreated, so skip
 
-  print "INFO: setup_equations data has not changed since the last run: skipping fortran creation\n";
-  print DEBUG "INFO: setup_equations data not has changed since the last run: skipping fortran creation\n";
+  print "INFO: setup_equations data has not changed since the last run: skipping fortran creation (use arb option --clean-setup to force fortran recreation)\n";
+  print DEBUG "INFO: setup_equations data not has changed since the last run: skipping fortran creation (use arb option --clean-setup to force fortran recreation)\n";
 
 } else {
 # now only execute the fortran writing 
@@ -226,33 +225,23 @@ if ($same_fortran_as_last_run) {
 
   print "SUCCESS: equation_module.f90 was already up-to-date\n";
   print DEBUG "SUCCESS: equation_module.f90 was already up-to-date\n";
-# TODO not sure how to specify this as negative means OK - google - maybe a change to makefile instead
-#  $run_status=-1; # run_status signifies: -1=setup not required/repeated, 0=normal setup, >1=error status
 
 } else {
 
 # finally move equation data to build directory as a record of the successful run
-  print DEBUG "INFO: moving setup_equation_data to build directory\n";
-  move("$tmp_dir/setup_equation_data","$build_dir/last_setup_equation_data") or die "could not move $tmp_dir/setup_equation_data to $build_dir/last_setup_equation_data\n";
-  # and also keep a copy of the debugging and unwrapped file which acts as a record from the last successful setup
-  # TODO: find why this isn't copying whole file
-  #TODO
-  # TODO: move variable and region list up the file, after creating copy of data structure for use in check_variable_status (renamed to check_setup_status) - work out what data is created when
-  # TODO: integrate dump routines in single sub
-  # TODO: carry filename and absfilename through variables/regions
-  copy("$current_debug_info_file","$debug_info_file") or die "could not save $current_debug_info_file as $debug_info_file\n";
-  copy("$current_unwrapped_input_file","$unwrapped_input_file") or die "could not save $current_unwrapped_input_file as $unwrapped_input_file\n";
+  print DEBUG "INFO: moving setup data from $setup_current_dir to $setup_creation_dir\n";
+  print "INFO: moving setup data from $setup_current_dir to $setup_creation_dir\n";
+  if (-d $setup_creation_dir) { rmtree($setup_creation_dir) or error_stop("could not remove existing $setup_creation_dir\n"); } # using rmtree for older File::Path compatibility
+  move("$setup_current_dir","$setup_creation_dir") or error_stop("could not move $setup_current_dir to $setup_creation_dir\n");
 
   print "SUCCESS: equation_module.f90 has been created\n";
   print DEBUG "SUCCESS: equation_module.f90 has been created\n";
-
-# TODO: do all of this file copying with wholeus-boleus directory creation and renames
 
 }
 
 close(DEBUG);
 
-exit $run_status;
+exit 0;
 
 #-------------------------------------------------------------------------------
 # just some combinations to make main code clearer
@@ -342,16 +331,12 @@ sub dump_variable_dependency_info {
   }
   print DEBUG "=================================================================\n";
 
-# also dump all data to last_setup_dependency_data file for latex post-processing
-# my $new_data = freeze( \%variable ); # collapse variable hash
-# open(DUMP_DATA, ">$build_dir/last_setup_dependency_data") or die "ERROR: problem opening $build_dir/last_setup_dependency_data\n";
-# print DUMP_DATA $new_data;
-# close(DUMP_DATA);
+# also dump all data to setup_dependency_file for possible post-processing
 
-  if (nonempty(eval{store(\%variable, "$build_dir/last_setup_dependency_data")})) {
-    print "INFO: written last_setup_dependency_data to file for possible reuse\n";
+  if (nonempty(eval{store(\%variable, "$setup_dependency_file")})) {
+    print "INFO: written setup_dependency_file for possible reuse\n";
   } else {
-    print "WARNING: unable to write last_setup_dependency_data to file\n";
+    print "WARNING: unable to write setup_dependency_file\n";
   }
   
 }
@@ -362,7 +347,7 @@ sub dump_variable_dependency_info {
 sub output_variable_list {
 
   use strict;
-  open(VARIABLE, ">$variable_list_file") or die "ERROR: problem opening temporary variable file $variable_list_file: something funny is going on: check permissions??\n";
+  open(VARIABLE, ">$variable_list_file") or error_stop("problem opening temporary variable file $variable_list_file: something funny is going on: check permissions??\n");
   print VARIABLE "# List of the variables:\n";
   for my $key ( keys(%variable) ) {
     print VARIABLE "-" x 80,"\n";
@@ -383,7 +368,7 @@ sub output_variable_list {
   print VARIABLE "-" x 80,"\n";
   close(VARIABLE);
 
-  open(VARIABLE, ">$variable_arb_file") or die "ERROR: problem opening temporary variable file $variable_arb_file: something funny is going on: check permissions??\n";
+  open(VARIABLE, ">$variable_arb_file") or error_stop("problem opening temporary variable file $variable_arb_file: something funny is going on: check permissions??\n");
   print VARIABLE "# Reconstructed list of the variables in arb format:\n";
   for my $key ( @user_types ) {
     print VARIABLE "#","-" x 80,"\n";
@@ -417,7 +402,7 @@ sub output_region_list {
   use strict;
   use Data::Dumper;
   my @types=(qw( system setup gmsh constant transient newtient derived equation output condition )); # list of region types
-  open(REGION, ">$region_list_file") or die "ERROR: problem opening temporary region file $region_list_file: something funny is going on: check permissions??\n";
+  open(REGION, ">$region_list_file") or error_stop("problem opening temporary region file $region_list_file: something funny is going on: check permissions??\n");
 
   for my $type ( @types ) {
     print REGION "-" x 80,"\n";
@@ -441,7 +426,7 @@ sub output_region_list {
   print REGION "-" x 80,"\n";
   close(REGION);
 
-  open(REGION, ">$region_arb_file") or die "ERROR: problem opening temporary region file $region_arb_file: something funny is going on: check permissions??\n";
+  open(REGION, ">$region_arb_file") or error_stop("problem opening temporary region file $region_arb_file: something funny is going on: check permissions??\n");
   print REGION "# Reconstructed list of the regions in arb format:\n";
   for my $type ( @types ) {
     if ($type eq "system") { next; } # don't output system types to the arb file
@@ -514,7 +499,7 @@ sub check_setup_status {
 # my $new_data = '';
 
 # open old file and compare string created last time
-  open(OLD_CHECK, "<$build_dir/last_setup_equation_data") or $same=0; # if file doesn't exist
+  open(OLD_CHECK, "<$setup_equation_file") or $same=0; # if file doesn't exist
   if ($same) {
     my $old_data = "";
     while (<OLD_CHECK>) {
@@ -524,10 +509,12 @@ sub check_setup_status {
   }
   close(OLD_CHECK);
       
-# write out new data string for comparison during the next time
-  open(NEW_CHECK, ">$tmp_dir/setup_equation_data") or die "ERROR: problem opening $tmp_dir/setup_equation_data\n";
-  print NEW_CHECK "$new_data";
-  close(NEW_CHECK);
+# write out new data string for comparison during the next run, if there has been any changes
+  if (!($same)) {
+    open(NEW_CHECK, ">$setup_equation_file") or error_stop("problem opening $setup_equation_file\n");
+    print NEW_CHECK "$new_data";
+    close(NEW_CHECK);
+  }
 
 # now also write out data to DEBUG
   $Data::Dumper::Terse = 1;
@@ -708,11 +695,11 @@ sub read_input_files {
   my $indent = "   "; # amount to indent the unwrapped input file for each level of file inclusion
 
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
-  open(UNWRAPPED_INPUT, ">$current_unwrapped_input_file");
+  open(UNWRAPPED_INPUT, ">$unwrapped_input_file");
 
   $input_files[$#input_files]{"handle"} = FileHandle->new(); # make a filehandle for the first file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
   $handle = $input_files[$#input_files]{"handle"};
-  open($handle, "<$input_files[$#input_files]{name}") or die "ERROR: problem opening arb input file $input_files[$#input_files]{name}\n";;
+  open($handle, "<$input_files[$#input_files]{name}") or error_stop("problem opening arb input file $input_files[$#input_files]{name}\n");
 
   while (@input_files) {
 
@@ -914,7 +901,7 @@ sub read_input_files {
         $input_files[$#input_files]{"handle"} = FileHandle->new(); # make a filehandle for this file
         $handle = $input_files[$#input_files]{"handle"};
         $file = $input_files[$#input_files]{"ref_name"};
-        open($handle, "<$input_files[$#input_files]{name}") or die "ERROR: problem opening arb input file $input_files[$#input_files]{name}\n";;
+        open($handle, "<$input_files[$#input_files]{name}") or error_stop("problem opening arb input file $input_files[$#input_files]{name}\n");
         next; # skip to reading the next line (in the included file)
 
 # extract any general replacements, pushing them onto the back of the existing list
@@ -2089,7 +2076,7 @@ sub process_regions {
       my $nlast = $n;
       while ($region[$nlast]{"dynamic"}) {
         my $nfound = find_region($region[$nlast]{'part_of'});
-				if ($nfound < 0) { die "INTERNAL ERROR: the ON region $region[$nlast]{part_of} for dynamic region $region[$n]{name} is not a valid region"; }
+				if ($nfound < 0) { error_stop("(INTERNAL ERROR) the ON region $region[$nlast]{part_of} for dynamic region $region[$n]{name} is not a valid region"); }
         $nlast = $nfound;
         print DEBUG "INFO: in process of finding parent region for $region[$n]{name}: found part_of region $region[$nfound]{name}\n";
       }
@@ -4528,7 +4515,7 @@ sub run_maxima_simplify {
   my ($systemcall, $line, $out, $in, $otype, $omvar, $bit, $call_maxima, $n, $tmp, $not_found);
   my @replacements = ();
 
-  if (-e $stopfile) {die "HALT: found $stopfile in run_maxima_simplify\n";}
+  if (-e $stopfile) {error_stop("(HALT) found $stopfile in run_maxima_simplify\n");}
 
   print DEBUG "+++++++++++++++++++++\n".
     "in run_maxima_simplify: before _[0] = ",$_[0],"\n";
@@ -4574,13 +4561,13 @@ sub run_maxima_simplify {
 # initialise a new maxima_simplify_results entry
       push (@maxima_simplify_results, { "input" => $bit, "used" => 1, "tmp_file_number" => $tmp_file_number } );
 
-      open(MAXIMA, ">$tmp_dir/tmp$tmp_file_number.maxima") or die "ERROR: problem opening temporary maxima file $tmp_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??\n";
+      open(MAXIMA, ">$setup_current_dir/tmp$tmp_file_number.maxima") or error_stop("problem opening temporary maxima file $setup_current_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??\n");
       print MAXIMA "foo:$bit;";
-      print MAXIMA "with_stdout (\"$tmp_dir/tmp$tmp_file_number.simp\", grind(foo));";
+      print MAXIMA "with_stdout (\"$setup_current_dir/tmp$tmp_file_number.simp\", grind(foo));";
       close(MAXIMA);
-      $systemcall="$maxima_bin -b $tmp_dir/tmp$tmp_file_number.maxima >$tmp_dir/tmp$tmp_file_number.txt";
-      (!(system("$systemcall"))) or die "ERROR: could not $systemcall\n";
-      open(SIMP, "<$tmp_dir/tmp$tmp_file_number.simp") or do {
+      $systemcall="$maxima_bin -b $setup_current_dir/tmp$tmp_file_number.maxima >$setup_current_dir/tmp$tmp_file_number.txt";
+      (!(system("$systemcall"))) or error_stop("could not $systemcall\n");
+      open(SIMP, "<$setup_current_dir/tmp$tmp_file_number.simp") or do {
         print "ERROR: problem in run_maxima_simplify processing the following mequation (maxima equation):\n'$bit'\n".
           "  This equation originated from $otype variable $variable{$otype}[$omvar]{name} and this\n".
           "  error indicates that maxima had problems processing this equation.  All variables that\n".
@@ -4588,11 +4575,11 @@ sub run_maxima_simplify {
           "  variables appear in the above as their original names (e.g. <my variable>) then\n".
           "  check their equations as there is some problem with their definition (maybe a typo?).\n".
           "  Also check that any mathematical functions and syntax used in the above are compatible with maxima.\n";
-        print "  Maxima input lines are contained in the file $tmp_dir/tmp$tmp_file_number.maxima\n";
-        print "  Maxima processing output contained in the file $tmp_dir/tmp$tmp_file_number.txt\n";
-        print "  Maxima output lines are contained in the file $tmp_dir/tmp$tmp_file_number.simp\n";
-        print DEBUG "ERROR: problem in run_maxima_simplify processing the following mequation:\n'$bit'\n".
-        die;
+        print "  Maxima input lines are contained in the file $setup_current_dir/tmp$tmp_file_number.maxima\n";
+        print "  Maxima processing output contained in the file $setup_current_dir/tmp$tmp_file_number.txt\n";
+        print "  Maxima output lines are contained in the file $setup_current_dir/tmp$tmp_file_number.simp\n";
+        print DEBUG "ERROR: problem in run_maxima_simplify processing the following mequation:\n'$bit'\n";
+        error_stop("problem in run_maxima_simplify processing the following mequation:\n'$bit'\n");
       };
       $bit = "";
       while ($line = <SIMP>) {
@@ -5317,7 +5304,7 @@ sub run_maxima_fortran {
   my ($line, $systemcall, $bit, $otype, $omvar, $call_maxima, $n);
   my @replacements = ();
 
-  if (-e $stopfile) {die "HALT: found $stopfile in run_maxima_fortran";}
+  if (-e $stopfile) {error_stop("(HALT) found $stopfile in run_maxima_fortran");}
 
   print DEBUG "+++++++++++++++++++++\n".
     "in run_maxima_fortran: before _[0] = ",$_[0],"\n";
@@ -5354,7 +5341,7 @@ sub run_maxima_fortran {
 # initialise a new maxima_fortran_results entry
     push (@maxima_fortran_results, { "input" => $bit, "used" => 1, "tmp_file_number" => $tmp_file_number } );
 
-    open(MAXIMA, ">$tmp_dir/tmp$tmp_file_number.maxima") or die "ERROR: problem opening temporary maxima file $tmp_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??\n";
+    open(MAXIMA, ">$setup_current_dir/tmp$tmp_file_number.maxima") or error_stop("problem opening temporary maxima file $setup_current_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??\n");
     print MAXIMA "load(f90);";
     print MAXIMA "gradef(heaviside(x),0);"; # define derivative of heaviside function to be zero
     print MAXIMA "gradef(signum(x),0);"; # define derivative of maxima sign function to be zero (sign of x)
@@ -5362,11 +5349,11 @@ sub run_maxima_fortran {
     print MAXIMA "gradef(mod(x,y),1,x*log(y));"; # define derivative of maxima mod function - second element is wrt x, third element is wrt y (remainder when x is divided by y)
     print MAXIMA "gradef(log10(x),1/(x*float(log(10))));"; # define derivative of log10
     print MAXIMA "foo:$bit;";
-    print MAXIMA "with_stdout (\"$tmp_dir/tmp$tmp_file_number.fortran\", f90(foo));";
+    print MAXIMA "with_stdout (\"$setup_current_dir/tmp$tmp_file_number.fortran\", f90(foo));";
     close(MAXIMA);
-    $systemcall="$maxima_bin -b $tmp_dir/tmp$tmp_file_number.maxima >$tmp_dir/tmp$tmp_file_number.txt";
-    (!(system("$systemcall"))) or die "ERROR: could not $systemcall\n";
-    open(FORTRAN, "<$tmp_dir/tmp$tmp_file_number.fortran") or do {
+    $systemcall="$maxima_bin -b $setup_current_dir/tmp$tmp_file_number.maxima >$setup_current_dir/tmp$tmp_file_number.txt";
+    (!(system("$systemcall"))) or error_stop("could not $systemcall\n");
+    open(FORTRAN, "<$setup_current_dir/tmp$tmp_file_number.fortran") or do {
       print "ERROR: problem in run_maxima_fortran processing the following mequation (maxima equation):\n'$bit'\n".
         "  This equation originated from $otype variable $variable{$otype}[$omvar]{name} and this\n".
         "  error indicates that maxima had problems processing this equation.  All variables that\n".
@@ -5376,11 +5363,11 @@ sub run_maxima_fortran {
         "  Also check that any mathematical functions and syntax used in the above are compatible with\n".
         "  maxima and the f90 package.  Finally, if a diff (derivative) is requested, check that the\n".
         "  derivative exists and that maxima is actually able to calculate it.\n";
-      print "  Maxima input lines are contained in the file $tmp_dir/tmp$tmp_file_number.maxima\n";
-      print "  Maxima processing output contained in the file $tmp_dir/tmp$tmp_file_number.txt\n";
-      print "  Maxima output lines are contained in the file $tmp_dir/tmp$tmp_file_number.fortran\n";
-      print DEBUG "ERROR: problem in run_maxima_fortran processing the following mequation:\n$bit\n".
-      die;
+      print "  Maxima input lines are contained in the file $setup_current_dir/tmp$tmp_file_number.maxima\n";
+      print "  Maxima processing output contained in the file $setup_current_dir/tmp$tmp_file_number.txt\n";
+      print "  Maxima output lines are contained in the file $setup_current_dir/tmp$tmp_file_number.fortran\n";
+      print DEBUG "ERROR: problem in run_maxima_fortran processing the following mequation:\n$bit\n";
+      error_stop("problem in run_maxima_fortran processing the following mequation:\n$bit\n");
     };
     $bit = "";
     while ($line = <FORTRAN>) {
@@ -5400,11 +5387,11 @@ sub run_maxima_fortran {
         "  It could be a typo in your input file.  If not and the function is what you intended, maxima may not be\n".
         "  able to differentiate it for some reason.  Consider rewriting the equation in terms of alternative\n".
         "  functions that maxima can handle.  Also try to do the calculations in maxima separately to see what its capabilities are.\n";
-      print "  Maxima input lines are contained in the file $tmp_dir/tmp$tmp_file_number.maxima\n";
-      print "  Maxima processing output contained in the file $tmp_dir/tmp$tmp_file_number.txt\n";
-      print "  Maxima output lines are contained in the file $tmp_dir/tmp$tmp_file_number.fortran\n";
+      print "  Maxima input lines are contained in the file $setup_current_dir/tmp$tmp_file_number.maxima\n";
+      print "  Maxima processing output contained in the file $setup_current_dir/tmp$tmp_file_number.txt\n";
+      print "  Maxima output lines are contained in the file $setup_current_dir/tmp$tmp_file_number.fortran\n";
       print DEBUG "ERROR: problem in run_maxima_fortran processing the following mequation:\n$bit\n";
-      die;
+      error_stop("problem in run_maxima_fortran processing the following mequation:\n$bit\n");
     }
 
 # save result for possible future use
@@ -6735,7 +6722,7 @@ sub get_system_mvar {
   foreach $mvar ( 1 .. $m{"system"}+1 ) {
     if ($variable{"system"}[$mvar]{"name"} eq $_[0]) {exit;}
   }
-  if ($mvar > $m{"system"}) {die "ERROR: system variable $_[0] not found in get_system_mvar\n";}
+  if ($mvar > $m{"system"}) {error_stop("system variable $_[0] not found in get_system_mvar\n");}
 
   return $mvar;
 
@@ -6755,7 +6742,7 @@ sub write_latex {
 
   print DEBUG "in write_latex";
 
-  open(LATEX, ">$tmp_dir/variables.tex");
+  open(LATEX, ">$setup_current_dir/variables.tex");
 
 # create latex names for variables and write a tabular list to tmp.tex
   foreach $type (@user_types) {
@@ -6830,7 +6817,7 @@ sub write_latex {
   close(LATEX);
 
 # create and write latex equations
-  open(LATEX, ">$tmp_dir/equations.tex");
+  open(LATEX, ">$setup_current_dir/equations.tex");
 
   foreach $type ("equation","derived","output") {
     $textype = $type;
@@ -6920,7 +6907,7 @@ sub examine_name {
 
   $action = $_[1];
   ($name) = $_[0] =~ /^<(.*)>$/;
-  if (!($name)) { die "ERROR: an empty variable was passed to sub consistent_name: $_[0]\n"; }
+  if (!($name)) { error_stop("an empty variable was passed to sub consistent_name: $_[0]\n"); }
 
 # set default (no index) options
   $basename = $name;
@@ -7210,12 +7197,22 @@ sub read_maxima_results_files {
 #-------------------------------------------------------------------------------
 # whatever string is passed to this routine is output as an error message to both screen
 #  and DEBUG file, and the script then dies
+# also deal with previous successful run
 
 sub error_stop {
 
+  use strict;
+  use File::Path qw(rmtree); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
   print "ERROR: $_[0]\n";
   print DEBUG "ERROR: $_[0]\n";
-  die 1;
+
+# also remove traces of last successful run
+  print DEBUG "INFO: removing last successful setup data from $setup_creation_dir\n";
+  print "INFO: removing last successful setup data from $setup_creation_dir\n";
+  if (-d $setup_creation_dir) { rmtree($setup_creation_dir) or print "ERROR: could not remove existing $setup_creation_dir\n"; } # using rmtree for older File::Path compatibility
+  if (-f $setup_equation_file) {unlink($setup_equation_file) or print "ERROR: could not remove existing $setup_equation_file\n"; }
+
+  exit 1;
 
 }
 #-------------------------------------------------------------------------------
