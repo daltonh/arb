@@ -46,7 +46,8 @@ TIMESTEPOUT 1
 # puts an increase in weight on large errors in the newton residual, to guard against individual equations becoming worse at the expense of the average error
 #SOLVER_OPTIONS weightlargeequationerrors=.true.,weightlargeequationerrorsfactor=1.d+0
 # this controls how aggressive the increase in lambda is (the underrelaxation factor used in backstepping)
-SOLVER_OPTIONS stickylambdaincrease=2
+# now not the default, however this can speed up convergence but at the risk of promoting instability
+#SOLVER_OPTIONS stickylambdaincrease=2
 #-------------------------------------------------------------------
 # geometry
 
@@ -129,13 +130,15 @@ INCLUDE "viscosity" # common to all methods
 <<turbwilcox88comment>>INCLUDE "limited_transient"
 <<turbwilcox88comment>>INCLUDE "base_equals_background_limited_mu_t" # now base of mu_t smoothing function is set to be decreasing multiple of background mu_t
 # the following can be used to change the way the viscosity limiter decreases with timestep - these are the default values
-#NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.35d0
-#NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.75d0 # experience is that if this is set close to 1, simulations can push to lower rel_limiters
+NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.35d0
+NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.75d0 # experience is that if this is set close to 1, simulations can push to lower rel_limiters
 #NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.01d0
-# following are used to speed up the test problem and should be commented out for a real problem
-<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.20d0
-<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.5d0
-<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.09d0
+# following is used to speed up the test problem and should be commented out for a real problem
+NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.09d0
+# the following are even speedier settings, however convergence has failed in some instances with these
+#<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.20d0
+#<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.5d0
+#<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.09d0
 # an alternative constant limiting of the turbulence viscosity
 #INCLUDE "base_limited_mu_t" # limit base_mu_t as a multiple of the background mu_t to avoid transient solutions etc
 #NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.4d0
