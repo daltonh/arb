@@ -7,7 +7,7 @@ EXTERNALS "src/free_surface_functions.f90"
 #(hash added during unwrap)INCLUDE_WORKING "separation_syntax.arb"
 #(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
    #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from ../separation_syntax.arb without any search/replace combinations
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../separation_syntax.arb without any search/replace combinations
    VERSION 0.42
    #-------------------------------------------------------------------
    # user-defined constants

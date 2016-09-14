@@ -7,7 +7,7 @@ EXTERNALS "src/free_surface_functions.f90"
 #(hash added during unwrap)INCLUDE_WORKING "ddot_test.arb"
 #(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
    #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from ../ddot_test.arb without any search/replace combinations
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../ddot_test.arb without any search/replace combinations
    # this demonstrates how to take a double dot product and how to use a template file to perform a tensor transpose
    
    NONE_CONSTANT <A[l=1,1]> "11"
@@ -34,7 +34,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "tensor_transpose" R "CELL_LOCAL" W "NONE_LOCAL" R "<tensor" W "<B"
    #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = .. ../templates/general
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from ../templates/general/tensor_transpose.arb with the following search/replace combinations: replace CELL_LOCAL with NONE_LOCAL: replace <tensor with <B
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/tensor_transpose.arb with the following search/replace combinations: replace CELL_LOCAL with NONE_LOCAL: replace <tensor with <B
       # little code snippet to create a transpose of a tensor as a local variable
       # NOTE, may need to correct centring of variable when calling
       
@@ -56,7 +56,7 @@ EXTERNALS "src/free_surface_functions.f90"
 #(hash added during unwrap)INCLUDE_WORKING "random_test.arb"
 #(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
    #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from ../random_test.arb without any search/replace combinations
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../random_test.arb without any search/replace combinations
    # <random> creates a random variable in the range 0 <= <random> < 1, which is unique to each call
    NONE_CONSTANT <random1> "<random>"
    NONE_CONSTANT <random2> "<random>"
@@ -67,7 +67,7 @@ EXTERNALS "src/free_surface_functions.f90"
 #(hash added during unwrap)INCLUDE_WORKING "reuse.arb"
 #(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
    #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from ../reuse.arb without any search/replace combinations
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../reuse.arb without any search/replace combinations
    NONE_CONSTANT <a> "1.d0+<pi>"
    NONE_DERIVED <b>
    NONE_DERIVED <b> "<b>+<b>+(<b>)+<a>"
