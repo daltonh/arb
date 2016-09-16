@@ -1,7 +1,8 @@
 #!/bin/bash
 # this dangerous little script will recursively remove all arb output and object files from a directory hierarchy
+# now also removes the previous, tmp and build directories
 echo "You are about to remove the following files:";
-filestring="-name output.* -or -name debug* -or -name fort* -or -name kernel_*.txt -or -name mesh_*.txt -or -name output*.csv -or -name convergence_details.txt -or -name latest.* -or -name *.so -or -name *.o -or -name *.dylib -or -name *.mod";
+filestring="-name output.* -or -name debug* -or -name fort* -or -name kernel_*.txt -or -name mesh_*.txt -or -name output*.csv -or -name convergence_details.txt -or -name latest.* -or -name *.so -or -name *.o -or -name *.dylib -or -name *.mod -or -name build -or -name previous -or -name tmp";
 if which gfind >/dev/null 2>/dev/null ; then
   gfind . -depth \( $filestring \) -printf "%p:%skb\n";
 else
@@ -10,5 +11,7 @@ fi
 read -p "Press y to continue, or any other key to quit without the ensuing massacre: " answer;
 if [ "$answer" == "y" ]; then
   echo 'Deleting files:';
-  find . -depth \( $filestring \) -delete;
+# find . -depth \( $filestring \) -delete;
+# the following will recursively remove directories, whereas the -delete option fails if a directory is non-empty
+  find . -depth \( $filestring \) -exec 'rm' '-r' '{}' ';' ;
 fi
