@@ -116,10 +116,12 @@ if (first) then
   if (nthreads > 1) iparm(2) = 3 ! the parallel (OpenMP) version of the nested dissection algorithm is used. It can decrease the time of computations on multi-core computers, especially when the time of the PARDISO Phase 1 is significant for your task.
 ! When using iparm(2) = 2 or 3 also use some iterative refinement!
   iparm(8) = 15 ! the number of steps used is <= this and is reported in iparm(7): Testing shows that the time for these steps is minimal, and is required for iparm(2) = 2 or 3
-  if (safer) then
-    if (.false.) write(*,*) 'WARNING in intel_pardiso_module.f90 - iterative refinement turned off and safer, slower algorithm'
-    iparm(8) = 0 ! the number of steps used
-    iparm(2) = 0 ! safe option
+  if (present(safer)) then
+    if (safer) then
+      if (.false.) write(*,*) 'WARNING in intel_pardiso_module.f90 - iterative refinement turned off and safer, slower algorithm'
+      iparm(8) = 0 ! the number of steps used
+      iparm(2) = 0 ! safe option
+    end if
   end if
   if (nthreads >= 8) iparm(24) = 1 ! PARDISO uses new two-level factorization algorithm. This algorithm generally improves scalability in case of parallel factorization on many threads (>= 8).
   if (debug_sparse) write(*,'(3(a,i2))') ' pardiso options on entry: iparm(2) = ',iparm(2),': iparm(8) = ',iparm(8),': iparm(24) = ',iparm(24)
