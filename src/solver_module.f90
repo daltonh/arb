@@ -40,7 +40,7 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, multigrid, mgmres, bicg, bicgstab, descent, doglegdescent, flexible
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, intelpardisosafer, suitesparse, hslma28, pardiso, multigrid, mgmres, bicg, bicgstab, descent, doglegdescent, flexible
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
@@ -669,6 +669,12 @@ else if (trim(linear_solver) == "intelpardisoooc") then
 ! intel pardiso solver out of core
 
   call intel_pardiso_linear_solver(aa,iaa,jaa,delphi,ierror,nthreads,ooc=.true.)
+  if (ierror == -4) singular = .true.
+
+else if (trim(linear_solver) == "intelpardisosafer") then
+! intel pardiso solver, but with a safer choice of algorithms
+
+  call intel_pardiso_linear_solver(aa,iaa,jaa,delphi,ierror,nthreads,safer=.true.)
   if (ierror == -4) singular = .true.
 
 else if (trim(linear_solver) == "suitesparse") then
@@ -2088,6 +2094,7 @@ if (trim(linear_solver) == "default" .or. trim(linear_solver) == "iterative" .or
   if (trim(linear_solver) == "iterative") linear_solver = "doglegdescent" ! this is the default iterative solver
   write(*,'(a)') 'INFO: choosing '//trim(linear_solver)//' linear solver'
 else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "intelpardisoooc".or. &
+  trim(linear_solver) == "intelpardisosafer".or. &
   trim(linear_solver) == "suitesparse".or.trim(linear_solver) == "hslma28".or.trim(linear_solver) == "pardiso".or. &
   trim(linear_solver) == "pardisoiterative".or. &
   trim(linear_solver) == "multigrid".or.trim(linear_solver) == "singlegrid".or. &

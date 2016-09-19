@@ -51,7 +51,7 @@ contains
 
 !-----------------------------------------------------------------
 
-subroutine intel_pardiso_linear_solver(a,ia,ja,x,ierror,nthreads,ooc)
+subroutine intel_pardiso_linear_solver(a,ia,ja,x,ierror,nthreads,ooc,safer)
 
 ! this routine based on pardiso_unsym.f routine from pardiso documentation
 !  to call pardiso solver packaged with the intel mkl libraries
@@ -72,6 +72,7 @@ integer, dimension(64) :: iparm
 integer, dimension(:), allocatable :: perm
 double precision, dimension(:), allocatable :: x_dummy
 logical, optional :: ooc ! whether out of core solver is required
+logical, optional :: safer ! whether to turn on safer (more stable) algorithms
 logical :: first = .true. ! this flag records the first use of the routine, when the iparm variables are set
 logical :: debug = .false., debug_sparse = .false.
 
@@ -115,8 +116,8 @@ if (first) then
   if (nthreads > 1) iparm(2) = 3 ! the parallel (OpenMP) version of the nested dissection algorithm is used. It can decrease the time of computations on multi-core computers, especially when the time of the PARDISO Phase 1 is significant for your task.
 ! When using iparm(2) = 2 or 3 also use some iterative refinement!
   iparm(8) = 15 ! the number of steps used is <= this and is reported in iparm(7): Testing shows that the time for these steps is minimal, and is required for iparm(2) = 2 or 3
-  if (.false.) then
-    write(*,*) 'WARNING in intel_pardiso_module.f90 - iterative refinement turned off and safer, slower algorithm'
+  if (safer) then
+    if (.false.) write(*,*) 'WARNING in intel_pardiso_module.f90 - iterative refinement turned off and safer, slower algorithm'
     iparm(8) = 0 ! the number of steps used
     iparm(2) = 0 ! safe option
   end if
