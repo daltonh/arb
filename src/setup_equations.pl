@@ -70,7 +70,7 @@ our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='../misc/maxima_OsX/maxima'; # or the supplied script for the OsX binary, relative to the build directory
 my $fortran_input_file="$build_dir/fortran_input.arb"; # input file for the fortran executable, which is in a slightly different format to the user written input files
 my $unwrapped_input_file="$setup_current_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
-my $debug_info_file="$setup_current_dir/debugging_info.txt"; # this is where all the debugging info is stored from the last setup
+my $debug_info_file="debugging_info.txt"; # this is where all the debugging info is stored from the last setup
 my $setup_equation_file="$build_dir/last_setup_equation_data"; # this file is used to store all of the setup equation data prior to the (expensive) fortran generation
 my $version_file="$working_dir/licence/version";
 
@@ -84,7 +84,7 @@ mkpath($setup_current_dir) or error_stop("could not create $setup_current_dir");
 my $stopfile="$working_dir/stop";
 if (-e $stopfile) { unlink($stopfile) or error_stop("could not remove $stopfile from previous run"); }
 
-open(DEBUG, ">$debug_info_file");
+open(DEBUG, ">$setup_current_dir/$debug_info_file");
 print "\nperl setup_equations script to create f90 subroutines for arb\n";
 print "dalton harvie, v$version\n\n";
 print DEBUG "\nperl setup_equations script to create f90 subroutines for arb\n";
@@ -213,15 +213,6 @@ if ($same_fortran_as_last_run) {
 
   write_results(); # call routines to produce the output files
 
-# lousysubstitutes already recorded
-  if ($number_of_lousysubstitutes > 0) { print "WARNING: some variable substitutions had to be performed that may result in very inefficient code being generated.  These lousy substitutions ".
-    "could be avoided by a careful reordering of some of the input statements.  Details are given above (or in the file $debug_info_file by searching for 'lousy substitution').\n"; }
-
-}
-
-# final warning about multiple definitions
-foreach my $repeats (keys(%statement_repeats)) {
-  if ($statement_repeats{$repeats} > 0) { print "NOTE: at least one variable had $repeats.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
 }
 
 if ($same_fortran_as_last_run) {
@@ -242,6 +233,15 @@ if ($same_fortran_as_last_run) {
   if (-d $setup_creation_dir) { rmtree($setup_creation_dir) or error_stop("could not remove existing $setup_creation_dir"); } # using rmtree for older File::Path compatibility
   if (-f $readme_file) { unlink($readme_file) or error_stop("could not remove $readme_file"); }
   move("$setup_current_dir","$setup_creation_dir") or error_stop("could not move $setup_current_dir to $setup_creation_dir");
+
+# print out warnings
+# lousysubstitutes already recorded
+  if ($number_of_lousysubstitutes > 0) { print "WARNING: some variable substitutions had to be performed that may result in very inefficient code being generated.  These lousy substitutions ".
+    "could be avoided by a careful reordering of some of the input statements.  Details are given above (or in the file $setup_creation_dir/$debug_info_file by searching for 'lousy substitution').\n"; }
+# warning about multiple definitions
+  foreach my $repeats (keys(%statement_repeats)) {
+    if ($statement_repeats{$repeats} > 0) { print "NOTE: at least one variable had $repeats.  Was this your intention?  Details are given above (or in the file $setup_creation_dir/$debug_info_file).\n"; }
+  }
 
   print "SUCCESS: equation_module.f90 has been created\n";
   print DEBUG "SUCCESS: equation_module.f90 has been created\n";
