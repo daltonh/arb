@@ -452,8 +452,8 @@ class CanvasPanel(wx.Panel):
                 line_y2 = '-'
             
             # set color cycles before variable loops
-            self.axis.set_color_cycle(list1)
-            self.axis2.set_color_cycle(list2)
+            self.axis.set_color_cycle(cycler('color', list1))
+            self.axis2.set_color_cycle(cycler('color', list2))
 
             # loop over active y1_var
             if (frame.y1.list.active_count > 0):           
