@@ -40,6 +40,8 @@ from matplotlib.figure import Figure
 import argparse
 from collections import defaultdict
 
+from cycler import cycler
+
 # to output wx version
 #print wx.__version__
 
@@ -452,8 +454,8 @@ class CanvasPanel(wx.Panel):
                 line_y2 = '-'
             
             # set color cycles before variable loops
-            self.axis.set_color_cycle(cycler('color', list1))
-            self.axis2.set_color_cycle(cycler('color', list2))
+            self.axis.set_prop_cycle(cycler('color', list1))
+            self.axis2.set_prop_cycle(cycler('color', list2))
 
             # loop over active y1_var
             if (frame.y1.list.active_count > 0):           
