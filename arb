@@ -242,6 +242,8 @@ done ;
 
 # create it if it doesn't already exist
 if [ ! -d output ] ; then mkdir output ; fi ;
+# create link to .gitignore in the output directory if it doesn't exist already
+if [ ! -e output/.gitignore ] ; then ln -s ../misc/git/gitignore_empty_directory output/.gitignore ; fi ;
 # always keep copy of previous output
 if [ ! -d $PREVIOUS_RUN ] ; then mkdir -p $PREVIOUS_RUN ; fi ;
 $RM $PREVIOUS_RUN/* >/dev/null 2>/dev/null ;
