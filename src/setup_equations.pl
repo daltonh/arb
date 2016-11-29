@@ -3978,6 +3978,8 @@ sub mequation_interpolation {
         $shape = 4;
       } elsif ($options && $options =~ /(^|\,)\s*cylinder\s*(\,|$)/) { # size[l=1] is diameter, size[l=2] is length, centre is geometrical centre
         $shape = 5;
+      } elsif ($options && $options =~ /(^|\,)\s*gyroid\s*(\,|$)/) { # size[l=:] is period of gyroid in each dimension, centre is any offset
+        $shape = 6;
       }
       $external_arguments = $external_arguments.",shape=$shape";
 

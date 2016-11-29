@@ -967,7 +967,7 @@ double precision, dimension(totaldimensions), intent(in) :: size, centre, x
 double precision, dimension(totaldimensions) :: x_rotated ! position of x relative cente relative to unrotated configuration of shape
 integer :: shape
 double precision :: d
-integer :: l
+integer :: l, l2
 
 x_rotated = x - centre
 if (any_rotation) x_rotated = matmul(rotation_total,x_rotated)
@@ -999,6 +999,18 @@ else if (shape == 5) then ! cylinder, with centreline along the z axis, and size
   if (abs(x_rotated(3)) > size(2)/2.d0) return
   if (max(abs(x_rotated(1)),abs(x_rotated(2))) > size(1)/2.d0) return ! these checks should be faster than the exact square ones below
   if (x_rotated(1)**2 + x_rotated(2)**2 > size(1)**2/4.d0) return
+  is_point_in_shape = .true.
+
+else if (shape == 6) then ! gyroid
+
+  is_point_in_shape = .false.
+  d = 0.d0
+  do l = 1, totaldimensions
+    l2 = l + 1
+    if (l2 == 4) l2 = 1
+    d = d + sin(2.d0*pi*x_rotated(l)/size(l))*cos(2.d0*pi*x_rotated(l2)/size(l2))
+  end do
+  if (d < 1.d0) return
   is_point_in_shape = .true.
 
 else
