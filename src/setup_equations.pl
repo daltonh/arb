@@ -3931,10 +3931,12 @@ sub mequation_interpolation {
 #---------------------
 # ref: cellvofphishape
 # the cellvofphishape function takes three vectors, a size, centre and axis, returning a volume fraction for each cell based on the requested shape
-# the size of the object is determined by the maximum size that is consistent with all of the object's dimensions (defaults to huge), so for a sphere set one size to the sphere's diameter
-# the centre of the object is specified by the centre vector, defaulting to zero if a component is not specified
-# the axis vector specifies a line about which the axis of the object is rotated, with a length equal to the rotation about that line required (in degrees) - by default each object has its unrotated centreline along the z axis
-# phitol is the accuracy required, which is used to determine the number of sample points
+# * the size of the object is determined by the maximum size that is consistent with all of the object's dimensions (defaults to huge), so for a sphere set one size to the sphere's diameter
+# * the centre of the object is specified by the centre vector, defaulting to zero if a component is not specified
+# * the axis vector specifies a line about which the axis of the object is rotated, with a length equal to the rotation about that line required (in degrees) - by default each object has its unrotated centreline along the z axis
+# it also takes two scalars:
+# * phitol is the accuracy required, which is used to determine the number of sample points
+# * levelset is a scalar that is used for levelset type approaches (such as gyroid) that is used to define the surface location - by default levelset = 0
 # for 2D shapes choose a 3D shape that gives the correct intersection with the 2D plane (ie, sphere for circle, box for rectangle)
     } elsif ($operator_type eq "vofphishape") {
       if ($centring ne "cell") { error_stop("$operator_type operator has incorrect $centring centring in $otype $variable{$otype}[$omvar]{name} (do you mean cellvofphishape?)"); }
@@ -3956,13 +3958,22 @@ sub mequation_interpolation {
         }
       }
 
-# 11) the volume fraction accuracy required
+# 11) the volume fraction accuracy required, phitol
       ($tmp,$name) = search_operator_contents("phitol",$next_contents_number);
       if (empty($tmp)) {
         $external_arguments = $external_arguments.',msomeloop_phitol=-1'; # an index of -1 means no phitol value is specified
       } else {
         create_someloop($tmp,"sum","cell","<noloop>",$deriv,$otype,$omvar);
         $external_arguments = $external_arguments.',msomeloop_phitol='.$m{someloop};
+      }
+
+# 12) the levelset value, for the gyroid surface
+      ($tmp,$name) = search_operator_contents("levelset",$next_contents_number);
+      if (empty($tmp)) {
+        $external_arguments = $external_arguments.',msomeloop_levelset=-1'; # an index of -1 means no levelset value is specified
+      } else {
+        create_someloop($tmp,"sum","cell","<noloop>",$deriv,$otype,$omvar);
+        $external_arguments = $external_arguments.',msomeloop_levelset='.$m{someloop};
       }
 
 # choose shape to use based on options
@@ -3978,7 +3989,7 @@ sub mequation_interpolation {
         $shape = 4;
       } elsif ($options && $options =~ /(^|\,)\s*cylinder\s*(\,|$)/) { # size[l=1] is diameter, size[l=2] is length, centre is geometrical centre
         $shape = 5;
-      } elsif ($options && $options =~ /(^|\,)\s*gyroid\s*(\,|$)/) { # size[l=:] is period of gyroid in each dimension, centre is any offset
+      } elsif ($options && $options =~ /(^|\,)\s*gyroid\s*(\,|$)/) { # size[l=:] is period of gyroid in each dimension, centre is any offset, and levelset is used to define which surface
         $shape = 6;
       }
       $external_arguments = $external_arguments.",shape=$shape";

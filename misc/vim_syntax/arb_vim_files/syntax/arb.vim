@@ -101,7 +101,7 @@ syn keyword arbFunctionOption adjacentcells adjacentcellsevenweighting adjacentc
 syn match arbFunctionOption "\%(\)\<sep\%(aration\)\=cent\%(er\|re\)\=\d*" contained
 syn match arbFunctionOption "\%(\)\<\%(max\|min\)separation\>" contained
 syn match arbFunctionOption "\<\%(l\|r\)\ze=\%(\d\|:\)" contained
-syn keyword arbFunctionParameter bound condition d default dt expression faceseparationflag false flux fromregion limiter localregion phif phitol region remoteregion toregion true unknown contained
+syn keyword arbFunctionParameter bound condition d default dt expression faceseparationflag false flux fromregion levelset limiter localregion phif phitol region remoteregion toregion true unknown contained
 syn match arbFunctionParameter "\<\%(axis\|centre\|gradient\|normal\|size\)\[l=\%(\d\|:\)\]" contained
 syn match arbFunctionParameter "\<\%(phi\)\%(\[r=1\]\)\=" contained
 syn keyword arbFortranFunction abs acos aint anint asin atan atan2 bit_size ceiling cos cosh dble digits dim dprod epsilon exp exponent floor fraction huge iachar ichar index int len len_trim log log10 max maxexponent min minexponent mod modulo nearest nint precision radix range real rrspacing scale scan set_exponent sign sin sinh spacing sqrt system_clock tan tanh tiny verify contained
