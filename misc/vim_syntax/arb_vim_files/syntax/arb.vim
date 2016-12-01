@@ -1,9 +1,8 @@
 " Vim syntax file for arb finite volume solver
 " Language:     arb
 " Version:      0.56
-" Modified:     2016/06/21
+" Modified:     2016/12/02
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
-" Maintainer:   Christian Biscombe
 
 " NOTE match patterns starting with \%(\) are used to prevent following syntax elements from appearing in the omni completion list
 
@@ -42,7 +41,7 @@ syn match arbStatement "\%(\)\<STEADY-STATE_SIMULATION\>"
 syn keyword arbStatement INCLUDE INCLUDE_ABSOLUTE INCLUDE_LAST INCLUDE_LOCAL INCLUDE_TEMPLATE INCLUDE_WORKING MSH_FILE nextgroup=arbString,arbFilename skipwhite
 syn match arbStatement "\<\%(EXTERNALS\=\)\>" nextgroup=arbString,arbFilename skipwhite
 syn keyword arbStatement C CANCEL D DEFAULT R REPLACE W WITH nextgroup=arbString,arbUnquotedString,arbComment skipwhite
-syn match arbStatement "\<\%(INFO_AUTHOR\|INFO_DATE\|INFO_DESCRIPTION\|INFO_FILENAME\|INFO_ABSFILENAME\|INFO_RUNDATE\|INFO_RUNHOST\|INFO_RUNVERSION\|INFO_TITLE\|INFO_VERSION\)\>\%(+\|-\)\=" nextgroup=arbString,arbUnquotedString skipwhite
+syn match arbStatement "\<\%(INFO_ABSFILENAME\|INFO_AUTHOR\|INFO_DATE\|INFO_DESCRIPTION\|INFO_FILENAME\|INFO_RUNDATE\|INFO_RUNHOST\|INFO_RUNVERSION\|INFO_TITLE\|INFO_VERSION\)\>\%(+\|-\)\=" nextgroup=arbString,arbUnquotedString skipwhite
 syn keyword arbStatement ERROR INFO WARNING nextgroup=arbString skipwhite
 syn match arbOmniList "\%(KERNEL_OPTIONS\|SOLVER_OPTIONS\)"
 syn region arbKernelStatement matchgroup=arbStatement start="\<KERNEL\%(S\|_OPTIONS\=\)\=" end="$" contains=arbComment,arbDeprecated,arbKernelOption,arbLogical,arbNumber,arbOperator,arbSystemFlag,arbUserFlag keepend
@@ -97,7 +96,7 @@ syn keyword arbFunction noneave noneboundangle nonedelta nonediv nonedivgrad    
 syn keyword arbFunction cellvofd cellvofphiadjust cellvofphishape expand facevofphi contained nextgroup=arbFunctionBracket,arbFunctionParen
 syn region arbFunctionBracket matchgroup=arbFunction start="\[" end="\]" contained contains=arbFunctionOption,arbNumber,arbOperator,arbSystemFlag,arbSystemVar,arbUserFlag,arbUserVar nextgroup=arbFunctionParen
 syn region arbFunctionParen start="(" end=")" contained contains=arbFunction,arbFunctionBracket,arbFunctionParen,arbFunctionParameter,arbFortranFunction,arbNumber,arbOperator,arbSystemFlag,arbSystemVar,arbUserFlag,arbUserVar
-syn keyword arbFunctionOption adjacentcells adjacentcellsevenweighting adjacentcellsweighted advection best box circle cube cylinder downcell dxunit ellipse ellipsoid exact exactpiecewise faceseparation glueface harmonic harmonicweighted highorder lastcell lastface lastfacenoglue limitedharmonic linear linearone lineartwo lower maximumseparation minimumseparation noderivative nodeseparation nonlimitedharmonic noseparation othercell parabolic rectangle reflect separationcentre sphere square upcell upper contained
+syn keyword arbFunctionOption adjacentcells adjacentcellsevenweighting adjacentcellsweighted advection best box circle cube cylinder downcell dxunit ellipse ellipsoid exact exactpiecewise faceseparation glueface gyroid harmonic harmonicweighted highorder lastcell lastface lastfacenoglue limitedharmonic linear linearone lineartwo lower maximumseparation minimumseparation noderivative nodeseparation nonlimitedharmonic noseparation othercell parabolic rectangle reflect separationcentre sphere square upcell upper contained
 syn match arbFunctionOption "\%(\)\<sep\%(aration\)\=cent\%(er\|re\)\=\d*" contained
 syn match arbFunctionOption "\%(\)\<\%(max\|min\)separation\>" contained
 syn match arbFunctionOption "\<\%(l\|r\)\ze=\%(\d\|:\)" contained
