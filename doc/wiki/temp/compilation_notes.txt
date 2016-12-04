@@ -1,0 +1,5 @@
+port install pandoc ghc
+
+ghc --make vimhl.hs
+roo:temp> pandoc -t html -f markdown -F ./vimhl index.md > index.html
+roo:temp> open index.html
