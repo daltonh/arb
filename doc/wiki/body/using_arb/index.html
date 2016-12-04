@@ -1,0 +1,124 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <link rel="stylesheet" href="/Users/daltonh/arb/development/current/doc/wiki/css/arb_body.css" type="text/css" />
+</head>
+<body>
+<div id="TOC">
+<ul>
+<li><a href="#using-arb">Using arb</a><ul>
+<li><a href="#unpacking-and-packing-the-code">Unpacking and packing the code</a><ul>
+<li><a href="#unpacking">Unpacking</a></li>
+<li><a href="#packing">Packing</a></li>
+</ul></li>
+<li><a href="#the-working-directory-and-file-structure">The working directory and file structure</a></li>
+</ul></li>
+</ul>
+</div>
+<!-- INFO from assembler: markdown_filename = /Users/daltonh/arb/development/current/doc/wiki/body/using_arb/index.md: arb version = 0.54 -->
+<!-- INFO from assembler: markdown_filename = /Users/daltonh/arb/development/current/doc/wiki/body/using_arb/index.md: markdown_dir = /Users/daltonh/arb/development/current/doc/wiki/body/using_arb/index.md: wiki_dir = /Users/daltonh/arb/development/current/doc/wiki/: doc_dir = /Users/daltonh/arb/development/current/doc/: working_dir = /Users/daltonh/arb/development/current/ -->
+<!-- pre comments -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> <meta http-equiv="Content-Style-Type" content="text/css" /> <meta name="generator" content="pandoc" />
+<title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  
+<link rel="stylesheet" href="/Users/daltonh/arb/development/current/doc/wiki/body//css/arb_body.css" type="text/css" /> <link rel="stylesheet" href="/Users/daltonh/arb/development/current/doc/wiki/body//css/arb_main.css" type="text/css" />
+</head>
+<body>
+<div id=container>
+<!-- add a blank left margin here-->
+<!--<div id=leftcolumn></div>-->
+<div id=maincolumn>
+<!-- pre comments -->
+
+<h1 id="using-arb">Using arb</h1>
+<p>As arb is distributed as source code that is compiled for each application, arb is not installed in the traditional sense. Instead, for each new simulation a new self-contained copy of the source files is unpacked from a source tarball. Once created arb is run from a working directory which contains a specific structure of files and subdirectories. Two routines, and , are provided to automate the process of managing this required file/subdirectory structure.</p>
+<h2 id="unpacking-and-packing-the-code">Unpacking and packing the code</h2>
+<h3 id="unpacking">Unpacking</h3>
+<p>To create a new version of arb, a new working directory should be created or that contains the five files</p>
+<pre><code>archive.tar.gz
+unpack
+readme
+licence
+version</code></pre>
+<p>Using the command</p>
+<pre><code>./unpack</code></pre>
+<p>from within this directory will unpack the archive ready for use.</p>
+<h3 id="packing">Packing</h3>
+<p>To pack a simulation ready to transport or backup, use the command</p>
+<pre><code>./pack</code></pre>
+<p>from within the working directory. This will create a subdirectory with a name of the form which contains all files necessary to run arb. Following the command with a name, as in</p>
+<pre><code>./pack a_name</code></pre>
+<p>will create the archive in a subdirectory named instead of the default.</p>
+<p>The script accepts a number of options. By default only files within the or directories that are specific to this manual are included in the archive. The options , or specify that all files within either the , or both directories are contained within the archive. By default only source code within the directory that is not subject to a non-free third party licence is included in the archive. Using the options or causes all files in these directories to be archived (including the build suitesparse libraries). Using means that no third party software is included in the archive and example input files will be copied to the working directory. The option means that all files in the build directory will be included in the archive. This may be useful if you want to transport the simulation to another machine that may not have maxima installed (for example).</p>
+<p>Use to list other options.</p>
+<h2 id="the-working-directory-and-file-structure">The working directory and file structure</h2>
+<p>Once the archive is unpacked the working directory will contain the following subdirectories and files/links:</p>
+<ul>
+<li><p>directory: contains the main fortran source code of arb, and the necessary to build everything (except for the contributed libraries). It also contains the meta-programming perl script and a template file which are used to create the fortran file within which is specific to each problem.</p></li>
+<li><p>directory: This directory may/should/can contain contributed third party code that can be used by arb, along with associated interface modules — for example, linear solver routines. There is a separate subdirectory for each package. Each directory contains error handling modules that handle runtime cases where the third party routines are not available, and also some brief installation instructions. Most directories work on the drop-box principle — if the required files are available then they will be included in the arb executable.</p></li>
+<li><p>directory: all building is done within this directory. Some notable files are which contains all of the fortran coding that is specific to the current problem, and which is the only input file read by the executable fortran file.</p></li>
+<li><p>directory: temporary files are stored within this directory.</p></li>
+<li><p>directory: includes files produced during the setup of the problem (running of ). If you’re having to debug a problem setup then this is the place to look. The file contains a lot of detail regarding the equation setup. The file is a completely unwrapped version of the last run input, in which any d files are unwrapped, with any relevant text strings substituted. This file can be input directly to arb again if desired.</p></li>
+<li><p>directory: output files from a simulation are placed in here.</p></li>
+<li><p>directory: contains miscellaneous files — for example: a script which builds a file from any file in the working directory; a script which automates the running of consecutive arb runs; and a script which runs all cases in the directory as a check.</p></li>
+<li><p>directory: contains documentation including this manual.</p></li>
+<li><p>directory: example problem-specific files with their associated geometry files (structure files with extension, and mesh files with extension) are stored here. Looking through these examples is currently the best way to learn about the language syntax and generally understand how to run arb simulations.</p></li>
+<li><p>directory: New for version 0.4, this directory contains template files for doing common chunks of setup. For example, there is a directory which contains all of the code chunks necessary to run Navier-Stokes problems. There are also directories to implement high-order limited advection in both two and three dimensions. These pieces of template code can be used via the and commands.</p></li>
+<li><p>script: packs the directory for transportation to another location or computer. This script has many useful options — try .</p></li>
+<li><p>directory: contains licence details, including the (GNU GPL) licence under which arb is released and the specific version of the code. A history file within the directory records the distribution history of this particular code directory.</p></li>
+<li><p>files: these files and an associated or file contain all the problem-specific information required for a particular simulation.</p></li>
+<li><p>script: this shell script is a wrapper script for setting-up, making and running . You can pass options to this script to control the compilation process — for example choose between the gnu and intel compilers, whether using OMP or not, whether you are restarting a simulation or starting from scratch. This script works out when the equation meta-programming has to be redone or not, and when recompilation is necessary, although with other options you can overwrite this behaviour. To list the options type .</p></li>
+</ul>
+<!-- pre comments -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> <meta http-equiv="Content-Style-Type" content="text/css" /> <meta name="generator" content="pandoc" />
+<title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  
+<link rel="stylesheet" href="/Users/daltonh/arb/development/current/doc/wiki/body//css/arb_body.css" type="text/css" /> <link rel="stylesheet" href="/Users/daltonh/arb/development/current/doc/wiki/body//css/arb_main.css" type="text/css" />
+</head>
+<body>
+<div id="container">
+<!-- add a blank left margin here-->
+<!--<div id=leftcolumn></div>-->
+<div id="maincolumn">
+<!-- pre comments -->
+
+<!-- post comments -->
+</div>
+<div id="rightheader">
+<h1>
+arb
+</h1>
+<h2>
+v0.54
+</h2>
+<h3>
+manual
+</h3>
+</div>
+<div id="rightcontents">
+<h3>
+contents
+</h3>
+&lt;<contents>&gt;
+</div>
+</div>
+</body>
+</html>
+<!-- post comments -->
+</body>
+</html>

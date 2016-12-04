@@ -1,0 +1,217 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; }
+code > span.dt { color: #902000; }
+code > span.dv { color: #40a070; }
+code > span.bn { color: #40a070; }
+code > span.fl { color: #40a070; }
+code > span.ch { color: #4070a0; }
+code > span.st { color: #4070a0; }
+code > span.co { color: #60a0b0; font-style: italic; }
+code > span.ot { color: #007020; }
+code > span.al { color: #ff0000; font-weight: bold; }
+code > span.fu { color: #06287e; }
+code > span.er { color: #ff0000; font-weight: bold; }
+  </style>
+  <link rel="stylesheet" href="/Users/daltonh/arb/development/current/doc/wiki/css/arb_body.css" type="text/css" />
+</head>
+<body>
+<div id="TOC">
+<ul>
+<li><a href="#installation">Installation</a><ul>
+<li><a href="#the-fast-way">The fast way</a><ul>
+<li><a href="#install-dependencies-on-ubuntu">Install dependencies on Ubuntu</a></li>
+<li><a href="#install-dependencies-on-osx">Install dependencies on OsX</a></li>
+<li><a href="#run-it">Run it</a></li>
+<li><a href="#installation-problems">Installation Problems</a></li>
+</ul></li>
+<li><a href="#the-slow-way">The slow way</a><ul>
+<li><a href="#maxima">Maxima</a></li>
+<li><a href="#a-fortran-compiler-and-the-blaslapack-libraries">A fortran compiler and the blas/lapack libraries</a></li>
+<li><a href="#pardiso">pardiso</a></li>
+<li><a href="#umfpack">umfpack</a></li>
+<li><a href="#perl">Perl</a></li>
+<li><a href="#hsl">hsl</a></li>
+<li><a href="#numerical-recipes">Numerical Recipes</a></li>
+<li><a href="#gmsh">gmsh</a></li>
+<li><a href="#paraview">paraview</a></li>
+<li><a href="#tecplot">tecplot</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</div>
+<!-- INFO from assembler: markdown_filename = /Users/daltonh/arb/development/current/doc/wiki/body/installation/index.md: arb version = 0.54 -->
+<!-- INFO from assembler: markdown_filename = /Users/daltonh/arb/development/current/doc/wiki/body/installation/index.md: markdown_dir = /Users/daltonh/arb/development/current/doc/wiki/body/installation/index.md: wiki_dir = /Users/daltonh/arb/development/current/doc/wiki/: doc_dir = /Users/daltonh/arb/development/current/doc/: working_dir = /Users/daltonh/arb/development/current/ -->
+<!-- pre comments -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> <meta http-equiv="Content-Style-Type" content="text/css" /> <meta name="generator" content="pandoc" />
+<title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  
+<link rel="stylesheet" href="/Users/daltonh/arb/development/current/doc/wiki/body//css/arb_body.css" type="text/css" /> <link rel="stylesheet" href="/Users/daltonh/arb/development/current/doc/wiki/body//css/arb_main.css" type="text/css" />
+</head>
+<body>
+<div id=container>
+<!-- add a blank left margin here-->
+<!--<div id=leftcolumn></div>-->
+<div id=maincolumn>
+<!-- pre comments -->
+
+<p>% % %</p>
+<!--# Installation
+
+Basics of installing arb
+
+Intro here: [Introduction](/Users/daltonh/arb/development/current/doc/wiki/body/installation/index.md/body/introduction/index.html).-->
+
+<h1 id="installation">Installation</h1>
+<h2 id="the-fast-way">The fast way</h2>
+<p>Getting up and running is relatively straightforward, and primarily consists of installing the software and packages on which arb depends.</p>
+<h3 id="install-dependencies-on-ubuntu">Install dependencies on Ubuntu</h3>
+<p>On recent versions of ubuntu (tested on 10.04, 12.04 and 14.04) you can run the following <a href="/Users/daltonh/arb/development/current//misc/install_dependencies/install_dependencies_on_ubuntu.sh">ubuntu install script</a> which will use apt-get to install the required packages. This doesn’t take long.</p>
+<p>On ubuntu 8.04 some of the software versions in the standard repositories are too old to be installed via this method.</p>
+<h3 id="install-dependencies-on-osx">Install dependencies on OsX</h3>
+<p>Installation on OsX is similarly straightforward, being based on <a href="http://www.macports.org/">macports</a> (which needs to be installed first, along with Apple’s Xcode developer package). However, macports generally compiles software, so it will take some time to install all the dependencies from scratch (maybe an hour?). The install script for OsX is the <a href="/Users/daltonh/arb/development/current//misc/install_dependencies/install_dependencies_on_osx_using_macports.sh">macports install script</a>.</p>
+<h3 id="run-it">Run it</h3>
+<p>Once these dependencies are installed the following commands will download an arb working directory, extract and unpack it, run the default tutorial 1 test simulation and visualise the results using gmsh:</p>
+<pre class="sh" hl="vim"><code>wget http://people.eng.unimelb.edu.au/daltonh/downloads/arb/code/latest.tar
+tar -xf latest.tar
+cd arb_*
+./unpack
+./arb
+gmsh output/output.msh</code></pre>
+<h3 id="installation-problems">Installation Problems</h3>
+<p>If you run into problems, or want to customise your install then the next section may help, although some parts are out of date.</p>
+<h2 id="the-slow-way">The slow way</h2>
+<h3 id="maxima">Maxima</h3>
+<p>Equation generation is performed using the Maxima Computer Algebra system. It is released under the <a href="http://www.gnu.org/licenses/gpl.html">GNU General Public License</a> and is available for free. To check whether you have it installed already try typing</p>
+<pre class="sh" hl="vim"><code>maxima</code></pre>
+<p>If the program is installed you will enter a symbolic maths environment. Then check that the command</p>
+<pre class="sourceCode maxima" hl="vim"><code class="sourceCode maxima"><span class="fu">load</span>(<span class="fu">f90</span>)</code></pre>
+<p>finds these libraries, and then quit using</p>
+<pre class="sourceCode maxima" hl="vim"><code class="sourceCode maxima"><span class="fu">quit</span>();</code></pre>
+<h4 id="if-you-need-to-install-it">If you need to install it:</h4>
+<p>On ubuntu linux and the f90 package can be installed using</p>
+<pre class="sh" hl="vim"><code>sudo apt-get install maxima maxima-share</code></pre>
+<p>A precompiled version of maxima for the mac is available from <a href="http://sourceforge.net/projects/maxima/files/">sourceforge</a>. This is a fastest way of getting things going. Download the package and copy the application Maxima.app to your directory as directed. To make it available from the command line place the <a href="/Users/daltonh/arb/development/current//misc/maxima_OsX/maxima">maxima wrapper script</a> somewhere in your path (for example in a bin directory).</p>
+<p>On OsX can be installed using either or package managers. For fink enable the unstable branch and use</p>
+<pre><code>sudo fink install maxima</code></pre>
+<p>For macports replace with in the above. Compilation will take some time.</p>
+<h3 id="a-fortran-compiler-and-the-blaslapack-libraries">A fortran compiler and the blas/lapack libraries</h3>
+<p>Two different compilers have been tested with arb: (Intel) and . The is probably the faster of the two as currently also supports OMP execution. It also includes the Intel Maths Kernel library which itself includes the excellent Pardiso linear solver routines (see section [sec:pardiso] below): however this compiler is not free except on linux and even then, only under specific non-commercial circumstances. The GNU compiler is an easier option to get going, and is freely available on both the OsX and linux platforms. It does not include the Pardiso routines but with the new interface to the UMFPACK routines this isn’t a tremendous disadvantage (except for the OMP caveat).</p>
+<p>Compiler choice is made automatically when the script is run (defaulting to if it exists, otherwise using ). These defaults can be overwritten with the options or .</p>
+<p>The non-commercial download site for ifort on linux is . For OsX the compiler must be bought. Make sure you install both the compiler and MKL (Math Kernel Libraries). versions of 11.1.069 and newer (including Composer XE) have been tested on both linux (v12 and v13) and OsX (v12 only).</p>
+<p>On ubuntu linux and the lapack/blas libraries can be installed using</p>
+<pre><code>sudo apt-get install gfortran liblapack-dev libblas-dev</code></pre>
+<p>version 4.2.4 on ubuntu 8.04 doesn’t seem to work on some computers (internal compiler error) whereas version 4.4.3 on ubuntu 10.04 does. The version on ubuntu 12.04 is fine too. On ubuntu 8.04 you could try downloading a newer binary version of but I haven’t tried this.</p>
+<p>The easiest way to install an up-to-date version of is via a precompiled package. One that worked for me is found - currently (23/2/11) this is version 4.6. Alternatively this and this gives information about other precompiled versions. Check that once installed the executable is in your path - that is, typing at the command line should find the compiler. Version 4.5 of should also work fine.</p>
+<p>can also be installed by the package managers but there are some issues with this. is included as part of fink’s gcc packages (for example ) but it will need to be installed as 64bit, otherwise there will be some compatibility problems with UMFPACK (unless this is modified). With macports it is also part of gcc but needs to be specified as a variant:</p>
+<pre><code>sudo port install gcc46 +gfortran</code></pre>
+<p>Again, compilation will take some time. I have not tested this fully.</p>
+<h3 id="pardiso">pardiso</h3>
+<p>The pardiso sparse linear matrix solver is included as part of the Intel Math Kernel Library which is packaged with the (see above).</p>
+<p>If using the intel compiler then this solver will automatically become available (check the initial output when running to see if this has been found). There is currently no interface to use this solver external to the Intel Math Kernel library.</p>
+<h3 id="umfpack">umfpack</h3>
+<p>The sparse linear solver is part of the suitesparse collection of sparse matrix routines written by Prof. Tim Davis. It is written in c and released under the GNU GPL (see ).</p>
+<p>UMFPACK depends on . METIS is freely available but not free distributable. For more details see the .</p>
+<p>The installation process for the UMFPACK/METIS combination has been automated so that it can be easily used with arb. To install these packages and compile them in a form that is suitable for arb:</p>
+<pre><code>cd src/contributed/suitesparse
+make</code></pre>
+<p>The command will download version 3.6.0 of UMFPACK and version 4.0.3 of METIS (using curl - install on ubuntu using if you don’t have it already), and then compile these libraries using the gcc compiler. A wrapper script for using UMFPACK from fortran (included with UMFPACK) will also be compiled. The files will be placed in the src/contributed/suitesparse directory, so will not overwrite any alternative suitesparse or metis libraries already on your system. You need to have installed on your system to build these libraries.</p>
+<p>If all goes well the following files will be placed in src/contributed/suitesparse to be used by arb:</p>
+<pre><code>libamd.a
+libcamd.a
+libccolamd.a
+libcholmod.a
+libcolamd.a
+libmetis.a
+libumfpack.a
+umf4_f77wrapper.o</code></pre>
+<p>All of these files are required for UMFPACK to successfully run.</p>
+<p>You also need to have a version of the blas libraries available for to use UMFPACK. On OsX these should already be installed as part of Xcode (see section [sec:compiler]). On ubuntu linux they can be installed using if they’re not already present.</p>
+<p>To remove the compiled libraries and files type</p>
+<pre><code>make clean</code></pre>
+<p>from the directory. This will leave only the downloaded files (ready to be reused). To remove the suitesparse and metis downloads as well, type</p>
+<pre><code>make clean_all</code></pre>
+<p>Note that UMFPACK library compilation is dependent on the type of machine architecture and the libraries will need to be remade if transferred from one machine to another - do a and then a again from within the directory.</p>
+<p>arb has been tested with the following combinations of umfpack/suitesparse and metis:</p>
+<ul>
+<li><p>UMFPACK.tar.gz 02-Jun-2010 11:46 and metis-4.0.tar.gz (4.0.1)</p></li>
+<li><p>SuiteSparse-3.6.0.tar.gz and metis-4.0.tar.gz (4.0.3)</p></li>
+</ul>
+<h3 id="perl">Perl</h3>
+<p>On ubuntu or OsX you should already have a version of perl installed.</p>
+<h3 id="hsl">hsl</h3>
+<p>An interface to the subroutine MA28D has been implemented. With the availability of UMFPACK, there is no real reason to use this, except for development. For more information see the directory. An interface to MA48D is under development (don’t hold your breath though!).</p>
+<h3 id="numerical-recipes">Numerical Recipes</h3>
+<p>These are an alternative to using some of the lapack routines. There is no reason to use these, except for development. For more information see the directory.</p>
+<h3 id="gmsh">gmsh</h3>
+<p>While not integral to the arb code, the mesh and data format which arb uses is that developed for gmsh. Gmsh is a mesh element generator which can be run using scripts or via a graphical interface and can be used for post-processing (visualisation) too. Gmsh uses the .</p>
+<p>There is some great introductory material available on the on the use of this program, particularly these online .</p>
+<pre><code>sudo apt-get install gmsh</code></pre>
+<p>On earlier ubuntu versions the repository version is too old.</p>
+<p>Download a version from the . Version 2.4 is the minimum required for arb - most importantly the msh file format produced needs to be 2.1 or greater. I have had no problems using development versions that are available.</p>
+<h3 id="paraview">paraview</h3>
+<p>There is now capability to output in the format, used by (for example) ParaView. To install ParaView on ubuntu use:</p>
+<pre><code>sudo apt-get install paraview</code></pre>
+<p>On the mac there are binaries available. Input of this file format is not supported.</p>
+<h3 id="tecplot">tecplot</h3>
+<p>Tecplot is proprietary visualisation software. can output to its asci format, but not input from this format.</p>
+<!-- pre comments -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> <meta http-equiv="Content-Style-Type" content="text/css" /> <meta name="generator" content="pandoc" />
+<title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  
+<link rel="stylesheet" href="/Users/daltonh/arb/development/current/doc/wiki/body//css/arb_body.css" type="text/css" /> <link rel="stylesheet" href="/Users/daltonh/arb/development/current/doc/wiki/body//css/arb_main.css" type="text/css" />
+</head>
+<body>
+<div id="container">
+<!-- add a blank left margin here-->
+<!--<div id=leftcolumn></div>-->
+<div id="maincolumn">
+<!-- pre comments -->
+
+<!-- post comments -->
+</div>
+<div id="rightheader">
+<h1>
+arb
+</h1>
+<h2>
+v0.54
+</h2>
+<h3>
+manual
+</h3>
+</div>
+<div id="rightcontents">
+<h3>
+contents
+</h3>
+&lt;<contents>&gt;
+</div>
+</div>
+</body>
+</html>
+<!-- post comments -->
+</body>
+</html>
