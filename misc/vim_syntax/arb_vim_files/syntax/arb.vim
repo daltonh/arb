@@ -1,7 +1,7 @@
 " Vim syntax file for arb finite volume solver
 " Language:     arb
 " Version:      0.56
-" Modified:     2016/12/02
+" Modified:     2016/12/05
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 
 " NOTE match patterns starting with \%(\) are used to prevent following syntax elements from appearing in the omni completion list
@@ -95,7 +95,7 @@ syn keyword arbFunction nodeave nodeboundangle nodedelta nodediv nodedivgrad nod
 syn keyword arbFunction noneave noneboundangle nonedelta nonediv nonedivgrad                                                                                                                                        nonegrad noneif nonelimiter nonelink nonemagnitude nonemax nonemin nonenewtonupdate noneproduct nonesum                                              contained nextgroup=arbFunctionBracket,arbFunctionParen
 syn keyword arbFunction cellvofd cellvofphiadjust cellvofphishape expand facevofphi contained nextgroup=arbFunctionBracket,arbFunctionParen
 syn region arbFunctionBracket matchgroup=arbFunction start="\[" end="\]" contained contains=arbFunctionOption,arbNumber,arbOperator,arbSystemFlag,arbSystemVar,arbUserFlag,arbUserVar nextgroup=arbFunctionParen
-syn region arbFunctionParen start="(" end=")" contained contains=arbFunction,arbFunctionBracket,arbFunctionParen,arbFunctionParameter,arbFortranFunction,arbNumber,arbOperator,arbSystemFlag,arbSystemVar,arbUserFlag,arbUserVar
+syn region arbFunctionParen start="(" end=")" contained contains=arbDeprecated,arbFunction,arbFunctionBracket,arbFunctionParen,arbFunctionParameter,arbFortranFunction,arbNumber,arbOperator,arbSystemFlag,arbSystemVar,arbUserFlag,arbUserVar
 syn keyword arbFunctionOption adjacentcells adjacentcellsevenweighting adjacentcellsweighted advection best box circle cube cylinder downcell dxunit ellipse ellipsoid exact exactpiecewise faceseparation glueface gyroid harmonic harmonicweighted highorder lastcell lastface lastfacenoglue limitedharmonic linear linearone lineartwo lower maximumseparation minimumseparation noderivative nodeseparation nonlimitedharmonic noseparation othercell parabolic rectangle reflect separationcentre sphere square upcell upper contained
 syn match arbFunctionOption "\%(\)\<sep\%(aration\)\=cent\%(er\|re\)\=\d*" contained
 syn match arbFunctionOption "\%(\)\<\%(max\|min\)separation\>" contained
