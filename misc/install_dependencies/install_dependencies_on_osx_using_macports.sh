@@ -25,7 +25,7 @@ port install gcc49 +gfortran gdb
 port install SuiteSparse
 
 # for Lachlan's plot and track scripts
-port install python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8 py27-pydot
+port install python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8 py27-pydot py27-cycler
 #port select --list python # just for information
 port select --set python python27
 
