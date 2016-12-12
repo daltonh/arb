@@ -107,6 +107,11 @@ y2_alpha = 0.7
 # font size for legend
 legend_font_size=9
 
+# code variable to allow sequential clearing of each
+# variable without updating the plot
+global update_on_check
+update_on_check = True
+
 class Data():
     show_markers = True # class attribute
     show_lines = True # class attribute
@@ -244,7 +249,8 @@ class SortableListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin, listmix.Che
         self.update_ordered_variables()
         self.GetCheckedList()
         self.update_active()
-        frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
+        if update_on_check:
+            frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
     
     def GetCheckedList(self):
         self.checked_list = [index for index in range(self.ItemCount)
@@ -771,6 +777,15 @@ class FrameGenerator(wx.Frame):
         start_refresh_button.Bind(wx.EVT_BUTTON, self.start_refresh)
         stop_refresh_button.Bind(wx.EVT_BUTTON, self.stop_refresh)
 
+# clear plot feature
+        clear = wx.StaticBox(container_panel_options, label='Clear data', pos=(5, 200), size=(-1, -1))
+        clear_sizer = wx.StaticBoxSizer(clear, wx.VERTICAL)
+        self.clear_button_y1 = clear_button_y1 = wx.Button(container_panel_options, -1, 'Clear y1', size=(140, -1))       
+        self.clear_button_y2 = clear_button_y2 = wx.Button(container_panel_options, -1, 'Clear y2', size=(140, -1))       
+        clear_sizer.Add(clear_button_y1, proportion=0, flag=wx.ALL, border=1)
+        clear_sizer.Add(clear_button_y2, proportion=0, flag=wx.ALL, border=1)
+        clear_button_y1.Bind(wx.EVT_BUTTON, self.clear_data_y1)
+        clear_button_y2.Bind(wx.EVT_BUTTON, self.clear_data_y2)
 
         vbox_options = wx.BoxSizer(wx.VERTICAL)
         vbox_options.Add(set_log_sizer, proportion=0, flag=wx.TOP, border=1)
@@ -780,6 +795,7 @@ class FrameGenerator(wx.Frame):
         if (show_plot_step_export):
             vbox_options.Add(plot_step_export_sizer, proportion=0, flag=0, border=1)
         vbox_options.Add(refresh_sizer, proportion=0, flag=0, border=1)
+        vbox_options.Add(clear_sizer, proportion=0, flag=0, border=1)
         container_panel_options.SetSizer(vbox_options)
 
         container_panel_right = wx.Panel(self, -1)
@@ -958,6 +974,22 @@ class FrameGenerator(wx.Frame):
             frame.thread.refresh_state = False
         self.refresh_plot_step_output = False
         self.block = 1
+
+    def clear_data_y1(self, event):
+        global update_on_check
+        update_on_check = False
+        for item in frame.y1.list.active:
+            frame.y1.list.CheckItem(data.inverted[item]-1, False)        
+        frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
+        update_on_check = True
+
+    def clear_data_y2(self, event):
+        global update_on_check
+        update_on_check = False
+        for item in frame.y2.list.active:
+            frame.y2.list.CheckItem(data.inverted[item]-1, False)        
+        frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
+        update_on_check = True
 
     def updateDisplay(self, msg):
 
