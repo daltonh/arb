@@ -37,10 +37,24 @@ matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
+# turn of all warnings for matplotlib deprecated features (they are dealt with in the code though)
+import warnings
+import matplotlib.cbook
+warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
+
+old_matplotlib_version = True
+running_matplotlib_version = LooseVersion(matplotlib.__version__)
+old_matplotlib_version_threshold = "1.5"
+if running_matplotlib_version < old_matplotlib_version_threshold:
+    old_matplotlib_version = True
+
+if old_matplotlib_version:
+    pass
+else:
+    from cycler import cycler
+
 import argparse
 from collections import defaultdict
-
-from cycler import cycler
 
 # to output wx version
 #print wx.__version__
@@ -61,6 +75,10 @@ running_wx_version = LooseVersion(wx.__version__)
 old_wx_version_threshold = "2.9.0"
 if running_wx_version < old_wx_version_threshold:
     old_wx_version = True
+
+
+
+
 
 # directory storing simulation data
 # see misc/track/track_main.pl
@@ -460,8 +478,12 @@ class CanvasPanel(wx.Panel):
                 line_y2 = '-'
             
             # set color cycles before variable loops
-            self.axis.set_prop_cycle(cycler('color', list1))
-            self.axis2.set_prop_cycle(cycler('color', list2))
+            if old_matplotlib_version:
+                self.axis.set_color_cycle(list1)
+                self.axis2.set_color_cycle(list2)
+            else:
+                self.axis.set_prop_cycle(cycler('color', list1))
+                self.axis2.set_prop_cycle(cycler('color', list2))
 
             # loop over active y1_var
             if (frame.y1.list.active_count > 0):           

@@ -33,5 +33,6 @@ fi
 pip install --upgrade numpy
 pip install --upgrade pandas
 pip install --upgrade numexpr
+pip install cycler
 
 #echo "INFO: you may now want to install the free suitesparse linear solver umfpack fortran 90 wrapper routine.  If so, cd src/contributed/suitesparse and type make";
