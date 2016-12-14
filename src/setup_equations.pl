@@ -4312,7 +4312,8 @@ sub mequation_interpolation {
   $type = "local";
   foreach $mvar ( 1 .. $m{$type} ) {
     if ($_[0] =~ /\Q$variable{$type}[$mvar]{"maxima"}/) { # see if variable is in the mequation
-      if ($variable{$type}[$mvar]{"centring"} ne $contextcentring) { error_stop("something amiss with local centring in $otype $variable{$otype}[$omvar]{name} expression"); }
+#     if ($variable{$type}[$mvar]{"centring"} ne $contextcentring) { error_stop("something amiss with local centring in $otype $variable{$otype}[$omvar]{name} expression"); }
+      if ($variable{$type}[$mvar]{"centring"} ne $contextcentring && $variable{$type}[$mvar]{"centring"} ne "none") { error_stop("something amiss with local centring in $otype $variable{$otype}[$omvar]{name} expression: contextcentring = $contextcentring: local centring = $variable{$type}[$mvar]{centring}"); }
       print DEBUG "found $variable{$type}[$mvar]{centring} centred $type $variable{$type}[$mvar]{name} $variable{$type}[$mvar]{maxima} in ".
         "$otype $variable{$otype}[$omvar]{name} mequation that is $contextcentring centred: replacing this local with a someloop\n";
       print DEBUG "before replacing $variable{$type}[$mvar]{maxima}: $_[0]\n";
