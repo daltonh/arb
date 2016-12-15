@@ -16,7 +16,7 @@ import time
 import os
 import sys
 import wx
-import  wx.lib.mixins.listctrl  as  listmix
+import wx.lib.mixins.listctrl  as  listmix
 import subprocess
 import re
 
@@ -36,6 +36,15 @@ import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
+
+old_matplotlib_version = False
+running_matplotlib_version = LooseVersion(matplotlib.__version__)
+old_matplotlib_version_threshold = "1.5"
+if running_matplotlib_version < old_matplotlib_version_threshold:
+    old_matplotlib_version = True
+    print "ERROR: python matplotlib version {} is not compatible with plot_alternate.py".format(running_matplotlib_version)
+    print "       plot_alternate.py requires version 1.5 or higher"
+    sys.exit()
 
 import argparse
 from collections import defaultdict
@@ -61,6 +70,8 @@ running_wx_version = LooseVersion(wx.__version__)
 old_wx_version_threshold = "2.9.0"
 if running_wx_version < old_wx_version_threshold:
     old_wx_version = True
+
+
 
 # directory storing simulation data
 # see misc/track/track_main.pl
