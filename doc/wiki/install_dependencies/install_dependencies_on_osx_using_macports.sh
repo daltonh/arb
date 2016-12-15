@@ -5,4 +5,4 @@
 
 # eventually this may be integrated with the main install files
 
-port install pandoc
+port install pandoc haskell-platform

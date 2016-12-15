@@ -24,7 +24,7 @@ my $markdown_filename = $ARGV[0]; # set filename
 #my ($wiki_dir) = $markdown_filename =~ /^(.*\/doc\/wiki\/)/;
 #my ($working_dir) = $markdown_filename =~ /^(.*\/)doc\/wiki\//;
 
-my ($markdown_dir,$body_dir,$wiki_dir,$doc_dir,$working_dir,) = $markdown_filename =~ /^(((((.*\/)doc\/)wiki\/)body\/).*)\.*$/;
+my ($markdown_dir,$body_dir,$wiki_dir,$doc_dir,$working_dir,) = $markdown_filename =~ /^(((((.*)\/doc)\/wiki)\/body)\/.*)\.*$/;
 
 #my $pandoc="pandoc -t html -f markdown";
 
@@ -123,6 +123,7 @@ print $markdownfile;
 # $replacements{"<<contents>>"}=$htmlcontents;
 
 # write material from pre template file to assembler_file
+$assemblerfile='';
 open(ASSEMBLERFILE, "<$assembler_file_post") or die "ASSEMBLERFILE ERROR: cannot open $assembler_file_post\n";;
 while (<ASSEMBLERFILE>) { $assemblerfile=$assemblerfile.$_; }
 close(ASSEMBLERFILE);

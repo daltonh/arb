@@ -54,13 +54,19 @@ print :
 # this idea courtesy of http://lincolnmullen.com/blog/make-and-pandoc/
 createhtmlbodyfiles : $(htmlbodyfiles)
 
+# get vimhl script and compile using haskel compiler
+assembler/vimhl : assembler/vimhl.hs
+	ghc --make $< -o $@
+
+
 # define generic rule to create the htmlbodyfiles
 #%.html : %.md
 #	pandoc -S -c ../../$(bodycssfile) --toc $< -o $@
-%.html : %.md makefile assembler/assembler.pl assembler/assembler_pre.html assembler/assembler_post.html
+%.html : %.md makefile assembler/assembler.pl assembler/assembler_pre.html assembler/assembler_post.html assembler/vimhl
 	@echo "  INFO: creating $@"
 #@assembler/assembler.pl $< | pandoc -S -o $@
-	@assembler/assembler.pl $< | pandoc -S -c $(bodycssfile) --toc -o $@
+#@assembler/assembler.pl $< | pandoc -S -c $(bodycssfile) --toc -o $@
+	@assembler/assembler.pl $< | pandoc -S -F assembler/vimhl -o $@
 
 # clean all files
 clean : clean_html
