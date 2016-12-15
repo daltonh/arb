@@ -72,7 +72,6 @@ if running_wx_version < old_wx_version_threshold:
     old_wx_version = True
 
 
-
 # directory storing simulation data
 # see misc/track/track_main.pl
 run_archive = '.archive'
@@ -989,16 +988,18 @@ class FrameGenerator(wx.Frame):
     def clear_data_y1(self, event):
         global update_on_check
         update_on_check = False
-        for item in frame.y1.list.active:
-            frame.y1.list.CheckItem(data.inverted[item]-1, False)        
+        item_count = frame.y1.list.GetItemCount()
+        for i in range(item_count):
+            frame.y1.list.CheckItem(i, False)
         frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
         update_on_check = True
 
     def clear_data_y2(self, event):
         global update_on_check
         update_on_check = False
-        for item in frame.y2.list.active:
-            frame.y2.list.CheckItem(data.inverted[item]-1, False)        
+        item_count = frame.y2.list.GetItemCount()
+        for i in range(item_count):
+            frame.y2.list.CheckItem(i, False)
         frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
         update_on_check = True
 
