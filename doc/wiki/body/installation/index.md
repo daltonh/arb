@@ -1,12 +1,8 @@
-%
-%
-%
-
-<!--# Installation
-
-Basics of installing arb
-
-Intro here: [Introduction](<<linkrootdir>>/body/introduction/index.html).-->
+---
+title: 'installation'
+author: Dalton Harvie
+date: 6/12/16
+---
 
 Installation
 ============

@@ -34,8 +34,10 @@
 # daltonh, v0.54
 
 rootdir = .
-bodydir = $(rootdir)/body
-bodycssfile = $(rootdir)/css/arb_body.css
+docdir = $(rootdir)/doc
+wikidir = $(docdir)/wiki
+bodydir = $(wikidir)/body
+bodycssfile = $(wikidir)/css/arb_body.css
 
 # find all of the markdown files within the body directory and first level of body subdirectories
 markdownbodyfiles := $(wildcard $(bodydir)/*.md) $(wildcard $(bodydir)/*/*.md)
@@ -52,11 +54,19 @@ print :
 # this idea courtesy of http://lincolnmullen.com/blog/make-and-pandoc/
 createhtmlbodyfiles : $(htmlbodyfiles)
 
+# get vimhl script and compile using haskel compiler
+assembler/vimhl : assembler/vimhl.hs
+	ghc --make $< -o $@
+
+
 # define generic rule to create the htmlbodyfiles
 #%.html : %.md
 #	pandoc -S -c ../../$(bodycssfile) --toc $< -o $@
-%.html : %.md makefile assembler/assembler.pl assembler/assembler_pre.html assembler/assembler_post.html
-	assembler/assembler.pl < $< > $@
+%.html : %.md makefile assembler/assembler.pl assembler/assembler_pre.html assembler/assembler_post.html assembler/vimhl
+	@echo "  INFO: creating $@"
+#@assembler/assembler.pl $< | pandoc -S -o $@
+#@assembler/assembler.pl $< | pandoc -S -c $(bodycssfile) --toc -o $@
+	@assembler/assembler.pl $< | pandoc -S -F assembler/vimhl -o $@
 
 # clean all files
 clean : clean_html

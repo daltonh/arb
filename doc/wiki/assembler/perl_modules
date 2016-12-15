@@ -1,8 +1,0 @@
-
-git clone https://github.com/nichtich/pandoc-perl.git from assembler directory
-
-
-sudo perl -MCPAN -e shell
-File::Which
-IPC::Run3
-Pandoc::Elements

@@ -1,6 +1,8 @@
-%
-%
-%
+---
+title: 'introduction'
+author: Dalton Harvie
+date: 6/12/16
+---
 
 # An introduction to arb
 

@@ -1,3 +1,9 @@
+---
+title: 'using arb'
+author: Dalton Harvie
+date: 6/12/16
+---
+
 Using arb
 =========
 
