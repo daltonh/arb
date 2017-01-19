@@ -1071,7 +1071,7 @@ sub read_input_files {
         next;
       }
 
-      elsif ( $line =~ /^\s*(MSH_FILE|((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|ITERRESTOL|ITERRESRELTOL|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES)($|\s)/i ) {
+      elsif ( $line =~ /^\s*(MSH_FILE|((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|ITERRESTOL|ITERRESRELTOL|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES|((TIME|NEWT)STEP_REWIND))($|\s)/i ) {
 # these are commands that need to be transferred unaltered to the arb input file
         $keyword = "\U$1";
         $line = $'; $line =~ s/^\s*//;
@@ -2559,6 +2559,9 @@ sub organise_user_variables {
 #f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude (default is dynamic for equations, and static for unknowns)
 #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next) (default is 1.1 for equations, 2.0 for unknowns)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
+#f  timesteprewind - this variable gets rewound if a timestep rewind is performed
+#f  timesteprewindmultiplier - and further that it is multiplied by this amount on rewind
+#f  newtsteprewind - this variable gets rewound if a newtstep rewind is performed
 
 # general rule with options is that they don't include any underscores between words
 # general rule with keywords is that they do include underscores between words
@@ -2645,8 +2648,27 @@ sub organise_user_variables {
           } elsif ($type eq "derived" || $type eq "equation") { # newtstep limiting is only done on equations or deriveds right now
             $variable{$type}[$mvar]{$option_name} = $match;
 #         } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
-          } else { error_stop("option $option specified for variable $type $name cannot be used for this type of region"); }
-        } else { error_stop("unknown option of $option specified for $type $name"); }
+          } else { error_stop("option $option specified for variable $type $name cannot be used for this type of region"); } }
+# ref: timesteprewind ref: newtsteprewind
+        elsif ($option =~ /^((no|)((time|newt)steprewind))$/i) {
+          $option_name = "\L$3";
+          if ($type ne "local") {
+            if (nonempty($2)) {
+              $variable{$type}[$mvar]{$option_name} = 1;
+            } else {
+              $variable{$type}[$mvar]{$option_name} = 0;
+            }
+            print DEBUG "INFO: setting $1 for $type $name\n";
+          } else { print "WARNING: option $option_name specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
+# ref: timesteprewindmultiplier
+        elsif ($option =~ /^(timesteprewindmultiplier)\s*=\s*([\+\-\d\.][\+\-\ded\.]*)$/i) {
+          $option_name = "\L$1";
+          $match = "\L$2"; # match is the magnitude of the variable, converted to double precision
+          $match =~ s/e/d/; if ($match !~ /d/) { $match = $match."d0"; } if ($match !~ /\./) { $match =~ s/d/.d/; }
+          if ($type ne "local") {
+            $variable{$type}[$mvar]{$option_name}="$match";
+          } else { print "WARNING: option $option_name specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
+        else { error_stop("unknown option of $option specified for $type $name"); }
       }
 # remove extra leading comma and output to fortran file
       $variable{$type}[$mvar]{"options"} =~ s/^\s*\,//;
