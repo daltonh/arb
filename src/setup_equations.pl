@@ -71,6 +71,7 @@ our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 my $fortran_input_file="$build_dir/fortran_input.arb"; # input file for the fortran executable, which is in a slightly different format to the user written input files
 my $unwrapped_input_file="$setup_current_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
 my $debug_info_file="debugging_info.txt"; # this is where all the debugging info is stored from the last setup
+my $syntax_problems_file="syntax_problems.txt"; # specifically for syntax related messages
 my $setup_equation_file="$build_dir/last_setup_equation_data"; # this file is used to store all of the setup equation data prior to the (expensive) fortran generation
 my $version_file="$working_dir/licence/version";
 
@@ -89,6 +90,8 @@ print "\nperl setup_equations script to create f90 subroutines for arb\n";
 print "dalton harvie, v$version\n\n";
 print DEBUG "\nperl setup_equations script to create f90 subroutines for arb\n";
 print DEBUG "dalton harvie, v$version\n\n";
+
+open(SYNTAX, ">$setup_current_dir/$syntax_problems_file"); # this file is specifically for syntax problems in the input files and is written to by sub syntax_problem
 
 # this will become a stack of recursively called arb input files, starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
 my @input_files;
@@ -716,12 +719,17 @@ sub read_input_files {
     $handle = $input_files[$#input_files]{"handle"};
     $file = $input_files[$#input_files]{"ref_name"};
 
-    while ($oline=<$handle>) { chompm($oline); if ($oline) { $oline=~s/^\s*// }; # remove linefeed from end and space from the start
+    while ($oline=<$handle>) { chompm($oline); if ($oline) { $oline=~s/^\s*//; $oline=~s/\s*$// }; # remove linefeed from end and space from the start and end
+
+# create a file locator string that can be used in error messages etc to show where the parser is at, and also includes the original line from the file, only minus start/end space and linefeed character
+#     my $filelinelocator = "file = $file: linenumber = $.: line = \'$oline\'";
+# for the line locator variable (generally used in error messages) use absolute filename (for info messages generally use ref_name, which does not include path)
+      my $filelinelocator = "file = $input_files[$#input_files]{abs_name}: linenumber = $.: line = \'$oline\'";
 
 # now splitting input line at the include/replacements keywords (wherever they are) and only doing replacements before this
       my $lineremainder = '';
       if ($oline =~ /^\s*(.*?)(\s*((INCLUDE(|_[A-Z]+))|((GENERAL_|)REPLACEMENTS))($|#|\s))/i) {
-        print DEBUG "INFO: found string that possibly needs part replacements: oline = $oline\n";
+        print DEBUG "INFO: found a line that possibly includes replacement statements: $filelinelocator\n";
         my $linestart = $1;
         $lineremainder = $2.$';
         $oline = '';
@@ -775,12 +783,12 @@ sub read_input_files {
         if (nonempty($2)) {$include_type = "\L$2";} else { $include_type = ''; }
 # note to user re deprecation of INCLUDE_ROOT
         if ($include_type eq "root" || $include_type eq "from") {
-          print "WARNING: INCLUDE_"."\U$include_type"." has been deprecated (from v0.56), and should be replaced by INCLUDE_TEMPLATE for setting the include path and/or including an arb file that both reside somewhere within the templates directory\n";
+          syntax_problem("warning","INCLUDE_"."\U$include_type"." has been deprecated (from v0.56), and should be replaced by INCLUDE_TEMPLATE for setting the include path and/or including an arb file that both reside somewhere within the templates directory: $filelinelocator\n");
           $include_type = "template";
         }
         if ($3 =~ /#/) {$line = '';} else {$line = $';}
         my $new_file = extract_first($line,$error); # extract filename from line of text
-        if ($error) { error_stop("a valid file or directory name could not be determined from the following:\nfile = $file: line = $oline"); }
+        if ($error) { error_stop("a valid file or directory name could not be determined from the following: $filelinelocator\n"); }
 
         if (empty($new_file)) {
           if (nonempty($include_type)) { error_stop("include_paths can only be pushed (last level removed) using the generic INCLUDE statement: error in the following:\nfile = $file: line = $oline"); }
@@ -976,8 +984,30 @@ sub read_input_files {
 # check for END statement
       if ($line =~ /^\s*END($|\s)/i) { print "INFO: found END statement in file = $file\n"; last; }
 
+#---------------------
+# ref: deprecated syntax
+# check for deprecated syntax and correct if possible
+      if ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)(INDEPENDENT|FIELD|DEPENDENT)($|\s)/i) {
+        my $deprecatedtype = "\U$2";
+        if ($deprecatedtype eq "DEPENDENT") {
+          $type = "DERIVED";
+        } else {
+          $type = "UNKNOWN";
+        }
+        $line = $`.$1.$type.$3.$';
+        syntax_problem("warning","$deprecatedtype type has been deprecated, use $type instead.\nfile = $file\noriginal line = $oline\ncorrected line = $line");
+      }
+
+      if ( $line =~ /^\s*(READ_GMSH)($|\s)/i ) {
+        error_stop("READ_GMSH keyword has been deprecated, use MSH_FILE instead.\nfile = $file: line = $oline");
+      }
+
+      if ( $line =~ /^\s*(LINEAR_SOLVER)($|\s)/i ) {
+        error_stop("LINEAR_SOLVER keyword has been deprecated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline");
+      }
+
 # check for the user ERROR or WARNING statements that signifies that there is a known problem with a file
-      elsif ($line =~ /^\s*(ERROR|WARNING|INFO)(\s|$)/i) {
+      if ($line =~ /^\s*(ERROR|WARNING|INFO)(\s|$)/i) {
         $key="\L$1"; $line=$';
 # pull out any string that follows this keyword if there is one
         $tmp = extract_first($line,$error);
@@ -1040,7 +1070,7 @@ sub read_input_files {
       }
 
 # ref: default options
-# set or reset any default options (these go before the individual options so any relevant individual options take precedence over these)
+# set or reset any default options for variables (these go before the individual options so any relevant individual options take precedence over these)
 # also, each DEFAULT_OPTIONS statement clears previous DEFAULT_OPTIONS statements
       elsif ($line =~ /^\s*DEFAULT_OPTIONS\s*($|\s)/i) {
         $default_options = $';
@@ -1094,24 +1124,6 @@ sub read_input_files {
         }
         print FORTRAN_INPUT $keyword; if (nonempty($line)) {print FORTRAN_INPUT " ".$line}; print FORTRAN_INPUT "\n"; # print line to fortran input file
         next;
-      }
-
-# check for deprecated syntax
-      elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)(INDEPENDENT|FIELD)($|\s)/i) {
-        $type = "\U$2";
-        error_stop("$type type has been deprecated, use UNKNOWN instead.\nfile = $file: line = $oline");
-      }
-
-      elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)DEPENDENT($|\s)/i) {
-        error_stop("DEPENDENT type has been deprecated, use DERIVED instead.\nfile = $file: line = $oline");
-      }
-
-      elsif ( $line =~ /^\s*(READ_GMSH)($|\s)/i ) {
-        error_stop("READ_GMSH keyword has been deprecated, use MSH_FILE instead.\nfile = $file: line = $oline");
-      }
-
-      elsif ( $line =~ /^\s*(LINEAR_SOLVER)($|\s)/i ) {
-        error_stop("LINEAR_SOLVER keyword has been deprecated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline");
       }
 
 # # read in glue_face
@@ -2568,6 +2580,7 @@ sub organise_user_variables {
 # perl options now coded as variables (deriv=0/1,check=type,conditions=list) rather than as list of all options
 # in all use of option statements, later (i.e. rightmost) and lower options in the input file take precedence over earlier and higher options
 # no compound options are used in the perl program
+# fortran options are kept in options hash as comma separated list and written straight to fortran_input.arb
 
 # set defaults for perl options-related variables
 # deriv specifies whether maxima needs to calculate a derivative for the variable
@@ -2588,8 +2601,10 @@ sub organise_user_variables {
       $tmp = $variable{$type}[$mvar]{"options"};
       $variable{$type}[$mvar]{"options"} = '';
       print DEBUG "INFO: before processing $type $name has loaded (unchecked) options of $tmp\n";
+# loop through list of options, removing individual options from the list one-by-one
       while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
         $option = $2; $tmp = $`.','.$';
+# ignore compound specific options, as these will be compiled in create_compounds from the saved asread_variable[]{options} list
         if ($option =~ /^(|no)(|compound)(output|input)$/i) { next ;}
         elsif ($option =~ /^(|no)(|compound)stepoutput(|noupdate)$/i) { next ;}
         elsif ($option =~ /^(|compound)element(|node|nodelimited)data$/i) { next ;}
@@ -2643,30 +2658,24 @@ sub organise_user_variables {
           } else { 
             $match = "\L$6"; # match is the magnitude of the variable, which needs to be an integer
           }
-          if ($match < 0) { # a negative values clears this option
+          if ($match < 0) { # a negative value clears this option
             $variable{$type}[$mvar]{$option_name} = '';
           } elsif ($type eq "derived" || $type eq "equation") { # newtstep limiting is only done on equations or deriveds right now
             $variable{$type}[$mvar]{$option_name} = $match;
 #         } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
           } else { error_stop("option $option specified for variable $type $name cannot be used for this type of region"); } }
-# ref: timesteprewind ref: newtsteprewind
+# ref: timesteprewind ref: newtsteprewind ref: rewind
         elsif ($option =~ /^((no|)((time|newt)steprewind))$/i) {
-          $option_name = "\L$3";
-          if ($type ne "local") {
-            if (nonempty($2)) {
-              $variable{$type}[$mvar]{$option_name} = 1;
-            } else {
-              $variable{$type}[$mvar]{$option_name} = 0;
-            }
-            print DEBUG "INFO: setting $1 for $type $name\n";
-          } else { print "WARNING: option $option_name specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
+          if ($type ne "local" ) {
+            $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$option";
+          } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
 # ref: timesteprewindmultiplier
         elsif ($option =~ /^(timesteprewindmultiplier)\s*=\s*([\+\-\d\.][\+\-\ded\.]*)$/i) {
           $option_name = "\L$1";
           $match = "\L$2"; # match is the magnitude of the variable, converted to double precision
           $match =~ s/e/d/; if ($match !~ /d/) { $match = $match."d0"; } if ($match !~ /\./) { $match =~ s/d/.d/; }
           if ($type ne "local") {
-            $variable{$type}[$mvar]{$option_name}="$match";
+            $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",$option_name=$match";
           } else { print "WARNING: option $option_name specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         else { error_stop("unknown option of $option specified for $type $name"); }
       }
@@ -4979,6 +4988,7 @@ sub create_compounds {
     $variable{"compound"}[$mvar2]{"options"} =~ s/^\s*\,//; # remove leading comma if present
     print DEBUG "INFO: before extracting just the compound options, the $type compound $name has the combined options = $variable{compound}[$mvar2]{options}\n";
 # now process this option list, extracting only the options relevant to compounds
+# note that clearoptions has already been dealt with within the asread_variables[]{options} string
     if (nonempty($variable{"compound"}[$mvar2]{options})) {
       $tmp = $variable{"compound"}[$mvar2]{"options"};
       $variable{"compound"}[$mvar2]{"options"} = '';
@@ -6723,7 +6733,7 @@ sub create_system_variables {
 # actual values for transientdelta and newtientdelta have to be set once the input files have been read
   $variable{"system"}[$m{"system"}]{"maxima"} = 0;
   $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<newtientdelta>"; # 0 or 1 depending on whether simulation is transient or not
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtientdelta>"; # 0 or 1 depending on whether simulation is newtient or not
   $variable{"system"}[$m{"system"}]{"maxima"} = 0;
 
 #------------------------------------
@@ -7455,6 +7465,26 @@ sub search_general_replacements {
   return $nfound;
 
 }
+#-------------------------------------------------------------------------------
+# report and take action with any syntax problems
+# these are handled a bit differently to normal messages so that user can see what problems there are with their syntax
+# an example for calling this sub
+#        syntax_problem("warning","$deprecatedtype type has been deprecated, use $type instead.\nfile = $file\noriginal line = $oline\ncorrected line = $line");
+
+sub syntax_problem {
+  my $syntax_action = $_[0]; # could be info, warning or error (which implies a stop)
+  my $message = $_[1]; # message that goes with this problem
+
+  print SYNTAX "\U$syntax_action: "."$message\n";
+  if ($syntax_action eq "error") {
+    error_stop($message) # already writes to output and debug files
+  } else {
+    print "\U$syntax_action: "."$message\n";
+    print DEBUG "\U$syntax_action: "."$message\n";
+  }
+    
+}
+
 #-------------------------------------------------------------------------------
 # perl tips 
 #         ($cunits,$line) = $line =~ /^\[(.*?)\]\s*(.*)$/;  #\s is a space, \S is a nonspace, . is a single wildcard, + is 1 or more times, ? is non greedy
