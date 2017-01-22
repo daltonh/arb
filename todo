@@ -38,7 +38,8 @@ This information is now basically hosted on our local gitlab server - this file 
 ***************************************************************
 CURRENT VERSION:
 
-v0.56
+v0.57
+* rewind capability
 
 -------------------------------
 LONG TERM DESIRABLES:
@@ -279,5 +280,6 @@ v0.53 - major rewrite of region treatment, including dynamic regions
 * clsvof capability
 v0.54 - mainly bugfixes
 v0.55 - introduction of network flow templates and new suite of home-made iterative solvers
+v0.56 - changes to include file paths etc
 
 -------------------------------
