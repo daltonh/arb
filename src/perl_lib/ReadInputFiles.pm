@@ -37,13 +37,14 @@ package ReadInputFiles;
 
 use strict;
 use warnings;
+use Common;
 use Exporter 'import';
 #our $VERSION = '1.00';
 our @EXPORT  = qw(read_input_files); # list of subroutines and variables that will by default be made available to calling routine
-use Common;
 
 # define variables common to all of these subs
 my @general_replacements = (); # is an array/hash of the replacement strings
+my $filelinelocator; # will hold generic locator of line for message purposes
 
 #--------------------------------------------------------------
 # parse all *.arb files - this is called from main
@@ -95,12 +96,14 @@ sub read_input_files {
     my $file = $code_blocks[$#code_blocks]{"ref_name"};
     my $code_type = $code_blocks[$#code_blocks]{"code_type"}; # indicates whether code_block when left is either string or solver
 
-    while ($oline=get_next_code_line($handle)) { chompm($oline); if ($oline) { $oline=~s/^\s*//; $oline=~s/\s*$// }; # remove linefeed from end and space from the start and end
+#   while ($oline=get_next_code_line($handle)) {
+    while ($oline=<$handle>) {
+      chompm($oline); if ($oline) { $oline=~s/^\s*//; $oline=~s/\s*$// }; # remove linefeed from end and space from the start and end
 
 # create a file locator string that can be used in error messages etc to show where the parser is at, and also includes the original line from the file, only minus start/end space and linefeed character
-#     my $filelinelocator = "file = $file: linenumber = $.: line = \'$oline\'";
+#     $filelinelocator = "file = $file: linenumber = $.: line = \'$oline\'";
 # for the line locator variable (generally used in error messages) use absolute filename (for info messages generally use ref_name, which does not include path)
-      my $filelinelocator = "file = $code_blocks[$#code_blocks]{abs_name}: linenumber = $.: line = \'$oline\'";
+      $filelinelocator = "file = $code_blocks[$#code_blocks]{abs_name}: linenumber = $.: line = \'$oline\'";
 
 # now splitting input line at the include/replacements keywords (wherever they are) and only doing replacements before this
       my $lineremainder = '';
@@ -1056,6 +1059,184 @@ sub syntax_problem {
     print ::DEBUG "\U$syntax_action: "."$message\n";
   }
     
+}
+
+#-------------------------------------------------------------------------------
+# simple subroutine to extract the first string entry from a line of text, possibly removing any delimiters at the same time
+# delimiter is governed by what starts the string:
+#  if it is a " or ', string is delimited by the closest matching delimiter, with no escaping of characters in the middle
+#  otherwise the string is delimited by the closest space (which becomes the delimiter)
+# input
+# $_[0] = string
+# output
+# first return = string removed from the front, dedelimited
+# $_[0] = remainder of string, with leading spaces removed
+# $_[1] = error flag (0 or 1)
+
+sub extract_first {
+  my $remainder=$_[0];
+  my $input=$_[0];
+  my $string="";
+  my $delimiter="";
+  my $error=0;
+  
+  if (nonempty($remainder)) {
+    $remainder=~s/^\s*//; #remove leading spaces
+    ($delimiter)=$remainder=~/^(['"])/;
+    if (nonempty($delimiter)) {
+      if ($remainder=~/^$delimiter(.*?)$delimiter/) {
+        $string=$1; # $string is whatever is between closest delimiters
+        $remainder=$';
+      } else { print "WARNING: matching delimiters not found in the following string: $input\n"; $error=1; }
+    } else {
+      $remainder=~/^(.+?)(\s|$)/; # $string is whatever is before closest space
+      $string=$1;
+      $remainder=$';
+    }
+    $remainder=~s/^\s*//; #remove leading spaces
+    $remainder=~s/\s*$//; #remove trailing spaces too now
+  } else {
+    $remainder = ''; # remainder could have been blank, so set it to nothing explicitly
+  }
+
+# print "string = $string: remainder = $remainder: delimiter = $delimiter\n";
+# return the string and remainder
+  $_[0]=$remainder;
+  $_[1]=$error;
+  return $string;
+}
+
+#-------------------------------------------------------------------------------
+sub extract_replacements {
+# extracts a search and replace pair from a
+# on input
+# $_[0] = line of text
+# $_[1] = file
+# $_[2] = oline
+# exit with two strings and a flag
+#  ( search, replace, cancel )
+# $_[3] = cancel = 0,1, indicates whether the CANCEL "string" was used
+# $_[4] = default = 0,1, indicates whether the REPLACE* or R* or DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
+# if search is empty then no string was found
+
+  my $line = $_[0];
+  my $file = $_[1];
+  my $oline = $_[2];
+  my $error = 0;
+  my $search = '';
+  my $replace = '';
+  my $cancel = 0;
+  my $default = 0;
+
+  if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement
+    print DEBUG "found a replace statement specified as $1: $'\n";
+    if (nonempty($3)) { $default=1; }
+    $line = $';
+    $search = extract_first($line,$error);
+    if (!($search) || $error) {
+      print "WARNING: possible replacement sequence skipped as search string not identified from:\nfile = $file: line = $oline\n";
+      $search = '';
+    } else {
+      $line =~s/^(W|WITH)\s+//i;
+      $replace = extract_first($line,$error);
+      if ($error) { print "WARNING: possible replacement sequence skipped as replace string not identified from:\nfile = $file: line = $oline\n"; $search = ''; }
+    }
+    print DEBUG "search = $search: replace = $replace: default = $default\n";
+  } elsif ($line =~ /^(C|CANCEL)\s+/i) { # found a string to cancel
+    print DEBUG "found a cancel statement: $'\n";
+    $line = $';
+    $search = extract_first($line,$error);
+    if (!($search) || $error) {
+      print "WARNING: possible cancel sequence skipped as search string not identified from:\nfile = $file: line = $oline\n";
+      $search = '';
+    } else {
+      $cancel = 1;
+    }
+  } else {
+    error_stop("there is some sort of syntax error in the following replace statements:\nfile = $file: line = $oline");
+  }
+
+  $_[0] = $line;
+  return ($search,$replace,$cancel,$default);
+
+}
+
+#-------------------------------------------------------------------------------
+sub create_external_file {
+# finds a external file, and parses it for new externals
+# on input
+# $_[0] = name of file, based on the working directory
+  my $filename = $_[0];
+  my $search = 'preamble';
+  my $current = '';
+  my ($line);
+  
+  open (EXTERNAL, "<$::working_dir/$filename") or error_stop("Could not find external file $filename");
+  
+  my ($name) = $filename =~ /(.*)\.(f90|f|for)/;
+  push(@::externals,{name => $name, preamble => '', contents => '', setup => '', used => 0}); # push a new hash onto this array
+  print ::DEBUG "EXTERNAL: found new external file: name = $name: filename = $filename\n";
+  
+  while($line=<EXTERNAL>) {
+  	chompm($line);
+    if ($line =~ /^\s*arb_external_(\S+)($|\s)/) {
+      if ($1 eq 'preamble' || $1 eq 'setup' || $1 eq 'contents') {
+        $current = $1;
+      } elsif ($1 eq 'operator') {
+        if ($line =~ /^\s*arb_external_operator\s+(\S+)($|\s)/) { # also form a list of the operators that are within this file
+          print ::DEBUG "EXTERNAL: found operator $1\n";
+          push(@{$::externals[$#::externals]{"operators"}},$1);
+          $::external_operators{$1}=$#::externals;
+        } else {
+          error_stop("missing arb_external_operator name in external file $filename");
+        }
+      } else {
+        error_stop("unknown arb_external_$1 statement in external file $filename");
+      }
+  	} elsif (nonempty($current)) {
+  		$::externals[$#::externals]{$current} = $::externals[$#::externals]{$current}."\n".$line;
+  	}
+  }
+  close(EXTERNAL);
+  print ::DEBUG "EXTERNAL: file $filename contains the following operators: @{$::externals[$#::externals]{operators}}\n";
+  print "INFO: external file $filename contains the following operators: @{$::externals[$#::externals]{operators}}\n";
+# print ::DEBUG "EXTERNAL PREAMBLE:\n".$::externals[$#::externals]{preamble}."\n";
+# print ::DEBUG "EXTERNAL SETUP:\n".$::externals[$#::externals]{setup}."\n";
+# print ::DEBUG "EXTERNAL CONTENTS:\n".$::externals[$#::externals]{contents}."\n";
+
+}
+#-------------------------------------------------------------------------------
+# little sub to determine whether input location is an arbfile or directory
+
+sub check_for_arbfile_or_dir {
+
+# input
+  my $search_file = $_[0];
+# output: ($found_name,$found_type)
+  my $found_name = '';
+  my $found_type = '';
+
+  if (-d $search_file) {
+# if a directory is found
+    $found_name = $search_file;
+    $found_type = 'directory';
+  } elsif ($search_file !~ /\/$/) {
+# if no trailing slash is present, then this could be a file
+    if (-f $search_file) {
+# and it could already have the appropriate extension
+      $found_name = $search_file;
+      $found_type = 'file';
+    } elsif ($search_file !~ /\.(arb|in)$/ && -f $search_file.'.arb') {
+# or if it has no extension then try searching for the name with the .arb extension
+      $found_name = $search_file.'.arb';
+      $found_type = 'file';
+    }
+  }
+# remove any trailing slashes from found_name
+  $found_name =~ s/\/$//;
+  print ::DEBUG "INFO: at end of check_for_arbfile_or_dir: search_file = $search_file: found_name = $found_name: found_type = $found_type\n";
+
+  return ($found_name,$found_type);
 }
 
 #-------------------------------------------------------------------------------

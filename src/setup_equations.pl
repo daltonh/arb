@@ -153,9 +153,9 @@ $simulation_info{"runhost"} = hostname;
 print DEBUG "INFO: setup_equations run at: rundate = $simulation_info{rundate}: runhost = $simulation_info{runhost}\n";
 
 # now create an array of hashes, each for a different fortran external file
-my @externals=();
+our @externals=(); # used in modules, hence our
 # and a hash of external operators contained within these files
-my %external_operators=();
+our %external_operators=();
 
 our %statement_repeats = ( 'redefinitions' => 0, 'typechanges' => 0, 'centringchanges' => 0, 'selfreferences' => 0 );
 
@@ -627,40 +627,6 @@ sub write_sub_strings {
     close(INFILE);
     close(OUTFILE);
   }
-}
-
-#-------------------------------------------------------------------------------
-# little sub to determine whether input location is an arbfile or directory
-
-sub check_for_arbfile_or_dir {
-
-# input
-  my $search_file = $_[0];
-# output: ($found_name,$found_type)
-  my $found_name = '';
-  my $found_type = '';
-
-  if (-d $search_file) {
-# if a directory is found
-    $found_name = $search_file;
-    $found_type = 'directory';
-  } elsif ($search_file !~ /\/$/) {
-# if no trailing slash is present, then this could be a file
-    if (-f $search_file) {
-# and it could already have the appropriate extension
-      $found_name = $search_file;
-      $found_type = 'file';
-    } elsif ($search_file !~ /\.(arb|in)$/ && -f $search_file.'.arb') {
-# or if it has no extension then try searching for the name with the .arb extension
-      $found_name = $search_file.'.arb';
-      $found_type = 'file';
-    }
-  }
-# remove any trailing slashes from found_name
-  $found_name =~ s/\/$//;
-  print DEBUG "INFO: at end of check_for_arbfile_or_dir: search_file = $search_file: found_name = $found_name: found_type = $found_type\n";
-
-  return ($found_name,$found_type);
 }
 
 #-------------------------------------------------------------------------------
@@ -5920,100 +5886,6 @@ sub write_latex {
 }
 
 #-------------------------------------------------------------------------------
-# this subroutine takes a user written <> delimited name ($_[0]) and provides info about it,
-#  most importantly the standardised name
-
-# design is not the most computationally efficient, but is convienient
-
-# input variables are:
-# $_[0] = name
-# $_[1] = action = name|compoundname|basename|nrank|rank|lindex|rindex|all|regionname
-
-# output variable is a single item corresponding to the action, or for all, an array of all of the items
-# name - <> delimited and standardised (see below)
-# compoundname - <> delimited, and has only r index if r>0
-# basename - no indices and no <> delimiters
-# nrank - 1|3|9
-# rank - scalar|vector|tensor
-# lindex (expressed as 1->9)
-# rindex (>=0)
-# regionname - can have both rindices and lindices (witness the kernel regions) so is exactly the same as name, except now checks and corrects deprecated names
-
-# the standarised variable name obeys:
-# if the variable is a scalar then no l index is given in the consistent name
-# if the variable is for the current timestep then no r index is given in the consistent name
-# eitherway the l index always preceeds the r index
-
-sub examine_name {
-
-  my ($name,$action,$compoundname,$basename,$nrank,$rank,$indices,$lindex,$rindex,$lindices);
-
-  $action = $_[1];
-  ($name) = $_[0] =~ /^<(.*)>$/;
-  if (!($name)) { error_stop("an empty variable was passed to sub consistent_name: $_[0]"); }
-
-# set default (no index) options
-  $basename = $name;
-  $lindex = 1; # default is a scalar
-  $nrank = 1;
-  $rank = "scalar";
-  $rindex = 0; # default is at the current timestep (relative timestep = 0)
-  $lindices = "";
-  if ($name =~ /^(.+?)\[(.+?)\]$/) {
-    ($basename,$indices) = ($1, $2);
-    if ($indices =~ /(^|\,)\s*l\s*=\s*([123])\s*,\s*([123])\s*($|\,)/) {
-      $nrank = 9;
-      $rank = "tensor";
-      $lindex = ($2-1)*3 + $3; # l = (j-1)*3+i where j = row number, i = col number
-      $lindices = "$2,$3";
-    } elsif ($indices =~ /(^|\,)\s*l\s*=\s*([0123])\s*($|\,)/) {
-      if ($2) { # l=0 indicates a scalar
-        $nrank = 3;
-        $rank = "vector";
-        $lindex = $2;
-        $lindices = "$2";
-      }
-    }
-    if ($indices =~ /(^|\,)\s*r\s*=\s*(\d+)\s*($|\,)/) {
-      $rindex = $2;
-    }
-  }
-
-# now assemble (consistent) name and compoundname
-  $name = "<".$basename;
-  if ($lindices || $rindex) { $name = $name."["; }
-  if ($lindices) {
-    $name = $name."l=".$lindices;
-    if ($rindex) {$name = $name.",";}
-  }
-  if ($rindex) { $name = $name."r=$rindex"; }
-  if ($lindices || $rindex) { $name = $name."]"; }
-  $name = $name.">";
-  $compoundname = "<".$basename;
-  if ($rindex) { $compoundname = $compoundname."[r=$rindex]"; }
-  $compoundname = $compoundname.">";
-
-# $_[1] = action = name|compoundname|basename|nrank|lindex|rindex|all
-  if ($action eq "name") { return ($name); }
-  elsif ($action eq "compoundname") { return ($compoundname); }
-  elsif ($action eq "basename") { return ($basename); }
-  elsif ($action eq "nrank") { return ($nrank); }
-  elsif ($action eq "rank") { return ($rank); }
-  elsif ($action eq "lindex") { return ($lindex); }
-  elsif ($action eq "rindex") { return ($rindex); }
-  elsif ($action eq "all") { return ($compoundname,$rank,$nrank,$lindex,$rindex); }
-  elsif ($action eq "regionname") {
-    if ($name =~ /<(all|domain|boundary) (cells|faces|nodes)>/) {
-      print DEBUG "WARNING: spaces in system names have been deprecated: $name has been replaced with <$1$2>\n";
-      $name = "<$1$2>";
-    }
-    if ($name eq "<boundaryfaces>") { $name = "<boundaries>"; }
-    if ($name eq "<domaincells>") { $name = "<domain>"; }
-    return ($name);
-  }
-}
-
-#-------------------------------------------------------------------------------
 # this subroutine replaces maxima variables in a string with ordered generic `g[?]' variables, avoiding shorter matches
 # input:
 # $_[0] = string to be have words replaced
@@ -6235,147 +6107,7 @@ sub read_maxima_results_files {
 
   print DEBUG "------------------------------------\n";
 }
-#-------------------------------------------------------------------------------
-# little subroutine to extract the first string entry from a line of text, possibly removing any delimiters at the same time
-# input
-# $_[0] = string
-# output
-# first return = string removed from the front, dedelimited
-# $_[0] = remainder of string, with leading spaces removed
-# $_[1] = error flag (0 or 1)
 
-sub extract_first {
-  my $remainder=$_[0];
-  my $input=$_[0];
-  my $string="";
-  my $delimiter="";
-  my $error=0;
-  
-  if (nonempty($remainder)) {
-    $remainder=~s/^\s*//; #remove leading spaces
-    ($delimiter)=$remainder=~/^(['"])/;
-    if (nonempty($delimiter)) {
-      if ($remainder=~/^$delimiter(.*?)$delimiter/) {
-        $string=$1; # $string is whatever is between closest delimiters
-        $remainder=$';
-      } else { print "WARNING: matching delimiters not found in the following string: $input\n"; $error=1; }
-    } else {
-      $remainder=~/^(.+?)(\s|$)/; # $string is whatever is before closest space
-      $string=$1;
-      $remainder=$';
-    }
-    $remainder=~s/^\s*//; #remove leading spaces
-    $remainder=~s/\s*$//; #remove trailing spaces too now
-  } else {
-    $remainder = ''; # remainder could have been blank, so set it to nothing explicitly
-  }
-
-# print "string = $string: remainder = $remainder: delimiter = $delimiter\n";
-# return the string and remainder
-  $_[0]=$remainder;
-  $_[1]=$error;
-  return $string;
-}
-
-#-------------------------------------------------------------------------------
-sub extract_replacements {
-# extracts a search and replace pair from a
-# on input
-# $_[0] = line of text
-# $_[1] = file
-# $_[2] = oline
-# exit with two strings and a flag
-#  ( search, replace, cancel )
-# $_[3] = cancel = 0,1, indicates whether the CANCEL "string" was used
-# $_[4] = default = 0,1, indicates whether the REPLACE* or R* or DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
-# if search is empty then no string was found
-
-  my $line = $_[0];
-  my $file = $_[1];
-  my $oline = $_[2];
-  my $error = 0;
-  my $search = '';
-  my $replace = '';
-  my $cancel = 0;
-  my $default = 0;
-
-  if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement
-    print DEBUG "found a replace statement specified as $1: $'\n";
-    if (nonempty($3)) { $default=1; }
-    $line = $';
-    $search = extract_first($line,$error);
-    if (!($search) || $error) {
-      print "WARNING: possible replacement sequence skipped as search string not identified from:\nfile = $file: line = $oline\n";
-      $search = '';
-    } else {
-      $line =~s/^(W|WITH)\s+//i;
-      $replace = extract_first($line,$error);
-      if ($error) { print "WARNING: possible replacement sequence skipped as replace string not identified from:\nfile = $file: line = $oline\n"; $search = ''; }
-    }
-    print DEBUG "search = $search: replace = $replace: default = $default\n";
-  } elsif ($line =~ /^(C|CANCEL)\s+/i) { # found a string to cancel
-    print DEBUG "found a cancel statement: $'\n";
-    $line = $';
-    $search = extract_first($line,$error);
-    if (!($search) || $error) {
-      print "WARNING: possible cancel sequence skipped as search string not identified from:\nfile = $file: line = $oline\n";
-      $search = '';
-    } else {
-      $cancel = 1;
-    }
-  } else {
-    error_stop("there is some sort of syntax error in the following replace statements:\nfile = $file: line = $oline");
-  }
-
-  $_[0] = $line;
-  return ($search,$replace,$cancel,$default);
-
-}
-
-#-------------------------------------------------------------------------------
-sub create_external_file {
-# finds a external file, and parses it for new externals
-# on input
-# $_[0] = name of file, based on the working directory
-  my $filename = $_[0];
-  my $search = 'preamble';
-  my $current = '';
-  my ($line);
-  
-  open (EXTERNAL, "<$working_dir/$filename") or error_stop("Could not find external file $filename");
-  
-  my ($name) = $filename =~ /(.*)\.(f90|f|for)/;
-  push(@externals,{name => $name, preamble => '', contents => '', setup => '', used => 0}); # push a new hash onto this array
-  print DEBUG "EXTERNAL: found new external file: name = $name: filename = $filename\n";
-  
-  while($line=<EXTERNAL>) {
-  	chompm($line);
-    if ($line =~ /^\s*arb_external_(\S+)($|\s)/) {
-      if ($1 eq 'preamble' || $1 eq 'setup' || $1 eq 'contents') {
-        $current = $1;
-      } elsif ($1 eq 'operator') {
-        if ($line =~ /^\s*arb_external_operator\s+(\S+)($|\s)/) { # also form a list of the operators that are within this file
-          print DEBUG "EXTERNAL: found operator $1\n";
-          push(@{$externals[$#externals]{"operators"}},$1);
-          $external_operators{$1}=$#externals;
-        } else {
-          error_stop("missing arb_external_operator name in external file $filename");
-        }
-      } else {
-        error_stop("unknown arb_external_$1 statement in external file $filename");
-      }
-  	} elsif (nonempty($current)) {
-  		$externals[$#externals]{$current} = $externals[$#externals]{$current}."\n".$line;
-  	}
-  }
-  close(EXTERNAL);
-  print DEBUG "EXTERNAL: file $filename contains the following operators: @{$externals[$#externals]{operators}}\n";
-  print "INFO: external file $filename contains the following operators: @{$externals[$#externals]{operators}}\n";
-# print DEBUG "EXTERNAL PREAMBLE:\n".$externals[$#externals]{preamble}."\n";
-# print DEBUG "EXTERNAL SETUP:\n".$externals[$#externals]{setup}."\n";
-# print DEBUG "EXTERNAL CONTENTS:\n".$externals[$#externals]{contents}."\n";
-
-}
 #-------------------------------------------------------------------------------
 # perl tips 
 #         ($cunits,$line) = $line =~ /^\[(.*?)\]\s*(.*)$/;  #\s is a space, \S is a nonspace, . is a single wildcard, + is 1 or more times, ? is non greedy
