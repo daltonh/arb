@@ -736,7 +736,7 @@ sub read_input_files {
         if (!($linestart)) {
           print DEBUG "INFO: include/replacement string is bare, so do not perform any replacements on this line\n";
         } else {
-          print DEBUG "INFO: attempting to remove any replacement strings from the start of this line\n";
+          print DEBUG "INFO: attempting to remove any replace strings from the start of this line\n";
           while ($linestart =~ /^(\s*<<.*?>>\s*)/) { $oline=$oline.$1; $linestart=$'; }
           print DEBUG "INFO: after splitting and looking for replace strings: oline = $oline: linestart = $linestart; lineremainder = $lineremainder\n";
           if (nonempty($linestart)) {
@@ -783,7 +783,7 @@ sub read_input_files {
         if (nonempty($2)) {$include_type = "\L$2";} else { $include_type = ''; }
 # note to user re deprecation of INCLUDE_ROOT
         if ($include_type eq "root" || $include_type eq "from") {
-          syntax_problem("warning","INCLUDE_"."\U$include_type"." has been deprecated (from v0.56), and should be replaced by INCLUDE_TEMPLATE for setting the include path and/or including an arb file that both reside somewhere within the templates directory: $filelinelocator\n");
+          syntax_problem("INCLUDE_"."\U$include_type"." has been deprecated.  Use INCLUDE_TEMPLATE instead which searches through the templates directory tree for a specific file, and at the same time, adds the file's path to the include_path stack.  Or, if the include_path stack already includes the path for the template file, you can just use the INCLUDE command as this searches through the include_path stack.  INCLUDE_"."\U$include_type"." has been replaced by INCLUDE_TEMPLATE in this instance: $filelinelocator","warning");
           $include_type = "template";
         }
         if ($3 =~ /#/) {$line = '';} else {$line = $';}
@@ -791,12 +791,12 @@ sub read_input_files {
         if ($error) { error_stop("a valid file or directory name could not be determined from the following: $filelinelocator\n"); }
 
         if (empty($new_file)) {
-          if (nonempty($include_type)) { error_stop("include_paths can only be pushed (last level removed) using the generic INCLUDE statement: error in the following:\nfile = $file: line = $oline"); }
+          if (nonempty($include_type)) { syntax_problem("the include_path stack can only have its top level removed (popped) using the generic INCLUDE statement, otherwise some error occurred in: $filelinelocator"); }
 # an empty include statement means to remove one level off the search_path
           if ($#{$input_files[$#input_files]{"include_path"}} > 0) {
 # this means to pull an item from the stack
             pop(@{$input_files[$#input_files]{"include_path"}});
-            print "INFO: an INCLUDE statement is removing an include_path from the stack, leaving: include_path = $input_files[$#input_files]{include_path}[0]\n";
+            print "INFO: an INCLUDE statement is removing (popping) an include_path from the stack, leaving: include_path = $input_files[$#input_files]{include_path}[0]\n";
             print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) after one has been removed, currently: include_path = @{$input_files[$#input_files]{include_path}}\n";
           } else {
             print "WARNING: an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $input_files[$#input_files]{include_path}[0]\n";
@@ -819,7 +819,7 @@ sub read_input_files {
             }
           }
           if (empty($found_name)) {
-            error_stop("could not find $new_file that is referenced in an INCLUDE statement in any of the current include paths: error in the following:\nfile = $file: line = $oline");
+            error_stop("could not find $new_file that is referenced in an INCLUDE statement in any of the current include paths (ie, the include path stack): $filelinelocator");
           }
         } elsif ($include_type eq "template") {
 # the following would only check in the templates directory
@@ -828,7 +828,7 @@ sub read_input_files {
 # as file paths are relative to the build directory, don't chdir is required to reference filename
           find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$template_dir);
           if (empty($found_name)) {
-            error_stop("could not find $new_file that is referenced in an INCLUDE_TEMPLATE statement in any of template directories: error in the following:\nfile = $file: line = $oline");
+            error_stop("could not find $new_file that is referenced in an INCLUDE_TEMPLATE statement in any of template directories: $filelinelocator");
           }
 #         if (-f $found_name) { $found_type = 'file'; } elsif (-d $found_name) { $found_type = 'directory'; }
         } else {
@@ -841,14 +841,14 @@ sub read_input_files {
           } elsif ($include_type eq "working") {
             ($found_name,$found_type) = check_for_arbfile_or_dir($working_dir.'/'.$new_file);
           } else {
-            error_stop("keyword INCLUDE_"."\U$include_type"." is not understood: error in the following:\nfile = $file: line = $oline");
+            error_stop("keyword INCLUDE_"."\U$include_type"." is not understood: $filelinelocator");
           }
           if (empty($found_name)) {
-            error_stop("could not find $new_file that is referenced in an INCLUDE_"."\U$include_type"." statement: error in the following:\nfile = $file: line = $oline");
+            error_stop("could not find $new_file that is referenced in an INCLUDE_"."\U$include_type"." statement: $filelinelocator");
           }
         }
         print "INFO: found the following include $found_type $new_file at $found_name\n";
-        print DEBUG "INFO: found the following include $found_type $new_file at $found_name referenced from:\nfile = $file: line = $oline\n";
+        print DEBUG "INFO: found the following include $found_type $new_file at $found_name referenced from: $filelinelocator\n";
 
 # here we extract the path from the full found_name if we have found a file, or remove found_name (and store in found_dir) if we have found a directory
         my $found_dir = '';
@@ -863,11 +863,11 @@ sub read_input_files {
         if (nonempty($found_dir)) {
           if ($found_dir ne $input_files[$#input_files]{"include_path"}[$#{$input_files[$#input_files]{"include_path"}}]) {
             push(@{$input_files[$#input_files]{"include_path"}},$found_dir);
-            print "INFO: adding new include_path $found_dir, making: include_path = @{$input_files[$#input_files]{include_path}}\n";
-            print DEBUG "INFO: adding new include_path $found_dir, making: include_path = @{$input_files[$#input_files]{include_path}}\n";
-            print UNWRAPPED_INPUT $indent x $#input_files, "#(comment generated during unwrap) adding new include_path $found_dir, making include_path array = @{$input_files[$#input_files]{include_path}}\n";
+            print "INFO: adding new path $found_dir to the include_path stack, making: include_path = @{$input_files[$#input_files]{include_path}}\n";
+            print DEBUG "INFO: adding new path $found_dir to the include_path stack, making: include_path = @{$input_files[$#input_files]{include_path}}\n";
+            print UNWRAPPED_INPUT $indent x $#input_files, "#(comment generated during unwrap) adding new include_path $found_dir, making include_path stack = @{$input_files[$#input_files]{include_path}}\n";
           } else {
-            print UNWRAPPED_INPUT $indent x $#input_files, "#(comment generated during unwrap) not adding new include_path $found_dir, as it is already on the top of include_path array = @{$input_files[$#input_files]{include_path}}\n";
+            print UNWRAPPED_INPUT $indent x $#input_files, "#(comment generated during unwrap) not adding new include_path $found_dir, as it is already on the top of include_path stack = @{$input_files[$#input_files]{include_path}}\n";
           }
         }
             
@@ -880,8 +880,8 @@ sub read_input_files {
         $input_files[$#input_files]{"abs_name"} = File::Spec->rel2abs($found_name); # abs_name is the file name including the absolute path to the file, now just used for user information (see below output file location statement)
         $input_files[$#input_files]{"include_path"}[0] = $input_files[$#input_files-1]{"include_path"}[$#{$input_files[$#input_files-1]{"include_path"}}]; # set local path to last path of calling file
 
-        print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{abs_name}\n";
-        print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{abs_name}\n";
+        print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement with include file identified as $input_files[$#input_files]{abs_name}: $filelinelocator\n";
+        print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement with include file identified as $input_files[$#input_files]{abs_name}: $filelinelocator\n";
         print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"#(comment generated during unwrap) the following is INCLUDED from $input_files[$#input_files]{abs_name}";
 # ref: FILENAME
 # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
@@ -893,8 +893,8 @@ sub read_input_files {
 # now extract replacements
         while (!($line=~/^\s*(|#.*)$/)) {
           ($search,$replace,$cancel,$default) = extract_replacements($line,$file,$oline);
-          if ($cancel) { error_stop("string replacements for individual files cannot be cancelled:\nfile = $file :line = $oline"); }
-          if ($default) { error_stop("default string replacements for individual files are not implemented:\nfile = $file :line = $oline"); }
+          if ($cancel) { syntax_problem("string replacements for individual files cannot be cancelled: $filelinelocator"); }
+          if ($default) { syntax_problem("default string replacements for individual files are not implemented: $filelinelocator"); }
           if (nonempty($search)) {
             %{$input_files[$#input_files]{"replacements"}[$#{$input_files[$#input_files]{"replacements"}}+1]} = ( search => $search, replace => $replace );
           }
@@ -995,7 +995,7 @@ sub read_input_files {
           $type = "UNKNOWN";
         }
         $line = $`.$1.$type.$3.$';
-        syntax_problem("warning","$deprecatedtype type has been deprecated, use $type instead.\nfile = $file\noriginal line = $oline\ncorrected line = $line");
+        syntax_problem("$deprecatedtype type has been deprecated, use $type instead.\nfile = $file\noriginal line = $oline\ncorrected line = $line","warning");
       }
 
       if ( $line =~ /^\s*(READ_GMSH)($|\s)/i ) {
@@ -7472,9 +7472,10 @@ sub search_general_replacements {
 #        syntax_problem("warning","$deprecatedtype type has been deprecated, use $type instead.\nfile = $file\noriginal line = $oline\ncorrected line = $line");
 
 sub syntax_problem {
-  my $syntax_action = $_[0]; # could be info, warning or error (which implies a stop)
-  my $message = $_[1]; # message that goes with this problem
+  my $message = $_[0]; # message that goes with this problem
+  my $syntax_action = $_[1]; # could be info, warning or error (which implies a stop and is the default if no syntax_action is given)
 
+  if (!($syntax_action)) { $syntax_action = "error"; } # default is an error, so becomes a drop-in replacement for error_stop subroutine
   print SYNTAX "\U$syntax_action: "."$message\n";
   if ($syntax_action eq "error") {
     error_stop($message) # already writes to output and debug files
