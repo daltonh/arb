@@ -53,6 +53,8 @@
 + /src/contributed/mgmres/*_module.f90
 + /src/contributed/mgmres/mgmres_additions_*.f90
 + /src/contributed/mgmres/makefile
++ /src/contributed/perl_lib/
++ /src/contributed/perl_lib/*.pm
 + /doc/
 + /doc/manual.pdf
 + /doc/manual/***

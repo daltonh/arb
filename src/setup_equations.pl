@@ -37,21 +37,8 @@
 
 use strict;
 use warnings;
-use FindBin;
-use lib "$FindBin::Bin/perl_lib"; # place where local modules to be included are stored, which is now relative to setup_equations.pl script
 
-# include arb specific modules from src/perl_lib
-#use ReadInputFiles; # deals with reading the input files, including sub read_input_files
-use ScopeTest; # deals with reading the input files, including sub read_input_files
-
-our $scope_test = 1;
-print "scope_test = $scope_test\n";
-test_variable_scope();
-print "scope_test = $scope_test\n";
-print "scopetest::scope_test = ".$ScopeTest::scope_test."\n";
-print_scope_test();
-exit;
-
+# include generic perl modules
 use File::Basename;
 #use File::Path qw(make_path);
 use File::Path qw(mkpath rmtree); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
@@ -60,35 +47,44 @@ use File::Glob ':glob'; # deals with whitespace better
 #use Time::Piece; # removed for portability
 use Sys::Hostname;
 
-my $version="0.57";
-my $minimum_version="0.40";
+# include arb specific modules from src/perl_lib
+use FindBin;
+use lib "$FindBin::Bin/perl_lib"; # place where local modules to be included are stored, which is now relative to setup_equations.pl script
+
+use Common; # non-specific routines
+use ReadInputFiles; # deals with reading the input files, including sub read_input_files
+
+# set global variables that can be accessed from the local packages
+# our is used so that other packages can access these variables
+our $version="0.57";
+our $minimum_version="0.40";
 
 # now called from build directory
-my $working_dir="..";
-my $src_dir="$working_dir/src";
-my $output_dir="$working_dir/output";
-my $build_dir=".";
-my $template_dir="$working_dir/templates";
-my $setup_current_dir="$output_dir/setup_data_incomplete"; # this will be the location for output from this current run, and if successful in creating the fortran, will be renamed to setup_data
-my $setup_creation_dir="$output_dir/setup_data"; # at the end, if successful, the current run will be moved to the following location
-my $setup_old_dir="$working_dir/tmp/setup"; # remove traces of older setup directory
-my $variable_list_file = "$setup_current_dir/variable_list.txt";
-my $variable_arb_file = "$setup_current_dir/variable_list.arb";
-my $region_list_file = "$setup_current_dir/region_list.txt";
-my $region_arb_file = "$setup_current_dir/region_list.arb";
-my $setup_dependency_file = "$setup_current_dir/setup_dependency_data_perl_dumper";
-my $readme_file = "$setup_current_dir/readme.txt"; # this file just has an explanation as to what information is contained in setup_current_dir 
-my $tmp_file_number=0;
+our $working_dir="..";
+our $src_dir="$working_dir/src";
+our $output_dir="$working_dir/output";
+our $build_dir=".";
+our $template_dir="$working_dir/templates";
+our $setup_current_dir="$output_dir/setup_data_incomplete"; # this will be the location for output from this current run, and if successful in creating the fortran, will be renamed to setup_data
+our $setup_creation_dir="$output_dir/setup_data"; # at the end, if successful, the current run will be moved to the following location
+our $setup_old_dir="$working_dir/tmp/setup"; # remove traces of older setup directory
+our $variable_list_file = "$setup_current_dir/variable_list.txt";
+our $variable_arb_file = "$setup_current_dir/variable_list.arb";
+our $region_list_file = "$setup_current_dir/region_list.txt";
+our $region_arb_file = "$setup_current_dir/region_list.arb";
+our $setup_dependency_file = "$setup_current_dir/setup_dependency_data_perl_dumper";
+our $readme_file = "$setup_current_dir/readme.txt"; # this file just has an explanation as to what information is contained in setup_current_dir 
+our $tmp_file_number=0;
 our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='/sw/bin/maxima'; # if all else fails specify the actual location - fink
 #our $maxima_bin='/usr/local/bin/maxima'; # if all else fails specify the actual location
 #our $maxima_bin='../misc/maxima_OsX/maxima'; # or the supplied script for the OsX binary, relative to the build directory
-my $fortran_input_file="$build_dir/fortran_input.arb"; # input file for the fortran executable, which is in a slightly different format to the user written input files
-my $unwrapped_input_file="$setup_current_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
-my $debug_info_file="debugging_info.txt"; # this is where all the debugging info is stored from the last setup
-my $syntax_problems_file="syntax_problems.txt"; # specifically for syntax related messages
-my $setup_equation_file="$build_dir/last_setup_equation_data"; # this file is used to store all of the setup equation data prior to the (expensive) fortran generation
-my $version_file="$working_dir/licence/version";
+our $fortran_input_file="$build_dir/fortran_input.arb"; # input file for the fortran executable, which is in a slightly different format to the user written input files
+our $unwrapped_input_file="$setup_current_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
+our $debug_info_file="debugging_info.txt"; # this is where all the debugging info is stored from the last setup - note for this file that path is not included as it needs to be referenced after the path has changed from current to creation
+our $syntax_problems_file="$setup_current_dir/syntax_problems.txt"; # specifically for syntax related messages
+our $setup_equation_file="$build_dir/last_setup_equation_data"; # this file is used to store all of the setup equation data prior to the (expensive) fortran generation
+our $version_file="$working_dir/licence/version";
 
 # create and clear out setup directory of any files
 if (-d $setup_old_dir) { rmtree($setup_old_dir) or error_stop("could not remove depreciated $setup_old_dir"); }
@@ -97,35 +93,33 @@ if (-d $setup_current_dir) { rmtree($setup_current_dir) or error_stop("could not
 mkpath($setup_current_dir) or error_stop("could not create $setup_current_dir"); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 
 # remove stopfile from previous run if it exists
-my $stopfile="$working_dir/stop";
+our $stopfile="$working_dir/stop";
 if (-e $stopfile) { unlink($stopfile) or error_stop("could not remove $stopfile from previous run"); }
 
-open(DEBUG, ">$setup_current_dir/$debug_info_file");
+open(DEBUG, ">$setup_current_dir/$debug_info_file"); # note that file handles are global
 print "\nperl setup_equations script to create f90 subroutines for arb\n";
 print "dalton harvie, v$version\n\n";
 print DEBUG "\nperl setup_equations script to create f90 subroutines for arb\n";
 print DEBUG "dalton harvie, v$version\n\n";
 
-open(SYNTAX, ">$setup_current_dir/$syntax_problems_file"); # this file is specifically for syntax problems in the input files and is written to by sub syntax_problem
-
 # user_types are variables that can be defined by the user
-my @user_types = ("constant","transient","newtient","unknown","derived","equation","output","condition","local");
+our @user_types = ("constant","transient","newtient","unknown","derived","equation","output","condition","local");
 
-my %m=(); # is a hash of the maximum number of variables of each type
-my $type;
+our %m=(); # is a hash of the maximum number of variables of each type
+our $type;
 foreach $type (@user_types,"initial_transient","initial_newtient","someloop","system","empty","compound","user") {
   $m{$type}=0;
 }
 
-my %variable=(); # is a hash/array/hash of all the variables with associated data of each type and number and datatype
-my @asread_variable = (); # this is a list of variables in the order that they are read from the file - new for v0.51 to allow change of variable type
+our %variable=(); # is a hash/array/hash of all the variables with associated data of each type and number and datatype
+our @asread_variable = (); # this is a list of variables in the order that they are read from the file - new for v0.51 to allow change of variable type
 
-my @region_link=(); # is an array/hash of all the region links that need to calculated at run time
+our @region_link=(); # is an array/hash of all the region links that need to calculated at run time
 
-my %sub_string=(); # is a hash of strings that we need to assemble for substitution in the equations.f90 routine
-my %operator_contents=(); # this hash will contain the contents of each operator as read in, with keys as the name of the operator, global variable used in mequation_interpolation and subs
+our %sub_string=(); # is a hash of strings that we need to assemble for substitution in the equations.f90 routine
+our %operator_contents=(); # this hash will contain the contents of each operator as read in, with keys as the name of the operator, global variable used in mequation_interpolation and subs
 
-my %basename;
+our %basename;
 foreach $type ( @user_types ) {
   $basename{$type}="var";
 }
@@ -133,19 +127,19 @@ $basename{"compound"}="compound";
 $basename{"someloop"}="someloop";
 $basename{"system"}="sys";
 
-my $mseparation_list = 0; # total number of separation_lists required (ie, number of separation loops being used)
-my $lengthunit="m"; # do this better in the future
+our $mseparation_list = 0; # total number of separation_lists required (ie, number of separation loops being used)
+our $lengthunit="m"; # do this better in the future
 
-my $transient=0; # this indicates whether the simulation is transient or not
-my $newtient=0; # this indicates whether the simulation is newtient or not (ie, uses newtient variables which are evaluated outside of the newton loop)
-my $number_of_lousysubstitutes = 0; # number of lousy substitutions that had to be performed (unwrapping derived and equations)
+our $transient_simulation=0; # this indicates whether the simulation is transient or not
+our $newtient_simulation=0; # this indicates whether the simulation is newtient or not (ie, uses newtient variables which are evaluated outside of the newton loop)
+our $number_of_lousysubstitutes = 0; # number of lousy substitutions that had to be performed (unwrapping derived and equations)
 
 my $reuse_maxima_results = 1; # set to 1 to reuse these - faster
 my @maxima_simplify_results = (); # this will be an array of all maxima simplification results, for reuse purposes
 my @maxima_fortran_results = (); # this will be an array of all maxima fortran results, for reuse purposes
 
 # setup the simulation info, including grabbing the current code runversion, rundate and runhost
-my %simulation_info = ( "title" => '', "description" => '', "filename" => '', "absfilename" => '', "author" => '', "date" => '', "version" => ''); # this hash will store some general info about the simulation
+our %simulation_info = ( "title" => '', "description" => '', "filename" => '', "absfilename" => '', "author" => '', "date" => '', "version" => ''); # this hash will store some general info about the simulation
 $simulation_info{"runversion"}='unknown';
 if (-e $version_file) {
   open(VERSION_FILE,"<$version_file") or error_stop("could not open $version_file");
@@ -163,23 +157,18 @@ my @externals=();
 # and a hash of external operators contained within these files
 my %external_operators=();
 
-# the replacement strings
-my @general_replacements = ();
-
-my %statement_repeats = ( 'redefinitions' => 0, 'typechanges' => 0, 'centringchanges' => 0, 'selfreferences' => 0 );
+our %statement_repeats = ( 'redefinitions' => 0, 'typechanges' => 0, 'centringchanges' => 0, 'selfreferences' => 0 );
 
 # kernels are now only calculated when needed
 # these settings can be overwritten (only making true, not turning off) in general_module.f90
 my %kernel_availability = ( 'cellave' => 0, 'cellgrad' => 0, 'cellfromnodeave' => 0, 'cellfromnodegrad' => 0, 'faceave' => 0, 'facegrad' => 0, 'nodeave' => 0, 'nodegrad' => 0 );
 
-my @region = (); # list of regions
+our @region = (); # list of regions
 my $fortran_regions = 0; # number (ie, highest fortran index) of the regions that need fortran allocations
 #--------------------------------------------------------------
 # read through setup files storing all the information
 
 create_system_variables_and_regions(); # create variables and regions generated by the system
-
-setup_general_replacements(); # create the default general replacements
 
 open(FORTRAN_INPUT, ">$fortran_input_file"); # open input file for the fortran executable, used in the next two subroutines
 
@@ -291,7 +280,6 @@ sub write_results {
 
 sub dump_variable_setup_info {
 
-  use strict;
   use Data::Dumper;
   my ($type, $mvar, $n);
 
@@ -317,7 +305,6 @@ sub dump_variable_setup_info {
 
 sub dump_variable_dependency_info {
 
-  use strict;
   use Data::Dumper;
   use Storable qw(freeze store); # routine for collapsing data structures into a single string
   my ($type, $mvar, $n, $dtype, $dmvar, $stype, $smvar, $deriv);
@@ -364,7 +351,6 @@ sub dump_variable_dependency_info {
 
 sub output_variable_list {
 
-  use strict;
   open(VARIABLE, ">$variable_list_file") or error_stop("problem opening temporary variable file $variable_list_file: something funny is going on: check permissions??");
   print VARIABLE "# List of the variables:\n";
   for my $key ( keys(%variable) ) {
@@ -417,7 +403,6 @@ sub output_variable_list {
 
 sub output_region_list {
 
-  use strict;
   use Data::Dumper;
   my @types=(qw( system setup gmsh constant transient newtient derived equation output condition )); # list of region types
   open(REGION, ">$region_list_file") or error_stop("problem opening temporary region file $region_list_file: something funny is going on: check permissions??");
@@ -479,7 +464,6 @@ sub output_region_list {
 
 sub check_setup_status {
 
-  use strict;
   use Storable qw(freeze dclone); # routines for collapsing data structures into a single string
   use Data::Dumper; # for outputing data in readable format
   my $same=1; # flag to indicate whether this run and last are the same
@@ -512,8 +496,8 @@ sub check_setup_status {
 
 # my $new_data = freeze( \%variable ); # collapse variable hash and now externals array
 # tack any single variables on the end
-# $new_data = "$new_data\n$transient\n$newtient";
-  my $new_data = freeze( \%variable_copy)."\n".freeze( \@externals )."\n".freeze( \@region_copy )."\n$transient\n$newtient";
+# $new_data = "$new_data\n$transient_simulation\n$newtient_simulation";
+  my $new_data = freeze( \%variable_copy)."\n".freeze( \@externals )."\n".freeze( \@region_copy )."\n$transient_simulation\n$newtient_simulation";
 # my $new_data = '';
 
 # open old file and compare string created last time
@@ -568,15 +552,14 @@ sub check_setup_status {
 
 sub write_sub_strings {
 
-  use strict;
   use File::Glob ':glob'; # deals with whitespace better
   my @f90_files=bsd_glob("$src_dir/*_template.f90");
   my ($keyword, $indent, $line, $string, @strings, $n, $key);
   my $linelength = 100;
 
 # set transient and newtient substrings based on the simulation type
-  $sub_string{"transient_simulation"} = "transient_simulation = ".fortran_logical_string($transient);
-  $sub_string{"newtient_simulation"} = "newtient_simulation = ".fortran_logical_string($newtient);
+  $sub_string{"transient_simulation"} = "transient_simulation = ".fortran_logical_string($transient_simulation);
+  $sub_string{"newtient_simulation"} = "newtient_simulation = ".fortran_logical_string($newtient_simulation);
 
 # setup kernel_availability string
 	print DEBUG "KERNEL_AVAILABILITY as calculated:\n";
@@ -644,49 +627,6 @@ sub write_sub_strings {
     close(INFILE);
     close(OUTFILE);
   }
-}
-
-#--------------------------------------------------------------
-
-sub setup_general_replacements {
-
-  use strict;
-# ref: general replacements
-# setup default general_replacements
-# loose convention is that replacement strings be delimited by <<>>, however any strings can (and will) be matched/replaced
-# convention is that replacement names that end with "comment" are meant to preceed statements in the files, converting them to comments if they are not relevant
-# this string is for batcher integration - if a file is run through batcher, this string will be replaced by an empty string, so can be used to precede arb lines that are specific to the batcher runs
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<batchercomment>>", replace => "#" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<nobatchercomment>>", replace => "" );
-# geometry and equation related
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<dim1comment>>", replace => "" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<dim2comment>>", replace => "" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<dim3comment>>", replace => "" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<steadystatecomment>>", replace => "" ); # default is steady-state
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<transientcomment>>", replace => "#" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<cartesiancomment>>", replace => "" ); # default is cartesian
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<cylindricalcomment>>", replace => "#" );
-# convention is that replacement names that end with "flag" are either on (1) or off (0), so can be used within expressions
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<steadystateflag>>", replace => "1" ); # default is steady-state
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<transientflag>>", replace => "0" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<cartesianflag>>", replace => "1" ); # default is cartesian
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<cylindricalflag>>", replace => "0" );
-# these two should be overwritten by the relevant radius in the input file if using cylindrical coordinates: eg R "<<radius_c>>" W "<cellx[l=1]>" R "<<radius_f>>" W "<facex[l=1]>"
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radius_c>>", replace => "1.d0" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radius_f>>", replace => "1.d0" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radius_n>>", replace => "1.d0" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radiusdim1flag>>", replace => "0" ); # for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radiusdim2flag>>", replace => "0" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radiusdim3flag>>", replace => "0" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radialdim>>", replace => "0" ); # for 2D cylindrical this is the radial coordinate direction
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<axialdim>>", replace => "0" ); # for 2D cylindrical this is the axial coordinate direction
-# these strings should be overwritten by the normal coordinate directions of any reflection boundaries in the domain: eg R "<<reflect=1>>" W "reflect=1"
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<reflect=1>>", replace => "" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<reflect=2>>", replace => "" );
-  %{$general_replacements[$#general_replacements+1]} = ( search => "<<reflect=3>>", replace => "" );
-
-  print DEBUG "INFO: initial general_replacements = ".Dumper(@general_replacements)."\n";
-
 }
 
 #-------------------------------------------------------------------------------
@@ -797,7 +737,6 @@ sub wanted {
 
 sub create_system_regions {
 
-  use strict;
   my ($n);
 #-------------
 # add the SYSTEM regions to the start of the region array
@@ -850,7 +789,6 @@ sub create_system_regions {
 
 sub organise_regions {
 
-  use strict;
   my ($n);
 
 # ref: regions
@@ -905,8 +843,8 @@ sub organise_regions {
 # anything left must be dynamic: initialise
       $region[$n]{"dynamic"} = 1;
       $region[$n]{"user"} = 1;
-      if ($region[$n]{"type"} eq "transient") { set_transient_simulation(1); print DEBUG "INFO: setting simulation type to transient based on the detection of at least one transient region $region[$n]{name}\n"; }
-      if ($region[$n]{"type"} eq "newtient") { $newtient=1; print DEBUG "INFO: setting simulation type to newtient based on detection of at least one newtient region $region[$n]{name}\n"; }
+      if ($region[$n]{"type"} eq "transient" && ! ($transient_simulation) ) { error_stop("somehow a transient region $region[$n]{name} exists in a non-transient simulation.  Suggest using the TRANSIENT_SIMULATION keyword.") }
+      if ($region[$n]{"type"} eq "newtient" && ! ($newtient_simulation) ) { error_stop("somehow a newtient region $region[$n]{name} exists in a non-newtient simulation.  Suggest using the NEWTIENT_SIMULATION keyword.") }
     }
 # deal with user regions having no centring defined
     if ($region[$n]{"user"} && empty($region[$n]{'centring'})) { error_stop("$region[$n]{type} region $region[$n]{name} has no centring defined: all regions (except gmsh) ".
@@ -992,7 +930,6 @@ sub organise_regions {
 
 sub process_regions {
 
-  use strict;
   use Data::Dumper;
   $Data::Dumper::Terse = 1;
   $Data::Dumper::Indent = 0;
@@ -1357,7 +1294,6 @@ sub check_region_and_add_if_not_there {
 
 sub location_description_scan {
 
-  use strict;
   my $location=$_[0];
   my $action=$_[1];
   my $n=$_[2];
@@ -1488,7 +1424,6 @@ sub location_description_scan {
 
 sub find_region {
 
-  use strict;
   my $match=-1;
   my $region_to_find=$_[0];
 
@@ -1508,7 +1443,6 @@ sub find_region {
 
 sub match_region {
 
-  use strict;
   my $number = $_[0];
   my $name = $_[1];
   
@@ -1526,7 +1460,6 @@ sub match_region {
 
 sub organise_user_variables {
 
-  use strict;
   my ($type, $name, $centring, $mvar, $option, $option_name, $repeats, $masread, $n, $tmp, $match, $condition);
 
   print DEBUG "INFO: sub organise_user_variables\n";
@@ -1852,11 +1785,11 @@ sub organise_user_variables {
 #-----------------------------------------------------
 # set transientdelta and newtientdelta system variables, and simulation type based on transient/newtient variables
 
-  if ($variable{"transient"}) { set_transient_simulation(1); print DEBUG "INFO: setting simulation type to transient based on the detection of at least one transient variable\n"; }
-  if ($variable{"newtient"}) { $newtient=1; print DEBUG "INFO: setting simulation type to newtient based on detection of at least one newtient variable\n"; }
+  if ($variable{"transient"} && ! ($transient_simulation) ) { error_stop("somehow a transient variable exists in a non-transient simulation.  Suggest including the TRANSIENT_SIMULATION keyword.") }
+  if ($variable{"newtient"} && ! ($newtient_simulation) ) { error_stop("somehow a newtient variable exists in a non-newtient simulation.  Suggest including the NEWTIENT_SIMULATION keyword.") }
   foreach $mvar ( 1 .. $m{"system"} ) {
-    if ($variable{"system"}[$mvar]{"name"} eq "<transientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $transient; }
-    if ($variable{"system"}[$mvar]{"name"} eq "<newtientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $newtient; }
+    if ($variable{"system"}[$mvar]{"name"} eq "<transientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $transient_simulation; }
+    if ($variable{"system"}[$mvar]{"name"} eq "<newtientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $newtient_simulation; }
   }
 
 # tell the user if multiple definitions were used anywhere
@@ -1879,43 +1812,11 @@ sub organise_user_variables {
 }
 
 #-------------------------------------------------------------------------------
-# chomp and remove mac linefeads too if present
-
-sub chompm {
-  use strict;
-  chomp($_[0]);  # remove linefeed from end
-  $_[0]=~tr/\r//d; # remove control m from mac files
-}
-
-#-------------------------------------------------------------------------------
-# little subroutine that tests whether a variable has been defined and/or holds anything
-
-sub empty {
-  use strict;
-  if (!(defined($_[0]))) {
-    return 1;
-  } elsif ($_[0] eq "") {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-#-------------------------------------------------------------------------------
-# opposite of empty
-
-sub nonempty {
-  use strict;
-  if (empty($_[0])) { return 0; } else { return 1; }
-}
-
-#-------------------------------------------------------------------------------
 # here we run through all equation expressions substituting in maxima names and 
 #  setting correct variable locations - create mequations
 
 sub create_mequations {
 
-  use strict;
   use Storable qw(dclone);
   my ($type, $mvar, $otype, $omvar, $name);
 
@@ -2016,7 +1917,6 @@ sub create_mequations {
 
 sub mequation_interpolation {
 
-  use strict;
   use List::Util qw( min max );
   use Data::Dumper;
   my ($operator_type, $type, $mvar, $operator, $tmp, $n, $l, $pre, $post, $contextcentring, $centring, $options,
@@ -3482,7 +3382,6 @@ sub search_operator_contents {
 # if numerical name is found and is the last calling argument then this is incremented by one
 # the found_name/found_value pair are removed from operator_contents
 
-  use strict;
   use Data::Dumper;
   my ($name);
   my $found_name = "";
@@ -3520,7 +3419,6 @@ sub split_mequation_at_character {
 # return with
 # (before character match (or empty if no character found), after character match (or everything if no character found), not_found flag)
 
-  use strict;
   my $string = $_[0]; # save the complete contents
   my $character = $_[1]; # save the complete contents
   my $otype = $_[2];
@@ -3571,7 +3469,6 @@ sub create_operator_contents {
 # - $_[2] is omvar, which is the mvar from which the expression originated
 # within the sub we alter the array operator_contents which is defined in the calling sub
 
-  use strict;
   use Data::Dumper;
   my ($both,$name,$value,$tmp,$store,$match,$not_found);
   my $contents = $_[0]; # save the complete contents
@@ -3629,8 +3526,6 @@ sub create_operator_contents {
 
 sub create_someloop {
 
-  use strict;
-
   $m{"someloop"} ++;
   $variable{"someloop"}[$m{"someloop"}]{"mequation"} = $_[0];
   $variable{"someloop"}[$m{"someloop"}]{"type"} = $_[1];
@@ -3674,7 +3569,6 @@ sub create_someloop {
 
 sub run_maxima_simplify {
 
-  use strict;
   my ($systemcall, $line, $out, $in, $otype, $omvar, $bit, $call_maxima, $n, $tmp, $not_found);
   my @replacements = ();
 
@@ -3781,8 +3675,6 @@ sub run_maxima_simplify {
 
 sub equation_to_mequation {
 
-  use strict;
-      
 # on input:
   my $original = $_[0]; # equation, unchanged
   my $otype = $_[1]; # second and third arguments are calling type and mvar, respectively, just used for error message
@@ -3832,7 +3724,6 @@ sub equation_to_mequation {
 
 sub expand_equation {
 
-  use strict;
   my $raw_equation = $_[0]; # the first argument is the raw equation, which is copied and unchanged
   my $variable_name = $_[1]; # the second argument is the variable name
   my $previous_equation = $_[2]; # the third argument is the previous equation (previously expanded) used for substitution if referenced
@@ -3985,7 +3876,6 @@ sub expand_equation {
 # calling sequence is: string, substring, replacement
 
 sub replace_substrings {
-  use strict;
   $_[0] =~ s/\Q$_[1]/$_[2]/g; # \Q escapes any funny characters in $_[1]
 }
 
@@ -3994,7 +3884,6 @@ sub replace_substrings {
 
 sub create_compounds {
 
-  use strict;
 # use Data::Dumper;
   my ($type, $mvar, $name, $indices, $type2, $mvar2, $index, $mcheck, $rank, $component_list,
     $nrank, $mmvar, $l1, $l2, $nvar, $rindex, $tmp, $option, $n);
@@ -4221,7 +4110,6 @@ sub present_in_array {
 
 sub create_allocations {
 
-  use strict;
   my ($type, $mvar, $comparator, $index1, $index2, $mlink, $o, $mfortran, $fortran, $n);
 
 # allocate var and compound
@@ -4464,7 +4352,6 @@ sub create_allocations {
 
 sub run_maxima_fortran {
 
-  use strict;
   my ($line, $systemcall, $bit, $otype, $omvar, $call_maxima, $n);
   my @replacements = ();
 
@@ -4580,7 +4467,6 @@ sub run_maxima_fortran {
 
 sub fortran_logical_string {
 
-  use strict;
   my $string;
 
   if ($_[0]) {
@@ -4598,7 +4484,6 @@ sub fortran_logical_string {
 
 sub maxima_to_fortran {
 
-  use strict;
   my ($type, $mvar, $ii, $ji, $pre, $post, $search, $replace, $n, $tmp1, $tmp2, $nextchar);
   my ($ns, $nsnext, $nlast, $nnext); 
   my @iilist = ();
@@ -4679,7 +4564,6 @@ sub maxima_to_fortran {
 
 sub create_fortran_equations {
 
-  use strict;
   my ($type, $mvar, $mequation, $tmp, $m2var, $deriv, $inequality, $first, $fequation, $mlink, $firstcondition,
     $otype, $omvar, $l, $n, $reflect_string_init, $reflect_string_form, $openloop, $maxseparation, $separation_loop, 
     $separation_list, $ii2max);
@@ -5378,7 +5262,6 @@ sub newtstepcondition {
 
 sub update_someloop_fortran {
 
-  use strict;
   my ($fortran, $mvar);
 
   $fortran = "";
@@ -5409,7 +5292,6 @@ sub update_someloop_fortran {
 
 sub create_fortran_derivative_multiplier {
 
-  use strict;
   my ($typewrt, $mvarwrt, $tmp, $tmpwrt, $dfortran, $ii, $itmp);
 
   my $fortran = $_[0]; # name as will be used in add_to_dv (fortran)
@@ -5455,7 +5337,6 @@ sub create_fortran_derivative_multiplier {
 
 sub create_system_variables {
 
-  use strict;
   my ($mvar, $l, $l1, $l2);
   my $type = "system";
 
@@ -5881,7 +5762,6 @@ sub create_system_variables {
 
 sub get_system_mvar {
 
-  use strict;
   my ($mvar);
 
   foreach $mvar ( 1 .. $m{"system"}+1 ) {
@@ -5898,7 +5778,6 @@ sub get_system_mvar {
 
 sub write_latex {
 
-  use strict;
   use Text::Balanced qw ( extract_bracketed );
   my ($type, $mvar);
   my ($type2, $mvar2);
@@ -6067,7 +5946,6 @@ sub write_latex {
 
 sub examine_name {
 
-  use strict;
   my ($name,$action,$compoundname,$basename,$nrank,$rank,$indices,$lindex,$rindex,$lindices);
 
   $action = $_[1];
@@ -6260,7 +6138,6 @@ sub deconstruct_generic_mequation{
 
 sub write_maxima_results_files {
 
-  use strict;
   use Storable qw(store); # routines for storing data
   my ($n, $dump);
 
@@ -6323,7 +6200,6 @@ sub write_maxima_results_files {
 #-------------------------------------------------------------------------------
 sub read_maxima_results_files {
 
-  use strict;
   use Storable qw(retrieve); # routines for storing data
   my ($dump, $n);
 
@@ -6360,27 +6236,6 @@ sub read_maxima_results_files {
   print DEBUG "------------------------------------\n";
 }
 #-------------------------------------------------------------------------------
-# whatever string is passed to this routine is output as an error message to both screen
-#  and DEBUG file, and the script then dies
-# also deal with previous successful run
-
-sub error_stop {
-
-  use strict;
-  use File::Path qw(rmtree); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
-  print "ERROR: $_[0]\n";
-  print DEBUG "ERROR: $_[0]\n";
-
-# also remove traces of last successful run
-  print DEBUG "INFO: removing last successful setup data from $setup_creation_dir\n";
-  print "INFO: removing last successful setup data from $setup_creation_dir\n";
-  if (-d $setup_creation_dir) { rmtree($setup_creation_dir) or print "ERROR: could not remove existing $setup_creation_dir\n"; } # using rmtree for older File::Path compatibility
-  if (-f $setup_equation_file) {unlink($setup_equation_file) or print "ERROR: could not remove existing $setup_equation_file\n"; }
-
-  exit 1; # signifies that there was an error
-
-}
-#-------------------------------------------------------------------------------
 # little subroutine to extract the first string entry from a line of text, possibly removing any delimiters at the same time
 # input
 # $_[0] = string
@@ -6390,7 +6245,6 @@ sub error_stop {
 # $_[1] = error flag (0 or 1)
 
 sub extract_first {
-  use strict;
   my $remainder=$_[0];
   my $input=$_[0];
   my $string="";
@@ -6436,7 +6290,6 @@ sub extract_replacements {
 # $_[4] = default = 0,1, indicates whether the REPLACE* or R* or DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
 # if search is empty then no string was found
 
-  use strict;
   my $line = $_[0];
   my $file = $_[1];
   my $oline = $_[2];
@@ -6523,78 +6376,6 @@ sub create_external_file {
 # print DEBUG "EXTERNAL CONTENTS:\n".$externals[$#externals]{contents}."\n";
 
 }
-#-------------------------------------------------------------------------------
-# this returns the correct ijk index letter corresponding to the passed in centring
-# or a 1 if none centring
-
-sub ijkstring {
-  if ($_[0] eq "cell") {
-    return "i";
-  } elsif ($_[0] eq "face") {
-    return "j";
-  } elsif ($_[0] eq "node") {
-    return "k";
-  } else {
-    return "1";
-  }
-}
-  
-#-------------------------------------------------------------------------------
-# based on passed variable, set or unset transient simulation status, including comment strings
-
-sub set_transient_simulation {
-
-  $transient = $_[0];
-  for my $n ( 0 .. $#general_replacements ) {
-    if ($general_replacements[$n]{"search"} eq "<<steadystatecomment>>") {
-      if ($transient) { $general_replacements[$n]{"replace"} = "#" } else { $general_replacements[$n]{"replace"} = "" }
-    }
-    if ($general_replacements[$n]{"search"} eq "<<transientcomment>>") {
-      if ($transient) { $general_replacements[$n]{"replace"} = "" } else { $general_replacements[$n]{"replace"} = "#" }
-    }
-  }
-
-}
-
-#-------------------------------------------------------------------------------
-# search through general_replacements for search string
-
-sub search_general_replacements {
-
-  my $search = $_[0]; # on input, search string
-  my $nfound = -1; # on output returns -1 if not found, or general_replacments index if found
-
-  for my $n ( 0 .. $#general_replacements ) {
-    if ($search eq $general_replacements[$n]{"search"}) { # found existing general replacements
-      $nfound = $n;
-      last;
-    }
-  }
-
-  return $nfound;
-
-}
-#-------------------------------------------------------------------------------
-# report and take action with any syntax problems
-# these are handled a bit differently to normal messages so that user can see what problems there are with their syntax
-# an example for calling this sub
-#        syntax_problem("warning","$deprecatedtype type has been deprecated, use $type instead.\nfile = $file\noriginal line = $oline\ncorrected line = $line");
-
-sub syntax_problem {
-  my $message = $_[0]; # message that goes with this problem
-  my $syntax_action = $_[1]; # could be info, warning or error (which implies a stop and is the default if no syntax_action is given)
-
-  if (!($syntax_action)) { $syntax_action = "error"; } # default is an error, so becomes a drop-in replacement for error_stop subroutine
-  print SYNTAX "\U$syntax_action: "."$message\n";
-  if ($syntax_action eq "error") {
-    error_stop($message) # already writes to output and debug files
-  } else {
-    print "\U$syntax_action: "."$message\n";
-    print DEBUG "\U$syntax_action: "."$message\n";
-  }
-    
-}
-
 #-------------------------------------------------------------------------------
 # perl tips 
 #         ($cunits,$line) = $line =~ /^\[(.*?)\]\s*(.*)$/;  #\s is a space, \S is a nonspace, . is a single wildcard, + is 1 or more times, ? is non greedy

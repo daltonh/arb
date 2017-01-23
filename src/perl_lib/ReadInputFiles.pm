@@ -1,4 +1,37 @@
-# routines to read arb input files
+# file src/perl_lib/ReadInputFiles.pm
+#
+# Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
+# 
+# This file is part of arb finite volume solver, referred to as `arb'.
+# 
+# arb is a software package designed to solve arbitrary partial
+# differential equations on unstructured meshes using the finite volume
+# method.  Primarily it consists of fortran source code, perl source
+# code and shell scripts.  arb replies on certain third party software
+# to run, most notably the computer algebra system maxima
+# <http://maxima.sourceforge.net/> which is released under the GNU GPL.
+# 
+# The copyright of arb is held by Dalton Harvie.
+# 
+# arb is released under the GNU GPL.  arb is free software: you can
+# redistribute it and/or modify it under the terms of the GNU General
+# Public License (version 3) as published by the Free Software Foundation.
+# You should have received a copy of the GNU General Public Licence
+# along with arb (see file licence/gpl.txt after unpacking).  If not,
+# see <http://www.gnu.org/licences/>.
+# 
+# arb is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public Licence
+# for more details.
+# 
+# For full details of arb's licence see the licence directory.
+# 
+# The current homepage for the arb finite volume solver project is
+# <http://people.eng.unimelb.edu.au/daltonh/downloads/arb>.
+#
+#-------------------------------------------------------------------------
+# routines to read arb input files contained in a perl module
 
 package ReadInputFiles;
 
@@ -6,19 +39,14 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(read_input_files);
+our @EXPORT  = qw(read_input_files); # list of subroutines and variables that will by default be made available to calling routine
+use Common;
 
-our $code_blocks; # this array needs to be readable by other subroutines, so make global
-
-
-
-sub test_variable_scope {
-  print "scope_test = $scope_test\n";
-}
+# define variables common to all of these subs
+my @general_replacements = (); # is an array/hash of the replacement strings
 
 #--------------------------------------------------------------
-# parse all *.arb files
-
+# parse all *.arb files - this is called from main
 sub read_input_files {
 
   use FileHandle;
@@ -27,7 +55,7 @@ sub read_input_files {
   use Storable qw(dclone);
   use File::Find; # for find
   use File::Spec; # for rel2abs
-  my ($oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
+  my ($oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
     $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
     $condition, $key, $append, $cancel, $default, $masread, $lineremainder, $repeats, $include_type);
@@ -38,19 +66,23 @@ sub read_input_files {
   my $skip = 0; # flag to indicate whether we are in comments section or not
   my $indent = "   "; # amount to indent the unwrapped input file for each level of file inclusion
 
+  setup_general_replacements(); # create the default general replacements
+
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
-  open(UNWRAPPED_INPUT, ">$unwrapped_input_file");
+  open(UNWRAPPED_INPUT, ">$::unwrapped_input_file");
+
+  open(SYNTAX, ">$::syntax_problems_file"); # this file is specifically for syntax problems in the input files and is written to by sub syntax_problem
 
 # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
-my @code_blocks;
-$code_blocks[0]{"ref_name"}="root_input.arb";
-$code_blocks[0]{"name"}="$build_dir/root_input.arb";
-$code_blocks[$#code_blocks]{"abs_name"} = File::Spec->rel2abs($code_blocks[0]{"name"}); # abs_name is always the absolute path to the file
-# initial include_path used for searching for the file is the working directory
-# so, always the initial search path for files is the working_dir (even though root_input.arb sits in the build directory)
-$code_blocks[0]{"include_path"}[0] = $working_dir;
-$code_blocks[0]{"code_type"} = "solver"; # indicates whether code_block when left is either string or solver
-$code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read in
+  my @code_blocks;
+  $code_blocks[0]{"ref_name"}="root_input.arb";
+  $code_blocks[0]{"name"}="$::build_dir/root_input.arb";
+  $code_blocks[$#code_blocks]{"abs_name"} = File::Spec->rel2abs($code_blocks[0]{"name"}); # abs_name is always the absolute path to the file
+  # initial include_path used for searching for the file is the working directory
+  # so, always the initial search path for files is the working_dir (even though root_input.arb sits in the build directory)
+  $code_blocks[0]{"include_path"}[0] = $::working_dir; # drag this value out of main
+  $code_blocks[0]{"code_type"} = "solver"; # indicates whether code_block when left is either string or solver
+  $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read in
 
   $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a filehandle for the first file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
   my $handle = $code_blocks[$#code_blocks]{"handle"};
@@ -73,24 +105,24 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
 # now splitting input line at the include/replacements keywords (wherever they are) and only doing replacements before this
       my $lineremainder = '';
       if ($oline =~ /^\s*(.*?)(\s*((INCLUDE(|_[A-Z]+))|((GENERAL_|)REPLACEMENTS))($|#|\s))/i) {
-        print DEBUG "INFO: found a line that possibly includes replacement statements: $filelinelocator\n";
+        print ::DEBUG "INFO: found a line that possibly includes replacement statements: $filelinelocator\n";
         my $linestart = $1;
         $lineremainder = $2.$';
         $oline = '';
         if (!($linestart)) {
-          print DEBUG "INFO: include/replacement string is bare, so do not perform any replacements on this line\n";
+          print ::DEBUG "INFO: include/replacement string is bare, so do not perform any replacements on this line\n";
         } else {
-          print DEBUG "INFO: attempting to remove any replace strings from the start of this line\n";
+          print ::DEBUG "INFO: attempting to remove any replace strings from the start of this line\n";
           while ($linestart =~ /^(\s*<<.*?>>\s*)/) { $oline=$oline.$1; $linestart=$'; }
-          print DEBUG "INFO: after splitting and looking for replace strings: oline = $oline: linestart = $linestart; lineremainder = $lineremainder\n";
+          print ::DEBUG "INFO: after splitting and looking for replace strings: oline = $oline: linestart = $linestart; lineremainder = $lineremainder\n";
           if (nonempty($linestart)) {
 # there is more than string replacements at the start
 # to be consistent with previous behaviour do replacements on the entire string
             $oline=$oline.$linestart.$lineremainder;
             $lineremainder='';
-            print DEBUG "INFO: search/replace going ahead on entire oline as preamble to include/replacement keywords contains more than only <<>> delimited strings\n";
+            print ::DEBUG "INFO: search/replace going ahead on entire oline as preamble to include/replacement keywords contains more than only <<>> delimited strings\n";
           } else {
-            print DEBUG "INFO: search/replace going ahead on preamble oline only as preamble to include/replacement keywords contains only <<>> delimited strings\n";
+            print ::DEBUG "INFO: search/replace going ahead on preamble oline only as preamble to include/replacement keywords contains only <<>> delimited strings\n";
           }
         }
       }
@@ -101,13 +133,13 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
           replace_substrings($oline,$code_blocks[$n1]{"replacements"}[$n2]{"search"},$code_blocks[$n1]{"replacements"}[$n2]{"replace"});
         }
       }
-      foreach my $n1 ( reverse( 0 .. $#general_replacements ) ) {
-        replace_substrings($oline,$general_replacements[$n1]{"search"},$general_replacements[$n1]{"replace"});
+      foreach my $n1 ( reverse( 0 .. $#::general_replacements ) ) {
+        replace_substrings($oline,$::general_replacements[$n1]{"search"},$::general_replacements[$n1]{"replace"});
       }
 
 # and now reconstruct the entire line
       $oline = $oline.$lineremainder;
-      if ($lineremainder) { print DEBUG "INFO: after replacements and reconstructing: oline = $oline\n"; }
+      if ($lineremainder) { print ::DEBUG "INFO: after replacements and reconstructing: oline = $oline\n"; }
 
       $line = $oline;
 # keep a record of what arb is doing in UNWRAPPED_INPUT, commenting out any INCLUDE or GENERAL_REPLACMENTS statements so that this file could be read again by arb directly
@@ -158,7 +190,7 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
           for my $search_path ( reverse( @{$code_blocks[$#code_blocks]{"include_path"}} ) ) {
             ($found_name,$found_type) = check_for_arbfile_or_dir($search_path.'/'.$new_file);
             if (nonempty($found_name)) {
-              print DEBUG "INFO: found include $found_type $new_file at $found_name\n";
+              print ::DEBUG "INFO: found include $found_type $new_file at $found_name\n";
               last;
             }
           }
@@ -167,10 +199,10 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
           }
         } elsif ($include_type eq "template") {
 # the following would only check in the templates directory
-#         ($found_name,$found_type) = check_for_arbfile_or_dir($template_dir.'/'.$new_file);
+#         ($found_name,$found_type) = check_for_arbfile_or_dir($::template_dir.'/'.$new_file);
 # whereas this cycles through all subdirectories of the templates directory, using a depth-prioritised search
 # as file paths are relative to the build directory, don't chdir is required to reference filename
-          find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$template_dir);
+          find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$::template_dir);
           if (empty($found_name)) {
             error_stop("could not find $new_file that is referenced in an INCLUDE_TEMPLATE statement in any of template directories: $filelinelocator");
           }
@@ -183,7 +215,7 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
           } elsif ($include_type eq "last") {
             ($found_name,$found_type) = check_for_arbfile_or_dir($code_blocks[$#code_blocks]{"include_path"}[$#{$code_blocks[$#code_blocks]{"include_path"}}].'/'.$new_file);
           } elsif ($include_type eq "working") {
-            ($found_name,$found_type) = check_for_arbfile_or_dir($working_dir.'/'.$new_file);
+            ($found_name,$found_type) = check_for_arbfile_or_dir($::working_dir.'/'.$new_file);
           } else {
             error_stop("keyword INCLUDE_"."\U$include_type"." is not understood: $filelinelocator");
           }
@@ -192,7 +224,7 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
           }
         }
         print "INFO: found the following include $found_type $new_file at $found_name\n";
-        print DEBUG "INFO: found the following include $found_type $new_file at $found_name referenced from: $filelinelocator\n";
+        print ::DEBUG "INFO: found the following include $found_type $new_file at $found_name referenced from: $filelinelocator\n";
 
 # here we extract the path from the full found_name if we have found a file, or remove found_name (and store in found_dir) if we have found a directory
         my $found_dir = '';
@@ -208,7 +240,7 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
           if ($found_dir ne $code_blocks[$#code_blocks]{"include_path"}[$#{$code_blocks[$#code_blocks]{"include_path"}}]) {
             push(@{$code_blocks[$#code_blocks]{"include_path"}},$found_dir);
             print "INFO: adding new path $found_dir to the include_path stack, making: include_path = @{$code_blocks[$#code_blocks]{include_path}}\n";
-            print DEBUG "INFO: adding new path $found_dir to the include_path stack, making: include_path = @{$code_blocks[$#code_blocks]{include_path}}\n";
+            print ::DEBUG "INFO: adding new path $found_dir to the include_path stack, making: include_path = @{$code_blocks[$#code_blocks]{include_path}}\n";
             print UNWRAPPED_INPUT $indent x $#code_blocks, "#(comment generated during unwrap) adding new include_path $found_dir, making include_path stack = @{$code_blocks[$#code_blocks]{include_path}}\n";
           } else {
             print UNWRAPPED_INPUT $indent x $#code_blocks, "#(comment generated during unwrap) not adding new include_path $found_dir, as it is already on the top of include_path stack = @{$code_blocks[$#code_blocks]{include_path}}\n";
@@ -225,13 +257,13 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
         $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[$#{$code_blocks[$#code_blocks-1]{"include_path"}}]; # set local path to last path of calling file
 
         print "INFO: found INCLUDE $code_blocks[$#code_blocks]{ref_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
-        print DEBUG "INFO: found INCLUDE $code_blocks[$#code_blocks]{ref_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
+        print ::DEBUG "INFO: found INCLUDE $code_blocks[$#code_blocks]{ref_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
         print UNWRAPPED_INPUT $indent x $#code_blocks,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#code_blocks,"#(comment generated during unwrap) the following is INCLUDED from $code_blocks[$#code_blocks]{abs_name}";
 # ref: FILENAME
 # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
-        if (empty($simulation_info{"filename"})) {
-          $simulation_info{"filename"} = $code_blocks[$#code_blocks]{"ref_name"};
-          $simulation_info{"absfilename"} = $code_blocks[$#code_blocks]{"abs_name"};
+        if (empty($::simulation_info{"filename"})) {
+          $::simulation_info{"filename"} = $code_blocks[$#code_blocks]{"ref_name"};
+          $::simulation_info{"absfilename"} = $code_blocks[$#code_blocks]{"abs_name"};
         }
 
 # now extract replacements
@@ -290,24 +322,24 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
               if ($cancel) {
                 print "WARNING: general replacement search string $search cancelled before being allocated\n";
               } else { # add a new one
-                %{$general_replacements[$#general_replacements+1]} = ( search => $search, replace => $replace );
+                %{$::general_replacements[$#::general_replacements+1]} = ( search => $search, replace => $replace );
                 print "INFO: added general replacements search and replace pair: search = $search: replace = $replace\n";
               }
             } else { # found search as an existing general replacement
               if ($cancel) {
-                splice(@general_replacements,$n,1);
+                splice(@::general_replacements,$n,1);
                 print "INFO: cancelling previous general replacements search string: search = $search\n";
               } elsif ($default) {
                 print "INFO: general replacement (default) search string $search cancelled as the string is already present as a general string replacement\n";
               } else {
-                $general_replacements[$n]{"replace"}=$replace;
+                $::general_replacements[$n]{"replace"}=$replace;
                 print "INFO: replaced general replacements search and replace pair: search = $search: replace = $replace\n";
               }
             }
 
           }
         }
-        print DEBUG "INFO: just processed GENERAL_REPLACEMENTS statement: general_replacements = ".Dumper(@general_replacements)."\n";
+        print ::DEBUG "INFO: just processed GENERAL_REPLACEMENTS statement: ::general_replacements = ".Dumper(@::general_replacements)."\n";
         next;
       }
 
@@ -362,19 +394,19 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
 
 # check on file version
       elsif ($line =~ /^\s*VERSION\s+(\S*)/i) {
-        $file_version = $1;
-        if (abs($file_version - $version) > 1.e-7) {
-          if ($file_version < $minimum_version) {
+        my $file_version = $1;
+        if (abs($file_version - $::version) > 1.e-7) {
+          if ($file_version < $::minimum_version) {
             error_stop("version mismatch between $file and the current version (of setup_equations.pl)\n".
-                "  You may be able to increase the version number in $file (from $file_version to $version), however some features of the language ".
+                "  You may be able to increase the version number in $file (from $file_version to $::version), however some features of the language ".
                 "syntax have changed since version $file_version so you should check the input files");
           } else {
             print "WARNING: version mismatch between $file and the current version (of setup_equations.pl)\n".
-                "  You should be able to increase the version number in $file (from $file_version to $version) safely without altering the input ".
+                "  You should be able to increase the version number in $file (from $file_version to $::version) safely without altering the input ".
                 "file syntax, however this error indicates that additional language features are now available\n";
           }
         }
-        print FORTRAN_INPUT "VERSION $file_version\n"; # also tell the fortran program about this
+        print ::FORTRAN_INPUT "VERSION $file_version\n"; # also tell the fortran program about this
         next;
       }
 
@@ -390,16 +422,16 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
 # a minus means set the string only if it is empty.
 # Otherwise, set the string to the new value ($append=0)
         if ($append eq 1) {
-          $simulation_info{$key} = $simulation_info{$key}.$tmp;
-        } elsif (!($append) || empty($simulation_info{$key})) {
-          $simulation_info{$key} = $tmp;
+          $::simulation_info{$key} = $::simulation_info{$key}.$tmp;
+        } elsif (!($append) || empty($::simulation_info{$key})) {
+          $::simulation_info{$key} = $tmp;
         }
         next;
       }
 
 # look for transient/steady-state simulation keyword
       elsif ($line =~ /^\s*(TRANSIENT|STEADY-STATE|STEADYSTATE|NONTRANSIENT)_SIMULATION($|\s)/i) {
-        print DEBUG "INFO: $1_SIMULATION set from line: $oline\n";
+        print ::DEBUG "INFO: $1_SIMULATION set from line: $oline\n";
         print "INFO: $1_SIMULATION set directly\n";
         if ($1 =~ /^TRANSIENT$/i) { set_transient_simulation(1); } else { set_transient_simulation(0); }
         next;
@@ -407,9 +439,9 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
 
 # look for newtient simulation keyword
       elsif ($line =~ /^\s*((NON|)NEWTIENT)_SIMULATION($|\s)/i) {
-        print DEBUG "INFO: $1_SIMULATION set from line: $oline\n";
+        print ::DEBUG "INFO: $1_SIMULATION set from line: $oline\n";
         print "INFO: $1_SIMULATION set directly\n";
-        if ($1 =~ /^NEWTIENT$/i) { $newtient=1; } else { $newtient=0; }
+        if ($1 =~ /^NEWTIENT$/i) { $::newtient_simulation=1; } else { $::newtient_simulation=0; }
         next;
       }
 
@@ -420,10 +452,10 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
         $default_options = $';
         ($default_options) = $default_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
         if (empty($default_options)) {
-          print DEBUG "INFO: default options have been removed via:\nfile = $file: line = $oline\n";
+          print ::DEBUG "INFO: default options have been removed via:\nfile = $file: line = $oline\n";
           print "INFO: default options have been removed\n";
         } else {
-          print DEBUG "INFO: default options have been set to $default_options via:\nfile = $file: line = $oline\n";
+          print ::DEBUG "INFO: default options have been set to $default_options via:\nfile = $file: line = $oline\n";
           print "INFO: default options have been set to $default_options\n";
         }
         next;
@@ -436,16 +468,16 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
         $override_options = $';
         ($override_options) = $override_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
         if (empty($override_options)) {
-          print DEBUG "INFO: override options have been removed via:\nfile = $file: line = $oline\n";
+          print ::DEBUG "INFO: override options have been removed via:\nfile = $file: line = $oline\n";
           print "INFO: override options have been removed\n";
         } else {
-          print DEBUG "INFO: override options have been set to $override_options via:\nfile = $file: line = $oline\n";
+          print ::DEBUG "INFO: override options have been set to $override_options via:\nfile = $file: line = $oline\n";
           print "INFO: override options have been set to $override_options\n";
         }
         next;
       }
 
-      elsif ( $line =~ /^\s*(MSH_FILE|((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|ITERRESTOL|ITERRESRELTOL|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES|((TIME|NEWT)STEP_REWIND))($|\s)/i ) {
+      elsif ( $line =~ /^\s*(MSH_FILE|((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|ITERRESTOL|ITERRESRELTOL|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|::DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES|((TIME|NEWT)STEP_REWIND))($|\s)/i ) {
 # these are commands that need to be transferred unaltered to the arb input file
         $keyword = "\U$1";
         $line = $'; $line =~ s/^\s*//;
@@ -462,11 +494,11 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
             $tmp = $tmp = $`." ".$';
             my $n = search_general_replacements($search);
             if ($n < 0) { error_stop("some type of error with the reflect specification in the following: $oline"); }
-            else { $general_replacements[$n]{"replace"}=$replace; }
-            print "INFO: based on a GLUE_FACES statement setting $search general_replacements string to $replace\n";
+            else { $::general_replacements[$n]{"replace"}=$replace; }
+            print "INFO: based on a GLUE_FACES statement setting $search ::general_replacements string to $replace\n";
           }
         }
-        print FORTRAN_INPUT $keyword; if (nonempty($line)) {print FORTRAN_INPUT " ".$line}; print FORTRAN_INPUT "\n"; # print line to fortran input file
+        print ::FORTRAN_INPUT $keyword; if (nonempty($line)) {print ::FORTRAN_INPUT " ".$line}; print ::FORTRAN_INPUT "\n"; # print line to fortran input file
         next;
       }
 
@@ -490,7 +522,7 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
 #         $glue_face[$#glue_face]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
 #         $glue_face[$#glue_face]{"options"} =~ s/\s*\,+\s*/,/g;
 #         print "INFO: GLUE_FACE definition between $glue_face[$#glue_face]{region}[1] and $glue_face[$#glue_face]{region}[2] with options $glue_face[$#glue_face]{options} processed\n";
-#         print DEBUG "INFO: GLUE_FACE definition between $glue_face[$#glue_face]{region}[1] and $glue_face[$#glue_face]{region}[2] with options $glue_face[$#glue_face]{options} processed\n";
+#         print ::DEBUG "INFO: GLUE_FACE definition between $glue_face[$#glue_face]{region}[1] and $glue_face[$#glue_face]{region}[2] with options $glue_face[$#glue_face]{options} processed\n";
 #       }
 
 # read in region_list
@@ -512,7 +544,7 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
         $tmp = "INFO: found ";
         if (nonempty($region_list{"centring"})) { $tmp = $tmp."$region_list{centring} centred"; } else { $tmp = $tmp."unknown centring"; }
         $tmp = $tmp." REGION_LIST containing the regions: @{$region_list{regions}}\n";
-        print $tmp; print DEBUG $tmp;
+        print $tmp; print ::DEBUG $tmp;
         next;
       }
 
@@ -529,14 +561,14 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
 
         if ($line =~ /^\s*(<.+?>)($|\s)/) { $name = $1; $line = $'; }
         else { error_stop("problem reading in the variable name from the following line:\nfile = $file: line = $oline");}
-        print DEBUG "INFO: found user variable in input file: name = $name: type = $type: centring = $centring\n";
+        print ::DEBUG "INFO: found user variable in input file: name = $name: type = $type: centring = $centring\n";
         $name = examine_name($name,"name");
-        print DEBUG "  coverting user defined name to consistent name = $name\n";
+        print ::DEBUG "  coverting user defined name to consistent name = $name\n";
 
 # see if this name has already been defined, and if so, find position of the variable in the input file
         $masread = -1; # variable masread starts at 0 if any variables are defined
-        foreach $mcheck ( 0 .. $#asread_variable ) {
-          if ($asread_variable[$mcheck]{"name"} eq $name) { # variable has been previously defined, and position in file is based on first definition
+        foreach $mcheck ( 0 .. $#::asread_variable ) {
+          if ($::asread_variable[$mcheck]{"name"} eq $name) { # variable has been previously defined, and position in file is based on first definition
             $masread = $mcheck;
             last;
           }
@@ -546,76 +578,76 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
         if ($line =~ /^(\s*)CANCEL(\s|$)/) {
           if ($masread >= 0) {
             print "INFO: cancelling variable $name\n";
-            print DEBUG "INFO: cancelling variable $name\n";
-            splice(@asread_variable, $masread, 1);
+            print ::DEBUG "INFO: cancelling variable $name\n";
+            splice(@::asread_variable, $masread, 1);
 # also have to adjust the reference to the variables from the regions
-            for my $nregion ( 0 .. $#region ) {
-              if ($region[$nregion]{"last_variable_masread"} >= $masread) { $region[$nregion]{"last_variable_masread"}=$region[$nregion]{"last_variable_masread"}-1; }
+            for my $nregion ( 0 .. $#::region ) {
+              if ($::region[$nregion]{"last_variable_masread"} >= $masread) { $::region[$nregion]{"last_variable_masread"}=$::region[$nregion]{"last_variable_masread"}-1; }
             }
 # TODO: get rid of options if variable is cancelled
           } else {
             print "WARNING: attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored\n";
-            print DEBUG "WARNING: attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored\n";
+            print ::DEBUG "WARNING: attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored\n";
           }
           next;
         }
 
 # now create or update variable type and centring
         if ($masread >= 0) {
-          $asread_variable[$masread]{"redefinitions"}++; 
-          print "INFO: a secondary definition statement (repeat number $asread_variable[$masread]{redefinitions}) for variable $name has been found in file = $file\n";
-          print DEBUG "INFO: a secondary definition statement (repeat number $asread_variable[$masread]{redefinitions}) for variable $name has been found based on:\nfile = $file: line = $oline\n";
+          $::asread_variable[$masread]{"redefinitions"}++; 
+          print "INFO: a secondary definition statement (repeat number $::asread_variable[$masread]{redefinitions}) for variable $name has been found in file = $file\n";
+          print ::DEBUG "INFO: a secondary definition statement (repeat number $::asread_variable[$masread]{redefinitions}) for variable $name has been found based on:\nfile = $file: line = $oline\n";
 # a variable has been identified, now check whether the type has changed
           if (nonempty($type)) {
-            if ($type ne $asread_variable[$masread]{"type"} && nonempty($asread_variable[$masread]{"type"})) {
-              print "NOTE: changing variable $name from type $asread_variable[$masread]{type} to $type\n";
-              print DEBUG "NOTE: changing variable $name from type $asread_variable[$masread]{type} to $type based on:\nfile = $file: line = $oline\n";
-              $asread_variable[$masread]{"typechanges"}++;
+            if ($type ne $::asread_variable[$masread]{"type"} && nonempty($::asread_variable[$masread]{"type"})) {
+              print "NOTE: changing variable $name from type $::asread_variable[$masread]{type} to $type\n";
+              print ::DEBUG "NOTE: changing variable $name from type $::asread_variable[$masread]{type} to $type based on:\nfile = $file: line = $oline\n";
+              $::asread_variable[$masread]{"typechanges"}++;
             }
-            $asread_variable[$masread]{"type"} = $type;
+            $::asread_variable[$masread]{"type"} = $type;
           } else {
-            $type = $asread_variable[$masread]{"type"};
+            $type = $::asread_variable[$masread]{"type"};
           }
 # a variable has been identified, now check whether the centring has changed
           if (nonempty($centring)) {
-            if ($centring ne $asread_variable[$masread]{"centring"} && nonempty($asread_variable[$masread]{"centring"})) {
-              print "NOTE: changing the centring of variable $name from $asread_variable[$masread]{centring} to $centring\n";
-              print DEBUG "NOTE: changing the centring of variable $name from $asread_variable[$masread]{centring} to $centring based on \nfile = $file: line = $oline\n";
-              $asread_variable[$masread]{"centringchanges"}++;
+            if ($centring ne $::asread_variable[$masread]{"centring"} && nonempty($::asread_variable[$masread]{"centring"})) {
+              print "NOTE: changing the centring of variable $name from $::asread_variable[$masread]{centring} to $centring\n";
+              print ::DEBUG "NOTE: changing the centring of variable $name from $::asread_variable[$masread]{centring} to $centring based on \nfile = $file: line = $oline\n";
+              $::asread_variable[$masread]{"centringchanges"}++;
 # also clear previous region
-              if (nonempty($asread_variable[$masread]{"region"})) {
-                print "NOTE: during change of centring type region specification of $asread_variable[$masread]{region} deleted for variable $name\n";
-                print DEBUG "NOTE: during change of centring type region specification of $asread_variable[$masread]{region} deleted for variable $name\n";
-                $asread_variable[$masread]{"region"} = '';
+              if (nonempty($::asread_variable[$masread]{"region"})) {
+                print "NOTE: during change of centring type region specification of $::asread_variable[$masread]{region} deleted for variable $name\n";
+                print ::DEBUG "NOTE: during change of centring type region specification of $::asread_variable[$masread]{region} deleted for variable $name\n";
+                $::asread_variable[$masread]{"region"} = '';
               }
             }
-            $asread_variable[$masread]{"centring"} = $centring;
+            $::asread_variable[$masread]{"centring"} = $centring;
           } else {
-            $centring = $asread_variable[$masread]{"centring"};
+            $centring = $::asread_variable[$masread]{"centring"};
           }
-          $asread_variable[$masread]{"comments"}=$asread_variable[$masread]{"comments"}." ".$comments;
-          $asread_variable[$masread]{"filename"}=$asread_variable[$masread]{"filename"}." ".$file;
-          $asread_variable[$masread]{"absfilename"}=$asread_variable[$masread]{"absfilename"}." ".$code_blocks[$#code_blocks]{"abs_name"};
+          $::asread_variable[$masread]{"comments"}=$::asread_variable[$masread]{"comments"}." ".$comments;
+          $::asread_variable[$masread]{"filename"}=$::asread_variable[$masread]{"filename"}." ".$file;
+          $::asread_variable[$masread]{"absfilename"}=$::asread_variable[$masread]{"absfilename"}." ".$code_blocks[$#code_blocks]{"abs_name"};
         } else {
           print "INFO: a primary definition statement for variable $name has been found in file = $file\n";
-          print DEBUG "INFO: a primary definition statement for variable $name has been found based on:\nfile = $file: line = $oline\n";
+          print ::DEBUG "INFO: a primary definition statement for variable $name has been found based on:\nfile = $file: line = $oline\n";
 # otherwise create a new variable
-          $masread=$#asread_variable+1;
-          print DEBUG "INFO: creating new variable number $masread with name $name based on \n:file = $file: line = $oline\n";
+          $masread=$#::asread_variable+1;
+          print ::DEBUG "INFO: creating new variable number $masread with name $name based on \n:file = $file: line = $oline\n";
 # and set basic info, empty if necessary
-          $asread_variable[$masread]{"name"}=$name;
-          $asread_variable[$masread]{"type"}=$type;
+          $::asread_variable[$masread]{"name"}=$name;
+          $::asread_variable[$masread]{"type"}=$type;
           if (empty($centring)) { $centring = 'none'; } # default centring if not previously set
-          $asread_variable[$masread]{"centring"}=$centring;
-          $asread_variable[$masread]{"rindex"}=examine_name($name,"rindex"); # this is based on name so doesn't change with repeat definitions
-          $asread_variable[$masread]{"comments"}=$comments;
-          $asread_variable[$masread]{"region"}='';
-          foreach $repeats (keys(%statement_repeats)) {
-            $asread_variable[$masread]{$repeats}=0;
+          $::asread_variable[$masread]{"centring"}=$centring;
+          $::asread_variable[$masread]{"rindex"}=examine_name($name,"rindex"); # this is based on name so doesn't change with repeat definitions
+          $::asread_variable[$masread]{"comments"}=$comments;
+          $::asread_variable[$masread]{"region"}='';
+          foreach $repeats (keys(%::statement_repeats)) {
+            $::asread_variable[$masread]{$repeats}=0;
           }
-          $asread_variable[$masread]{"options"} = '';
-          $asread_variable[$masread]{"filename"}=$file;
-          $asread_variable[$masread]{"absfilename"}=$code_blocks[$#code_blocks]{"abs_name"};
+          $::asread_variable[$masread]{"options"} = '';
+          $::asread_variable[$masread]{"filename"}=$file;
+          $::asread_variable[$masread]{"absfilename"}=$code_blocks[$#code_blocks]{"abs_name"};
         }
 
 # units and multiplier (optional)
@@ -629,42 +661,46 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
           if ($cunits =~ /\*/) { ($multiplier,$units) = $cunits =~ /(.*?)\*(.*)/; }
           else { $multiplier=""; $units=$cunits;}
           $multiplier =~ s/e|E|D/d/; # convert single and floats to double precision, regardless of case
-          if (nonempty($units)) { $asread_variable[$masread]{"units"}=$units; }
-          if (nonempty($multiplier)) { $asread_variable[$masread]{"multiplier"}=$multiplier; }
+          if (nonempty($units)) { $::asread_variable[$masread]{"units"}=$units; }
+          if (nonempty($multiplier)) { $::asread_variable[$masread]{"multiplier"}=$multiplier; }
         }
-        if (!($asread_variable[$masread]{"units"})) { $asread_variable[$masread]{"units"} = "1"; }
-        if (!($asread_variable[$masread]{"multiplier"})) { $asread_variable[$masread]{"multiplier"} = "1.d0"; }
+        if (!($::asread_variable[$masread]{"units"})) { $::asread_variable[$masread]{"units"} = "1"; }
+        if (!($::asread_variable[$masread]{"multiplier"})) { $::asread_variable[$masread]{"multiplier"} = "1.d0"; }
 
+# if type is a transient or newtient make sure that the simulation type is consistent
+        if ($type eq "transient") { set_transient_simulation(1); }
+        if ($type eq "newtient") { $::newtient_simulation = 1; }
+        
 # equations or numerical constants
 # look for either a single (CONSTANT) or list (REGION_CONSTANT) of numbers, or otherwise an expression for this variable
 # first delete any orphaned initial_equations or constant_lists
-        if (!($type eq "transient" || $type eq "newtient") && nonempty($asread_variable[$masread]{"initial_equation"})) {
+        if (!($type eq "transient" || $type eq "newtient") && nonempty($::asread_variable[$masread]{"initial_equation"})) {
           print "NOTE: deleting initial equation for $type variable $name that must have been left over from a previous definition\n";
-          print DEBUG "NOTE: deleting initial equation for $type variable $name that must have been left over from a previous definition\n";
-          delete $asread_variable[$masread]{"initial_equation"};
+          print ::DEBUG "NOTE: deleting initial equation for $type variable $name that must have been left over from a previous definition\n";
+          delete $::asread_variable[$masread]{"initial_equation"};
         }
-        if ($type ne "constant" && nonempty($asread_variable[$masread]{"constant_list"})) {
+        if ($type ne "constant" && nonempty($::asread_variable[$masread]{"constant_list"})) {
           print "NOTE: deleting constant list (numerical value) for $type variable $name that must have been left over from a previous constant definition\n";
-          print DEBUG "NOTE: deleting constant list (numerical value) for $type variable $name that must have been left over from a previous constant definition\n";
-          delete $asread_variable[$masread]{"region_list"};
-          delete $asread_variable[$masread]{"constant_list"};
+          print ::DEBUG "NOTE: deleting constant list (numerical value) for $type variable $name that must have been left over from a previous constant definition\n";
+          delete $::asread_variable[$masread]{"region_list"};
+          delete $::asread_variable[$masread]{"constant_list"};
         }
 # look for numerical constants which must start with either +-. or a digit
         if ( $type eq "constant" && $line =~ /^\s*[\+\-\d\.]/ ) { # to use a numerical constant value the type must be known at read-in time
-          print DEBUG "INFO: assuming a numerical constant is entered in the following:\nfile = $file: line = $oline\n";
-          if (nonempty($asread_variable[$masread]{"equation"}) || nonempty($asread_variable[$masread]{"initial_equation"})) {
+          print ::DEBUG "INFO: assuming a numerical constant is entered in the following:\nfile = $file: line = $oline\n";
+          if (nonempty($::asread_variable[$masread]{"equation"}) || nonempty($::asread_variable[$masread]{"initial_equation"})) {
             print "NOTE: resetting CONSTANT $name from an equation form to a numerical form\n";
-            delete $asread_variable[$masread]{"equation"}; # preference is to delete these key/values as they then won't be included in %variable (for restart purposes)
-            delete $asread_variable[$masread]{"initial_equation"};
+            delete $::asread_variable[$masread]{"equation"}; # preference is to delete these key/values as they then won't be included in %variable (for restart purposes)
+            delete $::asread_variable[$masread]{"initial_equation"};
           }
           my $n = 1;
-          delete $asread_variable[$masread]{"region_list"};
-          delete $asread_variable[$masread]{"constant_list"};
+          delete $::asread_variable[$masread]{"region_list"};
+          delete $::asread_variable[$masread]{"constant_list"};
           if ($region_constant) {
             if (empty($region_list{"regions"})) { error_stop("a $centring REGION_CONSTANT appears before a REGION_LIST has been defined:\nfile = $file: line = $oline");}
             if ($centring eq "none") { error_stop("attempting to set a none centred constant $name using a REGION_CONSTANT statement: use a NONE_CONSTANT statement instead:\nfile = $file: line = $oline");}
             if (nonempty($region_list{"centring"}) && $region_list{"centring"} ne $centring) { error_stop("the $centring centring of a REGION_CONSTANT is not consistent with the $region_list{centring} centring of the preceeding REGION_LIST:\nfile = $file: line = $oline");}
-            @{$asread_variable[$masread]{"region_list"}} = @{$region_list{"regions"}}; # set region_list to that of most recent REGION_LIST
+            @{$::asread_variable[$masread]{"region_list"}} = @{$region_list{"regions"}}; # set region_list to that of most recent REGION_LIST
             $n = scalar(@{$region_list{"regions"}}); # returning the number of elements in this array
           }
           while ($line =~ /^\s*([\+\-\d\.][\+\-\ded\.]*)(\s+|$)/i) { # numbers must start with either +-. or a digit, so options cannot start with any of these
@@ -674,20 +710,20 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
             $match =~ s/e/d/;
             if ($match !~ /d/) { $match = $match."d0"; }
             if ($match !~ /\./) { $match =~ s/d/.d/; }
-            push(@{$asread_variable[$masread]{"constant_list"}},$match); # assemble list of numerical constants
+            push(@{$::asread_variable[$masread]{"constant_list"}},$match); # assemble list of numerical constants
           }
-          if (empty($asread_variable[$masread]{"constant_list"})) { error_stop("no numerial constants were read in from the following line, indicating some type of syntax error:\nfile = $file: line = $oline"); };
-          print DEBUG "INFO: found the following constant_list for $name: @{$asread_variable[$masread]{constant_list}}\n";
-          if ($region_constant) { print DEBUG "INFO: found the following region_list for $name: @{$asread_variable[$masread]{region_list}}\n"; }
-          if ($n ne @{$asread_variable[$masread]{"constant_list"}} ) {
+          if (empty($::asread_variable[$masread]{"constant_list"})) { error_stop("no numerial constants were read in from the following line, indicating some type of syntax error:\nfile = $file: line = $oline"); };
+          print ::DEBUG "INFO: found the following constant_list for $name: @{$::asread_variable[$masread]{constant_list}}\n";
+          if ($region_constant) { print ::DEBUG "INFO: found the following region_list for $name: @{$::asread_variable[$masread]{region_list}}\n"; }
+          if ($n ne @{$::asread_variable[$masread]{"constant_list"}} ) {
             if ($region_constant) {
-              error_stop("the following REGION_CONSTANT line has ".scalar(@{$asread_variable[$masread]{constant_list}})." numerical entries, whereas the preceeding REGION_LIST has $n entries - these should match:\nfile = $file: line = $oline");
+              error_stop("the following REGION_CONSTANT line has ".scalar(@{$::asread_variable[$masread]{constant_list}})." numerical entries, whereas the preceeding REGION_LIST has $n entries - these should match:\nfile = $file: line = $oline");
             } else { error_stop("a single numerical constant could not be read from the following CONSTANT line:\nfile = $file: line = $oline"); }
           }
         } elsif ( $line =~ /^\s*["']/ ) {
-          print DEBUG "INFO: assuming an expression (rather than a numerical constant) is entered in the following:\nfile = $file: line = $oline\n";
-          delete $asread_variable[$masread]{"region_list"};
-          delete $asread_variable[$masread]{"constant_list"};
+          print ::DEBUG "INFO: assuming an expression (rather than a numerical constant) is entered in the following:\nfile = $file: line = $oline\n";
+          delete $::asread_variable[$masread]{"region_list"};
+          delete $::asread_variable[$masread]{"constant_list"};
 # read in expressions, noting that only if the expression is nonempty do we overide previously stored expression
 # this allows initial_equation to be reset independently of the equation for transient/newtient variables
           $tmp1 = extract_first($line,$error);
@@ -698,21 +734,21 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
 # if we are here then tmp1 corresponds to the initial_equation, and tmp2 to the equation
 # Note that later when these equations are processed (in organise_user_variables), empty and undef now have different meanings
 # depending on variable type and r index, empty ("") now means to repeat the full equation, whereas undef means to give it a value of zero
-            my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"initial_equation"})) { $previous_equation = $asread_variable[$masread]{"initial_equation"}; }
-            $asread_variable[$masread]{"initial_equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$previous_equation,$oline,$asread_variable[$masread]{"selfreferences"});
-            print DEBUG "INFO: setting the $type $name initial_equation to $asread_variable[$masread]{initial_equation} based on:\nfile = $file: line = $oline\n";
+            my $previous_equation = ""; if (nonempty($::asread_variable[$masread]{"initial_equation"})) { $previous_equation = $::asread_variable[$masread]{"initial_equation"}; }
+            $::asread_variable[$masread]{"initial_equation"} = expand_equation($tmp1,$::asread_variable[$masread]{"name"},$previous_equation,$oline,$::asread_variable[$masread]{"selfreferences"});
+            print ::DEBUG "INFO: setting the $type $name initial_equation to $::asread_variable[$masread]{initial_equation} based on:\nfile = $file: line = $oline\n";
 # incase we need to only set the initial_equation of a variable, keeping the previous equation value, only set equation if it is actually nonempty (ie, not "")
             if (nonempty($tmp2)) {
-              my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"equation"})) { $previous_equation = $asread_variable[$masread]{"equation"}; }
-              $asread_variable[$masread]{"equation"} = expand_equation($tmp2,$asread_variable[$masread]{"name"},$previous_equation,$oline,$asread_variable[$masread]{"selfreferences"});
-              print DEBUG "INFO: setting the $type $name equation to $asread_variable[$masread]{equation} based on:\nfile = $file: line = $oline\n";
+              my $previous_equation = ""; if (nonempty($::asread_variable[$masread]{"equation"})) { $previous_equation = $::asread_variable[$masread]{"equation"}; }
+              $::asread_variable[$masread]{"equation"} = expand_equation($tmp2,$::asread_variable[$masread]{"name"},$previous_equation,$oline,$::asread_variable[$masread]{"selfreferences"});
+              print ::DEBUG "INFO: setting the $type $name equation to $::asread_variable[$masread]{equation} based on:\nfile = $file: line = $oline\n";
             }
           } else {
 # if we are here then tmp1 corresponds to the equation
 # save previous equation for possible selfreference replacement, passing an empty string if it hasn't been previously defined
-            my $previous_equation = ""; if (nonempty($asread_variable[$masread]{"equation"})) { $previous_equation = $asread_variable[$masread]{"equation"}; }
-            $asread_variable[$masread]{"equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$previous_equation,$oline,$asread_variable[$masread]{"selfreferences"});
-            print DEBUG "INFO: setting the $type $name equation to $asread_variable[$masread]{equation} based on:\nfile = $file: line = $oline\n";
+            my $previous_equation = ""; if (nonempty($::asread_variable[$masread]{"equation"})) { $previous_equation = $::asread_variable[$masread]{"equation"}; }
+            $::asread_variable[$masread]{"equation"} = expand_equation($tmp1,$::asread_variable[$masread]{"name"},$previous_equation,$oline,$::asread_variable[$masread]{"selfreferences"});
+            print ::DEBUG "INFO: setting the $type $name equation to $::asread_variable[$masread]{equation} based on:\nfile = $file: line = $oline\n";
           }
 # check/set defaults for these later, after all variable definitions have been read in
         }
@@ -720,26 +756,26 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
 # region
         if ( $line =~ /^\s*ON(\s*)(<.+?>)\s*/i ) {
           if ($2 eq "<none>" ) { # the '<none>' region cancels the previously defined region
-            $asread_variable[$masread]{"region"} = '';
+            $::asread_variable[$masread]{"region"} = '';
           } else {
-            $asread_variable[$masread]{"region"} = examine_name($2,'regionname');
+            $::asread_variable[$masread]{"region"} = examine_name($2,'regionname');
           }
           $line = $';
         }
 
-# store raw options in the asread_variable array now
+# store raw options in the ::asread_variable array now
 # variable and compound option lists will be assembled later
         $line =~ s/^\s*//; # remove any leading space from the line
         if (nonempty($line) || nonempty($default_options) || nonempty($override_options)) {
           $line = $default_options.','.$line.','.$override_options;
           $line =~ s/(^\,+\s*)|(\s*\,+$)//;
           $line =~ s/\s*\,+\s*/,/g;
-          if (empty($asread_variable[$masread]{"options"})) {
-            $asread_variable[$masread]{"options"} = $line;
+          if (empty($::asread_variable[$masread]{"options"})) {
+            $::asread_variable[$masread]{"options"} = $line;
           } else {
-            $asread_variable[$masread]{"options"} = $asread_variable[$masread]{"options"}.",".$line;
+            $::asread_variable[$masread]{"options"} = $::asread_variable[$masread]{"options"}.",".$line;
           }
-          print DEBUG "INFO: adding options $line to: name = $name: masread = $masread: options = $asread_variable[$masread]{options}\n";
+          print ::DEBUG "INFO: adding options $line to: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
 # now clean up by removing any leading, repeated or trailing commas
           $line = ''; # nothing is now left in the line
         }
@@ -760,19 +796,19 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
 # grab region name
         if ($line =~ /^\s*(<.+?>)($|\s)/) { $name = $1; $line = $'; }
         else { error_stop("problem reading in the region name from the following line:\nfile = $file: line = $oline");}
-        print DEBUG "INFO: found user region in input file: name = $name: centring = $centring: type = $type\n";
+        print ::DEBUG "INFO: found user region in input file: name = $name: centring = $centring: type = $type\n";
         $name = examine_name($name,"regionname");
-        print DEBUG "  coverting user defined name to consistent name = $name\n";
+        print ::DEBUG "  coverting user defined name to consistent name = $name\n";
 
 # see if this name has already been defined, and if so, find its index
         $masread = find_region($name);
-        if ($masread >= 0 && ( $region[$masread]{"type"} eq "system" || $region[$masread]{"type"} eq "internal" ) ) {
+        if ($masread >= 0 && ( $::region[$masread]{"type"} eq "system" || $::region[$masread]{"type"} eq "internal" ) ) {
           error_stop("an attempt is being made to define a region which has a name ($name) that is reserved for system or internal region, in the following:\nfile = $file: line = $oline");
         }
 
 #       $masread = -1; # variable masread starts at 0 if any variables are defined
 #       foreach $mcheck ( 0 .. $#region ) {
-#         if ($region[$mcheck]{"name"} eq $name) { # region has been previously defined, and position in file is based on first definition
+#         if ($::region[$mcheck]{"name"} eq $name) { # region has been previously defined, and position in file is based on first definition
 #           $masread = $mcheck;
 #           last;
 #         }
@@ -782,85 +818,85 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
         if ($line =~ /^(\s*)CANCEL(\s|$)/) {
           if ($masread >= 0) {
             print "INFO: cancelling region $name\n";
-            print DEBUG "INFO: cancelling region $name\n";
-            splice(@region, $masread, 1)
+            print ::DEBUG "INFO: cancelling region $name\n";
+            splice(@::region, $masread, 1)
           } else {
             print "WARNING: attempting to cancel region $name that hasn't been defined yet - CANCEL ignored\n";
-            print DEBUG "WARNING: attempting to cancel region $name that hasn't been defined yet - CANCEL ignored\n";
+            print ::DEBUG "WARNING: attempting to cancel region $name that hasn't been defined yet - CANCEL ignored\n";
           }
           next;
         }
 
 # now create or update region type and centring
         if ($masread >= 0) {
-          $region[$masread]{"redefinitions"}++; 
-          print "INFO: a secondary definition statement (number $region[$masread]{definitions}) for region $name has been found in file = $file\n";
-          print DEBUG "INFO: a secondary definition statement (number $region[$masread]{definitions}) for region $name has been found based on:\nfile = $file: line = $oline\n";
+          $::region[$masread]{"redefinitions"}++; 
+          print "INFO: a secondary definition statement (number $::region[$masread]{definitions}) for region $name has been found in file = $file\n";
+          print ::DEBUG "INFO: a secondary definition statement (number $::region[$masread]{definitions}) for region $name has been found based on:\nfile = $file: line = $oline\n";
 # a variable has been identified, now check whether the centring has changed
           if (nonempty($centring)) {
-            if ($centring ne $region[$masread]{"centring"} && nonempty($region[$masread]{"centring"})) {
-              print "NOTE: changing the centring of region $name from $region[$masread]{centring} to $centring\n";
-              print DEBUG "NOTE: changing the centring of region $name from $region[$masread]{centring} to $centring based on \nfile = $file: line = $oline\n";
+            if ($centring ne $::region[$masread]{"centring"} && nonempty($::region[$masread]{"centring"})) {
+              print "NOTE: changing the centring of region $name from $::region[$masread]{centring} to $centring\n";
+              print ::DEBUG "NOTE: changing the centring of region $name from $::region[$masread]{centring} to $centring based on \nfile = $file: line = $oline\n";
             }
-            $region[$masread]{"centring"} = $centring;
+            $::region[$masread]{"centring"} = $centring;
           } else {
-            $centring = $region[$masread]{"centring"};
+            $centring = $::region[$masread]{"centring"};
           }
 # same with type
           if (nonempty($type)) {
-            if ($type ne $region[$masread]{"type"} && nonempty($region[$masread]{"type"})) {
-              print "NOTE: changing the type of region $name from $region[$masread]{type} to $type\n";
-              print DEBUG "NOTE: changing the type of region $name from $region[$masread]{type} to $type based on \nfile = $file: line = $oline\n";
+            if ($type ne $::region[$masread]{"type"} && nonempty($::region[$masread]{"type"})) {
+              print "NOTE: changing the type of region $name from $::region[$masread]{type} to $type\n";
+              print ::DEBUG "NOTE: changing the type of region $name from $::region[$masread]{type} to $type based on \nfile = $file: line = $oline\n";
             }
-            $region[$masread]{"type"} = $type;
+            $::region[$masread]{"type"} = $type;
           } else {
-            $type = $region[$masread]{"type"};
+            $type = $::region[$masread]{"type"};
           }
-          $region[$masread]{"comments"}=$region[$masread]{"comments"}." ".$comments;
-          $region[$masread]{"filename"}=$region[$masread]{"filename"}." ".$file;
-          $region[$masread]{"absfilename"}=$region[$masread]{"absfilename"}." ".$code_blocks[$#code_blocks]{"abs_name"};
+          $::region[$masread]{"comments"}=$::region[$masread]{"comments"}." ".$comments;
+          $::region[$masread]{"filename"}=$::region[$masread]{"filename"}." ".$file;
+          $::region[$masread]{"absfilename"}=$::region[$masread]{"absfilename"}." ".$code_blocks[$#code_blocks]{"abs_name"};
         } else {
           print "INFO: a primary definition statement for region $name has been found in file = $file\n";
-          print DEBUG "INFO: a primary definition statement for region $name has been found based on:\nfile = $file: line = $oline\n";
+          print ::DEBUG "INFO: a primary definition statement for region $name has been found based on:\nfile = $file: line = $oline\n";
 # otherwise create a new region
-          $masread=$#region+1;
-          print DEBUG "INFO: creating new region number $masread with name $name based on \n:file = $file: line = $oline\n";
+          $masread=$#::region+1;
+          print ::DEBUG "INFO: creating new region number $masread with name $name based on \n:file = $file: line = $oline\n";
 # and set basic info, empty if necessary
-          $region[$masread]{"name"}=$name;
-          $region[$masread]{"centring"}=$centring; # maybe blank
-          $region[$masread]{"type"}=$type; # maybe blank
-          $region[$masread]{"comments"}=$comments;
-          $region[$masread]{"redefinitions"}=0;
-          $region[$masread]{"part_of"}='';
-          $region[$masread]{"options"}='';
-          $region[$masread]{"location"}{"description"}='';
-          $region[$masread]{"initial_location"}{"description"}='';
-          $region[$masread]{"last_variable_masread"}=$#asread_variable; # this determines when a region will be evaluated, for dynamic regions - it will be -1 if no variables are defined yet
-          $region[$masread]{"filename"}=$file;
-          $region[$masread]{"absfilename"}=$code_blocks[$#code_blocks]{"abs_name"};
+          $::region[$masread]{"name"}=$name;
+          $::region[$masread]{"centring"}=$centring; # maybe blank
+          $::region[$masread]{"type"}=$type; # maybe blank
+          $::region[$masread]{"comments"}=$comments;
+          $::region[$masread]{"redefinitions"}=0;
+          $::region[$masread]{"part_of"}='';
+          $::region[$masread]{"options"}='';
+          $::region[$masread]{"location"}{"description"}='';
+          $::region[$masread]{"initial_location"}{"description"}='';
+          $::region[$masread]{"last_variable_masread"}=$#::asread_variable; # this determines when a region will be evaluated, for dynamic regions - it will be -1 if no variables are defined yet
+          $::region[$masread]{"filename"}=$file;
+          $::region[$masread]{"absfilename"}=$code_blocks[$#code_blocks]{"abs_name"};
         }
 
 # extract the location string, and if two are present, also an initial_location string (to be used for transient and newtient dynamic regions)
         if ( $line =~ /^\s*["']/ ) {
           $tmp1 = extract_first($line,$error);
           if ($error) { error_stop("some type of syntax problem with a location string in the following region definition:\nfile = $file: line = $oline"); }
-          if (nonempty($region[$masread]{"location"}{"description"})) {
+          if (nonempty($::region[$masread]{"location"}{"description"})) {
             print "NOTE: changing the location of region $name\n";
-            print DEBUG "NOTE: changing the location of region $name\n";
+            print ::DEBUG "NOTE: changing the location of region $name\n";
           }
           if ( $line =~ /^\s*["']/ ) {
             $tmp2 = extract_first($line,$error);
             if ($error) { error_stop("some type of syntax problem with a location string in the following region definition:\nfile = $file: line = $oline"); }
-            if (nonempty($region[$masread]{"initial_location"}{"description"})) {
+            if (nonempty($::region[$masread]{"initial_location"}{"description"})) {
               print "NOTE: changing the initial_location of region $name\n";
-              print DEBUG "NOTE: changing the initial_location of region $name\n";
+              print ::DEBUG "NOTE: changing the initial_location of region $name\n";
             }
-            $region[$masread]{"location"}{"description"} = $tmp2;
-            $region[$masread]{"initial_location"}{"description"} = $tmp1;
-            print DEBUG "INFO: extracting region $name location and initial_location string from the following:\nfile = $file: line = $oline\n";
+            $::region[$masread]{"location"}{"description"} = $tmp2;
+            $::region[$masread]{"initial_location"}{"description"} = $tmp1;
+            print ::DEBUG "INFO: extracting region $name location and initial_location string from the following:\nfile = $file: line = $oline\n";
           } else {
-            $region[$masread]{"location"}{"description"} = $tmp1;
-            print DEBUG "INFO: extracting region $name location string from the following:\nfile = $file: line = $oline\n";
+            $::region[$masread]{"location"}{"description"} = $tmp1;
+            print ::DEBUG "INFO: extracting region $name location string from the following:\nfile = $file: line = $oline\n";
           }
         }
 
@@ -869,32 +905,32 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
           $line = $`.$';
           if ($2) {
             $tmp = examine_name($2,'regionname'); # standardise name here
-            if (nonempty($region[$masread]{"part_of"})) {
+            if (nonempty($::region[$masread]{"part_of"})) {
               print "NOTE: changing the ON region for region $name to $tmp\n";
-              print DEBUG "NOTE: changing the ON region for region $name to $tmp\n";
+              print ::DEBUG "NOTE: changing the ON region for region $name to $tmp\n";
             }
-            $region[$masread]{"part_of"} = $tmp;
-            print DEBUG "INFO: found ON region $tmp for region $name\n";
+            $::region[$masread]{"part_of"} = $tmp;
+            print ::DEBUG "INFO: found ON region $tmp for region $name\n";
           }
-          else { $region[$masread]{"part_of"} = ''; print DEBUG "INFO: cancelling any possible ON region for region $name\n"; }
+          else { $::region[$masread]{"part_of"} = ''; print ::DEBUG "INFO: cancelling any possible ON region for region $name\n"; }
         }
           
 # region options
         $line =~ s/^\s*//; # remove any leading space from the line
         if (nonempty($line)) {
-          $region[$masread]{"options"} = $region[$masread]{"options"}.",".$line;
-          $region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
-          $region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
-          print DEBUG "INFO: adding options to: region = $region[$masread]{name}: masread = $masread: options = $region[$masread]{options}\n";
+          $::region[$masread]{"options"} = $::region[$masread]{"options"}.",".$line;
+          $::region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
+          $::region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
+          print ::DEBUG "INFO: adding options to: region = $::region[$masread]{name}: masread = $masread: options = $::region[$masread]{options}\n";
           $line = ''; # nothing is now left in the line
         }
 
-        print "INFO: region statement has been read: name = $name: number = $masread: centring = $region[$masread]{centring}: ".
-          "type = $region[$masread]{type}: location = $region[$masread]{location}{description}: ".
-          "initial_location = $region[$masread]{initial_location}{description}: part_of = $region[$masread]{part_of}\n"; 
-        print DEBUG "INFO: region statement has been read: name = $name: number = $masread: centring = $region[$masread]{centring}: ".
-          "type = $region[$masread]{type}: location = $region[$masread]{location}{description}: ".
-          "initial_location = $region[$masread]{initial_location}{description}: part_of = $region[$masread]{part_of}\n"; 
+        print "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".
+          "type = $::region[$masread]{type}: location = $::region[$masread]{location}{description}: ".
+          "initial_location = $::region[$masread]{initial_location}{description}: part_of = $::region[$masread]{part_of}\n"; 
+        print ::DEBUG "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".
+          "type = $::region[$masread]{type}: location = $::region[$masread]{location}{description}: ".
+          "initial_location = $::region[$masread]{initial_location}{description}: part_of = $::region[$masread]{part_of}\n"; 
 
         next;
 
@@ -912,14 +948,116 @@ $code_blocks[0]{"buffer"} = ""; # current buffer containing block as it is read 
   } # end of loop for all input files
 
   close(UNWRAPPED_INPUT);
+  close(SYNTAX);
 
 # dump all of the simulation info into the fortran file, and output to the screen and debug
-  $sub_string{"simulation_info"} = '';
-  foreach $key ( keys(%simulation_info)) {
-    print DEBUG "SIMULATION INFO: "."\U$key"." = $simulation_info{$key}\n";
-    if ($key ne "description") { print "SIMULATION INFO: "."\U$key"." = $simulation_info{$key}\n"; }
-    print FORTRAN_INPUT "INFO_\U$key"." \"$simulation_info{$key}\"\n"; # also tell the fortran program about this
-    $sub_string{"simulation_info"} = $sub_string{"simulation_info"}."! SIMULATION INFO: "."\U$key"." = $simulation_info{$key}\n"; # and write the same to equation_module.f90
+  $::sub_string{"simulation_info"} = '';
+  foreach $key ( keys(%::simulation_info)) {
+    print ::DEBUG "SIMULATION INFO: "."\U$key"." = $::simulation_info{$key}\n";
+    if ($key ne "description") { print "SIMULATION INFO: "."\U$key"." = $::simulation_info{$key}\n"; }
+    print ::FORTRAN_INPUT "INFO_\U$key"." \"$::simulation_info{$key}\"\n"; # also tell the fortran program about this
+    $::sub_string{"simulation_info"} = $::sub_string{"simulation_info"}."! SIMULATION INFO: "."\U$key"." = $::simulation_info{$key}\n"; # and write the same to equation_module.f90
   }
 
 }
+#--------------------------------------------------------------
+
+sub setup_general_replacements {
+
+# ref: general replacements
+# setup default general_replacements
+# loose convention is that replacement strings be delimited by <<>>, however any strings can (and will) be matched/replaced
+# convention is that replacement names that end with "comment" are meant to preceed statements in the files, converting them to comments if they are not relevant
+# this string is for batcher integration - if a file is run through batcher, this string will be replaced by an empty string, so can be used to precede arb lines that are specific to the batcher runs
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<batchercomment>>", replace => "#" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<nobatchercomment>>", replace => "" );
+# geometry and equation related
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<dim1comment>>", replace => "" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<dim2comment>>", replace => "" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<dim3comment>>", replace => "" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<steadystatecomment>>", replace => "" ); # default is steady-state
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<transientcomment>>", replace => "#" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<cartesiancomment>>", replace => "" ); # default is cartesian
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<cylindricalcomment>>", replace => "#" );
+# convention is that replacement names that end with "flag" are either on (1) or off (0), so can be used within expressions
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<steadystateflag>>", replace => "1" ); # default is steady-state
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<transientflag>>", replace => "0" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<cartesianflag>>", replace => "1" ); # default is cartesian
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<cylindricalflag>>", replace => "0" );
+# these two should be overwritten by the relevant radius in the input file if using cylindrical coordinates: eg R "<<radius_c>>" W "<cellx[l=1]>" R "<<radius_f>>" W "<facex[l=1]>"
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radius_c>>", replace => "1.d0" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radius_f>>", replace => "1.d0" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radius_n>>", replace => "1.d0" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radiusdim1flag>>", replace => "0" ); # for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radiusdim2flag>>", replace => "0" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radiusdim3flag>>", replace => "0" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<radialdim>>", replace => "0" ); # for 2D cylindrical this is the radial coordinate direction
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<axialdim>>", replace => "0" ); # for 2D cylindrical this is the axial coordinate direction
+# these strings should be overwritten by the normal coordinate directions of any reflection boundaries in the domain: eg R "<<reflect=1>>" W "reflect=1"
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<reflect=1>>", replace => "" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<reflect=2>>", replace => "" );
+  %{$general_replacements[$#general_replacements+1]} = ( search => "<<reflect=3>>", replace => "" );
+
+  print ::DEBUG "INFO: initial general_replacements = ".Dumper(@general_replacements)."\n";
+
+}
+
+#-------------------------------------------------------------------------------
+# search through general_replacements for search string
+
+sub search_general_replacements {
+
+  my $search = $_[0]; # on input, search string
+  my $nfound = -1; # on output returns -1 if not found, or general_replacments index if found
+
+  for my $n ( 0 .. $#general_replacements ) {
+    if ($search eq $general_replacements[$n]{"search"}) { # found existing general replacements
+      $nfound = $n;
+      last;
+    }
+  }
+
+  return $nfound;
+
+}
+#-------------------------------------------------------------------------------
+# based on passed variable, set or unset transient simulation status, including comment strings
+
+sub set_transient_simulation {
+
+  $::transient_simulation = $_[0];
+  for my $n ( 0 .. $#general_replacements ) {
+    if ($general_replacements[$n]{"search"} eq "<<steadystatecomment>>") {
+      if ($::transient_simulation) { $general_replacements[$n]{"replace"} = "#" } else { $general_replacements[$n]{"replace"} = "" }
+    }
+    if ($general_replacements[$n]{"search"} eq "<<transientcomment>>") {
+      if ($::transient_simulation) { $general_replacements[$n]{"replace"} = "" } else { $general_replacements[$n]{"replace"} = "#" }
+    }
+  }
+
+}
+
+#-------------------------------------------------------------------------------
+# report and take action with any syntax problems
+# these are handled a bit differently to normal messages so that user can see what problems there are with their syntax
+# an example for calling this sub
+#        syntax_problem("warning","$deprecatedtype type has been deprecated, use $type instead.\nfile = $file\noriginal line = $oline\ncorrected line = $line");
+
+sub syntax_problem {
+  my $message = $_[0]; # message that goes with this problem
+  my $syntax_action = $_[1]; # could be info, warning or error (which implies a stop and is the default if no syntax_action is given)
+
+  if (!($syntax_action)) { $syntax_action = "error"; } # default is an error, so becomes a drop-in replacement for error_stop subroutine
+  print SYNTAX "\U$syntax_action: "."$message\n";
+  if ($syntax_action eq "error") {
+    error_stop($message) # already writes to output and debug files
+  } else {
+    print "\U$syntax_action: "."$message\n";
+    print ::DEBUG "\U$syntax_action: "."$message\n";
+  }
+    
+}
+
+#-------------------------------------------------------------------------------
+
+1;
