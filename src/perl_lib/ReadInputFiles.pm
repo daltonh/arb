@@ -46,6 +46,7 @@ our @EXPORT  = qw(read_input_files); # list of subroutines and variables that wi
 my @general_replacements = (); # is an array/hash of the replacement strings
 my $filelinelocator; # hold generic locator of current line for message purposes
 my $handle; # holds the current arb input file handle
+my @code_blocks;
 
 #--------------------------------------------------------------
 # parse all *.arb files - this is called from main
@@ -57,7 +58,7 @@ sub read_input_files {
   use Storable qw(dclone);
   use File::Find; # for find
   use File::Spec; # for rel2abs
-  my ($oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar,
+  my ($line, $type, $name, $cunits, $units, $multiplier, $mvar,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
     $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
     $condition, $key, $append, $cancel, $default, $masread, $lineremainder, $repeats, $include_type);
@@ -76,7 +77,6 @@ sub read_input_files {
   open(SYNTAX, ">$::syntax_problems_file"); # this file is specifically for syntax problems in the input files and is written to by sub syntax_problem
 
 # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
-  my @code_blocks;
   $code_blocks[0]{"ref_name"}="root_input.arb";
   $code_blocks[0]{"name"}="$::build_dir/root_input.arb";
   $code_blocks[$#code_blocks]{"abs_name"} = File::Spec->rel2abs($code_blocks[0]{"name"}); # abs_name is always the absolute path to the file
@@ -97,9 +97,14 @@ sub read_input_files {
     my $file = $code_blocks[$#code_blocks]{"ref_name"};
     my $code_type = $code_blocks[$#code_blocks]{"code_type"}; # indicates whether code_block when left is either string or solver
 
-    while ($oline=get_next_code_line) {
-#   while ($oline=<$handle>) {
-      chompm($oline); if ($oline) { $oline=~s/^\s*//; $oline=~s/\s*$// }; # remove linefeed from end and space from the start and end
+    while (get_next_code_line()) { # function sets code_line in the code_blocks hash, and returns true 1 or false 0 depending on whether a code_line was read
+      print ::DEBUG "INFO: just read: filelinelocator = $filelinelocator: comments = $code_blocks[$#code_blocks]{"comments"}\n";
+
+# TODO: debug this dalton
+
+
+      my $oline=$code_blocks[$#code_blocks]{"code_line"};
+      $oline=~s/^\s*//; $oline=~s/\s*$//; # remove linefeed from end and space from the start and end
 
 # now splitting input line at the include/replacements keywords (wherever they are) and only doing replacements before this
       my $lineremainder = '';
@@ -1236,22 +1241,30 @@ sub check_for_arbfile_or_dir {
 }
 
 #-------------------------------------------------------------------------------
-# grab the next code line from the current file, which may be empty if the line in the file is empty
+# grab the next code line from the current file
+# line may be empty if the line in the file is empty
+# removes comments for the line, dumping them in current code_blocks comments hash
+# also sets $filelinelocator
 sub get_next_code_line {
 
-  my $code_line = '';
   my $code_line_complete = 0;
+  $code_blocks[$#code_blocks]{"code_line"} = ''; # reset the code_line string, which will be assembled here
   $code_blocks[$#code_blocks]{"comments"} = ''; # reset the comment string, which will also be assembled here
 
 # keep reading from file until a code line is complete and ready for parsing
   while (!($code_line_complete)) {
 
-    if (empty($code_blocks[$#code_blocks]{"buffer"})) {
+#   while (empty($code_blocks[$#code_blocks]{"buffer"})) {
 # keep adding to buffer while there is still lines in the file to read
-      $code_blocks[$#code_blocks]{"buffer"}=<$code_blocks[$#code_blocks]{"handle"}> or do { $code_line_complete = 1; exit; }
+#     $code_blocks[$#code_blocks]{"buffer"}=<$code_blocks[$#code_blocks]{"handle"}> or do { $code_line_complete = 1; exit; }
 # remove carriage-returns if they are there (dos), leaving newline characters there (\n) on both unix/dos
-      $code_blocks[$#code_blocks]{"buffer"}=~s/\r//g;
+#     $code_blocks[$#code_blocks]{"buffer"}=~s/\r//g;
+#   }
+
+    while ($code_blocks[$#code_blocks]{"buffer"}=<$code_blocks[$#code_blocks]{"handle"}>) {
+      if (nonempty($code_blocks[$#code_blocks]{"buffer"})) { exit; }
     }
+    if (empty($code_blocks[$#code_blocks]{"buffer"})) { exit; }
 
     if ($code_blocks[$#code_blocks]{"buffer"}=~/^(&|)\s*((#.*)|)\n$/) { # even after a continuation symbol we need to concatenate the comment string
       $code_blocks[$#code_blocks]{"buffer"} = '';
@@ -1264,58 +1277,19 @@ sub get_next_code_line {
         $code_blocks[$#code_blocks]{"code_type"} eq "solver" && $code_blocks[$#code_blocks]{"buffer"}=~/^<.*?>*/ || # look around arb variables
         $code_blocks[$#code_blocks]{"code_type"} eq "solver" && $code_blocks[$#code_blocks]{"buffer"}=~/^\[.*?\]*/ || # look around units
         $code_blocks[$#code_blocks]{"buffer"}=~/^(["']).*?$1/ || # look around delimited strings
-        $code_blocks[$#code_blocks]{"buffer"}=~/^\S+*/) { # look to end of next string
+        $code_blocks[$#code_blocks]{"buffer"}=~/^\S+?/) { # look to end of next string
       $code_blocks[$#code_blocks]{"buffer"} = $';
-      $code_line += $&; # add last match to code_line
+      $code_blocks[$#code_blocks]{"code_line"} += $&; # add last match to code_line
     }
-  
-
-
-) {
-    } elsif ($code_blocks[$#code_blocks]{"code_type"} eq "solver" && $code_blocks[$#code_blocks]{"buffer"}=~/^<.*?>\s*/) {
-      $code_blocks[$#code_blocks]{"buffer"} = $';
-      $code_line = $code_line.$&;
-    } elsif ($code_blocks[$#code_blocks]{"code_type"} eq "solver" && $code_blocks[$#code_blocks]{"buffer"}=~/^\[/) {
-      $code_blocks[$#code_blocks]{"buffer"} =~ /^\[.*?\]\s*/;
-      $code_blocks[$#code_blocks]{"buffer"} = $';
-      $code_line = $code_line.$&;
-    } elsif ($code_blocks[$#code_blocks]{"buffer"}=~/^(["'])/) {
-      my $delimiter = $1;
-      $code_blocks[$#code_blocks]{"buffer"} =~ /^\[.*?\]\s*/;
-      $code_blocks[$#code_blocks]{"buffer"} = $';
-      $code_line = $code_line.$&;
-    } elsif ($code_blocks[$#code_blocks]{"buffer"}=~/^(["'])/) { # look for a delimited string in the string code_type section
-
-# keep reading from file until we have a non-empty buffer to be parsed and added to the code_line
-    while () {
-      if (nonempty($code_blocks[$#code_blocks]{"buffer"}) { exit; }
-    }
-    if (empty($code_blocks[$#code_blocks]{"buffer"})) { exit; } # if the file has finished, this will pick it up
-
-    $code_blocks[$#code_blocks]{"buffer"}=~s/^\s*//; #remove leading space from buffer
-# scan buffer until the following characters are found, with different delimiters based on current code type
-    elsif ($code_blocks[$#code_blocks]{"buffer"} =~ /^/) {
-    }
-
-
 
   }
 
-  return $code_line;
+# for the line locator variable (generally used in error messages) use absolute filename (for info messages generally use ref_name, which does not include path)
+  $filelinelocator = "file = $code_blocks[$#code_blocks]{abs_name}: linenumber = $.: line = \'$code_blocks[$#code_blocks]{code_line}\'";
+
+  return $code_line_complete;
 
 }
-  $handle
+#-------------------------------------------------------------------------------
 
-# create a file locator string that can be used in error messages etc to show where the parser is at, and also includes the original line from the file, only minus start/end space and linefeed character
-#     $filelinelocator = "file = $file: linenumber = $.: line = \'$oline\'";
-# for the line locator variable (generally used in error messages) use absolute filename (for info messages generally use ref_name, which does not include path)
-      $filelinelocator = "file = $code_blocks[$#code_blocks]{abs_name}: linenumber = $.: line = \'$oline\'";
-
-#   while ($oline=get_next_code_line($handle)) {
-    while ($oline=<$handle>) {
-      chompm($oline); if ($oline) { $oline=~s/^\s*//; $oline=~s/\s*$// }; # remove linefeed from end and space from the start and end
-
-  $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a filehandle for the first file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
-  $handle = $code_blocks[$#code_blocks]{"handle"};
-  open($handle, "<$code_blocks[$#code_blocks]{name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
 1;
