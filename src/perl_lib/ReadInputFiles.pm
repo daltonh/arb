@@ -73,9 +73,8 @@ sub read_input_files {
 # make sure that the handle corresponds to the last file on the code_blocks stack
     $handle = $code_blocks[$#code_blocks]{"handle"};
     my $file = $code_blocks[$#code_blocks]{"include_name"};
-    my $code_type = $code_blocks[$#code_blocks]{"code_type"}; # indicates whether code_block when left is either string or solver
 
-    while (1) {
+    while (!($code_blocks[$#code_blocks]{"exit"})) { # when exit becomes true (eg, via an END statement), we exit this loop and code block
 
 # code_line is solver code that ready to be processed
 # has comments attached
@@ -131,7 +130,8 @@ sub read_input_files {
         "  raw_buffer = $code_blocks[$#code_blocks]{raw_buffer}\n".
         "  buffer = $code_blocks[$#code_blocks]{buffer}\n".
         "  code_line = $code_blocks[$#code_blocks]{code_line}\n".
-        "  comments = $code_blocks[$#code_blocks]{comments}\n";
+        "  comments = $code_blocks[$#code_blocks]{comments}\n".
+        "  exit = $code_blocks[$#code_blocks]{exit}\n";
 
     } # end of loop for this input file
 
@@ -377,66 +377,14 @@ sub check_for_arbfile_or_dir {
 }
 
 #-------------------------------------------------------------------------------
-# grab the next code line from the current file
-# line may be empty if the line in the file is empty
-# removes comments for the line, dumping them in current code_blocks comments hash
-# also sets $filelinelocator
-sub get_next_code_line {
-
-  my $code_line_complete = 0;
-  $code_blocks[$#code_blocks]{"code_line"} = ''; # reset the code_line string, which will be assembled here
-  $code_blocks[$#code_blocks]{"comments"} = ''; # reset the comment string, which will also be assembled here
-
-# keep reading from file until a code line is complete and ready for parsing
-  while (!($code_line_complete)) {
-
-#   while (empty($code_blocks[$#code_blocks]{"buffer"})) {
-# keep adding to buffer while there is still lines in the file to read
-#     $code_blocks[$#code_blocks]{"buffer"}=<$code_blocks[$#code_blocks]{"handle"}> or do { $code_line_complete = 1; exit; }
-# remove carriage-returns if they are there (dos), leaving newline characters there (\n) on both unix/dos
-#     $code_blocks[$#code_blocks]{"buffer"}=~s/\r//g;
-#   }
-
-    while ($code_blocks[$#code_blocks]{"buffer"}=<$code_blocks[$#code_blocks]{"handle"}>) {
-      if (nonempty($code_blocks[$#code_blocks]{"buffer"})) { exit; }
-    }
-    if (empty($code_blocks[$#code_blocks]{"buffer"})) { exit; }
-
-    if ($code_blocks[$#code_blocks]{"buffer"}=~/^(&|)\s*((#.*)|)\n$/) { # even after a continuation symbol we need to concatenate the comment string
-      $code_blocks[$#code_blocks]{"buffer"} = '';
-      if (nonempty($3)) { $code_blocks[$#code_blocks]{"comments"} .= $3 ; }
-      if (empty($1)) { $code_line_complete = 1; }
-    } elsif ($code_blocks[$#code_blocks]{"buffer"}=~/^;/) { # terminate code_line on ;
-      $code_blocks[$#code_blocks]{"buffer"} = $';
-      $code_line_complete = 1;
-    } elsif ($code_blocks[$#code_blocks]{"buffer"}=~/^\s*/ || # remove leading space from buffer
-        $code_blocks[$#code_blocks]{"code_type"} eq "solver" && $code_blocks[$#code_blocks]{"buffer"}=~/^<.*?>*/ || # look around arb variables
-        $code_blocks[$#code_blocks]{"code_type"} eq "solver" && $code_blocks[$#code_blocks]{"buffer"}=~/^\[.*?\]*/ || # look around units
-        $code_blocks[$#code_blocks]{"buffer"}=~/^(["']).*?$1/ || # look around delimited strings
-        $code_blocks[$#code_blocks]{"buffer"}=~/^\S+?/) { # look to end of next string
-      $code_blocks[$#code_blocks]{"buffer"} = $';
-      $code_blocks[$#code_blocks]{"code_line"} .= $&; # add last match to code_line
-    }
-
-  }
-
-# for the line locator variable (generally used in error messages) use absolute filename (for info messages generally use include_name, which does not include path)
-  $filelinelocator = "file = $code_blocks[$#code_blocks]{abs_name}: linenumber = $.: line = \'$code_blocks[$#code_blocks]{code_line}\'";
-
-  return $code_line_complete;
-
-}
-#-------------------------------------------------------------------------------
 # subroutine that parses one code_line of solver code
 sub parse_solver_code_line {
 # no inputs and outputs - works on $code_blocks[$#code_blocks]{"code_line"} and associated
 
-  use FileHandle;
   use List::Util qw( min max );
   use Data::Dumper;
   use Storable qw(dclone);
   use File::Find; # for find
-  use File::Spec; # for rel2abs
 
 # my ($name, $cunits, $units, $multiplier, $mvar,
 #   $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
@@ -677,8 +625,7 @@ sub parse_solver_code_line {
 # check for END statement
   } elsif ($line =~ /^END($|\s)/i) {
     print "INFO: found END statement in file = $file\n"; 
-#   pop(@code_blocks); # remove all trace of this code_block
-    die "END not done\n";
+    $code_blocks[$#code_blocks]{"exit"} = 1; # set this marker so that file reader knows to exit immediately
 
 #---------------------
 # ref: deprecated syntax
@@ -1242,52 +1189,75 @@ sub parse_solver_code_line {
 # these next two subroutines utilise legacy coding to rewrite the older string replacement syntax with the new
 sub correct_deprecated_string_replacement_code {
   my $input = $_[0];
+  my $oinput = $input; # save input string for messages
   my $buffer = '';
   my $in_string_code = 0; # 0 means no string code, 1 means the next statement could be string code but the last wasn't, and 2 means the next could be and the last was
   my $file = 'fixme';
   my $oline = 'fixme';
+  my $warn = 0;
 
-  while (nonempty($input)) {
-
-    if ($in_string_code) {
-      my ($search,$replace,$cancel,$default) = extract_deprecated_replacements($input);
-      if ($cancel) { die "cancel not done yet\n"; }
-      if ($default) { die "default not done yet\n"; }
-      if (nonempty($search)) {
-        if ($in_string_code == 1) {
-          $buffer .= '{{ ';
-          $in_string_code = 2;
-        } else { # $in_string_code == 2
-          $buffer .= '; ';
-        }
-        $buffer .= "\'$search\' = \'$replace\' "; # add this found search/replace pair
-      } else {
-        if ($in_string_code == 2) { $buffer .= '}} '; }
-        $in_string_code = 0;
-      }
-
-# this should match any INCLUDE statement that preceeds a deprecated replace/with pair
-    } elsif ($input =~ /(^|\s)(INCLUDE(|_[A-Z]+))\s+\S+\s*/i || # space delimited filename
-        $input =~ /(^|\s)(INCLUDE(|_[A-Z]+))\s*".*?"\s*/i || # " delimited filename
-        $input =~ /(^|\s)(INCLUDE(|_[A-Z]+))\s*'.*?'\s*/i ) { # ' delimited filename
-      $buffer .= $`.$&;
-      $input = $';
-      $in_string_code = 1;
+# look for keywords that could indicate potential string code
+# roughly in line with legacy language, only <<>> delimited replacement strings could appear before these statements
+# this should match any INCLUDE statement that could possibly preceed a deprecated replace/with pair
+  if ($input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s+\S+\s*/i || # space delimited filename
+      $input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s*".*?"\s*/i || # " delimited filename
+      $input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s*'.*?'\s*/i ) { # ' delimited filename
+    print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 1\n";
+    $buffer .= $&;
+    $input = $';
+    $in_string_code = 1;
 
 # this should match any REPLACEMENTS statement that preceeds a deprecated replace/with pair
-    } elsif ($input =~ /(^|\s)((GENERAL_|)REPLACEMENTS)\s*/i ) { # GENERAL_REPLACEMENTS type keywords
-      $buffer .= $`.$1;
-      $input = $';
-      $in_string_code = 1;
-
-    } else {
-      $buffer .= $input;
-      $input = '';
-    }
+  } elsif ($input =~ /^(\s*(<<.*>>|)\s*)((GENERAL_|)REPLACEMENTS)(\s*)/i ) { # GENERAL_REPLACEMENTS type keywords
+    print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 2\n";
+    $buffer .= $1.$5;
+    $input = $';
+    $in_string_code = 1;
 
   }
 
-  $_[0] = $buffer;
+  if ($in_string_code) {
+    while (nonempty($input) || $in_string_code) {
+
+      print ::DEBUG "INFO: in correct_deprecated_string_replacement_code with: input = $input: buffer = $buffer: in_string_code = $in_string_code\n";
+      if ($in_string_code) {
+        print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 3\n";
+        my ($search,$replace,$cancel,$default) = extract_deprecated_replacements($input);
+        if ($cancel) { die "cancel not done yet\n"; }
+        if ($default) { die "default not done yet\n"; }
+        print ::DEBUG "INFO: in correct... search = $search\n";
+        if (nonempty($search)) {
+          print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 3.1\n";
+          if ($in_string_code == 1) {
+            $buffer .= '{{ ';
+            $in_string_code = 2;
+            $warn = 1;
+          } else { # $in_string_code == 2
+            $buffer .= '; ';
+          }
+          $buffer .= "\'$search\' = \'$replace\' "; # add this found search/replace pair
+        } else {
+          print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 3.2\n";
+          if ($in_string_code == 2) { $buffer .= '}} '; }
+          $in_string_code = 0;
+        }
+
+      } else {
+        print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 4\n";
+        $buffer .= $input;
+        $input = '';
+      }
+    }
+
+# tell the user about the change if there was one
+    if ($warn) { syntax_problem("legacy string code has been found and replaced by newer string code at $filelinelocator\n".
+      "  legacy string code = $oinput\n  replaced string code = $buffer","warn"); }
+
+    $_[0] = $buffer;
+  } else {
+    $_[0] = $oinput; # no strings found, line returned as original input
+  }
+
 }
 #-------------------------------------------------------------------------------
 sub extract_deprecated_replacements {
