@@ -686,7 +686,7 @@ sub parse_solver_code_line {
     $line = $';
     while (my $tmp = extract_first($line,$error)) {
 # check that there weren't any errors, and that text was properly quoted
-      if ($error) { error_stop("some type of syntax problem with the EXTERNAL statement.  Should the text be quoted?:\nfile = $file: line = $oline"); }
+      if ($error) { error_stop("some type of syntax problem with the EXTERNAL statement.  Should the text be quoted?: $filelinelocator"); }
       create_external_file($tmp);
     }
 
@@ -1026,37 +1026,38 @@ sub parse_solver_code_line {
         if ($n ne @{$::asread_variable[$masread]{"constant_list"}} ) {
           if ($region_constant) {
             syntax_problem("the following REGION_CONSTANT line has ".scalar(@{$::asread_variable[$masread]{constant_list}})." numerical entries, whereas the preceeding REGION_LIST has $n entries - these should match: $filelinelocator");
-          } else { syntax_problem("a single numerical constant could not be read from the following CONSTANT line:\nfile = $file: line = $oline"); }
+          } else { syntax_problem("a single numerical constant could not be read from the following CONSTANT line: $filelinelocator"); }
         }
       } elsif ( $line =~ /^\s*["']/ ) {
-        print ::DEBUG "INFO: assuming an expression (rather than a numerical constant) is entered in the following:\nfile = $file: line = $oline\n";
+        print ::DEBUG "INFO: assuming an expression (rather than a numerical constant) is entered in the following: $filelinelocator\n";
         delete $::asread_variable[$masread]{"region_list"};
         delete $::asread_variable[$masread]{"constant_list"};
   # read in expressions, noting that only if the expression is nonempty do we overide previously stored expression
   # this allows initial_equation to be reset independently of the equation for transient/newtient variables
-        $tmp1 = extract_first($line,$error);
-        if ($error) { error_stop("some type of syntax problem with the (first) expression in the following $type $name variable definition:\nfile = $file: line = $oline"); }
+        my error;
+        my $tmp1 = extract_first($line,$error);
+        if ($error) { syntax_problem("some type of syntax problem with the (first) expression in the following $type $name variable definition: $filelinelocator"); }
         if (($type eq "transient" || $type eq "newtient") && $line =~ /^\s*["']/) { # to set the intial expression the type must be known at read-in time
-          $tmp2 = extract_first($line,$error);
-          if ($error) { error_stop("some type of syntax problem with the second expression in the following $type $name variable definition:\nfile = $file: line = $oline"); }
+          my $tmp2 = extract_first($line,$error);
+          if ($error) { syntax_problem("some type of syntax problem with the second expression in the following $type $name variable definition: $filelinelocator"); }
   # if we are here then tmp1 corresponds to the initial_equation, and tmp2 to the equation
   # Note that later when these equations are processed (in organise_user_variables), empty and undef now have different meanings
   # depending on variable type and r index, empty ("") now means to repeat the full equation, whereas undef means to give it a value of zero
           my $previous_equation = ""; if (nonempty($::asread_variable[$masread]{"initial_equation"})) { $previous_equation = $::asread_variable[$masread]{"initial_equation"}; }
           $::asread_variable[$masread]{"initial_equation"} = expand_equation($tmp1,$::asread_variable[$masread]{"name"},$previous_equation,$oline,$::asread_variable[$masread]{"selfreferences"});
-          print ::DEBUG "INFO: setting the $type $name initial_equation to $::asread_variable[$masread]{initial_equation} based on:\nfile = $file: line = $oline\n";
+          print ::DEBUG "INFO: setting the $type $name initial_equation to $::asread_variable[$masread]{initial_equation} based on: $filelinelocator\n";
   # incase we need to only set the initial_equation of a variable, keeping the previous equation value, only set equation if it is actually nonempty (ie, not "")
           if (nonempty($tmp2)) {
             my $previous_equation = ""; if (nonempty($::asread_variable[$masread]{"equation"})) { $previous_equation = $::asread_variable[$masread]{"equation"}; }
             $::asread_variable[$masread]{"equation"} = expand_equation($tmp2,$::asread_variable[$masread]{"name"},$previous_equation,$oline,$::asread_variable[$masread]{"selfreferences"});
-            print ::DEBUG "INFO: setting the $type $name equation to $::asread_variable[$masread]{equation} based on:\nfile = $file: line = $oline\n";
+            print ::DEBUG "INFO: setting the $type $name equation to $::asread_variable[$masread]{equation} based on: $filelinelocator\n";
           }
         } else {
   # if we are here then tmp1 corresponds to the equation
   # save previous equation for possible selfreference replacement, passing an empty string if it hasn't been previously defined
           my $previous_equation = ""; if (nonempty($::asread_variable[$masread]{"equation"})) { $previous_equation = $::asread_variable[$masread]{"equation"}; }
           $::asread_variable[$masread]{"equation"} = expand_equation($tmp1,$::asread_variable[$masread]{"name"},$previous_equation,$oline,$::asread_variable[$masread]{"selfreferences"});
-          print ::DEBUG "INFO: setting the $type $name equation to $::asread_variable[$masread]{equation} based on:\nfile = $file: line = $oline\n";
+          print ::DEBUG "INFO: setting the $type $name equation to $::asread_variable[$masread]{equation} based on: $filelinelocator\n";
         }
   # check/set defaults for these later, after all variable definitions have been read in
       }
@@ -1094,25 +1095,26 @@ sub parse_solver_code_line {
 # now processing user regions too, in much the same way as the user variables
 # ref: REGION
 
-  } elsif ( $line =~ /^\s*((FACE|CELL|NODE)_|)((STATIC|SETUP|GMSH|CONSTANT|TRANSIENT|NEWTIENT|DERIVED|EQUATION|OUTPUT|UNKNOWN)_|)REGION($|\s)/i ) {
+  } elsif ( $line =~ /^((FACE|CELL|NODE)_|)((STATIC|SETUP|GMSH|CONSTANT|TRANSIENT|NEWTIENT|DERIVED|EQUATION|OUTPUT|UNKNOWN)_|)REGION($|\s)/i ) {
     $line = $';
-    $centring = ""; # now centring can be grabbed from last definition
+    my $centring = ""; # now centring can be grabbed from last definition
     if ($2) { $centring = "\L$2"; }
-    $type = ""; # as can type
+    my $type = ""; # as can type
     if ($4) { $type = "\L$4";}
     if ($type eq "static") {$type="setup";} # setup is the name used in the fortran and perl to denote a user region that is not dynamic, but for the end user, static is easier to comprehend (for the fortran and perl static means !dynamic, which ewals setup, gmsh and system types)
 
 # grab region name
+    my $name;
     if ($line =~ /^\s*(<.+?>)($|\s)/) { $name = $1; $line = $'; }
-    else { error_stop("problem reading in the region name from the following line:\nfile = $file: line = $oline");}
+    else { syntax_problem("problem reading in the region name from the following line: $filelinelocator");}
     print ::DEBUG "INFO: found user region in input file: name = $name: centring = $centring: type = $type\n";
     $name = examine_name($name,"regionname");
     print ::DEBUG "  coverting user defined name to consistent name = $name\n";
 
 # see if this name has already been defined, and if so, find its index
-    $masread = find_region($name);
+    my $masread = find_region($name);
     if ($masread >= 0 && ( $::region[$masread]{"type"} eq "system" || $::region[$masread]{"type"} eq "internal" ) ) {
-      error_stop("an attempt is being made to define a region which has a name ($name) that is reserved for system or internal region, in the following:\nfile = $file: line = $oline");
+      syntax_problem("an attempt is being made to define a region which has a name ($name) that is reserved for system or internal region, in the following: $filelinelocator");
     }
 
 #       $masread = -1; # variable masread starts at 0 if any variables are defined
@@ -1123,6 +1125,7 @@ sub parse_solver_code_line {
 #         }
 #       }
 
+#-------
 # check for CANCEL keyword
     if ($line =~ /^(\s*)CANCEL(\s|$)/) {
       if ($masread >= 0) {
@@ -1133,120 +1136,121 @@ sub parse_solver_code_line {
         print "WARNING: attempting to cancel region $name that hasn't been defined yet - CANCEL ignored\n";
         print ::DEBUG "WARNING: attempting to cancel region $name that hasn't been defined yet - CANCEL ignored\n";
       }
-      next;
-    }
 
+#-------
 # now create or update region type and centring
-    if ($masread >= 0) {
-      $::region[$masread]{"redefinitions"}++; 
-      print "INFO: a secondary definition statement (number $::region[$masread]{definitions}) for region $name has been found in file = $file\n";
-      print ::DEBUG "INFO: a secondary definition statement (number $::region[$masread]{definitions}) for region $name has been found based on:\nfile = $file: line = $oline\n";
-# a variable has been identified, now check whether the centring has changed
-      if (nonempty($centring)) {
-        if ($centring ne $::region[$masread]{"centring"} && nonempty($::region[$masread]{"centring"})) {
-          print "NOTE: changing the centring of region $name from $::region[$masread]{centring} to $centring\n";
-          print ::DEBUG "NOTE: changing the centring of region $name from $::region[$masread]{centring} to $centring based on \nfile = $file: line = $oline\n";
-        }
-        $::region[$masread]{"centring"} = $centring;
-      } else {
-        $centring = $::region[$masread]{"centring"};
-      }
-# same with type
-      if (nonempty($type)) {
-        if ($type ne $::region[$masread]{"type"} && nonempty($::region[$masread]{"type"})) {
-          print "NOTE: changing the type of region $name from $::region[$masread]{type} to $type\n";
-          print ::DEBUG "NOTE: changing the type of region $name from $::region[$masread]{type} to $type based on \nfile = $file: line = $oline\n";
-        }
-        $::region[$masread]{"type"} = $type;
-      } else {
-        $type = $::region[$masread]{"type"};
-      }
-      $::region[$masread]{"comments"}=$::region[$masread]{"comments"}." ".$comments;
-      $::region[$masread]{"filename"}=$::region[$masread]{"filename"}." ".$file;
-      $::region[$masread]{"absfilename"}=$::region[$masread]{"absfilename"}." ".$code_blocks[$#code_blocks]{"abs_name"};
     } else {
-      print "INFO: a primary definition statement for region $name has been found in file = $file\n";
-      print ::DEBUG "INFO: a primary definition statement for region $name has been found based on:\nfile = $file: line = $oline\n";
-# otherwise create a new region
-      $masread=$#::region+1;
-      print ::DEBUG "INFO: creating new region number $masread with name $name based on \n:file = $file: line = $oline\n";
-# and set basic info, empty if necessary
-      $::region[$masread]{"name"}=$name;
-      $::region[$masread]{"centring"}=$centring; # maybe blank
-      $::region[$masread]{"type"}=$type; # maybe blank
-      $::region[$masread]{"comments"}=$comments;
-      $::region[$masread]{"redefinitions"}=0;
-      $::region[$masread]{"part_of"}='';
-      $::region[$masread]{"options"}='';
-      $::region[$masread]{"location"}{"description"}='';
-      $::region[$masread]{"initial_location"}{"description"}='';
-      $::region[$masread]{"last_variable_masread"}=$#::asread_variable; # this determines when a region will be evaluated, for dynamic regions - it will be -1 if no variables are defined yet
-      $::region[$masread]{"filename"}=$file;
-      $::region[$masread]{"absfilename"}=$code_blocks[$#code_blocks]{"abs_name"};
-    }
-
-# extract the location string, and if two are present, also an initial_location string (to be used for transient and newtient dynamic regions)
-    if ( $line =~ /^\s*["']/ ) {
-      $tmp1 = extract_first($line,$error);
-      if ($error) { error_stop("some type of syntax problem with a location string in the following region definition:\nfile = $file: line = $oline"); }
-      if (nonempty($::region[$masread]{"location"}{"description"})) {
-        print "NOTE: changing the location of region $name\n";
-        print ::DEBUG "NOTE: changing the location of region $name\n";
-      }
-      if ( $line =~ /^\s*["']/ ) {
-        $tmp2 = extract_first($line,$error);
-        if ($error) { error_stop("some type of syntax problem with a location string in the following region definition:\nfile = $file: line = $oline"); }
-        if (nonempty($::region[$masread]{"initial_location"}{"description"})) {
-          print "NOTE: changing the initial_location of region $name\n";
-          print ::DEBUG "NOTE: changing the initial_location of region $name\n";
+      if ($masread >= 0) {
+        $::region[$masread]{"redefinitions"}++; 
+        print "INFO: a secondary definition statement (number $::region[$masread]{definitions}) for region $name has been found in file = $file\n";
+        print ::DEBUG "INFO: a secondary definition statement (number $::region[$masread]{definitions}) for region $name has been found based on: $filelinelocator\n";
+  # a variable has been identified, now check whether the centring has changed
+        if (nonempty($centring)) {
+          if ($centring ne $::region[$masread]{"centring"} && nonempty($::region[$masread]{"centring"})) {
+            print "NOTE: changing the centring of region $name from $::region[$masread]{centring} to $centring\n";
+            print ::DEBUG "NOTE: changing the centring of region $name from $::region[$masread]{centring} to $centring based on: $filelinelocator\n";
+          }
+          $::region[$masread]{"centring"} = $centring;
+        } else {
+          $centring = $::region[$masread]{"centring"};
         }
-        $::region[$masread]{"location"}{"description"} = $tmp2;
-        $::region[$masread]{"initial_location"}{"description"} = $tmp1;
-        print ::DEBUG "INFO: extracting region $name location and initial_location string from the following:\nfile = $file: line = $oline\n";
+  # same with type
+        if (nonempty($type)) {
+          if ($type ne $::region[$masread]{"type"} && nonempty($::region[$masread]{"type"})) {
+            print "NOTE: changing the type of region $name from $::region[$masread]{type} to $type\n";
+            print ::DEBUG "NOTE: changing the type of region $name from $::region[$masread]{type} to $type based on: $filelinelocator\n";
+          }
+          $::region[$masread]{"type"} = $type;
+        } else {
+          $type = $::region[$masread]{"type"};
+        }
+        $::region[$masread]{"comments"}=$::region[$masread]{"comments"}." ".$comments;
+        $::region[$masread]{"filename"}=$::region[$masread]{"filename"}." ".$file;
+        $::region[$masread]{"absfilename"}=$::region[$masread]{"absfilename"}." ".$code_blocks[$#code_blocks]{"abs_name"};
       } else {
-        $::region[$masread]{"location"}{"description"} = $tmp1;
-        print ::DEBUG "INFO: extracting region $name location string from the following:\nfile = $file: line = $oline\n";
+        print "INFO: a primary definition statement for region $name has been found in file = $file\n";
+        print ::DEBUG "INFO: a primary definition statement for region $name has been found based on: $filelinelocator\n";
+  # otherwise create a new region
+        $masread=$#::region+1;
+        print ::DEBUG "INFO: creating new region number $masread with name $name based on \n:file = $file: line = $oline\n";
+  # and set basic info, empty if necessary
+        $::region[$masread]{"name"}=$name;
+        $::region[$masread]{"centring"}=$centring; # maybe blank
+        $::region[$masread]{"type"}=$type; # maybe blank
+        $::region[$masread]{"comments"}=$comments;
+        $::region[$masread]{"redefinitions"}=0;
+        $::region[$masread]{"part_of"}='';
+        $::region[$masread]{"options"}='';
+        $::region[$masread]{"location"}{"description"}='';
+        $::region[$masread]{"initial_location"}{"description"}='';
+        $::region[$masread]{"last_variable_masread"}=$#::asread_variable; # this determines when a region will be evaluated, for dynamic regions - it will be -1 if no variables are defined yet
+        $::region[$masread]{"filename"}=$file;
+        $::region[$masread]{"absfilename"}=$code_blocks[$#code_blocks]{"abs_name"};
       }
-    }
 
-# ON keyword
-    if ($line =~ /ON(\s+(<.+?>)($|\s+)|($|\s+))/i) {
-      $line = $`.$';
-      if ($2) {
-        $tmp = examine_name($2,'regionname'); # standardise name here
-        if (nonempty($::region[$masread]{"part_of"})) {
-          print "NOTE: changing the ON region for region $name to $tmp\n";
-          print ::DEBUG "NOTE: changing the ON region for region $name to $tmp\n";
+  # extract the location string, and if two are present, also an initial_location string (to be used for transient and newtient dynamic regions)
+      if ( $line =~ /^\s*["']/ ) {
+        $tmp1 = extract_first($line,$error);
+        if ($error) { error_stop("some type of syntax problem with a location string in the following region definition: $filelinelocator"); }
+        if (nonempty($::region[$masread]{"location"}{"description"})) {
+          print "NOTE: changing the location of region $name\n";
+          print ::DEBUG "NOTE: changing the location of region $name\n";
         }
-        $::region[$masread]{"part_of"} = $tmp;
-        print ::DEBUG "INFO: found ON region $tmp for region $name\n";
+        if ( $line =~ /^\s*["']/ ) {
+          $tmp2 = extract_first($line,$error);
+          if ($error) { error_stop("some type of syntax problem with a location string in the following region definition: $filelinelocator"); }
+          if (nonempty($::region[$masread]{"initial_location"}{"description"})) {
+            print "NOTE: changing the initial_location of region $name\n";
+            print ::DEBUG "NOTE: changing the initial_location of region $name\n";
+          }
+          $::region[$masread]{"location"}{"description"} = $tmp2;
+          $::region[$masread]{"initial_location"}{"description"} = $tmp1;
+          print ::DEBUG "INFO: extracting region $name location and initial_location string from the following: $filelinelocator\n";
+        } else {
+          $::region[$masread]{"location"}{"description"} = $tmp1;
+          print ::DEBUG "INFO: extracting region $name location string from the following: $filelinelocator\n";
+        }
       }
-      else { $::region[$masread]{"part_of"} = ''; print ::DEBUG "INFO: cancelling any possible ON region for region $name\n"; }
-    }
-      
-# region options
-    $line =~ s/^\s*//; # remove any leading space from the line
-    if (nonempty($line)) {
-      $::region[$masread]{"options"} = $::region[$masread]{"options"}.",".$line;
-      $::region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
-      $::region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
-      print ::DEBUG "INFO: adding options to: region = $::region[$masread]{name}: masread = $masread: options = $::region[$masread]{options}\n";
-      $line = ''; # nothing is now left in the line
-    }
 
-    print "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".
-      "type = $::region[$masread]{type}: location = $::region[$masread]{location}{description}: ".
-      "initial_location = $::region[$masread]{initial_location}{description}: part_of = $::region[$masread]{part_of}\n"; 
-    print ::DEBUG "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".
-      "type = $::region[$masread]{type}: location = $::region[$masread]{location}{description}: ".
-      "initial_location = $::region[$masread]{initial_location}{description}: part_of = $::region[$masread]{part_of}\n"; 
+  # ON keyword
+      if ($line =~ /ON(\s+(<.+?>)($|\s+)|($|\s+))/i) {
+        $line = $`.$';
+        if ($2) {
+          $tmp = examine_name($2,'regionname'); # standardise name here
+          if (nonempty($::region[$masread]{"part_of"})) {
+            print "NOTE: changing the ON region for region $name to $tmp\n";
+            print ::DEBUG "NOTE: changing the ON region for region $name to $tmp\n";
+          }
+          $::region[$masread]{"part_of"} = $tmp;
+          print ::DEBUG "INFO: found ON region $tmp for region $name\n";
+        }
+        else { $::region[$masread]{"part_of"} = ''; print ::DEBUG "INFO: cancelling any possible ON region for region $name\n"; }
+      }
+        
+  # region options
+      $line =~ s/^\s*//; # remove any leading space from the line
+      if (nonempty($line)) {
+        $::region[$masread]{"options"} = $::region[$masread]{"options"}.",".$line;
+        $::region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
+        $::region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
+        print ::DEBUG "INFO: adding options to: region = $::region[$masread]{name}: masread = $masread: options = $::region[$masread]{options}\n";
+        $line = ''; # nothing is now left in the line
+      }
 
-    next;
+      print "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".
+        "type = $::region[$masread]{type}: location = $::region[$masread]{location}{description}: ".
+        "initial_location = $::region[$masread]{initial_location}{description}: part_of = $::region[$masread]{part_of}\n"; 
+      print ::DEBUG "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".
+        "type = $::region[$masread]{type}: location = $::region[$masread]{location}{description}: ".
+        "initial_location = $::region[$masread]{initial_location}{description}: part_of = $::region[$masread]{part_of}\n"; 
+
+#-------
+    }
 
 #-----------------------
   } else {
 # finally if the line doesn't match any of the above, then stop - it may mean that something is not as intended
-    error_stop("the following line in $file makes no sense:\n line = $oline");
+    syntax_problem("the following line in $file makes no sense: $filelinelocator");
   }
 
 } 
