@@ -62,7 +62,7 @@ usage () {
   echo "If no input files are specified on the command line, then any .arb files, and failing that, any .in files,";
   echo "    in the working directory are used";
   echo
-  echo "Possible options:";
+  echo "Possible options (consistent with long-form command line syntax (--), words are separated by -, and a preceeding --no- negates an option) :";
   echo "  --clean: remove previous meta-programming and object files";
   echo "  --clean-compile: remove previous object files";
   echo "  --clean-setup: remove previous meta-programming files";
