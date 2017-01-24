@@ -44,20 +44,16 @@ our @EXPORT  = qw(read_input_files); # list of subroutines and variables that wi
 
 # define variables common to all of these subs
 my @string_variables = (); # is an array/hash of the replacement strings
-my @code_blocks;
+my @code_blocks; # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
 
-my $filelinelocator; # holds generic locator of current line for message purposes
+my $filelinelocator; # holds generic locator of current line for message purposes corresponding to $#code_blocks
 my $handle; # holds the current arb input file handle corresponding to $#code_blocks
 
 my $unwrapped_indent = "   "; # amount to indent the unwrapped input file for each level of file inclusion
 
-
 #--------------------------------------------------------------
 # parse all *.arb files - this is called from main
 sub read_input_files {
-
-  use FileHandle;
-  use File::Spec; # for rel2abs
 
   setup_string_variables(); # create the default general replacements
 
@@ -66,20 +62,9 @@ sub read_input_files {
 
   open(SYNTAX, ">$::syntax_problems_file"); # this file is specifically for syntax problems in the input files and is written to by sub syntax_problem
 
-# this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
-  $code_blocks[0]{"ref_name"}="root_input.arb";
-  $code_blocks[0]{"name"}="$::build_dir/root_input.arb";
-  $code_blocks[$#code_blocks]{"abs_name"} = File::Spec->rel2abs($code_blocks[0]{"name"}); # abs_name is always the absolute path to the file
-  # initial include_path used for searching for the file is the working directory
-  # so, always the initial search path for files is the working_dir (even though root_input.arb sits in the build directory)
-  $code_blocks[0]{"include_path"}[0] = $::working_dir; # drag this value out of main
-  $code_blocks[0]{"raw_buffer"} = ''; # current buffer containing block as it is read in
-  $code_blocks[0]{"buffer"} = ''; # buffer created from raw_buffer
-  $code_blocks[0]{"code_line"} = ''; # code_line created from buffer
-  $code_blocks[0]{"comments"} = ''; # comments corresponding to code_line
-  $code_blocks[0]{"skip"} = 0; # flag to indicate whether we are in a comments section or not
+# push the first [0] code block (from the root_input.arb) onto the code_blocks array
+  push_code_block("root_input.arb","$::build_dir/root_input.arb");
 
-  $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a filehandle for the first file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
   $handle = $code_blocks[$#code_blocks]{"handle"};
   open($handle, "<$code_blocks[$#code_blocks]{name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
 
@@ -87,7 +72,7 @@ sub read_input_files {
 
 # make sure that the handle corresponds to the last file on the code_blocks stack
     $handle = $code_blocks[$#code_blocks]{"handle"};
-    my $file = $code_blocks[$#code_blocks]{"ref_name"};
+    my $file = $code_blocks[$#code_blocks]{"include_name"};
     my $code_type = $code_blocks[$#code_blocks]{"code_type"}; # indicates whether code_block when left is either string or solver
 
     while (1) {
@@ -122,7 +107,7 @@ sub read_input_files {
 
 # buffer needs more raw_buffer from this point down
       } elsif (empty($code_blocks[$#code_blocks]{"raw_buffer"})) { # if raw buffer is empty, then we need to fill this first
-          $code_blocks[$#code_blocks]{"raw_buffer"} = <$handle> or last; # exit loop if end of file is reached
+          defined($code_blocks[$#code_blocks]{"raw_buffer"} = <$handle>) or last; # exit loop if end of file is reached. defined is required (as advised by warnings) as without file read could be '0', which while valid (and defined) is actually false.  Apparently the while (<>) directive does this automatically.
           $code_blocks[$#code_blocks]{"raw_buffer"}=~s/\r//g; # remove extra dos linefeeds
           if ($code_blocks[$#code_blocks]{"raw_buffer"} =~ /^([^#]*(&|))(\s*#.*)\n$/) { # remove comments with preceeding greedy space match
             $code_blocks[$#code_blocks]{"raw_buffer"} = $1."\n"; # replace linefeed
@@ -272,15 +257,17 @@ sub syntax_problem {
 #  if it is a " or ', string is delimited by the closest matching delimiter, with no escaping of characters in the middle
 #  otherwise the string is delimited by the closest space (which becomes the delimiter)
 # input
-# $_[0] = string
+# $_[0] = string that we want something extracted from
 # output
-# first return = string removed from the front, dedelimited
+# first return = extracted string removed from the front, dedelimited
+# second return = error flag (0 or 1)
 # $_[0] = remainder of string, with leading spaces removed
-# $_[1] = error flag (0 or 1)
 
 sub extract_first {
-  my $remainder=$_[0];
-  my $input=$_[0];
+
+  my ($input) = @_;
+
+  my $remainder=$input;
   my $string="";
   my $delimiter="";
   my $error=0;
@@ -305,10 +292,10 @@ sub extract_first {
   }
 
 # print "string = $string: remainder = $remainder: delimiter = $delimiter\n";
-# return the string and remainder
+# place remainder of string back in $_[0];
   $_[0]=$remainder;
-  $_[1]=$error;
-  return $string;
+# return the extracted string and error
+  return ($string, $error);
 }
 
 #-------------------------------------------------------------------------------
@@ -433,7 +420,7 @@ sub get_next_code_line {
 
   }
 
-# for the line locator variable (generally used in error messages) use absolute filename (for info messages generally use ref_name, which does not include path)
+# for the line locator variable (generally used in error messages) use absolute filename (for info messages generally use include_name, which does not include path)
   $filelinelocator = "file = $code_blocks[$#code_blocks]{abs_name}: linenumber = $.: line = \'$code_blocks[$#code_blocks]{code_line}\'";
 
   return $code_line_complete;
@@ -461,7 +448,7 @@ sub parse_solver_code_line {
   my $override_options = ""; # override options appended to each statement read in
 
   my $line = $code_blocks[$#code_blocks]{"code_line"}; # set line to local variable
-  my $file = $code_blocks[$#code_blocks]{"ref_name"}; # and grab filename for messaging purposes
+  my $file = $code_blocks[$#code_blocks]{"include_name"}; # and grab filename for messaging purposes
 
   $line=~s/\n$//; # remove linefeed from end
   my $oline=$line; # save line as (original) line
@@ -478,7 +465,7 @@ sub parse_solver_code_line {
 #-------------------
 # first check whether skip is active or there is a COMMENTS|SKIP statement or there is an empty line
   if ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^((STOP|END)_(COMMENT(S){0,1}|SKIP))($|\s)/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; }
-  elsif ($code_blocks[$#code_blocks]{"skip"} || empty($line)) { continue; }
+  elsif ($code_blocks[$#code_blocks]{"skip"} || empty($line)) { } # do nothing!
   elsif ($line =~ /^((START|BEGIN)_(COMMENT(S){0,1}|SKIP))($|\s)/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=1; }
 
 #-------------------
@@ -493,8 +480,7 @@ sub parse_solver_code_line {
       $include_type = "template";
     }
     if ($3 =~ /#/) {$line = '';} else {$line = $';}
-    my $error = 0;
-    my $new_file = extract_first($line,$error); # extract filename from line of text
+    my ($new_file,$error) = extract_first($line); # extract filename from line of text
     if ($error) { error_stop("a valid file or directory name could not be determined from the following: $filelinelocator\n"); }
 
 #-------
@@ -581,53 +567,50 @@ sub parse_solver_code_line {
       }
           
   # from here on, only concerned with actually including a file
-      if (empty($found_name)) {next;}
+      if (nonempty($found_name)) {
 
-  # create the new include file
-      $code_blocks[$#code_blocks+1]{"ref_name"} = $new_file; # ref_name is recorded as the name specified in the INCLUDE statement
-      $code_blocks[$#code_blocks]{"name"} = $found_name; # name is the file name including the path, either relative to the build directory or absolute
-      $code_blocks[$#code_blocks]{"abs_name"} = File::Spec->rel2abs($found_name); # abs_name is the file name including the absolute path to the file, now just used for user information (see below output file location statement)
-      $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[$#{$code_blocks[$#code_blocks-1]{"include_path"}}]; # set local path to last path of calling file
+        push_code_block($new_file,$found_name);
 
-      print "INFO: found INCLUDE $code_blocks[$#code_blocks]{ref_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
-      print ::DEBUG "INFO: found INCLUDE $code_blocks[$#code_blocks]{ref_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
-      print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$unwrapped_indent x $#code_blocks,"#(comment generated during unwrap) the following is INCLUDED from $code_blocks[$#code_blocks]{abs_name}";
-  # ref: FILENAME
-  # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
-      if (empty($::simulation_info{"filename"})) {
-        $::simulation_info{"filename"} = $code_blocks[$#code_blocks]{"ref_name"};
-        $::simulation_info{"absfilename"} = $code_blocks[$#code_blocks]{"abs_name"};
-      }
-
-  # now extract replacements
-      while (!($line=~/^\s*(|#.*)$/)) {
-        ($search,$replace,$cancel,$default) = extract_replacements($line,$file,$oline);
-        if ($cancel) { syntax_problem("string replacements for individual files cannot be cancelled: $filelinelocator"); }
-        if ($default) { syntax_problem("default string replacements for individual files are not implemented: $filelinelocator"); }
-        if (nonempty($search)) {
-          %{$code_blocks[$#code_blocks]{"replacements"}[$#{$code_blocks[$#code_blocks]{"replacements"}}+1]} = ( search => $search, replace => $replace );
+        print "INFO: found INCLUDE $code_blocks[$#code_blocks]{include_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
+        print ::DEBUG "INFO: found INCLUDE $code_blocks[$#code_blocks]{include_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
+        print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$unwrapped_indent x $#code_blocks,"#(comment generated during unwrap) the following is INCLUDED from $code_blocks[$#code_blocks]{abs_name}";
+    # ref: FILENAME
+    # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
+        if (empty($::simulation_info{"filename"})) {
+          $::simulation_info{"filename"} = $code_blocks[$#code_blocks]{"include_name"};
+          $::simulation_info{"absfilename"} = $code_blocks[$#code_blocks]{"abs_name"};
         }
-      }
 
-      if ($code_blocks[$#code_blocks]{"replacements"}) {
-        print "INFO: using the following search/replace combinations during the include of $code_blocks[$#code_blocks]{ref_name}";
-        print UNWRAPPED_INPUT " with the following search/replace combinations";
-        my $n1 = $#code_blocks;
-        foreach my $n2 ( 0 .. $#{$code_blocks[$#code_blocks]{"replacements"}} ) {
-          print ": replace $code_blocks[$n1]{replacements}[$n2]{search} with $code_blocks[$n1]{replacements}[$n2]{replace}";
-          print UNWRAPPED_INPUT ": replace $code_blocks[$n1]{replacements}[$n2]{search} with $code_blocks[$n1]{replacements}[$n2]{replace}";
+    # now extract replacements
+        while (!($line=~/^\s*(|#.*)$/)) {
+          my ($search,$replace,$cancel,$default) = extract_replacements($line,$file,$oline);
+          if ($cancel) { syntax_problem("string replacements for individual files cannot be cancelled: $filelinelocator"); }
+          if ($default) { syntax_problem("default string replacements for individual files are not implemented: $filelinelocator"); }
+          if (nonempty($search)) {
+            %{$code_blocks[$#code_blocks]{"replacements"}[$#{$code_blocks[$#code_blocks]{"replacements"}}+1]} = ( search => $search, replace => $replace );
+          }
         }
-        print "\n";
-        print UNWRAPPED_INPUT "\n";
-      } else {
-        print "INFO: not using any search/replace combinations during the include of $code_blocks[$#code_blocks]{ref_name}\n";
-        print UNWRAPPED_INPUT " without any search/replace combinations\n";
+
+        if ($code_blocks[$#code_blocks]{"replacements"}) {
+          print "INFO: using the following search/replace combinations during the include of $code_blocks[$#code_blocks]{include_name}";
+          print UNWRAPPED_INPUT " with the following search/replace combinations";
+          my $n1 = $#code_blocks;
+          foreach my $n2 ( 0 .. $#{$code_blocks[$#code_blocks]{"replacements"}} ) {
+            print ": replace $code_blocks[$n1]{replacements}[$n2]{search} with $code_blocks[$n1]{replacements}[$n2]{replace}";
+            print UNWRAPPED_INPUT ": replace $code_blocks[$n1]{replacements}[$n2]{search} with $code_blocks[$n1]{replacements}[$n2]{replace}";
+          }
+          print "\n";
+          print UNWRAPPED_INPUT "\n";
+        } else {
+          print "INFO: not using any search/replace combinations during the include of $code_blocks[$#code_blocks]{include_name}\n";
+          print UNWRAPPED_INPUT " without any search/replace combinations\n";
+        }
+    # now setup handle and open file
+        $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a filehandle for this file
+        $handle = $code_blocks[$#code_blocks]{"handle"};
+        $file = $code_blocks[$#code_blocks]{"include_name"};
+        open($handle, "<$code_blocks[$#code_blocks]{name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
       }
-  # now setup handle and open file
-      $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a filehandle for this file
-      $handle = $code_blocks[$#code_blocks]{"handle"};
-      $file = $code_blocks[$#code_blocks]{"ref_name"};
-      open($handle, "<$code_blocks[$#code_blocks]{name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
 
     }
 #-------
@@ -684,7 +667,7 @@ sub parse_solver_code_line {
 # check for EXTERNALS statement, which accepts a list of external fortran external files
   } elsif ($line =~ /^EXTERNAL(|S)(\s+)/i) { 
     $line = $';
-    while (my $tmp = extract_first($line,$error)) {
+    while ( ( my ($tmp,$error) = extract_first($line) )[0] ) {  # the ()[0] is slice notation, which extracts the first element of the list, which is evaluated as a conditional
 # check that there weren't any errors, and that text was properly quoted
       if ($error) { error_stop("some type of syntax problem with the EXTERNAL statement.  Should the text be quoted?: $filelinelocator"); }
       create_external_file($tmp);
@@ -720,7 +703,7 @@ sub parse_solver_code_line {
   } elsif ($line =~ /^(ERROR|WARNING|INFO)(\s|$)/i) {
     my $key="\L$1"; $line=$';
 # pull out any string that follows this keyword if there is one
-    my $tmp = extract_first($line,$error);
+    my ($tmp,$error) = extract_first($line);
     if (empty($tmp)) { $tmp = "no explanation provided"; }
     if ($key eq "error") { error_stop("user error statement found in $file: $tmp"); }
     else { print "\U$key",": user ","\L$key"," statement found in $file: $tmp\n"; }
@@ -749,8 +732,7 @@ sub parse_solver_code_line {
     my $key="\L$1"; $line=$';
     my $append;
     if ($2 eq "+") { $append=1; } elsif ($2 eq "-") {$append=-1;} else { $append=0; }
-    my $error;
-    my $tmp = extract_first($line,$error);
+    my ($tmp,$error) = extract_first($line);
 # check that there weren't any errors, and that text was properly quoted
     if ($error || $line =~ /\S/) { error_stop("some type of syntax problem with the INFO_"."\U$key"." string.  Should the text be quoted?: $filelinelocator"); }
 # a plus signifies to append the string to the current value
@@ -859,6 +841,7 @@ sub parse_solver_code_line {
     $line = $';
     my $type = "\L$2"; # NB: $2 cannot be empty
     if ($type eq "variable") { $type = ''; }; # the variable keyword is just a placeholder - set type to an empty string
+    my $region_constant;
     if ($type eq "region_constant") { $type = "constant"; $region_constant = 1; } else { $region_constant = 0; }
     my $centring = ""; # now centring can be grabbed from last definition
     if ($1) { $centring = "\L$1"; ($centring) = $centring =~ /^(\S+?)_/; }
@@ -1034,11 +1017,10 @@ sub parse_solver_code_line {
         delete $::asread_variable[$masread]{"constant_list"};
   # read in expressions, noting that only if the expression is nonempty do we overide previously stored expression
   # this allows initial_equation to be reset independently of the equation for transient/newtient variables
-        my error;
-        my $tmp1 = extract_first($line,$error);
+        my ($tmp1,$error) = extract_first($line);
         if ($error) { syntax_problem("some type of syntax problem with the (first) expression in the following $type $name variable definition: $filelinelocator"); }
         if (($type eq "transient" || $type eq "newtient") && $line =~ /^\s*["']/) { # to set the intial expression the type must be known at read-in time
-          my $tmp2 = extract_first($line,$error);
+          my ($tmp2,$error) = extract_first($line);
           if ($error) { syntax_problem("some type of syntax problem with the second expression in the following $type $name variable definition: $filelinelocator"); }
   # if we are here then tmp1 corresponds to the initial_equation, and tmp2 to the equation
   # Note that later when these equations are processed (in organise_user_variables), empty and undef now have different meanings
@@ -1190,14 +1172,14 @@ sub parse_solver_code_line {
 
   # extract the location string, and if two are present, also an initial_location string (to be used for transient and newtient dynamic regions)
       if ( $line =~ /^\s*["']/ ) {
-        $tmp1 = extract_first($line,$error);
+        my ($tmp1,$error) = extract_first($line);
         if ($error) { error_stop("some type of syntax problem with a location string in the following region definition: $filelinelocator"); }
         if (nonempty($::region[$masread]{"location"}{"description"})) {
           print "NOTE: changing the location of region $name\n";
           print ::DEBUG "NOTE: changing the location of region $name\n";
         }
         if ( $line =~ /^\s*["']/ ) {
-          $tmp2 = extract_first($line,$error);
+          my ($tmp2,$error) = extract_first($line);
           if ($error) { error_stop("some type of syntax problem with a location string in the following region definition: $filelinelocator"); }
           if (nonempty($::region[$masread]{"initial_location"}{"description"})) {
             print "NOTE: changing the initial_location of region $name\n";
@@ -1216,7 +1198,7 @@ sub parse_solver_code_line {
       if ($line =~ /ON(\s+(<.+?>)($|\s+)|($|\s+))/i) {
         $line = $`.$';
         if ($2) {
-          $tmp = examine_name($2,'regionname'); # standardise name here
+          my $tmp = examine_name($2,'regionname'); # standardise name here
           if (nonempty($::region[$masread]{"part_of"})) {
             print "NOTE: changing the ON region for region $name to $tmp\n";
             print ::DEBUG "NOTE: changing the ON region for region $name to $tmp\n";
@@ -1286,7 +1268,8 @@ sub correct_deprecated_string_replacement_code {
 
 # this should match any INCLUDE statement that preceeds a deprecated replace/with pair
     } elsif ($input =~ /(^|\s)(INCLUDE(|_[A-Z]+))\s+\S+\s*/i || # space delimited filename
-        $input =~ /(^|\s)(INCLUDE(|_[A-Z]+))\s*(["']).*?$4\s*/i ) { # " or ' delimited filename
+        $input =~ /(^|\s)(INCLUDE(|_[A-Z]+))\s*".*?"\s*/i || # " delimited filename
+        $input =~ /(^|\s)(INCLUDE(|_[A-Z]+))\s*'.*?'\s*/i ) { # ' delimited filename
       $buffer .= $`.$&;
       $input = $';
       $in_string_code = 1;
@@ -1325,26 +1308,24 @@ sub extract_deprecated_replacements {
   my $default = 0;
 
   if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement
-    print DEBUG "found a replace statement specified as $1: $'\n";
+    print ::DEBUG "found a replace statement specified as $1: $'\n";
     if (nonempty($3)) { $default=1; }
     $line = $';
-    $search = extract_first($line,$error);
-    if (!($search) || $error) {
-      print "WARNING: possible replacement sequence skipped as search string not identified from: $filelinelocator\n";
-      $search = '';
+    ($search,$error) = extract_first($line);
+    if (empty($search) || $error) {
+      syntax_problem("one search string not identified from: $filelinelocator");
     } else {
       $line =~s/^(W|WITH)\s+//i;
-      $replace = extract_first($line,$error);
-      if ($error) { print "WARNING: possible replacement sequence skipped as replace string not identified from: $filelinelocator\n"; $search = ''; }
+      ($replace,$error) = extract_first($line);
+      if ($error) { syntax_problem("replacement string corresponding to search string $search not identified from: $filelinelocator"); }
     }
-    print DEBUG "search = $search: replace = $replace: default = $default\n";
+    print ::DEBUG "search = $search: replace = $replace: default = $default\n";
   } elsif ($line =~ /^(C|CANCEL)\s+/i) { # found a string to cancel
-    print DEBUG "found a cancel statement: $'\n";
+    print ::DEBUG "found a cancel statement: $'\n";
     $line = $';
-    $search = extract_first($line,$error);
+    ($search,$error) = extract_first($line);
     if (!($search) || $error) {
-      print "WARNING: possible cancel sequence skipped as search string not identified from: $filelinelocator\n";
-      $search = '';
+      syntax_problem("one cancel string not identified from: $filelinelocator");
     } else {
       $cancel = 1;
     }
@@ -1352,6 +1333,41 @@ sub extract_deprecated_replacements {
 
   $_[0] = $line;
   return ($search,$replace,$cancel,$default);
+
+}
+
+#-------------------------------------------------------------------------------
+# adds a code block to the code_blocks array
+# on input
+# _[0] = name of file from include statement (include_name)
+# _[1] = name of file as found
+sub push_code_block {
+
+  use FileHandle;
+  use File::Spec; # for rel2abs
+
+  my ($include_name,$name) = @_;
+
+  $code_blocks[$#code_blocks+1]{"include_name"}=$include_name;
+  $code_blocks[$#code_blocks]{"name"}=$name;
+  if ($#code_blocks) {
+# set to last include_path of previous code_block, which is where calling file must be
+    $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[$#{$code_blocks[$#code_blocks-1]{"include_path"}}];
+  } else {
+# initial include_path used for searching for the file is the working directory
+# so, always the initial search path for files is the working_dir (even though root_input.arb sits in the build directory)
+# drag this value out of main
+    $code_blocks[$#code_blocks]{"include_path"}[0] = $::working_dir;
+  }
+
+  $code_blocks[$#code_blocks]{"abs_name"} = File::Spec->rel2abs($name); # abs_name is always the absolute path to the file
+  $code_blocks[$#code_blocks]{"raw_buffer"} = ''; # current buffer containing block as it is read in
+  $code_blocks[$#code_blocks]{"buffer"} = ''; # buffer created from raw_buffer
+  $code_blocks[$#code_blocks]{"code_line"} = ''; # code_line created from buffer
+  $code_blocks[$#code_blocks]{"comments"} = ''; # comments corresponding to code_line
+  $code_blocks[$#code_blocks]{"skip"} = 0; # flag to indicate whether we are in a comments section or not
+  $code_blocks[$#code_blocks]{"exit"} = 0; # flag to indicate whether we are exiting this block asap
+  $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a new filehandle for the file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
 
 }
 
