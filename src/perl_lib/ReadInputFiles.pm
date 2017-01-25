@@ -33,6 +33,47 @@
 #-------------------------------------------------------------------------
 # routines to read arb input files contained in a perl module
 
+# general notes about code parsing:
+
+# parsing logic:
+
+# 1. read in line and place in raw_buffer
+# 2. remove comments and place in comments
+# 3. add raw_buffer to buffer
+# 4. check if buffer ends in continuation symbol (&).  If it does:
+#   - remove continuation symbol
+#   - get new raw_buffer
+#   - check if raw_buffer starts with &.  If it does remove it and preceding space
+#   - add to buffer and repeat 4
+# 5. replace any deprecated string replacement code in buffer with new string code: ie
+#   -  'GENERAL_REPLACEMENTS REPLACE "<<a>>" W "2.d0" D "<<b>>" W "#"' becomes '{{ "<<a>>" =g "2.d0" ; "<<b>>" =dg "#" }}'
+#   -  'INCLUDE "an_arb_file" R "<<a>>" WITH "2.d0"' becomes 'INCLUDE "an_arb_file" {{ "<<a>>" = "2.d0" }}'
+
+# notes:
+# * actual algorithm loops through asking for processed code_lines for each code_block
+# * buffers deal with linefeeds (\n), although remove all (used on windows in addition, as in \r\n) carriage returns (\r)
+
+
+# 1. if string ends with continuation symbol (&) and then possibly a comment (space separated):
+#    * remove comment and possibly continuation
+#    * read in next line (place in raw_buffer) , apply 1->3, concatenate and check again
+# 1. look for deprecated string related code and replace with new syntax, writing syntax message at the same time
+# 2. do any string replacements on a per-file-line basis, except within any string_code sections delimited by {{ and }} (remembering code type over carriage returns)
+# 3. now strip comments, concatenating onto comments 
+# 5. possibly deal with filelinelocator?
+# 6. now split input line at any ; characters, being cognisant of solver syntax and ignoring any string code
+# 7. finally parse the line as solver code
+#   1) {{ }} indicates string code, handled by separate sub
+#   2) INCLUDE statements start new code block, with calling string code added to start of new code block's buffer
+#   3) write unwrapped line (buffer) to unwrapped input file, which includes no string code or references (ie, straight solver code)
+
+# code_block variables to maintain:
+# raw_buffer = line as read from file: move to buffer until empty
+# buffer = line which has had string replacements done, comments removed and concatenation dealt with: move to code_line until empty
+# code_line = single solver code line ready to parse with sub parse_code_line: remove during parsing
+# skip = 
+
+
 package ReadInputFiles;
 
 use strict;
@@ -47,7 +88,6 @@ my @string_variables = (); # is an array/hash of the replacement strings
 my @code_blocks; # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
 
 my $filelinelocator; # holds generic locator of current line for message purposes corresponding to $#code_blocks
-my $handle; # holds the current arb input file handle corresponding to $#code_blocks
 
 my $unwrapped_indent = "   "; # amount to indent the unwrapped input file for each level of file inclusion
 
@@ -62,83 +102,69 @@ sub read_input_files {
 
   open(SYNTAX, ">$::syntax_problems_file"); # this file is specifically for syntax problems in the input files and is written to by sub syntax_problem
 
-# push the first [0] code block (from the root_input.arb) onto the code_blocks array
+# push the first [0] code block (from the root_input.arb) onto the code_blocks array and prep for reading (open)
   push_code_block("root_input.arb","$::build_dir/root_input.arb");
 
-  $handle = $code_blocks[$#code_blocks]{"handle"};
-  open($handle, "<$code_blocks[$#code_blocks]{name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
-
-  while (@code_blocks) { # we parse the input until we have removed (ie, dealt with) all code blocks on this stack
-
-# make sure that the handle corresponds to the last file on the code_blocks stack
-    $handle = $code_blocks[$#code_blocks]{"handle"};
-    my $file = $code_blocks[$#code_blocks]{"include_name"};
-
-    while (!($code_blocks[$#code_blocks]{"exit"})) { # when exit becomes true (eg, via an END statement), we exit this loop and code block
-
-# code_line is solver code that ready to be processed
-# has comments attached
-      if (nonempty($code_blocks[$#code_blocks]{"code_line"})) {
-# this will become area that parses solver code
-        print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#prior to parse_solver_code_line: ".$code_blocks[$#code_blocks]{"code_line"};
-        parse_solver_code_line($code_blocks[$#code_blocks]{"code_line"});
-        $code_blocks[$#code_blocks]{"code_line"} = '';
+  my $raw_buffer='';
+  my $comments='';
+    
+  while (@code_blocks) { # we keep forming the buffer and parsing the code until all code blocks are destroyed
 
 # buffer is ready to be processed
-      } elsif ( nonempty($code_blocks[$#code_blocks]{"buffer"}) && $code_blocks[$#code_blocks]{"buffer"} !~ /&\s*\n$/ ) { # buffer is ready to be processed to code_line as it is full and doesn't end with a continuation symbol
-        $code_blocks[$#code_blocks]{"buffer"} =~ s/\n$//; # remove trailing linefeed
+    if ( nonempty($code_blocks[$#code_blocks]{"buffer"}) && $code_blocks[$#code_blocks]{"buffer"} !~ /&\s*\n$/ ) { # buffer is ready to be processed to code_line as it is full and doesn't end with a continuation symbol
+      $code_blocks[$#code_blocks]{"buffer"} =~ s/\n$//; # remove trailing linefeed
 
 # set message line locator string
-        $filelinelocator = "file = $code_blocks[$#code_blocks]{abs_name}: linenumber = $.: line = \'$code_blocks[$#code_blocks]{buffer}\'";
+      $filelinelocator = "file = $code_blocks[$#code_blocks]{abs_name}: linenumber = $.: line = \'$code_blocks[$#code_blocks]{buffer}\'";
 
 # check and correct any deprecated string replacement comments here
-        correct_deprecated_string_replacement_code($code_blocks[$#code_blocks]{"buffer"}); # here buffer has no comments, and no linefeed
+      correct_deprecated_string_replacement_code($code_blocks[$#code_blocks]{"buffer"}); # here buffer has no comments, and no linefeed
 
-        $code_blocks[$#code_blocks]{"buffer"} .= $code_blocks[$#code_blocks]{"comments"}; # and add on comments
-        $code_blocks[$#code_blocks]{"comments"} = '';
+      $code_blocks[$#code_blocks]{"buffer"} .= $comments; # and add on concatenated comments
+      $comments = '';
 
 # string replacements are done on complete line including comments, except for string code sections delimited by {{ and }}
 # TODO
 
-# now code is ready for solver code parser, so move into code_line
-        $code_blocks[$#code_blocks]{"code_line"} = $code_blocks[$#code_blocks]{"buffer"}."\n";
-        $code_blocks[$#code_blocks]{"buffer"} = '';
+# now code is ready for solver code parser, so add linefeed again (for printing purposes)
+
+# this will become area that parses code
+      print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#prior to parse_solver_code_line: ".$code_blocks[$#code_blocks]{"buffer"};
+      parse_solver_code_line($code_blocks[$#code_blocks]{"buffer"}); # processes the buffer
 
 # buffer needs more raw_buffer from this point down
-      } elsif (empty($code_blocks[$#code_blocks]{"raw_buffer"})) { # if raw buffer is empty, then we need to fill this first
-          defined($code_blocks[$#code_blocks]{"raw_buffer"} = <$handle>) or last; # exit loop if end of file is reached. defined is required (as advised by warnings) as without file read could be '0', which while valid (and defined) is actually false.  Apparently the while (<>) directive does this automatically.
-          $code_blocks[$#code_blocks]{"raw_buffer"}=~s/\r//g; # remove extra dos linefeeds
-          if ($code_blocks[$#code_blocks]{"raw_buffer"} =~ /^([^#]*(&|))(\s*#.*)\n$/) { # remove comments with preceeding greedy space match
-            $code_blocks[$#code_blocks]{"raw_buffer"} = $1."\n"; # replace linefeed
-            $code_blocks[$#code_blocks]{"comments"} .= $3; # concatenate onto comment string
+    } elsif (empty($raw_buffer)) { # if raw buffer is empty, then we need to fill this first
+        my $handle = $code_blocks[$#code_blocks]{"handle"};
+        if (defined($raw_buffer = <$handle>)) { # defined is required (as advised by warnings) as without file read could be '0', which while valid (and defined) is actually false.  Apparently the while (<>) directive does this automatically.
+          $raw_buffer=~s/\r//g; # remove extra dos linefeeds
+          if ($raw_buffer =~ /^([^#]*(&|))(\s*#.*)\n$/) { # remove comments with preceeding greedy space match
+            $raw_buffer = $1."\n"; # replace linefeed
+            $comments .= $3; # concatenate onto comment string
           }
+        } else {
+          pop_code_block() # exit code_block if end of file is reached
+        }
 
-      } else {
+    } else {
 # raw_buffer contains something from this point down
 
 # if raw_buffer is to be a continuation need to deal with trailing and possibly leading continuation symbols
-        if (nonempty($code_blocks[$#code_blocks]{"buffer"}) && $code_blocks[$#code_blocks]{"buffer"} =~ /&\s*\n$/ ) {
-          $code_blocks[$#code_blocks]{"buffer"} = $`; # strip off continuation symbol, any trailing spaces from buffer and linefeed
-          if ($code_blocks[$#code_blocks]{"raw_buffer"} =~ /^\s*&/) {$code_blocks[$#code_blocks]{"raw_buffer"} = $';} # strip off leading continuation symbol from raw_buffer
-        }
-
-        $code_blocks[$#code_blocks]{"buffer"} .= $code_blocks[$#code_blocks]{"raw_buffer"}; # buffer is either empty or ready for continuation here
-        $code_blocks[$#code_blocks]{"raw_buffer"} = '';
+      if (nonempty($code_blocks[$#code_blocks]{"buffer"}) && $code_blocks[$#code_blocks]{"buffer"} =~ /&\s*\n$/ ) {
+        $code_blocks[$#code_blocks]{"buffer"} = $`; # strip off continuation symbol, any trailing spaces from buffer and linefeed
+        if ($raw_buffer =~ /^\s*&/) {$raw_buffer = $';} # strip off leading continuation symbol from raw_buffer
       }
 
-      print ::DEBUG "INFO LOOP: in code_blocks loop: \n".
-        "  raw_buffer = $code_blocks[$#code_blocks]{raw_buffer}\n".
-        "  buffer = $code_blocks[$#code_blocks]{buffer}\n".
-        "  code_line = $code_blocks[$#code_blocks]{code_line}\n".
-        "  comments = $code_blocks[$#code_blocks]{comments}\n".
-        "  exit = $code_blocks[$#code_blocks]{exit}\n";
+      $code_blocks[$#code_blocks]{"buffer"} .= $raw_buffer; # buffer is either empty or ready for continuation here
+      $raw_buffer = '';
+    }
 
-    } # end of loop for this input file
+    print ::DEBUG "INFO: code_blocks loop".
+      ": #code_blocks = $#code_blocks".
+      ": raw_buffer = $raw_buffer".
+      ": buffer = $code_blocks[$#code_blocks]{buffer}".
+      ": skip = $code_blocks[$#code_blocks]{skip}\n";
 
-    close($handle);
-    if ($#code_blocks) { print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap) INCLUDE finished for $code_blocks[$#code_blocks]{name}\n",$unwrapped_indent x $#code_blocks,"#(comment generated during unwrap)--------------------------------------------------------\n"; }
-    pop(@code_blocks);
-  } # end of loop for all input files
+  } # end of loop for this input file
 
   close(UNWRAPPED_INPUT);
   close(SYNTAX);
@@ -379,29 +405,30 @@ sub check_for_arbfile_or_dir {
 #-------------------------------------------------------------------------------
 # subroutine that parses one code_line of solver code
 sub parse_solver_code_line {
-# no inputs and outputs - works on $code_blocks[$#code_blocks]{"code_line"} and associated
+# processes buffer, using information also about the file contained in $#code_block
+# on input:
+# $_[0] = line to process - includes comments but not linefeed
+# on output:
+# $_[0] = line after processing - the default is to process string and clear the buffer, however if a new file is included there may be associated string code which is placed in the buffer for processing
 
   use List::Util qw( min max );
   use Data::Dumper;
   use Storable qw(dclone);
   use File::Find; # for find
 
-# my ($name, $cunits, $units, $multiplier, $mvar,
-#   $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
-#   $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
-#   $condition, $cancel, $default, $masread, $repeats);
+  my $line = $_[0]; # set line to local variable
+
+  my $buffer = ''; # buffer is the variable that is going to be returned in $_[0]
 
   my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
   my $default_options = ""; # default options prepended to each statement read in
   my $override_options = ""; # override options appended to each statement read in
 
-  my $line = $code_blocks[$#code_blocks]{"code_line"}; # set line to local variable
-  my $file = $code_blocks[$#code_blocks]{"include_name"}; # and grab filename for messaging purposes
-
-  $line=~s/\n$//; # remove linefeed from end
   my $oline=$line; # save line as (original) line
   my $comments;
   ($line,$comments)=$line=~/^\s*(.*?)\s*(#.*|)$/; # split off comments and extra leading/trailing spaces (noting that string replacements would have occurred since buffer processing)
+
+  my $file = $code_blocks[$#code_blocks]{"include_name"}; # and grab filename for messaging purposes
 
 # keep a record of what arb is doing in UNWRAPPED_INPUT, commenting out any INCLUDE or GENERAL_REPLACMENTS statements so that this file could be read again by arb directly
   if ($line =~ /^((INCLUDE(|_[A-Z]+))|\{\{)($|#|\s)/i) { print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#(hash added during unwrap)$oline\n"; } else { print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"$oline\n"; }
@@ -412,14 +439,19 @@ sub parse_solver_code_line {
 
 #-------------------
 # first check whether skip is active or there is a COMMENTS|SKIP statement or there is an empty line
-  if ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^((STOP|END)_(COMMENT(S){0,1}|SKIP))($|\s)/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; }
+  if ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^((STOP|END)_(COMMENT(S){0,1}|SKIP))$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; }
   elsif ($code_blocks[$#code_blocks]{"skip"} || empty($line)) { } # do nothing!
-  elsif ($line =~ /^((START|BEGIN)_(COMMENT(S){0,1}|SKIP))($|\s)/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=1; }
+  elsif ($line =~ /^((START|BEGIN)_(COMMENT(S){0,1}|SKIP))$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=1; }
+
+#-------------------
+# look for delimited sections, and END statement
+  elsif ($line =~ /^(START|BEGIN|{))$/i) { print "INFO: found opening code block \L$1\E statement in $file\n"; push_code_block(); }
+  elsif ($line =~ /^(STOP|END|})$/i) { print "INFO: found closing code block \L$1\E statement in $file\n"; pop_code_block(); }
 
 #-------------------
 # check for include statement, possibly opening new file
 # ref: include ref: include_template ref: include_local ref: include_absolute ref: include_working ref: include_last
-  elsif ($line =~ /^INCLUDE(|_([A-Z]+))($|(\s*#)|\s)/i) {
+  elsif ($line =~ /^INCLUDE(|_([A-Z]+))($|\s)/i) {
     my $include_type = '';
     if (nonempty($2)) {$include_type = "\L$2";}
 # note to user re deprecation of INCLUDE_ROOT
@@ -444,7 +476,6 @@ sub parse_solver_code_line {
         print "WARNING: an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $code_blocks[$#code_blocks]{include_path}[0]\n";
         print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap) after failed removal attempt, only the single local (unremovable) path is left: include_path = $code_blocks[$#code_blocks]{include_path}[0]\n";
       }
-      next; # move to next statement
     } else {
 
 #-------
@@ -514,50 +545,18 @@ sub parse_solver_code_line {
         }
       }
           
-  # from here on, only concerned with actually including a file
+# now open the file and set new buffer
       if (nonempty($found_name)) {
 
         push_code_block($new_file,$found_name);
 
         print "INFO: found INCLUDE $code_blocks[$#code_blocks]{include_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
         print ::DEBUG "INFO: found INCLUDE $code_blocks[$#code_blocks]{include_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
-        print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$unwrapped_indent x $#code_blocks,"#(comment generated during unwrap) the following is INCLUDED from $code_blocks[$#code_blocks]{abs_name}";
-    # ref: FILENAME
-    # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
-        if (empty($::simulation_info{"filename"})) {
-          $::simulation_info{"filename"} = $code_blocks[$#code_blocks]{"include_name"};
-          $::simulation_info{"absfilename"} = $code_blocks[$#code_blocks]{"abs_name"};
-        }
+        print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",
+          $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap) the following is INCLUDED from $code_blocks[$#code_blocks]{abs_name}";
 
-    # now extract replacements
-        while (!($line=~/^\s*(|#.*)$/)) {
-          my ($search,$replace,$cancel,$default) = extract_replacements($line,$file,$oline);
-          if ($cancel) { syntax_problem("string replacements for individual files cannot be cancelled: $filelinelocator"); }
-          if ($default) { syntax_problem("default string replacements for individual files are not implemented: $filelinelocator"); }
-          if (nonempty($search)) {
-            %{$code_blocks[$#code_blocks]{"replacements"}[$#{$code_blocks[$#code_blocks]{"replacements"}}+1]} = ( search => $search, replace => $replace );
-          }
-        }
-
-        if ($code_blocks[$#code_blocks]{"replacements"}) {
-          print "INFO: using the following search/replace combinations during the include of $code_blocks[$#code_blocks]{include_name}";
-          print UNWRAPPED_INPUT " with the following search/replace combinations";
-          my $n1 = $#code_blocks;
-          foreach my $n2 ( 0 .. $#{$code_blocks[$#code_blocks]{"replacements"}} ) {
-            print ": replace $code_blocks[$n1]{replacements}[$n2]{search} with $code_blocks[$n1]{replacements}[$n2]{replace}";
-            print UNWRAPPED_INPUT ": replace $code_blocks[$n1]{replacements}[$n2]{search} with $code_blocks[$n1]{replacements}[$n2]{replace}";
-          }
-          print "\n";
-          print UNWRAPPED_INPUT "\n";
-        } else {
-          print "INFO: not using any search/replace combinations during the include of $code_blocks[$#code_blocks]{include_name}\n";
-          print UNWRAPPED_INPUT " without any search/replace combinations\n";
-        }
-    # now setup handle and open file
-        $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a filehandle for this file
-        $handle = $code_blocks[$#code_blocks]{"handle"};
-        $file = $code_blocks[$#code_blocks]{"include_name"};
-        open($handle, "<$code_blocks[$#code_blocks]{name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
+# add any remainder on line back to buffer for processing next time
+        $buffer = $line;
       }
 
     }
@@ -620,12 +619,6 @@ sub parse_solver_code_line {
       if ($error) { error_stop("some type of syntax problem with the EXTERNAL statement.  Should the text be quoted?: $filelinelocator"); }
       create_external_file($tmp);
     }
-
-#-------------------
-# check for END statement
-  } elsif ($line =~ /^END($|\s)/i) {
-    print "INFO: found END statement in file = $file\n"; 
-    $code_blocks[$#code_blocks]{"exit"} = 1; # set this marker so that file reader knows to exit immediately
 
 #---------------------
 # ref: deprecated syntax
@@ -1182,6 +1175,8 @@ sub parse_solver_code_line {
     syntax_problem("the following line in $file makes no sense: $filelinelocator");
   }
 
+  $_[0] = $buffer;
+
 } 
 #-------------------------------------------------------------------------------
 # examines buffer line and corrects any replace/with pairs, either in GENERAL_REPLACEMENTS or INCLUDE* statements
@@ -1307,10 +1302,13 @@ sub extract_deprecated_replacements {
 }
 
 #-------------------------------------------------------------------------------
-# adds a code block to the code_blocks array
+# adds a code block to the top of the code_blocks array
+# if a name and actual name are provided, assumes this is a file and opens that too (new_file = 1)
+# otherwise assumes that block is in the same file (new_file = 0)
+# 
 # on input
-# _[0] = name of file from include statement (include_name)
-# _[1] = name of file as found
+# _[0] = name of file from include statement (include_name)|undef
+# _[1] = actual name of file as found and to be opened|undef
 sub push_code_block {
 
   use FileHandle;
@@ -1318,8 +1316,27 @@ sub push_code_block {
 
   my ($include_name,$name) = @_;
 
-  $code_blocks[$#code_blocks+1]{"include_name"}=$include_name;
-  $code_blocks[$#code_blocks]{"name"}=$name;
+# add new array element, starting with flag that indicates whether this file needs to be opened, or already is
+  if (defined($name)) {
+    $code_blocks[$#code_blocks+1]{"new_file"}=1;
+    $code_blocks[$#code_blocks]{"include_name"}=$include_name;
+    $code_blocks[$#code_blocks]{"name"}=$name;
+    $code_blocks[$#code_blocks]{"abs_name"} = File::Spec->rel2abs($name); # abs_name is always the absolute path to the file
+    $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a new filehandle for the file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
+
+# open file
+    my $handle = $code_blocks[$#code_blocks]{"handle"};
+    open($handle, "<$code_blocks[$#code_blocks]{name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
+
+  }
+    if ($#code_blocks) { error_stop("internal problem with push_code_block"); }
+    $code_blocks[$#code_blocks+1]{"new_file"}=0;
+    $code_blocks[$#code_blocks]{"include_name"}=$code_blocks[$#code_blocks-1]{"include_name"};
+    $code_blocks[$#code_blocks]{"name"}=$code_blocks[$#code_blocks-1]{"name"};
+    $code_blocks[$#code_blocks]{"abs_name"}=$code_blocks[$#code_blocks-1]{"abs_name"};
+    $code_blocks[$#code_blocks]{"handle"}=$code_blocks[$#code_blocks-1]{"handle"};
+  }
+
   if ($#code_blocks) {
 # set to last include_path of previous code_block, which is where calling file must be
     $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[$#{$code_blocks[$#code_blocks-1]{"include_path"}}];
@@ -1330,15 +1347,30 @@ sub push_code_block {
     $code_blocks[$#code_blocks]{"include_path"}[0] = $::working_dir;
   }
 
-  $code_blocks[$#code_blocks]{"abs_name"} = File::Spec->rel2abs($name); # abs_name is always the absolute path to the file
-  $code_blocks[$#code_blocks]{"raw_buffer"} = ''; # current buffer containing block as it is read in
   $code_blocks[$#code_blocks]{"buffer"} = ''; # buffer created from raw_buffer
-  $code_blocks[$#code_blocks]{"code_line"} = ''; # code_line created from buffer
-  $code_blocks[$#code_blocks]{"comments"} = ''; # comments corresponding to code_line
   $code_blocks[$#code_blocks]{"skip"} = 0; # flag to indicate whether we are in a comments section or not
-  $code_blocks[$#code_blocks]{"exit"} = 0; # flag to indicate whether we are exiting this block asap
-  $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a new filehandle for the file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
 
+# ref: FILENAME
+# set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
+  if (empty($::simulation_info{"filename"}) && $#code_blocks) {
+    $::simulation_info{"filename"} = $code_blocks[$#code_blocks]{"include_name"};
+    $::simulation_info{"absfilename"} = $code_blocks[$#code_blocks]{"abs_name"};
+  }
+
+}
+
+#-------------------------------------------------------------------------------
+# removes a code block from the top of the code_blocks array
+# 
+sub pop_code_block {
+
+  if ($code_blocks[$#code_blocks]{"new_file"}) {
+    my $handle = $code_blocks[$#code_blocks]{"handle"};
+    close($handle);
+    print ::DEBUG "INFO: closing file $code_blocks[$#code_blocks]{"name"}\n";
+  }
+
+  pop(@code_blocks);
 }
 
 #-------------------------------------------------------------------------------
