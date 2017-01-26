@@ -115,7 +115,7 @@ sub read_input_files {
       $code_blocks[$#code_blocks]{"buffer"} =~ s/\n$//; # remove trailing linefeed
 
 # set message line locator string
-      $filelinelocator = "file = $code_blocks[$#code_blocks]{abs_name}: linenumber = $.: line = \'$code_blocks[$#code_blocks]{buffer}\'";
+      $filelinelocator = "file = $code_blocks[$#code_blocks]{include_name}: linenumber = $.: line = \'$code_blocks[$#code_blocks]{buffer}\'";
 
 # check and correct any deprecated string replacement comments here
       correct_deprecated_string_replacement_code($code_blocks[$#code_blocks]{"buffer"}); # here buffer has no comments, and no linefeed
@@ -126,10 +126,10 @@ sub read_input_files {
 # string replacements are done on complete line including comments, except for string code sections delimited by {{ and }}
 # TODO
 
-# now code is ready for solver code parser, so add linefeed again (for printing purposes)
+
 
 # this will become area that parses code
-      print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#prior to parse_solver_code_line: ".$code_blocks[$#code_blocks]{"buffer"};
+#     print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#prior to parse_solver_code_line: $code_blocks[$#code_blocks]{buffer}\n";
       parse_solver_code_line($code_blocks[$#code_blocks]{"buffer"}); # processes the buffer
 
 # buffer needs more raw_buffer from this point down
@@ -142,7 +142,8 @@ sub read_input_files {
             $comments .= $3; # concatenate onto comment string
           }
         } else {
-          pop_code_block() # exit code_block if end of file is reached
+          pop_code_block(); # exit code_block if end of file is reached
+          $raw_buffer = '';
         }
 
     } else {
@@ -259,20 +260,43 @@ sub set_transient_simulation {
 #-------------------------------------------------------------------------------
 # report and take action with any syntax problems
 # these are handled a bit differently to normal messages so that user can see what problems there are with their syntax
-# an example for calling this sub
-#        syntax_problem("warning","$deprecatedtype type has been deprecated, use $type instead.\nfile = $file\noriginal line = $oline\ncorrected line = $line");
+
+# on entry:
+# if three values given, then second is debug message
+# if two, then message and action
+# if one, then only message, and action is error
+
+# message that goes with this problem
+# syntax_action could be info, warning or error (which implies a stop and is the default if no syntax_action is given)
+# default is an error, so becomes a drop-in replacement for error_stop subroutine
 
 sub syntax_problem {
-  my $message = $_[0]; # message that goes with this problem
-  my $syntax_action = $_[1]; # could be info, warning or error (which implies a stop and is the default if no syntax_action is given)
 
-  if (!($syntax_action)) { $syntax_action = "error"; } # default is an error, so becomes a drop-in replacement for error_stop subroutine
-  print SYNTAX "\U$syntax_action: "."$message\n";
+  my ($message, $debug_message, $syntax_action) = @_;
+  if (!($debug_message)) {
+    $debug_message = $message;
+    $syntax_action = "error";
+  } elsif (!($syntax_action)) {
+    $syntax_action = $debug_message;
+    $debug_message = $message;
+  }
+
+#   
+
+# if ($#_ == 2) {
+#   ($message, $debug_message, $syntax_action) = @_;
+# } else {
+#   ($message, $syntax_action) = @_;
+#   if ($#_ == 0) { $syntax_action = "error"; }
+#   $debug_message = $message;
+# }
+
+  print SYNTAX "\U$syntax_action: "."$debug_message\n";
   if ($syntax_action eq "error") {
     error_stop($message) # already writes to output and debug files
   } else {
     print "\U$syntax_action: "."$message\n";
-    print ::DEBUG "\U$syntax_action: "."$message\n";
+    print ::DEBUG "\U$syntax_action: "."$debug_message\n";
   }
     
 }
@@ -455,6 +479,14 @@ sub parse_solver_code_line {
 # TODO add IF blah and END_IF statements here, opening new block
 
 #-------------------
+# look for string code
+  elsif ($line =~ /^\{\{(.*)\}\}$/i) {
+#   my $string_code = $1;
+#   print "INFO: processing string code $& from $file\n";
+#   push_code_block();
+  }
+
+#-------------------
 # check for include statement, possibly opening new file
 # ref: include ref: include_template ref: include_local ref: include_absolute ref: include_working ref: include_last
   elsif ($line =~ /^INCLUDE(|_([A-Z]+))($|\s)/i) {
@@ -556,11 +588,6 @@ sub parse_solver_code_line {
       if (nonempty($found_name)) {
 
         push_code_block($new_file,$found_name);
-
-        print "INFO: found INCLUDE $code_blocks[$#code_blocks]{include_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
-        print ::DEBUG "INFO: found INCLUDE $code_blocks[$#code_blocks]{include_name} statement with include file identified as $code_blocks[$#code_blocks]{abs_name}: $filelinelocator\n";
-        print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",
-          $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap) the following is INCLUDED from $code_blocks[$#code_blocks]{abs_name}";
 
 # add any remainder on line back to buffer for processing next time
         $buffer = $line;
@@ -667,7 +694,7 @@ sub parse_solver_code_line {
       } else {
         syntax_problem("version mismatch between $file and the current version (of setup_equations.pl)\n".
             "  You should be able to increase the version number in $file (from $file_version to $::version) safely without altering the input ".
-            "file syntax, however this error indicates that additional language features are now available: $filelinelocator","warn");
+            "file syntax, however this error indicates that additional language features are now available: $filelinelocator","warning");
       }
     }
     print ::FORTRAN_INPUT "VERSION $file_version\n"; # also tell the fortran program about this
@@ -1197,6 +1224,7 @@ sub correct_deprecated_string_replacement_code {
   my $file = 'fixme';
   my $oline = 'fixme';
   my $warn = 0;
+  my $global = 0; # indicates that we are doing a general replacement
 
 # look for keywords that could indicate potential string code
 # roughly in line with legacy language, only <<>> delimited replacement strings could appear before these statements
@@ -1204,32 +1232,31 @@ sub correct_deprecated_string_replacement_code {
   if ($input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s+\S+\s*/i || # space delimited filename
       $input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s*".*?"\s*/i || # " delimited filename
       $input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s*'.*?'\s*/i ) { # ' delimited filename
-    print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 1\n";
+#   print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 1\n";
     $buffer .= $&;
     $input = $';
     $in_string_code = 1;
 
 # this should match any REPLACEMENTS statement that preceeds a deprecated replace/with pair
   } elsif ($input =~ /^(\s*(<<.*>>|)\s*)((GENERAL_|)REPLACEMENTS)(\s*)/i ) { # GENERAL_REPLACEMENTS type keywords
-    print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 2\n";
+#   print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 2\n";
     $buffer .= $1.$5;
     $input = $';
     $in_string_code = 1;
+    $global = 1;
 
   }
 
   if ($in_string_code) {
     while (nonempty($input) || $in_string_code) {
 
-      print ::DEBUG "INFO: in correct_deprecated_string_replacement_code with: input = $input: buffer = $buffer: in_string_code = $in_string_code\n";
+      print ::DEBUG "INFO: in correct_deprecated_string_replacement_code loop with: input = $input: buffer = $buffer: in_string_code = $in_string_code\n";
       if ($in_string_code) {
-        print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 3\n";
+#       print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 3\n";
         my ($search,$replace,$cancel,$default) = extract_deprecated_replacements($input);
-        if ($cancel) { die "cancel not done yet\n"; }
-        if ($default) { die "default not done yet\n"; }
-        print ::DEBUG "INFO: in correct... search = $search\n";
+#       if ($cancel) { die "cancel not done yet\n"; }
+#       if ($default) { die "default not done yet\n"; }
         if (nonempty($search)) {
-          print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 3.1\n";
           if ($in_string_code == 1) {
             $buffer .= '{{ ';
             $in_string_code = 2;
@@ -1237,9 +1264,13 @@ sub correct_deprecated_string_replacement_code {
           } else { # $in_string_code == 2
             $buffer .= '; ';
           }
-          $buffer .= "\'$search\' = \'$replace\' "; # add this found search/replace pair
+          if ($cancel) {
+            $buffer .= "cancel(\'$search\') "; # add this cancel operation
+          } else {
+            $buffer .= "\'$search\' ="."g" x $global."d" x $default." \'$replace\' "; # add this found search/replace pair
+          }
         } else {
-          print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 3.2\n";
+#         print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 3.2\n";
           if ($in_string_code == 2) { $buffer .= '}} '; }
           $in_string_code = 0;
         }
@@ -1252,8 +1283,9 @@ sub correct_deprecated_string_replacement_code {
     }
 
 # tell the user about the change if there was one
-    if ($warn) { syntax_problem("legacy string code has been found and replaced by newer string code at $filelinelocator\n".
-      "  legacy string code = $oinput\n  replaced string code = $buffer","warn"); }
+    if ($warn) { syntax_problem("legacy string code has been found and replaced by newer string code at $filelinelocator",
+      "legacy string code has been found and replaced by newer string code at $filelinelocator\n".
+      "  legacy string code = $oinput\n  replaced string code = $buffer","warning"); }
 
     $_[0] = $buffer;
   } else {
@@ -1335,7 +1367,7 @@ sub push_code_block {
     my $handle = $code_blocks[$#code_blocks]{"handle"};
     open($handle, "<$code_blocks[$#code_blocks]{name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
 
-  }
+  } else {
     if ($#code_blocks) { error_stop("internal problem with push_code_block"); }
     $code_blocks[$#code_blocks+1]{"new_file"}=0;
     $code_blocks[$#code_blocks]{"include_name"}=$code_blocks[$#code_blocks-1]{"include_name"};
@@ -1357,6 +1389,9 @@ sub push_code_block {
   $code_blocks[$#code_blocks]{"buffer"} = ''; # buffer created from raw_buffer
   $code_blocks[$#code_blocks]{"skip"} = 0; # flag to indicate whether we are in a comments section or not
 
+  print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",
+    $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap): new block = $code_blocks[$#code_blocks]{include_name}: new_file = $code_blocks[$#code_blocks]{new_file}\n";
+
 # ref: FILENAME
 # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
   if (empty($::simulation_info{"filename"}) && $#code_blocks) {
@@ -1371,10 +1406,12 @@ sub push_code_block {
 # 
 sub pop_code_block {
 
+  print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#(comment generated during unwrap)--------------------------------------------------------\n";
+
   if ($code_blocks[$#code_blocks]{"new_file"}) {
     my $handle = $code_blocks[$#code_blocks]{"handle"};
     close($handle);
-    print ::DEBUG "INFO: closing file $code_blocks[$#code_blocks]{"name"}\n";
+    print ::DEBUG "INFO: closing file $code_blocks[$#code_blocks]{name}\n";
   }
 
   pop(@code_blocks);
