@@ -159,11 +159,15 @@ sub read_input_files {
       $raw_buffer = '';
     }
 
-    print ::DEBUG "INFO: code_blocks loop".
-      ": #code_blocks = $#code_blocks".
-      ": raw_buffer = $raw_buffer".
-      ": buffer = $code_blocks[$#code_blocks]{buffer}".
-      ": skip = $code_blocks[$#code_blocks]{skip}\n";
+    if (@code_blocks) {
+      print ::DEBUG "INFO: code_blocks loop".
+        ": #code_blocks = $#code_blocks".
+        ": raw_buffer = $raw_buffer".
+        ": buffer = $code_blocks[$#code_blocks]{buffer}".
+        ": skip = $code_blocks[$#code_blocks]{skip}\n";
+    } else {
+      print ::DEBUG "INFO: code_blocks loop finished\n";
+    }
 
   } # end of loop for this input file
 
@@ -481,8 +485,9 @@ sub parse_solver_code_line {
 #-------------------
 # look for string code
   elsif ($line =~ /^\{\{(.*)\}\}$/i) {
-#   my $string_code = $1;
-#   print "INFO: processing string code $& from $file\n";
+#   print "FOUND string code: $&\n";
+    my $string_code = $1;
+    print "INFO: processing string code $& from $file\n";
 #   push_code_block();
   }
 
