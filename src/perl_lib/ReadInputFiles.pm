@@ -445,8 +445,14 @@ sub parse_solver_code_line {
 
 #-------------------
 # look for delimited sections, and END statement
-  elsif ($line =~ /^(START|BEGIN|{))$/i) { print "INFO: found opening code block \L$1\E statement in $file\n"; push_code_block(); }
-  elsif ($line =~ /^(STOP|END|})$/i) { print "INFO: found closing code block \L$1\E statement in $file\n"; pop_code_block(); }
+  elsif ($line =~ /^(START|BEGIN)$/i) { print "INFO: found opening code block \L$1\E statement in $file\n"; push_code_block(); }
+  elsif ($line =~ /^(STOP|END)$/i) { print "INFO: found closing code block \L$1\E statement in $file\n"; pop_code_block(); }
+# not sure about {} delimiters
+# elsif ($line =~ /^(START|BEGIN|{)$/i) { print "INFO: found opening code block \L$1\E statement in $file\n"; push_code_block(); }
+# elsif ($line =~ /^(STOP|END|})$/i) { print "INFO: found closing code block \L$1\E statement in $file\n"; pop_code_block(); }
+
+#-------------------
+# TODO add IF blah and END_IF statements here, opening new block
 
 #-------------------
 # check for include statement, possibly opening new file
@@ -485,6 +491,7 @@ sub parse_solver_code_line {
       my $found_depth = 1; # this is used only for file::find used within the template include
       if (empty($include_type)) {
   # if this is a plain INCLUDE statement then we cycle through the list of paths looking for the file or directory
+# TODO: make include path search also recursive through code_blocks
         for my $search_path ( reverse( @{$code_blocks[$#code_blocks]{"include_path"}} ) ) {
           ($found_name,$found_type) = check_for_arbfile_or_dir($search_path.'/'.$new_file);
           if (nonempty($found_name)) {
