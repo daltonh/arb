@@ -84,8 +84,7 @@ use Exporter 'import';
 our @EXPORT  = qw(read_input_files); # list of subroutines and variables that will by default be made available to calling routine
 
 # define variables common to all of these subs
-my @string_variables = (); # is an array/hash of the replacement strings
-my @code_blocks; # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
+our @code_blocks; # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
 
 my $filelinelocator; # holds generic locator of current line for message purposes corresponding to $#code_blocks
 
@@ -95,15 +94,20 @@ my $unwrapped_indent = "   "; # amount to indent the unwrapped input file for ea
 # parse all *.arb files - this is called from main
 sub read_input_files {
 
-  setup_string_variables(); # create the default general replacements
+  use StringCode;
 
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
   open(UNWRAPPED_INPUT, ">$::unwrapped_input_file");
 
-  open(SYNTAX, ">$::syntax_problems_file"); # this file is specifically for syntax problems in the input files and is written to by sub syntax_problem
+  syntax_file("open"); # in Common
 
 # push the first [0] code block (from the root_input.arb) onto the code_blocks array and prep for reading (open)
   push_code_block("root_input.arb","$::build_dir/root_input.arb");
+
+# now setup default variables as global (ie, in code_block[0])
+# $code_blocks[0]{"string_variables"}[0]{"search"} = "jibber";
+# print "in ReadInputFile: last string = $ReadInputFiles::code_blocks[0]{string_variables}[0]{search}\n";
+  setup_string_variables(); # create the default string variables
 
   my $raw_buffer='';
   my $comments='';
@@ -172,8 +176,8 @@ sub read_input_files {
   } # end of loop for this input file
 
   close(UNWRAPPED_INPUT);
-  close(SYNTAX);
-
+  syntax_file("close"); # in Common
+  
 # dump all of the simulation info into the fortran file, and output to the screen and debug
   $::sub_string{"simulation_info"} = '';
   foreach my $key ( keys(%::simulation_info)) {
@@ -183,173 +187,6 @@ sub read_input_files {
     $::sub_string{"simulation_info"} = $::sub_string{"simulation_info"}."! SIMULATION INFO: "."\U$key"." = $::simulation_info{$key}\n"; # and write the same to equation_module.f90
   }
 
-}
-#--------------------------------------------------------------
-
-sub setup_string_variables {
-
-# ref: general replacements
-# setup default string_variables
-# loose convention is that replacement strings be delimited by <<>>, however any strings can (and will) be matched/replaced
-# convention is that replacement names that end with "comment" are meant to preceed statements in the files, converting them to comments if they are not relevant
-# this string is for batcher integration - if a file is run through batcher, this string will be replaced by an empty string, so can be used to precede arb lines that are specific to the batcher runs
-  %{$string_variables[$#string_variables+1]} = ( search => "<<batchercomment>>", replace => "#" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<nobatchercomment>>", replace => "" );
-# geometry and equation related
-  %{$string_variables[$#string_variables+1]} = ( search => "<<dim1comment>>", replace => "" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<dim2comment>>", replace => "" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<dim3comment>>", replace => "" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<steadystatecomment>>", replace => "" ); # default is steady-state
-  %{$string_variables[$#string_variables+1]} = ( search => "<<transientcomment>>", replace => "#" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<cartesiancomment>>", replace => "" ); # default is cartesian
-  %{$string_variables[$#string_variables+1]} = ( search => "<<cylindricalcomment>>", replace => "#" );
-# convention is that replacement names that end with "flag" are either on (1) or off (0), so can be used within expressions
-  %{$string_variables[$#string_variables+1]} = ( search => "<<steadystateflag>>", replace => "1" ); # default is steady-state
-  %{$string_variables[$#string_variables+1]} = ( search => "<<transientflag>>", replace => "0" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<cartesianflag>>", replace => "1" ); # default is cartesian
-  %{$string_variables[$#string_variables+1]} = ( search => "<<cylindricalflag>>", replace => "0" );
-# these two should be overwritten by the relevant radius in the input file if using cylindrical coordinates: eg R "<<radius_c>>" W "<cellx[l=1]>" R "<<radius_f>>" W "<facex[l=1]>"
-  %{$string_variables[$#string_variables+1]} = ( search => "<<radius_c>>", replace => "1.d0" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<radius_f>>", replace => "1.d0" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<radius_n>>", replace => "1.d0" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<radiusdim1flag>>", replace => "0" ); # for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
-  %{$string_variables[$#string_variables+1]} = ( search => "<<radiusdim2flag>>", replace => "0" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<radiusdim3flag>>", replace => "0" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<radialdim>>", replace => "0" ); # for 2D cylindrical this is the radial coordinate direction
-  %{$string_variables[$#string_variables+1]} = ( search => "<<axialdim>>", replace => "0" ); # for 2D cylindrical this is the axial coordinate direction
-# these strings should be overwritten by the normal coordinate directions of any reflection boundaries in the domain: eg R "<<reflect=1>>" W "reflect=1"
-  %{$string_variables[$#string_variables+1]} = ( search => "<<reflect=1>>", replace => "" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<reflect=2>>", replace => "" );
-  %{$string_variables[$#string_variables+1]} = ( search => "<<reflect=3>>", replace => "" );
-
-  print ::DEBUG "INFO: initial string_variables = ".Dumper(@string_variables)."\n";
-
-}
-
-#-------------------------------------------------------------------------------
-# search through string_variables for search string
-
-sub search_string_variables {
-
-  my $search = $_[0]; # on input, search string
-  my $nfound = -1; # on output returns -1 if not found, or general_replacments index if found
-
-  for my $n ( 0 .. $#string_variables ) {
-    if ($search eq $string_variables[$n]{"search"}) { # found existing general replacements
-      $nfound = $n;
-      last;
-    }
-  }
-
-  return $nfound;
-
-}
-#-------------------------------------------------------------------------------
-# based on passed variable, set or unset transient simulation status, including comment strings
-
-sub set_transient_simulation {
-
-  $::transient_simulation = $_[0];
-  for my $n ( 0 .. $#string_variables ) {
-    if ($string_variables[$n]{"search"} eq "<<steadystatecomment>>") {
-      if ($::transient_simulation) { $string_variables[$n]{"replace"} = "#" } else { $string_variables[$n]{"replace"} = "" }
-    }
-    if ($string_variables[$n]{"search"} eq "<<transientcomment>>") {
-      if ($::transient_simulation) { $string_variables[$n]{"replace"} = "" } else { $string_variables[$n]{"replace"} = "#" }
-    }
-  }
-
-}
-
-#-------------------------------------------------------------------------------
-# report and take action with any syntax problems
-# these are handled a bit differently to normal messages so that user can see what problems there are with their syntax
-
-# on entry:
-# if three values given, then second is debug message
-# if two, then message and action
-# if one, then only message, and action is error
-
-# message that goes with this problem
-# syntax_action could be info, warning or error (which implies a stop and is the default if no syntax_action is given)
-# default is an error, so becomes a drop-in replacement for error_stop subroutine
-
-sub syntax_problem {
-
-  my ($message, $debug_message, $syntax_action) = @_;
-  if (!($debug_message)) {
-    $debug_message = $message;
-    $syntax_action = "error";
-  } elsif (!($syntax_action)) {
-    $syntax_action = $debug_message;
-    $debug_message = $message;
-  }
-
-#   
-
-# if ($#_ == 2) {
-#   ($message, $debug_message, $syntax_action) = @_;
-# } else {
-#   ($message, $syntax_action) = @_;
-#   if ($#_ == 0) { $syntax_action = "error"; }
-#   $debug_message = $message;
-# }
-
-  print SYNTAX "\U$syntax_action: "."$debug_message\n";
-  if ($syntax_action eq "error") {
-    error_stop($message) # already writes to output and debug files
-  } else {
-    print "\U$syntax_action: "."$message\n";
-    print ::DEBUG "\U$syntax_action: "."$debug_message\n";
-  }
-    
-}
-
-#-------------------------------------------------------------------------------
-# simple subroutine to extract the first string entry from a line of text, possibly removing any delimiters at the same time
-# delimiter is governed by what starts the string:
-#  if it is a " or ', string is delimited by the closest matching delimiter, with no escaping of characters in the middle
-#  otherwise the string is delimited by the closest space (which becomes the delimiter)
-# input
-# $_[0] = string that we want something extracted from
-# output
-# first return = extracted string removed from the front, dedelimited
-# second return = error flag (0 or 1)
-# $_[0] = remainder of string, with leading spaces removed
-
-sub extract_first {
-
-  my ($input) = @_;
-
-  my $remainder=$input;
-  my $string="";
-  my $delimiter="";
-  my $error=0;
-  
-  if (nonempty($remainder)) {
-    $remainder=~s/^\s*//; #remove leading spaces
-    ($delimiter)=$remainder=~/^(['"])/;
-    if (nonempty($delimiter)) {
-      if ($remainder=~/^$delimiter(.*?)$delimiter/) {
-        $string=$1; # $string is whatever is between closest delimiters
-        $remainder=$';
-      } else { print "WARNING: matching delimiters not found in the following string: $input\n"; $error=1; }
-    } else {
-      $remainder=~/^(.+?)(\s|$)/; # $string is whatever is before closest space
-      $string=$1;
-      $remainder=$';
-    }
-    $remainder=~s/^\s*//; #remove leading spaces
-    $remainder=~s/\s*$//; #remove trailing spaces too now
-  } else {
-    $remainder = ''; # remainder could have been blank, so set it to nothing explicitly
-  }
-
-# print "string = $string: remainder = $remainder: delimiter = $delimiter\n";
-# place remainder of string back in $_[0];
-  $_[0]=$remainder;
-# return the extracted string and error
-  return ($string, $error);
 }
 
 #-------------------------------------------------------------------------------
@@ -440,9 +277,9 @@ sub parse_solver_code_line {
 # $_[0] = line after processing - the default is to process string and clear the buffer, however if a new file is included there may be associated string code which is placed in the buffer for processing
 
   use List::Util qw( min max );
-  use Data::Dumper;
   use Storable qw(dclone);
   use File::Find; # for find
+  use StringCode;
 
   my $line = $_[0]; # set line to local variable
 
@@ -486,14 +323,19 @@ sub parse_solver_code_line {
 # look for string code
   elsif ($line =~ /^\{\{(.*)\}\}$/i) {
 #   print "FOUND string code: $&\n";
-    my $string_code = $1;
+#   my $string_code = $1;
+    $buffer = $line;
 #   print "INFO: processing string code $& from $file\n";
-    print "INFO: processing string code $string_code from $file\n";
-    my $x = 0;
-    print "before: x = $x\n";
-    my $eval_return = eval($string_code."; return ''");
-    if ($@) { print "ERROR: error in $string_code\n"; }
-    print "eval_return = $eval_return\n";
+    print "INFO: before processing string code: buffer = $buffer\n";
+
+#   StringCode::parse_string_code($buffer);
+    parse_string_code($buffer);
+    print "INFO: after processing string code: buffer = $buffer\n";
+#   my $x = 0;
+#   print "before: x = $x\n";
+#   my $eval_return = eval($string_code."; return ''");
+#   if ($@) { print "ERROR: error in $string_code\n"; }
+#   print "eval_return = $eval_return\n";
 
 #   my $ok = eval {
 #       $string_code;
@@ -507,7 +349,7 @@ sub parse_solver_code_line {
 #       $line = "Error in executing the following string code: $line\n"
 #   };
 
-    print "after: x = $x\n";
+#   print "after: x = $x\n";
 
 #   $buffer = $line;
 
@@ -807,9 +649,10 @@ sub parse_solver_code_line {
         my $search="<<reflect=$1>>";
         my $replace="reflect=$1";
         $tmp = $tmp = $`." ".$';
-        my $n = search_string_variables($search);
-        if ($n < 0) { error_stop("some type of error with the reflect specification in the following: $filelinelocator"); }
-        else { $string_variables[$n]{"replace"}=$replace; }
+# TODO
+#       my $n = search_string_variables($search);
+#       if ($n < 0) { error_stop("some type of error with the reflect specification in the following: $filelinelocator"); }
+#       else { $string_variables[$n]{"replace"}=$replace; }
         print "INFO: based on a GLUE_FACES statement setting $search string_variables string to $replace\n";
       }
     }

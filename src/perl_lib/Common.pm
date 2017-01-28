@@ -39,7 +39,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem syntax_file); # list of subroutines and variables that will by default be made available to calling routine
 
 #-------------------------------------------------------------------------------
 # chomp and remove mac linefeads too if present
@@ -196,6 +196,110 @@ sub examine_name {
     if ($name eq "<boundaryfaces>") { $name = "<boundaries>"; }
     if ($name eq "<domaincells>") { $name = "<domain>"; }
     return ($name);
+  }
+}
+
+#-------------------------------------------------------------------------------
+# simple subroutine to extract the first string entry from a line of text, possibly removing any delimiters at the same time
+# delimiter is governed by what starts the string:
+#  if it is a " or ', string is delimited by the closest matching delimiter, with no escaping of characters in the middle
+#  otherwise the string is delimited by the closest space (which becomes the delimiter)
+# input
+# $_[0] = string that we want something extracted from
+# output
+# first return = extracted string removed from the front, dedelimited
+# second return = error flag (0 or 1)
+# $_[0] = remainder of string, with leading spaces removed
+
+sub extract_first {
+
+  my ($input) = @_;
+
+  my $remainder=$input;
+  my $string="";
+  my $delimiter="";
+  my $error=0;
+  
+  if (nonempty($remainder)) {
+    $remainder=~s/^\s*//; #remove leading spaces
+    ($delimiter)=$remainder=~/^(['"])/;
+    if (nonempty($delimiter)) {
+      if ($remainder=~/^$delimiter(.*?)$delimiter/) {
+        $string=$1; # $string is whatever is between closest delimiters
+        $remainder=$';
+      } else { print "WARNING: matching delimiters not found in the following string: $input\n"; $error=1; }
+    } else {
+      $remainder=~/^(.+?)(\s|$)/; # $string is whatever is before closest space
+      $string=$1;
+      $remainder=$';
+    }
+    $remainder=~s/^\s*//; #remove leading spaces
+    $remainder=~s/\s*$//; #remove trailing spaces too now
+  } else {
+    $remainder = ''; # remainder could have been blank, so set it to nothing explicitly
+  }
+
+# print "string = $string: remainder = $remainder: delimiter = $delimiter\n";
+# place remainder of string back in $_[0];
+  $_[0]=$remainder;
+# return the extracted string and error
+  return ($string, $error);
+}
+
+#-------------------------------------------------------------------------------
+# report and take action with any syntax problems
+# these are handled a bit differently to normal messages so that user can see what problems there are with their syntax
+
+# on entry:
+# if three values given, then second is debug message
+# if two, then message and action
+# if one, then only message, and action is error
+
+# message that goes with this problem
+# syntax_action could be info, warning or error (which implies a stop and is the default if no syntax_action is given)
+# default is an error, so becomes a drop-in replacement for error_stop subroutine
+
+sub syntax_problem {
+
+  my ($message, $debug_message, $syntax_action) = @_;
+  if (!($debug_message)) {
+    $debug_message = $message;
+    $syntax_action = "error";
+  } elsif (!($syntax_action)) {
+    $syntax_action = $debug_message;
+    $debug_message = $message;
+  }
+
+#   
+
+# if ($#_ == 2) {
+#   ($message, $debug_message, $syntax_action) = @_;
+# } else {
+#   ($message, $syntax_action) = @_;
+#   if ($#_ == 0) { $syntax_action = "error"; }
+#   $debug_message = $message;
+# }
+
+  print SYNTAX "\U$syntax_action: "."$debug_message\n";
+  if ($syntax_action eq "error") {
+    error_stop($message) # already writes to output and debug files
+  } else {
+    print "\U$syntax_action: "."$message\n";
+    print ::DEBUG "\U$syntax_action: "."$debug_message\n";
+  }
+    
+}
+
+#-------------------------------------------------------------------------------
+sub syntax_file {
+  my ($action) = @_;
+
+  if ($action eq "open") {
+    open(SYNTAX, ">$::syntax_problems_file"); # this file is specifically for syntax problems in the input files and is written to by sub syntax_problem
+  } elsif ($action eq "close") {
+    close(SYNTAX);
+  } else {
+    error_stop("internal error: unknown syntax_file action $action\n");
   }
 }
 
