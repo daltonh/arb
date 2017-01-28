@@ -487,7 +487,30 @@ sub parse_solver_code_line {
   elsif ($line =~ /^\{\{(.*)\}\}$/i) {
 #   print "FOUND string code: $&\n";
     my $string_code = $1;
-    print "INFO: processing string code $& from $file\n";
+#   print "INFO: processing string code $& from $file\n";
+    print "INFO: processing string code $string_code from $file\n";
+    my $x = 0;
+    print "before: x = $x\n";
+    my $eval_return = eval($string_code."; return ''");
+    if ($@) { print "ERROR: error in $string_code\n"; }
+    print "eval_return = $eval_return\n";
+
+#   my $ok = eval {
+#       $string_code;
+#       print "within eval: x = $x\n";
+#       return 1;
+#   } or do {
+#       # error handler code
+#       my $error = $@;
+#
+#       ...
+#       $line = "Error in executing the following string code: $line\n"
+#   };
+
+    print "after: x = $x\n";
+
+#   $buffer = $line;
+
 # TODO
 #   push_code_block();
   }
