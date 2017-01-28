@@ -75,6 +75,8 @@ sub parse_string_code {
 #-------------------------------------------------------------------------------
 # 
 # start with two strings
+# needs to be changed so that only does found on current block
+# otherwise creates new in current block, which will be found before anything in preceeding blocks
 sub set_string {
 
   my ($name, $value) = @_;
