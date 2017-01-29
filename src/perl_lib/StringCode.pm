@@ -39,7 +39,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(parse_string_code setup_string_variables set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(parse_string_code string_setup set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
 use Common;
 use Data::Alias 'alias';
 
@@ -77,14 +77,14 @@ sub parse_string_code {
 # start with two strings
 # needs to be changed so that only does found on current block
 # otherwise creates new in current block, which will be found before anything in preceeding blocks
-sub set_string {
+sub string_set {
 
   my ($name, $value) = @_;
   alias my @code_blocks = @ReadInputFiles::code_blocks;
 
 # %{$string_variables[$#string_variables+1]} = ( search => "<<batchercomment>>", replace => "#" );
   
-  my ($code_block_found,$string_variable_found) = search_string_variables($name);
+  my ($code_block_found,$string_variable_found) = string_search($name);
 
   if ($code_block_found >= 0 && $string_variable_found >= 0) {
     $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} = $value;
@@ -96,11 +96,12 @@ sub set_string {
 }
 
 #-------------------------------------------------------------------------------
-sub setup_string_variables {
+sub string_setup {
 
   use Data::Dumper;
 # for convienience create an alias to just the string_variables part of code_blocks
-  alias my @string_variables = @{$ReadInputFiles::code_blocks[$#ReadInputFiles::code_blocks]{"string_variables"}};
+# alias my @string_variables = @{$ReadInputFiles::code_blocks[$#ReadInputFiles::code_blocks]{"string_variables"}};
+  alias my @string_variables = @{$ReadInputFiles::code_blocks[0]{"string_variables"}};
 
 # ref: string variables
 # setup default string_variables
@@ -143,7 +144,7 @@ sub setup_string_variables {
 #--------------------------------------------------------------
 # search through string_variables for search string
 
-sub search_string_variables {
+sub string_search {
 
   my $name = $_[0]; # on input, name of string to find
   my $string_variable_found = -1; # on output returns -1 if not found, or string_variables index if found
@@ -171,15 +172,15 @@ sub set_transient_simulation {
 
   $::transient_simulation = $_[0];
   if ($::transient_simulation) {
-    set_string("<<transientcomment>>","");
-    set_string("<<steadystatecomment>>","#");
-    set_string("<<transientflag>>","1");
-    set_string("<<steadystateflag>>","0");
+    string_set("<<transientcomment>>","","global");
+    string_set("<<steadystatecomment>>","#","global");
+    string_set("<<transientflag>>","1","global");
+    string_set("<<steadystateflag>>","0","global");
   } else {
-    set_string("<<transientcomment>>","#");
-    set_string("<<steadystatecomment>>","");
-    set_string("<<transientflag>>","0");
-    set_string("<<steadystateflag>>","1");
+    string_set("<<transientcomment>>","#","global");
+    string_set("<<steadystatecomment>>","","global");
+    string_set("<<transientflag>>","0","global");
+    string_set("<<steadystateflag>>","1","global");
   }
 
 }

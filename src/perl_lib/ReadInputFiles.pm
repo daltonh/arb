@@ -107,7 +107,7 @@ sub read_input_files {
 # now setup default variables as global (ie, in code_block[0])
 # $code_blocks[0]{"string_variables"}[0]{"search"} = "jibber";
 # print "in ReadInputFile: last string = $ReadInputFiles::code_blocks[0]{string_variables}[0]{search}\n";
-  setup_string_variables(); # create the default string variables
+  string_setup(); # create the default string variables
 
   my $raw_buffer='';
   my $comments='';
@@ -133,8 +133,8 @@ sub read_input_files {
 
 
 # this will become area that parses code
-#     print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#prior to parse_solver_code_line: $code_blocks[$#code_blocks]{buffer}\n";
-      parse_solver_code_line($code_blocks[$#code_blocks]{"buffer"}); # processes the buffer
+#     print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,"#prior to parse_solver_code: $code_blocks[$#code_blocks]{buffer}\n";
+      parse_solver_code($code_blocks[$#code_blocks]{"buffer"}); # processes the buffer
 
 # buffer needs more raw_buffer from this point down
     } elsif (empty($raw_buffer)) { # if raw buffer is empty, then we need to fill this first
@@ -269,7 +269,7 @@ sub check_for_arbfile_or_dir {
 
 #-------------------------------------------------------------------------------
 # subroutine that parses one code_line of solver code
-sub parse_solver_code_line {
+sub parse_solver_code {
 # processes buffer, using information also about the file contained in $#code_block
 # on input:
 # $_[0] = line to process - includes comments but not linefeed
@@ -488,7 +488,7 @@ sub parse_solver_code_line {
 #           }
 #         }
 # # v0.42 general replacements of each search string is unique
-#         my $n = search_string_variables($search);
+#         my $n = string_search($search);
 #         if ($n < 0) { # indicates that string is not found in string_variables
 #           if ($cancel) {
 #             print "WARNING: general replacement search string $search cancelled before being allocated\n";
@@ -650,7 +650,7 @@ sub parse_solver_code_line {
         my $replace="reflect=$1";
         $tmp = $tmp = $`." ".$';
 # TODO
-#       my $n = search_string_variables($search);
+#       my $n = string_search($search);
 #       if ($n < 0) { error_stop("some type of error with the reflect specification in the following: $filelinelocator"); }
 #       else { $string_variables[$n]{"replace"}=$replace; }
         print "INFO: based on a GLUE_FACES statement setting $search string_variables string to $replace\n";
