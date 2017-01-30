@@ -39,7 +39,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem syntax_file); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem syntax_file replace_substring); # list of subroutines and variables that will by default be made available to calling routine
 
 #-------------------------------------------------------------------------------
 # chomp and remove mac linefeads too if present
@@ -301,6 +301,13 @@ sub syntax_file {
   } else {
     error_stop("internal error: unknown syntax_file action $action\n");
   }
+}
+
+#-------------------------------------------------------------------------------
+# calling sequence is: string, substring, replacement
+
+sub replace_substring {
+  $_[0] =~ s/\Q$_[1]/$_[2]/g; # \Q escapes any funny characters in $_[1]
 }
 
 #-------------------------------------------------------------------------------

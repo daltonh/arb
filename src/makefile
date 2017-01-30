@@ -346,7 +346,8 @@ vpath	%.f	$(srcdir)
 objects = equation_module.o general_module.o main.o setup_module.o solver_module.o gmesh_module.o output_module.o kernel_module.o region_module.o linear_module.o
 
 # setup_equations_src lists all perl code files (.pl and .pm) that setup_equations.pl depends upon, including setup_equations.pl itself
-setup_equations_src := $(notdir $(wildcard $(srcdir)/setup_equations/*.p?))
+#setup_equations_src := $(notdir $(wildcard $(srcdir)/setup_equations/*.p?))
+setup_equations_src := $(wildcard $(srcdir)/setup_equations/*.p?)
 
 #----------------
 # check for existence of pardiso (native, not intel mkl version) libraries

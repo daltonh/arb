@@ -49,7 +49,7 @@ use Sys::Hostname;
 
 # include arb specific modules from src/perl_lib
 use FindBin;
-use lib "$FindBin::Bin/."; # place where local modules to be included are stored, which is now relative to setup_equations.pl script, and resides in the same src/setup_equations 
+use lib "$FindBin::Bin"; # place where local modules to be included are stored, which is now relative to setup_equations.pl script, and resides in the same src/setup_equations directory
 
 use Common; # non-specific routines
 use ReadInputFiles; # deals with reading the input files, including sub read_input_files
@@ -3296,7 +3296,7 @@ sub mequation_interpolation {
 # difference between hasderiv and deriv is irrelevant, as they only differ for unknowns and unknowns should only be substituted for other unknowns and constants which have deriv=0 anyway
           print DEBUG "  tmpderiv = $tmpderiv: type/mvar hasderiv = $variable{$type}[$mvar]{hasderiv}: otype/omvar deriv = $variable{$otype}[$omvar]{deriv}\n";
           create_someloop($tmp,"sum",$variable{$type}[$mvar]{"centring"},"<noloop>",$tmpderiv,$otype,$omvar);
-#         replace_substrings($_[0],$variable{$type}[$mvar]{"maxima"},$tmp);
+#         replace_substring($_[0],$variable{$type}[$mvar]{"maxima"},$tmp);
           $_[0] =~ s/\Q$variable{$type}[$mvar]{"maxima"}/$tmp/g;
           print DEBUG "  after change mequation was $_[0]\n";
 
@@ -3836,13 +3836,6 @@ sub expand_equation {
 
   return $expanded_equation;
 
-}
-
-#-------------------------------------------------------------------------------
-# calling sequence is: string, substring, replacement
-
-sub replace_substrings {
-  $_[0] =~ s/\Q$_[1]/$_[2]/g; # \Q escapes any funny characters in $_[1]
 }
 
 #-------------------------------------------------------------------------------
