@@ -1046,3 +1046,201 @@ track of what the file contains. These and other automatically generated
 info strings are included as comments in most of the output files.
 
 
+Solver code
+-----------
+
+Most of the arb input file consists of 'solver code', which has the generic form of:
+```arb
+KEYWORD <possibly a name> "other things including delimited strings" list_of_comma_separated_options # trailing comment
+```
+
+Solver code can be continued with the ampersand symbol, and is based on the ideas used in free-form fortran (<http://fortranwiki.org/fortran/show/Continuation+lines>):
+```arb
+NONE_CONSTANT <a> & # comments are allowed
+ "<b> + <c>" & # on each line, but 
+  nooutput # only the last is carried through to the unwrapped_input.arb file
+NONE_CONSTANT <b> "<a&
+    &> + <c&
+>"& # will work too
+```
+Note that this type of line continuation is not supported in the string code discussed next.
+
+
+String code
+-----------
+
+v0.57 introduces the concept of string code, which is code that is embedded within the solver code and used to a) generate string replacement variables (termed string variables), and also to b) generated solver code directly.  String code is delimited by {{ and }}.  The basic rules of string code are:
+
+#.  string replacements are not performed on string code
+#.  string code can be placed anywhere within the solver code
+#.  there is no limitation to the characters used within string code, EXCEPT for }}, which even enclosed within a string will terminate the string code
+
+String code is parsed as perl code, evaluated within perl using the 'eval' (string) function (<http://perldoc.perl.org/functions/eval.html>).  For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) StringCode.pm module of setup_equations.pl, and whatever is returned from that eval (think subroutine) is substituted into the solver code in place of the string code.  So the following string code
+```arb
+{{ return "TRANSIENT_SIMULATION" }}
+```
+becomes the following solver code when arb is run,
+```arb
+TRANSIENT_SIMULATION
+```
+and hence appears as this solver code in the unwrapped_input.arb file.  Note that if no return value is specified then any string code block evaluates as an empty string, and hence has no (immediate) effect within the solver code:
+```arb
+NONE_CON{{ my $a = 1; }}STANT <a> 1.d0 # the solver code keyword becomes NONE_CONSTANT here
+```
+
+Also note that a print statement within the string code is printed to the standard output (the screen, or output.scr), and not to the solver code:
+```arb
+{{ print "INFO: this message will appear on the screen\n"; }}
+```
+
+Comments and line continuations are allowed in the string code, in the same way that they are allowed in perl code:
+
+```arb
+{{
+# new lines and comments within string code follow perl rules, as the code is parsed as perl code
+
+  my $a = 1; # set a local variable to 1
+  my $b = $a*3; # setting another local variable
+
+  return $b; # we are returning the value of $b here
+
+}}
+```
+
+
+As each string code block is evaluated using a separate perl eval call, local variables defined within one string code block are not available within subsequent string code blocks:
+```arb
+{{
+  my $a = 1; set a local variable to 1, noting that 'use string' and 'use warnings' are turned on in perl
+  print "$a\n"; # prints the value 1 to the screen
+}}
+{{
+  print "$a\n"; # generates an error as $a is not defined within the scope of this string code block
+}}
+```
+Instead, string variables can be used to pass information outside the scope of a particular string code block.  The perl subroutine 'string_set' is available to set the value of a string variable, and 'string_eval' to return its value.  The following example could be instead achieved using:
+```arb
+{{
+  string_set("$a",1); set a string variable "$a" to 1
+  print string_eval("$a")."\n"; # prints the value 1 to the screen
+}}
+{{
+  print string_eval("$a")."\n"; # prints the value 1 to the screen
+}}
+```
+String variables are the same variables used to achieve string replacements within the solver code, however, by default if a string variable name starts with '$', the string variable is given the noreplace option which means that the solver code is not searched/replaced with this particular variable.  This option can also be explicitly set at creation time or via the 'string_option' subroutine:
+```arb
+{{ string_set("<<a>>","1.d0",noreplace); }}
+{{ string_option("<<a>>",noreplace); }}
+```
+
+Strings variables can also be deleted, and if set without a value, imply the empty string:
+```arb
+{{
+  string_set("<<c>>"); # strings set with no value implies ''
+  string_delete("<<c>>") # strings can also be deleted
+}}
+```
+
+String code allows more flexibility in coding arb, and will be employed more in the template files.  Looping is possible now using (for example);
+```arb
+{{
+  my $loop_code = '';
+  for my $n in ( 0 .. 2 ) {
+    $loop_code .= "CONSTANT <a".$n."> $n.d0\n";
+  }
+  return $loop_code;
+}}
+```
+which would evaluate as the solver code
+```arb
+CONSTANT <a0> 0.d0
+CONSTANT <a1> 1.d0
+CONSTANT <a2> 2.d0
+```
+With some imagination arrays and hashes could even be stored within the string variables (but you'll have to learn some perl!).  Variables defined within setup_equations.pl can also be accessed within the string code, as can generic perl subroutines.
+```arb
+{{
+  print "$::transient_simulation\n"; # is a variable defined in main of setup_equations.pl which indicates whether this is a transient simulation or not
+  if (!($::transient_simulation)) {
+    print "WARNING $ENV{USERNAME}: did you want to run a transient simulation?\n"; # not tested, but should work...
+  }
+}}
+```
+
+
+Code blocks
+-----------
+
+Code blocks are separate 'chunks' of code that define the scope of the file include paths, as well as the string variables.  A new code block is started whenever a new file is included:
+```arb
+INCLUDE_LOCAL "some_arb_code" # a new block is created after the string "some_arb_code" has been read
+```
+String code that follows an include statement is included as the first statement in the newly created block:
+```arb
+INCLUDE_LOCAL "another_arb_code" {{ string_set("<<mu_f>>","<<mu>>"); }} # so the replacement is done on the contents of another_arb_code.arb
+```
+(Solver) code blocks can also be defined within the one file using the keywords 'BLOCK' and 'END_BLOCK':
+```arb
+BLOCK
+{{ string_set("$a","1.d0"); }}
+{{ string_set("$b","2.d0","global"); }}
+{{ print string_eval("$a"); }} # prints 1.d0
+{{ print string_eval("$b"); }} # prints 2.d0
+END_BLOCK
+{{ print string_eval("$a"); }} # error as $a is no longer defined in the parent block
+{{ print string_eval("$b"); }} # prints 2.d0 as $b was defined as a global variable
+```
+
+
+
+
+If statements
+-------------
+
+The following solver code shows an if statement:
+
+```arb
+IF 1
+  NONE_CONSTANT <a> 1.d0
+END_IF
+```
+
+Code flow through an IF statement is dependent on what follows the 'IF' keyword:  An empty string or '0' evaluates as false, whereas anything else is true.  So the following are true,
+```arb
+IF 1
+IF asd afsdf sdg sdgfas # some comment
+IF 0 adfd
+IF "0" # note this!
+```
+whereas the following are false
+```arb
+IF 0
+IF # possible trailing comment
+IF
+IF&
+  & # line continuation
+```
+
+There are also the continuation statements of ELSE_IF and ELSE demonstrated by:
+```arb
+IF 0
+  NONE_CONSTANT <a> 1.d0
+ELSE_IF 1
+  NONE_CONSTANT <a> 2.d0
+ELSE
+  NONE_CONSTANT <a> 3.d0
+END_IF
+```
+IF, ELSE_IF, ELSE and END_IF are all solver code keywords, so require their own lines.
+
+In practice the IF statements would be used in conjunction with string replacements or string code:
+```arb
+IF <<transientflag>> # here <<transientflag>> is a system generated string variable which is replaced by 1 for a transient simulation
+  CONSTANT <dt> 0.1d0
+ELSE_IF {{ return string_eval("$some_string_variable") }} # here the string code enclosed in {{ }} evaluates as the return value, which here would be the value of the string variable $some_string_variable which would have been previously set
+  CONSTANT <dt> 1.d0
+ELSE
+  CONSTANT <dt> 2.d0
+END_IF
+```

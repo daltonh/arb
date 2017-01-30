@@ -58,7 +58,7 @@ $replacements{"<<wikidir>>"}=$wiki_dir;
 $replacements{"<<bodydir>>"}=$body_dir;
 # version
 my $version;
-open(SETUPEQS,"$working_dir/src/setup_equations.pl") or die "problem opening setup_equations.pl\n";
+open(SETUPEQS,"$working_dir/src/setup_equations/setup_equations.pl") or die "problem opening setup_equations.pl\n";
 while ($line=<SETUPEQS>) {
   if ($line=~/\$version\s*=\s*"\s*(.+)\s*"\s*/) { $replacements{"<<version>>"}=$1; last; }
 }
