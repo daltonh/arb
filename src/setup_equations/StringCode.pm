@@ -43,17 +43,12 @@ our @EXPORT  = qw(parse_string_code string_setup set_transient_simulation); # li
 use Common;
 use Data::Alias 'alias';
 
-# create alias' to make a few variables more accessible
-#alias local @code_blocks = @ReadInputFiles::code_blocks;
-#alias my $transient_simulation = $::transient_simulation;
-#alias local $newtient_simulation = $::newtient_simulation;
-
 #-------------------------------------------------------------------------------
 sub parse_string_code {
 
   my ($buffer) = @_;
 
-  print "INFO: in StringCode::parse_string_code with buffer = $buffer\n";
+  print ::DEBUG "INFO: start of StringCode::parse_string_code: buffer = $buffer\n";
 
 # removing lead and trailing double delimiters
   ($buffer) = $buffer =~ /^\{\{(.*)\}\}$/;
@@ -63,34 +58,52 @@ sub parse_string_code {
     syntax_problem("error in evaluating the string code $buffer","error");
   } else { $buffer = $eval_return; }
 
-  print "INFO: return from StringCode::parse_string_code with buffer = $buffer\n";
-# my $transient_simulation;
-# alias my $transient_simulation = $::transient_simulation;
-# print "::transient_simulation = $::transient_simulation\n";
-# print "transient_simulation = $transient_simulation\n";
+  print ::DEBUG "INFO: end of StringCode::parse_string_code: buffer = $buffer\n";
 
   $_[0] = $buffer;
 }
 
 #-------------------------------------------------------------------------------
+# this sub sets a string variable with name to a value, for N string name/value pairs
+# on entry:
+#  $_[2*n-2)] = name for string n = 1 .. N
+#  $_[2*n-1)] = value for string n = 1 .. N
+#  $_[2*N] = comma separated list of options (string) to be applied for all strings:
+#    - replace: this string name will be searched for in solver code and replaced with its value, which is default for most string names
+#    - noreplace: opposite of replace, which is the default for strings whose names start with $, as in "$a"
+#    - default: only set the string to this value if the string is not already defined
+#    - global: set the string in the root code_block so that it is available even after the current block has closed - ie, globally
+
+# 
 # 
 # start with two strings
 # needs to be changed so that only does found on current block
 # otherwise creates new in current block, which will be found before anything in preceeding blocks
+
 sub string_set {
 
-  my ($name, $value) = @_;
+  my @name_value_pairs = @_; # place all arguments in this array to start
+
+# if the number of arguments is odd, then the last argument is the list of options, so pop this off
+  my $options = '';
+  if ($#name_value_pairs % 2 == 0) { $options = pop(@name_value_pairs); } # eg, 3/2=1 -> no options, 4/2=0 -> options
+
   alias my @code_blocks = @ReadInputFiles::code_blocks;
+
+# UP TO HERE
+  while (@name_value_pairs) {
 
 # %{$string_variables[$#string_variables+1]} = ( search => "<<batchercomment>>", replace => "#" );
   
-  my ($code_block_found,$string_variable_found) = string_search($name);
+    my ($code_block_found,$string_variable_found) = string_search($name);
 
-  if ($code_block_found >= 0 && $string_variable_found >= 0) {
-    $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} = $value;
-  } else {
-    %{$code_blocks[$#code_blocks]{"string_variables"}[$#{$code_blocks[$#code_blocks]{"string_variables"}}+1]} = 
-      ( name => $name, value => $value );
+    if ($code_block_found >= 0 && $string_variable_found >= 0) {
+      $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} = $value;
+    } else {
+      %{$code_blocks[$#code_blocks]{"string_variables"}[$#{$code_blocks[$#code_blocks]{"string_variables"}}+1]} = 
+        ( name => $name, value => $value );
+    }
+
   }
 
 }

@@ -1367,7 +1367,7 @@ sub push_code_block {
 }
 
 #-------------------------------------------------------------------------------
-# removes a code block from the top of the code_blocks array
+# removes a code block from the top of the code_blocks array, and closes file if required
 # 
 sub pop_code_block {
 
@@ -1384,6 +1384,7 @@ sub pop_code_block {
 }
 
 #-------------------------------------------------------------------------------
+# performs string replacements on the input string, returning the processed string again on output
 sub perform_string_replacements {
 
   my $string = $_[0];
