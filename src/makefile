@@ -345,6 +345,9 @@ vpath	%.f	$(srcdir)
 #objects := $(patsubst %.f90,%.o,$(notdir $(wildcard $(srcdir)/*.f90)))
 objects = equation_module.o general_module.o main.o setup_module.o solver_module.o gmesh_module.o output_module.o kernel_module.o region_module.o linear_module.o
 
+# setup_equations_src lists all perl code files (.pl and .pm) that setup_equations.pl depends upon, including setup_equations.pl itself
+setup_equations_src := $(notdir $(wildcard $(srcdir)/setup_equations/*.p?))
+
 #----------------
 # check for existence of pardiso (native, not intel mkl version) libraries
 # these pardiso libraries all seem to run in omp, so link in fopenmp with all of them
@@ -562,7 +565,7 @@ endif
 all : print delete_files check_equations arb
 
 # no checking of equations, so will reuse old equation_module.f90 regardless of changes to the *.in files,
-#  unless equation_module_template.f90 or setup_equations.pl have changed
+#  unless equation_module_template.f90 or any of the setup_equations perl files have changed
 compile_only : print delete_files arb
 
 # no making, just create equation_module.f90
@@ -589,7 +592,8 @@ print :
 	@echo " intel version is: $(intel_version)"
 	@echo " intel link line version is: $(intel_link_version)"
 	@echo " intel long integer (ilp64) support is: $(ilp)"
-#@echo object files are: $(objects)
+	@echo " setup_equations_src files are: $(setup_equations_src)"
+#@echo " object files are: $(objects)"
 
 # delete any files from previous configurations
 delete_files :
@@ -597,7 +601,7 @@ delete_files :
   
 # check whether equation_module.f90 has to be remade because equations.in or constants.in has changed, and do so if necessary
 check_equations :
-	../src/setup_equations.pl
+	../src/setup_equations/setup_equations.pl
   
 # dynamic variables:
 # $^ is first prerequisit
@@ -615,9 +619,9 @@ general_module.o: general_module.f90
 
 # this will remake equation_module.f90 if there are changes to the template or setup_equations.pl only
 # changes in the *.in files are picked up via the check_equations entry above
-equation_module.f90: ../src/equation_module_template.f90 ../src/setup_equations.pl
+equation_module.f90: ../src/equation_module_template.f90 $(setup_equations_src)
 	rm -f last_setup_equation_data
-	../src/setup_equations.pl
+	../src/setup_equations/setup_equations.pl
 
 gmesh_module.o: gmesh_module.f90 general_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@

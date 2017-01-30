@@ -9,10 +9,11 @@ src/output_module.f90
 src/region_module.f90
 src/setup_module.f90
 src/solver_module.f90
-src/perl_lib/ReadInputFiles.pm
-src/perl_lib/Common.pm
 src/makefile
-src/setup_equations.pl
+src/setup_equations/setup_equations.pl
+src/setup_equations/ReadInputFiles.pm
+src/setup_equations/Common.pm
+src/setup_equations/StringCode.pm
 src/contributed/hsl_ma28d/hsl_ma28d_dummy_module.f90
 src/contributed/hsl_ma28d/hsl_ma28d_module.f90
 src/contributed/intel_pardiso/intel_pardiso_dummy_module.f90

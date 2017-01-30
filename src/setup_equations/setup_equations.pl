@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# file src/setup_equations.pl
+# file src/setup_equations/setup_equations.pl
 #
 # Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
@@ -49,7 +49,7 @@ use Sys::Hostname;
 
 # include arb specific modules from src/perl_lib
 use FindBin;
-use lib "$FindBin::Bin/perl_lib"; # place where local modules to be included are stored, which is now relative to setup_equations.pl script
+use lib "$FindBin::Bin/."; # place where local modules to be included are stored, which is now relative to setup_equations.pl script, and resides in the same src/setup_equations 
 
 use Common; # non-specific routines
 use ReadInputFiles; # deals with reading the input files, including sub read_input_files

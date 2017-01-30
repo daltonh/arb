@@ -19,8 +19,10 @@
 + /src/
 + /src/*.f90
 + /src/*.f
-+ /src/*.pl
 + /src/makefile
++ /src/setup_equations/
++ /src/setup_equations/*.pl
++ /src/setup_equations/*.pm
 + /src/contributed/
 + /src/contributed/hsl_ma28d/
 + /src/contributed/hsl_ma28d/*_module.f90
