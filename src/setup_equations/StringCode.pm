@@ -97,6 +97,23 @@ sub string_option {
   
 }
 #-------------------------------------------------------------------------------
+# deletes a string
+# on input
+#  $_[0] = string name
+# on output
+#  $_[0] = unchanged
+sub string_delete {
+
+  alias my @code_blocks = @ReadInputFiles::code_blocks;
+  my $name = $_[0];
+  my ($code_block_found,$string_variable_found) = string_search($name);
+  if ($code_block_found == -1) {
+    syntax_problem("string variable $name not found during string_delete: $ReadInputFiles::filelinelocator");
+  }
+  splice(@{$code_blocks[$code_block_found]{"string_variables"}},$string_variable_found,1);
+  
+}
+#-------------------------------------------------------------------------------
 # finds the value of a string
 # on input
 #  $_[0] = string name
