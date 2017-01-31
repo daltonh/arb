@@ -72,13 +72,8 @@ sub parse_string_code {
 #    - replace: this string name will be searched for in solver code and replaced with its value, which is default for most string names
 #    - noreplace: opposite of replace, which is the default for strings whose names start with $, as in "$a"
 #    - default: only set the string to this value if the string is not already defined
-#    - global: set the string in the root code_block so that it is available even after the current block has closed - ie, globally
-
-# 
-# 
-# start with two strings
-# needs to be changed so that only does found on current block
-# otherwise creates new in current block, which will be found before anything in preceeding blocks
+#    - global: set the string in the root code_blocks ($code_blocks[0]) so that it is available even after the current block has closed - ie, globally
+#    - if both global and default are specified, search and set is only done on root code_blocks[0]
 
 sub string_set {
 
@@ -88,20 +83,44 @@ sub string_set {
   my $options = '';
   if ($#name_value_pairs % 2 == 0) { $options = pop(@name_value_pairs); } # eg, 3/2=1 -> no options, 4/2=0 -> options
 
+  print ::DEBUG "INFO: entering string_set: name_value_pairs = @name_value_pairs: options = $options\n";
+
   alias my @code_blocks = @ReadInputFiles::code_blocks;
 
-# UP TO HERE
   while (@name_value_pairs) {
 
-# %{$string_variables[$#string_variables+1]} = ( search => "<<batchercomment>>", replace => "#" );
-  
-    my ($code_block_found,$string_variable_found) = string_search($name);
+# see if string already exists, either in all code_blocks, or in code_blocks[0] for global
 
-    if ($code_block_found >= 0 && $string_variable_found >= 0) {
-      $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} = $value;
+    my ($code_block_found,$string_variable_found);
+    if ($options =~ /(^|,|\s)global($|,|\s)/) {
+      ($code_block_found,$string_variable_found) = string_search($name_value_pairs[0],'global');
     } else {
-      %{$code_blocks[$#code_blocks]{"string_variables"}[$#{$code_blocks[$#code_blocks]{"string_variables"}}+1]} = 
-        ( name => $name, value => $value );
+      ($code_block_found,$string_variable_found) = string_search($name_value_pairs[0]);
+    }
+
+  print ::DEBUG "INFO: in string_set, dealing with: name = $name_value_pairs[0]: value = $name_value_pairs[1]: code_block_found = $code_block_found: string_variable_found = $string_variable_found\n";
+
+    if ($options =~ /(^|,|\s)default($|,|\s)/ && $code_block_found >= 0) { # if string is found and default option is on, we are done
+      print ::DEBUG "INFO: found string when default option is on, so no action required\n";
+    } else {
+
+# as we are needing to set this variable, create a temporary hash to push on to the stack
+      my %string_variable = ( "name" => $name_value_pairs[0], "value" => $name_value_pairs[1] );
+      $string_variable{"replace"} = 1;
+      if ($options =~ /(^|,|\s)(no|)replace($|,|\s)/) {
+        if (nonempty($2)) { $string_variable{"replace"} = 0; }
+      } elsif ($name_value_pairs[0] =~ /^$/) {
+        $string_variable{"replace"} = 0;
+      }
+
+      if ($string_variable_found >= 0) {
+        $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found] = %string_variable;
+      } elsif ($options =~ /(^|,|\s)global($|,|\s)/) {
+        push(@{$code_blocks[0]{"string_variables"}},%string_variable);
+      } else {
+        push(@{$code_blocks[$#code_blocks]{"string_variables"}},%string_variable);
+      }
+
     }
 
   }
@@ -121,34 +140,34 @@ sub string_setup {
 # loose convention is that replacement strings be delimited by <<>>, however any strings can (and will) be matched/valued
 # convention is that valuement names that end with "comment" are meant to preceed statements in the files, converting them to comments if they are not relevant
 # this string is for batcher integration - if a file is run through batcher, this string will be valued by an empty string, so can be used to precede arb lines that are specific to the batcher runs
-  %{$string_variables[$#string_variables+1]} = ( name => "<<batchercomment>>", value => "#" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<nobatchercomment>>", value => "" );
+  string_set("<<batchercomment>>","#","global");
+  string_set("<<nobatchercomment>>","","global");
 # geometry and equation related
-  %{$string_variables[$#string_variables+1]} = ( name => "<<dim1comment>>", value => "" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<dim2comment>>", value => "" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<dim3comment>>", value => "" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<steadystatecomment>>", value => "" ); # default is steady-state
-  %{$string_variables[$#string_variables+1]} = ( name => "<<transientcomment>>", value => "#" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<cartesiancomment>>", value => "" ); # default is cartesian
-  %{$string_variables[$#string_variables+1]} = ( name => "<<cylindricalcomment>>", value => "#" );
+  string_set("<<dim1comment>>","","global");
+  string_set("<<dim2comment>>","","global");
+  string_set("<<dim3comment>>","","global");
+  string_set("<<steadystatecomment>>","","global"); # default is steady-state
+  string_set("<<transientcomment>>","#","global");
+  string_set("<<cartesiancomment>>","","global"); # default is cartesian
+  string_set("<<cylindricalcomment>>","#","global");
 # convention is that valuement names that end with "flag" are either on (1) or off (0), so can be used within expressions
-  %{$string_variables[$#string_variables+1]} = ( name => "<<steadystateflag>>", value => "1" ); # default is steady-state
-  %{$string_variables[$#string_variables+1]} = ( name => "<<transientflag>>", value => "0" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<cartesianflag>>", value => "1" ); # default is cartesian
-  %{$string_variables[$#string_variables+1]} = ( name => "<<cylindricalflag>>", value => "0" );
+  string_set("<<steadystateflag>>","1","global"); # default is steady-state
+  string_set("<<transientflag>>","0","global");
+  string_set("<<cartesianflag>>","1","global"); # default is cartesian
+  string_set("<<cylindricalflag>>","0","global");
 # these two should be overwritten by the relevant radius in the input file if using cylindrical coordinates: eg R "<<radius_c>>" W "<cellx[l=1]>" R "<<radius_f>>" W "<facex[l=1]>"
-  %{$string_variables[$#string_variables+1]} = ( name => "<<radius_c>>", value => "1.d0" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<radius_f>>", value => "1.d0" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<radius_n>>", value => "1.d0" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<radiusdim1flag>>", value => "0" ); # for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
-  %{$string_variables[$#string_variables+1]} = ( name => "<<radiusdim2flag>>", value => "0" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<radiusdim3flag>>", value => "0" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<radialdim>>", value => "0" ); # for 2D cylindrical this is the radial coordinate direction
-  %{$string_variables[$#string_variables+1]} = ( name => "<<axialdim>>", value => "0" ); # for 2D cylindrical this is the axial coordinate direction
+  string_set("<<radius_c>>","1.d0","global");
+  string_set("<<radius_f>>","1.d0","global");
+  string_set("<<radius_n>>","1.d0","global");
+  string_set("<<radiusdim1flag>>","0","global"); # for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
+  string_set("<<radiusdim2flag>>","0","global");
+  string_set("<<radiusdim3flag>>","0","global");
+  string_set("<<radialdim>>","0","global"); # for 2D cylindrical this is the radial coordinate direction
+  string_set("<<axialdim>>","0","global"); # for 2D cylindrical this is the axial coordinate direction
 # these strings should be overwritten by the normal coordinate directions of any reflection boundaries in the domain: eg R "<<reflect=1>>" W "reflect=1"
-  %{$string_variables[$#string_variables+1]} = ( name => "<<reflect=1>>", value => "" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<reflect=2>>", value => "" );
-  %{$string_variables[$#string_variables+1]} = ( name => "<<reflect=3>>", value => "" );
+  string_set("<<reflect=1>>","","global");
+  string_set("<<reflect=2>>","","global");
+  string_set("<<reflect=3>>","","global");
 
   print ::DEBUG "INFO: initial string_variables = ".Dumper(@string_variables)."\n";
 
@@ -160,12 +179,16 @@ sub string_setup {
 sub string_search {
 
   my $name = $_[0]; # on input, name of string to find
+  my $options = $_[1]; # on input, a list of possible options, right now only global, which implies only look in code_blocks[0]
   my $string_variable_found = -1; # on output returns -1 if not found, or string_variables index if found
   my $code_block_found = -1; # on output returns -1 if not found, or code_blocks index if found
 
   alias my @code_blocks = @ReadInputFiles::code_blocks;
 
-  CODE_BLOCK_LOOP: for my $m ( reverse( 0 .. $#code_blocks ) ) {
+  my $code_block_upper = $#code_blocks;
+  if ($options =~ /(^|,|\s)global($|,|\s)/) { $code_block_upper = 0; }
+
+  CODE_BLOCK_LOOP: for my $m ( reverse( 0 .. $code_block_upper ) ) {
     for my $n ( reverse( 0 .. $#{$code_blocks[$m]{"string_variables"}} ) ) {
       if ($name eq $code_blocks[$m]{"string_variables"}[$n]{"name"}) { # found existing general replacements
         $string_variable_found = $n;

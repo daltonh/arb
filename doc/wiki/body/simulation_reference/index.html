@@ -18,7 +18,233 @@
 <div id="maincolumn">
 <!-- pre comments -->
 
-<h1>Simulation setup reference [sec:setup_reference]</h1>
+<h1>Simulation setup</h1>
+<!-- [sec:setup_reference] -->
+
+<h2>arb code basics</h2>
+<h3>Solver code</h3>
+<p>Most of the arb input file consists of ‘solver code’, which has the generic form of:</p>
+<pre >
+<span style="color: #808080;">KEYWORD </span><span style="color: #808080;">&lt;a name&gt;</span> <span style="color: #808080;">&quot;</span><span style="color: #5F8787;">variable</span><span style="color: #808080;"> or region expression&quot;</span> <span style="color: #875FFF;">ON</span> <span style="color: #808080;">&lt;a region&gt;</span><span style="color: #808080;"> list_of_comma_separated_options </span><span style="color: #87D7D7;"># trailing comment</span>
+</pre>
+
+<p>Not all arguments are required for each keyword. By convention keywords are typed in uppercase, however code should parse correctly if the keywords are in either case (although not tested much). Also by convention variable and region operators (eg ‘celldiv’ and ‘compound’) are typed in lowercase, however again this should parse correctly in either case. Options are generally typed as lowercase. Keywords generally contain underscores between (english) words (eg ‘END_BLOCK’), while options are the opposite (eg ‘newtstepmin’).</p>
+<p>Solver code can be continued with the ampersand symbol, and is based on the ideas of free-form fortran (<a href="http://fortranwiki.org/fortran/show/Continuation+lines">http://fortranwiki.org/fortran/show/Continuation+lines</a>):</p>
+<pre >
+<span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span><span style="color: #808080;"> &amp; </span><span style="color: #87D7D7;"># comments are allowed</span>
+ <span style="color: #808080;">&quot;</span><span style="color: #808080;">&lt;b&gt;</span> <span style="color: #875FFF;">+</span> <span style="color: #808080;">&lt;c&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;"> &amp; </span><span style="color: #87D7D7;"># on each line, but </span>
+  <span style="color: #008787;">nooutput</span> <span style="color: #87D7D7;"># only the last is carried through to the unwrapped_input.arb file</span>
+<span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;b&gt;</span> <span style="color: #808080;">&quot;</span><span style="color: #808080;">&lt;a&amp;</span>
+<span style="color: #808080;">    &amp;&gt;</span> <span style="color: #875FFF;">+</span> <span style="color: #808080;">&lt;c&amp;</span>
+<span style="color: #808080;">&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">&amp; </span><span style="color: #87D7D7;"># will work too</span>
+</pre>
+
+<p>As the ‘#’, ‘&amp;’, ‘{{’ and ‘}}’ character (sets) each have a special meaning in the solver code context, these character sets cannot be used within solver variable or region names. Hence, the following are all wrong:</p>
+<pre >
+<span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a#3&gt;</span> <span style="color: #87D7D7;"># an error as the comment would start after '&lt;a'</span>
+<span style="color: #875FFF;">CELL_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span> <span style="color: #808080;">&quot;</span><span style="color: #5F8787;">celldiv</span><span style="color: #808080;">(</span><span style="color: #808080;">&lt;a&amp;&gt;</span><span style="color: #808080;">)</span><span style="color: #808080;">&quot;</span> <span style="color: #87D7D7;"># an error as the continuation symbol is used in a variable name</span>
+<span style="color: #875FFF;">INFO_DESCRIPTION</span> <span style="color: #5F5F87;">&quot;Jack &amp; Jill&quot;</span> <span style="color: #87D7D7;"># will break the line at &amp;</span>
+</pre>
+
+<p>Escaping these characters could be implemented (but is not).</p>
+<h3>String code and string variables</h3>
+<h4>String code basics</h4>
+<p>Lying alongside solver code is ‘string code’, which is code that is embedded within the solver code and used to</p>
+<ul>
+<li>generate string replacement variables (termed string variables), and also to</li>
+<li>generated solver code directly.</li>
+</ul>
+<p>String code is delimited by {{ and }}. The basic rules of string code are:</p>
+<ol>
+<li>string replacements are not performed on string code</li>
+<li>string code can be placed anywhere within the solver code, EXCEPT in comments (where it is just a comment)</li>
+<li>there is no limitation to the characters used within string code, EXCEPT for }}, which even enclosed within a string will terminate the string code</li>
+<li>needs to be valid perl code</li>
+</ol>
+<p>String code is interpreted directly by perl, evaluated using the ‘eval’ (string) function (<a href="http://perldoc.perl.org/functions/eval.html">http://perldoc.perl.org/functions/eval.html</a>). For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) StringCode.pm module of setup_equations.pl, and whatever is returned from that eval (think subroutine) is substituted into the solver code in place of the string code. So the following string code</p>
+<pre >
+<span style="color: #808080;">{{ return </span><span style="color: #808080;">&quot;</span><span style="color: #875FFF;">TRANSIENT_SIMULATION</span><span style="color: #808080;">&quot;</span><span style="color: #808080;"> }}</span>
+</pre>
+
+<p>becomes the following solver code when arb is run,</p>
+<pre >
+<span style="color: #875FFF;">TRANSIENT_SIMULATION</span>
+</pre>
+
+<p>Note that if no return value is specified then any string code block evaluates as an empty string, and hence has no (immediate) effect within the solver code:</p>
+<pre >
+<span style="color: #808080;">NONE_CON{{ my $a </span><span style="color: #875FFF;">=</span> <span style="color: #FFAF00;">1</span><span style="color: #808080;">; }}STANT </span><span style="color: #808080;">&lt;a&gt;</span> <span style="color: #FFAF00;">1.d0</span> <span style="color: #87D7D7;"># the solver code keyword becomes NONE_CONSTANT here</span>
+</pre>
+
+<p>The file unwrapped_input.arb within the setup_data output subdirectory is generated whenever arb is run, and contains the input file with the string code ‘unwrapped’ - that is, pure solver code. The unwrapped_input.arb file can infact be used as a subsequent input to arb.</p>
+<p>A print statement within a string code block is printed to the standard output (the screen, or output.scr), and not to the solver code:</p>
+<pre >
+<span style="color: #808080;">{{ print </span><span style="color: #808080;">&quot;</span><span style="color: #875FFF;">INFO</span><span style="color: #808080;">: this message will appear on the screen\n&quot;</span><span style="color: #808080;">; }}</span>
+</pre>
+
+<p>Comments and line continuations are allowed in the string code, in the same way that they are allowed in perl code:</p>
+<pre >
+<span style="color: #808080;">{{</span>
+<span style="color: #87D7D7;"># new lines and comments within string code follow perl rules, as the code is parsed as perl code</span>
+
+<span style="color: #808080;">  my $a </span><span style="color: #875FFF;">=</span> <span style="color: #FFAF00;">1</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># set a local variable to 1</span>
+<span style="color: #808080;">  my $b </span><span style="color: #875FFF;">=</span><span style="color: #808080;"> $a</span><span style="color: #875FFF;">*</span><span style="color: #FFAF00;">3</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># setting another local variable</span>
+
+<span style="color: #808080;">  return $b; </span><span style="color: #87D7D7;"># we are returning the value of $b here</span>
+
+<span style="color: #808080;">}}</span>
+</pre>
+
+<h4>String code variables</h4>
+<p>As each string code block is evaluated using a separate perl eval call, local variables defined within one string code block are not available within subsequent string code blocks:</p>
+<pre >
+<span style="color: #808080;">{{</span>
+<span style="color: #808080;">  my $a </span><span style="color: #875FFF;">=</span> <span style="color: #FFAF00;">1</span><span style="color: #808080;">; set a local variable to </span><span style="color: #FFAF00;">1</span><span style="color: #808080;">, noting that 'use string' and 'use warnings' are turned on in perl</span>
+<span style="color: #808080;">  print </span><span style="color: #808080;">&quot;$a\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># prints the value 1 to the screen</span>
+<span style="color: #808080;">}}</span>
+<span style="color: #808080;">{{</span>
+<span style="color: #808080;">  print </span><span style="color: #808080;">&quot;$a\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># generates an error as $a is not defined within the scope of this string code block</span>
+<span style="color: #808080;">}}</span>
+</pre>
+
+<p>Instead, string variables can be used to pass information outside the scope of a particular string code block. The perl subroutine ‘string_set’ is available to set the value of a string variable, and ‘string_eval’ to return its value. The following example could be instead achieved using:</p>
+<pre >
+<span style="color: #808080;">{{</span>
+<span style="color: #808080;">  string_set(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">,</span><span style="color: #FFAF00;">1</span><span style="color: #808080;">); set a string variable </span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;"> to </span><span style="color: #FFAF00;">1</span>
+<span style="color: #808080;">  print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">).</span><span style="color: #808080;">&quot;\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># prints the value 1 to the screen</span>
+<span style="color: #808080;">}}</span>
+<span style="color: #808080;">{{</span>
+<span style="color: #808080;">  print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">).</span><span style="color: #808080;">&quot;\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># prints the value 1 to the screen</span>
+<span style="color: #808080;">}}</span>
+</pre>
+
+<p>String variables are the same variables used to achieve string replacements within the solver code (detailed below), however, by default if a string variable name starts with ‘$’, the string variable is given the noreplace option which means that the solver code is not searched/replaced for this particular variable. This option can also be explicitly set at creation time or via the ‘string_option’ subroutine:</p>
+<pre >
+<span style="color: #808080;">{{ string_set(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;a&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,noreplace); }}</span>
+<span style="color: #808080;">{{ string_option(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;a&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,noreplace); }}</span>
+</pre>
+
+<p>Strings variables can also be deleted, and if set without a value, imply the empty string:</p>
+<pre >
+<span style="color: #808080;">{{</span>
+<span style="color: #808080;">  string_set(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;c&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">); </span><span style="color: #87D7D7;"># strings set with no value implies ''</span>
+<span style="color: #808080;">  string_delete(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;c&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">) </span><span style="color: #87D7D7;"># strings can also be deleted</span>
+<span style="color: #808080;">}}</span>
+</pre>
+
+<p>String code allows more flexibility in coding arb, and will be employed more in the template files. Looping is possible now using (for example);</p>
+<pre >
+<span style="color: #808080;">{{</span>
+<span style="color: #808080;">  my $loop_code </span><span style="color: #875FFF;">=</span><span style="color: #808080;"> '';</span>
+<span style="color: #808080;">  for my $n in ( </span><span style="color: #FFAF00;">0</span><span style="color: #808080;"> .. </span><span style="color: #FFAF00;">2</span><span style="color: #808080;"> ) {</span>
+<span style="color: #808080;">    $loop_code .</span><span style="color: #875FFF;">=</span> <span style="color: #808080;">&quot;</span><span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;a&quot;.$n.&quot;&gt;</span><span style="color: #808080;"> $n.d0\n&quot;</span><span style="color: #808080;">;</span>
+<span style="color: #808080;">  }</span>
+<span style="color: #808080;">  return $loop_code;</span>
+<span style="color: #808080;">}}</span>
+</pre>
+
+<p>which would evaluate as the solver code</p>
+<pre >
+<span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;a0&gt;</span> <span style="color: #FFAF00;">0.d0</span>
+<span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;a1&gt;</span> <span style="color: #FFAF00;">1.d0</span>
+<span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;a2&gt;</span> <span style="color: #FFAF00;">2.d0</span>
+</pre>
+
+<p>With some perl hackery there’s lots that can be done if required - eg, arrays and hashes stored within the string variables (but you’ll have to learn some perl!). Variables defined within setup_equations.pl can also be accessed within the string code, as can generic perl subroutines.</p>
+<pre >
+<span style="color: #808080;">{{</span>
+<span style="color: #808080;">  print </span><span style="color: #808080;">&quot;$::transient_simulation\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># is a variable defined in main of setup_equations.pl which indicates whether this is a transient simulation or not</span>
+<span style="color: #808080;">  if (!($::transient_simulation)) {</span>
+<span style="color: #808080;">    print </span><span style="color: #808080;">&quot;</span><span style="color: #875FFF;">WARNING</span><span style="color: #808080;"> $ENV{USERNAME}: did you want to run a transient simulation?\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># not tested, but should work...</span>
+<span style="color: #808080;">  }</span>
+<span style="color: #808080;">}}</span>
+</pre>
+
+<p>Note that the &amp; line continuation symbol is not used in string code (as in perl).</p>
+<h3>Include statements, string replacements and code blocks</h3>
+<h4>Code blocks</h4>
+<p>Code blocks are separate ‘chunks’ of code that define the scope of the string variables, as well as the file include paths. Code blocks can be defined within the one arb file using the ‘BLOCK’ and ‘END_BLOCK’ keywords, as in:</p>
+<pre >
+<span style="color: #808080;">BLOCK</span>
+<span style="color: #808080;">{{ string_set(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">); }}</span>
+<span style="color: #808080;">{{ string_set(</span><span style="color: #808080;">&quot;$b&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;global&quot;</span><span style="color: #808080;">); }}</span>
+<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># prints 1.d0</span>
+<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$b&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># prints 2.d0</span>
+<span style="color: #808080;">END_BLOCK</span>
+<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># error as $a is no longer defined in the parent block</span>
+<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$b&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># prints 2.d0 as $b was defined as a global variable</span>
+</pre>
+
+<h4>Include statements</h4>
+<p>Include statements allow other input files to be included. These files can be user written, or be from a library of template files within the templates directory. String replacements (or substitutions) that occur as the file is read in allow these included files to be (effectively) used as functions.</p>
+<pre >
+<span style="color: #875FFF;">INCLUDE_TEMPLATE</span> <span style="color: #5F5F87;">&quot;navier_stokes/complete_equations&quot;</span>
+</pre>
+
+<p>The trailing ‘.arb’ file extension is not required within an include statement.</p>
+<p>A new code block is started whenever a new file is included:</p>
+<pre >
+<span style="color: #875FFF;">INCLUDE_LOCAL</span> <span style="color: #5F5F87;">&quot;some_arb_code&quot;</span> <span style="color: #87D7D7;"># a new block is created after the string &quot;some_arb_code&quot; has been read</span>
+</pre>
+
+<p>This means that any string variables that are defined within the included file are not available outside of that file (except in its included children), unless these string variables are defined as global.</p>
+<p>String code that follows an include statement is included as the first statement in the newly created block:</p>
+<pre >
+<span style="color: #875FFF;">INCLUDE_LOCAL</span> <span style="color: #5F5F87;">&quot;another_arb_code&quot;</span><span style="color: #808080;"> {{ string_set(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;mu_f&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;mu&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># so the replacement is done on the contents of another_arb_code.arb</span>
+</pre>
+
+<p>This allows the template files to be used as functions or called repeatedly with different arguments.</p>
+<p>There are several forms of the include statement:</p>
+<p>TODO</p>
+<p>: choose a template directory to look for any files included via any following statements. If no string is specified, then the include root directory name is set equal to that of its parent (including) file. If the blank string is specified, then is set to the blank string and all templates directories (up to two subdirectory levels) are searched for the following included files. The definitions are hierarchical, in that the definition in a child file does not affect that of the parent. - : command to include a file from the most recent directory (or subdirectory thereof), possibly also specifying file-specific string replacements using the syntax (or the shorter ). If an directory has not been specified (or cancelled with a blank statement) then the templates directories will be searched until a matching file is found (up to two subdirectory levels right now). - : include the following files from the working directory. This command does not affect and is not influenced by the directory and is (basically) used to include sets of user-written statements (i.e., like a local a function). Partnering the include file capability is the ability to read in multiple definitions for the same variable. The ultimate position of a variable’s definition is that of the first definition for that variable. The ultimate expression used for a variable is that given (read in) last. This functionality allows a variable’s expression to be changed from what is used in (say) a template file by specifying a new definition lower in the file, after the template file include statement. Options can also be added to previously specified options for a variable by including more definition statements (that may only contain options and not expressions) lower in the input file. Similarly for units. There are two types of string replacements that occur when a line from an input file is parsed: i) file-specific replacements, which occur recursively through ‘child’ file inclusions, and ii) general replacements, which occur throughout all files from their point of definition onwards, until (possibly) cancelled. The following demonstrates a general replacement statement specifying two general replacement strings, using a long and short form: There are certain system generated general replacements that occur automatically unless specifically changed by the user. Use the search hint to find the list of these in . The above demonstrates how to cancel a search string replacement, using either a long () or short () form. Note that both general and file specific replacements do not occur on a line of an input file if the line is itself a general replacement definition line (specifically, it begins with the keyword), or is an include line for a file (begins with some type of keyword).</p>
+<h2>If statements</h2>
+<p>The following solver code shows an if statement:</p>
+<pre >
+<span style="color: #808080;">IF </span><span style="color: #FFAF00;">1</span>
+  <span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span> <span style="color: #FFAF00;">1.d0</span>
+<span style="color: #808080;">END_IF</span>
+</pre>
+
+<p>Code flow through an IF statement is dependent on what follows the ‘IF’ keyword: An empty string or ‘0’ evaluates as false, whereas anything else is true. So the following are true,</p>
+<pre >
+<span style="color: #808080;">IF </span><span style="color: #FFAF00;">1</span>
+<span style="color: #808080;">IF asd afsdf sdg sdgfas </span><span style="color: #87D7D7;"># some comment</span>
+<span style="color: #808080;">IF </span><span style="color: #FFAF00;">0</span><span style="color: #808080;"> adfd</span>
+<span style="color: #808080;">IF </span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">0</span><span style="color: #808080;">&quot;</span> <span style="color: #87D7D7;"># note this!</span>
+</pre>
+
+<p>whereas the following are false</p>
+<pre >
+<span style="color: #808080;">IF </span><span style="color: #FFAF00;">0</span>
+<span style="color: #808080;">IF </span><span style="color: #87D7D7;"># possible trailing comment</span>
+<span style="color: #808080;">IF</span>
+<span style="color: #808080;">IF&amp;</span>
+<span style="color: #808080;">  &amp; </span><span style="color: #87D7D7;"># line continuation</span>
+</pre>
+
+<p>There are also the continuation statements of ELSE_IF and ELSE demonstrated by:</p>
+<pre >
+<span style="color: #808080;">IF </span><span style="color: #FFAF00;">0</span>
+  <span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span> <span style="color: #FFAF00;">1.d0</span>
+<span style="color: #808080;">ELSE_IF </span><span style="color: #FFAF00;">1</span>
+  <span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span> <span style="color: #FFAF00;">2.d0</span>
+<span style="color: #808080;">ELSE</span>
+  <span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span> <span style="color: #FFAF00;">3.d0</span>
+<span style="color: #808080;">END_IF</span>
+</pre>
+
+<p>IF, ELSE_IF, ELSE and END_IF are all solver code keywords, so require their own lines.</p>
+<p>In practice the IF statements would be used in conjunction with string replacements or string code:</p>
+<pre >
+<span style="color: #808080;">IF </span><span style="color: #8700D7;">&lt;&lt;transientflag&gt;&gt;</span> <span style="color: #87D7D7;"># here &lt;&lt;transientflag&gt;&gt; is a system generated string variable which is replaced by 1 for a transient simulation</span>
+  <span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;dt&gt;</span> <span style="color: #FFAF00;">0.1d0</span>
+<span style="color: #808080;">ELSE_IF {{ return string_eval(</span><span style="color: #808080;">&quot;$some_string_variable&quot;</span><span style="color: #808080;">) }} </span><span style="color: #87D7D7;"># here the string code enclosed in {{ }} evaluates as the return value, which here would be the value of the string variable $some_string_variable which would have been previously set</span>
+  <span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;dt&gt;</span> <span style="color: #FFAF00;">1.d0</span>
+<span style="color: #808080;">ELSE</span>
+  <span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;dt&gt;</span> <span style="color: #FFAF00;">2.d0</span>
+<span style="color: #808080;">END_IF</span>
+</pre>
+
 <h2>Meshes</h2>
 <p>arb uses an unstructured mesh composed of cell elements that are separated by face elements. The dimension of each element is specified on a per-element basis, consistent with the particular computational domain that the element is within (that is, not globally). Cell elements are classified as either boundary cells (that is, on the boundary of a domain) or domain cells (that is, contained within a domain). Domain cells have a dimension that is equal to that of the domain they are in (ie, dimension 3/2/1 if the domain is a volume/surface/line, resp.). Boundary cells have a dimension that is one less than that of the associated domain (ie, dimension 2/1/0 if the domain is a volume/surface/line, resp.). Face elements are any elements that separate cell elements. Face elements also have a dimension that is one less than that of the domain they are within. Some face elements are specified explicitly within a file (if they are part of a physical entity such as for example), while the remainder are generated by arb when the mesh is read in. Face elements are also classified as being either domain faces or boundary faces. Each boundary face has the same geometry, and is conincident with, a boundary cell. Hence, a mesh has the same number of boundary faces as boundary cells.</p>
 <p>Meshes are read in from files, generally produced by the gmsh program. Multiple files can be read in by arb for each simulation. arb has been coded to be able to handle any poly-sided first order elements supported by the gmsh file format. It has been tested to date (v0.3) with tetrahedron, boxes and prisms in 3D, triangles and rectangles in 2D, lines in 1D and points in 0D. Tetrahedron, triangles, lines and points are the default element geometries created by gmsh.</p>
@@ -344,17 +570,6 @@ FACE_LOCAL &lt;d^2 u_n d x_n^2&gt; &quot;facegrad(&lt;d u_n d x_n&gt;)&quot; ON 
 <li><p>: are the same as , except that they follow a variable’s individually specified options, and so in the case of conflicting option statements, take precedence over the individual options (ie, the override options have a higher priority).</p></li>
 <li><p>: choose the type of linear solver to use.</p></li>
 </ul>
-<h2>Include statements and string replacements</h2>
-<p>Include statements allow other input files to be included. These files can be user written, or be from a library of template files within the directory. String substitution that occurs as the file is read in allow these included files to be (basically) used as functions. An ‘unwrapped’ input file that is a handy reference as to how the include statements behaved (and can be used as an input file for subsequent runs) is placed at after every run setup. The include statements are:</p>
-<ul>
-<li><p>: choose a template directory to look for any files included via any following statements. If no string is specified, then the include root directory name is set equal to that of its parent (including) file. If the blank string is specified, then is set to the blank string and all templates directories (up to two subdirectory levels) are searched for the following included files. The definitions are hierarchical, in that the definition in a child file does not affect that of the parent.</p></li>
-<li><p>: command to include a file from the most recent directory (or subdirectory thereof), possibly also specifying file-specific string replacements using the syntax (or the shorter ). If an directory has not been specified (or cancelled with a blank statement) then the templates directories will be searched until a matching file is found (up to two subdirectory levels right now).</p></li>
-<li><p>: include the following files from the working directory. This command does not affect and is not influenced by the directory and is (basically) used to include sets of user-written statements (i.e., like a local a function).</p></li>
-</ul>
-<p>Partnering the include file capability is the ability to read in multiple definitions for the same variable. The ultimate position of a variable’s definition is that of the first definition for that variable. The ultimate expression used for a variable is that given (read in) last. This functionality allows a variable’s expression to be changed from what is used in (say) a template file by specifying a new definition lower in the file, after the template file include statement. Options can also be added to previously specified options for a variable by including more definition statements (that may only contain options and not expressions) lower in the input file. Similarly for units.</p>
-<p>There are two types of string replacements that occur when a line from an input file is parsed: i) file-specific replacements, which occur recursively through ‘child’ file inclusions, and ii) general replacements, which occur throughout all files from their point of definition onwards, until (possibly) cancelled. The following demonstrates a general replacement statement specifying two general replacement strings, using a long and short form:</p>
-<p>There are certain system generated general replacements that occur automatically unless specifically changed by the user. Use the search hint to find the list of these in .</p>
-<p>The above demonstrates how to cancel a search string replacement, using either a long () or short () form. Note that both general and file specific replacements do not occur on a line of an input file if the line is itself a general replacement definition line (specifically, it begins with the keyword), or is an include line for a file (begins with some type of keyword).</p>
 <h2>Kernel options</h2>
 <p>There are many options that can be used to change the kernels used. For example</p>
 <p>specifies that when averaging/differentiating quantities to/at faces, ensure that a second order polynomial would be reproduced precisely.</p>
@@ -365,198 +580,6 @@ FACE_LOCAL &lt;d^2 u_n d x_n^2&gt; &quot;facegrad(&lt;d u_n d x_n&gt;)&quot; ON 
 <p>In the case of reflection, certain operators (eg, ) need to be aware when they are operating on the component of a vector, that needs to be reflected over this reflection boundary. See the options for each operator.</p>
 <h2>Simulation Info</h2>
 <p>The following strings can be used within an input file to help keep track of what the file contains. These and other automatically generated info strings are included as comments in most of the output files.</p>
-<h2>Solver code</h2>
-<p>Most of the arb input file consists of ‘solver code’, which has the generic form of:</p>
-<pre >
-<span style="color: #808080;">KEYWORD </span><span style="color: #808080;">&lt;possibly a name&gt;</span> <span style="color: #808080;">&quot;other things including delimited strings&quot;</span><span style="color: #808080;"> list_of_comma_separated_options </span><span style="color: #87D7D7;"># trailing comment</span>
-</pre>
-
-<p>Solver code can be continued with the ampersand symbol, and is based on the ideas used in free-form fortran (<a href="http://fortranwiki.org/fortran/show/Continuation+lines">http://fortranwiki.org/fortran/show/Continuation+lines</a>):</p>
-<pre >
-<span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span><span style="color: #808080;"> &amp; </span><span style="color: #87D7D7;"># comments are allowed</span>
- <span style="color: #808080;">&quot;</span><span style="color: #808080;">&lt;b&gt;</span> <span style="color: #875FFF;">+</span> <span style="color: #808080;">&lt;c&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;"> &amp; </span><span style="color: #87D7D7;"># on each line, but </span>
-  <span style="color: #008787;">nooutput</span> <span style="color: #87D7D7;"># only the last is carried through to the unwrapped_input.arb file</span>
-<span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;b&gt;</span> <span style="color: #808080;">&quot;</span><span style="color: #808080;">&lt;a&amp;</span>
-<span style="color: #808080;">    &amp;&gt;</span> <span style="color: #875FFF;">+</span> <span style="color: #808080;">&lt;c&amp;</span>
-<span style="color: #808080;">&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">&amp; </span><span style="color: #87D7D7;"># will work too</span>
-</pre>
-
-<p>Note that this type of line continuation is not supported in the string code discussed next.</p>
-<h2>String code</h2>
-<p>v0.57 introduces the concept of string code, which is code that is embedded within the solver code and used to a) generate string replacement variables (termed string variables), and also to b) generated solver code directly. String code is delimited by {{ and }}. The basic rules of string code are:</p>
-<ol>
-<li>string replacements are not performed on string code</li>
-<li>string code can be placed anywhere within the solver code</li>
-<li>there is no limitation to the characters used within string code, EXCEPT for }}, which even enclosed within a string will terminate the string code</li>
-</ol>
-<p>String code is parsed as perl code, evaluated within perl using the ‘eval’ (string) function (<a href="http://perldoc.perl.org/functions/eval.html">http://perldoc.perl.org/functions/eval.html</a>). For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) StringCode.pm module of setup_equations.pl, and whatever is returned from that eval (think subroutine) is substituted into the solver code in place of the string code. So the following string code</p>
-<pre >
-<span style="color: #808080;">{{ return </span><span style="color: #808080;">&quot;</span><span style="color: #875FFF;">TRANSIENT_SIMULATION</span><span style="color: #808080;">&quot;</span><span style="color: #808080;"> }}</span>
-</pre>
-
-<p>becomes the following solver code when arb is run,</p>
-<pre >
-<span style="color: #875FFF;">TRANSIENT_SIMULATION</span>
-</pre>
-
-<p>and hence appears as this solver code in the unwrapped_input.arb file. Note that if no return value is specified then any string code block evaluates as an empty string, and hence has no (immediate) effect within the solver code:</p>
-<pre >
-<span style="color: #808080;">NONE_CON{{ my $a </span><span style="color: #875FFF;">=</span> <span style="color: #FFAF00;">1</span><span style="color: #808080;">; }}STANT </span><span style="color: #808080;">&lt;a&gt;</span> <span style="color: #FFAF00;">1.d0</span> <span style="color: #87D7D7;"># the solver code keyword becomes NONE_CONSTANT here</span>
-</pre>
-
-<p>Also note that a print statement within the string code is printed to the standard output (the screen, or output.scr), and not to the solver code:</p>
-<pre >
-<span style="color: #808080;">{{ print </span><span style="color: #808080;">&quot;</span><span style="color: #875FFF;">INFO</span><span style="color: #808080;">: this message will appear on the screen\n&quot;</span><span style="color: #808080;">; }}</span>
-</pre>
-
-<p>Comments and line continuations are allowed in the string code, in the same way that they are allowed in perl code:</p>
-<pre >
-<span style="color: #808080;">{{</span>
-<span style="color: #87D7D7;"># new lines and comments within string code follow perl rules, as the code is parsed as perl code</span>
-
-<span style="color: #808080;">  my $a </span><span style="color: #875FFF;">=</span> <span style="color: #FFAF00;">1</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># set a local variable to 1</span>
-<span style="color: #808080;">  my $b </span><span style="color: #875FFF;">=</span><span style="color: #808080;"> $a</span><span style="color: #875FFF;">*</span><span style="color: #FFAF00;">3</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># setting another local variable</span>
-
-<span style="color: #808080;">  return $b; </span><span style="color: #87D7D7;"># we are returning the value of $b here</span>
-
-<span style="color: #808080;">}}</span>
-</pre>
-
-<p>As each string code block is evaluated using a separate perl eval call, local variables defined within one string code block are not available within subsequent string code blocks:</p>
-<pre >
-<span style="color: #808080;">{{</span>
-<span style="color: #808080;">  my $a </span><span style="color: #875FFF;">=</span> <span style="color: #FFAF00;">1</span><span style="color: #808080;">; set a local variable to </span><span style="color: #FFAF00;">1</span><span style="color: #808080;">, noting that 'use string' and 'use warnings' are turned on in perl</span>
-<span style="color: #808080;">  print </span><span style="color: #808080;">&quot;$a\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># prints the value 1 to the screen</span>
-<span style="color: #808080;">}}</span>
-<span style="color: #808080;">{{</span>
-<span style="color: #808080;">  print </span><span style="color: #808080;">&quot;$a\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># generates an error as $a is not defined within the scope of this string code block</span>
-<span style="color: #808080;">}}</span>
-</pre>
-
-<p>Instead, string variables can be used to pass information outside the scope of a particular string code block. The perl subroutine ‘string_set’ is available to set the value of a string variable, and ‘string_eval’ to return its value. The following example could be instead achieved using:</p>
-<pre >
-<span style="color: #808080;">{{</span>
-<span style="color: #808080;">  string_set(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">,</span><span style="color: #FFAF00;">1</span><span style="color: #808080;">); set a string variable </span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;"> to </span><span style="color: #FFAF00;">1</span>
-<span style="color: #808080;">  print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">).</span><span style="color: #808080;">&quot;\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># prints the value 1 to the screen</span>
-<span style="color: #808080;">}}</span>
-<span style="color: #808080;">{{</span>
-<span style="color: #808080;">  print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">).</span><span style="color: #808080;">&quot;\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># prints the value 1 to the screen</span>
-<span style="color: #808080;">}}</span>
-</pre>
-
-<p>String variables are the same variables used to achieve string replacements within the solver code, however, by default if a string variable name starts with ‘$’, the string variable is given the noreplace option which means that the solver code is not searched/replaced with this particular variable. This option can also be explicitly set at creation time or via the ‘string_option’ subroutine:</p>
-<pre >
-<span style="color: #808080;">{{ string_set(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;a&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,noreplace); }}</span>
-<span style="color: #808080;">{{ string_option(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;a&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,noreplace); }}</span>
-</pre>
-
-<p>Strings variables can also be deleted, and if set without a value, imply the empty string:</p>
-<pre >
-<span style="color: #808080;">{{</span>
-<span style="color: #808080;">  string_set(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;c&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">); </span><span style="color: #87D7D7;"># strings set with no value implies ''</span>
-<span style="color: #808080;">  string_delete(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;c&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">) </span><span style="color: #87D7D7;"># strings can also be deleted</span>
-<span style="color: #808080;">}}</span>
-</pre>
-
-<p>String code allows more flexibility in coding arb, and will be employed more in the template files. Looping is possible now using (for example);</p>
-<pre >
-<span style="color: #808080;">{{</span>
-<span style="color: #808080;">  my $loop_code </span><span style="color: #875FFF;">=</span><span style="color: #808080;"> '';</span>
-<span style="color: #808080;">  for my $n in ( </span><span style="color: #FFAF00;">0</span><span style="color: #808080;"> .. </span><span style="color: #FFAF00;">2</span><span style="color: #808080;"> ) {</span>
-<span style="color: #808080;">    $loop_code .</span><span style="color: #875FFF;">=</span> <span style="color: #808080;">&quot;</span><span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;a&quot;.$n.&quot;&gt;</span><span style="color: #808080;"> $n.d0\n&quot;</span><span style="color: #808080;">;</span>
-<span style="color: #808080;">  }</span>
-<span style="color: #808080;">  return $loop_code;</span>
-<span style="color: #808080;">}}</span>
-</pre>
-
-<p>which would evaluate as the solver code</p>
-<pre >
-<span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;a0&gt;</span> <span style="color: #FFAF00;">0.d0</span>
-<span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;a1&gt;</span> <span style="color: #FFAF00;">1.d0</span>
-<span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;a2&gt;</span> <span style="color: #FFAF00;">2.d0</span>
-</pre>
-
-<p>With some imagination arrays and hashes could even be stored within the string variables (but you’ll have to learn some perl!). Variables defined within setup_equations.pl can also be accessed within the string code, as can generic perl subroutines.</p>
-<pre >
-<span style="color: #808080;">{{</span>
-<span style="color: #808080;">  print </span><span style="color: #808080;">&quot;$::transient_simulation\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># is a variable defined in main of setup_equations.pl which indicates whether this is a transient simulation or not</span>
-<span style="color: #808080;">  if (!($::transient_simulation)) {</span>
-<span style="color: #808080;">    print </span><span style="color: #808080;">&quot;</span><span style="color: #875FFF;">WARNING</span><span style="color: #808080;"> $ENV{USERNAME}: did you want to run a transient simulation?\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># not tested, but should work...</span>
-<span style="color: #808080;">  }</span>
-<span style="color: #808080;">}}</span>
-</pre>
-
-<h2>Code blocks</h2>
-<p>Code blocks are separate ‘chunks’ of code that define the scope of the file include paths, as well as the string variables. A new code block is started whenever a new file is included:</p>
-<pre >
-<span style="color: #875FFF;">INCLUDE_LOCAL</span> <span style="color: #5F5F87;">&quot;some_arb_code&quot;</span> <span style="color: #87D7D7;"># a new block is created after the string &quot;some_arb_code&quot; has been read</span>
-</pre>
-
-<p>String code that follows an include statement is included as the first statement in the newly created block:</p>
-<pre >
-<span style="color: #875FFF;">INCLUDE_LOCAL</span> <span style="color: #5F5F87;">&quot;another_arb_code&quot;</span><span style="color: #808080;"> {{ string_set(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;mu_f&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;mu&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># so the replacement is done on the contents of another_arb_code.arb</span>
-</pre>
-
-<p>(Solver) code blocks can also be defined within the one file using the keywords ‘BLOCK’ and ‘END_BLOCK’:</p>
-<pre >
-<span style="color: #808080;">BLOCK</span>
-<span style="color: #808080;">{{ string_set(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">); }}</span>
-<span style="color: #808080;">{{ string_set(</span><span style="color: #808080;">&quot;$b&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;global&quot;</span><span style="color: #808080;">); }}</span>
-<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># prints 1.d0</span>
-<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$b&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># prints 2.d0</span>
-<span style="color: #808080;">END_BLOCK</span>
-<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># error as $a is no longer defined in the parent block</span>
-<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$b&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># prints 2.d0 as $b was defined as a global variable</span>
-</pre>
-
-<h2>If statements</h2>
-<p>The following solver code shows an if statement:</p>
-<pre >
-<span style="color: #808080;">IF </span><span style="color: #FFAF00;">1</span>
-  <span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span> <span style="color: #FFAF00;">1.d0</span>
-<span style="color: #808080;">END_IF</span>
-</pre>
-
-<p>Code flow through an IF statement is dependent on what follows the ‘IF’ keyword: An empty string or ‘0’ evaluates as false, whereas anything else is true. So the following are true,</p>
-<pre >
-<span style="color: #808080;">IF </span><span style="color: #FFAF00;">1</span>
-<span style="color: #808080;">IF asd afsdf sdg sdgfas </span><span style="color: #87D7D7;"># some comment</span>
-<span style="color: #808080;">IF </span><span style="color: #FFAF00;">0</span><span style="color: #808080;"> adfd</span>
-<span style="color: #808080;">IF </span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">0</span><span style="color: #808080;">&quot;</span> <span style="color: #87D7D7;"># note this!</span>
-</pre>
-
-<p>whereas the following are false</p>
-<pre >
-<span style="color: #808080;">IF </span><span style="color: #FFAF00;">0</span>
-<span style="color: #808080;">IF </span><span style="color: #87D7D7;"># possible trailing comment</span>
-<span style="color: #808080;">IF</span>
-<span style="color: #808080;">IF&amp;</span>
-<span style="color: #808080;">  &amp; </span><span style="color: #87D7D7;"># line continuation</span>
-</pre>
-
-<p>There are also the continuation statements of ELSE_IF and ELSE demonstrated by:</p>
-<pre >
-<span style="color: #808080;">IF </span><span style="color: #FFAF00;">0</span>
-  <span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span> <span style="color: #FFAF00;">1.d0</span>
-<span style="color: #808080;">ELSE_IF </span><span style="color: #FFAF00;">1</span>
-  <span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span> <span style="color: #FFAF00;">2.d0</span>
-<span style="color: #808080;">ELSE</span>
-  <span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span> <span style="color: #FFAF00;">3.d0</span>
-<span style="color: #808080;">END_IF</span>
-</pre>
-
-<p>IF, ELSE_IF, ELSE and END_IF are all solver code keywords, so require their own lines.</p>
-<p>In practice the IF statements would be used in conjunction with string replacements or string code:</p>
-<pre >
-<span style="color: #808080;">IF </span><span style="color: #8700D7;">&lt;&lt;transientflag&gt;&gt;</span> <span style="color: #87D7D7;"># here &lt;&lt;transientflag&gt;&gt; is a system generated string variable which is replaced by 1 for a transient simulation</span>
-  <span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;dt&gt;</span> <span style="color: #FFAF00;">0.1d0</span>
-<span style="color: #808080;">ELSE_IF {{ return string_eval(</span><span style="color: #808080;">&quot;$some_string_variable&quot;</span><span style="color: #808080;">) }} </span><span style="color: #87D7D7;"># here the string code enclosed in {{ }} evaluates as the return value, which here would be the value of the string variable $some_string_variable which would have been previously set</span>
-  <span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;dt&gt;</span> <span style="color: #FFAF00;">1.d0</span>
-<span style="color: #808080;">ELSE</span>
-  <span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;dt&gt;</span> <span style="color: #FFAF00;">2.d0</span>
-<span style="color: #808080;">END_IF</span>
-</pre>
-
 <!-- post comments -->
 </div>
 <div id="rightheader">
