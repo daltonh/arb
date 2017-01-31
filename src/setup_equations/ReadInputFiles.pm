@@ -86,7 +86,7 @@ our @EXPORT  = qw(read_input_files); # list of subroutines and variables that wi
 # define variables common to all of these subs
 our @code_blocks; # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
 
-my $filelinelocator; # holds generic locator of current line for message purposes corresponding to $#code_blocks
+our $filelinelocator; # holds generic locator of current line for message purposes corresponding to $#code_blocks
 
 my $unwrapped_indent = "   "; # amount to indent the unwrapped input file for each level of file inclusion
 

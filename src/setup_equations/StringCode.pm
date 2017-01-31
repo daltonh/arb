@@ -64,6 +64,57 @@ sub parse_string_code {
 }
 
 #-------------------------------------------------------------------------------
+# sets options for a string
+# on input
+#  $_[0] = string name
+#  $_[1] = comma separated list of options
+# on output
+#  @_ = unchanged
+sub string_option {
+
+  alias my @code_blocks = @ReadInputFiles::code_blocks;
+  my $name = $_[0];
+  my $options = $_[1];
+  my ($code_block_found,$string_variable_found) = string_search($name);
+  if ($code_block_found == -1) {
+    syntax_problem("string variable $name not found during string_options: $ReadInputFiles::filelinelocator");
+  }
+  my $options_save = $options;
+  while (nonempty($options)) {
+    if ($options =~ /^\s*(((no|)replace)|)\s*(,|$)/) {
+      $options = $';
+      if (nonempty($2)) {
+        if (empty($3)) {
+          $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 1;
+        } else {
+          $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 0;
+        }
+      }
+    } else {
+      syntax_problem("unknown string within string_options options of $options: $ReadInputFiles::filelinelocator");
+    }
+  }
+  
+}
+#-------------------------------------------------------------------------------
+# finds the value of a string
+# on input
+#  $_[0] = string name
+# on output
+#  $_[0] = unchanged
+# returns string value if found, or dies it string is not found
+sub string_eval {
+
+  alias my @code_blocks = @ReadInputFiles::code_blocks;
+  my $name = $_[0];
+  my ($code_block_found,$string_variable_found) = string_search($name);
+  if ($code_block_found == -1) {
+    syntax_problem("string variable $name not found during string_set: $ReadInputFiles::filelinelocator");
+  }
+  return $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+  
+}
+#-------------------------------------------------------------------------------
 # this sub sets a string variable with name to a value, for N string name/value pairs
 # on entry:
 #  $_[2*n-2)] = name for string n = 1 .. N
@@ -71,12 +122,14 @@ sub parse_string_code {
 #  $_[2*N] = comma separated list of options (string) to be applied for all strings:
 #    - replace: this string name will be searched for in solver code and replaced with its value, which is default for most string names
 #    - noreplace: opposite of replace, which is the default for strings whose names start with $, as in "$a"
-#    - default: only set the string to this value if the string is not already defined
+#    - default: only set the string if the string is not already defined anywhere
+#          - search is done over all code blocks, irrespective of global setting
+#          - so global and replace or noreplace options are only relevant here if the string variable is not already set
 #    - global: set the string in the root code_blocks ($code_blocks[0]) so that it is available even after the current block has closed - ie, globally
-#    - if both global and default are specified, search and set is only done on root code_blocks[0]
 
 sub string_set {
 
+  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my @name_value_pairs = @_; # place all arguments in this array to start
 
 # if the number of arguments is odd, then the last argument is the list of options, so pop this off
@@ -85,42 +138,60 @@ sub string_set {
 
   print ::DEBUG "INFO: entering string_set: name_value_pairs = @name_value_pairs: options = $options\n";
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
+# check validity of options
+  my $options_save = $options;
+  while (nonempty($options)) {
+    if ($options =~ /^\s*((no|)replace|default|global|)\s*(,|$)/) {
+      $options = $';
+    } else {
+      syntax_problem("unknown string within string_set options of $options: $ReadInputFiles::filelinelocator");
+    }
+  }
+  $options = $options_save;
 
   while (@name_value_pairs) {
 
 # see if string already exists, either in all code_blocks, or in code_blocks[0] for global
 
-    my ($code_block_found,$string_variable_found);
-    if ($options =~ /(^|,|\s)global($|,|\s)/) {
-      ($code_block_found,$string_variable_found) = string_search($name_value_pairs[0],'global');
-    } else {
-      ($code_block_found,$string_variable_found) = string_search($name_value_pairs[0]);
+    print ::DEBUG "INFO: in string_set, dealing with: name = $name_value_pairs[0]: value = $name_value_pairs[1]\n";
+
+# first deal with default option
+    if ($options =~ /(^|,|\s)default($|,|\s)/) { # if string is found and default option is on, we are done
+      my ($code_block_found,$string_variable_found) = string_search($name_value_pairs[0]);
+      print ::DEBUG "INFO: in string_set, with default option: code_block_found = $code_block_found: string_variable_found = $string_variable_found\n";
+      if ($code_block_found >= 0) {
+        print ::DEBUG "INFO: found string, moving to next\n";
+        shift(@name_value_pairs);
+        shift(@name_value_pairs);
+        next;
+      }
     }
 
-  print ::DEBUG "INFO: in string_set, dealing with: name = $name_value_pairs[0]: value = $name_value_pairs[1]: code_block_found = $code_block_found: string_variable_found = $string_variable_found\n";
+# if we are here then the string will be set or reset, so
+# 1. search for string name in the relevant code block (to be reset if it is found there), or
+# 2. if it doesn't exist in that block, find the next available indicies in that block and set it
 
-    if ($options =~ /(^|,|\s)default($|,|\s)/ && $code_block_found >= 0) { # if string is found and default option is on, we are done
-      print ::DEBUG "INFO: found string when default option is on, so no action required\n";
-    } else {
+    my $code_block_search = $#code_blocks; # the block to limit our activities to
+    if ($options =~ /(^|,|\s)global($|,|\s)/) { $code_block_search = 0; }
+    my ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],$code_block_search);
+    print ::DEBUG "INFO: in string_set, after string search: code_block_search = $code_block_search: code_block_set = $code_block_set: string_variable_set = $string_variable_set\n";
+    if ($code_block_set == -1) { # string was not found, so set to next available indicies
+      ($code_block_set,$string_variable_set) = ($code_block_search,$#{$code_blocks[$code_block_search]{"string_variables"}}+1);
+    }
+    print ::DEBUG "INFO: in string_set, about to set string: code_block_search = $code_block_search: code_block_set = $code_block_set: string_variable_set = $string_variable_set\n";
 
-# as we are needing to set this variable, create a temporary hash to push on to the stack
-      my %string_variable = ( "name" => $name_value_pairs[0], "value" => $name_value_pairs[1] );
-      $string_variable{"replace"} = 1;
-      if ($options =~ /(^|,|\s)(no|)replace($|,|\s)/) {
-        if (nonempty($2)) { $string_variable{"replace"} = 0; }
-      } elsif ($name_value_pairs[0] =~ /^$/) {
-        $string_variable{"replace"} = 0;
+# if we are here, then the new or reused indices are ready to go
+    $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} = shift(@name_value_pairs);
+    $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"value"} = shift(@name_value_pairs);
+
+# also set replace variable
+    $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 1; # default value
+    if ($options =~ /(^|,|\s)(no|)replace($|,|\s)/) {
+      if (nonempty($2)) {
+        $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
       }
-
-      if ($string_variable_found >= 0) {
-        $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found] = %string_variable;
-      } elsif ($options =~ /(^|,|\s)global($|,|\s)/) {
-        push(@{$code_blocks[0]{"string_variables"}},%string_variable);
-      } else {
-        push(@{$code_blocks[$#code_blocks]{"string_variables"}},%string_variable);
-      }
-
+    } elsif ($code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} =~ /^$/) {
+      $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
     }
 
   }
@@ -131,9 +202,6 @@ sub string_set {
 sub string_setup {
 
   use Data::Dumper;
-# for convienience create an alias to just the string_variables part of code_blocks
-# alias my @string_variables = @{$ReadInputFiles::code_blocks[$#ReadInputFiles::code_blocks]{"string_variables"}};
-  alias my @string_variables = @{$ReadInputFiles::code_blocks[0]{"string_variables"}};
 
 # ref: string variables
 # setup default string_variables
@@ -169,26 +237,30 @@ sub string_setup {
   string_set("<<reflect=2>>","","global");
   string_set("<<reflect=3>>","","global");
 
-  print ::DEBUG "INFO: initial string_variables = ".Dumper(@string_variables)."\n";
+  print ::DEBUG "INFO: initial string_variables = ".Dumper(@{$ReadInputFiles::code_blocks[0]{"string_variables"}})."\n";
 
 }
 
 #--------------------------------------------------------------
 # search through string_variables for search string
+# on input
+#  $_[0] = name of string to find
+#  $_[1] = if defined, is the specific code block in which is searched, otherwise if not defined, all code blocks are searched (from last = $#code_blocks to root = 0)
+# on output, @_ unchanged
+# on output, returns ($code_block_found,$string_variable_found), default both to -1 if not found
 
 sub string_search {
 
-  my $name = $_[0]; # on input, name of string to find
-  my $options = $_[1]; # on input, a list of possible options, right now only global, which implies only look in code_blocks[0]
+  alias my @code_blocks = @ReadInputFiles::code_blocks;
+
+  my $name = $_[0];
+  my ($code_block_lower,$code_block_upper) = (0,$#code_blocks);
+  if (defined($_[1])) { $code_block_lower = $_[1]; $code_block_upper = $_[1]; }
+    
   my $string_variable_found = -1; # on output returns -1 if not found, or string_variables index if found
   my $code_block_found = -1; # on output returns -1 if not found, or code_blocks index if found
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
-
-  my $code_block_upper = $#code_blocks;
-  if ($options =~ /(^|,|\s)global($|,|\s)/) { $code_block_upper = 0; }
-
-  CODE_BLOCK_LOOP: for my $m ( reverse( 0 .. $code_block_upper ) ) {
+  CODE_BLOCK_LOOP: for my $m ( reverse( $code_block_lower .. $code_block_upper ) ) {
     for my $n ( reverse( 0 .. $#{$code_blocks[$m]{"string_variables"}} ) ) {
       if ($name eq $code_blocks[$m]{"string_variables"}[$n]{"name"}) { # found existing general replacements
         $string_variable_found = $n;
