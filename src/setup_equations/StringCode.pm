@@ -51,7 +51,8 @@ sub parse_string_code {
   print ::DEBUG "INFO: start of StringCode::parse_string_code: buffer = $buffer\n";
 
 # removing lead and trailing double delimiters
-  ($buffer) = $buffer =~ /^\{\{(.*)\}\}$/;
+  $buffer =~ s/(\{\{|\}\})//g;
+  print ::DEBUG "INFO: after removing string code delimiters: buffer = $buffer\n";
 
   my $eval_return = eval($buffer."; return ''");
   if ($@) {
