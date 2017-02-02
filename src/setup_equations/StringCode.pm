@@ -56,7 +56,7 @@ sub parse_string_code {
 
   my $eval_return = eval($buffer."; return ''");
   if ($@) {
-    syntax_problem("error in evaluating the string code $buffer","error");
+    syntax_problem("error in evaluating the string code $buffer: $ReadInputFiles::filelinelocator");
   } else { $buffer = $eval_return; }
 
   print ::DEBUG "INFO: end of StringCode::parse_string_code: buffer = $buffer\n";
@@ -145,12 +145,22 @@ sub string_eval {
 #          - so global and replace or noreplace options are only relevant here if the string variable is not already set
 #    - global: set the string in the root code_blocks ($code_blocks[0]) so that it is available even after the current block has closed - ie, globally
 
+# on entry if number of arguments is:
+# 1 -> name of string
+# 2 -> name and value of string
+# 3 -> name and value of string, plus options
+# even but >= 2 -> name and value of pairs of strings
+# odd but >= 3 -> name and value of pairs of strings, plus options
+
 sub string_set {
 
   alias my @code_blocks = @ReadInputFiles::code_blocks;
   my @name_value_pairs = @_; # place all arguments in this array to start
 
-# if the number of arguments is odd, then the last argument is the list of options, so pop this off
+# if there is only one value passed in, it is the name, so set the value to an empty string
+  if ($#name_value_pairs == 0) { $name_value_pairs[1] = ''; }
+
+# if the number of arguments is odd now, then the last argument is the list of options, so pop this off
   my $options = '';
   if ($#name_value_pairs % 2 == 0) { $options = pop(@name_value_pairs); } # eg, 3/2=1 -> no options, 4/2=0 -> options
 
@@ -221,7 +231,7 @@ sub string_setup {
 
   use Data::Dumper;
 
-# ref: string variables
+# ref: string system variables
 # setup default string_variables
 # loose convention is that replacement strings be delimited by <<>>, however any strings can (and will) be matched/valued
 # convention is that valuement names that end with "comment" are meant to preceed statements in the files, converting them to comments if they are not relevant

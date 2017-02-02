@@ -1,24 +1,36 @@
 # Simulation setup
 <!-- [sec:setup_reference] -->
 
-## arb code basics
+## arb coding syntax
 
-### Solver code
+### Solver code syntax
 
-Most of the arb input file consists of 'solver code', which has the generic form of:
+Most of the arb input file consists of 'solver code', which follows these basic syntax rules:
+
+*  Each line starts with a single 'keyword', which determines the syntax layout for the remainder of that solver code line
+*  Lines can be continued with the & symbol (see below)
+*  Anything following the # symbol is a comment
+
+So most lines of solver code have the rough form of,
 ```arb
-KEYWORD <a name> "variable or region expression" ON <a region> list_of_comma_separated_options # trailing comment
+KEYWORD <a name> "variable or region expression" ON <a region> listofcommaseparatedoptions # trailing comment
 ```
-Not all arguments are required for each keyword.  By convention keywords are typed in uppercase, however code should parse correctly if the keywords are in either case (although not tested much).  Also by convention variable and region operators (eg 'celldiv' and 'compound') are typed in lowercase, however again this should parse correctly in either case.  Options are generally typed as lowercase.  Keywords generally contain underscores between (english) words (eg 'END_BLOCK'), while options are the opposite (eg 'newtstepmin').
+Most keywords allow only a subset of the possible arguments to be specified at each instance.
 
-Solver code can be continued with the ampersand symbol, and is based on the ideas of free-form fortran (<http://fortranwiki.org/fortran/show/Continuation+lines>):
+By convention keywords are typed in uppercase, however code should parse correctly if the keywords are in either case (although not tested much).  Also by convention variable and region operators (eg 'celldiv' and 'compound') that are used in expressions are typed in lowercase, however again this should parse correctly in either case.  Options are generally typed as lowercase.  Keywords generally contain underscores between (english) words (eg 'END_BLOCK'), while options are the opposite (eg 'newtstepmin').
+
+The continuation syntax using the ampersand symbol (&) is based on the ideas of free-form fortran (<http://fortranwiki.org/fortran/show/Continuation+lines>):
+
 ```arb
 NONE_CONSTANT <a> & # comments are allowed
  "<b> + <c>" & # on each line, but 
-  nooutput # only the last is carried through to the unwrapped_input.arb file
-NONE_CONSTANT <b> "<a&
-    &> + <c&
->"& # will work too
+  nooutput # are concatenated together within the unwrapped_input.arb file
+NONE_CONSTANT <b> "<a& 
+
+    &> + <c& # blank lines and
+# intermediate lines with just comments or starting and ending continuation characters
+ &&
+>"& # will work too, as per free-form fortran
 ```
 
 As the '#', '&', '{{' and '}}' character (sets) each have a special meaning in the solver code context, these character sets cannot be used within solver variable or region names.  Hence, the following are all wrong:
@@ -27,24 +39,26 @@ NONE_CONSTANT <a#3> # an error as the comment would start after '<a'
 CELL_CONSTANT <a> "celldiv(<a&>)" # an error as the continuation symbol is used in a variable name
 INFO_DESCRIPTION "Jack & Jill" # will break the line at &
 ```
-Escaping these characters could be implemented (but is not).
+Escaping these characters could be implemented in the future if the burning need arises.
 
 
 ### String code and string variables
 
-#### String code basics
+#### String code syntax
 
 Lying alongside solver code is 'string code', which is code that is embedded within the solver code and used to
 
-*  generate string replacement variables (termed string variables), and also to
+*  set string replacement variables (termed string variables) that perform replacements on the surrounding solver code, and also to
 *  generated solver code directly.
 
-String code is delimited by {{ and }}.  The basic rules of string code are:
+String code is delimited by {{ and }}.  The basic syntax rules of string code are:
 
-#.  string replacements are not performed on string code
-#.  string code can be placed anywhere within the solver code, EXCEPT in comments (where it is just a comment)
-#.  there is no limitation to the characters used within string code, EXCEPT for }}, which even enclosed within a string will terminate the string code
-#.  needs to be valid perl code
+*  string replacements are not performed on string code
+*  string code can be placed anywhere within the solver code, EXCEPT in
+     -  comments (where it is just a comment)
+     -  legacy string replacement code (eg, 'REPLACE '<<a>>' WITH '1')
+*  there is no limitation to the characters used within string code, EXCEPT for }}, which even when enclosed within a string will terminate the string code
+*  needs to be valid perl code
 
 String code is interpreted directly by perl, evaluated using the 'eval' (string) function (<http://perldoc.perl.org/functions/eval.html>).  For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) StringCode.pm module of setup_equations.pl, and whatever is returned from that eval (think subroutine) is substituted into the solver code in place of the string code.  So the following string code
 ```arb
@@ -79,7 +93,9 @@ Comments and line continuations are allowed in the string code, in the same way 
 }}
 ```
 
-#### String code variables
+Note that the & line continuation symbol is not used in string code (no line continuation is required in perl), and that commands need to finish with a semi-colon (;) otherwise quite criptic error messages can result.
+
+#### Local variables versus string variables
 
 As each string code block is evaluated using a separate perl eval call, local variables defined within one string code block are not available within subsequent string code blocks:
 ```arb
@@ -91,27 +107,44 @@ As each string code block is evaluated using a separate perl eval call, local va
   print "$a\n"; # generates an error as $a is not defined within the scope of this string code block
 }}
 ```
+
 Instead, string variables can be used to pass information outside the scope of a particular string code block.  The perl subroutine 'string_set' is available to set the value of a string variable, and 'string_eval' to return its value.  The following example could be instead achieved using:
 ```arb
 {{
-  string_set("$a",1); set a string variable "$a" to 1
-  print string_eval("$a")."\n"; # prints the value 1 to the screen
+  string_set('$a',1); # set a string variable '$a' to 1
+  print string_eval('$a')."\n"; # prints the value 1 to the screen
 }}
 {{
-  print string_eval("$a")."\n"; # prints the value 1 to the screen
+  print string_eval('$a')."\n"; # prints the value 1 to the screen
 }}
 ```
-String variables are the same variables used to achieve string replacements within the solver code (detailed below), however, by default if a string variable name starts with '$', the string variable is given the noreplace option which means that the solver code is not searched/replaced for this particular variable.  This option can also be explicitly set at creation time or via the 'string_option' subroutine:
+String variables are also used to perform string replacements within the solver code (detailed below), however, by default if a string variable name starts with '$', the string variable is given the noreplace option which means that the solver code is not searched/replaced for this particular variable.  This option can also be explicitly set at creation time or via the 'string_option' subroutine:
+
 ```arb
-{{ string_set("<<a>>","1.d0",noreplace); }}
-{{ string_option("<<a>>",noreplace); }}
+{{ string_set('<<a>>','1.d0',"replace"); # three arguments are required to set an option using sub string_set }}
+{{ string_option('<<a>>','noreplace'); }}
 ```
 
-Strings variables can also be deleted, and if set without a value, imply the empty string:
+One 'gotcha' here is that perl will interpret "$a" as the perl variable $a within double quotations, so to refer to a string variable with a name starting with $ you need to use single quotations, as in '$a'.
+
+Strings variables can also be deleted, and if set without a value, imply the empty string.  Pairs of arguments given to string_set are interpreted as name/value pairs to set:
 ```arb
 {{
-  string_set("<<c>>"); # strings set with no value implies ''
-  string_delete("<<c>>") # strings can also be deleted
+  string_set('<<c>>'); # strings set with no value implies ''
+  string_delete('<<c>>') # strings can also be deleted
+  string_set('<<d>>','1.d0','<<e>>','2.d0') # two strings set here
+  string_set('<<f>>','1.d0','<<g>>','2.d0',"noreplace") # two strings set here, both having the noreplace option
+}}
+```
+
+Two other options are allowed in string_set.  A 'global' option means that rather than setting the string variable within the current local code block (see below), the variable is set within the root (that is, global or first-defined) code block.  This means that even when the current code block is destroyed, a global string variable remains.  Global string variables are useful for setting generic simulation options, and there are a number of system global string variables that are automatically set for each simulation (see ref: string system variables in src/setup_equations/StringCode.pm).  See the Code blocks section below for an example of global variable use.
+
+A 'default' option passed to string_set means 'only set this variable if it is not already set'.  This is useful for determining whether upstream code has already specified an option, and if not, assume a default value.  When 'default' is specified the set operation is only performed if the string is not already defined.  So other options used in conjunction with 'default', such as 'global', 'replace' and 'noreplace', have no effect if the string has already been set.
+```arb
+{{
+  string_set('<<a>>','1.d0');
+  string_set('<<a>>','2.d0','default,global,noreplace'); # the global and noreplace options are not used here as <<a>> is already a replace and local (opposite of global) variable
+  string_set('<<b>>','2.d0','default,global,noreplace'); # here <<b>> becomes a global and noreplace variable assuming that it is not already set
 }}
 ```
 
@@ -141,9 +174,6 @@ With some perl hackery there's lots that can be done if required - eg, arrays an
 }}
 ```
 
-Note that the & line continuation symbol is not used in string code (as in perl).
-
-
 ### Include statements, string replacements and code blocks
 
 #### Code blocks
@@ -151,13 +181,13 @@ Note that the & line continuation symbol is not used in string code (as in perl)
 Code blocks are separate 'chunks' of code that define the scope of the string variables, as well as the file include paths.  Code blocks can be defined within the one arb file using the 'BLOCK' and 'END_BLOCK' keywords, as in:
 ```arb
 BLOCK
-{{ string_set("$a","1.d0"); }}
-{{ string_set("$b","2.d0","global"); }}
-{{ print string_eval("$a"); }} # prints 1.d0
-{{ print string_eval("$b"); }} # prints 2.d0
+{{ string_set('$a','1.d0'); }}
+{{ string_set('$b','2.d0',"global"); }}
+{{ print string_eval('$a'); }} # prints 1.d0
+{{ print string_eval('$b'); }} # prints 2.d0
 END_BLOCK
-{{ print string_eval("$a"); }} # error as $a is no longer defined in the parent block
-{{ print string_eval("$b"); }} # prints 2.d0 as $b was defined as a global variable
+{{ print string_eval('$a'); }} # error as $a is no longer defined in the parent block
+{{ print string_eval('$b'); }} # prints 2.d0 as $b was defined as a global variable
 ```
 
 #### Include statements
@@ -232,7 +262,7 @@ In practice the IF statements would be used in conjunction with string replaceme
 ```arb
 IF <<transientflag>> # here <<transientflag>> is a system generated string variable which is replaced by 1 for a transient simulation
   CONSTANT <dt> 0.1d0
-ELSE_IF {{ return string_eval("$some_string_variable") }} # here the string code enclosed in {{ }} evaluates as the return value, which here would be the value of the string variable $some_string_variable which would have been previously set
+ELSE_IF {{ return string_eval('$some_string_variable') }} # here the string code enclosed in {{ }} evaluates as the return value, which here would be the value of the string variable $some_string_variable which would have been previously set
   CONSTANT <dt> 1.d0
 ELSE
   CONSTANT <dt> 2.d0

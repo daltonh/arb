@@ -21,22 +21,32 @@
 <h1>Simulation setup</h1>
 <!-- [sec:setup_reference] -->
 
-<h2>arb code basics</h2>
-<h3>Solver code</h3>
-<p>Most of the arb input file consists of ‘solver code’, which has the generic form of:</p>
+<h2>arb coding syntax</h2>
+<h3>Solver code syntax</h3>
+<p>Most of the arb input file consists of ‘solver code’, which follows these basic syntax rules:</p>
+<ul>
+<li>Each line starts with a single ‘keyword’, which determines the syntax layout for the remainder of that solver code line</li>
+<li>Lines can be continued with the &amp; symbol (see below)</li>
+<li>Anything following the # symbol is a comment</li>
+</ul>
+<p>So most lines of solver code have the rough form of,</p>
 <pre >
-<span style="color: #808080;">KEYWORD </span><span style="color: #808080;">&lt;a name&gt;</span> <span style="color: #808080;">&quot;</span><span style="color: #5F8787;">variable</span><span style="color: #808080;"> or region expression&quot;</span> <span style="color: #875FFF;">ON</span> <span style="color: #808080;">&lt;a region&gt;</span><span style="color: #808080;"> list_of_comma_separated_options </span><span style="color: #87D7D7;"># trailing comment</span>
+<span style="color: #808080;">KEYWORD </span><span style="color: #808080;">&lt;a name&gt;</span> <span style="color: #808080;">&quot;</span><span style="color: #5F8787;">variable</span><span style="color: #808080;"> or region expression&quot;</span> <span style="color: #875FFF;">ON</span> <span style="color: #808080;">&lt;a region&gt;</span><span style="color: #808080;"> listofcommaseparatedoptions </span><span style="color: #87D7D7;"># trailing comment</span>
 </pre>
 
-<p>Not all arguments are required for each keyword. By convention keywords are typed in uppercase, however code should parse correctly if the keywords are in either case (although not tested much). Also by convention variable and region operators (eg ‘celldiv’ and ‘compound’) are typed in lowercase, however again this should parse correctly in either case. Options are generally typed as lowercase. Keywords generally contain underscores between (english) words (eg ‘END_BLOCK’), while options are the opposite (eg ‘newtstepmin’).</p>
-<p>Solver code can be continued with the ampersand symbol, and is based on the ideas of free-form fortran (<a href="http://fortranwiki.org/fortran/show/Continuation+lines">http://fortranwiki.org/fortran/show/Continuation+lines</a>):</p>
+<p>Most keywords allow only a subset of the possible arguments to be specified at each instance.</p>
+<p>By convention keywords are typed in uppercase, however code should parse correctly if the keywords are in either case (although not tested much). Also by convention variable and region operators (eg ‘celldiv’ and ‘compound’) that are used in expressions are typed in lowercase, however again this should parse correctly in either case. Options are generally typed as lowercase. Keywords generally contain underscores between (english) words (eg ‘END_BLOCK’), while options are the opposite (eg ‘newtstepmin’).</p>
+<p>The continuation syntax using the ampersand symbol (&amp;) is based on the ideas of free-form fortran (<a href="http://fortranwiki.org/fortran/show/Continuation+lines">http://fortranwiki.org/fortran/show/Continuation+lines</a>):</p>
 <pre >
 <span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;a&gt;</span><span style="color: #808080;"> &amp; </span><span style="color: #87D7D7;"># comments are allowed</span>
  <span style="color: #808080;">&quot;</span><span style="color: #808080;">&lt;b&gt;</span> <span style="color: #875FFF;">+</span> <span style="color: #808080;">&lt;c&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;"> &amp; </span><span style="color: #87D7D7;"># on each line, but </span>
-  <span style="color: #008787;">nooutput</span> <span style="color: #87D7D7;"># only the last is carried through to the unwrapped_input.arb file</span>
-<span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;b&gt;</span> <span style="color: #808080;">&quot;</span><span style="color: #808080;">&lt;a&amp;</span>
-<span style="color: #808080;">    &amp;&gt;</span> <span style="color: #875FFF;">+</span> <span style="color: #808080;">&lt;c&amp;</span>
-<span style="color: #808080;">&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">&amp; </span><span style="color: #87D7D7;"># will work too</span>
+  <span style="color: #008787;">nooutput</span> <span style="color: #87D7D7;"># are concatenated together within the unwrapped_input.arb file</span>
+<span style="color: #875FFF;">NONE_CONSTANT</span> <span style="color: #808080;">&lt;b&gt;</span> <span style="color: #808080;">&quot;</span><span style="color: #808080;">&lt;a&amp; </span>
+
+<span style="color: #808080;">    &amp;&gt;</span> <span style="color: #875FFF;">+</span> <span style="color: #808080;">&lt;c&amp; # blank lines and</span>
+<span style="color: #808080;"># intermediate lines with just comments or starting and ending continuation characters</span>
+<span style="color: #808080;"> &amp;&amp;</span>
+<span style="color: #808080;">&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">&amp; </span><span style="color: #87D7D7;"># will work too, as per free-form fortran</span>
 </pre>
 
 <p>As the ‘#’, ‘&amp;’, ‘{{’ and ‘}}’ character (sets) each have a special meaning in the solver code context, these character sets cannot be used within solver variable or region names. Hence, the following are all wrong:</p>
@@ -46,21 +56,25 @@
 <span style="color: #875FFF;">INFO_DESCRIPTION</span> <span style="color: #5F5F87;">&quot;Jack &amp; Jill&quot;</span> <span style="color: #87D7D7;"># will break the line at &amp;</span>
 </pre>
 
-<p>Escaping these characters could be implemented (but is not).</p>
+<p>Escaping these characters could be implemented in the future if the burning need arises.</p>
 <h3>String code and string variables</h3>
-<h4>String code basics</h4>
+<h4>String code syntax</h4>
 <p>Lying alongside solver code is ‘string code’, which is code that is embedded within the solver code and used to</p>
 <ul>
-<li>generate string replacement variables (termed string variables), and also to</li>
+<li>set string replacement variables (termed string variables) that perform replacements on the surrounding solver code, and also to</li>
 <li>generated solver code directly.</li>
 </ul>
-<p>String code is delimited by {{ and }}. The basic rules of string code are:</p>
-<ol>
+<p>String code is delimited by {{ and }}. The basic syntax rules of string code are:</p>
+<ul>
 <li>string replacements are not performed on string code</li>
-<li>string code can be placed anywhere within the solver code, EXCEPT in comments (where it is just a comment)</li>
-<li>there is no limitation to the characters used within string code, EXCEPT for }}, which even enclosed within a string will terminate the string code</li>
+<li>string code can be placed anywhere within the solver code, EXCEPT in
+<ul>
+<li>comments (where it is just a comment)</li>
+<li>legacy string replacement code (eg, ‘REPLACE’&lt;<a>&gt;‘WITH ’1’)</li>
+</ul></li>
+<li>there is no limitation to the characters used within string code, EXCEPT for }}, which even when enclosed within a string will terminate the string code</li>
 <li>needs to be valid perl code</li>
-</ol>
+</ul>
 <p>String code is interpreted directly by perl, evaluated using the ‘eval’ (string) function (<a href="http://perldoc.perl.org/functions/eval.html">http://perldoc.perl.org/functions/eval.html</a>). For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) StringCode.pm module of setup_equations.pl, and whatever is returned from that eval (think subroutine) is substituted into the solver code in place of the string code. So the following string code</p>
 <pre >
 <span style="color: #808080;">{{ return </span><span style="color: #808080;">&quot;</span><span style="color: #875FFF;">TRANSIENT_SIMULATION</span><span style="color: #808080;">&quot;</span><span style="color: #808080;"> }}</span>
@@ -95,7 +109,8 @@
 <span style="color: #808080;">}}</span>
 </pre>
 
-<h4>String code variables</h4>
+<p>Note that the &amp; line continuation symbol is not used in string code (no line continuation is required in perl), and that commands need to finish with a semi-colon (;) otherwise quite criptic error messages can result.</p>
+<h4>Local variables versus string variables</h4>
 <p>As each string code block is evaluated using a separate perl eval call, local variables defined within one string code block are not available within subsequent string code blocks:</p>
 <pre >
 <span style="color: #808080;">{{</span>
@@ -110,25 +125,38 @@
 <p>Instead, string variables can be used to pass information outside the scope of a particular string code block. The perl subroutine ‘string_set’ is available to set the value of a string variable, and ‘string_eval’ to return its value. The following example could be instead achieved using:</p>
 <pre >
 <span style="color: #808080;">{{</span>
-<span style="color: #808080;">  string_set(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">,</span><span style="color: #FFAF00;">1</span><span style="color: #808080;">); set a string variable </span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;"> to </span><span style="color: #FFAF00;">1</span>
-<span style="color: #808080;">  print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">).</span><span style="color: #808080;">&quot;\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># prints the value 1 to the screen</span>
+<span style="color: #808080;">  string_set('$a',</span><span style="color: #FFAF00;">1</span><span style="color: #808080;">); </span><span style="color: #87D7D7;"># set a string variable '$a' to 1</span>
+<span style="color: #808080;">  print string_eval('$a').</span><span style="color: #808080;">&quot;\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># prints the value 1 to the screen</span>
 <span style="color: #808080;">}}</span>
 <span style="color: #808080;">{{</span>
-<span style="color: #808080;">  print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">).</span><span style="color: #808080;">&quot;\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># prints the value 1 to the screen</span>
+<span style="color: #808080;">  print string_eval('$a').</span><span style="color: #808080;">&quot;\n&quot;</span><span style="color: #808080;">; </span><span style="color: #87D7D7;"># prints the value 1 to the screen</span>
 <span style="color: #808080;">}}</span>
 </pre>
 
-<p>String variables are the same variables used to achieve string replacements within the solver code (detailed below), however, by default if a string variable name starts with ‘$’, the string variable is given the noreplace option which means that the solver code is not searched/replaced for this particular variable. This option can also be explicitly set at creation time or via the ‘string_option’ subroutine:</p>
+<p>String variables are also used to perform string replacements within the solver code (detailed below), however, by default if a string variable name starts with ‘$’, the string variable is given the noreplace option which means that the solver code is not searched/replaced for this particular variable. This option can also be explicitly set at creation time or via the ‘string_option’ subroutine:</p>
 <pre >
-<span style="color: #808080;">{{ string_set(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;a&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,noreplace); }}</span>
-<span style="color: #808080;">{{ string_option(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;a&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,noreplace); }}</span>
+<span style="color: #808080;">{{ string_set('</span><span style="color: #5F5F87;">&lt;&lt;a&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">',</span><span style="color: #808080;">&quot;replace&quot;</span><span style="color: #808080;">); </span><span style="color: #87D7D7;"># three arguments are required to set an option using sub string_set }}</span>
+<span style="color: #808080;">{{ string_option('</span><span style="color: #5F5F87;">&lt;&lt;a&gt;&gt;</span><span style="color: #808080;">','noreplace'); }}</span>
 </pre>
 
-<p>Strings variables can also be deleted, and if set without a value, imply the empty string:</p>
+<p>One ‘gotcha’ here is that perl will interpret “<span class="math">$a&quot; as the perl variable $</span>a within double quotations, so to refer to a string variable with a name starting with $ you need to use single quotations, as in ‘$a’.</p>
+<p>Strings variables can also be deleted, and if set without a value, imply the empty string. Pairs of arguments given to string_set are interpreted as name/value pairs to set:</p>
 <pre >
 <span style="color: #808080;">{{</span>
-<span style="color: #808080;">  string_set(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;c&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">); </span><span style="color: #87D7D7;"># strings set with no value implies ''</span>
-<span style="color: #808080;">  string_delete(</span><span style="color: #808080;">&quot;</span><span style="color: #5F5F87;">&lt;&lt;c&gt;&gt;</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">) </span><span style="color: #87D7D7;"># strings can also be deleted</span>
+<span style="color: #808080;">  string_set('</span><span style="color: #5F5F87;">&lt;&lt;c&gt;&gt;</span><span style="color: #808080;">'); </span><span style="color: #87D7D7;"># strings set with no value implies ''</span>
+<span style="color: #808080;">  string_delete('</span><span style="color: #5F5F87;">&lt;&lt;c&gt;&gt;</span><span style="color: #808080;">') </span><span style="color: #87D7D7;"># strings can also be deleted</span>
+<span style="color: #808080;">  string_set('</span><span style="color: #5F5F87;">&lt;&lt;d&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">','</span><span style="color: #5F5F87;">&lt;&lt;e&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">') </span><span style="color: #87D7D7;"># two strings set here</span>
+<span style="color: #808080;">  string_set('</span><span style="color: #5F5F87;">&lt;&lt;f&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">','</span><span style="color: #5F5F87;">&lt;&lt;g&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">',</span><span style="color: #808080;">&quot;global&quot;</span><span style="color: #808080;">) </span><span style="color: #87D7D7;"># two strings set here, both global</span>
+<span style="color: #808080;">}}</span>
+</pre>
+
+<p>Two other options are allowed in string_set. A ‘global’ option means that rather than setting the string variable within the current local code block (see below), the variable is set within the root (that is, global or first-defined) code block. This means that even when the current code block is destroyed, a global string variable remains. Global string variables are useful for setting generic simulation options, and there are a number of system global string variables that are automatically set for each simulation (see ref: string system variables in src/setup_equations/StringCode.pm). See the Code blocks section below for an example of global variable use.</p>
+<p>A ‘default’ option passed to string_set means ‘only set this variable if it is not already set’. This is useful for determining whether upstream code has already specified an option, and if not, assume a default value. When ‘default’ is specified the set operation is only performed if the string is not already defined. So other options used in conjunction with ‘default’, such as ‘global’, ‘replace’ and ‘noreplace’, have no effect if the string has already been set.</p>
+<pre >
+<span style="color: #808080;">{{</span>
+<span style="color: #808080;">  string_set('</span><span style="color: #5F5F87;">&lt;&lt;a&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">');</span>
+<span style="color: #808080;">  string_set('</span><span style="color: #5F5F87;">&lt;&lt;a&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">','default,global,noreplace'); </span><span style="color: #87D7D7;"># the global and noreplace options are not used here as &lt;&lt;a&gt;&gt; is already a replace and local (opposite of global) variable</span>
+<span style="color: #808080;">  string_set('</span><span style="color: #5F5F87;">&lt;&lt;b&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">','default,global,noreplace'); </span><span style="color: #87D7D7;"># here &lt;&lt;b&gt;&gt; becomes a global and noreplace variable assuming that it is not already set</span>
 <span style="color: #808080;">}}</span>
 </pre>
 
@@ -160,19 +188,18 @@
 <span style="color: #808080;">}}</span>
 </pre>
 
-<p>Note that the &amp; line continuation symbol is not used in string code (as in perl).</p>
 <h3>Include statements, string replacements and code blocks</h3>
 <h4>Code blocks</h4>
 <p>Code blocks are separate ‘chunks’ of code that define the scope of the string variables, as well as the file include paths. Code blocks can be defined within the one arb file using the ‘BLOCK’ and ‘END_BLOCK’ keywords, as in:</p>
 <pre >
 <span style="color: #808080;">BLOCK</span>
-<span style="color: #808080;">{{ string_set(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">); }}</span>
-<span style="color: #808080;">{{ string_set(</span><span style="color: #808080;">&quot;$b&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">&quot;</span><span style="color: #808080;">,</span><span style="color: #808080;">&quot;global&quot;</span><span style="color: #808080;">); }}</span>
-<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># prints 1.d0</span>
-<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$b&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># prints 2.d0</span>
+<span style="color: #808080;">{{ string_set('$a','</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">'); }}</span>
+<span style="color: #808080;">{{ string_set('$b','</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">',</span><span style="color: #808080;">&quot;global&quot;</span><span style="color: #808080;">); }}</span>
+<span style="color: #808080;">{{ print string_eval('$a'); }} </span><span style="color: #87D7D7;"># prints 1.d0</span>
+<span style="color: #808080;">{{ print string_eval('$b'); }} </span><span style="color: #87D7D7;"># prints 2.d0</span>
 <span style="color: #808080;">END_BLOCK</span>
-<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$a&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># error as $a is no longer defined in the parent block</span>
-<span style="color: #808080;">{{ print string_eval(</span><span style="color: #808080;">&quot;$b&quot;</span><span style="color: #808080;">); }} </span><span style="color: #87D7D7;"># prints 2.d0 as $b was defined as a global variable</span>
+<span style="color: #808080;">{{ print string_eval('$a'); }} </span><span style="color: #87D7D7;"># error as $a is no longer defined in the parent block</span>
+<span style="color: #808080;">{{ print string_eval('$b'); }} </span><span style="color: #87D7D7;"># prints 2.d0 as $b was defined as a global variable</span>
 </pre>
 
 <h4>Include statements</h4>
@@ -238,7 +265,7 @@
 <pre >
 <span style="color: #808080;">IF </span><span style="color: #8700D7;">&lt;&lt;transientflag&gt;&gt;</span> <span style="color: #87D7D7;"># here &lt;&lt;transientflag&gt;&gt; is a system generated string variable which is replaced by 1 for a transient simulation</span>
   <span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;dt&gt;</span> <span style="color: #FFAF00;">0.1d0</span>
-<span style="color: #808080;">ELSE_IF {{ return string_eval(</span><span style="color: #808080;">&quot;$some_string_variable&quot;</span><span style="color: #808080;">) }} </span><span style="color: #87D7D7;"># here the string code enclosed in {{ }} evaluates as the return value, which here would be the value of the string variable $some_string_variable which would have been previously set</span>
+<span style="color: #808080;">ELSE_IF {{ return string_eval('$some_string_variable') }} </span><span style="color: #87D7D7;"># here the string code enclosed in {{ }} evaluates as the return value, which here would be the value of the string variable $some_string_variable which would have been previously set</span>
   <span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;dt&gt;</span> <span style="color: #FFAF00;">1.d0</span>
 <span style="color: #808080;">ELSE</span>
   <span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;dt&gt;</span> <span style="color: #FFAF00;">2.d0</span>
