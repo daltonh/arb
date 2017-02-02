@@ -113,12 +113,13 @@ sub read_input_files {
   my $buffer = ''; # current buffer of code line that could contain solver and string code, to be processed
   my $code_type = 'solver'; # indicator of current code type = solver|string that is being examined within buffer
   my $comments = ''; # additional comments that are found while buffer is being formed
+  my $buffer_offset = 0; # leading offset to apply when performing searches on buffer
     
   while (@code_blocks) { # we keep forming the buffer and parsing the code until all code blocks are destroyed
 
 # set message line locator string
     $filelinelocator = "file = $code_blocks[$#code_blocks]{include_name}: linenumber = $code_blocks[$#code_blocks]{line_number}: line = \'$code_blocks[$#code_blocks]{raw_line}\'";
-    print ::DEBUG "INFO: start of code_blocks loop: #code_blocks = $#code_blocks: solver_code = $solver_code: buffer = $buffer: code_type = $code_type: comments = $comments\n";
+    print ::DEBUG "INFO: start of code_blocks loop: #code_blocks = $#code_blocks: solver_code = $solver_code: buffer = $buffer: buffer_offset = $buffer_offset: code_type = $code_type: comments = $comments\n";
 
     if (empty($buffer)) {
       print ::DEBUG "INFO: buffer is empty\n";
@@ -160,16 +161,47 @@ sub read_input_files {
 # now search for first key characters in last buffer and do necessary processing
 # the buffer_search_start part ensures that the match occurs after a minimum of $buffer_search_start characters have occurred, providing a mechanism to avoid matching the same string twice
 #   } elsif ($buffer[$#buffer] =~ /(.{$buffer_search_start})(#|$|&|\{\{|GENERAL_REPLACEMENTS|INCLUDE(|_[A-Z]+))/i) { # \Q starts quoting, \E ends it
-    } elsif ($buffer =~ /(&|\{\{|#|$|\n)/i) {
+#   } elsif ($buffer =~ /(&|\{\{|#|$|\n)/i) {
+    } elsif ($buffer =~ /(.{$buffer_offset})(&|\{\{|#|$|\n|((GENERAL_|)REPLACEMENTS\s+|(INCLUDE(|_[A-Z]+)(\s+\S+\s+|\s*(".*"|'.*')\s*))))/i) {
 
-      my $before = $`; # includes starting characters
-      my $match = $1;
+      my $before = $`.$1; # includes starting characters within the buffer offset
+      my $match = $2;
       my $after = $';
+      my $legacy_code = $3; # potential legacy code match
 #     my $trailing_offset = $+[0]; # this is the offset (character number) that follows the above matched substring
 
       print ::DEBUG "INFO: matched action character: buffer = $buffer: before = $before: match = $match: after = $after\n";
 
-      if ($match eq "&") {
+      if (nonempty($legacy_code)) {
+        print ::DEBUG "INFO: found potential legacy string code: buffer = $buffer: legacy_code = $legacy_code\n";
+# check for legacy code by doing replacements on leading strings
+        my $before_buffer = $before; # string code includes delimiters
+        perform_string_replacements($before_buffer);
+        my $before_solver_code = $solver_code.$before_buffer;
+# if only space atmost appears before potential legacy code then run the rest of the buffer through
+        print ::DEBUG "INFO: before_solver_code = $before_solver_code\n";
+        if ($before_solver_code =~ /^\s*$/) {
+          print ::DEBUG "INFO: before_solver_code empty, so potential legacy keyword identified\n";
+          $solver_code = $before_solver_code;
+          my $global = 1;
+          if ($legacy_code =~ /^INCLUDE/) {
+            $solver_code .= $legacy_code; # lose GENERAL_REPLACEMENTS keyword, but keep include statements
+            my $global = 0;
+          }
+          $buffer = $after; # buffer now contains what followed the potential legacy keywords
+          $buffer_offset = 0;
+          print ::DEBUG "INFO: solver_code = $solver_code: buffer = $buffer\n";
+# so run this buffer through the legacy replacement converter
+          legacy_string_code_converter($buffer,$global);
+          print ::DEBUG "INFO: after legacy_string_code_converter: buffer = $buffer\n";
+
+        } else {
+# we have matched to something that isn't a legacy keyword, so adjust buffer_offset to avoid this match but keep solver_code and buffer as previously
+          $buffer_offset = length($before) + 1;
+          print ::DEBUG "INFO: before_solver_code nonempty, so increasing buffer_offset by 1: solver_code = $solver_code: buffer = $buffer: buffer_offset = $buffer_offset: before = $before\n";
+        }
+
+      } elsif ($match eq "&") {
 # deal with line continuation
         print ::DEBUG "INFO: continuation character identified within buffer: buffer = $buffer\n";
 
@@ -179,7 +211,7 @@ sub read_input_files {
             "This error could also indicate that a continuation character is missing from the previous line, if this continuation character ".
             "is meant to be a preceed a continued line: $filelinelocator");
         }
-# keep a record of any additional comments that were stripped of this line
+# keep a record of any additional comments that were stripped off this line
         $comments .= $1;
 # strip off continuation character
         $buffer = $before; # string code includes delimiters
@@ -195,7 +227,7 @@ sub read_input_files {
         if ($raw_buffer =~ /^\s*&/) { # after stripping off any possible leading continuation character
           $raw_buffer = $';
         }
-        $buffer .= $raw_buffer;
+        $buffer .= $raw_buffer; # leave buffer offset as previously, as original buffer is still there
         print ::DEBUG "INFO: after getting next line: buffer = $buffer\n";
 
 # opening string code delimiters mean we are switching to string code
@@ -203,6 +235,7 @@ sub read_input_files {
 # first perform replacements on string that proceeds the string code delimiters
 
         $buffer = $before; # string code includes delimiters
+        $buffer_offset = 0;
         print ::DEBUG "INFO: string code delimiters identified within buffer, performing string replacements on prior string: buffer = $buffer\n";
         perform_string_replacements($buffer);
         print ::DEBUG "INFO: after performing replacements: buffer = $buffer\n";
@@ -213,7 +246,7 @@ sub read_input_files {
 # if the solver_code consists of an INCLUDE statement, then this is processed now and the buffer added to the start of the next code block
         if ($solver_code =~ /^\s*INCLUDE(|_[A-Z]+)(\s+\S+\s+|\s*(".*"|'.*')\s*)$/) { # an INCLUDE type keyword has been found, which is followed by a string and then {{
           print ::DEBUG "INFO: an INCLUDE type keyword plus string has been found prior to some string code: solver code ready to process: solver_code = $solver_code\n";
-          parse_solver_code($solver_code); # process
+          parse_solver_code($solver_code); # process, noting that here solver_code is only one line
           $solver_code = ''; # and reset buffer etc
         }
 # otherwise this just signals the start of some string code
@@ -233,9 +266,15 @@ sub read_input_files {
         print ::DEBUG "INFO: after performing replacements: buffer = $buffer\n";
         $solver_code .= $buffer.$comments; # add the result of the string replacements onto the solver code
         print ::DEBUG "INFO: solver code ready to process: solver_code = $solver_code\n";
-        parse_solver_code($solver_code); # process
+        while ($solver_code =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
+          my $part_solver_code = $`;
+          $solver_code = $';
+          parse_solver_code($part_solver_code); # process one line of solver_code
+        }
+        parse_solver_code($solver_code); # process the final or only part
         $solver_code = ''; # and reset buffer etc
         $buffer = '';
+        $buffer_offset = 0;
         $comments = '';
       }
 
@@ -245,6 +284,7 @@ sub read_input_files {
       print ::DEBUG "INFO: end of code_blocks loop".
         ": #code_blocks = $#code_blocks".
         ": buffer = $buffer".
+        ": buffer_offset = $buffer_offset".
         ": solver_code = $solver_code".
         ": comments = $comments".
         ": skip = $code_blocks[$#code_blocks]{skip}\n";
@@ -377,7 +417,7 @@ sub check_for_arbfile_or_dir {
 sub parse_solver_code {
 # processes buffer, using information also about the file contained in $#code_block
 # on input:
-# $_[0] = line to process - includes comments but not linefeed
+# $_[0] = line(s) to process, including comments - final line has no linefeed, but may contain multiple lines separated by linefeeds
 # on output:
 # $_[0] = line after processing - the default is to process string and clear the buffer, however if a new file is included there may be associated string code which is placed in the buffer for processing
 
@@ -1192,6 +1232,43 @@ sub parse_solver_code {
   $_[0] = $buffer;
 
 } 
+#-------------------------------------------------------------------------------
+# checks buffer for legacy string code, rewriting to new perl string code if found
+# on input
+#  $_[0] = buffer to examine and replace
+#  $_[1] = whether global (1) or not (0)
+# on output
+#  $_[0] = buffer rewritten
+#  $_[1] = unchanged
+
+sub legacy_string_code_converter {
+
+  my ($old_buffer,$global) = @_;
+
+  my $opened = 0; # if any legacy operations were found
+  my ($search,$replace,$cancel,$default);
+  $search = 1;
+  my $buffer = '';
+
+  while (nonempty($search) && nonempty($old_buffer)) {
+    ($search,$replace,$cancel,$default) = extract_deprecated_replacements($old_buffer);
+    if (nonempty($search)) {
+      if (!($opened)) { $buffer .= '{{ '; $opened = 1; } else { $buffer .= '; '; }
+      if ($cancel) {
+        $buffer .= "string_delete(\'$search\') "; # add this cancel operation
+      } else {
+        $buffer .= "string_set(\'$search\',\'$replace\',\'"."global" x $global.",default" x $default."\') ";
+      }
+    } else {
+      if ($opened) { $buffer .= '}} '; }
+    }
+  }
+
+  $buffer .= $old_buffer;
+
+  $_[0] = $buffer;
+
+}
 #-------------------------------------------------------------------------------
 # examines buffer line and corrects any replace/with pairs, either in GENERAL_REPLACEMENTS or INCLUDE* statements
 # from v0.57 onwards, string coding has changed considerably
