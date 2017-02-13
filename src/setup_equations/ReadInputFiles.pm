@@ -86,7 +86,7 @@ our @EXPORT  = qw(read_input_files); # list of subroutines and variables that wi
 # define variables common to all of these subs
 our @code_blocks; # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
 
-our $filelinelocator; # holds generic locator of current line for message purposes corresponding to $#code_blocks
+our $filelinelocator = 'not set yet as no lines have been read'; # holds generic locator of current line for message purposes corresponding to latest read buffer
 
 my $unwrapped_indent = "   "; # amount to indent the unwrapped input file for each level of file inclusion
 
@@ -115,40 +115,43 @@ sub read_input_files {
   my $comments = ''; # additional comments that are found while buffer is being formed
   my $buffer_offset = 0; # leading offset to apply when performing searches on buffer
     
+#----------------------------------------------------------------------------
   while (@code_blocks) { # we keep forming the buffer and parsing the code until all code blocks are destroyed
 
-# set message line locator string
-    $filelinelocator = "file = $code_blocks[$#code_blocks]{include_name}: linenumber = $code_blocks[$#code_blocks]{line_number}: line = \'$code_blocks[$#code_blocks]{raw_line}\'";
-    print ::DEBUG "INFO: start of code_blocks loop: #code_blocks = $#code_blocks: solver_code = $solver_code: buffer = $buffer: buffer_offset = $buffer_offset: code_type = $code_type: comments = $comments\n";
+    print ::DEBUG "INFO: start of code_blocks loop:\n #code_blocks = $#code_blocks:\n solver_code = $solver_code:\n buffer = $buffer:\n buffer_offset = $buffer_offset:\n code_type = $code_type:\n comments = $comments\n";
 
+#-----------------------------
+# buffer is empty, so get more or get out
     if (empty($buffer)) {
-      print ::DEBUG "INFO: buffer is empty\n";
+      print ::DEBUG "  INFO: buffer is empty\n";
       my $raw_buffer='';
       if (!(get_raw_buffer($raw_buffer))) {
 # there is nothing left in the file, so get outa here
-        print ::DEBUG "INFO: no more data in file\n";
+        print ::DEBUG "  INFO: no more data in file\n";
         pop_code_block();
       } else {
 # we were able to get more from the file so push it onto the buffer stack
         $buffer = $raw_buffer;
       }
 
-    } elsif ($code_type eq "string" && $buffer =~ /(\}\})/i) {
+#-----------------------------
 # we were in string code, but have now found a closing string code delimiter }}, so split buffer accordingly and process string code
+    } elsif ($code_type eq "string" && $buffer =~ /(\}\})/i) {
 
-      print ::DEBUG "INFO: found string code closing in buffer\n";
+      print ::DEBUG "  INFO: found string code closing in buffer\n";
       my $string_code = $`.$&; # string code includes delimiters
       $buffer = $'; # anything that remains is left in the buffer
-      print ::DEBUG "INFO: string code identified within buffer: string_code = $string_code: (remaining) buffer = $buffer\n";
+      print ::DEBUG "  INFO: string code identified within buffer:\n   string_code = $string_code:\n   (remaining) buffer = $buffer\n";
       parse_string_code($string_code); # send this to the string code parser, which may return a string to add to the solver code line
-      print ::DEBUG "INFO: after parsing string code: string_code = $string_code\n";
+      print ::DEBUG "  INFO: after parsing string code:\n   string_code = $string_code\n";
       $solver_code .= $string_code; # add the result of the string code onto the solver code
       $code_type = 'solver'; # and reset code type
     
+#-----------------------------
+# we are in string code still but there are no closing delimiters, so keep adding new lines
     } elsif ($code_type eq "string") {
-# we are in string code still but there is no closing delimiters, so keep adding new lines
 
-      print ::DEBUG "INFO: string code continuing\n";
+      print ::DEBUG "  INFO: string code continuing\n";
       my $raw_buffer='';
       if (!(get_raw_buffer($raw_buffer))) {
 # there is nothing left in the file, which is an error as the string delimiters need to be closed
@@ -158,55 +161,61 @@ sub read_input_files {
         $buffer .= $raw_buffer;
       }
 
+#-----------------------------
 # now search for first key characters in last buffer and do necessary processing
-# the buffer_search_start part ensures that the match occurs after a minimum of $buffer_search_start characters have occurred, providing a mechanism to avoid matching the same string twice
-#   } elsif ($buffer[$#buffer] =~ /(.{$buffer_search_start})(#|$|&|\{\{|GENERAL_REPLACEMENTS|INCLUDE(|_[A-Z]+))/i) { # \Q starts quoting, \E ends it
-#   } elsif ($buffer =~ /(&|\{\{|#|$|\n)/i) {
-    } elsif ($buffer =~ /(.{$buffer_offset})(&|\{\{|#|$|\n|((GENERAL_|)REPLACEMENTS\s+|(INCLUDE(|_[A-Z]+)(\s+\S+\s+|\s*(".*"|'.*')\s*))))/i) {
+# the buffer_offset part ensures that the match occurs after a minimum of $buffer_offset characters have occurred, providing a mechanism to avoid matching the same string twice
+    } elsif ($buffer =~ /(.{$buffer_offset})(&|\{\{|#|$|\n|((GENERAL_|GLOBAL_|)REPLACEMENTS\s+|(INCLUDE(|_[A-Z]+)(\s+\S+\s+|\s*(".*"|'.*')\s*))))/i) {
 
       my $before = $`.$1; # includes starting characters within the buffer offset
       my $match = $2;
       my $after = $';
       my $legacy_code = $3; # potential legacy code match
-#     my $trailing_offset = $+[0]; # this is the offset (character number) that follows the above matched substring
 
-      print ::DEBUG "INFO: matched action character: buffer = $buffer: before = $before: match = $match: after = $after\n";
+      print ::DEBUG "  INFO: matched action character:\n   before = $before:\n   match = $match:\n   after = $after\n";
 
+#--------------
+# see whether this line contains a legacy string replacement (eg R "<<a>>" W "1.d0"), and if so:
+#  1. process leading statement, changing any possible *REPLACEMENTS keyword and finalising the initial solver_code string
+#  2. convert any replace statements to string code, and leave this in the trailing buffer, to be processed elsewhere 
+# otherwise if this is a false legacy code match, adjust offset so that it isn't matched again
       if (nonempty($legacy_code)) {
-        print ::DEBUG "INFO: found potential legacy string code: buffer = $buffer: legacy_code = $legacy_code\n";
+        print ::DEBUG "  INFO: found potential legacy string code:\n   legacy_code = $legacy_code\n";
 # check for legacy code by doing replacements on leading strings
         my $before_buffer = $before; # string code includes delimiters
         perform_string_replacements($before_buffer);
         my $before_solver_code = $solver_code.$before_buffer;
+        print ::DEBUG "  INFO: before_solver_code = $before_solver_code\n";
 # if only space atmost appears before potential legacy code then run the rest of the buffer through
-        print ::DEBUG "INFO: before_solver_code = $before_solver_code\n";
         if ($before_solver_code =~ /^\s*$/) {
-          print ::DEBUG "INFO: before_solver_code empty, so potential legacy keyword identified\n";
+          print ::DEBUG "  INFO: before_solver_code empty, so potential legacy keyword identified\n";
           $solver_code = $before_solver_code;
-          my $global = 1;
+# set global and deal with keeping/removing keyword
+          my $global = 0;
           if ($legacy_code =~ /^INCLUDE/) {
-            $solver_code .= $legacy_code; # lose GENERAL_REPLACEMENTS keyword, but keep include statements
-            my $global = 0;
+            $solver_code .= $legacy_code; # keep the include statement and potential filename (otherwise keyword is lost)
+          } elsif ($legacy_code =~ /^(GENERAL_|GLOBAL_)/) {
+            $global = 1; # we now allow both the REPLACEMENTS and (GLOBAL_|GENERAL_)REPLACEMENTS forms
           }
           $buffer = $after; # buffer now contains what followed the potential legacy keywords
           $buffer_offset = 0;
-          print ::DEBUG "INFO: solver_code = $solver_code: buffer = $buffer\n";
+          print ::DEBUG "  INFO: solver_code = $solver_code: buffer = $buffer\n";
 # so run this buffer through the legacy replacement converter
           legacy_string_code_converter($buffer,$global);
-          print ::DEBUG "INFO: after legacy_string_code_converter: buffer = $buffer\n";
+          print ::DEBUG "  INFO: after legacy_string_code_converter: buffer = $buffer\n";
 
         } else {
 # we have matched to something that isn't a legacy keyword, so adjust buffer_offset to avoid this match but keep solver_code and buffer as previously
           $buffer_offset = length($before) + 1;
-          print ::DEBUG "INFO: before_solver_code nonempty, so increasing buffer_offset by 1: solver_code = $solver_code: buffer = $buffer: buffer_offset = $buffer_offset: before = $before\n";
+          print ::DEBUG "  INFO: before_solver_code nonempty, so increasing buffer_offset by 1: solver_code = $solver_code: buffer = $buffer: buffer_offset = $buffer_offset: before = $before\n";
         }
 
-      } elsif ($match eq "&") {
+#--------------
 # deal with line continuation
-        print ::DEBUG "INFO: continuation character identified within buffer: buffer = $buffer\n";
+      } elsif ($match eq "&") {
+        print ::DEBUG "  INFO: continuation character identified within buffer\n";
 
 # anything following & that is not a comment is an error
-        if ($after !~ /^\s*(#.*|)(\n|$)/) {
+        if ($after !~ /^\h*(#.*|)(\n|$)/) {
           syntax_problem("a continuation character & within solver code can only be followed by either space or a comment.  ".
             "This error could also indicate that a continuation character is missing from the previous line, if this continuation character ".
             "is meant to be a preceed a continued line: $filelinelocator");
@@ -228,29 +237,31 @@ sub read_input_files {
           $raw_buffer = $';
         }
         $buffer .= $raw_buffer; # leave buffer offset as previously, as original buffer is still there
-        print ::DEBUG "INFO: after getting next line: buffer = $buffer\n";
+        print ::DEBUG "  INFO: after getting next line:\n   buffer = $buffer\n";
 
+#--------------
 # opening string code delimiters mean we are switching to string code
       } elsif ($match eq "{{") {
 # first perform replacements on string that proceeds the string code delimiters
 
         $buffer = $before; # string code includes delimiters
         $buffer_offset = 0;
-        print ::DEBUG "INFO: string code delimiters identified within buffer, performing string replacements on prior string: buffer = $buffer\n";
+        print ::DEBUG "  INFO: string code delimiters identified within buffer, performing string replacements on prior string: buffer = $buffer\n";
         perform_string_replacements($buffer);
-        print ::DEBUG "INFO: after performing replacements: buffer = $buffer\n";
+        print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n";
         $solver_code .= $buffer; # add the result of the string replacements onto the solver code
         $buffer = $match.$after; # and save the remainder as the buffer
         $code_type = 'string'; # and set the code_type for the buffer
         
 # if the solver_code consists of an INCLUDE statement, then this is processed now and the buffer added to the start of the next code block
         if ($solver_code =~ /^\s*INCLUDE(|_[A-Z]+)(\s+\S+\s+|\s*(".*"|'.*')\s*)$/) { # an INCLUDE type keyword has been found, which is followed by a string and then {{
-          print ::DEBUG "INFO: an INCLUDE type keyword plus string has been found prior to some string code: solver code ready to process: solver_code = $solver_code\n";
+          print ::DEBUG "  INFO: an INCLUDE type keyword plus string has been found prior to some string code: solver code ready to process: solver_code = $solver_code\n";
           parse_solver_code($solver_code); # process, noting that here solver_code is only one line
           $solver_code = ''; # and reset buffer etc
         }
 # otherwise this just signals the start of some string code
 
+#--------------
       } else { # $match eq #|\n|$
 # if key_characters are either a comment or end of string/line, then buffer is ready to be assembled as solver_code and processed
 
@@ -261,11 +272,11 @@ sub read_input_files {
 
 # limit the buffer to prior to the comment/end of string/line, and then perform string replacements on the buffer
         $buffer = $before;
-        print ::DEBUG "INFO: solver code identified within buffer, performing string replacements: buffer = $buffer\n";
+        print ::DEBUG "  INFO: solver code identified within buffer, performing string replacements: buffer = $buffer\n";
         perform_string_replacements($buffer);
-        print ::DEBUG "INFO: after performing replacements: buffer = $buffer\n";
+        print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n";
         $solver_code .= $buffer.$comments; # add the result of the string replacements onto the solver code
-        print ::DEBUG "INFO: solver code ready to process: solver_code = $solver_code\n";
+        print ::DEBUG "  INFO: solver code ready to process: solver_code = $solver_code\n";
         while ($solver_code =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
           my $part_solver_code = $`;
           $solver_code = $';
@@ -277,7 +288,9 @@ sub read_input_files {
         $buffer_offset = 0;
         $comments = '';
       }
+#--------------
 
+#-----------------------------
     }
 
     if (@code_blocks) {
@@ -292,6 +305,7 @@ sub read_input_files {
       print ::DEBUG "INFO: code_blocks loop finished\n";
     }
 
+#----------------------------------------------------------------------------
   } # end of loop for this input file
 
   close(UNWRAPPED_INPUT);
@@ -327,6 +341,8 @@ sub get_raw_buffer {
     $code_blocks[$#code_blocks]{"line_number"} = $.;
     $code_blocks[$#code_blocks]{"raw_line"} = $raw_buffer;
     $code_blocks[$#code_blocks]{"raw_line"} =~ s/\n//g; # remove line feeds too for raw_line
+# set message line locator string
+    $filelinelocator = "file = $code_blocks[$#code_blocks]{include_name}: linenumber = $code_blocks[$#code_blocks]{line_number}: line = \'$code_blocks[$#code_blocks]{raw_line}\'";
   }
   
   $_[0] = $raw_buffer;
@@ -1245,6 +1261,7 @@ sub legacy_string_code_converter {
 
   my ($old_buffer,$global) = @_;
 
+  print ::DEBUG "INFO: start of legacy_string_code_converter: global = $global: old_buffer = $old_buffer\n";
   my $opened = 0; # if any legacy operations were found
   my ($search,$replace,$cancel,$default);
   $search = 1;
@@ -1264,8 +1281,11 @@ sub legacy_string_code_converter {
     }
   }
 
+  print ::DEBUG "INFO: near end of legacy_string_code_converter: search = $search: old_buffer = $old_buffer\n";
+
   $buffer .= $old_buffer;
 
+  print ::DEBUG "INFO: end of legacy_string_code_converter: global = $global: buffer = $buffer\n";
   $_[0] = $buffer;
 
 }
@@ -1368,11 +1388,16 @@ sub extract_deprecated_replacements {
   my $cancel = 0;
   my $default = 0;
 
-  if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement
+  print ::DEBUG "INFO: start of extract_deprecated_replacements: line = $line\n";
+
+# if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement - as far as I can remember, *'ed form was never used instead of D|DEFAULT - get rid of it
+  if ($line =~ /^((R|REPLACE)|(DEFAULT|D))\s+/i) { # found a replacement
     print ::DEBUG "found a replace statement specified as $1: $'\n";
     if (nonempty($3)) { $default=1; }
     $line = $';
+    print ::DEBUG "line = $line\n";
     ($search,$error) = extract_first($line);
+    print ::DEBUG "after extract_first: line = $line\n";
     if (empty($search) || $error) {
       syntax_problem("one search string not identified from: $filelinelocator");
     } else {
@@ -1392,6 +1417,7 @@ sub extract_deprecated_replacements {
     }
   }
 
+  print ::DEBUG "INFO: end of extract_deprecated_replacements: line = $line\n";
   $_[0] = $line;
   return ($search,$replace,$cancel,$default);
 
@@ -1495,6 +1521,233 @@ sub perform_string_replacements {
 
   $_[0] = $string;
 }
+#-------------------------------------------------------------------------------
+# this is a little support routine used by find above
+sub wanted {
+# calling command: find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$template_dir);
+  my $new_file = $_[0];
+  my $found_name = $_[1];
+  my $found_type = $_[2];
+  my $found_depth = $_[3];
+  my $debug = 0;
+
+  my $local_depth = ($File::Find::name) =~ tr!/!!; # counts the number of slashes in the path, from http://www.perlmonks.org/?node_id=984804 
+  if ($debug) { print ::DEBUG "start of wanted: File::Find::name = $File::Find::name: File::Find::dir = $File::Find::dir\n".
+                            "  found_name = $found_name: found_type = $found_type: found_depth = $found_depth\n".
+                            "  new_file = $new_file: local_depth = $local_depth\n"; }
+
+# first check if it is at all possible that a name can be found that will overwrite already found name
+  if (nonempty($found_name) && ( $local_depth > $found_depth || ($found_type eq 'directory' && $local_depth >= $found_depth) ) ) {
+    if ($debug) { print ::DEBUG "in wanted: nonempty found_name coupled with large local_depth (criterion on local_depth depends on found_type):".
+                              "found_type = $found_type: found_depth = $found_depth: local_depth = $local_depth\n"; }
+# if a name has been found, that is already at a lower depth, prune all subsequent directories
+    $File::Find::prune = 1; 
+# ignore these directories/links, as per the pack script
+  } elsif ($File::Find::name =~ /(resources|code_scraps|old|recent)$/) {
+    if ($debug) { print ::DEBUG "in wanted: ignoring directory\n"; }
+    $File::Find::prune = 1; 
+  } else {
+
+  # now compare file::name with new_file
+    if ($new_file =~ /\/$/) {
+  # this is a directory due to the trailing slash
+      my $stripped_name = $new_file;
+      $stripped_name =~ s/\/$//; # create temporary name that has no trailing slash
+      if ($debug) { print ::DEBUG "in wanted: testing for directory as has a trailing slash: stripped_name = $stripped_name\n"; }
+      if ($File::Find::name =~ /$stripped_name$/ && -d $File::Find::name) {
+        $found_name = $File::Find::name;
+        $found_type = 'directory';
+        $found_depth = $local_depth;
+        $File::Find::prune = 1; # as this is a directory, do not go any deeper
+      }
+    } else {
+      if ($debug) { print ::DEBUG "in wanted: testing for plain name\n"; }
+      if ($File::Find::name =~ /$new_file$/) {
+        if ($debug) { print ::DEBUG "in wanted: matches to plain name\n"; }
+        $found_name = $File::Find::name;
+        if (-f $File::Find::name) {$found_type = 'file';} else {
+          $found_type = 'directory';
+          $File::Find::prune = 1; # as this is a directory, do not go any deeper
+        }
+        $found_depth = $local_depth;
+      } elsif ($new_file !~ /\.(arb|in)/) {
+        if ($debug) { print ::DEBUG "in wanted: testing for file with additional arb extension\n"; }
+  # if it is just a plain name then also try with .arb extension
+        if ($File::Find::name =~ /$new_file\.arb$/ && -f $File::Find::name) {
+          if ($debug) { print ::DEBUG "in wanted: matches to file with additional arb extension and is a file\n"; }
+          $found_name = $File::Find::name;
+          $found_type = 'file';
+          $found_depth = $local_depth;
+        }
+      }
+    }
+  }
+
+  if ($debug) { print ::DEBUG "end of wanted: found_name = $found_name: found_type = $found_type: found_depth = $found_depth\n"; }
+    
+  $_[1] = $found_name; # return this in its original place, altered if the file has been found
+  $_[2] = $found_type; # return this in its original place, altered if the file has been found
+  $_[3] = $found_depth; # return this in its original place, altered if the file has been found
+}
+
+#-------------------------------------------------------------------------------
+# takes an arb equation and
+# 1) expands the dot and ddot operators
+# 2) replaces a reference to itself with the previous equation
+# copies all but the last input arguments and returns new equation
+# last argument is the number of selfreferences that have been made in total by this variable, and is incremented by this routine
+# $asread_variable[$masread]{"equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$asread_variable[$masread]{"equation"},$oline,$asread_variable[$masread]{"selfreferences"});
+
+sub expand_equation {
+
+  my $raw_equation = $_[0]; # the first argument is the raw equation, which is copied and unchanged
+  my $variable_name = $_[1]; # the second argument is the variable name
+  my $previous_equation = $_[2]; # the third argument is the previous equation (previously expanded) used for substitution if referenced
+  my $oline = $_[3]; # forth argument is just for error message
+# $_[4] holds the total number of selfreferences and may be changed
+
+  my $expanded_equation = ''; # this is the final variable that will be returned
+
+  use Text::Balanced qw ( extract_bracketed );
+  my ($name, $consistent_name);
+
+  print ::DEBUG "in expand_equation: raw_equation = $raw_equation\n";
+
+# look for any dot and ddot operators and replace with scalar mathematics
+# coding cannot handle nested ddot or dot operators
+# move string from $withdots to $withoutdots while doing replacements
+  my $withdots = $raw_equation;
+  my $withoutdots = '';
+
+  while ($withdots =~ /(<.*?>)|ddot\(|dot\(/) {
+    my $pre = $`;
+    my $post = $';
+    my $operator = $&;
+# move over any variable and region names
+    if ($1) { $withdots = $post; $withoutdots = $withoutdots.$pre.$operator; next; }
+    $operator =~ s/\($//;
+    print "INFO: found operator $operator in $raw_equation\n";
+    print ::DEBUG "found operator $operator in $withdots that is part of raw_equation = $raw_equation\n";
+    print ::DEBUG "pre = $pre: post = $post\n";
+
+    my $midl = "";
+    while ( $post =~ /(<.+?>)|(\,)/ ) {
+      $post = $';
+      if ($1) {
+        $midl = $midl.$`.$1;
+      } else {
+        $midl = $midl.$`;
+        last;
+      }
+    }
+    print ::DEBUG "left side finalised: midl = $midl: post = $post\n";
+        
+    my $midr = "";
+    my $midrnovar = "";
+    while ( $post =~ /(<.+?>)|(\))/ ) {
+      $post = $';
+      if ($1) {
+        $midr = $midr.$`.$1;
+        $midrnovar = $midrnovar.$`;
+      } else {
+        if (extract_bracketed( "($midrnovar)", '()' )) {last;} # if contents of right without the variables has matching brackets, then we're in business
+        $midr = $midr.$`.")";
+        $midrnovar = $midrnovar.$`.")";
+      }
+    }
+    print ::DEBUG "right side finalised: midr = $midr: midrnovar = $midrnovar: post = $post\n";
+
+    my @posl = ();
+# this match allows r indices before and after a l index, matching the first colon after the l
+    print ::DEBUG "before looking for first colon: midl = $midl\n";
+    while ($midl =~ /<.+?\[[r=\d\s,]*?l[=\d\s,]*?(:)[,\d\s:]*?[r=\d\s,]*?\]>/) {
+      push (@posl, $+[1]); # $+[1] is the starting position of the first match
+      substr($midl, $+[1]-1, 1, " "); #replace : with blank so that it is not matched
+      print ::DEBUG "midl = $midl: posl = @posl\n";
+    }
+    @posl = sort{ $a <=> $b } @posl; # make sure index positions are in order
+    my @posr = ();
+    print ::DEBUG "before looking for first colon: midr = $midr\n";
+    while ($midr =~ /<.+?\[[r=\d\s,]*?l[=\d\s,]*?(:)[,\d\s:]*?[r=\d\s,]*?\]>/) {
+      push (@posr, $+[1]); # $+[1] is the starting position of the first match
+      substr($midr, $+[1]-1, 1, " "); #replace : with blank so that it is not matched
+      print ::DEBUG "midr = $midl: posr = @posl\n";
+    }
+    @posr = sort{ $a <=> $b } @posr; # make sure index positions are in order
+    print ::DEBUG "after: midl = $midl: posl = @posl\n";
+    print ::DEBUG "after: midr = $midr: posr = @posr\n";
+
+    my $mid = "(";
+    if ($operator eq "dot") {
+      if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in dot product in $variable_name equation on the following line: check the variables' [l=:] syntax\noline = $oline"); } # scalar(@posl) is number of elements of posl array
+      foreach my $n1 ( 1 .. 3 ) {
+        substr($midl, $posl[0]-1, 1, $n1); #replace blank with correct index
+        substr($midr, $posr[0]-1, 1, $n1); #replace blank with correct index
+        $mid = $mid." + (".$midl.")*(".$midr.")";
+      }
+    } else { # double dot product
+      if (@posl != 2 || @posr != 2) { error_stop("wrong number of colons in ddot product in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax\noline = $oline"); } # scalar(@posl) is number of elements of posl array
+      foreach my $n1 ( 1 .. 3 ) {
+        substr($midl, $posl[0]-1, 1, $n1); #replace blank with correct index
+        substr($midr, $posr[1]-1, 1, $n1); #replace blank with correct index
+        foreach my $n2 ( 1 .. 3 ) {
+          substr($midl, $posl[1]-1, 1, $n2); #replace blank with correct index
+          substr($midr, $posr[0]-1, 1, $n2); #replace blank with correct index
+          $mid = $mid." + (".$midl.")*(".$midr.")";
+        }
+      }
+    }
+    $mid = $mid." )";
+        
+    print ::DEBUG "mid = $mid\n";
+      
+    $withdots = $post;
+    $withoutdots = $withoutdots.$pre.$mid;
+
+    print ::DEBUG "after $operator operator expansion: withoutdots.withdots = ".$withoutdots.$withdots."\n";
+
+  }
+
+# reconstruct string including final unmatched bits
+  my $processing_equation = $withoutdots.$withdots;
+  my $number_of_self_references = 0;
+      
+# now loop through the expanded equation, looking for self references and replacing by the previous equation
+  while ($processing_equation =~ /(<(.*?)>)/) {
+    my $pre = $`;
+    my $post = $';
+    my $name = $1;
+    if (empty($2)) { error_stop("empty name found in equation for $variable_name on following line: expanded_equation = $expanded_equation\noline = $oline"); }
+    my $consistent_name = examine_name($name,"name");
+    if ($consistent_name eq $variable_name) {
+# found a match with the previous equation
+      $number_of_self_references++;
+      print ::DEBUG "INFO: found a selfreference in an equation for variable $variable_name: raw_equation = $raw_equation: previous_equation = $previous_equation\noline = $oline\n";
+      if ($previous_equation eq '') {
+        $name = "0.d0"; # if the previous equation is empty, then replace with a zero value
+        print ::DEBUG "INFO: replacing selfreference with 0.d0 as previous_equation is empty\n";
+        print "WARNING: replacing a selfreference to $variable_name with 0.d0 in $raw_equation as the equation was not previously defined\n";
+      } else {
+        $name = $previous_equation;
+        print ::DEBUG "INFO: replacing selfreference with $name\n";
+      }
+    }
+    $expanded_equation = $expanded_equation.$pre.$name;
+    $processing_equation = $post;
+  }
+  if (nonempty($processing_equation)) { $expanded_equation = $expanded_equation.$processing_equation; $processing_equation = ''; }
+
+  if ($number_of_self_references) {
+    $_[4] = $_[4] + $number_of_self_references;
+    print "INFO: found $number_of_self_references selfreferences in an equation for variable $variable_name: raw_equation = $raw_equation: previous_equation = $previous_equation: expanded_equation = $expanded_equation\n";
+  }
+
+  print ::DEBUG "in expand_equation: after expanded_equation = $expanded_equation\n";
+
+  return $expanded_equation;
+
+}
+
 #-------------------------------------------------------------------------------
 
 1;

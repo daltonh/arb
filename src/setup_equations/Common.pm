@@ -220,6 +220,7 @@ sub extract_first {
   my $delimiter="";
   my $error=0;
   
+  print ::DEBUG "INFO: at start of extract_first: input = $input\n";
   if (nonempty($remainder)) {
     $remainder=~s/^\s*//; #remove leading spaces
     ($delimiter)=$remainder=~/^(['"])/;
@@ -227,19 +228,27 @@ sub extract_first {
       if ($remainder=~/^$delimiter(.*?)$delimiter/) {
         $string=$1; # $string is whatever is between closest delimiters
         $remainder=$';
+        print ::DEBUG "INFO: in middle 0 of extract_first: remainder = $remainder\n";
       } else { print "WARNING: matching delimiters not found in the following string: $input\n"; $error=1; }
     } else {
       $remainder=~/^(.+?)(\s|$)/; # $string is whatever is before closest space
+      if (!defined($1)) {  print "WARNING: string missing in the following string: $input\n"; $error=1; }
       $string=$1;
-      $remainder=$';
+      $remainder=$2.$';
     }
-    $remainder=~s/^\s*//; #remove leading spaces
-    $remainder=~s/\s*$//; #remove trailing spaces too now
+    print ::DEBUG "INFO: in middle 1 of extract_first: remainder = |$remainder|\n";
+    $remainder=~s/^\h*//; #remove leading spaces, noting that \h matches hoizontal space, whereas \s matches vertical (\v) and horizontal (\h) space
+# TODO: cleanup and check other code for \h reference, given that we are using \n in the strings here
+    print ::DEBUG "after regex: & = $&: ' = $'\n";
+    print ::DEBUG "INFO: in middle 2 of extract_first: remainder = $remainder\n";
+#   $remainder=~s/\s*$//; #remove trailing spaces too now # not any more, as this removed linebreak
+#   print ::DEBUG "INFO: in middle 3 of extract_first: remainder = $remainder\n";
   } else {
     $remainder = ''; # remainder could have been blank, so set it to nothing explicitly
   }
 
 # print "string = $string: remainder = $remainder: delimiter = $delimiter\n";
+  print ::DEBUG "INFO: at end of extract_first: remainder = $remainder\n";
 # place remainder of string back in $_[0];
   $_[0]=$remainder;
 # return the extracted string and error
