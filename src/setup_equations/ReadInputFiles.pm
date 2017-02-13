@@ -382,7 +382,36 @@ sub parse_solver_code {
 # check whether skip is active or there is a SKIP statement
   elsif ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^(END_SKIP)$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; $unwrap_ignore = 1; }
   elsif ($code_blocks[$#code_blocks]{"skip"}) { $unwrap_ignore = 1; }
+
+
   elsif ($line =~ /^(SKIP)$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=1; $unwrap_ignore = 1; }
+
+
+# NEED TO REARRANGE THIS SECTION
+#-------------------
+# TODO add IF blah and END_IF statements here, opening new block
+
+  elsif ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^(END_SKIP)$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; $unwrap_ignore = 1; }
+  elsif ($code_blocks[$#code_blocks]{"skip"}) { $unwrap_ignore = 1; }
+  elsif ($line =~ /^(IF)\s*(.*)\s*$/i) {
+    my $condition = '';
+    if (nonempty($2)) { $condition = $2;}
+    print "INFO: found \L$1\E statement in $file with condition = $condition\n";
+    push_code_block(); # creating new code block which will hold the if block structure
+    if ($condition) {
+      $code_blocks[$#code_blocks]{"if"} = 1 # 1 signifies that we are in a true section within an if block
+    } else {
+      $code_blocks[$#code_blocks]{"if"} = -1; # -1 signifies that we are in an if block, but that the current section isn't true and that we haven't had a true section yet
+    }
+    $unwrap_ignore = 1; # all if section statements are not written to unwrapped_input.arb
+  }
+
+  elsif ($code_blocks[$#code_blocks]{"if"} && $line =~ /^(END_IF)$/i) {
+    print "INFO: found \L$1\E statement in $file\n";
+    if (!($code_blocks[$#code_blocks]{"if"})) { syntax_problem("END_IF statement has been found that does not match an IF statement: $filelinelocator"); }
+    pop_code_block(); # destroy this if block
+    $unwrap_ignore = 1; # all if section statements are not written to unwrapped_input.arb
+  }
 
 #-------------------
 # look for code block sections
@@ -390,15 +419,8 @@ sub parse_solver_code {
   elsif ($line =~ /^(END_BLOCK)$/i) { print "INFO: found closing code block \L$1\E statement in $file\n"; pop_code_block(); $unwrap_ignore = 1; }
 
 #-------------------
+# END statement means to close the block, which is right now equivalent to END_BLOCK
   elsif ($line =~ /^(END)$/i) { print "INFO: found \L$1\E statement in $file\n"; pop_code_block(); $unwrap_ignore = 1; }
-
-#-------------------
-# TODO add IF blah and END_IF statements here, opening new block
-
-# TODO
-# TODO
-# TODO
-# TODO
 
 #-------------------
 # check for include statement, possibly opening new file
