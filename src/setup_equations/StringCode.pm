@@ -47,7 +47,7 @@ use Data::Alias 'alias';
 sub parse_string_code {
 
   my ($buffer) = @_;
-  my $debug = 0;
+  my $debug = 1;
 
   if ($debug) { print ::DEBUG "INFO: start of StringCode::parse_string_code: buffer = $buffer\n"; }
 
@@ -55,7 +55,7 @@ sub parse_string_code {
   $buffer =~ s/(\{\{|\}\})//g;
   if ($debug) { print ::DEBUG "INFO: after removing string code delimiters: buffer = $buffer\n"; }
 
-  my $eval_return = eval($buffer."; return ''");
+  my $eval_return = eval($buffer.";\nreturn ''"); # a linefeed is added here incase the last entry was a comment
   if ($@) {
     syntax_problem("error in evaluating the string code $buffer: $ReadInputFiles::filelinelocator");
   } else { $buffer = $eval_return; }

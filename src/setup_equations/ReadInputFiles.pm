@@ -250,8 +250,20 @@ sub read_input_files {
 # if the solver_code consists of an INCLUDE statement, then this is processed now and the buffer added to the start of the next code block
         if ($solver_code =~ /^\h*INCLUDE(|_[A-Z]+)(\h+\S+\h+|\h*(".*"|'.*')\h*)$/) { # an INCLUDE type keyword has been found, which is followed by a string and then {{
           if ($debug) { print ::DEBUG "  INFO: an INCLUDE type keyword plus string has been found prior to some string code: solver code ready to process: solver_code = $solver_code\n"; }
+# before we process the solver_code (which is an include statement and will open a new code_block), keep getting lines until the string code (that will be added to new file) is complete
+          while (!($buffer =~ /\}\}/)) {
+            my $raw_buffer='';
+            if (!(get_raw_buffer($raw_buffer))) {
+# there is nothing left in the file, which is an error as the string delimiters need to be closed
+              syntax_problem("a code block (probably file) has been closed without a string code section being closed: $filelinelocator");
+            } else {
+# otherwise we just add on the raw_buffer
+              $buffer .= $raw_buffer;
+            }
+          }
           parse_solver_code($solver_code); # process, noting that here solver_code is only one line
-          $solver_code = ''; # and reset buffer etc
+          $solver_code = ''; # and reset solver_code etc
+          print ::DEBUG "INFO: after parse_solver_code: solver_code = $solver_code: buffer = $buffer\n";
         }
 # otherwise this just signals the start of some string code
 
@@ -468,7 +480,7 @@ sub parse_solver_code {
         pop(@{$code_blocks[$#code_blocks]{"include_path"}});
         print ::DEBUG "INFO: an INCLUDE statement is removing (popping) an include_path from the stack, leaving: include_path = $code_blocks[$#code_blocks]{include_path}[0]: $filelinelocator\n";
       } else {
-        syntax_problem("an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $code_blocks[$#code_blocks]{include_path}[0]: $filelinelocator");
+        syntax_problem("an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $code_blocks[$#code_blocks]{include_path}[0]","an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $code_blocks[$#code_blocks]{include_path}[0]: $filelinelocator","warn");
       }
     } else {
 
