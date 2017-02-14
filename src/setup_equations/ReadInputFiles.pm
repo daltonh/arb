@@ -76,8 +76,6 @@ sub read_input_files {
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
   open(UNWRAPPED_INPUT, ">$::unwrapped_input_file");
 
-  syntax_file("open"); # in Common
-
 # push the first [0] code block (from the root_input.arb) onto the code_blocks array and prep for reading (open)
   push_code_block("root_input.arb","$::build_dir/root_input.arb");
 
@@ -318,7 +316,6 @@ sub read_input_files {
   } # end of loop for this input file
 
   close(UNWRAPPED_INPUT);
-  syntax_file("close"); # in Common
   
 # dump all of the simulation info into the fortran file, and output to the screen and debug
   $::sub_string{"simulation_info"} = '';
@@ -480,7 +477,7 @@ sub parse_solver_code {
         pop(@{$code_blocks[$#code_blocks]{"include_path"}});
         print ::DEBUG "INFO: an INCLUDE statement is removing (popping) an include_path from the stack, leaving: include_path = $code_blocks[$#code_blocks]{include_path}[0]: $filelinelocator\n";
       } else {
-        syntax_problem("an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $code_blocks[$#code_blocks]{include_path}[0]","an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $code_blocks[$#code_blocks]{include_path}[0]: $filelinelocator","warn");
+        syntax_problem("an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $code_blocks[$#code_blocks]{include_path}[0]","an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $code_blocks[$#code_blocks]{include_path}[0]: $filelinelocator","warning");
       }
     } else {
 
@@ -619,7 +616,7 @@ sub parse_solver_code {
 # look for transient/steady-state simulation keyword
   } elsif ($line =~ /^(TRANSIENT|STEADY(-|_|)STATE)_SIMULATION($|\s)/i) {
     print ::DEBUG "$1_SIMULATION set directly: $filelinelocator\n";
-    if ($1 =~ /^TRANSIENT$/i) { set_transient_simulation(1); } else { set_transient_simulation(0); }
+    if ($1 =~ /^TRANSIENT$/i) { string_set_transient_simulation(1); $::transient_simulation=1; } else { string_set_transient_simulation(0); $::transient_simulation=0; }
 
 #-------------------
 # look for newtient simulation keyword
@@ -739,7 +736,7 @@ sub parse_solver_code {
 # TODO: get rid of options if variable is cancelled
       } else {
         syntax_problem("attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored",
-          "attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored: $filelinelocator","warn");
+          "attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored: $filelinelocator","warning");
       }
 #-------
 # otherwise we are either updating or creating a variable
@@ -820,10 +817,6 @@ sub parse_solver_code {
       if (!($::asread_variable[$masread]{"units"})) { $::asread_variable[$masread]{"units"} = "1"; }
       if (!($::asread_variable[$masread]{"multiplier"})) { $::asread_variable[$masread]{"multiplier"} = "1.d0"; }
 
-  # if type is a transient or newtient make sure that the simulation type is consistent
-      if ($type eq "transient") { set_transient_simulation(1); }
-      if ($type eq "newtient") { $::newtient_simulation = 1; }
-      
   # equations or numerical constants
   # look for either a single (CONSTANT) or list (REGION_CONSTANT) of numbers, or otherwise an expression for this variable
   # first delete any orphaned initial_equations or constant_lists

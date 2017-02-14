@@ -102,6 +102,8 @@ print "dalton harvie, v$version\n\n";
 print DEBUG "\nperl setup_equations script to create f90 subroutines for arb\n";
 print DEBUG "dalton harvie, v$version\n\n";
 
+open(SYNTAX, ">$syntax_problems_file"); # this file is specifically for syntax problems in the input files and is written to by sub syntax_problem in Common
+
 # user_types are variables that can be defined by the user
 our @user_types = ("constant","transient","newtient","unknown","derived","equation","output","condition","local");
 
@@ -247,6 +249,7 @@ if ($same_fortran_as_last_run) {
 }
 
 close(DEBUG);
+close(SYNTAX);
 
 exit 0;
 
@@ -1213,9 +1216,14 @@ sub location_description_scan {
     if (nonempty($7)) { $options = $7; }
     if ($type eq "union") { $type = "compound"; }
     if ($type eq "intersection") { $type = "common"; }
-    if ($type =~ / /) { $type =~ s/ //g; print "WARNING: for consistency with variable operators, the use of spaces in region location operator names has been deprecated: run the individual words together instead as in $type (found in $region[$n]{name})\n"; }
-    if ($next eq " ") { print "WARNING: for consistency with variable operators, operators within region location descriptions should now have their arguments inclosed in brackets, as in $type(arguments) (found in $region[$n]{name})\n"; }
-    if ($next eq "(") { if (!($line =~ /\)\s*$/)) { error_stop("missing closing bracket on $type operator for region $region[$n]{name} location = $location"); } else { $line = $`; } } # remove trailing bracket
+    if ($type =~ / /) {
+      $type =~ s/ //g;
+      if ($action eq "type") { syntax_problem("for consistency with variable operators, the use of spaces in region location operator names has been deprecated: run the individual words together instead as in $type (found in $region[$n]{name})","warning"); } # limit error messages by only printing warning on type action
+    }
+    if ($next eq " ") {
+      if ($action eq "type") { syntax_problem("for consistency with variable operators, operators within region location descriptions should now have their arguments inclosed in brackets, as in $type(arguments) (found in $region[$n]{name})","warning"); }
+    }
+    if ($next eq "(") { if (!($line =~ /\)\s*$/)) { syntax_problem("missing closing bracket on $type operator for region $region[$n]{name}: location = $location"); } else { $line = $`; } } # remove trailing bracket
     print DEBUG "location type = $type: options = $options\n";
   } else {
     error_stop("location type not recognised from the following location string used with region $region[$n]{name}: location = $location");
@@ -1311,44 +1319,6 @@ sub location_description_scan {
   }
 
   error_stop("unknown $action for region $region[$n]{name}: location = $location");
-
-}
-#-------------------------------------------------------------------------------
-# sees if a given region name ($_[0]) matches that of another region,
-#  if so returns region number
-#  if not returns -1
-#  as input takes a regionname in consistent format
-
-sub find_region {
-
-  my $match=-1;
-  my $region_to_find=$_[0];
-
-  foreach my $n ( 0 .. $#region ) {
-    if (match_region($n,$region_to_find)) {
-      $match = $n;
-      last;
-    }
-  }
-  
-  return $match;
-
-}
-#-------------------------------------------------------------------------------
-# sees if a given region name ($_[1]) matches that of region[$_[0]], taking care of the name being a possible regex
-# assumes that name has been passed through examine_name( ,'regionname') first to remove any synonyms
-
-sub match_region {
-
-  my $number = $_[0];
-  my $name = $_[1];
-  
-  if ( ( $region[$number]{'type'} eq 'internal' && $name =~ /$region[$number]{name}/ ) ||
-       ( $region[$number]{'type'} ne 'internal' && $name eq $region[$number]{"name"} ) ) {
-    return (1);
-  } else {
-    return (0);
-  }
 
 }
 #-------------------------------------------------------------------------------
@@ -1680,10 +1650,10 @@ sub organise_user_variables {
   }
 
 #-----------------------------------------------------
-# set transientdelta and newtientdelta system variables, and simulation type based on transient/newtient variables
+# set transientdelta and newtientdelta system variables, and simulation type based on transient/newtient variables (noting that it is too late for string replacements)
 
-  if ($variable{"transient"} && ! ($transient_simulation) ) { error_stop("somehow a transient variable exists in a non-transient simulation.  Suggest including the TRANSIENT_SIMULATION keyword.") }
-  if ($variable{"newtient"} && ! ($newtient_simulation) ) { error_stop("somehow a newtient variable exists in a non-newtient simulation.  Suggest including the NEWTIENT_SIMULATION keyword.") }
+  if ($variable{"transient"} && ! ($transient_simulation) ) { $transient_simulation=1; print DEBUG "INFO: setting simulation type to transient based on the detection of at least one transient variable\n"; }
+  if ($variable{"newtient"} && ! ($newtient_simulation) ) { $newtient_simulation=1; print DEBUG "INFO: setting simulation type to newtient based on detection of at least one newtient variable\n"; }
   foreach $mvar ( 1 .. $m{"system"} ) {
     if ($variable{"system"}[$mvar]{"name"} eq "<transientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $transient_simulation; }
     if ($variable{"system"}[$mvar]{"name"} eq "<newtientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $newtient_simulation; }

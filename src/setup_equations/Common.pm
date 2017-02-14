@@ -39,7 +39,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem syntax_file replace_substring); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem syntax_file replace_substring find_region match_region); # list of subroutines and variables that will by default be made available to calling routine
 
 #-------------------------------------------------------------------------------
 # chomp and remove mac linefeads too if present
@@ -275,15 +275,7 @@ sub syntax_problem {
 
 #   
 
-# if ($#_ == 2) {
-#   ($message, $debug_message, $syntax_action) = @_;
-# } else {
-#   ($message, $syntax_action) = @_;
-#   if ($#_ == 0) { $syntax_action = "error"; }
-#   $debug_message = $message;
-# }
-
-  print SYNTAX "\U$syntax_action: "."$debug_message\n";
+  print ::SYNTAX "\U$syntax_action: "."$debug_message\n";
   if ($syntax_action eq "error") {
     error_stop($message) # already writes to output and debug files
   } else {
@@ -313,6 +305,44 @@ sub replace_substring {
   $_[0] =~ s/\Q$_[1]/$_[2]/g; # \Q escapes any funny characters in $_[1]
 }
 
+#-------------------------------------------------------------------------------
+# sees if a given region name ($_[0]) matches that of another region,
+#  if so returns region number
+#  if not returns -1
+#  as input takes a regionname in consistent format
+
+sub find_region {
+
+  my $match=-1;
+  my $region_to_find=$_[0];
+
+  foreach my $n ( 0 .. $#::region ) {
+    if (match_region($n,$region_to_find)) {
+      $match = $n;
+      last;
+    }
+  }
+  
+  return $match;
+
+}
+#-------------------------------------------------------------------------------
+# sees if a given region name ($_[1]) matches that of region[$_[0]], taking care of the name being a possible regex
+# assumes that name has been passed through examine_name( ,'regionname') first to remove any synonyms
+
+sub match_region {
+
+  my $number = $_[0];
+  my $name = $_[1];
+  
+  if ( ( $::region[$number]{'type'} eq 'internal' && $name =~ /$::region[$number]{name}/ ) ||
+       ( $::region[$number]{'type'} ne 'internal' && $name eq $::region[$number]{"name"} ) ) {
+    return (1);
+  } else {
+    return (0);
+  }
+
+}
 #-------------------------------------------------------------------------------
 
 1;

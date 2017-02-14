@@ -1,0 +1,77 @@
+INFO_TITLE "This file demonstrates (embedded) perl string code"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "14/2/17"
+
+TRANSIENT_SIMU& # solver code can be split across lines using the fortran continuation symbol (&) and rules
+# nothing but comments and space are allowed after & on the previous and before & on the next lines
+
+&&
+
+      &LATION # so comments can come mid-statement, but are concatenated to form final solver code line
+
+{{
+# within the perl string code delimiters
+# 1. no line continuations are required
+# 2. no string replacements take place
+# 3. the string code delimiters (\{\{ \}\}) cannot appear anywhere
+
+# comments are allowed within the string code, but the perl parser handles these
+
+  my $x = 1; # variables can be defined locally, but their scope is only this section of perl string code
+  $x = $x + 4;
+  print "x = $x\n";
+
+# global variables from main and other packages can be referenced 
+# a print statement just outputs to the screen, not input file
+  print "transient_simulation = $::transient_simulation\n";
+
+# whatever is returned from this string code replaces the string code delimited section in the arb solver code
+# if no return is specified then by default the code section returns an empty string
+  return "SOLVER_OPTIONS linearsolver=default";
+}}
+
+{{ my $x; }} # x now is completely new 
+
+# to save variables outside of the perl string code scope, need to save them in the code_blocks structure using the string_set sub
+{{ string_set("<<a>>","1.d0") }}
+
+# we can use the # character within perl code sections
+# we can also pass string_set a list of options
+# the final semi-colon in the string code isn't necessary
+{{ string_set("<<somecomment>>","#","default,global") }}
+
+{{ string_set('$a',"1") }} # by default, variables that have a name starting with $ have option noreplace set, which means that they are not searched for in solver code
+{{ string_set("<<b>>","1","noreplace") }} # otherwise this can be specified as an option like this
+{{ string_option("<<b>>","noreplace") }} # or like this
+
+# to access the string variables we use the string_eval sub
+{{ string_set('$b',"INFO: we have set <<b>> to ".string_eval("<<b>>")."\n"); print string_eval('$b'); }}
+
+# strings set with no value implies ''
+# strings can also be deleted
+{{ string_set("<<c>>"); string_delete("<<c>>") }}
+
+# string code makes loops possible
+{{
+  my $loop_code = '';
+  for my $n ( 0 .. 5 ) {
+    $loop_code .= "CONSTANT <a$n> ".2*$n.".d0\n";
+  }
+  return $loop_code;
+}}
+
+# and the new IF operator can operate with string code too
+IF {{ return string_eval("<<b>>") }} # here the perl string code is evaluated as the value of <<b>>
+  CONSTANT <b> 2.d0
+ELSE_IF <<a>> # wheras instead here string variable <<a>> will be replaced by its value
+  CONSTANT <c> 2.d0
+ELSE
+  CONSTANT <d> 2.d0
+END_IF
+
+TIMESTEPMAX 2
+
+# INCLUDE statements work by including the following string code to the start of the new code block
+INCLUDE_TEMPLATE "general/element_indices" {{ # these can now be across several lines, as its just perl code
+  string_set("_OUTPUT","_CONSTANT"); # with some explanation - ie, turning all output variables into constants
+# a comment within the perl code, noting that string code delimiters take precedence over perl comments }} # followed by a comment within the solver code, just to be tricky, and on the last line too

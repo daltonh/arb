@@ -39,7 +39,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(parse_string_code string_setup set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(parse_string_code string_setup string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
 use Common;
 use Data::Alias 'alias';
 
@@ -47,7 +47,7 @@ use Data::Alias 'alias';
 sub parse_string_code {
 
   my ($buffer) = @_;
-  my $debug = 1;
+  my $debug = 0;
 
   if ($debug) { print ::DEBUG "INFO: start of StringCode::parse_string_code: buffer = $buffer\n"; }
 
@@ -243,13 +243,9 @@ sub string_setup {
   string_set("<<dim1comment>>","","global");
   string_set("<<dim2comment>>","","global");
   string_set("<<dim3comment>>","","global");
-  string_set("<<steadystatecomment>>","","global"); # default is steady-state
-  string_set("<<transientcomment>>","#","global");
   string_set("<<cartesiancomment>>","","global"); # default is cartesian
   string_set("<<cylindricalcomment>>","#","global");
 # convention is that valuement names that end with "flag" are either on (1) or off (0), so can be used within expressions
-  string_set("<<steadystateflag>>","1","global"); # default is steady-state
-  string_set("<<transientflag>>","0","global");
   string_set("<<cartesianflag>>","1","global"); # default is cartesian
   string_set("<<cylindricalflag>>","0","global");
 # these two should be overwritten by the relevant radius in the input file if using cylindrical coordinates: eg R "<<radius_c>>" W "<cellx[l=1]>" R "<<radius_f>>" W "<facex[l=1]>"
@@ -265,6 +261,8 @@ sub string_setup {
   string_set("<<reflect=1>>","","global");
   string_set("<<reflect=2>>","","global");
   string_set("<<reflect=3>>","","global");
+# set the transient versus steady_state strings using the sub
+  string_set_transient_simulation(0); # default is steady_state
 
   print ::DEBUG "INFO: initial string_variables = ".Dumper(@{$ReadInputFiles::code_blocks[0]{"string_variables"}})."\n";
 
@@ -303,12 +301,13 @@ sub string_search {
 
 }
 #-------------------------------------------------------------------------------
-# based on passed variable, set or unset transient simulation status, including comment strings
+# based on passed variable, set or unset transient simulation replacement strings
+# note that this is now separated from $::transient_simulation
 
-sub set_transient_simulation {
+sub string_set_transient_simulation {
 
-  $::transient_simulation = $_[0];
-  if ($::transient_simulation) {
+  my $simulation = $_[0];
+  if ($simulation) {
     string_set("<<transientcomment>>","","global");
     string_set("<<steadystatecomment>>","#","global");
     string_set("<<transientflag>>","1","global");

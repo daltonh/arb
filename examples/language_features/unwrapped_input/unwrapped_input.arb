@@ -1,13 +1,12 @@
+#(comment created during unwrap): new block = root_input.arb: new_file = 1
 # root_input.arb file created by the arb script
 ##################################################################################
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: ddot_test.arb random_test.arb reuse.arb
-#(hash added during unwrap)INCLUDE_WORKING "ddot_test.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../ddot_test.arb without any search/replace combinations
+# the following working directory files found by the arb script: ddot_test.arb random_test.arb reuse.arb skip_if_test.arb syntax_test.arb
+   #(comment created during unwrap): new block = ddot_test.arb: new_file = 1
+   #(hash inserted during unwrap)INCLUDE_WORKING "ddot_test.arb"
    # this demonstrates how to take a double dot product and how to use a template file to perform a tensor transpose
    
    NONE_CONSTANT <A[l=1,1]> "11"
@@ -29,12 +28,10 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_CONSTANT <B[l=3,2]> "132"
    NONE_CONSTANT <B[l=3,3]> "133"
    NONE_CONSTANT <ddot(A,B)> "ddot(<A[l=:,:]>,<B[l=:,:]>)"
-   #(hash added during unwrap)INCLUDE_TEMPLATE "general"
-   #(comment generated during unwrap) adding new include_path ../templates/general, making include_path array = .. ../templates/general
-   #(hash added during unwrap)INCLUDE "tensor_transpose" R "CELL_LOCAL" W "NONE_LOCAL" R "<tensor" W "<B"
-   #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = .. ../templates/general
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/tensor_transpose.arb with the following search/replace combinations: replace CELL_LOCAL with NONE_LOCAL: replace <tensor with <B
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "general"
+      #(comment created during unwrap): new block = tensor_transpose: new_file = 1
+      #(hash inserted during unwrap)INCLUDE "tensor_transpose" 
+       
       # little code snippet to create a transpose of a tensor as a local variable
       # NOTE, may need to correct centring of variable when calling
       
@@ -47,27 +44,17 @@ EXTERNALS "src/free_surface_functions.f90"
       NONE_LOCAL <B_transpose[l=2,1]> "<B[l=1,2]>"
       NONE_LOCAL <B_transpose[l=3,1]> "<B[l=1,3]>"
       NONE_LOCAL <B_transpose[l=3,2]> "<B[l=2,3]>"
-      #(comment generated during unwrap) INCLUDE finished for ../templates/general/tensor_transpose.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    NONE_CONSTANT <ddot(A,B_transpose)> "ddot(<A[l=:,:]>,<B_transpose[l=:,:]>)"
-   #(comment generated during unwrap) INCLUDE finished for ../ddot_test.arb
-   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################
-#(hash added during unwrap)INCLUDE_WORKING "random_test.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../random_test.arb without any search/replace combinations
+   #(comment created during unwrap): new block = random_test.arb: new_file = 1
+   #(hash inserted during unwrap)INCLUDE_WORKING "random_test.arb"
    # <random> creates a random variable in the range 0 <= <random> < 1, which is unique to each call
    NONE_CONSTANT <random1> "<random>"
    NONE_CONSTANT <random2> "<random>"
    NONE_CONSTANT <random3> "<random>"
-   #(comment generated during unwrap) INCLUDE finished for ../random_test.arb
-   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################
-#(hash added during unwrap)INCLUDE_WORKING "reuse.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../reuse.arb without any search/replace combinations
+   #(comment created during unwrap): new block = reuse.arb: new_file = 1
+   #(hash inserted during unwrap)INCLUDE_WORKING "reuse.arb"
    NONE_CONSTANT <a> "1.d0+<pi>"
    NONE_DERIVED <b>
    NONE_DERIVED <b> "<b>+<b>+(<b>)+<a>"
@@ -83,6 +70,79 @@ EXTERNALS "src/free_surface_functions.f90"
    # the following statements should flag an error as variable and region names must be unique
    #NONE_CONSTANT <allcells> "1.d0"
    #NONE_CONSTANT <cellkernelregion[l=1]> "1.d0"
-   #(comment generated during unwrap) INCLUDE finished for ../reuse.arb
-   #(comment generated during unwrap)--------------------------------------------------------
+##################################################################################
+   #(comment created during unwrap): new block = skip_if_test.arb: new_file = 1
+   #(hash inserted during unwrap)INCLUDE_WORKING "skip_if_test.arb"
+   CONSTANT <aa> 1.d0
+   
+   
+   # testing of skip notation
+   #(hash inserted during unwrap)SKIP  # a skip section starts after the completion of the line that the skip statement is on
+   #(hash inserted during unwrap)# during any skip section, replacements are not done on any text until the end of the END_SKIP solver line
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)# no string code is parsed within a skip section, but is instead replaced by the empty string
+   #(hash inserted during unwrap) 
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)CONSTANT <bb> 3.d0
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)END_SKIP  
+   
+   
+   
+      #(comment created during unwrap): new block = skip_if_test.arb: new_file = 0
+      #(hash inserted during unwrap)BLOCK
+      
+      CONSTANT <cc> 4.d0
+      
+      #(hash inserted during unwrap)END_BLOCK
+   
+   #(hash inserted during unwrap)COMMENT # this will generate a deprecated syntax message
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)END_COMMENT
+   
+      #(comment created during unwrap): new block = skip_if_test.arb: new_file = 0
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)ELSE_IF 1
+      
+         #(comment created during unwrap): new block = skip_if_test.arb: new_file = 0
+         #(hash inserted during unwrap)  IF 1
+             CONSTANT <ee> 5.d0
+         #(hash inserted during unwrap)  ELSE
+         #(hash inserted during unwrap)    CONSTANT <ff> 6.d0
+         #(hash inserted during unwrap)  END_IF
+      
+      #(hash inserted during unwrap)ELSE
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)END_IF
+   
+      #(comment created during unwrap): new block = skip_if_test.arb: new_file = 0
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)ELSE
+      #END
+      #(hash inserted during unwrap)END_IF
+   
+   CONSTANT <gg> 7.d0
+##################################################################################
+   #(comment created during unwrap): new block = syntax_test.arb: new_file = 1
+   #(hash inserted during unwrap)INCLUDE_WORKING "syntax_test.arb"
+   # this file just tests the syntax parsing
+   
+   CELL_REGION <awful name ddot( () []> "compound(+<domain>-<allcells>+<domain>)"
+   CELL_REGION <another awful [ =,] name> "compound(+<domain>-<allcells>+<domain>)"
+   CONSTANT <jibber dot(> "1.d0"
+   CONSTANT <jibber ddot(> "<jibber dot(>"
+   CONSTANT <jibber3> "cellsum(cellsum(<jibber ddot(>,region=<awful name ddot( () []>),<another awful [ =,] name>)"
+   
+   # some tests on redefining variables
+   VARIABLE <jibber2> nooutput # now we can even initialise a variable without a type
+   CELL_CONSTANT <jibber2> "cellsum(<jibber dot(>,region=<awful name ddot( () []>)" ON <allcells>
+   NONE_DERIVED <jibber2> # this should cancel the region definition already
+   CELL_OUTPUT <jibber2> ON <boundarycells>
+   CELL_CONSTANT <jibber2> 1.d0 # this should cancel the previous equation expression
+   NONE_OUTPUT <jibber2> ON <none> # this should cancel the previous constant_list
+   CELL_TRANSIENT <jibber2> "<jibber dot(>" "<jibber dot(>" ON <allcells>
+   CELL_OUTPUT <jibber2> "1.d0" # this will cancel the initial_equation expression
+   FACE_VARIABLE <jibber2>
+   NONE_VARIABLE <jibber2> # after all of the replacements, <jibber2> should be a NONE_OUTPUT
 ##################################################################################

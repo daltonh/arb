@@ -211,7 +211,7 @@ type var_type
   real :: update_time = 0.d0 ! total cpu time that has been spent on updating this variable
   integer :: update_number = 0 ! total number of times that this variable has been updated
   logical :: timestep_rewind = .false. ! whether this variable will be rewound to previous values on a timestep rewind
-  logical :: timestep_rewind_multiplier = 1.d0 ! multiplier used when this variable is rewound on a timestep rewind
+  double precision :: timestep_rewind_multiplier = 1.d0 ! multiplier used when this variable is rewound on a timestep rewind
   logical :: newtstep_rewind = .false. ! whether this variable will be rewound to previous values on a newtstep rewind
 end type var_type
 

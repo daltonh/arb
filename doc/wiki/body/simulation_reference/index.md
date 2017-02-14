@@ -269,6 +269,21 @@ ELSE
 END_IF
 ```
 
+Note that code within an if 'block' is evaluated as a separate code block, so to make a local string variable available after the if block you would need to either declare it before the block, or declare it as a global variable:
+```arb
+{{ string_set('$a'); }} # a set with no other argument sets the variable to the empty string, but includes it in this code block
+IF 1 # a new code block is created here
+  {{
+      string_set('$a','1.d0');
+      string_set('$b','2.d0','global');
+      string_set('$c','1.d0');
+  }}
+END_IF
+{{ print "a = ".string_eval('$a').": b = ".string_eval('$b')."\n"; }} # this will work
+{{ print "c = ".string_eval('$c')."\n"; }} # this won't work as the code_block in which $c was defined has been destroyed
+```
+
+
 Meshes
 ------
 

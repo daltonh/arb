@@ -189,7 +189,12 @@ for dir_name in ${TESTCASES[@]} ; do
     local_log_file="$results_dir/test_suite.log";
     cp $subdir/*.arb $cwd >>$local_log_file 2>>$local_log_file;
     cp $subdir/*.msh $cwd >>$local_log_file 2>>$local_log_file;
-    ./arb $arb_options --quiet --compiler-$compiler >>$local_log_file 2>>$local_log_file;
+# if an arb file is present which matches the directory name then run this, otherwise run all arb files
+    if [ -e "${dir_name}.arb" ] ; then
+      ./arb $arb_options "${dir_name}.arb" --quiet --compiler-$compiler >>$local_log_file 2>>$local_log_file;
+    else
+      ./arb $arb_options --quiet --compiler-$compiler >>$local_log_file 2>>$local_log_file;
+    fi
     keyword=ERROR_IN_MAKE;
     if [ -e output/output.scr ] ; then
       last_line=`tail -n 2 output/output.scr`; # with change to quiet behaviour of arb, the SUCCESS statement is now on the second last line of output.scr
@@ -204,6 +209,8 @@ for dir_name in ${TESTCASES[@]} ; do
     cp output/output*.csv   $results_dir >/dev/null 2>/dev/null;
     cp output/*warnings.txt $results_dir >/dev/null 2>/dev/null;
     cp output/*details.txt  $results_dir >/dev/null 2>/dev/null;
+    cp $setup_dir/*problems.txt  $results_dir >/dev/null 2>/dev/null;
+    cp $setup_dir/*list.arb  $results_dir >/dev/null 2>/dev/null;
 # also create unwrapped input directory and copy over unwrapped_input.arb
     if [ ! -d $subdir/unwrapped_input ] ; then mkdir -p $subdir/unwrapped_input ; fi
     cp $setup_dir/unwrapped_input.arb $subdir/unwrapped_input >/dev/null 2>/dev/null;

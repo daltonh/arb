@@ -1,7 +1,7 @@
 # this file just tests the syntax parsing
 
-CELL_REGION <awful name ddot( () []> "COMPOUND +<domain>-<allcells>+<domain>"
-CELL_REGION <another awful [ =,] name> "COMPOUND +<domain>-<allcells>+<domain>"
+CELL_REGION <awful name ddot( () []> "compound(+<domain>-<allcells>+<domain>)"
+CELL_REGION <another awful [ =,] name> "compound(+<domain>-<allcells>+<domain>)"
 CONSTANT <jibber dot(> "1.d0"
 CONSTANT <jibber ddot(> "<jibber dot(>"
 CONSTANT <jibber3> "cellsum(cellsum(<jibber ddot(>,region=<awful name ddot( () []>),<another awful [ =,] name>)"

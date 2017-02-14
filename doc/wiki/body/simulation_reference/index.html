@@ -146,7 +146,7 @@
 <span style="color: #808080;">  string_set('</span><span style="color: #5F5F87;">&lt;&lt;c&gt;&gt;</span><span style="color: #808080;">'); </span><span style="color: #87D7D7;"># strings set with no value implies ''</span>
 <span style="color: #808080;">  string_delete('</span><span style="color: #5F5F87;">&lt;&lt;c&gt;&gt;</span><span style="color: #808080;">') </span><span style="color: #87D7D7;"># strings can also be deleted</span>
 <span style="color: #808080;">  string_set('</span><span style="color: #5F5F87;">&lt;&lt;d&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">','</span><span style="color: #5F5F87;">&lt;&lt;e&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">') </span><span style="color: #87D7D7;"># two strings set here</span>
-<span style="color: #808080;">  string_set('</span><span style="color: #5F5F87;">&lt;&lt;f&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">','</span><span style="color: #5F5F87;">&lt;&lt;g&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">',</span><span style="color: #808080;">&quot;global&quot;</span><span style="color: #808080;">) </span><span style="color: #87D7D7;"># two strings set here, both global</span>
+<span style="color: #808080;">  string_set('</span><span style="color: #5F5F87;">&lt;&lt;f&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">','</span><span style="color: #5F5F87;">&lt;&lt;g&gt;&gt;</span><span style="color: #808080;">','</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">',</span><span style="color: #808080;">&quot;noreplace&quot;</span><span style="color: #808080;">) </span><span style="color: #87D7D7;"># two strings set here, both having the noreplace option</span>
 <span style="color: #808080;">}}</span>
 </pre>
 
@@ -270,6 +270,20 @@
 <span style="color: #808080;">ELSE</span>
   <span style="color: #875FFF;">CONSTANT</span> <span style="color: #808080;">&lt;dt&gt;</span> <span style="color: #FFAF00;">2.d0</span>
 <span style="color: #808080;">END_IF</span>
+</pre>
+
+<p>Note that code within an if ‘block’ is evaluated as a separate code block, so to make a local string variable available after the if block you would need to either declare it before the block, or declare it as a global variable:</p>
+<pre >
+<span style="color: #808080;">{{ string_set('$a'); }} </span><span style="color: #87D7D7;"># a set with no other argument sets the variable to the empty string, but includes it in this code block</span>
+<span style="color: #808080;">IF </span><span style="color: #FFAF00;">1</span> <span style="color: #87D7D7;"># a new code block is created here</span>
+<span style="color: #808080;">  {{</span>
+<span style="color: #808080;">      string_set('$a','</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">');</span>
+<span style="color: #808080;">      string_set('$b','</span><span style="color: #FFAF00;">2.d0</span><span style="color: #808080;">','global');</span>
+<span style="color: #808080;">      string_set('$c','</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">');</span>
+<span style="color: #808080;">  }}</span>
+<span style="color: #808080;">END_IF</span>
+<span style="color: #808080;">{{ print </span><span style="color: #808080;">&quot;a </span><span style="color: #875FFF;">=</span><span style="color: #808080;"> &quot;</span><span style="color: #808080;">.string_eval('$a').</span><span style="color: #808080;">&quot;: b </span><span style="color: #875FFF;">=</span><span style="color: #808080;"> &quot;</span><span style="color: #808080;">.string_eval('$b').</span><span style="color: #808080;">&quot;\n&quot;</span><span style="color: #808080;">; }} </span><span style="color: #87D7D7;"># this will work</span>
+<span style="color: #808080;">{{ print </span><span style="color: #808080;">&quot;c </span><span style="color: #875FFF;">=</span><span style="color: #808080;"> &quot;</span><span style="color: #808080;">.string_eval('$c').</span><span style="color: #808080;">&quot;\n&quot;</span><span style="color: #808080;">; }} </span><span style="color: #87D7D7;"># this won't work as the code_block in which $c was defined has been destroyed</span>
 </pre>
 
 <h2>Meshes</h2>
