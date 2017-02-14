@@ -375,30 +375,22 @@ sub parse_solver_code {
 # $line is maintained with no leading or trailing spaces, and no comments
 
 #-------------------
-# check whether line is empty
-  if (empty($line)) { } # do nothing
-
-#-------------------
-# check whether skip is active or there is a SKIP statement
-  elsif ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^(END_SKIP)$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; $unwrap_ignore = 1; }
+# deal with cases where skip is active
+  if ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^(END_SKIP)$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; $unwrap_ignore = 1; }
   elsif ($code_blocks[$#code_blocks]{"skip"}) { $unwrap_ignore = 1; }
 
-
-  elsif ($line =~ /^(SKIP)$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=1; $unwrap_ignore = 1; }
-
-
-# NEED TO REARRANGE THIS SECTION
 #-------------------
-# TODO add IF blah and END_IF statements here, opening new block
+# next deal with if/else_if/else/end_if blocks
 
-  elsif ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^(END_SKIP)$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; $unwrap_ignore = 1; }
-  elsif ($code_blocks[$#code_blocks]{"skip"}) { $unwrap_ignore = 1; }
-  elsif ($line =~ /^(IF)\s*(.*)\s*$/i) {
+# an if statement opens a new if block, whether active (1 for true or -1 for not) or not (-3)
+  elsif ($line =~ /^(IF)\s+(.*)\s*$/i) {
     my $condition = '';
     if (nonempty($2)) { $condition = $2;}
-    print "INFO: found \L$1\E statement in $file with condition = $condition\n";
+    print "INFO: found \L$1\E statement in $file with condition = $condition: if = $code_blocks[$#code_blocks]{if}\n";
     push_code_block(); # creating new code block which will hold the if block structure
-    if ($condition) {
+    if ($code_blocks[$#code_blocks-1]{"if"} < 0) { # signifies that we are already in an if block, but that is currently not active, so start a new block with if = -3
+      $code_blocks[$#code_blocks]{"if"} = -3 # -3 signifies that we are in an if block that is not used (still need to match if/else/else_if/end_if statements though)
+    } elsif ($condition) {
       $code_blocks[$#code_blocks]{"if"} = 1 # 1 signifies that we are in a true section within an if block
     } else {
       $code_blocks[$#code_blocks]{"if"} = -1; # -1 signifies that we are in an if block, but that the current section isn't true and that we haven't had a true section yet
@@ -406,21 +398,63 @@ sub parse_solver_code {
     $unwrap_ignore = 1; # all if section statements are not written to unwrapped_input.arb
   }
 
-  elsif ($code_blocks[$#code_blocks]{"if"} && $line =~ /^(END_IF)$/i) {
-    print "INFO: found \L$1\E statement in $file\n";
-    if (!($code_blocks[$#code_blocks]{"if"})) { syntax_problem("END_IF statement has been found that does not match an IF statement: $filelinelocator"); }
+# an else_if statement closes any open if block, whether active or not
+  elsif ($line =~ /^(ELSE_IF)\s+(.*)\s*$/i) {
+    my $condition = '';
+    if (nonempty($2)) { $condition = $2;}
+    print "INFO: found \L$1\E statement in $file with condition = $condition: if = $code_blocks[$#code_blocks]{if}\n";
+    if (!($code_blocks[$#code_blocks]{"if"})) { # if we aren't in an if block then this is an error
+      syntax_problem("ELSE_IF statement has been found that does not match an IF statement: $filelinelocator");
+    } elsif ($code_blocks[$#code_blocks]{"if"} == -1 && $condition) { # if we are in an if block and true has not previously been triggered, but condition is true, trigger it now
+      $code_blocks[$#code_blocks]{"if"} = 1;
+    } elsif ($code_blocks[$#code_blocks]{"if"} == 1) { # if we are in an if block and true was previously on, then set it to false (if = -2)
+      $code_blocks[$#code_blocks]{"if"} = -2;
+    } # an if = -2 (already had true) remains at -2, and an if = -3 remains at -3
+    $unwrap_ignore = 1; # all if section statements are not written to unwrapped_input.arb
+  }
+
+# an end_if statement closes any open if block, whether active or not
+  elsif ($line =~ /^(END_IF)$/i) {
+    print "INFO: found \L$1\E statement in $file: if = $code_blocks[$#code_blocks]{if}\n";
+    if (!($code_blocks[$#code_blocks]{"if"})) {
+      syntax_problem("END_IF statement has been found that does not match an IF statement: $filelinelocator");
+    }
     pop_code_block(); # destroy this if block
     $unwrap_ignore = 1; # all if section statements are not written to unwrapped_input.arb
   }
 
-#-------------------
-# look for code block sections
-  elsif ($line =~ /^(BLOCK)$/i) { print "INFO: found opening code block \L$1\E statement in $file\n"; push_code_block(); $unwrap_ignore = 1; }
-  elsif ($line =~ /^(END_BLOCK)$/i) { print "INFO: found closing code block \L$1\E statement in $file\n"; pop_code_block(); $unwrap_ignore = 1; }
+# an else statement becomes true, unless true has already been triggered
+  elsif ($line =~ /^(ELSE)$/i) {
+    print "INFO: found \L$1\E statement in $file: if = $code_blocks[$#code_blocks]{if}\n";
+    if (!($code_blocks[$#code_blocks]{"if"})) { # if we aren't in an if block then this is an error
+      syntax_problem("ELSE statement has been found that does not match an IF statement: $filelinelocator");
+    } elsif ($code_blocks[$#code_blocks]{"if"} == -1) { # if we are in an if block and true has not previously been triggered, trigger it now
+      $code_blocks[$#code_blocks]{"if"} = 1;
+    } elsif ($code_blocks[$#code_blocks]{"if"} == 1) { # if we are in an if block and true was previously on, then set it to false (if = -2)
+      $code_blocks[$#code_blocks]{"if"} = -2;
+    } # an if = -2 (already had true) remains at -2
+    $unwrap_ignore = 1; # all if section statements are not written to unwrapped_input.arb
+  }
+
+# otherwise if if < 0 then the current section of the current if block is to be ignored
+  elsif ($code_blocks[$#code_blocks]{"if"} < 0) { $unwrap_ignore = 1; }
 
 #-------------------
-# END statement means to close the block, which is right now equivalent to END_BLOCK
-  elsif ($line =~ /^(END)$/i) { print "INFO: found \L$1\E statement in $file\n"; pop_code_block(); $unwrap_ignore = 1; }
+# check whether line is empty
+  elsif (empty($line)) { } # do nothing
+
+#-------------------
+# check for opening of skip statement
+  elsif ($line =~ /^(SKIP)$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=1; $unwrap_ignore = 1; }
+
+#-------------------
+# look for code block sections
+  elsif ($line =~ /^(BLOCK)$/i) { print "INFO: found opening \L$1\E statement in $file\n"; push_code_block(); $unwrap_ignore = 1; }
+  elsif ($line =~ /^(END_BLOCK)$/i) { print "INFO: found closing \L$1\E statement in $file\n"; pop_code_block(); $unwrap_ignore = 1; }
+
+#-------------------
+# END statement means to completely stop processing the input files, which is accomplished by destroying all code_blocks
+  elsif ($line =~ /^(END)$/i) { print "INFO: found \L$1\E statement in $file\n"; while (@code_blocks) { pop_code_block(); }; $unwrap_ignore = 1; }
 
 #-------------------
 # check for include statement, possibly opening new file
@@ -1334,7 +1368,7 @@ sub push_code_block {
     open($handle, "<$code_blocks[$#code_blocks]{name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
 
   } else {
-    if ($#code_blocks) { error_stop("internal problem with push_code_block"); }
+    if ($#code_blocks < 1) { error_stop("internal problem with push_code_block"); }
     $code_blocks[$#code_blocks+1]{"new_file"}=0;
     $code_blocks[$#code_blocks]{"include_name"}=$code_blocks[$#code_blocks-1]{"include_name"};
     $code_blocks[$#code_blocks]{"name"}=$code_blocks[$#code_blocks-1]{"name"};
