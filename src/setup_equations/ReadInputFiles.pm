@@ -37,42 +37,17 @@
 
 # parsing logic:
 
-# 1. read in line and place in raw_buffer
-# 2. remove comments and place in comments
-# 3. add raw_buffer to buffer
-# 4. check if buffer ends in continuation symbol (&).  If it does:
-#   - remove continuation symbol
-#   - get new raw_buffer
-#   - check if raw_buffer starts with &.  If it does remove it and preceding space
-#   - add to buffer and repeat 4
-# 5. replace any deprecated string replacement code in buffer with new string code: ie
-#   -  'GENERAL_REPLACEMENTS REPLACE "<<a>>" W "2.d0" D "<<b>>" W "#"' becomes '{{ "<<a>>" =g "2.d0" ; "<<b>>" =dg "#" }}'
-#   -  'INCLUDE "an_arb_file" R "<<a>>" WITH "2.d0"' becomes 'INCLUDE "an_arb_file" {{ "<<a>>" = "2.d0" }}'
-
-# notes:
-# * actual algorithm loops through asking for processed code_lines for each code_block
-# * buffers deal with linefeeds (\n), although remove all (used on windows in addition, as in \r\n) carriage returns (\r)
-
-
-# 1. if string ends with continuation symbol (&) and then possibly a comment (space separated):
-#    * remove comment and possibly continuation
-#    * read in next line (place in raw_buffer) , apply 1->3, concatenate and check again
-# 1. look for deprecated string related code and replace with new syntax, writing syntax message at the same time
-# 2. do any string replacements on a per-file-line basis, except within any string_code sections delimited by {{ and }} (remembering code type over carriage returns)
-# 3. now strip comments, concatenating onto comments 
-# 5. possibly deal with filelinelocator?
-# 6. now split input line at any ; characters, being cognisant of solver syntax and ignoring any string code
-# 7. finally parse the line as solver code
-#   1) {{ }} indicates string code, handled by separate sub
-#   2) INCLUDE statements start new code block, with calling string code added to start of new code block's buffer
-#   3) write unwrapped line (buffer) to unwrapped input file, which includes no string code or references (ie, straight solver code)
-
-# code_block variables to maintain:
-# raw_buffer = line as read from file: move to buffer until empty
-# buffer = line which has had string replacements done, comments removed and concatenation dealt with: move to code_line until empty
-# code_line = single solver code line ready to parse with sub parse_code_line: remove during parsing
-# skip = 
-
+# 0. parsing is done on a per-line basis
+# 1. line continuations (&) are dealt with first within the solver code
+# 2. if string code opening delimiters {{ are found
+#   - previous solver code has replacements done using perform_string_replacements
+#   - if previous solver code starts with the INCLUDE_* keyword, then solver code is regarded as input to the about-to-be-formed code_block, and solver_code is sent to parse_solver_code for processing
+#   - otherwise code is read until closing string code delimiters }} are found, then this code is sent to parse_string_code and then added to solver_code
+# 3. if suspected legacy keywords (GENERAL_|GLOBAL_|)REPLACEMENTS or INCLUDE* that could contain REPLACE type statements, these are converted to new string_code using legacy_string_code_converter
+#   - legacy keywords are only identified if the preceeding solver_code is evalutated as an empty string, once any string replacements have taken place
+#   - if a false match is found to a suspected legacy keyword, then $buffer_offset is set so these legacy keywords aren't matched again
+# 4. an end-of-line indicated by either # or $ (which preceeds a final newline character) then the preceeding solver code is sent to perform_string_replacements, and then parse_solver_code for processing
+# 5. a SKIP statement means that after the SKIP statement line until after the following END_SKIP line no string_code or solver_code will be parsed
 
 package ReadInputFiles;
 
@@ -107,8 +82,6 @@ sub read_input_files {
   push_code_block("root_input.arb","$::build_dir/root_input.arb");
 
 # now setup default variables as global (ie, in code_block[0])
-# $code_blocks[0]{"string_variables"}[0]{"search"} = "jibber";
-# print "in ReadInputFile: last string = $ReadInputFiles::code_blocks[0]{string_variables}[0]{search}\n";
   string_setup(); # create the default string variables
 
   my $solver_code = ''; # this is the solver code line that is being formed, to be sent to parse_solver_code as soon as the buffer is finalised
@@ -117,10 +90,16 @@ sub read_input_files {
   my $comments = ''; # additional comments that are found while buffer is being formed
   my $buffer_offset = 0; # leading offset to apply when performing searches on buffer
     
-#----------------------------------------------------------------------------
-  while (@code_blocks) { # we keep forming the buffer and parsing the code until all code blocks are destroyed
+  my $debug = 0; # set to true to get extra debugging information within the debug file from this routine
 
-    print ::DEBUG "INFO: start of code_blocks loop:\n #code_blocks = $#code_blocks:\n solver_code = $solver_code:\n buffer = $buffer:\n buffer_offset = $buffer_offset:\n code_type = $code_type:\n comments = $comments\n";
+#----------------------------------------------------------------------------
+  while (@code_blocks) { # we keep forming the buffer and parsing the code until all code blocks are destroyed, noting that new files, block, if statements each create new code_blocks
+
+    if ($debug) {
+      print ::DEBUG "INFO: start of code_blocks loop:\n #code_blocks = $#code_blocks:\n solver_code = $solver_code:\n buffer = $buffer:\n buffer_offset = $buffer_offset:\n code_type = $code_type:\n comments = $comments\n$filelinelocator\n";
+    } else {
+      print ::DEBUG "INFO: start of code_blocks loop: solver_code = $solver_code: buffer = $buffer: $filelinelocator\n";
+    }
 
 #-----------------------------
 # buffer is empty, so get more or get out
@@ -129,7 +108,7 @@ sub read_input_files {
       my $raw_buffer='';
       if (!(get_raw_buffer($raw_buffer))) {
 # there is nothing left in the file, so get outa here
-        print ::DEBUG "  INFO: no more data in file\n";
+        if ($debug) { print ::DEBUG "  INFO: no more data in file\n"; }
         pop_code_block();
       } else {
 # we were able to get more from the file so push it onto the buffer stack
@@ -143,13 +122,13 @@ sub read_input_files {
       print ::DEBUG "  INFO: found string code closing in buffer\n";
       my $string_code = $`.$&; # string code includes delimiters
       $buffer = $'; # anything that remains is left in the buffer
-      print ::DEBUG "  INFO: string code identified within buffer:\n   string_code = $string_code:\n   (remaining) buffer = $buffer\n";
+      if ($debug) { print ::DEBUG "  INFO: string code identified within buffer:\n   string_code = $string_code:\n   (remaining) buffer = $buffer\n"; }
       if ($code_blocks[$#code_blocks]{"skip"} || $code_blocks[$#code_blocks]{"if"} < 0) {
         $string_code = '';
-        print ::DEBUG "  INFO: skipping parsing string code due to skip or if status:\n   skip = $code_blocks[$#code_blocks]{skip}: if = $code_blocks[$#code_blocks]{if}\n";
+        if ($debug) { print ::DEBUG "  INFO: skipping parsing string code due to skip or if status:\n   skip = $code_blocks[$#code_blocks]{skip}: if = $code_blocks[$#code_blocks]{if}\n"; }
       } else {
         parse_string_code($string_code); # send this to the string code parser, which may return a string to add to the solver code line
-        print ::DEBUG "  INFO: after parsing string code:\n   string_code = $string_code\n";
+        if ($debug) { print ::DEBUG "  INFO: after parsing string code:\n   string_code = $string_code\n"; }
         $solver_code .= $string_code; # add the result of the string code onto the solver code
       }
       $code_type = 'solver'; # and reset code type
@@ -178,7 +157,11 @@ sub read_input_files {
       my $after = $';
       my $legacy_code = $3; # potential legacy code match
 
-      print ::DEBUG "  INFO: matched action character:\n   before = $before:\n   match = $match:\n   after = $after\n";
+      if ($debug) {
+        print ::DEBUG "  INFO: matched action character:\n   before = $before:\n   match = $match:\n   after = $after\n";
+      } else {
+        print ::DEBUG "  INFO: action character found: match = $match\n";
+      }
 
 #--------------
 # see whether this line contains a legacy string replacement (eg R "<<a>>" W "1.d0"), and if so:
@@ -186,15 +169,15 @@ sub read_input_files {
 #  2. convert any replace statements to string code, and leave this in the trailing buffer, to be processed elsewhere 
 # otherwise if this is a false legacy code match, adjust offset so that it isn't matched again
       if (nonempty($legacy_code)) {
-        print ::DEBUG "  INFO: found potential legacy string code:\n   legacy_code = $legacy_code\n";
+        if ($debug) { print ::DEBUG "  INFO: found potential legacy string code:\n   legacy_code = $legacy_code\n"; }
 # check for legacy code by doing replacements on leading strings
         my $before_buffer = $before; # string code includes delimiters
         perform_string_replacements($before_buffer);
         my $before_solver_code = $solver_code.$before_buffer;
-        print ::DEBUG "  INFO: before_solver_code = $before_solver_code\n";
+        if ($debug) { print ::DEBUG "  INFO: before_solver_code = $before_solver_code\n"; }
 # if only space atmost appears before potential legacy code then run the rest of the buffer through
         if ($before_solver_code =~ /^\h*$/) {
-          print ::DEBUG "  INFO: before_solver_code empty, so potential legacy keyword identified\n";
+          if ($debug) { print ::DEBUG "  INFO: before_solver_code empty, so potential legacy keyword identified\n"; }
           $solver_code = $before_solver_code;
 # set global and deal with keeping/removing keyword
           my $global = 0;
@@ -205,15 +188,15 @@ sub read_input_files {
           }
           $buffer = $after; # buffer now contains what followed the potential legacy keywords
           $buffer_offset = 0;
-          print ::DEBUG "  INFO: solver_code = $solver_code: buffer = $buffer\n";
+          if ($debug) { print ::DEBUG "  INFO: solver_code = $solver_code: buffer = $buffer\n"; }
 # so run this buffer through the legacy replacement converter
           legacy_string_code_converter($buffer,$global);
-          print ::DEBUG "  INFO: after legacy_string_code_converter: buffer = $buffer\n";
+          if ($debug) { print ::DEBUG "  INFO: after legacy_string_code_converter: buffer = $buffer\n"; }
 
         } else {
 # we have matched to something that isn't a legacy keyword, so adjust buffer_offset to avoid this match but keep solver_code and buffer as previously
           $buffer_offset = length($before) + 1;
-          print ::DEBUG "  INFO: before_solver_code nonempty, so increasing buffer_offset by 1: solver_code = $solver_code: buffer = $buffer: buffer_offset = $buffer_offset: before = $before\n";
+          if ($debug) { print ::DEBUG "  INFO: before_solver_code nonempty, so increasing buffer_offset by 1: solver_code = $solver_code: buffer = $buffer: buffer_offset = $buffer_offset: before = $before\n"; }
         }
 
 #--------------
@@ -244,7 +227,7 @@ sub read_input_files {
           $raw_buffer = $';
         }
         $buffer .= $raw_buffer; # leave buffer offset as previously, as original buffer is still there
-        print ::DEBUG "  INFO: after getting next line:\n   buffer = $buffer\n";
+        if ($debug) { print ::DEBUG "  INFO: after getting next line:\n   buffer = $buffer\n"; }
 
 #--------------
 # opening string code delimiters mean we are switching to string code
@@ -253,16 +236,20 @@ sub read_input_files {
 
         $buffer = $before; # string code includes delimiters
         $buffer_offset = 0;
-        print ::DEBUG "  INFO: string code delimiters identified within buffer, performing string replacements on prior string: buffer = $buffer\n";
+        if ($debug) {
+          print ::DEBUG "  INFO: opening string code delimiters identified within buffer, performing string replacements on prior string: buffer = $buffer\n";
+        } else {
+          print ::DEBUG "  INFO: opening string code delimiters identified within buffer, performing string replacements on prior string\n";
+        }
         perform_string_replacements($buffer);
-        print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n";
+        if ($debug) { print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n"; }
         $solver_code .= $buffer; # add the result of the string replacements onto the solver code
         $buffer = $match.$after; # and save the remainder as the buffer
         $code_type = 'string'; # and set the code_type for the buffer
         
 # if the solver_code consists of an INCLUDE statement, then this is processed now and the buffer added to the start of the next code block
         if ($solver_code =~ /^\h*INCLUDE(|_[A-Z]+)(\h+\S+\h+|\h*(".*"|'.*')\h*)$/) { # an INCLUDE type keyword has been found, which is followed by a string and then {{
-          print ::DEBUG "  INFO: an INCLUDE type keyword plus string has been found prior to some string code: solver code ready to process: solver_code = $solver_code\n";
+          if ($debug) { print ::DEBUG "  INFO: an INCLUDE type keyword plus string has been found prior to some string code: solver code ready to process: solver_code = $solver_code\n"; }
           parse_solver_code($solver_code); # process, noting that here solver_code is only one line
           $solver_code = ''; # and reset buffer etc
         }
@@ -272,6 +259,7 @@ sub read_input_files {
       } else { # $match eq #|$
 # if key_characters are either a comment or end of string/line, then buffer is ready to be assembled as solver_code and processed
 
+        print ::DEBUG "  INFO: end of line solver code characters identified in buffer, parsing solver code\n";
         if ($match eq "#") { # we've matched a comment so add this to the other comments
           $after =~ s/\n$//; # remove linefeed from comment
           $comments .= $match.$after;
@@ -279,11 +267,11 @@ sub read_input_files {
 
 # limit the buffer to prior to the comment/end of string/line, and then perform string replacements on the buffer
         $buffer = $before;
-        print ::DEBUG "  INFO: solver code identified within buffer, performing string replacements: buffer = $buffer\n";
+        if ($debug) { print ::DEBUG "  INFO: solver code identified within buffer, performing string replacements: buffer = $buffer\n"; }
         perform_string_replacements($buffer);
-        print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n";
+        if ($debug) { print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n"; }
         $solver_code .= $buffer.$comments; # add the result of the string replacements onto the solver code
-        print ::DEBUG "  INFO: solver code ready to process: solver_code = $solver_code\n";
+        if ($debug) { print ::DEBUG "  INFO: solver code ready to process: solver_code = $solver_code\n"; }
         while ($solver_code =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
           my $part_solver_code = $`; # split solver_code at each line break
           $solver_code = $'; # and remove line break from next
@@ -300,16 +288,18 @@ sub read_input_files {
 #-----------------------------
     }
 
-    if (@code_blocks) {
-      print ::DEBUG "INFO: end of code_blocks loop".
-        ": #code_blocks = $#code_blocks".
-        ": buffer = $buffer".
-        ": buffer_offset = $buffer_offset".
-        ": solver_code = $solver_code".
-        ": comments = $comments".
-        ": skip = $code_blocks[$#code_blocks]{skip}\n";
-    } else {
-      print ::DEBUG "INFO: code_blocks loop finished\n";
+    if ($debug) {
+      if (@code_blocks) {
+        print ::DEBUG "INFO: end of code_blocks loop".
+          ": #code_blocks = $#code_blocks".
+          ": buffer = $buffer".
+          ": buffer_offset = $buffer_offset".
+          ": solver_code = $solver_code".
+          ": comments = $comments".
+          ": skip = $code_blocks[$#code_blocks]{skip}\n";
+      } else {
+        print ::DEBUG "INFO: code_blocks loop finished\n";
+      }
     }
 
 #----------------------------------------------------------------------------
@@ -329,15 +319,13 @@ sub read_input_files {
 
 }
 
-
-
 #-------------------------------------------------------------------------------
 # subroutine that parses one code_line of pure solver code
 # notes:
 #  1. also responsible for writing unwrapped_input.arb file
 #  2. alters the following global variables:
 #      ::newtient_simulation, ::transient_simulation, ::asread_variable, ::region, ::simulation_info, code_blocks
-#     
+      
 sub parse_solver_code {
 # on input:
 # $_[0] = single line(s) to process, including comments, with no linefeeds or string code whatsoever, and with string replacements done
@@ -364,7 +352,8 @@ sub parse_solver_code {
   ($line,$comments)=$line=~/^\s*(.*?)\s*(#.*|)$/;
 
   my $file = $code_blocks[$#code_blocks]{"include_name"}; # and grab filename for messaging purposes
-  my $unwrap_ignore = 0; # will be set to 1 if line is not to be written as solver_code to unwrapped_input.arb
+  my $unwrapped_ignore = 0; # will be set to 1 if line is not to be written as solver_code to unwrapped_input.arb
+  my $unwrapped_indents = $#code_blocks; # save the number of code blocks to get the correct output statement indentation
 
   print ::DEBUG "INFO: in parse_solver_code\n";
 
@@ -376,8 +365,8 @@ sub parse_solver_code {
 
 #-------------------
 # deal with cases where skip is active
-  if ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^(END_SKIP)$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; $unwrap_ignore = 1; }
-  elsif ($code_blocks[$#code_blocks]{"skip"}) { $unwrap_ignore = 1; }
+  if ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^(END_SKIP)$/i) { print ::DEBUG "INFO: found \U$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; $unwrapped_ignore = 1; }
+  elsif ($code_blocks[$#code_blocks]{"skip"}) { $unwrapped_ignore = 1; }
 
 #-------------------
 # next deal with if/else_if/else/end_if blocks
@@ -386,7 +375,7 @@ sub parse_solver_code {
   elsif ($line =~ /^(IF)\s+(.*)\s*$/i) {
     my $condition = '';
     if (nonempty($2)) { $condition = $2;}
-    print "INFO: found \L$1\E statement in $file with condition = $condition: if = $code_blocks[$#code_blocks]{if}\n";
+    print ::DEBUG "INFO: found \U$1\E statement in $file with condition = $condition: if = $code_blocks[$#code_blocks]{if}\n";
     push_code_block(); # creating new code block which will hold the if block structure
     if ($code_blocks[$#code_blocks-1]{"if"} < 0) { # signifies that we are already in an if block, but that is currently not active, so start a new block with if = -3
       $code_blocks[$#code_blocks]{"if"} = -3 # -3 signifies that we are in an if block that is not used (still need to match if/else/else_if/end_if statements though)
@@ -395,14 +384,15 @@ sub parse_solver_code {
     } else {
       $code_blocks[$#code_blocks]{"if"} = -1; # -1 signifies that we are in an if block, but that the current section isn't true and that we haven't had a true section yet
     }
-    $unwrap_ignore = 1; # all if section statements are not written to unwrapped_input.arb
+    $unwrapped_ignore = 1; # all if section statements are not written to unwrapped_input.arb
+    $unwrapped_indents += 1;
   }
 
 # an else_if statement closes any open if block, whether active or not
   elsif ($line =~ /^(ELSE_IF)\s+(.*)\s*$/i) {
     my $condition = '';
     if (nonempty($2)) { $condition = $2;}
-    print "INFO: found \L$1\E statement in $file with condition = $condition: if = $code_blocks[$#code_blocks]{if}\n";
+    print ::DEBUG "INFO: found \U$1\E statement in $file with condition = $condition: if = $code_blocks[$#code_blocks]{if}\n";
     if (!($code_blocks[$#code_blocks]{"if"})) { # if we aren't in an if block then this is an error
       syntax_problem("ELSE_IF statement has been found that does not match an IF statement: $filelinelocator");
     } elsif ($code_blocks[$#code_blocks]{"if"} == -1 && $condition) { # if we are in an if block and true has not previously been triggered, but condition is true, trigger it now
@@ -410,22 +400,22 @@ sub parse_solver_code {
     } elsif ($code_blocks[$#code_blocks]{"if"} == 1) { # if we are in an if block and true was previously on, then set it to false (if = -2)
       $code_blocks[$#code_blocks]{"if"} = -2;
     } # an if = -2 (already had true) remains at -2, and an if = -3 remains at -3
-    $unwrap_ignore = 1; # all if section statements are not written to unwrapped_input.arb
+    $unwrapped_ignore = 1; # all if section statements are not written to unwrapped_input.arb
   }
 
 # an end_if statement closes any open if block, whether active or not
   elsif ($line =~ /^(END_IF)$/i) {
-    print "INFO: found \L$1\E statement in $file: if = $code_blocks[$#code_blocks]{if}\n";
+    print ::DEBUG "INFO: found \U$1\E statement in $file: if = $code_blocks[$#code_blocks]{if}\n";
     if (!($code_blocks[$#code_blocks]{"if"})) {
       syntax_problem("END_IF statement has been found that does not match an IF statement: $filelinelocator");
     }
     pop_code_block(); # destroy this if block
-    $unwrap_ignore = 1; # all if section statements are not written to unwrapped_input.arb
+    $unwrapped_ignore = 1; # all if section statements are not written to unwrapped_input.arb
   }
 
 # an else statement becomes true, unless true has already been triggered
   elsif ($line =~ /^(ELSE)$/i) {
-    print "INFO: found \L$1\E statement in $file: if = $code_blocks[$#code_blocks]{if}\n";
+    print ::DEBUG "INFO: found \U$1\E statement in $file: if = $code_blocks[$#code_blocks]{if}\n";
     if (!($code_blocks[$#code_blocks]{"if"})) { # if we aren't in an if block then this is an error
       syntax_problem("ELSE statement has been found that does not match an IF statement: $filelinelocator");
     } elsif ($code_blocks[$#code_blocks]{"if"} == -1) { # if we are in an if block and true has not previously been triggered, trigger it now
@@ -433,11 +423,11 @@ sub parse_solver_code {
     } elsif ($code_blocks[$#code_blocks]{"if"} == 1) { # if we are in an if block and true was previously on, then set it to false (if = -2)
       $code_blocks[$#code_blocks]{"if"} = -2;
     } # an if = -2 (already had true) remains at -2
-    $unwrap_ignore = 1; # all if section statements are not written to unwrapped_input.arb
+    $unwrapped_ignore = 1; # all if section statements are not written to unwrapped_input.arb
   }
 
 # otherwise if if < 0 then the current section of the current if block is to be ignored
-  elsif ($code_blocks[$#code_blocks]{"if"} < 0) { $unwrap_ignore = 1; }
+  elsif ($code_blocks[$#code_blocks]{"if"} < 0) { $unwrapped_ignore = 1; }
 
 #-------------------
 # check whether line is empty
@@ -445,16 +435,16 @@ sub parse_solver_code {
 
 #-------------------
 # check for opening of skip statement
-  elsif ($line =~ /^(SKIP)$/i) { print "INFO: found \L$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=1; $unwrap_ignore = 1; }
+  elsif ($line =~ /^(SKIP)$/i) { print ::DEBUG "INFO: found \U$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=1; $unwrapped_ignore = 1; }
 
 #-------------------
 # look for code block sections
-  elsif ($line =~ /^(BLOCK)$/i) { print "INFO: found opening \L$1\E statement in $file\n"; push_code_block(); $unwrap_ignore = 1; }
-  elsif ($line =~ /^(END_BLOCK)$/i) { print "INFO: found closing \L$1\E statement in $file\n"; pop_code_block(); $unwrap_ignore = 1; }
+  elsif ($line =~ /^(BLOCK)$/i) { print ::DEBUG "INFO: found \U$1\E statement in $file\n"; push_code_block(); $unwrapped_ignore = 1; $unwrapped_indents += 1; }
+  elsif ($line =~ /^(END_BLOCK)$/i) { print ::DEBUG "INFO: found \U$1\E statement in $file\n"; pop_code_block(); $unwrapped_ignore = 1; }
 
 #-------------------
 # END statement means to completely stop processing the input files, which is accomplished by destroying all code_blocks
-  elsif ($line =~ /^(END)$/i) { print "INFO: found \L$1\E statement in $file\n"; while (@code_blocks) { pop_code_block(); }; $unwrap_ignore = 1; }
+  elsif ($line =~ /^(END)$/i) { print ::DEBUG "INFO: found \U$1\E statement in $file\n"; while (@code_blocks) { pop_code_block(); }; $unwrapped_ignore = 1; }
 
 #-------------------
 # check for include statement, possibly opening new file
@@ -463,7 +453,7 @@ sub parse_solver_code {
     my $include_type = '';
     $line = $';
     if (nonempty($2)) {$include_type = "\L$2";}
-    $unwrap_ignore = 1; # any include line is not printed within unwrapped_input.arb
+    $unwrapped_ignore = 1; # any include line is not printed within unwrapped_input.arb
 
 # extract filename from line of text
     my ($new_file,$error) = extract_first($line);
@@ -476,9 +466,9 @@ sub parse_solver_code {
       if ($#{$code_blocks[$#code_blocks]{"include_path"}} > 0) {
 # this means to pull an item from the stack
         pop(@{$code_blocks[$#code_blocks]{"include_path"}});
-        syntax_problem("an INCLUDE statement is removing (popping) an include_path from the stack, leaving: include_path = $code_blocks[$#code_blocks]{include_path}[0]","info");
+        print ::DEBUG "INFO: an INCLUDE statement is removing (popping) an include_path from the stack, leaving: include_path = $code_blocks[$#code_blocks]{include_path}[0]: $filelinelocator\n";
       } else {
-        syntax_problem("an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $code_blocks[$#code_blocks]{include_path}[0]","warning");
+        syntax_problem("an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $code_blocks[$#code_blocks]{include_path}[0]: $filelinelocator");
       }
     } else {
 
@@ -489,7 +479,7 @@ sub parse_solver_code {
       my $found_depth = 1; # this is used only for file::find used within the template include
       if (empty($include_type)) {
   # if this is a plain INCLUDE statement then we cycle through the list of paths looking for the file or directory
-# TODO: make include path search also recursive through code_blocks
+# possible TODO: make include path search also recursive through code_blocks
         for my $search_path ( reverse( @{$code_blocks[$#code_blocks]{"include_path"}} ) ) {
           ($found_name,$found_type) = check_for_arbfile_or_dir($search_path.'/'.$new_file);
           if (nonempty($found_name)) {
@@ -542,14 +532,14 @@ sub parse_solver_code {
       if (nonempty($found_dir)) {
         if ($found_dir ne $code_blocks[$#code_blocks]{"include_path"}[$#{$code_blocks[$#code_blocks]{"include_path"}}]) {
           push(@{$code_blocks[$#code_blocks]{"include_path"}},$found_dir);
-          syntax_problem("adding new path $found_dir to the include_path stack, making: include_path = @{$code_blocks[$#code_blocks]{include_path}}","info");
+          print ::DEBUG "INFO: adding new path $found_dir to the include_path stack, making: include_path = @{$code_blocks[$#code_blocks]{include_path}}: $filelinelocator\n";
         } else {
-          syntax_problem("not adding new path $found_dir to the include_path stack as it is already on the top of the stack, making: include_path = @{$code_blocks[$#code_blocks]{include_path}}","warning");
+          print ::DEBUG "INFO: not adding new path $found_dir to the include_path stack as it is already on the top of the stack: include_path = @{$code_blocks[$#code_blocks]{include_path}}: $filelinelocator\n";
         }
       }
           
 # now open the file and set new buffer
-      if (nonempty($found_name)) { push_code_block($new_file,$found_name); }
+      if (nonempty($found_name)) { push_code_block($new_file,$found_name);  $unwrapped_indents += 1; }
 
     }
 #-------
@@ -616,13 +606,13 @@ sub parse_solver_code {
 #-------------------
 # look for transient/steady-state simulation keyword
   } elsif ($line =~ /^(TRANSIENT|STEADY(-|_|)STATE)_SIMULATION($|\s)/i) {
-    syntax_problem("$1_SIMULATION set directly","$1_SIMULATION set directly: $filelinelocator","info");
+    print ::DEBUG "$1_SIMULATION set directly: $filelinelocator\n";
     if ($1 =~ /^TRANSIENT$/i) { set_transient_simulation(1); } else { set_transient_simulation(0); }
 
 #-------------------
 # look for newtient simulation keyword
   } elsif ($line =~ /^\s*((NON|)NEWTIENT)_SIMULATION($|\s)/i) {
-    syntax_problem("$1_SIMULATION set directly","$1_SIMULATION set directly: $filelinelocator","info");
+    print ::DEBUG "$1_SIMULATION set directly: $filelinelocator\n";
     if ($1 =~ /^NEWTIENT$/i) { $::newtient_simulation=1; } else { $::newtient_simulation=0; }
 
 #-------------------
@@ -633,9 +623,9 @@ sub parse_solver_code {
     $default_options = $';
     ($default_options) = $default_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
     if (empty($default_options)) {
-      syntax_problem("default options have been removed","default options have been removed via: $filelinelocator","info");
+      print ::DEBUG "INFO: default options have been removed via: $filelinelocator\n";
     } else {
-      syntax_problem("default options have been set to $default_options","default options have been set to $default_options via: $filelinelocator","info");
+      print ::DEBUG "INFO: default options have been set to $default_options via: $filelinelocator\n";
     }
 
 #-------------------
@@ -646,9 +636,9 @@ sub parse_solver_code {
     $override_options = $';
     ($override_options) = $override_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
     if (empty($override_options)) {
-      syntax_problem("override options have been removed","override options have been removed via: $filelinelocator","info");
+      print ::DEBUG "INFO: override options have been removed via: $filelinelocator\n";
     } else {
-      syntax_problem("override options have been set to $override_options","override options have been set to $override_options via: $filelinelocator","info");
+      print ::DEBUG "INFO: override options have been set to $override_options via: $filelinelocator\n";
     }
 
 #-------------------
@@ -668,7 +658,7 @@ sub parse_solver_code {
         my $replace="reflect=$1";
         $tmp = $tmp = $`." ".$';
         string_set($search,$replace,'global');
-        syntax_problem("based on a GLUE_FACES statement setting $search string_variables string to $replace","info");
+        print ::DEBUG "INFO: based on a GLUE_FACES statement setting $search string_variables string to $replace: $filelinelocator\n";
       }
     }
     print ::FORTRAN_INPUT $keyword; if (nonempty($line)) {print ::FORTRAN_INPUT " ".$line}; print ::FORTRAN_INPUT "\n"; # print line to fortran input file
@@ -736,8 +726,8 @@ sub parse_solver_code {
         }
 # TODO: get rid of options if variable is cancelled
       } else {
-        print "WARNING: attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored\n";
-        print ::DEBUG "WARNING: attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored\n";
+        syntax_problem("attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored",
+          "attempting to cancel variable $name that hasn't been defined yet - CANCEL ignored: $filelinelocator","warn");
       }
 #-------
 # otherwise we are either updating or creating a variable
@@ -887,19 +877,19 @@ sub parse_solver_code {
   # Note that later when these equations are processed (in organise_user_variables), empty and undef now have different meanings
   # depending on variable type and r index, empty ("") now means to repeat the full equation, whereas undef means to give it a value of zero
           my $previous_equation = ""; if (nonempty($::asread_variable[$masread]{"initial_equation"})) { $previous_equation = $::asread_variable[$masread]{"initial_equation"}; }
-          $::asread_variable[$masread]{"initial_equation"} = expand_equation($tmp1,$::asread_variable[$masread]{"name"},$previous_equation,$oline,$::asread_variable[$masread]{"selfreferences"});
+          $::asread_variable[$masread]{"initial_equation"} = expand_equation($tmp1,$::asread_variable[$masread]{"name"},$previous_equation,$::asread_variable[$masread]{"selfreferences"});
           print ::DEBUG "INFO: setting the $type $name initial_equation to $::asread_variable[$masread]{initial_equation} based on: $filelinelocator\n";
   # incase we need to only set the initial_equation of a variable, keeping the previous equation value, only set equation if it is actually nonempty (ie, not "")
           if (nonempty($tmp2)) {
             my $previous_equation = ""; if (nonempty($::asread_variable[$masread]{"equation"})) { $previous_equation = $::asread_variable[$masread]{"equation"}; }
-            $::asread_variable[$masread]{"equation"} = expand_equation($tmp2,$::asread_variable[$masread]{"name"},$previous_equation,$oline,$::asread_variable[$masread]{"selfreferences"});
+            $::asread_variable[$masread]{"equation"} = expand_equation($tmp2,$::asread_variable[$masread]{"name"},$previous_equation,$::asread_variable[$masread]{"selfreferences"});
             print ::DEBUG "INFO: setting the $type $name equation to $::asread_variable[$masread]{equation} based on: $filelinelocator\n";
           }
         } else {
   # if we are here then tmp1 corresponds to the equation
   # save previous equation for possible selfreference replacement, passing an empty string if it hasn't been previously defined
           my $previous_equation = ""; if (nonempty($::asread_variable[$masread]{"equation"})) { $previous_equation = $::asread_variable[$masread]{"equation"}; }
-          $::asread_variable[$masread]{"equation"} = expand_equation($tmp1,$::asread_variable[$masread]{"name"},$previous_equation,$oline,$::asread_variable[$masread]{"selfreferences"});
+          $::asread_variable[$masread]{"equation"} = expand_equation($tmp1,$::asread_variable[$masread]{"name"},$previous_equation,$::asread_variable[$masread]{"selfreferences"});
           print ::DEBUG "INFO: setting the $type $name equation to $::asread_variable[$masread]{equation} based on: $filelinelocator\n";
         }
   # check/set defaults for these later, after all variable definitions have been read in
@@ -1015,7 +1005,7 @@ sub parse_solver_code {
         print ::DEBUG "INFO: a primary definition statement for region $name has been found based on: $filelinelocator\n";
   # otherwise create a new region
         $masread=$#::region+1;
-        print ::DEBUG "INFO: creating new region number $masread with name $name based on \n:file = $file: line = $oline\n";
+        print ::DEBUG "INFO: creating new region number $masread with name $name based on: $filelinelocator\n";
   # and set basic info, empty if necessary
         $::region[$masread]{"name"}=$name;
         $::region[$masread]{"centring"}=$centring; # maybe blank
@@ -1093,11 +1083,11 @@ sub parse_solver_code {
 #-----------------------
   } else {
 # finally if the line doesn't match any of the above, then stop - it may mean that something is not as intended
-    syntax_problem("the following line in $file makes no sense: line = $line: $filelinelocator");
+    syntax_problem("the following line in $file makes no sense because the keyword isn't recognised, or because there are trailing characters following the keyword: line = $line: $filelinelocator");
   }
 
 # finally write the unwrapped_input.arb line
-  print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,$unwrapped_inserted_hash x $unwrap_ignore."$oline\n";
+  print UNWRAPPED_INPUT $unwrapped_indent x $unwrapped_indents,$unwrapped_inserted_hash x $unwrapped_ignore."$oline\n";
 
   $_[0] = ''; # empty the calling string
 
@@ -1175,8 +1165,9 @@ sub check_deprecated_solver_code {
 sub legacy_string_code_converter {
 
   my ($old_buffer,$global) = @_;
+  my $debug = 0;
 
-  print ::DEBUG "INFO: start of legacy_string_code_converter: global = $global: old_buffer = $old_buffer\n";
+  if ($debug) { print ::DEBUG "INFO: start of legacy_string_code_converter: global = $global: old_buffer = $old_buffer\n"; }
   my $opened = 0; # if any legacy operations were found
   my ($search,$replace,$cancel,$default);
   $search = 1;
@@ -1196,11 +1187,11 @@ sub legacy_string_code_converter {
     }
   }
 
-  print ::DEBUG "INFO: near end of legacy_string_code_converter: search = $search: old_buffer = $old_buffer\n";
+  if ($debug) { print ::DEBUG "INFO: near end of legacy_string_code_converter: search = $search: old_buffer = $old_buffer\n"; }
 
   $buffer .= $old_buffer;
 
-  print ::DEBUG "INFO: end of legacy_string_code_converter: global = $global: buffer = $buffer\n";
+  if ($debug) { print ::DEBUG "INFO: end of legacy_string_code_converter: global = $global: buffer = $buffer\n"; }
   $_[0] = $buffer;
 
 }
@@ -1213,8 +1204,6 @@ sub correct_deprecated_string_replacement_code {
   my $oinput = $input; # save input string for messages
   my $buffer = '';
   my $in_string_code = 0; # 0 means no string code, 1 means the next statement could be string code but the last wasn't, and 2 means the next could be and the last was
-  my $file = 'fixme';
-  my $oline = 'fixme';
   my $warn = 0;
   my $global = 0; # indicates that we are doing a general replacement
 
@@ -1242,12 +1231,9 @@ sub correct_deprecated_string_replacement_code {
   if ($in_string_code) {
     while (nonempty($input) || $in_string_code) {
 
-      print ::DEBUG "INFO: in correct_deprecated_string_replacement_code loop with: input = $input: buffer = $buffer: in_string_code = $in_string_code\n";
+#     print ::DEBUG "INFO: in correct_deprecated_string_replacement_code loop with: input = $input: buffer = $buffer: in_string_code = $in_string_code\n";
       if ($in_string_code) {
-#       print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 3\n";
         my ($search,$replace,$cancel,$default) = extract_deprecated_replacements($input);
-#       if ($cancel) { die "cancel not done yet\n"; }
-#       if ($default) { die "default not done yet\n"; }
         if (nonempty($search)) {
           if ($in_string_code == 1) {
             $buffer .= '{{ ';
@@ -1262,13 +1248,11 @@ sub correct_deprecated_string_replacement_code {
             $buffer .= "\'$search\' ="."g" x $global."d" x $default." \'$replace\' "; # add this found search/replace pair
           }
         } else {
-#         print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 3.2\n";
           if ($in_string_code == 2) { $buffer .= '}} '; }
           $in_string_code = 0;
         }
 
       } else {
-        print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 4\n";
         $buffer .= $input;
         $input = '';
       }
@@ -1303,16 +1287,16 @@ sub extract_deprecated_replacements {
   my $cancel = 0;
   my $default = 0;
 
-  print ::DEBUG "INFO: start of extract_deprecated_replacements: line = $line\n";
+# print ::DEBUG "INFO: start of extract_deprecated_replacements: line = $line\n";
 
 # if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement - as far as I can remember, *'ed form was never used instead of D|DEFAULT - get rid of it
   if ($line =~ /^((R|REPLACE)|(DEFAULT|D))\s+/i) { # found a replacement
-    print ::DEBUG "found a replace statement specified as $1: $'\n";
+#   print ::DEBUG "found a replace statement specified as $1: $'\n";
     if (nonempty($3)) { $default=1; }
     $line = $';
-    print ::DEBUG "line = $line\n";
+#   print ::DEBUG "line = $line\n";
     ($search,$error) = extract_first($line);
-    print ::DEBUG "after extract_first: line = $line\n";
+#   print ::DEBUG "after extract_first: line = $line\n";
     if (empty($search) || $error) {
       syntax_problem("one search string not identified from: $filelinelocator");
     } else {
@@ -1320,9 +1304,9 @@ sub extract_deprecated_replacements {
       ($replace,$error) = extract_first($line);
       if ($error) { syntax_problem("replacement string corresponding to search string $search not identified from: $filelinelocator"); }
     }
-    print ::DEBUG "search = $search: replace = $replace: default = $default\n";
+#   print ::DEBUG "search = $search: replace = $replace: default = $default\n";
   } elsif ($line =~ /^(C|CANCEL)\s+/i) { # found a string to cancel
-    print ::DEBUG "found a cancel statement: $'\n";
+#   print ::DEBUG "found a cancel statement: $'\n";
     $line = $';
     ($search,$error) = extract_first($line);
     if (!($search) || $error) {
@@ -1332,7 +1316,7 @@ sub extract_deprecated_replacements {
     }
   }
 
-  print ::DEBUG "INFO: end of extract_deprecated_replacements: line = $line\n";
+# print ::DEBUG "INFO: end of extract_deprecated_replacements: line = $line\n";
   $_[0] = $line;
   return ($search,$replace,$cancel,$default);
 
@@ -1392,8 +1376,9 @@ sub push_code_block {
   $code_blocks[$#code_blocks]{"skip"} = 0; # flag to indicate whether we are in a comments section or not
   $code_blocks[$#code_blocks]{"if"} = 0; # flag to indicate whether we are in an if section or not
 
-  print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,$unwrapped_created_hash."++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",
-    $unwrapped_indent x $#code_blocks,$unwrapped_created_hash.": new block = $code_blocks[$#code_blocks]{include_name}: new_file = $code_blocks[$#code_blocks]{new_file}\n";
+# print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,$unwrapped_created_hash."++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",
+#   $unwrapped_indent x $#code_blocks,$unwrapped_created_hash.": new block = $code_blocks[$#code_blocks]{include_name}: new_file = $code_blocks[$#code_blocks]{new_file}\n";
+  print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,$unwrapped_created_hash.": new block = $code_blocks[$#code_blocks]{include_name}: new_file = $code_blocks[$#code_blocks]{new_file}\n";
 
 # ref: FILENAME
 # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
@@ -1409,7 +1394,7 @@ sub push_code_block {
 # 
 sub pop_code_block {
 
-  print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,$unwrapped_created_hash."--------------------------------------------------------\n";
+# print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,$unwrapped_created_hash."--------------------------------------------------------\n";
 
   if ($code_blocks[$#code_blocks]{"new_file"}) {
     my $handle = $code_blocks[$#code_blocks]{"handle"};
@@ -1512,15 +1497,14 @@ sub wanted {
 # 2) replaces a reference to itself with the previous equation
 # copies all but the last input arguments and returns new equation
 # last argument is the number of selfreferences that have been made in total by this variable, and is incremented by this routine
-# $asread_variable[$masread]{"equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$asread_variable[$masread]{"equation"},$oline,$asread_variable[$masread]{"selfreferences"});
+# $asread_variable[$masread]{"equation"} = expand_equation($tmp1,$asread_variable[$masread]{"name"},$asread_variable[$masread]{"equation"},$asread_variable[$masread]{"selfreferences"});
 
 sub expand_equation {
 
   my $raw_equation = $_[0]; # the first argument is the raw equation, which is copied and unchanged
   my $variable_name = $_[1]; # the second argument is the variable name
   my $previous_equation = $_[2]; # the third argument is the previous equation (previously expanded) used for substitution if referenced
-  my $oline = $_[3]; # forth argument is just for error message
-# $_[4] holds the total number of selfreferences and may be changed
+# $_[3] holds the total number of selfreferences and may be changed
 
   my $expanded_equation = ''; # this is the final variable that will be returned
 
@@ -1595,14 +1579,14 @@ sub expand_equation {
 
     my $mid = "(";
     if ($operator eq "dot") {
-      if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in dot product in $variable_name equation on the following line: check the variables' [l=:] syntax\noline = $oline"); } # scalar(@posl) is number of elements of posl array
+      if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in dot product in $variable_name equation on the following line: check the variables' [l=:] syntax: $filelinelocator"); } # scalar(@posl) is number of elements of posl array
       foreach my $n1 ( 1 .. 3 ) {
         substr($midl, $posl[0]-1, 1, $n1); #replace blank with correct index
         substr($midr, $posr[0]-1, 1, $n1); #replace blank with correct index
         $mid = $mid." + (".$midl.")*(".$midr.")";
       }
     } else { # double dot product
-      if (@posl != 2 || @posr != 2) { error_stop("wrong number of colons in ddot product in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax\noline = $oline"); } # scalar(@posl) is number of elements of posl array
+      if (@posl != 2 || @posr != 2) { error_stop("wrong number of colons in ddot product in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax: $filelinelocator"); } # scalar(@posl) is number of elements of posl array
       foreach my $n1 ( 1 .. 3 ) {
         substr($midl, $posl[0]-1, 1, $n1); #replace blank with correct index
         substr($midr, $posr[1]-1, 1, $n1); #replace blank with correct index
@@ -1633,12 +1617,12 @@ sub expand_equation {
     my $pre = $`;
     my $post = $';
     my $name = $1;
-    if (empty($2)) { error_stop("empty name found in equation for $variable_name on following line: expanded_equation = $expanded_equation\noline = $oline"); }
+    if (empty($2)) { error_stop("empty name found in equation for $variable_name on following line: expanded_equation = $expanded_equation: $filelinelocator"); }
     my $consistent_name = examine_name($name,"name");
     if ($consistent_name eq $variable_name) {
 # found a match with the previous equation
       $number_of_self_references++;
-      print ::DEBUG "INFO: found a selfreference in an equation for variable $variable_name: raw_equation = $raw_equation: previous_equation = $previous_equation\noline = $oline\n";
+      print ::DEBUG "INFO: found a selfreference in an equation for variable $variable_name: raw_equation = $raw_equation: previous_equation = $previous_equation: $filelinelocator\n";
       if ($previous_equation eq '') {
         $name = "0.d0"; # if the previous equation is empty, then replace with a zero value
         print ::DEBUG "INFO: replacing selfreference with 0.d0 as previous_equation is empty\n";
@@ -1654,7 +1638,7 @@ sub expand_equation {
   if (nonempty($processing_equation)) { $expanded_equation = $expanded_equation.$processing_equation; $processing_equation = ''; }
 
   if ($number_of_self_references) {
-    $_[4] = $_[4] + $number_of_self_references;
+    $_[3] = $_[3] + $number_of_self_references;
     print "INFO: found $number_of_self_references selfreferences in an equation for variable $variable_name: raw_equation = $raw_equation: previous_equation = $previous_equation: expanded_equation = $expanded_equation\n";
   }
 

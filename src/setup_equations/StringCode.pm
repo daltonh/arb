@@ -47,19 +47,20 @@ use Data::Alias 'alias';
 sub parse_string_code {
 
   my ($buffer) = @_;
+  my $debug = 0;
 
-  print ::DEBUG "INFO: start of StringCode::parse_string_code: buffer = $buffer\n";
+  if ($debug) { print ::DEBUG "INFO: start of StringCode::parse_string_code: buffer = $buffer\n"; }
 
 # removing lead and trailing double delimiters
   $buffer =~ s/(\{\{|\}\})//g;
-  print ::DEBUG "INFO: after removing string code delimiters: buffer = $buffer\n";
+  if ($debug) { print ::DEBUG "INFO: after removing string code delimiters: buffer = $buffer\n"; }
 
   my $eval_return = eval($buffer."; return ''");
   if ($@) {
     syntax_problem("error in evaluating the string code $buffer: $ReadInputFiles::filelinelocator");
   } else { $buffer = $eval_return; }
 
-  print ::DEBUG "INFO: end of StringCode::parse_string_code: buffer = $buffer\n";
+  if ($debug) { print ::DEBUG "INFO: end of StringCode::parse_string_code: buffer = $buffer\n"; }
 
   $_[0] = $buffer;
 }
