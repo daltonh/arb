@@ -743,8 +743,8 @@ sub organise_regions {
 # anything left must be dynamic: initialise
       $region[$n]{"dynamic"} = 1;
       $region[$n]{"user"} = 1;
-      if ($region[$n]{"type"} eq "transient" && ! ($transient_simulation) ) { error_stop("somehow a transient region $region[$n]{name} exists in a non-transient simulation.  Suggest using the TRANSIENT_SIMULATION keyword.") }
-      if ($region[$n]{"type"} eq "newtient" && ! ($newtient_simulation) ) { error_stop("somehow a newtient region $region[$n]{name} exists in a non-newtient simulation.  Suggest using the NEWTIENT_SIMULATION keyword.") }
+      if ($region[$n]{"type"} eq "transient" && ! ($transient_simulation) ) { $transient_simulation=1; print DEBUG "INFO: setting simulation type to transient based on the detection of at least one transient region\n"; }
+      if ($region[$n]{"type"} eq "newtient" && ! ($newtient_simulation) ) { $newtient_simulation=1; print DEBUG "INFO: setting simulation type to newtient based on detection of at least one newtient region\n"; }
     }
 # deal with user regions having no centring defined
     if ($region[$n]{"user"} && empty($region[$n]{'centring'})) { error_stop("$region[$n]{type} region $region[$n]{name} has no centring defined: all regions (except gmsh) ".

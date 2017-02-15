@@ -1,13 +1,12 @@
+#(comment created during unwrap): new block = root_input.arb: new_file = 1
 # root_input.arb file created by the arb script
 ##################################################################################
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: inviscid_burgers_equation.arb
-#(hash added during unwrap)INCLUDE_WORKING "inviscid_burgers_equation.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../inviscid_burgers_equation.arb without any search/replace combinations
+   #(comment created during unwrap): new block = inviscid_burgers_equation.arb: new_file = 1
+   #(hash inserted during unwrap)INCLUDE_WORKING "inviscid_burgers_equation.arb"
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -63,6 +62,4 @@ EXTERNALS "src/free_surface_functions.f90"
    CELL_EQUATION <u equation> "(<u>-<u[r=1]>)/<dt>+celldiv(<u advection>^2*<facenorm[l=1]>)/2.d0" ON <domain>
    FACE_EQUATION <u boundaries> "<u>-<u initial>" ON <boundaries>
    NONE_OUTPUT <CFL> "cellmax(abs(<u>),,<domain>)*<dt>/cellmin(<cellvol>,,<domain>)"
-   #(comment generated during unwrap) INCLUDE finished for ../inviscid_burgers_equation.arb
-   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

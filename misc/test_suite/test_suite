@@ -37,6 +37,8 @@
 # a little script to run through and test all of the example/manual problems
 # daltonh, 24/11/10
 
+# TODO: fix setup_data directory to deal with successful and unsuccessful runs
+
 # usage: from the working directory run ./misc/test_suite/test_suite
 #-------------------------------------------------------------------------------
 # usage function

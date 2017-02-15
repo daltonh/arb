@@ -1,13 +1,12 @@
+#(comment created during unwrap): new block = root_input.arb: new_file = 1
 # root_input.arb file created by the arb script
 ##################################################################################
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: heat_conduction_around_ellipse.arb
-#(hash added during unwrap)INCLUDE_WORKING "heat_conduction_around_ellipse.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../heat_conduction_around_ellipse.arb without any search/replace combinations
+   #(comment created during unwrap): new block = heat_conduction_around_ellipse.arb: new_file = 1
+   #(hash inserted during unwrap)INCLUDE_WORKING "heat_conduction_around_ellipse.arb"
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -91,6 +90,4 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_OUTPUT <T average> [K] "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
    
    #-------------------------------------------------------------------
-   #(comment generated during unwrap) INCLUDE finished for ../heat_conduction_around_ellipse.arb
-   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

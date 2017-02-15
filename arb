@@ -164,6 +164,11 @@ SCROUTPUT="output/output.scr";
 KMP_STACKSIZE="97660k"; # http://wiki.seas.harvard.edu/geos-chem/index.php/Intel_Fortran_Compiler#Resetting_stacksize_for_Linux
 ulimit -s 65000; # set stacksize using ulimit, up to apparently hard limit that exists on osx
 
+
+# TODO: get location of script
+# from http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
+# ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
 #---------------------------
 # loop through options and set flags to say what has to be done
 
