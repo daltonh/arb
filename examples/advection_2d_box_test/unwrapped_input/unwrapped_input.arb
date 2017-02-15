@@ -1,13 +1,12 @@
+#(comment created during unwrap): new block = root_input.arb: new_file = 1
 # root_input.arb file created by the arb script
 ##################################################################################
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: advection_2d_box_test.arb
-#(hash added during unwrap)INCLUDE_WORKING "advection_2d_box_test.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../advection_2d_box_test.arb without any search/replace combinations
+   #(comment created during unwrap): new block = advection_2d_box_test.arb: new_file = 1
+   #(hash inserted during unwrap)INCLUDE_WORKING "advection_2d_box_test.arb"
    # arb by dalton harvie
    # file equations.in
    #----------------------------------------------------------------------------
@@ -68,21 +67,19 @@ EXTERNALS "src/free_surface_functions.f90"
    # different limiter options
    
    # limiters are taken from the following template directory
-   #(hash added during unwrap)INCLUDE_TEMPLATE "advection_limiters/implicit"
-   #(comment generated during unwrap) adding new include_path ../templates/advection_limiters/implicit, making include_path array = .. ../templates/advection_limiters/implicit
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "advection_limiters/implicit"
    
    #--------------------
    # absolute limiter, applied between 0 and 1 (default values)
    
-   #(hash added during unwrap)INCLUDE "absolute_limiter" R "<phi" W "<foo"
-   #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = .. ../templates/advection_limiters/implicit
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/absolute_limiter.arb with the following search/replace combinations: replace <phi with <foo
-      # this file produces a limiter (<foo limiter>) that can be used to limit advective quantities
+      #(comment created during unwrap): new block = absolute_limiter: new_file = 1
+      #(hash inserted during unwrap)INCLUDE "absolute_limiter" 
+       
+      # this file produces a limiter (<phi limiter>) that can be used to limit advective quantities
       
       # to use these limiters for a general cell-centred variable <foo> say you need to:
       # INCLUDE_TEMPLATE "limiters_2d"
-      # INCLUDE "absolute_limiter" R <foo W <foo
+      # INCLUDE "absolute_limiter" R <phi W <foo
       # these will produce a CELL_DERIVED <foo limiter> on <allcells>
       # a byproduct is the CELL_DERIVED <foo limiter grad[l=:]> vectors which can also be reused in the advection calculation, ie
       # FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,<foo limiter>,gradient[l=1]=<foo limiter grad[l=1]>,gradient[l=2]=<foo limiter grad[l=2]>,gradient[l=3]=<foo limiter grad[l=3]>)"
@@ -90,48 +87,40 @@ EXTERNALS "src/free_surface_functions.f90"
       # these statements reference the regions <domain>, <allcells> and <allfaces> so if non-standard regions are being used these will also have to be replaced
       # the advective flux is assumed to be the face variable <u_f>, so again if this isn't used it will need to be replaced by an alternative velocity
       
-      # finally, the magnitude of the <foo> variable needs to be stored in the NONE_CONSTANT <foo magnitude>
-      # the default is that this is calculated based on the initial value for <foo>
-      # if this won't work (say <foo> is initially 0.d0) then need to set this NONE_CONSTANT explicitly
+      # finally, the magnitude of the <phi> variable needs to be stored in the NONE_CONSTANT <phi magnitude>
+      # the default is that this is calculated based on the initial value for <phi>
+      # if this won't work (say <phi> is initially 0.d0) then need to set this NONE_CONSTANT explicitly
       
       # the relative_limiter file is almost the same, except for the inclusion of the relative_limits.arb file
       
       # the only difference between 2d and 3d is in the limiter_gradients.arb file
       #--------------------------------------------------------
-      # set <foo upper bound> and <foo lower bound> using absolute limits
+      # set <phi upper bound> and <phi lower bound> using absolute limits
       
       # these are the absolute limits that phi will be bound between
       # to make one irrelevant, set it to +-<huge>
       CONSTANT <foo upper bound> 1.d0
-      # CONSTANT <foo upper bound> "<huge>"
+      # CONSTANT <phi upper bound> "<huge>"
       CONSTANT <foo lower bound> 0.d0
-      # CONSTANT <foo lower bound> "-<huge>"
+      # CONSTANT <phi lower bound> "-<huge>"
       
       #--------------------------------------------------------
       # do all the limiter calcs
       
-      #(hash added during unwrap)INCLUDE "limiter"
-      #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/limiter.arb without any search/replace combinations
+         #(comment created during unwrap): new block = limiter: new_file = 1
+         #(hash inserted during unwrap)INCLUDE "limiter"
          # vector from centre to face within each cell
-         # these will need  etc replaced either with spaces or comments, depending on which dimensions are being solved for
-         #(hash added during unwrap)INCLUDE "centre_to_face_vector"
-         #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
-            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/centre_to_face_vector.arb without any search/replace combinations
+         # these will need <<dim1comment>> etc replaced either with spaces or comments, depending on which dimensions are being solved for
+            #(comment created during unwrap): new block = centre_to_face_vector: new_file = 1
+            #(hash inserted during unwrap)INCLUDE "centre_to_face_vector"
             # vector to the face from the last cell centre
             FACE_LOCAL <xc_to_xf[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
             FACE_LOCAL <xc_to_xf[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
             FACE_LOCAL <xc_to_xf[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
-            #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/centre_to_face_vector.arb
-            #(comment generated during unwrap)--------------------------------------------------------
          
-         # calculate <foo limiter kernel> which is only limited to ensure that the kernel components are below certain maximums
-         #(hash added during unwrap)INCLUDE "kernel_limiter"
-         #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
-            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/kernel_limiter.arb without any search/replace combinations
+         # calculate <phi limiter kernel> which is only limited to ensure that the kernel components are below certain maximums
+            #(comment created during unwrap): new block = kernel_limiter: new_file = 1
+            #(hash inserted during unwrap)INCLUDE "kernel_limiter"
             # this limiter ensures that the effective kernels used to calculate the face centred quantities within each cell are below certain maximums
             # making these numbers smaller will cause the method to become more upwind
             NONE_CONSTANT <foo limiter crosskernel max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
@@ -139,29 +128,23 @@ EXTERNALS "src/free_surface_functions.f90"
             CELL_LOCAL <foo limiter crosskernel> "cellif(<crosskernel>-<foo limiter crosskernel max>,<foo limiter crosskernel max>/<crosskernel>,1.d0)"
             CELL_LOCAL <foo limiter centralkernel> "cellif(<centralkernel>-<foo limiter centralkernel max>,<foo limiter centralkernel max>/<centralkernel>,1.d0)"
             CELL_CONSTANT <foo limiter kernel> "cellmin(<foo limiter crosskernel>,<foo limiter centralkernel>)" ON <allcells>
-            #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/kernel_limiter.arb
-            #(comment generated during unwrap)--------------------------------------------------------
          
          # calculate cell centred phi gradients
-         #(hash added during unwrap)INCLUDE "limiter_gradients"
-         #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
-            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/limiter_gradients.arb without any search/replace combinations
+            #(comment created during unwrap): new block = limiter_gradients: new_file = 1
+            #(hash inserted during unwrap)INCLUDE "limiter_gradients"
             CELL_DERIVED <foo limiter grad[l=1]> "cellgrad[l=1](<foo>)*<foo limiter kernel>" ON <allcells>
             CELL_DERIVED <foo limiter grad[l=2]> "cellgrad[l=2](<foo>)*<foo limiter kernel>" ON <allcells>
             CELL_DERIVED <foo limiter grad[l=3]> "cellgrad[l=3](<foo>)*<foo limiter kernel>" ON <allcells>
-            #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/limiter_gradients.arb
-            #(comment generated during unwrap)--------------------------------------------------------
          
-         # <foo delta> is the change in phi from the lastcell to face centre, based on the unlimited gradient
+         # <phi delta> is the change in phi from the lastcell to face centre, based on the unlimited gradient
          FACE_LOCAL <foo delta> "dot(<xc_to_xf[l=:]>,faceave[lastcell](<foo limiter grad[l=:]>))"
          
-         # TODO: write order(<foo>) function to allow the following:
-         #NONE_CONSTANT <foo magnitude> "nonemagnitude(<foo>)" # this function works except that the magnitudes haven't been calculated yet when this constant is evaluated - so in summary, this line doesn't work!
+         # TODO: write order(<phi>) function to allow the following:
+         #NONE_CONSTANT <phi magnitude> "nonemagnitude(<phi>)" # this function works except that the magnitudes haven't been calculated yet when this constant is evaluated - so in summary, this line doesn't work!
          NONE_CONSTANT <foo magnitude> "cellmax(abs(<foo>),region=<allcells>)"
          NONE_CONSTANT <foo eps> "<foo magnitude>*1.d-20" # a small phi value, used to guard against divide by zero
          
-         # this is the maximum absolute <foo delta> value
+         # this is the maximum absolute <phi delta> value
          CELL_LOCAL <foo deltac> "facemax(abs(<foo delta>),default=0.d0,region=<celljfaces>)" ON <domain>
          CELL_LOCAL <foo diff> "cellmin(<foo upper bound>-<foo>,-(<foo lower bound>-<foo>))" ON <domain>
          CELL_LOCAL <foo diff bounded> "cellmax(<foo diff>,0.d0)" ON <domain>
@@ -173,23 +156,15 @@ EXTERNALS "src/free_surface_functions.f90"
          CELL_DERIVED <foo limiter> "cellif(celldelta(<domain>),<foo limiter domain>,0.d0)" ON <allcells>
          
          # overwrite various parameters that define how conservative (ie, stable) the limiter is
-         #(hash added during unwrap)INCLUDE "default_parameters"
-         #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
-            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/default_parameters.arb without any search/replace combinations
+            #(comment created during unwrap): new block = default_parameters: new_file = 1
+            #(hash inserted during unwrap)INCLUDE "default_parameters"
             # these are the parameters that are now standard (v0.50), and included at the end of the limiter file now, overwriting those in limiter.arb and kernel_limiter.arb
             NONE_CONSTANT <foo a> 4.0d0 # determines the gradient of the limiter
             NONE_CONSTANT <foo b> 0.25d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)
             NONE_CONSTANT <foo limiter crosskernel max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
             NONE_CONSTANT <foo limiter centralkernel max> 0.05d0 # the maximum multiplier for the central cell value
-            #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/default_parameters.arb
-            #(comment generated during unwrap)--------------------------------------------------------
-         #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/limiter.arb
-         #(comment generated during unwrap)--------------------------------------------------------
       
       #--------------------------------------------------------
-      #(comment generated during unwrap) INCLUDE finished for ../templates/advection_limiters/implicit/absolute_limiter.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    
    # in addition, to remove upper bound
    #NONE_CONSTANT <foo upper bound> "<huge>"
@@ -282,7 +257,4 @@ EXTERNALS "src/free_surface_functions.f90"
    
    CELL_OUTPUT <foo newtonupdate> "cellnewtonupdate(variable=<foo>)" ON <allcells>
    
-   END
-   #(comment generated during unwrap) INCLUDE finished for ../advection_2d_box_test.arb
-   #(comment generated during unwrap)--------------------------------------------------------
-##################################################################################
+   #(hash inserted during unwrap)END

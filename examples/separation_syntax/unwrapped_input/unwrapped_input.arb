@@ -1,13 +1,12 @@
+#(comment created during unwrap): new block = root_input.arb: new_file = 1
 # root_input.arb file created by the arb script
 ##################################################################################
 # the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
 EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: separation_syntax.arb
-#(hash added during unwrap)INCLUDE_WORKING "separation_syntax.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../separation_syntax.arb without any search/replace combinations
+   #(comment created during unwrap): new block = separation_syntax.arb: new_file = 1
+   #(hash inserted during unwrap)INCLUDE_WORKING "separation_syntax.arb"
    VERSION 0.42
    #-------------------------------------------------------------------
    # user-defined constants
@@ -18,9 +17,9 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE_TEMPLATE "general"
    #INCLUDE "cylindrical_reflect_r1z2"
    # or, setup basic cartesian reflect general replacements
-   #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
-   #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
-   #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
+    # comment out any references to the third dimension in any included files
+    # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
+    # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
    
    MSH_FILE "quadrant.msh"
    GLUE_FACES <west> reflect=1
@@ -72,6 +71,4 @@ EXTERNALS "src/free_surface_functions.f90"
    # test of referencing separation cell centre properties
    CELL_CONSTANT <separation_loop_ave_separation_centre_icell> "cellsum[maxseparation=3,faceseparation](<icell>,region=<allcells>)/cellsum[maxseparation=3,faceseparation](1.d0,region=<allcells>)" ON <allcells> output
    CELL_CONSTANT <icell output> "<icell>" ON <allcells> output
-   #(comment generated during unwrap) INCLUDE finished for ../separation_syntax.arb
-   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

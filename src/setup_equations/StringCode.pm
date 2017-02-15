@@ -39,7 +39,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(parse_string_code string_setup string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
 use Common;
 use Data::Alias 'alias';
 

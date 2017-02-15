@@ -67,6 +67,10 @@ my $unwrapped_indent = "   "; # amount to indent the unwrapped input file for ea
 my $unwrapped_inserted_hash = "#(hash inserted during unwrap)"; # hash to add whenever a line is not to be included in the unwrapped_input.arb file
 my $unwrapped_created_hash = "#(comment created during unwrap)"; # hash to add whenever a line is not to be included in the unwrapped_input.arb file
 
+my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
+my $default_options = ""; # default options prepended to each statement read in
+my $override_options = ""; # override options appended to each statement read in
+
 #--------------------------------------------------------------
 # parse all *.arb files - this is called from main
 sub read_input_files {
@@ -351,10 +355,6 @@ sub parse_solver_code {
 
 # sanity check that there are no newlines within the solver_code
   if ($line =~ /\n/) { syntax_problem("solver_code sent to parse_solver_code contains a newline, which is an internal error"); }
-
-  my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
-  my $default_options = ""; # default options prepended to each statement read in
-  my $override_options = ""; # override options appended to each statement read in
 
 # split off comments and extra leading/trailing spaces (noting that string replacements would have occurred since buffer processing)
   my $comments;
