@@ -63,6 +63,8 @@ usage () {
   echo "    in the working directory are used";
   echo
   echo "Possible options (consistent with long-form command line syntax (--), words are separated by -, and a preceeding --no- negates an option) :";
+  echo "  -o|--output: name of output directory to be used to store output (default output)";
+  echo "  -po|--previous-output: name of previous output directory to be used for faster restart";
   echo "  --clean: remove previous meta-programming and object files";
   echo "  --clean-compile: remove previous object files";
   echo "  --clean-setup: remove previous meta-programming files";

@@ -5,18 +5,13 @@
 # ignore everything in the root directory except for the distributable code files and directories
 /*
 !/arb
-!/build/
+!/bin/
 !/doc/
 !/examples/
 !/licence/
 !/misc/
-!/output/
-!/pack
-!/plot
 !/src/
 !/templates/
-!/tmp/
-!/track
 
 # object files
 *.[ao]
