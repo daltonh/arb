@@ -110,11 +110,11 @@ usage () {
 # function to log process statistics via pid, with basics of idea taken from http://stackoverflow.com/questions/774556/peak-memory-usage-of-a-linux-unix-process
 function logprocess {
   pid=$1; interval=$2; file=$3; mempeak=0; memcurrent=0; walltime=0;
-# echo '# "approximate walltime (s)", "peak memory usage (rss, 1024 byte units)", "memory usage (rss, 1024 byte units)", "memory usage (%)", "cputime", "cpu load (%)"' >$PROCESSLOGFILE;
+# echo '# "approximate walltime (s)", "peak memory usage (rss, 1024 byte units)", "memory usage (rss, 1024 byte units)", "memory usage (%)", "cputime", "cpu load (%)"' >$processlogfile;
 # print out column labels to be consistent with output_step.csv file, allowing existing plotting functions to be used
-  echo '"<approximate walltime>","<peak rss memory usage>","<rss memory usage>","<relative memory usage>","<cputime>","<relative cpu load>"' >>$PROCESSLOGFILE;
-  echo '"[s]","[1024 byte units]","[1024 byte units]","[%]","[h:m:s]","[%]"' >>$PROCESSLOGFILE;
-  echo "0,0,0,0,0,0" >>$PROCESSLOGFILE;
+  echo '"<approximate walltime>","<peak rss memory usage>","<rss memory usage>","<relative memory usage>","<cputime>","<relative cpu load>"' >>$processlogfile;
+  echo '"[s]","[1024 byte units]","[1024 byte units]","[%]","[h:m:s]","[%]"' >>$processlogfile;
+  echo "0,0,0,0,0,0" >>$processlogfile;
   while true; do
     sleep $interval;
     psstats="$(ps -o rss=,%mem=,cputime=,%cpu= $pid 2> /dev/null)" || break;
@@ -122,7 +122,7 @@ function logprocess {
     psstatsarray=($psstats); # convert to an array to remove unnecessary spaces and to pull out first element
     memcurrent=${psstatsarray[0]}; # first element will be rss memory
     let mempeak='memcurrent > mempeak ? memcurrent : mempeak'; # find peak memory
-    echo "$walltime,$mempeak,${psstatsarray[0]},${psstatsarray[1]},${psstatsarray[2]},${psstatsarray[3]}" >>$PROCESSLOGFILE; # output comman delimited values for css file
+    echo "$walltime,$mempeak,${psstatsarray[0]},${psstatsarray[1]},${psstatsarray[2]},${psstatsarray[3]}" >>$processlogfile; # output comman delimited values for css file
   done
   echo "INFO: peak memory usage for arb (rss) was $mempeak";
 }
@@ -131,109 +131,110 @@ function logprocess {
 
 #---------------------------
 # define some default variables
-DEBUGGER=none;
-VALGRIND=valgrind;
+debugger=none;
+valgrind=valgrind;
 
-WORKING_DIR=`pwd -P`; # directory from which the script is run
+working_dir=`pwd -P`; # directory from which the script is run
 # from http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
-BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"; # directory that holds this arb script, which determines...
-ARB_DIR="${BIN_DIR%"/bin"}"; # arb root directory, known as arb_dir
+bin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"; # directory that holds this arb script, which determines...
+arb_dir="${bin_dir%"/bin"}"; # arb root directory, known as arb_dir
 
 # stacksize for OMP runs, not properly tested but probably necessary as recursion grows under ifort
+# environment variables
 #OMP_STACKSIZE="100000000"; # not sure whether it is KMP or OMP...., so set both to very large numbers
 KMP_STACKSIZE="97660k"; # http://wiki.seas.harvard.edu/geos-chem/index.php/Intel_Fortran_Compiler#Resetting_stacksize_for_Linux
 ulimit -s 65000; # set stacksize using ulimit, up to apparently hard limit that exists on osx
-FILE_SEPARATOR="##################################################################################"
+file_separator="##################################################################################"
 
-ERRORSTATUS=0;
+errorstatus=0;
 #---------------------------
 # loop through options and set flags to say what has to be done
 
-OCLEAN=0;
-OCLEANCOMPILE=0;
-OCLEANSETUP=0;
-OSETUP=1;
-OCOMPILE=1;
-ORUN=1;
-OQUIET=0;
-OCONTINUE=0;
-ODEBUG=0;
-OOMP=0; # 0 means no omp, 1 means compile with omp support
-OOPT=1; # default is optimsation level 1
-OILP="off";
-OPARDISO="present";
-OSUITESPARSE="present";
-OMGMRES="not present";
-OPROCESSLOGGING=0; # a value greater than 0 means that process statistics will be logged at this interval (s)
-COMPILER="default";
-unset ARBFILES; # the input files that will be passed to setup_equations.pl - unset array first
-unset EXTERNALS; # a list of external fortran files that will be included in equation_module.f90
-EXTERNALS=( `ls src/*_functions.f90 2> /dev/null` ); # all functions files within the src directory get included by default
+oclean=0;
+ocleancompile=0;
+ocleansetup=0;
+osetup=1;
+ocompile=1;
+orun=1;
+oquiet=0;
+ocontinue=0;
+odebug=0;
+oomp=0; # 0 means no omp, 1 means compile with omp support
+oopt=1; # default is optimsation level 1
+oilp="off";
+opardiso="present";
+osuitesparse="present";
+omgmres="not present";
+oprocesslogging=0; # a value greater than 0 means that process statistics will be logged at this interval (s)
+compiler="default";
+unset arbfiles; # the input files that will be passed to setup_equations.pl - unset array first
+unset externals; # a list of external fortran files that will be included in equation_module.f90
+externals=( `ls src/*_functions.f90 2> /dev/null` ); # all functions files within the src directory get included by default
 
 while [[ $# > 0 ]];
 do
   case $1 in
-    "-q"|"--quiet") OQUIET=1;; # this is `actioned' below after output directory has been readied for writing
+    "-q"|"--quiet") oquiet=1;; # this is `actioned' below after output directory has been readied for writing
     "--quiet-make") echo "quiet-make option now depreciated, just use quiet instead which now captures make output too";;
-    "--clean") OCLEAN=1;;
-    "--clean-compile") OCLEANCOMPILE=1;;
-    "--clean-setup") OCLEANSETUP=1;;
-    "--setup") OSETUP=1;;
-    "--no-setup") OSETUP=0;;
-    "--compile") OCOMPILE=1;;
-    "--no-compile") OCOMPILE=0;;
-    "--run") ORUN=1;;
-    "--no-run") ORUN=0;;
-    "-c"|"--continue") OCONTINUE=1;;
-    "-d"|"--debug") ODEBUG=1; DEBUGGER="default";; # ODEBUG specifies whether code is compiled with debugging options (including -g) - valgrind is now considered as a type of debugger
-    "--no-debug") ODEBUG=0;;
-    "--compiler-gnu") COMPILER="gnu";;
-    "--compiler-intel") COMPILER="intel";;
-    "--debugger"|"--debugger-default") DEBUGGER="default"; ODEBUG=1;;
-    "--debugger-gnu") DEBUGGER="gdb"; ODEBUG=1;;
-    "--debugger-intel") DEBUGGER="idb"; ODEBUG=1;;
-    "--debugger-valgrind") DEBUGGER=${VALGRIND}; ODEBUG=1;;
-    "--debugger-none") DEBUGGER="none"; ODEBUG=1;;
-    "--no-pardiso") OPARDISO="not present";;
-    "--no-suitesparse") OSUITESPARSE="not present";;
-    "--mgmres") OMGMRES="present";;
-    "--no-mgmres") OMGMRES="not present";;
-    "--no-downloads") OSUITESPARSE="not present"; OMGMRES="not present";;
-    "--omp") OOMP=1; unset OMP_NUM_THREADS;;
-#   "--omp") OOMP=1;;
-#   "--omp"*) OOMP=1; export OMP_NUM_THREADS=${1:5};; # this extracts from character position 6 and onwards (NB ${1:6:10} would extract characters 7 -> 10 or thereabouts)
-    "--omp"*) OOMP=1; export OMP_NUM_THREADS=${1:5}; export MKL_NUM_THREADS=${1:5};; # this extracts from character position 6 and onwards (NB ${1:6:10} would extract characters 7 -> 10 or thereabouts)
-    "-pl"|"--process-logging") OPROCESSLOGGING="1";; # note, this is the interval in seconds (integer only) for logging of process statistics
-    "--process-logging"*) OPROCESSLOGGING=${1:16};;
-    "-pl"*) OPROCESSLOGGING=${1:3};;
-    "--no-process-logging") OPROCESSLOGGING=0;;
-    "-O"|"--opt") OOPT=2;; # if requested with no level, optimisation level is 2
-    "--ilp"|"--long-integer") OILP="on";;
-    "--no-opt") OOPT=0;; # this is optimisation turned off
-    "-O"?) OOPT=${1:2};;
-    "--opt"?) OOPT=${1:5};;
+    "--clean") oclean=1;;
+    "--clean-compile") ocleancompile=1;;
+    "--clean-setup") ocleansetup=1;;
+    "--setup") osetup=1;;
+    "--no-setup") osetup=0;;
+    "--compile") ocompile=1;;
+    "--no-compile") ocompile=0;;
+    "--run") orun=1;;
+    "--no-run") orun=0;;
+    "-c"|"--continue") ocontinue=1;;
+    "-d"|"--debug") odebug=1; debugger="default";; # odebug specifies whether code is compiled with debugging options (including -g) - valgrind is now considered as a type of debugger
+    "--no-debug") odebug=0;;
+    "--compiler-gnu") compiler="gnu";;
+    "--compiler-intel") compiler="intel";;
+    "--debugger"|"--debugger-default") debugger="default"; odebug=1;;
+    "--debugger-gnu") debugger="gdb"; odebug=1;;
+    "--debugger-intel") debugger="idb"; odebug=1;;
+    "--debugger-valgrind") debugger=${valgrind}; odebug=1;;
+    "--debugger-none") debugger="none"; odebug=1;;
+    "--no-pardiso") opardiso="not present";;
+    "--no-suitesparse") osuitesparse="not present";;
+    "--mgmres") omgmres="present";;
+    "--no-mgmres") omgmres="not present";;
+    "--no-downloads") osuitesparse="not present"; omgmres="not present";;
+    "--omp") oomp=1; unset omp_NUM_THREADS;;
+#   "--omp") oomp=1;;
+#   "--omp"*) oomp=1; export OMP_NUM_THREADS=${1:5};; # this extracts from character position 6 and onwards (NB ${1:6:10} would extract characters 7 -> 10 or thereabouts)
+    "--omp"*) oomp=1; export OMP_NUM_THREADS=${1:5}; export MKL_NUM_THREADS=${1:5};; # this extracts from character position 6 and onwards (NB ${1:6:10} would extract characters 7 -> 10 or thereabouts)
+    "-pl"|"--process-logging") oprocesslogging="1";; # note, this is the interval in seconds (integer only) for logging of process statistics
+    "--process-logging"*) oprocesslogging=${1:16};;
+    "-pl"*) oprocesslogging=${1:3};;
+    "--no-process-logging") oprocesslogging=0;;
+    "-O"|"--opt") oopt=2;; # if requested with no level, optimisation level is 2
+    "--ilp"|"--long-integer") oilp="on";;
+    "--no-opt") oopt=0;; # this is optimisation turned off
+    "-O"?) oopt=${1:2};;
+    "--opt"?) oopt=${1:5};;
     "--wiki") # link to the documentation and make the documentation from the markdown files
-      echo "INFO: creating link to wiki at $ROOT_DIR/doc/wiki/body/index.html";
-      ln -s $ROOT_DIR/doc/wiki/body/index.html >/dev/null 2>/dev/null ;
+      echo "INFO: creating link to wiki at $root_dir/doc/wiki/body/index.html";
+      ln -s $root_dir/doc/wiki/body/index.html >/dev/null 2>/dev/null ;
       cd doc/wiki;
-#     echo "INFO: about to make wiki in" `pwd` "with rootdir=$ROOT_DIR";
+#     echo "INFO: about to make wiki in" `pwd` "with rootdir=$root_dir";
       echo "INFO: about to make wiki in" `pwd`;
-      make all rootdir=$ROOT_DIR;
+      make all rootdir=$root_dir;
       exit;;
     "--help"|"-h") usage;;
 # TODO - additional external
-#   "--externals*".") echo "INFO: found arb input file $1"; ARBFILES[${#ARBFILES[@]}]=$1;;
+#   "--externals*".") echo "INFO: found arb input file $1"; arbfiles[${#arbfiles[@]}]=$1;;
     "--"*|"-"*) echo "ERROR: unknown option $1 passed to arb"; usage;;
     "-o|--output") # get output directory to be used
       shift;
 # note, using [[ ]] to avoid having to quote (extended test)
-      if [[ -z $1 ]]; then OUTPUT_DIR="$1"; else echo "ERROR: output directory not found after option"; usage; fi;
+      if [[ -z $1 ]]; then output_dir="$1"; else echo "ERROR: output directory not found after option"; usage; fi;
       ;;
     "-po|--previous-output") # get previous output directory to find previous setup
       shift;
-      if [[ -z $1 ]]; then PREVIOUS_OUTPUT_DIR="$1"; else echo "ERROR: previous output directory not found after option"; usage; fi;
+      if [[ -z $1 ]]; then previous_output_dir="$1"; else echo "ERROR: previous output directory not found after option"; usage; fi;
       ;;
-    *".arb"|*".in") ARBFILES[${#ARBFILES[@]}]=$1;;
+    *".arb"|*".in") arbfiles[${#arbfiles[@]}]=$1;;
     *) echo "ERROR: unknown command line entry $1"; usage;;
   esac
   shift;
@@ -243,42 +244,42 @@ done ;
 # now set variables that depend on the user-specified options
 
 # set the output and previous output directories if they haven't been set already
-if [[ -n $OUTPUT_DIR ]] ; then OUTPUT_DIR="$WORKING_DIR/output"; fi;
-if [[ -n $PREVIOUS_OUTPUT_DIR ]] ; then PREVIOUS_OUTPUT_DIR="$OUTPUT_DIR"; fi;
+if [[ -n $output_dir ]] ; then output_dir="$working_dir/output"; fi;
+if [[ -n $previous_output_dir ]] ; then previous_output_dir="$output_dir"; fi;
 
-SRC_DIR="$ARB_DIR/src";
-MISC_DIR="$ARB_DIR/misc";
-BUILD_DIR="$OUTPUT_DIR/build";
-AOUT="$BUILD_DIR/arb";
+src_dir="$arb_dir/src";
+misc_dir="$arb_dir/misc";
+build_dir="$output_dir/build";
+arb_executable="$build_dir/arb";
 
 # location of ooc temp files for out of core intel pardiso solver
-MKL_PARDISO_OOC_DIR="$BUILD_DIR/intel_pardiso_ooc";
-MKL_PARDISO_OOC_PATH="$MKL_PARDISO_OOC_DIR/intel_pardiso_ooc";
+mkl_pardiso_ooc_dir="$build_dir/intel_pardiso_ooc";
+MKL_PARDISO_OOC_PATH="$mkl_pardiso_ooc_dir/intel_pardiso_ooc"; # environment variable
 
 # environment variables that specify the location of files for the native pardiso solver
-PARDISO_LIC_PATH="$SRC_DIR/contributed/pardiso";
-LD_LIBRARY_PATH="$LD_LIBRARY_PATH:src/contributed/pardiso";
-DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:src/contributed/pardiso";
+PARDISO_LIC_PATH="$src_dir/contributed/pardiso"; # environment variable
+LD_LIBRARY_PATH="$LD_LIBRARY_PATH:src/contributed/pardiso"; # environment variable
+DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:src/contributed/pardiso"; # environment variable
 
 # location where previously run output files will be stored
-PREVIOUS_RUN="$OUTPUT_DIR/previous";
+previous_run="$output_dir/previous";
 
 # memory log file
-PROCESSLOGFILE="$OUTPUT_DIR/output_process_log.csv";
+processlogfile="$output_dir/output_process_log.csv";
 
 # quiet output file
-SCROUTPUT="$OUTPUT_DIR/output.scr";
+scroutput="$output_dir/output.scr";
 
 #---------------------------
 # ready output directory for writing
 
 # create it if it doesn't already exist
-if [ ! -d "$OUTPUT_DIR" ] ; then mkdir "$OUTPUT_DIR" ; fi ;
+if [ ! -d "$output_dir" ] ; then mkdir "$output_dir" ; fi ;
 # create link to .gitignore in the output directory if it doesn't exist already
-if [ ! -e "$OUTPUT_DIR/.gitignore" ] ; then ln -s "$MISC_DIR/git/gitignore_empty_directory" "$OUTPUT_DIR/.gitignore" ; fi ;
+if [ ! -e "$output_dir/.gitignore" ] ; then ln -s "$misc_dir/git/gitignore_empty_directory" "$output_dir/.gitignore" ; fi ;
 # always keep copy of previous output
-if [ ! -d "$PREVIOUS_RUN" ] ; then mkdir -p "$PREVIOUS_RUN" ; fi ;
-rm "$PREVIOUS_RUN/*" >/dev/null 2>/dev/null ;
+if [ ! -d "$previous_run" ] ; then mkdir -p "$previous_run" ; fi ;
+rm "$previous_run/*" >/dev/null 2>/dev/null ;
 # delete other output, debug and communication files always, quietly
 for i in fort.* output/debug*.msh output/*_warnings.txt output/*_details.txt kill stop stopback stopiter stopnewt stoptime halt dump dumpnewt dumptime
 do
@@ -287,53 +288,53 @@ done ;
 # place old output and gmsh files in previous_run directory that are needed to restart the run
 for i in output/output*.txt output/output*.csv output/output*.scr output/output*.stat output/*.msh output/*.vtk output/*.dat       
 do
-  if [ $OCONTINUE -eq 0 ] ; then
-    mv $i $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
+  if [ $ocontinue -eq 0 ] ; then
+    mv $i $previous_run/ >/dev/null 2>/dev/null ;
   else
-    cp -pR $i $PREVIOUS_RUN/ >/dev/null 2>/dev/null ;
+    cp -pR $i $previous_run/ >/dev/null 2>/dev/null ;
   fi ;
 done ;
 
 #---------------------------
 # now that output directory is ready for writing redirect stdout and stderr to output.scr
-if [ $OQUIET -eq 1 ] ; then
-  exec >> $SCROUTPUT 2>&1;
+if [ $oquiet -eq 1 ] ; then
+  exec >> $scroutput 2>&1;
 fi
 
 # now that quiet option has been dealt with, announce our arrival and list options etc
 echo "arb finite volume solver wrapper script, Copyright Dalton Harvie (see licence directory)"
 echo
 echo "INFO: for usage options, try ./arb --help"
-echo "INFO: script run with options: clean=$OCLEAN, clean-setup=$OCLEANSETUP, clean-compile=$OCLEANCOMPILE, setup=$OSETUP, compile=$OCOMPILE, run=$ORUN, quiet=$OQUIET, continue=$OCONTINUE, debug=$ODEBUG, compiler=$COMPILER, debugger=$DEBUGGER, omp=$OOMP, opt=$OOPT, process-logging=$OPROCESSLOGGING";
-echo "INFO: working_dir = $WORKING_DIR: output_dir = $OUTPUT_DIR: arb_dir = $ARB_DIR"
+echo "INFO: script run with options: clean=$oclean, clean-setup=$ocleansetup, clean-compile=$ocleancompile, setup=$osetup, compile=$ocompile, run=$orun, quiet=$oquiet, continue=$ocontinue, debug=$odebug, compiler=$compiler, debugger=$debugger, omp=$oomp, opt=$oopt, process-logging=$oprocesslogging";
+echo "INFO: working_dir = $working_dir: output_dir = $output_dir: arb_dir = $arb_dir"
 
 
 # check for input files.  If none have been set, then use any *.arb files that exist in the working directory, and failing that, any *.in files
-if [ -z "${ARBFILES[0]}" ] ; then ARBFILES=( `ls *.arb 2> /dev/null` ); fi ;
-if [ -z "${ARBFILES[0]}" ] ; then ARBFILES=( `ls *.in 2> /dev/null` ); fi ;
-echo "INFO: arb input files to be used: ${ARBFILES[@]}" ;
+if [ -z "${arbfiles[0]}" ] ; then arbfiles=( `ls *.arb 2> /dev/null` ); fi ;
+if [ -z "${arbfiles[0]}" ] ; then arbfiles=( `ls *.in 2> /dev/null` ); fi ;
+echo "INFO: arb input files to be used: ${arbfiles[@]}" ;
 # construct root_input.arb file which consists of include statements to the user's input files, in the order that they are given to this script
 rm build/root_input.arb >/dev/null 2>/dev/null ;
 echo "# root_input.arb file created by the arb script" >build/root_input.arb ;
-echo $FILE_SEPARATOR >>build/root_input.arb ;
+echo $file_separator >>build/root_input.arb ;
 # cycle through each external file including them in the root_input, so that setup_equations can decide whether they are required, and if so, whether they have changed since previously
-echo "# the following external fortran files were found by the arb script and are available for inclusion: ${EXTERNALS[@]}" >>build/root_input.arb;
-for FILE in "${EXTERNALS[@]}" ; do
-  if [ ! -e "$FILE" ] ; then echo "ERROR: the external fortran file $FILE does not exist"; exit 1; fi;
-  echo "EXTERNALS \"$FILE\"" >>build/root_input.arb ;
+echo "# the following external fortran files were found by the arb script and are available for inclusion: ${externals[@]}" >>build/root_input.arb;
+for file in "${externals[@]}" ; do
+  if [ ! -e "$file" ] ; then echo "ERROR: the external fortran file $file does not exist"; exit 1; fi;
+  echo "externals \"$file\"" >>build/root_input.arb ;
 done
-echo $FILE_SEPARATOR >>build/root_input.arb ;
-echo "# the following working directory files found by the arb script: ${ARBFILES[@]}" >>build/root_input.arb ;
-for FILE in "${ARBFILES[@]}" ; do
-  if [[ $FILE == *'.in' ]]; then echo "WARNING: the 'in' suffix on arb input files has been depreciated.  For future compatibility replace the suffix on $FILE with 'arb'."; fi
-  echo "INCLUDE_WORKING \"$FILE\"" >>build/root_input.arb ;
-  echo $FILE_SEPARATOR >>build/root_input.arb ;
+echo $file_separator >>build/root_input.arb ;
+echo "# the following working directory files found by the arb script: ${arbfiles[@]}" >>build/root_input.arb ;
+for file in "${arbfiles[@]}" ; do
+  if [[ $file == *'.in' ]]; then echo "WARNING: the 'in' suffix on arb input files has been depreciated.  For future compatibility replace the suffix on $file with 'arb'."; fi
+  echo "INCLUDE_WORKING \"$file\"" >>build/root_input.arb ;
+  echo $file_separator >>build/root_input.arb ;
 done
 echo "INFO: the file build/root_input.arb has been created" ;
 
 # create intel pardiso ooc temp directory and clear its contents
-if [ ! -d $MKL_PARDISO_OOC_DIR ] ; then mkdir -p $MKL_PARDISO_OOC_DIR ; fi ;
-rm $MKL_PARDISO_OOC_DIR/* >/dev/null 2>/dev/null ;
+if [ ! -d $mkl_pardiso_ooc_dir ] ; then mkdir -p $mkl_pardiso_ooc_dir ; fi ;
+rm $mkl_pardiso_ooc_dir/* >/dev/null 2>/dev/null ;
 
 # export any variables that are required upstream, just in case they haven't been before
 # OSTYPE and MACHTYPE are now set directly within make using uname output
@@ -355,25 +356,25 @@ echo "INFO: moving to build directory"
 cd build
 
 # do clean operations first
-if [ $OCLEAN -eq 1 ] ; then
+if [ $oclean -eq 1 ] ; then
 # do a complete clean if requested
-  make compiler=$COMPILER clean;
+  make compiler=$compiler clean;
   if [ "$?" -ne 0 ] ; then
     echo "ERROR: problem cleaning files from the build directory" ;
     cd ..
     exit 1 ;
   fi ;
 else
-  if [ $OCLEANSETUP -eq 1 ] ; then
-    make compiler=$COMPILER clean_setup;
+  if [ $ocleansetup -eq 1 ] ; then
+    make compiler=$compiler clean_setup;
     if [ "$?" -ne 0 ] ; then
       echo "ERROR: problem cleaning setup files from the build directory" ;
       cd ..
       exit 1 ;
     fi ;
   fi ;
-  if [ $OCLEANCOMPILE -eq 1 ] ; then
-    make compiler=$COMPILER clean_compile;
+  if [ $ocleancompile -eq 1 ] ; then
+    make compiler=$compiler clean_compile;
     if [ "$?" -ne 0 ] ; then
       echo "ERROR: problem cleaning compilation files from the build directory" ;
       cd ..
@@ -384,32 +385,32 @@ fi
 
 
 # compile if necessary, checking that options used last time are consistent with this time
-if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
+if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
 
   echo "INFO: compiling or setting up the arb executable"
 
 # if compilation is required then need to find compiler
-  if [ $OCOMPILE -eq 1 ] ; then
+  if [ $ocompile -eq 1 ] ; then
   # try intel compiler first
-    if [ $COMPILER = "intel" -o $COMPILER = "default" ] ; then
+    if [ $compiler = "intel" -o $compiler = "default" ] ; then
       if which ifort >/dev/null 2>/dev/null ; then
         echo "INFO: found intel compiler at `which ifort`";
-        COMPILER="intel";
+        compiler="intel";
   # find version of intel compiler
-        INTEL_VERSION=`ifort -v 2>&1`; # this should give us the version as 'ifort version 12.1.2' say - NB, this is output to stderr, so we redirect this to stdout
-        INTEL_VERSION=${INTEL_VERSION#ifort version }; # remove shortest string from the front giving '12.1.2'
-        INTEL_VERSION=${INTEL_VERSION#Version }; # format for version 11 was slightly different to versions 12 and 13 (thanks intel!)
-        INTEL_VERSION=${INTEL_VERSION%%.*}; # remove longest string from the back giving '12' or '11' or '13'
-        if [ "${#INTEL_VERSION}" -gt 2 -o "${#INTEL_VERSION}" -lt 1 ] ; then
-          echo "INFO: intel compiler version incorrectly identified as |$INTEL_VERSION|";
-          echo "INFO: length of intel compiler ${#INTEL_VERSION}";
+        intel_version=`ifort -v 2>&1`; # this should give us the version as 'ifort version 12.1.2' say - NB, this is output to stderr, so we redirect this to stdout
+        intel_version=${intel_version#ifort version }; # remove shortest string from the front giving '12.1.2'
+        intel_version=${intel_version#Version }; # format for version 11 was slightly different to versions 12 and 13 (thanks intel!)
+        intel_version=${intel_version%%.*}; # remove longest string from the back giving '12' or '11' or '13'
+        if [ "${#intel_version}" -gt 2 -o "${#intel_version}" -lt 1 ] ; then
+          echo "INFO: intel compiler version incorrectly identified as |$intel_version|";
+          echo "INFO: length of intel compiler ${#intel_version}";
           echo "WARNING: set the variable intel_version manually in the makefile to be consistent with the output of 'ifort -v'";
-          unset INTEL_VERSION
+          unset intel_version
         else
-          echo "INFO: intel compiler version identified as $INTEL_VERSION";
+          echo "INFO: intel compiler version identified as $intel_version";
         fi
       else
-        if [ $COMPILER = "intel" ] ; then
+        if [ $compiler = "intel" ] ; then
           echo "ERROR: requested intel compiler is not in the path" ;
           cd ..;
           exit 1;
@@ -417,12 +418,12 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
       fi
     fi
   # try gnu compiler second
-    if [ $COMPILER = "gnu" -o $COMPILER = "default" ] ; then
+    if [ $compiler = "gnu" -o $compiler = "default" ] ; then
       if which gfortran >/dev/null 2>/dev/null; then
         echo "INFO: found gfortran compiler at `which gfortran`";
-        COMPILER="gnu";
+        compiler="gnu";
       else
-        if [ $COMPILER = "gnu" ] ; then
+        if [ $compiler = "gnu" ] ; then
           echo "ERROR: requested gnu compiler is not in the path" ;
           cd ..;
           exit 1;
@@ -430,26 +431,26 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
       fi
     fi
   # if nothing is found 
-    if [ $COMPILER = "default" ] ; then
+    if [ $compiler = "default" ] ; then
       echo "ERROR: no compiler is present";
       cd ..;
       exit 1;
-    elif [ ! $COMPILER = "intel" -a ! $COMPILER = "gnu" ] ; then
-      echo "ERROR: unknown requested compiler $COMPILER";
+    elif [ ! $compiler = "intel" -a ! $compiler = "gnu" ] ; then
+      echo "ERROR: unknown requested compiler $compiler";
       cd ..;
       exit 1;
     fi
 
-    if [ ! $COMPILER = "intel" ] ; then
-      OILP="off"; # long integers only implemented for ifort right now
+    if [ ! $compiler = "intel" ] ; then
+      oilp="off"; # long integers only implemented for ifort right now
     fi
 
   # check to see what compiler was used last time, and if different, make clean
   # check to see whether debugging was used last time, and if different, make clean
   # check to see whether open mp was used last time, and if different, make clean
-    if [ ! -e last_compiler_was_$COMPILER -o ! -e last_compile_had_debugging_$ODEBUG -o ! -e last_compile_had_omp_$OOMP -o ! -e last_compile_had_opt_$OOPT -o ! -e last_compile_had_ilp_$OILP ] ; then
+    if [ ! -e last_compiler_was_$compiler -o ! -e last_compile_had_debugging_$odebug -o ! -e last_compile_had_omp_$oomp -o ! -e last_compile_had_opt_$oopt -o ! -e last_compile_had_ilp_$oilp ] ; then
       echo "INFO: cleaning of compilation files required as compile options different from previous run";
-      make compiler=$COMPILER clean_compile;
+      make compiler=$compiler clean_compile;
       if [ "$?" -ne 0 ] ; then
         echo "ERROR: problem cleaning compilation files from the build directory due to different compilation options" ;
         cd ..
@@ -458,18 +459,18 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
     fi
 
   # record options used this time
-    touch last_compiler_was_$COMPILER ;
-    touch last_compile_had_debugging_$ODEBUG ;
-    touch last_compile_had_omp_$OOMP ;
-    touch last_compile_had_opt_$OOPT ;
-    touch last_compile_had_ilp_$OILP ;
+    touch last_compiler_was_$compiler ;
+    touch last_compile_had_debugging_$odebug ;
+    touch last_compile_had_omp_$oomp ;
+    touch last_compile_had_opt_$oopt ;
+    touch last_compile_had_ilp_$oilp ;
 
   fi
 
 # assemble makeline and make
-  MAKELINE="make opt=$OOPT ilp=$OILP pardiso_from_arb=\"$OPARDISO\" suitesparse_from_arb=\"$OSUITESPARSE\" mgmres_from_arb=\"$OMGMRES\"";
-  if [ $OSETUP -eq 0 ] ; then
-    MAKELINE="$MAKELINE compile_only" ;
+  makeline="make opt=$oopt ilp=$oilp pardiso_from_arb=\"$opardiso\" suitesparse_from_arb=\"$osuitesparse\" mgmres_from_arb=\"$omgmres\"";
+  if [ $osetup -eq 0 ] ; then
+    makeline="$makeline compile_only" ;
   else
     if which maxima >/dev/null ; then
       echo "INFO: found maxima at `which maxima`";
@@ -478,19 +479,19 @@ if [ $OCOMPILE -eq 1 -o $OSETUP -eq 1 ] ; then
       cd ..;
       exit 1;
     fi
-    if [ $OCOMPILE -eq 0 ] ; then
-      MAKELINE="$MAKELINE setup_only" ;
+    if [ $ocompile -eq 0 ] ; then
+      makeline="$makeline setup_only" ;
     fi ;
   fi ;
-  if [ $ODEBUG -eq 1 ] ; then MAKELINE="$MAKELINE debug=on" ; fi ;
-  if [ $OOMP -eq 1 ] ; then MAKELINE="$MAKELINE omp=on" ; fi ; # if omp is greater than 1 then use open mp
-  if [ -n "${INTEL_VERSION}" ] ; then MAKELINE="$MAKELINE intel_version=$INTEL_VERSION" ; fi ;
+  if [ $odebug -eq 1 ] ; then makeline="$makeline debug=on" ; fi ;
+  if [ $oomp -eq 1 ] ; then makeline="$makeline omp=on" ; fi ; # if omp is greater than 1 then use open mp
+  if [ -n "${intel_version}" ] ; then makeline="$makeline intel_version=$intel_version" ; fi ;
 
-# echo "MAKELINE = $MAKELINE";
+# echo "makeline = $makeline";
 
-  MAKELINE="$MAKELINE compiler=$COMPILER";
-  echo "INFO: running make using commands: $MAKELINE"; echo
-  eval $MAKELINE;
+  makeline="$makeline compiler=$compiler";
+  echo "INFO: running make using commands: $makeline"; echo
+  eval $makeline;
 
   if [ "$?" -ne 0 ] ; then
     echo "ERROR: problem compiling/setting up arb using make" ;
@@ -508,57 +509,57 @@ echo "INFO: moving back to working directory"
 cd ..
 
 # finally run program
-if [ $ORUN -eq 1 ] ; then
+if [ $orun -eq 1 ] ; then
 
   echo "INFO: running arb executable"; echo
 
-  if [ ! -e $AOUT ] ; then
+  if [ ! -e $arb_executable ] ; then
     echo "ERROR: arb executable does not exist" ;
     exit 1 ;
   fi
 
-  if [ ! $DEBUGGER = "none" ] ; then # DEBUGGER specifies purely what environment code is to run, and is now strictly separate to ODEBUG
-    if [ $DEBUGGER = "default" ] ; then
-      if [ $COMPILER = "gnu" ] ; then # if DEBUGGER is not explicitly set, set it to be consistent with the compiler
-        DEBUGGER="gdb";
+  if [ ! $debugger = "none" ] ; then # debugger specifies purely what environment code is to run, and is now strictly separate to odebug
+    if [ $debugger = "default" ] ; then
+      if [ $compiler = "gnu" ] ; then # if debugger is not explicitly set, set it to be consistent with the compiler
+        debugger="gdb";
       else
-        DEBUGGER="idb";
+        debugger="idb";
       fi;
     fi;
-    if [ $DEBUGGER = "gdb" ] ; then # macports now uses ggdb to refer to gdb, so try this if gdb isn't found
-      if ! which $DEBUGGER >/dev/null ; then
-        DEBUGGER="ggdb";
+    if [ $debugger = "gdb" ] ; then # macports now uses ggdb to refer to gdb, so try this if gdb isn't found
+      if ! which $debugger >/dev/null ; then
+        debugger="ggdb";
       fi;
     fi;
-    if which $DEBUGGER >/dev/null ; then
-      echo "INFO: found $DEBUGGER at `which $DEBUGGER`";
+    if which $debugger >/dev/null ; then
+      echo "INFO: found $debugger at `which $debugger`";
     else
-      echo "ERROR: $DEBUGGER is not in the path - is it installed?" ;
+      echo "ERROR: $debugger is not in the path - is it installed?" ;
       exit 1;
     fi
-    if [ $DEBUGGER = "valgrind" ]; then
-      $DEBUGGER $AOUT --track-origins=yes --leak-check=full -v;
+    if [ $debugger = "valgrind" ]; then
+      $debugger $arb_executable --track-origins=yes --leak-check=full -v;
     else
-      $DEBUGGER -q -ex run $AOUT;
+      $debugger -q -ex run $arb_executable;
     fi
   else
-    if [ $OPROCESSLOGGING -eq 0 ] ; then
-      $AOUT; # standard invocation
-      if [ $? -ne 0 ] ; then ERRORSTATUS=2; fi # pickup exit status, noting that a nonzero value means that the code did not converge
+    if [ $oprocesslogging -eq 0 ] ; then
+      $arb_executable; # standard invocation
+      if [ $? -ne 0 ] ; then errorstatus=2; fi # pickup exit status, noting that a nonzero value means that the code did not converge
     else # invocation of job while logging process statistics
       set -m; # need to enable job control within bash to allow backgrounding and foregrounding of arb process
-      $AOUT & # initially placing arb in the background, so that we can get pid and use it to start memory logger
-      ARBPID=$!; # $! reports pid of the last backgrounded job, in this case the build/arb process
-      echo "INFO: arb pid is $ARBPID";
-      logprocess $ARBPID $OPROCESSLOGGING $PROCESSLOGFILE & # logprocess in the background
+      $arb_executable & # initially placing arb in the background, so that we can get pid and use it to start memory logger
+      arbpid=$!; # $! reports pid of the last backgrounded job, in this case the build/arb process
+      echo "INFO: arb pid is $arbpid";
+      logprocess $arbpid $oprocesslogging $processlogfile & # logprocess in the background
       fg 1 >/dev/null; # now pull job back into the foreground so that killing the script also kills the subprocess (arb)
-      if [ $? -ne 0 ] ; then ERRORSTATUS=2; fi
-      sleep $(($OPROCESSLOGGING+1)); # have to wait for a logging interval after the job has finished so that output.scr is still there when logging command writes to it (batcher may move it immediately when arb script ends)
+      if [ $? -ne 0 ] ; then errorstatus=2; fi
+      sleep $(($oprocesslogging+1)); # have to wait for a logging interval after the job has finished so that output.scr is still there when logging command writes to it (batcher may move it immediately when arb script ends)
     fi;
   fi ;
   echo "INFO: finishing running arb";
 fi ;
 
-exit $ERRORSTATUS ;
+exit $errorstatus ;
 # done
 #-------------------------------------------------------------------------------
