@@ -754,6 +754,7 @@ donest_dummy_module.o : $(donestdir)/donest_dummy_module.f90
 endif
 
 # clean all files
+# these don't need any directories specified as long as they are run from the build dir
 clean : clean_setup clean_compile
 # clean all files created during setup process
 clean_setup :
