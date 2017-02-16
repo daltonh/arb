@@ -357,7 +357,7 @@ if (output_timings) write(*,'(2(a,g10.3))') 'TIMING: total wall time = ',total_w
 ! if there was an error or earlier stop requested then exit without closing timestep
 if (ierror /= 0) then
   write(*,'(a)') "WARNING: the last output is not converged"
-  write(*,'(a)') 'INFO: a debug output file (output/debug.output.msh) is being written that contains the current values of '// &
+  write(*,'(a)') 'INFO: a debug output file (debug.output.msh) is being written that contains the current values of '// &
     'all variable components'
   call output(debug_dump=.true.)
   if (trim(output_step_file) == "timestep") call output_step(action="write",do_update_outputs=.false.)

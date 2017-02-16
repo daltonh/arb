@@ -33,6 +33,10 @@
 #
 #-------------------------------------------------------------------------
 # perl script to create equation f90 module for arb
+# on entry: arguments are
+#  1 = arb_dir
+#  2 = working_dir
+#  3 = output_dir
 # exit code: 0=signifies that either fortran was already up-to-date or that new fortran has been created (success), 1=fortran was not created (error)
 
 use strict;
@@ -59,15 +63,19 @@ use ReadInputFiles; # deals with reading the input files, including sub read_inp
 our $version="0.57";
 our $minimum_version="0.40";
 
-# now called from build directory
-our $working_dir="..";
-our $src_dir="$working_dir/src";
-our $output_dir="$working_dir/output";
-our $build_dir=".";
-our $template_dir="$working_dir/templates";
+# now called from build directory and sent these three directories
+our $arb_dir=$ARGV[0];
+our $working_dir=$ARGV[1];
+our $output_dir=$ARGV[2];
+
+# set some derived directories
+our $src_dir="$arb_dir/src";
+our $build_dir="$output_dir/build";
+our $templates_dir="$arb_dir/templates";
+our $examples_dir="$arb_dir/examples";
+
 our $setup_current_dir="$output_dir/setup_data_incomplete"; # this will be the location for output from this current run, and if successful in creating the fortran, will be renamed to setup_data
 our $setup_creation_dir="$output_dir/setup_data"; # at the end, if successful, the current run will be moved to the following location
-our $setup_old_dir="$working_dir/tmp/setup"; # remove traces of older setup directory
 our $variable_list_file = "$setup_current_dir/variable_list.txt";
 our $variable_arb_file = "$setup_current_dir/variable_list.arb";
 our $region_list_file = "$setup_current_dir/region_list.txt";
@@ -79,18 +87,20 @@ our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='/sw/bin/maxima'; # if all else fails specify the actual location - fink
 #our $maxima_bin='/usr/local/bin/maxima'; # if all else fails specify the actual location
 #our $maxima_bin='../misc/maxima_OsX/maxima'; # or the supplied script for the OsX binary, relative to the build directory
+our $maxima_dir="$setup_current_dir/maxima"; # place to dump maxima output files
 our $fortran_input_file="$build_dir/fortran_input.arb"; # input file for the fortran executable, which is in a slightly different format to the user written input files
 our $unwrapped_input_file="$setup_current_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
 our $debug_info_file="debugging_info.txt"; # this is where all the debugging info is stored from the last setup - note for this file that path is not included as it needs to be referenced after the path has changed from current to creation
 our $syntax_problems_file="$setup_current_dir/syntax_problems.txt"; # specifically for syntax related messages
 our $setup_equation_file="$build_dir/last_setup_equation_data"; # this file is used to store all of the setup equation data prior to the (expensive) fortran generation
-our $version_file="$working_dir/licence/version";
+our $version_file="$arb_dir/licence/version";
 
 # create and clear out setup directory of any files
-if (-d $setup_old_dir) { rmtree($setup_old_dir) or error_stop("could not remove depreciated $setup_old_dir"); }
 if (-d $setup_current_dir) { rmtree($setup_current_dir) or error_stop("could not remove existing $setup_current_dir"); } # using rmtree for older File::Path compatibility
 #if (! -d $setup_current_dir) { make_path($setup_current_dir) or die "ERROR: could not create $setup_current_dir\n"; }
 mkpath($setup_current_dir) or error_stop("could not create $setup_current_dir"); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
+if (-d $maxima_dir) { rmtree($maxima_dir) or error_stop("could not remove existing $maxima_dir"); } # using rmtree for older File::Path compatibility
+mkpath($maxima_dir) or error_stop("could not create $maxima_dir"); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 
 # remove stopfile from previous run if it exists
 our $stopfile="$working_dir/stop";
@@ -3485,13 +3495,13 @@ sub run_maxima_simplify {
 # initialise a new maxima_simplify_results entry
       push (@maxima_simplify_results, { "input" => $bit, "used" => 1, "tmp_file_number" => $tmp_file_number } );
 
-      open(MAXIMA, ">$setup_current_dir/tmp$tmp_file_number.maxima") or error_stop("problem opening temporary maxima file $setup_current_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??");
+      open(MAXIMA, ">$maxima_dir/tmp$tmp_file_number.maxima") or error_stop("problem opening temporary maxima file $maxima_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??");
       print MAXIMA "foo:$bit;";
-      print MAXIMA "with_stdout (\"$setup_current_dir/tmp$tmp_file_number.simp\", grind(foo));";
+      print MAXIMA "with_stdout (\"$maxima_dir/tmp$tmp_file_number.simp\", grind(foo));";
       close(MAXIMA);
-      $systemcall="$maxima_bin -b $setup_current_dir/tmp$tmp_file_number.maxima >$setup_current_dir/tmp$tmp_file_number.txt";
+      $systemcall="$maxima_bin -b $maxima_dir/tmp$tmp_file_number.maxima >$maxima_dir/tmp$tmp_file_number.txt";
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
-      open(SIMP, "<$setup_current_dir/tmp$tmp_file_number.simp") or do {
+      open(SIMP, "<$maxima_dir/tmp$tmp_file_number.simp") or do {
         print "ERROR: problem in run_maxima_simplify processing the following mequation (maxima equation):\n'$bit'\n".
           "  This equation originated from $otype variable $variable{$otype}[$omvar]{name} and this\n".
           "  error indicates that maxima had problems processing this equation.  All variables that\n".
@@ -3499,9 +3509,9 @@ sub run_maxima_simplify {
           "  variables appear in the above as their original names (e.g. <my variable>) then\n".
           "  check their equations as there is some problem with their definition (maybe a typo?).\n".
           "  Also check that any mathematical functions and syntax used in the above are compatible with maxima.\n";
-        print "  Maxima input lines are contained in the file $setup_current_dir/tmp$tmp_file_number.maxima\n";
-        print "  Maxima processing output contained in the file $setup_current_dir/tmp$tmp_file_number.txt\n";
-        print "  Maxima output lines are contained in the file $setup_current_dir/tmp$tmp_file_number.simp\n";
+        print "  Maxima input lines are contained in the file $maxima_dir/tmp$tmp_file_number.maxima\n";
+        print "  Maxima processing output contained in the file $maxima_dir/tmp$tmp_file_number.txt\n";
+        print "  Maxima output lines are contained in the file $maxima_dir/tmp$tmp_file_number.simp\n";
         print DEBUG "ERROR: problem in run_maxima_simplify processing the following mequation:\n'$bit'\n";
         error_stop("problem in run_maxima_simplify processing the following mequation:\n'$bit'");
       };
@@ -4094,7 +4104,7 @@ sub run_maxima_fortran {
 # initialise a new maxima_fortran_results entry
     push (@maxima_fortran_results, { "input" => $bit, "used" => 1, "tmp_file_number" => $tmp_file_number } );
 
-    open(MAXIMA, ">$setup_current_dir/tmp$tmp_file_number.maxima") or error_stop("problem opening temporary maxima file $setup_current_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??");
+    open(MAXIMA, ">$maxima_dir/tmp$tmp_file_number.maxima") or error_stop("problem opening temporary maxima file $maxima_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??");
     print MAXIMA "load(f90);";
     print MAXIMA "gradef(heaviside(x),0);"; # define derivative of heaviside function to be zero
     print MAXIMA "gradef(signum(x),0);"; # define derivative of maxima sign function to be zero (sign of x)
@@ -4102,11 +4112,11 @@ sub run_maxima_fortran {
     print MAXIMA "gradef(mod(x,y),1,x*log(y));"; # define derivative of maxima mod function - second element is wrt x, third element is wrt y (remainder when x is divided by y)
     print MAXIMA "gradef(log10(x),1/(x*float(log(10))));"; # define derivative of log10
     print MAXIMA "foo:$bit;";
-    print MAXIMA "with_stdout (\"$setup_current_dir/tmp$tmp_file_number.fortran\", f90(foo));";
+    print MAXIMA "with_stdout (\"$maxima_dir/tmp$tmp_file_number.fortran\", f90(foo));";
     close(MAXIMA);
-    $systemcall="$maxima_bin -b $setup_current_dir/tmp$tmp_file_number.maxima >$setup_current_dir/tmp$tmp_file_number.txt";
+    $systemcall="$maxima_bin -b $maxima_dir/tmp$tmp_file_number.maxima >$maxima_dir/tmp$tmp_file_number.txt";
     (!(system("$systemcall"))) or error_stop("could not $systemcall");
-    open(FORTRAN, "<$setup_current_dir/tmp$tmp_file_number.fortran") or do {
+    open(FORTRAN, "<$maxima_dir/tmp$tmp_file_number.fortran") or do {
       print "ERROR: problem in run_maxima_fortran processing the following mequation (maxima equation):\n'$bit'\n".
         "  This equation originated from $otype variable $variable{$otype}[$omvar]{name} and this\n".
         "  error indicates that maxima had problems processing this equation.  All variables that\n".
@@ -4116,9 +4126,9 @@ sub run_maxima_fortran {
         "  Also check that any mathematical functions and syntax used in the above are compatible with\n".
         "  maxima and the f90 package.  Finally, if a diff (derivative) is requested, check that the\n".
         "  derivative exists and that maxima is actually able to calculate it.\n";
-      print "  Maxima input lines are contained in the file $setup_current_dir/tmp$tmp_file_number.maxima\n";
-      print "  Maxima processing output contained in the file $setup_current_dir/tmp$tmp_file_number.txt\n";
-      print "  Maxima output lines are contained in the file $setup_current_dir/tmp$tmp_file_number.fortran\n";
+      print "  Maxima input lines are contained in the file $maxima_dir/tmp$tmp_file_number.maxima\n";
+      print "  Maxima processing output contained in the file $maxima_dir/tmp$tmp_file_number.txt\n";
+      print "  Maxima output lines are contained in the file $maxima_dir/tmp$tmp_file_number.fortran\n";
       print DEBUG "ERROR: problem in run_maxima_fortran processing the following mequation:\n$bit\n";
       error_stop("problem in run_maxima_fortran processing the following mequation:\n$bit");
     };
@@ -4140,9 +4150,9 @@ sub run_maxima_fortran {
         "  It could be a typo in your input file.  If not and the function is what you intended, maxima may not be\n".
         "  able to differentiate it for some reason.  Consider rewriting the equation in terms of alternative\n".
         "  functions that maxima can handle.  Also try to do the calculations in maxima separately to see what its capabilities are.\n";
-      print "  Maxima input lines are contained in the file $setup_current_dir/tmp$tmp_file_number.maxima\n";
-      print "  Maxima processing output contained in the file $setup_current_dir/tmp$tmp_file_number.txt\n";
-      print "  Maxima output lines are contained in the file $setup_current_dir/tmp$tmp_file_number.fortran\n";
+      print "  Maxima input lines are contained in the file $maxima_dir/tmp$tmp_file_number.maxima\n";
+      print "  Maxima processing output contained in the file $maxima_dir/tmp$tmp_file_number.txt\n";
+      print "  Maxima output lines are contained in the file $maxima_dir/tmp$tmp_file_number.fortran\n";
       print DEBUG "ERROR: problem in run_maxima_fortran processing the following mequation:\n$bit\n";
       error_stop("problem in run_maxima_fortran processing the following mequation:\n$bit");
     }

@@ -1156,7 +1156,7 @@ equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_
           'unknown variables is zero (or very small).  Note that every equation must depend on atleast one unknown variable '// &
           'at all times, otherwise the jacobian has a zero row and is singular.  One possibility is that one of the variables '// &
           'used has the option ''noderivative'' set explicitly or implicitly (by being an output variable for example).  You '// &
-          'may be able to find more clues in the output/convergence_details.txt file, created if convergence_details_file '// &
+          'may be able to find more clues in the convergence_details.txt file, created if convergence_details_file '// &
           'is set to true in general_module.f90.  As a last resort set debug = .true. in subroutine update_magnitudes.'
         ierror = 1
         cycle equation_magnitude_loop

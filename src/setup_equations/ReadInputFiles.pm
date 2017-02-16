@@ -501,10 +501,10 @@ sub parse_solver_code {
         }
       } elsif ($include_type eq "template") {
   # the following would only check in the templates directory
-  #         ($found_name,$found_type) = check_for_arbfile_or_dir($::template_dir.'/'.$new_file);
+  #         ($found_name,$found_type) = check_for_arbfile_or_dir($::templates_dir.'/'.$new_file);
   # whereas this cycles through all subdirectories of the templates directory, using a depth-prioritised search
   # as file paths are relative to the build directory, don't chdir is required to reference filename
-        find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$::template_dir);
+        find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$::templates_dir);
         if (empty($found_name)) {
           syntax_problem("could not find $new_file that is referenced in an INCLUDE_TEMPLATE statement in any of template directories: $filelinelocator");
         }
@@ -1430,7 +1430,7 @@ sub perform_string_replacements {
 #-------------------------------------------------------------------------------
 # this is a little support routine used by find above
 sub wanted {
-# calling command: find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$template_dir);
+# calling command: find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$templates_dir);
   my $new_file = $_[0];
   my $found_name = $_[1];
   my $found_type = $_[2];

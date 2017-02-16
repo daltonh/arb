@@ -192,7 +192,7 @@ if (debug) debug_sparse = .true.
 
 if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine setup_kernels'
 
-filename = "output/kernel_warnings.txt"
+filename = trim(output_dir)//"kernel_warnings.txt"
 open(fwarn,file=trim(filename),status='replace',iostat=ierror)
 if (ierror /= 0) call error_stop('problem opening file '//trim(filename))
 
@@ -905,7 +905,7 @@ close(fwarn)
 if (kernel_details_file) then
   if (debug_sparse.or..true.) write(*,'(a)') 'INFO: writing kernel details to kernel_details.txt file'
 
-  filename = "output/kernel_details.txt"
+  filename = trim(output_dir)//"kernel_details.txt"
   open(fdetail,file=trim(filename),status='replace',iostat=ierror)
   if (ierror /= 0) then
     write(*,*) 'ERROR: problem opening file ',filename

@@ -305,13 +305,13 @@ files_to_delete=(
   'dump*'
 );
 files_to_keep=(
-  '$output_dir/output*.txt'
-  '$output_dir/output*.csv'
-  '$output_dir/output*.scr'
-  '$output_dir/output*.stat'
-  '$output_dir/*.msh'
-  '$output_dir/*.vtk'
-  '$output_dir/*.dat'
+  "$output_dir/output*.txt"
+  "$output_dir/output*.csv"
+  "$output_dir/output*.scr"
+  "$output_dir/output*.stat"
+  "$output_dir/*.msh"
+  "$output_dir/*.vtk"
+  "$output_dir/*.dat"
 );
 
 #------------------
@@ -375,13 +375,19 @@ rm "$mkl_pardiso_ooc_dir/*" >/dev/null 2>/dev/null ;
 for i in "${files_to_delete[@]}" ; do rm $i >/dev/null 2>/dev/null ; done ;
 
 # keep copy of previous output if we aren't starting from a previous_output_dir
+echo "keeper files: $previous_run";
 if [ -z "$previous_output_dir" ] ; then
   if [ ! -d "$previous_run" ] ; then mkdir -p "$previous_run" ; fi ;
   rm "$previous_run/*" >/dev/null 2>/dev/null ;
   # place old output and gmsh files in previous_run directory that are needed to restart the run
   for i in "${files_to_keep[@]}" ; do
+    echo files_to_keep = $i; 
+    echo ls = `ls $i`;
+    j=(${i});
+    echo j = "${j[@]}";
     if [ $ocontinue -eq 0 ] ; then
-      mv "$i" "$previous_run/" >/dev/null 2>/dev/null ;
+#     mv "$i" "$previous_run/" >/dev/null 2>/dev/null ;
+      mv $i "$previous_run/" ;
     else
       cp -pR "$i" "$previous_run/" >/dev/null 2>/dev/null ;
     fi ;
@@ -447,35 +453,36 @@ echo "INFO: the file $root_input_file has been created" ;
 echo "INFO: moving to build directory"
 cd "$build_dir";
 
-# do clean operations first (which don't need directories specified)
+###############################################
+# do clean operations first (which don't need directories or other variables specified)
 if [ $oclean -eq 1 ] ; then
 # do a complete clean if requested
-  make compiler=$compiler clean;
+  make clean;
   if [ "$?" -ne 0 ] ; then
     echo "ERROR: problem cleaning files from the build directory" ;
-    cd ..
+    cd "$working_dir";
     exit 1 ;
   fi ;
 else
   if [ $ocleansetup -eq 1 ] ; then
-    make compiler=$compiler clean_setup;
+    make clean_setup;
     if [ "$?" -ne 0 ] ; then
       echo "ERROR: problem cleaning setup files from the build directory" ;
-      cd ..
+      cd "$working_dir";
       exit 1 ;
     fi ;
   fi ;
   if [ $ocleancompile -eq 1 ] ; then
-    make compiler=$compiler clean_compile;
+    make clean_compile;
     if [ "$?" -ne 0 ] ; then
       echo "ERROR: problem cleaning compilation files from the build directory" ;
-      cd ..
+      cd "$working_dir";
       exit 1 ;
     fi ;
   fi
 fi
 
-
+###############################################
 # compile if necessary, checking that options used last time are consistent with this time
 if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
 
@@ -504,8 +511,7 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
       else
         if [ $compiler = "intel" ] ; then
           echo "ERROR: requested intel compiler is not in the path" ;
-          cd ..;
-          exit 1;
+          cd "$working_dir"; exit 1;
         fi
       fi
     fi
@@ -517,20 +523,17 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
       else
         if [ $compiler = "gnu" ] ; then
           echo "ERROR: requested gnu compiler is not in the path" ;
-          cd ..;
-          exit 1;
+          cd "$working_dir"; exit 1;
         fi
       fi
     fi
   # if nothing is found 
     if [ $compiler = "default" ] ; then
       echo "ERROR: no compiler is present";
-      cd ..;
-      exit 1;
+      cd "$working_dir"; exit 1;
     elif [ ! $compiler = "intel" -a ! $compiler = "gnu" ] ; then
       echo "ERROR: unknown requested compiler $compiler";
-      cd ..;
-      exit 1;
+      cd "$working_dir"; exit 1;
     fi
 
     if [ ! $compiler = "intel" ] ; then
@@ -545,8 +548,7 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
       make compiler=$compiler clean_compile;
       if [ "$?" -ne 0 ] ; then
         echo "ERROR: problem cleaning compilation files from the build directory due to different compilation options" ;
-        cd ..
-        exit 1 ;
+        cd "$working_dir"; exit 1 ;
       fi ;
     fi
 
@@ -560,7 +562,7 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
   fi
 
 # assemble makeline and make
-  makeline="make opt=$oopt ilp=$oilp pardiso_from_arb=\"$opardiso\" suitesparse_from_arb=\"$osuitesparse\" mgmres_from_arb=\"$omgmres\"";
+  makeline="make opt=$oopt ilp=$oilp pardiso_from_arb=\"$opardiso\" suitesparse_from_arb=\"$osuitesparse\" mgmres_from_arb=\"$omgmres\" arb_dir=\"$arb_dir\" working_dir=\"$working_dir\" output_dir=\"$output_dir\"";
   if [ $osetup -eq 0 ] ; then
     makeline="$makeline compile_only" ;
   else
@@ -568,8 +570,7 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
       echo "INFO: found maxima at `which maxima`";
     else
       echo "ERROR: maxima is not in the path - is it installed?" ;
-      cd ..;
-      exit 1;
+      cd "$working_dir"; exit 1;
     fi
     if [ $ocompile -eq 0 ] ; then
       makeline="$makeline setup_only" ;
@@ -587,8 +588,7 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
 
   if [ "$?" -ne 0 ] ; then
     echo "ERROR: problem compiling/setting up arb using make" ;
-    cd ..
-    exit 1 ;
+    cd "$working_dir"; exit 1 ;
   else
     echo "INFO: arb make/setup successful" ;
   fi ;
@@ -598,8 +598,9 @@ fi ;
 
 # move back to working directory
 echo "INFO: moving back to working directory"
-cd ..
+cd "$working_dir";
 
+###############################################
 # finally run program
 if [ $orun -eq 1 ] ; then
 

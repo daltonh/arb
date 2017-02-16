@@ -184,7 +184,7 @@ end if
 if (region_details_file) then
   if (debug_sparse) write(*,*) 'INFO: writing region details to region_details.txt file'
 
-  filename = "output/region_details.txt"
+  filename = trim(output_dir)//"region_details.txt"
   open(fdetail,file=trim(filename),status='replace',iostat=ierror)
   if (ierror /= 0) call error_stop('problem opening file '//trim(filename))
 
@@ -1033,7 +1033,7 @@ end if
 if (link_details_file) then
   if (debug) write(*,*) 'writing region details to region_details.txt file'
 
-  filename = "output/link_details.txt"
+  filename = trim(output_dir)//"link_details.txt"
   open(fdetail,file=trim(filename),status='replace',iostat=ierror)
   if (ierror /= 0) call error_stop('problem opening file '//trim(filename))
 

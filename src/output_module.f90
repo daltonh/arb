@@ -179,7 +179,7 @@ end do
 
 !----------------------------------------------------
 ! open output file
-filename = "output/output.txt"
+filename = trim(output_dir)//"output.txt"
 therel = .false.
 inquire (file=trim(filename),exist=therel)
 open(foutput,file=trim(filename),access='append',iostat=error)
@@ -318,7 +318,7 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine output_stat'
 
-filename = "output/output.stat"
+filename = trim(output_dir)//"output.stat"
 therel = .false.
 inquire (file=trim(filename),exist=therel)
 open(foutput,file=trim(filename),access='append',iostat=error)
@@ -526,7 +526,7 @@ filename = trim(filename)//'.'//fileformatl
 
 ! create latest link before the filename has the leading directory
 if (.not.debug_dump) then
-  linkname = "output/latest."//trim(gmesh(gmesh_number)%basename)
+  linkname = trim(output_dir)//"latest."//trim(gmesh(gmesh_number)%basename)
   if (centring /= 'all')  linkname = trim(linkname)//'.'//centring
   linkname = trim(linkname)//'.'//fileformatl
   write(system_command,'(a)') 'ln -sf '//trim(filename)//' '//trim(linkname)
@@ -534,7 +534,7 @@ if (.not.debug_dump) then
 end if
 
 ! add leading directory and open file
-filename = "output/"//trim(filename)
+filename = trim(output_dir)//trim(filename)
 open(foutput,file=trim(filename),status='replace',iostat=error)
 if (error /= 0) call error_stop('problem opening file '//trim(filename))
 
@@ -997,8 +997,7 @@ if (trim(action) == "setup") then
   end if
 
 ! open file
-! filename = "output/output.step"
-  filename = "output/output_step.csv"
+  filename = trim(output_dir)//"output_step.csv"
   therel = .false.
   inquire (file=trim(filename),exist=therel)
   open(foutputstep,file=trim(filename),access='append',iostat=error)

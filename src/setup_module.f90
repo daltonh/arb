@@ -60,6 +60,10 @@ logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine setup'
 
+if (debug) write(*,*) 'calling setup_dirs'
+
+call setup_dirs ! setup the various file/dir locations
+
 if (convergence_details_file) then
 
   if (debug) write(*,*) 'calling setup_convergence_file'
@@ -115,6 +119,21 @@ if (debug) write(*,'(a/80(1h-))') 'subroutine setup'
 end subroutine setup
 
 !-----------------------------------------------------------------
+! get the output_dir details from the executable path
+
+subroutine setup_dirs
+
+use general_module
+! find output_dir that this executable is in
+call get_command_argument(0,output_dir) ! this will place the path to the executable from the working dir in the variable output_dir
+! now remove build/arb to leave the output dir
+output_dir=output_dir(1:len_trim(output_dir)-9)
+input_file=trim(output_dir)//"build/fortran_input.arb"
+write(*,'(a)') 'INFO: output_dir = '//trim(output_dir)
+
+end subroutine setup_dirs
+
+!-----------------------------------------------------------------
 
 subroutine setup_convergence_file
 
@@ -123,7 +142,7 @@ character(len=100) :: filename
 integer :: ierror
 
 ! open convergence output file if requested
-filename = "output/convergence_details.txt"
+filename = trim(output_dir)//"convergence_details.txt"
 open(fconverge,file=trim(filename),access='append',iostat=ierror)
 if (ierror /= 0) call error_stop('problem opening file '//trim(filename))
 
@@ -151,7 +170,7 @@ logical, parameter :: debug = .false.
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_input_file'
 
 ! push default mesh (index 0) which will include everything
-call push_gmesh(filename='output/output.msh')
+call push_gmesh(filename=trim(output_dir)//'output.msh')
 
 write(*,'(a)') "INFO: reading simulation information from arb input file "//trim(input_file)
 open(unit=finput,file=trim(input_file),status='old',iostat=ierror)
@@ -1090,7 +1109,7 @@ write(*,fmt=formatline) ' CELLS: itotal = ',itotal,': idomain = ',idomain,': ibo
 if (mesh_details_file) then
   if (debug) write(*,*) 'writing mesh details to mesh_details.txt file'
 
-  filename = "output/mesh_details.txt"
+  filename = trim(output_dir)//"mesh_details.txt"
   open(fdetail,file=trim(filename),status='replace',iostat=ierror)
   if (ierror /= 0) call error_stop('problem opening file '//trim(filename))
 

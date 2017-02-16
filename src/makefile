@@ -77,6 +77,11 @@ suitesparse_from_arb = present
 # use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
 mgmres_from_arb = present
 
+# various directories that are dragged in from arb script
+arb_dir =
+working_dir =
+output_dir =
+
 #------------------------------------------------------------------------------
 # variables below this should be automagically set within this makefile
 
@@ -335,24 +340,26 @@ else
   logme =
 endif
 
-srcdir = ../src
+# setup various dir variables
+setup_equations_dirs = "$(arb_dir)" "$(working_dir)" "$(output_dir)"
+src_dir = $(arb_dir)/src
 
-vpath	%.f90	$(srcdir)
-vpath	%.f	$(srcdir)
+vpath	%.f90	$(src_dir)
+vpath	%.f	$(src_dir)
 
 # object files are derived here based on source files
-#objects := $(patsubst %.f,%.o,$(patsubst %.f90,%.o,$(notdir $(wildcard $(srcdir)/*.f*))))
-#objects := $(patsubst %.f90,%.o,$(notdir $(wildcard $(srcdir)/*.f90)))
+#objects := $(patsubst %.f,%.o,$(patsubst %.f90,%.o,$(notdir $(wildcard $(src_dir)/*.f*))))
+#objects := $(patsubst %.f90,%.o,$(notdir $(wildcard $(src_dir)/*.f90)))
 objects = equation_module.o general_module.o main.o setup_module.o solver_module.o gmesh_module.o output_module.o kernel_module.o region_module.o linear_module.o
 
 # setup_equations_src lists all perl code files (.pl and .pm) that setup_equations.pl depends upon, including setup_equations.pl itself
-#setup_equations_src := $(notdir $(wildcard $(srcdir)/setup_equations/*.p?))
-setup_equations_src := $(wildcard $(srcdir)/setup_equations/*.p?)
+#setup_equations_src := $(notdir $(wildcard $(src_dir)/setup_equations/*.p?))
+setup_equations_src := $(wildcard $(src_dir)/setup_equations/*.p?)
 
 #----------------
 # check for existence of pardiso (native, not intel mkl version) libraries
 # these pardiso libraries all seem to run in omp, so link in fopenmp with all of them
-pardisodir := $(srcdir)/contributed/pardiso
+pardisodir := $(src_dir)/contributed/pardiso
 oldlibs := $(libs)
 ifeq "$(strip $(pardiso))" "present"
   ifeq "$(os_type)" "Darwin"
@@ -436,7 +443,7 @@ endif
 
 #----------------
 # setup numerical recipes interface module
-numrecdir = $(srcdir)/contributed/numerical_recipes
+numrecdir = $(src_dir)/contributed/numerical_recipes
 ifeq "$(strip $(numerical_recipes))" "present"
   ifeq "$(and $(wildcard $(numrecdir)/dludcmp.f), $(wildcard $(numrecdir)/dlubksb.f), $(wildcard $(numrecdir)/dsvdcmp.f), $(wildcard $(numrecdir)/dpythag.f) )" ""
     numerical_recipes = not present
@@ -473,7 +480,7 @@ endif
 #----------------
 # check for existence of hsl_ma28d routines and setup variables
 ifeq "$(strip $(hsl_ma28d))" "present"
-  ifeq "$(and $(wildcard $(srcdir)/contributed/hsl_ma28d/ma28d.f), $(wildcard $(srcdir)/contributed/hsl_ma28d/ddeps.f) )" ""
+  ifeq "$(and $(wildcard $(src_dir)/contributed/hsl_ma28d/ma28d.f), $(wildcard $(src_dir)/contributed/hsl_ma28d/ddeps.f) )" ""
     hsl_ma28d = not present
   endif
 endif
@@ -523,7 +530,7 @@ ifeq "$(strip $(suitesparse))" "present"
   endif
 
 endif
-suitesparsedir = $(srcdir)/contributed/suitesparse
+suitesparsedir = $(src_dir)/contributed/suitesparse
 ifeq "$(strip $(suitesparse))" "present"
   objects += suitesparse_module.o umfpack.o
   oldlibs := $(libs)
@@ -542,7 +549,7 @@ endif
 
 #----------------
 # check for existence of higham88_donest routines and setup variables
-donestdir = $(srcdir)/contributed/higham88_donest
+donestdir = $(src_dir)/contributed/higham88_donest
 ifeq "$(strip $(donest))" "present"
   ifeq "$(wildcard $(donestdir)/donest.f)" ""
     donest = not present
@@ -602,7 +609,7 @@ delete_files :
   
 # check whether equation_module.f90 has to be remade because equations.in or constants.in has changed, and do so if necessary
 check_equations :
-	../src/setup_equations/setup_equations.pl
+	$(src_dir)/setup_equations/setup_equations.pl $(setup_equations_dirs)
   
 # dynamic variables:
 # $^ is first prerequisit
@@ -618,11 +625,11 @@ main.o:	main.f90 general_module.o equation_module.o setup_module.o solver_module
 general_module.o: general_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
-# this will remake equation_module.f90 if there are changes to the template or setup_equations.pl only
-# changes in the *.in files are picked up via the check_equations entry above
-equation_module.f90: ../src/equation_module_template.f90 $(setup_equations_src)
+# this will remake equation_module.f90 if there are changes to the template or setup_equations_src files only
+# changes in the *.arb files are picked up via the check_equations entry above
+equation_module.f90: $(src_dir)/equation_module_template.f90 $(setup_equations_src)
 	rm -f last_setup_equation_data
-	../src/setup_equations/setup_equations.pl
+	$(src_dir)/setup_equations/setup_equations.pl $(setup_equations_dirs)
 
 gmesh_module.o: gmesh_module.f90 general_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@
@@ -652,14 +659,14 @@ intel_mkl_solver.o:	$(intel_mkl_subroutine)
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
 ifeq "$(strip $(hsl_ma28d))" "present"
-hsl_ma28d_module.o : $(srcdir)/contributed/hsl_ma28d/hsl_ma28d_module.f90
+hsl_ma28d_module.o : $(src_dir)/contributed/hsl_ma28d/hsl_ma28d_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
-hsl_ma28d.o : $(srcdir)/contributed/hsl_ma28d/ma28d.f 
+hsl_ma28d.o : $(src_dir)/contributed/hsl_ma28d/ma28d.f 
 	$(fcomp) $(c77flags) $< $(logme) -o $@
-hsl_ma28d_ddeps.o : $(srcdir)/contributed/hsl_ma28d/ddeps.f 
+hsl_ma28d_ddeps.o : $(src_dir)/contributed/hsl_ma28d/ddeps.f 
 	$(fcomp) $(c77flags) $< $(logme) -o $@
 else
-hsl_ma28d_dummy_module.o : $(srcdir)/contributed/hsl_ma28d/hsl_ma28d_dummy_module.f90
+hsl_ma28d_dummy_module.o : $(src_dir)/contributed/hsl_ma28d/hsl_ma28d_dummy_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 endif
 
@@ -684,38 +691,38 @@ suitesparse_dummy_module.o : $(suitesparsedir)/suitesparse_dummy_module.f90
 endif
 
 ifeq "$(strip $(intel_pardiso))" "present"
-intel_pardiso_module.o : $(srcdir)/contributed/intel_pardiso/intel_pardiso_module.f90
+intel_pardiso_module.o : $(src_dir)/contributed/intel_pardiso/intel_pardiso_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 else
-intel_pardiso_dummy_module.o : $(srcdir)/contributed/intel_pardiso/intel_pardiso_dummy_module.f90
+intel_pardiso_dummy_module.o : $(src_dir)/contributed/intel_pardiso/intel_pardiso_dummy_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 endif
 
 ifeq "$(strip $(mgmres))" "present"
-$(srcdir)/contributed/mgmres/mgmres_solver.f90 :  		
-	make -C $(srcdir)/contributed/mgmres
-mgmres_solver.o : $(srcdir)/contributed/mgmres/mgmres_solver.f90
+$(src_dir)/contributed/mgmres/mgmres_solver.f90 :  		
+	make -C $(src_dir)/contributed/mgmres
+mgmres_solver.o : $(src_dir)/contributed/mgmres/mgmres_solver.f90
 	$(fcomp) $(cflagsmgmres) $< $(logme) -o $@
-mgmres_module.o : $(srcdir)/contributed/mgmres/mgmres_module.f90
+mgmres_module.o : $(src_dir)/contributed/mgmres/mgmres_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 else
-mgmres_dummy_module.o : $(srcdir)/contributed/mgmres/mgmres_dummy_module.f90
+mgmres_dummy_module.o : $(src_dir)/contributed/mgmres/mgmres_dummy_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 endif
 
 ifeq "$(strip $(pardiso))" "present"
-pardiso_module.o : $(srcdir)/contributed/pardiso/pardiso_module.f90
+pardiso_module.o : $(src_dir)/contributed/pardiso/pardiso_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 else
-pardiso_dummy_module.o : $(srcdir)/contributed/pardiso/pardiso_dummy_module.f90
+pardiso_dummy_module.o : $(src_dir)/contributed/pardiso/pardiso_dummy_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 endif
 
 ifeq "$(strip $(lapack))" "present"
-lapack_module.o : $(srcdir)/contributed/lapack/lapack_module.f90
+lapack_module.o : $(src_dir)/contributed/lapack/lapack_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 else
-lapack_dummy_module.o : $(srcdir)/contributed/lapack/lapack_dummy_module.f90
+lapack_dummy_module.o : $(src_dir)/contributed/lapack/lapack_dummy_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 endif
 
