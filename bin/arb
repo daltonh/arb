@@ -293,26 +293,28 @@ scroutput="$output_dir/output.scr";
 # location of ooc temp files for out of core intel pardiso solver
 mkl_pardiso_ooc_dir="$build_dir/intel_pardiso_ooc";
 
-# note, files_to_delete is processed before files_to_keep
-files_to_delete=(
+# note, *_files_to_delete is processed before files_to_keep
+output_files_to_delete=(
+  'debug*.msh'
+  '*_warnings.txt'
+  '*_details.txt'
+); # relative to output directory
+working_files_to_delete=(
   'fort.*'
-  '$output_dir/debug*.msh'
-  '$output_dir/*_warnings.txt'
-  '$output_dir/*_details.txt'
   'kill'
   'stop*'
   'halt'
   'dump*'
-);
-files_to_keep=(
-  "$output_dir/output*.txt"
-  "$output_dir/output*.csv"
-  "$output_dir/output*.scr"
-  "$output_dir/output*.stat"
-  "$output_dir/*.msh"
-  "$output_dir/*.vtk"
-  "$output_dir/*.dat"
-);
+); # relative to working directory
+output_files_to_keep=(
+  'output*.txt'
+  'output*.csv'
+  'output*.scr'
+  'output*.stat'
+  '*.msh'
+  '*.vtk'
+  '*.dat'
+); # relative to output directory
 
 #------------------
 # set any environment variables
@@ -371,43 +373,41 @@ ln -s "$src_dir/makefile" "$build_dir/" >/dev/null 2>/dev/null ;
 if [ ! -d "$mkl_pardiso_ooc_dir" ] ; then mkdir -p "$mkl_pardiso_ooc_dir" ; fi ;
 rm "$mkl_pardiso_ooc_dir/*" >/dev/null 2>/dev/null ;
 
-# delete other output, debug and communication files always, quietly, as glob pattern may not have matched file and hence still be the literal glob pattern (which doesn't exist as a file)
-for i in "${files_to_delete[@]}" ; do rm $i >/dev/null 2>/dev/null ; done ;
+# delete output and working directory files that are to be lost, noting that glob may not expand to anything (so remove quietly)
+for i in ${working_files_to_delete[@]} ; do rm $i >/dev/null 2>/dev/null ; done ;
+( cd "$output_dir"; # open subshell to limit cd scope
+  for i in ${output_files_to_delete[@]} ; do rm $i >/dev/null 2>/dev/null ; done ;
+)
 
 # keep copy of previous output if we aren't starting from a previous_output_dir
-echo "keeper files: $previous_run";
-if [ -z "$previous_output_dir" ] ; then
+if [ -z "$previous_output_dir" ] ; then # -z is true if the string is empty/doesn't exist
+# make previous directory and/or clear it out
   if [ ! -d "$previous_run" ] ; then mkdir -p "$previous_run" ; fi ;
-  rm "$previous_run/*" >/dev/null 2>/dev/null ;
-  # place old output and gmsh files in previous_run directory that are needed to restart the run
-  for i in "${files_to_keep[@]}" ; do
-    echo files_to_keep = $i; 
-    echo ls = `ls $i`;
-    j=(${i});
-    echo j = "${j[@]}";
+  rm "$previous_run/"* >/dev/null 2>/dev/null ;
+# place old output and gmsh files in previous_run directory that are needed to restart the run
+  ( cd "$output_dir"; # open subshell to limit cd scope
+  for i in ${output_files_to_keep[@]} ; do # don't quote string here as want globs to expand
     if [ $ocontinue -eq 0 ] ; then
-#     mv "$i" "$previous_run/" >/dev/null 2>/dev/null ;
-      mv $i "$previous_run/" ;
+      mv "$i" "$previous_run/" >/dev/null 2>/dev/null ;
     else
       cp -pR "$i" "$previous_run/" >/dev/null 2>/dev/null ;
     fi ;
   done ;
-else
+  )
+else # have to deal with previous_output_dir
   if [ $ocontinue -eq 1 ] ; then
-    saved_output_dir="$output_dir"; # temporarily change output_dir to previous_output_dir to trick ${files_to_keep[@]} array into referring to previous files
-    output_dir="$previous_output_dir";
-    for i in "${files_to_keep[@]}" ; do
-      cp -pR "$i" "$saved_output_dir/" >/dev/null 2>/dev/null ;
+    ( cd "$previous_output_dir";
+    for i in ${output_files_to_keep[@]} ; do
+      cp -pR "$i" "$output_dir/" >/dev/null 2>/dev/null ;
     done ;
-    output_dir="$saved_output_dir";
-    unset saved_output_dir;
+    )
   fi;
 fi;
 
 #---------------------------
 # now that output directory is ready for writing redirect stdout and stderr to output.scr
 if [ $oquiet -eq 1 ] ; then
-  exec >> $scroutput 2>&1;
+  exec >> "$scroutput" 2>&1;
 fi
 
 # now that quiet option has been dealt with, announce our arrival and list options etc
@@ -432,7 +432,7 @@ echo "INFO: arb input files to be used: ${arbfiles[@]}" ;
 # construct root_input.arb file which consists of include statements to the user's input files, in the order that they are given to this script
 root_input_file="$build_dir/root_input.arb";
 rm "$root_input_file" >/dev/null 2>/dev/null ;
-echo "# root_input.arb file created by the arb script" >$root_input_file ;
+echo "# root_input.arb file created by the arb script" >"$root_input_file" ;
 echo "$file_separator" >>"$root_input_file" ;
 # cycle through each external file including them in the root_input, so that setup_equations can decide whether they are required, and if so, whether they have changed since previously
 echo "# the following external fortran files were found by the arb script and are available for inclusion: ${externals[@]}" >>"$root_input_file";
