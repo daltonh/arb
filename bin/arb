@@ -553,16 +553,16 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
       fi ;
     fi
 
-# check to see whether src directory is the same as last time too, and if not, we'll have to clean setup too
-    if [ -e last_src_dir ] ; then
-      last_src_dir=`cat last_src_dir`;
-      if [ ! "$src_dir" = "$last_src_dir" ] ; then
-        echo "INFO: cleaning of compilation files required as src directory has changed since the last run:";
-        echo "      src_dir = $src_dir"
-        echo "      last_src_dir = $last_src_dir"
+# check to see whether the arb directory is the same as last time too, and if not, we'll have to clean setup too
+    if [ -e last_arb_dir ] ; then
+      last_arb_dir=`cat last_arb_dir`;
+      if [ ! "$arb_dir" = "$last_arb_dir" ] ; then
+        echo "INFO: cleaning of compilation files required as arb directory has changed since the last run:";
+        echo "      arb_dir = $arb_dir"
+        echo "      last_arb_dir = $last_arb_dir"
         make compiler=$compiler clean_setup;
         if [ "$?" -ne 0 ] ; then
-          echo "ERROR: problem cleaning setup files from the build directory due to a different src directory being used" ;
+          echo "ERROR: problem cleaning setup files from the build directory due to a different arb directory being used" ;
           cd "$working_dir"; exit 1 ;
         fi ;
       fi ;
@@ -574,7 +574,7 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
     touch last_compile_had_omp_$oomp ;
     touch last_compile_had_opt_$oopt ;
     touch last_compile_had_ilp_$oilp ;
-    echo $src_dir >last_src_dir;
+    echo $arb_dir >last_arb_dir;
 
   fi
 
