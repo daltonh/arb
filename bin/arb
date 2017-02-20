@@ -557,12 +557,12 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
     if [ -e last_arb_dir ] ; then
       last_arb_dir=`cat last_arb_dir`;
       if [ ! "$arb_dir" = "$last_arb_dir" ] ; then
-        echo "INFO: cleaning of compilation files required as arb directory has changed since the last run:";
+        echo "INFO: cleaning of compilation and setup files required as arb directory has changed since the last run:";
         echo "      arb_dir = $arb_dir"
         echo "      last_arb_dir = $last_arb_dir"
-        make compiler=$compiler clean_setup;
+        make compiler=$compiler clean;
         if [ "$?" -ne 0 ] ; then
-          echo "ERROR: problem cleaning setup files from the build directory due to a different arb directory being used" ;
+          echo "ERROR: problem cleaning files from the build directory due to a different arb directory being used" ;
           cd "$working_dir"; exit 1 ;
         fi ;
       fi ;
