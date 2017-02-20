@@ -510,7 +510,11 @@ sub check_setup_status {
 # my $new_data = freeze( \%variable ); # collapse variable hash and now externals array
 # tack any single variables on the end
 # $new_data = "$new_data\n$transient_simulation\n$newtient_simulation";
-  my $new_data = freeze( \%variable_copy)."\n".freeze( \@externals )."\n".freeze( \@region_copy )."\n$transient_simulation\n$newtient_simulation";
+  my $new_data =
+    freeze( \%variable_copy)."\n".
+    freeze( \@externals )."\n".
+    freeze( \@region_copy )."\n".
+    "$transient_simulation\n$newtient_simulation";
 # my $new_data = '';
 
 # open old file and compare string created last time
