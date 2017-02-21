@@ -625,7 +625,7 @@ subroutine push_gmesh(filename,gmesh_number)
 ! right now cannot handle allocated gregions_from_gelement
 
 use general_module
-character(len=*), intent(in) :: filename
+character(len=*), intent(in) :: filename ! this name includes the path to the file, which for output, could be an absolute path (system generated) or a relative path (from the user input file)
 integer, intent(out), optional :: gmesh_number
 integer :: gmesh_number_local
 type(gmesh_type), dimension(:), allocatable :: gmesh_tmp
@@ -637,9 +637,9 @@ if (allocated(gmesh)) then
   do n = 0, ubound(gmesh,1)
     if (trim(gmesh(n)%basename) == trim(basename(filename))) then
       gmesh_number_local = n
-      if (trim(gmesh(n)%filename) /= trim(filename)) then
+      if (trim(gmesh(n)%filename) /= trim(filename).and.basename(filename) /= 'output') then ! as output could have either a relative or absolute path, don't do this check on it, noting that output cannot be read from anyway so its location in the arb input file is irrelevant
         write(*,'(a)') 'ERROR: the same gmesh basename '//trim(gmesh(n)%basename)// &
-          ' has been specified in multiple directories:'//'  this basename must be unique'
+          ' has been specified in multiple directories:'//'  this basename must be unique.  Alternatively, check that the path to this msh file is consistent within your input file as this cannot be checked within the arb executable.'
         stop
       end if
       if (present(gmesh_number)) gmesh_number = gmesh_number_local

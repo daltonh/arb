@@ -76,10 +76,10 @@ foreach my $argument ( @ARGV )  # first loop looks for distributable files and h
     print "INFO: created $convert_arb_file\n";
 
     if ($run) {
-# sanity check that we are in an arb working directory
+# sanity check that we are in an arb directory
       print "INFO: running arb to do the conversion\n";
-      if (! -d "build") { die "ERROR: could not find the build directory.  Are you in an arb working directory?\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
-      if (! -f "arb") { die "ERROR: could not find the arb script.  Are you in an arb working directory?\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
+      if (! -d "src") { die "ERROR: could not find the src directory.  Are you in an arb directory?\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
+      if (! -f "arb") { die "ERROR: could not find the arb script.  Are you in an arb directory?\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
       my $systemcall="./arb $arboptions $convert_arb_file";
       (!(system("$systemcall"))) or die "ERROR: could not $systemcall\n";
     }

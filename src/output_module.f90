@@ -162,7 +162,8 @@ use equation_module
 
 integer :: error, i, j, k, l, m, list_length
 integer, dimension(:), allocatable :: local_list
-character(len=100) :: filename, cellxname(3), facexname(3), nodexname(3)
+character(len=1000) :: filename
+character(len=100) :: cellxname(3), facexname(3), nodexname(3)
 character(len=1000) :: formatline
 character(len=1) :: delimiter=' '
 logical :: therel
@@ -309,7 +310,8 @@ subroutine output_stat
 
 use general_module
 integer :: error, ns, m, max_loc, min_loc, ntype, nvar
-character(len=100) :: filename, type
+character(len=1000) :: filename
+character(len=100) :: type
 character(len=1000) :: formatline, textline
 real :: total_update_time, maximum_update_time
 logical :: therel
@@ -901,8 +903,8 @@ character(len=*) :: action
 logical, optional, intent(in) :: do_update_outputs
 integer :: mm, m, mc, nvar, region_number, nvar_local, ns, error, name_length, formatline_length
 integer, dimension(:), allocatable :: m_list
-character(len=100) :: filename, cut_name
-character(len=100) :: formatline
+character(len=1000) :: filename, cut_name
+character(len=1000) :: formatline
 !character(len=:), allocatable, save :: repeatformatline ! this is sized for large output_step headers, fortran 2003, and allocated during setup only
 character(len=100000) :: repeatformatline ! gfortran 4.6 doesn't support dynamically allocated character strings, so leave this for now (v0.53)
 character(len=2) :: cont_bit
