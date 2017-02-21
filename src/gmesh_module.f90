@@ -637,9 +637,12 @@ if (allocated(gmesh)) then
   do n = 0, ubound(gmesh,1)
     if (trim(gmesh(n)%basename) == trim(basename(filename))) then
       gmesh_number_local = n
-      if (trim(gmesh(n)%filename) /= trim(filename).and.basename(filename) /= 'output') then ! as output could have either a relative or absolute path, don't do this check on it, noting that output cannot be read from anyway so its location in the arb input file is irrelevant
+      if (trim(gmesh(n)%filename) /= trim(filename).and.n /= 0) then ! as output could have either a relative or absolute path, don't do this check on it
         write(*,'(a)') 'ERROR: the same gmesh basename '//trim(gmesh(n)%basename)// &
-          ' has been specified in multiple directories:'//'  this basename must be unique.  Alternatively, check that the path to this msh file is consistent within your input file as this cannot be checked within the arb executable.'
+          ' has been specified in multiple directories via: '//trim(gmesh(n)%filename)//' and '//trim(filename)// &
+          '.  This error could mean that you are trying to refer to two input files in different locations (which isn''t allowed as basenames must be unique), or '// &
+          'alternatively that the path to this msh file is not consistent within your input file '// &
+          '(filesystem path equivalency is not detected within the arb executable).'
         stop
       end if
       if (present(gmesh_number)) gmesh_number = gmesh_number_local

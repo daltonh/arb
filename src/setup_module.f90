@@ -244,12 +244,6 @@ fileloop: do
     write(*,fmt=formatline) 'INFO: gmesh created from arb input file: gmesh_number = ',gmesh_number,': fullname = '// &
       trim(gmesh(gmesh_number)%filename)//': basename = '//trim(gmesh(gmesh_number)%basename)// &
       ': current (prioritised) user-set options ='//trim(options)
-! check that any input option hasn't been given for the output gmesh
-    if (gmesh_number == 0.and.allocated(gmesh(gmesh_number)%options)) then
-      if (trim(check_option(gmesh(gmesh_number)%options,input_gmesh_options)) /= 'noinput') then ! all other input_gmesh_options involve an input - noinput would have been set in push_gmesh
-        call error_stop("you cannot read (input) from output.msh, as this basename uniquely refers to the file created in the output directory.  If you want to restart (input) from a previous simulation, move and rename the previous output.msh file and then refer to this new file in the arb input file (eg, cp output/output.msh restart.msh).")
-      end if
-    end if
   end if
 
 !---------------
