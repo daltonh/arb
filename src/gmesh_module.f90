@@ -81,8 +81,9 @@ end type gregion_type
 
 ! type for each gmsh that is read in or output
 type gmesh_type
-  character(len=1000) :: filename
-  character(len=1000) :: basename
+  character(len=1000) :: filename ! absolute input filename, not including centring (only, if centringinput)
+  character(len=1000) :: basename ! just the basename of the input file, not including centring, timestep or extension
+  character(len=1000) :: dirname ! absolute path to the input filename
   character(len=100), dimension(:), allocatable :: options ! array of options for this gmesh
   integer :: dimensions
   integer :: ngnodes ! number of gnodes
@@ -625,7 +626,7 @@ subroutine push_gmesh(filename,gmesh_number)
 ! right now cannot handle allocated gregions_from_gelement
 
 use general_module
-character(len=*), intent(in) :: filename ! this name includes the path to the file, which for output, could be an absolute path (system generated) or a relative path (from the user input file)
+character(len=*), intent(in) :: filename ! this name is the absolute path to the input/read location of the msh file, as pre-processed by setup_equations
 integer, intent(out), optional :: gmesh_number
 integer :: gmesh_number_local
 type(gmesh_type), dimension(:), allocatable :: gmesh_tmp
@@ -668,8 +669,13 @@ if (allocated(gmesh_tmp)) then
 end if
 
 ! set data for the new element
-gmesh(gmesh_number_local)%filename = trim(filename)
+gmesh(gmesh_number_local)%dirname = trim(dirname(filename))
 gmesh(gmesh_number_local)%basename = trim(basename(filename))
+gmesh(gmesh_number_local)%filename = trim(filename) ! thing about this - where it is used - can dirname + basename be used instead, getting around output reset problems
+TODO
+
+
+
 ! add default input and output options
 if (gmesh_number_local == 0) then
   call push_character_array(array=gmesh(gmesh_number_local)%options,new_element='noinput')

@@ -81,7 +81,7 @@ sub read_input_files {
   open(UNWRAPPED_INPUT, ">$::unwrapped_input_file");
 
 # push the first [0] code block (from the root_input.arb) onto the code_blocks array and prep for reading (open)
-  push_code_block("root_input.arb","$::build_dir/root_input.arb");
+  push_code_block("$::build_dir/root_input.arb");
 
 # now setup default variables as global (ie, in code_block[0])
   string_setup(); # create the default string variables
@@ -351,7 +351,7 @@ sub parse_solver_code {
   use StringCode;
 
   my $line = $_[0]; # set line to local variable
-  my $oline=$line; # save line as (original) line for possible output purposes
+  my ($oline)=$line=~/^\s*(.*)/; # save line as (original) line for possible output purposes, just removing leading spaces
 
 # sanity check that there are no newlines within the solver_code
   if ($line =~ /\n/) { syntax_problem("solver_code sent to parse_solver_code contains a newline, which is an internal error"); }
@@ -360,7 +360,7 @@ sub parse_solver_code {
   my $comments;
   ($line,$comments)=$line=~/^\s*(.*?)\s*(#.*|)$/;
 
-  my $file = $code_blocks[$#code_blocks]{"include_name"}; # and grab filename for messaging purposes
+  my $file = $code_blocks[$#code_blocks]{"name"}; # and grab filename for messaging purposes
   my $unwrapped_ignore = 0; # will be set to 1 if line is not to be written as solver_code to unwrapped_input.arb
   my $unwrapped_indents = $#code_blocks; # save the number of code blocks to get the correct output statement indentation
 
@@ -483,7 +483,7 @@ sub parse_solver_code {
 
 #-------
   # otherwise we are creating either a new include file or adding to the current file's include_paths
-      my $found_name = ''; # this will hold the found file or directory
+      my $found_name = ''; # this will hold the found file or directory, as an absolute path
       my $found_type = ''; # this will specify whether what was found was a file or directory
       my $found_depth = 1; # this is used only for file::find used within the template include
       if (empty($include_type)) {
@@ -518,6 +518,8 @@ sub parse_solver_code {
           ($found_name,$found_type) = check_for_arbfile_or_dir($code_blocks[$#code_blocks]{"include_path"}[$#{$code_blocks[$#code_blocks]{"include_path"}}].'/'.$new_file);
         } elsif ($include_type eq "working") {
           ($found_name,$found_type) = check_for_arbfile_or_dir($::working_dir.'/'.$new_file);
+        } elsif ($include_type eq "arb") {
+          ($found_name,$found_type) = check_for_arbfile_or_dir($::arb_dir.'/'.$new_file);
         } else {
           syntax_problem("keyword INCLUDE_"."\U$include_type"." is not understood: $filelinelocator");
         }
@@ -528,7 +530,7 @@ sub parse_solver_code {
       print "INFO: found the following include $found_type $new_file at $found_name\n";
       print ::DEBUG "INFO: found the following include $found_type $new_file at $found_name referenced from: $filelinelocator\n";
 
-  # here we extract the path from the full found_name if we have found a file, or remove found_name (and store in found_dir) if we have found a directory
+# here we extract the path from the full found_name if we have found a file, or remove found_name (and store in found_dir) if we have found a directory
       my $found_dir = '';
       if ($found_type eq 'file' && $found_name =~ /\//) {
         ($found_dir) = $found_name =~ /^(.*)\/.*?$/;
@@ -548,7 +550,7 @@ sub parse_solver_code {
       }
           
 # now open the file and set new buffer
-      if (nonempty($found_name)) { push_code_block($new_file,$found_name);  $unwrapped_indents += 1; }
+      if (nonempty($found_name)) { push_code_block($found_name);  $unwrapped_indents += 1; }
 
     }
 #-------
@@ -572,6 +574,7 @@ sub parse_solver_code {
     my $key="\L$1"; $line=$';
 # pull out any string that follows this keyword if there is one
     my ($tmp,$error) = extract_first($line);
+    if ($error) { syntax_problem("problem with: $filelinelocator"); }
     if (empty($tmp)) { $tmp = "no explanation provided"; }
     if ($key eq "error") { error_stop("user error statement found in $file: $tmp"); }
     else { print "\U$key",": user ","\L$key"," statement found in $file: $tmp\n"; }
@@ -652,7 +655,9 @@ sub parse_solver_code {
 
 #-------------------
 # these are commands that need to be transferred unaltered to the arb input file
-  } elsif ( $line =~ /^(MSH_FILE|((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|ITERRESTOL|ITERRESRELTOL|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES|((TIME|NEWT)STEP_REWIND))($|\s)/i ) {
+# TODO: remove time/newt/iter options from here and more to general_options
+# TODO: standardise options keyword -> KERNEL_OPTION only - is plural used elsewhere?
+  } elsif ( $line =~ /^(((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|ITERRESTOL|ITERRESRELTOL|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES|((TIME|NEWT)STEP_REWIND))($|\s)/i ) {
     my $keyword = "\U$1";
     $line = $'; $line =~ s/^\s*//;
     if ($keyword =~ /^((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))$/) {$keyword = "$2_OPTIONS";} # standardise the statement for fortran input
@@ -671,6 +676,16 @@ sub parse_solver_code {
       }
     }
     print ::FORTRAN_INPUT $keyword; if (nonempty($line)) {print ::FORTRAN_INPUT " ".$line}; print ::FORTRAN_INPUT "\n"; # print line to fortran input file
+
+#-------------------
+# the MSH_FILE command needs to be written to the fortran, while ensuring that the filename is an absolute path
+  } elsif ( $line =~ /^(MSH_FILE)($|\s+)/i ) { # greedy space match
+    my $keyword = "\U$1"; $line = $';
+    my ($mshfile,$error) = extract_first($line);
+    if ($error) { syntax_problem("syntax problem with MSH_FILE filename: $filelinelocator"); }
+    if (empty($mshfile)) { syntax_problem("a MSH_FILE filename has not been provided: $filelinelocator"); }
+    $mshfile = File::Spec->rel2abs($mshfile, $::working_dir); # convert to absolute filename, based at the working_dir
+    print ::FORTRAN_INPUT "$keyword '$mshfile' $line\n";
 
 #-------------------
 # read in region_list
@@ -1329,37 +1344,36 @@ sub extract_deprecated_replacements {
 
 #-------------------------------------------------------------------------------
 # adds a code block to the top of the code_blocks array
-# if a name and actual name are provided, assumes this is a file and opens that too (new_file = 1)
+# if a name and actual name (absolute path) are provided, assumes this is a file and opens that too (new_file = 1)
 # otherwise assumes that block is in the same file (new_file = 0)
 # 
 # on input
-# _[0] = name of file from include statement (include_name)|undef
-# _[1] = actual name of file as found and to be opened|undef
+# _[0] = actual absolute pathname of file as found and to be opened, or undef if a sub_block is to be created
 sub push_code_block {
 
   use FileHandle;
   use File::Spec; # for rel2abs
 
-  my ($include_name,$name) = @_;
+  my $abs_name = $_[0];
 
 # add new array element, starting with flag that indicates whether this file needs to be opened, or already is
-  if (defined($name)) {
-    $code_blocks[$#code_blocks+1]{"new_file"}=1;
-    $code_blocks[$#code_blocks]{"include_name"}=$include_name;
-    $code_blocks[$#code_blocks]{"name"}=$name;
-    $code_blocks[$#code_blocks]{"abs_name"} = File::Spec->rel2abs($name); # abs_name is always the absolute path to the file
+  if (defined($abs_name)) {
+    $code_blocks[$#code_blocks+1]{"sub_block"}=0; # sub_block indicates the number of blocks that have been opened (and not closed) since the file was opened
+    $code_blocks[$#code_blocks]{"name"} = File::Spec->abs2rel($abs_name,$::working_dir); # name is path to the file from the working_dir, useful for messaging and identifying this file
+    $code_blocks[$#code_blocks]{"abs_name"} = $abs_name; # abs_name is always the absolute path to the file
+    if ($abs_name !~ /^\//) { error_stop("internal error with filename not being absolute in push_code_block: $abs_name"); }
     $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a new filehandle for the file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
     $code_blocks[$#code_blocks]{"line_number"} = 0; # signals line has not yet been read
     $code_blocks[$#code_blocks]{"raw_line"} = ''; # signals line has not yet been read
 
 # open file
     my $handle = $code_blocks[$#code_blocks]{"handle"};
-    open($handle, "<$code_blocks[$#code_blocks]{name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
+    open($handle, "<$code_blocks[$#code_blocks]{abs_name}") or error_stop("problem opening arb input file $code_blocks[$#code_blocks]{name}");
 
   } else {
     if ($#code_blocks < 1) { error_stop("internal problem with push_code_block"); }
-    $code_blocks[$#code_blocks+1]{"new_file"}=0;
-    $code_blocks[$#code_blocks]{"include_name"}=$code_blocks[$#code_blocks-1]{"include_name"};
+    $code_blocks[$#code_blocks+1]{"sub_block"}=0;
+    $code_blocks[$#code_blocks]{"sub_block"}=$code_blocks[$#code_blocks-1]{"sub_block"}+1;
     $code_blocks[$#code_blocks]{"name"}=$code_blocks[$#code_blocks-1]{"name"};
     $code_blocks[$#code_blocks]{"abs_name"}=$code_blocks[$#code_blocks-1]{"abs_name"};
     $code_blocks[$#code_blocks]{"handle"}=$code_blocks[$#code_blocks-1]{"handle"};
@@ -1382,13 +1396,12 @@ sub push_code_block {
   $code_blocks[$#code_blocks]{"if"} = 0; # flag to indicate whether we are in an if section or not
 
 # print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,$unwrapped_created_hash."++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",
-#   $unwrapped_indent x $#code_blocks,$unwrapped_created_hash.": new block = $code_blocks[$#code_blocks]{include_name}: new_file = $code_blocks[$#code_blocks]{new_file}\n";
-  print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,$unwrapped_created_hash.": new block = $code_blocks[$#code_blocks]{include_name}: new_file = $code_blocks[$#code_blocks]{new_file}\n";
+  print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,$unwrapped_created_hash.": new block = $code_blocks[$#code_blocks]{name}: sub_block = $code_blocks[$#code_blocks]{sub_block}\n";
 
 # ref: FILENAME
 # set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
   if (empty($::simulation_info{"filename"}) && $#code_blocks) {
-    $::simulation_info{"filename"} = $code_blocks[$#code_blocks]{"include_name"};
+    $::simulation_info{"filename"} = $code_blocks[$#code_blocks]{"name"};
     $::simulation_info{"absfilename"} = $code_blocks[$#code_blocks]{"abs_name"};
   }
 
@@ -1401,7 +1414,7 @@ sub pop_code_block {
 
 # print UNWRAPPED_INPUT $unwrapped_indent x $#code_blocks,$unwrapped_created_hash."--------------------------------------------------------\n";
 
-  if ($code_blocks[$#code_blocks]{"new_file"}) {
+  if (!($code_blocks[$#code_blocks]{"sub_block"})) {
     my $handle = $code_blocks[$#code_blocks]{"handle"};
     close($handle);
     print ::DEBUG "INFO: closing file $code_blocks[$#code_blocks]{name}\n";
@@ -1751,7 +1764,7 @@ sub get_raw_buffer {
     $code_blocks[$#code_blocks]{"raw_line"} = $raw_buffer;
     $code_blocks[$#code_blocks]{"raw_line"} =~ s/\n//g; # remove line feeds too for raw_line
 # set message line locator string
-    $filelinelocator = "file = $code_blocks[$#code_blocks]{include_name}: linenumber = $code_blocks[$#code_blocks]{line_number}: line = \'$code_blocks[$#code_blocks]{raw_line}\'";
+    $filelinelocator = "file = $code_blocks[$#code_blocks]{name}: linenumber = $code_blocks[$#code_blocks]{line_number}: line = \'$code_blocks[$#code_blocks]{raw_line}\'";
   }
   
   $_[0] = $raw_buffer;

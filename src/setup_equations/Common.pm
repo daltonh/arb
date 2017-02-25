@@ -39,7 +39,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem syntax_file replace_substring find_region match_region); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem replace_substring find_region match_region); # list of subroutines and variables that will by default be made available to calling routine
 
 #-------------------------------------------------------------------------------
 # chomp and remove mac linefeads too if present
@@ -283,19 +283,6 @@ sub syntax_problem {
     print ::DEBUG "\U$syntax_action: "."$debug_message\n";
   }
     
-}
-
-#-------------------------------------------------------------------------------
-sub syntax_file {
-  my ($action) = @_;
-
-  if ($action eq "open") {
-    open(SYNTAX, ">$::syntax_problems_file"); # this file is specifically for syntax problems in the input files and is written to by sub syntax_problem
-  } elsif ($action eq "close") {
-    close(SYNTAX);
-  } else {
-    error_stop("internal error: unknown syntax_file action $action\n");
-  }
 }
 
 #-------------------------------------------------------------------------------

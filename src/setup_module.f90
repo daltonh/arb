@@ -169,8 +169,9 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_input_file'
 
-! push default mesh (index 0) which will include everything
-call push_gmesh(filename=trim(output_dir)//'output.msh')
+! push default mesh (index 0) first which will include everything
+! no directory is given which will result in an empty dirname, to be set at the end of the file read (end of this subroutine)
+call push_gmesh(filename='output.msh')
 
 write(*,'(a)') "INFO: reading simulation information from arb input file "//trim(input_file)
 open(unit=finput,file=trim(input_file),status='old',iostat=ierror)
@@ -522,6 +523,8 @@ fileloop: do
 end do fileloop
 
 close(finput)
+
+if (trim(gmesh(0)%dirname) == '') gmesh(0)%dirname = trim(output_dir) ! if the read location for the output file was never set, do it now
 
 if (debug) write(*,'(a/80(1h-))') 'subroutine read_input_file'
 

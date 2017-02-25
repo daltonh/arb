@@ -3257,6 +3257,7 @@ end function dindexformat
 function basename(fullname)
 
 ! this function extracts a file's basename from a file's fullname
+! basename has the path stripped off, and trailing extension
 
 character(len=1000) :: basename
 character(len=*) :: fullname
@@ -3269,6 +3270,27 @@ if (cutr - 1 - (cutl + 1) > 1000) stop "ERROR: file name too long in basename"
 basename = trim(adjustl(fullname(cutl+1:cutr-1)))
 
 end function basename
+
+!-----------------------------------------------------------------
+
+function dirname(fullname)
+
+! this function extracts a file's path from a file's fullname
+! if the path is found, it includes the trailing /
+
+character(len=1000) :: dirname
+character(len=*) :: fullname
+integer :: cutr, cutl
+
+cutl=scan(fullname,'/',.true.) ! find rightmost occurance of directory separator
+if (cutl == 0) then
+  dirname = '' ! there is no leading directory, so return an empty string
+else
+! use this to strip off the basename
+  dirname = trim(fullname(1:cutl))
+end if
+
+end function dirname
 
 !-----------------------------------------------------------------
 
