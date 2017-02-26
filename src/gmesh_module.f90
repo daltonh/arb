@@ -81,9 +81,8 @@ end type gregion_type
 
 ! type for each gmsh that is read in or output
 type gmesh_type
-  character(len=1000) :: filename ! absolute input filename, not including centring (only, if centringinput)
-  character(len=1000) :: basename ! just the basename of the input file, not including centring, timestep or extension
-  character(len=1000) :: dirname ! absolute path to the input filename
+  character(len=1000) :: basename ! just the basename of the input file, not including centring, timestep or extension, eg 'output'
+  character(len=1000) :: dirname ! absolute path to the input filename, include trailing / - will be nonempty
   character(len=100), dimension(:), allocatable :: options ! array of options for this gmesh
   integer :: dimensions
   integer :: ngnodes ! number of gnodes
@@ -610,7 +609,7 @@ if (debug_sparse) then
       gmesh(gmesh_number)%ngelements_cell,': ngelements_face = ',gmesh(gmesh_number)%ngelements_face, &
       ': ngelements_node = ',gmesh(gmesh_number)%ngelements_node, &
       ': ngregions = ',gmesh(gmesh_number)%ngregions, &
-      ': options (prioritised) =',(' '//trim(gmesh(gmesh_number)%options(o)),o=1,ubound(gmesh(gmesh_number)%options,1))
+      ': options (right prioritised) =',(' '//trim(gmesh(gmesh_number)%options(o)),o=1,ubound(gmesh(gmesh_number)%options,1))
   end do
 end if
 
@@ -638,13 +637,13 @@ if (allocated(gmesh)) then
   do n = 0, ubound(gmesh,1)
     if (trim(gmesh(n)%basename) == trim(basename(filename))) then
       gmesh_number_local = n
-      if (trim(gmesh(n)%filename) /= trim(filename).and.n /= 0) then ! as output could have either a relative or absolute path, don't do this check on it
-        write(*,'(a)') 'ERROR: the same gmesh basename '//trim(gmesh(n)%basename)// &
-          ' has been specified in multiple directories via: '//trim(gmesh(n)%filename)//' and '//trim(filename)// &
-          '.  This error could mean that you are trying to refer to two input files in different locations (which isn''t allowed as basenames must be unique), or '// &
-          'alternatively that the path to this msh file is not consistent within your input file '// &
-          '(filesystem path equivalency is not detected within the arb executable).'
-        stop
+      if (trim(gmesh(n)%dirname) == '') then ! this specific instance occurs if the output file is specified by the user for the first time (only)
+        gmesh(n)%dirname = trim(dirname(filename))
+      elseif (trim(gmesh(n)%dirname) /= trim(dirname(filename))) then ! otherwise check that the (read) location of the file hasn't changed
+        call error_stop('the same gmesh basename '//trim(gmesh(n)%basename)// &
+          ' has been specified in the two different directories of: '//trim(gmesh(n)%dirname)//' and '//trim(dirname(filename))// &
+          '.  This probably means that you are trying to refer to two input files in different locations (which isn''t allowed as basenames are used to identify gmeshes and hence must be unique).  '// &
+          'Alternatively it may mean that although the two paths represent the same location on the filesystem, they do not have equivalent strings as far as arb can determine.')
       end if
       if (present(gmesh_number)) gmesh_number = gmesh_number_local
       return
@@ -669,13 +668,8 @@ if (allocated(gmesh_tmp)) then
 end if
 
 ! set data for the new element
-gmesh(gmesh_number_local)%dirname = trim(dirname(filename))
+gmesh(gmesh_number_local)%dirname = trim(dirname(filename)) ! on first setup of output, this will be empty, signifying that read location hasn't been set yet
 gmesh(gmesh_number_local)%basename = trim(basename(filename))
-gmesh(gmesh_number_local)%filename = trim(filename) ! thing about this - where it is used - can dirname + basename be used instead, getting around output reset problems
-TODO
-
-
-
 ! add default input and output options
 if (gmesh_number_local == 0) then
   call push_character_array(array=gmesh(gmesh_number_local)%options,new_element='noinput')
@@ -778,22 +772,31 @@ integer :: gmesh_number, gmsh_bin, n, error
 integer, optional :: var_number
 real :: gmsh_version
 character(len=1000) :: textline, filename
-character(len=4) :: file_centring, contents
+character(len=4) :: file_centring ! all |cell|face|node|none
+character(len=4) :: contents
 logical, parameter :: debug = .false. ! this is passed to called reading subroutines too - this is the variable you are looking for (ref: star wars)
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_gmesh_file'
 
 if (debug) write(*,*) 'file_centring = |'//trim(file_centring)//'|'
-filename = trim(gmesh(gmesh_number)%filename)
-! for centringinput alter filename to suit either cell or face
-if (file_centring == "cell" .or. file_centring == "face" .or. file_centring == "node" .or. file_centring == "none") then
-  n = scan(filename,'.',.true.)
-  if (n == 0) call error_stop("problem constructing centring filename in subroutine read_gmesh_file: "//trim(filename))
-  filename = filename(1:n)//trim(file_centring)//"."//filename(n+1:len(filename))
+if (file_centring(1:3) == 'all') then
+  filename = trim(gmesh(gmesh_number)%dirname)//trim(gmesh(gmesh_number)%basename)//".msh"
+else
+! noting that centring is the last addition to the gmesh filename
+  filename = trim(gmesh(gmesh_number)%dirname)//trim(gmesh(gmesh_number)%basename)//"."//trim(file_centring)//".msh"
 end if
+
+! filename = trim(gmesh(gmesh_number)%filename)
+! ! for centringinput alter filename to suit either cell or face
+! if (file_centring == "cell" .or. file_centring == "face" .or. file_centring == "node" .or. file_centring == "none") then
+!   n = scan(filename,'.',.true.)
+!   if (n == 0) call error_stop("problem constructing centring filename in subroutine read_gmesh_file: "//trim(filename))
+!   filename = filename(1:n)//trim(file_centring)//"."//filename(n+1:len(filename))
+! end if
+
 if (debug) write(*,*) ' reading in filename = '//trim(filename)
 open(unit=fgmsh,file=trim(filename),status='old',iostat=error)
-if (error /= 0) call error_stop('problem opening mesh file '//trim(filename))
+if (error /= 0) call error_stop('problem opening mesh file '//trim(filename)//': Make sure the file exists and that the read (input) location for the file is specified in the arb file.')
 
 !---------------------------------------------
 ! check version and format of file

@@ -242,9 +242,9 @@ fileloop: do
       end if
     end do
     formatline = '(a,'//trim(dindexformat(gmesh_number))//',a)'
-    write(*,fmt=formatline) 'INFO: gmesh created from arb input file: gmesh_number = ',gmesh_number,': fullname = '// &
-      trim(gmesh(gmesh_number)%filename)//': basename = '//trim(gmesh(gmesh_number)%basename)// &
-      ': current (prioritised) user-set options ='//trim(options)
+    write(*,fmt=formatline) 'INFO: gmesh created from arb input file: gmesh_number = ',gmesh_number,': basename = '// &
+      trim(gmesh(gmesh_number)%basename)//': dirname (read location) = '//trim(gmesh(gmesh_number)%dirname)// &
+      ': current (right prioritised) user-set options ='//trim(options)
   end if
 
 !---------------
@@ -425,7 +425,7 @@ fileloop: do
     if (allocatable_character_size(kernel_options) - array_size == 0) then ! the options array was the same size as before, which is an error really
       write(*,'(a)') 'WARNING: the '//trim(keyword)//' keyword was found but no options were read in'
     else if (allocated(kernel_options)) then
-      write(*,'(101(a))') 'INFO: the following (prioritised) user-set kernel options have been read in:', &
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set kernel options have been read in:', &
         (' '//trim(kernel_options(n)),n=1,ubound(kernel_options,1))
     end if
   end if
@@ -440,7 +440,7 @@ fileloop: do
     if (allocatable_character_size(solver_options) - array_size == 0) then ! the options array was the same size as before, which is an error really
       write(*,'(a)') 'WARNING: the '//trim(keyword)//' keyword was found but no options were read in'
     else if (allocated(solver_options)) then
-      write(*,'(101(a))') 'INFO: the following (prioritised) user-set solver options have been read in:', &
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set solver options have been read in:', &
         (' '//trim(solver_options(n)),n=1,ubound(solver_options,1))
     end if
   end if
@@ -460,7 +460,7 @@ fileloop: do
     if (allocatable_character_size(var(m)%options) - array_size == 0) then ! the options array was the same size as before, which is an error really
       write(*,'(a)') 'WARNING: the '//trim(keyword)//' keyword was found but no options were read in for variable '//trim(name)
     else if (allocated(var(m)%options)) then
-      write(*,'(101(a))') 'INFO: the following (prioritised) user-set options for variable '//trim(name)//' have been read in:', &
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set options for variable '//trim(name)//' have been read in:', &
         (' '//trim(var(m)%options(n)),n=1,ubound(var(m)%options,1))
     end if
   end if
@@ -480,7 +480,7 @@ fileloop: do
     if (allocatable_character_size(compound(m)%options) - array_size == 0) then ! the options array was the same size as before, which is an error really
       write(*,'(a)') 'WARNING: the '//trim(keyword)//' keyword was found but no options were read in for compound '//trim(name)
     else if (allocated(compound(m)%options)) then
-      write(*,'(101(a))') 'INFO: the following (prioritised) user-set options for compound '//trim(name)//' have been read in:', &
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set options for compound '//trim(name)//' have been read in:', &
         (' '//trim(compound(m)%options(n)),n=1,ubound(compound(m)%options,1))
     end if
   end if
@@ -1538,7 +1538,7 @@ if (debug_sparse) then
             ': rank = '//trim(var(m)%rank)// &
             ': relstep = ',var(m)%relstep, &
             ': someloop = ',var(m)%someloop, &
-            ': (prioritised) options =',(' '//trim(var(m)%options(o)),o=1,allocatable_size(var(m)%options))
+            ': (right prioritised) options =',(' '//trim(var(m)%options(o)),o=1,allocatable_size(var(m)%options))
         else
           formatline = '(a,'// &
             trim(dindexformat(m))//',a,'// &
@@ -1561,7 +1561,7 @@ if (debug_sparse) then
             ': ijk(1) = ',region(var(m)%region_number)%ijk(1), &
             ': ijk(',ubound(region(var(m)%region_number)%ijk,1),') = ', &
             region(var(m)%region_number)%ijk(ubound(region(var(m)%region_number)%ijk,1)), &
-            ': (prioritised) options =',(' '//trim(var(m)%options(o)),o=1,allocatable_size(var(m)%options))
+            ': (right prioritised) options =',(' '//trim(var(m)%options(o)),o=1,allocatable_size(var(m)%options))
         end if
       end do
     end do
@@ -1594,7 +1594,7 @@ if (debug_sparse) then
           ': rank = '//trim(compound(m)%rank)// &
           ': relstep = ',compound(m)%relstep, &
           ': component_list = '//trim(component_list)// &
-          ': (prioritised) options =',(' '//trim(compound(m)%options(o)),o=1,allocatable_size(compound(m)%options))
+          ': (right prioritised) options =',(' '//trim(compound(m)%options(o)),o=1,allocatable_size(compound(m)%options))
       else
         formatline = '(a,'// &
           trim(dindexformat(m))//',a,'// &
@@ -1610,7 +1610,7 @@ if (debug_sparse) then
           ': region = '//trim(compound(m)%region)// &
           ': region_number = ',compound(m)%region_number, &
           ': component_list = '//trim(component_list)// &
-          ': (prioritised) options =',(' '//trim(compound(m)%options(o)),o=1,allocatable_size(compound(m)%options))
+          ': (right prioritised) options =',(' '//trim(compound(m)%options(o)),o=1,allocatable_size(compound(m)%options))
       end if
     end do
   end do

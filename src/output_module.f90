@@ -510,11 +510,12 @@ end if
 fileformatl = 'msh'
 if (present(fileformat)) fileformatl = fileformat
 
-! assemble filename based on options
+! ref: filename ref: output filename
+! assemble output filename based on options
+! for debug_dump: (debug.|)basename(.cell|.face|.node|.none|).(msh|dat|vtk)
+! for non-debug_dump: basename(.newt<newtstep>|)(.<timestep>|)(.cell|.face|.node|.none|).(msh|dat|vtk)
 filename = trim(gmesh(gmesh_number)%basename)
-!if (debug_dump) filename = trim(filename)//'.debug'
 if (debug_dump) filename = 'debug.'//trim(filename)
-if (centring /= 'all')  filename = trim(filename)//'.'//centring
 if (intermediate.and..not.debug_dump) then
   formatline = '(a,'//trim(dindexformat(newtstep))//')'
   write(filename,fmt=formatline) trim(filename)//'.newt',newtstep
@@ -523,10 +524,18 @@ if (transient_simulation.and..not.debug_dump) then
   formatline = '(a,'//trim(dindexformat(timestep))//')'
   write(filename,fmt=formatline) trim(filename)//'.',timestep
 end if
+if (centring /= 'all') filename = trim(filename)//'.'//centring
 
 filename = trim(filename)//'.'//fileformatl
 
+if (.true.) then
+  formatline = '(a,'//trim(dindexformat(gmesh_number))//',a)'
+  write(*,fmt=formatline) 'INFO: writing '//fileformatl//' gmesh file with basename = '//trim(gmesh(gmesh_number)%basename)//' (',gmesh_number,'): '//trim(filename)
+end if
+
+! ref: linkname
 ! create latest link before the filename has the leading directory
+! latest.basename(.cell|.face|.node|.none|).(msh|dat|vtk)
 if (.not.debug_dump) then
   linkname = trim(output_dir)//"latest."//trim(gmesh(gmesh_number)%basename)
   if (centring /= 'all')  linkname = trim(linkname)//'.'//centring
@@ -535,7 +544,7 @@ if (.not.debug_dump) then
   call system(system_command)
 end if
 
-! add leading directory and open file
+! add output directory and open file
 filename = trim(output_dir)//trim(filename)
 open(foutput,file=trim(filename),status='replace',iostat=error)
 if (error /= 0) call error_stop('problem opening file '//trim(filename))
