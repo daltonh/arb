@@ -63,7 +63,6 @@ use gmesh_module
 use solver_module
 integer :: gmesh_number
 character(len=100) :: output_option, vtkoutput_option, datoutput_option
-character(len=1000) :: formatline
 logical, optional :: debug_dump ! dumps all component variables to the file output.debug.msh
 logical :: debug_dump_local
 logical, optional :: intermediate ! if this is an nonconverged intermediate output
@@ -81,57 +80,41 @@ call update_and_check_outputs ! update any output-only variables
 if (.false..or.maximum_dimensions <=1 ) call output_txt ! write txt files containing data
 
 do gmesh_number = 0, ubound(gmesh,1)
-  formatline = '(a,'//trim(dindexformat(gmesh_number))//',a)'
 
   output_option = trim(check_option(gmesh(gmesh_number)%options,output_gmesh_options))
   if (trim(output_option) == "centringoutput" .or. trim(output_option) == "centringmeshoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='cell',intermediate=intermediate_local) ! write gmsh output file for cell centred variables
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='face',intermediate=intermediate_local) ! write gmsh output file for face centred variables
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='node',intermediate=intermediate_local) ! write gmsh output file for face centred variables
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='none',intermediate=intermediate_local) ! write gmsh output file for none centred variables
   else if (trim(output_option) == "output" .or. trim(output_option) == "meshoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='all',intermediate=intermediate_local) ! write gmsh output file for all variables
   else if (trim(output_option) == "nooutput") then
-    if (debug) write(*,fmt=formatline) 'INFO: skipping write for gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
+    if (debug) write(*,'(a)') 'INFO: skipping write for msh file having basename '//trim(gmesh(gmesh_number)%basename)
   end if
 
 ! repeat process for vtk output
   vtkoutput_option = trim(check_option(gmesh(gmesh_number)%options,vtkoutput_gmesh_options))
   if (trim(vtkoutput_option) == "centringvtkoutput" .or. trim(vtkoutput_option) == "centringmeshvtkoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing vtk gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='cell',fileformat='vtk',intermediate=intermediate_local)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='face',fileformat='vtk',intermediate=intermediate_local)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='node',fileformat='vtk',intermediate=intermediate_local)
   else if (trim(vtkoutput_option) == "vtkoutput" .or. trim(vtkoutput_option) == "meshvtkoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing vtk gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='all',fileformat='vtk',intermediate=intermediate_local)
   else if (trim(output_option) == "novtkoutput") then
-    if (debug) write(*,fmt=formatline) 'INFO: skipping write for vtk gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
+    if (debug) write(*,'(a)') 'INFO: skipping write for vtk file having basename '//trim(gmesh(gmesh_number)%basename)
   end if
 
 ! repeat process for dat output
   datoutput_option = trim(check_option(gmesh(gmesh_number)%options,datoutput_gmesh_options))
   if (trim(datoutput_option) == "centringdatoutput" .or. trim(datoutput_option) == "centringmeshdatoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing dat gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='cell',fileformat='dat',intermediate=intermediate_local)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='face',fileformat='dat',intermediate=intermediate_local)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='node',fileformat='dat',intermediate=intermediate_local)
   else if (trim(datoutput_option) == "datoutput" .or. trim(datoutput_option) == "meshdatoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing dat gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='all',fileformat='dat',intermediate=intermediate_local)
   else if (trim(output_option) == "nodatoutput") then
-    if (debug) write(*,fmt=formatline) 'INFO: skipping write for dat gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
+    if (debug) write(*,'(a)') 'INFO: skipping write for dat file having basename '//trim(gmesh(gmesh_number)%basename)
   end if
 
 end do
@@ -528,10 +511,7 @@ if (centring /= 'all') filename = trim(filename)//'.'//centring
 
 filename = trim(filename)//'.'//fileformatl
 
-if (.true.) then
-  formatline = '(a,'//trim(dindexformat(gmesh_number))//',a)'
-  write(*,fmt=formatline) 'INFO: writing '//fileformatl//' gmesh file with basename = '//trim(gmesh(gmesh_number)%basename)//' (',gmesh_number,'): '//trim(filename)
-end if
+if (.true.) write(*,'(a)') 'INFO: writing '//fileformatl//' gmesh file with basename = '//trim(gmesh(gmesh_number)%basename)//': '//trim(filename)
 
 ! ref: linkname
 ! create latest link before the filename has the leading directory

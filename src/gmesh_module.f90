@@ -796,7 +796,8 @@ end if
 
 if (debug) write(*,*) ' reading in filename = '//trim(filename)
 open(unit=fgmsh,file=trim(filename),status='old',iostat=error)
-if (error /= 0) call error_stop('problem opening mesh file '//trim(filename)//': Make sure the file exists and that the read (input) location for the file is specified in the arb file.')
+if (error /= 0) call error_stop('problem opening mesh file '//trim(filename)//': Make sure the file exists and that the read (input) location for the file is specified in the arb file.  '// &
+  'If the file is supposed to exist in an output directory from a previous run, make sure you pass arb the --continue option to avoid file deletion')
 
 !---------------------------------------------
 ! check version and format of file
