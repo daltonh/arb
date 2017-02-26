@@ -780,10 +780,10 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine read_gmesh_file'
 
 if (debug) write(*,*) 'file_centring = |'//trim(file_centring)//'|'
 if (file_centring(1:3) == 'all') then
-  filename = trim(gmesh(gmesh_number)%dirname)//trim(gmesh(gmesh_number)%basename)//".msh"
+  filename = trim(gmesh(gmesh_number)%basename)//".msh"
 else
 ! noting that centring is the last addition to the gmesh filename
-  filename = trim(gmesh(gmesh_number)%dirname)//trim(gmesh(gmesh_number)%basename)//"."//trim(file_centring)//".msh"
+  filename = trim(gmesh(gmesh_number)%basename)//"."//trim(file_centring)//".msh"
 end if
 
 ! filename = trim(gmesh(gmesh_number)%filename)
@@ -795,8 +795,8 @@ end if
 ! end if
 
 if (debug) write(*,*) ' reading in filename = '//trim(filename)
-open(unit=fgmsh,file=trim(filename),status='old',iostat=error)
-if (error /= 0) call error_stop('problem opening mesh file '//trim(filename)//': Make sure the file exists and that the read (input) location for the file is specified in the arb file.  '// &
+open(unit=fgmsh,file=trim(gmesh(gmesh_number)%dirname)//trim(filename),status='old',iostat=error)
+if (error /= 0) call error_stop('problem opening mesh file '//trim(gmesh(gmesh_number)%dirname)//trim(filename)//': Make sure the file exists and that the read (input) location for the file is specified in the arb file.  '// &
   'If the file is supposed to exist in an output directory from a previous run, make sure you pass arb the --continue option to avoid file deletion')
 
 !---------------------------------------------

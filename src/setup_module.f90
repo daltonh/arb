@@ -173,7 +173,8 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine read_input_file'
 ! no directory is given which will result in an empty dirname, to be set at the end of the file read (end of this subroutine)
 call push_gmesh(filename='output.msh')
 
-write(*,'(a)') "INFO: reading simulation information from arb input file "//trim(input_file)
+!write(*,'(a)') "INFO: reading simulation information from arb input file "//trim(basename(input_file))//".arb"
+write(*,'(a)') "INFO: reading simulation information from arb input file" ! the actual file name means nothing to the user
 open(unit=finput,file=trim(input_file),status='old',iostat=ierror)
 if (ierror /= 0) call error_stop('problem opening arb input file '//trim(input_file))
 
@@ -1154,7 +1155,8 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_constants'
 
-write(*,'(a)') "INFO: reading numerical constant values from file "//trim(input_file)
+!write(*,'(a)') "INFO: reading numerical constant values from file "//trim(input_file)
+write(*,'(a)') "INFO: reading numerical constant values from arb input file"
 open(unit=finput,file=trim(input_file),status='old',iostat=ierror)
 if (ierror /= 0) call error_stop('problem opening arb input file '//trim(input_file))
 

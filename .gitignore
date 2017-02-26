@@ -22,6 +22,9 @@
 differ
 lser
 
+# any tmp files or directories created by scripts
+tmp.*
+
 # ignore any code_scraps or resources directories completely
 code_scraps/
 resources/

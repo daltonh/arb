@@ -1,38 +1,65 @@
 #!/bin/bash
-# little script to create .msh file from any .geo file in working directory
+# little script to create a .msh file from any .geo file in the current directory
 #
-# run from the arb working directory
 # usage: create_msh [element_scale_factor] [geometry_file.geo]
 
-echo "create_mesh, an arb misc accessory that creates a gmsh .msh file from a .geo file";
-echo "USAGE: call from working directory using ./misc/create_mesh/create_mesh [element_scale_factor] [geometry_file.geo]";
-echo "OPTIONS: if element_scale_factor is omitted then an element_scale_factor of 1 will be used";
-echo "OPTIONS: if geometry_file.geo is omitted then all .geo files in the working directory will be processed";
+#-------------------------------------------------------------------------------
+# usage function
+function usage () {
+  echo
+  echo "HELP/USAGE: ./arb_create_msh [element_scale_factor] [geometry_file1.geo] [geometry_file2.geo] etc";
+  echo
+  echo "OPTIONS:";
+  echo "  --help|-h: display this HELP INFO";
+  echo "  if element_scale_factor is omitted then an element_scale_factor of 1 will be used";
+  echo "  if no geometry_file.geo files are given then all .geo files in the working directory will be processed";
+  echo
+  echo "NOTE: creates and destroys the directory tmp.arb_create_msh in the current directory";
+  echo;
+  exit 1;
+}
+#-------------------------------------------------------------------------------
+
+echo "arb_create_msh for creating .msh files from .geo files: use arb_create_msh --help for usage";
 
 lsscale="1"; # default scale parameter
 unset files; # clear array (it shouldn't need though anyway?)
+tmp_dir="tmp.arb_create_msh";
+working_dir=`pwd -P`; # directory from which the script is run
 
 for i in $*
 do
   case $i in
-    "-h"|"--help") exit 0;;
+    "-h"|"--help") usage;;
     *".geo") echo "INFO: will attempt to run with geo file $i"; files[${#files[@]}]=$i;;
     *) echo "INFO: found lsscale parameter $i"; lsscale=$i;;
   esac
 done ;
 
 if [ -z "$files" ] ; then
-  files=( "*.geo" );
-  echo "INFO: will attempt to run with all geo files in the current directory: " *.geo;
+  shopt -s nullglob # causes the glob to become null if matches nothing
+  files=( *.geo );
+  if [ -z "$files" ] ; then
+    echo "ERROR: no geo files found in the current directory"
+    exit 1;
+  else
+    echo "INFO: running with all geo files in the current directory: " *.geo;
+  fi
 fi ;
 
-if [ ! -d tmp/gmsh ] ; then mkdir -p tmp/gmsh ; fi ;
+if [ -d $tmp_dir ] ; then
+  echo "ERROR: the directory $tmp_dir already exists, either from another running or defunct instance of this script";
+  exit 1;
+else
+  mkdir $tmp_dir;
+fi
 
 for i in $files; do
 
   if [ ! -e $i ] ;
     then
     echo "ERROR: file $i is not found";
+    cd "$working_dir";
     exit 1;
   fi
 
@@ -48,9 +75,11 @@ for i in $files; do
   fi ;
 
   echo "INFO: creating mesh from file $i using scaling parameter $lsscale and dimensions $dimensions";
-  cd tmp/gmsh
-  gmsh -$dimensions -clscale $lsscale $options../../$i
-  cd ../..
+  cd $tmp_dir
+  gmsh -$dimensions -clscale $lsscale $options "$working_dir/$i"
+  cd "$working_dir"
 done
+
+rm -r $tmp_dir;
 
 exit 0;

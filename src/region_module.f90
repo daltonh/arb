@@ -389,7 +389,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
 ! will have to think about this more for separation regions etc
 ! if (allocated(region(m)%ijk)) then
   if (allocatable_integer_size(region(m)%ijk) > 0) then
-    if (.not.region(m)%dynamic) write(*,'(a/a)') "NOTE: an "//trim(local_location%type)// &
+    if (.not.region(m)%dynamic) write(*,'(a)') "NOTE: a "//trim(local_location%type)// &
       " region operator is acting on region "//trim(region(m)%name)// &
       " that already contains elements: the previous element will be overwritten with the new"
   end if
