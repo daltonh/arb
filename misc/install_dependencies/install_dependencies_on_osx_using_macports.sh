@@ -34,8 +34,8 @@ port select --set python python27
 #https://guide.macports.org
 #http://truongtx.me/2014/02/25/mac-os-install-python-pip-virtualenv-using-macports/
 
-# for graphviz and perl graphviz modules (GraphViz2)
-port install graphviz p5-graphviz2
+# for graphviz and perl graphviz modules (GraphViz2), and alias module
+port install graphviz p5-graphviz2 p5-data-alias
 
 # the following directories and link are the only non-ports things done in this install script
 # finally, link the particular macports gfortran version name to a standard name within an accessible bin directory
@@ -67,3 +67,4 @@ fi;
 # Due to kernel caching, you usually need to restart Mac OS X for this option to effect.
 echo "INFO: doing a change to /System/Library/LaunchDaemons/com.apple.taskgated.plist to get ggdb (gnu debugger) to work, as advised by macports install - will apparently often require osx restart"
 /usr/bin/perl -p -i -e "s/<string>-s<\/string>/<string>-sp<\/string>/" /System/Library/LaunchDaemons/com.apple.taskgated.plist
+echo "INFO: you could now add the arb/bin directory to your path using one of the include_path.*sh scripts";
