@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# file arb_dir
+# file install_globally.sh
 #
 # Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
@@ -34,7 +34,7 @@
 #
 #-------------------------------------------------------------------------
 #
-# this little script prints the current arb root dir, or other subdirs within the arb dir
+# this little script does any contributed software downloads and installs arb so that it can be run from outside the arb_dir
 #
 # see usage function below
 #
@@ -45,21 +45,11 @@
 #-------------------------------------------------------------------------------
 # usage function
 function usage () {
-  echo "arb_dir returns the path of the arb_dir, or subdirectories therein";
+  echo "install_globally prepares arb for global usage";
   echo 
-  echo "HELP/USAGE: ./arb_dir [options]";
+  echo "HELP/USAGE: ./install_globally [options]";
   echo
   echo "Possible options:";
-  echo "  -m|--misc: misc directory";
-  echo "  -t|--templates: templates directory";
-  echo "  -e|--examples: examples directory";
-  echo "  -s|--src: src directory";
-  echo "  -d|--doc: doc directory";
-  echo "  -l|--licence: licence directory";
-  echo "  -b|--bin: bin directory";
-  echo "  -i|--install: install directory";
-  echo "  --contributed: contributed src directory";
-  echo "  --batcher: batcher directory";
   echo "  --help|-h: display this HELP INFO";
   echo;
   exit 1;
@@ -87,16 +77,6 @@ sub_dir='';
 until [ -z "$1" ];
 do
   case $1 in
-    "-m"|"--misc") sub_dir="/misc";;
-    "-t"|"--templates") sub_dir="/templates";;
-    "-e"|"--examples") sub_dir="/examples";;
-    "-s"|"--src") sub_dir="/src";;
-    "-d"|"--doc") sub_dir="/doc";;
-    "-l"|"--licence") sub_dir="/licence";;
-    "-b"|"--bin") sub_dir="/bin";;
-    "-i"|"--install") sub_dir="/install";;
-    "--contributed") sub_dir="/src/contributed";;
-    "--batcher") sub_dir="/misc/batcher";;
     "--help"|"-h") usage;;
     *) echo "ERROR: unknown command line entry $1"; usage;;
   esac
@@ -108,11 +88,21 @@ done ;
 
 # get the real path to the script with any symlinks resolved/dereferenced
 resolve_real_path "${BASH_SOURCE[0]}";
-arb_script=$real_path; # the result of resolve_real_path is held in this global variable
+install_script=$real_path; # the result of resolve_real_path is held in this global variable
 # from http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
-bin_dir="$(cd "$(dirname "$arb_script")" && pwd -P)"; # directory that holds this arb script, which determines...
-arb_dir="${bin_dir%"/bin"}"; # arb root directory, known as arb_dir, with no trailing slash
-echo "$arb_dir$sub_dir";
+install_dir="$(cd "$(dirname "$install_script")" && pwd -P)"; # directory that holds this arb script, which determines...
+arb_dir="${install_dir%"/install"}"; # arb root directory, known as arb_dir, with no trailing slash
+
+# now make any contributed routines
+# TODO: generalise this to other contributed packages
+(
+  cd "$arb_dir/src/contributed/suitesparse";
+  echo "INFO: making contributed package in `pwd`";
+  make;
+)
+
+# now detect shell
+
 exit 0
 # done
 #-------------------------------------------------------------------------------
