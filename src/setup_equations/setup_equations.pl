@@ -651,7 +651,6 @@ sub write_sub_strings {
 
 sub create_system_regions {
 
-  my ($n);
 #-------------
 # add the SYSTEM regions to the start of the region array
 # SYSTEM regions are those that would be commonly used by a user and which have a corresponding fortran region entity

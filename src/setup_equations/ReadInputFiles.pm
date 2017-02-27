@@ -742,11 +742,11 @@ sub parse_solver_code {
     if ($line =~ /^(\s*)CANCEL(\s|$)/) {
       if ($masread >= 0) {
         print "INFO: cancelling variable $name\n";
-        print ::DEBUG "INFO: cancelling variable $name\n";
+        print ::DEBUG "INFO: cancelling variable $name: masread = $masread\n";
         splice(@::asread_variable, $masread, 1);
 # also have to adjust the reference to the variables from the regions
         for my $nregion ( 0 .. $#::region ) {
-          if ($::region[$nregion]{"last_variable_masread"} >= $masread) { $::region[$nregion]{"last_variable_masread"}=$::region[$nregion]{"last_variable_masread"}-1; }
+          if (nonempty($::region[$nregion]{"last_variable_masread"}) && $::region[$nregion]{"last_variable_masread"} >= $masread) { $::region[$nregion]{"last_variable_masread"}=$::region[$nregion]{"last_variable_masread"}-1; }
         }
 # TODO: get rid of options if variable is cancelled
       } else {
