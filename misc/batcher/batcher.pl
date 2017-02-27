@@ -31,24 +31,37 @@ use Common qw(arbthread chompm empty nonempty protect protectarray error_stop);
 # batcher_setup should be found in the working_dir, which is the directory from which the script is run
 use batcher_setup qw(simulation_setup case_setup output_setup); # brings in the user-written module that defines case-specific data
 
-my $batcher_dir="$FindBin::RealBin"; # batcher_dir is where the batcher.pl script is
-my ($arb_dir)=$batcher_dir=~/(^.*)\/misc\/batcher$/; # arb_dir is the arb (root) dir
+our $batcher_dir="$FindBin::RealBin"; # batcher_dir is where the batcher.pl script is
+our ($arb_dir)=$batcher_dir=~/(^.*)\/misc\/batcher$/; # arb_dir is the arb (root) dir
 our $arb_bin_dir="$arb_dir/bin"; # this is the arb bin dir, used to access other arb executables globally
 our $arb_script="$arb_bin_dir/arb"; # this is the arb script, user to run arb globally
 print "INFO: batcher_dir = $batcher_dir: arb_dir = $arb_dir: arb_bin_dir = $arb_bin_dir: arb_script = $arb_script\n";
 our $output_dir="batcher_output"; # this directory will store all of the output, which is off the working dir from which batcher is called 
 
+#---------------------------------
+# give defaults to the simulation variables
+# you can overwrite any of these global variables in batcher_setup.pm, sub simulation_setup
+our $sge_variant = 0; # whether system using sun grid engine (in place of pbs)
+our $continue=0; # default value of 0 implies that run will not continue, but 
+our $parallel = 0; # default to run arb jobs in series
+our $prune_output_structure = 0; # clear tmp, src, etc. from final run_* directories
+our $use_string_variables = 0; # if on uses arb runtime global string variables rather than batcher whole of file replacements (default)
 
-# whether system using sun grid engine (in place of pbs)
-our $sge_variant = 0;
+our $pbs = 0; # whether to use job queueing system
+our $pbs_jobname = `basename \$(pwd)`; # pull in dir name automatically
+chomp($pbs_jobname);
+our $pbs_walltime = '0:25:00';
+our $pbs_pmem = '4000mb';
+#our $pbs_queue_name = 'batch'; # for skink
+#our $pbs_module_load_commands = ''; # for skink
+our $pbs_queue_name = 'serial'; # for edward
+our $pbs_module_load_commands = 'module load intel; module load maxima'; # for edward
+#---------------------------------
+
+simulation_setup(); # overwrite any of the default parameters in the batcher_setup.pm module
+
 my @threads;
 my $systemcall;
-our $continue=0; # default value of 0 implies that run will not continue, but 
-
-$parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name $pbs_module_load_commands $prune_output_structure
-
-simulation_setup(); 
-
 my @case=case_setup(); # array that specifies information about each case that is being run that is initialised using case_setup within batcher_setup.pm
 my @output_keys=output_setup(); # create list output keys of variables to be output that is also initialised within batcher_setup.pm
 # convert this to output hash that will store the values
@@ -56,16 +69,19 @@ our %output=();
 for my $key (@output_keys) {
   $output{$key} = '';
 }
-my $runcommand=''; # if this variable is non-empty, run this command instead of the arb script directly
-
 # remove stopfile from previous run if it exists
 our $stopfile="batcher_stop";
 if (-e $stopfile) { unlink($stopfile) or die "BATCHER ERROR: could not remove $stopfile stop file from the previous run\n"; }
 
 # make output directory
-if (-d $output_dir && !($continue)) { # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
-  die "BATCHER ERROR: batcher will not run unless batcher_output directory is empty or non-existent (this is a safety feature!) or the continue flag is on\n";
-} elsif (! -d $output_dir) {
+if (-d $output_dir) { # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
+  if (!($continue)) {
+    die "BATCHER ERROR: batcher will not run unless batcher_output directory is empty or non-existent (this is a safety feature!) or the continue flag is on\n";
+  } elsif ($continue == -1) {
+    rmtree("$output_dir");
+  }
+} 
+if (! -d $output_dir) {
   mkpath($output_dir) or die "BATCHER ERROR: could not create $output_dir\n";
 }
 
@@ -100,17 +116,19 @@ for my $n ( 0 .. $#case ) {
   open(DUMPER, ">$run_record_dir/batcher_info.txt") or error_stop("can't open batcher_info.txt file in $run_record_dir");
   print DUMPER "run: n = $n: ndir = $ndir\ncase[$n] = ".Dumper($case[$n])."\n";
   close(DUMPER);
-  open(PBS, ">$run_record_dir/batcher_pbs_variables.txt") or error_stop("can't open batcher_pbs_variables.txt file in $run_record_dir");
-  print PBS "#INFO: code within this file is evaluated by batcher\n";
-  print PBS "#INFO: information for present case (likely set by batcher_setup.pm)\n";
-  print PBS Data::Dumper->Dump([$case[$n]], ['*present_case']);
-  print PBS "#INFO: where we are:\n";
-  print PBS Data::Dumper->Dump([$run_record_dir], ['*run_record_dir']);
-  print PBS Data::Dumper->Dump([\%output], ['*output']);
-  print PBS Data::Dumper->Dump([$n], ['*n']);
-  print PBS Data::Dumper->Dump([$ndir], ['*ndir']);
-  print PBS Data::Dumper->Dump([$prune_output_structure], ['*prune_output_structure']);
-  close(PBS);
+  if ($pbs) {
+    open(PBS, ">$run_record_dir/batcher_pbs_variables.txt") or error_stop("can't open batcher_pbs_variables.txt file in $run_record_dir");
+    print PBS "#INFO: code within this file is evaluated by batcher\n";
+    print PBS "#INFO: information for present case (likely set by batcher_setup.pm)\n";
+    print PBS Data::Dumper->Dump([$case[$n]], ['*present_case']);
+    print PBS "#INFO: where we are:\n";
+    print PBS Data::Dumper->Dump([$run_record_dir], ['*run_record_dir']);
+    print PBS Data::Dumper->Dump([\%output], ['*output']);
+    print PBS Data::Dumper->Dump([$n], ['*n']);
+    print PBS Data::Dumper->Dump([$ndir], ['*ndir']);
+    print PBS Data::Dumper->Dump([$prune_output_structure], ['*prune_output_structure']);
+    close(PBS);
+  }
 
 #-----------------
 

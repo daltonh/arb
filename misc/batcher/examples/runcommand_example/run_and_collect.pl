@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 
+# this is meant to be used in conjunction with runcommand
+# needs to be modified for each case, and hasn't been debugged since roaming arb_batcher
+
 use strict;
 use warnings;
 use Data::Dumper;

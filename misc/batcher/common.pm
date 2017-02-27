@@ -1,3 +1,4 @@
+# this is the Common module for batcher.pl (arb_batcher)
 package Common;
 
 use strict;
@@ -7,7 +8,7 @@ our @EXPORT_OK = qw(arbthread chompm empty nonempty protect protectarray error_s
  
 use File::Glob ':glob'; # deals with whitespace better
 use File::Copy qw(move copy);
-use Data::Dumper; # TODO temporary
+use Data::Dumper;
 use File::Path qw(mkpath rmtree); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 # TODO needs to open and close OUTPUT
 
@@ -20,10 +21,6 @@ sub arbthread {
   my $run_record_dir = $_[3];
   my %output = %main::output; # local copy
   my $output_dir = $main::output_dir; # local copy
-  my $parallel = $main::parallel; # local copy
-  my $prune_output_structure = $main::prune_output_structure; # local copy
-  my $stopfile = 'batcher_stop';
-  my $systemcall='';
 
   # write headers in $output_dir/batch_data.csv
   if (!($n)) {
@@ -40,36 +37,42 @@ sub arbthread {
     close(OUTPUT);
   }
 
-  #-----------------
-  # deal with substitutions
-  # loop through each arbfile, geofile and includefile specified by the user, copying them over to the directories which are in the same location in each run directory relative to the working directory while doing the substitutions
+#-----------------
+# deal with substitutions
+# loop through each arbfile, geofile and includefile specified by the user, copying them over to the directories which are in the same location in each run directory relative to the working directory while doing the substitutions
   foreach my $filetype ( "arbfile", "geofile", "includefile" ) {
+
+# if using string replacements write the batcher_include.arb file with the replacements in it as globals
+    if ($filetype eq "arbfile" && $::use_string_variables) {
+      open(INCLUDE_FILE,">$run_record_dir/batcher_include.arb");
+      print INCLUDE_FILE "# batcher $run_record_dir string variable replacement file\n";
+      if ($case[$n]{"replacements"}) {
+        for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
+          print INCLUDE_FILE "{{ string_set('$key','$case[$n]{replacements}{$key}','global'); }}\n";
+        }
+      }
+    }
+
     foreach my $fffilename ( protectarray(@{$case[$n]{$filetype}}) ) { 
       if (!("$fffilename")) { next; }
 #     print "BATCHER DEBUG: substitution files fffilename = $fffilename\n";
       foreach my $ffilename (bsd_glob($fffilename)) {
         print "BATCHER INFO: performing substitutions on $filetype $ffilename\n";
-        open(ORIGINAL, "<".$ffilename) or error_stop("can't open the original $filetype input file $ffilename within the working directory for some reason");
 # create directory structure if this isn't going to be placed directly in the run directory
         if ($ffilename =~ /^(.+)\/(.+?)$/) {
           my $create_path = "$run_record_dir/".$1;
           print "BATCHER INFO: create_path = $create_path\n";
           mkpath($create_path) or error_stop("could not create path $create_path required to place $filetype input file $ffilename correctly in the run directory");
         }
+# copy over each arb file, doing replacements if necessary
+        open(ORIGINAL, "<".$ffilename) or error_stop("can't open the original $filetype input file $ffilename within the working directory for some reason");
         my $filename = "$run_record_dir/".$ffilename;
 #       print "BATCHER DEBUG: substitution files filename = $filename\n";
         open(INFILE, ">".$filename) or error_stop("can't open substitute $filetype input file $filename");
         while (my $line=<ORIGINAL>) {
-          if ($case[$n]{"replacements"}) {
+          if (!($::use_string_variables) && $case[$n]{"replacements"}) {
             for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
-    # now stopping replacements if the string is mentioned as a replacement keyword
-# TODO: this needs to be more precise, possibly looking for preceding INCLUDE* or GENERAL_REPLACEMENTS, dealing with case, and dealing with default D|DEFAULT?
-# and match delimiters
-#             if ($line !~ /\s(R|REPLACE)\s+("|'|)\Q$key\E("|'|\s|$)/) {
-#               $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
-#             }
-# removing this regex now as it would also introduce the possibility of false matches
-# instead use <<batchercomment>> and <<nobatchercomment>> (see ref: general_replacements in setup_equations) for more consistent and controllable behaviour
+# use <<batchercomment>> and <<nobatchercomment>> (see ref: general_replacements in setup_equations) for more consistent and controllable behaviour
               $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
             }
           }
@@ -90,8 +93,7 @@ sub arbthread {
       $ffilename =~ /(.+)\.geo$/;
       my $mshname=$1.".msh";
       print "BATCHER INFO: creating msh file $mshname from $ffilename within $run_record_dir\n";
-      $systemcall="cd $run_record_dir; $::arb_bin_dir/arb_create_msh $ffilename"; # running arb_create_msh (which is actually in misc/create_msh) from record_dir
-#     $systemcall="cd $run_record_dir; touch jibber"; # running arb_create_msh (which is actually in misc/create_msh) from record_dir
+      my $systemcall="cd $run_record_dir; $::arb_bin_dir/arb_create_msh $ffilename"; # running arb_create_msh (which is actually in misc/create_msh) from record_dir
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
       #print "BATCHER DEBUG: \$mshname = $mshname\n";
@@ -112,23 +114,28 @@ sub arbthread {
         mkpath($create_path) or error_stop("could not create path $create_path required to place mshfile input file or directory $ffilename correctly in the run directory");
       }
       my $filename = "$run_record_dir/".$ffilename;
-      $systemcall="cp -R $ffilename $filename"; # using system cp function instead of the perl one as the perl version on osx can't handle recursive copying
+      my $systemcall="cp -R $ffilename $filename"; # using system cp function instead of the perl one as the perl version on osx can't handle recursive copying
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
     }
   }
 
-  if (nonempty($case[$n]{"runcommand"})) {
-    $systemcall=protect($case[$n]{"runcommand"}); # run this (probably) script instead of arb directly
-  } else {
-    $systemcall="$::arb_script --quiet ".protect($case[$n]{"arboptions"});
-    for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
-      $systemcall=$systemcall." ".bsd_glob($ffilename);
+  {
+    my $systemcall;
+    if (nonempty($case[$n]{"runcommand"})) {
+      $systemcall=protect($case[$n]{"runcommand"}); # run this (probably) script instead of arb directly
+    } else {
+      $systemcall="$::arb_script --quiet";
+      if (nonempty($case[$n]{"arboptions"})) {$systemcall.=" $case[$n]{arboptions}";};
+      if ($::use_string_variables) {$systemcall.=" batcher_include.arb";};
+      for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
+        $systemcall.=" ".bsd_glob($ffilename);
+      }
     }
+    
+    $systemcall = "cd $run_record_dir; $systemcall";
+    print "INFO: running `$systemcall`\n";
+    if (system($systemcall) == -1) { error_stop("error trying to run arb from batcher: stopping all batcher runs: could not $systemcall"); }
   }
-  
-  $systemcall = "cd $run_record_dir; $systemcall";
-  print "INFO: running `$systemcall`\n";
-  if (system($systemcall) == -1) { error_stop("error trying to run arb from batcher: stopping all batcher runs: could not $systemcall"); }
 
 #-----------------
 # now extract the data
@@ -200,7 +207,7 @@ sub arbthread {
     close(OUTPUT);
   }
 
-  if ($prune_output_structure) {
+  if ($::prune_output_structure) {
     
     # remove files/directories from run_record_dir
     # though, anything in the following grep pattern is *retained*
@@ -242,7 +249,7 @@ sub arbthread {
   for my $key ( keys(%output) ) { $output{"$key"}=''; }
 
 # look for user created stopfile
-  if (-e $stopfile) {print "BATCHER STOPPING: found $stopfile stop file so stopping the batcher run\n"; last;}
+  if (-e $::stopfile) {print "BATCHER STOPPING: found $::stopfile stop file so stopping the batcher run\n"; last;}
 }
 
 #-------------------------------------------------------------------------------
