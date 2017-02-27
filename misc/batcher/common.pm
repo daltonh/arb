@@ -21,6 +21,7 @@ sub arbthread {
   my $run_record_dir = $_[3];
   my %output = %main::output; # local copy
   my $output_dir = $main::output_dir; # local copy
+  my $debug = 0;
 
   # write headers in $output_dir/batch_data.csv
   if (!($n)) {
@@ -44,6 +45,7 @@ sub arbthread {
 
 # if using string replacements write the batcher_include.arb file with the replacements in it as globals
     if ($filetype eq "arbfile" && $::use_string_variables) {
+      print "BATCHER INFO: creating batcher_include.arb file for batcher string variables\n";
       open(INCLUDE_FILE,">$run_record_dir/batcher_include.arb");
       print INCLUDE_FILE "# batcher $run_record_dir string variable replacement file\n";
       if ($case[$n]{"replacements"}) {
@@ -55,9 +57,9 @@ sub arbthread {
 
     foreach my $fffilename ( protectarray(@{$case[$n]{$filetype}}) ) { 
       if (!("$fffilename")) { next; }
-#     print "BATCHER DEBUG: substitution files fffilename = $fffilename\n";
+      if ($debug) {print "BATCHER DEBUG: substitution files fffilename = $fffilename\n";}
       foreach my $ffilename (bsd_glob($fffilename)) {
-        print "BATCHER INFO: performing substitutions on $filetype $ffilename\n";
+        if (!($::use_string_variables)) {print "BATCHER INFO: performing substitutions on $filetype $ffilename\n";}
 # create directory structure if this isn't going to be placed directly in the run directory
         if ($ffilename =~ /^(.+)\/(.+?)$/) {
           my $create_path = "$run_record_dir/".$1;
@@ -67,7 +69,7 @@ sub arbthread {
 # copy over each arb file, doing replacements if necessary
         open(ORIGINAL, "<".$ffilename) or error_stop("can't open the original $filetype input file $ffilename within the working directory for some reason");
         my $filename = "$run_record_dir/".$ffilename;
-#       print "BATCHER DEBUG: substitution files filename = $filename\n";
+        if ($debug) {print "BATCHER DEBUG: substitution files filename = $filename\n";}
         open(INFILE, ">".$filename) or error_stop("can't open substitute $filetype input file $filename");
         while (my $line=<ORIGINAL>) {
           if (!($::use_string_variables) && $case[$n]{"replacements"}) {
@@ -88,7 +90,7 @@ sub arbthread {
   # create msh files from any geofiles using the run directory's local create_mesh script which will place the msh files at the same location as the geo file
   foreach my $fffilename ( protectarray(@{$case[$n]{"geofile"}}) ) { 
     if (!($fffilename)) { next; }
-#   print "BATCHER DEBUG: geo files fffilename = $fffilename\n";
+    if ($debug) {print "BATCHER DEBUG: geo files fffilename = $fffilename\n";}
     foreach my $ffilename (bsd_glob("$fffilename")) {
       $ffilename =~ /(.+)\.geo$/;
       my $mshname=$1.".msh";
@@ -96,7 +98,7 @@ sub arbthread {
       my $systemcall="cd $run_record_dir; $::arb_bin_dir/arb_create_msh $ffilename"; # running arb_create_msh (which is actually in misc/create_msh) from record_dir
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
-      #print "BATCHER DEBUG: \$mshname = $mshname\n";
+      if ($debug) {print "BATCHER DEBUG: \$mshname = $mshname\n";}
     }
   }
 
@@ -104,7 +106,7 @@ sub arbthread {
   # deal with msh files and now whole directories that are listed to be used in this simulation, with no substitutions
   foreach my $fffilename ( protectarray(@{$case[$n]{"mshfile"}}) ) { 
     if (!($fffilename)) { next; }
-#   print "BATCHER DEBUG: msh files fffilename = $fffilename\n";
+    if ($debug) {print "BATCHER DEBUG: msh files fffilename = $fffilename\n";}
     foreach my $ffilename (bsd_glob("$fffilename")) {
       print "BATCHER INFO: copying msh file or directory $ffilename\n";
 # create directory structure if this isn't going to be placed directly in the run directory
@@ -124,16 +126,27 @@ sub arbthread {
     if (nonempty($case[$n]{"runcommand"})) {
       $systemcall=protect($case[$n]{"runcommand"}); # run this (probably) script instead of arb directly
     } else {
+# assemble arb command line
       $systemcall="$::arb_script --quiet";
+# deal with previous output reuse
+# TODO: not working
+      if ($::use_previous_build && $n > 0) {
+        my $previous_run_record_dir = "../run_".scalar($ndir-1)."/output";
+        if ($debug) {print "BATCHER DEBUG: previous_run_record_dir = $previous_run_record_dir\n";}
+        $systemcall.=" -po $previous_run_record_dir";
+      }
+# arboptions
       if (nonempty($case[$n]{"arboptions"})) {$systemcall.=" $case[$n]{arboptions}";};
+# if using string_variables add batcher_include.pl
       if ($::use_string_variables) {$systemcall.=" batcher_include.arb";};
+# and finally the arbfiles
       for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
         $systemcall.=" ".bsd_glob($ffilename);
       }
     }
     
-    $systemcall = "cd $run_record_dir; $systemcall";
-    print "INFO: running `$systemcall`\n";
+    $systemcall = "cd $run_record_dir; $systemcall"; # run the arb command
+    print "BATCHER INFO: running `$systemcall`\n";
     if (system($systemcall) == -1) { error_stop("error trying to run arb from batcher: stopping all batcher runs: could not $systemcall"); }
   }
 
@@ -208,43 +221,22 @@ sub arbthread {
   }
 
   if ($::prune_output_structure) {
-    
     # remove files/directories from run_record_dir
-    # though, anything in the following grep pattern is *retained*
-    opendir(RUNDIR, $run_record_dir) or die "BATCHER ERROR: could not open $run_record_dir\n";
-    my @to_delete = grep(!/^\.+|output|batcher_info.txt|batcher_pbs_variables.txt|job.pbs|\.arb|\.geo|\.msh$/, readdir(RUNDIR));
-    closedir(RUNDIR);
-    print "BATCHER INFO: cleaning files in $run_record_dir\n";
-    for my $entry (@to_delete) {
-      if (-f "$run_record_dir/$entry") {
-        unlink("$run_record_dir/$entry");
-      } else {
-        rmtree("$run_record_dir/$entry");
+    print "BATCHER INFO: pruning files in $run_record_dir\n";
+    foreach my $prune_glob (@::prune_files) {
+      if ($debug) {print "BATCHER DEBUG: removing files: prune_glob = $prune_glob\n";}
+      my @found_files = bsd_glob("$run_record_dir/$prune_glob");
+      foreach my $item (@found_files) {
+        if ($item =~ /\.\./) {
+          print "WARNING: skipping deletion of $item due to repeated .. in pathname\n";
+        } elsif ( -e $item ) {
+          if ($debug) {print "BATCHER DEBUG: removing files: item = $item\n";}
+          rmtree("$item") or print "WARNING: could not delete $item\n";
+        }
       }
     }
-
-    my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/output_process_log.csv", "output/convergence_details.txt", "output/setup_data/current_unwrapped_input.arb", "output/setup_data/variable_list.txt", "output/setup_data/region_list.txt", "output/setup_data/variable_list.arb", "output/setup_data/region_list.arb", "output/setup_data/syntax_problems.txt");
-
-    my @output_msh_files = bsd_glob("$run_record_dir/output/output*.msh");
-    foreach my $item (@output_msh_files) {
-      $item =~ s/$run_record_dir\///g;
-    }
-    push(@output_search, @output_msh_files);
-
-  # save all output files that are present, including msh files
-    for my $output_file (@output_search) {
-      #my $ls_command = "ls $run_record_dir/output";
-      #system($ls_command);
-      if (-e "$run_record_dir/$output_file") {
-        #print "BATCHER DEBUG: moving $run_record_dir/$output_file to $run_record_dir\n";
-        move("$run_record_dir/$output_file",$run_record_dir) or error_stop("could not copy $run_record_dir/$output_file to run record directory $run_record_dir");
-      } 
-    }
-
-    # remove trace of everything else
-    rmtree("$run_record_dir/output");
-    rmtree("$run_record_dir/tmp");
   }
+
 # clear all output results before starting the next run
   for my $key ( keys(%output) ) { $output{"$key"}=''; }
 

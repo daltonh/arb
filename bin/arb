@@ -362,7 +362,7 @@ if [ -n "$previous_build_dir" ] ; then
   if [ ! -d "$previous_build_dir" ] ; then
     echo "WARNING: previous build directory $previous_build_dir does not exist.  Not using previous build data.";
   else
-    cp -p "$previous_build_dir/"* "$build_dir/" >/dev/null 2>/dev/null ; # preserve properties but don't copy directories (ie, intel ooc dir)
+    cp -Rp "$previous_build_dir" "$output_dir/" >/dev/null 2>/dev/null ; # preserve properties but don't copy directories (ie, intel ooc dir)
   fi;
 fi;
 # and link to the makefile

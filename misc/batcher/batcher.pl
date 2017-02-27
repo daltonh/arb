@@ -9,6 +9,7 @@
 #
 #     arb_batcher -m batcher_setup.pm
 #
+#    Note: just running arb_batcher will probably find the batcher_setup.pm if it is in the same directory, but this behaviour of perl isn't guaranteed into the future, so better to include batcher_setup.pm explicitly via the -m flag
 # 3) output will be placed in batcher_output off the working directory
 # 4) copy the batcher_output directory to somewhere else before doing the next run, otherwise some of the input files will be clobbered (change this behaviour by using the no-continue flag below)
 # 5) touch batcher_stop in the working directory to stop the run (a subsequent touch kill will stop the arb job as quickly as possible too)
@@ -35,7 +36,7 @@ our $batcher_dir="$FindBin::RealBin"; # batcher_dir is where the batcher.pl scri
 our ($arb_dir)=$batcher_dir=~/(^.*)\/misc\/batcher$/; # arb_dir is the arb (root) dir
 our $arb_bin_dir="$arb_dir/bin"; # this is the arb bin dir, used to access other arb executables globally
 our $arb_script="$arb_bin_dir/arb"; # this is the arb script, user to run arb globally
-print "INFO: batcher_dir = $batcher_dir: arb_dir = $arb_dir: arb_bin_dir = $arb_bin_dir: arb_script = $arb_script\n";
+#print "INFO: batcher_dir = $batcher_dir: arb_dir = $arb_dir: arb_bin_dir = $arb_bin_dir: arb_script = $arb_script\n";
 our $output_dir="batcher_output"; # this directory will store all of the output, which is off the working dir from which batcher is called 
 
 #---------------------------------
@@ -44,8 +45,13 @@ our $output_dir="batcher_output"; # this directory will store all of the output,
 our $sge_variant = 0; # whether system using sun grid engine (in place of pbs)
 our $continue=0; # default value of 0 implies that run will not continue, but 
 our $parallel = 0; # default to run arb jobs in series
-our $prune_output_structure = 0; # clear tmp, src, etc. from final run_* directories
+our $prune_output_structure = 0; # remove anything within the run_dir that matches with globs in @prune_files
+our @prune_files = ( # an array of globs to remove
+  "output/build", "output/previous", "output/setup_data_incomplete", "output/setup_data/*.txt",
+  "output/setup_data/maxima", "output/setup_data/setup_dependency_data_perl_dumper",
+  "batcher_info.txt", "batcher_pbs_variables.txt", "job.pbs", "*.msh", "output/*.txt");
 our $use_string_variables = 0; # if on uses arb runtime global string variables rather than batcher whole of file replacements (default)
+our $use_previous_build = 1; # reuse build information from the previous run (needs prune_output_structure to be off)
 
 our $pbs = 0; # whether to use job queueing system
 our $pbs_jobname = `basename \$(pwd)`; # pull in dir name automatically
@@ -56,6 +62,15 @@ our $pbs_pmem = '4000mb';
 #our $pbs_module_load_commands = ''; # for skink
 our $pbs_queue_name = 'serial'; # for edward
 our $pbs_module_load_commands = 'module load intel; module load maxima'; # for edward
+#---------------------------------
+print "arb_batcher script for running multiple arb simulations\n";
+# read through all command line arguments
+foreach my $argument ( @ARGV )  # first loop looks for distributable files and help request
+{
+  if ( $argument eq '-h' || $argument eq '--help' ) {
+    usage();
+  }
+}
 #---------------------------------
 
 simulation_setup(); # overwrite any of the default parameters in the batcher_setup.pm module
@@ -78,6 +93,7 @@ if (-d $output_dir) { # for File::Path version < 2.08, http://perldoc.perl.org/F
   if (!($continue)) {
     die "BATCHER ERROR: batcher will not run unless batcher_output directory is empty or non-existent (this is a safety feature!) or the continue flag is on\n";
   } elsif ($continue == -1) {
+    print "BATCHER INFO: removing previous $output_dir\n";
     rmtree("$output_dir");
   }
 } 
@@ -265,7 +281,7 @@ for my $n ( 0 .. $#case ) {
     system($qsub_call);
 
   } elsif ($parallel) { # run arb jobs in parallel
-    print "BATCHER DEBUG: running in non-pbs parallel mode\n";
+    if (!($n)) {print "BATCHER INFO: running in non-pbs parallel mode\n";}
     # copy everything needed to run_record_dir
     my $t = threads->new(\&arbthread, \@case, $n, $ndir, $run_record_dir);
     push(@threads,$t); 
@@ -274,7 +290,7 @@ for my $n ( 0 .. $#case ) {
 # create link to current directory
     if (-e "$output_dir/run_current") { unlink("$output_dir/run_current"); }
     symlink("run_$ndir","$output_dir/run_current");
-    print "BATCHER DEBUG: running in series mode\n";
+    if (!($n)) {print "BATCHER INFO: running in series mode\n";}
     &arbthread(\@case, $n, $ndir, $run_record_dir);
 # and remove the link once we are done
     if (-e "$output_dir/run_current") { unlink("$output_dir/run_current"); }
@@ -290,3 +306,18 @@ if ($parallel) {
 
 close(OUTPUT);
 exit;
+#*******************************************************************************
+# usage function
+
+sub usage {
+  print "usage: arb_batcher -m batcher_setup.pm\n\n".
+        "where batcher_setup.pm is a perl module that specifies everything about the job to run.\n".
+        "See the script itself batcher.pl for notes on how to run the script,\n".
+        "and the examples directory therein which contains example batcher_setup.pm modules.\n".
+        "Script is located at: $arb_dir/misc/batcher\n".
+        "options include:\n".
+        " -h or --help = produce this message\n";
+  exit;
+}
+
+#*******************************************************************************
