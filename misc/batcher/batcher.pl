@@ -1,18 +1,21 @@
 #!/usr/bin/env perl
 # perl script to run sequential arb simulations, changing text in both arb and geo files, and then extracting data from the output files
+# this file is linked to arb_batcher in bin
 
 # usage
 # 1) create the perl module batcher_setup within the arb working directory which contains the subs case_setup and output_setup
 # see instructions in the example module file included in misc/batcher/examples/parasitic_currents/batcher_setup.pm
 # 2) run batcher, while at the same time including this module using
 #
-#     ./misc/batcher/batcher.pl -m batcher_setup.pm
+#     arb_batcher -m batcher_setup.pm
 #
 # 3) output will be placed in batcher_output off the working directory
 # 4) copy the batcher_output directory to somewhere else before doing the next run, otherwise some of the input files will be clobbered (change this behaviour by using the no-continue flag below)
 # 5) touch batcher_stop in the working directory to stop the run (a subsequent touch kill will stop the arb job as quickly as possible too)
 #
 # large re-write 20/4/15, daltonh
+# another re-write 27/2/17 for v0.57 (roaming), daltonh
+# NB: in roaming mode, uses only arb_batcher script location to locate other resources
 
 use strict;
 use warnings;
@@ -21,18 +24,31 @@ use File::Path qw(mkpath rmtree); # for File::Path version < 2.08, http://perldo
 use File::Copy qw(move copy);
 use File::Glob ':glob'; # deals with whitespace better
 use Thread; # for simultaneous jobs
-use batcher_setup qw(case_setup output_setup $parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name $pbs_module_load_commands $prune_output_structure); # brings in the user-written module that defines case-specific data
+use FindBin;
+use lib "$FindBin::RealBin/"; # this will be the script location, with links resolved, which is where Common.pl is
+use Common qw(arbthread chompm empty nonempty protect protectarray error_stop);
 
-use lib './misc/batcher';
-use common qw(arbthread chompm empty nonempty protect protectarray error_stop);
+# batcher_setup should be found in the working_dir, which is the directory from which the script is run
+use batcher_setup qw(simulation_setup case_setup output_setup); # brings in the user-written module that defines case-specific data
+
+my $batcher_dir="$FindBin::RealBin"; # batcher_dir is where the batcher.pl script is
+my ($arb_dir)=$batcher_dir=~/(^.*)\/misc\/batcher$/; # arb_dir is the arb (root) dir
+our $arb_bin_dir="$arb_dir/bin"; # this is the arb bin dir, used to access other arb executables globally
+our $arb_script="$arb_bin_dir/arb"; # this is the arb script, user to run arb globally
+print "INFO: batcher_dir = $batcher_dir: arb_dir = $arb_dir: arb_bin_dir = $arb_bin_dir: arb_script = $arb_script\n";
+our $output_dir="batcher_output"; # this directory will store all of the output, which is off the working dir from which batcher is called 
+
 
 # whether system using sun grid engine (in place of pbs)
-my $sge_variant = 0;
-
+our $sge_variant = 0;
 my @threads;
 my $systemcall;
-our $output_dir="batcher_output"; # this directory will store all of the output
-my $continue=1; # set this to true (1) to allow continuation from a previous run, with new (additional) runs to take place - now this is 1 by default, which will append to previous batcher_output directories
+our $continue=0; # default value of 0 implies that run will not continue, but 
+
+$parallel $pbs $pbs_jobname $pbs_walltime $pbs_pmem $pbs_queue_name $pbs_module_load_commands $prune_output_structure
+
+simulation_setup(); 
+
 my @case=case_setup(); # array that specifies information about each case that is being run that is initialised using case_setup within batcher_setup.pm
 my @output_keys=output_setup(); # create list output keys of variables to be output that is also initialised within batcher_setup.pm
 # convert this to output hash that will store the values
@@ -41,9 +57,6 @@ for my $key (@output_keys) {
   $output{$key} = '';
 }
 my $runcommand=''; # if this variable is non-empty, run this command instead of the arb script directly
-
-# sanity check to make sure that we are in the arb working directory
-if (! -d "build") { die "BATCHER ERROR: call this script from working directory\n"; }
 
 # remove stopfile from previous run if it exists
 our $stopfile="batcher_stop";
@@ -77,11 +90,7 @@ for my $n ( 0 .. $#case ) {
 
   my $ndir = scalar($n+$nstart);
   my $run_record_dir = "$output_dir/run_$ndir";
-# make a snapshot of original arb directory, now using the pack script to only include the base distribution, plus any necessary third party files in the contributed directory
-# using pack avoids copying over unneccesary files/directories
-# now also includes build directory so that relevant object files can be reused if the executable isn't changing between runs - remember to compile with the same options as specified in batcher_setup.pm
-  $systemcall="./pack --no-input --contributed --build --unpack $run_record_dir";
-  (!(system("$systemcall"))) or error_stop("could not $systemcall");
+  if (! -d $run_record_dir) { mkpath($run_record_dir) or die "BATCHER ERROR: could not create $run_record_dir\n"; }
 
 # check that arbfile contains something, otherwise default to *.arb
   if (!(@{$case[$n]{"arbfile"}})) { push(@{$case[$n]{"arbfile"}},"*.arb"); };
@@ -163,7 +172,7 @@ for my $n ( 0 .. $#case ) {
     echo '\$SHELL:' \$SHELL
     echo '\$PBS_JOBID: ' \$PBS_JOBID
     echo '\$PBS_O_HOST: ' \$PBS_O_HOST
-    echo '\$rundir: ' \$rundir
+    echo '\$rundir: ' \$rundir # needs fixing
     echo 'uname -a: ' `uname -a`
     echo 'STARTING DATE ' `date`
     echo
@@ -172,8 +181,8 @@ for my $n ( 0 .. $#case ) {
     $pbs_module_load_commands
     
 
-    # move to rundir
-    cd \$rundir
+    # move to rundir - no, now run from working_dir
+    # cd \$rundir
     # run job
     ./misc/batcher/run_and_collect.pl $ndir
 
@@ -201,7 +210,7 @@ for my $n ( 0 .. $#case ) {
     echo '\$SHELL:' \$SHELL
     echo '\$JOBID: ' \$JOBID
     echo '\$SGE_O_HOST: ' \$SGE_O_HOST
-    echo '\$rundir: ' \$rundir
+    echo '\$rundir: ' \$rundir # needs fixing
     echo 'uname -a: ' `uname -a`
     echo 'STARTING DATE ' `date`
     echo
@@ -209,7 +218,7 @@ for my $n ( 0 .. $#case ) {
     # load modules if specified (not required for borg)
 
     # move to rundir
-    cd \$rundir
+    # cd \$rundir
     # run job
     ./misc/batcher/run_and_collect.pl $ndir
 

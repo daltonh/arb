@@ -7,7 +7,7 @@ use Thread;
 use File::Glob ':glob'; # deals with whitespace better
 
 use lib './misc/batcher';
-use common qw(arbthread chompm empty nonempty protect protectarray error_stop);
+use Common qw(arbthread chompm empty nonempty protect protectarray error_stop);
 
 my $run_id; # this will be passed to the script as a command line option
 $run_id = int($ARGV[0]); # batcher.pl will call via `run_and_collect $run_id`

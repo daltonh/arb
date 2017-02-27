@@ -1,4 +1,4 @@
-package common;
+package Common;
 
 use strict;
 use warnings;
@@ -90,7 +90,8 @@ sub arbthread {
       $ffilename =~ /(.+)\.geo$/;
       my $mshname=$1.".msh";
       print "BATCHER INFO: creating msh file $mshname from $ffilename within $run_record_dir\n";
-      $systemcall="cd $run_record_dir; ./misc/create_msh/create_msh $ffilename"; # use ./misc/create_mesh/create_mesh script
+      $systemcall="cd $run_record_dir; $::arb_bin_dir/arb_create_msh $ffilename"; # running arb_create_msh (which is actually in misc/create_msh) from record_dir
+#     $systemcall="cd $run_record_dir; touch jibber"; # running arb_create_msh (which is actually in misc/create_msh) from record_dir
       (!(system("$systemcall"))) or error_stop("could not $systemcall");
 
       #print "BATCHER DEBUG: \$mshname = $mshname\n";
@@ -119,7 +120,7 @@ sub arbthread {
   if (nonempty($case[$n]{"runcommand"})) {
     $systemcall=protect($case[$n]{"runcommand"}); # run this (probably) script instead of arb directly
   } else {
-    $systemcall="./arb --quiet ".protect($case[$n]{"arboptions"});
+    $systemcall="$::arb_script --quiet ".protect($case[$n]{"arboptions"});
     for my $ffilename ( @{$case[$n]{"arbfile"}} ) {
       $systemcall=$systemcall." ".bsd_glob($ffilename);
     }
@@ -204,7 +205,7 @@ sub arbthread {
     # remove files/directories from run_record_dir
     # though, anything in the following grep pattern is *retained*
     opendir(RUNDIR, $run_record_dir) or die "BATCHER ERROR: could not open $run_record_dir\n";
-    my @to_delete = grep(!/^\.+|output|tmp|batcher_info.txt|batcher_pbs_variables.txt|job.pbs|\.arb|\.geo|\.msh$/, readdir(RUNDIR));
+    my @to_delete = grep(!/^\.+|output|batcher_info.txt|batcher_pbs_variables.txt|job.pbs|\.arb|\.geo|\.msh$/, readdir(RUNDIR));
     closedir(RUNDIR);
     print "BATCHER INFO: cleaning files in $run_record_dir\n";
     for my $entry (@to_delete) {
@@ -215,7 +216,7 @@ sub arbthread {
       }
     }
 
-    my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/output_process_log.csv", "output/convergence_details.txt", "tmp/setup/current_unwrapped_input.arb", "tmp/setup/variable_list.txt", "tmp/setup/region_list.txt");
+    my @output_search = ("output/output.stat", "output/output.scr", "output/output_step.csv", "output/output_process_log.csv", "output/convergence_details.txt", "output/setup_data/current_unwrapped_input.arb", "output/setup_data/variable_list.txt", "output/setup_data/region_list.txt", "output/setup_data/variable_list.arb", "output/setup_data/region_list.arb", "output/setup_data/syntax_problems.txt");
 
     my @output_msh_files = bsd_glob("$run_record_dir/output/output*.msh");
     foreach my $item (@output_msh_files) {

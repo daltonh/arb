@@ -1670,13 +1670,13 @@ sub expand_equation {
 sub create_external_file {
 # finds a external file, and parses it for new externals
 # on input
-# $_[0] = name of file, based on the working directory
+# $_[0] = name of file, now as an absolute location
   my $filename = $_[0];
   my $search = 'preamble';
   my $current = '';
   my ($line);
   
-  open (EXTERNAL, "<$::working_dir/$filename") or error_stop("Could not find external file $filename");
+  open (EXTERNAL, "<$filename") or error_stop("Could not find external file $filename");
   
   my ($name) = $filename =~ /(.*)\.(f90|f|for)/;
   push(@::externals,{name => $name, preamble => '', contents => '', setup => '', used => 0}); # push a new hash onto this array

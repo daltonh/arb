@@ -53,7 +53,7 @@ use Sys::Hostname;
 
 # include arb specific modules from src/perl_lib
 use FindBin;
-use lib "$FindBin::Bin"; # place where local modules to be included are stored, which is now relative to setup_equations.pl script, and resides in the same src/setup_equations directory
+use lib "$FindBin::RealBin"; # place where local modules to be included are stored, which is now relative to setup_equations.pl script, and resides in the same src/setup_equations directory
 
 use Common; # non-specific routines
 use ReadInputFiles; # deals with reading the input files, including sub read_input_files
