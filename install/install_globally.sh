@@ -93,28 +93,26 @@ arb_dir="${install_dir%"/install"}"; # arb root directory, known as arb_dir, wit
 
 # now make any contributed routines
 # TODO: generalise this to other contributed packages
-#(
-#  cd "$arb_dir/src/contributed/suitesparse";
-#  echo "INFO: making contributed package in `pwd`";
-#  make;
-#)
+(
+  cd "$arb_dir/src/contributed/suitesparse";
+  echo "INFO: making contributed package in `pwd`";
+  make;
+)
 
 # now detect shell type as either sh (sh, bash) or csh (csh, tcsh)
 shelltype=`basename ${SHELL}`;
 echo "INFO: shell identified as $shelltype type";
 if [ $shelltype == "tcsh" -o $shelltype == "csh" ] ; then
-  echo "INFO: csh type shell: adding config to ~/.${shelltype}rc";
+  echo "INFO: csh type shell: adding config to the end of ~/.${shelltype}rc";
   echo "# arb path set by install_globally.sh script" >> ~/.${shelltype}rc
   echo "setenv ARB_DIR \"${arb_dir}\"" >> ~/.${shelltype}rc
   echo 'setenv PATH "${PATH}:${ARB_DIR}/bin"' >> ~/.${shelltype}rc
 else
-  echo "INFO: sh type shell: adding config to ~/.${shelltype}rc";
+  echo "INFO: sh type shell: adding config to the end of ~/.${shelltype}rc";
   echo "# arb path set by install_globally.sh script" >> ~/.${shelltype}rc
   echo "export ARB_DIR=\"${arb_dir}\"" >> ~/.${shelltype}rc
   echo 'export PATH="${PATH}:${ARB_DIR}/bin"' >> ~/.${shelltype}rc
 fi
-
-
 
 exit 0
 # done
