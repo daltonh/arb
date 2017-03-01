@@ -47,8 +47,8 @@ character(len=100) :: linear_solver = "default" ! (default, userable) type of li
 logical :: backstepping = .true. ! (.true., userable) whether to use backstepping or not - no reason not to
 double precision, parameter :: alf = 1.d-5 ! (1.d-5) small factor that ensures that newtres is decreasing by a multiple of the initial rate of decrease - everyone suggests 1.d-4, but a bit smaller seems to work better for some problems
 double precision :: lambdamin = 1.d-10 ! (1.d-10, userable) minimum absolute backstepping lambda allowed - this can be set very small if lambda_limit_false_root is on
-logical, parameter :: lambda_limit_cautiously = .false. ! (.false.) limit lambda so that solution is approached slowly (cautiously), hopefully avoiding spurious steps into unstable regions
-double precision, parameter :: lambda_limit_cautiously_factor = 1.d-2 ! (1.d-2) product of average unknown change and newtres which must be satisfied for step to be accepted - the lower the value the more cautious the approach to the solution is - 1.d1 is reckless but possibly fast, 1.d-2 is a good middle-of-the-road value for reasonably stable systems, 1.d-4 is very cautious (slow but safe).  These factors are critically dependent on the unknown magnitudes being correct!
+logical :: lambda_limit_cautiously = .false. ! (.false., userable) limit lambda so that solution is approached slowly (cautiously), hopefully avoiding spurious steps into unstable regions
+double precision :: lambda_limit_cautiously_factor = 1.d-2 ! (1.d-2, userable) product of average unknown change and newtres which must be satisfied for step to be accepted - the lower the value the more cautious the approach to the solution is - 1.d1 is reckless but possibly fast, 1.d-2 is a good middle-of-the-road value for reasonably stable systems, 1.d-4 is very cautious (slow but safe).  These factors are critically dependent on the unknown magnitudes being correct!
 logical :: lambda_limit_false_root = .true. ! (.true., userable) attempt to identify and move past false solution roots by imposing a lower limit on lambda that is a function of the current newtres
 double precision :: lambda_limit_false_root_factor = 1.d-4 ! (1.d-4, userable) aggression used in limiting lambda - a higher number means a more agressive limiting approach but cause solution to shoot off into unstable regions - 1.d-7 is a middle of the road value
 logical :: sticky_lambda = .true. ! (.true., userable) use lambda from previous step as the basis for the current iteration
@@ -2038,6 +2038,22 @@ do n = 1, allocatable_character_size(solver_options) ! precedence is now as read
       call error_stop("requested solver lambdalimitfalserootfactor should be greater than zero")
     end if
     write(*,'(a,g10.3)') 'INFO: setting solver lambdalimitfalserootfactor = ',lambda_limit_false_root_factor
+  else if (trim(option_name) == "lambdalimitcautiously") then
+! lambda_limit_cautiously
+    lambda_limit_cautiously = extract_option_logical(solver_options(n),error)
+    if (error) call error_stop("could not determine lambdalimitcautiously from the solver option "// &
+      trim(solver_options(n)))
+    write(*,'(a,l1)') 'INFO: setting solver lambdalimitcautiously = ',lambda_limit_cautiously
+  else if (trim(option_name) == "lambdalimitcautiouslyfactor") then
+! lambda_limit_cautiously_factor
+    lambda_limit_cautiously_factor = extract_option_double_precision(solver_options(n),error)
+    if (error) then
+      call error_stop("could not determine lambdalimitcautiouslyfactor from the solver option "// &
+        trim(solver_options(n)))
+    else if (lambda_limit_cautiously_factor <= 0.d0) then
+      call error_stop("requested solver lambdalimitcautiouslyfactor should be greater than zero")
+    end if
+    write(*,'(a,g10.3)') 'INFO: setting solver lambdalimitcautiouslyfactor = ',lambda_limit_cautiously_factor
   else if (trim(option_name) == "lambdamin") then
 ! lambdamin
     lambdamin = extract_option_double_precision(solver_options(n),error)

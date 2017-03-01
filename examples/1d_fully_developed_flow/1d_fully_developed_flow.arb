@@ -1,0 +1,43 @@
+INFO_TITLE "Fully developed 1d flow between two plates"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "13/2/17"
+
+MSH_FILE "line.msh" # this is a vertical line, parallel with the y [l=2] axis
+INCLUDE_TEMPLATE "fluid_properties/water"
+
+CONSTANT <width> "facesum(<facex[l=2]>,region=<top>)-facesum(<facex[l=2]>,region=<bottom>)"
+CONSTANT <half_width> "<width>/2.d0"
+NONE_CONSTANT <dpdx[l=1]> -1.d0 # a negative pressure gradient drives flow in the positive x direction
+NONE_CONSTANT <p_magnitude> "abs(<dpdx[l=1]>)"
+NONE_CONSTANT <u_magnitude> "<half_width>^2*<p_magnitude>/(12.d0*<mu>)" # based on flow of newtonian fluid between two infinite flat plates
+
+CELL_UNKNOWN <u[l=1]> "1.d0" ON <allcells> magnitude=<u_magnitude>
+FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,](<u[l=1]>)" ON <allfaces>
+
+# to invoke a carreau fluid, set this to the empty string, otherwise for a newtonian fluid set this to "#"
+GENERAL_REPLACEMENTS R "<<carreaucomment>>" W ""
+<<carreaucomment>>INFO_TITLE+ ": Carreau shear-thinning fluid"
+
+# calculate the average strain rate using templates files
+<<carreaucomment>>INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude"
+<<carreaucomment>>VARIABLE <gamma_magnitude> output
+<<carreaucomment>>FACE_DERIVED <gamma_magnitude_f> "sqrt(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))" ON <allfaces> output
+NONE_CONSTANT <mu_f> "<mu>" # will be overwritten for a carreau fluid
+
+# parameters for the carreau shear-thinning viscosity
+<<carreaucomment>>NONE_CONSTANT <carreau_relative_mu_infinity> 1.d-3
+<<carreaucomment>>NONE_CONSTANT <carreau_mu_infinity> [Pa.s] "<mu>*<carreau_relative_mu_infinity>" # set infinite shear-rate viscosity as a proportion of the zero-shear rate viscosity
+<<carreaucomment>>NONE_CONSTANT <carreau_lambda> [s] 1.d0 # time constant
+<<carreaucomment>>NONE_CONSTANT <carreau_n> 0.5d0 # power-law constant
+<<carreaucomment>>FACE_DERIVED <mu_f> "(1.d0+(<carreau_lambda>*<gamma_magnitude_f>)^2)^((<carreau_n>-1.d0)/2.d0)*(<mu>-<carreau_mu_infinity>) + <carreau_mu_infinity>" ON <allfaces> output
+<<carreaucomment>>NONE_CONSTANT <u_magnitude> "<u_magnitude>*<mu>/<carreau_mu_infinity>" # 
+
+FACE_LOCAL <tau[l=1,2]> "-<mu_f>*<ugrad_f[l=2,1]>" ON <allfaces>
+FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <allfaces>
+FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <allfaces>
+CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)+<dpdx[l=1]>" ON <domain> # momentum component
+FACE_EQUATION <u_topwall> "<u[l=1]>" ON <top>
+FACE_EQUATION <u_bottomwall> "<u[l=1]>" ON <bottom>
+
+NEWTSTEPMAX 50
+#INCLUDE_TEMPLATE "kernel_presets/kernel_1st_order_compact"
