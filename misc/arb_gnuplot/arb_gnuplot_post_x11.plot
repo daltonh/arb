@@ -1,5 +1,5 @@
 ####################################################################################
-# plot_step_post.plot follows
+# arb_gnuplot_post.plot follows
 
 # to close pdf file
 #unset output

@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# file misc/plot_step/plot_step.pl
+# file misc/arb_gnuplot/arb_gnuplot.pl
 #
 # Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
@@ -34,15 +34,15 @@
 #-------------------------------------------------------------------------
 # perl script to create gnuplot commands for plotting output.step file contents
 
-# usage: plot_step.pl [x_data:]y1_data1[,y1_data2,...][:y2_data1,y2_data2,...]
+# usage: arb_gnuplot.pl [x_data:]y1_data1[,y1_data2,...][:y2_data1,y2_data2,...]
 #
-# plot_step.pl 2 ! will plot column 2 (vertical) against column 1 (horizontal) data
-# plot_step.pl 5:2 ! will plot column 2 (vertical) against column 5 (horizontal) data
-# plot_step.pl 1:2,3 ! will plot columns 2 and 3 on same vertical axis against column 1
-# plot_step.pl 1:2,3:4,5 ! will plot columns 2 and 3 on same vertical axis, and 4 and 5 on second vertical axis, both against column 1
+# arb_gnuplot.pl 2 ! will plot column 2 (vertical) against column 1 (horizontal) data
+# arb_gnuplot.pl 5:2 ! will plot column 2 (vertical) against column 5 (horizontal) data
+# arb_gnuplot.pl 1:2,3 ! will plot columns 2 and 3 on same vertical axis against column 1
+# arb_gnuplot.pl 1:2,3:4,5 ! will plot columns 2 and 3 on same vertical axis, and 4 and 5 on second vertical axis, both against column 1
 #
 # alternatively columns may be referred to by their names, however this whole line will need to be quoted to pass the shell
-# plot_step.pl '<Re>:<t>' ! plot <Re> on vertical axis versus <t> on horizontal
+# arb_gnuplot.pl '<Re>:<t>' ! plot <Re> on vertical axis versus <t> on horizontal
 #
 # Note:
 # 1) if two y axis are to be used, two colons (:) must be present
@@ -54,7 +54,9 @@ use warnings;
 use List::Util qw(min max);
 use File::Path qw(mkpath); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 use File::Glob ':glob'; # deals with whitespace better
-my $ostype_local;
+use FindBin;
+
+print "arb_gnuplot, an arb accessory that calls gnuplot to graph output_step.csv (and output_process_log.csv) results\n";
 
 my $n = 0;
 while ( $n <= $#ARGV ) {
@@ -64,9 +66,9 @@ while ( $n <= $#ARGV ) {
   $n = $n + 1;
 }
 
-print "plot_step.pl, an arb misc accessory that calls gnuplot to graph output_step.csv results\n";
-print "FOR HELP: plot_step.pl -h\n";
+print "FOR HELP: arb_gnuplot.pl -h\n";
 
+my $ostype_local;
 # find a portable ostype: should be darwin or linux
 if (!($ENV{'OSTYPE'})) {
   $ostype_local=chompm(lc(`uname -s`));
@@ -74,21 +76,22 @@ if (!($ENV{'OSTYPE'})) {
   $ostype_local=lc($ENV{'OSTYPE'});
 }
 
-print "PLOTSTEP INFO: current operating system is $ostype_local\n";
+print "INFO: current operating system is $ostype_local\n";
 
-my $tmp_dir="tmp/plot_step";
-my $plot_step_dir="misc/plot_step";
-my $plot_file="$tmp_dir/plot_step.plot";
-my $plot_file_pre="$plot_step_dir/plot_step_pre_$ostype_local.plot";
-my $plot_file_post="$plot_step_dir/plot_step_post_$ostype_local.plot";
-my $gnuplot = "gnuplot";
-my $output_file = 0; # this get set if writing to file is requested
+my $plot_file="tmp.arb_gnuplot.plot";
+
+my $arb_gnuplot_dir="$FindBin::RealBin"; # this is where arb_gnuplot.pl script is, and where template plot files should be
+my $plot_file_pre="$arb_gnuplot_dir/arb_gnuplot_pre_$ostype_local.plot";
+my $plot_file_post="$arb_gnuplot_dir/arb_gnuplot_post_$ostype_local.plot";
+my $gnuplot = "gnuplot"; # gnuplot exectuable
+my $output_file = 0; # this needs to be set if writing to a file (rather than screen output) is requested
+
 my $title = 0;
 my $key = 0; # position of key
 my @gnuplot_options=(); # an array of options to pass to gnuplot
 my @range=(); # range for each data_set
 
-my ($step_file, $line, $command_line_chunk, $command);
+my ($step_file, $step_dir, $command_line_chunk, $command); # assign these variables to null
 my @names=(); # NB, $names[0] is the variable name for the first column
 my @units=(); # ditto units
 my $refresh = 0; # if refresh is true then plot gets continually updated rather than only being constructed once
@@ -97,26 +100,33 @@ my $refresh_interval = 5; # seconds between plot refreshes
 my $label_characters = 50; # maximum number of y label characters before a line break
 my $pointinterval = 0; # default interval between points when using linespoints
 my $process = 0; # whether we are looking for an output_process_log.csv file or an output_step.csv file
+my $keep_plot_file = 0; # whether to keep the temporary plot file created during the run
 
 # loop through command line bits looking for file name ($step_file) and plotting command ($command)
 $n = 0;
 while ( $n <= $#ARGV ) {
   if ($ARGV[$n] eq '-f' || $ARGV[$n] eq '--file') {
     $n = $n + 1;
-    if ($n > $#ARGV) {die "PLOTSTEP ERROR: step file name missing on command line\n";}
+    if ($n > $#ARGV) {die "ERROR: step file name missing on command line\n";}
     $step_file = $ARGV[$n];
+  } elsif ($ARGV[$n] eq '-o' || $ARGV[$n] eq '--output') {
+    $n = $n + 1;
+    if ($n > $#ARGV) {die "ERROR: output dir (where step file should reside) name missing on command line\n";}
+    $step_dir = $ARGV[$n];
   } elsif ($ARGV[$n] eq '-r' || $ARGV[$n] eq '--refresh') {
     $refresh = 1;
   } elsif ($ARGV[$n] eq '-p' || $ARGV[$n] eq '--process') {
     $process = 1;
+  } elsif ($ARGV[$n] eq '--keep-plot-file') {
+    $keep_plot_file = 1;
   } elsif ($ARGV[$n] =~ /^(-r|--refresh)(\d+)$/) {
     $refresh = 1;
     $refresh_interval = $2;
   } elsif ($ARGV[$n] eq '-b' || $ARGV[$n] eq '--batcher') {
     $batcher = 1;
   } elsif ($ARGV[$n] eq '--x11') {
-    $plot_file_pre="$plot_step_dir/plot_step_pre_x11.plot";
-    $plot_file_post="$plot_step_dir/plot_step_post_x11.plot";
+    $plot_file_pre="$arb_gnuplot_dir/arb_gnuplot_pre_x11.plot";
+    $plot_file_post="$arb_gnuplot_dir/arb_gnuplot_post_x11.plot";
   } elsif ($ARGV[$n] eq '--linespoints') {
     push(@gnuplot_options,"set style data linespoints");
     if (!($pointinterval)) {$pointinterval = -1;} # a negative here specifies that this should be calculated based on the number of data points
@@ -126,59 +136,66 @@ while ( $n <= $#ARGV ) {
     $key = "within";
   } elsif ($ARGV[$n] eq '--key') {
     $n = $n + 1;
-    if ($n > $#ARGV) {die "PLOTSTEP ERROR: key string missing on command line\n";}
+    if ($n > $#ARGV) {die "ERROR: key string missing on command line\n";}
     $key = $ARGV[$n];
   } elsif ($ARGV[$n] eq '--pointinterval') {
     $n = $n + 1;
-    if ($n > $#ARGV) {die "PLOTSTEP ERROR: pointinterval missing on command line\n";}
+    if ($n > $#ARGV) {die "ERROR: pointinterval missing on command line\n";}
     $pointinterval = $ARGV[$n];
-  } elsif ($ARGV[$n] eq '-o' || $ARGV[$n] eq '--output') {
+  } elsif ($ARGV[$n] eq '--output-file') {
     $n = $n + 1;
-    if ($n > $#ARGV) {die "PLOTSTEP ERROR: output file name missing on command line\n";}
+    if ($n > $#ARGV) {die "ERROR: output file name missing on command line\n";}
     $output_file = $ARGV[$n];
   } elsif ($ARGV[$n] eq '--gnuplotoption') {
     $n = $n + 1;
-    if ($n > $#ARGV) {die "PLOTSTEP ERROR: gnuplot option missing on command line\n";}
+    if ($n > $#ARGV) {die "ERROR: gnuplot option missing on command line\n";}
     push(@gnuplot_options,$ARGV[$n]);
   } elsif ($ARGV[$n] eq '--pre') {
     $n = $n + 1;
-    if ($n > $#ARGV) {die "PLOTSTEP ERROR: pre file name missing on command line\n";}
+    if ($n > $#ARGV) {die "ERROR: pre file name missing on command line\n";}
     $plot_file_pre=$ARGV[$n];
   } elsif ($ARGV[$n] eq '--post') {
     $n = $n + 1;
-    if ($n > $#ARGV) {die "PLOTSTEP ERROR: post file name missing on command line\n";}
+    if ($n > $#ARGV) {die "ERROR: post file name missing on command line\n";}
     $plot_file_post=$ARGV[$n];
   } elsif ($ARGV[$n] eq '--title') {
     $n = $n + 1;
-    if ($n > $#ARGV) {die "PLOTSTEP ERROR: title missing on command line\n";}
+    if ($n > $#ARGV) {die "ERROR: title missing on command line\n";}
     $title=$ARGV[$n];
   } elsif ($ARGV[$n] eq '--logy') {
     push(@gnuplot_options,"set log y; set format y '%.1e' ");
   } elsif ($ARGV[$n] eq '--logy2') {
     push(@gnuplot_options,"set log y2; set format y2 '%.1e' ");
   } elsif ($command) {
-    die "PLOTSTEP ERROR: multiple commands seem to be given on the command line?  Maybe you need to quote the command\n";
+    die "ERROR: multiple commands seem to be given on the command line?  Maybe you need to quote the command\n";
   } else {
     $command = $ARGV[$n];
   }
   $n = $n + 1;
 }
 
-# check that we are called from the working directory
-if (!(-d 'misc/plot_step')) { die "PLOTSTEP ERROR: plot_step.pl must be called from an arb working directory (even if a different step file is being referenced)\n"; }
-
 # check that we can find the step_file
 if (!($step_file)) {
-  my $outputfile="output_step.csv";
-  if ($process) { $outputfile="output_process_log.csv"; }
-  if ($batcher) {
-    $step_file="batcher_output/run_0/".$outputfile;
-  } else {
-    $step_file="output/".$outputfile;
+  my $localfile="output_step.csv";
+  if ($process) { $localfile="output_process_log.csv"; }
+  if (!($step_dir)) { 
+    if ($batcher) {
+      $step_dir="batcher_output";
+    } else {
+      $step_dir="output";
+    }
+  } elsif ($batcher) {
+    die "ERROR: batcher and output directory options can't be specified simulataneously\n";
   }
-  if (!(-e $step_file)) { die "PLOTSTEP ERROR: could not find the step file $step_file: plot_step.pl reads in this file after a simulation has been successfully run\n"; }
+  if ($batcher) {
+    $step_file=$step_dir."/run_0/".$localfile;
+  } else {
+    $step_file=$step_dir."/".$localfile;
+  }
+  if (!(-e $step_file)) { die "ERROR: could not find the step file $step_file: arb_gnuplot.pl reads in this file after a simulation has been successfully run\n"; }
 } else {
-  if (!(-e $step_file)) { die "PLOTSTEP ERROR: could not find the step file $step_file\n"; }
+  if ($batcher) { die "ERROR: batcher and file options can't be specified simulataneously\n"; }
+  if (!(-e $step_file)) { die "ERROR: could not find the step file $step_file\n"; }
 }
 
 # check that gnuplot 4.4+ is available when batcher plots are requested
@@ -187,24 +204,20 @@ if($batcher) {
   if ($gnuplot_version =~ /gnuplot\s(\S+)\s/) {
   $gnuplot_version=$1;
     if ($gnuplot_version < 4.4) { die
-    "PLOTSTEP INFO: --batcher option only compatible with gnuplot 4.4+\n"
+    "INFO: --batcher option only compatible with gnuplot 4.4+\n"
     ."local version of gnuplot is $gnuplot_version\n";
     }
   }
 }
 
 if ($refresh) {
-  if ($output_file) { die "PLOTSTEP ERROR: cannot request refresh and output simultaneously\n"; }
-  print "PLOTSTEP INFO: plot will be continually refreshed with refresh interval ".$refresh_interval."s: type ^c to quit\n";
+  if ($output_file) { die "ERROR: cannot request refresh and output simultaneously\n"; }
+  print "INFO: plot will be continually refreshed with refresh interval ".$refresh_interval."s: type ^c to quit\n";
 }
 
-# create/clear out tmp directory
-if (! -d $tmp_dir) { mkpath($tmp_dir) or die "PLOTSTEP ERROR: could not create $tmp_dir\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
-if (-e $plot_file) { unlink($plot_file) or die "PLOTSTEP ERROR: could not remove $plot_file\n"; }
-
 # check that pre and post plot files exist for this system type
-if (! -e $plot_file_pre) { die "PLOTSTEP ERROR: $plot_file_pre does not exist for this system type\n"; }
-if (! -e $plot_file_post) { die "PLOTSTEP ERROR: $plot_file_post does not exist for this system type\n"; }
+if (! -e $plot_file_pre) { die "ERROR: $plot_file_pre does not exist for this system type\n"; }
+if (! -e $plot_file_post) { die "ERROR: $plot_file_post does not exist for this system type\n"; }
 
 if ($batcher) {
 # check whether arb output variable ordering is identical in all run_* directories
@@ -218,8 +231,10 @@ if ($batcher) {
 
     @test_names=(); #clear array for loop testing
     # read through step file creating array of variable names versus columns
-    open(STEPFILE, "<$step_dir/output_step.csv");
-    while ($line=<STEPFILE>) {
+    my $localfile="output_step.csv";
+    if ($process) { $localfile="output_process_log.csv"; }
+    open(STEPFILE, "<$step_dir/$localfile");
+    while (my $line=<STEPFILE>) {
       chompm($line);
       if ($line =~ /^\s*["']{0,1}</) {
         while ($line =~ /^\s*[,]{0,1}\s*["']{0,1}(<.+?>)["']{0,1}/) {
@@ -247,8 +262,8 @@ if ($batcher) {
 
 # now for both batcher and nonbatcher, read through it creating array of variable names versus columns
 open(STEPFILE, "<$step_file");
-print "PLOTSTEP INFO: $step_file contains the following column names\n";
-while ($line=<STEPFILE>) {
+print "INFO: $step_file contains the following column names\n";
+while (my $line=<STEPFILE>) {
   chompm($line);
   if (!($title)) { if ($line =~ /#\s*TITLE\s*=\s*(.+?)\s*$/) {$title = $1; next;}; } # grab title if it's there
   if ($line =~ /^\s*["']{0,1}</) {
@@ -259,7 +274,7 @@ while ($line=<STEPFILE>) {
     last;
   }
 }
-while ($line=<STEPFILE>) {
+while (my $line=<STEPFILE>) {
   chompm($line);
   if ($line =~ /^\s*["']{0,1}\[/) {
     while ($line =~ /^\s*[,]{0,1}\s*["']{0,1}\[(.*?)\]["']{0,1}/) {
@@ -273,23 +288,28 @@ while ($line=<STEPFILE>) {
 # if pointinterval is to be calculated, count the number of data lines remaining here
 if ($pointinterval < 0) {
   my $datapoints=0;
-  while ($line=<STEPFILE>) { ++$datapoints; }
+  while (my $line=<STEPFILE>) { ++$datapoints; }
   $pointinterval = int($datapoints/25)+1;
-  print "PLOTSTEP INFO: setting pointinterval = $pointinterval based on $datapoints datapoints\n";
+  print "INFO: setting pointinterval = $pointinterval based on $datapoints datapoints\n";
 }
 close(STEPFILE);
 
-if ($#names < 0) { die "PLOTSTEP ERROR: no data was found in $step_file\n"; }
+if ($#names < 0) { die "ERROR: no data was found in $step_file\n"; }
 for my $n ( 0 .. $#names ) {
   print "  variable name = $names[$n] ";
   if (nonempty($units[$n])) { print "[$units[$n]] "; }
   print "for column = ".scalar($n+1)."\n";
 }
 
-# check that a command was issued
-if (!($command)) { die "PLOTSTEP ERROR: column specifications were not passed to plot_step.pl\n"; }
+# check that a command was issued, otherwise ask the user
+if (!($command)) {
+  print "ACTION: no column specifications were passed on the command line: specify here (unquoted), or enter to exit: ";
+  $command = <STDIN>; chompm($command);
+  if (empty($command)) { print "INFO: no column specifications given - exiting now\n"; exit 0; }
+# die "ERROR: column specifications were not passed to arb_gnuplot.pl\n";
+}
 
-print "PLOTSTEP INFO: command line plot specification passed in: $command\n";
+print "INFO: command line plot specifications employed: $command\n";
 
 my @cols=(); # this will be a 2 dimensional array specifying a column of data, relative to 0 (unlike gnuplot)
              # first index is data set (ie x, y1 or y2) and second index is the subset (ie T1, T2)
@@ -304,13 +324,13 @@ my $perlcol;
 while ($command =~ /^\s*(<|\d{1,}|:|,|\[)/) {
   $key_char = $1;
   $command = $';
-  if ($key_char eq ":") { $data_set+=1; if ($data_set > 3) { die "PLOTSTEP ERROR: too many colons (:) are in the plot specification\n"; }}
+  if ($key_char eq ":") { $data_set+=1; if ($data_set > 3) { die "ERROR: too many colons (:) are in the plot specification\n"; }}
   elsif ($key_char eq ",") {} # just ignore commas
   elsif ($key_char eq "<" || $key_char =~ /\d{1,}/) {
     $last_element = $#{$cols[$data_set]}; # this will be the currently last element in the array (-1 if array is not set apparently)
 #   print "last_element before = $last_element\n";
     if ($key_char eq "<") {
-      if ($command !~ /(.+?)>/) { die "PLOTSTEP ERROR: error in command syntax: could not find matching <> delimiters\n"; }
+      if ($command !~ /(.+?)>/) { die "ERROR: error in command column syntax: could not find matching <> delimiters\n"; }
       $name = "<$1>";
       $command = $';
       for $column ( 0 .. $#names+1 ) {
@@ -325,19 +345,20 @@ while ($command =~ /^\s*(<|\d{1,}|:|,|\[)/) {
       }
     } else {
       $perlcol = $key_char-1; # $cols starts at zero, gnuplot starts at 1
-      if ($perlcol > $#names) { die "PLOTSTEP ERROR: column $key_char is larger than number of columns in $step_file\n"; }
+      if ($perlcol > $#names) { die "ERROR: column $key_char is larger than number of columns in $step_file\n"; }
       else {
         print "  found column $key_char corresponding to name $names[$perlcol]\n";
         $cols[$data_set][$last_element+1] = $perlcol;
       }
     }
   } elsif ($key_char eq "[") {
-    if ($command !~ /(.*?)\]/) { die "PLOTSTEP ERROR: error in command syntax: could not find matching range [] delimiters\n"; }
+    if ($command !~ /(.*?)\]/) { die "ERROR: error in command column syntax: could not find matching range [] delimiters\n"; }
     $range[$data_set] = "[".$1."]";
     $command = $';
   }
 }
 
+if (nonempty($command)) { die "ERROR: command column syntax not understood\n"; }
 # now check that data is assigned for each data set, and if not, assign defaults
 my $xdata_set = 1;
 my $ydata_set = 2;
@@ -353,7 +374,7 @@ if ($#{$cols[$xdata_set]} < 0) {
   $cols[$xdata_set][0] = 0;
   print "WARNING: x data column not set: setting to $names[0]\n";
 } elsif ($#{$cols[$xdata_set]} > 0) {
-  die "PLOTSTEP ERROR: too many x data columns specified: only one allowed\n";
+  die "ERROR: too many x data columns specified: only one allowed\n";
 }
 # y data
 if ($#{$cols[$ydata_set]} < 0) {
@@ -368,21 +389,26 @@ if ($y2data_set) {
   }
 }
 
+# remove previous plot_file
+if (-e $plot_file) { unlink($plot_file) or die "ERROR: could not remove $plot_file\n"; }
+
 # open plot file
 open(PLOTFILE, ">$plot_file");
 
 # write material from pre template file to plot_file
-open(TEMPLATEFILE, "<$plot_file_pre") or die "PLOTSTEP ERROR: cannot open $plot_file_pre\n";;
-while ($line=<TEMPLATEFILE>) { print PLOTFILE $line; }
+open(TEMPLATEFILE, "<$plot_file_pre") or die "ERROR: cannot open $plot_file_pre\n";;
+while (my $line=<TEMPLATEFILE>) { print PLOTFILE $line; }
 close(TEMPLATEFILE);
 
 # intro comment
-print PLOTFILE "# plot_step.pl generated statements follow\n";
+print PLOTFILE "# arb_gnuplot.pl generated statements follow\n";
 
 # for output file overwrite standard terminal types
 if ($output_file) {
   my ($output_file_type) = $output_file =~ /\.(\S{1,4})$/; # match 1 to 4 letter file extensions
-  if ($output_file_type eq 'pdf') {
+  if (empty($output_file_type)) {
+    die "ERROR: output file type (eg pdf, png) needs to be given as extension to output file name\n";
+  } elsif ($output_file_type eq 'pdf') {
 # now using cairo libraries for both png and pdf, on darwin and linux
 #   print PLOTFILE "set terminal pdfcairo colour enhanced font \"Helvetica,10\" size 12cm,9cm linewidth 3 dashed\n";
     if ($ostype_local eq 'darwin') {
@@ -403,7 +429,7 @@ if ($output_file) {
 #   print PLOTFILE "set terminal png\n";
     print PLOTFILE "set terminal pngcairo colour enhanced font \"Helvetica,12\" size 28cm,22cm linewidth 2 dashed\n";
   } else {
-    die "PLOTSTEP ERROR: could not determine output file type from $output_file: file type = $output_file_type\n";
+    die "ERROR: could not determine output file type from $output_file: file type = $output_file_type\n";
   }
   print PLOTFILE "set output \"$output_file\"\n";
 }
@@ -514,8 +540,8 @@ if ($batcher) { # batcher specific plot configuration
 print PLOTFILE "\n\n";
 
 # write material from post template file to plot_file
-open(TEMPLATEFILE, "<$plot_file_post") or die "PLOTSTEP ERROR: cannot open $plot_file_post\n";
-while ($line=<TEMPLATEFILE>) { print PLOTFILE $line; }
+open(TEMPLATEFILE, "<$plot_file_post") or die "ERROR: cannot open $plot_file_post\n";
+while (my $line=<TEMPLATEFILE>) { print PLOTFILE $line; }
 close(TEMPLATEFILE);
 
 if ($output_file) { print PLOTFILE "unset output\n"; }
@@ -530,7 +556,10 @@ my ($systemcall);
 $systemcall="$gnuplot -raise $plot_file"; # raise option will raise the plot when it is first done, but noraise option will keep it in the background on replotting - thanks gnuplot - too easy
 system("$systemcall");
 
-exit;
+# remove created plot_file if not doing the output_file
+if (!($keep_plot_file) && -e $plot_file) { unlink($plot_file) or die "ERROR: could not remove $plot_file\n"; }
+
+exit 0;
 
 #-------------------------------------------------------------------------------
 # chomp and remove mac linefeads too if present
@@ -545,16 +574,17 @@ sub chompm {
 #-------------------------------------------------------------------------------
 # usage function
 sub usage {
-  print "plot_step.pl, an arb misc accessory that calls gnuplot to graph output_step.csv results\n\n";
-  print "USAGE: call from working directory using \'plot_step.pl [options] [<x_data>:]<y_data>[:<y2_data]\'\n";
-  print "  Note:  two colons must be given for y2 data to be specified\n";
+  print "USAGE: arb_gnuplot.pl [options] \'[<x_data>:]<y_data>[:<y2_data]\'\n";
+  print "  Note: a minimum of two colons must be given for y2 data to be specified\n";
   print "OPTIONS:\n";
   print " -f|--file <inputfile.csv>: call from any working directory with specific reference to another file\n";
-  print " -p|--process: looking for a process log file rather than stp file, the default of which is output/output_process_log.csv\n";
+  print " -o|--output <outputdir>: look in the specified arb output directory, rather than in the default 'output' directory\n";
+  print " -p|--process: looking for a process log file (output_process_log.csv) rather than the normal output_step.csv file\n";
   print " -r|--refresh: continuously refresh the plot, using the default refresh interval (5s)\n";
   print " -rN|--refreshN: continuously refresh the plot, using an interval of Ns\n";
   print " -b|--batcher: plot data from batcher_output/run_* directories\n";
-  print " -o|--output <outputfile.[pdf|png]>: create image rather than displaying plot.  Supports pdf and png via cairo libraries.\n";
+  print " --output-file <outputfile.[pdf|png]>: create image rather than displaying plot.  Supports pdf and png via cairo libraries.\n";
+  print " --keep-plot-file: do not delete temporary plot file after the run.\n";
   print " --pre <prefile.plot>: alternative prepend gnuplot plotting command file\n";
   print " --post <postfile.plot>: alternative postpend gnuplot plotting command file\n";
   print " --title \"A title\": specify a title\n";
@@ -569,7 +599,7 @@ sub usage {
   print " --gnuplotoption \"set key some gnuplot option\": some option that is passed to gnuplot just before the plot command. ".
     "For multiple options use multiple --gnuplotoption's\n";
   print "\n To specify a range for an axis, include it in the relevant list of variables using gnuplot syntax: eg '<u>[0:10]:<t>[0:]'\n";
-  print " The plot file that this script produces is tmp/plot_step/plot_step.plot:  You can use this as a basis for further customisation\n";
+  print " The plot file that this script produces is tmp/arb_gnuplot/arb_gnuplot.plot:  You can use this as a basis for further customisation\n";
   die;
 }
 #-------------------------------------------------------------------------------

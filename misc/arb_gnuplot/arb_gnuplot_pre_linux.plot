@@ -1,12 +1,12 @@
 ####################################################################################
-# plot_step_post.pre follows
+# arb_gnuplot_post.pre follows
 #
-# file plot_step.plot
+# file arb_gnuplot.plot
 # contains gnuplot commands for plotting output.step files created from arb
-# this file is generated via the misc/plot_step/plot_step.pl script
+# this file is generated via the misc/arb_gnuplot/arb_gnuplot.pl script
 # pre and post parts of the file are sourced from
-#   1) misc/plot_step/plot_step_pre.plot and
-#   2) misc/plot_step/plot_step_post.plot 
+#   1) misc/arb_gnuplot/arb_gnuplot_pre.plot and
+#   2) misc/arb_gnuplot/arb_gnuplot_post.plot 
 
 #------------------------------
 #set terminal postscript eps enhanced color
@@ -20,7 +20,8 @@
 #set terminal wxt enhanced font "Sans" persist # a prettier option for linux
 #set terminal x11 enhanced font "Sans" persist # clunky but works well and is fast - q quits
 #set terminal x11 enhanced font "Sans" persist noraise # keeps window in the background on rereading
-set terminal x11 enhanced font "Sans" persist noraise dashed # keeps window in the background on rereading
+#set terminal x11 enhanced font "Sans" persist noraise dashed # keeps window in the background on rereading
+set terminal wxt enhanced font "Sans" persist noraise # a prettier option for linux
 #set term pdfcairo font "sans,12"
 
 # for csv files
