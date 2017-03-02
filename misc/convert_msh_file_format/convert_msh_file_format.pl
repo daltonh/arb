@@ -109,8 +109,7 @@ sub usage {
         " -t or --tecplot or -d or --dat = produce dat output suitable for tecplot\n".
         " --notecplot or --nodat = do not produce dat output (default)\n".
         " -r or --run = run arb after producing each convert_msh_file_format.arb\n".
-        " --norun = do not run but just produce convert_msh_file_format.arb (default)\n\n".
-        "script must be called from the root directory of a simulation\n";
+        " --norun = do not run but just produce convert_msh_file_format.arb (default)\n";
   exit;
 }
 
