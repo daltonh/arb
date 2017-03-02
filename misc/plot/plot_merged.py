@@ -40,7 +40,11 @@ from matplotlib.figure import Figure
 # turn of all warnings for matplotlib deprecated features (they are dealt with in the code though)
 import warnings
 import matplotlib.cbook
-warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
+
+try:
+    warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
+except:
+    pass
 
 old_matplotlib_version = True
 running_matplotlib_version = LooseVersion(matplotlib.__version__)
