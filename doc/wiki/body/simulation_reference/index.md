@@ -151,11 +151,11 @@ A 'default' option passed to string_set means 'only set this variable if it is n
 String code allows more flexibility in coding arb, and will be employed more in the template files.  Looping is possible now using (for example);
 ```arb
 {{
-  my $loop_code = '';
+  my $code = '';
   for my $n in ( 0 .. 2 ) {
-    $loop_code .= "CONSTANT <a".$n."> $n.d0\n";
+    $code .= "CONSTANT <a".$n."> $n.d0\n";
   }
-  return $loop_code;
+  return $code;
 }}
 ```
 which would evaluate as the solver code
@@ -164,6 +164,27 @@ CONSTANT <a0> 0.d0
 CONSTANT <a1> 1.d0
 CONSTANT <a2> 2.d0
 ```
+A typical use is to create a variable definition for a vector, as in 
+```arb
+# this demonstrates expanding a vector using native perl
+{{ my $code; foreach my $l ( string_eval('<<dimensions>>','list') ) { $code .=
+  "CELL_DERIVED <phi_normal_c[l=$l]> 'celldivgrad[l=$l](<phi_f>)' ON <allcells>\n";
+}; return $code; }}
+```
+There are also functions to automate the loop process for expanding vector and tensor expressions, also based on the dimension range defined in the global string variable '<<dimensions>>':
+```arb
+# this expands two expressions to become vectors, replacing $l instances
+{{ return vector_expand(
+  'CELL_DERIVED <phi_normal_c[l=$l]> "celldivgrad[l=$l](<phi_f>)" ON <allcells>',
+  'CELL_DERIVED <phi_normal_c2[l=$l]> "celldivgrad[l=$l](<phi_f>)" ON <allcells>'
+); }}
+# this does the equivalent for a tensor, replaceing $l1 and $l2 instances
+{{ return tensor_expand(
+  'CONSTANT <tens[l=$l1,$l2]> "$l2 + $l1"'
+); }}
+```
+For the above the expressions need to be single quoted.
+
 With some perl hackery there's lots that can be done if required - eg, arrays and hashes stored within the string variables (but you'll have to learn some perl!).  Variables defined within setup_equations.pl can also be accessed within the string code, as can generic perl subroutines.
 ```arb
 {{

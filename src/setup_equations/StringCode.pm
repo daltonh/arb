@@ -119,18 +119,73 @@ sub string_delete {
 # finds the value of a string
 # on input
 #  $_[0] = string name
+#  $_[1] = options
 # on output
 #  $_[0] = unchanged
 # returns string value if found, or dies it string is not found
+
+# possible options:
+# list = return the string as a list containing the string split at commas (useful for using within foreach loops etc)
 sub string_eval {
 
   alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $name = $_[0];
+  my $options = $_[1];
   my ($code_block_found,$string_variable_found) = string_search($name);
   if ($code_block_found == -1) {
     syntax_problem("string variable $name not found during string_set: $ReadInputFiles::filelinelocator");
   }
-  return $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+  if ($options =~ /(^|,)list($|,)/) {
+    return split(/,/,$code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
+  } else {
+    return $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+  }
+  
+}
+#-------------------------------------------------------------------------------
+# takes an array of code lines and repeats them for each dimension in the <<dimensions>> range, replacing $l with each relevant index
+# on input
+#  @_ = list of code template strings, containing $l references and no carriage returns
+# on output
+#  $_[0] = expanded code string
+
+sub vector_expand {
+
+  my @templates = @_;
+  my $code = '';
+  foreach my $l ( string_eval('<<dimensions>>','list') ) {
+    foreach my $template ( @templates ) {
+      my $snippet = $template;
+      $snippet =~ s/\$l/$l/g; # do the $l replacement
+      $code .= $snippet."\n"; # add to code with a linefeed too
+    }
+  }
+  return $code;
+  
+}
+#-------------------------------------------------------------------------------
+# takes an array of code lines and repeats them for each dimension in the <<dimensions>> range, replacing $l with each relevant index
+# same as vector_expand but does tensors, using $l1 and $l2 references, with $l1 varying slowest
+# on input
+#  @_ = list of code template strings, containing $l1 and $l2 references and no carriage returns
+# on output
+#  $_[0] = expanded code string
+
+sub tensor_expand {
+
+  my @templates = @_;
+  my $code = '';
+  foreach my $l1 ( string_eval('<<dimensions>>','list') ) {
+    foreach my $l2 ( string_eval('<<dimensions>>','list') ) {
+      foreach my $template ( @templates ) {
+        my $snippet = $template;
+        $snippet =~ s/\$l1/$l1/g; # do the $l1 replacement
+        $snippet =~ s/\$l2/$l2/g; # do the $l2 replacement
+        $code .= $snippet."\n"; # add to code with a linefeed too
+      }
+    }
+  }
+  return $code;
   
 }
 #-------------------------------------------------------------------------------
@@ -261,6 +316,8 @@ sub string_setup {
   string_set("<<reflect=1>>","","global");
   string_set("<<reflect=2>>","","global");
   string_set("<<reflect=3>>","","global");
+# dimensions that are being used
+  string_set("<<dimensions>>","1,2,3","global"); # defaults to 3D, and should be accessed using the list form of string_eval('<<dimensions>>','list') to be used in (say) a foreach loop
 # set the transient versus steady_state strings using the sub
   string_set_transient_simulation(0); # default is steady_state
 

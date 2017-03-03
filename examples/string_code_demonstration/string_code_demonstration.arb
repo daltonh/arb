@@ -75,3 +75,15 @@ TIMESTEPMAX 2
 INCLUDE_TEMPLATE "general/element_indices" {{ # these can now be across several lines, as its just perl code
   string_set("_OUTPUT","_CONSTANT"); # with some explanation - ie, turning all output variables into constants
 # a comment within the perl code, noting that string code delimiters take precedence over perl comments }} # followed by a comment within the solver code, just to be tricky, and on the last line too
+
+# also demonstrate some vector and tensor expansions
+{{ my $code; foreach my $l ( string_eval('<<dimensions>>','list') ) { $code .=
+  "CELL_DERIVED <phi_normal_c1[l=$l]> 'celldivgrad[l=$l](<phi_f>)' ON <allcells>\n";
+}; return $code; }}
+{{ return vector_expand(
+  'CELL_DERIVED <phi_normal_c2[l=$l]> "celldivgrad[l=$l](<phi_f>)" ON <allcells>',
+  'CELL_DERIVED <phi_normal_c3[l=$l]> "celldivgrad[l=$l](<phi_f>)" ON <allcells>'
+); }}
+{{ return tensor_expand(
+  'CONSTANT <tens[l=$l1,$l2]> "$l2 + $l1"'
+); }}
