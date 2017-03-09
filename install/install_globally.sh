@@ -51,6 +51,7 @@ function usage () {
   echo
   echo "Possible options:";
   echo "  --help|-h: display this HELP INFO";
+  echo "  --path-only|-p: only set the path in the user's shell config file";
   echo;
   exit 1;
 }
@@ -70,12 +71,16 @@ function resolve_real_path {
 #-------------------------------------------------------------------------------
 # main script:
 
+# set default options
+setpath=1; # set path within user's shell config file
+makesuitesparse=1; # download suitesparse libraries
 #---------------------------
 # loop through options
 until [ -z "$1" ];
 do
   case $1 in
     "--help"|"-h") usage;;
+    "--path-only"|"-p") setpath=1; makesuitesparse=0;;
     *) echo "ERROR: unknown command line entry $1"; usage;;
   esac
   shift;
@@ -92,27 +97,31 @@ install_dir="$(cd "$(dirname "$install_script")" && pwd -P)"; # directory that h
 arb_dir="${install_dir%"/install"}"; # arb root directory, known as arb_dir, with no trailing slash
 
 # now make any contributed routines
-# TODO: generalise this to other contributed packages
-(
-  cd "$arb_dir/src/contributed/suitesparse";
-  echo "INFO: making contributed package in `pwd`";
-  make;
-)
+# TODO: generalise this to other contributed packages, and add option to not do this make operation if we are linking to a arb_dir owned by another owner (eg root, installed for all users)
+if [ $makesuitesparse -eq 1 ] ; then
+  (
+    cd "$arb_dir/src/contributed/suitesparse";
+    echo "INFO: making contributed package in `pwd`";
+    make;
+  )
+fi;
 
 # now detect shell type as either sh (sh, bash) or csh (csh, tcsh)
-shelltype=`basename ${SHELL}`;
-echo "INFO: shell identified as $shelltype type";
-if [ $shelltype == "tcsh" -o $shelltype == "csh" ] ; then
-  echo "INFO: csh type shell: adding config to the end of ~/.${shelltype}rc";
-  echo "# arb path set by install_globally.sh script" >> ~/.${shelltype}rc
-  echo "setenv ARB_DIR \"${arb_dir}\"" >> ~/.${shelltype}rc
-  echo 'setenv PATH "${PATH}:${ARB_DIR}/bin"' >> ~/.${shelltype}rc
-else
-  echo "INFO: sh type shell: adding config to the end of ~/.${shelltype}rc";
-  echo "# arb path set by install_globally.sh script" >> ~/.${shelltype}rc
-  echo "export ARB_DIR=\"${arb_dir}\"" >> ~/.${shelltype}rc
-  echo 'export PATH="${PATH}:${ARB_DIR}/bin"' >> ~/.${shelltype}rc
-fi
+if [ $setpath -eq 1 ] ; then
+  shelltype=`basename ${SHELL}`;
+  echo "INFO: shell identified as $shelltype type";
+  if [ $shelltype == "tcsh" -o $shelltype == "csh" ] ; then
+    echo "INFO: csh type shell: adding config to the end of ~/.${shelltype}rc";
+    echo "# arb path set by install_globally.sh script" >> ~/.${shelltype}rc
+    echo "setenv ARB_DIR \"${arb_dir}\"" >> ~/.${shelltype}rc
+    echo 'setenv PATH "${PATH}:${ARB_DIR}/bin"' >> ~/.${shelltype}rc
+  else
+    echo "INFO: sh type shell: adding config to the end of ~/.${shelltype}rc";
+    echo "# arb path set by install_globally.sh script" >> ~/.${shelltype}rc
+    echo "export ARB_DIR=\"${arb_dir}\"" >> ~/.${shelltype}rc
+    echo 'export PATH="${PATH}:${ARB_DIR}/bin"' >> ~/.${shelltype}rc
+  fi;
+fi;
 
 exit 0
 # done
