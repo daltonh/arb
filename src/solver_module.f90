@@ -450,7 +450,7 @@ double precision :: aa_max, varmag, normalisation_multiplier
 character(len=1000) :: formatline
 logical :: singular
 logical, parameter :: normalise_matrix = .false. ! use the variable magnitudes (unknowns/equations) to normalise the matrix coefficients and rhs
-logical, parameter :: perturb_singular = .true. ! if the linear solver carks it complaining about a singularity, try perturbing the solution instead
+logical, parameter :: perturb_singular = .false. ! if the linear solver carks it complaining about a singularity, try perturbing the solution instead
 logical, parameter :: reduce = .false. ! true to reduce the matrix according to order of magnitude of elements*varmag
 double precision :: aa_reduce = 1.d-1 ! if reducing matrix, relative level at which components*varmag are zeroed
 logical, parameter :: condition_number = .false. ! calculate the condition number of the matrix rather than solving the system - requires lots of memory as matrix is reconstructed in full

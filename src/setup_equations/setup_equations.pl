@@ -2745,10 +2745,14 @@ sub mequation_interpolation {
 
 # 1) first the volume fraction phi, necessary incase there is no interface in this local
       ($tmp,$name) = search_operator_contents("phi",$next_contents_number);
-      if (empty($tmp)) { error_stop("phi part for $operator in $otype $variable{$otype}[$omvar]{name} not found:\n  operator_contents = ".Dumper(\%operator_contents)); }
-      create_someloop($tmp,"sum","cell","<noloop>",$deriv,$otype,$omvar);
+      if (empty($tmp)) {
+#       error_stop("phi part for $operator in $otype $variable{$otype}[$omvar]{name} not found:\n  operator_contents = ".Dumper(\%operator_contents));
+        $external_arguments = $external_arguments.',msomeloop_phi=-1'; # a negative value means that phi isn't defined
+      } else {
+        create_someloop($tmp,"sum","cell","<noloop>",$deriv,$otype,$omvar);
 # start assembling fortran call, disguised as maxima array
-      $external_arguments = $external_arguments.',msomeloop_phi='.$m{someloop};
+        $external_arguments = $external_arguments.',msomeloop_phi='.$m{someloop};
+      }
 
 # 2) d, the signed distance from the cell centre to interface line
       ($tmp,$name) = search_operator_contents("d",$next_contents_number);

@@ -1,20 +1,15 @@
 # here we evaluate the momentum equations using vof_stress knowledge
+# assumes phi is fluid based
 
 # create cell centred stress that represents stress acting across vof interface
 # <vof_ugrad_l> and <phi_normal_c> and magnitude are already calculated
 NONE_CONSTANT <vof_ugrad_l_constant> 4.d0
-<<dim1comment>>CELL_CONSTANT <vof_ugrad_multiplier[l=1]> "<phi_normal_c[l=1]>*<vof_ugrad_l_constant>/(<vof_ugrad_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim2comment>>CELL_CONSTANT <vof_ugrad_multiplier[l=2]> "<phi_normal_c[l=2]>*<vof_ugrad_l_constant>/(<vof_ugrad_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim3comment>>CELL_CONSTANT <vof_ugrad_multiplier[l=3]> "<phi_normal_c[l=3]>*<vof_ugrad_l_constant>/(<vof_ugrad_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>
-<<dim1comment>>               CELL_DERIVED <ugrad_vof_c[l=1,1]> "<vof_ugrad_multiplier[l=1]>*<u[l=1]>" ON <vof_stress_mask>
-<<dim1comment>><<dim2comment>>CELL_DERIVED <ugrad_vof_c[l=1,2]> "<vof_ugrad_multiplier[l=1]>*<u[l=2]>" ON <vof_stress_mask>
-<<dim1comment>><<dim3comment>>CELL_DERIVED <ugrad_vof_c[l=1,3]> "<vof_ugrad_multiplier[l=1]>*<u[l=3]>" ON <vof_stress_mask>
-<<dim2comment>><<dim1comment>>CELL_DERIVED <ugrad_vof_c[l=2,1]> "<vof_ugrad_multiplier[l=2]>*<u[l=1]>" ON <vof_stress_mask>
-<<dim2comment>>               CELL_DERIVED <ugrad_vof_c[l=2,2]> "<vof_ugrad_multiplier[l=2]>*<u[l=2]>" ON <vof_stress_mask>
-<<dim2comment>><<dim3comment>>CELL_DERIVED <ugrad_vof_c[l=2,3]> "<vof_ugrad_multiplier[l=2]>*<u[l=3]>" ON <vof_stress_mask>
-<<dim3comment>><<dim1comment>>CELL_DERIVED <ugrad_vof_c[l=3,1]> "<vof_ugrad_multiplier[l=3]>*<u[l=1]>" ON <vof_stress_mask>
-<<dim3comment>><<dim2comment>>CELL_DERIVED <ugrad_vof_c[l=3,2]> "<vof_ugrad_multiplier[l=3]>*<u[l=2]>" ON <vof_stress_mask>
-<<dim3comment>>               CELL_DERIVED <ugrad_vof_c[l=3,3]> "<vof_ugrad_multiplier[l=3]>*<u[l=3]>" ON <vof_stress_mask>
+{{ return vector_expand(
+  'CELL_CONSTANT <vof_ugrad_multiplier[l=$l]> "<phi_normal_c[l=$l]>*<vof_ugrad_l_constant>/(<vof_ugrad_l>*<phi_normal_c_mag>)" ON <vof_stress_mask>'
+); }}
+{{ return tensor_expand(
+  'CELL_DERIVED <ugrad_vof_c[l=$l1,$l2]> "<vof_ugrad_multiplier[l=$l1]>*<u[l=$l2]>" ON <vof_stress_mask>'
+); }}
 
 <<dim1comment>>CELL_LOCAL <tau_vof_c[l=1,1]> "-<mu>*2.d0*<ugrad_vof_c[l=1,1]>" ON <vof_stress_mask>
 <<dim2comment>>CELL_LOCAL <tau_vof_c[l=2,2]> "-<mu>*2.d0*<ugrad_vof_c[l=2,2]>" ON <vof_stress_mask>
@@ -27,6 +22,6 @@ NONE_CONSTANT <vof_ugrad_l_constant> 4.d0
 <<dim3comment>><<dim2comment>>CELL_LOCAL <tau_vof_c[l=3,2]> "<tau_vof_c[l=2,3]>" ON <vof_stress_mask>
 
 # and also modify momentum equations, which are only solved within fluid region
-<<dim1comment>>CELL_EQUATION <momentum[l=1]> "celldiv(<phi_f>*dot(<facenorm[l=:]>,<tau[l=:,1]>))-<phi_c>*<dynamic_force_c[l=1]>-cellif(celldelta(<vof_stress_mask>),dot(<phi_normal_c[l=:]>,<tau_vof_c[l=:,1]>))"
-<<dim2comment>>CELL_EQUATION <momentum[l=2]> "celldiv(<phi_f>*dot(<facenorm[l=:]>,<tau[l=:,2]>))-<phi_c>*<dynamic_force_c[l=2]>-cellif(celldelta(<vof_stress_mask>),dot(<phi_normal_c[l=:]>,<tau_vof_c[l=:,2]>))"
-<<dim3comment>>CELL_EQUATION <momentum[l=3]> "celldiv(<phi_f>*dot(<facenorm[l=:]>,<tau[l=:,3]>))-<phi_c>*<dynamic_force_c[l=3]>-cellif(celldelta(<vof_stress_mask>),dot(<phi_normal_c[l=:]>,<tau_vof_c[l=:,3]>))"
+{{ return vector_expand(
+  'CELL_EQUATION <momentum[l=$l]> "celldiv(<phi_f>*dot(<facenorm[l=:]>,<tau[l=:,$l]>))-<phi_c>*<dynamic_force_c[l=$l]>-cellif(celldelta(<vof_stress_mask>),dot(<phi_normal_c[l=:]>,<tau_vof_c[l=:,$l]>))"'
+); }}

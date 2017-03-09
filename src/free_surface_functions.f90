@@ -606,10 +606,15 @@ if (debug) then
   write(50,*) 'method = ',method
 end if
 
+! if phi is passed in, it is used to determine where phi 
 ! examine phi first
-! save phi in a temporary variable
-if (msomeloop_phi <= 0) call error_stop('error with msomeloop_phi passed to facevofphi')
-phi = someloop(thread)%funk(msomeloop_phi)%v
+! save phi in a temporary variable, if it is defined
+! if (msomeloop_phi <= 0) call error_stop('error with msomeloop_phi passed to facevofphi')
+if (msomeloop_phi > 0) then
+  phi = someloop(thread)%funk(msomeloop_phi)%v
+else
+  phi = 0.5d0
+end if
 ! find phitol
 if (msomeloop_phitol > 0) then
   phitol = someloop(thread)%funk(msomeloop_phitol)%v
@@ -622,7 +627,7 @@ if (debug) then
   write(50,*) 'phitol = ',phitol
 end if
 
-if (phi < phitol.or.phi > 1.d0-phitol) then
+if (msomeloop_phi > 0.and.(phi < phitol.or.phi > 1.d0-phitol)) then
   someloop(thread)%funk(m)%v = phi ! if this isn't an interface cell then upwinding is used
   if (debug) write(50,*) 'facevofphi = ',someloop(thread)%funk(m)%v 
   if (debug) write(50,*) 'upwinding used as this isn''t an interface cell according to phi and phitol'

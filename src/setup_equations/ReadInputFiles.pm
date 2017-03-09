@@ -131,6 +131,8 @@ sub read_input_files {
       } else {
         parse_string_code($string_code); # send this to the string code parser, which may return a string to add to the solver code line
         if ($debug) { print ::DEBUG "  INFO: after parsing string code:\n   string_code = $string_code\n"; }
+        perform_string_replacements($string_code);
+        if ($debug) { print ::DEBUG "  INFO: after doing replacements on string code:\n   string_code = $string_code\n"; }
         $solver_code .= $string_code; # add the result of the string code onto the solver code
       }
       $code_type = 'solver'; # and reset code type
