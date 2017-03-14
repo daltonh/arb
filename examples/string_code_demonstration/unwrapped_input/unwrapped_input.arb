@@ -1,11 +1,11 @@
-#(comment created during unwrap): new block = root_input.arb: new_file = 1
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /Users/daltonh/codes/arb/development/arb_develop_v0.57/src/free_surface_functions.f90
+EXTERNALS "/Users/daltonh/codes/arb/development/arb_develop_v0.57/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: string_code_demonstration.arb
-   #(comment created during unwrap): new block = string_code_demonstration.arb: new_file = 1
+   #(comment created during unwrap): new block = string_code_demonstration.arb: sub_block = 0
    #(hash inserted during unwrap)INCLUDE_WORKING "string_code_demonstration.arb"
    INFO_TITLE "This file demonstrates (embedded) perl string code"
    INFO_AUTHOR "Dalton Harvie"
@@ -15,7 +15,7 @@ EXTERNALS "src/free_surface_functions.f90"
    
    SOLVER_OPTIONS linearsolver=default
    
-    # x now is completely new 
+   # x now is completely new 
    
    # to save variables outside of the perl string code scope, need to save them in the code_blocks structure using the string_set sub
    
@@ -25,9 +25,9 @@ EXTERNALS "src/free_surface_functions.f90"
    # the final semi-colon in the string code isn't necessary
    
    
-    # by default, variables that have a name starting with $ have option noreplace set, which means that they are not searched for in solver code
-    # otherwise this can be specified as an option like this
-    # or like this
+   # by default, variables that have a name starting with $ have option noreplace set, which means that they are not searched for in solver code
+   # otherwise this can be specified as an option like this
+   # or like this
    
    # to access the string variables we use the string_eval sub
    
@@ -46,22 +46,45 @@ EXTERNALS "src/free_surface_functions.f90"
    
    
    # and the new IF operator can operate with string code too
-      #(comment created during unwrap): new block = string_code_demonstration.arb: new_file = 0
+      #(comment created during unwrap): new block = string_code_demonstration.arb: sub_block = 1
       #(hash inserted during unwrap)IF 1 # here the perl string code is evaluated as the value of <<b>>
-        CONSTANT <b> 2.d0
+      CONSTANT <b> 2.d0
       #(hash inserted during unwrap)ELSE_IF 1.d0 # wheras instead here string variable <<a>> will be replaced by its value
-      #(hash inserted during unwrap)  CONSTANT <c> 2.d0
+      #(hash inserted during unwrap)CONSTANT <c> 2.d0
       #(hash inserted during unwrap)ELSE
-      #(hash inserted during unwrap)  CONSTANT <d> 2.d0
+      #(hash inserted during unwrap)CONSTANT <d> 2.d0
       #(hash inserted during unwrap)END_IF
    
    TIMESTEPMAX 2
    
    # INCLUDE statements work by including the following string code to the start of the new code block
-      #(comment created during unwrap): new block = general/element_indices: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/general/element_indices.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/element_indices" 
-       # followed by a comment within the solver code, just to be tricky, and on the last line too
+      # followed by a comment within the solver code, just to be tricky, and on the last line too
       CELL_CONSTANT <icell output> "<icell>" ON <allcells>
       FACE_CONSTANT <jface output> "<jface>" ON <allfaces>
       NODE_CONSTANT <knode output> "<knode>" ON <allnodes>
+   
+   # also demonstrate some vector and tensor expansions (with expressions that don't make any mathematical sense)
+   CELL_DERIVED <phi_normal_c1[l=1]> 'celldivgrad[l=1](<facearea>)' ON <allcells>
+   CELL_DERIVED <phi_normal_c1[l=2]> 'celldivgrad[l=2](<facearea>)' ON <allcells>
+   CELL_DERIVED <phi_normal_c1[l=3]> 'celldivgrad[l=3](<facearea>)' ON <allcells>
+   
+   CELL_DERIVED <phi_normal_c2[l=1]> "celldivgrad[l=1](<facearea>)" ON <allcells>
+   CELL_DERIVED <phi_normal_c3[l=1]> "celldivgrad[l=1](<facearea>)" ON <allcells>
+   CELL_DERIVED <phi_normal_c2[l=2]> "celldivgrad[l=2](<facearea>)" ON <allcells>
+   CELL_DERIVED <phi_normal_c3[l=2]> "celldivgrad[l=2](<facearea>)" ON <allcells>
+   CELL_DERIVED <phi_normal_c2[l=3]> "celldivgrad[l=3](<facearea>)" ON <allcells>
+   CELL_DERIVED <phi_normal_c3[l=3]> "celldivgrad[l=3](<facearea>)" ON <allcells>
+   
+   CONSTANT <tens[l=1,1]> "1 + 1"
+   CONSTANT <tens[l=1,2]> "2 + 1"
+   CONSTANT <tens[l=1,3]> "3 + 1"
+   CONSTANT <tens[l=2,1]> "1 + 2"
+   CONSTANT <tens[l=2,2]> "2 + 2"
+   CONSTANT <tens[l=2,3]> "3 + 2"
+   CONSTANT <tens[l=3,1]> "1 + 3"
+   CONSTANT <tens[l=3,2]> "2 + 3"
+   CONSTANT <tens[l=3,3]> "3 + 3"
+   
 ##################################################################################

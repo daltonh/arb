@@ -145,14 +145,17 @@ for dir_name in ${TESTCASES[@]} ; do
     echo "INFO: skipping directory $subdir as it is a link to another directory or does not contain an arb input file";
     continue;
   fi # skip the directory if it doesn't contain an arb input file or is not a directory (could be a tutorial link for example)
-  cd $subdir; # change to the subdir where the arb and msh files will be found
   for compiler in ${COMPILERS[@]} ; do # run with the chosen compilers
+    cd $subdir; # change to the subdir where the arb and msh files will be found
 # make results directory within examples directories and copy over all of the outputs
     results_dir="resources/test_suite_results/$compiler";
     output_dir="${results_dir}/output";
     if [ ! -d $results_dir ] ; then mkdir -p $results_dir ; fi
     if [ $REFRESH -eq 1 -a -e $results_dir/SUCCESS ] ; then
       echo "INFO: skipping arb simulation of test case $subdir using $compiler compiler as successful results already exist";
+#     echo "results_dir = |$results_dir|";
+#     echo "subdir = $subdir";
+#     echo "ls `ls -l $PWD/$results_dir/SUCCESS`";
       cd $cwd;
       continue;
     else

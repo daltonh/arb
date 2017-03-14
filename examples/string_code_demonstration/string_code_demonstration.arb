@@ -76,13 +76,13 @@ INCLUDE_TEMPLATE "general/element_indices" {{ # these can now be across several 
   string_set("_OUTPUT","_CONSTANT"); # with some explanation - ie, turning all output variables into constants
 # a comment within the perl code, noting that string code delimiters take precedence over perl comments }} # followed by a comment within the solver code, just to be tricky, and on the last line too
 
-# also demonstrate some vector and tensor expansions
+# also demonstrate some vector and tensor expansions (with expressions that don't make any mathematical sense)
 {{ my $code; foreach my $l ( string_eval('<<dimensions>>','list') ) { $code .=
-  "CELL_DERIVED <phi_normal_c1[l=$l]> 'celldivgrad[l=$l](<phi_f>)' ON <allcells>\n";
+  "CELL_DERIVED <phi_normal_c1[l=$l]> 'celldivgrad[l=$l](<facearea>)' ON <allcells>\n";
 }; return $code; }}
 {{ return vector_expand(
-  'CELL_DERIVED <phi_normal_c2[l=$l]> "celldivgrad[l=$l](<phi_f>)" ON <allcells>',
-  'CELL_DERIVED <phi_normal_c3[l=$l]> "celldivgrad[l=$l](<phi_f>)" ON <allcells>'
+  'CELL_DERIVED <phi_normal_c2[l=$l]> "celldivgrad[l=$l](<facearea>)" ON <allcells>',
+  'CELL_DERIVED <phi_normal_c3[l=$l]> "celldivgrad[l=$l](<facearea>)" ON <allcells>'
 ); }}
 {{ return tensor_expand(
   'CONSTANT <tens[l=$l1,$l2]> "$l2 + $l1"'
