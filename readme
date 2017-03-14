@@ -3,4 +3,5 @@ originally written by Dalton Harvie (daltonh@unimelb.edu.au), this is now a publ
 
 * to run the solver you use the ./arb script
 * try ./arb --help to list available options
+* scripts in the install directory automate the process of installing dependent software/packages, as well as installing arb for running outside of this arb directory
 * to get going, look at the readme file in the examples/tutorial_1 directory or at the manual in the doc directory
