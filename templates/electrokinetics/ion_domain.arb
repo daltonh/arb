@@ -4,12 +4,12 @@
 #CELL_LOCAL <ion n initial> "<average ion n>"
 # initial value now based on initial potential, so the potential expression will be unwrapped to use here
 CELL_LOCAL <ion n initial> "<average ion n>*exp(-<ion z>*<e/kT>*<U>)"
-CELL_UNKNOWN <ion n> [molecules/m^3] "<ion n initial>" ON <all cells> # ion concentration, note units
+CELL_UNKNOWN <ion n> [molecules/m^3] "<ion n initial>" ON <allcells> # ion concentration, note units
 
-<<transientnavierstokescomment>>CELL_TRANSIENT <ion n[r=1]> "<ion n initial>" "<ion n>" ON <all cells>
-CELL_DERIVED <ion limiter> [1] "celllimiter[lower](<ion n>,cellmin(<ion n>,,<cellicells>),celllimiter[upper](<ion n>,cellmax(<ion n>,,<cellicells>)))" ON <all cells> # relative limits
-FACE_LOCAL <ion n_f> "faceave[advection](<ion n>,<u_f>,<ion limiter>*<adv_limiter>)" ON <all faces> # face advection-interpolated concentration
-FACE_DERIVED <ion J_f> [molecules/(m^2.s)] "<ion n_f>*<u_f>-<ion D>*(facegrad(<ion n>)+<ion z>*<e/kT>*<ion n_hf>*facegrad(<U>))" ON <all faces> # flux of ions across each face
+<<transientnavierstokescomment>>CELL_TRANSIENT <ion n[r=1]> "<ion n initial>" "<ion n>" ON <allcells>
+CELL_DERIVED <ion limiter> [1] "celllimiter[lower](<ion n>,cellmin(<ion n>,,<cellicells>),celllimiter[upper](<ion n>,cellmax(<ion n>,,<cellicells>)))" ON <allcells> # relative limits
+FACE_LOCAL <ion n_f> "faceave[advection](<ion n>,<u_f>,<ion limiter>*<adv_limiter>)" ON <allfaces> # face advection-interpolated concentration
+FACE_DERIVED <ion J_f> [molecules/(m^2.s)] "<ion n_f>*<u_f>-<ion D>*(facegrad(<ion n>)+<ion z>*<e/kT>*<ion n_hf>*facegrad(<U>))" ON <allfaces> # flux of ions across each face
 
 # conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
 # cartesian only

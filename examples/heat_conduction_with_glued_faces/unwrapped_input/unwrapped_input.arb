@@ -5,8 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: heat_conduction_with_glued_faces.arb
 #(hash added during unwrap)INCLUDE_WORKING "heat_conduction_with_glued_faces.arb"
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../heat_conduction_with_glued_faces.arb without any search/replace combinations
+#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
+   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../heat_conduction_with_glued_faces.arb without any search/replace combinations
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -33,13 +34,13 @@ EXTERNALS "src/free_surface_functions.f90"
    MSH_FILE "surface.msh"
    
    CELL_UNKNOWN <T> [K] "1.d0" magnitude=1.d+2 # temperature
-   FACE_DERIVED <T flux> "-<D>*facegrad(<T>)" ON <all faces>
+   FACE_DERIVED <T flux> "-<D>*facegrad(<T>)" ON <allfaces>
    CELL_EQUATION <T transport> "celldiv(<T flux>)" ON <domain> # diffusion equation
    FACE_EQUATION <T hole> "<T flux>-<hole flux>" ON <hole> # specified heat flux through hole surface
    FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on walls
    NONE_OUTPUT <T average> "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
    
    #-------------------------------------------------------------------
-   # INCLUDE FINISHED for ../heat_conduction_with_glued_faces.arb
-   #--------------------------------------------------------
+   #(comment generated during unwrap) INCLUDE finished for ../heat_conduction_with_glued_faces.arb
+   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

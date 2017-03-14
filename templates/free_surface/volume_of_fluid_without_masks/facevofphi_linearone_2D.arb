@@ -12,8 +12,8 @@ FACE_LOCAL <facevofphi_n_c[l=1]> "faceif(<u_f>,faceave[downcell](<facevofphi_n[l
 FACE_LOCAL <facevofphi_n_c[l=2]> "faceif(<u_f>,faceave[downcell](<facevofphi_n[l=2]>),faceave[upcell](<facevofphi_n[l=2]>))"
 FACE_LOCAL <facevofphi_d_c> "faceif(<u_f>,faceave[downcell](<facevofphi_d>),faceave[upcell](<facevofphi_d>))"
 FACE_LOCAL <facevofphi_phi_c> "faceif(<u_f>,faceave[downcell](<facevofphi_phi>),faceave[upcell](<facevofphi_phi>))" # only used if round off doesn't allow phi calc from d (ie, if interface is parallel to face)
-FACE_DERIVED <facevofphi_d_1> "dot(<facevofphi_n_c[l=:]>,<facevofphi_x_1[l=:]>)" ON <all faces>
-FACE_DERIVED <facevofphi_d_2> "dot(<facevofphi_n_c[l=:]>,<facevofphi_x_2[l=:]>)" ON <all faces>
+FACE_DERIVED <facevofphi_d_1> "dot(<facevofphi_n_c[l=:]>,<facevofphi_x_1[l=:]>)" ON <allfaces>
+FACE_DERIVED <facevofphi_d_2> "dot(<facevofphi_n_c[l=:]>,<facevofphi_x_2[l=:]>)" ON <allfaces>
 FACE_LOCAL <facevofphi_d_max> "facemax(<facevofphi_d_1>,<facevofphi_d_2>)"
 FACE_LOCAL <facevofphi_d_min> "facemin(<facevofphi_d_1>,<facevofphi_d_2>)"
-FACE_DERIVED <facevofphi_f> "faceif(<facevofphi_d_max>-<facevofphi_d_min>-1.d-10,facemax(0.d0,facemin(1.d0,(<facevofphi_d_max>-<facevofphi_d_c>)/(<facevofphi_d_max>-<facevofphi_d_min>))),<facevofphi_phi_c>)" ON <all faces>
+FACE_DERIVED <facevofphi_f> "faceif(<facevofphi_d_max>-<facevofphi_d_min>-1.d-10,facemax(0.d0,facemin(1.d0,(<facevofphi_d_max>-<facevofphi_d_c>)/(<facevofphi_d_max>-<facevofphi_d_min>))),<facevofphi_phi_c>)" ON <allfaces>

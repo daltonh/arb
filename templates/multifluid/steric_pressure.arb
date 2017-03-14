@@ -3,4 +3,4 @@
 CONSTANT <phi_steric_on> 0.64d0 # this is phi_max in the jfm paper
 CONSTANT <phi_steric_gamma_1> 1.d+5 # gradient that kicks in a at <phi_steric_on>+<phi_steric_gamma_2>
 CONSTANT <phi_steric_gamma_2> 0.03d0 # this is the phi buffer, in a parabolic region
-CELL_DERIVED <Pi_steric_s> [Pa] "cellif(<phi_steric_on>-<phi_s>,0.d0,cellif(<phi_steric_on>+<phi_steric_gamma_2>-<phi_s>,<phi_steric_gamma_1>*(<phi_s>-<phi_steric_on>)^2/(2.d0*<phi_steric_gamma_2>),<phi_steric_gamma_1>*(<phi_s>-<phi_steric_on>-<phi_steric_gamma_2>/2.d0)))" ON <all cells>
+CELL_DERIVED <Pi_steric_s> [Pa] "cellif(<phi_steric_on>-<phi_s>,0.d0,cellif(<phi_steric_on>+<phi_steric_gamma_2>-<phi_s>,<phi_steric_gamma_1>*(<phi_s>-<phi_steric_on>)^2/(2.d0*<phi_steric_gamma_2>),<phi_steric_gamma_1>*(<phi_s>-<phi_steric_on>-<phi_steric_gamma_2>/2.d0)))" ON <allcells>

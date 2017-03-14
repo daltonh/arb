@@ -2,4 +2,4 @@ CONSTANT <turb_mu_implicit_timestep> 3.d0
 #NONE_TRANSIENT <turb_mu_explicit_flag> "1.d0" "noneif(<timestep>-<turb_mu_implicit_timestep>-1.d-10,0.d0,1.d0)" # turns on abruptly after <turb_mu_implicit_timestep>
 NONE_TRANSIENT <turb_mu_explicit_flag> "1.d0" "nonemax(nonemin((<timestep>-<turb_mu_implicit_timestep>)/(1.d0-<turb_mu_implicit_timestep>),1.d0),0.d0)" output,input # turns on gently between timestep=1 and <turb_mu_implicit_timestep>
 TIMESTEPMIN 3
-CELL_DERIVED <turb_mu_t> "<turb_mu_explicit_flag>*<turb_mu_t[r=1]>+(1.d0-<turb_mu_explicit_flag>)*<turb_mu_t_smoothed>" ON <all cells>
+CELL_DERIVED <turb_mu_t> "<turb_mu_explicit_flag>*<turb_mu_t[r=1]>+(1.d0-<turb_mu_explicit_flag>)*<turb_mu_t_smoothed>" ON <allcells>

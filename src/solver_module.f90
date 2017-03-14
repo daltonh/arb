@@ -1,6 +1,6 @@
 ! file src/solver_module.f90
 !
-! Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -40,15 +40,15 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, suitesparse, hslma28, pardiso, multigrid, mgmres, bicg, bicgstab, descent, doglegdescent, flexible
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, intelpardisosafer, suitesparse, hslma28, pardiso, multigrid, mgmres, bicg, bicgstab, descent, doglegdescent, flexible
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
 logical :: backstepping = .true. ! (.true., userable) whether to use backstepping or not - no reason not to
 double precision, parameter :: alf = 1.d-5 ! (1.d-5) small factor that ensures that newtres is decreasing by a multiple of the initial rate of decrease - everyone suggests 1.d-4, but a bit smaller seems to work better for some problems
 double precision :: lambdamin = 1.d-10 ! (1.d-10, userable) minimum absolute backstepping lambda allowed - this can be set very small if lambda_limit_false_root is on
-logical, parameter :: lambda_limit_cautiously = .false. ! (.false.) limit lambda so that solution is approached slowly (cautiously), hopefully avoiding spurious steps into unstable regions
-double precision, parameter :: lambda_limit_cautiously_factor = 1.d-2 ! (1.d-2) product of average unknown change and newtres which must be satisfied for step to be accepted - the lower the value the more cautious the approach to the solution is - 1.d1 is reckless but possibly fast, 1.d-2 is a good middle-of-the-road value for reasonably stable systems, 1.d-4 is very cautious (slow but safe).  These factors are critically dependent on the unknown magnitudes being correct!
+logical :: lambda_limit_cautiously = .false. ! (.false., userable) limit lambda so that solution is approached slowly (cautiously), hopefully avoiding spurious steps into unstable regions
+double precision :: lambda_limit_cautiously_factor = 1.d-2 ! (1.d-2, userable) product of average unknown change and newtres which must be satisfied for step to be accepted - the lower the value the more cautious the approach to the solution is - 1.d1 is reckless but possibly fast, 1.d-2 is a good middle-of-the-road value for reasonably stable systems, 1.d-4 is very cautious (slow but safe).  These factors are critically dependent on the unknown magnitudes being correct!
 logical :: lambda_limit_false_root = .true. ! (.true., userable) attempt to identify and move past false solution roots by imposing a lower limit on lambda that is a function of the current newtres
 double precision :: lambda_limit_false_root_factor = 1.d-4 ! (1.d-4, userable) aggression used in limiting lambda - a higher number means a more agressive limiting approach but cause solution to shoot off into unstable regions - 1.d-7 is a middle of the road value
 logical :: sticky_lambda = .true. ! (.true., userable) use lambda from previous step as the basis for the current iteration
@@ -669,6 +669,12 @@ else if (trim(linear_solver) == "intelpardisoooc") then
 ! intel pardiso solver out of core
 
   call intel_pardiso_linear_solver(aa,iaa,jaa,delphi,ierror,nthreads,ooc=.true.)
+  if (ierror == -4) singular = .true.
+
+else if (trim(linear_solver) == "intelpardisosafer") then
+! intel pardiso solver, but with a safer choice of algorithms
+
+  call intel_pardiso_linear_solver(aa,iaa,jaa,delphi,ierror,nthreads,safer=.true.)
   if (ierror == -4) singular = .true.
 
 else if (trim(linear_solver) == "suitesparse") then
@@ -2032,6 +2038,22 @@ do n = 1, allocatable_character_size(solver_options) ! precedence is now as read
       call error_stop("requested solver lambdalimitfalserootfactor should be greater than zero")
     end if
     write(*,'(a,g10.3)') 'INFO: setting solver lambdalimitfalserootfactor = ',lambda_limit_false_root_factor
+  else if (trim(option_name) == "lambdalimitcautiously") then
+! lambda_limit_cautiously
+    lambda_limit_cautiously = extract_option_logical(solver_options(n),error)
+    if (error) call error_stop("could not determine lambdalimitcautiously from the solver option "// &
+      trim(solver_options(n)))
+    write(*,'(a,l1)') 'INFO: setting solver lambdalimitcautiously = ',lambda_limit_cautiously
+  else if (trim(option_name) == "lambdalimitcautiouslyfactor") then
+! lambda_limit_cautiously_factor
+    lambda_limit_cautiously_factor = extract_option_double_precision(solver_options(n),error)
+    if (error) then
+      call error_stop("could not determine lambdalimitcautiouslyfactor from the solver option "// &
+        trim(solver_options(n)))
+    else if (lambda_limit_cautiously_factor <= 0.d0) then
+      call error_stop("requested solver lambdalimitcautiouslyfactor should be greater than zero")
+    end if
+    write(*,'(a,g10.3)') 'INFO: setting solver lambdalimitcautiouslyfactor = ',lambda_limit_cautiously_factor
   else if (trim(option_name) == "lambdamin") then
 ! lambdamin
     lambdamin = extract_option_double_precision(solver_options(n),error)
@@ -2088,6 +2110,7 @@ if (trim(linear_solver) == "default" .or. trim(linear_solver) == "iterative" .or
   if (trim(linear_solver) == "iterative") linear_solver = "doglegdescent" ! this is the default iterative solver
   write(*,'(a)') 'INFO: choosing '//trim(linear_solver)//' linear solver'
 else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "intelpardisoooc".or. &
+  trim(linear_solver) == "intelpardisosafer".or. &
   trim(linear_solver) == "suitesparse".or.trim(linear_solver) == "hslma28".or.trim(linear_solver) == "pardiso".or. &
   trim(linear_solver) == "pardisoiterative".or. &
   trim(linear_solver) == "multigrid".or.trim(linear_solver) == "singlegrid".or. &

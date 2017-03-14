@@ -1,0 +1,6 @@
+#!/bin/bash
+# the idea here is to find files that are normal files within a directory tree, and then only do a perl replacement on those
+# usage
+# ./misc/file_utilities/replace_string_recursively <directory to look through> <search string> <replacement string>
+
+find $1 -type 'f' -not -name '.*' -not -path '*/resources/*' -not -path '*/old/*' -not -path '*/code_scraps/*' -not -path '*/unwrapped_input/*' -exec /usr/bin/perl -p -i -e "s/$2/$3/g" '{}' ';'

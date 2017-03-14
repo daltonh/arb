@@ -25,7 +25,7 @@ port install gcc49 +gfortran gdb
 port install SuiteSparse
 
 # for Lachlan's plot and track scripts
-port install python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8
+port install python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8 py27-pydot py27-cycler
 #port select --list python # just for information
 port select --set python python27
 
@@ -33,6 +33,9 @@ port select --set python python27
 #https://astrofrog.github.io/macports-python/
 #https://guide.macports.org
 #http://truongtx.me/2014/02/25/mac-os-install-python-pip-virtualenv-using-macports/
+
+# for graphviz and perl graphviz modules (GraphViz2)
+port install graphviz p5-graphviz2
 
 # the following directories and link are the only non-ports things done in this install script
 # finally, link the particular macports gfortran version name to a standard name within an accessible bin directory

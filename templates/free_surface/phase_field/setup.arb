@@ -15,7 +15,7 @@ CONSTANT <pf_celldxmax> "cellmax(<celldxmax>,region=<domain>)" elementdata # oth
 CONSTANT <pf_eps> "<pf_eps_nondimensional>*<pf_celldxmax>"
 
 # this is the level set function, defined on all cells
-CELL_UNKNOWN <pf_phi> [] "<pf_phi_initial>" ON <all cells> magnitude=1.d0
-CELL_TRANSIENT <pf_phi[r=1]> "<pf_phi>" "<pf_phi>" ON <all cells> nooutput
+CELL_UNKNOWN <pf_phi> [] "<pf_phi_initial>" ON <allcells> magnitude=1.d0
+CELL_TRANSIENT <pf_phi[r=1]> "<pf_phi>" "<pf_phi>" ON <allcells> nooutput
 
 CELL_LOCAL <pf_phi_initial> "0.d0" # default initial phi value - set this to something in the actual input file

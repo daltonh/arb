@@ -5,8 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: heat_conduction_around_ellipse.arb
 #(hash added during unwrap)INCLUDE_WORKING "heat_conduction_around_ellipse.arb"
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../heat_conduction_around_ellipse.arb without any search/replace combinations
+#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
+   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../heat_conduction_around_ellipse.arb without any search/replace combinations
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -82,14 +83,14 @@ EXTERNALS "src/free_surface_functions.f90"
    
    CONSTANT <D> [W/(K.m)] 1.d-3 # diffusivity, actually thermal conductivity (k) given the other units
    CONSTANT <hole flux> [W/m^2] -1.d+1 # heat flux around surface of hole
-   CELL_UNKNOWN <T> [K] "1.d0" ON <all cells> # temperature
-   FACE_DERIVED <q_f> [W/m^2] "-<D>*facegrad(<T>)" ON <all faces> output # flux of heat across each face, in the direction of the face normal
+   CELL_UNKNOWN <T> [K] "1.d0" ON <allcells> # temperature
+   FACE_DERIVED <q_f> [W/m^2] "-<D>*facegrad(<T>)" ON <allfaces> output # flux of heat across each face, in the direction of the face normal
    CELL_EQUATION <T transport> "celldiv(<q_f>)" ON <domain> # diffusion equation, giving conservation of heat on each cell within the domain
    FACE_EQUATION <T hole> "<q_f>-<hole flux>" ON <hole> # specified heat flux through hole surface: Note, face normals on boundary faces all point outwards, so this equation specifies a flux equal to <hole flux> directed out of the domain.  However, <hole flux> is set to a negative number above, giving a (physical) flux directed into the domain
    FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on the walls of the domain 
    NONE_OUTPUT <T average> [K] "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
    
    #-------------------------------------------------------------------
-   # INCLUDE FINISHED for ../heat_conduction_around_ellipse.arb
-   #--------------------------------------------------------
+   #(comment generated during unwrap) INCLUDE finished for ../heat_conduction_around_ellipse.arb
+   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

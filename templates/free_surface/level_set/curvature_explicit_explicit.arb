@@ -7,60 +7,60 @@
 #<<dim2comment>>FACE_LOCAL <ls_n_f[l=2]> "facegrad[l=2](<ls>)"
 #<<dim3comment>>FACE_LOCAL <ls_n_f[l=3]> "facegrad[l=3](<ls>)"
 #FACE_DERIVED <ls_n_f mag> "sqrt(dot(<ls_n_f[l=:]>,<ls_n_f[l=:]>))" output,elementdata
-#CELL_DERIVED <ls_kappa_c> "-celldiv(facegrad(<ls>)/<ls_n_f mag>)" ON <all cells> output,elementdata
+#CELL_DERIVED <ls_kappa_c> "-celldiv(facegrad(<ls>)/<ls_n_f mag>)" ON <allcells> output,elementdata
 #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" output
 
 # Method 2 - face centred calculation, averaged to cell centres
-#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <all cells>
-#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <all cells>
-#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <all cells>
-#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <all cells>
-#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <all cells> output
-#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <all cells>
-#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <all cells>
-#FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <all faces> output
+#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <allcells>
+#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <allcells>
+#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <allcells>
+#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <allcells>
+#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <allcells> output
+#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <allcells>
+#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <allcells>
+#FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <allfaces> output
 #CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" output
 
 # Method 3 - cell centred calculation, using cellgrad instead of celldiv, then averaged to faces
-#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <all cells>
-#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <all cells>
-#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <all cells>
-#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <all cells>
-#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <all cells> output
-#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <all cells>
-#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <all cells>
-#CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <all cells> output
+#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <allcells>
+#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <allcells>
+#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <allcells>
+#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <allcells>
+#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <allcells> output
+#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <allcells>
+#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <allcells>
+#CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <allcells> output
 #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" output
 
 # Method 4 - as per method 2, but with more smoothing
-#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <all cells>
-#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <all cells>
-#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <all cells>
-#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <all cells>
-#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <all cells> output
-#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <all cells>
-#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <all cells>
-#FACE_DERIVED <ls_kappa_f2> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <all faces> output
+#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <allcells>
+#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <allcells>
+#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <allcells>
+#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <allcells>
+#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <allcells> output
+#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <allcells>
+#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <allcells>
+#FACE_DERIVED <ls_kappa_f2> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <allfaces> output
 #CELL_DERIVED <ls_kappa_c> "<ls_kappa_f2>" output
 #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" output
 
 # Method 5 - face and cell calculated separately from same cell centred unit normals
-#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <all cells>
-#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <all cells>
-#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <all cells>
-#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <all cells>
-#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <all cells> output
-#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <all cells>
-#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <all cells>
-#FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <all faces> output
-#CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <all cells> output
+#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <allcells>
+#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <allcells>
+#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <allcells>
+#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <allcells>
+#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <allcells> output
+#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <allcells>
+#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <allcells>
+#FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <allfaces> output
+#CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <allcells> output
 
 # Method 6 - as per method 1 but not normalising unit vectors
-#CELL_DERIVED <ls_kappa_c> "-celldiv(facegrad(<ls>))" ON <all cells> output,elementdata
+#CELL_DERIVED <ls_kappa_c> "-celldiv(facegrad(<ls>))" ON <allcells> output,elementdata
 #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" output
 
 # Method 7 - as per method 6 but more smoothing
-#CELL_DERIVED <ls_kappa_c2> "-celldiv(facegrad(<ls>))" ON <all cells> output,elementdata
+#CELL_DERIVED <ls_kappa_c2> "-celldiv(facegrad(<ls>))" ON <allcells> output,elementdata
 #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c2>" output
 #CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" output,elementdata
 
@@ -69,56 +69,56 @@
 #<<dim2comment>>FACE_LOCAL <ls_n_f[l=2]> "facegrad[l=2](<ls>)"
 #<<dim3comment>>FACE_LOCAL <ls_n_f[l=3]> "facegrad[l=3](<ls>)"
 #FACE_LOCAL <ls_n_f mag> "sqrt(dot(<ls_n_f[l=:]>,<ls_n_f[l=:]>))" elementdata
-#FACE_DERIVED <ls_n_f_scalar> "facegrad(<ls>)/<ls_n_f mag>" ON <all faces> nooutput
-##CELL_DERIVED <ls_kappa_c2> "-celldiv(facegrad(<ls>)/<ls_n_f mag>)" ON <all cells> output,elementdata
-#<<cylindricalcomment>>CELL_DERIVED <ls_kappa_c2> "-celldiv(<radius_f>*<ls_n_f_scalar>/faceave[lastcell](<radius_c>))" ON <all cells> nooutput,elementdata
-#<<cartesiancomment>>CELL_DERIVED <ls_kappa_c2> "-celldiv(<ls_n_f_scalar>)" ON <all cells> nooutput,elementdata
-#CELL_DERIVED <ls_kappa_c2> "-celldiv(<ls_n_f_scalar>)" ON <all cells> nooutput,elementdata
-#FACE_DERIVED <ls_kappa_f> "<ls_kappa_c2>" ON <all faces>
-#CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" ON <all cells> output,elementdata
+#FACE_DERIVED <ls_n_f_scalar> "facegrad(<ls>)/<ls_n_f mag>" ON <allfaces> nooutput
+##CELL_DERIVED <ls_kappa_c2> "-celldiv(facegrad(<ls>)/<ls_n_f mag>)" ON <allcells> output,elementdata
+#<<cylindricalcomment>>CELL_DERIVED <ls_kappa_c2> "-celldiv(<radius_f>*<ls_n_f_scalar>/faceave[lastcell](<radius_c>))" ON <allcells> nooutput,elementdata
+#<<cartesiancomment>>CELL_DERIVED <ls_kappa_c2> "-celldiv(<ls_n_f_scalar>)" ON <allcells> nooutput,elementdata
+#CELL_DERIVED <ls_kappa_c2> "-celldiv(<ls_n_f_scalar>)" ON <allcells> nooutput,elementdata
+#FACE_DERIVED <ls_kappa_f> "<ls_kappa_c2>" ON <allfaces>
+#CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" ON <allcells> output,elementdata
 
 # Method 9 - face and cell calculated separately, cell from celldiv, face from cell centred normals
-#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <all cells>
-#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <all cells>
-#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <all cells>
-#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <all cells>
-#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <all cells> output
-#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <all cells>
-#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <all cells>
-#FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <all faces> output
-#CELL_DERIVED <ls_kappa_c> "-celldiv(facegrad(<ls>))" ON <all cells> output,elementdata
+#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "cellgrad[l=1](<ls>)" ON <allcells>
+#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "cellgrad[l=2](<ls>)" ON <allcells>
+#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "cellgrad[l=3](<ls>)" ON <allcells>
+#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <allcells>
+#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <allcells> output
+#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <allcells>
+#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <allcells>
+#FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <allfaces> output
+#CELL_DERIVED <ls_kappa_c> "-celldiv(facegrad(<ls>))" ON <allcells> output,elementdata
 
 # Method 10 - as per method 2, but cell centred unit normals calculated from celldivgrads
-#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "celldivgrad[l=1](<ls>)" ON <all cells>
-#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "celldivgrad[l=2](<ls>)" ON <all cells>
-#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "celldivgrad[l=3](<ls>)" ON <all cells>
-#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <all cells>
-#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <all cells> output
-#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <all cells>
-#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <all cells>
-#FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <all faces> output
+#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "celldivgrad[l=1](<ls>)" ON <allcells>
+#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "celldivgrad[l=2](<ls>)" ON <allcells>
+#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "celldivgrad[l=3](<ls>)" ON <allcells>
+#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <allcells>
+#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <allcells> output
+#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <allcells>
+#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <allcells>
+#FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <allfaces> output
 #CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" output
 
 # Method 11 - face and cell calculated separately from same cell centred unit normals, now calculated with celldivgrad
-#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "celldivgrad[l=1](<ls>)" ON <all cells>
-#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "celldivgrad[l=2](<ls>)" ON <all cells>
-#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "celldivgrad[l=3](<ls>)" ON <all cells>
-#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <all cells>
-#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <all cells> output
-#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <all cells>
-#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <all cells>
-#FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <all faces> output
-#CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <all cells> output
+#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "celldivgrad[l=1](<ls>)" ON <allcells>
+#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "celldivgrad[l=2](<ls>)" ON <allcells>
+#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "celldivgrad[l=3](<ls>)" ON <allcells>
+#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <allcells>
+#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <allcells> output
+#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <allcells>
+#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <allcells>
+#FACE_DERIVED <ls_kappa_f> "-(facegrad[l=1](<ls_n_c_unit[l=1]>)+facegrad[l=2](<ls_n_c_unit[l=2]>)+facegrad[l=3](<ls_n_c_unit[l=3]>))" ON <allfaces> output
+#CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <allcells> output
 
 # Method 12 - as per method 3, but cell centred normals calculated using celldivgrad
-#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "celldivgrad[l=1](<ls>)" ON <all cells>
-#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "celldivgrad[l=2](<ls>)" ON <all cells>
-#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "celldivgrad[l=3](<ls>)" ON <all cells>
-#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <all cells>
-#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <all cells> output
-#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <all cells>
-#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <all cells>
-#CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <all cells> output
+#<<dim1comment>>CELL_DERIVED <ls_n_c[l=1]> "celldivgrad[l=1](<ls>)" ON <allcells>
+#<<dim2comment>>CELL_DERIVED <ls_n_c[l=2]> "celldivgrad[l=2](<ls>)" ON <allcells>
+#<<dim3comment>>CELL_DERIVED <ls_n_c[l=3]> "celldivgrad[l=3](<ls>)" ON <allcells>
+#CELL_DERIVED <ls_n_c mag> "sqrt(dot(<ls_n_c[l=:]>,<ls_n_c[l=:]>))" ON <allcells>
+#<<dim1comment>>CELL_LOCAL <ls_n_c_unit[l=1]> "<ls_n_c[l=1]>/<ls_n_c mag>" ON <allcells> output
+#<<dim2comment>>CELL_LOCAL <ls_n_c_unit[l=2]> "<ls_n_c[l=2]>/<ls_n_c mag>" ON <allcells>
+#<<dim3comment>>CELL_LOCAL <ls_n_c_unit[l=3]> "<ls_n_c[l=3]>/<ls_n_c mag>" ON <allcells>
+#CELL_DERIVED <ls_kappa_c> "-(cellgrad[l=1](<ls_n_c_unit[l=1]>)+cellgrad[l=2](<ls_n_c_unit[l=2]>)+cellgrad[l=3](<ls_n_c_unit[l=3]>))" ON <allcells> output
 #FACE_DERIVED <ls_kappa_f> "<ls_kappa_c>" output
 
 # Method 13 - as per method 8 but <ls_kappa_f> is calculated from <ls_kappa_c>, rather than the other way around (ie, more smoothing on this)
@@ -126,10 +126,10 @@
 <<dim2comment>>FACE_LOCAL <ls_n_f[l=2]> "facegrad[l=2](<ls[r=1]>)"
 <<dim3comment>>FACE_LOCAL <ls_n_f[l=3]> "facegrad[l=3](<ls[r=1]>)"
 FACE_LOCAL <ls_n_f mag> "sqrt(dot(<ls_n_f[l=:]>,<ls_n_f[l=:]>))" elementdata
-FACE_TRANSIENT <ls_n_f_scalar> "facegrad(<ls[r=1]>)/<ls_n_f mag>" ON <all faces> nooutput
-<<cylindricalcomment>>CELL_TRANSIENT <ls_kappa_c2> "-celldiv(<<radius_f>>*<ls_n_f_scalar>/faceave[lastcell](<<radius_c>>))" ON <all cells> nooutput,elementdata
-<<cartesiancomment>>CELL_TRANSIENT <ls_kappa_c2> "-celldiv(<ls_n_f_scalar>)" ON <all cells> nooutput,elementdata
+FACE_TRANSIENT <ls_n_f_scalar> "facegrad(<ls[r=1]>)/<ls_n_f mag>" ON <allfaces> nooutput
+<<cylindricalcomment>>CELL_TRANSIENT <ls_kappa_c2> "-celldiv(<<radius_f>>*<ls_n_f_scalar>/faceave[lastcell](<<radius_c>>))" ON <allcells> nooutput,elementdata
+<<cartesiancomment>>CELL_TRANSIENT <ls_kappa_c2> "-celldiv(<ls_n_f_scalar>)" ON <allcells> nooutput,elementdata
 FACE_LOCAL <ls_kappa_f2> "<ls_kappa_c2>"
-CELL_TRANSIENT <ls_kappa_c> "<ls_kappa_f2>" ON <all cells> output,elementdata
-FACE_TRANSIENT <ls_kappa_f> "<ls_kappa_c>" ON <all faces>
+CELL_TRANSIENT <ls_kappa_c> "<ls_kappa_f2>" ON <allcells> output,elementdata
+FACE_TRANSIENT <ls_kappa_f> "<ls_kappa_c>" ON <allfaces>
 

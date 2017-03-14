@@ -7,18 +7,18 @@ INCLUDE "default_string_replacements"
 GENERAL_REPLACEMENTS D "<<advectionlimiterdim1>>" W "<adv_limiter>" D "<<advectionlimiterdim2>>" W "<adv_limiter>" D "<<advectionlimiterdim3>>" W "<adv_limiter>"
 
 # steady-state and uniform density
-<<navierstokescomment>><<steadystatenavierstokescomment>><<uniformdensitycomment>><<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,<<reflect=1>>](<u[l=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <all faces>
-<<navierstokescomment>><<steadystatenavierstokescomment>><<uniformdensitycomment>><<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,<<reflect=2>>](<u[l=2]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <all faces>
-<<navierstokescomment>><<steadystatenavierstokescomment>><<uniformdensitycomment>><<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,<<reflect=3>>](<u[l=3]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <all faces>
+<<navierstokescomment>><<steadystatenavierstokescomment>><<uniformdensitycomment>><<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,<<reflect=1>>](<u[l=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+<<navierstokescomment>><<steadystatenavierstokescomment>><<uniformdensitycomment>><<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,<<reflect=2>>](<u[l=2]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+<<navierstokescomment>><<steadystatenavierstokescomment>><<uniformdensitycomment>><<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,<<reflect=3>>](<u[l=3]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
 # steady-state and varying density
-<<navierstokescomment>><<steadystatenavierstokescomment>><<nonuniformdensitycomment>><<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,<<reflect=1>>](<rho>*<u[l=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <all faces>
-<<navierstokescomment>><<steadystatenavierstokescomment>><<nonuniformdensitycomment>><<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,<<reflect=2>>](<rho>*<u[l=2]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <all faces>
-<<navierstokescomment>><<steadystatenavierstokescomment>><<nonuniformdensitycomment>><<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,<<reflect=3>>](<rho>*<u[l=3]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <all faces>
+<<navierstokescomment>><<steadystatenavierstokescomment>><<nonuniformdensitycomment>><<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,<<reflect=1>>](<rho>*<u[l=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+<<navierstokescomment>><<steadystatenavierstokescomment>><<nonuniformdensitycomment>><<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,<<reflect=2>>](<rho>*<u[l=2]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+<<navierstokescomment>><<steadystatenavierstokescomment>><<nonuniformdensitycomment>><<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,<<reflect=3>>](<rho>*<u[l=3]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
 # transient and uniform density
-<<navierstokescomment>><<transientnavierstokescomment>><<uniformdensitycomment>><<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,<<reflect=1>>](<u[l=1,r=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <all faces>
-<<navierstokescomment>><<transientnavierstokescomment>><<uniformdensitycomment>><<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,<<reflect=2>>](<u[l=2,r=1]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <all faces>
-<<navierstokescomment>><<transientnavierstokescomment>><<uniformdensitycomment>><<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,<<reflect=3>>](<u[l=3,r=1]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <all faces>
+<<navierstokescomment>><<transientnavierstokescomment>><<uniformdensitycomment>><<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,<<reflect=1>>](<u[l=1,r=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+<<navierstokescomment>><<transientnavierstokescomment>><<uniformdensitycomment>><<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,<<reflect=2>>](<u[l=2,r=1]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+<<navierstokescomment>><<transientnavierstokescomment>><<uniformdensitycomment>><<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,<<reflect=3>>](<u[l=3,r=1]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
 # transient and varying density
-<<navierstokescomment>><<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,<<reflect=1>>](<rho[r=1]>*<u[l=1,r=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <all faces>
-<<navierstokescomment>><<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,<<reflect=2>>](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <all faces>
-<<navierstokescomment>><<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,<<reflect=3>>](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <all faces>
+<<navierstokescomment>><<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,<<reflect=1>>](<rho[r=1]>*<u[l=1,r=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+<<navierstokescomment>><<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,<<reflect=2>>](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+<<navierstokescomment>><<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,<<reflect=3>>](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>

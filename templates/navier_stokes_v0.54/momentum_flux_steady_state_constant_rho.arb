@@ -2,10 +2,10 @@
 
 # flux now split to allow easier overwriting of the advection component
 # default is for steady-state (or fully implicit) with constant rho
-<<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,<<reflect=1>>](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
-<<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,<<reflect=2>>](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
-<<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,<<reflect=3>>](<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <all faces>
+<<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,<<reflect=1>>](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
+<<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,<<reflect=2>>](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
+<<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,<<reflect=3>>](<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
 
-<<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+<J_advection_f[l=1]>" ON <all faces> # component of momentum transport from stress and advection
-<<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+<J_advection_f[l=2]>" ON <all faces> # component of momentum transport from stress and advection
-<<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)+<J_advection_f[l=3]>" ON <all faces> # component of momentum transport from stress and advection
+<<dim1comment>>FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+<J_advection_f[l=1]>" ON <allfaces> # component of momentum transport from stress and advection
+<<dim2comment>>FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+<J_advection_f[l=2]>" ON <allfaces> # component of momentum transport from stress and advection
+<<dim3comment>>FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)+<J_advection_f[l=3]>" ON <allfaces> # component of momentum transport from stress and advection

@@ -1,9 +1,9 @@
-CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <all cells>
-CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <all cells>
-CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <all cells>
-CELL_OUTPUT <cell deriv kernel elements output> "cellsum(1.d0,region=<cellkernelregion[l=1]>)" ON <all cells>
-FACE_OUTPUT <face deriv kernel elements output> "cellsum(1.d0,region=<facekernelregion[l=1]>)" ON <all faces>
-NODE_OUTPUT <node deriv kernel elements output> "cellsum(1.d0,region=<nodekernelregion[l=1]>)" ON <all nodes>
-CELL_OUTPUT <celldxkernel output> "<celldxkernel>" ON <all cells>
-FACE_OUTPUT <facedxkernel output> "<facedxkernel>" ON <all faces>
-NODE_OUTPUT <nodedxkernel output> "<nodedxkernel>" ON <all nodes>
+CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <allcells>
+CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <allcells>
+CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <allcells>
+CELL_OUTPUT <cell deriv kernel elements output> "cellsum(1.d0,region=<cellkernelregion[l=1]>)" ON <allcells>
+FACE_OUTPUT <face deriv kernel elements output> "cellsum(1.d0,region=<facekernelregion[l=1]>)" ON <allfaces>
+NODE_OUTPUT <node deriv kernel elements output> "cellsum(1.d0,region=<nodekernelregion[l=1]>)" ON <allnodes>
+CELL_OUTPUT <celldxkernel output> "<celldxkernel>" ON <allcells>
+FACE_OUTPUT <facedxkernel output> "<facedxkernel>" ON <allfaces>
+NODE_OUTPUT <nodedxkernel output> "<nodedxkernel>" ON <allnodes>

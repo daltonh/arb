@@ -1,8 +1,8 @@
 # these are variables that are used in both the transient and steady-state equations
 
 # face averaged advection components
-FACE_DERIVED <turb_k_rho_f> "faceave[advection](<turb_k>*<rho>,<u_f>,<turb_adv_limiter>)" ON <all faces>
-FACE_DERIVED <turb_omega_rho_f> "faceave[advection](<turb_omega>*<rho>,<u_f>,<turb_adv_limiter>)" ON <all faces>
+FACE_DERIVED <turb_k_rho_f> "faceave[advection](<turb_k>*<rho>,<u_f>,<turb_adv_limiter>)" ON <allfaces>
+FACE_DERIVED <turb_omega_rho_f> "faceave[advection](<turb_omega>*<rho>,<u_f>,<turb_adv_limiter>)" ON <allfaces>
 
 CELL_DERIVED <turb_R_k> "<turb_mu_t>*<turb_2SS_c>-<rho>*<turb_beta_star>*<turb_k_pos>*<turb_omega_pos>" ON <domain> output
 CELL_DERIVED <turb_R_omega> "<rho>*(<turb_gamma>*<turb_2SS_c> - <turb_beta>*<turb_omega_pos>^2)" ON <domain> output

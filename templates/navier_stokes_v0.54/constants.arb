@@ -20,7 +20,7 @@ CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity inte
 CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
 
 # find an estimate of the domain size using general template
-INCLUDE_ROOT "general"
+INCLUDE_TEMPLATE "general"
 INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
 
 # for reference calculate some nondimensional quantities

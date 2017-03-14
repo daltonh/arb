@@ -75,7 +75,7 @@ GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any refere
 # variables etc
 
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "stokes"
 INCLUDE "constants" # specify physical and numerical constants
 INCLUDE "transient_constant_setup" # sets up timestep and time variables, and saves previous timestep velocities
@@ -135,6 +135,6 @@ VARIABLE <u_f> output
 VARIABLE <J_f[r=1,l=1]> output
 VARIABLE <tau[r=1,l=1,1]> output
 
-#INCLUDE_ROOT "navier_stokes"
+#INCLUDE_TEMPLATE "navier_stokes"
 #INCLUDE "strain_rate_magnitude"
 #-------------------------------------------------------------------

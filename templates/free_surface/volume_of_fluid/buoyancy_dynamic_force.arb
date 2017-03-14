@@ -9,7 +9,7 @@ CONSTANT <gravity[l=2]> [m/s^2] -9.81d0
 #CONSTANT <gravity[l=2]> "-1.d0/<Fr>"
 
 # include buoyancy in dynamic forces
-<<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "-(celldivgrad[l=1](<p_f>)-<sigma>*<vof_F_c[l=1]>)+<gravity[l=1]>*<vof_rho_c>" ON <all cells>
-<<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-(celldivgrad[l=2](<p_f>)-<sigma>*<vof_F_c[l=2]>)+<gravity[l=2]>*<vof_rho_c>" ON <all cells>
-<<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "-(celldivgrad[l=3](<p_f>)-<sigma>*<vof_F_c[l=3]>)+<gravity[l=3]>*<vof_rho_c>" ON <all cells>
-FACE_LOCAL <dynamic_force_f> "-(facegrad[dxunit](<p>)-<sigma>*<vof_F_f>)+dot(<gravity[l=:]>,<facedxunit[l=:]>)*<vof_rho_f>" ON <all faces>
+<<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "-(celldivgrad[l=1](<p_f>)-<sigma>*<vof_F_c[l=1]>)+<gravity[l=1]>*<vof_rho_c>" ON <allcells>
+<<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-(celldivgrad[l=2](<p_f>)-<sigma>*<vof_F_c[l=2]>)+<gravity[l=2]>*<vof_rho_c>" ON <allcells>
+<<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "-(celldivgrad[l=3](<p_f>)-<sigma>*<vof_F_c[l=3]>)+<gravity[l=3]>*<vof_rho_c>" ON <allcells>
+FACE_LOCAL <dynamic_force_f> "-(facegrad[dxunit](<p>)-<sigma>*<vof_F_f>)+dot(<gravity[l=:]>,<facedxunit[l=:]>)*<vof_rho_f>" ON <allfaces>

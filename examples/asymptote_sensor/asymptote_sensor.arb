@@ -55,7 +55,7 @@ NONE_CONDITION <time based stop condition> "<t>-<tend>" stopcondition # when thi
 NONE_CONSTANT <z_horizontal_asymptote> 2.d0 stepoutput
 NONE_DERIVED <z> [m] "<z_horizontal_asymptote>-1.d0/(<t>+1.d0)" stepoutput # a mock profile with a horizontal asymptote
 
-INCLUDE_ROOT "general"
+INCLUDE_TEMPLATE "general"
 
 # trigger_create_asymptote_expression
 #

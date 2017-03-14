@@ -1,6 +1,6 @@
 ! file src/output_module.f90
 !
-! Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -357,7 +357,7 @@ do ntype = 1, ubound(var_types,1)
     m = var_list(var_list_number(centring="all",type=type))%list(nvar)
 
     if (size(var(m)%funk) == 0) then
-      write(textline,fmt=formatline) "variable "//trim(var(m)%type)//' '//trim(var(m)%name)//': contains no elements'
+      write(textline,'(a)') "variable "//trim(var(m)%type)//' '//trim(var(m)%name)//': contains no elements'
     else
     
       max_loc = 1

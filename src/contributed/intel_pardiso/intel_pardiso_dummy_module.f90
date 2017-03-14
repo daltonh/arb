@@ -1,6 +1,6 @@
 ! file src/contributed/intel_pardiso/intel_pardiso_dummy_module.f90
 !
-! Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -40,12 +40,12 @@ contains
 
 !-----------------------------------------------------------------
 
-subroutine intel_pardiso_linear_solver(a,ia,ja,x,ierror,nthreads,ooc)
+subroutine intel_pardiso_linear_solver(a,ia,ja,x,ierror,nthreads,ooc,safer)
 
 double precision, dimension(:), allocatable :: a, x ! already allocated
 integer, dimension(:), allocatable :: ia, ja ! already allocated
 integer :: ierror, nthreads
-logical, optional :: ooc
+logical, optional :: ooc, safer
 
 write(*,*)
 write(*,*) 'ERROR: the intel mkl pardiso routine has not been compiled into the arb executable'

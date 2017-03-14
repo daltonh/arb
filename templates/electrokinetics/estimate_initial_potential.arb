@@ -7,7 +7,7 @@ CONSTANT <alpha_small_S> "sqrt(nonemax(-1.5d0+sqrt(2.25d0+1.5d0*abs(<S>)),0.d0))
 CONSTANT <alpha> "nonemin(<alpha_large_S>,<alpha_small_S>)"
 CONSTANT <Z estimate> "signum(<S>)*nonemin(abs(<S>)*coth(<K>)/<K>,-2.d0*log(cos(<alpha>)))" # signed, nondimensional zeta potential, taken as minimum between low and high potential solutions
 
-INCLUDE_ROOT "general"
+INCLUDE_TEMPLATE "general"
 INCLUDE "domain_lengthscale_face_boundary_distance" # use this formulation of <a_lengthscale> as it needs to be consistent with <minimum_face_boundary_distance>
-CELL_CONSTANT <U initial> "cellif(1.d0/<K>-<minimum_face_boundary_distance>/<a_lengthscale>,<Z estimate>*<K>*(1.d0/<K>-<minimum_face_boundary_distance>/<a_lengthscale>),0.d0)/<e/kT>" ON <all cells> output
+CELL_CONSTANT <U initial> "cellif(1.d0/<K>-<minimum_face_boundary_distance>/<a_lengthscale>,<Z estimate>*<K>*(1.d0/<K>-<minimum_face_boundary_distance>/<a_lengthscale>),0.d0)/<e/kT>" ON <allcells> output
 CELL_UNKNOWN <U> "<U initial>" # adopts region etc from real definition on the unknown <U>

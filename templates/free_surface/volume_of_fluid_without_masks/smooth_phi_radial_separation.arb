@@ -34,8 +34,8 @@ CELL_LOCAL <vof_smoothing_kernel> "1.d0/(sqrt(<vof_smoothing_dist^2>/<vof_smooth
 
 # now do the smoothing
 # looks like we need a minimum of maxseparation=3 to get enough valid normals (at the edge of the interface region) to avoid instabilities in the (curvature) surface tension calculation
-CELL_CONSTANT <vof_phi_smoothing_demoninator> "cellsum[maxseparation=3,faceseparation](<vof_smoothing_kernel>,region=<all cells>)" ON <all cells> output
-CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=3,faceseparation](<vof_phi>*<vof_smoothing_kernel>,region=<all cells>)/<vof_phi_smoothing_demoninator>" ON <all cells> output
+CELL_CONSTANT <vof_phi_smoothing_demoninator> "cellsum[maxseparation=3,faceseparation](<vof_smoothing_kernel>,region=<allcells>)" ON <allcells> output
+CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=3,faceseparation](<vof_phi>*<vof_smoothing_kernel>,region=<allcells>)/<vof_phi_smoothing_demoninator>" ON <allcells> output
 
 # save the smoothed phi for later - necessary?
-#CELL_TRANSIENT <vof_phi_smoothed[r=1]> "" "<vof_phi_smoothed>" ON <all cells> output
+#CELL_TRANSIENT <vof_phi_smoothed[r=1]> "" "<vof_phi_smoothed>" ON <allcells> output

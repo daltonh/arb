@@ -72,7 +72,7 @@ GLUE_FACES <fluid south> reflect=2
 
 #-------------------------------------------------------------------
 
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 # commands to form the single mesh regions from the fluid msh file
 <<singledomaincomment>>INCLUDE "single_region_formation"
 # commands to form the double mesh regions from both the fluid and free surface msh files
@@ -83,7 +83,7 @@ INCLUDE_ROOT "free_surface/volume_of_fluid"
 <<doubledomaincomment>>INCLUDE "fluid_replacements"
 
 # setup basic cylindrical general replacements by including the following two lines
-<<cylindricalcomment>>INCLUDE_ROOT "general"
+<<cylindricalcomment>>INCLUDE_TEMPLATE "general"
 <<cylindricalcomment>>INCLUDE "cylindrical_reflect_r1z2"
 <<cartesiancomment>>GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
 <<cartesiancomment>>GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
@@ -91,7 +91,7 @@ INCLUDE_ROOT "free_surface/volume_of_fluid"
 GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2"
 
 # bring in default physical and numerical constants
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 <<nonuniformcomment>>INCLUDE "nonuniform_properties" # setup the density and viscosity uniform properties strings based on the <<uniformcomment>> string
 INCLUDE "nondimensional_constants"
 
@@ -109,7 +109,7 @@ CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
 #CONSTANT <dt_surf> "0.5d0*sqrt(0.5d0*<We>*<celldxave>^3/<pi>)"
 #NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
 
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 INCLUDE "nondimensional_constants"
 # calculate the mac2 cartesian vof velocity errors for reference (http://dx.doi.org/10.1016/j.apm.2005.08.015)
 <<uniformcomment>>INCLUDE "parasitic_mac2_correlation"
@@ -126,24 +126,24 @@ CONSTANT <S> 1.d+1 # surface tension strength nondimensional number, see harvie 
 <<nonuniformcomment>>CONSTANT <vof_rho_d_ratio> 1.d+1 # dimensional <rho_d>/<rho_c>
 <<nonuniformcomment>>CONSTANT <vof_mu_d_ratio> 1.d+1 # dimensional <mu_d>/<mu_c>
 
-CELL_UNKNOWN <p> [] "(2.d0^<<cylindricalflag>>)*<vof_phi>/<We>" ON <all cells> elementdata # pressure
-CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
-CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <all cells> magnitude=1.d0 # velocity component
+CELL_UNKNOWN <p> [] "(2.d0^<<cylindricalflag>>)*<vof_phi>/<We>" ON <allcells> elementdata # pressure
+CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
+CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
 
 # CSF based levelset formulation with reinitialisation
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 INCLUDE "setup"
 
 # define real initial vof
 NONE_CONSTANT <vof_phi_initial_tol> 1.d-4 # accuracy in computing initial shapes (in terms of volume fraction per cell)
 # circle (cylinder/sphere)
 CONSTANT <radius1> 1.0d0
-CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[sphere](size[l=1]=2.d0*<radius1>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <all cells> output,elementdata
+CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[sphere](size[l=1]=2.d0*<radius1>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <allcells> output,elementdata
 # ellipse
 #CONSTANT <radius_a> 0.9d0
 #CONSTANT <radius_b> 1.1d0
-#CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius_a>,size[l=2]=2.d0*<radius_b>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <all cells> output,elementdata
-CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <all cells>
+#CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius_a>,size[l=2]=2.d0*<radius_b>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <allcells> output,elementdata
+CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <allcells>
 
 # the following curvature and related cell centred unit normal and smooth phi calculations are done on the free surface mesh
 <<doubledomaincomment>>INCLUDE "cancel_fluid_replacements"
@@ -162,7 +162,7 @@ INCLUDE "high_order_interface_geometry"
 INCLUDE "force" # force done back on the fluid mesh
 
 # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 # nonuniform
 <<nonuniformcomment>>INCLUDE "total_stress" R "<mu_f>" W "<vof_mu_harmonic_f>"
 <<nonuniformcomment>>INCLUDE "u_f" R "<rho_f>" W "<vof_rho_f>" R "<mu_f>" W "<vof_mu_f>"
@@ -172,11 +172,11 @@ INCLUDE_ROOT "navier_stokes"
 <<uniformcomment>>INCLUDE "u_f"
 <<uniformcomment>>INCLUDE "advection_flux"
 
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 INCLUDE "dynamic_force"
 INCLUDE "equation" # all phi advection done on fluid mesh
 
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "momentum_flux"
 # nonuniform
 <<nonuniformcomment>>INCLUDE "conservation" R "<rho>" W "<vof_rho_c>" R "<rho[r=1]>" W "<vof_rho_c[r=1]>" R "<mu>" W "<vof_mu_c>"
@@ -184,9 +184,9 @@ INCLUDE "momentum_flux"
 <<uniformcomment>>INCLUDE "conservation"
 
 # fluid boundary conditions on nonslip walls
-INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 INCLUDE "walls_nonwetting" # NB: BC applied on fluid walls
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "walls_p_set"
 
 #-------------------------------------------------------------------
@@ -198,26 +198,26 @@ NONE_OUTPUT <centroid[l=2]> "cellsum(<cellvol>*<cellx[l=2]>*<vof_phi>,region=<do
 NONE_OUTPUT <stretch[l=1]> "sqrt(cellsum(<cellvol>*(<cellx[l=1]>-<centroid[l=1]>)^2*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>))"
 NONE_OUTPUT <stretch[l=2]> "sqrt(cellsum(<cellvol>*(<cellx[l=2]>-<centroid[l=2]>)^2*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>))"
 
-FACE_OUTPUT <u_f_vector[l=1,r=1]> "<u_f[r=1]>*<facenorm[l=1]>" ON <all faces>
-FACE_OUTPUT <u_f_vector[l=2,r=1]> "<u_f[r=1]>*<facenorm[l=2]>" ON <all faces>
-FACE_OUTPUT <u_f_vector[l=1,r=0]> "<u_f[r=0]>*<facenorm[l=1]>" ON <all faces>
-FACE_OUTPUT <u_f_vector[l=2,r=0]> "<u_f[r=0]>*<facenorm[l=2]>" ON <all faces>
+FACE_OUTPUT <u_f_vector[l=1,r=1]> "<u_f[r=1]>*<facenorm[l=1]>" ON <allfaces>
+FACE_OUTPUT <u_f_vector[l=2,r=1]> "<u_f[r=1]>*<facenorm[l=2]>" ON <allfaces>
+FACE_OUTPUT <u_f_vector[l=1,r=0]> "<u_f[r=0]>*<facenorm[l=1]>" ON <allfaces>
+FACE_OUTPUT <u_f_vector[l=2,r=0]> "<u_f[r=0]>*<facenorm[l=2]>" ON <allfaces>
 
-NONE_OUTPUT <u_f_max> "facemax(abs(<u_f>),region=<all faces>)"
+NONE_OUTPUT <u_f_max> "facemax(abs(<u_f>),region=<allfaces>)"
 NONE_OUTPUT <phi error> "sqrt(cellsum((<vof_phi>-<vof_phi_initial_saved>)**2*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>))"
 
 NONE_OUTPUT <vof_phi_max domain> "cellmax(<vof_phi>,region=<domain>)"
 NONE_OUTPUT <vof_phi_min domain> "cellmin(<vof_phi>,region=<domain>)"
-NONE_OUTPUT <vof_phi_max all cells> "cellmax(<vof_phi>,region=<all cells>)"
-NONE_OUTPUT <vof_phi_min all cells> "cellmin(<vof_phi>,region=<all cells>)"
-NONE_OUTPUT <vof_phi_adjust_max> "cellmax(<vof_phi_adjust[r=1]>,region=<all cells>)"
-NONE_OUTPUT <vof_phi_adjust_min> "cellmin(<vof_phi_adjust[r=1]>,region=<all cells>)"
+NONE_OUTPUT <vof_phi_max all cells> "cellmax(<vof_phi>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_min all cells> "cellmin(<vof_phi>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_adjust_max> "cellmax(<vof_phi_adjust[r=1]>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_adjust_min> "cellmin(<vof_phi_adjust[r=1]>,region=<allcells>)"
 NONE_OUTPUT <vof_phi_error domain> "nonemax(abs(<vof_phi_max domain>-1.d0),abs(<vof_phi_min domain>))"
 NONE_OUTPUT <vof_phi_error all cells> "nonemax(abs(<vof_phi_max all cells>-1.d0),abs(<vof_phi_min all cells>))"
 
 # save maximum and minimum velocities for t > t_save say
 NONE_CONSTANT <t_save> 20.d0
-NONE_LOCAL <u_f_max_local> "facemax(abs(<u_f>),region=<all faces>)"
+NONE_LOCAL <u_f_max_local> "facemax(abs(<u_f>),region=<allfaces>)"
 NONE_TRANSIENT <u_f_max_max> "0.d0" "noneif(<t>-<t_save>,nonemax(<u_f_max_local>,<u_f_max_max[r=1]>),<u_f_max_max[r=1]>)" output
 NONE_TRANSIENT <u_f_max_max[r=1]> "" "<u_f_max_max>"
 NONE_TRANSIENT <u_f_max_min> "1.d2" "noneif(<t>-<t_save>,nonemin(<u_f_max_local>,<u_f_max_min[r=1]>),<u_f_max_min[r=1]>)" output
@@ -243,7 +243,7 @@ VARIABLE <vof_F_c[l=1]> output
 #VARIABLE <vof_phi_adjust[r=1]> newtstepmax=50
 
 # to show the interface masks include this file
-#INCLUDE_ROOT "free_surface/volume_of_fluid"
+#INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 #INCLUDE "output_masks"
 
 # for the high order method only, adjust the interface width

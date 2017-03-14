@@ -2,7 +2,7 @@
 #
 # file test_suite
 #
-# Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+# Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
 # 
@@ -66,6 +66,7 @@ examples_dir=$cwd'/examples';
 suitesparse_dir=$cwd'/src/contributed/suitesparse'
 log_file=$cwd'/test_suite.log'
 saved_dir=$cwd'/saved_input_files'
+setup_dir=$cwd'/output/setup_data';
 stopfile='test_suite_stop'
 error=0;
 REFRESH=1; # default is refresh is on
@@ -205,7 +206,7 @@ for dir_name in ${TESTCASES[@]} ; do
     cp output/*details.txt  $results_dir >/dev/null 2>/dev/null;
 # also create unwrapped input directory and copy over unwrapped_input.arb
     if [ ! -d $subdir/unwrapped_input ] ; then mkdir -p $subdir/unwrapped_input ; fi
-    cp tmp/setup/unwrapped_input.arb $subdir/unwrapped_input >/dev/null 2>/dev/null;
+    cp $setup_dir/unwrapped_input.arb $subdir/unwrapped_input >/dev/null 2>/dev/null;
     touch $results_dir/$keyword;
     if [[ "$keyword" == "SUCCESS" ]]; then
       echo "INFO: simulation $subdir using $compiler compiler was successful";

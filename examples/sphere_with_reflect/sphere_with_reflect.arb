@@ -68,13 +68,13 @@ MSH_FILE "surface.msh"
 #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 
-INCLUDE_ROOT "general"
+INCLUDE_TEMPLATE "general"
 INCLUDE "cylindrical_reflect_r2z1"
 
 # variables etc
 
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "nondimensional_constants" # specify physical and numerical constants
 INCLUDE "domain" # equations to be solved within the domain
 
@@ -94,7 +94,7 @@ CONSTANT <Re> [1] 1.d-2 # Reynolds number
 #NONE_OUTPUT <C_lift> "2.d0*<F_lift>/(<rho>*<u_av>^2*0.1d0)" # lift coefficient
 
 # output a flag telling us which term limited the correction velocity
-FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domainfaces> # is 1 where advection component is limiting velocity correction
 # and turn some outputs on
 VARIABLE <u_f_{correction}> output
 VARIABLE <u_f_{raw}> output
@@ -110,6 +110,6 @@ VARIABLE <tau[l=1,1]> output
 #NONE_OUTPUT <ERROR_PERCENTAGE> [%] "(<F_drag>-<F_drag_theo>)/<F_drag_theo>*1.d+2"
 
 # also output strain rate magnitude, as defined by bird 2002 for example
-INCLUDE_ROOT "navier_stokes"
+INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "strain_rate_magnitude"
 #-------------------------------------------------------------------

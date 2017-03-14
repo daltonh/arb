@@ -1,7 +1,7 @@
 " Vim settings file for arb finite volume solver
 " Language:     arb
-" Version:      0.55
-" Modified:     2016/02/01
+" Version:      0.56
+" Modified:     2016/06/20
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 " Maintainer:   Christian Biscombe
 
@@ -37,10 +37,13 @@ function ArbIncludes(...)
 " 'a': show everything ('all') [default if no/unrecognised optional argument given]
 " 't': show only the inclusion tree/hierarchy ('tree')
 
+  " Changes to INCLUDE syntax in v. 0.56 not handled yet - for now just issue a warning
+  echohl WarningMsg | echom 'NOTE: Changes to INCLUDE syntax in v. 0.56 not handled yet.' | echohl None
+
   " Sanity check
   let templates_dir = finddir('templates','**;') . '/'
   if !isdirectory(templates_dir)
-    echoe 'Could not find templates directory. Aborting.'
+    echoe 'ERROR: Could not find templates directory. Aborting.'
     return
   endif
    
@@ -78,7 +81,7 @@ function ArbIncludes(...)
     endfor
     call setqflist(save_qflist)
   else
-    echoe 'Could not find setup_equations.pl. Default replacements not done.'
+    echoe 'WARNING: Could not find setup_equations.pl. Default replacements not done.'
   endif
 
   " Read each line of current file, doing replacements and including contents of other files as needed

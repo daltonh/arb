@@ -1,6 +1,6 @@
 ! file src/setup_module.f90
 !
-! Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -490,6 +490,8 @@ fileloop: do
       simulation_info%runhost = name(1:200)
     else if (trim(keyword) == 'FILENAME') then
       simulation_info%filename = name(1:200)
+    else if (trim(keyword) == 'ABSFILENAME') then
+      simulation_info%absfilename = name(1:400)
     else
       call error_stop('simulation info keyword '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
     end if
@@ -1431,7 +1433,7 @@ end do
 ! elementnodedata cannot be used for face centred quantities (or none centred for that matter)
 do n = 1, ubound(compound,1)
 ! ref: default output
-! outputs are not always output
+! outputs are always output
   if (compound(n)%type == 'output'.or.((compound(n)%type == 'unknown'.or. &
     (compound(n)%type == 'derived'.and.compound(n)%centring == 'cell').or. &
     compound(n)%type == 'transient').and.compound(n)%relstep < max(transient_relstepmax,1))) then
@@ -1442,7 +1444,7 @@ do n = 1, ubound(compound,1)
 ! ref: default stepoutput
 ! none centred outputs now also always stepoutputted
   if ((compound(n)%type == 'output'.or.((compound(n)%type == 'unknown'.or. &
-    compound(n)%type == 'transient'.or.compound(n)%type == 'output') &
+    compound(n)%type == 'transient'.or.compound(n)%type == 'derived') &
     .and.compound(n)%relstep == 0)).and.compound(n)%centring == 'none') then
     call push_character_array(array=compound(n)%options,new_element='stepoutput',reverse=.true.)
   else

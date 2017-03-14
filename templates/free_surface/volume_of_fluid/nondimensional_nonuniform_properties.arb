@@ -8,10 +8,10 @@ NONE_CONSTANT <mu_diff> "(<vof_mu_d_ratio>-1.d0)*<mu>"
 
 # explicit commands that don't utilise nonuniform_properties file - the include was performed instead to ensure consistency between dimensional and nondimensional discretisations
 # calculation becomes slightly cheaper too
-#CELL_LOCAL <vof_rho_c[r=0]> "(<vof_phi_lim>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <all cells>
-#CELL_LOCAL <vof_rho_c[r=1]> "(<vof_phi[r=1]>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <all cells>
-#FACE_LOCAL <vof_rho_advection_f[r=1]> "(<vof_phi_f[r=1]>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <all faces> # advection interpolation to use in fluxes calculation
-#FACE_LOCAL <vof_rho_f> "(<vof_phi_delta_f>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <all faces> # simple interpolation to use in velocity correction calculation
-#CELL_LOCAL <vof_mu_c> "(cellmax(<vof_phi_lim>,0.d0)*(<vof_mu_d_ratio>-1.d0)+1.d0)*<mu>" ON <all cells>
-#FACE_LOCAL <vof_mu_f> "faceave(<vof_mu_c>)" ON <all faces>
-#FACE_LOCAL <vof_mu_harmonic_f> "faceave[harmonic](<vof_mu_c>)" ON <all faces>
+#CELL_LOCAL <vof_rho_c[r=0]> "(<vof_phi_lim>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <allcells>
+#CELL_LOCAL <vof_rho_c[r=1]> "(<vof_phi[r=1]>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <allcells>
+#FACE_LOCAL <vof_rho_advection_f[r=1]> "(<vof_phi_f[r=1]>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <allfaces> # advection interpolation to use in fluxes calculation
+#FACE_LOCAL <vof_rho_f> "(<vof_phi_delta_f>*(<vof_rho_d_ratio>-1.d0)+1.d0)*<rho>" ON <allfaces> # simple interpolation to use in velocity correction calculation
+#CELL_LOCAL <vof_mu_c> "(cellmax(<vof_phi_lim>,0.d0)*(<vof_mu_d_ratio>-1.d0)+1.d0)*<mu>" ON <allcells>
+#FACE_LOCAL <vof_mu_f> "faceave(<vof_mu_c>)" ON <allfaces>
+#FACE_LOCAL <vof_mu_harmonic_f> "faceave[harmonic](<vof_mu_c>)" ON <allfaces>

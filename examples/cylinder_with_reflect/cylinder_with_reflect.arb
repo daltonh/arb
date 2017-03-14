@@ -74,7 +74,7 @@ GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centrelin
 # variables etc
 
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "nondimensional_constants" # specify physical and numerical constants
 INCLUDE "domain" # equations to be solved within the domain
 
@@ -94,7 +94,7 @@ CONSTANT <Re> [1] 1.d-2 # Reynolds number
 #NONE_OUTPUT <C_lift> "2.d0*<F_lift>/(<rho>*<u_av>^2*0.1d0)" # lift coefficient
 
 # output a flag telling us which term limited the correction velocity
-FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domainfaces> # is 1 where advection component is limiting velocity correction
 # and turn some outputs on
 FACE_DERIVED <u_f_{correction}> output
 FACE_DERIVED <u_f_{raw}> output

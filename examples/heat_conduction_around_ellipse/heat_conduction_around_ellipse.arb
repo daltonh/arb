@@ -73,8 +73,8 @@ MSH_FILE "rectangle_with_ellipse.msh"
 
 CONSTANT <D> [W/(K.m)] 1.d-3 # diffusivity, actually thermal conductivity (k) given the other units
 CONSTANT <hole flux> [W/m^2] -1.d+1 # heat flux around surface of hole
-CELL_UNKNOWN <T> [K] "1.d0" ON <all cells> # temperature
-FACE_DERIVED <q_f> [W/m^2] "-<D>*facegrad(<T>)" ON <all faces> output # flux of heat across each face, in the direction of the face normal
+CELL_UNKNOWN <T> [K] "1.d0" ON <allcells> # temperature
+FACE_DERIVED <q_f> [W/m^2] "-<D>*facegrad(<T>)" ON <allfaces> output # flux of heat across each face, in the direction of the face normal
 CELL_EQUATION <T transport> "celldiv(<q_f>)" ON <domain> # diffusion equation, giving conservation of heat on each cell within the domain
 FACE_EQUATION <T hole> "<q_f>-<hole flux>" ON <hole> # specified heat flux through hole surface: Note, face normals on boundary faces all point outwards, so this equation specifies a flux equal to <hole flux> directed out of the domain.  However, <hole flux> is set to a negative number above, giving a (physical) flux directed into the domain
 FACE_EQUATION <T walls> "<T>-1.0d0" ON <walls> # set temperature on the walls of the domain 

@@ -2,10 +2,10 @@
 
 # define solid volume fraction and fluid volume fraction
 CONSTANT <phi_s_initial> 0.2d0 # initial solid volume fraction
-CELL_UNKNOWN <phi_s> "<phi_s_initial>" ON <all cells>
-CELL_LOCAL <phi_fl> "1.d0-<phi_s>" ON <all cells> output
+CELL_UNKNOWN <phi_s> "<phi_s_initial>" ON <allcells>
+CELL_LOCAL <phi_fl> "1.d0-<phi_s>" ON <allcells> output
 
-<<transientcomment>>CELL_TRANSIENT <phi_s[r=1]> "<phi_s_initial>" "<phi_s>" ON <all cells> output
+<<transientcomment>>CELL_TRANSIENT <phi_s[r=1]> "<phi_s_initial>" "<phi_s>" ON <allcells> output
 
 # set some constants related to the solids
 CONSTANT <T> [K] 298.15 # temperature

@@ -1,5 +1,5 @@
 # this will calculate the delta magnitude if needed for other physics
-FACE_LOCAL <vof_phi_delta_lim_f> "facemax(facemin(<vof_phi_delta_f>,1.d0),0.d0)" ON <all faces> # now checking that this is limited so that <vof_phi_delta_f> under/overshoots don't exagerate interface area
+FACE_LOCAL <vof_phi_delta_lim_f> "facemax(facemin(<vof_phi_delta_f>,1.d0),0.d0)" ON <allfaces> # now checking that this is limited so that <vof_phi_delta_f> under/overshoots don't exagerate interface area
 <<dim1comment>>CELL_DERIVED <vof_phigrad_delta[l=1]> "celldivgrad[l=1](<vof_phi_delta_lim_f>)" ON <vof_delta_mask[r=1]>
 <<dim2comment>>CELL_DERIVED <vof_phigrad_delta[l=2]> "celldivgrad[l=2](<vof_phi_delta_lim_f>)" ON <vof_delta_mask[r=1]>
 <<dim3comment>>CELL_DERIVED <vof_phigrad_delta[l=3]> "celldivgrad[l=3](<vof_phi_delta_lim_f>)" ON <vof_delta_mask[r=1]>

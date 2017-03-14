@@ -2,15 +2,15 @@
 
 # pre 270614 method
 # # uses implicit cell centred unit normals
-# <<cartesiancomment>>FACE_DERIVED <vof_kappa_f> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <all faces> output
+# <<cartesiancomment>>FACE_DERIVED <vof_kappa_f> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <allfaces> output
 
-# <<cylindricalcomment>>FACE_LOCAL <vof_kappa_cart_f> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <all faces>
-# <<cylindricalcomment>>FACE_LOCAL <vof_kappa_cyl_f> "-faceave[reflect=<<radiusdim1flag>>](<vof_phigrad_unit[l=<<radiusdim1flag>>]>)/<<radius_f>>" ON <all faces> # won't work on centreline, so instead use twice carteisan curvature there
-# <<cylindricalcomment>>FACE_DERIVED <vof_kappa_f> "faceif(<<radius_f>>-1.d-10,<vof_kappa_cart_f>+<vof_kappa_cyl_f>,2.d0*<vof_kappa_cart_f>)" ON <all faces> output
-# CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" ON <all cells> output
-# #FACE_DERIVED <vof_kappa_f2> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <all faces> output
-# #CELL_DERIVED <vof_kappa_c> "<vof_kappa_f2>" ON <all cells> output
-# #FACE_DERIVED <vof_kappa_f> "<vof_kappa_c>" ON <all faces> output
+# <<cylindricalcomment>>FACE_LOCAL <vof_kappa_cart_f> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <allfaces>
+# <<cylindricalcomment>>FACE_LOCAL <vof_kappa_cyl_f> "-faceave[reflect=<<radiusdim1flag>>](<vof_phigrad_unit[l=<<radiusdim1flag>>]>)/<<radius_f>>" ON <allfaces> # won't work on centreline, so instead use twice carteisan curvature there
+# <<cylindricalcomment>>FACE_DERIVED <vof_kappa_f> "faceif(<<radius_f>>-1.d-10,<vof_kappa_cart_f>+<vof_kappa_cyl_f>,2.d0*<vof_kappa_cart_f>)" ON <allfaces> output
+# CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" ON <allcells> output
+# #FACE_DERIVED <vof_kappa_f2> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <allfaces> output
+# #CELL_DERIVED <vof_kappa_c> "<vof_kappa_f2>" ON <allcells> output
+# #FACE_DERIVED <vof_kappa_f> "<vof_kappa_c>" ON <allfaces> output
 
 
 
@@ -18,29 +18,29 @@
 # return of an old method
 # v0.42, 270614
 # Method 8 - as per method 1 but more smoothing
-<<dim1comment>>FACE_LOCAL <vof_n_f[l=1]> "facegrad[l=1](<vof_phi_smoothed>)" ON <all faces>
-<<dim2comment>>FACE_LOCAL <vof_n_f[l=2]> "facegrad[l=2](<vof_phi_smoothed>)" ON <all faces>
-<<dim3comment>>FACE_LOCAL <vof_n_f[l=3]> "facegrad[l=3](<vof_phi_smoothed>)" ON <all faces>
-FACE_LOCAL <vof_n_f mag> "sqrt(dot(<vof_n_f[l=:]>,<vof_n_f[l=:]>))" ON <all faces>
+<<dim1comment>>FACE_LOCAL <vof_n_f[l=1]> "facegrad[l=1](<vof_phi_smoothed>)" ON <allfaces>
+<<dim2comment>>FACE_LOCAL <vof_n_f[l=2]> "facegrad[l=2](<vof_phi_smoothed>)" ON <allfaces>
+<<dim3comment>>FACE_LOCAL <vof_n_f[l=3]> "facegrad[l=3](<vof_phi_smoothed>)" ON <allfaces>
+FACE_LOCAL <vof_n_f mag> "sqrt(dot(<vof_n_f[l=:]>,<vof_n_f[l=:]>))" ON <allfaces>
 # possible bug was here, missing the vof_phi_smoothed, pre 270614
-#FACE_DERIVED <vof_n_f_scalar> "facegrad(<vof_phi>)/facemax(<vof_n_f mag>,<vof_phi_tol>/<facedx>)" ON <all faces> nooutput
-FACE_DERIVED <vof_n_f_scalar> "facegrad(<vof_phi_smoothed>)/facemax(<vof_n_f mag>,<vof_phi_tol>/<facedx>)" ON <all faces> nooutput
+#FACE_DERIVED <vof_n_f_scalar> "facegrad(<vof_phi>)/facemax(<vof_n_f mag>,<vof_phi_tol>/<facedx>)" ON <allfaces> nooutput
+FACE_DERIVED <vof_n_f_scalar> "facegrad(<vof_phi_smoothed>)/facemax(<vof_n_f mag>,<vof_phi_tol>/<facedx>)" ON <allfaces> nooutput
 
 # doing cartesian and cylindrical curvatures separately
 # cartesian
-<<cartesiancomment>>CELL_LOCAL <vof_kappa_c2> "-celldiv(<vof_n_f_scalar>)" ON <all cells> output
+<<cartesiancomment>>CELL_LOCAL <vof_kappa_c2> "-celldiv(<vof_n_f_scalar>)" ON <allcells> output
 # cylindrical
-<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cart_c> "-celldiv(<vof_n_f_scalar>)" ON <all cells>
-<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cyl_c> "-<vof_phigrad_unit[l=<<radiusdim1flag>>]>/<<radius_c>>" ON <all cells> # won't work on centreline, so instead use twice carteisan curvature there
-<<cylindricalcomment>>CELL_DERIVED <vof_kappa_c2> "cellif(<<radius_c>>-1.d-10,<vof_kappa_cart_c>+<vof_kappa_cyl_c>,2.d0*<vof_kappa_cart_c>)" ON <all cells> output
+<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cart_c> "-celldiv(<vof_n_f_scalar>)" ON <allcells>
+<<cylindricalcomment>>CELL_LOCAL <vof_kappa_cyl_c> "-<vof_phigrad_unit[l=<<radiusdim1flag>>]>/<<radius_c>>" ON <allcells> # won't work on centreline, so instead use twice carteisan curvature there
+<<cylindricalcomment>>CELL_DERIVED <vof_kappa_c2> "cellif(<<radius_c>>-1.d-10,<vof_kappa_cart_c>+<vof_kappa_cyl_c>,2.d0*<vof_kappa_cart_c>)" ON <allcells> output
 
 # doing cartesian and cylindrical curvatures using single divergence
-#<<cylindricalcomment>>CELL_DERIVED <vof_kappa_c2> "-celldiv(<<radius_f>>*<vof_n_f_scalar>/faceave[lastcell](<<radius_c>>))" ON <all cells> nooutput,elementdata
-#<<cartesiancomment>>CELL_DERIVED <vof_kappa_c2> "-celldiv(<vof_n_f_scalar>)" ON <all cells> nooutput,elementdata
+#<<cylindricalcomment>>CELL_DERIVED <vof_kappa_c2> "-celldiv(<<radius_f>>*<vof_n_f_scalar>/faceave[lastcell](<<radius_c>>))" ON <allcells> nooutput,elementdata
+#<<cartesiancomment>>CELL_DERIVED <vof_kappa_c2> "-celldiv(<vof_n_f_scalar>)" ON <allcells> nooutput,elementdata
 
-FACE_DERIVED <vof_kappa_f> "faceave[adjacentcells](<vof_kappa_c2>)" ON <all faces> output
+FACE_DERIVED <vof_kappa_f> "faceave[adjacentcells](<vof_kappa_c2>)" ON <allfaces> output
 # cell centred curvature is interpolated from face centred values
-CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" ON <all cells> output,elementdata
+CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" ON <allcells> output,elementdata
 # cell centred curvature is taken directly from celldiv
-#CELL_DERIVED <vof_kappa_c> "<vof_kappa_c2>" ON <all cells> output,elementdata
+#CELL_DERIVED <vof_kappa_c> "<vof_kappa_c2>" ON <allcells> output,elementdata
 

@@ -19,7 +19,7 @@ GLUE_FACES <west> <east> translate
 GLUE_FACES <south> <north> translate
 
 # test function
-CELL_CONSTANT <ls> "cellif(<cellx[l=1]>-0.5d0,<cellx[l=1]>-1.d0,<cellx[l=1]>)" ON <all cells> output
+CELL_CONSTANT <ls> "cellif(<cellx[l=1]>-0.5d0,<cellx[l=1]>-1.d0,<cellx[l=1]>)" ON <allcells> output
 
 # some tests based upon the normal kernels
 CELL_OUTPUT <ls_grad_c[l=1]> "cellgrad[l=1](<ls>)" componentoutput

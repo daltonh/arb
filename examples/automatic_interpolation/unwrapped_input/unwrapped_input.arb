@@ -5,8 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: automatic_interpolation.arb
 #(hash added during unwrap)INCLUDE_WORKING "automatic_interpolation.arb"
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../automatic_interpolation.arb without any search/replace combinations
+#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
+   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../automatic_interpolation.arb without any search/replace combinations
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -29,12 +30,12 @@ EXTERNALS "src/free_surface_functions.f90"
    
    # test of automatic operator centring interpolation
    # all of these variables should be 1 everywhere
-   CELL_OUTPUT <test1> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
-   CELL_OUTPUT <test2> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all cells>
-   FACE_OUTPUT <test3> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
-   FACE_OUTPUT <test4> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all faces>
-   NODE_OUTPUT <test5> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
-   NODE_OUTPUT <test6> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <all nodes>
-   # INCLUDE FINISHED for ../automatic_interpolation.arb
-   #--------------------------------------------------------
+   CELL_OUTPUT <test1> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allcells>
+   CELL_OUTPUT <test2> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allcells>
+   FACE_OUTPUT <test3> "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allfaces>
+   FACE_OUTPUT <test4> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <allfaces>
+   NODE_OUTPUT <test5> "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allnodes>
+   NODE_OUTPUT <test6> "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <allnodes>
+   #(comment generated during unwrap) INCLUDE finished for ../automatic_interpolation.arb
+   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

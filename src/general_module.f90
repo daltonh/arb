@@ -1,6 +1,6 @@
 ! file src/general_module.f90
 !
-! Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -293,6 +293,7 @@ type simulation_info_type
   character(len=200) :: version
   character(len=4000) :: description
   character(len=200) :: filename
+  character(len=400) :: absfilename
   character(len=200) :: rundate
   character(len=200) :: runversion
   character(len=200) :: runhost
@@ -388,7 +389,7 @@ logical :: kernel_availability_nodegrad = .false. ! (.false.)
 logical :: kernel_availability_nodeave = .false. ! (.false.)
 
 ! code version details
-real, parameter :: version = 0.55 ! current version
+real, parameter :: version = 0.56 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "flexible frogger"
 
@@ -4874,6 +4875,7 @@ if (simulation_info%date /= '') write(fileunit,'(a)') comment_l//' DATE = '//tri
 if (simulation_info%version /= '') write(fileunit,'(a)') comment_l//' VERSION = '//trim(simulation_info%version)
 if (simulation_info%description /= '') write(fileunit,'(a)') comment_l//' DESCRIPTION = '//trim(simulation_info%description)
 if (simulation_info%filename /= '') write(fileunit,'(a)') comment_l//' FILENAME = '//trim(simulation_info%filename)
+if (simulation_info%absfilename /= '') write(fileunit,'(a)') comment_l//' ABSFILENAME = '//trim(simulation_info%absfilename)
 if (simulation_info%rundate /= '') write(fileunit,'(a)') comment_l//' RUNDATE = '//trim(simulation_info%rundate)
 if (simulation_info%runversion /= '') write(fileunit,'(a)') comment_l//' RUNVERSION = '//trim(simulation_info%runversion)
 if (simulation_info%runhost /= '') write(fileunit,'(a)') comment_l//' RUNHOST = '//trim(simulation_info%runhost)

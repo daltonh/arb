@@ -87,7 +87,7 @@ NONE_CONDITION <bounce based stop condition> [] "<bounces>-<max_bounces>" stopco
 
 # this is an example of trigger based sampling
 
-INCLUDE_ROOT "general"
+INCLUDE_TEMPLATE "general"
 # we sample variables when <trigger expression> first returns true
 # for example, here <z> is initially 1.5 and begins to decrease as the ball travels towards the wall
 # we want to sample certain variables when <z> first passes through 0.8, so we would set <trigger expression> to 

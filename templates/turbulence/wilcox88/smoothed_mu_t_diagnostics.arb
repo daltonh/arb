@@ -1,2 +1,2 @@
-INCLUDE_ROOT "smoothing"
+INCLUDE_TEMPLATE "smoothing"
 INCLUDE "smoothed_variable_diagnostics" R "<variable" W "<turb_mu_t"

@@ -1,11 +1,11 @@
 # these are variables that are used in both the transient and steady-state equations
 
-FACE_DERIVED <turb_k_rho_f> "faceave[advection](<turb_k>*<rho>,<u_f>,<turb_adv_limiter>)" ON <all faces>
+FACE_DERIVED <turb_k_rho_f> "faceave[advection](<turb_k>*<rho>,<u_f>,<turb_adv_limiter>)" ON <allfaces>
 
 # interpolate the 2SS mu product directly from the faces to the cells to be used in the production term
-#FACE_LOCAL <turb_2SS_mu> "<turb_2SS>*<turb_mu_u_f>" ON <all faces>
-#FACE_LOCAL <turb_2SS_mu> "<turb_2SS>*<turb_mu_t_f>" ON <all faces>
-#CELL_DERIVED <turb_2SS_mu_c> "<turb_2SS_mu>" ON <all cells>
+#FACE_LOCAL <turb_2SS_mu> "<turb_2SS>*<turb_mu_u_f>" ON <allfaces>
+#FACE_LOCAL <turb_2SS_mu> "<turb_2SS>*<turb_mu_t_f>" ON <allfaces>
+#CELL_DERIVED <turb_2SS_mu_c> "<turb_2SS_mu>" ON <allcells>
 
 # R_k now includes <rho>
 #CELL_DERIVED <turb_R_k> "<turb_2SS_mu_c>-<rho>*<turb_C_D>*sqrt(<turb_k_lim>)*<turb_k>/sqrt(<turb_l_prandtl2>)" ON <domain>

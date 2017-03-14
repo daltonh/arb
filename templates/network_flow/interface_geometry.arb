@@ -42,10 +42,10 @@ GENERAL_REPLACEMENTS R "<<nonperiodicdomaincomment>>" W "" # default behaviour i
 CONSTANT <phi_tol> 1.d-4 # this is how small the fluid volume fraction is before a cell is classified as solid only
 CELL_CONSTANT <interface_mask_indicator> "cellif(<phi>-<phi_tol>,cellif(1.d0-<phi_tol>-<phi>,1.d0,0.d0),0.d0)" ON <domain> output, elementdata
 CELL_CONSTANT_REGION <interface_mask> "variable(<interface_mask_indicator>)" ON <domain> # note, mask will not include boundary cells now, so reconstructed phi on boundary cells will just equal input phi
-NODE_CONSTANT_REGION <interface_mask_n> "associatedwith(<interface_mask>)" ON <all nodes> 
+NODE_CONSTANT_REGION <interface_mask_n> "associatedwith(<interface_mask>)" ON <allnodes> 
 
 # now generate normals and face volume fractions based on vof methodolgy
-INCLUDE_ROOT "volume_of_fluid"
+INCLUDE_TEMPLATE "volume_of_fluid"
 # default now is for normals to be based on cellgrad in the interests of memory, determined by <<vofnodenormalscomment>>
 GENERAL_REPLACEMENTS DEFAULT "<<vofnodenormalscomment>>" W "#"
 # set the anti-string, <<vofcellnormalscomment>>, to be consistent and opposite
@@ -63,18 +63,18 @@ CELL_CONSTANT <vof_d> "cellvofd[best](phi=<phi>,normal[l=1]=<phigrad_unit[l=1]>,
 
 # now define face centred phi function
 # min based
-FACE_CONSTANT <phi_f> "cellmin(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)" ON <all faces> output
+FACE_CONSTANT <phi_f> "cellmin(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)" ON <allfaces> output
 # ave based
-#FACE_CONSTANT <phi_f> "cellsum(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)/2.d0" ON <all faces> output
+#FACE_CONSTANT <phi_f> "cellsum(cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>),region=<adjacentfaceicells>)/2.d0" ON <allfaces> output
 # faceave[adjacentcells] based
-#FACE_CONSTANT <phi_f> "faceave[adjacentcells](cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>))" ON <all faces> output
+#FACE_CONSTANT <phi_f> "faceave[adjacentcells](cellif(celldelta(<interface_mask>),cellave[lastface](facevofphi[noderivative,linearone](phi=<phi>,d=<vof_d>,flux=<facefromcelldirection>,normal[l=1]=<phigrad_unit[l=1]>,normal[l=2]=<phigrad_unit[l=2]>,normal[l=3]=<phigrad_unit[l=3]>,phitol=<phi_tol>)),<phi>))" ON <allfaces> output
 # nonvof simple implementation
-#FACE_OUTPUT <phi_f> "faceave[adjacentcells](<phi>)" ON <all faces>
+#FACE_OUTPUT <phi_f> "faceave[adjacentcells](<phi>)" ON <allfaces>
 
 # and from the face centred function, define cell centred phi, and an associated fluid mask
-CELL_CONSTANT <phi_c> "<phi_f>" ON <all cells>
-CELL_CONSTANT <fluid_mask_indicator> "cellif(<phi_c>-<phi_tol>,1.d0,0.d0)" ON <all cells> output
-CELL_CONSTANT_REGION <fluid_mask> "variable(<fluid_mask_indicator>)" ON <all cells>
+CELL_CONSTANT <phi_c> "<phi_f>" ON <allcells>
+CELL_CONSTANT <fluid_mask_indicator> "cellif(<phi_c>-<phi_tol>,1.d0,0.d0)" ON <allcells> output
+CELL_CONSTANT_REGION <fluid_mask> "variable(<fluid_mask_indicator>)" ON <allcells>
 
 #--------------------
 # need to create compact normals, that is used as a delta function when applying the stress (the previous normals are no good as there are based on smoothed vof/ls function)

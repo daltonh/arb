@@ -1,6 +1,6 @@
 ! file src/free_surface_functions.f90
 !
-! Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -749,7 +749,7 @@ subroutine cellvofphishape(thread,m,ilast,jlast,klast,error_string,deriv, &
   msomeloop_size1,msomeloop_size2,msomeloop_size3, &
   msomeloop_centre1,msomeloop_centre2,msomeloop_centre3, &
   msomeloop_axis1,msomeloop_axis2,msomeloop_axis3, &
-  msomeloop_phitol,shape)
+  msomeloop_phitol,msomeloop_levelset,shape)
 
 use general_module
 ! these are passed to all external routines
@@ -759,13 +759,13 @@ character(len=1000) :: error_string
 integer :: msomeloop_size1,msomeloop_size2,msomeloop_size3
 integer :: msomeloop_centre1,msomeloop_centre2,msomeloop_centre3
 integer :: msomeloop_axis1,msomeloop_axis2,msomeloop_axis3
-integer :: msomeloop_phitol,shape
+integer :: msomeloop_phitol,msomeloop_levelset,shape
 ! local variables
 integer, dimension(totaldimensions) :: msomeloop_size, msomeloop_centre, msomeloop_axis
 double precision, dimension(totaldimensions) :: size, centre, axis, x_sample, x_minimum, pass_vector
 integer :: i, l, jj, kk, j, sample_points_total, sample_points_in_cell, sample_points_in_shape, n1, n2
 logical :: cell_interface, cell_is_in, any_rotation
-double precision :: phitol, rotation_angle
+double precision :: phitol, rotation_angle, levelset
 double precision, dimension(totaldimensions,totaldimensions) :: rotation_total
 logical, parameter :: debug = .false.
 
@@ -785,15 +785,22 @@ if (debug) then
   write(50,*) 'msomeloop_centre = ',msomeloop_centre
   write(50,*) 'msomeloop_axis = ',msomeloop_axis
   write(50,*) 'msomeloop_phitol = ',msomeloop_phitol
+  write(50,*) 'msomeloop_levelset = ',msomeloop_levelset
   write(50,*) 'shape = ',shape
 end if
 
-! save phi in a temporary variable
-! find phitol
+! save phitol in a temporary variable
 if (msomeloop_phitol > 0) then
   phitol = someloop(thread)%funk(msomeloop_phitol)%v
 else
   phitol = phitol_default
+end if
+
+! find levelset
+if (msomeloop_levelset > 0) then
+  levelset = someloop(thread)%funk(msomeloop_levelset)%v
+else
+  levelset = 0.d0
 end if
 
 ! set size, centre and axis variables based on msomeloop m's
@@ -858,10 +865,10 @@ end if
 ! based on node points
 cell_interface = .false. ! 
 pass_vector = node(cell(i)%knode(1))%x ! avoid temporary array warnings
-cell_is_in = is_point_in_shape(shape,size,centre,rotation_total,any_rotation,pass_vector)
+cell_is_in = is_point_in_shape(shape,size,centre,rotation_total,any_rotation,levelset,pass_vector)
 do kk = 2, ubound(cell(i)%knode,1)
   pass_vector = node(cell(i)%knode(kk))%x ! avoid temporary array warnings
-  if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,rotation_total,any_rotation,pass_vector)) then
+  if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,rotation_total,any_rotation,levelset,pass_vector)) then
     cell_interface = .true.
     exit
   end if
@@ -870,7 +877,7 @@ end do
 if (.not.cell_interface) then
   do jj = 1, ubound(cell(i)%jface,1)
     pass_vector = face(cell(i)%jface(jj))%x ! avoid temporary array warnings
-    if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,rotation_total,any_rotation,pass_vector)) then
+    if (cell_is_in.neqv.is_point_in_shape(shape,size,centre,rotation_total,any_rotation,levelset,pass_vector)) then
       cell_interface = .true.
       exit
     end if
@@ -912,8 +919,8 @@ else
   if (debug) write(50,*) 'x_minimum = ',x_minimum
   if (debug) write(50,*) 'cell(i)dx = ',cell(i)%dx
 
-! sample_points_total = 100 ! relate to phitol soon
-  sample_points_total = int(1.d0/phitol)
+! sample_points_total = 100
+  sample_points_total = int(1.d0/phitol) ! relate to phitol soon
   sample_points_in_cell = 0
   sample_points_in_shape = 0
 
@@ -938,7 +945,7 @@ else
     end do
     sample_points_in_cell = sample_points_in_cell + 1
 ! check that it is in the shape
-    if (is_point_in_shape(shape,size,centre,rotation_total,any_rotation,x_sample)) sample_points_in_shape = sample_points_in_shape + 1
+    if (is_point_in_shape(shape,size,centre,rotation_total,any_rotation,levelset,x_sample)) sample_points_in_shape = sample_points_in_shape + 1
   end do SAMPLE_LOOP
 
   if (debug) write(50,*) 'sample_points_in_cell,sample_points_in_shape = ',sample_points_in_cell,sample_points_in_shape
@@ -954,7 +961,7 @@ end subroutine cellvofphishape
 
 !-----------------------------------------------------------------
 
-function is_point_in_shape(shape,size,centre,rotation_total,any_rotation,x)
+function is_point_in_shape(shape,size,centre,rotation_total,any_rotation,levelset,x)
 
 ! on the boundary is in
 ! now rewritten to accept rotation_total matrix, and so not need axis vector
@@ -965,9 +972,10 @@ logical, intent(in) :: any_rotation
 double precision, dimension(totaldimensions,totaldimensions), intent(in) :: rotation_total
 double precision, dimension(totaldimensions), intent(in) :: size, centre, x
 double precision, dimension(totaldimensions) :: x_rotated ! position of x relative cente relative to unrotated configuration of shape
+double precision :: levelset ! for levelset based approaches (such as gyroid) use this variable to determine the surface location
 integer :: shape
 double precision :: d
-integer :: l
+integer :: l, l2
 
 x_rotated = x - centre
 if (any_rotation) x_rotated = matmul(rotation_total,x_rotated)
@@ -999,6 +1007,18 @@ else if (shape == 5) then ! cylinder, with centreline along the z axis, and size
   if (abs(x_rotated(3)) > size(2)/2.d0) return
   if (max(abs(x_rotated(1)),abs(x_rotated(2))) > size(1)/2.d0) return ! these checks should be faster than the exact square ones below
   if (x_rotated(1)**2 + x_rotated(2)**2 > size(1)**2/4.d0) return
+  is_point_in_shape = .true.
+
+else if (shape == 6) then ! gyroid
+
+  is_point_in_shape = .false.
+  d = 0.d0
+  do l = 1, totaldimensions
+    l2 = l + 1
+    if (l2 == 4) l2 = 1
+    d = d + sin(2.d0*pi*x_rotated(l)/size(l))*cos(2.d0*pi*x_rotated(l2)/size(l2))
+  end do
+  if (d > levelset) return
   is_point_in_shape = .true.
 
 else

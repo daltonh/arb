@@ -37,23 +37,24 @@ FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
 #MSH_FILE "structured.msh"
 MSH_FILE "unstructured.msh"
 
-NONE_CONSTANT <X max> "facemax(<facex[l=1]>,,<all faces>)"
-NONE_CONSTANT <X min> "facemin(<facex[l=1]>,,<all faces>)"
-NONE_CONSTANT <Y max> "facemax(<facex[l=2]>,,<all faces>)"
-NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<all faces>)"
+NONE_CONSTANT <X max> "facemax(<facex[l=1]>,,<allfaces>)"
+NONE_CONSTANT <X min> "facemin(<facex[l=1]>,,<allfaces>)"
+NONE_CONSTANT <Y max> "facemax(<facex[l=2]>,,<allfaces>)"
+NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<allfaces>)"
 
 # for slit flow include the following:
 #GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
 #GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
 
 # for pipe flow include the following, which deals with the number of dimensions and appropriate reflections
-INCLUDE_ROOT "general"
+INCLUDE_TEMPLATE "general"
 INCLUDE "cylindrical_reflect_r2z1"
+INCLUDE
 
 # variables etc
 
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "nondimensional_constants" # specify physical and numerical constants
 INCLUDE "domain" # equations to be solved within the domain
 INCLUDE "outlet_p_set" # outlet BC, fully developed u, setting pressure along each outlet cell to zero
@@ -65,7 +66,7 @@ INCLUDE "inlet_u_fully_developed_uniform_p" # fully developed velocity profile, 
 CONSTANT <Re> [1] 1.d-4 # overwrite the Reynolds number value
 
 # output a flag telling us which term limited the correction velocity
-FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domain faces> # is 1 where advection component is limiting velocity correction
+FACE_OUTPUT <advection correction limited> "faceif(<facedx>^2/<mu>-<facedx>/(<rho>*facemax(abs(<u_f_{raw}>),1.d-10)),1.d0,0.d0)" ON <domainfaces> # is 1 where advection component is limiting velocity correction
 # and turn some outputs on
 VARIABLE <u_f_{correction}> output
 VARIABLE <u_f_{raw}> output

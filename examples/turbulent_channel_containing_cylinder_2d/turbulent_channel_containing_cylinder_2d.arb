@@ -7,7 +7,7 @@
 VERSION 0.50 # the version of syntax used in this file
 
 # setup turbulence model variables first
-INCLUDE_ROOT "turbulence/general"
+INCLUDE_TEMPLATE "turbulence/general"
 # include one of the three models:
 # prandtl zero equation model:
 #INCLUDE "setup_prandtl_zero_equation"
@@ -46,7 +46,8 @@ TIMESTEPOUT 1
 # puts an increase in weight on large errors in the newton residual, to guard against individual equations becoming worse at the expense of the average error
 #SOLVER_OPTIONS weightlargeequationerrors=.true.,weightlargeequationerrorsfactor=1.d+0
 # this controls how aggressive the increase in lambda is (the underrelaxation factor used in backstepping)
-SOLVER_OPTIONS stickylambdaincrease=2
+# now not the default, however this can speed up convergence but at the risk of promoting instability
+#SOLVER_OPTIONS stickylambdaincrease=2
 #-------------------------------------------------------------------
 # geometry
 
@@ -108,13 +109,13 @@ GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any refere
 # variables etc
 
 # use templates from the navier_stokes directory to build up problem
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "constants" # specify physical and numerical constants
 
 # more turbulence setup
-<<turbwilcox88comment>>INCLUDE_ROOT "turbulence/wilcox88"
-<<turbprandtl1comment>>INCLUDE_ROOT "turbulence/prandtl_one_equation"
-<<turbprandtl0comment>>INCLUDE_ROOT "turbulence/prandtl_zero_equation"
+<<turbwilcox88comment>>INCLUDE_TEMPLATE "turbulence/wilcox88"
+<<turbprandtl1comment>>INCLUDE_TEMPLATE "turbulence/prandtl_one_equation"
+<<turbprandtl0comment>>INCLUDE_TEMPLATE "turbulence/prandtl_zero_equation"
 INCLUDE "constants" # common to all methods
 <<turbwilcox88comment>>INCLUDE "transients"
 INCLUDE "viscosity" # common to all methods
@@ -129,36 +130,38 @@ INCLUDE "viscosity" # common to all methods
 <<turbwilcox88comment>>INCLUDE "limited_transient"
 <<turbwilcox88comment>>INCLUDE "base_equals_background_limited_mu_t" # now base of mu_t smoothing function is set to be decreasing multiple of background mu_t
 # the following can be used to change the way the viscosity limiter decreases with timestep - these are the default values
-#NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.35d0
-#NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.75d0 # experience is that if this is set close to 1, simulations can push to lower rel_limiters
+NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.35d0
+NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.75d0 # experience is that if this is set close to 1, simulations can push to lower rel_limiters
 #NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.01d0
-# following are used to speed up the test problem and should be commented out for a real problem
-<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.20d0
-<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.5d0
-<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.09d0
+# following is used to speed up the test problem and should be commented out for a real problem
+NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.09d0
+# the following are even speedier settings, however convergence has failed in some instances with these
+#<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.20d0
+#<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_decrease> 0.5d0
+#<<turbwilcox88comment>>NONE_CONSTANT <turb_mu_t_base_rel_limiter_stop> 0.09d0
 # an alternative constant limiting of the turbulence viscosity
 #INCLUDE "base_limited_mu_t" # limit base_mu_t as a multiple of the background mu_t to avoid transient solutions etc
 #NONE_CONSTANT <turb_mu_t_base_rel_limiter_initial> 0.4d0
 
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "domain" R "<mu_f>" W "<turb_mu_u_f>" R "<mu>" W "<turb_mu_u_c>" # equations to be solved within the domain 
 
-INCLUDE_ROOT "turbulence/general"
+INCLUDE_TEMPLATE "turbulence/general"
 INCLUDE "u_f_turbulence" # the rhie-chow interpolation is given the same prandtl zero equation based viscosity, regardless of turbulence tehcnique
 
-<<turbprandtl1comment>>INCLUDE_ROOT "turbulence/prandtl_one_equation"
+<<turbprandtl1comment>>INCLUDE_TEMPLATE "turbulence/prandtl_one_equation"
 <<turbprandtl1comment>>INCLUDE "domain_steady_state"
 <<turbprandtl1comment>>INCLUDE "inlet"
 <<turbprandtl1comment>>INCLUDE "outlet"
 <<turbprandtl1comment>>INCLUDE "walls"
 
-<<turbwilcox88comment>>INCLUDE_ROOT "turbulence/wilcox88"
+<<turbwilcox88comment>>INCLUDE_TEMPLATE "turbulence/wilcox88"
 <<turbwilcox88comment>>INCLUDE "domain_steady_state"
 <<turbwilcox88comment>>INCLUDE "inlet"
 <<turbwilcox88comment>>INCLUDE "outlet"
 <<turbwilcox88comment>>INCLUDE "walls"
 
-INCLUDE_ROOT "navier_stokes" # this is the base directory that will be appended to the following files
+INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "outlet_p_set" # outlet BC
 INCLUDE "walls" # nonslip walls BC
 
@@ -201,7 +204,7 @@ VARIABLE <turb_2SS> output
 CONSTANT <adv_limiter> [] 0.d0 # multiplier used to limit gradients when calculating advection fluxes
 
 # some diagnostics
-<<turbwilcox88comment>>INCLUDE_ROOT "turbulence/wilcox88"
+<<turbwilcox88comment>>INCLUDE_TEMPLATE "turbulence/wilcox88"
 <<turbwilcox88comment>>INCLUDE "smoothed_mu_t_diagnostics"
 <<turbwilcox88comment>>INCLUDE "wall_diagnostics"
 
@@ -210,7 +213,7 @@ CONSTANT <adv_limiter> [] 0.d0 # multiplier used to limit gradients when calcula
 #INCLUDE "strain_rate_background"
 
 # output some info about the mesh
-#INCLUDE_ROOT "general"
+#INCLUDE_TEMPLATE "general"
 #INCLUDE "cell_aspect_ratio"
 #INCLUDE "element_indicies"
 

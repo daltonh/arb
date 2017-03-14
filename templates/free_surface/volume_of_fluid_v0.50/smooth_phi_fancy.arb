@@ -1,16 +1,16 @@
 # here we smooth the vof function for use in curvature_smooth
 
-#CELL_DERIVED <vof_smoothing_denominator> "cellsum(1.d0,region=<cellicells>)" ON <all cells>
-#CELL_DERIVED <vof_phi_smoothed> "cellsum(<vof_phi>,region=<cellicells>)/<vof_smoothing_denominator>" ON <all cells> output
+#CELL_DERIVED <vof_smoothing_denominator> "cellsum(1.d0,region=<cellicells>)" ON <allcells>
+#CELL_DERIVED <vof_phi_smoothed> "cellsum(<vof_phi>,region=<cellicells>)/<vof_smoothing_denominator>" ON <allcells> output
 
-#CELL_DERIVED <vof_smoothing_denominator> "cellsum(1.d0,region=<cellicells>)" ON <all cells>
-#CELL_DERIVED <vof_phi_c1> "cellsum(<vof_phi>,region=<cellicells>)/<vof_smoothing_denominator>" ON <all cells> output
-#CELL_DERIVED <vof_phi_c2> "cellsum(<vof_phi_c1>,region=<cellicells>)/<vof_smoothing_denominator>" ON <all cells> output
-#CELL_DERIVED <vof_phi_c3> "cellsum(<vof_phi_c2>,region=<cellicells>)/<vof_smoothing_denominator>" ON <all cells> output
-#CELL_DERIVED <vof_phi_smoothed> "cellsum(<vof_phi_c3>,region=<cellicells>)/<vof_smoothing_denominator>" ON <all cells> output
+#CELL_DERIVED <vof_smoothing_denominator> "cellsum(1.d0,region=<cellicells>)" ON <allcells>
+#CELL_DERIVED <vof_phi_c1> "cellsum(<vof_phi>,region=<cellicells>)/<vof_smoothing_denominator>" ON <allcells> output
+#CELL_DERIVED <vof_phi_c2> "cellsum(<vof_phi_c1>,region=<cellicells>)/<vof_smoothing_denominator>" ON <allcells> output
+#CELL_DERIVED <vof_phi_c3> "cellsum(<vof_phi_c2>,region=<cellicells>)/<vof_smoothing_denominator>" ON <allcells> output
+#CELL_DERIVED <vof_phi_smoothed> "cellsum(<vof_phi_c3>,region=<cellicells>)/<vof_smoothing_denominator>" ON <allcells> output
 
-#CELL_CONSTANT <smoothed_demoninator_sep> "cellsum[minseparation=0,maxseparation=6](1.d0/(<separation>+1.d0),region=<all cells>)" ON <all cells> output
-#CELL_DERIVED <vof_phi_smoothed> "cellsum[minseparation=0,maxseparation=6](<vof_phi>/(<separation>+1.d0),region=<all cells>)/<smoothed_demoninator_sep>" ON <all cells> output
+#CELL_CONSTANT <smoothed_demoninator_sep> "cellsum[minseparation=0,maxseparation=6](1.d0/(<separation>+1.d0),region=<allcells>)" ON <allcells> output
+#CELL_DERIVED <vof_phi_smoothed> "cellsum[minseparation=0,maxseparation=6](<vof_phi>/(<separation>+1.d0),region=<allcells>)/<smoothed_demoninator_sep>" ON <allcells> output
 
 # this smoothing kernel based on williams98 work, described in mencinger07.  For vof_cell_smoothing_radius > 1 becomes unstable on unstructured mesh
 # CELL_LOCAL <vof_cell_dist^2> "dot(<celltoseparationicellr[l=:]>,<celltoseparationicellr[l=:]>)"
@@ -18,35 +18,35 @@
 # # 5 is too much
 # #CONSTANT <vof_cell_smoothing_radius> 5.d0 # roughly the number of cells in the radius of the smoothing kernel
 # #NONE_CONSTANT <vof_cell_eps^2> "(4.d0*<celldxave>)^2" # square of the radius of smoothing, here uniform throughout the domain
-# #CELL_CONSTANT <smoothed_demoninator> "cellsum[maxseparation=4](cellif(<vof_cell_dist^2>-<vof_cell_eps^2>,0.d0,1.d0-<vof_cell_dist^2>/<vof_cell_eps^2>),region=<all cells>)" ON <all cells> output
-# #CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=4](cellif(<vof_cell_dist^2>-<vof_cell_eps^2>,0.d0,<vof_phi>*(1.d0-<vof_cell_dist^2>/<vof_cell_eps^2>)),region=<all cells>)/<smoothed_demoninator>" ON <all cells> output
+# #CELL_CONSTANT <smoothed_demoninator> "cellsum[maxseparation=4](cellif(<vof_cell_dist^2>-<vof_cell_eps^2>,0.d0,1.d0-<vof_cell_dist^2>/<vof_cell_eps^2>),region=<allcells>)" ON <allcells> output
+# #CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=4](cellif(<vof_cell_dist^2>-<vof_cell_eps^2>,0.d0,<vof_phi>*(1.d0-<vof_cell_dist^2>/<vof_cell_eps^2>)),region=<allcells>)/<smoothed_demoninator>" ON <allcells> output
 # CONSTANT <vof_cell_smoothing_radius> 2.d0 # roughly the number of cells in the radius of the smoothing kernel
 # NONE_CONSTANT <vof_cell_eps^2> "(<vof_cell_smoothing_radius>*<celldxave>)^2" # square of the radius of smoothing, here uniform throughout the domain
-# CELL_CONSTANT <smoothed_demoninator> "cellsum[maxseparation=2](cellif(<vof_cell_dist^2>-<vof_cell_eps^2>,0.d0,(1.d0-<vof_cell_dist^2>/<vof_cell_eps^2>)^4),region=<all cells>)" ON <all cells> output
-# CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=2](cellif(<vof_cell_dist^2>-<vof_cell_eps^2>,0.d0,<vof_phi>*((1.d0-<vof_cell_dist^2>/<vof_cell_eps^2>)^4)),region=<all cells>)/<smoothed_demoninator>" ON <all cells> output
+# CELL_CONSTANT <smoothed_demoninator> "cellsum[maxseparation=2](cellif(<vof_cell_dist^2>-<vof_cell_eps^2>,0.d0,(1.d0-<vof_cell_dist^2>/<vof_cell_eps^2>)^4),region=<allcells>)" ON <allcells> output
+# CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=2](cellif(<vof_cell_dist^2>-<vof_cell_eps^2>,0.d0,<vof_phi>*((1.d0-<vof_cell_dist^2>/<vof_cell_eps^2>)^4)),region=<allcells>)/<smoothed_demoninator>" ON <allcells> output
 
 # trying similar but based on exponential function
 CELL_LOCAL <vof_cell_dist^2> "dot(<celltoseparationicellr[l=:]>,<celltoseparationicellr[l=:]>)"
 CONSTANT <vof_cell_smoothing_radius> 0.5d0 # roughly the number of cells in the radius of the smoothing kernel
 NONE_CONSTANT <vof_cell_eps^2> "(<vof_cell_smoothing_radius>*<celldxave>)^2" # square of the radius of smoothing, here uniform throughout the domain
-CELL_CONSTANT <smoothed_demoninator> "cellsum[maxseparation=2](exp(-<vof_cell_dist^2>/<vof_cell_eps^2>),region=<all cells>)" ON <all cells> output
-CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=2](<vof_phi>*exp(-<vof_cell_dist^2>/<vof_cell_eps^2>),region=<all cells>)/<smoothed_demoninator>" ON <all cells> output
+CELL_CONSTANT <smoothed_demoninator> "cellsum[maxseparation=2](exp(-<vof_cell_dist^2>/<vof_cell_eps^2>),region=<allcells>)" ON <allcells> output
+CELL_DERIVED <vof_phi_smoothed> "cellsum[maxseparation=2](<vof_phi>*exp(-<vof_cell_dist^2>/<vof_cell_eps^2>),region=<allcells>)/<smoothed_demoninator>" ON <allcells> output
 
 # one level of smoothing
-#FACE_DERIVED <vof_phi_f1> "faceave(<vof_phi>)" ON <all faces> output
-#CELL_DERIVED <vof_phi_smoothed> "cellave(<vof_phi_f1>)" ON <all cells> output
+#FACE_DERIVED <vof_phi_f1> "faceave(<vof_phi>)" ON <allfaces> output
+#CELL_DERIVED <vof_phi_smoothed> "cellave(<vof_phi_f1>)" ON <allcells> output
 
 # two levels of smoothing - too much
-#FACE_DERIVED <vof_phi_f1> "faceave(<vof_phi>)" ON <all faces> output
-#CELL_DERIVED <vof_phi_c1> "cellave(<vof_phi_f1>)" ON <all cells> output
-#FACE_DERIVED <vof_phi_f2> "faceave(<vof_phi_c1>)" ON <all faces> output
-#CELL_DERIVED <vof_phi_smoothed> "cellave(<vof_phi_f2>)" ON <all cells> output
+#FACE_DERIVED <vof_phi_f1> "faceave(<vof_phi>)" ON <allfaces> output
+#CELL_DERIVED <vof_phi_c1> "cellave(<vof_phi_f1>)" ON <allcells> output
+#FACE_DERIVED <vof_phi_f2> "faceave(<vof_phi_c1>)" ON <allfaces> output
+#CELL_DERIVED <vof_phi_smoothed> "cellave(<vof_phi_f2>)" ON <allcells> output
 
-# FACE_DERIVED <vof_phi_f1> "faceave(<vof_phi>)" ON <all faces> output
-# CELL_DERIVED <vof_phi_c1> "cellave(<vof_phi_f1>)" ON <all cells> output
-# FACE_DERIVED <vof_phi_f2> "faceave(<vof_phi_c1>)" ON <all faces> output
-# CELL_DERIVED <vof_phi_c2> "cellave(<vof_phi_f2>)" ON <all cells> output
-# FACE_DERIVED <vof_phi_f3> "faceave(<vof_phi_c2>)" ON <all faces> output
-# CELL_DERIVED <vof_phi_c3> "cellave(<vof_phi_f3>)" ON <all cells> output
-# FACE_DERIVED <vof_phi_f4> "faceave(<vof_phi_c3>)" ON <all faces> output
-# CELL_DERIVED <vof_phi_c4> "cellave(<vof_phi_f4>)" ON <all cells> output
+# FACE_DERIVED <vof_phi_f1> "faceave(<vof_phi>)" ON <allfaces> output
+# CELL_DERIVED <vof_phi_c1> "cellave(<vof_phi_f1>)" ON <allcells> output
+# FACE_DERIVED <vof_phi_f2> "faceave(<vof_phi_c1>)" ON <allfaces> output
+# CELL_DERIVED <vof_phi_c2> "cellave(<vof_phi_f2>)" ON <allcells> output
+# FACE_DERIVED <vof_phi_f3> "faceave(<vof_phi_c2>)" ON <allfaces> output
+# CELL_DERIVED <vof_phi_c3> "cellave(<vof_phi_f3>)" ON <allcells> output
+# FACE_DERIVED <vof_phi_f4> "faceave(<vof_phi_c3>)" ON <allfaces> output
+# CELL_DERIVED <vof_phi_c4> "cellave(<vof_phi_f4>)" ON <allcells> output

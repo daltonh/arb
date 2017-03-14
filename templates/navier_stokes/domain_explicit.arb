@@ -33,9 +33,9 @@ INCLUDE "momentum_flux" R "<J_f[l" W "<J_f[r=1,l" R "DERIVED" W "TRANSIENT" R "<
 # within the domain, update the velocity explicitly
 # on the walls, set the velocity to zero
 # at any remaining boundaries, set the velocity to be that of the neighbouring domain cell
-<<dim1comment>>CELL_DERIVED <u[l=1]> "cellif(celldelta(<domain>),<u_explicit[l=1]>,cellif(facedelta(<walls>),0.d0,cellave(faceave[downcell](<u_explicit[l=1]>))))" ON <all cells>
-<<dim2comment>>CELL_DERIVED <u[l=2]> "cellif(celldelta(<domain>),<u_explicit[l=2]>,cellif(facedelta(<walls>),0.d0,cellave(faceave[downcell](<u_explicit[l=2]>))))" ON <all cells>
-<<dim3comment>>CELL_DERIVED <u[l=3]> "cellif(celldelta(<domain>),<u_explicit[l=3]>,cellif(facedelta(<walls>),0.d0,cellave(faceave[downcell](<u_explicit[l=3]>))))" ON <all cells>
+<<dim1comment>>CELL_DERIVED <u[l=1]> "cellif(celldelta(<domain>),<u_explicit[l=1]>,cellif(facedelta(<walls>),0.d0,cellave(faceave[downcell](<u_explicit[l=1]>))))" ON <allcells>
+<<dim2comment>>CELL_DERIVED <u[l=2]> "cellif(celldelta(<domain>),<u_explicit[l=2]>,cellif(facedelta(<walls>),0.d0,cellave(faceave[downcell](<u_explicit[l=2]>))))" ON <allcells>
+<<dim3comment>>CELL_DERIVED <u[l=3]> "cellif(celldelta(<domain>),<u_explicit[l=3]>,cellif(facedelta(<walls>),0.d0,cellave(faceave[downcell](<u_explicit[l=3]>))))" ON <allcells>
 
 # now just use previous file to calculate interpolated face centred velocity fluxes
 INCLUDE "u_f"
@@ -45,13 +45,13 @@ INCLUDE "u_f"
 # <<dim1comment>>FACE_LOCAL <u_f_vect[l=1]> "faceave[<<reflect=1>>](<u[l=1]>)"
 # <<dim2comment>>FACE_LOCAL <u_f_vect[l=2]> "faceave[<<reflect=2>>](<u[l=2]>)"
 # <<dim3comment>>FACE_LOCAL <u_f_vect[l=3]> "faceave[<<reflect=3>>](<u[l=3]>)"
-# FACE_LOCAL <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <all faces> # volume (velocity) transport
+# FACE_LOCAL <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <allfaces> # volume (velocity) transport
 
 # # note that as <dt> is limited by the explicit timestep constraint anyway, this condition also ensures that the correction velocity scales with the viscous term
-# FACE_LOCAL <u_f_{correction}> "-<C_{Rhie-Chow}>*<dt>*<p_error>/<rho>" ON <domain faces>
+# FACE_LOCAL <u_f_{correction}> "-<C_{Rhie-Chow}>*<dt>*<p_error>/<rho>" ON <domainfaces>
 # CONSTANT <C_{Rhie-Chow}> 5.d0 # increase this for the explicit method from 1.d0
 # # final face velocity
-# FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domain faces>),<u_f_{correction}>,0.d0)" ON <all faces> # volume (velocity) transport
+# FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domainfaces>),<u_f_{correction}>,0.d0)" ON <allfaces> # volume (velocity) transport
 
 # include just the continuity equation
 INCLUDE "conservation"
@@ -69,7 +69,7 @@ CONSTANT <c_mu_explicit> 0.10d0 # multiplier for explicit viscous term stability
 #CONSTANT <dt_mu_explicit> "<c_mu_explicit>*<rho>*<celldxmaxmin>^2/<mu>" stepoutput
 # based on facedx, upon which <u_mf_{vis}> is also based
 # defining these as locals to avoid lousy substitution message - alternative is to cancel <dt> and <dt_initial> and redefine here, or reorder (requires another include though)
-NONE_LOCAL <facedxmin> "facemin(<facedx>,region=<domain faces>)" # minimum of non-zero <facedx>'s
+NONE_LOCAL <facedxmin> "facemin(<facedx>,region=<domainfaces>)" # minimum of non-zero <facedx>'s
 NONE_LOCAL <dt_mu_explicit> "<c_mu_explicit>*<rho>*<facedxmin>^2/<mu>" stepoutput
 CONSTANT <dt_initial> [] "<dt_mu_explicit>" stepoutput
 #CONSTANT <CFL_initial> 0.25d0

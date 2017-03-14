@@ -1,55 +1,55 @@
 # wilcox06 model
 # http://www.cfd-online.com/Wiki/Prandtl%27s_one-equation_model
 
-INCLUDE_ROOT "turbulence/general"
+INCLUDE_TEMPLATE "turbulence/general"
 INCLUDE "strain_rate_complete"
-INCLUDE_ROOT # reset back to present file's location
+INCLUDE # reset back to present file's location
 
 # cell centred strain rate
-CELL_DERIVED <turb_2SS_c> "cellmax(<turb_2SS>,<turb_2SS_min>)" ON <all cells> elementdata # double limited, incase averaging kernels are very very poor
+CELL_DERIVED <turb_2SS_c> "cellmax(<turb_2SS>,<turb_2SS_min>)" ON <allcells> elementdata # double limited, incase averaging kernels are very very poor
 
 # lower limits to both of the turbulence unknowns, based on the minimum 2SS
 # use these to guard against divide by zeros and roundoff errors
-CELL_CONSTANT <turb_k_small> "cellmax(<turb_2SS_min>*<turb_l_prandtl2>/<turb_C_D>,1.d-10)" ON <all cells> elementdata
-CELL_CONSTANT <turb_omega_small> "sqrt(<turb_2SS_min>/<turb_C_D>)" ON <all cells> elementdata
+CELL_CONSTANT <turb_k_small> "cellmax(<turb_2SS_min>*<turb_l_prandtl2>/<turb_C_D>,1.d-10)" ON <allcells> elementdata
+CELL_CONSTANT <turb_omega_small> "sqrt(<turb_2SS_min>/<turb_C_D>)" ON <allcells> elementdata
 NONE_CONSTANT <turb_mu_t_small> "<mu>*<turb_mu_t_small_rel>"
 
 # background k and omega values, based on prandtl zero equation model
 # now also mu_t
-CELL_CONSTANT <turb_k_background> "<turb_2SS_background_c>*<turb_l_prandtl2>/<turb_C_D>" ON <all cells> elementdata,output
-CELL_CONSTANT <turb_omega_background> "sqrt(<turb_2SS_background_c>/<turb_C_D>)" ON <all cells> elementdata,output
-CELL_CONSTANT <turb_mu_t_background> "<rho>*<turb_k_background>/<turb_omega_background>" ON <all cells> elementdata,output
+CELL_CONSTANT <turb_k_background> "<turb_2SS_background_c>*<turb_l_prandtl2>/<turb_C_D>" ON <allcells> elementdata,output
+CELL_CONSTANT <turb_omega_background> "sqrt(<turb_2SS_background_c>/<turb_C_D>)" ON <allcells> elementdata,output
+CELL_CONSTANT <turb_mu_t_background> "<rho>*<turb_k_background>/<turb_omega_background>" ON <allcells> elementdata,output
 
 # the cell centred turbulence viscosity
 # setup and smooth mu_t
-CELL_TRANSIENT <turb_mu_t[r=1]> "<turb_mu_t_background>" "<turb_mu_t_smoothed>" ON <all cells> elementdata,output,input
-CELL_LOCAL <turb_mu_t_base> "cellmax(<turb_mu_t[r=1]>,<turb_mu_t_small>)" ON <all cells>
-CELL_DERIVED <turb_mu_t_raw> "<rho>*<turb_k>/cellmax(<turb_omega>,<turb_omega_small>)" ON <all cells> elementdata # turbulent viscosity, cell centred
-INCLUDE_ROOT "smoothing"
+CELL_TRANSIENT <turb_mu_t[r=1]> "<turb_mu_t_background>" "<turb_mu_t_smoothed>" ON <allcells> elementdata,output,input
+CELL_LOCAL <turb_mu_t_base> "cellmax(<turb_mu_t[r=1]>,<turb_mu_t_small>)" ON <allcells>
+CELL_DERIVED <turb_mu_t_raw> "<rho>*<turb_k>/cellmax(<turb_omega>,<turb_omega_small>)" ON <allcells> elementdata # turbulent viscosity, cell centred
+INCLUDE_TEMPLATE "smoothing"
 INCLUDE "smoothed_variable" R "<variable_smoothed>" W "<turb_mu_t_smoothed>" R "<variable>" W "<turb_mu_t_raw>" R "<variable" W "<turb_mu_t"
-INCLUDE_ROOT
+INCLUDE
 
 # make the smoothing constants tighter to keep mu_t away from zero more
 CONSTANT <turb_mu_t_dl> 0.4d0
 CONSTANT <turb_mu_t_el> 0.1d0
 
-CELL_DERIVED <turb_mu_t> "<turb_mu_t_smoothed>" ON <all cells> # this can be replaced by the nonsmoothed version using nonsmoothed_mu_t.arb
+CELL_DERIVED <turb_mu_t> "<turb_mu_t_smoothed>" ON <allcells> # this can be replaced by the nonsmoothed version using nonsmoothed_mu_t.arb
 
 # the cell centred turbulence viscosity
 
 # turbulent viscosity, face centred
 # turns out that it is important to increase this from zero at the walls, otherwise k equation can become unstable - as k increases within domain, so does viscosity and k source term.  However diffusion of k through walls doesn't increase unless linked somehow to a domain k value, hence the adjacentcellsevenweighting on the walls
-FACE_DERIVED <turb_mu_t_f> "faceif(facedelta(<walls>),faceave[adjacentcellsevenweighting](<turb_mu_t>),faceave[adjacentcells](<turb_mu_t>))" ON <all faces>
-#FACE_DERIVED <turb_mu_t_f> "faceif(facedelta(<walls>),faceave[adjacentcellsevenweighting](<turb_mu_t>),faceave[harmonic](<turb_mu_t>))" ON <all faces>
-#FACE_DERIVED <turb_mu_t_f> "<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_background>/<turb_C_D>)" ON <all faces>
+FACE_DERIVED <turb_mu_t_f> "faceif(facedelta(<walls>),faceave[adjacentcellsevenweighting](<turb_mu_t>),faceave[adjacentcells](<turb_mu_t>))" ON <allfaces>
+#FACE_DERIVED <turb_mu_t_f> "faceif(facedelta(<walls>),faceave[adjacentcellsevenweighting](<turb_mu_t>),faceave[harmonic](<turb_mu_t>))" ON <allfaces>
+#FACE_DERIVED <turb_mu_t_f> "<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_background>/<turb_C_D>)" ON <allfaces>
 # effective (total) viscosity, face centred, used in momentum equation
-FACE_DERIVED <turb_mu_u_f> "<mu>+<turb_mu_t_f>" ON <all faces> output
+FACE_DERIVED <turb_mu_u_f> "<mu>+<turb_mu_t_f>" ON <allfaces> output
 # effective (total) viscosity, cell centred, used in momentum equation
 CELL_LOCAL <turb_mu_u_c> "<mu>+<turb_mu_t>" elementdata
 
 # in the wilcox88 model the viscosities are all not-tilded
 # find total turbulent diffusivity, face centred, used in the k equation
-FACE_DERIVED <turb_mu_k_f> "<turb_mu_t_f>*<turb_sigma_k>+<mu>" ON <all faces> output
+FACE_DERIVED <turb_mu_k_f> "<turb_mu_t_f>*<turb_sigma_k>+<mu>" ON <allfaces> output
 # find total turbulent diffusivity, face centred, used in the omega equation
-FACE_DERIVED <turb_mu_omega_f> "<turb_mu_t_f>*<turb_sigma_omega>+<mu>" ON <all faces> output
+FACE_DERIVED <turb_mu_omega_f> "<turb_mu_t_f>*<turb_sigma_omega>+<mu>" ON <allfaces> output
 

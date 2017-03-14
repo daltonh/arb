@@ -1,11 +1,11 @@
 # within this file we calculate the curvature
 
 # uses implicit cell centred unit normals
-#CELL_DERIVED <vof_kappa_c2> "-(cellgrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+cellgrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+cellgrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <all cells> output
-#FACE_DERIVED <vof_kappa_f> "<vof_kappa_c2>" ON <all faces> output
-#CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" ON <all cells> output
-#FACE_DERIVED <vof_kappa_f2> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <all faces> output
-#CELL_DERIVED <vof_kappa_c> "<vof_kappa_f2>" ON <all cells> output
-#FACE_DERIVED <vof_kappa_f> "<vof_kappa_c>" ON <all faces> output
-CELL_DERIVED <vof_kappa_c> "-(cellgrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+cellgrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+cellgrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <all cells> output
-FACE_DERIVED <vof_kappa_f> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <all faces> output
+#CELL_DERIVED <vof_kappa_c2> "-(cellgrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+cellgrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+cellgrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <allcells> output
+#FACE_DERIVED <vof_kappa_f> "<vof_kappa_c2>" ON <allfaces> output
+#CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" ON <allcells> output
+#FACE_DERIVED <vof_kappa_f2> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <allfaces> output
+#CELL_DERIVED <vof_kappa_c> "<vof_kappa_f2>" ON <allcells> output
+#FACE_DERIVED <vof_kappa_f> "<vof_kappa_c>" ON <allfaces> output
+CELL_DERIVED <vof_kappa_c> "-(cellgrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+cellgrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+cellgrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <allcells> output
+FACE_DERIVED <vof_kappa_f> "-(facegrad[l=1,<<reflect=1>>](<vof_phigrad_unit[l=1]>)+facegrad[l=2,<<reflect=2>>](<vof_phigrad_unit[l=2]>)+facegrad[l=3,<<reflect=3>>](<vof_phigrad_unit[l=3]>))" ON <allfaces> output

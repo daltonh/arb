@@ -1,7 +1,7 @@
 # k equation
 
 # for transient problems, need to store old variables too
-CELL_TRANSIENT <turb_k[r=1]> "<turb_k>" "<turb_k>" ON <all cells>
+CELL_TRANSIENT <turb_k[r=1]> "<turb_k>" "<turb_k>" ON <allcells>
 
 # now for the equation to solve
 # just the source and dissipation terms only

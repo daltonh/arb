@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # file src/setup_equations.pl
 #
-# Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+# Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
 # 
@@ -33,56 +33,58 @@
 #
 #-------------------------------------------------------------------------
 # perl script to create equation f90 module for arb
+# exit code: 0=signifies that either fortran was already up-to-date or that new fortran has been created (success), 1=fortran was not created (error)
 
 use strict;
 use warnings;
 use File::Basename;
 #use File::Path qw(make_path);
-use File::Path qw(mkpath); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
+use File::Path qw(mkpath rmtree); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 use File::Copy qw(move copy);
 use File::Glob ':glob'; # deals with whitespace better
 #use Time::Piece; # removed for portability
 use Sys::Hostname;
 
-my $version="0.55";
+my $version="0.56";
 my $minimum_version="0.40";
 
 # now called from build directory
 my $working_dir="..";
 my $src_dir="$working_dir/src";
+my $output_dir="$working_dir/output";
 my $build_dir=".";
 my $template_dir="$working_dir/templates";
-my $tmp_dir="$working_dir/tmp/setup";
-my $variable_list_file = "$tmp_dir/variable_list.txt";
-my $variable_arb_file = "$tmp_dir/variable_list.arb";
-my $region_list_file = "$tmp_dir/region_list.txt";
-my $region_arb_file = "$tmp_dir/region_list.arb";
+my $setup_current_dir="$output_dir/setup_data_incomplete"; # this will be the location for output from this current run, and if successful in creating the fortran, will be renamed to setup_data
+my $setup_creation_dir="$output_dir/setup_data"; # at the end, if successful, the current run will be moved to the following location
+my $setup_old_dir="$working_dir/tmp/setup"; # remove traces of older setup directory
+my $variable_list_file = "$setup_current_dir/variable_list.txt";
+my $variable_arb_file = "$setup_current_dir/variable_list.arb";
+my $region_list_file = "$setup_current_dir/region_list.txt";
+my $region_arb_file = "$setup_current_dir/region_list.arb";
+my $setup_dependency_file = "$setup_current_dir/setup_dependency_data_perl_dumper";
+my $readme_file = "$setup_current_dir/readme.txt"; # this file just has an explanation as to what information is contained in setup_current_dir 
 my $tmp_file_number=0;
 our $maxima_bin='maxima'; # use this if the maxima executable is in your path
 #our $maxima_bin='/sw/bin/maxima'; # if all else fails specify the actual location - fink
 #our $maxima_bin='/usr/local/bin/maxima'; # if all else fails specify the actual location
 #our $maxima_bin='../misc/maxima_OsX/maxima'; # or the supplied script for the OsX binary, relative to the build directory
 my $fortran_input_file="$build_dir/fortran_input.arb"; # input file for the fortran executable, which is in a slightly different format to the user written input files
-my $current_unwrapped_input_file="$tmp_dir/current_unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
-my $unwrapped_input_file="$tmp_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
-my $current_debug_info_file="$tmp_dir/current_debugging_info.txt"; # this is where all the debugging info is dumped from this current call to setup_equations.pl
-my $debug_info_file="$tmp_dir/debugging_info.txt"; # this is where all the debugging info is stored from the last setup
+my $unwrapped_input_file="$setup_current_dir/unwrapped_input.arb"; # this is an unwrapped version of the user input file, which can be used for debugging, or alternatively used directly for future runs
+my $debug_info_file="debugging_info.txt"; # this is where all the debugging info is stored from the last setup
+my $setup_equation_file="$build_dir/last_setup_equation_data"; # this file is used to store all of the setup equation data prior to the (expensive) fortran generation
 my $version_file="$working_dir/licence/version";
 
-# create and clear out tmp directory of any files
-#if (! -d $tmp_dir) { make_path($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; }
-if (! -d $tmp_dir) { mkpath($tmp_dir) or die "ERROR: could not create $tmp_dir\n"; } # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
-my $filename;
-foreach $filename (bsd_glob("$tmp_dir/*")) {
-  if ($filename eq $variable_arb_file || $filename eq $variable_list_file || $filename eq $region_arb_file || $filename eq $region_list_file || $filename eq $debug_info_file || $filename eq $unwrapped_input_file) { next; } # don't delete the files which are a record of the previous setup run
-  if (-f $filename) {unlink($filename) or die "ERROR: could not remove $filename in directory $tmp_dir\n";}
-}
+# create and clear out setup directory of any files
+if (-d $setup_old_dir) { rmtree($setup_old_dir) or error_stop("could not remove depreciated $setup_old_dir"); }
+if (-d $setup_current_dir) { rmtree($setup_current_dir) or error_stop("could not remove existing $setup_current_dir"); } # using rmtree for older File::Path compatibility
+#if (! -d $setup_current_dir) { make_path($setup_current_dir) or die "ERROR: could not create $setup_current_dir\n"; }
+mkpath($setup_current_dir) or error_stop("could not create $setup_current_dir"); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 
 # remove stopfile from previous run if it exists
 my $stopfile="$working_dir/stop";
-if (-e $stopfile) { unlink($stopfile) or die "ERROR: could not remove $stopfile from previous run\n"; }
+if (-e $stopfile) { unlink($stopfile) or error_stop("could not remove $stopfile from previous run"); }
 
-open(DEBUG, ">$current_debug_info_file");
+open(DEBUG, ">$setup_current_dir/$debug_info_file");
 print "\nperl setup_equations script to create f90 subroutines for arb\n";
 print "dalton harvie, v$version\n\n";
 print DEBUG "\nperl setup_equations script to create f90 subroutines for arb\n";
@@ -92,6 +94,10 @@ print DEBUG "dalton harvie, v$version\n\n";
 my @input_files;
 $input_files[0]{"ref_name"}="root_input.arb";
 $input_files[0]{"name"}="$build_dir/root_input.arb";
+$input_files[$#input_files]{"abs_name"} = File::Spec->rel2abs($input_files[0]{"name"}); # abs_name is always the absolute path to the file
+# initial include_path used for searching for the file is the working directory
+# so, always the initial search path for files is the working_dir (even though root_input.arb sits in the build directory)
+$input_files[0]{"include_path"}[0] = $working_dir;
 
 # user_types are variables that can be defined by the user
 my @user_types = ("constant","transient","newtient","unknown","derived","equation","output","condition","local");
@@ -130,10 +136,10 @@ my @maxima_simplify_results = (); # this will be an array of all maxima simplifi
 my @maxima_fortran_results = (); # this will be an array of all maxima fortran results, for reuse purposes
 
 # setup the simulation info, including grabbing the current code runversion, rundate and runhost
-my %simulation_info = ( "title" => '', "description" => '', "filename" => '', "author" => '', "date" => '', "version" => ''); # this hash will store some general info about the simulation
+my %simulation_info = ( "title" => '', "description" => '', "filename" => '', "absfilename" => '', "author" => '', "date" => '', "version" => ''); # this hash will store some general info about the simulation
 $simulation_info{"runversion"}='unknown';
 if (-e $version_file) {
-  open(VERSION_FILE,"<$version_file") or die "could not open $version_file\n";
+  open(VERSION_FILE,"<$version_file") or error_stop("could not open $version_file");
   $simulation_info{"runversion"}=<VERSION_FILE>;
   chompm($simulation_info{"runversion"});
   close(VERSION_FILE);
@@ -141,6 +147,7 @@ if (-e $version_file) {
 #$simulation_info{"rundate"} = Time::Piece->new; 
 $simulation_info{"rundate"} = localtime();
 $simulation_info{"runhost"} = hostname;
+print DEBUG "INFO: setup_equations run at: rundate = $simulation_info{rundate}: runhost = $simulation_info{runhost}\n";
 
 # now create an array of hashes, each for a different fortran external file
 my @externals=();
@@ -161,7 +168,7 @@ my $fortran_regions = 0; # number (ie, highest fortran index) of the regions tha
 #--------------------------------------------------------------
 # read through setup files storing all the information
 
-create_system_variables(); # create variables generated by the system
+create_system_variables_and_regions(); # create variables and regions generated by the system
 
 setup_general_replacements(); # create the default general replacements
 
@@ -169,60 +176,107 @@ open(FORTRAN_INPUT, ">$fortran_input_file"); # open input file for the fortran e
 
 read_input_files(); # read input files, generating user defined variables
 
-organise_user_variables(); # create variable structure from raw asread_variable array
+# create variable structure from raw asread_variable array
+# initialise all of the regions not already read in, organise them, and check on regions used by variables
+organise_user_variables_and_regions();
 
 close(FORTRAN_INPUT);
 
-organise_regions(); # initialise all of the regions not already read in, organise them, and check on regions used by variables
-
 create_compounds(); # create vector and tensor allocations
 
-dump_variable_setup_info(); # output all variable information into the debug file
+# produce a latexable summary file - NEEDS UPDATING!
+#write_latex();
 
-#write_latex(); # produce a latexable summary file - NEEDS UPDATING!
+my $same_fortran_as_last_run = check_setup_status(); # writes essential variable and region data to a file, and compares this against the previous run to see whether further setup is needed
 
-check_variable_status(); # dumps variable list to file (removing options and comments) and checks whether we need to proceed with equation construction
+if ($same_fortran_as_last_run) {
+# system hasn't changed in ways that fortran needs to be recreated, so skip
 
-read_maxima_results_files(); # read in any old maxima results stored in files from previous runs
+  print "INFO: setup_equations data has not changed since the last run: skipping fortran creation (use arb option --clean-setup to force fortran recreation)\n";
+  print DEBUG "INFO: setup_equations data not has changed since the last run: skipping fortran creation (use arb option --clean-setup to force fortran recreation)\n";
 
-create_mequations(); # create maxima type equations
+} else {
+# now only execute the fortran writing 
 
-process_regions(); # finalise all of the regions, checking any that haven't been included as variable regions, and create fortran allocations etc for them
+  print "INFO: setup_equations data has changed since the last run: recreating fortran\n";
+  print DEBUG "INFO: setup_equations data has changed since the last run: recreating fortran\n";
 
-create_allocations();  # create allocation statements
+  read_maxima_results_files(); # read in any old maxima results stored in files from previous runs
 
-create_fortran_equations(); # generate fortran equations
+  create_mequations(); # create maxima type equations
 
-write_sub_strings(); # write out sub_strings and creating new fortran files
+  process_regions(); # finalise all of the regions, checking any that haven't been included as variable regions, and create fortran allocations etc for them
 
-write_maxima_results_files(); # write out maxima results for subsequent runs
+  create_allocations();  # create allocation statements
 
-dump_variable_dependency_info(); # dump all variable dependency info into the debug file, and also dump the raw variable arrays for possible post-processing
+  create_fortran_equations(); # generate fortran equations
 
-output_variable_list(); # dump info about variables in a single file
+  write_results(); # call routines to produce the output files
 
-output_region_list(); # dump info about regions in a single file
-
-# final warning about multiple definitions
-foreach my $repeats (keys(%statement_repeats)) {
-  if ($statement_repeats{$repeats} > 0) { print "NOTE: at least one variable had $repeats.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
 }
-if ($number_of_lousysubstitutes > 0) { print "WARNING: some variable substitutions had to be performed that may result in very inefficient code being generated.  These lousy substitutions ".
-  "could be avoided by a careful reordering of some of the input statements.  Details are given above (or in the file $debug_info_file by searching for 'lousy substitution').\n"; }
-print "SUCCESS: equation_module.f90 has been created\n";
-print DEBUG "SUCCESS: equation_module.f90 has been created\n";
+
+if ($same_fortran_as_last_run) {
+
+  print "SUCCESS: equation_module.f90 was already up-to-date\n";
+  print DEBUG "SUCCESS: equation_module.f90 was already up-to-date\n";
+  open(README, ">$readme_file");
+  print README "Note: the setup_data in this file is based on an incomplete run of setup_equations.pl.  The run was incomplete as setup_equations realised that the generated fortran would be the same as that generated by the last successful run, ".
+                  "so instead the previously generated fortran is being reused.  The setup_data that was generated when the fortran was created can be found in $setup_creation_dir.  ".
+                  "Use the arb option --clean-setup to force a recreation of the fortran (as opposed to reusing if possible).\n";
+  close(README)
+
+} else {
 
 # finally move equation data to build directory as a record of the successful run
-print DEBUG "INFO: moving setup_equation_data to build directory\n";
-move("$tmp_dir/setup_equation_data","$build_dir/last_setup_equation_data") or die "could not move $tmp_dir/setup_equation_data to $build_dir/last_setup_equation_data\n";
-# and also keep a copy of the debugging and unwrapped file which acts as a record from the last successful setup
-copy("$current_debug_info_file","$debug_info_file") or die "could not save $current_debug_info_file as $debug_info_file\n";
-copy("$current_unwrapped_input_file","$unwrapped_input_file") or die "could not save $current_unwrapped_input_file as $unwrapped_input_file\n";
+  print DEBUG "INFO: moving setup data from $setup_current_dir to $setup_creation_dir\n";
+  print "INFO: moving setup data from $setup_current_dir to $setup_creation_dir\n";
+  if (-d $setup_creation_dir) { rmtree($setup_creation_dir) or error_stop("could not remove existing $setup_creation_dir"); } # using rmtree for older File::Path compatibility
+  if (-f $readme_file) { unlink($readme_file) or error_stop("could not remove $readme_file"); }
+  move("$setup_current_dir","$setup_creation_dir") or error_stop("could not move $setup_current_dir to $setup_creation_dir");
+
+# print out warnings
+# lousysubstitutes already recorded
+  if ($number_of_lousysubstitutes > 0) { print "WARNING: some variable substitutions had to be performed that may result in very inefficient code being generated.  These lousy substitutions ".
+    "could be avoided by a careful reordering of some of the input statements.  Details are given above (or in the file $setup_creation_dir/$debug_info_file by searching for 'lousy substitution').\n"; }
+# warning about multiple definitions
+  foreach my $repeats (keys(%statement_repeats)) {
+    if ($statement_repeats{$repeats} > 0) { print "NOTE: at least one variable had $repeats.  Was this your intention?  Details are given above (or in the file $setup_creation_dir/$debug_info_file).\n"; }
+  }
+
+  print "SUCCESS: equation_module.f90 has been created\n";
+  print DEBUG "SUCCESS: equation_module.f90 has been created\n";
+
+}
 
 close(DEBUG);
 
-exit;
+exit 0;
 
+#-------------------------------------------------------------------------------
+# just some combinations to make main code clearer
+
+sub create_system_variables_and_regions {
+  create_system_variables(); # create variables generated by the system
+  create_system_regions(); # create variables generated by the system
+}
+
+sub organise_user_variables_and_regions {
+  organise_user_variables(); # create variable structure from raw asread_variable array
+  organise_regions(); # initialise all of the regions not already read in, organise them, and check on regions used by variables
+}
+
+sub write_results {
+
+  write_sub_strings(); # write out sub_strings and creating new fortran files
+
+  write_maxima_results_files(); # write out maxima results for subsequent runs
+
+  dump_variable_dependency_info(); # dump all variable dependency info into the debug file, and also dump the raw variable arrays for possible post-processing
+
+  output_variable_list(); # dump info about variables in a single file
+
+  output_region_list(); # dump info about regions in a single file
+}
 #-------------------------------------------------------------------------------
 # dump all of the info about the variables that was read in for debugging purposes
 
@@ -286,16 +340,12 @@ sub dump_variable_dependency_info {
   }
   print DEBUG "=================================================================\n";
 
-# also dump all data to last_setup_dependency_data file for latex post-processing
-# my $new_data = freeze( \%variable ); # collapse variable hash
-# open(DUMP_DATA, ">$build_dir/last_setup_dependency_data") or die "ERROR: problem opening $build_dir/last_setup_dependency_data\n";
-# print DUMP_DATA $new_data;
-# close(DUMP_DATA);
+# also dump all data to setup_dependency_file for possible post-processing
 
-  if (nonempty(eval{store(\%variable, "$build_dir/last_setup_dependency_data")})) {
-    print "INFO: written last_setup_dependency_data to file for possible reuse\n";
+  if (nonempty(eval{store(\%variable, "$setup_dependency_file")})) {
+    print "INFO: written setup_dependency_file for possible reuse\n";
   } else {
-    print "WARNING: unable to write last_setup_dependency_data to file\n";
+    print "WARNING: unable to write setup_dependency_file\n";
   }
   
 }
@@ -306,14 +356,14 @@ sub dump_variable_dependency_info {
 sub output_variable_list {
 
   use strict;
-  open(VARIABLE, ">$variable_list_file") or die "ERROR: problem opening temporary variable file $variable_list_file: something funny is going on: check permissions??\n";
+  open(VARIABLE, ">$variable_list_file") or error_stop("problem opening temporary variable file $variable_list_file: something funny is going on: check permissions??");
   print VARIABLE "# List of the variables:\n";
   for my $key ( keys(%variable) ) {
     print VARIABLE "-" x 80,"\n";
     print VARIABLE "List of $key variables:\n";
     for my $mvar ( 1 .. $#{$variable{$key}} ) {
       print VARIABLE "$mvar";
-        for my $infokey ( qw( name units centring region rank fortran_number component_list equation masread hasderiv deriv newtstepmax newtstepmin )) {
+        for my $infokey ( qw( name units centring region rank fortran_number component_list equation masread hasderiv deriv newtstepmax newtstepmin filename absfilename comments )) {
           print VARIABLE ": $infokey = ";
           if (empty($variable{$key}[$mvar]{$infokey})) {
             print VARIABLE "empty"
@@ -327,7 +377,7 @@ sub output_variable_list {
   print VARIABLE "-" x 80,"\n";
   close(VARIABLE);
 
-  open(VARIABLE, ">$variable_arb_file") or die "ERROR: problem opening temporary variable file $variable_arb_file: something funny is going on: check permissions??\n";
+  open(VARIABLE, ">$variable_arb_file") or error_stop("problem opening temporary variable file $variable_arb_file: something funny is going on: check permissions??");
   print VARIABLE "# Reconstructed list of the variables in arb format:\n";
   for my $key ( @user_types ) {
     print VARIABLE "#","-" x 80,"\n";
@@ -338,7 +388,7 @@ sub output_variable_list {
       if ($key eq "constant" && empty($variable{$key}[$mvar]{equation})) { print VARIABLE " \"numerical constant rather than an equation\"" } else { print VARIABLE " \"$variable{$key}[$mvar]{equation}\"" };
       if ($variable{$key}[$mvar]{centring} ne "none") { print VARIABLE " ON $variable{$key}[$mvar]{region}"; }
       print VARIABLE " # other information";
-      for my $infokey ( qw( deriv newtstepmax newtstepmin comments )) {
+      for my $infokey ( qw( deriv newtstepmax newtstepmin filename absfilename comments )) {
         print VARIABLE ": $infokey = ";
         if (empty($variable{$key}[$mvar]{$infokey})) {
           print VARIABLE "empty"
@@ -361,7 +411,7 @@ sub output_region_list {
   use strict;
   use Data::Dumper;
   my @types=(qw( system setup gmsh constant transient newtient derived equation output condition )); # list of region types
-  open(REGION, ">$region_list_file") or die "ERROR: problem opening temporary region file $region_list_file: something funny is going on: check permissions??\n";
+  open(REGION, ">$region_list_file") or error_stop("problem opening temporary region file $region_list_file: something funny is going on: check permissions??");
 
   for my $type ( @types ) {
     print REGION "-" x 80,"\n";
@@ -369,7 +419,7 @@ sub output_region_list {
     for my $n ( 0 .. $#region ) {
       if ($region[$n]{"type"} ne $type) { next; }
       print REGION "$n";
-      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread location initial_location newtstepmax newtstepmin)) {
+      for my $key (qw(name type centring user dynamic part_of parent rindex fortran part_of_fortran parent_fortran last_variable_masread location initial_location newtstepmax newtstepmin filename absfilename comments )) {
         print REGION ": $key = ";
         if (empty($region[$n]{$key})) {
           print REGION "empty";
@@ -385,7 +435,7 @@ sub output_region_list {
   print REGION "-" x 80,"\n";
   close(REGION);
 
-  open(REGION, ">$region_arb_file") or die "ERROR: problem opening temporary region file $region_arb_file: something funny is going on: check permissions??\n";
+  open(REGION, ">$region_arb_file") or error_stop("problem opening temporary region file $region_arb_file: something funny is going on: check permissions??");
   print REGION "# Reconstructed list of the regions in arb format:\n";
   for my $type ( @types ) {
     if ($type eq "system") { next; } # don't output system types to the arb file
@@ -400,7 +450,7 @@ sub output_region_list {
       if (nonempty($region[$n]{location}{description})) { print REGION " \"".$region[$n]{location}{description}."\""; }
       if (nonempty($region[$n]{part_of})) { print REGION " ON $region[$n]{part_of}"; }
       print REGION " # other information";
-      for my $infokey (qw(user dynamic parent rindex fortran part_of_fortran parent_fortran last_variable_masread newtstepmax newtstepmin)) {
+      for my $infokey (qw(user dynamic parent rindex fortran part_of_fortran parent_fortran last_variable_masread newtstepmax newtstepmin filename absfilename comments )) {
         print REGION ": $infokey = ";
         if (empty($region[$n]{$infokey})) {
           print REGION "empty"
@@ -416,32 +466,37 @@ sub output_region_list {
 
 }
 #-------------------------------------------------------------------------------
-# run through each variable checking whether anything has changed that requires the script to be rerun
+# run through all user entered variables and regions checking whether anything has changed that requires the script to be rerun
 
-sub check_variable_status {
+sub check_setup_status {
 
   use strict;
-  use Storable qw(freeze); # routines for collapsing data structures into a single string
+  use Storable qw(freeze dclone); # routines for collapsing data structures into a single string
+  use Data::Dumper; # for outputing data in readable format
   my $same=1; # flag to indicate whether this run and last are the same
   my ($type, $mvar, $n);
 
+# make a copy of both hash variable and array region which will have any non-essential data removed before being saved to file
+  my %variable_copy = %{ dclone(\%variable) };
+  my @region_copy = @{ dclone(\@region) };
+
 # first remove options, comments and numerical constants from variable structure, which are not used in the perl
-  foreach $type (sort(keys %variable)) {
+  foreach $type (sort(keys %variable_copy)) {
     foreach $mvar ( 1 .. $m{$type} ) {
-      delete $variable{$type}[$mvar]{"options"}; # delete removes value and key for a hash
-      delete $variable{$type}[$mvar]{"comments"}; # delete removes value and key for a hash
-      delete $variable{$type}[$mvar]{"constant_list"}; # delete removes value and key for a hash
+      delete $variable_copy{$type}[$mvar]{"options"}; # delete removes value and key for a hash
+      delete $variable_copy{$type}[$mvar]{"comments"}; # delete removes value and key for a hash
+      delete $variable_copy{$type}[$mvar]{"constant_list"}; # delete removes value and key for a hash
       foreach my $repeats (keys(%statement_repeats)) {
-        delete $variable{$type}[$mvar]{$repeats}; # delete removes value and key for a hash
+        delete $variable_copy{$type}[$mvar]{$repeats}; # delete removes value and key for a hash
       }
     }
   }
 
-# also do similar for regions
-  foreach $n ( 1 .. $#region ) {
-    delete $region[$n]{"options"}; # delete removes value and key for a hash
-    delete $region[$n]{"comments"}; # delete removes value and key for a hash
-    delete $region[$n]{"redefinitions"}; # delete removes value and key for a hash
+# also do similar for region_copy
+  foreach $n ( 1 .. $#region_copy ) {
+    delete $region_copy[$n]{"options"}; # delete removes value and key for a hash
+    delete $region_copy[$n]{"comments"}; # delete removes value and key for a hash
+    delete $region_copy[$n]{"redefinitions"}; # delete removes value and key for a hash
   }
 
   $Storable::canonical=1; # the data structure will have its keys sorted before being created
@@ -449,43 +504,54 @@ sub check_variable_status {
 # my $new_data = freeze( \%variable ); # collapse variable hash and now externals array
 # tack any single variables on the end
 # $new_data = "$new_data\n$transient\n$newtient";
-  my $new_data = freeze( \%variable)."\n".freeze( \@externals )."\n".freeze( \@region )."\n$transient\n$newtient";
+  my $new_data = freeze( \%variable_copy)."\n".freeze( \@externals )."\n".freeze( \@region_copy )."\n$transient\n$newtient";
 # my $new_data = '';
 
 # open old file and compare string created last time
-  open(OLD_CHECK, "<$build_dir/last_setup_equation_data") or $same=0; # if file doesn't exist
+  open(OLD_CHECK, "<$setup_equation_file") or $same=0; # if file doesn't exist
   if ($same) {
     my $old_data = "";
     while (<OLD_CHECK>) {
       $old_data = $old_data.$_; # read file into a single string
     }
     if ($new_data ne $old_data) { $same=0; }
-#   print DEBUG "old_data = $old_data\n";
-#   print DEBUG "new_data = $new_data\n";
   }
-
   close(OLD_CHECK);
       
-# write out new data string for comparison during the next time
-  open(NEW_CHECK, ">$tmp_dir/setup_equation_data") or die "ERROR: problem opening $tmp_dir/setup_equation_data\n";
-  print NEW_CHECK "$new_data";
-  close(NEW_CHECK);
-
-  if ($same) {
-    print "INFO: setup_equations data has not changed since the last run: exiting immediately\n";
-    print DEBUG "INFO: setup_equations data not has changed since the last run: exiting immediately\n";
-# final warning about multiple statements
-    foreach my $repeats (keys(%statement_repeats)) {
-      if ($statement_repeats{$repeats} > 0) { print "NOTE: at least one variable had $repeats.  Was this your intention?  Details are given above (or in the file $debug_info_file).\n"; }
-    }
-    print "SUCCESS: equation_module.f90 was already up-to-date\n";
-    print DEBUG "SUCCESS: equation_module.f90 was already up-to-date\n";
-    exit;
-  } else {
-    print "INFO: setup_equations data has changed since the last run: recreating fortran\n";
-    print DEBUG "INFO: setup_equations data has changed since the last run: recreating fortran\n";
+# write out new data string for comparison during the next run, if there has been any changes
+  if (!($same)) {
+    open(NEW_CHECK, ">$setup_equation_file") or error_stop("problem opening $setup_equation_file");
+    print NEW_CHECK "$new_data";
+    close(NEW_CHECK);
   }
 
+# now also write out data to DEBUG
+  $Data::Dumper::Terse = 1;
+  $Data::Dumper::Indent = 0;
+# $Data::Dumper::Pad = "  ";
+
+# variables
+  print DEBUG "=================================================================\n";
+  print DEBUG "SUMMARY OF ALL SETUP DETERMINING VARIABLES/REGIONS BEFORE EQUATION PROCESSING\n";
+  print DEBUG "VARIABLES:";
+  foreach $type (sort(keys %variable_copy)) {
+    foreach $mvar ( 1 .. $m{$type} ) {
+# multiline
+#     print DEBUG "-----------------------------------------------------------------------------------------------\nTYPE = $type: MVAR = $mvar:\n";
+#     print DEBUG Dumper($variable_copy{$type}[$mvar])."\n";
+# single line
+      print DEBUG "$type $mvar $variable_copy{$type}[$mvar]{name}: ".Dumper($variable_copy{$type}[$mvar])."\n";
+    }
+  }
+# regions
+  print DEBUG "------------------\n";
+  print DEBUG "REGIONS:";
+  foreach $n ( 1 .. $#region_copy ) {
+    print DEBUG "$n $region_copy[$n]{name}: ".Dumper($region_copy[$n])."\n";
+  }
+  print DEBUG "=================================================================\n";
+
+  return $same;
 }
 
 #-------------------------------------------------------------------------------
@@ -528,9 +594,9 @@ sub write_sub_strings {
 
     while ($line=<INFILE>) { chompm($line);
       if (($indent,$keyword) = $line =~ /^\!(\s*?)<sub_string:(.+)>/) { # substring lines are now commented out by default
-        print "INFO: found sub_string marker in fortran file with keyword $keyword\n";
+        print DEBUG "INFO: found sub_string marker in fortran file with keyword $keyword\n";
         if (empty($sub_string{$keyword})) {
-          print "NOTE: sub_string corresponding to keyword $keyword not set\n";
+          print DEBUG "NOTE: sub_string corresponding to keyword $keyword not set\n";
         } else {
           @strings = split("\n",$sub_string{$keyword});
           $sub_string{$keyword} = "";
@@ -624,10 +690,12 @@ sub read_input_files {
   use List::Util qw( min max );
   use Data::Dumper;
   use Storable qw(dclone);
+  use File::Find; # for find
+  use File::Spec; # for rel2abs
   my ($file, $oline, $line, $type, $name, $cunits, $units, $multiplier, $mvar, $file_version,
     $mcheck, $typecheck, $tmp, $keyword, $centring, $otype, $match, $tmp1, $tmp2,
     $handle, $try_dir, $search, $replace, $working, $comments, $error, $region_constant,
-    $condition, $key, $append, $cancel, $default, $masread, $lineremainder, $repeats);
+    $condition, $key, $append, $cancel, $default, $masread, $lineremainder, $repeats, $include_type);
 
   my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
   my $default_options = ""; # default options prepended to each statement read in
@@ -636,12 +704,11 @@ sub read_input_files {
   my $indent = "   "; # amount to indent the unwrapped input file for each level of file inclusion
 
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
-  open(UNWRAPPED_INPUT, ">$current_unwrapped_input_file");
+  open(UNWRAPPED_INPUT, ">$unwrapped_input_file");
 
-  $input_files[$#input_files]{"include_root"} = ''; # initial include_root is blank
   $input_files[$#input_files]{"handle"} = FileHandle->new(); # make a filehandle for the first file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
   $handle = $input_files[$#input_files]{"handle"};
-  open($handle, "<$input_files[$#input_files]{name}") or die "ERROR: problem opening arb input file $input_files[$#input_files]{name}\n";;
+  open($handle, "<$input_files[$#input_files]{name}") or error_stop("problem opening arb input file $input_files[$#input_files]{name}");
 
   while (@input_files) {
 
@@ -653,7 +720,7 @@ sub read_input_files {
 
 # now splitting input line at the include/replacements keywords (wherever they are) and only doing replacements before this
       my $lineremainder = '';
-      if ($oline =~ /^\s*(.*?)(\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s))/i) {
+      if ($oline =~ /^\s*(.*?)(\s*((INCLUDE(|_[A-Z]+))|((GENERAL_|)REPLACEMENTS))($|#|\s))/i) {
         print DEBUG "INFO: found string that possibly needs part replacements: oline = $oline\n";
         my $linestart = $1;
         $lineremainder = $2.$';
@@ -692,7 +759,7 @@ sub read_input_files {
 
       $line = $oline;
 # keep a record of what arb is doing in UNWRAPPED_INPUT, commenting out any INCLUDE or GENERAL_REPLACMENTS statements so that this file could be read again by arb directly
-      if ($line =~ /^\s*((INCLUDE(|_ROOT|_WORKING))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT $indent x $#input_files,"#(hash added during unwrap)$line\n"; } else { print UNWRAPPED_INPUT $indent x $#input_files,"$line\n"; }
+      if ($line =~ /^\s*((INCLUDE(|_[A-Z]+))|((GENERAL_|)REPLACEMENTS))($|#|\s)/i) { print UNWRAPPED_INPUT $indent x $#input_files,"#(hash added during unwrap)$line\n"; } else { print UNWRAPPED_INPUT $indent x $#input_files,"$line\n"; }
 
 # now process guts of statement
 # for the time being, have to handle trailing comments on the input lines
@@ -703,51 +770,118 @@ sub read_input_files {
       elsif ($line =~ /^\s*((START|BEGIN)_(COMMENT(S){0,1}|SKIP))($|#|\s)/i) { print "INFO: found \L$1\E statement in $file\n"; $skip=1; next; }
 
 # check for include statement, possibly opening new file
-      elsif ($line =~ /^\s*INCLUDE(|_WORKING)($|(\s*#)|\s)/i) {
-        if ($2 =~ /#/) {$line = '';} else {$line = $';}
-        if ($1) { $working=1; } else { $working=0; } # if the working flag is on then we only look in the working directory for the file
-        $input_files[$#input_files+1]{"ref_name"} = extract_first($line,$error); # extract filename from line of text
-        if (empty($input_files[$#input_files]{ref_name}) || $error) {
-          error_stop("a valid filename could not be determined from the following:\nfile = $file: line = $oline");
+# ref: include ref: include_template ref: include_local ref: include_absolute ref: include_working ref: include_last
+      elsif ($line =~ /^\s*INCLUDE(|_([A-Z]+))($|(\s*#)|\s)/i) {
+        if (nonempty($2)) {$include_type = "\L$2";} else { $include_type = ''; }
+# note to user re deprecation of INCLUDE_ROOT
+        if ($include_type eq "root" || $include_type eq "from") {
+          print "WARNING: INCLUDE_"."\U$include_type"." has been deprecated (from v0.56), and should be replaced by INCLUDE_TEMPLATE for setting the include path and/or including an arb file that both reside somewhere within the templates directory\n";
+          $include_type = "template";
         }
-        $input_files[$#input_files]{"include_root"} = $input_files[$#input_files-1]{"include_root"}; # copy over include_root from previous file
-        $input_files[$#input_files]{"name"} = '';
-# append arb suffix to ref_name if it isn't already there - for v0.52 onwards, only arb or in suffixes are allowed
-        if ( $input_files[$#input_files]{"ref_name"} !~ /.+\.(arb|in)$/ ) {
-          $input_files[$#input_files]{"ref_name"} = $input_files[$#input_files]{"ref_name"}.'.arb';
-        }
-# ref: include working
-        if ($working) {
-# look only in working directory for the file
-          if (-f "$working_dir/$input_files[$#input_files]{ref_name}") {
-            $input_files[$#input_files]{"name"} = "$working_dir/$input_files[$#input_files]{ref_name}";
+        if ($3 =~ /#/) {$line = '';} else {$line = $';}
+        my $new_file = extract_first($line,$error); # extract filename from line of text
+        if ($error) { error_stop("a valid file or directory name could not be determined from the following:\nfile = $file: line = $oline"); }
+
+        if (empty($new_file)) {
+          if (nonempty($include_type)) { error_stop("include_paths can only be pushed (last level removed) using the generic INCLUDE statement: error in the following:\nfile = $file: line = $oline"); }
+# an empty include statement means to remove one level off the search_path
+          if ($#{$input_files[$#input_files]{"include_path"}} > 0) {
+# this means to pull an item from the stack
+            pop(@{$input_files[$#input_files]{"include_path"}});
+            print "INFO: an INCLUDE statement is removing an include_path from the stack, leaving: include_path = $input_files[$#input_files]{include_path}[0]\n";
+            print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) after one has been removed, currently: include_path = @{$input_files[$#input_files]{include_path}}\n";
+          } else {
+            print "WARNING: an INCLUDE statement is attempting to remove an include_path from the stack, but there is only the local path left which cannot be removed: include_path = $input_files[$#input_files]{include_path}[0]\n";
+            print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) after failed removal attempt, only the single local (unremovable) path is left: include_path = $input_files[$#input_files]{include_path}[0]\n";
           }
-        } else {
-# prepend include_root directory to ref_name - no, now not looking in the working directory
-#          if (nonempty($include_root)) { $input_files[$#input_files]{"ref_name"} = $include_root."/".$input_files[$#input_files]{"ref_name"}; }
-# find location of the file, first looking in the specific template directory, then in all second and third level subsequent (sub)directories
-# TODO: look at perl's Find::File for the really lazy users who don't write out template directory names in full and like to gamble on where the included files come from....
-# ref: include
-          my $include_root = $input_files[$#input_files]{"include_root"};
-          foreach $try_dir ("$template_dir/$include_root",bsd_glob("$template_dir/*/$include_root"),bsd_glob("$template_dir/*/*/$include_root")) {
-            if (-f "$try_dir/$input_files[$#input_files]{ref_name}") {
-              $input_files[$#input_files]{"name"} = "$try_dir/$input_files[$#input_files]{ref_name}";
+          next; # move to next statement
+        }
+
+# otherwise we are creating either a new include file or adding to the current file's include_paths
+        my $found_name = ''; # this will hold the found file or directory
+        my $found_type = ''; # this will specify whether what was found was a file or directory
+        my $found_depth = 1; # this is used only for file::find used within the template include
+        if (empty($include_type)) {
+# if this is a plain INCLUDE statement then we cycle through the list of paths looking for the file or directory
+          for my $search_path ( reverse( @{$input_files[$#input_files]{"include_path"}} ) ) {
+            ($found_name,$found_type) = check_for_arbfile_or_dir($search_path.'/'.$new_file);
+            if (nonempty($found_name)) {
+              print DEBUG "INFO: found include $found_type $new_file at $found_name\n";
               last;
             }
           }
-        }
-        if (empty($input_files[$#input_files]{"name"})) {
-          error_stop("cannot find the input file $input_files[$#input_files]{ref_name} referenced:\nfile = $file :line = $oline");
+          if (empty($found_name)) {
+            error_stop("could not find $new_file that is referenced in an INCLUDE statement in any of the current include paths: error in the following:\nfile = $file: line = $oline");
+          }
+        } elsif ($include_type eq "template") {
+# the following would only check in the templates directory
+#         ($found_name,$found_type) = check_for_arbfile_or_dir($template_dir.'/'.$new_file);
+# whereas this cycles through all subdirectories of the templates directory, using a depth-prioritised search
+# as file paths are relative to the build directory, don't chdir is required to reference filename
+          find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$template_dir);
+          if (empty($found_name)) {
+            error_stop("could not find $new_file that is referenced in an INCLUDE_TEMPLATE statement in any of template directories: error in the following:\nfile = $file: line = $oline");
+          }
+#         if (-f $found_name) { $found_type = 'file'; } elsif (-d $found_name) { $found_type = 'directory'; }
         } else {
-          print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
-          print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{name}\n";
-          print UNWRAPPED_INPUT $indent x $#input_files,"#++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"# the following is INCLUDED from $input_files[$#input_files]{name}";
-# ref: FILENAME
-# set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
-          if (empty($simulation_info{"filename"})) {
-            $simulation_info{"filename"} = $input_files[$#input_files]{"ref_name"};
+          if ($include_type eq "absolute") {
+            ($found_name,$found_type) = check_for_arbfile_or_dir('/'.$new_file);
+          } elsif ($include_type eq "local") {
+            ($found_name,$found_type) = check_for_arbfile_or_dir($input_files[$#input_files]{"include_path"}[0].'/'.$new_file);
+          } elsif ($include_type eq "last") {
+            ($found_name,$found_type) = check_for_arbfile_or_dir($input_files[$#input_files]{"include_path"}[$#{$input_files[$#input_files]{"include_path"}}].'/'.$new_file);
+          } elsif ($include_type eq "working") {
+            ($found_name,$found_type) = check_for_arbfile_or_dir($working_dir.'/'.$new_file);
+          } else {
+            error_stop("keyword INCLUDE_"."\U$include_type"." is not understood: error in the following:\nfile = $file: line = $oline");
+          }
+          if (empty($found_name)) {
+            error_stop("could not find $new_file that is referenced in an INCLUDE_"."\U$include_type"." statement: error in the following:\nfile = $file: line = $oline");
           }
         }
+        print "INFO: found the following include $found_type $new_file at $found_name\n";
+        print DEBUG "INFO: found the following include $found_type $new_file at $found_name referenced from:\nfile = $file: line = $oline\n";
+
+# here we extract the path from the full found_name if we have found a file, or remove found_name (and store in found_dir) if we have found a directory
+        my $found_dir = '';
+        if ($found_type eq 'file' && $found_name =~ /\//) {
+          ($found_dir) = $found_name =~ /^(.*)\/.*?$/;
+        } elsif ($found_type eq 'directory') {
+          $found_dir = $found_name;
+          $found_name = '';
+        }
+
+# check whether this path is on the top of the current files's include_path list, and if not, add it
+        if (nonempty($found_dir)) {
+          if ($found_dir ne $input_files[$#input_files]{"include_path"}[$#{$input_files[$#input_files]{"include_path"}}]) {
+            push(@{$input_files[$#input_files]{"include_path"}},$found_dir);
+            print "INFO: adding new include_path $found_dir, making: include_path = @{$input_files[$#input_files]{include_path}}\n";
+            print DEBUG "INFO: adding new include_path $found_dir, making: include_path = @{$input_files[$#input_files]{include_path}}\n";
+            print UNWRAPPED_INPUT $indent x $#input_files, "#(comment generated during unwrap) adding new include_path $found_dir, making include_path array = @{$input_files[$#input_files]{include_path}}\n";
+          } else {
+            print UNWRAPPED_INPUT $indent x $#input_files, "#(comment generated during unwrap) not adding new include_path $found_dir, as it is already on the top of include_path array = @{$input_files[$#input_files]{include_path}}\n";
+          }
+        }
+            
+# from here on, only concerned with actually including a file
+        if (empty($found_name)) {next;}
+
+# create the new include file
+        $input_files[$#input_files+1]{"ref_name"} = $new_file; # ref_name is recorded as the name specified in the INCLUDE statement
+        $input_files[$#input_files]{"name"} = $found_name; # name is the file name including the path, either relative to the build directory or absolute
+        $input_files[$#input_files]{"abs_name"} = File::Spec->rel2abs($found_name); # abs_name is the file name including the absolute path to the file, now just used for user information (see below output file location statement)
+        $input_files[$#input_files]{"include_path"}[0] = $input_files[$#input_files-1]{"include_path"}[$#{$input_files[$#input_files-1]{"include_path"}}]; # set local path to last path of calling file
+
+        print "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{abs_name}\n";
+        print DEBUG "INFO: found INCLUDE $input_files[$#input_files]{ref_name} statement in file = $file: include file identified as $input_files[$#input_files]{abs_name}\n";
+        print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n",$indent x $#input_files,"#(comment generated during unwrap) the following is INCLUDED from $input_files[$#input_files]{abs_name}";
+# ref: FILENAME
+# set simulation_info filename based on the first included file (which is the one that will be listed in root_input.arb)
+        if (empty($simulation_info{"filename"})) {
+          $simulation_info{"filename"} = $input_files[$#input_files]{"ref_name"};
+          $simulation_info{"absfilename"} = $input_files[$#input_files]{"abs_name"};
+        }
+
 # now extract replacements
         while (!($line=~/^\s*(|#.*)$/)) {
           ($search,$replace,$cancel,$default) = extract_replacements($line,$file,$oline);
@@ -776,25 +910,8 @@ sub read_input_files {
         $input_files[$#input_files]{"handle"} = FileHandle->new(); # make a filehandle for this file
         $handle = $input_files[$#input_files]{"handle"};
         $file = $input_files[$#input_files]{"ref_name"};
-        open($handle, "<$input_files[$#input_files]{name}") or die "ERROR: problem opening arb input file $input_files[$#input_files]{name}\n";;
+        open($handle, "<$input_files[$#input_files]{name}") or error_stop("problem opening arb input file $input_files[$#input_files]{name}");
         next; # skip to reading the next line (in the included file)
-
-# set include_root
-# ref: include root
-      } elsif ($line =~ /^\s*INCLUDE_(ROOT|FROM)\s*(($|#)|(.+))/i) {
-        if ($3) { # no string follows, so reset include_root back to parent value
-          if ($#input_files == 0) {
-            $input_files[$#input_files]{"include_root"} = '';
-          } else {
-            $input_files[$#input_files]{"include_root"} = $input_files[$#input_files-1]{"include_root"} 
-          }
-        } else {
-          $line = $4;
-          $input_files[$#input_files]{"include_root"} = extract_first($line,$error);
-          if ($error) {error_stop("matching delimiters not found in the following:\nfile = $file: line = $oline")}
-        }
-        print UNWRAPPED_INPUT $indent x $#input_files,"# INFO: setting include root directory to $input_files[$#input_files]{include_root}\n";
-        next;
 
 # extract any general replacements, pushing them onto the back of the existing list
 # replacements are performed in reverse order, so latest replacement definitions take precedence
@@ -982,19 +1099,19 @@ sub read_input_files {
 # check for deprecated syntax
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)(INDEPENDENT|FIELD)($|\s)/i) {
         $type = "\U$2";
-        error_stop("$type type has been deprecated, use UNKNOWN instead.\nfile = $file: line = $oline\n");
+        error_stop("$type type has been deprecated, use UNKNOWN instead.\nfile = $file: line = $oline");
       }
 
       elsif ($line =~ /^\s*(CELL_|FACE_|NODE_|NONE_|)DEPENDENT($|\s)/i) {
-        error_stop("DEPENDENT type has been deprecated, use DERIVED instead.\nfile = $file: line = $oline\n");
+        error_stop("DEPENDENT type has been deprecated, use DERIVED instead.\nfile = $file: line = $oline");
       }
 
       elsif ( $line =~ /^\s*(READ_GMSH)($|\s)/i ) {
-        error_stop("READ_GMSH keyword has been deprecated, use MSH_FILE instead.\nfile = $file: line = $oline\n");
+        error_stop("READ_GMSH keyword has been deprecated, use MSH_FILE instead.\nfile = $file: line = $oline");
       }
 
       elsif ( $line =~ /^\s*(LINEAR_SOLVER)($|\s)/i ) {
-        error_stop("LINEAR_SOLVER keyword has been deprecated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline\n");
+        error_stop("LINEAR_SOLVER keyword has been deprecated, use SOLVER_OPTIONS linearsolver=default (eg) instead.\nfile = $file: line = $oline");
       }
 
 # # read in glue_face
@@ -1031,7 +1148,7 @@ sub read_input_files {
 # read in regions and store in an array
         while ($line =~ /^\s*(<.+?>)\s*/) { 
           $line = $';
-          push(@{$region_list{"regions"}},$1); # the regions hash contains an array of region names
+          push(@{$region_list{"regions"}},examine_name($1,'regionname')); # the regions hash contains an array of region names
         }
         if ($line !~ /^\s*$/) {error_stop("there is a syntax error in the following REGION_LIST statement:\nfile = $file: line = $oline");}
         if (empty($region_list{"regions"})) {error_stop("the following REGION_LIST statement contains no regions:\nfile = $file: line = $oline");}
@@ -1121,6 +1238,8 @@ sub read_input_files {
             $centring = $asread_variable[$masread]{"centring"};
           }
           $asread_variable[$masread]{"comments"}=$asread_variable[$masread]{"comments"}." ".$comments;
+          $asread_variable[$masread]{"filename"}=$asread_variable[$masread]{"filename"}." ".$file;
+          $asread_variable[$masread]{"absfilename"}=$asread_variable[$masread]{"absfilename"}." ".$input_files[$#input_files]{"abs_name"};
         } else {
           print "INFO: a primary definition statement for variable $name has been found in file = $file\n";
           print DEBUG "INFO: a primary definition statement for variable $name has been found based on:\nfile = $file: line = $oline\n";
@@ -1139,6 +1258,8 @@ sub read_input_files {
             $asread_variable[$masread]{$repeats}=0;
           }
           $asread_variable[$masread]{"options"} = '';
+          $asread_variable[$masread]{"filename"}=$file;
+          $asread_variable[$masread]{"absfilename"}=$input_files[$#input_files]{"abs_name"};
         }
 
 # units and multiplier (optional)
@@ -1288,13 +1409,18 @@ sub read_input_files {
         print DEBUG "  coverting user defined name to consistent name = $name\n";
 
 # see if this name has already been defined, and if so, find its index
-        $masread = -1; # variable masread starts at 0 if any variables are defined
-        foreach $mcheck ( 0 .. $#region ) {
-          if ($region[$mcheck]{"name"} eq $name) { # region has been previously defined, and position in file is based on first definition
-            $masread = $mcheck;
-            last;
-          }
+        $masread = find_region($name);
+        if ($masread >= 0 && ( $region[$masread]{"type"} eq "system" || $region[$masread]{"type"} eq "internal" ) ) {
+          error_stop("an attempt is being made to define a region which has a name ($name) that is reserved for system or internal region, in the following:\nfile = $file: line = $oline");
         }
+
+#       $masread = -1; # variable masread starts at 0 if any variables are defined
+#       foreach $mcheck ( 0 .. $#region ) {
+#         if ($region[$mcheck]{"name"} eq $name) { # region has been previously defined, and position in file is based on first definition
+#           $masread = $mcheck;
+#           last;
+#         }
+#       }
 
 # check for CANCEL keyword
         if ($line =~ /^(\s*)CANCEL(\s|$)/) {
@@ -1335,6 +1461,8 @@ sub read_input_files {
             $type = $region[$masread]{"type"};
           }
           $region[$masread]{"comments"}=$region[$masread]{"comments"}." ".$comments;
+          $region[$masread]{"filename"}=$region[$masread]{"filename"}." ".$file;
+          $region[$masread]{"absfilename"}=$region[$masread]{"absfilename"}." ".$input_files[$#input_files]{"abs_name"};
         } else {
           print "INFO: a primary definition statement for region $name has been found in file = $file\n";
           print DEBUG "INFO: a primary definition statement for region $name has been found based on:\nfile = $file: line = $oline\n";
@@ -1352,6 +1480,8 @@ sub read_input_files {
           $region[$masread]{"location"}{"description"}='';
           $region[$masread]{"initial_location"}{"description"}='';
           $region[$masread]{"last_variable_masread"}=$#asread_variable; # this determines when a region will be evaluated, for dynamic regions - it will be -1 if no variables are defined yet
+          $region[$masread]{"filename"}=$file;
+          $region[$masread]{"absfilename"}=$input_files[$#input_files]{"abs_name"};
         }
 
 # extract the location string, and if two are present, also an initial_location string (to be used for transient and newtient dynamic regions)
@@ -1421,7 +1551,7 @@ sub read_input_files {
     } # end of loop for this input file
 
     close($handle);
-    if ($#input_files) { print UNWRAPPED_INPUT $indent x $#input_files,"# INCLUDE FINISHED for $input_files[$#input_files]{name}\n",$indent x $#input_files,"#--------------------------------------------------------\n"; }
+    if ($#input_files) { print UNWRAPPED_INPUT $indent x $#input_files,"#(comment generated during unwrap) INCLUDE finished for $input_files[$#input_files]{name}\n",$indent x $#input_files,"#(comment generated during unwrap)--------------------------------------------------------\n"; }
     pop(@input_files);
   } # end of loop for all input files
 
@@ -1435,6 +1565,162 @@ sub read_input_files {
     print FORTRAN_INPUT "INFO_\U$key"." \"$simulation_info{$key}\"\n"; # also tell the fortran program about this
     $sub_string{"simulation_info"} = $sub_string{"simulation_info"}."! SIMULATION INFO: "."\U$key"." = $simulation_info{$key}\n"; # and write the same to equation_module.f90
   }
+
+}
+
+#-------------------------------------------------------------------------------
+# little sub to determine whether input location is an arbfile or directory
+
+sub check_for_arbfile_or_dir {
+
+# input
+  my $search_file = $_[0];
+# output: ($found_name,$found_type)
+  my $found_name = '';
+  my $found_type = '';
+
+  if (-d $search_file) {
+# if a directory is found
+    $found_name = $search_file;
+    $found_type = 'directory';
+  } elsif ($search_file !~ /\/$/) {
+# if no trailing slash is present, then this could be a file
+    if (-f $search_file) {
+# and it could already have the appropriate extension
+      $found_name = $search_file;
+      $found_type = 'file';
+    } elsif ($search_file !~ /\.(arb|in)$/ && -f $search_file.'.arb') {
+# or if it has no extension then try searching for the name with the .arb extension
+      $found_name = $search_file.'.arb';
+      $found_type = 'file';
+    }
+  }
+# remove any trailing slashes from found_name
+  $found_name =~ s/\/$//;
+  print DEBUG "INFO: at end of check_for_arbfile_or_dir: search_file = $search_file: found_name = $found_name: found_type = $found_type\n";
+
+  return ($found_name,$found_type);
+}
+
+#-------------------------------------------------------------------------------
+# this is a little support routine used by find above
+sub wanted {
+# calling command: find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$template_dir);
+  my $new_file = $_[0];
+  my $found_name = $_[1];
+  my $found_type = $_[2];
+  my $found_depth = $_[3];
+  my $debug = 0;
+
+  my $local_depth = ($File::Find::name) =~ tr!/!!; # counts the number of slashes in the path, from http://www.perlmonks.org/?node_id=984804 
+  if ($debug) { print DEBUG "start of wanted: File::Find::name = $File::Find::name: File::Find::dir = $File::Find::dir\n".
+                            "  found_name = $found_name: found_type = $found_type: found_depth = $found_depth\n".
+                            "  new_file = $new_file: local_depth = $local_depth\n"; }
+
+# first check if it is at all possible that a name can be found that will overwrite already found name
+  if (nonempty($found_name) && ( $local_depth > $found_depth || ($found_type eq 'directory' && $local_depth >= $found_depth) ) ) {
+    if ($debug) { print DEBUG "in wanted: nonempty found_name coupled with large local_depth (criterion on local_depth depends on found_type):".
+                              "found_type = $found_type: found_depth = $found_depth: local_depth = $local_depth\n"; }
+# if a name has been found, that is already at a lower depth, prune all subsequent directories
+    $File::Find::prune = 1; 
+# ignore these directories/links, as per the pack script
+  } elsif ($File::Find::name =~ /(resources|code_scraps|old|recent)$/) {
+    if ($debug) { print DEBUG "in wanted: ignoring directory\n"; }
+    $File::Find::prune = 1; 
+  } else {
+
+  # now compare file::name with new_file
+    if ($new_file =~ /\/$/) {
+  # this is a directory due to the trailing slash
+      my $stripped_name = $new_file;
+      $stripped_name =~ s/\/$//; # create temporary name that has no trailing slash
+      if ($debug) { print DEBUG "in wanted: testing for directory as has a trailing slash: stripped_name = $stripped_name\n"; }
+      if ($File::Find::name =~ /$stripped_name$/ && -d $File::Find::name) {
+        $found_name = $File::Find::name;
+        $found_type = 'directory';
+        $found_depth = $local_depth;
+        $File::Find::prune = 1; # as this is a directory, do not go any deeper
+      }
+    } else {
+      if ($debug) { print DEBUG "in wanted: testing for plain name\n"; }
+      if ($File::Find::name =~ /$new_file$/) {
+        if ($debug) { print DEBUG "in wanted: matches to plain name\n"; }
+        $found_name = $File::Find::name;
+        if (-f $File::Find::name) {$found_type = 'file';} else {
+          $found_type = 'directory';
+          $File::Find::prune = 1; # as this is a directory, do not go any deeper
+        }
+        $found_depth = $local_depth;
+      } elsif ($new_file !~ /\.(arb|in)/) {
+        if ($debug) { print DEBUG "in wanted: testing for file with additional arb extension\n"; }
+  # if it is just a plain name then also try with .arb extension
+        if ($File::Find::name =~ /$new_file\.arb$/ && -f $File::Find::name) {
+          if ($debug) { print DEBUG "in wanted: matches to file with additional arb extension and is a file\n"; }
+          $found_name = $File::Find::name;
+          $found_type = 'file';
+          $found_depth = $local_depth;
+        }
+      }
+    }
+  }
+
+  if ($debug) { print DEBUG "end of wanted: found_name = $found_name: found_type = $found_type: found_depth = $found_depth\n"; }
+    
+  $_[1] = $found_name; # return this in its original place, altered if the file has been found
+  $_[2] = $found_type; # return this in its original place, altered if the file has been found
+  $_[3] = $found_depth; # return this in its original place, altered if the file has been found
+}
+
+#-------------------------------------------------------------------------------
+# here we initialise the SYSTEM and INTERNAL regions
+
+sub create_system_regions {
+
+  use strict;
+  my ($n);
+#-------------
+# add the SYSTEM regions to the start of the region array
+# SYSTEM regions are those that would be commonly used by a user and which have a corresponding fortran region entity
+
+  unshift(@region,{ name => '<boundarynodes>', type => 'system', centring => 'node' });
+  unshift(@region,{ name => '<domainnodes>', type => 'system', centring => 'node' });
+  unshift(@region,{ name => '<allnodes>', type => 'system', centring => 'node' });
+  unshift(@region,{ name => '<boundaries>', type => 'system', centring => 'face' });
+  unshift(@region,{ name => '<domainfaces>', type => 'system', centring => 'face' });
+  unshift(@region,{ name => '<allfaces>', type => 'system', centring => 'face' });
+  unshift(@region,{ name => '<boundarycells>', type => 'system', centring => 'cell' });
+  unshift(@region,{ name => '<domain>', type => 'system', centring => 'cell' });
+  unshift(@region,{ name => '<allcells>', type => 'system', centring => 'cell' });
+  
+#-------------
+# now enter all INTERNAL regions, now at the end of the array
+# INTERNAL regions do not require fortran entities but are hard-coded into the create_fortran sub
+# may be used in variable checking
+# NOTE!!!! the names for internals are actually perl regexs for these regions, so []'s have to be escaped
+  push(@region,{ name => '<celljfaces>', type => 'internal', centring => 'face' });
+  push(@region,{ name => '<nobcelljfaces>', type => 'internal', centring => 'face' });
+  push(@region,{ name => '<cellicells>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<cellknodes>', type => 'internal', centring => 'node' });
+  push(@region,{ name => '<faceicells>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<faceknodes>', type => 'internal', centring => 'node' });
+  push(@region,{ name => '<nodeicells>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentcellicells>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<nocadjacentcellicells>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentfaceicells>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentfaceupcell>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentfacedowncell>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentfaceothercell>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<upwindfaceicells>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<downwindfaceicells>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<glueface>', type => 'internal', centring => 'face' });
+  push(@region,{ name => '<lastface>', type => 'internal', centring => 'face' });
+  push(@region,{ name => '<noloop>', type => 'internal', centring => '' }); # this special case has no centring
+  push(@region,{ name => '<cellkernelregion\[l=0\]>', type => 'internal', centring => 'face' });
+  push(@region,{ name => '<cellkernelregion\[l=([123])\]>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<cellkernelregion\[l=([4567])\]>', type => 'internal', centring => 'node' });
+  push(@region,{ name => '<facekernelregion\[l=([0123456])\]>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<nodekernelregion\[l=([0123])\]>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<separationcentre(\d*)>', type => 'internal', centring => 'cell' });
 
 }
 
@@ -1459,7 +1745,7 @@ sub organise_regions {
 # output     X        X     X        X                           updated as the output variables are updated (in the order of definition)
 # setup               X     X        X                           updated at the start of a simulation during the setup routines, only once, using location information
 # gmsh                      X        GMSH                        read in from a gmsh file, although centring and name can be declared within arb file (using no location string or 'GMSH')
-# system                    X        SYSTEM                      regions defined by the system, and available to users (such as <all cells>)
+# system                    X        SYSTEM                      regions defined by the system, and available to users (such as <allcells>)
 # internal                           INTERNAL                    regions that are special-cased within the fortran (such as <adjacentcellicells>)
 #---------------------------------------------------------------------------------
 # dynamic means that this is actually a region mask, which must have a parent region, and is evaluated in the chain of the same type of variable updates
@@ -1474,6 +1760,8 @@ sub organise_regions {
 # only USER regions can be dynamic, although not all USER regions are dynamic
 # set some user-specific flags - user and dynamic - while checking type and centring
   foreach $n ( 0 .. $#region ) {
+
+    if ($region[$n]{"type"} && ( $region[$n]{"type"} eq "system" || $region[$n]{"type"} eq "internal" ) ) { next; }
 
     if (empty($region[$n]{'location'}{'description'}) || $region[$n]{'location'}{'description'} =~ /^\s*gmsh/i || 
       (nonempty($region[$n]{"type"}) && $region[$n]{"type"} eq "gmsh") ) {
@@ -1551,52 +1839,9 @@ sub organise_regions {
     }
   }
 
+# SYSTEM and INTERNAL regions used to be defined here
 #-------------
-# add the SYSTEM regions to the start of the region array
-# SYSTEM regions are those that would be commonly used by a user and which have a corresponding fortran region entity
-  
-  unshift(@region,{ name => '<boundary nodes>', type => 'system', centring => 'node' });
-  unshift(@region,{ name => '<domain nodes>', type => 'system', centring => 'node' });
-  unshift(@region,{ name => '<all nodes>', type => 'system', centring => 'node' });
-  unshift(@region,{ name => '<boundaries>', type => 'system', centring => 'face' });
-  unshift(@region,{ name => '<domain faces>', type => 'system', centring => 'face' });
-  unshift(@region,{ name => '<all faces>', type => 'system', centring => 'face' });
-  unshift(@region,{ name => '<boundary cells>', type => 'system', centring => 'cell' });
-  unshift(@region,{ name => '<domain>', type => 'system', centring => 'cell' });
-  unshift(@region,{ name => '<all cells>', type => 'system', centring => 'cell' });
-
-#-------------
-# now enter all INTERNAL regions, now at the end of the array
-# INTERNAL regions do not require fortran entities but are hard-coded into the create_fortran sub
-# may be used in variable checking
-# NOTE!!!! the names for internals are actually perl regexs for these regions, so []'s have to be escaped
-  push(@region,{ name => '<celljfaces>', type => 'internal', centring => 'face' });
-  push(@region,{ name => '<nobcelljfaces>', type => 'internal', centring => 'face' });
-  push(@region,{ name => '<cellicells>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<cellknodes>', type => 'internal', centring => 'node' });
-  push(@region,{ name => '<faceicells>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<faceknodes>', type => 'internal', centring => 'node' });
-  push(@region,{ name => '<nodeicells>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<adjacentcellicells>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<nocadjacentcellicells>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<adjacentfaceicells>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<adjacentfaceupcell>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<adjacentfacedowncell>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<adjacentfaceothercell>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<upwindfaceicells>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<downwindfaceicells>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<glueface>', type => 'internal', centring => 'face' });
-  push(@region,{ name => '<lastface>', type => 'internal', centring => 'face' });
-  push(@region,{ name => '<noloop>', type => 'internal', centring => '' }); # this special case has no centring
-  push(@region,{ name => '<cellkernelregion\[l=0\]>', type => 'internal', centring => 'face' });
-  push(@region,{ name => '<cellkernelregion\[l=([123])\]>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<cellkernelregion\[l=([4567])\]>', type => 'internal', centring => 'node' });
-  push(@region,{ name => '<facekernelregion\[l=([0123456])\]>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<nodekernelregion\[l=([0123])\]>', type => 'internal', centring => 'cell' });
-  push(@region,{ name => '<separationcentre(\d*)>', type => 'internal', centring => 'cell' });
-
-#-------------
-# set fortran numbers now for the above user, system and internal variables
+# set fortran numbers now for the user, system and internal variables
 
   $fortran_regions = 0; # this is the total number of regions that need to be allocated by this script within the fortran
   foreach $n ( 0 .. $#region ) {
@@ -1802,11 +2047,11 @@ sub process_regions {
 # part_of regions default to largest static region based on size if not specified
 # note, these system regions will come at the start so don't need when each is calculated
       if ($region[$n]{'centring'} eq 'cell') {
-        $region[$n]{'part_of'} = '<all cells>';
+        $region[$n]{'part_of'} = '<allcells>';
       } elsif ($region[$n]{'centring'} eq 'face') {
-        $region[$n]{'part_of'} = '<all faces>';
+        $region[$n]{'part_of'} = '<allfaces>';
       } else {
-        $region[$n]{'part_of'} = '<all nodes>';
+        $region[$n]{'part_of'} = '<allnodes>';
       }
     }
 # and find fortran number for part_of region
@@ -1840,7 +2085,7 @@ sub process_regions {
       my $nlast = $n;
       while ($region[$nlast]{"dynamic"}) {
         my $nfound = find_region($region[$nlast]{'part_of'});
-				if ($nfound < 0) { die "INTERNAL ERROR: the ON region $region[$nlast]{part_of} for dynamic region $region[$n]{name} is not a valid region"; }
+				if ($nfound < 0) { error_stop("(INTERNAL ERROR) the ON region $region[$nlast]{part_of} for dynamic region $region[$n]{name} is not a valid region"); }
         $nlast = $nfound;
         print DEBUG "INFO: in process of finding parent region for $region[$n]{name}: found part_of region $region[$nfound]{name}\n";
       }
@@ -2138,13 +2383,16 @@ sub find_region {
 }
 #-------------------------------------------------------------------------------
 # sees if a given region name ($_[1]) matches that of region[$_[0]], taking care of the name being a possible regex
+# assumes that name has been passed through examine_name( ,'regionname') first to remove any synonyms
 
 sub match_region {
 
   use strict;
+  my $number = $_[0];
+  my $name = $_[1];
   
-  if ( ( $region[$_[0]]{'type'} eq 'internal' && $_[1] =~ /$region[$_[0]]{name}/ ) ||
-       ( $region[$_[0]]{'type'} ne 'internal' && $_[1] eq $region[$_[0]]{"name"}) ) {
+  if ( ( $region[$number]{'type'} eq 'internal' && $name =~ /$region[$number]{name}/ ) ||
+       ( $region[$number]{'type'} ne 'internal' && $name eq $region[$number]{"name"} ) ) {
     return (1);
   } else {
     return (0);
@@ -2203,16 +2451,16 @@ sub organise_user_variables {
           if ($type eq "equation") {
             $variable{$type}[$mvar]{"region"} = "<domain>"; # default cell region for equations
           } else {
-            $variable{$type}[$mvar]{"region"} = "<all cells>"; # default cell region
+            $variable{$type}[$mvar]{"region"} = "<allcells>"; # default cell region
           }
         } elsif ($centring eq "face") {
           if ($type eq "equation") {
             $variable{$type}[$mvar]{"region"} = "<boundaries>"; # default face region for equations
           } else {
-            $variable{$type}[$mvar]{"region"} = "<all faces>"; # default face region
+            $variable{$type}[$mvar]{"region"} = "<allfaces>"; # default face region
           }
         } else { # elsif ($centring eq "node") {
-          $variable{$type}[$mvar]{"region"} = "<all nodes>"; # default node region
+          $variable{$type}[$mvar]{"region"} = "<allnodes>"; # default node region
         }
         print "INFO: region for $type variable $variable{$type}[$mvar]{name} not set:  Defaulting to $variable{$type}[$mvar]{region} based on $centring centring\n";
         print DEBUG "INFO: region for $type variable $variable{$type}[$mvar]{name} not set:  Defaulting to $variable{$type}[$mvar]{region} based on $centring centring\n";
@@ -2449,10 +2697,10 @@ sub organise_user_variables {
           }
         }
         if (!($variable{$type}[$mvar]{"magnitude_constant"})) {
-          error_stop("the constant variable $name used to specify the magnitude of $type $variable{$type}[$mvar]{name} is not found\n");
+          error_stop("the constant variable $name used to specify the magnitude of $type $variable{$type}[$mvar]{name} is not found");
         } elsif ($variable{"constant"}[$variable{$type}[$mvar]{"magnitude_constant"}]{"centring"} ne "none") {
           error_stop("the constant variable $name used to specify the magnitude of $type $variable{$type}[$mvar]{name} needs to be none centred: ".
-            "it is $variable{constant}[$variable{$type}[$mvar]{magnitude_constant}]{centring} centred\n");
+            "it is $variable{constant}[$variable{$type}[$mvar]{magnitude_constant}]{centring} centred");
         }
 # if we are here then we have identified a none centred constant variable that should be used to set the magnitude - store the fortran number of this variable
         print DEBUG "INFO: identified the none centred constant $name which will be used as the magnitude of $type $variable{$type}[$mvar]{name}\n";
@@ -3297,7 +3545,7 @@ sub mequation_interpolation {
         print DEBUG "INFO: location of $someregion has been found to $centring centred $operator_type operator used in $otype variable $variable{$otype}[$omvar]{name}\n";
       } elsif (empty($someregion)) {
         if ($minseparation >= 0) {
-          $someregion = "<all cells>"; # default region if separation options are specified is <all cells>
+          $someregion = "<allcells>"; # default region if separation options are specified is <allcells>
         } elsif (($operator_type eq "sum" || $operator_type eq "product") && $contextcentring eq "cell" && $centring eq "face") {
           $someregion = "<celljfaces>"; # default face loop around a cell
         } elsif (($operator_type eq "sum" || $operator_type eq "product") && $contextcentring eq "cell" && $centring eq "cell") {
@@ -3683,10 +3931,12 @@ sub mequation_interpolation {
 #---------------------
 # ref: cellvofphishape
 # the cellvofphishape function takes three vectors, a size, centre and axis, returning a volume fraction for each cell based on the requested shape
-# the size of the object is determined by the maximum size that is consistent with all of the object's dimensions (defaults to huge), so for a sphere set one size to the sphere's diameter
-# the centre of the object is specified by the centre vector, defaulting to zero if a component is not specified
-# the axis vector specifies a line about which the axis of the object is rotated, with a length equal to the rotation about that line required (in degrees) - by default each object has its unrotated centreline along the z axis
-# phitol is the accuracy required, which is used to determine the number of sample points
+# * the size of the object is determined by the maximum size that is consistent with all of the object's dimensions (defaults to huge), so for a sphere set one size to the sphere's diameter
+# * the centre of the object is specified by the centre vector, defaulting to zero if a component is not specified
+# * the axis vector specifies a line about which the axis of the object is rotated, with a length equal to the rotation about that line required (in degrees) - by default each object has its unrotated centreline along the z axis
+# it also takes two scalars:
+# * phitol is the accuracy required, which is used to determine the number of sample points
+# * levelset is a scalar that is used for levelset type approaches (such as gyroid) that is used to define the surface location - by default levelset = 0
 # for 2D shapes choose a 3D shape that gives the correct intersection with the 2D plane (ie, sphere for circle, box for rectangle)
     } elsif ($operator_type eq "vofphishape") {
       if ($centring ne "cell") { error_stop("$operator_type operator has incorrect $centring centring in $otype $variable{$otype}[$omvar]{name} (do you mean cellvofphishape?)"); }
@@ -3708,13 +3958,22 @@ sub mequation_interpolation {
         }
       }
 
-# 11) the volume fraction accuracy required
+# 11) the volume fraction accuracy required, phitol
       ($tmp,$name) = search_operator_contents("phitol",$next_contents_number);
       if (empty($tmp)) {
         $external_arguments = $external_arguments.',msomeloop_phitol=-1'; # an index of -1 means no phitol value is specified
       } else {
         create_someloop($tmp,"sum","cell","<noloop>",$deriv,$otype,$omvar);
         $external_arguments = $external_arguments.',msomeloop_phitol='.$m{someloop};
+      }
+
+# 12) the levelset value, for the gyroid surface
+      ($tmp,$name) = search_operator_contents("levelset",$next_contents_number);
+      if (empty($tmp)) {
+        $external_arguments = $external_arguments.',msomeloop_levelset=-1'; # an index of -1 means no levelset value is specified
+      } else {
+        create_someloop($tmp,"sum","cell","<noloop>",$deriv,$otype,$omvar);
+        $external_arguments = $external_arguments.',msomeloop_levelset='.$m{someloop};
       }
 
 # choose shape to use based on options
@@ -3730,6 +3989,8 @@ sub mequation_interpolation {
         $shape = 4;
       } elsif ($options && $options =~ /(^|\,)\s*cylinder\s*(\,|$)/) { # size[l=1] is diameter, size[l=2] is length, centre is geometrical centre
         $shape = 5;
+      } elsif ($options && $options =~ /(^|\,)\s*gyroid\s*(\,|$)/) { # size[l=:] is period of gyroid in each dimension, centre is any offset, and levelset is used to define which surface
+        $shape = 6;
       }
       $external_arguments = $external_arguments.",shape=$shape";
 
@@ -4051,7 +4312,8 @@ sub mequation_interpolation {
   $type = "local";
   foreach $mvar ( 1 .. $m{$type} ) {
     if ($_[0] =~ /\Q$variable{$type}[$mvar]{"maxima"}/) { # see if variable is in the mequation
-      if ($variable{$type}[$mvar]{"centring"} ne $contextcentring) { error_stop("something amiss with local centring in $otype $variable{$otype}[$omvar]{name} expression"); }
+#     if ($variable{$type}[$mvar]{"centring"} ne $contextcentring) { error_stop("something amiss with local centring in $otype $variable{$otype}[$omvar]{name} expression"); }
+      if ($variable{$type}[$mvar]{"centring"} ne $contextcentring && $variable{$type}[$mvar]{"centring"} ne "none") { error_stop("something amiss with local centring in $otype $variable{$otype}[$omvar]{name} expression: contextcentring = $contextcentring: local centring = $variable{$type}[$mvar]{centring}"); }
       print DEBUG "found $variable{$type}[$mvar]{centring} centred $type $variable{$type}[$mvar]{name} $variable{$type}[$mvar]{maxima} in ".
         "$otype $variable{$otype}[$omvar]{name} mequation that is $contextcentring centred: replacing this local with a someloop\n";
       print DEBUG "before replacing $variable{$type}[$mvar]{maxima}: $_[0]\n";
@@ -4276,7 +4538,7 @@ sub run_maxima_simplify {
   my ($systemcall, $line, $out, $in, $otype, $omvar, $bit, $call_maxima, $n, $tmp, $not_found);
   my @replacements = ();
 
-  if (-e $stopfile) {die "HALT: found $stopfile in run_maxima_simplify\n";}
+  if (-e $stopfile) {error_stop("(HALT) found $stopfile in run_maxima_simplify");}
 
   print DEBUG "+++++++++++++++++++++\n".
     "in run_maxima_simplify: before _[0] = ",$_[0],"\n";
@@ -4322,13 +4584,13 @@ sub run_maxima_simplify {
 # initialise a new maxima_simplify_results entry
       push (@maxima_simplify_results, { "input" => $bit, "used" => 1, "tmp_file_number" => $tmp_file_number } );
 
-      open(MAXIMA, ">$tmp_dir/tmp$tmp_file_number.maxima") or die "ERROR: problem opening temporary maxima file $tmp_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??\n";
+      open(MAXIMA, ">$setup_current_dir/tmp$tmp_file_number.maxima") or error_stop("problem opening temporary maxima file $setup_current_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??");
       print MAXIMA "foo:$bit;";
-      print MAXIMA "with_stdout (\"$tmp_dir/tmp$tmp_file_number.simp\", grind(foo));";
+      print MAXIMA "with_stdout (\"$setup_current_dir/tmp$tmp_file_number.simp\", grind(foo));";
       close(MAXIMA);
-      $systemcall="$maxima_bin -b $tmp_dir/tmp$tmp_file_number.maxima >$tmp_dir/tmp$tmp_file_number.txt";
-      (!(system("$systemcall"))) or die "ERROR: could not $systemcall\n";
-      open(SIMP, "<$tmp_dir/tmp$tmp_file_number.simp") or do {
+      $systemcall="$maxima_bin -b $setup_current_dir/tmp$tmp_file_number.maxima >$setup_current_dir/tmp$tmp_file_number.txt";
+      (!(system("$systemcall"))) or error_stop("could not $systemcall");
+      open(SIMP, "<$setup_current_dir/tmp$tmp_file_number.simp") or do {
         print "ERROR: problem in run_maxima_simplify processing the following mequation (maxima equation):\n'$bit'\n".
           "  This equation originated from $otype variable $variable{$otype}[$omvar]{name} and this\n".
           "  error indicates that maxima had problems processing this equation.  All variables that\n".
@@ -4336,11 +4598,11 @@ sub run_maxima_simplify {
           "  variables appear in the above as their original names (e.g. <my variable>) then\n".
           "  check their equations as there is some problem with their definition (maybe a typo?).\n".
           "  Also check that any mathematical functions and syntax used in the above are compatible with maxima.\n";
-        print "  Maxima input lines are contained in the file $tmp_dir/tmp$tmp_file_number.maxima\n";
-        print "  Maxima processing output contained in the file $tmp_dir/tmp$tmp_file_number.txt\n";
-        print "  Maxima output lines are contained in the file $tmp_dir/tmp$tmp_file_number.simp\n";
-        print DEBUG "ERROR: problem in run_maxima_simplify processing the following mequation:\n'$bit'\n".
-        die;
+        print "  Maxima input lines are contained in the file $setup_current_dir/tmp$tmp_file_number.maxima\n";
+        print "  Maxima processing output contained in the file $setup_current_dir/tmp$tmp_file_number.txt\n";
+        print "  Maxima output lines are contained in the file $setup_current_dir/tmp$tmp_file_number.simp\n";
+        print DEBUG "ERROR: problem in run_maxima_simplify processing the following mequation:\n'$bit'\n";
+        error_stop("problem in run_maxima_simplify processing the following mequation:\n'$bit'");
       };
       $bit = "";
       while ($line = <SIMP>) {
@@ -4793,6 +5055,7 @@ sub create_compounds {
 #-------------------------------------------------------------------------------
 # does a string match on the elements in the array seeing if the first is present in the rest
 # can just use a smartmatch from perl 5.10 onwards, but this is for compatibility with older perl versions
+# comes in with first element as string to match ($_[0]) against remainder of the array 
 
 sub present_in_array {
 
@@ -5064,7 +5327,7 @@ sub run_maxima_fortran {
   my ($line, $systemcall, $bit, $otype, $omvar, $call_maxima, $n);
   my @replacements = ();
 
-  if (-e $stopfile) {die "HALT: found $stopfile in run_maxima_fortran";}
+  if (-e $stopfile) {error_stop("(HALT) found $stopfile in run_maxima_fortran");}
 
   print DEBUG "+++++++++++++++++++++\n".
     "in run_maxima_fortran: before _[0] = ",$_[0],"\n";
@@ -5101,7 +5364,7 @@ sub run_maxima_fortran {
 # initialise a new maxima_fortran_results entry
     push (@maxima_fortran_results, { "input" => $bit, "used" => 1, "tmp_file_number" => $tmp_file_number } );
 
-    open(MAXIMA, ">$tmp_dir/tmp$tmp_file_number.maxima") or die "ERROR: problem opening temporary maxima file $tmp_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??\n";
+    open(MAXIMA, ">$setup_current_dir/tmp$tmp_file_number.maxima") or error_stop("problem opening temporary maxima file $setup_current_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??");
     print MAXIMA "load(f90);";
     print MAXIMA "gradef(heaviside(x),0);"; # define derivative of heaviside function to be zero
     print MAXIMA "gradef(signum(x),0);"; # define derivative of maxima sign function to be zero (sign of x)
@@ -5109,11 +5372,11 @@ sub run_maxima_fortran {
     print MAXIMA "gradef(mod(x,y),1,x*log(y));"; # define derivative of maxima mod function - second element is wrt x, third element is wrt y (remainder when x is divided by y)
     print MAXIMA "gradef(log10(x),1/(x*float(log(10))));"; # define derivative of log10
     print MAXIMA "foo:$bit;";
-    print MAXIMA "with_stdout (\"$tmp_dir/tmp$tmp_file_number.fortran\", f90(foo));";
+    print MAXIMA "with_stdout (\"$setup_current_dir/tmp$tmp_file_number.fortran\", f90(foo));";
     close(MAXIMA);
-    $systemcall="$maxima_bin -b $tmp_dir/tmp$tmp_file_number.maxima >$tmp_dir/tmp$tmp_file_number.txt";
-    (!(system("$systemcall"))) or die "ERROR: could not $systemcall\n";
-    open(FORTRAN, "<$tmp_dir/tmp$tmp_file_number.fortran") or do {
+    $systemcall="$maxima_bin -b $setup_current_dir/tmp$tmp_file_number.maxima >$setup_current_dir/tmp$tmp_file_number.txt";
+    (!(system("$systemcall"))) or error_stop("could not $systemcall");
+    open(FORTRAN, "<$setup_current_dir/tmp$tmp_file_number.fortran") or do {
       print "ERROR: problem in run_maxima_fortran processing the following mequation (maxima equation):\n'$bit'\n".
         "  This equation originated from $otype variable $variable{$otype}[$omvar]{name} and this\n".
         "  error indicates that maxima had problems processing this equation.  All variables that\n".
@@ -5123,11 +5386,11 @@ sub run_maxima_fortran {
         "  Also check that any mathematical functions and syntax used in the above are compatible with\n".
         "  maxima and the f90 package.  Finally, if a diff (derivative) is requested, check that the\n".
         "  derivative exists and that maxima is actually able to calculate it.\n";
-      print "  Maxima input lines are contained in the file $tmp_dir/tmp$tmp_file_number.maxima\n";
-      print "  Maxima processing output contained in the file $tmp_dir/tmp$tmp_file_number.txt\n";
-      print "  Maxima output lines are contained in the file $tmp_dir/tmp$tmp_file_number.fortran\n";
-      print DEBUG "ERROR: problem in run_maxima_fortran processing the following mequation:\n$bit\n".
-      die;
+      print "  Maxima input lines are contained in the file $setup_current_dir/tmp$tmp_file_number.maxima\n";
+      print "  Maxima processing output contained in the file $setup_current_dir/tmp$tmp_file_number.txt\n";
+      print "  Maxima output lines are contained in the file $setup_current_dir/tmp$tmp_file_number.fortran\n";
+      print DEBUG "ERROR: problem in run_maxima_fortran processing the following mequation:\n$bit\n";
+      error_stop("problem in run_maxima_fortran processing the following mequation:\n$bit");
     };
     $bit = "";
     while ($line = <FORTRAN>) {
@@ -5147,11 +5410,11 @@ sub run_maxima_fortran {
         "  It could be a typo in your input file.  If not and the function is what you intended, maxima may not be\n".
         "  able to differentiate it for some reason.  Consider rewriting the equation in terms of alternative\n".
         "  functions that maxima can handle.  Also try to do the calculations in maxima separately to see what its capabilities are.\n";
-      print "  Maxima input lines are contained in the file $tmp_dir/tmp$tmp_file_number.maxima\n";
-      print "  Maxima processing output contained in the file $tmp_dir/tmp$tmp_file_number.txt\n";
-      print "  Maxima output lines are contained in the file $tmp_dir/tmp$tmp_file_number.fortran\n";
+      print "  Maxima input lines are contained in the file $setup_current_dir/tmp$tmp_file_number.maxima\n";
+      print "  Maxima processing output contained in the file $setup_current_dir/tmp$tmp_file_number.txt\n";
+      print "  Maxima output lines are contained in the file $setup_current_dir/tmp$tmp_file_number.fortran\n";
       print DEBUG "ERROR: problem in run_maxima_fortran processing the following mequation:\n$bit\n";
-      die;
+      error_stop("problem in run_maxima_fortran processing the following mequation:\n$bit");
     }
 
 # save result for possible future use
@@ -5984,12 +6247,13 @@ sub update_someloop_fortran {
   $mvar = 1;
   while ($m{"someloop"} && $mvar <= $m{"someloop"}) {
 #   if ($_[0] =~ /\Q$variable{"someloop"}[$mvar]{"maxima"}/) {
-    print DEBUG "SEARCH FOR: m = $mvar: maxima = $variable{someloop}[$mvar]{maxima}\n";
+#   print DEBUG "SEARCH FOR: m = $mvar: maxima = $variable{someloop}[$mvar]{maxima}\n";
     if ($_[0] =~ /\Q$variable{"someloop"}[$mvar]{"maxima"}/ || $_[0] =~ /(\[|,)\s*msomeloop_\S+\s*=\s*$mvar\s*(,|\])/) { # now also match fortran subroutine references to someloop variables
+      print DEBUG "SEARCH FOUND: m = $mvar: maxima = $variable{someloop}[$mvar]{maxima}\n";
 # NB: an msomeloop_* reference triggers a call to update_someloop, whereas a m_* reference does not and so for this case update_someloop would need to be called within the subroutine itself
 #     $fortran = $fortran."call update_someloop(thread,$mvar,i,j,k,error_string)\n";
       $fortran = $fortran."call update_someloop(thread=thread,m=$mvar,ilast=i,jlast=j,klast=k,error_string=error_string)\n";
-      print DEBUG "SEARCH FOUND\n";
+#     print DEBUG "SEARCH FOUND\n";
     }
     $mvar++;
   }
@@ -6457,11 +6721,11 @@ sub create_system_variables {
     if (!($variable{"system"}[$mvar]{"centring"})) {$variable{"system"}[$mvar]{"centring"} = "none";}
     if (!($variable{"system"}[$mvar]{"region"})) {
       if ($variable{"system"}[$mvar]{"centring"} eq "cell") {
-        $variable{"system"}[$mvar]{"region"} = "<all cells>";
+        $variable{"system"}[$mvar]{"region"} = "<allcells>";
       } elsif ($variable{"system"}[$mvar]{"centring"} eq "face") {
-        $variable{"system"}[$mvar]{"region"} = "<all faces>";
+        $variable{"system"}[$mvar]{"region"} = "<allfaces>";
       } elsif ($variable{"system"}[$mvar]{"centring"} eq "node") {
-        $variable{"system"}[$mvar]{"region"} = "<all nodes>";
+        $variable{"system"}[$mvar]{"region"} = "<allnodes>";
       } else {
         $variable{"system"}[$mvar]{"region"} = "";
       }
@@ -6482,7 +6746,7 @@ sub get_system_mvar {
   foreach $mvar ( 1 .. $m{"system"}+1 ) {
     if ($variable{"system"}[$mvar]{"name"} eq $_[0]) {exit;}
   }
-  if ($mvar > $m{"system"}) {die "ERROR: system variable $_[0] not found in get_system_mvar\n";}
+  if ($mvar > $m{"system"}) {error_stop("system variable $_[0] not found in get_system_mvar");}
 
   return $mvar;
 
@@ -6502,7 +6766,7 @@ sub write_latex {
 
   print DEBUG "in write_latex";
 
-  open(LATEX, ">$tmp_dir/variables.tex");
+  open(LATEX, ">$setup_current_dir/variables.tex");
 
 # create latex names for variables and write a tabular list to tmp.tex
   foreach $type (@user_types) {
@@ -6577,7 +6841,7 @@ sub write_latex {
   close(LATEX);
 
 # create and write latex equations
-  open(LATEX, ">$tmp_dir/equations.tex");
+  open(LATEX, ">$setup_current_dir/equations.tex");
 
   foreach $type ("equation","derived","output") {
     $textype = $type;
@@ -6653,7 +6917,7 @@ sub write_latex {
 # rank - scalar|vector|tensor
 # lindex (expressed as 1->9)
 # rindex (>=0)
-# regionname - can have both rindices and lindices (witness the kernel regions) so is exactly the same as name
+# regionname - can have both rindices and lindices (witness the kernel regions) so is exactly the same as name, except now checks and corrects deprecated names
 
 # the standarised variable name obeys:
 # if the variable is a scalar then no l index is given in the consistent name
@@ -6667,7 +6931,7 @@ sub examine_name {
 
   $action = $_[1];
   ($name) = $_[0] =~ /^<(.*)>$/;
-  if (!($name)) { die "ERROR: an empty variable was passed to sub consistent_name: $_[0]\n"; }
+  if (!($name)) { error_stop("an empty variable was passed to sub consistent_name: $_[0]"); }
 
 # set default (no index) options
   $basename = $name;
@@ -6719,7 +6983,15 @@ sub examine_name {
   elsif ($action eq "lindex") { return ($lindex); }
   elsif ($action eq "rindex") { return ($rindex); }
   elsif ($action eq "all") { return ($compoundname,$rank,$nrank,$lindex,$rindex); }
-  elsif ($action eq "regionname") { return ($name); }
+  elsif ($action eq "regionname") {
+    if ($name =~ /<(all|domain|boundary) (cells|faces|nodes)>/) {
+      print DEBUG "WARNING: spaces in system names have been deprecated: $name has been replaced with <$1$2>\n";
+      $name = "<$1$2>";
+    }
+    if ($name eq "<boundaryfaces>") { $name = "<boundaries>"; }
+    if ($name eq "<domaincells>") { $name = "<domain>"; }
+    return ($name);
+  }
 }
 
 #-------------------------------------------------------------------------------
@@ -6949,12 +7221,22 @@ sub read_maxima_results_files {
 #-------------------------------------------------------------------------------
 # whatever string is passed to this routine is output as an error message to both screen
 #  and DEBUG file, and the script then dies
+# also deal with previous successful run
 
 sub error_stop {
 
+  use strict;
+  use File::Path qw(rmtree); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
   print "ERROR: $_[0]\n";
   print DEBUG "ERROR: $_[0]\n";
-  die;
+
+# also remove traces of last successful run
+  print DEBUG "INFO: removing last successful setup data from $setup_creation_dir\n";
+  print "INFO: removing last successful setup data from $setup_creation_dir\n";
+  if (-d $setup_creation_dir) { rmtree($setup_creation_dir) or print "ERROR: could not remove existing $setup_creation_dir\n"; } # using rmtree for older File::Path compatibility
+  if (-f $setup_equation_file) {unlink($setup_equation_file) or print "ERROR: could not remove existing $setup_equation_file\n"; }
+
+  exit 1; # signifies that there was an error
 
 }
 #-------------------------------------------------------------------------------

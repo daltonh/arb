@@ -2,7 +2,7 @@
 #
 # file arb
 #
-# Copyright 2009-2014 Dalton Harvie (daltonh@unimelb.edu.au)
+# Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
 # 
@@ -99,6 +99,7 @@ usage () {
   echo "  --no-mgmres: do not download the fortran 90 mgmres libraries and link these in (default)";
   echo "  --no-downloads: do not download any files during the compilation process (equivalent to --no-suitesparse and --no-mgmres)";
 # echo "  --externals|-e: incorporate the following user fortran external file into the equation_module";
+  echo "  --wiki: create wiki pages from markdown source within doc/wiki";
   echo "  --help|-h: display this HELP INFO";
   echo;
   exit 1;
@@ -138,6 +139,7 @@ DEBUGGER=none;
 VALGRIND=valgrind;
 FILE_SEPARATOR="##################################################################################"
 ERRORSTATUS=0;
+ROOT_DIR=`pwd`;
 
 # location of ooc temp files for out of core intel pardiso solver
 MKL_PARDISO_OOC_DIR=tmp/intel_pardiso_ooc
@@ -228,6 +230,14 @@ do
     "--no-opt") OOPT=0;; # this is optimisation turned off
     "-O"?) OOPT=${i:2};;
     "--opt"?) OOPT=${i:5};;
+    "--wiki") # link to the documentation and make the documentation from the markdown files
+      echo "INFO: creating link to wiki at $ROOT_DIR/doc/wiki/body/index.html";
+      ln -s $ROOT_DIR/doc/wiki/body/index.html >/dev/null 2>/dev/null ;
+      cd doc/wiki;
+#     echo "INFO: about to make wiki in" `pwd` "with rootdir=$ROOT_DIR";
+      echo "INFO: about to make wiki in" `pwd`;
+      make all rootdir=$ROOT_DIR;
+      exit;;
     "--help"|"-h") usage;;
 # TODO - additional external
 #   "--externals*".") echo "INFO: found arb input file $i"; ARBFILES[${#ARBFILES[@]}]=$i;;
@@ -242,6 +252,8 @@ done ;
 
 # create it if it doesn't already exist
 if [ ! -d output ] ; then mkdir output ; fi ;
+# create link to .gitignore in the output directory if it doesn't exist already
+if [ ! -e output/.gitignore ] ; then ln -s ../misc/git/gitignore_empty_directory output/.gitignore ; fi ;
 # always keep copy of previous output
 if [ ! -d $PREVIOUS_RUN ] ; then mkdir -p $PREVIOUS_RUN ; fi ;
 $RM $PREVIOUS_RUN/* >/dev/null 2>/dev/null ;

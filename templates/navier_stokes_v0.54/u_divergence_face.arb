@@ -1,4 +1,4 @@
 # <udiv_f> is defined originally as a derived in u_gradient_tensor, but is set to zero
 # its value is used in the total_stress calculation
 # by including this file after the total_stress inclusion then a contribution from the divergence will be included in the stress calculation
-FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <all faces>
+FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces>

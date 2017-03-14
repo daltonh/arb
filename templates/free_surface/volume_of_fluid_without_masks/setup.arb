@@ -5,17 +5,17 @@
 CONSTANT <vof_phi_tol> 1.d-8
 
 # this is the vof function, defined on all cells
-CELL_UNKNOWN <vof_phi> [] "<vof_phi_initial>" ON <all cells> magnitude=1.d0
+CELL_UNKNOWN <vof_phi> [] "<vof_phi_initial>" ON <allcells> magnitude=1.d0
 # this vof function is used on the fluid domain only, and defines fluid properties and is used to construct the delta function
 # function is limited, and has newtstepmax on it
-CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <all cells> newtstepmax=30
+CELL_DERIVED <vof_phi_lim> "cellmax(cellmin(<vof_phi>,1.d0),0.d0)" ON <allcells> newtstepmax=30
 # also define a derived version of <vof_phi>, so that newtstepmax can be used with it to turn off implicit iterations if newton loop is not converging
 # now (since v0.52) replaces <vof_phi_lim> in interface (kappa) calculation, without being bounded between 0 and 1
-CELL_DERIVED <vof_phi_interface> "<vof_phi>" ON <all cells> newtstepmax=20
+CELL_DERIVED <vof_phi_interface> "<vof_phi>" ON <allcells> newtstepmax=20
 # update vof, while rounding to identify interface cells
 CELL_LOCAL <vof_phi_rounded> "cellif(<vof_phi>-<vof_phi_tol>,cellif(1.d0-<vof_phi_tol>-<vof_phi>,<vof_phi>,1.d0),0.d0)"
-CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_rounded>" "<vof_phi_rounded>" ON <all cells> nooutput
+CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_rounded>" "<vof_phi_rounded>" ON <allcells> nooutput
 # update without rounding
-#CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi>" "<vof_phi>" ON <all cells> nooutput
+#CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi>" "<vof_phi>" ON <allcells> nooutput
 
 CELL_LOCAL <vof_phi_initial> "0.d0" # default initial phi value - set this to something in the actual input file

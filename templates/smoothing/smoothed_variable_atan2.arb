@@ -17,4 +17,4 @@ CELL_LOCAL <variable_cl> "2.d0*<variable_base>*<variable_dl>/<pi>"
 CELL_LOCAL <variable_cu> "2.d0*<variable_base>*<variable_du>/<pi>"
 CELL_LOCAL <variable_smoothedl> "<variable_cl>*atan((<variable>-<variable_basel>)/<variable_cl>)+<variable_basel>"
 CELL_LOCAL <variable_smoothedu> "<variable_cu>*atan((<variable>-<variable_baseu>)/<variable_cu>)+<variable_baseu>"
-CELL_DERIVED <variable_smoothed> "cellif(<variable>-<variable_basel>,cellif(<variable>-<variable_baseu>,<variable_smoothedu>,<variable>),<variable_smoothedl>)" ON <all cells> output
+CELL_DERIVED <variable_smoothed> "cellif(<variable>-<variable_basel>,cellif(<variable>-<variable_baseu>,<variable_smoothedu>,<variable>),<variable_smoothedl>)" ON <allcells> output
