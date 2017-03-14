@@ -7,7 +7,7 @@ EXTERNALS "src/free_surface_functions.f90"
 #(hash added during unwrap)INCLUDE_WORKING "vof_advection_streamtest.arb"
 #(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
    #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../vof_advection_streamtest.arb without any search/replace combinations
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../vof_advection_streamtest.arb without any search/replace combinations
    VERSION 0.53
    
    # need to completely rethink the variable update order in this
@@ -112,7 +112,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "implicit_reconstructed_levelset"
    #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb without any search/replace combinations
       # implicit reconstructed levelset idea
       CELL_UNKNOWN <vof_s> "2.d0*<vof_phi_interface>-1.d0" ON <allcells> magnitude=1.d0
       CONSTANT <vof_s_interface_width> 1.d0 # this controls the thickness of the interface, roughly in terms of the local cell width
@@ -128,7 +128,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "normals" R "[l=" W "[r=1,l=" R "<vof_phi_smoothed>" W "<vof_s[r=1]>" R "<vof_phigrad_mag>" W "<vof_phigrad_mag[r=1]>" R "<vof_phigrad_mag^2>" W "<vof_phigrad_mag^2[r=1]>" R "DERIVED" W "TRANSIENT"
    #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/normals.arb with the following search/replace combinations: replace [l= with [r=1,l=: replace <vof_phi_smoothed> with <vof_s[r=1]>: replace <vof_phigrad_mag> with <vof_phigrad_mag[r=1]>: replace <vof_phigrad_mag^2> with <vof_phigrad_mag^2[r=1]>: replace DERIVED with TRANSIENT
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/free_surface/volume_of_fluid/normals.arb with the following search/replace combinations: replace [l= with [r=1,l=: replace <vof_phi_smoothed> with <vof_s[r=1]>: replace <vof_phigrad_mag> with <vof_phigrad_mag[r=1]>: replace <vof_phigrad_mag^2> with <vof_phigrad_mag^2[r=1]>: replace DERIVED with TRANSIENT
       # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
       
       # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
@@ -171,7 +171,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "output_masks"
    #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/output_masks.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/free_surface/volume_of_fluid/output_masks.arb without any search/replace combinations
       # this file contains variables that allow the outputing of the various dynamic region masks
       
       # have to cope with both single and double domain setups

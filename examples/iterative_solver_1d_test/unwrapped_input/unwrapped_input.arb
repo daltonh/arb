@@ -5,14 +5,9 @@ EXTERNALS "src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: iterative_solver_1d_test.arb
 #(hash added during unwrap)INCLUDE_WORKING "iterative_solver_1d_test.arb"
-<<<<<<< HEAD
-   #++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   # the following is INCLUDED from ../iterative_solver_1d_test.arb without any search/replace combinations
-=======
 #(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
    #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../iterative_solver_1d_test.arb without any search/replace combinations
->>>>>>> develop
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../iterative_solver_1d_test.arb without any search/replace combinations
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -29,13 +24,8 @@ EXTERNALS "src/free_surface_functions.f90"
    #-------------------------------------------------------------------
    MSH_FILE "line_with_uniform_spacing.msh"
    
-<<<<<<< HEAD
-   CELL_UNKNOWN <T> [1] "1.d0" ON <all cells> magnitude=1.d0
-   FACE_DERIVED <q_f> [1] "-facegrad(<T>)" ON <all faces> output # flux of heat across each face, in the direction of the face normal
-=======
    CELL_UNKNOWN <T> [1] "1.d0" ON <allcells> magnitude=1.d0
    FACE_DERIVED <q_f> [1] "-facegrad(<T>)" ON <allfaces> output # flux of heat across each face, in the direction of the face normal
->>>>>>> develop
    CELL_EQUATION <T transport> "celldiv(<q_f>)" ON <domain> output #magnitude=1.d0 # diffusion equation, giving conservation of heat on each cell within the domain
    FACE_EQUATION <T right> "<q_f>+1.d0" ON <right> output #magnitude=1.d0 # specified heat flux through hole surface: Note, face normals on boundary faces all point outwards, so this equation specifies a flux equal to <hole flux> directed out of the domain.  However, <hole flux> is set to a negative number above, giving a (physical) flux directed into the domain
    FACE_EQUATION <T left> "<T>+0.d0" ON <left> output #magnitude=1.d0 # set temperature on the walls of the domain 
@@ -45,11 +35,7 @@ EXTERNALS "src/free_surface_functions.f90"
    ##FACE_OUTPUT <T right normalised> "<T right>/nonemagnitude(variable=<T right>)" ON <right>
    FACE_OUTPUT <T left normalised> "<T left>/nonemagnitude(variable=<T left>)" ON <left>
    
-<<<<<<< HEAD
-   #INCLUDE_ROOT "general"
-=======
    #INCLUDE_TEMPLATE "general"
->>>>>>> develop
    #INCLUDE "element_information"
    
    # there are many iterative solvers now, but doglegdescent is really the only viable one for reasonably sized problems
@@ -72,11 +58,6 @@ EXTERNALS "src/free_surface_functions.f90"
    #ITERSTEPMAX 100 # maximum number of iteration steps to do - should be large
    ITERSTEPCHECK 10 # this is how often the iterative solver routine dumps output to the screen, and calculates/compares the inner newton residual against iterrestol (but otherwise does compare the less accurate inner residual every step) - don't do too much output otherwise file sizes will be too large, and computation possibly slowed by screen refreshing
    #-------------------------------------------------------------------
-<<<<<<< HEAD
-   # INCLUDE FINISHED for ../iterative_solver_1d_test.arb
-   #--------------------------------------------------------
-=======
    #(comment generated during unwrap) INCLUDE finished for ../iterative_solver_1d_test.arb
    #(comment generated during unwrap)--------------------------------------------------------
->>>>>>> develop
 ##################################################################################

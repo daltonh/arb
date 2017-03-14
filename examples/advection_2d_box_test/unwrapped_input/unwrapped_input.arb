@@ -7,7 +7,7 @@ EXTERNALS "src/free_surface_functions.f90"
 #(hash added during unwrap)INCLUDE_WORKING "advection_2d_box_test.arb"
 #(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
    #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../advection_2d_box_test.arb without any search/replace combinations
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../advection_2d_box_test.arb without any search/replace combinations
    # arb by dalton harvie
    # file equations.in
    #----------------------------------------------------------------------------
@@ -77,7 +77,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "absolute_limiter" R "<phi" W "<foo"
    #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = .. ../templates/advection_limiters/implicit
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/absolute_limiter.arb with the following search/replace combinations: replace <phi with <foo
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/advection_limiters/implicit/absolute_limiter.arb with the following search/replace combinations: replace <phi with <foo
       # this file produces a limiter (<foo limiter>) that can be used to limit advective quantities
       
       # to use these limiters for a general cell-centred variable <foo> say you need to:
@@ -113,13 +113,13 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "limiter"
       #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/limiter.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/advection_limiters/implicit/limiter.arb without any search/replace combinations
          # vector from centre to face within each cell
          # these will need  etc replaced either with spaces or comments, depending on which dimensions are being solved for
          #(hash added during unwrap)INCLUDE "centre_to_face_vector"
          #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/centre_to_face_vector.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/advection_limiters/implicit/centre_to_face_vector.arb without any search/replace combinations
             # vector to the face from the last cell centre
             FACE_LOCAL <xc_to_xf[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
             FACE_LOCAL <xc_to_xf[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
@@ -131,7 +131,7 @@ EXTERNALS "src/free_surface_functions.f90"
          #(hash added during unwrap)INCLUDE "kernel_limiter"
          #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/kernel_limiter.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/advection_limiters/implicit/kernel_limiter.arb without any search/replace combinations
             # this limiter ensures that the effective kernels used to calculate the face centred quantities within each cell are below certain maximums
             # making these numbers smaller will cause the method to become more upwind
             NONE_CONSTANT <foo limiter crosskernel max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
@@ -146,7 +146,7 @@ EXTERNALS "src/free_surface_functions.f90"
          #(hash added during unwrap)INCLUDE "limiter_gradients"
          #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/limiter_gradients.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/advection_limiters/implicit/limiter_gradients.arb without any search/replace combinations
             CELL_DERIVED <foo limiter grad[l=1]> "cellgrad[l=1](<foo>)*<foo limiter kernel>" ON <allcells>
             CELL_DERIVED <foo limiter grad[l=2]> "cellgrad[l=2](<foo>)*<foo limiter kernel>" ON <allcells>
             CELL_DERIVED <foo limiter grad[l=3]> "cellgrad[l=3](<foo>)*<foo limiter kernel>" ON <allcells>
@@ -176,7 +176,7 @@ EXTERNALS "src/free_surface_functions.f90"
          #(hash added during unwrap)INCLUDE "default_parameters"
          #(comment generated during unwrap) not adding new include_path ../templates/advection_limiters/implicit, as it is already on the top of include_path array = ../templates/advection_limiters/implicit
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/advection_limiters/implicit/default_parameters.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/advection_limiters/implicit/default_parameters.arb without any search/replace combinations
             # these are the parameters that are now standard (v0.50), and included at the end of the limiter file now, overwriting those in limiter.arb and kernel_limiter.arb
             NONE_CONSTANT <foo a> 4.0d0 # determines the gradient of the limiter
             NONE_CONSTANT <foo b> 0.25d0 # between 0 and 1.  Less than 0.5 is probably required for any guarantee of diagonal dominance.  At b=0 all gradients will be limited to some extent.  If b=1 then only gradients that are absolutely going to cause under/overshoots will be limited (but the resulting Jacobian is unlikely to be diagonally dominant for a pure advection problem)

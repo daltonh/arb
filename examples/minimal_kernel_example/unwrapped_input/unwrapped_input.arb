@@ -7,7 +7,7 @@ EXTERNALS "src/free_surface_functions.f90"
 #(hash added during unwrap)INCLUDE_WORKING "minimal_kernel_example.arb"
 #(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
    #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../minimal_kernel_example.arb without any search/replace combinations
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../minimal_kernel_example.arb without any search/replace combinations
    VERSION 0.51 # the version of syntax used in this file
    
    # the following strings describe the simulation and are passed to the output files
@@ -52,12 +52,12 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "element_information"
    #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = .. ../templates/general
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/element_information.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/element_information.arb without any search/replace combinations
       # includes all element information files from general
       #(hash added during unwrap)INCLUDE "element_coordinates.arb"
       #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/element_coordinates.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/element_coordinates.arb without any search/replace combinations
          CELL_OUTPUT <cellx output[l=1]> "<cellx[l=1]>" ON <allcells>
          CELL_OUTPUT <cellx output[l=2]> "<cellx[l=2]>" ON <allcells>
          CELL_OUTPUT <cellx output[l=3]> "<cellx[l=3]>" ON <allcells>
@@ -72,7 +72,7 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "element_counts.arb"
       #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/element_counts.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/element_counts.arb without any search/replace combinations
          FACE_OUTPUT <face_nodes> "nodesum(1.d0,region=<faceknodes>)" ON <allfaces>
          CELL_OUTPUT <cell_nodes> "nodesum(1.d0,region=<cellknodes>)" ON <allcells>
          CELL_OUTPUT <cell_faces> "facesum(1.d0,region=<celljfaces>)" ON <allcells>
@@ -81,7 +81,7 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "element_dimensions.arb"
       #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/element_dimensions.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/element_dimensions.arb without any search/replace combinations
          CELL_OUTPUT <celldx output[l=1]> "<celldx[l=1]>" ON <allcells>
          CELL_OUTPUT <celldx output[l=2]> "<celldx[l=2]>" ON <allcells>
          CELL_OUTPUT <celldx output[l=3]> "<celldx[l=3]>" ON <allcells>
@@ -94,7 +94,7 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "element_indices.arb"
       #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/element_indices.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/element_indices.arb without any search/replace combinations
          CELL_OUTPUT <icell output> "<icell>" ON <allcells>
          FACE_OUTPUT <jface output> "<jface>" ON <allfaces>
          NODE_OUTPUT <knode output> "<knode>" ON <allnodes>
@@ -105,7 +105,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "kernel_information"
    #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = .. ../templates/general
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/kernel_information.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/kernel_information.arb without any search/replace combinations
       CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <allcells>
       CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <allcells>
       CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <allcells>
@@ -120,12 +120,12 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "mesh_quality"
    #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = .. ../templates/general
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/mesh_quality.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/mesh_quality.arb without any search/replace combinations
       # some metrics on mesh quality
       #(hash added during unwrap)INCLUDE "cell_aspect_ratio" # keep < 100 say for structured meshes, or as close to 1 as possible
       #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/cell_aspect_ratio.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/cell_aspect_ratio.arb without any search/replace combinations
          CELL_OUTPUT <cell aspect ratio> "facemax(<facearea>,region=<celljfaces>)/cellmax(facemin(<facearea>,region=<celljfaces>),<tinyish>)" ON <domain>
          NONE_OUTPUT <maximum cell aspect ratio> "cellmax(<cell aspect ratio>,region=<domain>)"
          #(comment generated during unwrap) INCLUDE finished for ../templates/general/cell_aspect_ratio.arb
@@ -133,7 +133,7 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "cell_adjacent_volume_ratio" # keep < 1.2 say, or as close to 1 as possible
       #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/cell_adjacent_volume_ratio.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/cell_adjacent_volume_ratio.arb without any search/replace combinations
          # for each cell within the domain, this is the ratio between the maximum surround cell volume and the cell's volume, indicating how uniform cell sizes are
          #CELL_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<nocadjacentcellicells>)/<cellvol>" ON <domain> # NB boundary cells have cellvol = 0 so will not contribute to this calculation, as required
          #NONE_OUTPUT <maximum cell adjacent volume ratio> "cellmax(<cell adjacent volume ratio>,region=<domain>)"

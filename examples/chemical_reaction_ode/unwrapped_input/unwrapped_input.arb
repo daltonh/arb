@@ -7,7 +7,7 @@ EXTERNALS "src/free_surface_functions.f90"
 #(hash added during unwrap)INCLUDE_WORKING "chemical_reaction_ode.arb"
 #(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
    #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../chemical_reaction_ode.arb without any search/replace combinations
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../chemical_reaction_ode.arb without any search/replace combinations
    # this file introduces the basics of solving a transient problem
    # it is 0D, hence, there is no distribution of quantities throughout space, and hence, there is no msh file is used and all variables are 'NONE' centred
    

@@ -7,7 +7,7 @@ EXTERNALS "src/free_surface_functions.f90"
 #(hash added during unwrap)INCLUDE_WORKING "stokes_flow_through_cylinder.arb"
 #(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
    #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../stokes_flow_through_cylinder.arb without any search/replace combinations
+   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../stokes_flow_through_cylinder.arb without any search/replace combinations
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -90,7 +90,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "stokes"
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/stokes.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/stokes.arb without any search/replace combinations
       # call this file before constants to specify the stokes equations
       #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<stokescomment>>" W "" R "<<navierstokescomment>>" W "#"
       #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/stokes.arb
@@ -99,7 +99,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "constants" # specify physical and numerical constants
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/constants.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/constants.arb without any search/replace combinations
       # physical data
       CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
       CONSTANT <rho> [kg/m^3] 1.d0 # density
@@ -112,7 +112,7 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "default_string_replacements"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
          # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
          # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
          #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
@@ -154,14 +154,14 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
       #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/navier_stokes ../templates/general
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/domain_lengthscale.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/domain_lengthscale.arb without any search/replace combinations
          # find an estimate of the domain size
          # here we use the maximum domain length in each dimension
          # previously used a more accurate but expensive formulation (see minimum_face_boundary_distance)
          #(hash added during unwrap)INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
          #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/domain_lengths.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/general/domain_lengths.arb without any search/replace combinations
             # based on node locations, here we calculate the maximum length of the domain in each dimension
             # these loops could be conducted over <boundarynodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
             # as this is only a single loop through each node this isn't an expensive calculation anyway (unlike the levelset-based minimum boundary distance)
@@ -191,11 +191,11 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "domain"
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/domain.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/domain.arb without any search/replace combinations
       #(hash added during unwrap)INCLUDE "unknowns" # no .arb suffix is required
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/unknowns.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/unknowns.arb without any search/replace combinations
          # unknown variables used for flow problems
          CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
          CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
@@ -206,12 +206,12 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "total_stress"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/total_stress.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/total_stress.arb without any search/replace combinations
          # total stress tensor
          #(hash added during unwrap)INCLUDE "u_gradient_tensor"
          #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/u_gradient_tensor.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/u_gradient_tensor.arb without any search/replace combinations
             # a tensor of face centred gradients that respects any reflections
             # used in the total stress and boundary conditions now
             # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
@@ -253,14 +253,14 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "u_f"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/u_f.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/u_f.arb without any search/replace combinations
          # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
          
          # check default strings are set
          #(hash added during unwrap)INCLUDE "default_string_replacements"
          #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
             # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
             #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
@@ -275,14 +275,14 @@ EXTERNALS "src/free_surface_functions.f90"
          #(hash added during unwrap)INCLUDE "p_error"
          #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/p_error.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/p_error.arb without any search/replace combinations
             # a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
             # pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
             
             #(hash added during unwrap)INCLUDE "dynamic_force" # cell centred dynamic force
             #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
                #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-               #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/dynamic_force.arb without any search/replace combinations
+               #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/dynamic_force.arb without any search/replace combinations
                # dynamic force is the pressure force that could cause fluid movement
                # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
                # dynamic force now has the physically correct sign!
@@ -323,33 +323,21 @@ EXTERNALS "src/free_surface_functions.f90"
             # dxunit - dynamicforcecf
             # lastfacenoglue is required when averaging the normal when we have periodic gluing, as we require the normal to be orientated relative to the original face, rather than its glued counterpart
             # for reflect gluing, <p_error> is zero anyway
-<<<<<<< HEAD
-            FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastfacenoglue](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domain faces>
-=======
             FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastfacenoglue](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
->>>>>>> develop
             
             # facegrad method
             #FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <allfaces>
             # facegrad + dynamicforcecf
             ##FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domainfaces>
             # facegrad - dynamicforcecf
-<<<<<<< HEAD
-            #FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastfacenoglue](<facenorm[l=:]>))),0.d0)" ON <domain faces>
-=======
             #FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastfacenoglue](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
->>>>>>> develop
             
             # adjacentcells method
             #FACE_LOCAL <dynamic_force_f> "-facegrad[adjacentcells](<p>)" ON <allfaces>
             # adjacentcells + dynamicforcecf
             ##FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domainfaces>
             # adjacentcells - dynamicforcecf
-<<<<<<< HEAD
-            #FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastfacenoglue](<facenorm[l=:]>))),0.d0)" ON <domain faces>
-=======
             #FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastfacenoglue](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
->>>>>>> develop
             
             # the following are two template lines for setting the strings prior to entering this file
             #GENERAL_REPLACEMENTS R "#" W "#"
@@ -414,7 +402,7 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "advection_flux" # even though this is called for the stokes equations, no terms will be created
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/advection_flux.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/advection_flux.arb without any search/replace combinations
          # flux of momentum over and in the direction of each face due to advection
          # which one is chosen depends on the comment strings
          # all require navierstokes equations to be current
@@ -423,7 +411,7 @@ EXTERNALS "src/free_surface_functions.f90"
          #(hash added during unwrap)INCLUDE "default_string_replacements"
          #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
             # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
             #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
@@ -455,14 +443,14 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "momentum_flux"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/momentum_flux.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/momentum_flux.arb without any search/replace combinations
          # flux of momentum over and in the direction of each face
          
          # check default strings are set
          #(hash added during unwrap)INCLUDE "default_string_replacements"
          #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
             # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
             #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
@@ -486,14 +474,14 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "conservation"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/conservation.arb without any search/replace combinations
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/conservation.arb without any search/replace combinations
          # conservation equations solved over each domain cell (finite volume method)
          
          # check default strings are set
          #(hash added during unwrap)INCLUDE "default_string_replacements"
          #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/default_string_replacements.arb without any search/replace combinations
             # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
             #(hash added during unwrap)GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W ""
@@ -530,16 +518,16 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "outlet_p_set" # outlet BC
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/outlet_p_set.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/outlet_p_set.arb without any search/replace combinations
       #(hash added during unwrap)INCLUDE "inlet_p_set" REPLACE "inlet" WITH "outlet" REPLACE "<p_in>" WITH "0.d0"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/inlet_p_set.arb with the following search/replace combinations: replace inlet with outlet: replace <p_in> with 0.d0
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/inlet_p_set.arb with the following search/replace combinations: replace inlet with outlet: replace <p_in> with 0.d0
          # boundary conditions on outlet - fully developed flow
          #(hash added during unwrap)INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
          #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/u_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation> with <inlet fully developed>
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/u_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation> with <inlet fully developed>
             #FACE_EQUATION <outlet fully developed> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <outlet> # normal velocity component is fully developed
             FACE_EQUATION <outlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <outlet> # normal velocity component is fully developed
             #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/u_fully_developed.arb
@@ -547,7 +535,7 @@ EXTERNALS "src/free_surface_functions.f90"
          #(hash added during unwrap)INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"
          #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
             #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation with <inlet no slip
+            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation with <inlet no slip
             FACE_EQUATION <outlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to the face
             FACE_EQUATION <outlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <outlet> # no component tangential to the face in the second tangential direction
             #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/noslip.arb
@@ -561,7 +549,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "inlet_centreline_region" R "inlet" W "outlet" # create inlet centreline region and sans centreline region
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/inlet_centreline_region.arb with the following search/replace combinations: replace inlet with outlet
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/inlet_centreline_region.arb with the following search/replace combinations: replace inlet with outlet
       # this are the region definitions required to define the single outlet face cell and corresponding inverse outlet region
       # obviously can do replacement on outlet and centreline to create other equivalent regions from this file
       FACE_REGION <outlet centreline> "at(0.d0,0.d0,0.d0)" ON <outlet>
@@ -571,19 +559,19 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "walls" # nonslip walls BC
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/walls.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/walls.arb without any search/replace combinations
       # boundary conditions on nonslip walls
       #(hash added during unwrap)INCLUDE "noflux" REPLACE "<region>" WITH "<walls>" REPLACE "<equation>" WITH "<walls noflux>"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/noflux.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls noflux>
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/noflux.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls noflux>
          FACE_EQUATION <walls noflux> "<u_f>" ON <walls> # no flux normal to region
          #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/noflux.arb
          #(comment generated during unwrap)--------------------------------------------------------
       #(hash added during unwrap)INCLUDE "noslip" REPLACE "<region>" WITH "<walls>" REPLACE "<equation" WITH "<walls noslip" # noslip now detects whether it is a 3D or 2D problem
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation with <walls noslip
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation with <walls noslip
          FACE_EQUATION <walls noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
          FACE_EQUATION <walls noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
          #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/noslip.arb
@@ -591,7 +579,7 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "p_extrapolation" REPLACE "<region>" WITH "<walls>" REPLACE "<equation>" WITH "<walls p_extrapolation>"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/p_extrapolation.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls p_extrapolation>
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/p_extrapolation.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <walls p_extrapolation>
          FACE_EQUATION <walls p_extrapolation> "<dynamic_force_f>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
          #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/p_extrapolation.arb
          #(comment generated during unwrap)--------------------------------------------------------
@@ -600,7 +588,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "inlet_centreline_region" # create inlet centreline region and sans centreline region
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/inlet_centreline_region.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/inlet_centreline_region.arb without any search/replace combinations
       # this are the region definitions required to define the single inlet face cell and corresponding inverse inlet region
       # obviously can do replacement on inlet and centreline to create other equivalent regions from this file
       FACE_REGION <inlet centreline> "at(0.d0,0.d0,0.d0)" ON <inlet>
@@ -610,12 +598,12 @@ EXTERNALS "src/free_surface_functions.f90"
    #(hash added during unwrap)INCLUDE "inlet_u_fully_developed"
    #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = .. ../templates/navier_stokes
       #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/inlet_u_fully_developed.arb without any search/replace combinations
+      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/inlet_u_fully_developed.arb without any search/replace combinations
       # boundary conditions on inlet - fully developed flow
       #(hash added during unwrap)INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/u_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation> with <inlet fully developed>
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/u_fully_developed.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation> with <inlet fully developed>
          #FACE_EQUATION <inlet fully developed> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <inlet> # normal velocity component is fully developed
          FACE_EQUATION <inlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <inlet> # normal velocity component is fully developed
          #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/u_fully_developed.arb
@@ -623,7 +611,7 @@ EXTERNALS "src/free_surface_functions.f90"
       #(hash added during unwrap)INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"
       #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
          #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation with <inlet no slip
+         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/noslip.arb with the following search/replace combinations: replace <region> with <inlet>: replace <equation with <inlet no slip
          FACE_EQUATION <inlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <inlet> # no component tangential to the face
          FACE_EQUATION <inlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <inlet> # no component tangential to the face in the second tangential direction
          #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/noslip.arb
