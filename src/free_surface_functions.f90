@@ -606,6 +606,9 @@ if (debug) then
   write(50,*) 'method = ',method
 end if
 
+! TODO: remove reference to phi, or deal with more consistently - is it a face centred phi anyway?
+! remove check on normal magnitude as a unit normal - assume that normal being passed in is a unit normal already, unless given option of nonunitnormal (versus unitnormal option) - deriv breaks for nonunitnormal
+
 ! if phi is passed in, it is used to determine where phi 
 ! examine phi first
 ! save phi in a temporary variable, if it is defined
