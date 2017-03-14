@@ -37,8 +37,6 @@
 # a little script to run through and test all of the example/manual problems
 # daltonh, 24/11/10
 
-# TODO: fix setup_data directory to deal with successful and unsuccessful runs
-
 # usage: from the working directory run ./misc/test_suite/test_suite
 #-------------------------------------------------------------------------------
 # usage function
@@ -47,13 +45,13 @@ usage () {
   echo "HELP/USAGE: ./misc/test_suite/testsuite [options] [test_case1] [test_case2] [etc]";
   echo
   echo "This script will run through all of the test problems within the examples directory";
-  echo "Run from the working directory (as above)";
+  echo "Run from the arb directory (as above)";
   echo "Alternatively, if any test_case's are specified, only they will be run";
-  echo "To stop this script cleanly, do touch test_suite_stop within the working directory (and touch stop after this to stop the current simulation asap)";
+  echo "To stop this script cleanly, do touch test_suite_stop within the arb directory (and touch stop after this to stop the current simulation asap)";
   echo
   echo "Possible options:";
   echo "  --clean|-c: remove previous results and run tests afresh";
-  echo "  --refresh|r: only run the tests that were previously unsuccessful (default)";
+  echo "  --refresh|-r: only run the tests that were previously unsuccessful (default)";
   echo "  --compiler-gnu: use the gfortran compiler";
   echo "  --compiler-intel: use the intel compiler";
   echo "  --compiler-both: use both compilers sequentially (default)";
@@ -66,9 +64,6 @@ cwd=`pwd`;
 examples_dir=$cwd'/examples';
 #examples_dir=$cwd'/examples_test';
 suitesparse_dir=$cwd'/src/contributed/suitesparse'
-log_file=$cwd'/test_suite.log'
-saved_dir=$cwd'/saved_input_files'
-setup_dir=$cwd'/output/setup_data';
 stopfile='test_suite_stop'
 error=0;
 REFRESH=1; # default is refresh is on
@@ -93,13 +88,15 @@ do
   esac
 done ;
 
-if [ -e $log_file -a $REFRESH -eq 0 ] ; then rm $log_file ; fi;
-
-if [ -e $log_file -a $REFRESH -eq 1 ] ; then echo "INFO: restart of test_suite" >>$log_file ; fi;
-
 # check that examples are in the right location
 if [ ! -d $examples_dir ] ; then
   echo "ERROR: examples directory $examples_dir does not exist";
+  exit 1;
+fi;
+
+# check that suitesparse solver is in the right location
+if [ ! -d $suitesparse_dir ] ; then
+  echo "ERROR: suitesparse directory $suitesparse_dir does not exist - Are you running from an arb_dir?";
   exit 1;
 fi;
 
@@ -109,7 +106,7 @@ if [ -z "${TESTCASES[0]}" ] ; then
   TESTCASES=( * );
   cd ..;
 fi;
-echo "INFO: attempting to run within the following directories (validity checked later): ${TESTCASES[@]}" >>$log_file;
+echo "INFO: attempting to run within the following directories (validity checked later): ${TESTCASES[@]}";
 
 # set compilers based on COMPILER option
 unset COMPILERS;
@@ -119,143 +116,96 @@ echo "compiler = both"
 else
   COMPILERS[0]=$COMPILER;
 fi;
-echo "INFO: using the following compilers: ${COMPILERS[@]}" >>$log_file;
-
-# check that suitesparse solver is in the right location
-if [ ! -d $suitesparse_dir ] ; then
-  echo "ERROR: suitesparse directory $suitesparse_dir does not exist";
-  exit 1;
-fi;
+echo "INFO: using the following compilers: ${COMPILERS[@]}";
 
 # download and make suitesparse solver
 echo "INFO: attempting to make the suitesparse solver";
-echo "INFO: attempting to make the suitesparse solver" >>$log_file 2>>$log_file;
 cd $suitesparse_dir;
-make >>$log_file 2>>$log_file;
+make;
 if [ $? -ne 0 ] ; then
   echo "ERROR: problem fetching/compiling the suitesparse solver";
-  echo "ERROR: problem fetching/compiling the suitesparse solver" >>$log_file 2>>$log_file;
   cd $cwd;
   exit 1 ;
 else
   echo "INFO: suitesparse solver successfully compiled";
-  echo "INFO: suitesparse solver successfully compiled" >>$log_file 2>>$log_file;
   cd $cwd;
 fi ;
-
-# create saved_dir and move input files into it for later replacement
-if [ -d $saved_dir ] ; then
-  echo "ERROR: the saved input files directory $saved_dir already exists - delete or rename";
-  exit 1;
-fi
-
-echo "INFO: saving existing arb and geo files" >>$log_file;
-mkdir $saved_dir;
-mv *.arb $saved_dir >/dev/null 2>/dev/null;
-mv *.msh $saved_dir >/dev/null 2>/dev/null;
-rm output/output*.msh   >/dev/null 2>/dev/null;
-rm output/output*.scr   >/dev/null 2>/dev/null;
-rm output/output*.stat  >/dev/null 2>/dev/null;
-rm output/output*.stp   >/dev/null 2>/dev/null;
-rm output/output*.csv   >/dev/null 2>/dev/null;
-rm output/*warnings.txt >/dev/null 2>/dev/null;
-rm output/*details.txt  >/dev/null 2>/dev/null;
 
 # run through each example problem
 for dir_name in ${TESTCASES[@]} ; do
   subdir=$examples_dir/$dir_name;
   if [ ! -d $subdir ] ; then
     echo "INFO: skipping directory $subdir as it does not exist";
-    echo "INFO: skipping directory $subdir as it does not exist" >>$log_file;
     continue;
   fi
-  arbfiles=`ls $subdir/*.arb 2>/dev/null`; # create a single string which lists all arb files in this subdirectory, ignoring errors (and creating empty string) if nothing present
+  shopt -s nullglob # causes the glob to become null if matches nothing
+  arbfiles=( ${subdir}/*.arb );
   if [ -z "${arbfiles}" -o -L $subdir ] ; then
     echo "INFO: skipping directory $subdir as it is a link to another directory or does not contain an arb input file";
-    echo "INFO: skipping directory $subdir as it is a link to another directory or does not contain an arb input file" >>$log_file;
     continue;
   fi # skip the directory if it doesn't contain an arb input file or is not a directory (could be a tutorial link for example)
   for compiler in ${COMPILERS[@]} ; do # run with the chosen compilers
 # make results directory within examples directories and copy over all of the outputs
-    results_dir=$subdir/resources/test_suite_results/$compiler;
+    results_dir="${subdir}/resources/test_suite_results/$compiler";
+    output_dir="${results_dir}/output";
     if [ ! -d $results_dir ] ; then mkdir -p $results_dir ; fi
     if [ $REFRESH -eq 1 -a -e $results_dir/SUCCESS ] ; then
       echo "INFO: skipping arb simulation of test case $subdir using $compiler compiler as successful results already exist";
-      echo "INFO: skipping arb simulation of test case $subdir using $compiler compiler as successful results already exist" >>$log_file;
       continue;
     else
       echo "INFO: performing arb simulation of test case $subdir using $compiler compiler";
-      echo "INFO: performing arb simulation of test case $subdir using $compiler compiler" >>$log_file;
-      rm $results_dir/* >/dev/null 2>/dev/null;
+      rm -r $results_dir/* >/dev/null 2>/dev/null; # will remove old output directory, and other files
     fi
     local_log_file="$results_dir/test_suite.log";
-    cp $subdir/*.arb $cwd >>$local_log_file 2>>$local_log_file;
-    cp $subdir/*.msh $cwd >>$local_log_file 2>>$local_log_file;
+    echo "INFO: arbfiles = ${arbfiles[*]}" >>$local_log_file;
+    echo "INFO: results_dir = ${results_dir}" >>$local_log_file;
+    echo "INFO: output_dir = ${output_dir}" >>$local_log_file;
+    echo "INFO: subdir = ${subdir}" >>$local_log_file;
 # if an arb file is present which matches the directory name then run this, otherwise run all arb files
-    if [ -e "${dir_name}.arb" ] ; then
-      ./arb $arb_options "${dir_name}.arb" --quiet --compiler-$compiler >>$local_log_file 2>>$local_log_file;
+    if [ -e "${sub_dir}/${dir_name}.arb" ] ; then
+      ./arb $arb_options "${sub_dir}/${dir_name}.arb" --quiet --compiler-$compiler -o "${output_dir}" >>$local_log_file 2>>$local_log_file;
     else
-      ./arb $arb_options --quiet --compiler-$compiler >>$local_log_file 2>>$local_log_file;
+#     ./arb $arb_options ${sub_dir}/*.arb --quiet --compiler-$compiler -o "${output_dir}" >>$local_log_file 2>>$local_log_file;
+      ./arb $arb_options ${arbfiles[*]} --quiet --compiler-$compiler -o "${output_dir}" >>$local_log_file 2>>$local_log_file;
     fi
     keyword=ERROR_IN_MAKE;
-    if [ -e output/output.scr ] ; then
-      last_line=`tail -n 2 output/output.scr`; # with change to quiet behaviour of arb, the SUCCESS statement is now on the second last line of output.scr
+    if [ -e "${output_dir}/output.scr" ] ; then
+      last_line=`tail -n 2 "${output_dir}/output.scr"`; # with change to quiet behaviour of arb, the SUCCESS statement is now on the second last line of output.scr
       keyword=`echo $last_line | cut -c 1-7`;
       if [[ ! "$keyword" == "SUCCESS" ]] ; then keyword="ERROR_IN_RUN"; fi
     fi
-#   echo "DEBUG: keyword = $keyword" >>$local_log_file 2>>$local_log_file;
-    cp output/output*.msh   $results_dir >/dev/null 2>/dev/null;
-    cp output/output*.scr   $results_dir >/dev/null 2>/dev/null;
-    cp output/output*.stat  $results_dir >/dev/null 2>/dev/null;
-    cp output/output*.stp   $results_dir >/dev/null 2>/dev/null;
-    cp output/output*.csv   $results_dir >/dev/null 2>/dev/null;
-    cp output/*warnings.txt $results_dir >/dev/null 2>/dev/null;
-    cp output/*details.txt  $results_dir >/dev/null 2>/dev/null;
-    cp $setup_dir/*problems.txt  $results_dir >/dev/null 2>/dev/null;
-    cp $setup_dir/*list.arb  $results_dir >/dev/null 2>/dev/null;
 # also create unwrapped input directory and copy over unwrapped_input.arb
     if [ ! -d $subdir/unwrapped_input ] ; then mkdir -p $subdir/unwrapped_input ; fi
-    cp $setup_dir/unwrapped_input.arb $subdir/unwrapped_input >/dev/null 2>/dev/null;
+    cp "${output_dir}/setup_data/unwrapped_input.arb" $subdir/unwrapped_input >/dev/null 2>/dev/null;
+    cp "${output_dir}/setup_data/variable_list.arb" $subdir/unwrapped_input >/dev/null 2>/dev/null;
+    cp "${output_dir}/setup_data/region_list.arb" $subdir/unwrapped_input >/dev/null 2>/dev/null;
     touch $results_dir/$keyword;
     if [[ "$keyword" == "SUCCESS" ]]; then
       echo "INFO: simulation $subdir using $compiler compiler was successful";
-      echo "INFO: simulation $subdir using $compiler compiler was successful" >>$log_file;
       echo "INFO TEST_SUITE: simulation $subdir using $compiler compiler was successful" >>$local_log_file;
     else
       echo "ERROR: simulation $subdir using $compiler compiler was not successful: $keyword";
-      echo "ERROR: simulation $subdir using $compiler compiler was not successful: $keyword" >>$log_file;
       echo "ERROR TEST_SUITE: simulation $subdir using $compiler compiler was not successful: $keyword" >>$local_log_file;
       error=1;
     fi;
-# finally remove input files ready for the next run   
-    rm *.arb >/dev/null 2>/dev/null # note, *.in files are not used if an *.arb file is present
-    rm *.msh >/dev/null 2>/dev/null
-    rm output/* >/dev/null 2>/dev/null; # and clear output files
-    if [ -e fort.* ]; then
+    fortfiles=( fort.* );
+    if [ -n "$fortfiles" ]; then
       echo "ERROR: debugging files (ie fort.*) are being produced: you must have left a debugging flag on?: exiting";
-      echo "ERROR: debugging files (ie fort.*) are being produced: you must have left a debugging flag on?: exiting" >>$log_file;
       error=1;
       break 2; # jump out of two loop levels
     fi;
     if [ -e $stopfile ]; then
       echo "INFO: user has requested that test_suite program stops";
-      echo "INFO: user has requested that test_suite program stops" >>$log_file;
       error=1;
       break 2; # jump out of two loop levels
     fi;
   done;
 done;
 
-# move original input and output files back to cwd and delete saved_dir
-mv $saved_dir/* . >/dev/null 2>/dev/null;
-rmdir $saved_dir;
-
 if [ $error -eq 0 ] ; then
   echo "SUCCESS: all simulations completed gracefully";
-  echo "SUCCESS: all simulations completed gracefully" >>$log_file;
   exit 0;
 else
   echo "ERROR: atleast one simulation did not finish successfully";
-  echo "ERROR: atleast one simulation did not finish successfully" >>$log_file;
   exit 1;
 fi

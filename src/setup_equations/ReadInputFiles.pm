@@ -512,7 +512,10 @@ sub parse_solver_code {
         }
   #         if (-f $found_name) { $found_type = 'file'; } elsif (-d $found_name) { $found_type = 'directory'; }
       } else {
-        if ($include_type eq "absolute") {
+# if $new_file starts with a / then regardless of include type, we assume that this is an absolute path
+        if ($new_file =~ /^\//) {
+          ($found_name,$found_type) = check_for_arbfile_or_dir($new_file);
+        } elsif ($include_type eq "absolute") {
           ($found_name,$found_type) = check_for_arbfile_or_dir('/'.$new_file);
         } elsif ($include_type eq "local") {
           ($found_name,$found_type) = check_for_arbfile_or_dir($code_blocks[$#code_blocks]{"include_path"}[0].'/'.$new_file);
