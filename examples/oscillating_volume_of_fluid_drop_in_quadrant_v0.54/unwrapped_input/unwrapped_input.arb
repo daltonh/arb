@@ -1,11 +1,11 @@
-#(comment created during unwrap): new block = root_input.arb: new_file = 1
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb
-   #(comment created during unwrap): new block = oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb: new_file = 1
+   #(comment created during unwrap): new block = oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb: sub_block = 0
    #(hash inserted during unwrap)INCLUDE_WORKING "oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb"
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
@@ -31,10 +31,10 @@ EXTERNALS "src/free_surface_functions.f90"
    # for uniform properties (rho and mu) include the following line
    #GENERAL_REPLACEMENTS R "<<uniformcomment>>" W "" R "<<nonuniformcomment>>" W "#"
    # or for nonuniform properties (rho and mu) include the following line
-    
+   
    
    # for a single mesh domain (all on the fluid mesh) include the following
-    
+   
    # for a double mesh domain everything except the curvature calculation (and its dependent smoothed phi and normals) is done on the fluid domain, and the rest on the free surface domain which is coincident and larger
    #GENERAL_REPLACEMENTS R "<<singledomaincomment>>" W "#" R "<<doubledomaincomment>>" W ""
    
@@ -83,7 +83,7 @@ EXTERNALS "src/free_surface_functions.f90"
    
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
    # commands to form the single mesh regions from the fluid msh file
-      #(comment created during unwrap): new block = single_region_formation: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/single_region_formation.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "single_region_formation"
       # regions specific to fluid mesh
       FACE_REGION <walls> "compound(<boundaries>)"
@@ -100,18 +100,18 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE_TEMPLATE "general"
    #INCLUDE "cylindrical_reflect_r1z2"
    # these statements only necessary in cartesian as already included in above files, but GENERAL_REPLACEMENT statements can't be commented out by other strings, so just repeat them
-    # comment out any references to the third dimension in any included files
-    
+   # comment out any references to the third dimension in any included files
+   
    # include this for both cylindrical and cartesian when using a quadrant
-    
+   
    
    # bring in default physical and numerical constants
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
-      #(comment created during unwrap): new block = nondimensional_constants: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/nondimensional_constants.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "nondimensional_constants"
       # use this constants file if solving nondimensionally
       
-         #(comment created during unwrap): new block = constants: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/constants.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "constants"
          # physical data
          CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
@@ -120,7 +120,7 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # replace any references to the face centred fluid properties with the constant values
          # get rid of these replacements and define alternative statements for the face centred fluid properties if they do vary
-          
+         
          
          # setup transient and steady-state general replacements that are specific to navier-stokes equations, based on simulation type
          # NB, this could be overwritten if using a transient simulation of the steady-state equations for example
@@ -128,7 +128,7 @@ EXTERNALS "src/free_surface_functions.f90"
          #<<steadystatecomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W ""
          
          # now just assume that simulation is steady-state, overwriting this with the transient replacments in the transient_setup files
-          
+         
          
          # numerical data
          CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
@@ -136,12 +136,12 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # find an estimate of the domain size using general template
          #(hash inserted during unwrap)INCLUDE_TEMPLATE "general"
-            #(comment created during unwrap): new block = domain_lengthscale: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/general/domain_lengthscale.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
             # find an estimate of the domain size
             # here we use the maximum domain length in each dimension
             # previously used a more accurate but expensive formulation (see minimum_face_boundary_distance)
-               #(comment created during unwrap): new block = domain_lengths: new_file = 1
+               #(comment created during unwrap): new block = ../../templates/general/domain_lengths.arb: sub_block = 0
                #(hash inserted during unwrap)INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
                # based on node locations, here we calculate the maximum length of the domain in each dimension
                # these loops could be conducted over <boundarynodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
@@ -173,11 +173,11 @@ EXTERNALS "src/free_surface_functions.f90"
       CONSTANT <u_av> 1.d0
    
    # v0.50 - now use transient setup files
-      #(comment created during unwrap): new block = transient_dynamic_setup: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/transient_dynamic_setup.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "transient_dynamic_setup" # a dynamic timestep to keep the CFL number at a specified level
       # use this file to initial a transient Navier-Stokes simulation using explicit dynamic timestepping
-       
-         #(comment created during unwrap): new block = transient_all_setup: new_file = 1
+      
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/transient_all_setup.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "transient_all_setup"
          # setup things needed for transient flow
          # this file works for either dynamic or constant timestepping
@@ -197,16 +197,16 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # transient bits
          TRANSIENT_SIMULATION
-          
+         
          
          # the default is for constant as opposed to dynamic timestepping
-          
+         
          
          #---------------------------------------------------------------------------------------------------------
          # dynamic timestepping
          
          # by default there is a explicit newtstep timestep limitation - to remove it reverse the following string replacement
-          
+         
          
          # dynamic timestep constants
          CONSTANT <dt_increase> 1.2d0
@@ -221,16 +221,16 @@ EXTERNALS "src/free_surface_functions.f90"
          #NONE_LOCAL <dt_newtstep_increase[r=1]> "<dt_increase>" # placeholder for nonnewtsteplimited timestepping
          
          # the default is for explicit timestepping, but implicit can also be enabled by reversing the following strings
-          
+         
          
          NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
          FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <allfaces> # don't actually need this for implicit timestepping, but it is used in input files for some of the problems for output, so in the interests of not breaking things...
          
          # explicit
          # use CFL_number template, but make the calculation explicit - ie, based on r=1 values
-            #(comment created during unwrap): new block = CFL_number: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/CFL_number.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "CFL_number" 
-             
+            
             # these lines just output the global CFL number for a transient simulation
             # replace nooutput with output to also output local CFL number
             # <facedivop> is positive if a face normal points outwards from the last cell, so these numbers are based on the total flowrate out of each cell
@@ -284,16 +284,16 @@ EXTERNALS "src/free_surface_functions.f90"
    #CONSTANT <dt_surf> "0.5d0*sqrt(0.5d0*<We>*<celldxave>^3/<pi>)"
    #NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
    
-      #(comment created during unwrap): new block = nonuniform_properties: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/nonuniform_properties.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "nonuniform_properties" # this just cancels the previous general property replacements on <mu_f> and <rho_f>
       # for now this just cancels the general variable property replacements done in constants.arb
-       
+      
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
-      #(comment created during unwrap): new block = nondimensional_constants: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/nondimensional_constants.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "nondimensional_constants"
       # use this constants file if solving nondimensionally
       
-         #(comment created during unwrap): new block = constants: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/constants.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "constants"
          # physical data
          CONSTANT <sigma> [N/m] 0.072d0 # surface tension coefficient
@@ -316,7 +316,7 @@ EXTERNALS "src/free_surface_functions.f90"
       CONSTANT <u_av> 1.d0
    # calculate the mac2 cartesian vof velocity errors for reference (http://dx.doi.org/10.1016/j.apm.2005.08.015)
    #INCLUDE "parasitic_mac2_correlation"
-      #(comment created during unwrap): new block = parasitic_nonuniform_properties_mac2_correlation: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/parasitic_nonuniform_properties_mac2_correlation.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "parasitic_nonuniform_properties_mac2_correlation"
       # calculates the parasitic current magnitude based on dhamm06 paper, using nondimensional numbers <We> and <Ca>
       # now for nonuniform density and viscosity
@@ -333,15 +333,15 @@ EXTERNALS "src/free_surface_functions.f90"
       NONE_TRANSIENT <parasitic_mac2_u_T> "" "<parasitic_mac2_uu_T>*<parasitic_mac2_a_T>" stepoutput
       NONE_TRANSIENT <parasitic_mac2_u_p> "" "nonemin(<parasitic_mac2_u_V>,nonemin(<parasitic_mac2_u_A>,<parasitic_mac2_u_T>))" stepoutput
    # for nonuniform properties, define them
-      #(comment created during unwrap): new block = nondimensional_nonuniform_properties: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/nondimensional_nonuniform_properties.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "nondimensional_nonuniform_properties"
       # include this to define nondimensional varying properties
       CONSTANT <vof_rho_d_ratio> 1.d0 # dimensional <rho_d>/<rho_c>
       CONSTANT <vof_mu_d_ratio> 1.d0 # dimensional <mu_d>/<mu_c>
       # include dimensional properties, noting that now properties are scaled by continuous phase, but also multiplied by <rho> and <mu> (which may include nondimensional groups say)
-         #(comment created during unwrap): new block = nonuniform_properties: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/nonuniform_properties.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "nonuniform_properties" 
-          
+         
          # include this to define dimensional varying properties
          NONE_CONSTANT <rho_diff> "<rho_d>-<rho>"
          NONE_CONSTANT <mu_diff> "<mu_d>-<mu>"
@@ -383,7 +383,7 @@ EXTERNALS "src/free_surface_functions.f90"
    
    # CSF based levelset formulation with reinitialisation
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
-      #(comment created during unwrap): new block = setup: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/setup.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "setup"
       # first set up some constants relating to the discretisation
       
@@ -422,9 +422,9 @@ EXTERNALS "src/free_surface_functions.f90"
       #CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi>" "<vof_phi>" ON <allcells> nooutput
       
       # mask setup:
-       # if this is not set then no masks are defined.  If you don't want to use masks, then include remove_masks near the start of the input file.
-       # default maximum separation used for the faceave kernels, which can be overwritten outside of this routine
-       # default maximum separation used for the facegrad kernels, which can be overwritten outside of this routine
+      # if this is not set then no masks are defined.  If you don't want to use masks, then include remove_masks near the start of the input file.
+      # default maximum separation used for the faceave kernels, which can be overwritten outside of this routine
+      # default maximum separation used for the facegrad kernels, which can be overwritten outside of this routine
       
       # interface masks (on fluid domain):
       # first we deal with the interface masks, which are concerned with the phi advection calculation, as well as the 
@@ -464,11 +464,11 @@ EXTERNALS "src/free_surface_functions.f90"
    # calculate the interface curvature using the normal (low order) vof technique
    #INCLUDE "interface_geometry"
    # or, instead by solving a separate level-set-like field to calculate the normals, termed a high order vof technique
-      #(comment created during unwrap): new block = high_order_interface_geometry: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/high_order_interface_geometry.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "high_order_interface_geometry"
       # these are the standard includes necessary to calculate the surface curvature, using a higher-order reconstructed level-set type formulation, which does not require 
       
-         #(comment created during unwrap): new block = implicit_reconstructed_levelset: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "implicit_reconstructed_levelset"
          # implicit reconstructed levelset idea
          CELL_UNKNOWN <vof_s> "2.d0*<vof_phi_interface>-1.d0" ON <allcells> magnitude=1.d0
@@ -479,13 +479,13 @@ EXTERNALS "src/free_surface_functions.f90"
          FACE_DERIVED <vof_s_j> "-<vof_s_D>*facegrad(<vof_s>)" ON <allfaces>
          CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
          FACE_EQUATION <vof_s boundary> "2.d0*<vof_phi_interface>-1.d0-<vof_s>" ON <boundaries>
-         #(comment created during unwrap): new block = normals: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "normals" 
-          
+         
          # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
          
          # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
-          
+         
          
          # first calculate masks for the normals
          CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=3,faceseparation](<vof_delta_mask[r=1]>)" ON <allcells>
@@ -507,7 +507,7 @@ EXTERNALS "src/free_surface_functions.f90"
          CELL_DERIVED <vof_phigrad_unit[l=1]> "<vof_phigrad[l=1]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]> output
          CELL_DERIVED <vof_phigrad_unit[l=2]> "<vof_phigrad[l=2]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]>
          #CELL_DERIVED <vof_phigrad_unit[l=3]> "<vof_phigrad[l=3]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]>
-         #(comment created during unwrap): new block = curvature: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/curvature.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "curvature"
          # within this file we calculate the curvature
          
@@ -525,7 +525,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE "cancel_free_surface_replacements"
    #INCLUDE "fluid_replacements"
    
-      #(comment created during unwrap): new block = force: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "force" # force done back on the fluid mesh
       # within this file we calculate the cell centred surface force and face centred force used in the <u_f> interpolation
       
@@ -539,20 +539,20 @@ EXTERNALS "src/free_surface_functions.f90"
    # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
    # nonuniform
-      #(comment created during unwrap): new block = total_stress: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/total_stress.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "total_stress" 
-       
+      
       # total stress tensor
-         #(comment created during unwrap): new block = u_gradient_tensor: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/u_gradient_tensor.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "u_gradient_tensor"
          # a tensor of face centred gradients that respects any reflections
          # used in the total stress and boundary conditions now
          # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
-                        FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,reflect=1](<u[l=1]>)" ON <allfaces>
+         FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,reflect=1](<u[l=1]>)" ON <allfaces>
          FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,reflect=2](<u[l=2]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <allfaces>
          FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,reflect=1](<u[l=1]>)" ON <allfaces>
-                        FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,reflect=2](<u[l=2]>)" ON <allfaces>
+         FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,reflect=2](<u[l=2]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,reflect=1](<u[l=1]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,reflect=2](<u[l=2]>)" ON <allfaces>
@@ -571,8 +571,8 @@ EXTERNALS "src/free_surface_functions.f90"
       #<<dim3comment>> FACE_LOCAL <tau[l=3,3]> "-<mu_f>*2.d0*<ugrad_f[l=3,3]>" ON <allfaces>
       # with the numerical velocity divergence (although it is generally set to zero in u_gradient_tensor anyway)
       # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
-       FACE_LOCAL <tau[l=1,1]> "-<vof_mu_harmonic_f>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <allfaces>
-       FACE_LOCAL <tau[l=2,2]> "-<vof_mu_harmonic_f>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <allfaces>
+      FACE_LOCAL <tau[l=1,1]> "-<vof_mu_harmonic_f>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <allfaces>
+      FACE_LOCAL <tau[l=2,2]> "-<vof_mu_harmonic_f>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <allfaces>
       # FACE_LOCAL <tau[l=3,3]> "-<vof_mu_harmonic_f>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <allfaces>
       FACE_LOCAL <tau[l=1,2]> "-<vof_mu_harmonic_f>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <allfaces>
       #FACE_LOCAL <tau[l=1,3]> "-<vof_mu_harmonic_f>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <allfaces>
@@ -580,17 +580,17 @@ EXTERNALS "src/free_surface_functions.f90"
       FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <allfaces>
       #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <allfaces>
       #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <allfaces>
-      #(comment created during unwrap): new block = advection_flux: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/advection_flux.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "advection_flux" 
-       
+      
       # uses a rhie-chow type interpolation method to calculate the fluid flux (velocity) over and in the direction of each face
       
-         #(comment created during unwrap): new block = p_error: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/p_error.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "p_error"
          # a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
          # pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
          
-            #(comment created during unwrap): new block = dynamic_force: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/dynamic_force.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "dynamic_force" # cell centred dynamic force
             # dynamic force is the pressure force that could cause fluid movement
             # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
@@ -606,7 +606,7 @@ EXTERNALS "src/free_surface_functions.f90"
             #FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
          FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
          FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domainfaces>
-         #(comment created during unwrap): new block = u_f: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/u_f.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "u_f"
          # calculate the Rhie-Chow type velocity correction, only applied (nonzero) on the domain faces
          FACE_LOCAL <u_f_vect[l=1]> "faceave[reflect=1](<u[l=1]>)"
@@ -665,7 +665,7 @@ EXTERNALS "src/free_surface_functions.f90"
          # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
          # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
          # if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
-          
+         
          #NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
          #NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
    # uniform
@@ -673,7 +673,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE "advection_flux"
    
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
-      #(comment created during unwrap): new block = dynamic_force: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/dynamic_force.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "dynamic_force"
       # now uses selfreferencing to just add surface tension force to existing dynamic forces
       VARIABLE <dynamic_force_c[l=1]> "<dynamic_force_c[l=1]>+<sigma>*<vof_F_c[l=1]>"
@@ -682,7 +682,7 @@ EXTERNALS "src/free_surface_functions.f90"
       # differencing has to be consistent with that used for <vof_F_f>
       VARIABLE <dynamic_force_f> "<dynamic_force_f>+<sigma>*<vof_F_f>"
       
-      #(comment created during unwrap): new block = equation: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/equation.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "equation" # all phi advection done on fluid mesh
       # here we advect <vof> using the implicit <u_f> and explicit <vof_phi[r=1]>
       
@@ -731,10 +731,10 @@ EXTERNALS "src/free_surface_functions.f90"
    
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
    # nonuniform
-      #(comment created during unwrap): new block = momentum_flux_transient_constant_rho: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/momentum_flux_transient_constant_rho.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "momentum_flux_transient_constant_rho" 
-       
-         #(comment created during unwrap): new block = momentum_flux_steady_state_constant_rho: new_file = 1
+      
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/momentum_flux_steady_state_constant_rho.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "momentum_flux_steady_state_constant_rho"
          # flux of momentum over and in the direction of each face
          
@@ -750,9 +750,9 @@ EXTERNALS "src/free_surface_functions.f90"
       FACE_LOCAL <J_advection_f[l=1]> "<vof_rho_advection_f[r=1]>*faceave[advection,reflect=1](<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
       FACE_LOCAL <J_advection_f[l=2]> "<vof_rho_advection_f[r=1]>*faceave[advection,reflect=2](<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
       #FACE_LOCAL <J_advection_f[l=3]> "<vof_rho_advection_f[r=1]>*faceave[advection,](<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-      #(comment created during unwrap): new block = conservation_incompressible_transient_varying_rho: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/conservation_incompressible_transient_varying_rho.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "conservation_incompressible_transient_varying_rho" 
-       
+      
       # conservation equations solved over each domain cell (finite volume method)
       
       # cartesian
@@ -776,27 +776,27 @@ EXTERNALS "src/free_surface_functions.f90"
    
    # fluid boundary conditions on nonslip walls
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
-      #(comment created during unwrap): new block = walls_nonwetting: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/walls_nonwetting.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "walls_nonwetting" # NB: BC applied on fluid walls
       # boundary equations for walls
       # here the continuous phase completely wets the wall (contact angle = 180degrees), disperse does not (contact angle = 0degrees)
       FACE_EQUATION <vof_equation_walls> "<vof_phi>" ON <walls>
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
-      #(comment created during unwrap): new block = walls_p_set: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/walls_p_set.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "walls_p_set"
       # same as walls, but we have one face which is used to set pressure
       # uses the two extra face regions which are contained within <walls>, <walls sans one face> and <one face>
-         #(comment created during unwrap): new block = p_extrapolation: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/p_extrapolation.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "p_extrapolation" 
-          
+         
          FACE_EQUATION <p_walls> "<dynamic_force_f>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
-         #(comment created during unwrap): new block = noflux: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/noflux.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "noflux" 
-          
+         
          FACE_EQUATION <noflux_walls> "<u_f>" ON <walls sans one face> # no flux normal to region
-         #(comment created during unwrap): new block = noslip: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/noslip.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "noslip" 
-          
+         
          FACE_EQUATION <equation1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
          #FACE_EQUATION <equation2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
       FACE_EQUATION <one face p set> "<p>" ON <one face>

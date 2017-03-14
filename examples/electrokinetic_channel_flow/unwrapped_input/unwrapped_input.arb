@@ -1,11 +1,11 @@
-#(comment created during unwrap): new block = root_input.arb: new_file = 1
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: electrokinetic_channel.arb
-   #(comment created during unwrap): new block = electrokinetic_channel.arb: new_file = 1
+   #(comment created during unwrap): new block = electrokinetic_channel.arb: sub_block = 0
    #(hash inserted during unwrap)INCLUDE_WORKING "electrokinetic_channel.arb"
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
@@ -23,8 +23,8 @@ EXTERNALS "src/free_surface_functions.f90"
    
    # choose coordinate system
    # for cartesian slit flow include the following:
-    # comment out any references to the third dimension in any included files
-    # as the centreline is horizontal need to include reflect=2 when differentiating of averaging any l=2 vector components
+   # comment out any references to the third dimension in any included files
+   # as the centreline is horizontal need to include reflect=2 when differentiating of averaging any l=2 vector components
    INFO_DESCRIPTION+ ": cartesian slit flow"
    # for cylindrical pipe flow include the following:
    #INCLUDE_TEMPLATE "general"
@@ -73,11 +73,11 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE "constants" # and the same for the electrokinetic equations
    # or these for a nondimensional problem
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes"
-      #(comment created during unwrap): new block = nondimensional_constants: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes/nondimensional_constants.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "nondimensional_constants" # specify physical and numerical constants
       # use this constants file if solving nondimensionally
       
-         #(comment created during unwrap): new block = constants: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/constants.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "constants"
          # physical data
          CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
@@ -88,14 +88,14 @@ EXTERNALS "src/free_surface_functions.f90"
          # set default strings using the following template file, which sets up a steady-state solution to the navier-stokes equations, with uniform viscosity and density
          # see below for appropriate statements to change these decisions
          # strings can also be set when calling the template files using per-file replacements
-            #(comment created during unwrap): new block = default_string_replacements: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
             # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-             
-             
-             
-             
+            
+            
+            
+            
          
          # use the following to setup a transient simulation
          #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
@@ -116,8 +116,8 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # replace any references to the face centred fluid properties with the constant values if they don't vary
          # get rid of these replacements and define alternative statements for the face centred fluid properties if they do vary
-          
-          
+         
+         
          
          # numerical data
          CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
@@ -125,12 +125,12 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # find an estimate of the domain size using general template
          #(hash inserted during unwrap)INCLUDE_TEMPLATE "general"
-            #(comment created during unwrap): new block = domain_lengthscale: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/general/domain_lengthscale.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
             # find an estimate of the domain size
             # here we use the maximum domain length in each dimension
             # previously used a more accurate but expensive formulation (see minimum_face_boundary_distance)
-               #(comment created during unwrap): new block = domain_lengths: new_file = 1
+               #(comment created during unwrap): new block = ../../templates/general/domain_lengths.arb: sub_block = 0
                #(hash inserted during unwrap)INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
                # based on node locations, here we calculate the maximum length of the domain in each dimension
                # these loops could be conducted over <boundarynodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
@@ -161,11 +161,11 @@ EXTERNALS "src/free_surface_functions.f90"
       CONSTANT <rho> 1.d0
       CONSTANT <u_av> 1.d0
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "electrokinetics"
-      #(comment created during unwrap): new block = nondimensional_constants: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/nondimensional_constants.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "nondimensional_constants" # and the same for the electrokinetic equations
       # general setup for nondimensional electrokinetic problems
       
-         #(comment created during unwrap): new block = constants: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/constants.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "constants"
          # general setup for electrokinetic problems
          
@@ -225,25 +225,25 @@ EXTERNALS "src/free_surface_functions.f90"
       CONSTANT <a_lengthscale> "1.d0"
    
    # some concentrations and charges required in other equations, and also the face centred potential required in the dynamic_force calculation
-      #(comment created during unwrap): new block = binary_ion_combinations: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/binary_ion_combinations.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "binary_ion_combinations"
       # these are relationships that involve combinations of ion properties
       # here they are specific to a binary system of <ion+ n> and <ion- n>, so need overwriting for more complex systems
       # include this early on, before p_error inclusion
       
       # include positive ion concentrations
-         #(comment created during unwrap): new block = ion_concentrations: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_concentrations.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "ion_concentrations" 
-          
+         
          # these are some derived concentrations
          
          CELL_LOCAL <ion+ n pos> "cellmax(<ion+ n>,0.d0)"
          FACE_DERIVED <ion+ n_hf> "faceave[harmonicweighted](<ion+ n pos>)" ON <allfaces> # face centred concentrations used in pressure correction (p_error) and in nernst-planck ion transport
          #FACE_DERIVED <ion n_hf> "faceave[harmonic](<ion n pos>)" ON <allfaces>
       # include negative ion concentrations
-         #(comment created during unwrap): new block = ion_concentrations: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_concentrations.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "ion_concentrations" 
-          
+         
          # these are some derived concentrations
          
          CELL_LOCAL <ion- n pos> "cellmax(<ion- n>,0.d0)"
@@ -264,35 +264,35 @@ EXTERNALS "src/free_surface_functions.f90"
    
    # now the flow parts
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes"
-      #(comment created during unwrap): new block = domain: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes/domain.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "domain"
-         #(comment created during unwrap): new block = unknowns: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/unknowns.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "unknowns" # no .arb suffix is required
          # unknown variables used for flow problems
          CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
          CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
          #CELL_UNKNOWN <u[l=3]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
          CELL_UNKNOWN <p> [] "1.d0" ON <allcells> # pressure
-         #(comment created during unwrap): new block = total_stress: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "total_stress"
          # total stress tensor
-            #(comment created during unwrap): new block = u_gradient_tensor: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_gradient_tensor.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "u_gradient_tensor"
             # a tensor of face centred gradients that respects any reflections
             # used in the total stress and boundary conditions now
             # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
-                           FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,](<u[l=1]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,](<u[l=1]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,reflect=2](<u[l=2]>)" ON <allfaces>
             #FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,](<u[l=1]>)" ON <allfaces>
-                           FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,reflect=2](<u[l=2]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,reflect=2](<u[l=2]>)" ON <allfaces>
             #FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <allfaces>
             #FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,](<u[l=1]>)" ON <allfaces>
             #FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,reflect=2](<u[l=2]>)" ON <allfaces>
             #               FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,](<u[l=3]>)" ON <allfaces>
          
          # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
-          
+         
          # calculate the velocity divergence (numerical) on each face
          #FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces>
          
@@ -312,28 +312,28 @@ EXTERNALS "src/free_surface_functions.f90"
          FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <allfaces>
          #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <allfaces>
          #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <allfaces>
-         #(comment created during unwrap): new block = u_f: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "u_f"
          # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
          
          # check default strings are set
-            #(comment created during unwrap): new block = default_string_replacements: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
             # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-             
-             
-             
-             
+            
+            
+            
+            
          
          # start by calculating the difference between the local face centred (dynamic) pressure gradient and average of cell centred (dynamic) pressure gradients in the face direction
          # `dynamic' pressure here means the pressure that is able to cause fluid flow, ie, possibly accounting for hydrostatic pressure variations (for example)
-            #(comment created during unwrap): new block = p_error: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/p_error.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "p_error"
             # a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
             # pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
             
-               #(comment created during unwrap): new block = dynamic_force: new_file = 1
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/dynamic_force.arb: sub_block = 0
                #(hash inserted during unwrap)INCLUDE "dynamic_force" # cell centred dynamic force
                # dynamic force is the pressure force that could cause fluid movement
                # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
@@ -348,16 +348,16 @@ EXTERNALS "src/free_surface_functions.f90"
             # in the far off future if nobody complains <dynamic_force_c_f[l=:]> may just disappear into the night
             # to bring back <dynamic_force_c_f[l=:]> set this string to empty using a general replacement or on calling
             # nodynamicforcecf should work with reflections, but not tested like heaps and heaps and heaps yet
-             
+            
             # set the opposite automatically
-             
+            
             #GENERAL_REPLACEMENTS R "" W "#"
             
             # for evaluating the face centred dynamic force there are three options: dxunit, facegrad and adjacentcells
             # uncomment the comment string corresponding to the one you want
             # default is dxunit
             # remember to set all of these strings on entry if changing from the default, with only the requested one uncommented
-             
+            
             
             # calculate <dynamic_force_c_f[l=:]> if requested
             # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
@@ -415,12 +415,12 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # advective contribution can be either simple or more complex (set by <<ufadvectioncomplexcomment>>)
          # the default behaviour is to use the simple advective contribution
-          
+         
          # include the following line in your input file prior to loading this template file to access the more complex contribution
          #GENERAL_REPLACEMENTS R <<ufadvectioncomplexcomment>> W ""
          
          # form opposite string to be consistent with <<ufadvectioncomplexcomment>> 
-          
+         
          #GENERAL_REPLACEMENTS R  W "#" 
          # next add simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
          FACE_LOCAL <u_rf_{adv}> "2.d0*<rho>*abs(<u_f_{raw}>)/<facedx>" ON <domainfaces>
@@ -442,25 +442,25 @@ EXTERNALS "src/free_surface_functions.f90"
          # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
          # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
          # if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
-          
+         
          ##NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
          ##NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
-         #(comment created during unwrap): new block = advection_flux: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "advection_flux" # even though this is called for the stokes equations, no terms will be created
          # flux of momentum over and in the direction of each face due to advection
          # which one is chosen depends on the comment strings
          # all require navierstokes equations to be current
          
          # check default strings are set
-            #(comment created during unwrap): new block = default_string_replacements: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
             # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-             
-             
-             
-             
-          
+            
+            
+            
+            
+         
          
          # steady-state and uniform density
          FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
@@ -478,19 +478,19 @@ EXTERNALS "src/free_surface_functions.f90"
          ##FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,](<rho[r=1]>*<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
          ##FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,reflect=2](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
          ###FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         #(comment created during unwrap): new block = momentum_flux: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/momentum_flux.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "momentum_flux"
          # flux of momentum over and in the direction of each face
          
          # check default strings are set
-            #(comment created during unwrap): new block = default_string_replacements: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
             # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-             
-             
-             
-             
+            
+            
+            
+            
          
          # start by placing in viscous momentum transport, applicable to both the stokes and navier-stokes equations
          FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <allfaces>
@@ -501,19 +501,19 @@ EXTERNALS "src/free_surface_functions.f90"
          VARIABLE <J_f[l=1]> "<J_f[l=1]>+<J_advection_f[l=1]>"
          VARIABLE <J_f[l=2]> "<J_f[l=2]>+<J_advection_f[l=2]>"
          #VARIABLE <J_f[l=3]> "<J_f[l=3]>+<J_advection_f[l=3]>"
-         #(comment created during unwrap): new block = conservation: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "conservation"
          # conservation equations solved over each domain cell (finite volume method)
          
          # check default strings are set
-            #(comment created during unwrap): new block = default_string_replacements: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
             # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-             
-             
-             
-             
+            
+            
+            
+            
          
          # cartesian specific
          CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
@@ -536,7 +536,7 @@ EXTERNALS "src/free_surface_functions.f90"
          ##VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
          ###VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "electrokinetics"
-      #(comment created during unwrap): new block = dynamic_force: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/dynamic_force.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "dynamic_force" # overwrite the dynamic_force used in the navier-stokes equations to include an electrical forcing term
       # this overwrites the dynamic forces calculated for the navier_stokes equations to include the electrical forcing terms
       # dynamic force is included in the navier-stokes conservation equations, so they don't need any other modification
@@ -549,33 +549,33 @@ EXTERNALS "src/free_surface_functions.f90"
    
    # and the flow boundary conditions
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes"
-      #(comment created during unwrap): new block = walls_noslip: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes/walls_noslip.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "walls_noslip" # nonslip walls BC
       # boundary conditions on nonslip walls
-         #(comment created during unwrap): new block = noflux: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/noflux.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "noflux" 
-          
+         
          FACE_EQUATION <walls noflux> "<u_f>" ON <walls> # no flux normal to region
-         #(comment created during unwrap): new block = noslip: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "noslip" 
-          # noslip now detects whether it is a 3D or 2D problem
+         # noslip now detects whether it is a 3D or 2D problem
          FACE_EQUATION <walls noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
          #FACE_EQUATION <walls noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
-         #(comment created during unwrap): new block = p_extrapolation: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "p_extrapolation" 
-          
+         
          FACE_EQUATION <walls p_extrapolation> "<dynamic_force_f>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
-      #(comment created during unwrap): new block = inlet_u_fully_developed: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_u_fully_developed.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "inlet_u_fully_developed" # fully developed velocity profile, setting a uniform pressure gradient to give using <u_av>
       # boundary conditions on inlet - fully developed flow
-         #(comment created during unwrap): new block = u_fully_developed: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/u_fully_developed.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "u_fully_developed" 
-          
+         
          #FACE_EQUATION <equation> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <region> # normal velocity component is fully developed
          FACE_EQUATION <inlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <inlet> # normal velocity component is fully developed
-         #(comment created during unwrap): new block = noslip: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "noslip" 
-          
+         
          FACE_EQUATION <inlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <inlet> # no component tangential to the face
          #FACE_EQUATION <inlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <inlet> # no component tangential to the face in the second tangential direction
       
@@ -587,17 +587,17 @@ EXTERNALS "src/free_surface_functions.f90"
       NONE_EQUATION <inlet centreline flowrate equation> "<u_av_calc>-<u_av>" # set flowrate through inlet to give required average velocity
       NONE_DERIVED <inlet centreline gradp> "facesum(<dynamic_force_f>,region=<inlet centreline>)"
       FACE_EQUATION <inlet flowrate equation> "<dynamic_force_f>-<inlet centreline gradp>" ON <inlet sans centreline> # apply specified pressure over inlet
-      #(comment created during unwrap): new block = outlet_u_fully_developed: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/navier_stokes/outlet_u_fully_developed.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "outlet_u_fully_developed" # fully developed velocity profile, setting pressure at centreline to zero and a uniform pressure gradient
       # boundary conditions on outlet - fully developed flow
-         #(comment created during unwrap): new block = u_fully_developed: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/u_fully_developed.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "u_fully_developed" 
-          
+         
          #FACE_EQUATION <equation> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <region> # normal velocity component is fully developed
          FACE_EQUATION <outlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <outlet> # normal velocity component is fully developed
-         #(comment created during unwrap): new block = noslip: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "noslip" 
-          
+         
          FACE_EQUATION <outlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to the face
          #FACE_EQUATION <outlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <outlet> # no component tangential to the face in the second tangential direction
       
@@ -608,23 +608,23 @@ EXTERNALS "src/free_surface_functions.f90"
    
    # now ion transport and potential equation
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "electrokinetics"
-      #(comment created during unwrap): new block = binary_ion_equations: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/binary_ion_equations.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "binary_ion_equations" # transport of binary electrolyte (positive and negative ions), including boundary conditions
       # equations required for the transport of a binary univalent electrolyte
       # include statements for binary combinations should be included earlier before p_error calculation (binary_ion_combinations)
       
       # include positive ion transport equations
-         #(comment created during unwrap): new block = ion_equations: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_equations.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "ion_equations" 
-          
-            #(comment created during unwrap): new block = ion_constants: new_file = 1
+         
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_constants.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "ion_constants"
             # ion constants for one specific ion species
             # all variables start with <ion so this can be replaced to make specific ions
             
             CONSTANT <ion+ z> [1] "<average ion z>" # valency of ion
             CONSTANT <ion+ D> [m^2/s] "<average ion D>" # diffusivity of ion
-            #(comment created during unwrap): new block = ion_domain: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_domain.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "ion_domain"
             # ion transport equations for one specific ion species
             # all variables start with <ion so this can be replaced to make specific ions
@@ -649,38 +649,38 @@ EXTERNALS "src/free_surface_functions.f90"
             #CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "(<ion+ n>-<ion+ n[r=1]>)/<dt>+celldiv(<ion+ J_f>-faceave[lastcell](<ion+ n>)*<u_f>)" ON <domain>
             # cylindrical and cartesian
             ##CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "(<ion+ n>-<ion+ n[r=1]>)/<dt>+celldiv(1.d0*(<ion+ J_f>-faceave[lastcell](<ion+ n>)*<u_f>))/1.d0" ON <domain>
-            #(comment created during unwrap): new block = ion_walls: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_walls.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "ion_walls"
             # ion wall boundary conditions for one specific ion species
             # all variables start with <ion so this can be replaced to make specific ions
             
             FACE_EQUATION <ion+ walls> "<ion+ J_f>" ON <walls> # no flux of ions through walls
-            #(comment created during unwrap): new block = ion_fully_developed: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_fully_developed.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "ion_fully_developed" 
-             
+            
             # ion transport equations for one specific ion species
             # all variables start with <ion so this can be replaced to make specific ions
             
             FACE_EQUATION <ion+ outlet> "facegrad(<ion+ n>)" ON <outlet> # fully developed flow
-            #(comment created during unwrap): new block = ion_fully_developed: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_fully_developed.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "ion_fully_developed" 
-             
+            
             # ion transport equations for one specific ion species
             # all variables start with <ion so this can be replaced to make specific ions
             
             FACE_EQUATION <ion+ inlet> "facegrad(<ion+ n>)" ON <inlet> # fully developed flow
       # include negative ion transport equations, correcting valency to be negative
-         #(comment created during unwrap): new block = ion_equations: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_equations.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "ion_equations" 
-          
-            #(comment created during unwrap): new block = ion_constants: new_file = 1
+         
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_constants.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "ion_constants"
             # ion constants for one specific ion species
             # all variables start with <ion so this can be replaced to make specific ions
             
             CONSTANT <ion- z> [1] "<average ion z>" # valency of ion
             CONSTANT <ion- D> [m^2/s] "<average ion D>" # diffusivity of ion
-            #(comment created during unwrap): new block = ion_domain: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_domain.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "ion_domain"
             # ion transport equations for one specific ion species
             # all variables start with <ion so this can be replaced to make specific ions
@@ -705,22 +705,22 @@ EXTERNALS "src/free_surface_functions.f90"
             #CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "(<ion- n>-<ion- n[r=1]>)/<dt>+celldiv(<ion- J_f>-faceave[lastcell](<ion- n>)*<u_f>)" ON <domain>
             # cylindrical and cartesian
             ##CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "(<ion- n>-<ion- n[r=1]>)/<dt>+celldiv(1.d0*(<ion- J_f>-faceave[lastcell](<ion- n>)*<u_f>))/1.d0" ON <domain>
-            #(comment created during unwrap): new block = ion_walls: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_walls.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "ion_walls"
             # ion wall boundary conditions for one specific ion species
             # all variables start with <ion so this can be replaced to make specific ions
             
             FACE_EQUATION <ion- walls> "<ion- J_f>" ON <walls> # no flux of ions through walls
-            #(comment created during unwrap): new block = ion_fully_developed: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_fully_developed.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "ion_fully_developed" 
-             
+            
             # ion transport equations for one specific ion species
             # all variables start with <ion so this can be replaced to make specific ions
             
             FACE_EQUATION <ion- outlet> "facegrad(<ion- n>)" ON <outlet> # fully developed flow
-            #(comment created during unwrap): new block = ion_fully_developed: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_fully_developed.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "ion_fully_developed" 
-             
+            
             # ion transport equations for one specific ion species
             # all variables start with <ion so this can be replaced to make specific ions
             
@@ -741,9 +741,9 @@ EXTERNALS "src/free_surface_functions.f90"
       #FACE_EQUATION <ion- inlet> "facegrad(<ion+ n>)^2+facegrad(<ion- n>)^2" # (if combined is difficult to converge then use only one species)
       #FACE_EQUATION <ion- inlet> "facegrad(<ion+ n>)" # this should be more stable for a negative surface charge
       FACE_EQUATION <ion- inlet> "faceif(<S>,facegrad(<ion- n>),facegrad(<ion+ n>))" # boundary condition is applied on the major ion species
-      #(comment created during unwrap): new block = potential_equations: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_equations.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "potential_equations" # electrical poisson equation for potential, including boundary conditions
-         #(comment created during unwrap): new block = potential_domain: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_domain.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "potential_domain"
          # potential equations
          CELL_UNKNOWN <U> "1.d0" ON <allcells> # electrical potential
@@ -751,10 +751,10 @@ EXTERNALS "src/free_surface_functions.f90"
          CELL_EQUATION <U poisson equation> "<eps_o>*celldiv(<eps_fluid>*facegrad(<U>))+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
          # cylindrical and cartesian
          #CELL_EQUATION <U poisson equation> "<eps_o>*celldiv(1.d0*<eps_fluid>*facegrad(<U>))/1.d0+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
-         #(comment created during unwrap): new block = potential_charged_walls: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_charged_walls.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "potential_charged_walls"
          FACE_EQUATION <U charged walls> "<eps_o>*<eps_fluid>*facegrad(<U>)-<wall charge>" ON <walls>
-         #(comment created during unwrap): new block = potential_outlet: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_outlet.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "potential_outlet"
          # these equations need <outlet>, <outlet centreline> and <outlet sans centreline> to be defined, by (eg)
          #FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
@@ -770,13 +770,13 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # or set potential at centreline to zero
          NONE_EQUATION <outlet centreline potential equation> "facesum(<U>,region=<outlet centreline>)" # use this none centred form so that if this equation has to be overwritten, the overwritten equation can be none centred (eg, specify total current)
-         #(comment created during unwrap): new block = potential_inlet: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_inlet.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "potential_inlet"
          # these are similar to the outlet equations, except for setting level of potential
          
-            #(comment created during unwrap): new block = potential_outlet.arb: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_outlet.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "potential_outlet.arb" 
-             
+            
             # these equations need <outlet>, <outlet centreline> and <outlet sans centreline> to be defined, by (eg)
             #FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
             #FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
@@ -796,7 +796,7 @@ EXTERNALS "src/free_surface_functions.f90"
          NONE_EQUATION <inlet centreline potential equation> "<I_total_calc>-<I_total>" 
    
    # giving a better initial estimate leads to faster and more reliable convergence
-      #(comment created during unwrap): new block = estimate_initial_potential: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/estimate_initial_potential.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "estimate_initial_potential" # sets the initial potential using a very rough correlation.  Initial ion concentrations reference this potential.
       # based on the nondimensional parameters <S>, <K> and <a_lengthscale>, roughly estimate the initial potential field
       # include this after the potential unknown equation
@@ -808,11 +808,11 @@ EXTERNALS "src/free_surface_functions.f90"
       CONSTANT <Z estimate> "signum(<S>)*nonemin(abs(<S>)*coth(<K>)/<K>,-2.d0*log(cos(<alpha>)))" # signed, nondimensional zeta potential, taken as minimum between low and high potential solutions
       
       #(hash inserted during unwrap)INCLUDE_TEMPLATE "general"
-         #(comment created during unwrap): new block = domain_lengthscale_face_boundary_distance: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/general/domain_lengthscale_face_boundary_distance.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "domain_lengthscale_face_boundary_distance" # use this formulation of <a_lengthscale> as it needs to be consistent with <minimum_face_boundary_distance>
          # find an estimate of the domain size
          # here we use a more accurate estimate of the domain size based on minimum_face_boundary_distance (used in electrokinetic routines for example)
-            #(comment created during unwrap): new block = minimum_face_boundary_distance: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/general/minimum_face_boundary_distance.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "minimum_face_boundary_distance" # this will find a constant vector domain length in each dimension
             # this bit of code taken from older level set routines, with a few name changes
             # finds minimum distance to walls, but is expensive to calculate

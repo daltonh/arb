@@ -1,11 +1,11 @@
-#(comment created during unwrap): new block = root_input.arb: new_file = 1
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: vof_advection_streamtest.arb
-   #(comment created during unwrap): new block = vof_advection_streamtest.arb: new_file = 1
+   #(comment created during unwrap): new block = vof_advection_streamtest.arb: sub_block = 0
    #(hash inserted during unwrap)INCLUDE_WORKING "vof_advection_streamtest.arb"
    VERSION 0.53
    
@@ -25,7 +25,7 @@ EXTERNALS "src/free_surface_functions.f90"
    
    #KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2,polynomialcellorder=2
    
-    # comment out any references to the third dimension in any included files
+   # comment out any references to the third dimension in any included files
    
    TIMESTEPMAX 5 # just compute 5 timesteps
    
@@ -92,9 +92,9 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE "remove_masks"
    
    # mask setup:
-    # if this is not set then no masks are defined.  If you don't want to use masks, then include remove_masks near the start of the input file.
-    # default maximum separation used for the faceave kernels, which can be overwritten outside of this routine
-    # default maximum separation used for the facegrad kernels, which can be overwritten outside of this routine
+   # if this is not set then no masks are defined.  If you don't want to use masks, then include remove_masks near the start of the input file.
+   # default maximum separation used for the faceave kernels, which can be overwritten outside of this routine
+   # default maximum separation used for the facegrad kernels, which can be overwritten outside of this routine
    CELL_TRANSIENT <vof_interface_indicator[r=1]> "" "cellmax(<vof_phi_lim>,region=<adjacentcellicells>)-cellmin(<vof_phi_lim>,region=<adjacentcellicells>)-<vof_phi_tol>" ON <allcells> output
    CELL_TRANSIENT_REGION <vof_interface_mask[r=1]> "" "variable(<vof_interface_indicator[r=1]>)" ON <allcells>
    FACE_TRANSIENT_REGION <vof_interface_mask_f[r=1]> "" "associatedwith(<vof_interface_mask[r=1]>)" ON <allfaces>
@@ -107,7 +107,7 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE "normals" R "[l=" W "[r=1,l=" R "<vof_phi_smoothed>" W "<vof_phi_smoothed[r=1]>" R "<vof_phigrad_mag>" W "<vof_phigrad_mag[r=1]>" R "<vof_phigrad_mag^2>" W "<vof_phigrad_mag^2[r=1]>" R "DERIVED" W "TRANSIENT"
    
    # alternatively use high order normals
-      #(comment created during unwrap): new block = implicit_reconstructed_levelset: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "implicit_reconstructed_levelset"
       # implicit reconstructed levelset idea
       CELL_UNKNOWN <vof_s> "2.d0*<vof_phi_interface>-1.d0" ON <allcells> magnitude=1.d0
@@ -119,13 +119,13 @@ EXTERNALS "src/free_surface_functions.f90"
       CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
       FACE_EQUATION <vof_s boundary> "2.d0*<vof_phi_interface>-1.d0-<vof_s>" ON <boundaries>
    CELL_TRANSIENT <vof_s[r=1]> "" "<vof_s>" ON <allcells>
-      #(comment created during unwrap): new block = normals: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "normals" 
-       
+      
       # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
       
       # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
-       
+      
       
       # first calculate masks for the normals
       CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=3,faceseparation](<vof_delta_mask[r=1]>)" ON <allcells>
@@ -159,12 +159,12 @@ EXTERNALS "src/free_surface_functions.f90"
    CELL_TRANSIENT <vof_phi> "<vof_phi_initial>" "cellif(celldelta(<boundarycells>),<vof_phi_initial>,cellif(celldelta(<vof_interface_mask[r=1]>),<vof_phi[r=1]>-<dt>*celldiv(<vof_phi_f_adjusted[r=1]>*<u_f>),<vof_phi[r=1]>))" ON <allcells> output
    
    #-------------------------------------------------------------------
-      #(comment created during unwrap): new block = output_masks: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/output_masks.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "output_masks"
       # this file contains variables that allow the outputing of the various dynamic region masks
       
       # have to cope with both single and double domain setups
-       
+      
       
       CELL_OUTPUT <vof_interface_mask_output[r=1]> "1.d0" ON <vof_interface_mask[r=1]>
       FACE_OUTPUT <vof_interface_mask_f_output[r=1]> "1.d0" ON <vof_interface_mask_f[r=1]>

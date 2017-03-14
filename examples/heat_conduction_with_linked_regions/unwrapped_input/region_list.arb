@@ -1,0 +1,24 @@
+# Reconstructed list of the regions in arb format:
+#--------------------------------------------------------------------------------
+# setup regions:
+FACE_SETUP_REGION <walls> "COMPOUND +<boundaries>-<hole>-<inlet>-<outlet>" ON <allfaces> # other information: user = 1: dynamic = 0: parent = <allfaces>: rindex = empty: fortran = 10: part_of_fortran = 4: parent_fortran = 4: last_variable_masread = 1: newtstepmax = empty: newtstepmin = empty: filename = heat_conduction_with_linked_regions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/examples/heat_conduction_with_linked_regions/heat_conduction_with_linked_regions.arb: comments = empty
+#--------------------------------------------------------------------------------
+# gmsh regions:
+FACE_GMSH_REGION <inlet> "gmsh from context from face region <inlet> used in face facelink in equation <T periodic>" # other information: user = 0: dynamic = 0: parent = empty: rindex = empty: fortran = 11: part_of_fortran = empty: parent_fortran = empty: last_variable_masread = empty: newtstepmax = empty: newtstepmin = empty: filename = empty: absfilename = empty: comments = empty
+FACE_GMSH_REGION <outlet> "gmsh from context to face region <outlet> used in face facelink in equation <T periodic>" # other information: user = 0: dynamic = 0: parent = empty: rindex = empty: fortran = 12: part_of_fortran = empty: parent_fortran = empty: last_variable_masread = empty: newtstepmax = empty: newtstepmin = empty: filename = empty: absfilename = empty: comments = empty
+FACE_GMSH_REGION <hole> "gmsh from context region associated with face equation variable <T hole>" # other information: user = 0: dynamic = 0: parent = empty: rindex = empty: fortran = 13: part_of_fortran = empty: parent_fortran = empty: last_variable_masread = empty: newtstepmax = empty: newtstepmin = empty: filename = empty: absfilename = empty: comments = empty
+#--------------------------------------------------------------------------------
+# constant regions:
+#--------------------------------------------------------------------------------
+# transient regions:
+#--------------------------------------------------------------------------------
+# newtient regions:
+#--------------------------------------------------------------------------------
+# derived regions:
+#--------------------------------------------------------------------------------
+# equation regions:
+#--------------------------------------------------------------------------------
+# output regions:
+#--------------------------------------------------------------------------------
+# condition regions:
+#--------------------------------------------------------------------------------

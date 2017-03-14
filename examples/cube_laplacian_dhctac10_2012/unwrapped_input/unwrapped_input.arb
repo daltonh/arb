@@ -1,11 +1,11 @@
-#(comment created during unwrap): new block = root_input.arb: new_file = 1
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: cube_laplacian_dhctac10_2012.arb
-   #(comment created during unwrap): new block = cube_laplacian_dhctac10_2012.arb: new_file = 1
+   #(comment created during unwrap): new block = cube_laplacian_dhctac10_2012.arb: sub_block = 0
    #(hash inserted during unwrap)INCLUDE_WORKING "cube_laplacian_dhctac10_2012.arb"
    # arb finite volume solver
    # Copyright 2009-2011 Dalton Harvie (daltonh@unimelb.edu.au)

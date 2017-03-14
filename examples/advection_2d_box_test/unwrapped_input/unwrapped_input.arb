@@ -1,11 +1,11 @@
-#(comment created during unwrap): new block = root_input.arb: new_file = 1
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: advection_2d_box_test.arb
-   #(comment created during unwrap): new block = advection_2d_box_test.arb: new_file = 1
+   #(comment created during unwrap): new block = advection_2d_box_test.arb: sub_block = 0
    #(hash inserted during unwrap)INCLUDE_WORKING "advection_2d_box_test.arb"
    # arb by dalton harvie
    # file equations.in
@@ -72,9 +72,9 @@ EXTERNALS "src/free_surface_functions.f90"
    #--------------------
    # absolute limiter, applied between 0 and 1 (default values)
    
-      #(comment created during unwrap): new block = absolute_limiter: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/advection_limiters/implicit/absolute_limiter.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "absolute_limiter" 
-       
+      
       # this file produces a limiter (<phi limiter>) that can be used to limit advective quantities
       
       # to use these limiters for a general cell-centred variable <foo> say you need to:
@@ -107,11 +107,11 @@ EXTERNALS "src/free_surface_functions.f90"
       #--------------------------------------------------------
       # do all the limiter calcs
       
-         #(comment created during unwrap): new block = limiter: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/advection_limiters/implicit/limiter.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "limiter"
          # vector from centre to face within each cell
          # these will need <<dim1comment>> etc replaced either with spaces or comments, depending on which dimensions are being solved for
-            #(comment created during unwrap): new block = centre_to_face_vector: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/advection_limiters/implicit/centre_to_face_vector.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "centre_to_face_vector"
             # vector to the face from the last cell centre
             FACE_LOCAL <xc_to_xf[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
@@ -119,7 +119,7 @@ EXTERNALS "src/free_surface_functions.f90"
             FACE_LOCAL <xc_to_xf[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
          
          # calculate <phi limiter kernel> which is only limited to ensure that the kernel components are below certain maximums
-            #(comment created during unwrap): new block = kernel_limiter: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/advection_limiters/implicit/kernel_limiter.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "kernel_limiter"
             # this limiter ensures that the effective kernels used to calculate the face centred quantities within each cell are below certain maximums
             # making these numbers smaller will cause the method to become more upwind
@@ -130,7 +130,7 @@ EXTERNALS "src/free_surface_functions.f90"
             CELL_CONSTANT <foo limiter kernel> "cellmin(<foo limiter crosskernel>,<foo limiter centralkernel>)" ON <allcells>
          
          # calculate cell centred phi gradients
-            #(comment created during unwrap): new block = limiter_gradients: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/advection_limiters/implicit/limiter_gradients.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "limiter_gradients"
             CELL_DERIVED <foo limiter grad[l=1]> "cellgrad[l=1](<foo>)*<foo limiter kernel>" ON <allcells>
             CELL_DERIVED <foo limiter grad[l=2]> "cellgrad[l=2](<foo>)*<foo limiter kernel>" ON <allcells>
@@ -156,7 +156,7 @@ EXTERNALS "src/free_surface_functions.f90"
          CELL_DERIVED <foo limiter> "cellif(celldelta(<domain>),<foo limiter domain>,0.d0)" ON <allcells>
          
          # overwrite various parameters that define how conservative (ie, stable) the limiter is
-            #(comment created during unwrap): new block = default_parameters: new_file = 1
+            #(comment created during unwrap): new block = ../../templates/advection_limiters/implicit/default_parameters.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_parameters"
             # these are the parameters that are now standard (v0.50), and included at the end of the limiter file now, overwriting those in limiter.arb and kernel_limiter.arb
             NONE_CONSTANT <foo a> 4.0d0 # determines the gradient of the limiter

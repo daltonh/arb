@@ -1,12 +1,12 @@
-#(comment created during unwrap): new block = examples/bouncing_ball/resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /Users/daltonh/codes/arb/development/arb_develop_v0.57/src/free_surface_functions.f90
-EXTERNALS "/Users/daltonh/codes/arb/development/arb_develop_v0.57/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: /Users/daltonh/codes/arb/development/arb_develop_v0.57/examples/bouncing_ball/bouncing_ball.arb
-   #(comment created during unwrap): new block = examples/bouncing_ball/bouncing_ball.arb: sub_block = 0
-   #(hash inserted during unwrap)INCLUDE_WORKING "/Users/daltonh/codes/arb/development/arb_develop_v0.57/examples/bouncing_ball/bouncing_ball.arb"
+# the following working directory files found by the arb script: bouncing_ball.arb
+   #(comment created during unwrap): new block = bouncing_ball.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "bouncing_ball.arb"
    # arb finite volume solver
    # Copyright 2009-2011 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -120,7 +120,7 @@ EXTERNALS "/Users/daltonh/codes/arb/development/arb_develop_v0.57/src/free_surfa
    #
    # example:
    # here we create a trigger and name it as <trigger_z
-      #(comment created during unwrap): new block = templates/general/trigger_create.arb: sub_block = 0
+      #(comment created during unwrap): new block = ../../templates/general/trigger_create.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "trigger_create" 
       # create a namespace called <trigger_z
       NONE_DERIVED <trigger_z> "noneif(<z_threshold>-<z>,1.d0,0.d0)"
@@ -151,12 +151,12 @@ EXTERNALS "/Users/daltonh/codes/arb/development/arb_develop_v0.57/src/free_surfa
    # here we link <z> to <trigger_z>, which was created above
    # we demonstrate the use of <linked_on_trigger_occurence> to store the values of <z> on the first and second activation of <trigger_z>
    # and name these values <z_triggered_one> and <z_triggered_two>, respectively
-      #(comment created during unwrap): new block = templates/general/trigger_link.arb: sub_block = 0
+      #(comment created during unwrap): new block = ../../templates/general/trigger_link.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "trigger_link" 
       # use the <trigger_z namespace
       NONE_DERIVED <z_triggered_one> "noneif(<trigger_z_logical>-(1.d0-0.1),noneif((1.d0+0.1)-<trigger_z_logical>,noneif(abs(<trigger_z_logical>-<trigger_z_logical[r=1]>)-1.d-10,<z>,<z_triggered_one[r=1]>),<z_triggered_one[r=1]>),<z_triggered_one[r=1]>)" stepoutput
       NONE_TRANSIENT <z_triggered_one[r=1]> "0.d0" "<z_triggered_one>"
-      #(comment created during unwrap): new block = templates/general/trigger_link.arb: sub_block = 0
+      #(comment created during unwrap): new block = ../../templates/general/trigger_link.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "trigger_link" 
       # use the <trigger_z namespace
       NONE_DERIVED <z_triggered_two> "noneif(<trigger_z_logical>-(2.d0-0.1),noneif((2.d0+0.1)-<trigger_z_logical>,noneif(abs(<trigger_z_logical>-<trigger_z_logical[r=1]>)-1.d-10,<z>,<z_triggered_two[r=1]>),<z_triggered_two[r=1]>),<z_triggered_two[r=1]>)" stepoutput
@@ -168,7 +168,7 @@ EXTERNALS "/Users/daltonh/codes/arb/development/arb_develop_v0.57/src/free_surfa
    # alternative minimal example
    # here we create a trigger using it's default variable names
    # and link it to the variable <z>
-      #(comment created during unwrap): new block = templates/general/trigger_create.arb: sub_block = 0
+      #(comment created during unwrap): new block = ../../templates/general/trigger_create.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "trigger_create" 
       
       NONE_DERIVED <trigger> "noneif(<z_threshold>-<z>,1.d0,0.d0)"
@@ -177,7 +177,7 @@ EXTERNALS "/Users/daltonh/codes/arb/development/arb_develop_v0.57/src/free_surfa
       # if <trigger> changes sign over the course of the timestep, then increment <trigger_logical>
       NONE_DERIVED <trigger_logical> "cellif(abs(<trigger>-<trigger[r=1]>)-1e-10,<trigger_logical[r=1]>+1.d0,<trigger_logical[r=1]>)"
       NONE_TRANSIENT <trigger_logical[r=1]> "0.d0" "<trigger_logical>"
-      #(comment created during unwrap): new block = templates/general/trigger_link.arb: sub_block = 0
+      #(comment created during unwrap): new block = ../../templates/general/trigger_link.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "trigger_link" 
       
       NONE_DERIVED <linked> "noneif(<trigger_logical>-(1.d0-0.1),noneif((1.d0+0.1)-<trigger_logical>,noneif(abs(<trigger_logical>-<trigger_logical[r=1]>)-1.d-10,<z>,<linked[r=1]>),<linked[r=1]>),<linked[r=1]>)" stepoutput
@@ -199,7 +199,7 @@ EXTERNALS "/Users/daltonh/codes/arb/development/arb_develop_v0.57/src/free_surfa
    #   stores the maximum value of <var_tracked> over the course of the simulation
    #
    # example
-      #(comment created during unwrap): new block = templates/general/series_nonemax.arb: sub_block = 0
+      #(comment created during unwrap): new block = ../../templates/general/series_nonemax.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "series_nonemax" 
       
       NONE_LOCAL <z_increment> "<z>-<z_max[r=1]>"
@@ -219,7 +219,7 @@ EXTERNALS "/Users/daltonh/codes/arb/development/arb_develop_v0.57/src/free_surfa
    #   stores the minimum value of <var_tracked> over the course of the simulation
    #
    # example
-      #(comment created during unwrap): new block = templates/general/series_nonemin.arb: sub_block = 0
+      #(comment created during unwrap): new block = ../../templates/general/series_nonemin.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "series_nonemin" 
       
       NONE_LOCAL <z_decrement> "<z_min[r=1]>-<z>"

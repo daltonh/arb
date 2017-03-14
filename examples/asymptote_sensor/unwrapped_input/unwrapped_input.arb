@@ -1,11 +1,11 @@
-#(comment created during unwrap): new block = root_input.arb: new_file = 1
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop_v0.57/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: asymptote_sensor.arb
-   #(comment created during unwrap): new block = asymptote_sensor.arb: new_file = 1
+   #(comment created during unwrap): new block = asymptote_sensor.arb: sub_block = 0
    #(hash inserted during unwrap)INCLUDE_WORKING "asymptote_sensor.arb"
    # arb finite volume solver
    # Copyright 2009-2011 Dalton Harvie (daltonh@unimelb.edu.au)
@@ -86,9 +86,9 @@ EXTERNALS "src/free_surface_functions.f90"
    #
    # example:
    # here we create an asymptote expression
-      #(comment created during unwrap): new block = trigger_create_asymptote_expression: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/general/trigger_create_asymptote_expression.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "trigger_create_asymptote_expression" 
-       
+      
       NONE_CONSTANT <z_asymptote_timestep_bin_width> 100.0 #N; or number of bins for mean test
       NONE_DERIVED <z_asymptote_check> "noneif(abs(mod(<timestep>,<z_asymptote_timestep_bin_width>)-1.d0),0,1)" #return 1 if timestep is N+1,2N+1,3N+1 etc. 
       NONE_DERIVED <z_asymptote_total> "noneif(<z_asymptote_check>,0.d0+<z>,<z_asymptote_total[r=1]>+<z>)" #add end-of-current-timestep <var_tracked> to the running total
@@ -100,9 +100,9 @@ EXTERNALS "src/free_surface_functions.f90"
       NONE_CONDITION <z_asymptote_expression> "<z_asymptote_tolerance>-<z_asymptote_measure>"
       
       # track the minimum of <asymptote_measure>
-         #(comment created during unwrap): new block = series_nonemin: new_file = 1
+         #(comment created during unwrap): new block = ../../templates/general/series_nonemin.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "series_nonemin" 
-          
+         
          NONE_LOCAL <z_asymptote_measure_decrement> "<z_asymptote_measure_min[r=1]>-<z_asymptote_measure>"
          NONE_DERIVED <z_asymptote_measure_min> "noneif(<z_asymptote_measure_decrement>,<z_asymptote_measure_min[r=1]>-<z_asymptote_measure_decrement>,<z_asymptote_measure_min[r=1]>)" stepoutput # decrement the var_min value only if we need to
          NONE_TRANSIENT <z_asymptote_measure_min[r=1]> "<z_asymptote_measure>" "<z_asymptote_measure_min>" input,output
@@ -114,9 +114,9 @@ EXTERNALS "src/free_surface_functions.f90"
    VARIABLE <z_asymptote_tolerance> 0.001 # (default is 0.01 tolerance)
    
    # here we create a trigger and link it to the asymptote created above
-      #(comment created during unwrap): new block = trigger_create: new_file = 1
+      #(comment created during unwrap): new block = ../../templates/general/trigger_create.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "trigger_create" 
-       
+      
       NONE_DERIVED <trigger> "noneif(<z_asymptote_expression>,1.d0,0.d0)"
       NONE_TRANSIENT <trigger[r=1]> "0.d0" "<trigger>"
       
