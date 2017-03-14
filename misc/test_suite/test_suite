@@ -144,29 +144,31 @@ for dir_name in ${TESTCASES[@]} ; do
     echo "INFO: skipping directory $subdir as it is a link to another directory or does not contain an arb input file";
     continue;
   fi # skip the directory if it doesn't contain an arb input file or is not a directory (could be a tutorial link for example)
+  cd $subdir; # change to the subdir where the arb and msh files will be found
   for compiler in ${COMPILERS[@]} ; do # run with the chosen compilers
 # make results directory within examples directories and copy over all of the outputs
-    results_dir="${subdir}/resources/test_suite_results/$compiler";
+    results_dir="resources/test_suite_results/$compiler";
     output_dir="${results_dir}/output";
     if [ ! -d $results_dir ] ; then mkdir -p $results_dir ; fi
     if [ $REFRESH -eq 1 -a -e $results_dir/SUCCESS ] ; then
       echo "INFO: skipping arb simulation of test case $subdir using $compiler compiler as successful results already exist";
+      cd $cwd;
       continue;
     else
       echo "INFO: performing arb simulation of test case $subdir using $compiler compiler";
       rm -r $results_dir/* >/dev/null 2>/dev/null; # will remove old output directory, and other files
     fi
     local_log_file="$results_dir/test_suite.log";
-    echo "INFO: arbfiles = ${arbfiles[*]}" >>$local_log_file;
     echo "INFO: results_dir = ${results_dir}" >>$local_log_file;
     echo "INFO: output_dir = ${output_dir}" >>$local_log_file;
     echo "INFO: subdir = ${subdir}" >>$local_log_file;
+    rm fort.* >/dev/null 2>/dev/null; # just in case there are any debugging files left here from previous runs, remove
 # if an arb file is present which matches the directory name then run this, otherwise run all arb files
-    if [ -e "${sub_dir}/${dir_name}.arb" ] ; then
-      ./arb $arb_options "${sub_dir}/${dir_name}.arb" --quiet --compiler-$compiler -o "${output_dir}" >>$local_log_file 2>>$local_log_file;
+    if [ -e "${dir_name}.arb" ] ; then
+      $cwd/bin/arb $arb_options "${dir_name}.arb" --quiet --compiler-$compiler -o "${output_dir}" >>$local_log_file 2>>$local_log_file;
     else
-#     ./arb $arb_options ${sub_dir}/*.arb --quiet --compiler-$compiler -o "${output_dir}" >>$local_log_file 2>>$local_log_file;
-      ./arb $arb_options ${arbfiles[*]} --quiet --compiler-$compiler -o "${output_dir}" >>$local_log_file 2>>$local_log_file;
+      $cwd/bin/arb $arb_options *.arb --quiet --compiler-$compiler -o "${output_dir}" >>$local_log_file 2>>$local_log_file;
+#     ./arb $arb_options ${arbfiles[*]} --quiet --compiler-$compiler -o "${output_dir}" >>$local_log_file 2>>$local_log_file;
     fi
     keyword=ERROR_IN_MAKE;
     if [ -e "${output_dir}/output.scr" ] ; then
@@ -175,10 +177,10 @@ for dir_name in ${TESTCASES[@]} ; do
       if [[ ! "$keyword" == "SUCCESS" ]] ; then keyword="ERROR_IN_RUN"; fi
     fi
 # also create unwrapped input directory and copy over unwrapped_input.arb
-    if [ ! -d $subdir/unwrapped_input ] ; then mkdir -p $subdir/unwrapped_input ; fi
-    cp "${output_dir}/setup_data/unwrapped_input.arb" $subdir/unwrapped_input >/dev/null 2>/dev/null;
-    cp "${output_dir}/setup_data/variable_list.arb" $subdir/unwrapped_input >/dev/null 2>/dev/null;
-    cp "${output_dir}/setup_data/region_list.arb" $subdir/unwrapped_input >/dev/null 2>/dev/null;
+    if [ ! -d unwrapped_input ] ; then mkdir -p unwrapped_input ; fi
+    cp "${output_dir}/setup_data/unwrapped_input.arb" unwrapped_input >/dev/null 2>/dev/null;
+    cp "${output_dir}/setup_data/variable_list.arb" unwrapped_input >/dev/null 2>/dev/null;
+    cp "${output_dir}/setup_data/region_list.arb" unwrapped_input >/dev/null 2>/dev/null;
     touch $results_dir/$keyword;
     if [[ "$keyword" == "SUCCESS" ]]; then
       echo "INFO: simulation $subdir using $compiler compiler was successful";
@@ -192,8 +194,10 @@ for dir_name in ${TESTCASES[@]} ; do
     if [ -n "$fortfiles" ]; then
       echo "ERROR: debugging files (ie fort.*) are being produced: you must have left a debugging flag on?: exiting";
       error=1;
+      cd $cwd;
       break 2; # jump out of two loop levels
     fi;
+    cd $cwd;
     if [ -e $stopfile ]; then
       echo "INFO: user has requested that test_suite program stops";
       error=1;

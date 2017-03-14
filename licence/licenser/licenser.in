@@ -37,7 +37,9 @@ src/contributed/pardiso/pardiso_module.f90
 doc/manual/manual.tex
 misc/packer/unpack
 misc/packer/pack.pl
-misc/plot_step/plot_step.pl
+misc/arb_gnuplot/arb_gnuplot.pl
 misc/test_suite/test_suite
-todo
-arb
+misc/batcher/batcher.pl
+install/install_globally.sh
+licence/todo
+bin/arb
