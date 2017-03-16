@@ -1388,8 +1388,13 @@ sub push_code_block {
   }
 
   if ($#code_blocks) {
-# set to last include_path of previous code_block, which is where calling file must be
-    $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[$#{$code_blocks[$#code_blocks-1]{"include_path"}}];
+    if (defined($abs_name)) {
+# set to last include_path of previous code_block, which is where calling file must be, for a block created from a new file
+      $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[$#{$code_blocks[$#code_blocks-1]{"include_path"}}];
+    } else {
+# for an in-file block though the path should be that to the file that it is in, consistent with the idea of opening up a new file at the same location as the one it is contained within
+      $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[0];
+    }
   } else {
 # initial include_path used for searching for the file is the working directory
 # so, always the initial search path for files is the working_dir (even though root_input.arb sits in the build directory)
