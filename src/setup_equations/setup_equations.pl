@@ -40,6 +40,8 @@
 #  3 = output_dir
 # exit code: 0=signifies that either fortran was already up-to-date or that new fortran has been created (success), 1=fortran was not created (error)
 
+# TODO: remove declaration of variables per sub, instead making them local wherever possible
+
 use strict;
 use warnings;
 
@@ -854,8 +856,8 @@ sub process_regions {
 # NB: the region name here was previously run through examine_name when the region was specified within the variable definition line
 # at the same time record region fortran_number with variable
 
-  foreach $type (@user_types,"someloop") {
-    foreach $mvar ( 1 .. $m{$type} ) {
+  foreach my $type (@user_types,"someloop") {
+    foreach my $mvar ( 1 .. $m{$type} ) {
       if (empty($variable{$type}[$mvar]{"region"})) { next; }
       if ($variable{$type}[$mvar]{"centring"} eq 'none') { next; }
       print DEBUG "INFO: search for $variable{$type}[$mvar]{centring} region $variable{$type}[$mvar]{region} on which variable $variable{$type}[$mvar]{name} is defined:\n";
@@ -916,16 +918,21 @@ sub process_regions {
         for $n2 ($#{$region[$n]{$key}{"variablenames"}}) {
           my $match_name = $region[$n]{$key}{"variablenames"}[$n2];
           my $match_centring = $region[$n]{$key}{"variablecentrings"}[$n2];
-          $mvar = -1;
-          TYPE_LOOP: foreach $type (@user_types) {
-            foreach my $mvarsearch ( 1 .. $m{$type} ) {
-              if ($variable{$type}[$mvarsearch]{"name"} ne $match_name) { next; } else { $mvar = $mvarsearch; last TYPE_LOOP; }
+          my $mvar = -1;
+          my $type;
+          TYPE_LOOP: foreach my $typesearch (@user_types) {
+            foreach my $mvarsearch ( 1 .. $m{$typesearch} ) {
+              if ($variable{$typesearch}[$mvarsearch]{"name"} ne $match_name) {
+                next;
+              } else {
+                $mvar = $mvarsearch; $type = $typesearch; last TYPE_LOOP;
+              }
             }
           }
           if ($mvar < 0) { error_stop("the variable $match_name that is used in a location statement for region $region[$n]{name} is not known"); }
           if (nonempty($match_centring) && $match_centring ne $variable{$type}[$mvar]{"centring"}) {
             error_stop("the variable $match_name that is used in a location statement for region $region[$n]{name} has inconsistent centring: ".
-              "region location context centring = $match_centring: variable centring = $variable{$type}[$mvar]{centring}");
+              "region location context centring = $match_centring: variable centring = $variable{$type}[$mvar]{centring}: type = $type");
           }
           push(@{$region[$n]{$key}{"variables"}},$variable{$type}[$mvar]{"fortran_number"}); # add this fortran number to list of location_variables
         }
