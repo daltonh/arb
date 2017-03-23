@@ -23,10 +23,7 @@ import re
 from cStringIO import StringIO
 
 from threading import Thread
-
-#from wx.lib.pubsub import Publisher as pub
-from wx.lib.pubsub import setupkwargs
-from wx.lib.pubsub import pub
+from wx.lib.pubsub import Publisher
 
 import pandas as pd
 import numpy as np
@@ -36,26 +33,6 @@ import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
-
-# turn of all warnings for matplotlib deprecated features (they are dealt with in the code though)
-import warnings
-import matplotlib.cbook
-
-try:
-    warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
-except:
-    pass
-
-old_matplotlib_version = True
-running_matplotlib_version = LooseVersion(matplotlib.__version__)
-old_matplotlib_version_threshold = "1.5"
-if running_matplotlib_version < old_matplotlib_version_threshold:
-    old_matplotlib_version = True
-
-if old_matplotlib_version:
-    pass
-else:
-    from cycler import cycler
 
 import argparse
 from collections import defaultdict
@@ -79,10 +56,6 @@ running_wx_version = LooseVersion(wx.__version__)
 old_wx_version_threshold = "2.9.0"
 if running_wx_version < old_wx_version_threshold:
     old_wx_version = True
-
-
-
-
 
 # directory storing simulation data
 # see misc/track/track_main.pl
@@ -128,11 +101,6 @@ y2_alpha = 0.7
 
 # font size for legend
 legend_font_size=9
-
-# code variable to allow sequential clearing of each
-# variable without updating the plot
-global update_on_check
-update_on_check = True
 
 class Data():
     show_markers = True # class attribute
@@ -250,13 +218,10 @@ class RefreshThread(Thread):
         while (self.refresh_state):
             time.sleep(5) # wait n seconds
             wx.CallAfter(self.postTime, 1)
-        wx.CallAfter(pub.sendMessage, "update", msg="string") # send a string to the "update" broadcast (will allow thread to continue)
-        # INFO: wx.CallAfter takes a function and its arguments, and calls the function when the current event handler has exited.
-
-
+        wx.CallAfter(Publisher().sendMessage, "update", "string") # send a string to the "update" broadcast (will allow thread to continue)
 
     def postTime(self, amt):
-        pub.sendMessage("update", msg=1) # send an integer to the "update" stream (will stop thread)
+        Publisher().sendMessage("update", 1) # send an integer to the "update" stream (will stop thread)
 
 class SortableListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin, listmix.CheckListCtrlMixin ) :
 
@@ -279,8 +244,7 @@ class SortableListCtrl( wx.ListCtrl, listmix.ListCtrlAutoWidthMixin, listmix.Che
         self.update_ordered_variables()
         self.GetCheckedList()
         self.update_active()
-        if update_on_check:
-            frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
+        frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
 
     def GetCheckedList(self):
         self.checked_list = [index for index in range(self.ItemCount)
@@ -490,12 +454,8 @@ class CanvasPanel(wx.Panel):
                 line_y2 = '-'
 
             # set color cycles before variable loops
-            if old_matplotlib_version:
-                self.axis.set_color_cycle(list1)
-                self.axis2.set_color_cycle(list2)
-            else:
-                self.axis.set_prop_cycle(cycler('color', list1))
-                self.axis2.set_prop_cycle(cycler('color', list2))
+            self.axis.set_color_cycle(list1)
+            self.axis2.set_color_cycle(list2)
 
             # loop over active y1_var
             if (frame.y1.list.active_count > 0):
@@ -811,15 +771,6 @@ class FrameGenerator(wx.Frame):
         start_refresh_button.Bind(wx.EVT_BUTTON, self.start_refresh)
         stop_refresh_button.Bind(wx.EVT_BUTTON, self.stop_refresh)
 
-# clear plot feature
-        clear = wx.StaticBox(container_panel_options, label='Clear data', pos=(5, 200), size=(-1, -1))
-        clear_sizer = wx.StaticBoxSizer(clear, wx.VERTICAL)
-        self.clear_button_y1 = clear_button_y1 = wx.Button(container_panel_options, -1, 'Clear y1', size=(140, -1))
-        self.clear_button_y2 = clear_button_y2 = wx.Button(container_panel_options, -1, 'Clear y2', size=(140, -1))
-        clear_sizer.Add(clear_button_y1, proportion=0, flag=wx.ALL, border=1)
-        clear_sizer.Add(clear_button_y2, proportion=0, flag=wx.ALL, border=1)
-        clear_button_y1.Bind(wx.EVT_BUTTON, self.clear_data_y1)
-        clear_button_y2.Bind(wx.EVT_BUTTON, self.clear_data_y2)
 
         vbox_options = wx.BoxSizer(wx.VERTICAL)
         vbox_options.Add(set_log_sizer, proportion=0, flag=wx.TOP, border=1)
@@ -829,7 +780,6 @@ class FrameGenerator(wx.Frame):
         if (show_plot_step_export):
             vbox_options.Add(plot_step_export_sizer, proportion=0, flag=0, border=1)
         vbox_options.Add(refresh_sizer, proportion=0, flag=0, border=1)
-        vbox_options.Add(clear_sizer, proportion=0, flag=0, border=1)
         container_panel_options.SetSizer(vbox_options)
 
         container_panel_right = wx.Panel(self, -1)
@@ -852,7 +802,7 @@ class FrameGenerator(wx.Frame):
         self.axis_limits_reset = [[None, None], [None, None], [None, None]]
 
         # subscribe to "update"
-        pub.subscribe(self.updateDisplay, "update")
+        Publisher().subscribe(self.updateDisplay, "update")
 
         self.selector = 0
 
@@ -1009,28 +959,9 @@ class FrameGenerator(wx.Frame):
         self.refresh_plot_step_output = False
         self.block = 1
 
-    def clear_data_y1(self, event):
-        global update_on_check
-        update_on_check = False
-        item_count = frame.y1.list.GetItemCount()
-        for i in range(item_count):
-            frame.y1.list.CheckItem(i, False)
-        frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
-        update_on_check = True
-
-    def clear_data_y2(self, event):
-        global update_on_check
-        update_on_check = False
-        item_count = frame.y2.list.GetItemCount()
-        for i in range(item_count):
-            frame.y2.list.CheckItem(i, False)
-        frame.plot.update_plot(log_options=frame.log_options, axis_limits=frame.axis_limits)
-        update_on_check = True
-
     def updateDisplay(self, msg):
 
-        #t = msg.data
-        t = msg
+        t = msg.data
         if (isinstance(t, int) and not self.block):
             # if we receive an integer message then reload
             # re-read the data
