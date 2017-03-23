@@ -635,10 +635,10 @@ equation_module.f90: $(src_dir)/equation_module_template.f90 $(setup_equations_s
 gmesh_module.o: gmesh_module.f90 general_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
-region_module.o: region_module.f90 general_module.o
+region_module.o: region_module.f90 general_module.o equation_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
-equation_module.o: equation_module.f90 general_module.o gmesh_module.o region_module.o
+equation_module.o: equation_module.f90 general_module.o gmesh_module.o
 	$(fcomp) $(cflags) $< $(logme) -o $@
 
 output_module.o: output_module.f90 general_module.o equation_module.o gmesh_module.o solver_module.o
