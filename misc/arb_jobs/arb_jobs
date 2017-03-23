@@ -1,0 +1,57 @@
+#!/usr/bin/perl -w
+
+# show running arb jobs that have been started by the current user
+
+use strict;
+our ($quiet_jobs,@silent,$thread_info,$thread_count);
+
+my $available_threads = 32; #  number of processing units available (i.e. the output of `nproc`)
+
+$quiet_jobs=0; #here a quiet job means one that has an output/output.scr file
+$thread_count=0;
+
+my @output = `pwdx \$(pidof arb) | sort -n`; #get job id and directory
+
+my $many = scalar @output; #number of arb jobs running
+print "$many total jobs running\n";
+
+
+# list jobs that were started with "--quiet"
+print "\n--quiet jobs\n";
+
+my $line;
+for(my $i = 0; $i < $many; $i++) {
+	$line = $output[$i];
+	my ($pid, $dir) = split(/ /,$line);
+	chomp($dir);
+
+	if (-e "$dir/output/output.scr") {
+		$quiet_jobs++;
+		open(SCR,"<","$dir/output/output.scr") or die ("cannot open output/output.scr in $dir");
+		while(<SCR>){
+			if (/thread/) {
+			$thread_info = $_;
+			}
+		}
+		my @thread_info = split(/ /,$thread_info);
+		my $threads_used = $thread_info[5]; #number of threads used by job
+		my $thread_message = 
+			$thread_info[5] . " threads";
+		print "id=$pid \t | $thread_message \t | $dir\n";
+		$thread_count = $thread_count + $threads_used;
+		close(SCR);
+	} else {
+	push (@silent, $line);
+	}
+}
+
+# assume that 32 threads are available
+print "\n$thread_count threads in use\n";
+my $threads_free = $available_threads-$thread_count;
+print "($threads_free threads free)\n";
+
+# list additional arb jobs that were NOT started with "--quiet"
+if (scalar @silent) {
+print "\nAdditional jobs\n";
+print "@silent\n";
+}
