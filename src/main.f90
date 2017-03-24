@@ -158,8 +158,6 @@ time_loop: do while ( &
 
     newtstep = newtstep + 1
 
-    if (newtstep >= newtstepdebugout) newtstepout = 1 ! turn on debugging output if simulation looks like its not converging
-
     formatline = "(a,"//trim(dindexformat(newtstep))//",a)"
     write(*,fmt=formatline) repeat('+',newtline)//' newtstep ',newtstep,' starting '//repeat('+',totalline-newtline)
     if (convergence_details_file) then
@@ -239,7 +237,9 @@ time_loop: do while ( &
 
     if (trim(output_step_file) == "newtstep") call output_step(action="write")
 
-    if (check_dumpfile("dumpnewt").or.(newtstepout /= 0.and.mod(newtstep,max(newtstepout,1)) == 0)) then
+! also start writing output files is newtstep >= newtstepdebugout
+
+    if (check_dumpfile("dumpnewt").or.(newtstepout /= 0.and.mod(newtstep,max(newtstepout,1)) == 0).or.newtstep >= newtstepdebugout) then
       write(*,'(a)') 'INFO: user has requested output via a dump file or newtstepout specification'
       call time_process
       call output(intermediate=.true.)
