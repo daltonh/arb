@@ -1222,7 +1222,7 @@ double precision, dimension(totaldimensions) :: x, xmin, xmax, unitnormal ! a si
 character(len=1000) :: formatline
 logical :: compoundtype, compoundadd, setijk, setns, faceseparation
 logical, dimension(:), allocatable :: elementisin
-logical :: debug_sparse = .true.
+logical :: debug_sparse = .false.
 logical, parameter :: debug = .false.
 
 if (debug) debug_sparse = .true.

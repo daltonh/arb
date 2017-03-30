@@ -1442,7 +1442,8 @@ sub perform_string_replacements {
   my $string = $_[0];
 
   foreach my $n1 ( reverse( 0 .. $#code_blocks ) ) {
-    foreach my $n2 ( 0 .. $#{$code_blocks[$n1]{"string_variables"}} ) {
+#   foreach my $n2 ( 0 .. $#{$code_blocks[$n1]{"string_variables"}} ) {
+    foreach my $n2 ( reverse( 0 .. $#{$code_blocks[$n1]{"string_variables"}} ) ) {
       if ($code_blocks[$n1]{"string_variables"}[$n2]{"replace"}) {
         replace_substring($string,$code_blocks[$n1]{"string_variables"}[$n2]{"name"},$code_blocks[$n1]{"string_variables"}[$n2]{"value"});
       }
