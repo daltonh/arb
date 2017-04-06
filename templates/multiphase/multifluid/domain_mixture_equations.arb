@@ -4,5 +4,6 @@ INCLUDE "unknowns"
 INCLUDE "total_stress"
 INCLUDE "p_error" R "<p>" W "<p_tot>" R "<p_f>" W "<p_tot_f>"
 INCLUDE "u_f"
+INCLUDE "advection_flux" # even though this is called for the stokes equations, no terms will be created
 INCLUDE "momentum_flux"
 INCLUDE "conservation"

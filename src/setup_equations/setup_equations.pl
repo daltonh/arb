@@ -224,7 +224,7 @@ if ($same_fortran_as_last_run) {
 
   create_fortran_equations(); # generate fortran equations
 
-  write_results(); # call routines to produce the output files
+  write_results(); # call routines to produce the output files, including the variable and region list files
 
 }
 
@@ -374,7 +374,7 @@ sub output_variable_list {
     print VARIABLE "List of $key variables:\n";
     for my $mvar ( 1 .. $#{$variable{$key}} ) {
       print VARIABLE "$mvar";
-        for my $infokey ( qw( name units centring region rank fortran_number component_list equation masread hasderiv deriv newtstepmax newtstepmin filename absfilename comments )) {
+        for my $infokey ( qw( name units centring update_region region rank fortran_number component_list equation masread hasderiv deriv newtstepmax newtstepmin filename absfilename comments )) {
           print VARIABLE ": $infokey = ";
           if (empty($variable{$key}[$mvar]{$infokey})) {
             print VARIABLE "empty"
@@ -397,9 +397,9 @@ sub output_variable_list {
       print VARIABLE "\U$variable{$key}[$mvar]{centring}_$key "."$variable{$key}[$mvar]{name} [$variable{$key}[$mvar]{units}]";
       if ($key =~ /ient$/) { print VARIABLE " \"".$variable{"initial_$key"}[$mvar]{equation}."\""; }
       if ($key eq "constant" && empty($variable{$key}[$mvar]{equation})) { print VARIABLE " \"numerical constant rather than an equation\"" } else { print VARIABLE " \"$variable{$key}[$mvar]{equation}\"" };
-      if ($variable{$key}[$mvar]{centring} ne "none") { print VARIABLE " ON $variable{$key}[$mvar]{region}"; }
+      if ($variable{$key}[$mvar]{centring} ne "none") { print VARIABLE " ON $variable{$key}[$mvar]{update_region}"; }
       print VARIABLE " # other information";
-      for my $infokey ( qw( deriv newtstepmax newtstepmin filename absfilename comments )) {
+      for my $infokey ( qw( region deriv newtstepmax newtstepmin filename absfilename comments )) {
         print VARIABLE ": $infokey = ";
         if (empty($variable{$key}[$mvar]{$infokey})) {
           print VARIABLE "empty"
