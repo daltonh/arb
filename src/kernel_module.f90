@@ -260,11 +260,14 @@ if (gradient_stability_corrections) then
   if (debug_sparse.or..true.) write(*,'(a)') 'INFO: stability corrections: zeroing gradient components'
 
 ! TODO: only for face gradients right now
+! TODO: move to setup_face_kernels as we need access to r vectors, which are available during kernel construction
+! setup as written here is incompatible with glued faces
 ! faces
   do l = 1, 6
     verror = 0.d0
     if (l > 3) then
       do j = 1, jtotal
+! write(*,*) 'l = ',l,': j = ',j,': face(j)%type = ',face(j)%type
         call kernel_stability_corrections(verror,one_kernel=face(j)%kernel(l),norm=face(j)%norm(:,l-3),xc=face(j)%x, &
           dx_kernel=face(j)%dx_kernel)
       end do
@@ -272,6 +275,7 @@ if (gradient_stability_corrections) then
       norm = 0.d0
       norm(l) = 1.d0
       do j = 1, jtotal
+! write(*,*) 'l = ',l,': j = ',j,': face(j)%type = ',face(j)%type
         call kernel_stability_corrections(verror,one_kernel=face(j)%kernel(l),norm=norm,xc=face(j)%x, &
           dx_kernel=face(j)%dx_kernel)
       end do
@@ -3545,6 +3549,8 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 ! rescale recently-formed derivative kernels
         if (l >= 4.and.l <= 6) face(j)%kernel(l)%v=face(j)%kernel(l)%v/face(j)%dx_kernel
 
+! TODO: do stability checks here by saving a copy of r, instead of in main routine
+
       end if
   
 ! find maximum values for each separation level
@@ -4689,6 +4695,14 @@ if (present(norm).and.present(xc).and.present(dx_kernel)) then
     end do
   else if (vsumneg*dx_kernel > small_element_minimum.or.vsumpos*dx_kernel > small_element_minimum) then
     write(*,*) 'WARNING: problem with a stability correction in one of the gradient kernels'
+    write(*,*) 'vsumneg,vsumpos,vsum'
+    write(*,*) vsumneg,vsumpos,vsum
+    write(*,*) 'one_kernel%v'
+    write(*,*) one_kernel%v
+    write(*,*) 'one_kernel%ijk'
+    write(*,*) one_kernel%ijk
+    write(*,*) 'one_kernel%centring = ',one_kernel%centring
+    call error_stop('problem using gradientstabilitycorrections, most likely as it is incompatible with glued faces')
   end if
 
 else
