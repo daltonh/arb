@@ -65,7 +65,7 @@ function usage () {
   echo
   echo "Possible options (consistent with long-form command line syntax (--), words are separated by -, and a preceeding --no- negates an option) :";
   echo "  -o|--output: name of output directory to be used to store output (default output)";
-  echo "  -po|--previous-output: name of previous output directory to be used for faster restart";
+  echo "  -po|--previous-output: name of previous output directory to be used for faster restart and possible continuation";
   echo "  --clean: remove previous meta-programming and object files";
   echo "  --clean-compile: remove previous object files";
   echo "  --clean-setup: remove previous meta-programming files";
@@ -266,7 +266,7 @@ done ;
 # set the output directory if it hasn't been set already
 # and make sure that they are absolute path names
 # note, existence of these directories tested later
-if [ -z "$output_dir" ] ; then
+if [ -z "$output_dir" ] ; then # -z means empty
   output_dir="$working_dir/output";
 elif [[ $output_dir != /* ]] ; then
   output_dir="$working_dir/$output_dir";
@@ -363,7 +363,9 @@ if [ -n "$previous_build_dir" ] ; then
   if [ ! -d "$previous_build_dir" ] ; then
     echo "WARNING: previous build directory $previous_build_dir does not exist.  Not using previous build data.";
   else
-    cp -Rp "$previous_build_dir" "$output_dir/" >/dev/null 2>/dev/null ; # preserve properties but don't copy directories (ie, intel ooc dir)
+    cp -Rp "$previous_build_dir" "$output_dir/" >/dev/null 2>/dev/null ; # preserve properties, now copying over subdirectories
+    cp -Rp "$previous_output_dir/setup_data" "$output_dir/" >/dev/null 2>/dev/null ; # also copy over setup_data directories
+    cp -Rp "$previous_output_dir/setup_data_incomplete" "$output_dir/" >/dev/null 2>/dev/null ; # also copy over setup_data directories
   fi;
 fi;
 # and link to the makefile
@@ -380,30 +382,29 @@ for i in ${working_files_to_delete[@]} ; do rm $i >/dev/null 2>/dev/null ; done 
   for i in ${output_files_to_delete[@]} ; do rm $i >/dev/null 2>/dev/null ; done ;
 )
 
-# keep copy of previous output if we aren't starting from a previous_output_dir
-if [ -z "$previous_output_dir" ] ; then # -z is true if the string is empty/doesn't exist
+# keep copy of previous output within the output dir
 # make previous directory and/or clear it out
-  if [ ! -d "$previous_run" ] ; then mkdir -p "$previous_run" ; fi ;
-  rm "$previous_run/"* >/dev/null 2>/dev/null ;
+if [ ! -d "$previous_run" ] ; then mkdir -p "$previous_run" ; fi ;
+rm "$previous_run/"* >/dev/null 2>/dev/null ;
 # place old output and gmsh files in previous_run directory that are needed to restart the run
-  (
-    cd "$output_dir"; # open subshell to limit cd scope (on newline due to vim highlighting error)
-    for i in ${output_files_to_keep[@]} ; do # don't quote string here as want globs to expand
-      if [ $ocontinue -eq 0 ] ; then
-        mv "$i" "$previous_run/" >/dev/null 2>/dev/null ;
-      else
-        cp -pR "$i" "$previous_run/" >/dev/null 2>/dev/null ;
-      fi ;
-    done ;
+(
+  cd "$output_dir"; # open subshell to limit cd scope (on newline due to vim highlighting error)
+  for i in ${output_files_to_keep[@]} ; do # don't quote string here as want globs to expand
+    if [ $ocontinue -eq 0 -o -n "$previous_output_dir" ] ; then
+      mv "$i" "$previous_run/" >/dev/null 2>/dev/null ;
+    else
+      cp -pR "$i" "$previous_run/" >/dev/null 2>/dev/null ;
+    fi ;
+  done ;
+)
+
+# if we are restarting from a previous output and continue is on, copy over files
+if [ -n "$previous_output_dir" -a $ocontinue -eq 1 ] ; then # -n means that string is defined
+  ( cd "$previous_output_dir";
+  for i in ${output_files_to_keep[@]} ; do
+    cp -pR "$i" "$output_dir/" >/dev/null 2>/dev/null ;
+  done ;
   )
-else # have to deal with previous_output_dir
-  if [ $ocontinue -eq 1 ] ; then
-    ( cd "$previous_output_dir";
-    for i in ${output_files_to_keep[@]} ; do
-      cp -pR "$i" "$output_dir/" >/dev/null 2>/dev/null ;
-    done ;
-    )
-  fi;
 fi;
 
 #---------------------------
