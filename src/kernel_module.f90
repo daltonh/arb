@@ -83,6 +83,8 @@ double precision, parameter :: small_element_minimum = 1.d-10 ! (1.d-10) minimum
 logical, parameter :: conservative_weighting = .false. ! (.false.) use a conservation principle to calculate weights that are connected, otherwise use formula based on absolute separation
 logical, parameter :: orientation_dependent_weights = .true. ! (.true.) the kernel weights are different depending on the direction of the kernel
 logical :: zero_nonoriented_weights = .false. ! (.false., userable) for the orientation_dependent_weights and face kernels, zero cell weights that do not have the highest weighting importance.  In effect this will compact face kernels, but may increase the number of negative elements.  Probably a good idea on structured meshes which generally have a high degree of symmetry.
+logical :: average_stability_corrections = .false. ! (.false., userable) whether to zero negative averaging kernel elements
+logical :: gradient_stability_corrections = .false. ! (.false., userable) whether to zero negative equivalent gradient kernel elements
 
 ! partial_hyperbolic_kernel for v0.42 (040614)
 !logical :: partial_hyperbolic_kernel = .true. ! (.true., userable) use hyperbolic kernel for boundary elements, or averaging domain elements, but not for domain derivative kernels
@@ -179,8 +181,9 @@ integer :: i, j, k, l, jj, ijk, ii2, i2, ierror, n
 integer :: n_domain_kernels, n_domain_elements, n_boundary_kernels, n_boundary_elements, n_elements, &
   min_location, max_location, nmax
 double precision :: xtmp, cross_kernel, overall_cross_kernel, central_kernel, overall_central_kernel, kernel_sum, &
-  overall_kernel_sum, min_value, max_value, value, dx_kernel
+  overall_kernel_sum, min_value, max_value, value, dx_kernel, verror
 double precision, dimension(:), allocatable :: kernel_error
+double precision, dimension(totaldimensions) :: norm
 logical :: any_error
 character(len=10000) :: filename, formatline
 type(kernel_type), dimension(10) :: temporary_kernel ! for debugging the advection routine
@@ -213,18 +216,90 @@ call setup_cell_kernels ! has to go after setup_face_kernels as may use face ker
 call setup_node_kernels ! ditto to this one, that may also use face kernels
 
 !------------------------------------------
+! do any kernel stability corrections
+
+if (average_stability_corrections) then
+  if (debug_sparse.or..true.) write(*,'(a)') 'INFO: stability corrections: zeroing average components'
+
+! faces
+  verror = 0.d0
+  do j = 1, jtotal
+    call kernel_stability_corrections(verror,one_kernel=face(j)%kernel(0))
+  end do
+  if (verror > small_element_minimum) then
+    write(*,'(a,g13.6)') 'WARNING: average correction to face average kernels is ',verror/max(dble(jtotal),1.d0)
+  else
+    write(*,'(a)') 'INFO: no stablity correction applied to face average kernels'
+  end if
+
+! cells
+  verror = 0.d0
+  do i = 1, itotal
+    call kernel_stability_corrections(verror,one_kernel=cell(i)%kernel(0))
+  end do
+  if (verror > small_element_minimum) then
+    write(*,'(a,g13.6)') 'WARNING: average correction to cell average kernels is ',verror/max(dble(itotal),1.d0)
+  else
+    write(*,'(a)') 'INFO: no stablity correction applied to cell average kernels'
+  end if
+
+! nodes
+  verror = 0.d0
+  do k = 1, ktotal
+    call kernel_stability_corrections(verror,one_kernel=node(k)%kernel(0))
+  end do
+  if (verror > small_element_minimum) then
+    write(*,'(a,g13.6)') 'WARNING: average correction to node average kernels is ',verror/max(dble(ktotal),1.d0)
+  else
+    write(*,'(a)') 'INFO: no stablity correction applied to node average kernels'
+  end if
+
+end if
+
+if (gradient_stability_corrections) then
+  if (debug_sparse.or..true.) write(*,'(a)') 'INFO: stability corrections: zeroing gradient components'
+
+! TODO: only for face gradients right now
+! faces
+  do l = 1, 6
+    verror = 0.d0
+    if (l > 3) then
+      do j = 1, jtotal
+        call kernel_stability_corrections(verror,one_kernel=face(j)%kernel(l),norm=face(j)%norm(:,l-3),xc=face(j)%x, &
+          dx_kernel=face(j)%dx_kernel)
+      end do
+    else
+      norm = 0.d0
+      norm(l) = 1.d0
+      do j = 1, jtotal
+        call kernel_stability_corrections(verror,one_kernel=face(j)%kernel(l),norm=norm,xc=face(j)%x, &
+          dx_kernel=face(j)%dx_kernel)
+      end do
+    end if
+    if (verror > small_element_minimum) then
+      write(*,'(a,i1,a,g13.6)') 'WARNING: average correction to face gradient kernel ',l,' is ',verror/max(dble(jtotal),1.d0)
+    else
+      write(*,'(a,i1)') 'INFO: no stablity correction applied to face gradient kernel ',l
+    end if
+  end do
+
+end if
+
+!------------------------------------------
+! start kernel health checks
+
+if (debug_sparse.or..true.) write(*,'(a)') 'INFO: checking kernel consistencies and printing statistics: kernel advection parameters'
+
 ! checking on kernel health for advection bits
+! this check has to be performed before elements are removed (done next) as these checks assume that the kernel support region is the same for all cell kernels
 
 overall_cross_kernel = 0.d0
 overall_central_kernel = 0.d0
 overall_kernel_sum = 0.d0
-KERNEL_HEALTH_LOOP: do i = 1, itotal
+do i = 1, itotal
   cell(i)%cross_kernel = 0.d0
   cell(i)%central_kernel = 0.d0
   cell(i)%kernel_sum = 0.d0
-  do l = 1, 3
-    if (allocatable_integer_size(cell(i)%kernel(l)%ijk) == 0) cycle KERNEL_HEALTH_LOOP
-  end do
   if (.true.) then
     if (cell(i)%type == 2) cycle
     if (debug) write(85,'(a)') &
@@ -236,6 +311,7 @@ KERNEL_HEALTH_LOOP: do i = 1, itotal
 ! temporary kernel is now only the coefficients to evaluate the change in phi from the centre to the face (ie, the high order bits)
 !     temporary_kernel(jj)%v(1) = 1.d0 
       do l = 1, 3
+        if (allocatable_integer_size(cell(i)%kernel(l)%ijk) == 0) cycle
         xtmp = face(j)%x(l) - cell(i)%x(l)
         do ii2 = 1, ubound(cell(i)%kernel(l)%ijk,1)
           if (temporary_kernel(jj)%ijk(ii2) /= cell(i)%kernel(l)%ijk(ii2)) call error_stop('problem')
@@ -265,7 +341,7 @@ KERNEL_HEALTH_LOOP: do i = 1, itotal
     overall_central_kernel = max(cell(i)%central_kernel,overall_central_kernel)
     overall_kernel_sum = max(cell(i)%kernel_sum,overall_kernel_sum)
   end if
-end do KERNEL_HEALTH_LOOP
+end do
 formatline = '(a,'//trim(compactformat)//')'
 if (debug) write(85,fmt=formatline) 'overall_cross_kernel = ',overall_cross_kernel
 write(*,fmt=formatline) 'INFO: overall_cross_kernel = ',overall_cross_kernel
@@ -401,9 +477,10 @@ if (remove_small_elements) then
 end if
 
 !---------------------------
-! print warnings of any negative zeroth order kernels
+! continue with kernel health checks
+! print warnings of any negative zeroth order kernels or boundary gradient kernel elements with the wrong sign
 
-if (debug_sparse.or..true.) write(*,'(a)') 'INFO: checking kernel consistencies and printing statistics'
+if (debug_sparse.or..true.) write(*,'(a)') 'INFO: checking kernel consistencies and printing statistics: kernel element signs'
 
 any_error = .false.
 
@@ -413,7 +490,7 @@ min_value = 0.d0
 min_location = 0
 do i = 1, itotal
   if (allocatable_integer_size(cell(i)%kernel(0)%ijk) == 0) cycle
-  value = minval(cell(i)%kernel(0)%v)*cell(i)%dx_kernel
+  value = minval(cell(i)%kernel(0)%v)
   if (value < -small_element_minimum) then
     n = n + 1
     if (value < min_value) then
@@ -430,7 +507,7 @@ min_value = 0.d0
 min_location = 0
 do j = 1, jtotal
   if (allocatable_integer_size(face(j)%kernel(0)%ijk) == 0) cycle
-  value = minval(face(j)%kernel(0)%v)*face(j)%dx_kernel
+  value = minval(face(j)%kernel(0)%v)
   if (value < -small_element_minimum) then
     n = n + 1
     if (value < min_value) then
@@ -448,7 +525,7 @@ min_value = 0.d0
 min_location = 0
 do k = 1, ktotal
   if (allocatable_integer_size(node(k)%kernel(0)%ijk) == 0) cycle
-  value = minval(node(k)%kernel(0)%v)*node(k)%dx_kernel
+  value = minval(node(k)%kernel(0)%v)
   if (value < -small_element_minimum) then
     n = n + 1
     if (value < min_value) then
@@ -478,12 +555,14 @@ do j = 1, jtotal
   end if
 end do
 if (n > 0) write(fwarn,fmt=formatline) &
-  'WARNING: ',n,' positive face normal derivative kernel elements detected: maximum normalised kernel element = ',max_value, &
-  ': at j = ',max_location
+  'WARNING: ',n,' positive boundary face normal derivative kernel elements detected: maximum normalised kernel element = ', &
+  max_value,': at j = ',max_location
 
 !---------------------------
 ! print warnings if not enough kernels have been constructed for averaging and in each direction
 ! kernel values should be >= small_element_minimum to be considered nonzero
+
+if (debug_sparse.or..true.) write(*,'(a)') 'INFO: checking kernel consistencies and printing statistics: completeness'
 
 do i = 1, itotal
   formatline = '(a,'//trim(indexformat)//')'
@@ -579,10 +658,12 @@ end do
 !---------------------------
 ! check and print warnings if kernels are inconsistent
 
+if (debug_sparse.or..true.) write(*,'(a)') 'INFO: checking kernel consistencies and printing statistics: consistency'
+
 ! cell kernels
 formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,2(a,'//trim(floatformat)//'),a,i1)'
 allocate(kernel_error(1:4))
-do i = 1, itotal
+CELL_LOOP: do i = 1, itotal
   do l = 0, 4
     kernel_error = 0.d0
     dx_kernel = 1.d0
@@ -627,18 +708,23 @@ do i = 1, itotal
           write(fwarn,fmt=formatline) 'ERROR: for cell(',i,')%kernel(',l,') equation ', &
             n,' is inconsistent: kernel_error(n) = ',kernel_error(n),': dx_kernel = ',dx_kernel,': cell%type = ',cell(i)%type
           any_error = .true.
+          if (average_stability_corrections.or.gradient_stability_corrections) then
+            write(fwarn,'(a)') 'WARNING: as one of averagestabilitycorrections or gradientstabilitycorrections are on (.true.) '// &
+              'error messages similar to the above will not be repeated for other cell kernels'
+            exit CELL_LOOP
+          end if
         end if
       end do
     end if
   end do
-end do
+end do CELL_LOOP
 deallocate(kernel_error)
   
 ! face kernels
 allocate(kernel_error(1:4))
 nmax = 4
 if (allocated(glue_face)) nmax = 1 ! if there are glued faces present then we don't report errors for any first order components
-do j = 1, jtotal
+FACE_LOOP: do j = 1, jtotal
   do l = 0, 6
     dx_kernel = 1.d0
 ! derivative kernels should have a size of order 1/dx_kernel
@@ -673,18 +759,23 @@ do j = 1, jtotal
           write(fwarn,fmt=formatline) 'ERROR: for face(',j,')%kernel(',l,') equation ', &
             n,' is inconsistent: kernel_error(n) = ',kernel_error(n),': dx_kernel = ',dx_kernel,': face%type = ',face(j)%type
           any_error = .true.
+          if (average_stability_corrections.or.gradient_stability_corrections) then
+            write(fwarn,'(a)') 'WARNING: as one of averagestabilitycorrections or gradientstabilitycorrections are on (.true.) '// &
+              'error messages similar to the above will not be repeated for other face kernels'
+            exit FACE_LOOP
+          end if
         end if
       end do
     end if
   end do
-end do
+end do FACE_LOOP
 deallocate(kernel_error)
   
 ! node kernels
 allocate(kernel_error(1:4))
 nmax = 4
 if (allocated(glue_face)) nmax = 1 ! if there are glued faces present then we don't report errors for any first order components
-do k = 1, ktotal
+NODE_LOOP: do k = 1, ktotal
   do l = 0, 3
     dx_kernel = 1.d0
 ! derivative kernels should have a size of order 1/dx_kernel
@@ -715,16 +806,23 @@ do k = 1, ktotal
           write(fwarn,fmt=formatline) 'ERROR: for node(',k,')%kernel(',l,') equation ', &
             n,' is inconsistent: kernel_error(n) = ',kernel_error(n),': dx_kernel = ',dx_kernel,': node%type = ',node(k)%type
           any_error = .true.
+          if (average_stability_corrections.or.gradient_stability_corrections) then
+            write(fwarn,'(a)') 'WARNING: as one of averagestabilitycorrections or gradientstabilitycorrections are on (.true.) '// &
+              'error messages similar to the above will not be repeated for other node kernels'
+            exit NODE_LOOP
+          end if
         end if
       end do
     end if
   end do
-end do
+end do NODE_LOOP
 deallocate(kernel_error)
   
 !---------------------------
 ! run through all kernels setting the logical reflect and possibly deallocating any reflect_multiplier strings
 ! doing this after kernel checks, but before kernel counting
+
+if (debug_sparse.or..true.) write(*,'(a)') 'INFO: checking kernel consistencies and printing statistics: reflection bookkeeping'
 
 ! faces
 do j = 1, jtotal
@@ -794,6 +892,8 @@ end if
 
 !------------------------------------------
 ! calculate some kernel statistics
+
+if (debug_sparse.or..true.) write(*,'(a)') 'INFO: checking kernel consistencies and printing statistics: calculating statistics'
 
 formatline = '(a,i1,a,'//trim(indexformat)//',a,f5.1)'
 
@@ -872,7 +972,8 @@ write(*,'(a,i10)') 'INFO: total number of kernel elements = ',n_elements
 write(fwarn,'(a,i10)') 'INFO: total number of kernel elements = ',n_elements
 if (any_error) write(*,'(a)') 'WARNING: Errors were detected in the calculated kernels.  Check the file kernel_warnings.txt '// &
   'within the output directory for details.  Common causes for these types of errors: 1) an error in the mesh somewhere with '// &
-  'disconnected or malformed cells; or 2) kernel masks which are too small or cells which have very poor aspect ratios.  '// &
+  'disconnected or malformed cells; 2) kernel masks which are too small or cells which have very poor aspect ratios; or '// &
+  '3) stability corrections are turned on (averagestabilitycorrections or gradientstabilitycorrections). '// &
   'To cure 2) you could try increasing the size of the kernel masks by increasing the maximum_separation and by using '// &
   'the check_minw with an increased minimum_minw.'
 if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') then
@@ -3104,6 +3205,16 @@ do n = 1, allocatable_character_size(kernel_options) ! precedence is now as read
     if (error) call error_stop("could not determine the zerononorientedweights from the kernel option "// &
       trim(kernel_options(n)))
     write(*,'(a,l1)') 'INFO: setting kernel zerononorientedweights = ',zero_nonoriented_weights
+  else if (trim(option_name) == "averagestabilitycorrections") then
+! average_stability_corrections
+    average_stability_corrections = extract_option_logical(kernel_options(n),error)
+    if (error) call error_stop("could not determine the averagestabilitycorrections from the kernel option "//trim(kernel_options(n)))
+    write(*,'(a,l1)') 'INFO: setting kernel averagestabilitycorrections = ',average_stability_corrections
+  else if (trim(option_name) == "gradientstabilitycorrections") then
+! gradient_stability_corrections
+    gradient_stability_corrections = extract_option_logical(kernel_options(n),error)
+    if (error) call error_stop("could not determine the gradientstabilitycorrections from the kernel option "//trim(kernel_options(n)))
+    write(*,'(a,l1)') 'INFO: setting kernel gradientstabilitycorrections = ',gradient_stability_corrections
   else
 !   write(*,'(a)') "WARNING: "//trim(option_name)//" is not a (valid) kernel option that can be set from the input file"
     call error_stop(trim(option_name)//" is not a (valid) kernel option that can be set from the input file")
@@ -4492,6 +4603,112 @@ if (allocated(separation_array)) deallocate(separation_array)
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine setup_node_kernels'
 
 end subroutine setup_node_kernels
+
+!-----------------------------------------------------------------
+! here we check that kernels obey some basic stability properties
+! for averaging kernels each v > 0, otherwise the value is zeroed and rest decreased such that sum v = 1.d0
+! for gradient kernels, each sign (v) = sign ((x-xc) dot norm)/delx)
+
+subroutine kernel_stability_corrections(verror,one_kernel,norm,xc,dx_kernel)
+!     call kernel_stability_corrections(verror,one_kernel=face(j)%kernel(l),norm=face(j)%norm(:,1),xc=face(j)%x,dx_kernel=face(j)%dx_kernel)
+
+use general_module
+double precision :: verror ! this is the cummulative amount of change that has happened to this series of kernels
+type(kernel_type) :: one_kernel ! this is the particular kernel we're doing stability corrections to
+! the following two are for gradient kernels
+double precision, dimension(totaldimensions), optional :: xc, norm ! location of kernel centre and norm
+double precision, optional :: dx_kernel
+double precision, dimension(totaldimensions) :: x
+double precision :: vsum, vsumpos, vsumneg, xrel
+integer :: n
+character(len=10000) :: formatline
+logical, parameter :: debug = .false.
+logical :: debug_sparse = .false.
+
+if (debug) debug_sparse = .true.
+
+if (debug_sparse) write(*,'(80(1h+)/a)') 'subroutine kernel_stability_corrections'
+
+if (present(norm).and.present(xc).and.present(dx_kernel)) then
+! gradient correction
+  vsumpos = 0.d0
+  vsumneg = 0.d0
+  vsum = 0.d0
+  do n = 1, allocatable_integer_size(one_kernel%ijk)
+
+    if (one_kernel%centring == 'cell') then
+      x = cell(one_kernel%ijk(n))%x
+    else if (one_kernel%centring == 'face') then
+      x = face(one_kernel%ijk(n))%x
+    else if (one_kernel%centring == 'node') then
+      x = node(one_kernel%ijk(n))%x
+    else
+      call error_stop('problem in kernel_stability_corrections')
+    end if
+    xrel = dot_product(x-xc,norm)/dx_kernel
+
+! only correct the kernel entries if they are sufficiently away from the centre (in the direction of the norm)
+    if (xrel > small_element_minimum) then
+      if (one_kernel%v(n) < 0.d0) then
+        verror = verror + abs(one_kernel%v(n))*dx_kernel
+        one_kernel%v(n) = 0.d0
+      end if
+    else if (xrel < -small_element_minimum) then
+      if (one_kernel%v(n) > 0.d0) then
+        verror = verror + abs(one_kernel%v(n))*dx_kernel
+        one_kernel%v(n) = 0.d0
+      end if
+    end if
+
+    if (one_kernel%v(n) > 0.d0) vsumpos = vsumpos + one_kernel%v(n)
+    if (one_kernel%v(n) < 0.d0) vsumneg = vsumneg - one_kernel%v(n)
+    vsum = vsum + one_kernel%v(n)
+
+  end do
+  
+! vsum is the sum of remaining elements
+  if (vsumneg*dx_kernel > small_element_minimum.and.vsumpos*dx_kernel > small_element_minimum) then
+    do n = 1, allocatable_integer_size(one_kernel%ijk)
+      if (.false.) then
+! if vsum > 0, increase negative elements
+! if vsum < 0, increase positive elements
+        if (vsum > 0.d0.and.one_kernel%v(n) < 0.d0) then
+          one_kernel%v(n) = one_kernel%v(n)*vsumpos/vsumneg
+        else if (vsum < 0.d0.and.one_kernel%v(n) > 0.d0) then
+          one_kernel%v(n) = one_kernel%v(n)*vsumneg/vsumpos
+        end if
+      else
+! if vsum > 0, decrease positive elements
+! if vsum < 0, decrease negative elements
+        if (vsum > 0.d0.and.one_kernel%v(n) > 0.d0) then
+          one_kernel%v(n) = one_kernel%v(n)*vsumneg/vsumpos
+        else if (vsum < 0.d0.and.one_kernel%v(n) < 0.d0) then
+          one_kernel%v(n) = one_kernel%v(n)*vsumpos/vsumneg
+        end if
+      end if
+    end do
+  else if (vsumneg*dx_kernel > small_element_minimum.or.vsumpos*dx_kernel > small_element_minimum) then
+    write(*,*) 'WARNING: problem with a stability correction in one of the gradient kernels'
+  end if
+
+else
+! average correction
+  vsum = 0.d0
+  do n = 1, allocatable_integer_size(one_kernel%ijk)
+    if (one_kernel%v(n) < 0.d0) then
+      verror = verror + abs(one_kernel%v(n))
+      one_kernel%v(n) = 0.d0
+    else
+      vsum = vsum + one_kernel%v(n)
+    end if
+  end do
+
+  if (vsum > 1.d0) one_kernel%v = one_kernel%v/vsum
+end if
+
+if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine kernel_stability_corrections'
+
+end subroutine kernel_stability_corrections
 
 !-----------------------------------------------------------------
 
