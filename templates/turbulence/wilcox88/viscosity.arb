@@ -26,7 +26,8 @@ CELL_TRANSIENT <turb_mu_t[r=1]> "<turb_mu_t_background>" "<turb_mu_t_smoothed>" 
 CELL_LOCAL <turb_mu_t_base> "cellmax(<turb_mu_t[r=1]>,<turb_mu_t_small>)" ON <allcells>
 CELL_DERIVED <turb_mu_t_raw> "<rho>*<turb_k>/cellmax(<turb_omega>,<turb_omega_small>)" ON <allcells> elementdata # turbulent viscosity, cell centred
 INCLUDE_TEMPLATE "smoothing"
-INCLUDE "smoothed_variable" R "<variable_smoothed>" W "<turb_mu_t_smoothed>" R "<variable>" W "<turb_mu_t_raw>" R "<variable" W "<turb_mu_t"
+#INCLUDE "smoothed_variable" R "<variable" W "<turb_mu_t" R "<variable_smoothed>" W "<turb_mu_t_smoothed>" R "<variable>" W "<turb_mu_t_raw>"
+INCLUDE "smoothed_variable" R "<variable" W "<turb_mu_t" R "<variable>" W "<turb_mu_t_raw>"
 INCLUDE
 
 # make the smoothing constants tighter to keep mu_t away from zero more

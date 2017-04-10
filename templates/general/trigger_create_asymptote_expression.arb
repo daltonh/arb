@@ -9,7 +9,9 @@ NONE_CONSTANT <asymptote_tolerance> 0.01 stepoutput #how close must <asymptote_m
 NONE_CONDITION <asymptote_expression> "<asymptote_tolerance>-<asymptote_measure>"
 
 # track the minimum of <asymptote_measure>
-INCLUDE "series_nonemin" R "<var_tracked>" W "<asymptote_measure>" R "<var" W "<asymptote_measure"
+#INCLUDE "series_nonemin" R "<var_tracked>" W "<asymptote_measure>" R "<var" W "<asymptote_measure"
+# after v0.57 order of replacements is from last to first, consistent with the order on a line and within the file
+INCLUDE "series_nonemin" R "<var" W "<asymptote_measure" R "<var_tracked>" W "<asymptote_measure>"
 # just rename <asymptote_measure_min> to <asymptote_progress>
 VARIABLE <asymptote_measure_min> nooutput,nostepoutput
 NONE_DERIVED <asymptote_progress> "<asymptote_measure_min>" stepoutput
