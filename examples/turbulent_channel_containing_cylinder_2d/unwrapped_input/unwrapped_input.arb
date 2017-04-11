@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_kernel_corrections/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_kernel_corrections/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: turbulent_channel_containing_cylinder_2d.arb
    #(comment created during unwrap): new block = turbulent_channel_containing_cylinder_2d.arb: sub_block = 0
@@ -412,6 +412,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       CELL_LOCAL <turb_mu_t_base> "cellmax(<turb_mu_t[r=1]>,<turb_mu_t_small>)" ON <allcells>
       CELL_DERIVED <turb_mu_t_raw> "<rho>*<turb_k>/cellmax(<turb_omega>,<turb_omega_small>)" ON <allcells> elementdata # turbulent viscosity, cell centred
       #(hash inserted during unwrap)INCLUDE_TEMPLATE "smoothing"
+      #INCLUDE "smoothed_variable" R "<variable" W "<turb_mu_t" R "<variable_smoothed>" W "<turb_mu_t_smoothed>" R "<variable>" W "<turb_mu_t_raw>"
          #(comment created during unwrap): new block = ../../templates/smoothing/smoothed_variable.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "smoothed_variable" 
          

@@ -1,7 +1,7 @@
 # Reconstructed list of the regions in arb format:
 #--------------------------------------------------------------------------------
 # setup regions:
-FACE_SETUP_REGION <walls> "compound(<boundaries>-<inlet>-<outlet>)" ON <allfaces> # other information: user = 1: dynamic = 0: parent = <allfaces>: rindex = empty: fortran = 10: part_of_fortran = 4: parent_fortran = 4: last_variable_masread = -1: newtstepmax = empty: newtstepmin = empty: filename = steady_state_stokes_channel_flow_with_cylinder.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop/examples/steady_state_stokes_channel_flow_with_cylinder/steady_state_stokes_channel_flow_with_cylinder.arb: comments = empty
+FACE_SETUP_REGION <walls> "compound(<boundaries>-<inlet>-<outlet>)" ON <allfaces> # other information: user = 1: dynamic = 0: parent = <allfaces>: rindex = empty: fortran = 10: part_of_fortran = 4: parent_fortran = 4: last_variable_masread = -1: newtstepmax = empty: newtstepmin = empty: filename = steady_state_stokes_channel_flow_with_cylinder.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_kernel_corrections/examples/steady_state_stokes_channel_flow_with_cylinder/steady_state_stokes_channel_flow_with_cylinder.arb: comments = empty
 #--------------------------------------------------------------------------------
 # gmsh regions:
 FACE_GMSH_REGION <outlet> "gmsh from context region associated with face equation variable <outlet fully developed>" # other information: user = 0: dynamic = 0: parent = empty: rindex = empty: fortran = 11: part_of_fortran = empty: parent_fortran = empty: last_variable_masread = empty: newtstepmax = empty: newtstepmin = empty: filename = empty: absfilename = empty: comments = empty
