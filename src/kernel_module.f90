@@ -83,8 +83,8 @@ double precision, parameter :: small_element_minimum = 1.d-10 ! (1.d-10) minimum
 logical, parameter :: conservative_weighting = .false. ! (.false.) use a conservation principle to calculate weights that are connected, otherwise use formula based on absolute separation
 logical, parameter :: orientation_dependent_weights = .true. ! (.true.) the kernel weights are different depending on the direction of the kernel
 logical :: zero_nonoriented_weights = .false. ! (.false., userable) for the orientation_dependent_weights and face kernels, zero cell weights that do not have the highest weighting importance.  In effect this will compact face kernels, but may increase the number of negative elements.  Probably a good idea on structured meshes which generally have a high degree of symmetry.
-logical :: average_stability_corrections = .false. ! (.false., userable) whether to zero negative averaging kernel elements
-logical :: gradient_stability_corrections = .false. ! (.false., userable) whether to zero negative equivalent gradient kernel elements
+logical :: average_stability_corrections = .false. ! (.false., userable) whether to zero negative averaging kernel elements, right now only applied to face kernels
+logical :: gradient_stability_corrections = .false. ! (.false., userable) whether to zero negative direction-equivalent gradient kernel elements, right now only applied to face kernels
 
 ! partial_hyperbolic_kernel for v0.42 (040614)
 !logical :: partial_hyperbolic_kernel = .true. ! (.true., userable) use hyperbolic kernel for boundary elements, or averaging domain elements, but not for domain derivative kernels
@@ -181,7 +181,7 @@ integer :: i, j, k, l, jj, ijk, ii2, i2, ierror, n
 integer :: n_domain_kernels, n_domain_elements, n_boundary_kernels, n_boundary_elements, n_elements, &
   min_location, max_location, nmax
 double precision :: xtmp, cross_kernel, overall_cross_kernel, central_kernel, overall_central_kernel, kernel_sum, &
-  overall_kernel_sum, min_value, max_value, value, dx_kernel, verror
+  overall_kernel_sum, min_value, max_value, value, dx_kernel
 double precision, dimension(:), allocatable :: kernel_error
 double precision, dimension(totaldimensions) :: norm
 logical :: any_error
@@ -3496,12 +3496,12 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 ! TODO: do stability checks here by saving a copy of r, instead of in main routine
       if (l == 0.and.average_stability_corrections) then
         nverror = nverror + 1
-        call kernel_stability_corrections_new(verror,one_kernel=face(j)%kernel(l))
+        call kernel_stability_corrections(verror,one_kernel=face(j)%kernel(l))
       else if (l > 0.and.gradient_stability_corrections) then
   !     call kernel_stability_corrections(verror,one_kernel=face(j)%kernel(l),norm=face(j)%norm(:,l-3),xc=face(j)%x, &
   !       dx_kernel=face(j)%dx_kernel)
         nverror = nverror + 1
-        call kernel_stability_corrections_new(verror,one_kernel=face(j)%kernel(l),norm=norm_dim(:,l),r=r_dim, &
+        call kernel_stability_corrections(verror,one_kernel=face(j)%kernel(l),norm=norm_dim(:,l),r=r_dim, &
           dx_kernel=face(j)%dx_kernel)
 
       end if
@@ -4575,12 +4575,12 @@ if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine setup_node_kernels'
 end subroutine setup_node_kernels
 
 !-----------------------------------------------------------------
-! here we check that kernels obey some basic stability properties
-! for averaging kernels each v > 0, otherwise the value is zeroed and rest decreased such that sum v = 1.d0
-! for gradient kernels, each sign (v) = sign (r dot norm))
+! here we check that kernels obey some basic stability properties, at the expense of (polynomial) accuracy
+! for averaging kernels ensure that each kernel value v > 0, otherwise the value is zeroed and rest decreased such that sum v = 1.d0
+! for gradient kernels, each sign (v) = sign (r dot norm)), with some tolerance built in to ensure that kernel centre is not included in this test,
+!  which is necessary for boundary kernels
 
-subroutine kernel_stability_corrections_new(verror,one_kernel,norm,r,dx_kernel)
-! call kernel_stability_corrections_new(verror,one_kernel=face(j)%kernel(l),norm=norm_dim(:,l),r=r_dim)
+subroutine kernel_stability_corrections(verror,one_kernel,norm,r,dx_kernel)
 
 use general_module
 double precision :: verror ! this is the cummulative amount of change that has happened to this series of kernels
@@ -4659,7 +4659,7 @@ if (present(norm).and.present(r).and.present(dx_kernel)) then
     write(*,*) 'r'
     write(*,*) r
     write(*,*) 'one_kernel%centring = ',one_kernel%centring
-    call error_stop('problem using gradientstabilitycorrections, most likely as it is incompatible with glued faces')
+    call error_stop('problem using gradientstabilitycorrections, must be something unusual about the mesh')
   end if
 
 else
@@ -4679,7 +4679,7 @@ end if
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine kernel_stability_corrections'
 
-end subroutine kernel_stability_corrections_new
+end subroutine kernel_stability_corrections
 
 !-----------------------------------------------------------------
 
