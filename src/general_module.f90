@@ -421,6 +421,7 @@ real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb fi
 character(len=100), parameter :: versionname = "roaming ronny"
 
 ! the following are default values for various parameters which can be altered here (and not via user input options)
+! TODO: make these userable via GENERAL_OPTIONS
 double precision, parameter :: limitertolerance = 1.d-10 ! (1.d-10) tolerance used when calculating advection gradient limiting - set to small positive number
 double precision, parameter :: limitercontgrad = 2.d0 ! factor that determines the gradient of the continuous advection limiter - set ~> 1.15 and ~< 2
 double precision, parameter :: normalised_variable_limit = 1.d+10 ! ratio between unknown/equation magnitude and specified order of variable that signals an error 
@@ -433,7 +434,7 @@ logical, parameter :: output_detailed_timings = .false. ! (.false.) whether to g
 logical, parameter :: output_variable_update_times = .true. ! (.true.) time how long it takes to update each variable (on average) and report in output.stat
 logical, parameter :: output_region_update_times = .true. ! (.true.) time how long it takes to update each dynamic region (on average) and report in output.stat
 logical, parameter :: ignore_initial_update_times = .true. ! (.true.) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
-logical, parameter :: kernel_details_file = .true. ! (.false.) print out a text file (kernel_details.txt) with all the kernel details
+logical, parameter :: kernel_details_file = .false. ! (.false.) print out a text file (kernel_details.txt) with all the kernel details
 logical, parameter :: mesh_details_file = .false. ! (.false.) print out a text file (mesh_details.txt) with all the mesh details
 logical, parameter :: region_details_file = .false. ! (.false.) print out a text file (region_details.txt) with all the region details
 logical, parameter :: link_details_file = .false. ! (.false.) print out a text file (link_details.txt) with all the link details
@@ -5124,6 +5125,40 @@ call random_seed(put=seed) ! for gnu compiler need to generate unique seed, put 
 deallocate(seed)
 
 end subroutine initialise_random_number
+
+!-----------------------------------------------------------------
+
+subroutine copy_integer_2d_array(original,copy)
+
+! copy 2d allocatable original array to copy array
+
+integer, dimension(:,:), allocatable :: original, copy
+integer, dimension(2) :: new_size
+
+if (allocated(original)) then ! silently ignore if original isn't already allocated
+  new_size = [ ubound(original,1), ubound(original,2) ]
+  call resize_integer_2d_array(keep_data=.false.,array=copy,new_size=new_size)
+  copy = original
+end if
+
+end subroutine copy_integer_2d_array
+
+!-----------------------------------------------------------------
+
+subroutine copy_double_precision_2d_array(original,copy)
+
+! copy 2d allocatable original array to copy array
+
+double precision, dimension(:,:), allocatable :: original, copy
+integer, dimension(2) :: new_size
+
+if (allocated(original)) then ! silently ignore if original isn't already allocated
+  new_size = [ ubound(original,1), ubound(original,2) ]
+  call resize_double_precision_2d_array(keep_data=.false.,array=copy,new_size=new_size)
+  copy = original
+end if
+
+end subroutine copy_double_precision_2d_array
 
 !-----------------------------------------------------------------
 
