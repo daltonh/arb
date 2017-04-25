@@ -7,6 +7,7 @@ echo "\" the following commands have been added by the install_vim_syntax_files.
 echo "\" start---------------" >> ~/.vimrc
 echo "filetype plugin on" >> ~/.vimrc
 echo "autocmd BufRead,BufNewFile *.arb set filetype=arb" >> ~/.vimrc
-echo "autocmd BufRead,BufNewFile *.arb colorscheme daltonh_macvim" >> ~/.vimrc
+# uncomment this to use the macvim inspired colourscheme included with the distribution
+#echo "colorscheme daltonh_macvim" >> ~/.vimrc
 echo "syntax enable" >> ~/.vimrc
 echo "\" stop---------------" >> ~/.vimrc
