@@ -384,7 +384,6 @@ sub parse_solver_code {
 #-------------------
 # next deal with if/else_if/else/end_if blocks
 
-# elsif ($line =~ /^((((ELSE_|)IF)\s+(.*))|(ELSE|END_IF))\s*$/i) {
   elsif ($line =~ /^(ELSE|(END_|ELSE_|)IF)(\s+|$)/i) {
 
     my $ifkeyword = "\U$1";
@@ -397,9 +396,6 @@ sub parse_solver_code {
       $condition = $1;
     }
 
-#   my $ifkeyword = '';
-#   my $condition = '';
-#   if (nonempty($3)) { $ifkeyword = "\U$3"; if (nonempty($5)) { $condition = $5; }} else { $ifkeyword = "\U$6"; };
     print ::DEBUG "INFO: found $ifkeyword statement in $file with condition = $condition: #code_blocks = $#code_blocks: if (status before) = $code_blocks[$#code_blocks]{if}\n";
 
     my $if_old = $code_blocks[$#code_blocks]{if}; # holds previously active block
@@ -448,66 +444,9 @@ sub parse_solver_code {
     $unwrapped_ignore = 1; # all if section statements are not written to unwrapped_input.arb
     print ::DEBUG "INFO: finishing $ifkeyword statement in $file with: #code_blocks = $#code_blocks: if (status after) = $code_blocks[$#code_blocks]{if}\n";
 
-
-
-
-#     {
-#
-#       push_code_block(); # creating new code block which will hold the if block structure
-#       if ($code_blocks[$#code_blocks-1]{"if"} < 0) { # signifies that we are already in an if block, but that is currently not active, so start a new block with if = -3
-#         $code_blocks[$#code_blocks]{"if"} = -3 # -3 signifies that we are in an if block that is not used (still need to match if/else/else_if/end_if statements though)
-#       } elsif ($condition) {
-#         $code_blocks[$#code_blocks]{"if"} = 1 # 1 signifies that we are in a true section within an if block
-#       } else {
-#         $code_blocks[$#code_blocks]{"if"} = -1; # -1 signifies that we are in an if block, but that the current section isn't true and that we haven't had a true section yet
-#       }
-#       $unwrapped_ignore = 1; # all if section statements are not written to unwrapped_input.arb
-#       $unwrapped_indents += 1;
-#     }
-#
-#   # an else_if statement closes any open if block, whether active or not
-#     elsif ($line =~ /^(ELSE_IF)\s+(.*)\s*$/i) {
-#       my $condition = '';
-#       if (nonempty($2)) { $condition = $2;}
-#       print ::DEBUG "INFO: found \U$1\E statement in $file with condition = $condition: if = $code_blocks[$#code_blocks]{if}\n";
-#       if (!($code_blocks[$#code_blocks]{"if"})) { # if we aren't in an if block then this is an error
-#         syntax_problem("ELSE_IF statement has been found that does not match an IF statement: $filelinelocator");
-#       } elsif ($code_blocks[$#code_blocks]{"if"} == -1 && $condition) { # if we are in an if block and true has not previously been triggered, but condition is true, trigger it now
-#         $code_blocks[$#code_blocks]{"if"} = 1;
-#         push_code_block(); # creating new code block which will hold the if block structure
-#       } elsif ($code_blocks[$#code_blocks]{"if"} == 1) { # if we are in an if block and true was previously on, then set it to false (if = -2)
-#         $code_blocks[$#code_blocks]{"if"} = -2;
-#       } # an if = -2 (already had true) remains at -2, and an if = -3 remains at -3
-#       $unwrapped_ignore = 1; # all if section statements are not written to unwrapped_input.arb
-#     }
-#
-#   # an end_if statement closes any open if block, whether active or not
-#     elsif ($line =~ /^(END_IF)$/i) {
-#       print ::DEBUG "INFO: found \U$1\E statement in $file: if = $code_blocks[$#code_blocks]{if}\n";
-#       if (!($code_blocks[$#code_blocks]{"if"})) {
-#         syntax_problem("END_IF statement has been found that does not match an IF statement: $filelinelocator");
-#       }
-#       pop_code_block(); # destroy this if block
-#       $unwrapped_ignore = 1; # all if section statements are not written to unwrapped_input.arb
-#     }
-#
-#   # an else statement becomes true, unless true has already been triggered
-#     elsif ($line =~ /^(ELSE)$/i) {
-#       print ::DEBUG "INFO: found \U$1\E statement in $file: if = $code_blocks[$#code_blocks]{if}\n";
-#       if (!($code_blocks[$#code_blocks]{"if"})) { # if we aren't in an if block then this is an error
-#         syntax_problem("ELSE statement has been found that does not match an IF statement: $filelinelocator");
-#       } elsif ($code_blocks[$#code_blocks]{"if"} == -1) { # if we are in an if block and true has not previously been triggered, trigger it now
-#         $code_blocks[$#code_blocks]{"if"} = 1;
-#       } elsif ($code_blocks[$#code_blocks]{"if"} == 1) { # if we are in an if block and true was previously on, then set it to false (if = -2)
-#         $code_blocks[$#code_blocks]{"if"} = -2;
-#       } # an if = -2 (already had true) remains at -2
-#       $unwrapped_ignore = 1; # all if section statements are not written to unwrapped_input.arb
-#     }
-
-
   }
 
-  # otherwise if if < 0 then the current section of the current if block is to be ignored
+# otherwise if if < 0 then the current section of the current if block is to be ignored
   elsif ($code_blocks[$#code_blocks]{"if"} < 0) { $unwrapped_ignore = 1; }
 
 #-------------------
