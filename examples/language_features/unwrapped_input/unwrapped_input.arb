@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_kernel_corrections/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_kernel_corrections/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: ddot_test.arb random_test.arb reuse.arb skip_if_test.arb syntax_test.arb
    #(comment created during unwrap): new block = ddot_test.arb: sub_block = 0
@@ -103,21 +103,25 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_kernel_corrections/src/free_s
       #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
       #(hash inserted during unwrap)IF 0
       #(hash inserted during unwrap)
+      #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
       #(hash inserted during unwrap)ELSE_IF 1
       
          #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 2
          #(hash inserted during unwrap)IF 1
          CONSTANT <ee> 5.d0
+         #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 2
          #(hash inserted during unwrap)ELSE
          #(hash inserted during unwrap)CONSTANT <ff> 6.d0
          #(hash inserted during unwrap)END_IF
       
+      #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
       #(hash inserted during unwrap)ELSE
       #(hash inserted during unwrap)
       #(hash inserted during unwrap)END_IF
    
       #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
       #(hash inserted during unwrap)IF 0
+      #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
       #(hash inserted during unwrap)ELSE
       #END
       #(hash inserted during unwrap)END_IF
