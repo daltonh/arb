@@ -70,31 +70,40 @@ sub parse_string_code {
 # sets options for a string
 # on input
 #  $_[0] = string name
-#  $_[1] = comma separated list of options
+#  $_[1] = comma separated list of options (optional)
+# options include:
+#  (no|)replace = whether to treat this string variable as a replacement in the following arb code
+#  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists)
 # on output
 #  @_ = unchanged
 sub string_option {
 
   alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $name = $_[0];
-  my $options = $_[1];
+  my $options = ''; if (defined($_[1])) { $options = $_[1]; }; # options is optional
+
   my ($code_block_found,$string_variable_found) = string_search($name);
   if ($code_block_found == -1) {
-    syntax_problem("string variable $name not found during string_options: $ReadInputFiles::filelinelocator");
-  }
-  my $options_save = $options;
-  while (nonempty($options)) {
-    if ($options =~ /^\s*(((no|)replace)|)\s*(,|$)/) {
-      $options = $';
-      if (nonempty($2)) {
-        if (empty($3)) {
-          $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 1;
-        } else {
-          $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 0;
+    if ($options =~ /(^|,)\s*checkexists\s*(,|$)/) {
+      $options = $`.','.$'; # remove this string from the options
+      syntax_problem("string variable $name not found during string_options: $ReadInputFiles::filelinelocator");
+    }
+    
+  } else {
+
+    while (nonempty($options)) {
+      if ($options =~ /^\s*(((no|)replace)|)\s*(,|$)/) {
+        $options = $';
+        if (nonempty($2)) {
+          if (empty($3)) {
+            $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 1;
+          } else {
+            $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 0;
+          }
         }
+      } else {
+        syntax_problem("unknown string within string_options options of $options: $ReadInputFiles::filelinelocator");
       }
-    } else {
-      syntax_problem("unknown string within string_options options of $options: $ReadInputFiles::filelinelocator");
     }
   }
   
@@ -122,26 +131,35 @@ sub string_delete {
 # finds the value of a string
 # on input
 #  $_[0] = string name
-#  $_[1] = options
+#  $_[1] = options (optional)
+# possible options:
+#  list = return the string as a list containing the string split at commas (useful for using within foreach loops etc)
+#  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists)
 # on output
 #  $_[0] = unchanged
-# returns string value if found, or dies it string is not found
+# returns string value if found, or dies or returns if string is not found
 
-# possible options:
-# list = return the string as a list containing the string split at commas (useful for using within foreach loops etc)
 sub string_eval {
 
   alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $name = $_[0];
-  my $options = $_[1];
+  my $options = ''; if (defined($_[1])) { $options = $_[1]; }; # options is optional
+
   my ($code_block_found,$string_variable_found) = string_search($name);
+
   if ($code_block_found == -1) {
-    syntax_problem("string variable $name not found during string_set: $ReadInputFiles::filelinelocator");
-  }
-  if ($options =~ /(^|,)list($|,)/) {
-    return split(/,/,$code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
+    if ($options =~ /(^|,)\s*checkexists\s*(,|$)/) {
+      $options = $`.','.$'; # remove this string from the options
+      syntax_problem("string variable $name not found during string_set: $ReadInputFiles::filelinelocator");
+    }
+    return ''; # return empty string if the variable doesn't exist
+    
   } else {
-    return $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+    if ($options =~ /(^|,)list($|,)/) {
+      return split(/,/,$code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
+    } else {
+      return $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+    }
   }
   
 }
