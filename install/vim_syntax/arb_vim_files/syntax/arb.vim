@@ -21,6 +21,7 @@ syn match arbOperator "\%(+\|-\|\*\|/\|\^\|=\)" " for some reason, / here adds '
 syn region arbName start="<" end=">" contains=arbSystemFlag,arbUserFlag contained nextgroup=arbUnit skipwhite
 syn region arbUserVar start="<" end=">" contains=arbSystemFlag,arbUserFlag
 syn region arbUserFlag start="<<" end=">>"
+syn region arbStringCode start="{{" end="}}"
 syn region arbUnit start="\[" end="\]" contained
 syn match arbUnquotedString "\S\+" contained
 syn region arbString start="'" end="'" contained
@@ -36,7 +37,7 @@ syn sync match arbCommentSync grouphere arbComment "\%(BEGIN\|START\)_\%(COMMENT
 syn sync match arbCommentSync groupthere NONE "\%(END\|STOP\)_\%(COMMENTS\=\|SKIP\)"
 syn region arbTodo start="\%(FIXME\|TODO\|XXX\)" end="$" contained
 
-syn keyword arbStatement COMPOUND_OPTIONS DEFAULT_OPTIONS END GENERAL GENERAL_OPTIONS GENERAL_REPLACEMENTS GLUE_FACES ITERRESRELTOL ITERRESTOL ITERSTEPCHECK ITERSTEPMAX NEWTIENT_SIMULATION NONNEWTIENT_SIMULATION NEWTRESTOL NEWTSTEPADDITIONAL NEWTSTEPDEBUGOUT NEWTSTEPMAX NEWTSTEPMIN NEWTSTEPOUT NEWTSTEPSTART ON OVERRIDE_OPTIONS REPLACEMENTS STEADYSTATE_SIMULATION TIMESTEPADDITIONAL TIMESTEPMAX TIMESTEPMIN TIMESTEPOUT TIMESTEPSTART TRANSIENT_SIMULATION NONTRANSIENT_SIMULATION TIMESTEP_REWIND NEWTSTEP_REWIND VARIABLE_OPTIONS VERSION
+syn keyword arbStatement COMPOUND_OPTIONS DEFAULT_OPTIONS END GENERAL GENERAL_OPTIONS GLOBAL_REPLACEMENTS GENERAL_REPLACEMENTS GLUE_FACES ITERRESRELTOL ITERRESTOL ITERSTEPCHECK ITERSTEPMAX NEWTIENT_SIMULATION NONNEWTIENT_SIMULATION NEWTRESTOL NEWTSTEPADDITIONAL NEWTSTEPDEBUGOUT NEWTSTEPMAX NEWTSTEPMIN NEWTSTEPOUT NEWTSTEPSTART ON OVERRIDE_OPTIONS REPLACEMENTS STEADYSTATE_SIMULATION TIMESTEPADDITIONAL TIMESTEPMAX TIMESTEPMIN TIMESTEPOUT TIMESTEPSTART TRANSIENT_SIMULATION NONTRANSIENT_SIMULATION TIMESTEP_REWIND NEWTSTEP_REWIND VARIABLE_OPTIONS VERSION BLOCK END_BLOCK IF ELSE ELSE_IF END_IF
 syn match arbStatement "\%(\)\<STEADY-STATE_SIMULATION\>"
 syn keyword arbStatement INCLUDE INCLUDE_ABSOLUTE INCLUDE_LAST INCLUDE_LOCAL INCLUDE_TEMPLATE INCLUDE_WORKING MSH_FILE nextgroup=arbString,arbFilename skipwhite
 syn match arbStatement "\<\%(EXTERNALS\=\)\>" nextgroup=arbString,arbFilename skipwhite
@@ -120,6 +121,7 @@ if version >= 508 || !exists("did_arb_syn_inits")
   else
     command -nargs=+ HiLink hi def link <args>
   endif
+  HiLink arbStringCode Special
   HiLink arbComment Comment
   HiLink arbDeprecated Error
   HiLink arbFilename arbString

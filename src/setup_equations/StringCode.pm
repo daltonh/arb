@@ -164,6 +164,31 @@ sub string_eval {
   
 }
 #-------------------------------------------------------------------------------
+# tests whether a string variable is equal to a particular test string, returning '1' or ''
+# on input
+#  $_[0] = string variable name
+#  $_[1] = test string
+# on output
+#  $_[0] = '1' if test string is given and string variable is defined and equal to the value of test string
+#        = '1' if test string isn't given by variable is defined
+#        = '' otherwise
+
+sub string_test {
+
+  alias my @code_blocks = @ReadInputFiles::code_blocks;
+  my $name = $_[0];
+  my ($code_block_found,$string_variable_found) = string_search($name);
+
+  if (!(defined($_[1]))) { # no test string was passed to routine, so just return whether string is defined
+    if ($code_block_found == -1) { return ''; } else { return '1'; }
+  } else { # need to check
+    if ($code_block_found == -1) { return ''; }
+    elsif ($code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $_[1]) { return '1'; }
+    else { return ''; }
+  }
+  
+}
+#-------------------------------------------------------------------------------
 # takes an array of code lines and repeats them for each dimension in the <<dimensions>> range, replacing $l with each relevant index
 # on input
 #  @_ = list of code template strings, containing $l references and no carriage returns
