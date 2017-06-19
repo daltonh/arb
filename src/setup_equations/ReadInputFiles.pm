@@ -93,13 +93,13 @@ sub read_input_files {
   my $comments = ''; # additional comments that are found while buffer is being formed
   my $buffer_offset = 0; # leading offset to apply when performing searches on buffer
     
-  my $debug = 0; # set to true to get extra debugging information within the debug file from this routine
+  my $debug = 1; # set to true to get extra debugging information within the debug file from this routine
 
 #----------------------------------------------------------------------------
   while (@code_blocks) { # we keep forming the buffer and parsing the code until all code blocks are destroyed, noting that new files, block, if statements each create new code_blocks
 
     if ($debug) {
-      print ::DEBUG "INFO: start of code_blocks loop:\n #code_blocks = $#code_blocks:\n solver_code = $solver_code:\n buffer = $buffer:\n buffer_offset = $buffer_offset:\n code_type = $code_type:\n comments = $comments\n$filelinelocator\n";
+      print ::DEBUG "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nINFO: start of code_blocks loop:\n #code_blocks = $#code_blocks:\n solver_code = $solver_code:\n buffer = $buffer:\n buffer_offset = $buffer_offset:\n code_type = $code_type:\n skip = $code_blocks[$#code_blocks]{skip}:\n comments = $comments\n filelinelocator = $filelinelocator\n++++++\n";
     } else {
       print ::DEBUG "INFO: start of code_blocks loop: solver_code = $solver_code: buffer = $buffer: $filelinelocator\n";
     }
@@ -123,18 +123,30 @@ sub read_input_files {
     } elsif ($code_type eq "string" && $buffer =~ /(\}\})/i) {
 
       print ::DEBUG "  INFO: found string code closing in buffer\n";
-      my $string_code = $`.$&; # string code includes delimiters
+      my $string_code = $`.$&; # local variable string code includes delimiters
       $buffer = $'; # anything that remains is left in the buffer
+      $buffer_offset = 0;
       if ($debug) { print ::DEBUG "  INFO: string code identified within buffer:\n   string_code = $string_code:\n   (remaining) buffer = $buffer\n"; }
       if ($code_blocks[$#code_blocks]{"skip"} || $code_blocks[$#code_blocks]{"if"} < 0) {
         $string_code = '';
         if ($debug) { print ::DEBUG "  INFO: skipping parsing string code due to skip or if status:\n   skip = $code_blocks[$#code_blocks]{skip}: if = $code_blocks[$#code_blocks]{if}\n"; }
       } else {
-        parse_string_code($string_code); # send this to the string code parser, which may return a string to add to the solver code line
+        parse_string_code($string_code); # send this to the string code parser, which may return multiple lines of code
         if ($debug) { print ::DEBUG "  INFO: after parsing string code:\n   string_code = $string_code\n"; }
-        perform_string_replacements($string_code);
-        if ($debug) { print ::DEBUG "  INFO: after doing replacements on string code:\n   string_code = $string_code\n"; }
-        $solver_code .= $string_code; # add the result of the string code onto the solver code
+# this processed string code may contain line breaks and include statements, so needs to be processed just as the raw_buffer
+        $code_blocks[$#code_blocks]{"raw_buffer"} = $string_code.$buffer.$code_blocks[$#code_blocks]{"raw_buffer"};
+        $buffer = ''; # empty buffer to force processing of raw_buffer
+        if ($debug) { print ::DEBUG "  INFO: placing string code into raw_buffer and emptying buffer\n:   raw_buffer = $code_blocks[$#code_blocks]{raw_buffer}\n"; }
+
+#       if (0) {
+#         perform_string_replacements($string_code);
+#         if ($debug) { print ::DEBUG "  INFO: after doing replacements on string code:\n   string_code = $string_code\n"; }
+#         $solver_code .= $string_code; # add the result of the string code onto the solver code
+#       } else {
+#         $buffer = $string_code.$buffer;
+#         $string_code = '';
+#         if ($debug) { print ::DEBUG "  INFO: parsed string code is prepended to buffer:\n   buffer = $buffer\n"; }
+#       }
       }
       $code_type = 'solver'; # and reset code type
     
@@ -266,6 +278,8 @@ sub read_input_files {
               $buffer .= $raw_buffer;
             }
           }
+# separate buffer into the string code which will lead the new code block, and the remaining buffer which is associated with the old (existing) code block
+#         ( $buffer, $code_blocks[$#code_blocks]{'buffer'} ) = $buffer =~ /(.*\}\})(.*)/;
           parse_solver_code($solver_code); # process, noting that here solver_code is only one line
           $solver_code = ''; # and reset solver_code etc
           print ::DEBUG "INFO: after parse_solver_code: solver_code = $solver_code: buffer = $buffer\n";
@@ -289,6 +303,8 @@ sub read_input_files {
         if ($debug) { print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n"; }
         $solver_code .= $buffer.$comments; # add the result of the string replacements onto the solver code
         if ($debug) { print ::DEBUG "  INFO: solver code ready to process: solver_code = $solver_code\n"; }
+# this shouldn't be necessary now
+# TODO
         while ($solver_code =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
           my $part_solver_code = $`; # split solver_code at each line break
           $solver_code = $'; # and remove line break from next
@@ -301,19 +317,13 @@ sub read_input_files {
         $comments = '';
       }
 #--------------
-
 #-----------------------------
     }
 
     if ($debug) {
       if (@code_blocks) {
-        print ::DEBUG "INFO: end of code_blocks loop".
-          ": #code_blocks = $#code_blocks".
-          ": buffer = $buffer".
-          ": buffer_offset = $buffer_offset".
-          ": solver_code = $solver_code".
-          ": comments = $comments".
-          ": skip = $code_blocks[$#code_blocks]{skip}\n";
+        print ::DEBUG "------\nINFO: end of code_blocks loop:\n #code_blocks = $#code_blocks:\n solver_code = $solver_code:\n buffer = $buffer:\n buffer_offset = $buffer_offset:\n code_type = $code_type:\n skip = $code_blocks[$#code_blocks]{skip}:\n comments = $comments\n filelinelocator = $filelinelocator\n".
+        "----------------------------------------------------------------------\n";
       } else {
         print ::DEBUG "INFO: code_blocks loop finished\n";
       }
@@ -557,9 +567,9 @@ sub parse_solver_code {
       if (nonempty($found_dir)) {
         if ($found_dir ne $code_blocks[$#code_blocks]{"include_path"}[$#{$code_blocks[$#code_blocks]{"include_path"}}]) {
           push(@{$code_blocks[$#code_blocks]{"include_path"}},$found_dir);
-          print ::DEBUG "INFO: adding new path $found_dir to the include_path stack, making: include_path = @{$code_blocks[$#code_blocks]{include_path}}: $filelinelocator\n";
+          print ::DEBUG "INFO: adding new path $found_dir to the include_path stack, making: include_path = @{$code_blocks[$#code_blocks]{include_path}}\n";
         } else {
-          print ::DEBUG "INFO: not adding new path $found_dir to the include_path stack as it is already on the top of the stack: include_path = @{$code_blocks[$#code_blocks]{include_path}}: $filelinelocator\n";
+          print ::DEBUG "INFO: not adding new path $found_dir to the include_path stack as it is already on the top of the stack: include_path = @{$code_blocks[$#code_blocks]{include_path}}\n";
         }
       }
           
@@ -1400,8 +1410,17 @@ sub push_code_block {
 # set to last include_path of previous code_block, which is where calling file must be, for a block created from a new file
       $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[$#{$code_blocks[$#code_blocks-1]{"include_path"}}];
     } else {
+      if (1) {
+# for an in-file block now copy the new-file behaviour, but a the same time, allow recursive searching og include paths
+#       $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[$#{$code_blocks[$#code_blocks-1]{"include_path"}}];
+# copy whole include_path over if we are in the same file, which is consistent with IF statement behaviour
+# an alternative behaviour would be to copy over last path, but also search recursively through last paths
+        @{$code_blocks[$#code_blocks]{"include_path"}} = @{$code_blocks[$#code_blocks-1]{"include_path"}};
+      } else {
+# previous behaviour
 # for an in-file block though the path should be that to the file that it is in, consistent with the idea of opening up a new file at the same location as the one it is contained within
-      $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[0];
+        $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[0];
+      }
     }
   } else {
 # initial include_path used for searching for the file is the working directory
@@ -1410,7 +1429,7 @@ sub push_code_block {
     $code_blocks[$#code_blocks]{"include_path"}[0] = $::working_dir;
   }
 
-  $code_blocks[$#code_blocks]{"solver_code"} = ''; # buffer created from raw_buffer
+  $code_blocks[$#code_blocks]{"raw_buffer"} = ''; # this will contain any lines read in from file that need to be processed (specifically these are lines that are saved prior to another file being included)
   $code_blocks[$#code_blocks]{"skip"} = 0; # flag to indicate whether we are in a comments section or not
   $code_blocks[$#code_blocks]{"if"} = 0; # flag to indicate whether we are in an if section or not
 
@@ -1775,17 +1794,34 @@ sub get_raw_buffer {
 
   my $raw_buffer = '';
   my $success = 0;
-  my $handle = $code_blocks[$#code_blocks]{"handle"};
-  if (defined($raw_buffer = <$handle>)) { # defined is required (as advised by warnings) as without file read could be '0', which while valid (and defined) is actually false.  Apparently the while (<>) directive does this automatically.
-    $raw_buffer =~ s/\r//g; # remove extra dos linefeeds
+
+  if ($code_blocks[$#code_blocks]{"raw_buffer"}) {
+# if stuff has been left in raw_buffer, get a line from there
+    if ($code_blocks[$#code_blocks]{"raw_buffer"} =~ /\n/) {
+      $raw_buffer = $`.$&; # include line feed
+      $code_blocks[$#code_blocks]{"raw_buffer"} = $';
+    } else {
+      $raw_buffer = $code_blocks[$#code_blocks]{"raw_buffer"};
+      $code_blocks[$#code_blocks]{"raw_buffer"} = '';
+    }
     $success = 1;
-# also set details about last read for messaging purposes
-    $code_blocks[$#code_blocks]{"line_number"} = $.;
-    $code_blocks[$#code_blocks]{"raw_line"} = $raw_buffer;
-    $code_blocks[$#code_blocks]{"raw_line"} =~ s/\n//g; # remove line feeds too for raw_line
-# set message line locator string
-    $filelinelocator = "file = $code_blocks[$#code_blocks]{name}: linenumber = $code_blocks[$#code_blocks]{line_number}: line = \'$code_blocks[$#code_blocks]{raw_line}\'";
+
+  } else {
+# otherwise fetch it from the file
+
+    my $handle = $code_blocks[$#code_blocks]{"handle"};
+    if (defined($raw_buffer = <$handle>)) { # defined is required (as advised by warnings) as without file read could be '0', which while valid (and defined) is actually false.  Apparently the while (<>) directive does this automatically.
+      $raw_buffer =~ s/\r//g; # remove extra dos linefeeds
+      $success = 1;
+  # also set details about last read for messaging purposes
+      $code_blocks[$#code_blocks]{"line_number"} = $.;
+      $code_blocks[$#code_blocks]{"raw_line"} = $raw_buffer;
+      $code_blocks[$#code_blocks]{"raw_line"} =~ s/\n//g; # remove line feeds too for raw_line
+    }
   }
+
+# set message line locator string
+  if ($success) {$filelinelocator = "file = $code_blocks[$#code_blocks]{name}: linenumber = $code_blocks[$#code_blocks]{line_number}: line = \'$code_blocks[$#code_blocks]{raw_line}\': raw_buffer = \'$code_blocks[$#code_blocks]{raw_buffer}\'";}
   
   $_[0] = $raw_buffer;
   return $success;
