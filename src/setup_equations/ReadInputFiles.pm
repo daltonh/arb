@@ -92,6 +92,7 @@ sub read_input_files {
   my $code_type = 'solver'; # indicator of current code type = solver|string that is being examined within buffer
   my $comments = ''; # additional comments that are found while buffer is being formed
   my $buffer_offset = 0; # leading offset to apply when performing searches on buffer
+  my $lead = ''; # temporary character used to check validity of conditionals below
     
   my $debug = 1; # set to true to get extra debugging information within the debug file from this routine
 
@@ -164,10 +165,43 @@ sub read_input_files {
         $buffer .= $raw_buffer;
       }
 
+#--------------
+# deal with line continuation
+# somehow scope of a variable defined in the first expression can't be used in second, but magic variable $1 seems to work
+    } elsif ( $buffer =~ /^(.*)&/i && $1 !~ /#|(\{\{)/ ) {
+      print ::DEBUG "  INFO: continuation character identified within buffer\n";
+      my ( $before ) = $buffer =~ /^(.*)&/i; # recreate regex from above (due to strange scoping issues within conditional expression)
+      my $after = $';
+
+# anything following & that is not a comment is an error (noting that $ matches end of line, or end of line + \n)
+      if ($after !~ /^\h*(#.*|)$/) {
+        syntax_problem("a continuation character & within solver code can only be followed by either space or a comment.  ".
+          "This error could also indicate that a continuation character is missing from the previous line, if this continuation character ".
+          "is meant to be a preceed a continued line: $filelinelocator");
+      }
+# keep a record of any additional comments that were stripped off this line
+      $comments .= $1; # does not contain linefeed
+# strip off continuation character
+      $buffer = $before;
+
+      my $raw_buffer = '';
+      while ($raw_buffer =~ /^\h*(|&\h*)(#|$)/) { # if a line is either just &, or & #, or # or empty, then skip (while saving any comments)
+        if (!(get_raw_buffer($raw_buffer))) {
+# there is nothing left in the file, which is an error
+          syntax_problem("a code block (probably file) has been closed after a line that has a following continuation character: $filelinelocator");
+        }
+        if ($raw_buffer =~ /^\h*(|&\h*)(#.*)$/) { $comments .= $2; } # no line feed on comments
+      }
+      if ($raw_buffer =~ /^\h*&/) { # after stripping off any possible leading continuation character
+        $raw_buffer = $';
+      }
+      $buffer .= $raw_buffer; # leave buffer offset as previously, as original buffer is still there
+      if ($debug) { print ::DEBUG "  INFO: after getting next line:\n   buffer = $buffer\n"; }
+
 #-----------------------------
 # now search for first key characters in last buffer and do necessary processing
 # the buffer_offset part ensures that the match occurs after a minimum of $buffer_offset characters have occurred, providing a mechanism to avoid matching the same string twice
-    } elsif ($buffer =~ /(.{$buffer_offset})(&|\{\{|#|$|((GENERAL_|GLOBAL_|)REPLACEMENTS\h+|(INCLUDE(|_[A-Z]+)(\h+\S+\h+|\h*(".*"|'.*')\h*))))/i) {
+    } elsif ($buffer =~ /(.{$buffer_offset})(\{\{|#|$|((GENERAL_|GLOBAL_|)REPLACEMENTS\h+|(INCLUDE(|_[A-Z]+)(\h+\S+\h+|\h*(".*"|'.*')\h*))))/i) {
 
       my $before = $`.$1; # includes starting characters within the buffer offset
       my $match = $2;
@@ -215,36 +249,6 @@ sub read_input_files {
           $buffer_offset = length($before) + 1;
           if ($debug) { print ::DEBUG "  INFO: before_solver_code nonempty, so increasing buffer_offset by 1: solver_code = $solver_code: buffer = $buffer: buffer_offset = $buffer_offset: before = $before\n"; }
         }
-
-#--------------
-# deal with line continuation
-      } elsif ($match eq "&") {
-        print ::DEBUG "  INFO: continuation character identified within buffer\n";
-
-# anything following & that is not a comment is an error (noting that $ matches end of line, or end of line + \n)
-        if ($after !~ /^\h*(#.*|)$/) {
-          syntax_problem("a continuation character & within solver code can only be followed by either space or a comment.  ".
-            "This error could also indicate that a continuation character is missing from the previous line, if this continuation character ".
-            "is meant to be a preceed a continued line: $filelinelocator");
-        }
-# keep a record of any additional comments that were stripped off this line
-        $comments .= $1; # does not contain linefeed
-# strip off continuation character
-        $buffer = $before; # string code includes delimiters
-
-        my $raw_buffer = '';
-        while ($raw_buffer =~ /^\h*(|&\h*)(#|$)/) { # if a line is either just &, or & #, or # or empty, then skip (while saving any comments)
-          if (!(get_raw_buffer($raw_buffer))) {
-# there is nothing left in the file, which is an error
-            syntax_problem("a code block (probably file) has been closed after a line that has a following continuation character: $filelinelocator");
-          }
-          if ($raw_buffer =~ /^\h*(|&\h*)(#.*)$/) { $comments .= $2; } # no line feed on comments
-        }
-        if ($raw_buffer =~ /^\h*&/) { # after stripping off any possible leading continuation character
-          $raw_buffer = $';
-        }
-        $buffer .= $raw_buffer; # leave buffer offset as previously, as original buffer is still there
-        if ($debug) { print ::DEBUG "  INFO: after getting next line:\n   buffer = $buffer\n"; }
 
 #--------------
 # opening string code delimiters mean we are switching to string code
@@ -303,12 +307,14 @@ sub read_input_files {
         if ($debug) { print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n"; }
         $solver_code .= $buffer.$comments; # add the result of the string replacements onto the solver code
         if ($debug) { print ::DEBUG "  INFO: solver code ready to process: solver_code = $solver_code\n"; }
-# this shouldn't be necessary now
-# TODO
-        while ($solver_code =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
-          my $part_solver_code = $`; # split solver_code at each line break
-          $solver_code = $'; # and remove line break from next
-          parse_solver_code($part_solver_code); # process one line of solver_code
+# this shouldn't be necessary now, unless string replacements have introduced a line feed
+# outlaw this to avoid language problems in the future
+        if (0) {
+          while ($solver_code =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
+            my $part_solver_code = $`; # split solver_code at each line break
+            $solver_code = $'; # and remove line break from next
+            parse_solver_code($part_solver_code); # process one line of solver_code
+          }
         }
         parse_solver_code($solver_code); # process the final or only part which has no line breaks
         $solver_code = ''; # and reset buffer etc
