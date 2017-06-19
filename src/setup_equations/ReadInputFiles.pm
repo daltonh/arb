@@ -92,9 +92,8 @@ sub read_input_files {
   my $code_type = 'solver'; # indicator of current code type = solver|string that is being examined within buffer
   my $comments = ''; # additional comments that are found while buffer is being formed
   my $buffer_offset = 0; # leading offset to apply when performing searches on buffer
-  my $lead = ''; # temporary character used to check validity of conditionals below
     
-  my $debug = 1; # set to true to get extra debugging information within the debug file from this routine
+  my $debug = 0; # set to true to get extra debugging information within the debug file from this routine
 
 #----------------------------------------------------------------------------
   while (@code_blocks) { # we keep forming the buffer and parsing the code until all code blocks are destroyed, noting that new files, block, if statements each create new code_blocks
@@ -138,16 +137,6 @@ sub read_input_files {
         $code_blocks[$#code_blocks]{"raw_buffer"} = $string_code.$buffer.$code_blocks[$#code_blocks]{"raw_buffer"};
         $buffer = ''; # empty buffer to force processing of raw_buffer
         if ($debug) { print ::DEBUG "  INFO: placing string code into raw_buffer and emptying buffer\n:   raw_buffer = $code_blocks[$#code_blocks]{raw_buffer}\n"; }
-
-#       if (0) {
-#         perform_string_replacements($string_code);
-#         if ($debug) { print ::DEBUG "  INFO: after doing replacements on string code:\n   string_code = $string_code\n"; }
-#         $solver_code .= $string_code; # add the result of the string code onto the solver code
-#       } else {
-#         $buffer = $string_code.$buffer;
-#         $string_code = '';
-#         if ($debug) { print ::DEBUG "  INFO: parsed string code is prepended to buffer:\n   buffer = $buffer\n"; }
-#       }
       }
       $code_type = 'solver'; # and reset code type
     
