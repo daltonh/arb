@@ -157,16 +157,16 @@ sub read_input_files {
 #--------------
 # deal with line continuation
 # somehow scope of a variable defined in the first expression can't be used in second, but magic variable $1 seems to work
-    } elsif ( $buffer =~ /^(.*)&/i && $1 !~ /#|(\{\{)/ ) {
+    } elsif ( $buffer =~ /^(.*?)&/i && $1 !~ /#|(\{\{)/ ) { # non-greedy match
       print ::DEBUG "  INFO: continuation character identified within buffer\n";
-      my ( $before ) = $buffer =~ /^(.*)&/i; # recreate regex from above (due to strange scoping issues within conditional expression)
+      my ( $before ) = $buffer =~ /^(.*?)&/i; # recreate regex from above (due to strange scoping issues within conditional expression)
       my $after = $';
 
 # anything following & that is not a comment is an error (noting that $ matches end of line, or end of line + \n)
       if ($after !~ /^\h*(#.*|)$/) {
         syntax_problem("a continuation character & within solver code can only be followed by either space or a comment.  ".
           "This error could also indicate that a continuation character is missing from the previous line, if this continuation character ".
-          "is meant to be a preceed a continued line: $filelinelocator");
+          "is meant to be a preceed a continued line: before (&) = $before: after (&) = $after: $filelinelocator");
       }
 # keep a record of any additional comments that were stripped off this line
       $comments .= $1; # does not contain linefeed
