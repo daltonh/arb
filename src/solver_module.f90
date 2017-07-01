@@ -61,8 +61,8 @@ double precision :: weight_large_equation_errors_factor = 1.d0 ! (1.d0, userable
 ! debugging options:
 logical, parameter :: print_all_equations_on_delphi_error = .true. ! (.true.) if there is a problem with a delphi, print a list of equations that depend or are collocated with that unknown
 logical, parameter :: print_dependent_equations_on_delphi_error = .true. ! (.true.) if there is a problem with a delphi, print a list of all equations and their derivatives
-logical, parameter :: manage_funk_dv_memory = .true. ! (.true.) whether to deallocate and allocate derived and equation dvs each time to minimise memory requirements
-logical, parameter :: check_solution_accuracy = .false. ! (.false.) calculate how well solution satisfies linear equation - requires manage_funk_dv_memory to be false
+logical :: manage_funk_dv_memory = .true. ! (.true., userable) whether to deallocate and allocate derived and equation dvs each time to minimise memory requirements
+logical :: check_solution_accuracy = .false. ! (.false., userable) calculate how well solution satisfies linear equation - requires manage_funk_dv_memory to be false
 
 ! debugging array:
 integer, dimension(:), allocatable, save :: debug_list_p ! debug_list_p is a list of all unknown delphis that have a problem, referenced by their p index
@@ -2081,6 +2081,20 @@ do n = 1, allocatable_character_size(solver_options) ! precedence is now as read
       call error_stop("requested solver weightlargeequationerrorsfactor should be greater than zero")
     end if
     write(*,'(a,g10.3)') 'INFO: setting solver weightlargeequationerrorsfactor = ',weight_large_equation_errors_factor
+  else if (trim(option_name) == "managefunkdvmemory") then
+! manage_funk_dv_memory
+    manage_funk_dv_memory = extract_option_logical(solver_options(n),error)
+    if (error) call error_stop("could not determine managefunkdvmemory from the solver option "// &
+      trim(solver_options(n)))
+    write(*,'(a,l1)') 'INFO: setting solver managefunkdvmemory = ',manage_funk_dv_memory
+  else if (trim(option_name) == "checksolutionaccuracy") then
+! check_solution_accuracy
+    check_solution_accuracy = extract_option_logical(solver_options(n),error)
+    if (error) call error_stop("could not determine checksolutionaccuracy from the solver option "// &
+      trim(solver_options(n)))
+    write(*,'(a,l1)') 'INFO: setting solver checksolutionaccuracy = ',check_solution_accuracy
+    write(*,'(a)') 'INFO: at the same time, turning off managefunkdvmemory to allow checksolutionaccuracy'
+    manage_funk_dv_memory = .false.
   else
     call error_stop(trim(option_name)//" is not a (valid) solver option that can be set from the input file")
   end if
