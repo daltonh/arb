@@ -17,6 +17,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       # physical data for water at roughly 20 degreesC
       CONSTANT <mu> [Pa.s] 1.d-3 # viscosity
       CONSTANT <rho> [kg/m^3] 1.d3 # density
+      CONSTANT <eps_fluid> [1] 78.0d0 # relatic static permittivity
    
    CONSTANT <width> "facesum(<facex[l=2]>,region=<top>)-facesum(<facex[l=2]>,region=<bottom>)"
    CONSTANT <half_width> "<width>/2.d0"

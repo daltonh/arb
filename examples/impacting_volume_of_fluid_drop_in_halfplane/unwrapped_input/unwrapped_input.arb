@@ -233,8 +233,18 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       CONSTANT <Re> [1] 1.d-2 # Reynolds number, overwrite this after this file is included
       
       # convert dimensional parameters to nondimensional
-      CONSTANT <mu> "1.d0/<Re>"
-      CONSTANT <rho> 1.d0
+      # by default an inertial scaling of pressure is used, however this can be changed by presetting this variable
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/nondimensional_constants.arb: sub_block = 1
+         #(hash inserted during unwrap)IF 1
+         # the following produces a pressure which is inertially scalled (ie, p_nondim = p_dim/(density*velocity^2)
+         CONSTANT <mu> "1.d0/<Re>"
+         CONSTANT <rho> 1.d0
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/nondimensional_constants.arb: sub_block = 1
+         #(hash inserted during unwrap)ELSE
+         #(hash inserted during unwrap)# the following should produce a pressure which is viscous scalled (ie, p_nondim = p_dim*length/(viscosity*velocity))
+         #(hash inserted during unwrap)CONSTANT <mu> 1.d0
+         #(hash inserted during unwrap)CONSTANT <rho> "<Re>"
+         #(hash inserted during unwrap)END_IF
       CONSTANT <u_av> 1.d0
    
    # v0.50 - now use transient setup files
