@@ -694,7 +694,6 @@ else if (trim(linear_solver) == "sparse") then
 ! sparse iterative solver
 
   call sparse_linear_solver(aa,iaa,jaa,delphi,ierror)
-  write(*,*) 'returned from linear solver'
 
 else if (trim(linear_solver) == "hslma28") then
 ! hsl_ma28 solver

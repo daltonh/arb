@@ -135,7 +135,7 @@ interface
 subroutine sfSolve(matrix,rhs,solution) bind(c)
 use, intrinsic :: iso_c_binding
 type(c_ptr) :: matrix
-double precision, dimension(*) :: rhs,solution
+double precision, dimension(*) :: rhs,solution ! note that rhs and solution can be the same array
 end subroutine sfSolve
 end interface
 !-------------------------------------
