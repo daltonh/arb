@@ -94,22 +94,22 @@ print :
 
 download: sparse1.4b.tar.gz
 
+sparse1.4b.tar.gz:
+	curl -L -O https://downloads.sourceforge.net/project/sparse/sparse/sparse1.4b/sparse1.4b.tar.gz
+	touch sparse1.4b.tar.gz
+
 sparse: sparse1.4b.tar.gz
 	tar -xzf sparse1.4b.tar.gz
+	perl -p -i -e 's/#define(\s+)FORTRAN(\s+).*/#define FORTRAN YES/' sparse/src/spConfig.h
+	perl -p -i -e 's/#define(\s+)ARRAY_OFFSET(\s+).*/#define ARRAY_OFFSET NO/' sparse/src/spConfig.h
 
 #rm -rf mUMFPACK
 #mkdir mUMFPACK
 #tar -xzf mUMFPACK.tgz -C mUMFPACK
 #touch mUMFPACK
 
-sparse1.4b.tar.gz:
-	curl -L -O https://downloads.sourceforge.net/project/sparse/sparse/sparse1.4b/sparse1.4b.tar.gz
-	touch sparse1.4b.tar.gz
-
 # modify sparse add as a dependence to this
 sparse/lib/sparse.a: sparse
-	perl -p -i -e 's/#define(\s+)FORTRAN(\s+).*/#define FORTRAN YES/' sparse/src/spConfig.h
-	perl -p -i -e 's/#define(\s+)ARRAY_OFFSET(\s+).*/#define ARRAY_OFFSET NO/' sparse/src/spConfig.h
 	make -C sparse/src
 	
 # dynamic variables:

@@ -612,9 +612,9 @@ delete_files :
 check_equations :
 	$(src_dir)/setup_equations/setup_equations.pl $(setup_equations_dirs)
   
-# dynamic variables:
-# $^ is first prerequisit
-# $< is all
+# dynamic variables: (had this wrong before)
+# $< is first prerequisit
+# $^ is all
 # $@ is target
 
 arb : $(objects)
