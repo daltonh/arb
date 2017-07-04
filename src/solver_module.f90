@@ -41,7 +41,7 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, intelpardisosafer, suitesparse, hslma28, pardiso, multigrid, mgmres, bicg, bicgstab, descent, doglegdescent, flexible
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, intelpardisosafer, suitesparse, hslma28, pardiso, sparse, mgmres, multigrid, bicg, bicgstab, descent, doglegdescent, flexible
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
@@ -443,6 +443,7 @@ use pardiso_module
 use hsl_ma28d_module
 use suitesparse_module
 use mgmres_module
+use sparse_module
 
 double precision, dimension(:), allocatable :: aa
 integer, dimension(:), allocatable :: iaa, jaa
@@ -688,6 +689,12 @@ else if (trim(linear_solver) == "mgmres") then
 ! mgmres iterative solver
 
   call mgmres_linear_solver(aa,iaa,jaa,delphi,ierror)
+
+else if (trim(linear_solver) == "sparse") then
+! sparse iterative solver
+
+  call sparse_linear_solver(aa,iaa,jaa,delphi,ierror)
+  write(*,*) 'returned from linear solver'
 
 else if (trim(linear_solver) == "hslma28") then
 ! hsl_ma28 solver
@@ -2131,7 +2138,7 @@ else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "
   trim(linear_solver) == "multigrid".or.trim(linear_solver) == "singlegrid".or. &
   trim(linear_solver) == "bicg".or.trim(linear_solver) == "bicgstab".or. &
   trim(linear_solver) == "descent".or.trim(linear_solver) == "doglegdescent".or. &
-  trim(linear_solver) == "flexible".or. &
+  trim(linear_solver) == "flexible".or.trim(linear_solver) == "sparse".or. &
   trim(linear_solver) == "mgmres".or.trim(linear_solver) == "none")) then
   call error_stop('unknown linear solver specified: '//trim(linear_solver))
 end if

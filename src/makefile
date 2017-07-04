@@ -78,6 +78,10 @@ suitesparse_from_arb = present
 # use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
 mgmres_from_arb = present
 
+# sparse solver
+# use dummy variable to pass in from arb script, as variables passed in from command line don't seem to be able to be changed within the makefile
+sparse_from_arb = present
+
 # various directories that are dragged in from arb script
 arb_dir =
 working_dir =
@@ -96,6 +100,7 @@ intel_pardiso = present
 pardiso := $(pardiso_from_arb)
 suitesparse := $(suitesparse_from_arb)
 mgmres := $(mgmres_from_arb)
+sparse := $(sparse_from_arb)
 
 # additional libraries to link in
 libs =		
@@ -479,6 +484,22 @@ else
 endif
 
 #----------------
+# setup sparse interface module
+oldlibs := $(libs)
+cflagssparse := $(cflags)
+sparsedir = $(src_dir)/contributed/sparse
+ifeq "$(strip $(sparse))" "present"
+  objects += sparse_module.o
+  linear_solver_modules += sparse_module.o
+  files_to_delete += sparse_dummy_module.o
+  libs := $(libs) -L$(sparsedir)/sparse/lib -lsparse
+else
+  objects += sparse_dummy_module.o
+  linear_solver_modules += sparse_dummy_module.o
+  files_to_delete += sparse_module.o
+endif
+
+#----------------
 # check for existence of hsl_ma28d routines and setup variables
 ifeq "$(strip $(hsl_ma28d))" "present"
   ifeq "$(and $(wildcard $(src_dir)/contributed/hsl_ma28d/ma28d.f), $(wildcard $(src_dir)/contributed/hsl_ma28d/ddeps.f) )" ""
@@ -594,6 +615,7 @@ print :
 	@echo " hsl_ma28d linear solver is: $(hsl_ma28d)"
 	@echo " suitesparse linear solver is: $(suitesparse)"
 	@echo " mgmres linear solver is: $(mgmres)"
+	@echo " sparse linear solver is: $(sparse)"
 	@echo " higham88 one norm estimator (donest) is: $(donest)"
 	@echo " mklpath is: $(mklpath)"
 	@echo " openmp is: $(omp)"
@@ -708,6 +730,18 @@ mgmres_module.o : $(src_dir)/contributed/mgmres/mgmres_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 else
 mgmres_dummy_module.o : $(src_dir)/contributed/mgmres/mgmres_dummy_module.f90
+	$(fcomp) $(cflags) $< $(logme) -o $@
+endif
+
+ifeq "$(strip $(sparse))" "present"
+# first make the library which is included (above) in the libs variable
+$(sparsedir)/sparse/lib/sparse.a :  		
+	make -C $(sparsedir)/sparse/src
+# also make the arb interface routine
+sparse_module.o : $(sparsedir)/sparse_module.f90
+	$(fcomp) $(cflags) $< $(logme) -o $@
+else
+sparse_dummy_module.o : $(sparsedir)/sparse_dummy_module.f90
 	$(fcomp) $(cflags) $< $(logme) -o $@
 endif
 

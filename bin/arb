@@ -100,7 +100,9 @@ function usage () {
   echo "  --no-suitesparse: do not download the fortran 90 suitesparse interface or link in the packaged suitesparse routines";
   echo "  --mgmres: download the fortran 90 mgmres libraries and link these in";
   echo "  --no-mgmres: do not download the fortran 90 mgmres libraries and link these in (default)";
-  echo "  --no-downloads: do not download any files during the compilation process (equivalent to --no-suitesparse and --no-mgmres)";
+  echo "  --sparse: download the sparse (v1.4b) libraries and link these in (default)";
+  echo "  --no-sparse: do not download the sparse (v1.4b) libraries and link these in";
+  echo "  --no-downloads: do not download any files during the compilation process (equivalent to --no-suitesparse, --no-mgmres and --no-sparse)";
 # echo "  --externals|-e: incorporate the following user fortran external file into the equation_module";
   echo "  --wiki: create wiki pages from markdown source within doc/wiki";
   echo "  --help|-h: display this HELP INFO";
@@ -184,6 +186,7 @@ oilp="off";
 opardiso="present";
 osuitesparse="present";
 omgmres="not present";
+osparse="present";
 oprocesslogging=0; # a value greater than 0 means that process statistics will be logged at this interval (s)
 compiler="default";
 unset arbfiles; # the input files that will be passed to setup_equations.pl - unset array first
@@ -220,7 +223,9 @@ do
     "--no-suitesparse") osuitesparse="not present";;
     "--mgmres") omgmres="present";;
     "--no-mgmres") omgmres="not present";;
-    "--no-downloads") osuitesparse="not present"; omgmres="not present";;
+    "--sparse") osparse="present";;
+    "--no-sparse") osparse="not present";;
+    "--no-downloads") osuitesparse="not present"; omgmres="not present"; osparse="not present";;
     "--omp") oomp=1; unset OMP_NUM_THREADS;;
 #   "--omp") oomp=1;;
 #   "--omp"*) oomp=1; export OMP_NUM_THREADS=${1:5};; # this extracts from character position 6 and onwards (NB ${1:6:10} would extract characters 7 -> 10 or thereabouts)
@@ -581,7 +586,7 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
   fi
 
 # assemble makeline and make
-  makeline="make opt=$oopt ilp=$oilp pardiso_from_arb=\"$opardiso\" suitesparse_from_arb=\"$osuitesparse\" mgmres_from_arb=\"$omgmres\" arb_dir=\"$arb_dir\" working_dir=\"$working_dir\" output_dir=\"$output_dir\"";
+  makeline="make opt=$oopt ilp=$oilp pardiso_from_arb=\"$opardiso\" suitesparse_from_arb=\"$osuitesparse\" mgmres_from_arb=\"$omgmres\" sparse_from_arb=\"$osparse\" arb_dir=\"$arb_dir\" working_dir=\"$working_dir\" output_dir=\"$output_dir\"";
   if [ $osetup -eq 0 ] ; then
     makeline="$makeline compile_only" ;
   else

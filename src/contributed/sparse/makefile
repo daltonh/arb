@@ -39,8 +39,6 @@
 # variables below this should be pretty-much automagically set
 # this is taken from suitesparse directory, may not be needed
 
-fcomp = gfortran
-
 libs =
 
 # find operating system type
@@ -84,7 +82,7 @@ endif
 # all the rules
 
 #all: print mgmres_solver.f90
-all: print
+all: print sparse/lib/libsparse.a
 
 # print out some info
 print :
@@ -99,9 +97,8 @@ sparse1.4b.tar.gz:
 	touch sparse1.4b.tar.gz
 
 sparse: sparse1.4b.tar.gz
+	rm -rf sparse
 	tar -xzf sparse1.4b.tar.gz
-	perl -p -i -e 's/#define(\s+)FORTRAN(\s+).*/#define FORTRAN YES/' sparse/src/spConfig.h
-	perl -p -i -e 's/#define(\s+)ARRAY_OFFSET(\s+).*/#define ARRAY_OFFSET NO/' sparse/src/spConfig.h
 
 #rm -rf mUMFPACK
 #mkdir mUMFPACK
@@ -109,20 +106,26 @@ sparse: sparse1.4b.tar.gz
 #touch mUMFPACK
 
 # modify sparse add as a dependence to this
-sparse/lib/sparse.a: sparse
+sparse/lib/libsparse.a: sparse
+	perl -p -i -e 's/#define(\s+)FORTRAN(\s+).*/#define FORTRAN YES/' sparse/src/spConfig.h
+	perl -p -i -e 's/#define(\s+)ARRAY_OFFSET(\s+).*/#define ARRAY_OFFSET NO/' sparse/src/spConfig.h
+	touch sparse/src/spConfig.h
 	make -C sparse/src
+	rm -rf sparse/lib/libsparse.a
+	cp sparse/lib/sparse.a sparse/lib/libsparse.a
 	
 # dynamic variables:
 # $< is first prerequisit
 # $^ is all
 # $@ is target
 
+#fcomp = gfortran
 # test2
-test2.o: test2.f90
-	$(fcomp) -c $< -o $@
+#test2.o: test2.f90
+#	$(fcomp) -c $< -o $@
 
-test2: test2.o sparse/lib/sparse.a
-	$(fcomp) $^ -o $@
+#test2: test2.o sparse/lib/sparse.a
+#	$(fcomp) $^ -o $@
 
 # for curl, -L follows links
 #curl -O https://sourceforge.net/projects/sparse/files/sparse/sparse1.4b/sparse1.4b.tar.gz

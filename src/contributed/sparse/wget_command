@@ -1,3 +1,0 @@
-#alter src/spConfig.h for FORTRAN and ARRAY_ZERO? tags - can just be added at end?
-
-wget https://sourceforge.net/projects/sparse/files/sparse/sparse1.4b/sparse1.4b.tar.gz/download
