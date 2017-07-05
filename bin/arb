@@ -184,9 +184,9 @@ oomp=0; # 0 means no omp, 1 means compile with omp support
 oopt=1; # default is optimsation level 1
 oilp="off";
 opardiso="present";
-osuitesparse="present";
-omgmres="not present";
-osparse="present";
+osuitesparse="present"; # default is to enable/download this solver
+omgmres="not present"; # default is to not enable/download this solver
+osparse="not present"; # default is to not enable/download this solver
 oprocesslogging=0; # a value greater than 0 means that process statistics will be logged at this interval (s)
 compiler="default";
 unset arbfiles; # the input files that will be passed to setup_equations.pl - unset array first

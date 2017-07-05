@@ -50,7 +50,7 @@ integer :: ierror
 
 write(*,*)
 write(*,*) 'ERROR: the sparse routines have not been linked into the arb executable.'
-write(*,*) 'To include these, pass arb the --sparse option (which however is the default)'
+write(*,*) 'To include these, pass arb the --sparse option which will trigger their downloading and compilation'
 stop
 
 end subroutine sparse_linear_solver

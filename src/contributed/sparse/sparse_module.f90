@@ -48,26 +48,29 @@ subroutine sparse_linear_solver(aa,iaa,jaa,xx,ierror)
 use iso_c_binding
 
 implicit none
-double precision, dimension(:) :: xx ! already allocated
-double precision, dimension(:), allocatable :: aa ! already allocated
-integer, dimension(:), allocatable :: iaa ! already allocated
-integer, dimension(:), allocatable :: jaa ! already allocated
-!double precision, dimension(:), allocatable :: rhs ! to be allocated (on entry housed in xx)
-double precision, dimension(size(aa)) :: rhs ! to be allocated (on entry housed in xx)
+double precision, dimension(:), intent(inout) :: xx ! here an assumed shape array, passed in from an allocated array
+double precision, dimension(:), allocatable, intent(in) :: aa ! already allocated
+integer, dimension(:), allocatable, intent(in) :: iaa ! already allocated
+integer, dimension(:), allocatable, intent(in) :: jaa ! already allocated
 
 ! sparse library variables
 integer(c_int) :: error
 type(c_ptr) :: matrix ! pointers are basically long integers, atleast in the notation of spFortran.c
-!type(c_ptr), allocatable, dimension(:) :: element ! array of pointers to each element
-type(c_ptr), dimension(size(aa)) :: element ! array of pointers to each element
+type(c_ptr) :: element ! array of pointers to each element
 
 integer :: n, nz, nr, nn, ierror
-character(len=1000) :: formatline
 logical, parameter :: debug = .true.
 logical :: debug_sparse = .true.
 
 !-------------------------------------
 ! setup interfaces to c routines
+! notes on c/fortran interoperability:
+! http://computer-programming-forum.com/49-fortran/a52bee90ca5e571c.htm
+! https://software.intel.com/en-us/blogs/2009/03/31/doctor-fortran-in-ive-come-here-for-an-argument
+! https://stackoverflow.com/questions/9374679/c-loc-with-dynamic-arrays
+! http://www.nacad.ufrj.br/online/intel/Documentation/en_US/compiler_f/main_for/bldaps_for/common/bldaps_interopc.htm
+! https://stackoverflow.com/questions/16330892/passing-an-array-from-fortran-to-a-c-function
+
 interface
 ! sfCreate( int *Size, int *Complex, int *Error )
 !function sfCreate(a,b,error) bind(c,name='sfcreate')
@@ -76,66 +79,52 @@ use, intrinsic :: iso_c_binding
 integer(c_int) :: size,complex,error
 type(c_ptr) :: sfCreate
 end function sfCreate
-end interface
 
-interface
 ! sfGetElement( long *Matrix, int *Row, int *Col )
 function sfGetElement(matrix,row,col) bind(c)
 use, intrinsic :: iso_c_binding
 integer(c_int) :: row,col
 type(c_ptr) :: sfGetElement,matrix
 end function sfGetElement
-end interface
 
-interface
 ! sfClear( long *Matrix )
 subroutine sfClear(matrix) bind(c)
 use, intrinsic :: iso_c_binding
 type(c_ptr) :: matrix
 end subroutine sfClear
-end interface
 
-interface
 ! sfDestroy( long *Matrix )
 subroutine sfDestroy(matrix) bind(c)
 use, intrinsic :: iso_c_binding
 type(c_ptr) :: matrix
 end subroutine sfDestroy
-end interface
 
-interface
 ! sfAdd1Real( long *Element, spREAL *Real )
 subroutine sfAdd1Real(element,real) bind(c)
 use, intrinsic :: iso_c_binding
 type(c_ptr) :: element
 double precision :: real
 end subroutine sfAdd1Real
-end interface
 
-interface
 ! sfPrint( long *Matrix, long *PrintReordered, long *Data, long *Header )
 subroutine sfPrint(matrix,printreordered,data,header) bind(c)
 use, intrinsic :: iso_c_binding
 type(c_ptr) :: matrix
 logical :: printreordered,data,header
 end subroutine sfPrint
-end interface
 
-interface
 ! sfFactor( long *Matrix )
 function sfFactor(matrix) bind(c)
 use, intrinsic :: iso_c_binding
 integer(c_int) :: sfFactor
 type(c_ptr) :: matrix
 end function sfFactor
-end interface
 
-interface
 ! void sfSolve( long *Matrix, spREAL RHS[], spREAL Solution[] )
 subroutine sfSolve(matrix,rhs,solution) bind(c)
 use, intrinsic :: iso_c_binding
 type(c_ptr) :: matrix
-double precision, dimension(*) :: rhs,solution ! note that rhs and solution can be the same array
+double precision, dimension(*) :: rhs,solution ! note that rhs and solution can be the same array, and that c/fortran interoperability requires an assumed size array (I think)
 end subroutine sfSolve
 end interface
 !-------------------------------------
@@ -155,37 +144,30 @@ if (ubound(aa,1) /= nz.or.ubound(jaa,1) /= nz.or.ubound(xx,1) /= n) stop &
 
 ! initialise matrix and add the elements into it
 matrix = sfCreate(n,0,error)
+if (error /= 0) then
+  write(*,*) 'ERROR: sparse linear solver could not create the matrix'
+  return
+end if
 if (debug) write(*,*) 'allocated matrix: error = ',error,': matrix = ',matrix
 
 do nr = 1, n ! loop through rows, grabbing pointers to each element
   if (iaa(nr) < iaa(nr+1)) then
     do nn = iaa(nr), iaa(nr+1)-1
-write(95,*) 'nn,n,nr,jaa(nn)'
-write(95,*) nn,n,nr,jaa(nn)
-      element(nn) = sfGetElement(matrix,nr,jaa(nn))
-!     aa_full(nr,jaa(nn)) = aa(nn)
+      element = sfGetElement(matrix,nr,jaa(nn))
+      call sfAdd1Real(element, aa(nn))
     end do
   end if
 end do
-if (debug) write(*,*) 'found pointers to matrix elements'
-
-call sfClear(matrix)
-if (debug) write(*,*) 'matrix cleared'
-
-do nn = 1, nz
-  call sfAdd1Real(element(nn), aa(nn))
-end do
-if (debug) write(*,*) 'added matrix elements'
-
-! make a copy of the rhs to send to the routine
-rhs=xx
-! and zero initial guess
-xx=0
+if (debug) write(*,*) 'found pointers to matrix elements and added element values'
 
 error = sfFactor(matrix)
 if (debug) write(*,*) 'factorised matrix, error = ',error
+if (error /= 0) then
+  write(*,*) 'ERROR: sparse linear solver could not factorise the matrix'
+  return
+end if
 
-call sfSolve(matrix, rhs, xx)
+call sfSolve(matrix, xx, xx)
 if (debug) write(*,*) 'solved matrix'
 
 call sfDestroy(matrix)

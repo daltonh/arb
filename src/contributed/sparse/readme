@@ -1,0 +1,6 @@
+This directory concerns the sparse matrix solver written by kundert@users.sourceforge.net and referenced here:
+http://sparse.sourceforge.net/documentation.html
+
+The solver (library) is written in C so the sparse_module.f90 code includes some fortran/c interoperability constructs (ouch!).  Right now the libraries are compiled with gcc and do not support openmp (I tried passing in this option but it made no difference).
+
+To enable this library you should be able to just pass the option '--sparse' to the arb script (default is --no-sparse).  This will trigger a download of the libraries to this contributed/sparse directory and compilation into the source, producing sparse/lib/libsparse.a which is linked to the main arb executable.

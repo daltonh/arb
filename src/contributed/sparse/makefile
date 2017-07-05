@@ -81,7 +81,6 @@ endif
 #----------------
 # all the rules
 
-#all: print mgmres_solver.f90
 all: print sparse/lib/libsparse.a
 
 # print out some info
@@ -100,20 +99,27 @@ sparse: sparse1.4b.tar.gz
 	rm -rf sparse
 	tar -xzf sparse1.4b.tar.gz
 
-#rm -rf mUMFPACK
-#mkdir mUMFPACK
-#tar -xzf mUMFPACK.tgz -C mUMFPACK
-#touch mUMFPACK
-
-# modify sparse add as a dependence to this
+# modify sparse config files and compile the library
 sparse/lib/libsparse.a: sparse
-	perl -p -i -e 's/#define(\s+)FORTRAN(\s+).*/#define FORTRAN YES/' sparse/src/spConfig.h
-	perl -p -i -e 's/#define(\s+)ARRAY_OFFSET(\s+).*/#define ARRAY_OFFSET NO/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)FORTRAN)(\s+).*/\1 YES/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)ARRAY_OFFSET)(\s+).*/\1 NO/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)DEBUG)(\s+).*/\1 NO/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)EXPANDABLE)(\s+).*/\1 NO/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)TRANSLATE)(\s+).*/\1 NO/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)INITIALIZE)(\s+).*/\1 NO/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)DIAGONAL_PIVOTING)(\s+).*/\1 NO/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)spCOMPLEX)(\s+).*/\1 0/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)DEFAULT_PARTITION)(\s+).*/\1 spINDIRECT_PARTITION/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)DEFAULT_THRESHOLD)(\s+).*/\1 1.e-2/' sparse/src/spConfig.h
+	perl -p -i -e 's/(#define(\s+)DIAG_PIVOTING_AS_DEFAULT)(\s+).*/\1 NO/' sparse/src/spConfig.h
+	perl -p -i -e 's/sparse.a/libsparse.a/' sparse/src/Makefile
 	touch sparse/src/spConfig.h
 	make -C sparse/src
-	rm -rf sparse/lib/libsparse.a
-	cp sparse/lib/sparse.a sparse/lib/libsparse.a
 	
+# use this for adding openmp option, although it doesn't seem to work
+# perl -p -i -e 's/^(CFLAGS(\s*)=(.*))/\1 -fopenmp/' sparse/src/Makefile
+
+#cat sparse_config_defaults >> sparse/src/spConfig.h
 # dynamic variables:
 # $< is first prerequisit
 # $^ is all
@@ -126,18 +132,6 @@ sparse/lib/libsparse.a: sparse
 
 #test2: test2.o sparse/lib/sparse.a
 #	$(fcomp) $^ -o $@
-
-# for curl, -L follows links
-#curl -O https://sourceforge.net/projects/sparse/files/sparse/sparse1.4b/sparse1.4b.tar.gz
-#mgmres_solver.f90: mgmres.f90 mgmres_additions_pre.f90 mgmres_additions_post.f90
-#	cat mgmres_additions_pre.f90 > mgmres_solver.f90
-#	cat mgmres.f90 >> mgmres_solver.f90
-#	cat mgmres_additions_post.f90 >> mgmres_solver.f90
-#	perl -p -i -e 's/end$$/end subroutine/g' mgmres_solver.f90 # need to replace end statements with end subroutine, to convert to a module
-#	perl -p -i -e 's/logical, parameter :: verbose = .true./logical :: verbose/' mgmres_solver.f90
-#	perl -p -i -e 's/subroutine mgmres_st \( n/subroutine mgmres_st ( verbose, itr_used, rho, n/' mgmres_solver.f90
-#	perl -p -i -e 's/subroutine pmgmres_ilu_cr \( n/subroutine pmgmres_ilu_cr ( verbose, n/' mgmres_solver.f90
-#	touch mgmres_solver.f90
 
 clean_all: clean clean_download
 

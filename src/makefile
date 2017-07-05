@@ -735,10 +735,10 @@ endif
 
 ifeq "$(strip $(sparse))" "present"
 # first make the library which is included (above) in the libs variable
-$(sparsedir)/sparse/lib/sparse.a :  		
-	make -C $(sparsedir)/sparse/src
-# also make the arb interface routine
-sparse_module.o : $(sparsedir)/sparse_module.f90
+$(sparsedir)/sparse/lib/libsparse.a :  		
+	make -C $(sparsedir)
+# also make the arb interface routine and include a dependence on the library
+sparse_module.o : $(sparsedir)/sparse_module.f90 $(sparsedir)/sparse/lib/libsparse.a
 	$(fcomp) $(cflags) $< $(logme) -o $@
 else
 sparse_dummy_module.o : $(sparsedir)/sparse_dummy_module.f90
