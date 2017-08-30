@@ -60,7 +60,7 @@ function usage () {
   echo
   echo "HELP/USAGE: ./arb [options] [input_file1.arb [input_file2.arb]]";
   echo
-  echo "If no input files are specified on the command line, then any .arb files, and failing that, any .in files,";
+  echo "If no input files are specified on the command line, then all .arb files, and failing that, all .in files,";
   echo "    in the working directory are used";
   echo
   echo "Possible options (consistent with long-form command line syntax (--), words are separated by -, and a preceeding --no- negates an option) :";
@@ -97,6 +97,7 @@ function usage () {
   echo "  --debugger-none: do not run within a debugger environment (relevant for debug runs)";
   echo "          all debugger options turn debug on, but that can be overwritten using the --no-debug option given after";
   echo "  --no-pardiso: do not link in the native pardiso routines, allowing the intel pardiso routines to be used instead";
+  echo "  --pardiso-lic-path: set the path (directory) which holds the native pardiso licence file pardiso.lic, required if it is not contained in src/contributed/pardiso or the run directory";
   echo "  --no-suitesparse: do not download the fortran 90 suitesparse interface or link in the packaged suitesparse routines";
   echo "  --mgmres: download the fortran 90 mgmres libraries and link these in";
   echo "  --no-mgmres: do not download the fortran 90 mgmres libraries and link these in (default)";
@@ -160,6 +161,7 @@ src_dir="$arb_dir/src";
 misc_dir="$arb_dir/misc";
 templates_dir="$arb_dir/templates";
 examples_dir="$arb_dir/examples";
+file_separator="##################################################################################"
 # check that all of the directories are present in the arb_dir
 if [ ! -d "$src_dir" ] ; then echo "ERROR: cannot find the arb src directory that corresponds to this arb script.  Possibly the arb directory $arb_dir has been corrupted, or alternatively the arb script has been moved/copied out of the arb directory (if you want to refer to the arb script outside of its arb directory, create a soft link to it, which will be dereferenced when the script is called)."; usage; fi;
 if [ ! -d "$misc_dir" ] ; then echo "ERROR: cannot find the arb misc directory that corresponds to this arb script.  Possibly the arb directory $arb_dir has been corrupted, or alternatively the arb script has been moved/copied out of the arb directory (if you want to refer to the arb script outside of its arb directory, create a soft link to it, which will be dereferenced when the script is called)."; usage; fi;
@@ -192,6 +194,23 @@ compiler="default";
 unset arbfiles; # the input files that will be passed to setup_equations.pl - unset array first
 unset externals; # a list of external fortran files that will be included in equation_module.f90
 externals=( `ls "$src_dir/"*_functions.f90 2> /dev/null` ); # all functions files within the src directory get included by default, now as absolute pathnames
+
+#------------------
+# set any environment variables to their default values
+
+# stacksize for OMP runs, not properly tested but probably necessary as recursion grows under ifort
+# environment variables
+#OMP_STACKSIZE="100000000"; # not sure whether it is KMP or OMP...., so set both to very large numbers
+KMP_STACKSIZE="97660k"; # http://wiki.seas.harvard.edu/geos-chem/index.php/Intel_Fortran_Compiler#Resetting_stacksize_for_Linux
+ulimit -s 65000; # set stacksize using ulimit, up to apparently hard limit that exists on osx
+
+# location of ooc temp files for out of core intel pardiso solver
+MKL_PARDISO_OOC_PATH="$mkl_pardiso_ooc_dir/intel_pardiso_ooc"; # environment variable
+
+# environment variables that specify the location of files for the native pardiso solver
+PARDISO_LIC_PATH="$src_dir/contributed/pardiso"; # location of the pardiso.lic file required for the native pardiso solver
+LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$src_dir/contributed/pardiso"; # use this to tell the runtime linker where the pardiso libraries are
+DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:$src_dir/contributed/pardiso"; # use this to tell the runtime linker where the pardiso libraries are
 
 #---------------------------
 # loop through options and update any variables
@@ -255,6 +274,10 @@ do
       shift;
       if [ -n "$1" ]; then previous_output_dir="$1"; else echo "ERROR: previous output directory not found after option"; usage; fi;
       ;;
+    "--pardiso-lic-path") # set the directory that holds the pardiso.lic file for the native pardiso solver
+      shift;
+      if [ -n "$1" ]; then PARDISO_LIC_PATH="$1"; else echo "ERROR: pardiso licence path not found after option"; usage; fi;
+      ;;
     "--help"|"-h") usage;;
 # TODO - additional external, needs to be absolute pathname
 #   "--externals*".") echo "INFO: found arb input file $1"; arbfiles[${#arbfiles[@]}]=$1;;
@@ -299,6 +322,11 @@ scroutput="$output_dir/output.scr";
 # location of ooc temp files for out of core intel pardiso solver
 mkl_pardiso_ooc_dir="$build_dir/intel_pardiso_ooc";
 
+# check that pardiso licence path is absolute
+if [[ $PARDISO_LIC_PATH != /* ]] ; then
+  PARDISO_LIC_PATH="$working_dir/$PARDISO_LIC_PATH";
+fi;
+
 # note, *_files_to_delete is processed before files_to_keep
 output_files_to_delete=(
   'debug*.msh'
@@ -323,23 +351,6 @@ output_files_to_keep=(
 ); # relative to output directory
 
 #------------------
-# set any environment variables
-
-# stacksize for OMP runs, not properly tested but probably necessary as recursion grows under ifort
-# environment variables
-#OMP_STACKSIZE="100000000"; # not sure whether it is KMP or OMP...., so set both to very large numbers
-KMP_STACKSIZE="97660k"; # http://wiki.seas.harvard.edu/geos-chem/index.php/Intel_Fortran_Compiler#Resetting_stacksize_for_Linux
-ulimit -s 65000; # set stacksize using ulimit, up to apparently hard limit that exists on osx
-file_separator="##################################################################################"
-
-# location of ooc temp files for out of core intel pardiso solver
-MKL_PARDISO_OOC_PATH="$mkl_pardiso_ooc_dir/intel_pardiso_ooc"; # environment variable
-
-# environment variables that specify the location of files for the native pardiso solver
-PARDISO_LIC_PATH="$src_dir/contributed/pardiso"; # environment variable
-LD_LIBRARY_PATH="$LD_LIBRARY_PATH:src/contributed/pardiso"; # environment variable
-DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:src/contributed/pardiso"; # environment variable
-
 # export any variables that are required upstream, just in case they haven't been before
 # OSTYPE and MACHTYPE are now set directly within make using uname output
 export MKL_PARDISO_OOC_PATH

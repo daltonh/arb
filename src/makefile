@@ -366,6 +366,7 @@ setup_equations_src := $(wildcard $(src_dir)/setup_equations/*.p?)
 # check for existence of pardiso (native, not intel mkl version) libraries
 # these pardiso libraries all seem to run in omp, so link in fopenmp with all of them
 pardisodir := $(src_dir)/contributed/pardiso
+pardisolicencedir := $(PARDISO_LIC_PATH) # this environment variable is set by the arb script
 oldlibs := $(libs)
 ifeq "$(strip $(pardiso))" "present"
   ifeq "$(os_type)" "Darwin"
@@ -373,7 +374,7 @@ ifeq "$(strip $(pardiso))" "present"
     ifeq "$(compiler)" "intel"
       pardiso = not present
     else
-      ifeq "$(and $(wildcard $(pardisodir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-MACOS-X86-64.dylib) )" ""
+      ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-MACOS-X86-64.dylib) )" ""
         pardiso = not present
       else
 # iterative solver doesn't seem to like framework accelerate, not sure why, so completely overwrite libs here
@@ -385,7 +386,7 @@ ifeq "$(strip $(pardiso))" "present"
   else
 # on linux both intel and gfortran
     ifeq "$(compiler)" "intel"
-      ifeq "$(and $(wildcard $(pardisodir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-INTEL1301-X86-64.so) )" ""
+      ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-INTEL1301-X86-64.so) )" ""
         pardiso = not present
       else
 #       libs += -L$(pardisodir) -lpardiso500-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 -lgfortran -fopenmp
@@ -393,10 +394,10 @@ ifeq "$(strip $(pardiso))" "present"
       endif
     else
 # allow for two versions of the gnu pardiso libraries right now, 4.61 and 4.81
-      ifneq "$(and $(wildcard $(pardisodir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU461-X86-64.so) )" ""
+      ifneq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU461-X86-64.so) )" ""
         libs := -L$(pardisodir) -lpardiso500-GNU461-X86-64 $(oldlibs) -fopenmp -lpthread -lm
       else
-        ifneq "$(and $(wildcard $(pardisodir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU481-X86-64.so) )" ""
+        ifneq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU481-X86-64.so) )" ""
           libs := -L$(pardisodir) -lpardiso500-GNU481-X86-64 $(oldlibs) -fopenmp -lpthread -lm
         else
           pardiso = not present
@@ -612,6 +613,8 @@ print :
 	@echo " numerical recipes routines are: $(numerical_recipes)"
 	@echo " intel pardiso linear solver is: $(intel_pardiso)"
 	@echo " pardiso (native) linear solver is: $(pardiso)"
+#@echo " pardisodir is: $(pardisodir)"
+	@echo " pardisolicencedir is: $(pardisolicencedir)"
 	@echo " hsl_ma28d linear solver is: $(hsl_ma28d)"
 	@echo " suitesparse linear solver is: $(suitesparse)"
 	@echo " mgmres linear solver is: $(mgmres)"
@@ -623,7 +626,7 @@ print :
 	@echo " intel version is: $(intel_version)"
 	@echo " intel link line version is: $(intel_link_version)"
 	@echo " intel long integer (ilp64) support is: $(ilp)"
-	@echo " setup_equations_src files are: $(setup_equations_src)"
+#@echo " setup_equations_src files are: $(setup_equations_src)"
 #@echo " object files are: $(objects)"
 
 # delete any files from previous configurations
