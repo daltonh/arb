@@ -208,7 +208,9 @@ ulimit -s 65000; # set stacksize using ulimit, up to apparently hard limit that 
 MKL_PARDISO_OOC_PATH="$mkl_pardiso_ooc_dir/intel_pardiso_ooc"; # environment variable
 
 # environment variables that specify the location of files for the native pardiso solver
-PARDISO_LIC_PATH="$src_dir/contributed/pardiso"; # location of the pardiso.lic file required for the native pardiso solver
+if [ -z "$PARDISO_LIC_PATH" ] ; then # only set this if it is empty, allowing user to specify path in their shell setup that overrides this default location
+  PARDISO_LIC_PATH="$src_dir/contributed/pardiso"; # location of the pardiso.lic file required for the native pardiso solver
+fi
 LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$src_dir/contributed/pardiso"; # use this to tell the runtime linker where the pardiso libraries are
 DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:$src_dir/contributed/pardiso"; # use this to tell the runtime linker where the pardiso libraries are
 
