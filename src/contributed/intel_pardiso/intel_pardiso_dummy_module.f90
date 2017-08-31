@@ -51,7 +51,8 @@ logical, optional :: ooc, safer
 write(*,*)
 write(*,*) 'ERROR: the intel mkl pardiso routine has not been compiled into the arb executable'
 write(*,*) 'Check that you are using the intel ifort compiler, and that the intel mkl libraries are present'
-write(*,*) 'Then make clean in obj and rerun'
+write(*,*) 'One problem may be that the pardiso libraries are included.  See the arb option --no-pardiso to remove'
+write(*,*) 'these and allow the intel pardiso libraries to be used'
 write(*,*) 'Alternatively, try another matrix inversion technique'
 stop
 

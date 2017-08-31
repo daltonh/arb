@@ -366,7 +366,8 @@ setup_equations_src := $(wildcard $(src_dir)/setup_equations/*.p?)
 # check for existence of pardiso (native, not intel mkl version) libraries
 # these pardiso libraries all seem to run in omp, so link in fopenmp with all of them
 pardisodir := $(src_dir)/contributed/pardiso
-pardisolicencedir := $(PARDISO_LIC_PATH) # this environment variable is set by the arb script
+# this environment variable is set by the arb script - note trailing comments will imply additional space on variables in makefiles!
+pardisolicencedir := $(PARDISO_LIC_PATH)
 oldlibs := $(libs)
 ifeq "$(strip $(pardiso))" "present"
   ifeq "$(os_type)" "Darwin"
@@ -626,6 +627,10 @@ print :
 	@echo " intel version is: $(intel_version)"
 	@echo " intel link line version is: $(intel_link_version)"
 	@echo " intel long integer (ilp64) support is: $(ilp)"
+#@echo "and: $(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-INTEL1301-X86-64.so) )"
+#@echo "first: $(wildcard $(pardisolicencedir)/pardiso.lic)"
+#@echo "second: $(wildcard $(pardisodir)/libpardiso500-INTEL1301-X86-64.so)"
+#@echo "jibber: $(wildcard $(pardisolicencedir)/pardiso.lic)"
 #@echo " setup_equations_src files are: $(setup_equations_src)"
 #@echo " object files are: $(objects)"
 

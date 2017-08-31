@@ -50,12 +50,15 @@ logical, optional :: iterative
 
 write(*,*)
 write(*,*) 'ERROR: the pardiso (native, not intel MKL) routine has not been compiled into the arb executable'
-write(*,*) 'A number of stars have to align to be able to use this solver'
-write(*,*) 'On osx, it is only available using the gnu (gfortran) compiler'
-write(*,*) 'On linux, it is available for both gfortran and ifort (intel) compilers (although the iterative '
-write(*,*) 'solver doesn''t seem to work under gfortran on linux)'
-write(*,*) 'You need to download a license file and the relevant library for your compiler and architecture from '
-write(*,*) 'http://www.pardiso-project.org and place both of them in src/contributed/pardiso'
+write(*,*) 'A number of stars have to align to be able to use this solver:'
+write(*,*) '* On osx, it is only available using the gnu (gfortran) compiler'
+write(*,*) '* On linux, it is available for both gfortran and ifort (intel) compilers (although the iterative '
+write(*,*) '  solver doesn''t seem to work under gfortran on linux)'
+write(*,*) '* You need to download the relevant library for your compiler and architecture from '
+write(*,*) '  http://www.pardiso-project.org and place it in src/contributed/pardiso'
+write(*,*) '* You also need to download a license file from http://www.pardiso-project.org '
+write(*,*) '  which will be specific to your username (filename = pardiso.lic).  Place this file in your run directory'
+write(*,*) '  or see src/contributed/pardiso/readme for other possible locations'
 write(*,*) 'Have a look at src/contributed/pardiso/readme for more details'
 write(*,*) 'Alternatively, try another matrix inversion technique'
 stop
