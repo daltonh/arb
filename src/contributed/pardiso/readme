@@ -3,7 +3,6 @@ A number of stars have to align to be able to use this solver
 * On linux, it is available for both gfortran and ifort (intel) compilers (although the iterative solver doesn't seem to work under gfortran on linux)
 * You need to download the relevant libraries for your compiler and architecture from http://www.pardiso-project.org and place it this directory (src/contributed/pardiso)'
 * You also need to download a license file (filename = pardiso.lic) from http://www.pardiso-project.org which will be specific to your username.  You have a few options of where to put this licence file:
-  - in your run directory
   - in this directory (src/contributed/pardiso), although obviously you need to own this directory to do this (in practice)
   - specify its location when running arb, using the --pardiso-lic-path option
   - set the environment variable PARDISO_LIC_PATH within your shell to point to the licence file's location
