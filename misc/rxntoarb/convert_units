@@ -1,0 +1,59 @@
+#!/usr/bin/env ruby
+
+PROGNAME = 'convert_units'
+VERSION = 1.0
+DATE = '2017-09-02'
+info = "#{PROGNAME} v. #{VERSION} (#{DATE})
+Performs unit conversions.
+(C) Copyright Christian Biscombe 2017"
+
+require 'optparse'
+require_relative 'lib/units'
+
+# Command-line options
+options = {}
+options[:format] = '%g' # default format for numerical output
+banner = "#{info}
+Usage: #{PROGNAME} [options] <input_string> [output_units]
+Terminate option list with '--' if entering negative input values (e.g. temperatures)"
+opts = OptionParser.new do |opt|
+  opt.banner = banner
+  opt.on('-a', '--arb', 'Output in arb format (implies -d)') { options[:arb] = true; options[:double_precision] = true }
+  opt.on('-d', '--double-precision', "Use d for exponents (only alters output; doesn't affect numerical precision)") { options[:double_precision] = true }
+  opt.on('-f', '--format <format>', 'Format string for numerical output (default %g)') { |f| options[:format] = f }
+  opt.on('-l', '--list', 'List all recognised units and their abbreviations') { Units.list(); exit if ARGV.empty? }
+  opt.on('-s', '--sig-figs', 'Output with same number of significant figures as input (overrides -f)') { options[:sig_figs] = true }
+  opt.on('-t', '--tdiff', 'Interpret input temperature as temperature difference rather than reference to an absolute temperature') { options[:tdiff] = true }
+  opt.on('-v', '--version', 'Print version information') { puts info; exit if ARGV.empty? }
+end
+begin opts.parse!
+rescue OptionParser::InvalidOption => msg
+  warn opts
+  abort "ERROR: #{msg}"
+end
+
+if ARGV.empty?
+  warn opts
+  abort "ERROR: no input"
+end
+
+# Do unit conversion
+value_in = ARGV[0].sub(/(\d)\.?[DdEe](\d)/,'\1e\2') # convert exponents to consistent form
+units_out = ARGV[1].to_s.empty? ? '' : ARGV[1]
+begin
+  value_out, units_out = Units.convert(value_in, units_out, options[:sig_figs], options[:tdiff])
+rescue => msg
+  abort "ERROR: #{msg}"
+end
+value_out = sprintf(options[:format],value_out) unless options[:sig_figs]
+if options[:double_precision]
+  value_out.tr!('Ee','d')
+  value_out << 'd0' unless value_out['d']
+end
+
+# Print result
+if options[:arb]
+  puts "[#{units_out}] #{value_out}"
+else
+  puts "#{value_out} #{units_out}"
+end
