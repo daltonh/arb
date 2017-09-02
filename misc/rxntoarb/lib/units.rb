@@ -153,7 +153,7 @@ module Units
     else
       factor_out, units_out_dim = convert_SI(units_out.strip)
     end
-    abort "ERROR: input and output units have different dimensions" unless units_in_dim == units_out_dim
+    raise "input and output units have different dimensions" unless units_in_dim == units_out_dim
 
     if units_in =~ /\A(deg[CFR]|K)\z/ && !tdiff # assume input refers to an absolute temperature
       temp_in_K = units_in =~ /deg[CFR]/ ? (value_in.to_f + UNITS[units_in][3])*UNITS[units_in][1] : value_in.to_f
