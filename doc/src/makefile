@@ -70,9 +70,13 @@ createhtmlbodyfiles : $(htmlbodyfiles)
 $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
 	ghc --make $< -o $@
 
-%.html : %.md
+#%.html : %.md
+
+%.html : %.md $(docdir)/src/makefile $(assemblerdir)/assembler.pl $(assemblerdir)/assembler_pre.html $(assemblerdir)/assembler_post.html $(assemblerdir)/vimhl
 	@echo "  INFO: recreating $@"
-	cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(arbdir) | pandoc -S -c $(bodycssfile) --toc -o $@
+	cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(arbdir) | pandoc -S -F $(assemblerdir)/vimhl -o $@
+
+#@$(assemblerdir)/assembler.pl $< | pandoc -S -F $(assemblerdir)/vimhl -o $@
 	
 #@touch $@
 

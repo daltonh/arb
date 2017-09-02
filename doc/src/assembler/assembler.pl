@@ -52,6 +52,8 @@ my $assembler_file_post="assembler_post.html";
 my %replacements=();
 # docdir
 $replacements{"<<<root>>>"}=$root_var;
+# contents
+$replacements{"<<<contents>>>"}="not done";
 # # linkrootdir
 # $replacements{"<<linkrootdir>>"}=$markdown_dir;
 # $replacements{"<<markdowndir>>"}=$markdown_dir;
