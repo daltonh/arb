@@ -3,9 +3,9 @@
 # daltonh, 30/8/15
 
 # usage
-# call from wiki working directory for now
+# call from assembler src directory directory now
 # input full filename (including path which has body in it) to markdown page, and output markdown file that is ready to pass to pandoc, as in:
-# ./assembler/assembler $markdown_filename.md | pandoc -o $markdown_filename.html
+# ./assembler $markdown_filename.md $rootvar $arbdir | pandoc -o $markdown_filename.html
 
 use strict;
 use warnings;
@@ -17,14 +17,20 @@ use File::Glob ':glob'; # deals with whitespace better
 my ($line);
 
 # file the relevant directories and filenames
-my $markdown_filename = $ARGV[0]; # set filename
+my $markdown_filename = $ARGV[0]; # markdown filename to be read, from calling makefile commant
+my $root_var = $ARGV[1]; # rootvar to be referenced in html pages, from calling makefile commant
+my $arb_dir = $ARGV[2]; # arbdir, from calling makefile command
+
 # find various directories from filename
 #my ($markdown_dir) = $markdown_filename =~ /^(.*\/)/;
 #my ($body_dir) = $markdown_filename =~ /^(.*\/doc\/wiki\/body\/)/;
 #my ($wiki_dir) = $markdown_filename =~ /^(.*\/doc\/wiki\/)/;
 #my ($working_dir) = $markdown_filename =~ /^(.*\/)doc\/wiki\//;
 
-my ($markdown_dir,$body_dir,$wiki_dir,$doc_dir,$working_dir,) = $markdown_filename =~ /^(((((.*)\/doc)\/wiki)\/body)\/.*)\.*$/;
+#print "doing assembler with markdown_filename = $markdown_filename\n";
+#exit;
+
+#my ($markdown_dir,$body_dir,$wiki_dir,$doc_dir,$working_dir,) = $markdown_filename =~ /^(((((.*)\/doc)\/wiki)\/body)\/.*)\.*$/;
 
 #my $pandoc="pandoc -t html -f markdown";
 
@@ -39,32 +45,33 @@ my ($markdown_dir,$body_dir,$wiki_dir,$doc_dir,$working_dir,) = $markdown_filena
 
 # find wiki and body directories
 
-my $assembler_dir="$wiki_dir/assembler";
-my $assembler_file_pre="$assembler_dir/assembler_pre.html";
-my $assembler_file_post="$assembler_dir/assembler_post.html";
+my $assembler_file_pre="assembler_pre.html";
+my $assembler_file_post="assembler_post.html";
 
 # assemble a list of replacements, as a hash
 my %replacements=();
-# linkrootdir
-$replacements{"<<linkrootdir>>"}=$markdown_dir;
-$replacements{"<<markdowndir>>"}=$markdown_dir;
-# workingdir
-$replacements{"<<workingdir>>"}=$working_dir;
 # docdir
-$replacements{"<<docdir>>"}=$doc_dir;
-# wikidir
-$replacements{"<<wikidir>>"}=$wiki_dir;
-# bodydir
-$replacements{"<<bodydir>>"}=$body_dir;
+$replacements{"<<<root>>>"}=$root_var;
+# # linkrootdir
+# $replacements{"<<linkrootdir>>"}=$markdown_dir;
+# $replacements{"<<markdowndir>>"}=$markdown_dir;
+# # workingdir
+# $replacements{"<<workingdir>>"}=$working_dir;
+# # docdir
+# $replacements{"<<docdir>>"}=$doc_dir;
+# # wikidir
+# $replacements{"<<wikidir>>"}=$wiki_dir;
+# # bodydir
+# $replacements{"<<bodydir>>"}=$body_dir;
 # version
 my $version;
-open(SETUPEQS,"$working_dir/src/setup_equations/setup_equations.pl") or die "problem opening setup_equations.pl\n";
+open(SETUPEQS,"$arb_dir/src/setup_equations/setup_equations.pl") or die "problem opening setup_equations.pl\n";
 while ($line=<SETUPEQS>) {
-  if ($line=~/\$version\s*=\s*"\s*(.+)\s*"\s*/) { $replacements{"<<version>>"}=$1; last; }
+  if ($line=~/\$version\s*=\s*"\s*(.+)\s*"\s*/) { $replacements{"<<<version>>>"}=$1; last; }
 }
 close(SETUPEQS);
-print "<!-- INFO from assembler: markdown_filename = $markdown_filename: arb version = ".$replacements{"<<version>>"}." -->\n"; 
-print "<!-- INFO from assembler: markdown_filename = $markdown_filename: markdown_dir = $markdown_dir: wiki_dir = $wiki_dir: doc_dir = $doc_dir: working_dir = $working_dir -->\n";
+print "<!-- INFO from assembler: markdown_filename = $markdown_filename: arb version = ".$replacements{"<<<version>>>"}." -->\n"; 
+#print "<!-- INFO from assembler: markdown_filename = $markdown_filename: markdown_dir = $markdown_dir: wiki_dir = $wiki_dir: doc_dir = $doc_dir: working_dir = $working_dir -->\n";
 # scripting
 $replacements{"```arb"}="```{.arb hl='vim'}";
 $replacements{"```fortran"}="```{.fortran hl='vim'}";

@@ -155,84 +155,48 @@ do
       shift;
       if [ -n "$1" ]; then html_dir="$1"; else echo "ERROR: html directory not found after option"; usage; fi;
       ;;
-#   "-q"|"--quiet") oquiet=1;; # this is `actioned' below after output directory has been readied for writing
-#   "--quiet-make") echo "quiet-make option now depreciated, just use quiet instead which now captures make output too";;
-#   "--clean") oclean=1;;
-#   "--clean-compile") ocleancompile=1;;
-#   "--clean-setup") ocleansetup=1;;
-#   "--setup") osetup=1;;
-#   "--no-setup") osetup=0;;
-#   "--compile") ocompile=1;;
-#   "--no-compile") ocompile=0;;
-#   "--run") orun=1;;
-#   "--no-run") orun=0;;
-#   "-c"|"--continue") ocontinue=1;;
-#   "-d"|"--debug") odebug=1; debugger="default";; # odebug specifies whether code is compiled with debugging options (including -g) - valgrind is now considered as a type of debugger
-#   "--no-debug") odebug=0;;
-#   "--compiler-gnu") compiler="gnu";;
-#   "--compiler-intel") compiler="intel";;
-#   "--debugger"|"--debugger-default") debugger="default"; odebug=1;;
-#   "--debugger-gnu") debugger="gdb"; odebug=1;;
-#   "--debugger-intel") debugger="idb"; odebug=1;;
-#   "--debugger-valgrind") debugger=${valgrind}; odebug=1;;
-#   "--debugger-none") debugger="none"; odebug=1;;
-#   "--no-pardiso") opardiso="not present";;
-#   "--no-suitesparse") osuitesparse="not present";;
-#   "--mgmres") omgmres="present";;
-#   "--no-mgmres") omgmres="not present";;
-#   "--sparse") osparse="present";;
-#   "--no-sparse") osparse="not present";;
-#   "--no-downloads") osuitesparse="not present"; omgmres="not present"; osparse="not present";;
-#   "--omp") oomp=1; unset OMP_NUM_THREADS;;
-#   "--omp") oomp=1;;
-#   "--omp"*) oomp=1; export OMP_NUM_THREADS=${1:5};; # this extracts from character position 6 and onwards (NB ${1:6:10} would extract characters 7 -> 10 or thereabouts)
-#   "--omp"*) oomp=1; export OMP_NUM_THREADS=${1:5}; export MKL_NUM_THREADS=${1:5};; # this extracts from character position 6 and onwards (NB ${1:6:10} would extract characters 7 -> 10 or thereabouts)
-#   "-pl"|"--process-logging") oprocesslogging="1";; # note, this is the interval in seconds (integer only) for logging of process statistics
-#   "--process-logging"*) oprocesslogging=${1:16};;
-#   "-pl"*) oprocesslogging=${1:3};;
-#   "--no-process-logging") oprocesslogging=0;;
-#   "-O"|"--opt") oopt=2;; # if requested with no level, optimisation level is 2
-#   "--ilp"|"--long-integer") oilp="on";;
-#   "--no-opt") oopt=0;; # this is optimisation turned off
-#   "-O"?) oopt=${1:2};;
-#   "--opt"?) oopt=${1:5};;
-#   "--wiki") # link to the documentation and make the documentation from the markdown files
-#     echo "INFO: creating link to wiki at $root_dir/doc/wiki/body/index.html";
-#     ln -s $root_dir/doc/wiki/body/index.html >/dev/null 2>/dev/null ;
-#     cd doc/wiki;
-#     echo "INFO: about to make wiki in" `pwd` "with rootdir=$root_dir";
-#     echo "INFO: about to make wiki in" `pwd`;
-#     make all rootdir=$root_dir;
-#     exit;;
-#   "-o"|"--output") # get output directory to be used
-#     shift;
-#     if [ -n "$1" ]; then output_dir="$1"; else echo "ERROR: output directory not found after option"; usage; fi;
-#     ;;
-#   "-po"|"--previous-output") # get previous output directory to find previous setup
-#     shift;
-#     if [ -n "$1" ]; then previous_output_dir="$1"; else echo "ERROR: previous output directory not found after option"; usage; fi;
-#     ;;
-#   "--pardiso-lic-path") # set the directory that holds the pardiso.lic file for the native pardiso solver
-#     shift;
-#     if [ -n "$1" ]; then PARDISO_LIC_PATH="$1"; else echo "ERROR: pardiso licence path not found after option"; usage; fi;
-#     ;;
     "--help"|"-h") usage;;
-    "--"*|"-"*) echo "ERROR: unknown option $1 passed to arb"; usage;;
+    "--"*|"-"*) echo "ERROR: unknown option $1 passed to arb_doc"; usage;;
     *) echo "ERROR: unknown command line entry $1"; usage;;
   esac
   shift;
 done ;
 
+echo "INFO: root_var = $root_var"
+echo "INFO: oupdate = $oupdate"
+echo "INFO: content_dir = $content_dir"
+echo "INFO: html_dir = $html_dir"
+
 #---------------------------
-if [ -z "$output_dir" ] ; then # -z means empty
+if [ $oupdate -eq 1 ] ; then
+#------------------------------------------------------------
 # sanity checks and create directories
+# TODO: check that directories don't have trailing slashes
 
-# set default variables and locations
-root_var=$arb_dir/doc/html;
-oupdate=1;
-content_dir=$arb_dir/doc/content;
-html_dir=$arb_dir/doc/html;
+  if [ ! -d "$content_dir" ] ; then echo "ERROR: cannot find the content directory."; usage; fi;
 
+# use rsync to mirror directory structure and all non-md files
+
+  echo "INFO: rsyncing content_dir to html_dir"
+  rsync -au --progress --exclude "index.html" "$content_dir/" $html_dir;
+
+# assemble makeline and make
+# use the file via -f
+  makeline="make -f $doc_dir/src/makefile arbdir=\"$arb_dir\" docdir=\"$doc_dir\" rootvar=\"$root_var\" contentdir=\"$content_dir\" htmldir=\"$html_dir\"";
+  echo "INFO: running make using commands: $makeline"; echo
+  eval $makeline;
+
+#------------------------------------------------------------
+fi ;
+exit $errorstatus ;
+# done
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 # # set the output directory if it hasn't been set already
 # # and make sure that they are absolute path names
 # # note, existence of these directories tested later
@@ -629,7 +593,3 @@ html_dir=$arb_dir/doc/html;
 #   fi ;
 #   echo "INFO: finishing running arb";
 # fi ;
-
-exit $errorstatus ;
-# done
-#-------------------------------------------------------------------------------

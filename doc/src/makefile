@@ -30,46 +30,65 @@
 # <http://people.eng.unimelb.edu.au/daltonh/downloads/arb>.
 #
 #-------------------------------------------------------------------------
-# makefile for arb wiki
+# makefile for arb doc
 # daltonh, v0.54
 
-rootdir = .
-docdir = $(rootdir)/doc
-wikidir = $(docdir)/wiki
-bodydir = $(wikidir)/body
-bodycssfile = $(wikidir)/css/arb_body.css
+# assembler needs some variables passed to it
+arbdir = "ERROR: not set";
+docdir = "ERROR: not set";
+rootvar = "ERROR: not set";
+contentdir = "ERROR: not set";
+htmldir = "ERROR: not set";
+
+assemblerdir = $(docdir)/src/assembler
+
+#bodydir = $(wikidir)/body
+#bodycssfile = $(wikidir)/css/arb_body.css
 
 # find all of the markdown files within the body directory and first level of body subdirectories
-markdownbodyfiles := $(wildcard $(bodydir)/*.md) $(wildcard $(bodydir)/*/*.md)
+markdownbodyfiles := $(wildcard $(htmldir)/*.md) $(wildcard $(htmldir)/*/*.md)
 htmlbodyfiles := $(patsubst %.md,%.html,$(markdownbodyfiles))
 
-all : createhtmlbodyfiles
+all : print createhtmlbodyfiles
 
 # print out some info
 print :
 	@echo "Compiling arb wiki with options:"
+	@echo " arbdir: $(arbdir)"
+	@echo " docdir: $(docdir)"
+	@echo " rootvar: $(rootvar)"
+	@echo " contentdir: $(contentdir)"
+	@echo " htmldir: $(htmldir)"
 	@echo " markdownbodyfiles: $(markdownbodyfiles)"
 	@echo " htmlbodyfiles: $(htmlbodyfiles)"
 
 # this idea courtesy of http://lincolnmullen.com/blog/make-and-pandoc/
 createhtmlbodyfiles : $(htmlbodyfiles)
+	@echo " doing createhtmlbodyfiles"
 
 # get vimhl script and compile using haskel compiler
-assembler/vimhl : assembler/vimhl.hs
+$(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
 	ghc --make $< -o $@
 
+%.html : %.md
+	@echo "  INFO: recreating $@"
+	cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(arbdir) | pandoc -S -c $(bodycssfile) --toc -o $@
+	
+#@touch $@
 
 # define generic rule to create the htmlbodyfiles
 #%.html : %.md
 #	pandoc -S -c ../../$(bodycssfile) --toc $< -o $@
-%.html : %.md makefile assembler/assembler.pl assembler/assembler_pre.html assembler/assembler_post.html assembler/vimhl
-	@echo "  INFO: creating $@"
+#%.html : %.md makefile $(assemblerdir)/assembler.pl $(assemblerdir)/assembler_pre.html $(assemblerdir)/assembler_post.html $(assemblerdir)/vimhl
+#	@echo "  INFO: creating $@"
+#	@touch $@
 #@assembler/assembler.pl $< | pandoc -S -o $@
 #@assembler/assembler.pl $< | pandoc -S -c $(bodycssfile) --toc -o $@
-	@assembler/assembler.pl $< | pandoc -S -F assembler/vimhl -o $@
+
+#@$(assemblerdir)/assembler.pl $< | pandoc -S -F $(assemblerdir)/vimhl -o $@
 
 # clean all files
-clean : clean_html
+#clean : clean_html
 # clean all files created during setup process
-clean_html :
-	rm $(htmlbodyfiles)
+#clean_html :
+#	rm $(htmlbodyfiles)
