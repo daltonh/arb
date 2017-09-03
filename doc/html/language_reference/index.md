@@ -1,40 +1,55 @@
-Expression language reference \[sec:language\]
-==============================================
+---
+title: 'Language Reference'
+author: Dalton Harvie
+date: 6/12/16
+---
+
+# Expression Language Reference
 
 *There’s lots missing in this section. The examples files are currently
 the best guide as to the language syntax.*
 
-Operators
----------
+The expression language refers to the psuedo-mathematical language that is used to represent each variable's expression.  arb uses the symbolic algebra program 'maxima' to parse this language and convert these expressions into executable (fortran), so any mathematical operators supported by 'maxima' are able to be used in this language.  In addition to maxima's features, the expression language also supports a number of discretisation operators that allow spatially varying (multiphysics) problems to be expressed in scalar arithmetic.  The discretisation operators are particularly suited to solving transport problems using the Finite Volume Method.
+
+## Discretisation Operators
 
 ### General Notes
 
-Operators produce a single value from the arguments that are contained
-within their parentheses (). They also accept options, contained within
-square brackets \[\].
+Discretisation operators produce a single value from the arguments that are contained within their parentheses (). They also accept options, contained within square brackets \[\], and placed between the operator name and any parentheses. Operators are (by convention) typed lowercase (although should parse in uppercase) and contain no underscores.  
 
-The centring of an operator generally corresponds to the first syllable
-of the operator, however there are exceptions. Following the rule is ,
-which is the cell centred divergence of a face centred quantity. This
-operator is cell centred and must be used in this context, hence its
-context centring is cell. The content expression passed into (actually
-its first argument) is face centred however. Similarly, is the gradient
-of a cell centred quantity evaluated at a face, so this operator is face
-(context) centred, but has cell content centring. Exceptions to the rule
-include the loop-type operators, , , and . For example, loops through a
-region of cells finding the maximum value of an expression within those
-cells. Hence, this operator produces a result which has no centring
-(none centred) so can be used in any centring context, but has cell
-content centring.
+```arb
+operator[option1,option2,...](<argument1>,<argument2>,...)
+```
 
-Each operator accepts a certain number of arguments, however if an
-argument is not specified then a default value may be used. For example,
-uses three arguments: an expression that is to evaluated in each cell (,
-here denoted by a single variable, but more usually an expression of
-variables), an initial, default expression for the operator (), and the
-cell centred content region over which the maximum will be calculated
-(). Using implicit argument notation, operators expect the arguments in
-a specific order, so expects these three arguments in the manner
+Example `facegrad` and `celldiv` operators contained within variable definitions:
+```arb
+FACE_OUTPUT <phigrad> "facegrad[adjacentcells](<phi>)" ON <allfaces> # operator is facegrad, argument is <phi> and a single option of adjacentcells is specified
+CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # operator is celldiv acting on single argument of <u_f>
+```
+
+### Operator Centering
+
+The centring of most operators corresponds to the first syllable of the operator.
+
+Following the rule is celldiv which is the cell centred divergence of a face centred quantity. This operator is cell centred and must be used in this context, hence its context centring is cell. The content expression passed into (actually its first argument) is face centred however. Similarly, facegrad is the gradient of a cell centred quantity evaluated at a face, so this operator is face (context) centred, but its argument (content) has cell centring.
+
+```arb
+"celldiv(<u_f>)" # cell context centring, face argument centring
+"facegrad(<phi>)" # face context centring, cell argument centring
+```
+
+Exceptions to the rule include the loop-type operators, max, min, and sum. For example, cellmax loops through a region of cells finding the maximum value of an expression within those cells. Hence, this operator produces a result which has no centring (none centred) so can be used in any centring context, but its first argument has cell centring.
+
+```arb
+"cellmax(<phi>,0.d0)" # none context centring, cell centring of the first argument <phi>
+"facesum(<phi_f>,0.d0,<allfaces>)" # none context centring, face centring of the first argument <phi_f>
+```
+
+### Operator Arguments
+
+#### Implicit Operator Arguments
+
+Each operator accepts a certain number of arguments, however if an argument is not specified then a default value may be used. For example, uses three arguments: an expression that is to evaluated in each cell (, here denoted by a single variable, but more usually an expression of variables), an initial, default expression for the operator (), and the cell centred content region over which the maximum will be calculated (). Using implicit argument notation, operators expect the arguments in a specific order, so expects these three arguments in the manner 
 
 If less than the required number of arguments are passed to an operator,
 then a default value for the omitted arguments will be assumed (or if no
@@ -45,6 +60,8 @@ sets to (the largest negative double precision number that the processor
 can store) and to if (for example) the expression was being used in a
 cell centred context. If in doubt about what the default value for an
 argument is, specify it!
+
+#### Explicit Operator Arguments
 
 The alternative to the implicit argument notation is to specify the
 arguments explicitly (similar to argument passing in f90). Using

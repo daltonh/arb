@@ -4,8 +4,7 @@ author: Dalton Harvie
 date: 6/12/16
 ---
 
-Using arb
-=========
+# Using arb
 
 As arb is distributed as source code that is compiled for each
 application, arb is not installed in the traditional sense. Instead, for
