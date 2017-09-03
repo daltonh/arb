@@ -2,7 +2,7 @@
 
 PROGNAME = 'rxntoarb'
 VERSION = 2.0
-DATE = '2017-09-02'
+DATE = '2017-09-04'
 info = "#{PROGNAME} v. #{VERSION} (#{DATE})
 Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
 (C) Copyright Christian Biscombe 2016-2017"
@@ -169,10 +169,7 @@ def parse_reaction(reaction)
           @check_units = false
         end
         if units
-          value, units = Units.convert("#{value} #{units}",'',true) # convert to SI units
-          value.tr!('e','d') # express converted value as Fortran double precision
-          value << 'd0' unless value['d'] # add exponent if not present
-          value.sub!('d','.d') unless value['.'] # add decimal point if not present
+          value, units = Units.convert("#{value} #{units}",'',{double_precision: true, sig_figs: true}) # convert to SI units
           @parameter_units[PARAMETER_NAMES[name]] = units # save units for consistency checking
           @check_units = true
         end

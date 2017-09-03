@@ -1,6 +1,6 @@
 # Unit conversion module
 # (C) Copyright Christian Biscombe 2017
-# 2017-09-02
+# 2017-09-04
 
 module Units
 
@@ -140,7 +140,7 @@ module Units
   end
 
   # Convert input units to output units (via conversion to SI)
-  def convert(string_in,units_out,sig_figs=false,tdiff=false)
+  def convert(string_in,units_out,options={})
     value_in, units_in = /\A\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?)?\s*(.*?)\s*\z/.match(string_in).captures
     value_in ||= '1.0'
     value_in = value_in.tr('DdE','e').sub(/\.e/,'e').sub(/\.\z/,'') # ensure that value_in is a valid Ruby float
@@ -155,16 +155,26 @@ module Units
     end
     raise "input and output units have different dimensions" unless units_in_dim == units_out_dim
 
-    if units_in =~ /\A(deg[CFR]|K)\z/ && !tdiff # assume input refers to an absolute temperature
+    if units_in =~ /\A(deg[CFR]|K)\z/ && !options[:tdiff] # input refers to an absolute temperature
       temp_in_K = units_in =~ /deg[CFR]/ ? (value_in.to_f + UNITS[units_in][3])*UNITS[units_in][1] : value_in.to_f
       value_out = units_out =~ /deg[CFR]/ ? temp_in_K/UNITS[units_out][1] - UNITS[units_out][3] : temp_in_K
     else
       value_out = factor_in/factor_out*value_in.to_f
     end
 
-    if sig_figs
+    # Format numerical value if required
+    if options[:sig_figs]
       digits = value_in[/(\d|\.)*/].tr('.','') # strip exponent and decimal point if present
       value_out = "#{sprintf('%#.*g',digits.length-digits.index(/[1-9]/),value_out)}".sub(/\.e/,'e').sub(/\.\z/,'') # subs here ensure that value_out is a valid Ruby float (stored in a string)
+    elsif options[:format]
+      value_out = sprintf(options[:format],value_out)
+    end
+
+    # Convert to double precision format if required
+    if options[:double_precision]
+      value_out.tr!('Ee','d') # express converted value as double precision
+      value_out << 'd0' unless value_out['d'] # add exponent if not present
+      value_out.sub!('d','.d') unless value_out['.'] # add decimal point if not present
     end
 
     return value_out, units_out.strip
