@@ -46,10 +46,15 @@ assemblerdir = $(docdir)/src/assembler
 #bodycssfile = $(wikidir)/css/arb_body.css
 
 # find all of the markdown files within the body directory and first level of body subdirectories
-markdownbodyfiles := $(wildcard $(htmldir)/*.md) $(wildcard $(htmldir)/*/*.md)
-htmlbodyfiles := $(patsubst %.md,%.html,$(markdownbodyfiles))
+#markdownfiles := $(wildcard $(htmldir)/*.md) $(wildcard $(htmldir)/*/*.md)
+#markdownfiles := $(wildcard $(htmldir)/*/*.md)
+markdownfiles :=  $(shell find $(htmldir) -type f -name '*.md')
+listfiles :=  $(shell find $(htmldir) -type f -name 'list')
+htmlfiles := $(patsubst %.md,%.html,$(markdownfiles))
+htmlcontentfiles := $(patsubst %/index.md,%/contents.html,$(markdownfiles))
 
-all : print createhtmlbodyfiles
+#all : print createlistfiles createhtmlfiles
+all : print createhtmlfiles
 
 # print out some info
 print :
@@ -59,12 +64,14 @@ print :
 	@echo " rootvar: $(rootvar)"
 	@echo " contentdir: $(contentdir)"
 	@echo " htmldir: $(htmldir)"
-	@echo " markdownbodyfiles: $(markdownbodyfiles)"
-	@echo " htmlbodyfiles: $(htmlbodyfiles)"
+	@echo " markdownfiles: $(markdownfiles)"
+	@echo " listfiles: $(listfiles)"
+	@echo " htmlfiles: $(htmlfiles)"
+	@echo " htmlcontentfiles: $(htmlcontentfiles)"
 
 # this idea courtesy of http://lincolnmullen.com/blog/make-and-pandoc/
-createhtmlbodyfiles : $(htmlbodyfiles)
-	@echo " doing createhtmlbodyfiles"
+createhtmlfiles : $(htmlfiles)
+	@echo " doing createhtmlfiles"
 
 # get vimhl script and compile using haskel compiler
 $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
@@ -74,13 +81,22 @@ $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
 
 %.html : %.md $(docdir)/src/makefile $(assemblerdir)/assembler.pl $(assemblerdir)/assembler_pre.html $(assemblerdir)/assembler_post.html $(assemblerdir)/vimhl
 	@echo "  INFO: recreating $@"
-	cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(arbdir) | pandoc -S -F $(assemblerdir)/vimhl -o $@
+#cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(htmldir) $(arbdir) >>debug.log
+	cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(htmldir) $(arbdir) | pandoc -S -F $(assemblerdir)/vimhl -o $@
+
+#
+
+
+
+# 
+#createlistfiles : $(listfiles)
+#	@echo " doing createlistfiles"
 
 #@$(assemblerdir)/assembler.pl $< | pandoc -S -F $(assemblerdir)/vimhl -o $@
 	
 #@touch $@
 
-# define generic rule to create the htmlbodyfiles
+# define generic rule to create the htmlfiles
 #%.html : %.md
 #	pandoc -S -c ../../$(bodycssfile) --toc $< -o $@
 #%.html : %.md makefile $(assemblerdir)/assembler.pl $(assemblerdir)/assembler_pre.html $(assemblerdir)/assembler_post.html $(assemblerdir)/vimhl
@@ -95,4 +111,4 @@ $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
 #clean : clean_html
 # clean all files created during setup process
 #clean_html :
-#	rm $(htmlbodyfiles)
+#	rm $(htmlfiles)

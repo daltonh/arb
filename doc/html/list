@@ -1,8 +1,9 @@
-# this is a list of files in this directory, in the order they should appear in the contents
-introduction
-installation
-using_arb
-language_reference
-simulation_reference
-coding_reference
+# this is a list of titles that lead off from this directory, in the order they should appear in the contents
+# rule is to lowercase all letters and replace spaces with underscores
+Introduction
+Installation
+Using Arb
+Language Reference
+Simulation Reference
+Coding Reference
 #css

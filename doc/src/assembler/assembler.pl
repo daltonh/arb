@@ -5,7 +5,7 @@
 # usage
 # call from assembler src directory directory now
 # input full filename (including path which has body in it) to markdown page, and output markdown file that is ready to pass to pandoc, as in:
-# ./assembler $markdown_filename.md $rootvar $arbdir | pandoc -o $markdown_filename.html
+# ./assembler $markdown_filename.md $rootvar $htmldir $arbdir | pandoc -o $markdown_filename.html
 
 use strict;
 use warnings;
@@ -13,13 +13,21 @@ use Data::Dumper;
 use File::Path qw(mkpath rmtree); # for File::Path version < 2.08, http://perldoc.perl.org/File/Path.html
 use File::Copy qw(move copy);
 use File::Glob ':glob'; # deals with whitespace better
+use File::Spec::Functions qw(abs2rel) ;
 #use Cwd 'getcwd';
 my ($line);
+use FindBin;
+use lib "$FindBin::RealBin/"; # this will be the script location, with links resolved, which is where Common.pl is
+use Common qw(chompm empty nonempty);
 
 # file the relevant directories and filenames
-my $markdown_filename = $ARGV[0]; # markdown filename to be read, from calling makefile commant
-my $root_var = $ARGV[1]; # rootvar to be referenced in html pages, from calling makefile commant
-my $arb_dir = $ARGV[2]; # arbdir, from calling makefile command
+my $markdown_filename = $ARGV[0]; # markdown filename to be read, from calling makefile command
+my $root_var = $ARGV[1]; # rootvar to be referenced in html pages, from calling makefile command
+my $html_dir = $ARGV[2]; # htmldir which is the filesystem root of the html pages, from calling makefile command
+my $arb_dir = $ARGV[3]; # arbdir, from calling makefile command
+my ($markdown_dirname) = $markdown_filename =~ /^(.*\/)index.md/;
+my $rel_var = abs2rel($markdown_dirname,$html_dir); # find system and html file location relative to the root
+#print "rel_var = $rel_var\n";
 
 # find various directories from filename
 #my ($markdown_dir) = $markdown_filename =~ /^(.*\/)/;
@@ -72,6 +80,37 @@ while ($line=<SETUPEQS>) {
   if ($line=~/\$version\s*=\s*"\s*(.+)\s*"\s*/) { $replacements{"<<<version>>>"}=$1; last; }
 }
 close(SETUPEQS);
+
+# create contents string
+# initialise
+$replacements{"<<<contents>>>"}="";
+my $linkdefinitions="";
+# Homepage
+$replacements{"<<<contents>>>"}=$replacements{"<<<contents>>>"}."* [Homepage]\n";
+$linkdefinitions=$linkdefinitions."[Homepage]: $root_var/index.html\n";
+# check if list file exists, and if so, add these to the contents and link definitions
+my $listfilename = $markdown_dirname."list";
+#print "listfilename = $listfilename\n\n";
+if ( -f $listfilename) {
+# print "found listfilename = $listfilename\n\n";
+  open(LISTFILE, "<$listfilename") or die "LISTFILE ERROR: cannot open $listfilename\n";;
+  while (<LISTFILE>) {
+    chompm($_);
+    if (/^\s*([^#].*)/) { # only look at non-commented lines
+      my $pagetitle = $1;
+#     print "found pagetitle = $pagetitle\n";
+      my $pageaddress = $pagetitle;
+      $pageaddress =~ s/ /_/g;
+      $pageaddress = "$root_var/$rel_var/"."\L$pageaddress"."/index.html";
+      $replacements{"<<<contents>>>"}=$replacements{"<<<contents>>>"}."* [$pagetitle]\n";
+      $linkdefinitions=$linkdefinitions."[$pagetitle]: <$pageaddress>\n";
+    }
+  }
+  close(LISTFILE);
+}
+
+#$replacements{"<<<contents>>>"}=$replacements{"<<<contents>>>"}."\n\n".$linkdefinitions;
+
 print "<!-- INFO from assembler: markdown_filename = $markdown_filename: arb version = ".$replacements{"<<<version>>>"}." -->\n"; 
 #print "<!-- INFO from assembler: markdown_filename = $markdown_filename: markdown_dir = $markdown_dir: wiki_dir = $wiki_dir: doc_dir = $doc_dir: working_dir = $working_dir -->\n";
 # scripting
@@ -110,6 +149,9 @@ close(MARKDOWNFILE);
 do_replacements($markdownfile);
 
 print $markdownfile;
+
+# also write linkdefinitions:
+print "\n$linkdefinitions\n";
 
 # # do format conversion using pandoc
 # my $htmlfile=Pandoc->convert( $markdownfile , filter => 'vimhl.hs' );
