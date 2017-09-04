@@ -27,18 +27,18 @@ FACE_OUTPUT <phigrad> "facegrad[adjacentcells](<phi>)" ON <allfaces> # operator 
 CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # operator is celldiv acting on single argument of <u_f>
 ```
 
-### Operator Centering
+### Operator Centring
 
 The centring of most operators corresponds to the first syllable of the operator.
 
-Following the rule is celldiv which is the cell centred divergence of a face centred quantity. This operator is cell centred and must be used in this context, hence its context centring is cell. The content expression passed into (actually its first argument) is face centred however. Similarly, facegrad is the gradient of a cell centred quantity evaluated at a face, so this operator is face (context) centred, but its argument (content) has cell centring.
+Following the rule is `celldiv` which is the cell centred divergence of a face centred quantity. This operator is cell centred and must be used in this context, hence its context centring is cell. The content expression passed into (actually its first argument) is face centred however. Similarly, `facegrad` is the gradient of a cell centred quantity evaluated at a face, so this operator is face (context) centred, but its argument (content) has cell centring.
 
 ```arb
 "celldiv(<u_f>)" # cell context centring, face argument centring
 "facegrad(<phi>)" # face context centring, cell argument centring
 ```
 
-Exceptions to the rule include the loop-type operators, max, min, and sum. For example, cellmax loops through a region of cells finding the maximum value of an expression within those cells. Hence, this operator produces a result which has no centring (none centred) so can be used in any centring context, but its first argument has cell centring.
+Exceptions to the rule include the loop-type operators, `max`, `min`, and `sum`. For example, `cellmax` loops through a region of cells finding the maximum value of an expression within those cells. Hence, this operator produces a result which has no centring (none centred) so can be used in any centring context, but its first argument has cell centring.
 
 ```arb
 "cellmax(<phi>,0.d0)" # none context centring, cell centring of the first argument <phi>
