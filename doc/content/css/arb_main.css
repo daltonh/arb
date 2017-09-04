@@ -1,3 +1,5 @@
+/* this file needs a bit of cleaning up, and the media type flags inherited from Buttondown need to be respected */
+
 /* #leftcolumn {
   float: left;
   width: 101px;
@@ -143,8 +145,8 @@ code
     background-color: #ffffff;
     background-color: #dddddd;
     color: #000000;
-  color: #030089; /* bluey blue */
-  color: #040099; /* lighter bluey blue */
-  color: #2D2873; /* darker steely blue */
-  color: #610090; /* darker purple */
+    color: #030089; /* bluey blue */
+    color: #040099; /* lighter bluey blue */
+    color: #2D2873; /* darker steely blue */
+    color: #610090; /* darker purple */
 }
