@@ -6,16 +6,20 @@ date: 6/12/16
 
 # Expression Language Reference
 
+<!--
 *There’s lots missing in this section. The examples files are currently
 the best guide as to the language syntax.*
+-->
 
-The expression language refers to the psuedo-mathematical language that is used to represent each variable's expression.  arb uses the symbolic algebra program 'maxima' to parse this language and convert these expressions into executable (fortran), so any mathematical operators supported by 'maxima' are able to be used in this language.  In addition to maxima's features, the expression language also supports a number of discretisation operators that allow spatially varying (multiphysics) problems to be expressed in scalar arithmetic.  The discretisation operators are particularly suited to solving transport problems using the Finite Volume Method.
+## Expression Language Overview
 
-## Discretisation Operators
+The expression language refers to the psuedo-mathematical language that is used to represent each variable's expression.  arb uses the symbolic algebra program 'maxima' to parse this language and convert these expressions into executable (fortran), so any mathematical operators supported by 'maxima' are able to be used in this language.  In addition to maxima's features, the expression language also supports a number of arb specific discretisation operators that allow spatially varying problems to be expressed in scalar arithmetic.  The discretisation operators are particularly suited to solving transport problems using the Finite Volume Method.
 
-### General Notes
+## Discretisation Operators Overview
 
-Discretisation operators produce a single value from the arguments that are contained within their parentheses (). They also accept options, contained within square brackets \[\], and placed between the operator name and any parentheses. Operators are (by convention) typed lowercase (although should parse in uppercase) and contain no underscores.  
+### General Syntax
+
+Discretisation operators produce a single result from the arguments that are contained within their parentheses (). They also accept options, contained within square brackets \[\], and placed between the operator name and any parentheses. Operators are (by convention) typed lowercase (although should parse in uppercase) and contain no underscores, as per
 
 ```arb
 operator[option1,option2,...](<argument1>,<argument2>,...)
@@ -29,141 +33,125 @@ CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # operator is celldiv ac
 
 ### Operator Centring
 
-The centring of most operators corresponds to the first syllable of the operator.
+The centring of an operator refers to the centring of the result it produces.  This centring must match or be consistent with the centring of the context in which the operator is placed.  The centring of most operators corresponds to the first syllable of the operator name, however there are some exceptions.  For the exceptions the centring of the operator is none, and the first syllable of the operator name corresponds to the centring of the first argument passed to the operator.
 
-Following the rule is `celldiv` which is the cell centred divergence of a face centred quantity. This operator is cell centred and must be used in this context, hence its context centring is cell. The content expression passed into (actually its first argument) is face centred however. Similarly, `facegrad` is the gradient of a cell centred quantity evaluated at a face, so this operator is face (context) centred, but its argument (content) has cell centring.
+To illustrate, following the centring rule is `celldiv` which generates the cell centred divergence of a face centred quantity. This operator is cell centred and hence must be used in a cell centred context. Note that the content expression passed into this operator (actually its first argument) is face centred however. Similarly, `facegrad` is the gradient of a cell centred quantity evaluated at a face, so this operator is face centred and must be used in a face centred context, but its argument (content) has cell centring.
 
 ```arb
 "celldiv(<u_f>)" # cell context centring, face argument centring
 "facegrad(<phi>)" # face context centring, cell argument centring
 ```
 
-Exceptions to the rule include the loop-type operators, `max`, `min`, and `sum`. For example, `cellmax` loops through a region of cells finding the maximum value of an expression within those cells. Hence, this operator produces a result which has no centring (none centred) so can be used in any centring context, but its first argument has cell centring.
+Exceptions to the centring rule include the loop-type operators, `max`, `min`, and `sum`. For example, `cellmax` loops through a region of cells finding the maximum value of an expression within those cells. Hence, this operator produces a result which has no centring (none centred) so can be used in any centring context, but its first argument has cell centring.  `facesum` loops through a region of faces summing the values of its first argument, hence producing a none centred result that can be used in any centring context.
 
 ```arb
 "cellmax(<phi>,0.d0)" # none context centring, cell centring of the first argument <phi>
 "facesum(<phi_f>,0.d0,<allfaces>)" # none context centring, face centring of the first argument <phi_f>
 ```
 
+The centring of specific operators is detailed in the reference section.
+
 ### Operator Arguments
 
 #### Implicit Operator Arguments
 
-Each operator accepts a certain number of arguments, however if an argument is not specified then a default value may be used. For example, uses three arguments: an expression that is to evaluated in each cell (, here denoted by a single variable, but more usually an expression of variables), an initial, default expression for the operator (), and the cell centred content region over which the maximum will be calculated (). Using implicit argument notation, operators expect the arguments in a specific order, so expects these three arguments in the manner 
+Each operator accepts a certain number of arguments, however if an argument is not specified then a default value may be used. For example, `cellmax` uses three arguments:
 
-If less than the required number of arguments are passed to an operator,
-then a default value for the omitted arguments will be assumed (or if no
-defaults are available or are sensible, an error will be flagged). For
-example, using
+#. an expression that is to evaluated in each cell (`<expression>`), here denoted by a single variable, but more usually an expression of variables;
+#. an initial, default expression for the operator (`<default>`), which again could be an expression of variables; and
+#. the cell centred content region over which the maximum will be calculated and within which `<expression>` must be defined (`<region>`).
 
-sets to (the largest negative double precision number that the processor
-can store) and to if (for example) the expression was being used in a
-cell centred context. If in doubt about what the default value for an
-argument is, specify it!
+Using implicit argument notation, operators expect the arguments in a specific order, so `cellmax` expects these three arguments in the manner 
+```arb
+"cellmax(<expression>,<default>,<region>)"
+```
+If less than the required number of arguments are passed to an operator, then a default value for the omitted arguments will be assumed (or if no defaults are available or are sensible, an error will be flagged). For example, using
+```arb
+"cellmax(<expression>)"
+```
+sets `<default>` to `-<huge>` (the largest negative double precision number that the processor can store) and `<region>` to `<noloop>` if (for example) the expression was being used in a cell centred context. If in doubt about what the default value for an argument is, specify it!
 
 #### Explicit Operator Arguments
 
-The alternative to the implicit argument notation is to specify the
-arguments explicitly (similar to argument passing in f90). Using
-explicit notation the order of the arguments that are passed explicitly
-is irrelevant, however the order of any arguments that are not
-explicitly named (and hence specified implicitly) still is. For example,
-the following will all produce the same result
+The alternative to the implicit argument notation is to specify the arguments explicitly (similar to argument passing in f90). Using explicit notation the order of the arguments that are passed explicitly is irrelevant, however the order of any arguments that are not explicitly named (and hence specified implicitly) still is. For example, the following will all produce the same result
 
-\
-\
-\
-\
+```arb
+"cellmax(expression=<expression>,default=<default>,region=<region>)"
+"cellmax(<expression>,<default>,<region>)"
+"cellmax(region=<region>,default=<default>,expression=<expression>)"
+"cellmax(<expression>,region=<region>,<default>)"
+"cellmax(region=<region>,<expression>,<default>)"
+```
 
-Note in the last case that although was the second argument in the
-operator, it was the first implicitly named operator, so would be read
-correctly. Using a combination of the implicit and explicit passing is
-often convenient. For example, for the operator, the following form that
-uses a default value of but performs the maximum comparison over a
-specified region is handy
+Note in the last case that although `<expression>` was the second argument in the operator, it was the first implicitly named operator, so would be read correctly.  Using a combination of the implicit and explicit passing is often convenient.  For example, for the `cellmax` operator, the following form that uses a default value of `-<huge>` but performs the maximum comparison over a specified region is handy
+```arb
+"cellmax(<expression>,region=<region>)" # as default is omitted, the last (third) argument must be explicitly named
+```
 
-Operator options are similar to variable options. Some operators require
-a dimension, and this dimension (direction) is specified via the
-options. For example, calculates a gradient in a certain direction
-dimension using the divergence of a face centred scalar. To find this
-gradient in the second dimension you use the option :
+Operator options are similar to variable options.  Some operators require a dimension, and this dimension (direction) is specified via the options.  For example, `celldivgrad` calculates a gradient in a certain direction dimension using the divergence of a face centred scalar.  To find this gradient in the second dimension you use the option `[l=2]`:
+```arb
+"celldivgrad[l=2](<face centred expression>)"
+```
 
-Some options are quite generic (eg, ), however most are specific to the
-operator. There is no restriction on the order that options are
-specified.
+Some options are quite generic (eg, `noderivative`), however most are specific to the operator.  There is no restriction on the order that options are specified.
 
-Options and operators should be written in lowercase (I have started to
-make both of these case independent, but no guarantees yet).
+Details of individual discretisation operators follows.  However ultimate details of each operator (including argument order, options etc) can be found in the code file `src/setup_equations/setup_equations.pl` which shows how they are expanded into working code. Use search strings such as `ref: celldiv` within this perl file to find the specific code.
 
-Details of individual operators follows. Ultimate details of each
-operator (including argument order, options etc) can be found in the
-code file which shows how they are expanded into working code. Use
-search strings such as within the perl file to find the specific code.
+## Discretisation Operators Listing
 
-### : Divergence
+### `celldiv` : Divergence
 
-*Summary:* Uses Gauss’ theorem to calculate the divergence of a face
-centred vector component around a cell.
+####Summary:
+Uses Gauss’ theorem to calculate the divergence of a face centred vector component around a cell.
 
-*Statement:*
+####Statement:
 
-*Centring:*
+```arb
+"celldiv[options](expression=<expression>)"
+```
 
-Operator is context cell centred, while is face centred.
+####Centring:
 
-*Details:*
+Operator is (context) cell centred, and expression is face centred.
 
-Using Gauss’ theorem to evaluate divergences around cells is probably
-the defining characteristic of Finite Volume methods. performs this
-operation.
+####Details:
+
+Using Gauss’ theorem to evaluate divergences around cells is probably the defining characteristic of Finite Volume methods. `celldiv` performs this operation.
 
 Specifically, to discretise the divergence of a face centred vector
 $\vect[j]{u}$ over a cell $i$ that sits within the domain, Gauss’
-theorem gives $$\begin{aligned}
+theorem gives
+
+$$\begin{aligned}
 \frac{1}{\scali[i]{V}} \int_{\scali[i]{V}} \vect{\nabla} \cdot \vect{u} dV & \Rightarrow \frac{1}{\scali[i]{V}} \sum_{j \in \scali[\text{nobcellfaces},i]{\mathbb{J}}} \frac{1}{\scali[j]{S}} \int_{\scali[j]{S}} \vecti[i,j]{N} \cdot \vecti[j]{u} \, dS \\
 & = \explain{\sum_{j \in \scali[\text{nobcellfaces},i]{\mathbb{J}}} \frac{\vecti[i,j]{N} \cdot \vecti[j]{n} }{\scali[i]{V}}}{\normalsize\code{celldiv}} \frac{1}{\scali[j]{S}} \int_{\scali[j]{S}} \vecti[j]{n} \cdot \vecti[j]{u} \, dS \nonumber \\
 %= \frac{1}{\scal[cell]{V}} \int_{\scal[cell]{S}} \vect[cell]{n} \cdot \vect{u} dS = \frac{1}{\scal[cell]{V}} \sum_j (\vect[cell]{n} \cdot \vecti[j]{n}) (\vect{u} \cdot \vecti[j]{n}) \scali[j]{S} \nonumber \\
-& \Rightarrow \code{celldiv(dot(<u[l=:]>,<facenorm[l=:]>))}
-\end{aligned}$$ where $\scali[i]{V}$ and $\scali[j]{S}$ are the volume
-and total surface area of the cell $i$ and face $j$, respectively,
-$\vecti[i,j]{N}$ is a unit normal pointing outward from cell $i$ but
-located at face $j$, $\vecti[j]{n}$ is a normal associated with face
-$j$, and the sum is conducted over the set of all face elements that
-surround cell $i$, denoted by
-$\scali[\text{nobcellfaces},i]{\mathbb{J}}$. In the equivalent coding
-the face centred vector $\vecti[j]{u}$ is represented by the three
-component variables , and , and the unit normal associated with the face
-$j$, $\vecti[j]{n}$, is given by the system component variables , and .
-Note that as the divergence of a vector results in a scalar, the above
-operation produces a scalar for each cell it is performed in.
+& \Rightarrow `celldiv(dot(<u[l=:]>,<facenorm[l=:]>))`
+\end{aligned}$$
 
-The region used by arb in performing the above sum as represented by
-$\scali[\text{nobcellfaces},i]{\mathbb{J}}$ is
-(‘no-boundary-cell-faces’). This relative region specifies all faces
-that surround a given cell, unless that cell is a boundary cell. As
-boundary cells are not fully surrounded by faces Gauss’ theorem can not
-be applied. Hence, if the operator is used at a boundary cell then the
-region is taken relative (moved) to the closest domain cell that is
-adjacent the boundary cell, so this is where becomes evaluated.
-Physically it is inadvisable to use an equation that involves a
-divergence at a boundary cell anyway.
+where $\scali[i]{V}$ and $\scali[j]{S}$ are the volume and total surface area of the cell $i$ and face $j$, respectively, $\vecti[i,j]{N}$ is a unit normal pointing outward from cell $i$ but located at face $j$, $\vecti[j]{n}$ is a normal associated with face $j$, and the sum is conducted over the set of all face elements that surround cell $i$, denoted by $\scali[\text{nobcellfaces},i]{\mathbb{J}}$. In the equivalent coding the face centred vector $\vecti[j]{u}$ is represented by the three component variables , and , and the unit normal associated with the face $j$, $\vecti[j]{n}$, is given by the system component variables , and .  Note that as the divergence of a vector results in a scalar, the above operation produces a scalar for each cell it is performed in.  
 
-*Options:*
+The region used by arb in performing the above sum as represented by $\scali[\text{nobcellfaces},i]{\mathbb{J}}$ is ('no-boundary-cell-faces'). This relative region specifies all faces that surround a given cell, unless that cell is a boundary cell. As boundary cells are not fully surrounded by faces Gauss’ theorem can not be applied. Hence, if the operator is used at a boundary cell then the region is taken relative (moved) to the closest domain cell that is adjacent the boundary cell, so this is where becomes evaluated.  Physically it is inadvisable to use an equation that involves a divergence at a boundary cell anyway.
 
--   : No derivatives with respect to the unknown variables for the
+####Options:
+
+[noderivative]   : No derivatives with respect to the unknown variables for the
     Newton-Raphson Jacobian are calculated for this operator (and
     its contents).
 
-*Examples:*
+####Examples:
 
-    CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity equation
-    CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)" ON <domain> # momentum conservation in direction l=1
-    CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)" ON <domain> # momentum conservation in direction l=2
+```arb
+CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity equation
+CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)" ON <domain> # momentum conservation in direction l=1
+CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)" ON <domain> # momentum conservation in direction l=2
+```
 
-###  or : Gradient
+### `cellgrad`, `facegrad` or `nodegrad`: Gradient
 
-*Summary:* Calculates a scalar component of a gradient over a cell or
-face.
+####Summary:
+
+Calculates a scalar component of a gradient from surrounding cell values at the location of a cell, face or node.
 
 *Statement:*
 
