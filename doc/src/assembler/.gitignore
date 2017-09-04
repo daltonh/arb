@@ -1,5 +1,6 @@
 # include file for git
 #
-# for now include previous vimhl version
-#vimhl*
-#vim-publish-helper
+# for now include older previous vimhl.hs file only
+vimhl*
+vim-publish-helper
+!/vimhl.hs
