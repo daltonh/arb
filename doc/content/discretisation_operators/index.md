@@ -4,20 +4,20 @@ author: Dalton Harvie
 date: 6/12/16
 ---
 
-# Expression Language Reference
+# Discretisation Operators
 
 <!--
 *There’s lots missing in this section. The examples files are currently
 the best guide as to the language syntax.*
 -->
 
-## Expression Language Overview
+## Overview
 
-The expression language refers to the psuedo-mathematical language that is used to represent each variable's expression.  arb uses the symbolic algebra program 'maxima' to parse this language and convert these expressions into executable (fortran), so any mathematical operators supported by 'maxima' are able to be used in this language.  In addition to maxima's features, the expression language also supports a number of arb specific discretisation operators that allow spatially varying problems to be expressed in scalar arithmetic.  The discretisation operators are particularly suited to solving transport problems using the Finite Volume Method.
+### Expression Language
 
-## Discretisation Operators Overview
+The expression language refers to the psuedo-mathematical language that is used to represent each variable's expression.  arb uses the symbolic algebra program 'maxima' to parse this language and convert these expressions into executable (fortran), so any mathematical operators supported by 'maxima' are able to be used in this language.  In addition to maxima's features, the expression language also supports a number of arb specific discretisation operators that allow spatially varying problems to be expressed in scalar arithmetic.  The discretisation operators are particularly suited to solving transport problems using the Finite Volume Method and are detailed in this section.
 
-### General Syntax
+### Operator Syntax
 
 Discretisation operators produce a single result from the arguments that are contained within their parentheses (). They also accept options, contained within square brackets \[\], and placed between the operator name and any parentheses. Operators are (by convention) typed lowercase (although should parse in uppercase) and contain no underscores, as per
 
