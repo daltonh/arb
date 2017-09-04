@@ -71,13 +71,15 @@ print :
 
 # this idea courtesy of http://lincolnmullen.com/blog/make-and-pandoc/
 createhtmlfiles : $(htmlfiles)
-	@echo " doing createhtmlfiles"
+
+#@echo " doing createhtmlfiles"
 
 # get vimhl script and compile using haskel compiler
 #$(assemblerdir)/vimhl.hs :
 #	cd $(assemblerdir) && wget https://github.com/lyokha/vim-publish-helper/archive/master.zip
 #	unzip master.zip
 
+# compile vimhl.hs script using haskel compiler
 $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
 	ghc --make $< -o $@
 
@@ -88,7 +90,6 @@ $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
 #cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(htmldir) $(arbdir) >>debug.log
 	cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(htmldir) $(arbdir) | pandoc -S -F $(assemblerdir)/vimhl -o $@
 
-#
 
 
 
