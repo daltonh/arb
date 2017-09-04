@@ -74,6 +74,10 @@ createhtmlfiles : $(htmlfiles)
 	@echo " doing createhtmlfiles"
 
 # get vimhl script and compile using haskel compiler
+#$(assemblerdir)/vimhl.hs :
+#	cd $(assemblerdir) && wget https://github.com/lyokha/vim-publish-helper/archive/master.zip
+#	unzip master.zip
+
 $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
 	ghc --make $< -o $@
 

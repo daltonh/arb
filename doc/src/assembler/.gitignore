@@ -1,3 +1,5 @@
 # include file for git
-vimhl*
-vim-publish-helper
+#
+# for now include previous vimhl version
+#vimhl*
+#vim-publish-helper
