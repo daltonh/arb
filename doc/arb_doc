@@ -94,6 +94,11 @@ templates_dir="$arb_dir/templates";
 examples_dir="$arb_dir/examples";
 file_separator="##################################################################################"
 # check that all of the directories are present in the arb_dir
+echo "working_dir = $working_dir";
+echo "real_path = $real_path";
+echo "arb_script = $arb_script";
+echo "doc_dir = $doc_dir";
+echo "arb_dir = $arb_dir";
 if [ ! -d "$src_dir" ] ; then echo "ERROR: cannot find the arb src directory that corresponds to this arb script.  Possibly the arb directory $arb_dir has been corrupted, or alternatively the arb script has been moved/copied out of the arb directory (if you want to refer to the arb script outside of its arb directory, create a soft link to it, which will be dereferenced when the script is called)."; usage; fi;
 if [ ! -d "$misc_dir" ] ; then echo "ERROR: cannot find the arb misc directory that corresponds to this arb script.  Possibly the arb directory $arb_dir has been corrupted, or alternatively the arb script has been moved/copied out of the arb directory (if you want to refer to the arb script outside of its arb directory, create a soft link to it, which will be dereferenced when the script is called)."; usage; fi;
 if [ ! -d "$templates_dir" ] ; then echo "ERROR: cannot find the arb templates directory that corresponds to this arb script.  Possibly the arb directory $arb_dir has been corrupted, or alternatively the arb script has been moved/copied out of the arb directory (if you want to refer to the arb script outside of its arb directory, create a soft link to it, which will be dereferenced when the script is called)."; usage; fi;

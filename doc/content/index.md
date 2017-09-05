@@ -11,7 +11,7 @@ arb is a finite volume solver for arbitrary equations.
 
 * [Introduction]
 * [Installation]
-* [Using Arb]
 * [Simulation Reference]
-* [Discretisation Operators]
+* [Regions]
+* [Variables]
 * [Coding Reference]
