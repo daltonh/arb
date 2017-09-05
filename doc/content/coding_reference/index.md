@@ -8,7 +8,7 @@ date: 5/9/17
 
 ## The arb code directory
 
-* This section is now out of date as of v0.57.  Now arb can be used from outside its code directory (referred to as the `arb_dir`), and this is the preferred method of use. *
+*This section is now out of date as of v0.57.  Now arb can be used from outside its code directory (referred to as the `arb_dir`), and this is the preferred method of use.*
 
 As arb is distributed as source code that is compiled for each
 application, arb is not installed in the traditional sense. Instead, for

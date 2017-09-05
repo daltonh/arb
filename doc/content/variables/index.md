@@ -6,7 +6,7 @@ date: 5/10/17
 
 # Variables
 
-* This section needs some rewritting: there is only one input file now *
+*This section needs some rewritting: there is only one input file now*
 
 There are eight types of user defined variables: constant, transient,
 derived, unknown, equation, output, condition and local. Each of these

@@ -4,14 +4,17 @@ author: Dalton Harvie
 date: 3/9/17
 ---
 
-arb: Homepage
-===========
+# arb: Homepage
 
 arb is a finite volume solver for arbitrary equations.
 
+## Contents:
+
 * [Introduction]
 * [Installation]
-* [Simulation Reference]
+* [Simulation Setup]
 * [Regions]
 * [Variables]
+* [Templates]
+* [Examples]
 * [Coding Reference]

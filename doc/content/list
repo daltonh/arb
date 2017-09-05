@@ -2,8 +2,10 @@
 # rule is to lowercase all letters and replace spaces with underscores
 Introduction
 Installation
-Simulation Reference
+Simulation Setup
 Regions
 Variables
+Templates
+Examples
 Coding Reference
 #css

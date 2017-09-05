@@ -4,7 +4,7 @@ author: Dalton Harvie
 date: 6/12/16
 ---
 
-# Simulation setup
+# Simulation Setup
 
 ## arb coding syntax
 
@@ -22,7 +22,7 @@ KEYWORD <a name> "variable or region expression" ON <a region> listofcommasepara
 ```
 Most keywords allow only a subset of the possible arguments to be specified at each instance.
 
-By convention keywords are typed in uppercase, however code should parse correctly if the keywords are in either case (although not tested much).  Also by convention variable and region operators (eg 'celldiv' and 'compound') that are used in expressions are typed in lowercase, however again this should parse correctly in either case.  Options are generally typed as lowercase.  Keywords generally contain underscores between (english) words (eg 'END_BLOCK'), while options are the opposite (eg 'newtstepmin').
+By convention keywords are typed in uppercase, however code should parse correctly if the keywords are in either case (although not tested much).  Also by convention variable and region operators (eg `celldiv` and `compound`) that are used in expressions are typed in lowercase, however again this should parse correctly in either case.  Options are generally typed as lowercase.  Keywords generally contain underscores between (english) words (eg `END_BLOCK`), while options and operators are the opposite (eg `celltofacelink` and `newtstepmin`).
 
 The continuation syntax using the ampersand symbol (&) is based on the ideas of free-form fortran (<http://fortranwiki.org/fortran/show/Continuation+lines>):
 

@@ -4,13 +4,12 @@ author: Dalton Harvie
 date: 6/12/16
 ---
 
-Installation
-============
+#Installation
 
-* This section is now a little out of date as of v0.57.  Now arb can be used from outside its code directory (referred to as the `arb_dir`), and this is the preferred method of use. Installing software dependencies is now accomplished using scripts within the `install` directory within the `arb_dir`. *
 
-The fast way
-------------
+*This section is now a little out of date as of v0.57.  Now arb can be used from outside its code directory (referred to as the `arb_dir`), and this is the preferred method of use. Installing software dependencies is now accomplished using scripts within the `install` directory within the `arb_dir`.*
+
+##The fast way
 
 Getting up and running is relatively straightforward, and primarily
 consists of installing the software and packages on which arb depends.
