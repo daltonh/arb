@@ -14,7 +14,7 @@ The primary strengths of arb are:
 
 * All equations and variables are defined using 'maths-type' expressions, and so can be easily tailored to each application.  For example,
 ```arb
-CELL_UNKNOWN <temperature> [K] "<P>*<V>/(<R>)" ON <all cells> # represents an unknown temperature field, with units Kelvin, its initial expression in terms of other variables, and the region (of in this case cells) over which it is defined
+CELL_UNKNOWN <temperature> [K] "<P>*<V>/(<R>)" ON <allcells> # represents an unknown temperature field, with units Kelvin, its initial expression in terms of other variables, and the region (of in this case cells) over which it is defined
 ```
 * All equations are solved simultaneously using a back-stepped Newton-Raphson method, so implicitly discretised equations can be solved efficiently; and
 * The unstructured meshes over which the equations are solved can be componsed of all sorts of convex polygons/polyhedrons (0D-3D).
@@ -45,30 +45,8 @@ arb requires a UNIX type environment to run, and has been tested on both the App
 By combining gfortran with the UMFPACK sparse linear solver, arb can be
 run using freely available GPL licensed software.
 
-Further details about how to install arb are given in [Installation](<<linkrootdir>>/body/installation/index.html).
+Further details about how to install arb are given in [Installation].
 
 ## Licence
 
-arb is copyright Dalton Harvie (2009–2015), but released under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).  Full details of the licence are in the [arb licence file](<<workingdir>>/licence/arb_licence.txt).
-
-<!--
-```sh
-echo "some sh string";
-```
-
-```fortran
-write(*,*) 'some fortran' ! comment
-```
-
-$t=4$
-
-
-```arb
-CELL_CONSTANT <jibber> [m^2] "<P>/<R>" ON <all cells> # a comment
-```
-
-```arb
-CELL_CONSTANT <jibber> [m^2] "<P>/<R>" ON <all cells> # a comment
-```
-
--->
+arb is released under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).  Full details of the licence are in the [arb licence file](<<<arbroot>>>/licence/arb_licence.txt).

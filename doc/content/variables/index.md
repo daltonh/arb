@@ -8,20 +8,24 @@ date: 5/10/17
 
 *This section needs some rewritting: there is only one input file now*
 
-There are eight types of user defined variables: constant, transient,
-derived, unknown, equation, output, condition and local. Each of these
-are stored in arb using the same general data structure (fortran type ).
-Any of these variables can be defined by a user-written expression in
-which is read by and interpreted by maxima. Additionally, the constant
-type may be defined in and there given (only) a numerical value. Along
-with the user defined variables, there are also system defined variables
-which can be used in user-written expressions.
+There are eight types of user defined variables:
 
-All variables have an associated compound variable type (scalar, vector
-or tensor) which is used mainly for output purposes.
+#. constant,
+#. transient,
+#. derived,
+#. unknown,
+#. equation,
+#. output,
+#. condition and
+#. local.
 
-Details of both the user and system defined variables are given in this
-section.
+Each of these are stored in arb using the same general data structure (fortran funk_type in [general_module.f90]).  Any of these variables can be defined by a user-written expression in which is read by and interpreted by maxima. Additionally, the constant type may be defined in and there given (only) a numerical value. Along with the user defined variables, there are also system defined variables which can be used in user-written expressions.
+
+[general_module.f90]: <<<arbroot>>>/src/general_module.f90
+
+All variables have an associated compound variable type (scalar, vector or tensor) which is used mainly for output purposes.
+
+Details of both the user and system defined variables are given in this section.
 
 ### Constant type variable defined in \[sec:equation\_constants\]
 

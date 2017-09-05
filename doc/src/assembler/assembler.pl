@@ -58,10 +58,12 @@ my $assembler_file_post="assembler_post.html";
 
 # assemble a list of replacements, as a hash
 my %replacements=();
-# docdir
+# root location to be passed to html pages
 $replacements{"<<<root>>>"}=$root_var;
 # contents
 $replacements{"<<<contents>>>"}="not done";
+# arbroot, root location of arb dir to be passed to html pages
+$replacements{"<<<arbroot>>>"}=$arb_dir;
 # # linkrootdir
 # $replacements{"<<linkrootdir>>"}=$markdown_dir;
 # $replacements{"<<markdowndir>>"}=$markdown_dir;
@@ -81,29 +83,40 @@ while ($line=<SETUPEQS>) {
 }
 close(SETUPEQS);
 
-# create contents string
-# initialise
-$replacements{"<<<contents>>>"}="";
-my $linkdefinitions="";
-# Homepage
-$replacements{"<<<contents>>>"}=$replacements{"<<<contents>>>"}."* [Homepage]\n";
-$linkdefinitions=$linkdefinitions."[Homepage]: $root_var/index.html\n";
+# # create contents string
+# # initialise
+# $replacements{"<<<contents>>>"}="";
+# my $linkdefinitions="";
+# # Homepage
+# $replacements{"<<<contents>>>"}=$replacements{"<<<contents>>>"}."* [Homepage]\n";
+# $linkdefinitions=$linkdefinitions."[Homepage]: $root_var/index.html\n";
+# $linkdefinitions=$linkdefinitions."[$pagetitle]: <$pageaddress>\n";
+
 # check if list file exists, and if so, add these to the contents and link definitions
-my $listfilename = $markdown_dirname."list";
+my $definitionsfilename = $html_dir."/definitions";
+#print "definitionsfilename = $definitionsfilename\n\n";
+if ( -f $definitionsfilename) {
+# print "found definitionsfilename = $definitionsfilename\n\n";
+  open(DEFINITIONSFILE, "<$definitionsfilename") or die "DEFINITIONSFILE ERROR: cannot open $definitionsfilename\n";;
+  my $definitions = '';
+  while (<DEFINITIONSFILE>) { $definitions=$definitions.$_; }
+  close(DEFINITIONSFILE);
+  do_replacements($definitions);
+  $replacements{"<<<definitions>>>"}=$definitions;
+}
+
+# check if list file exists, and if so, add these to the contents and link definitions
+my $listfilename = $html_dir."/list";
 #print "listfilename = $listfilename\n\n";
 if ( -f $listfilename) {
+  $replacements{"<<<contents>>>"}='';
 # print "found listfilename = $listfilename\n\n";
   open(LISTFILE, "<$listfilename") or die "LISTFILE ERROR: cannot open $listfilename\n";;
   while (<LISTFILE>) {
     chompm($_);
     if (/^\s*([^#].*)/) { # only look at non-commented lines
       my $pagetitle = $1;
-#     print "found pagetitle = $pagetitle\n";
-      my $pageaddress = $pagetitle;
-      $pageaddress =~ s/ /_/g;
-      $pageaddress = "$root_var/$rel_var/"."\L$pageaddress"."/index.html";
       $replacements{"<<<contents>>>"}=$replacements{"<<<contents>>>"}."* [$pagetitle]\n";
-      $linkdefinitions=$linkdefinitions."[$pagetitle]: <$pageaddress>\n";
     }
   }
   close(LISTFILE);
@@ -151,7 +164,7 @@ do_replacements($markdownfile);
 print $markdownfile;
 
 # also write linkdefinitions:
-print "\n$linkdefinitions\n";
+#print "\n$linkdefinitions\n";
 
 # # do format conversion using pandoc
 # my $htmlfile=Pandoc->convert( $markdownfile , filter => 'vimhl.hs' );
