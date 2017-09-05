@@ -6,52 +6,55 @@ date: 5/10/17
 
 # Variables
 
-*This section needs some rewritting: there is only one input file now*
+## Variable Synopsis
 
 There are eight types of user defined variables:
 
-#. constant,
-#. transient,
-#. derived,
-#. unknown,
-#. equation,
-#. output,
-#. condition and
-#. local.
+#. `CONSTANT`
+#. `TRANSIENT`
+#. `DERIVED`
+#. `UNKNOWN`
+#. `EQUATION`
+#. `OUTPUT`
+#. `CONDITION`
+#. `LOCAL`
 
-Each of these are stored in arb using the same general data structure (fortran funk_type in [general_module.f90]).  Any of these variables can be defined by a user-written expression in which is read by and interpreted by maxima. Additionally, the constant type may be defined in and there given (only) a numerical value. Along with the user defined variables, there are also system defined variables which can be used in user-written expressions.
+Each of these are stored in arb using the same general data structure (fortran funk_type in [general_module.f90]).  Any of these variables can be defined by a user-written expression which is read by and interpreted by [setup_equations.pl] and maxima, as per
+```arb
+centring_variable <name> [multiplier*units] "expression" ON <region> options # comments
+```
+where `centring` is one of `CELL`, `FACE`, `NODE` AND `NONE`, and `variable` is one of the above eight variables, both typed in uppercase.
 
-[general_module.f90]: <<<arbroot>>>/src/general_module.f90
+Variables that have `CELL`, `FACE` or `NODE` centrings have one value associated with each element of the `CELL`, `FACE` or `NODE` centred `<region>` (respectively).  Variables that have `NONE` centring are not associated with a region, and have only one value.  If `centring` is omitted then `NONE` centring is assumed for `CONSTANT` variables, while `CELL` centring for all other variables.
 
-All variables have an associated compound variable type (scalar, vector or tensor) which is used mainly for output purposes.
+Along with the user defined variables, there are also system defined variables which can be used in user-written expressions and are known as `SYSTEM` variables.
 
-Details of both the user and system defined variables are given in this section.
+All variables have an associated compound variable type (scalar, vector or tensor).
 
-### Constant type variable defined in \[sec:equation\_constants\]
+## Variable Centring
 
-*Synopsis:*
+## Variable types
 
-Constant variables are evaluated once at the start of a simulation. If
-defined in they are defined using an expression which may contain only
-system variables and other constants — in the latter case the constants
-must have been defined in either the file or previously (above) in the
-file.
+### Constant
 
-*Defining statements:*
+#### Synopsis
 
-    CELL_CONSTANT <name> [multiplier*units] "expression" ON <region> options # comments
-    FACE_CONSTANT <name> [multiplier*units] "expression" ON <region> options # comments
-    NONE_CONSTANT <name> [multiplier*units] "expression" options # comments
-    CONSTANT <name> [multiplier*units] "expression" options # comments
+Constant variables are evaluated once at the start of a simulation. They may be defined either by [expression language][] (if quoted in single or double quotes) or just as a numerical constant (if not quoted) read directly by the fortran executable.  The advantage of the latter method is that [setup_equations.pl] doesn't have to be run again, so simulation setup is faster.  The format for the numerical definitions is
+```arb
+centring_CONSTANT <name> [multiplier*units] number ON <region> options # comments
+```
+where `number` is a floating point number (double precision) read by fortran (eg `-4.5d0`).
+
+
 
 *Statement components:*
 
--   *(required)*: This keyword specifies the centring of the variable.
-    Constants that have cell or face centring vary over the simulation
+-   *(required)*: this keyword specifies the centring of the variable.
+    constants that have cell or face centring vary over the simulation
     domain, and have values associated with each cell or face,
-    respectively (subject to the statement, below). None centred
+    respectively (subject to the statement, below). none centred
     constants have one value that is not linked to any spatial location.
-    If the centring specifier is omitted from the keyword (as in ) then
+    if the centring specifier is omitted from the keyword (as in ) then
     none centring is assumed (ie., keyword is equivalent to keyword ).
 
 -   *(required)*: Each variable must have a unique name, delimited by
