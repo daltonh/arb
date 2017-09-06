@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 
 PROGNAME = 'rxntoarb'
-VERSION = 2.0
-DATE = '2017-09-04'
+VERSION = 2.1
+DATE = '2017-09-06'
 info = "#{PROGNAME} v. #{VERSION} (#{DATE})
 Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
 (C) Copyright Christian Biscombe 2016-2017"
@@ -515,11 +515,11 @@ ARGV.each do |infile|
         condition = condition && if_region.include?(region) if if_region # if an if_region has been specified, condition will be true if we are in the right region
         template.sub!(replace, condition ? if_clause : else_clause.to_s) # replace if_rxn statement with if_clause if condition is true, otherwise replace with else_clause (if present) or empty string
       end
-      # Handle region arrays in the template
+      # Handle each blocks in the template
       # These take the form [region_list].each { |loopvar| expression }
       # '*' in region_list is a shorthand for all reaction regions (surface_regions that bound volume_region)
       if location == :volume
-        TEMPLATE.scan(/(?<array>\[((?>[^\[\]]+)|\g<array>)*\])\.each\s*(?<brace_group>{((?>[^{}]+)|\g<brace_group>)*})?.*$/) do |array,expression|
+        TEMPLATE.scan(/(?<array>\[((?>[^\[\]]+)|\g<array>)*\])\.each\s*(?<brace_group>{((?>[^{}]+)|\g<brace_group>)*})?/i) do |array,expression|
           replace = $&
           region_list = region_array(array[1..-2]) # convert to array
           if region_list.include?('*') # add all reaction regions to region_list
@@ -530,9 +530,9 @@ ARGV.each do |infile|
           raise "missing expression in each block in template file #{$options[:template_file]} (possibly missing opening or closing brace)" unless expression
           loopvar = expression[/(\|.*?\|)/,1]
           raise "missing loop variable in each block in template file #{$options[:template_file]}" unless loopvar
-          replacement = ''
-          region_list.each { |region| replacement << "#{expression[/\|.*?\|\s*(.*)/,1].gsub(loopvar,region)}\n" } # duplicate expression for each region in region_list, replacing loopvar with region
-          template.sub!(replace, replacement) # replace each block
+          replacement = []
+          region_list.each { |region| replacement << "#{expression[/\|.*?\|\s*(.*)/m,1].strip.gsub(loopvar,region)}" } # duplicate expression for each region in region_list, replacing loopvar with region
+          template.sub!(replace, replacement.join("\n")) # replace the each block
         end
       end
       # Do substitutions on template
