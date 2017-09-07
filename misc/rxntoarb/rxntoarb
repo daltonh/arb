@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 PROGNAME = 'rxntoarb'
-VERSION = 2.0
+VERSION = 2.1
 DATE = '2017-09-07'
 info = "#{PROGNAME} v. #{VERSION} (#{DATE})
 Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
@@ -519,8 +519,8 @@ ARGV.each do |infile|
       # These take the form [region_list].each { |loopvar| expression }
       # '*' in region_list is a shorthand for all reaction regions (surface_regions that bound volume_region)
       if location == :volume
-        TEMPLATE.scan(/(?<array>\[((?>[^\[\]]+)|\g<array>)*\])\.each\s*(?<brace_group>{((?>[^{}]+)|\g<brace_group>)*})?/i) do |array,block|
-          replace = $&
+        TEMPLATE.scan(/^\s*(?<array>\[((?>[^\[\]]+)|\g<array>)*\])\.each\s*(?<brace_group>{((?>[^{}]+)|\g<brace_group>)*})?/i) do |array,block|
+          replace = $&[/^\s*(.*)/,1]
           region_list = region_array(array[1..-2]) # convert to array
           if region_list.include?('*') # add all reaction regions to region_list
             region_list[region_list.index('*')] = $volume_regions[region][1]
