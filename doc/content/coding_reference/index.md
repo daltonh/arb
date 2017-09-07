@@ -145,3 +145,6 @@ following subdirectories and files/links:
     recompilation is necessary, although with other options you can
     overwrite this behaviour. To list the options type .
 
+## Main Code Structure
+
+![la lune](lalune.jpg "Voyage to the moon")
