@@ -32,8 +32,5 @@ if_rxn(volume){
 if_rxn(surface){NONE_OUTPUT </c/_ave (pmol m-2)> "1.d12*facesum(</c/>*<<radius_f>>*<facearea>,region=</region/>)/<area(/region/)>"}
 if_rxn(volume){
   NONE_OUTPUT </c/_ave (nM)> "1.d6*cellsum(</c/>*<<radius_c>>*<cellvol>,region=</region/>)/<volume(/region/)>"
-  [inlet,outlet].each { |boundary|
-    NONE_LOCAL <u_f_ave@|boundary|> "abs(facesum(<u_f>*<<radius_f>>*<facearea>,region=<|boundary|>))"
-    NONE_OUTPUT </c/_bulk_ave@|boundary| (nM)> "noneif(<u_f_ave@|boundary|>,1.d6*abs(facesum(</c/>*<u_f>*<<radius_f>>*<facearea>,region=<|boundary|>))/<u_f_ave@|boundary|>,0.d0)"
-  }
+  [inlet,outlet].each { |boundary| NONE_OUTPUT </c/_bulk_ave@|boundary| (nM)> "noneif(<u_f_integrated@|boundary|>,1.d6*abs(facesum(</c/>*<u_f>*<<radius_f>>*<facearea>,region=<|boundary|>))/<u_f_integrated@|boundary|>,0.d0)" }
 }
