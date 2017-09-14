@@ -25,6 +25,7 @@ yum install perl-Data-Alias
 
 # red hat doesn't have these libraries, so need to copy from ... ??
 # cp /<matplotlibsource>/backend_wx*.py /usr/lib64/python2.7/site-packages/matplotlib/backends
+# I downloaded the source from https://sourceforge.net/projects/matplotlib/files/. And only copied the backend py files.
 
 # pre/post-processing - gmsh - more recent binaries are available which are probably worth using instead of the ubuntu packaged version
 #yum install gmsh
@@ -32,13 +33,16 @@ echo "INFO: no longer installing the ubuntu packaged version of gmsh, but you ca
 # pre/post-processing - paraview
 yum install paraview
 
-# for Lachlan's track script
+# for Lachlan's track and plot scripts
 yum install python-pip python-devel python-matplotlib
 yum install wxPython wxPython-devel
 pip install --upgrade numpy
 pip install --upgrade pandas
 pip install --upgrade numexpr
 pip install cycler
+
+# for Christian's rxntoarb script
+yum install ruby
 
 #echo "INFO: you may now want to install the free suitesparse linear solver umfpack fortran 90 wrapper routine.  If so, cd src/contributed/suitesparse and type make";
 echo "INFO: you could now add the arb/bin directory to your path using one of the include_path.*sh scripts";
