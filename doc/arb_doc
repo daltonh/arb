@@ -67,8 +67,7 @@ function usage () {
 # result is returned in (global) variable real_path - no not any more
 # now called as a="$(resolve_real_path "$a")";
 function resolve_real_path {
-# real_path=$1;
-  real_path="$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")"
+  real_path=$1;
   next_path=`readlink $real_path`;
   while [ -n "$next_path" ] ; do
     real_path="$(dirname "$real_path")/$next_path";
