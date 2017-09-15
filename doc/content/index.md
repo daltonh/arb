@@ -1,14 +1,12 @@
 ---
-title: 'arb manual home page'
+title: 'arb manual contents'
 author: Dalton Harvie
 date: 3/9/17
 ---
 
-# arb: Homepage
+This is the manual for arb, an open-source multiphysics finite volume solver.
 
-arb is a finite volume solver for arbitrary equations.
-
-## Contents:
+#Contents
 
 * [Introduction]
 * [Installation]

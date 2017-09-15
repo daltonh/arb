@@ -147,4 +147,6 @@ following subdirectories and files/links:
 
 ## Main Code Structure
 
-![la lune](lalune.jpg "Voyage to the moon")
+<!-- ![main_html_chopped](main.html_chopped_080917.pdf) -->
+[main_html_chopped](main.html_chopped_080917.pdf)
+

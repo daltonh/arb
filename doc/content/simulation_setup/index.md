@@ -47,13 +47,24 @@ INFO_DESCRIPTION "Jack & Jill" # will break the line at &
 Escaping these characters could be implemented in the future if the burning need arises.
 
 
-### String code and string variables
+### String variables and string code
 
-#### String code syntax
+#### String Variables and Solver Code String Statements
+
+'String variables' are used to perform replacements on the arb solver code as it is read in (parsed) by [setup_equations.pl].  String variables can be set using either solver code string statements, or via the more complex but powerful string code (see below).
+
+An example solver code string statements is the this:
+```arb
+REPLACEMENTS REPLACE "a string" WITH "another string"
+```
+This will cause all occurrences of 'a string' in the remainder of the file to be replaced by the string 'another string', except within other solver code string statements and within [string code](#string_code) (see below).
+
+
+####String code
 
 Lying alongside solver code is 'string code', which is code that is embedded within the solver code and used to
 
-*  set string replacement variables (termed string variables) that perform replacements on the surrounding solver code, and also to
+*  set string replacement variables (termed string variables) that perform replacements on the surrounding solver code (string replacement variables can also be set using solver string statements), and also to
 *  generated solver code directly.
 
 String code is delimited by {{ and }}.  The basic syntax rules of string code are:
@@ -61,11 +72,11 @@ String code is delimited by {{ and }}.  The basic syntax rules of string code ar
 *  string replacements are not performed on string code
 *  string code can be placed anywhere within the solver code, EXCEPT in
      -  comments (where it is just a comment)
-     -  legacy string replacement code (eg, 'REPLACE '<<a>>' WITH '1')
+     -  solver code string statements (eg, `'REPLACE '<<a>>' WITH '1'`)
 *  there is no limitation to the characters used within string code, EXCEPT for }}, which even when enclosed within a string will terminate the string code
 *  needs to be valid perl code
 
-String code is interpreted directly by perl, evaluated using the 'eval' (string) function (<http://perldoc.perl.org/functions/eval.html>).  For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) StringCode.pm module of setup_equations.pl, and whatever is returned from that eval (think subroutine) is substituted into the solver code in place of the string code.  So the following string code
+String code is interpreted directly by perl, evaluated using the 'eval' (string) function (<http://perldoc.perl.org/functions/eval.html>).  For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) [StringCode.pm] module of [setup_equations.pl], and whatever is returned from that eval (think subroutine) is substituted into the solver code in place of the string code.  So the following string code
 ```arb
 {{ return "TRANSIENT_SIMULATION" }}
 ```
@@ -142,7 +153,7 @@ Strings variables can also be deleted, and if set without a value, imply the emp
 }}
 ```
 
-Two other options are allowed in string_set.  A 'global' option means that rather than setting the string variable within the current local code block (see below), the variable is set within the root (that is, global or first-defined) code block.  This means that even when the current code block is destroyed, a global string variable remains.  Global string variables are useful for setting generic simulation options, and there are a number of system global string variables that are automatically set for each simulation (see ref: string system variables in src/setup_equations/StringCode.pm).  See the Code blocks section below for an example of global variable use.
+Two other options are allowed in string_set.  A 'global' option means that rather than setting the string variable within the current local code block (see below), the variable is set within the root (that is, global or first-defined) code block.  This means that even when the current code block is destroyed, a global string variable remains.  Global string variables are useful for setting generic simulation options, and there are a number of system global string variables that are automatically set for each simulation (see ref: string system variables in [StringCode.pm]).  See the Code blocks section below for an example of global variable use.
 
 A 'default' option passed to string_set means 'only set this variable if it is not already set'.  This is useful for determining whether upstream code has already specified an option, and if not, assume a default value.  When 'default' is specified the set operation is only performed if the string is not already defined.  So other options used in conjunction with 'default', such as 'global', 'replace' and 'noreplace', have no effect if the string has already been set.
 ```arb
@@ -153,7 +164,7 @@ A 'default' option passed to string_set means 'only set this variable if it is n
 }}
 ```
 
-String code allows more flexibility in coding arb, and will be employed more in the template files.  Looping is possible now using (for example);
+String code allows more flexibility in coding arb, but is (probably) for more advanced uses.  For example looping is possible using string code;
 ```arb
 {{
   my $code = '';
@@ -176,7 +187,7 @@ A typical use is to create a variable definition for a vector, as in
   "CELL_DERIVED <phi_normal_c[l=$l]> 'celldivgrad[l=$l](<phi_f>)' ON <allcells>\n";
 }; return $code; }}
 ```
-There are also functions to automate the loop process for expanding vector and tensor expressions, also based on the dimension range defined in the global string variable '<<dimensions>>':
+There are also functions to automate the loop process for expanding vector and tensor expressions, also based on the dimension range defined in the global string variable `<<dimensions>>`:
 ```arb
 # this expands two expressions to become vectors, replacing $l instances
 {{ return vector_expand(
@@ -190,7 +201,7 @@ There are also functions to automate the loop process for expanding vector and t
 ```
 For the above the expressions need to be single quoted.
 
-With some perl hackery there's lots that can be done if required - eg, arrays and hashes stored within the string variables (but you'll have to learn some perl!).  Variables defined within setup_equations.pl can also be accessed within the string code, as can generic perl subroutines.
+With some perl hackery there's lots that can be done if required - eg, arrays and hashes stored within the string variables (but you'll have to learn some perl!).  Variables defined within [setup_equations.pl] can also be accessed within the string code, as can generic perl subroutines.
 ```arb
 {{
   print "$::transient_simulation\n"; # is a variable defined in main of setup_equations.pl which indicates whether this is a transient simulation or not

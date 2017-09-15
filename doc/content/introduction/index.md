@@ -14,15 +14,14 @@ The primary strengths of arb are:
 
 * All equations and variables are defined using 'maths-type' expressions, and so can be easily tailored to each application.  For example,
 ```arb
-CELL_UNKNOWN <temperature> [K] "<P>*<V>/(<R>)" ON <allcells> # represents an unknown temperature field, with units Kelvin, its initial expression in terms of other variables, and the region (of in this case cells) over which it is defined
+CELL_UNKNOWN <temperature> [K] "<P>*<V>/(<R>)" ON <allcells> # represents an unknown temperature field stored at cell centres, with units Kelvin, its initial expression in terms of other variables, and the region over which it is defined (being all cells within the simulation domain)
 ```
 * All equations are solved simultaneously using a back-stepped Newton-Raphson method, so implicitly discretised equations can be solved efficiently; and
 * The unstructured meshes over which the equations are solved can be componsed of all sorts of convex polygons/polyhedrons (0D-3D).
 
 Compared to other partial differential equation solvers the disadvantages of arb are:
 
-* There is no graphical user interface for problem setup, so the learning curve is steep;
-* This manual needs work.  Tutorials are a good reference however, and
+* There is no graphical user interface for problem setup, so the learning curve is steep; and
 * There are some more efficient (either faster or less memory intensive) algorithms out there for specific problems.
 
 ## What is needed to run arb?
@@ -42,11 +41,11 @@ arb requires a UNIX type environment to run, and has been tested on both the App
 -   The mesh generation and post-processing package
     [gmsh](http://geuz.org/gmsh/).
 
-By combining gfortran with the UMFPACK sparse linear solver, arb can be
-run using freely available GPL licensed software.
+By combining gfortran with the UMFPACK sparse linear solver, arb can be run using freely available GPL licensed software.
 
 Further details about how to install arb are given in [Installation].
 
 ## Licence
 
 arb is released under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).  Full details of the licence are in the [arb licence file](<<<arbroot>>>/licence/arb_licence.txt).
+

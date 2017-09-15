@@ -1,7 +1,26 @@
+<!-- pre comments -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <link rel="stylesheet" href="/Users/daltonh/codes/arb/owncloud/arb_doc/current/doc/content/css/arb_body.css" type="text/css" />
+  <link rel="stylesheet" href="/Users/daltonh/codes/arb/owncloud/arb_doc/current/doc/content/css/arb_main.css" type="text/css" />
+</head>
+<body>
+<div id=container>
+<!-- add a blank left margin here-->
+<!--<div id=leftcolumn></div>-->
+<div id=maincolumn>
+<!-- pre comments -->
+
 
 
 <!-- now starting in code in markdown -->
-```
+```{.fortran hl='vim'}
 ! file src/main.f90
 !
 ! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
@@ -384,3 +403,22 @@ end program arb
 <!-- now finishing in code in markdown -->
 
 
+<!-- post comments -->
+</div>
+
+<div id=rightheader>
+<h1>arb</h1>
+<h3>manual</h3>
+</div>
+
+<div id=rightcontents>
+<h3>contents</h3>
+</div>
+
+</div>
+</body>
+
+<!-- add link definitions to markdown -->
+
+</html>
+<!-- post comments -->

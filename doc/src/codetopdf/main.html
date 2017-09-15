@@ -1,384 +1,421 @@
+<!-- pre comments -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> <meta http-equiv="Content-Style-Type" content="text/css" /> <meta name="generator" content="pandoc" />
+<title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  
+<link rel="stylesheet" href="/Users/daltonh/codes/arb/owncloud/arb_doc/current/doc/src/codetopdf/css/arb_body.css" type="text/css" /> <link rel="stylesheet" href="/Users/daltonh/codes/arb/owncloud/arb_doc/current/doc/src/codetopdf/css/arb_main.css" type="text/css" />
+</head>
+<body>
+<div id="container">
+<!-- add a blank left margin here-->
+<!--<div id=leftcolumn></div>-->
+<div id="maincolumn">
+<!-- pre comments -->
+
+
+
 <!-- now starting in code in markdown -->
-<pre><code>! file src/main.f90
-!
-! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
-! 
-! This file is part of arb finite volume solver, referred to as `arb&#39;.
-! 
-! arb is a software package designed to solve arbitrary partial
-! differential equations on unstructured meshes using the finite volume
-! method.  Primarily it consists of fortran source code, perl source
-! code and shell scripts.  arb replies on certain third party software
-! to run, most notably the computer algebra system maxima
-! &lt;http://maxima.sourceforge.net/&gt; which is released under the GNU GPL.
-! 
-! The original copyright of arb is held by Dalton Harvie, however the
-! project is now under collaborative development.
-! 
-! arb is released under the GNU GPL.  arb is free software: you can
-! redistribute it and/or modify it under the terms of the GNU General
-! Public License (version 3) as published by the Free Software Foundation.
-! You should have received a copy of the GNU General Public Licence
-! along with arb (see file licence/gpl.txt after unpacking).  If not,
-! see &lt;http://www.gnu.org/licences/&gt;.
-! 
-! arb is distributed in the hope that it will be useful, but WITHOUT
-! ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-! FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public Licence
-! for more details.
-! 
-! For full details of arb&#39;s licence see the licence directory.
-! 
-! The current homepage for the arb finite volume solver project is
-! &lt;http://people.eng.unimelb.edu.au/daltonh/downloads/arb&gt;.
-!
-!-------------------------------------------------------------------------
-program arb
+<pre >
+<span style="color: #87D7D7;">! file src/main.f90</span>
+<span style="color: #87D7D7;">!</span>
+<span style="color: #87D7D7;">! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)</span>
+<span style="color: #87D7D7;">! </span>
+<span style="color: #87D7D7;">! This file is part of arb finite volume solver, referred to as `arb'.</span>
+<span style="color: #87D7D7;">! </span>
+<span style="color: #87D7D7;">! arb is a software package designed to solve arbitrary partial</span>
+<span style="color: #87D7D7;">! differential equations on unstructured meshes using the finite volume</span>
+<span style="color: #87D7D7;">! method.  Primarily it consists of fortran source code, perl source</span>
+<span style="color: #87D7D7;">! code and shell scripts.  arb replies on certain third party software</span>
+<span style="color: #87D7D7;">! to run, most notably the computer algebra system maxima</span>
+<span style="color: #87D7D7;">! &lt;http://maxima.sourceforge.net/&gt; which is released under the GNU GPL.</span>
+<span style="color: #87D7D7;">! </span>
+<span style="color: #87D7D7;">! The original copyright of arb is held by Dalton Harvie, however the</span>
+<span style="color: #87D7D7;">! project is now under collaborative development.</span>
+<span style="color: #87D7D7;">! </span>
+<span style="color: #87D7D7;">! arb is released under the GNU GPL.  arb is free software: you can</span>
+<span style="color: #87D7D7;">! redistribute it and/or modify it under the terms of the GNU General</span>
+<span style="color: #87D7D7;">! Public License (version 3) as published by the Free Software Foundation.</span>
+<span style="color: #87D7D7;">! You should have received a copy of the GNU General Public Licence</span>
+<span style="color: #87D7D7;">! along with arb (see file licence/gpl.txt after unpacking).  If not,</span>
+<span style="color: #87D7D7;">! see &lt;http://www.gnu.org/licences/&gt;.</span>
+<span style="color: #87D7D7;">! </span>
+<span style="color: #87D7D7;">! arb is distributed in the hope that it will be useful, but WITHOUT</span>
+<span style="color: #87D7D7;">! ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or</span>
+<span style="color: #87D7D7;">! FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public Licence</span>
+<span style="color: #87D7D7;">! for more details.</span>
+<span style="color: #87D7D7;">! </span>
+<span style="color: #87D7D7;">! For full details of arb's licence see the licence directory.</span>
+<span style="color: #87D7D7;">! </span>
+<span style="color: #87D7D7;">! The current homepage for the arb finite volume solver project is</span>
+<span style="color: #87D7D7;">! &lt;http://people.eng.unimelb.edu.au/daltonh/downloads/arb&gt;.</span>
+<span style="color: #87D7D7;">!</span>
+<span style="color: #87D7D7;">!-------------------------------------------------------------------------</span>
+<span style="color: #0087D7;">program</span><span style="color: #808080;"> arb</span>
                   
-! written in f90 with object oriented approach, hopefully
-! daltonh, 070608
+<span style="color: #87D7D7;">! written in f90 with object oriented approach, hopefully</span>
+<span style="color: #87D7D7;">! daltonh, 070608</span>
 
-use general_module
-use setup_module
-use equation_module
-use solver_module
-use output_module
-!$ use omp_lib
+<span style="color: #0087D7;">use</span><span style="color: #808080;"> general_module</span>
+<span style="color: #0087D7;">use</span><span style="color: #808080;"> setup_module</span>
+<span style="color: #0087D7;">use</span><span style="color: #808080;"> equation_module</span>
+<span style="color: #0087D7;">use</span><span style="color: #808080;"> solver_module</span>
+<span style="color: #0087D7;">use</span><span style="color: #808080;"> output_module</span>
+<span style="color: #87D7D7;">!$ use omp_lib</span>
 
-implicit none
-character(len=1000) :: formatline
-integer :: ierror = 0
-logical :: newtconverged
-logical, parameter :: debug = .true.
+<span style="color: #008787; font-weight: bold;">implicit</span> <span style="color: #008787; font-weight: bold;">none</span>
+<span style="color: #008787; font-weight: bold;">character</span><span style="color: #808080;">(</span><span style="color: #008787; font-weight: bold;">len</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #FFAF00;">1000</span><span style="color: #808080;">) :: formatline</span>
+<span style="color: #008787; font-weight: bold;">integer</span><span style="color: #808080;"> :: ierror </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #FFAF00;">0</span>
+<span style="color: #008787; font-weight: bold;">logical</span><span style="color: #808080;"> :: newtconverged</span>
+<span style="color: #008787; font-weight: bold;">logical</span><span style="color: #808080;">, </span><span style="color: #008787; font-weight: bold;">parameter</span><span style="color: #808080;"> :: debug </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #87005F;">.true.</span>
 
-!---------------------------------------------------
+<span style="color: #87D7D7;">!---------------------------------------------------</span>
 
-formatline = &#39;(a,f4.2,a)&#39;
-write(*,fmt=formatline) &#39;program arb, version &#39;,version,&#39; (&#39;//trim(versionname)//&#39;), written by dalton harvie&#39;
+<span style="color: #808080;">formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">'(a,f4.2,a)'</span>
+<span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F5F87;">'program arb, version '</span><span style="color: #808080;">,version,</span><span style="color: #5F5F87;">' ('</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(versionname)</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">'), written by dalton harvie'</span>
 
-! find number of threads if openmp is in use
-!$omp parallel
-!$ nthreads = omp_get_num_threads() 
-!$omp end parallel
-if (nthreads &gt; 1) then
-  formatline = &#39;(a,&#39;//trim(dindexformat(nthreads))//&#39;,a)&#39;
-  write(*,fmt=formatline) &#39;INFO: openmp version running, with &#39;,nthreads,&#39; threads in use&#39;
-else if (nthreads == 1) then
-  write(*,fmt=formatline) &#39;INFO: openmp version running, with 1 thread in use&#39;
-else
-  write(*,&#39;(a,i2,a)&#39;) &#39;INFO: serial version running&#39;
-end if
-! now make nthreads = 1 for serial version
-nthreads = max(nthreads,1)
+<span style="color: #87D7D7;">! find number of threads if openmp is in use</span>
+<span style="color: #87D7D7;">!$omp parallel</span>
+<span style="color: #87D7D7;">!$ nthreads = omp_get_num_threads() </span>
+<span style="color: #87D7D7;">!$omp end parallel</span>
+<span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (nthreads </span><span style="color: #5F5FD7; font-weight: bold;">&gt;</span> <span style="color: #FFAF00;">1</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+<span style="color: #808080;">  formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">'(a,'</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(nthreads))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">',a)'</span>
+  <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F5F87;">'INFO: openmp version running, with '</span><span style="color: #808080;">,nthreads,</span><span style="color: #5F5F87;">' threads in use'</span>
+<span style="color: #5F5FD7; font-weight: bold;">else</span> <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (nthreads </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #FFAF00;">1</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+  <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F5F87;">'INFO: openmp version running, with 1 thread in use'</span>
+<span style="color: #5F5FD7; font-weight: bold;">else</span>
+  <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a,i2,a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'INFO: serial version running'</span>
+<span style="color: #5F5FD7; font-weight: bold;">end if</span>
+<span style="color: #87D7D7;">! now make nthreads = 1 for serial version</span>
+<span style="color: #808080;">nthreads </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F8787;">max</span><span style="color: #808080;">(nthreads,</span><span style="color: #FFAF00;">1</span><span style="color: #808080;">)</span>
 
-call initialise_random_number ! initialise the random seed used to evaluate the arb variable &lt;random&gt;
+<span style="color: #0087D7;">call</span><span style="color: #808080;"> initialise_random_number </span><span style="color: #87D7D7;">! initialise the random seed used to evaluate the arb variable &lt;random&gt;</span>
 
-call time_process
-call setup ! sets up variable metadata, reads in values, allocates arrays, creates mesh, initialises fields etc
-call time_process(description=&#39;setup&#39;)
+<span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+<span style="color: #0087D7;">call</span><span style="color: #808080;"> setup </span><span style="color: #87D7D7;">! sets up variable metadata, reads in values, allocates arrays, creates mesh, initialises fields etc</span>
+<span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'setup'</span><span style="color: #808080;">)</span>
 
-! increment timestep if timestepaddional is specified
-if (transient_simulation.and.timestepadditional &gt; 0) timestepmin = max(timestepmin,timestep+timestepadditional)
+<span style="color: #87D7D7;">! increment timestep if timestepaddional is specified</span>
+<span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (transient_simulation</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">timestepadditional </span><span style="color: #5F5FD7; font-weight: bold;">&gt;</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) timestepmin </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F8787;">max</span><span style="color: #808080;">(timestepmin,timestep</span><span style="color: #5F5FD7; font-weight: bold;">+</span><span style="color: #808080;">timestepadditional)</span>
 
-! output initial conditions if transient and this is the first timestep
-if (transient_simulation.and.timestep == 0) then
-  call time_process
-  call output
-  if (trim(output_step_file) == &quot;timestep&quot;) call output_step(action=&quot;write&quot;,do_update_outputs=.false.)
-  call time_process(description=&#39;initial transient output&#39;)
-end if
+<span style="color: #87D7D7;">! output initial conditions if transient and this is the first timestep</span>
+<span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (transient_simulation</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">timestep </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+  <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+  <span style="color: #0087D7;">call</span><span style="color: #808080;"> output</span>
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(output_step_file) </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #5F5F87;">&quot;timestep&quot;</span><span style="color: #808080;">) </span><span style="color: #0087D7;">call</span><span style="color: #808080;"> output_step(</span><span style="color: #5F5FD7; font-weight: bold;">action</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">&quot;write&quot;</span><span style="color: #808080;">,do_update_outputs</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #87005F;">.false.</span><span style="color: #808080;">)</span>
+  <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'initial transient output'</span><span style="color: #808080;">)</span>
+<span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-if (.not.transient_simulation) then
-  backline = newtline
-  newtline = timeline
-end if
+<span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F5FD7; font-weight: bold;">.not.</span><span style="color: #808080;">transient_simulation) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+<span style="color: #808080;">  backline </span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;"> newtline</span>
+<span style="color: #808080;">  newtline </span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;"> timeline</span>
+<span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-!---------------------------------------
-time_loop: do while ( &amp;
-  (transient_simulation.and..not.check_stopfile(&quot;stoptime&quot;).and.((.not.check_condition(&quot;stop&quot;).and.timestep &lt; timestepmax).or. &amp;
-  timestep &lt; timestepmin)).or..not.transient_simulation) 
+<span style="color: #87D7D7;">!---------------------------------------</span>
+<span style="color: #5F8787;">time_loop</span><span style="color: #808080;">: </span><span style="color: #5F5FD7; font-weight: bold;">do</span> <span style="color: #5F5FD7; font-weight: bold;">while</span><span style="color: #808080;"> ( </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+<span style="color: #808080;">  (transient_simulation</span><span style="color: #5F5FD7; font-weight: bold;">.and..not.</span><span style="color: #808080;">check_stopfile(</span><span style="color: #5F5F87;">&quot;stoptime&quot;</span><span style="color: #808080;">)</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">((</span><span style="color: #5F5FD7; font-weight: bold;">.not.</span><span style="color: #808080;">check_condition(</span><span style="color: #5F5F87;">&quot;stop&quot;</span><span style="color: #808080;">)</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">timestep </span><span style="color: #5F5FD7; font-weight: bold;">&lt;</span><span style="color: #808080;"> timestepmax)</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span> <span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+<span style="color: #808080;">  timestep </span><span style="color: #5F5FD7; font-weight: bold;">&lt;</span><span style="color: #808080;"> timestepmin))</span><span style="color: #5F5FD7; font-weight: bold;">.or..not.</span><span style="color: #808080;">transient_simulation) </span>
 
-  newtres = huge(1.d0)
+<span style="color: #808080;">  newtres </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F8787;">huge</span><span style="color: #808080;">(</span><span style="color: #FFAF00;">1.d0</span><span style="color: #808080;">)</span>
 
-  if (transient_simulation) then
-    timestep = timestep + 1
-    formatline = &quot;(a,&quot;//trim(dindexformat(timestep))//&quot;,a)&quot;
-    write(*,fmt=formatline) repeat(&#39;+&#39;,timeline)//&#39; timestep &#39;,timestep,&#39; starting &#39;//repeat(&#39;+&#39;,totalline-timeline)
-    if (convergence_details_file) then
-      write(fconverge,fmt=formatline) repeat(&#39;+&#39;,timeline)//&#39; timestep &#39;,timestep,&#39; starting &#39;//repeat(&#39;+&#39;,totalline-timeline)
-      call flush(fconverge)
-    end if
-    call time_process
-    call update_and_check_transients(ierror=ierror)
-    call time_process(description=&#39;start of timestep update and check transients&#39;)
-    if (ierror /= 0) then
-      write(*,&#39;(a)&#39;) &#39;ERROR: problem completing update_and_check_transients&#39;
-      exit time_loop
-    end if
-    newtstep = 0  ! only reset this for transient simulations, as may be required to carry-on from old newtstep for steady-state simulations - now resetting is delayed to allow saving in a transient
-    if (newtient_simulation) then
-      call time_process
-      call update_and_check_initial_newtients(ierror=ierror)
-      call time_process(description=&#39;start of timestep update and check initial newtients&#39;)
-      if (ierror /= 0) then
-        write(*,&#39;(a)&#39;) &#39;ERROR: problem completing update_and_check_initial_newtients&#39;
-        exit time_loop
-      end if
-    end if
-    call time_process
-    call update_and_check_derived_and_equations(ierror=ierror)
-    call time_process(description=&#39;start of timestep update and check derived and equations&#39;)
-    if (ierror /= 0) then
-      write(*,&#39;(a)&#39;) &#39;ERROR: problem completing update_and_check_derived_and_equations&#39;
-      exit time_loop
-    end if
-  end if
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (transient_simulation) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+<span style="color: #808080;">    timestep </span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;"> timestep </span><span style="color: #5F5FD7; font-weight: bold;">+</span> <span style="color: #FFAF00;">1</span>
+<span style="color: #808080;">    formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(timestep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a)&quot;</span>
+    <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'+'</span><span style="color: #808080;">,timeline)</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">' timestep '</span><span style="color: #808080;">,timestep,</span><span style="color: #5F5F87;">' starting '</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'+'</span><span style="color: #808080;">,totalline</span><span style="color: #5F5FD7; font-weight: bold;">-</span><span style="color: #808080;">timeline)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(fconverge,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'+'</span><span style="color: #808080;">,timeline)</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">' timestep '</span><span style="color: #808080;">,timestep,</span><span style="color: #5F5F87;">' starting '</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'+'</span><span style="color: #808080;">,totalline</span><span style="color: #5F5FD7; font-weight: bold;">-</span><span style="color: #808080;">timeline)</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> flush(fconverge)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> update_and_check_transients(ierror</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">ierror)</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'start of timestep update and check transients'</span><span style="color: #808080;">)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: problem completing update_and_check_transients'</span>
+      <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> time_loop</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+<span style="color: #808080;">    newtstep </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #FFAF00;">0</span>  <span style="color: #87D7D7;">! only reset this for transient simulations, as may be required to carry-on from old newtstep for steady-state simulations - now resetting is delayed to allow saving in a transient</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (newtient_simulation) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> update_and_check_initial_newtients(ierror</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">ierror)</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'start of timestep update and check initial newtients'</span><span style="color: #808080;">)</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+        <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: problem completing update_and_check_initial_newtients'</span>
+        <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> time_loop</span>
+      <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> update_and_check_derived_and_equations(ierror</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">ierror)</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'start of timestep update and check derived and equations'</span><span style="color: #808080;">)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: problem completing update_and_check_derived_and_equations'</span>
+      <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> time_loop</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+  <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-  if (trim(output_step_file) == &quot;newtstep&quot;) call output_step(action=&quot;write&quot;)
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(output_step_file) </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #5F5F87;">&quot;newtstep&quot;</span><span style="color: #808080;">) </span><span style="color: #0087D7;">call</span><span style="color: #808080;"> output_step(</span><span style="color: #5F5FD7; font-weight: bold;">action</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">&quot;write&quot;</span><span style="color: #808080;">)</span>
 
-! dump solution starting point if newtstepout is set to 1 or dumpnewt is found
-  if (check_dumpfile(&quot;dumpnewt&quot;).or.newtstepout /= 0) then
-    write(*,&#39;(a)&#39;) &#39;INFO: user has requested output via a dump file or newtstepout specification&#39;
-    call time_process
-    call output(intermediate=.true.)
-    call output_step(action=&quot;write&quot;,do_update_outputs=.false.)
-    call time_process(description=&#39;output&#39;)
-  end if
+<span style="color: #87D7D7;">! dump solution starting point if newtstepout is set to 1 or dumpnewt is found</span>
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (check_dumpfile(</span><span style="color: #5F5F87;">&quot;dumpnewt&quot;</span><span style="color: #808080;">)</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span><span style="color: #808080;">newtstepout </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+    <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'INFO: user has requested output via a dump file or newtstepout specification'</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> output(intermediate</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #87005F;">.true.</span><span style="color: #808080;">)</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> output_step(</span><span style="color: #5F5FD7; font-weight: bold;">action</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">&quot;write&quot;</span><span style="color: #808080;">,do_update_outputs</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #87005F;">.false.</span><span style="color: #808080;">)</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'output'</span><span style="color: #808080;">)</span>
+  <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-!--------------------
-! newton loop
+<span style="color: #87D7D7;">!--------------------</span>
+<span style="color: #87D7D7;">! newton loop</span>
 
-  newtconverged = .false.
-  if (newtres &lt;= newtrestol) newtconverged = .true.
-  if (.not.newtconverged) then
-    if (check_condition(&quot;convergence&quot;)) newtconverged = .true.
-  end if
+<span style="color: #808080;">  newtconverged </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #87005F;">.false.</span>
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (newtres </span><span style="color: #5F5FD7; font-weight: bold;">&lt;=</span><span style="color: #808080;"> newtrestol) newtconverged </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #87005F;">.true.</span>
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F5FD7; font-weight: bold;">.not.</span><span style="color: #808080;">newtconverged) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (check_condition(</span><span style="color: #5F5F87;">&quot;convergence&quot;</span><span style="color: #808080;">)) newtconverged </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #87005F;">.true.</span>
+  <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-  newt_loop: do while (((.not.newtconverged.and.newtstep &lt; newtstepmax).or. &amp;
-      newtstep &lt; newtstepmin).and.ierror == 0)
+  <span style="color: #5F8787;">newt_loop</span><span style="color: #808080;">: </span><span style="color: #5F5FD7; font-weight: bold;">do</span> <span style="color: #5F5FD7; font-weight: bold;">while</span><span style="color: #808080;"> (((</span><span style="color: #5F5FD7; font-weight: bold;">.not.</span><span style="color: #808080;">newtconverged</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">newtstep </span><span style="color: #5F5FD7; font-weight: bold;">&lt;</span><span style="color: #808080;"> newtstepmax)</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span> <span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+<span style="color: #808080;">      newtstep </span><span style="color: #5F5FD7; font-weight: bold;">&lt;</span><span style="color: #808080;"> newtstepmin)</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">ierror </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">)</span>
 
-    newtstep = newtstep + 1
+<span style="color: #808080;">    newtstep </span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;"> newtstep </span><span style="color: #5F5FD7; font-weight: bold;">+</span> <span style="color: #FFAF00;">1</span>
 
-    formatline = &quot;(a,&quot;//trim(dindexformat(newtstep))//&quot;,a)&quot;
-    write(*,fmt=formatline) repeat(&#39;+&#39;,newtline)//&#39; newtstep &#39;,newtstep,&#39; starting &#39;//repeat(&#39;+&#39;,totalline-newtline)
-    if (convergence_details_file) then
-      write(fconverge,fmt=formatline) repeat(&#39;+&#39;,newtline)//&#39; newtstep &#39;,newtstep,&#39; starting &#39;//repeat(&#39;+&#39;,totalline-newtline)
-      call flush(fconverge)
-    end if
+<span style="color: #808080;">    formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(newtstep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a)&quot;</span>
+    <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'+'</span><span style="color: #808080;">,newtline)</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">' newtstep '</span><span style="color: #808080;">,newtstep,</span><span style="color: #5F5F87;">' starting '</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'+'</span><span style="color: #808080;">,totalline</span><span style="color: #5F5FD7; font-weight: bold;">-</span><span style="color: #808080;">newtline)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(fconverge,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'+'</span><span style="color: #808080;">,newtline)</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">' newtstep '</span><span style="color: #808080;">,newtstep,</span><span style="color: #5F5F87;">' starting '</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'+'</span><span style="color: #808080;">,totalline</span><span style="color: #5F5FD7; font-weight: bold;">-</span><span style="color: #808080;">newtline)</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> flush(fconverge)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-! calculate and check on the equation magnitudes
-    call time_process
-    call update_magnitudes(ierror)
-    call time_process(description=&#39;start of newtstep calculating variable magnitudes&#39;)
-    if (ierror /= 0) then
-      write(*,&#39;(a)&#39;) &#39;ERROR: problem completing update_magnitudes&#39;
-      exit newt_loop
-    end if
+<span style="color: #87D7D7;">! calculate and check on the equation magnitudes</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> update_magnitudes(ierror)</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'start of newtstep calculating variable magnitudes'</span><span style="color: #808080;">)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: problem completing update_magnitudes'</span>
+      <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> newt_loop</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-! calculate the latest residual, based on the new variable magnitudes
-    call time_process
-    call residual(ierror=ierror)
-    call time_process(description=&#39;start of newtstep calculating residual&#39;)
-    if (ierror /= 0) then
-      write(*,&#39;(a)&#39;) &#39;ERROR: problem completing residual calculation&#39;
-      exit newt_loop
-    end if
-    write(*,&#39;(a,g10.3,a)&#39;) &quot;INFO: initial newton loop newtres = &quot;,newtres,&quot; after updating variable magnitudes&quot;
-    if (convergence_details_file) write(fconverge,&#39;(a,g16.9,a)&#39;) &amp;
-      &quot;INFO: initial newton loop newtres = &quot;,newtres,&quot; after updating variable magnitudes&quot;
+<span style="color: #87D7D7;">! calculate the latest residual, based on the new variable magnitudes</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> residual(ierror</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">ierror)</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'start of newtstep calculating residual'</span><span style="color: #808080;">)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: problem completing residual calculation'</span>
+      <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> newt_loop</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+    <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a,g10.3,a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">&quot;INFO: initial newton loop newtres = &quot;</span><span style="color: #808080;">,newtres,</span><span style="color: #5F5F87;">&quot; after updating variable magnitudes&quot;</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(fconverge,</span><span style="color: #5F5F87;">'(a,g16.9,a)'</span><span style="color: #808080;">) </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+      <span style="color: #5F5F87;">&quot;INFO: initial newton loop newtres = &quot;</span><span style="color: #808080;">,newtres,</span><span style="color: #5F5F87;">&quot; after updating variable magnitudes&quot;</span>
 
-    if (newtconverged.and.newtstep &gt; newtstepmin) then
-      write(*,&#39;(a,g10.3,a)&#39;) &quot;INFO: skipping newtsolver as newtres/newtrestol = &quot;,newtres/newtrestol,&quot; using existing unknowns&quot;
-      if (convergence_details_file) write(fconverge,&#39;(a,g10.3,a)&#39;) &quot;INFO: skipping newtsolver as newtres/newtrestol = &quot;, &amp;
-        newtres/newtrestol,&quot; using existing unknowns&quot;
-    else if (ptotal == 0) then
-      write(*,&#39;(a)&#39;) &#39;INFO: skipping newtsolver as no equations are being solved&#39;
-      if (convergence_details_file) write(fconverge,&#39;(a)&#39;) &#39;INFO: skipping netsolver as no equations are being solved&#39;
-    else
-      call newtsolver(ierror) ! uses newton&#39;s method to solve equations - assumes update has been done and that there is valid magnitudes and a newtres
-    end if
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (newtconverged</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">newtstep </span><span style="color: #5F5FD7; font-weight: bold;">&gt;</span><span style="color: #808080;"> newtstepmin) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a,g10.3,a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">&quot;INFO: skipping newtsolver as newtres/newtrestol = &quot;</span><span style="color: #808080;">,newtres</span><span style="color: #5F5FD7; font-weight: bold;">/</span><span style="color: #808080;">newtrestol,</span><span style="color: #5F5F87;">&quot; using existing unknowns&quot;</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(fconverge,</span><span style="color: #5F5F87;">'(a,g10.3,a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">&quot;INFO: skipping newtsolver as newtres/newtrestol = &quot;</span><span style="color: #808080;">, </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+<span style="color: #808080;">        newtres</span><span style="color: #5F5FD7; font-weight: bold;">/</span><span style="color: #808080;">newtrestol,</span><span style="color: #5F5F87;">&quot; using existing unknowns&quot;</span>
+    <span style="color: #5F5FD7; font-weight: bold;">else</span> <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ptotal </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'INFO: skipping newtsolver as no equations are being solved'</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(fconverge,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'INFO: skipping netsolver as no equations are being solved'</span>
+    <span style="color: #5F5FD7; font-weight: bold;">else</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> newtsolver(ierror) </span><span style="color: #87D7D7;">! uses newton's method to solve equations - assumes update has been done and that there is valid magnitudes and a newtres</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-! if there is a problem in the newton loop (including a stop file prior to convergence), then exit newton loop here
-    if (ierror /= 0) then
-      write(*,&#39;(a)&#39;) &#39;ERROR: problem completing newtsolver&#39;
-      exit newt_loop
-    end if
+<span style="color: #87D7D7;">! if there is a problem in the newton loop (including a stop file prior to convergence), then exit newton loop here</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: problem completing newtsolver'</span>
+      <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> newt_loop</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-! update any newtient variables if this is a newtient simulation
-    if (newtient_simulation) then
-      formatline = &quot;(a,&quot;//trim(dindexformat(newtstep))//&quot;,a,g10.3,a,g10.3)&quot;
-      write(*,fmt=formatline) &#39;INFO: during newton loop before newtient updates: newtstep = &#39;,newtstep,&#39;: newtres = &#39;,newtres, &amp;
-        &#39;: newtres/newtrestol = &#39;,newtres/newtrestol
-      if (convergence_details_file) then
-        formatline = &quot;(a,&quot;//trim(dindexformat(newtstep))//&quot;,a,g16.9,a,g10.3)&quot;
-        write(fconverge,fmt=formatline) &amp;
-          &#39;INFO: during newton loop before newtient updates: newtstep = &#39;,newtstep,&#39;: newtres = &#39;,newtres, &amp;
-          &#39;: newtres/newtrestol = &#39;,newtres/newtrestol
-      end if
-      call time_process
-      call update_and_check_newtients(ierror=ierror)
-      call time_process(description=&#39;intermediate newton step update and check newtients&#39;)
-      if (ierror /= 0) then
-        write(*,&#39;(a)&#39;) &#39;ERROR: problem completing update_and_check_newtients in newtient update section&#39;
-        exit newt_loop
-      end if
-      call time_process
-      call update_and_check_derived_and_equations(ierror=ierror)
-      call time_process(description=&#39;intermediate newton step update and check derived and equations after newtient update&#39;)
-      if (ierror /= 0) then
-        write(*,&#39;(a)&#39;) &#39;ERROR: problem completing update_and_check_derived_and_equations in newtient update section&#39;
-        exit newt_loop
-      end if
-      call residual(ierror=ierror)
-      if (ierror /= 0) then
-        write(*,&#39;(a)&#39;) &#39;ERROR: problem calculating residual in newtient update section&#39;
-        exit newt_loop
-      end if
-    end if
+<span style="color: #87D7D7;">! update any newtient variables if this is a newtient simulation</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (newtient_simulation) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+<span style="color: #808080;">      formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(newtstep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a,g10.3,a,g10.3)&quot;</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F5F87;">'INFO: during newton loop before newtient updates: newtstep = '</span><span style="color: #808080;">,newtstep,</span><span style="color: #5F5F87;">': newtres = '</span><span style="color: #808080;">,newtres, </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+        <span style="color: #5F5F87;">': newtres/newtrestol = '</span><span style="color: #808080;">,newtres</span><span style="color: #5F5FD7; font-weight: bold;">/</span><span style="color: #808080;">newtrestol</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+<span style="color: #808080;">        formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(newtstep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a,g16.9,a,g10.3)&quot;</span>
+        <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(fconverge,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+          <span style="color: #5F5F87;">'INFO: during newton loop before newtient updates: newtstep = '</span><span style="color: #808080;">,newtstep,</span><span style="color: #5F5F87;">': newtres = '</span><span style="color: #808080;">,newtres, </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+          <span style="color: #5F5F87;">': newtres/newtrestol = '</span><span style="color: #808080;">,newtres</span><span style="color: #5F5FD7; font-weight: bold;">/</span><span style="color: #808080;">newtrestol</span>
+      <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> update_and_check_newtients(ierror</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">ierror)</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'intermediate newton step update and check newtients'</span><span style="color: #808080;">)</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+        <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: problem completing update_and_check_newtients in newtient update section'</span>
+        <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> newt_loop</span>
+      <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> update_and_check_derived_and_equations(ierror</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">ierror)</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'intermediate newton step update and check derived and equations after newtient update'</span><span style="color: #808080;">)</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+        <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: problem completing update_and_check_derived_and_equations in newtient update section'</span>
+        <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> newt_loop</span>
+      <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> residual(ierror</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">ierror)</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+        <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: problem calculating residual in newtient update section'</span>
+        <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> newt_loop</span>
+      <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-    if (trim(output_step_file) == &quot;newtstep&quot;) call output_step(action=&quot;write&quot;)
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(output_step_file) </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #5F5F87;">&quot;newtstep&quot;</span><span style="color: #808080;">) </span><span style="color: #0087D7;">call</span><span style="color: #808080;"> output_step(</span><span style="color: #5F5FD7; font-weight: bold;">action</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">&quot;write&quot;</span><span style="color: #808080;">)</span>
 
-! also start writing output files is newtstep &gt;= newtstepdebugout
+<span style="color: #87D7D7;">! also start writing output files is newtstep &gt;= newtstepdebugout</span>
 
-    if (check_dumpfile(&quot;dumpnewt&quot;).or.(newtstepout /= 0.and.mod(newtstep,max(newtstepout,1)) == 0).or.newtstep &gt;= newtstepdebugout) then
-      write(*,&#39;(a)&#39;) &#39;INFO: user has requested output via a dump file or newtstepout specification&#39;
-      call time_process
-      call output(intermediate=.true.)
-      call output_step(action=&quot;write&quot;,do_update_outputs=.false.)
-      call time_process(description=&#39;output&#39;)
-    end if
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (check_dumpfile(</span><span style="color: #5F5F87;">&quot;dumpnewt&quot;</span><span style="color: #808080;">)</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span><span style="color: #808080;">(newtstepout </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #5F8787;">mod</span><span style="color: #808080;">(newtstep,</span><span style="color: #5F8787;">max</span><span style="color: #808080;">(newtstepout,</span><span style="color: #FFAF00;">1</span><span style="color: #808080;">)) </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">)</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span><span style="color: #808080;">newtstep </span><span style="color: #5F5FD7; font-weight: bold;">&gt;=</span><span style="color: #808080;"> newtstepdebugout) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'INFO: user has requested output via a dump file or newtstepout specification'</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> output(intermediate</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #87005F;">.true.</span><span style="color: #808080;">)</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> output_step(</span><span style="color: #5F5FD7; font-weight: bold;">action</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">&quot;write&quot;</span><span style="color: #808080;">,do_update_outputs</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #87005F;">.false.</span><span style="color: #808080;">)</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'output'</span><span style="color: #808080;">)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-    if (transient_simulation) then
-      formatline = &quot;(a,&quot;//trim(dindexformat(newtstep))//&quot;,a,&quot;//trim(dindexformat(timestep))//&quot;,a,g10.3,a,g10.3)&quot;
-      write(*,fmt=formatline) &#39;INFO: during newton loop: newtstep = &#39;,newtstep,&#39;: timestep = &#39;,timestep,&#39;: newtres = &#39;,newtres, &amp;
-        &#39;: newtres/newtrestol = &#39;,newtres/newtrestol
-      if (convergence_details_file) then
-        formatline = &quot;(a,&quot;//trim(dindexformat(newtstep))//&quot;,a,&quot;//trim(dindexformat(timestep))//&quot;,a,g16.9,a,g10.3)&quot;
-        write(fconverge,fmt=formatline) &amp;
-          &#39;INFO: during newton loop: newtstep = &#39;,newtstep,&#39;: timestep = &#39;,timestep,&#39;: newtres = &#39;,newtres, &amp;
-          &#39;: newtres/newtrestol = &#39;,newtres/newtrestol
-      end if
-    else
-      formatline = &quot;(a,&quot;//trim(dindexformat(newtstep))//&quot;,a,g10.3,a,g10.3)&quot;
-      write(*,fmt=formatline) &#39;INFO: during newton loop: newtstep = &#39;,newtstep,&#39;: newtres = &#39;,newtres,&#39;: newtres/newtrestol = &#39;, &amp;
-        newtres/newtrestol
-      if (convergence_details_file) then
-        formatline = &quot;(a,&quot;//trim(dindexformat(newtstep))//&quot;,a,g16.9,a,g10.3)&quot;
-        write(fconverge,fmt=formatline) &amp;
-          &#39;INFO: during newton loop: newtstep = &#39;,newtstep,&#39;: newtres = &#39;,newtres,&#39;: newtres/newtrestol = &#39;,newtres/newtrestol
-      end if
-    end if
-    if (convergence_details_file) call flush(fconverge)
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (transient_simulation) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+<span style="color: #808080;">      formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(newtstep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(timestep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a,g10.3,a,g10.3)&quot;</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F5F87;">'INFO: during newton loop: newtstep = '</span><span style="color: #808080;">,newtstep,</span><span style="color: #5F5F87;">': timestep = '</span><span style="color: #808080;">,timestep,</span><span style="color: #5F5F87;">': newtres = '</span><span style="color: #808080;">,newtres, </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+        <span style="color: #5F5F87;">': newtres/newtrestol = '</span><span style="color: #808080;">,newtres</span><span style="color: #5F5FD7; font-weight: bold;">/</span><span style="color: #808080;">newtrestol</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+<span style="color: #808080;">        formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(newtstep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(timestep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a,g16.9,a,g10.3)&quot;</span>
+        <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(fconverge,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+          <span style="color: #5F5F87;">'INFO: during newton loop: newtstep = '</span><span style="color: #808080;">,newtstep,</span><span style="color: #5F5F87;">': timestep = '</span><span style="color: #808080;">,timestep,</span><span style="color: #5F5F87;">': newtres = '</span><span style="color: #808080;">,newtres, </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+          <span style="color: #5F5F87;">': newtres/newtrestol = '</span><span style="color: #808080;">,newtres</span><span style="color: #5F5FD7; font-weight: bold;">/</span><span style="color: #808080;">newtrestol</span>
+      <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+    <span style="color: #5F5FD7; font-weight: bold;">else</span>
+<span style="color: #808080;">      formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(newtstep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a,g10.3,a,g10.3)&quot;</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F5F87;">'INFO: during newton loop: newtstep = '</span><span style="color: #808080;">,newtstep,</span><span style="color: #5F5F87;">': newtres = '</span><span style="color: #808080;">,newtres,</span><span style="color: #5F5F87;">': newtres/newtrestol = '</span><span style="color: #808080;">, </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+<span style="color: #808080;">        newtres</span><span style="color: #5F5FD7; font-weight: bold;">/</span><span style="color: #808080;">newtrestol</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+<span style="color: #808080;">        formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(newtstep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a,g16.9,a,g10.3)&quot;</span>
+        <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(fconverge,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+          <span style="color: #5F5F87;">'INFO: during newton loop: newtstep = '</span><span style="color: #808080;">,newtstep,</span><span style="color: #5F5F87;">': newtres = '</span><span style="color: #808080;">,newtres,</span><span style="color: #5F5F87;">': newtres/newtrestol = '</span><span style="color: #808080;">,newtres</span><span style="color: #5F5FD7; font-weight: bold;">/</span><span style="color: #808080;">newtrestol</span>
+      <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #0087D7;">call</span><span style="color: #808080;"> flush(fconverge)</span>
 
-! check whether solution is converged
-    if (newtres &lt;= newtrestol) newtconverged = .true.
-    if (.not.newtconverged) then
-      if (check_condition(&quot;convergence&quot;)) newtconverged = .true.
-    end if
+<span style="color: #87D7D7;">! check whether solution is converged</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (newtres </span><span style="color: #5F5FD7; font-weight: bold;">&lt;=</span><span style="color: #808080;"> newtrestol) newtconverged </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #87005F;">.true.</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F5FD7; font-weight: bold;">.not.</span><span style="color: #808080;">newtconverged) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (check_condition(</span><span style="color: #5F5F87;">&quot;convergence&quot;</span><span style="color: #808080;">)) newtconverged </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #87005F;">.true.</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-! only check for stopfile if output isn&#39;t converged
-    if (.not.newtconverged) then
-      if (check_stopfile(&quot;stopnewt&quot;)) then
-        write(*,&#39;(a)&#39;) &#39;INFO: user has requested simulation stop via a stop file&#39;
-        ierror = -1 ! negative ierror indicates that user stopped arb before convergence complete
-      end if
-    end if
+<span style="color: #87D7D7;">! only check for stopfile if output isn't converged</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F5FD7; font-weight: bold;">.not.</span><span style="color: #808080;">newtconverged) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (check_stopfile(</span><span style="color: #5F5F87;">&quot;stopnewt&quot;</span><span style="color: #808080;">)) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+        <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'INFO: user has requested simulation stop via a stop file'</span>
+<span style="color: #808080;">        ierror </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5FD7; font-weight: bold;">-</span><span style="color: #FFAF00;">1</span> <span style="color: #87D7D7;">! negative ierror indicates that user stopped arb before convergence complete</span>
+      <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-    formatline = &quot;(a,&quot;//trim(dindexformat(newtstep))//&quot;,a)&quot;
-    write(*,fmt=formatline) repeat(&#39;-&#39;,newtline)//&#39; newtstep &#39;,newtstep,&#39; ending &#39;//repeat(&#39;-&#39;,totalline-newtline+2)
-    if (convergence_details_file) then
-      write(fconverge,fmt=formatline) repeat(&#39;-&#39;,newtline)//&#39; newtstep &#39;,newtstep,&#39; ending &#39;//repeat(&#39;-&#39;,totalline-newtline+2)
-      call flush(fconverge)
-    end if
+<span style="color: #808080;">    formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(newtstep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a)&quot;</span>
+    <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'-'</span><span style="color: #808080;">,newtline)</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">' newtstep '</span><span style="color: #808080;">,newtstep,</span><span style="color: #5F5F87;">' ending '</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'-'</span><span style="color: #808080;">,totalline</span><span style="color: #5F5FD7; font-weight: bold;">-</span><span style="color: #808080;">newtline</span><span style="color: #5F5FD7; font-weight: bold;">+</span><span style="color: #FFAF00;">2</span><span style="color: #808080;">)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(fconverge,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'-'</span><span style="color: #808080;">,newtline)</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">' newtstep '</span><span style="color: #808080;">,newtstep,</span><span style="color: #5F5F87;">' ending '</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'-'</span><span style="color: #808080;">,totalline</span><span style="color: #5F5FD7; font-weight: bold;">-</span><span style="color: #808080;">newtline</span><span style="color: #5F5FD7; font-weight: bold;">+</span><span style="color: #FFAF00;">2</span><span style="color: #808080;">)</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> flush(fconverge)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-  end do newt_loop
-!--------------------
+  <span style="color: #5F5FD7; font-weight: bold;">end do</span><span style="color: #808080;"> newt_loop</span>
+<span style="color: #87D7D7;">!--------------------</span>
 
-  if (ierror &gt; 0) then
-    formatline = &quot;(a,&quot;//trim(dindexformat(ierror))//&quot;)&quot;
-    write(*,fmt=formatline) &#39;ERROR: problem in some solution routine within newton loop: error number = &#39;,ierror
-    exit time_loop
-  else if (ierror &lt; 0) then
-    write(*,&#39;(a)&#39;) &#39;ERROR: newton solver did not converge due to user created stop file&#39;
-    exit time_loop
-  else if (newtconverged) then
-    if (newtres &lt;= newtrestol) then
-      write(*,&#39;(a)&#39;) &#39;INFO: newton iterations have converged due to newtres condition&#39;
-    else
-      write(*,&#39;(a)&#39;) &amp;
-        &#39;INFO: user-specified newton loop convergence condition satisfied&#39;
-    end if
-  else
-    write(*,&#39;(a)&#39;) &#39;ERROR: newton solver did not converge&#39;
-    ierror = 5
-    exit time_loop
-  end if
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">&gt;</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+<span style="color: #808080;">    formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(ierror))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;)&quot;</span>
+    <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F5F87;">'ERROR: problem in some solution routine within newton loop: error number = '</span><span style="color: #808080;">,ierror</span>
+    <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> time_loop</span>
+  <span style="color: #5F5FD7; font-weight: bold;">else</span> <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">&lt;</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+    <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: newton solver did not converge due to user created stop file'</span>
+    <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> time_loop</span>
+  <span style="color: #5F5FD7; font-weight: bold;">else</span> <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (newtconverged) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (newtres </span><span style="color: #5F5FD7; font-weight: bold;">&lt;=</span><span style="color: #808080;"> newtrestol) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'INFO: newton iterations have converged due to newtres condition'</span>
+    <span style="color: #5F5FD7; font-weight: bold;">else</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+        <span style="color: #5F5F87;">'INFO: user-specified newton loop convergence condition satisfied'</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+  <span style="color: #5F5FD7; font-weight: bold;">else</span>
+    <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'ERROR: newton solver did not converge'</span>
+<span style="color: #808080;">    ierror </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #FFAF00;">5</span>
+    <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> time_loop</span>
+  <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-! if user has requested to halt then write message
-  if (transient_simulation.and.check_stopfile(&quot;stoptime&quot;)) write(*,&#39;(a)&#39;) &amp;
-    &#39;INFO: user has requested simulation stop via a stop file&#39;
+<span style="color: #87D7D7;">! if user has requested to halt then write message</span>
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (transient_simulation</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">check_stopfile(</span><span style="color: #5F5F87;">&quot;stoptime&quot;</span><span style="color: #808080;">)) </span><span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+    <span style="color: #5F5F87;">'INFO: user has requested simulation stop via a stop file'</span>
 
-! silly bell functionality!
-  if (check_condition(&quot;bell&quot;)) call ring_bell
+<span style="color: #87D7D7;">! silly bell functionality!</span>
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (check_condition(</span><span style="color: #5F5F87;">&quot;bell&quot;</span><span style="color: #808080;">)) </span><span style="color: #0087D7;">call</span><span style="color: #808080;"> ring_bell</span>
 
-! write output if output is due, or we are finishing
-  if ((transient_simulation.and.(check_condition(&quot;output&quot;).or.(timestepout /= 0.and.mod(timestep,max(timestepout,1)) == 0).or. &amp;
-    check_condition(&quot;stop&quot;).or.timestep &gt;= timestepmax.or.check_stopfile(&quot;stoptime&quot;).or.check_dumpfile(&quot;dumptime&quot;))).or. &amp;
-    .not.transient_simulation) then
-    if (check_dumpfile(&quot;dumptime&quot;)) write(*,&#39;(a)&#39;) &#39;INFO: user has requested output via a dump file&#39;
-    call time_process
-    if (output_timings.and.output_timings_on_mesh_write.and.(timestepout /= 0.and.mod(timestep,max(timestepout,1)) == 0)) &amp;
-      write(*,&#39;(2(a,g10.3))&#39;) &#39;TIMING: total wall time = &#39;,total_wall_time,&#39;: total cpu time = &#39;,total_cpu_time  
-    call output
-    if (trim(output_step_file) == &quot;timestep&quot;) call output_step(action=&quot;write&quot;,do_update_outputs=.false.)
-    call time_process(description=&#39;output&#39;)
-  else
-    if (trim(output_step_file) == &quot;timestep&quot;) call output_step(action=&quot;write&quot;)
-  end if
+<span style="color: #87D7D7;">! write output if output is due, or we are finishing</span>
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> ((transient_simulation</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">(check_condition(</span><span style="color: #5F5F87;">&quot;output&quot;</span><span style="color: #808080;">)</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span><span style="color: #808080;">(timestepout </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #5F8787;">mod</span><span style="color: #808080;">(timestep,</span><span style="color: #5F8787;">max</span><span style="color: #808080;">(timestepout,</span><span style="color: #FFAF00;">1</span><span style="color: #808080;">)) </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">)</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span> <span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+<span style="color: #808080;">    check_condition(</span><span style="color: #5F5F87;">&quot;stop&quot;</span><span style="color: #808080;">)</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span><span style="color: #808080;">timestep </span><span style="color: #5F5FD7; font-weight: bold;">&gt;=</span><span style="color: #808080;"> timestepmax</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span><span style="color: #808080;">check_stopfile(</span><span style="color: #5F5F87;">&quot;stoptime&quot;</span><span style="color: #808080;">)</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span><span style="color: #808080;">check_dumpfile(</span><span style="color: #5F5F87;">&quot;dumptime&quot;</span><span style="color: #808080;">)))</span><span style="color: #5F5FD7; font-weight: bold;">.or.</span> <span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+    <span style="color: #5F5FD7; font-weight: bold;">.not.</span><span style="color: #808080;">transient_simulation) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (check_dumpfile(</span><span style="color: #5F5F87;">&quot;dumptime&quot;</span><span style="color: #808080;">)) </span><span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'INFO: user has requested output via a dump file'</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (output_timings</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">output_timings_on_mesh_write</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #808080;">(timestepout </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #5F5FD7; font-weight: bold;">.and.</span><span style="color: #5F8787;">mod</span><span style="color: #808080;">(timestep,</span><span style="color: #5F8787;">max</span><span style="color: #808080;">(timestepout,</span><span style="color: #FFAF00;">1</span><span style="color: #808080;">)) </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">)) </span><span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(2(a,g10.3))'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'TIMING: total wall time = '</span><span style="color: #808080;">,total_wall_time,</span><span style="color: #5F5F87;">': total cpu time = '</span><span style="color: #808080;">,total_cpu_time  </span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> output</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(output_step_file) </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #5F5F87;">&quot;timestep&quot;</span><span style="color: #808080;">) </span><span style="color: #0087D7;">call</span><span style="color: #808080;"> output_step(</span><span style="color: #5F5FD7; font-weight: bold;">action</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">&quot;write&quot;</span><span style="color: #808080;">,do_update_outputs</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #87005F;">.false.</span><span style="color: #808080;">)</span>
+    <span style="color: #0087D7;">call</span><span style="color: #808080;"> time_process(description</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">'output'</span><span style="color: #808080;">)</span>
+  <span style="color: #5F5FD7; font-weight: bold;">else</span>
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(output_step_file) </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #5F5F87;">&quot;timestep&quot;</span><span style="color: #808080;">) </span><span style="color: #0087D7;">call</span><span style="color: #808080;"> output_step(</span><span style="color: #5F5FD7; font-weight: bold;">action</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">&quot;write&quot;</span><span style="color: #808080;">)</span>
+  <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-  if (transient_simulation) then
-    formatline = &quot;(a,&quot;//trim(dindexformat(timestep))//&quot;,a)&quot;
-    write(*,fmt=formatline) repeat(&#39;-&#39;,timeline)//&#39; timestep &#39;,timestep,&#39; ending &#39;//repeat(&#39;-&#39;,totalline-timeline+2)
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (transient_simulation) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+<span style="color: #808080;">    formatline </span><span style="color: #5F5FD7; font-weight: bold;">=</span> <span style="color: #5F5F87;">&quot;(a,&quot;</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(dindexformat(timestep))</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">&quot;,a)&quot;</span>
+    <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'-'</span><span style="color: #808080;">,timeline)</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">' timestep '</span><span style="color: #808080;">,timestep,</span><span style="color: #5F5F87;">' ending '</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'-'</span><span style="color: #808080;">,totalline</span><span style="color: #5F5FD7; font-weight: bold;">-</span><span style="color: #808080;">timeline</span><span style="color: #5F5FD7; font-weight: bold;">+</span><span style="color: #FFAF00;">2</span><span style="color: #808080;">)</span>
      
-    if (convergence_details_file) then
-      write(fconverge,fmt=formatline) repeat(&#39;-&#39;,timeline)//&#39; timestep &#39;,timestep,&#39; ending &#39;//repeat(&#39;-&#39;,totalline-timeline+2)
-      call flush(fconverge)
-    end if
-  end if
+    <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+      <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(fconverge,</span><span style="color: #5F5FD7; font-weight: bold;">fmt</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #808080;">formatline) </span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'-'</span><span style="color: #808080;">,timeline)</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F5F87;">' timestep '</span><span style="color: #808080;">,timestep,</span><span style="color: #5F5F87;">' ending '</span><span style="color: #5F5FD7; font-weight: bold;">//</span><span style="color: #5F8787;">repeat</span><span style="color: #808080;">(</span><span style="color: #5F5F87;">'-'</span><span style="color: #808080;">,totalline</span><span style="color: #5F5FD7; font-weight: bold;">-</span><span style="color: #808080;">timeline</span><span style="color: #5F5FD7; font-weight: bold;">+</span><span style="color: #FFAF00;">2</span><span style="color: #808080;">)</span>
+      <span style="color: #0087D7;">call</span><span style="color: #808080;"> flush(fconverge)</span>
+    <span style="color: #5F5FD7; font-weight: bold;">end if</span>
+  <span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-! if not a transient simulation then exit loop
-  if (.not.transient_simulation) exit time_loop
+<span style="color: #87D7D7;">! if not a transient simulation then exit loop</span>
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F5FD7; font-weight: bold;">.not.</span><span style="color: #808080;">transient_simulation) </span><span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;"> time_loop</span>
 
-end do time_loop
-!---------------------------------------
+<span style="color: #5F5FD7; font-weight: bold;">end do</span><span style="color: #808080;"> time_loop</span>
+<span style="color: #87D7D7;">!---------------------------------------</span>
 
-if (trim(output_step_file) == &quot;final&quot;) call output_step(action=&quot;write&quot;)
+<span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(output_step_file) </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #5F5F87;">&quot;final&quot;</span><span style="color: #808080;">) </span><span style="color: #0087D7;">call</span><span style="color: #808080;"> output_step(</span><span style="color: #5F5FD7; font-weight: bold;">action</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">&quot;write&quot;</span><span style="color: #808080;">)</span>
 
-if (output_timings) write(*,&#39;(2(a,g10.3))&#39;) &#39;TIMING: total wall time = &#39;,total_wall_time,&#39;: total cpu time = &#39;,total_cpu_time
+<span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (output_timings) </span><span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(2(a,g10.3))'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'TIMING: total wall time = '</span><span style="color: #808080;">,total_wall_time,</span><span style="color: #5F5F87;">': total cpu time = '</span><span style="color: #808080;">,total_cpu_time</span>
 
-! if there was an error or earlier stop requested then exit without closing timestep
-if (ierror /= 0) then
-  write(*,&#39;(a)&#39;) &quot;WARNING: the last output is not converged&quot;
-  write(*,&#39;(a)&#39;) &#39;INFO: a debug output file (debug.output.msh) is being written that contains the current values of &#39;// &amp;
-    &#39;all variable components&#39;
-  call output(debug_dump=.true.)
-  if (trim(output_step_file) == &quot;timestep&quot;) call output_step(action=&quot;write&quot;,do_update_outputs=.false.)
-  write(*,&#39;(a)&#39;) &quot;ERROR: the simulation was not successful&quot;
-else
-  write(*,&#39;(a)&#39;) &quot;SUCCESS: the simulation finished gracefully&quot;
-end if
+<span style="color: #87D7D7;">! if there was an error or earlier stop requested then exit without closing timestep</span>
+<span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #5F5FD7; font-weight: bold;">then</span>
+  <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">&quot;WARNING: the last output is not converged&quot;</span>
+  <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">'INFO: a debug output file (debug.output.msh) is being written that contains the current values of '</span><span style="color: #5F5FD7; font-weight: bold;">//</span> <span style="color: #008700; background-color: #00AFFF;">&amp;</span>
+    <span style="color: #5F5F87;">'all variable components'</span>
+  <span style="color: #0087D7;">call</span><span style="color: #808080;"> output(debug_dump</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #87005F;">.true.</span><span style="color: #808080;">)</span>
+  <span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (</span><span style="color: #5F8787;">trim</span><span style="color: #808080;">(output_step_file) </span><span style="color: #5F5FD7; font-weight: bold;">==</span> <span style="color: #5F5F87;">&quot;timestep&quot;</span><span style="color: #808080;">) </span><span style="color: #0087D7;">call</span><span style="color: #808080;"> output_step(</span><span style="color: #5F5FD7; font-weight: bold;">action</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">&quot;write&quot;</span><span style="color: #808080;">,do_update_outputs</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #87005F;">.false.</span><span style="color: #808080;">)</span>
+  <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">&quot;ERROR: the simulation was not successful&quot;</span>
+<span style="color: #5F5FD7; font-weight: bold;">else</span>
+  <span style="color: #5F5FD7; font-weight: bold;">write</span><span style="color: #808080;">(</span><span style="color: #5F5FD7; font-weight: bold;">*</span><span style="color: #808080;">,</span><span style="color: #5F5F87;">'(a)'</span><span style="color: #808080;">) </span><span style="color: #5F5F87;">&quot;SUCCESS: the simulation finished gracefully&quot;</span>
+<span style="color: #5F5FD7; font-weight: bold;">end if</span>
 
-if (convergence_details_file) close(fconverge)
-call output_step(action=&quot;close&quot;)
+<span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (convergence_details_file) </span><span style="color: #5F5FD7; font-weight: bold;">close</span><span style="color: #808080;">(fconverge)</span>
+<span style="color: #0087D7;">call</span><span style="color: #808080;"> output_step(</span><span style="color: #5F5FD7; font-weight: bold;">action</span><span style="color: #5F5FD7; font-weight: bold;">=</span><span style="color: #5F5F87;">&quot;close&quot;</span><span style="color: #808080;">)</span>
 
-if (ierror /= 0) call exit(ierror) ! exit while setting ierror as exit status
+<span style="color: #5F5FD7; font-weight: bold;">if</span><span style="color: #808080;"> (ierror </span><span style="color: #5F5FD7; font-weight: bold;">/=</span> <span style="color: #FFAF00;">0</span><span style="color: #808080;">) </span><span style="color: #0087D7;">call</span> <span style="color: #5F5FD7; font-weight: bold;">exit</span><span style="color: #808080;">(ierror) </span><span style="color: #87D7D7;">! exit while setting ierror as exit status</span>
 
-end program arb
+<span style="color: #0087D7;">end program</span><span style="color: #808080;"> arb</span>
 
-!-----------------------------------------------------------------
-</code></pre>
+<span style="color: #87D7D7;">!-----------------------------------------------------------------</span>
+</pre>
+
 <!-- now finishing in code in markdown -->
 
 
+<!-- post comments -->
+</div>
+<div id="rightheader">
+
+</div>
+<div id="rightcontents">
+
+</div>
+</div>
+</body>
+
+<!-- add link definitions to markdown -->
+
+</html>
+<!-- post comments -->
 
 
