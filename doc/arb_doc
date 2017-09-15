@@ -56,7 +56,7 @@ function usage () {
   echo "  --update: whether to recreate the tree (default)";
   echo "  --no-update: do not recreate the tree";
   echo "  --content: file directory that contains the content, in primarily markdown index.md files (no trailing slash, default $arb_dir/doc/content)"
-  echo "  --html: file directory that the html contents will be written to (no trailing slash, default $root_dir)"
+  echo "  --html: file directory that the html contents will be written to (no trailing slash, default $root_dir).  Note, also sets root_var to this directory (full path)."
   echo "  --help|-h: display this HELP INFO";
   echo;
   exit 1;
@@ -85,6 +85,9 @@ function resolve_real_path {
 # idea from http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
 function sanitise_filename {
   echo "$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")";
+}
+function sanitise_dirname {
+  echo "$(cd "$1" && pwd -P)";
 }
 #-------------------------------------------------------------------------------
 # main script:
@@ -168,7 +171,7 @@ do
       ;;
     "--html") # get html file directory
       shift;
-      if [ -n "$1" ]; then html_dir="$1"; else echo "ERROR: html directory not found after option"; usage; fi;
+      if [ -n "$1" ]; then html_dir="$(sanitise_dirname "$1")"; root_var=$html_dir; else echo "ERROR: html directory not found after option"; usage; fi;
       ;;
     "--help"|"-h") usage;;
     "--"*|"-"*) echo "ERROR: unknown option $1 passed to arb_doc"; usage;;
