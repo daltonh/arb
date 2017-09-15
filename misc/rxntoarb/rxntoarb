@@ -1,0 +1,666 @@
+#!/usr/bin/env ruby
+
+PROGNAME = 'rxntoarb'
+VERSION = 2.1
+DATE = '2017-09-07'
+info = "#{PROGNAME} v. #{VERSION} (#{DATE})
+Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
+(C) Copyright Christian Biscombe 2016-2017"
+
+require 'optparse'
+require_relative 'lib/units'
+
+# Methods {{{
+
+# Error handling {{{
+def error(msg,type=:ERROR)
+  warn "#{type} in #{$infile} at line #{$.}: #{msg}"
+  abort if type == :ERROR
+end
+
+#}}}
+# Debugging output {{{
+def print_debug(vars,&b)
+  vars.split(/,\s*/).each { |var| warn "#{var}: #{eval(var.to_s,b.binding)}" } if $options[:debug]
+end
+
+#}}}
+# Create a unique identifier (of the form 'species@region') for each species {{{
+def tag(species,region)
+  "#{species}#{"@#{region}" if region}"
+end
+
+#}}}
+# Format concentration strings {{{
+# Use s for surface concentrations and c for volume (or none_centred) concentrations
+def conc(species,region)
+  "#{$surface_regions.include?(region) ? 's' : 'c'}_#{tag(species,region)}"
+end
+
+#}}}
+# Create an array of regions from a comma-separated string {{{
+def region_array(string)
+  string.split(/,\s*/).map { |region| region.tr('<>','').strip }
+end
+
+#}}}
+# Decide whether region or reaction is to be excluded based on include_only or exclude statements {{{
+def exclude(string,type=:default)
+  return false unless $options[:keep]
+  exclude = false
+  $options[:keep].each do |keep,regexp|
+    if type == :region
+      next unless regexp.source =~ /\A@/ # first character in regexp must be @ to operate on regions
+    end
+    if keep == :include_only
+      exclude = exclude || string !~ regexp # exclude if string doesn't match regexp
+    else
+      exclude = exclude || string =~ regexp # exclude if string matches regexp
+    end
+  end
+  exclude
+end
+
+#}}}
+# Parse reactions, extracting kinetic parameters and creating rate expressions {{{
+def parse_reaction(reaction)
+  indent, aka, reactants, intermediates, enzyme, arrow, products, parameters, comment = reaction.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
+  if indent
+    raise 'alias specified for indented reaction' if aka
+    raise 'kinetic parameters specified for indented reaction' if parameters
+  else
+    raise 'missing kinetic parameters' unless parameters
+  end
+  rtype = if intermediates
+            :twostep
+          elsif enzyme
+            :MichaelisMenten
+          elsif arrow == '<=>'
+            :reversible
+          else
+            :irreversible
+          end
+
+  # Convert strings to hashes with species and region as keys and stoichiometric coefficients as values
+  regions = [] # store regions associated with this reaction (at most one surface_region and one volume_region)
+  hashify = lambda do |string|
+    return nil if /\A\s*\z/ =~ string
+    species_hash = Hash.new(0)
+    string.split(/\s+\+\s+/).each do |term| # spaces around + required so that + can be used in species names (e.g. ions)
+      begin
+        coeff, species, region = /\A\s*(\d+)?\s*[*.]?\s*([^@]+?)(?:@(\w+|<[^>]+>))?\s*\z/.match(term).captures # angle brackets optional in region names unless they contain spaces or special characters
+        coeff ||= 1
+        species.tr!('<>','')
+        unless $options[:none_centred]
+          unless region
+            if ($surface_regions+$volume_regions.keys).size == 1 # if there is only one region, it needn't be specified explicitly
+              region = ($surface_regions+$volume_regions.keys)[0].dup
+            else
+              raise "missing region for species #{species}"
+            end
+          end
+          region.tr!('<>','')
+          raise "unknown region #{region}" unless ($surface_regions+$volume_regions.keys).include?(region)
+        end
+        species_hash[[species,region]] += coeff.to_i
+        $sources[[species,region,$options[:none_centred] ? nil : region]] ||= '0.d0' # ensure that species has a source term originating in region
+        $magnitudes[[species,region]] ||= []
+        regions << region
+        if $volume_regions.keys.include?(region) # add species to $volume_regions hash so we know that a source term is required
+          $volume_regions[region][0] << species unless $volume_regions[region][0].include?(species)
+        end
+      ensure
+        print_debug('species,coeff,region'){}
+      end
+    end
+    species_hash
+  end
+  reactants = hashify.call(reactants)
+  intermediates &&= hashify.call(intermediates)
+  enzyme &&= hashify.call(enzyme)
+  products &&= hashify.call(products)
+  regions.uniq!
+  case rtype
+  when :twostep
+    raise 'no intermediates in two-step reaction' if !intermediates
+  when :MichaelisMenten
+    raise 'more than one reactant in Michaelis-Menten reaction' if reactants.size > 1 || reactants.values.max > 1
+    raise 'no enzyme in Michaelis-Menten reaction' if !enzyme
+    raise 'more than one enzyme in Michaelis-Menten reaction' if enzyme.size > 1 || enzyme.values.max > 1
+  when :reversible
+    raise 'no products in reversible reaction' if !products
+  end
+
+  # Create labels
+  @labels ||= []
+  @parent_label ||= ''
+  format_label = ->(hash) { hash.keys.map { |species_and_region| "#{tag(*species_and_region)}" }.join(',') } # combines each hash key (which is an array) into a single string, then joins combined keys into a comma-separated string
+  label = format_label.call(reactants)
+  label << "|#{format_label.call(intermediates)}" if intermediates
+  label << "|#{format_label.call(enzyme)}" if enzyme
+  label << "|#{format_label.call(products)}" if products
+  raise "duplicate label #{label}. Most likely there is a duplicate reaction" if @labels.include?(label)
+  @labels << label
+  @parent_label = label.dup unless indent # for indented reactions (children), @parent_label is the label of the previous non-indented reaction (parent)
+  $aliases[aka] ||= @parent_label if aka
+
+  # Handle parameters
+  if parameters
+    # Check that all required kinetic parameters are present
+    check = case rtype
+            when :twostep
+              %w[ka kd k]
+            when :MichaelisMenten
+              %w[KM kcat]
+            when :reversible
+              %w[ka kd]
+            else
+              ['k']
+            end
+    check.each { |name| raise "missing #{name} for #{rtype} reaction" unless parameters =~ /\b#{Regexp.union(PARAMETER_NAMES.map { |paralias,parname| parname == name ? paralias : nil }.compact)}\s*=/ }
+    # Read kinetic parameters and convert to arb format
+    @parameter_units = {}
+    @check_units ||= true
+    parameters.scan(/(\S+)\s*=\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?|'[^']*'|"[^"]*")\s*(.*?)?(?:,|$)/) do |name, value, units|
+      begin
+        raise "unknown parameter #{name}" unless PARAMETER_NAMES[name]
+        if value =~ /^['"]/ # if parameter is defined in terms of a previously defined parameter (i.e. it's a string), then it won't/shouldn't have units
+          units = nil
+          @check_units = false
+        end
+        if units
+          value, units = Units.convert("#{value} #{units}",'',{double_precision: true, sig_figs: true}) # convert to SI units
+          @parameter_units[PARAMETER_NAMES[name]] = units # save units for consistency checking
+          @check_units = true
+        end
+        $constants << "CONSTANT <#{PARAMETER_NAMES[name]}_#{@parent_label}>#{" [#{units}]" if units} #{value} #{comment}#{" # alias: #{aka} => #{$aliases[aka]}" if aka}"
+      ensure
+        print_debug('name,value,units,$constants.last'){}
+      end
+    end
+  end
+
+  # Determine reaction location (source_region) and centring
+  if $options[:none_centred]
+    centring = :NONE
+    source_region = nil
+  else
+    if $surface_regions - regions != $surface_regions # reaction is occurring on surface
+      centring = :FACE
+      source_region = (regions - $volume_regions.keys).first
+    else # reaction is occurring in volume
+      centring = :CELL
+      source_region = regions.first
+    end
+  end
+
+  # Check unit consistency
+  units = []
+  extract_units = ->(array) { array.map { |_,region| $surface_regions.include?(region) ? 'mol m-2' : 'mol m-3' } }
+  consistency_check = lambda do
+    return if regions.empty? # concentration units unknown so skip check
+    units << "mol #{centring == :FACE ? 'm-2' : 'm-3'} s-1" unless $options[:none_centred] # reaction rate should have these units based on reaction location
+    units.map! { |unit| Units.convert(unit,'').last }.uniq! # units array will be left with only one element if units are consistent
+    error("inconsistent units in reaction rate (#{units.first} vs #{units.last})",:WARNING) unless units.size == 1 # check that terms in rate expressions have consistent units
+    error("reaction rate has unexpected units (#{units.first})",:WARNING) unless units.first =~ /\Amol m-[23] s-1\z/ # check that reaction rate actually has units of reaction rate
+  end
+
+  # Create reaction rate and source terms
+  rates_and_sources = lambda do |species_hash,sources_only,source_sign|
+    species_hash.each do |(species,region),coeff|
+      $rates.last << "*<#{conc(species,region)}_pos>#{"**#{coeff}" if coeff > 1}" unless sources_only # sources_only = true means that rate expression is already complete
+      $sources[[species,region,source_region]] = '' if $sources[[species,region,source_region]] == '0.d0'
+      ($sources[[species,region,source_region]] ||= '') << "#{source_sign}#{"#{coeff}.d0*" if coeff > 1}<R_#{label}>" # add rate to source term for this species
+    end
+    if source_sign == :+ || !products # finalise rate expression
+      $rates.last << "\"#{" ON <#{source_region}>" if source_region}"
+      print_debug('$rates.last'){}
+    end
+  end
+
+  # Format rate expression for reversible reaction
+  reversible_reaction = lambda do |reversible_reactants,reversible_products|
+ 	  $rates << "#{centring}_DERIVED <R_#{label}> \"<ka_#{@parent_label}>"
+ 	  rates_and_sources.call(reversible_reactants,false,:-)
+ 	  $rates.last << "-<kd_#{@parent_label}>"
+ 	  rates_and_sources.call(reversible_products,false,:+)
+    if @check_units
+      units = ["#{@parameter_units['ka']} #{extract_units.call(reversible_reactants.keys).join(' ')}"] # units of forward reaction rate
+      units << "#{@parameter_units['kd']} #{extract_units.call(reversible_products.keys).join(' ')}" # units of reverse reaction rate
+      consistency_check.call
+    end
+  end
+
+# Format rate expression for irreversible reaction
+  irreversible_reaction = lambda do |irreversible_reactants,irreversible_products|
+ 	  $rates << "#{centring}_DERIVED <R_#{label}> \"<k_#{@parent_label}>"
+ 	  rates_and_sources.call(irreversible_reactants,false,:-)
+    rates_and_sources.call(irreversible_products,true,:+) if irreversible_products
+    if @check_units
+      units = ["#{@parameter_units['k']} #{extract_units.call(irreversible_reactants.keys).join(' ')}"] # units of reaction rate
+      consistency_check.call
+    end
+  end
+
+  # Generate rate expressions and source terms for each rtype
+  case rtype
+  when :twostep
+    label << '_i'
+    reversible_reaction.call(reactants,intermediates)
+ 	  label << 'i'
+    irreversible_reaction.call(intermediates,products)
+    $reactions_unordered << [reactants.keys - intermediates.keys, reactants.keys & intermediates.keys, intermediates.keys - reactants.keys] # used to determine magnitudes
+    $reactions_unordered << $reactions_unordered.last.reverse # save the reverse reaction also
+    $reactions_unordered << [reactants.keys - products.keys, reactants.keys & products.keys, products.keys - reactants.keys] if products # product magnitudes depend on reactants, not intermediates
+  when :MichaelisMenten
+    # Format rate expression for Michaelis-Menten reaction
+    reactant_conc = "#{conc(*reactants.keys.first)}_pos"
+    enzyme_conc = "#{conc(*enzyme.keys.first)}_pos"
+    $rates << "#{centring}_DERIVED <R_#{label}> \"<kcat_#{@parent_label}>*<#{enzyme_conc}>*<#{reactant_conc}>/(<KM_#{@parent_label}>+<#{reactant_conc}>)"
+ 	  rates_and_sources.call(reactants,true,:-)
+    if products
+      rates_and_sources.call(products,true,:+)
+      $reactions_unordered << [reactants.keys, enzyme.keys, products.keys] # used to determine magnitudes
+    end
+    if @check_units
+      unless regions.empty? # check that reactant_conc has same units as KM
+        reactant_units = $surface_regions.include?(reactants.keys.first[1]) ? 'mol m-2' : 'mol m-3'
+        error("units of reactant concentration (#{reactant_units}) inconsistent with units of KM (#{@parameter_units['KM']})",:WARNING) unless reactant_units == @parameter_units['KM']
+      end
+      units = ["#{@parameter_units['kcat']} #{$surface_regions.include?(enzyme.keys.first[1]) ? 'mol m-2' : 'mol m-3'}"] # units of reaction rate
+      consistency_check.call
+    end
+  when :reversible
+    reversible_reaction.call(reactants,products)
+    $reactions_unordered << [reactants.keys - products.keys, reactants.keys & products.keys, products.keys - reactants.keys] # used to determine magnitudes
+    $reactions_unordered << $reactions_unordered.last.reverse # save the reverse reaction also
+  else
+    irreversible_reaction.call(reactants,products)
+    $reactions_unordered << [reactants.keys - products.keys, reactants.keys & products.keys, products.keys - reactants.keys] if products # used to determine magnitudes
+  end
+
+ensure
+  print_debug('rtype,reactants,intermediates,enzyme,products,label,@parent_label,aka,centring,source_region'){}
+end
+
+#}}}
+
+#}}}
+# Main program {{{
+
+# Process command-line options; initialise {{{
+$options = {}
+$options[:none_centred] = true # none_centred by default; overridden by -n flag or surface|volume_region statements
+$options[:template_file] = File.exists?("#{Dir.pwd}/#{PROGNAME}rc") ? "#{Dir.pwd}/#{PROGNAME}rc" : "#{File.dirname(File.realpath(__FILE__))}/#{PROGNAME}rc" # if it exists, default to template file in the working directory; otherwise use global template. In Ruby >= 2.0.0 can replace File.dirname(File.realpath(__FILE__)) with __dir__
+opts = OptionParser.new do |opt|
+  opt.banner = "#{info}\nUsage: #{PROGNAME} [options] <list of input files>, where options may be:"
+  opt.on('-d', '--debug', 'Print debugging output') { $options[:debug] = true }
+  opt.on('-i', '--interactive', 'Prompt before overwriting existing output file') { $options[:interactive] = true }
+  opt.on('-n', '--none-centred', 'Activate ODE mode: generate ODEs (no spatial dependence) rather than PDEs') { $options[:none_centred] = :flag }
+  opt.on('-o', '--outfile <output_file>', 'Write output to output_file (option ignored if multiple input files)') { |outfile| $options[:outfile] = outfile }
+# opt.on('-s', '--sbml <sbml_output_file>', 'Write SBML file') { } # TODO in v. 3 (input from SBML will be assumed if input file extension is .xml or .sbml so no option required)
+  opt.on('-t', '--template <template_file>', 'Read arb equation format from template_file') { |template_file| $options[:template_file] = template_file }
+  opt.on('-v', '--version', 'Print version information') { puts info; exit if ARGV.empty? }
+end
+begin opts.parse!
+rescue OptionParser::InvalidOption => msg
+  warn opts
+  abort "ERROR: #{msg}"
+end
+if ARGV.empty?
+  warn opts
+  abort 'ERROR: no input file specified'
+end
+print_debug('$options'){}
+
+abort "ERROR: could not find template file #{$options[:template_file]}" unless File.exists?($options[:template_file])
+TEMPLATE = File.read($options[:template_file])
+
+PARAMETER_NAMES = {'k' => 'k', 'ka' => 'ka', 'kf' => 'ka', 'kon' => 'ka', 'kd' => 'kd', 'kr' => 'kd', 'koff' => 'kd', 'KM' => 'KM', 'Km' => 'KM', 'kcat' => 'kcat'}
+
+ARGV.each do |infile|
+  $infile = infile
+  abort "ERROR: specified input file #{$infile} does not exist" unless File.exists?($infile)
+  outfile = $options[:outfile] && ARGV.size == 1 ? $options[:outfile] : File.basename($infile,'.*') + '.arb'
+  while $options[:interactive] && File.exists?(outfile)
+    print "WARNING: Output file #{outfile} already exists. Overwrite it? [y/n] "
+    break if $stdin.gets =~ /^y(es)?$/i
+    print "Enter output file name (for input file #{$infile}): "
+    outfile = $stdin.gets.strip
+  end
+  print_debug('$infile,outfile'){}
+
+  # Initialise
+  $surface_regions = [] # contains all surface_regions
+  $volume_regions = {} # contains all volume_regions as keys. Values is an array of two subarrays: first subarray contains all species defined on that volume_region; second subarray contains all surface_regions that bound that volume_region
+  $header = []
+  $aliases = {}
+  $constants = []
+  $rates = []
+  $sources = {}
+  $equations = []
+  $species_ordered = {} # keeps track of the order in which new species appear (used to determine magnitudes)
+  $reactions_unordered = [] # save reactions in the order given in the input file
+  $reactions_ordered = [] # reactions ordered to reflect species dependencies: later reactions contain species that are produced in earlier reactions
+  $magnitudes = {}
+
+  #}}}
+  # Parse input file {{{
+  begin
+    surface_region_list ||= [nil]
+    volume_region_list ||= [nil]
+    warn "#{'*'*200}\nINFO: parsing input file #{$infile}" if $options[:debug]
+    File.foreach($infile) do |line|
+      if $options[:debug]
+        warn '='*200
+        print_debug('$.,line'){}
+      end
+      case line
+      when /^\s*(#|$)/ # skip full-line comments and blank lines
+        next
+
+      when /^\s*!/ # comment lines to be retained in the header start with !
+        $header << line.sub('!','#').chomp
+
+      when /^\s*(include_only|exclude)\s+\/(.*?)(?<!\\)\/(i)?/i # include/exclude lines based on regexp match. Maximum of one include and one exclude statement allowed
+        $options[:keep] ||= {}
+        $options[:keep][$1.to_sym] = Regexp.new($2,$3)
+
+      when /^\s*(surface|volume)_regions?\s+([^#]+)/i # define surface or volume regions and add to appropriate array/hash
+        $options[:none_centred] = false unless $options[:none_centred] == :flag # not none_centred unless -n flag given on command line
+        location = $1.downcase
+        eval "#{location}_region_list = []"
+        $2.scan(/\w+|<[^>]+>/) do |region| # angle brackets optional unless region name contains spaces or special characters
+          if exclude("@#{region}",:region) # region excluded by include_only or exclude statement
+            warn "INFO: region #{region} excluded due to include_only or exclude statement" if $options[:debug]
+            next
+          end
+          region.tr!('<>','')
+          eval "#{location}_region_list << region unless #{location}_region_list.include?(region)"
+          if location == 'surface'
+            $surface_regions << region unless $surface_regions.include?(region)
+          else
+            $volume_regions[region] ||= [[],[]]
+          end
+        end
+
+      when /^\s*initial_species\s+([^#]+)/i # these species are present initially and determine magnitudes of all other species
+        $1.scan(/(?<species>[^@]+)(?:@(?<region>\w+|<[^>]+>|(?<array>\[((?>[^\[\]]+)|\g<array>)*\])))?,?\s*/) do |species_list,region_list|
+          species_list = species_list[/\A\[?(.*?)\]?\Z/,1].split(/,\s*/)
+          region_list &&= region_array(region_list[/\A\[?(.*?)\]?\Z/,1])
+          region_list ||= [nil]
+          region_list.each do |region|
+            species_list.each do |species|
+              species.tr!('<>','')
+              $species_ordered[[species,region]] = -1 # species present initially are assigned a value of -1 in $species_ordered; all other species will get a value >= 0
+            end
+          end
+        end
+
+      else # reaction or syntax error
+        unless $options[:none_centred] == :flag
+          raise 'missing surface_region definition for reaction' if surface_region_list == [nil] and line =~ /[^#]*?@s\b/
+          raise 'missing volume_region definition for reaction' if volume_region_list == [nil] and line =~ /[^#]*?@v\b/
+        end
+        volume_region_list.each do |volume_region|
+          surface_region_list.each do |surface_region|
+            if surface_region && volume_region
+              $volume_regions[volume_region][1] << surface_region unless $volume_regions[volume_region][1].include?(surface_region) # keep track of surface_regions that bound each volume_region
+            end
+            rline = line.dup # dup line as substitutions below need to be done for each surface_region and volume_region
+            rline.gsub!(/@s\b/,"@#{surface_region}") if surface_region
+            rline.gsub!(/@v\b/,"@#{volume_region}") if volume_region
+            reaction = /^(\s+)?(?:(.+?):\s+)?(.+?)(?:<=>(.+?)->|{(.+?)}->|(<=>|->))([^;#]+)?;?([^#\n]+)?(#.*)?$/.match(rline)
+            raise 'syntax error or unrecognised reaction type' unless reaction
+            if exclude(rline) # reaction excluded by include_only or exclude statement
+              warn 'INFO: reaction excluded due to include_only or exclude statement' if $options[:debug]
+              next
+            end
+            parse_reaction(reaction)
+          end
+        end
+      end
+    end
+    warn "INFO: parse complete for input file #{$infile}\n#{'*'*200}" if $options[:debug]
+  rescue => msg
+    error(msg)
+  ensure
+    print_debug('$header,$surface_regions,$volume_regions,$sources,$reactions_unordered'){}
+  end
+
+  #}}}
+  # Perform alias substitution on any kinetic parameters defined as strings {{{
+  $constants.each do |term|
+    $aliases.each { |old,new| term.sub!(/<#{$1}_#{$2}>/,"<#{$1}_#{new}>") << " # alias: #{old} => #{new}" if term =~ /<(#{Regexp.union(PARAMETER_NAMES.values)})_(#{Regexp.escape(old)})>/ }
+  end
+
+  #}}}
+  # Store region areas/volumes and define new regions for equations {{{
+  unless $options[:none_centred]
+    $surface_regions.each { |region| $constants << "CONSTANT <area(#{region})> \"facesum(<<radius_f>>*<facearea>,region=<#{region}>)\"" }
+    $volume_regions.each do |region,(species_list,surface_region_list)|
+      $constants << "CONSTANT <volume(#{region})> \"cellsum(<<radius_c>>*<cellvol>,region=<#{region}>)\""
+      $constants << "FACE_REGION <associatedfaces(#{region})> \"associatedwith(<#{region}>)\""
+      $constants << "CELL_REGION <associatedcells(#{region})> \"associatedwith(<#{region}>)\""
+      $constants << "CELL_REGION <domainof(#{region})> \"domainof(<#{region}>)\""
+      surface_region_list.each do |surface_region|
+        species_list.each { |species| $sources[[species,region,surface_region]] ||= "0.d0" } # ensure that each species within volume_region has a source term on each bounding surface_region
+      end
+    end
+  end
+
+  #}}}
+  # Format source terms and generate equations based on template file {{{
+  begin
+    warn "#{'*'*200}\nINFO: creating equations" if $options[:debug]
+    $sources.each_key do |key|
+      species,region,source_region = key
+      # Check whether initial species are produced or consumed in any reactions; if not (i.e. enzymes) don't include equations
+      if $species_ordered[[species,$options[:none_centred] ? region : source_region]] == -1
+        skip_equations = $sources[key] == '0.d0'
+        skip_equations = skip_equations && $volume_regions[region][1].all? { |surface_region| $sources[[species,region,surface_region]] == '0.d0' } if $volume_regions.include?(region) && !$options[:none_centred]
+        if skip_equations
+          $constants << "CONSTANT <#{conc(species,region)}> \"<#{conc(species,region)}_0>\""
+          $constants << "CONSTANT <#{conc(species,region)}_pos> \"<#{conc(species,region)}_0>\""
+          $sources[key] = ''
+          next
+        end
+      end
+      # If here, species is produced or consumed in at least one reaction
+      if $options[:none_centred]
+        centring = 'NONE'
+        location = :none
+        units = ''
+      elsif $surface_regions.include?(region)
+        centring = 'FACE'
+        location = :surface
+        units = 'mol m-2'
+      else
+        centring = 'CELL'
+        location = :volume
+        units = 'mol m-3'
+        mw = '('
+        species.tr('()[]','').split(':').each { |component| mw += "+<MW_#{component}>" } # calculate molecular weight as sum of MWs of components
+        mw += ')'
+      end
+      source_centring = if $options[:none_centred] # source_centring is the centring of the source_region in which the reaction is occurring
+                          :NONE
+                        elsif $surface_regions.include?(source_region)
+                          :FACE
+                        else
+                          :CELL
+                        end
+      # Format source terms
+      $sources[key] = "#{source_centring}_#{$sources[key] == '0.d0' ? 'CONSTANT' : 'DERIVED'} <S_#{tag(species,region)}#{"@#{source_region}" unless $options[:none_centred]}> \"#{$sources[key]}\"#{" ON <#{source_region}>" unless $options[:none_centred]}"
+      if $options[:debug]
+        warn '='*200
+        print_debug('mw,species,region,source_region,$sources[key]'){}
+      end
+      next unless region == source_region || $options[:none_centred]
+
+      # Generate equations for each species
+      template = TEMPLATE.dup
+      # Handle if_rxn statements in the template
+      # These take the form if_rxn(if_location[=if_region]){if_clause}[{else_clause}], where if_location = none|surface|volume
+      # Clauses may span multiple lines. Nested {} pairs (but not nested if_rxn statements) are allowed
+      TEMPLATE.scan(/\bif_rxn\s*(\((?<if_location>\w+)(\s*=\s*(?<if_region>.*?))?\))?\s*(?<if_clause>{((?>[^{}]+)|\g<if_clause>)*})?(?<else_clause>{((?>[^{}]+)|\g<else_clause>)*})?/i) do |if_location,if_region,if_clause,else_clause|
+        replace = $&
+        if_location.downcase!
+        raise "missing or unrecognised location in if_rxn statement in template file #{$options[:template_file]}" unless if_location =~ /\A(none|surface|volume)\z/
+        if_region &&= region_array(if_region) # convert to array
+        if_clause &&= if_clause[1..-2].split("\n").map(&:strip) - [''] # remove braces, strip newlines and indentation, and delete any empty lines
+        raise "missing clause in if_rxn statement in template file #{$options[:template_file]} (possibly missing opening or closing brace)" unless if_clause
+        else_clause &&= else_clause[1..-2].split("\n").map(&:strip) - [''] # remove braces, strip newlines and indentation, and delete any empty lines
+        condition = if_location == location.to_s # condition will be true if we are in the right location
+        condition = condition && if_region.include?(region) if if_region # if an if_region has been specified, condition will be true if we are in the right region
+        template.sub!(replace, condition ? if_clause.join("\n") : else_clause.to_a.join("\n")) # replace if_rxn statement with if_clause if condition is true, otherwise replace with else_clause (if present) or empty string
+      end
+      # Handle each blocks in the template
+      # These take the form [region_list].each { |loopvar| expression }
+      # '*' in region_list is a shorthand for all reaction regions (surface_regions that bound volume_region)
+      if location == :volume
+        TEMPLATE.scan(/^\s*(?<array>\[((?>[^\[\]]+)|\g<array>)*\])\.each\s*(?<brace_group>{((?>[^{}]+)|\g<brace_group>)*})?/i) do |array,block|
+          replace = $&[/^\s*(.*)/,1]
+          region_list = region_array(array[1..-2]) # convert to array
+          if region_list.include?('*') # add all reaction regions to region_list
+            region_list[region_list.index('*')] = $volume_regions[region][1]
+            region_list.flatten!.uniq!
+          end
+          raise "missing each block in template file #{$options[:template_file]} (possibly missing opening or closing brace)" unless block
+          loopvar, expression = block.match(/\A{\s*(\|[^|]+\|)?\s*(.*)}\z/).captures
+          raise "missing loop variable in each block in template file #{$options[:template_file]}" unless loopvar
+          expression = expression.split("\n").map(&:strip) - [''] # strip newlines and indentation and delete any empty lines
+          replacement = []
+          region_list.each do |region| # duplicate expression for each region in region_list, replacing loopvar with region
+            replacement += expression.map { |line| line.gsub(loopvar,region) }
+          end
+          template.sub!(replace, replacement.join("\n")) # replace the each block
+        end
+      end
+      # Do substitutions on template
+      template.gsub!("\n\n","\n")
+      template.gsub!('/c/',"#{conc(species,region)}")
+      template.gsub!('/species/',species)
+      template.gsub!('@/region/',region ? "@#{region}" : '')
+      template.gsub!('/region/',region ? region : '')
+      template.gsub!('@/source_region/',$options[:none_centred] ? '' : "@#{region}")
+      template.gsub!('/CENTRING/',centring)
+      template.gsub!('/centring/',centring.downcase)
+      template.gsub!('/units/',units)
+      if $options[:none_centred]
+        template.gsub!(/ ON <[^>]+>/,'') # remove references to regions
+      else
+        template.gsub!('/associatedfaces(region)/', location == :surface ? region : "associatedfaces(#{region})")
+        template.gsub!('/associatedcells(region)/', location == :surface ? region : "associatedcells(#{region})")
+        template.gsub!('/domainof(region)/', location == :surface ? region : "domainof(#{region})")
+      end
+      template.gsub!('/MW/',mw) if location == :volume
+      # Save equations
+      $equations << ["# #{tag(species,region)} {{{",'']
+      $equations << template
+      $equations << "#}}}"
+    end
+    warn "INFO: equation creation complete\n#{'*'*200}" if $options[:debug]
+  rescue => msg
+    abort "ERROR: #{msg}"
+  ensure
+    print_debug('$sources,$equations'){}
+  end
+
+  #}}}
+  # Determine magnitude dependencies for each species by ordering reactions {{{
+
+  # $reactions_unordered is an array of subarrays, each representing one reaction. (Order of reactions follows the ordering in the input file.)
+  # Each reaction (sub)array consists of 3 subarrays:
+  #   * The first subarray contains reactants that determine the magnitude of the products.
+  #   * The second subarray contains species that must be present for the products to be formed but are not magnitude-determining. These include enzymes and catalysts.
+  #   * The third subarray contains the products.
+  # Here the reactions are ordered (in $reactions_ordered) to reflect species dependencies.
+  # Initially only reactions containing initial species (specified by the initial_species statement, i.e. those with a value of -1 in $species_ordered) can proceed.
+  # Products of these initial reactions are added (in order) to $species_ordered.
+  # Any reactions that depend on these new products and any of the other previously existing species may now proceed.
+  # The process is repeated until all (or as many as possible) of the reactions have been ordered.
+  # The magnitude of each species is then determined as the minimum of the magnitudes of the reactants that produce it earliest in $reactions_ordered.
+
+  begin
+    warn "#{'*'*200}\nINFO: determining magnitudes" if $options[:debug]
+    size = 0
+    until size == $reactions_unordered.size
+      size = $reactions_unordered.size
+      reactions = []
+      $reactions_unordered.each do |reaction|
+        reactions << reaction if (reaction[0] | reaction[1]).all? { |reactant| $species_ordered[reactant] } # check whether all reactants (and catalysts if applicable) are present yet; if so add reaction to list of reactions
+      end
+      reactions.each do |reaction|
+        $reactions_ordered << reaction
+        reaction[2].each { |product| $species_ordered[product] ||= $reactions_ordered.size - 1 } # save the order in which products appear: $species_ordered[product] is the number of the reaction in which product is first produced
+        $reactions_unordered.delete(reaction)
+      end
+    end
+    ($magnitudes.keys-$species_ordered.keys).each { |species_and_region| warn "WARNING in #{$infile}: unable to determine magnitude for species #{tag(*species_and_region)}" }
+  ensure
+    print_debug('$reactions_ordered,$species_ordered'){}
+  end
+
+  #}}}
+  # Format magnitudes {{{
+  $magnitudes.clear
+  $species_ordered.each do |(species,region), species_order|
+    next unless $sources[[species,region,$options[:none_centred] ? nil : region]] # check that species is actually present (initial_species statement may contain species that are not present)
+    magnitude = ''
+    if species_order == -1 # magnitudes of initial species (species_order == -1) are their initial concentrations
+      magnitude = "<#{conc(species,region)}_0>"
+    else
+      precursors = $reactions_ordered[species_order][0] # precursors are reactants that the current species is generated from
+      precursors.each do |(precursor_species,precursor_region)|
+        conc = conc(precursor_species,precursor_region)
+        magnitude += if $surface_regions.include?(region)
+                       if $surface_regions.include?(precursor_region) || $options[:none_centred]
+                         "nonemin(<#{conc} magnitude>,"
+                       else
+                         "nonemin(<#{conc} magnitude>*<volume(#{precursor_region})>/<area(#{region})>," # convert surface concentration to volume concentration
+                       end
+                     else
+                       if $volume_regions.keys.include?(precursor_region) || $options[:none_centred]
+                         "nonemin(<#{conc} magnitude>,"
+                       else
+                         "nonemin(<#{conc} magnitude>*<area(#{precursor_region})>/<volume(#{region})>," # convert volume concentration to surface concentration
+                       end
+                     end
+      end
+      magnitude << "<huge>#{')'*precursors.size}"
+    end
+    conc = conc(species,region)
+    $magnitudes[[species,region]] = "CONSTANT <#{conc} magnitude> \"#{magnitude}\""
+  end
+  warn "INFO: magnitudes done\n#{'*'*200}" if $options[:debug]
+  print_debug('$magnitudes'){}
+
+  #}}}
+# Format output {{{
+  output = []
+  format_output = lambda do |array,*options|
+    array -= ['',[]] # remove empty entries
+    return if array.empty?
+    name, pre, post = options
+    output << ["# #{name} {{{",''] if name
+    output << pre if pre
+    output << array
+    output << post if post
+    output << ''
+    output << '#}}}' if name
+  end
+  format_output.call($header << "# Generated from #{$infile} by #{PROGNAME} v. #{VERSION}, #{Time.now.strftime('%F %T')}")
+  format_output.call($constants,'Constants and regions')
+  format_output.call($rates,'Reaction rates','DEFAULT_OPTIONS output','DEFAULT_OPTIONS')
+  format_output.call($sources.values,'Source terms','DEFAULT_OPTIONS output','DEFAULT_OPTIONS')
+  format_output.call($equations,'Equations')
+  format_output.call($magnitudes.values,'Magnitudes')
+  File.write(outfile, output.join("\n"))
+  warn "INFO: output written to #{outfile}\n#{'*'*200}" if $options[:debug]
+
+end
+
+#}}}
+
+#}}}

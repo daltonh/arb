@@ -1,0 +1,39 @@
+! Blood plasma coagulation biochemistry
+! Ref: Jordan and Chaikof (2011), Biophys. J. 101: 276-286
+! File created by Christian Biscombe, 2017-08-19
+
+# Fluid-phase reactions
+volume_region domain
+VIII@v {IIa@v}-> VIIIa@v; kcat=0.9 s-1, KM=0.20 uM
+V@v {IIa@v}-> Va@v; kcat=0.23 s-1, KM=0.072 uM
+VII@v {Xa@v}-> VIIa@v; kcat=15.2 s-1, KM=1.2 uM # CB corrected erroneous kcat in ref.
+VII@v {IIa@v}-> VIIa@v; kcat=0.061 s-1, KM=2.7 uM
+IIa@v + ATIII@v -> ; k=6.8d-3 uM-1 s-1
+IXa@v + ATIII@v -> ; k=9.9d-6 uM-1 s-1 # CB corrected erroneous k in ref.
+Xa@v + ATIII@v -> ; k=2.6d-3 uM-1 s-1 # reaction mistakenly omitted in ref.
+Xa@v + TFPI@v <=> TFPI:Xa@v; ka=16 uM-1 s-1, kd=3.3d-4 s-1
+Va@v {APC@v}-> ; kcat=0.58 s-1, KM=0.025 uM
+  VIIIa@v {APC@v}->
+V@v {Xa@v}-> Va@v; kcat=0.046 s-1, KM=0.01 uM
+
+# Reactions occurring on both TF patch and TM patch
+surface_regions TF_patch, TM_patch
+II@v {Va:Xa@s}-> IIa@v; kcat=33 s-1, KM=0.21 uM
+X@v {VIIIa:IXa@s}-> Xa@v; kcat=20 s-1, KM=0.16 uM
+Va@v + Xa@v <=> Va:Xa@s; ka=100 uM-1 s-1, kd=0.01 s-1 # units inconsistent!
+VIIIa@v + IXa@v <=> VIIIa:IXa@s; ka=100 uM-1 s-1, kd=0.01 s-1 # units inconsistent!
+
+# Reactions occurring on TF patch only
+surface_region TF_patch
+X@v {TF:VIIa@s}-> Xa@v; kcat=1.2 s-1, KM=0.45 uM
+IX@v {TF:VIIa@s}-> IXa@v; kcat=0.34 s-1, KM=0.17 uM
+VIIa@v + TF@s <=> TF:VIIa@s; ka=100 uM-1 s-1, kd=0.06 s-1
+TF:VIIa@s + TFPI:Xa@v <=> TF:VIIa:TFPI:Xa@s; ka=10 uM-1 s-1, kd=1.1d-3 s-1
+
+# Reactions occurring on TM patch only
+surface_region TM_patch
+PC@v {IIa:TM@s}-> APC@v; kcat=5.58 s-1, KM=0.7 uM
+IIa@v + TM@s <=> IIa:TM@s; ka=100 uM-1 s-1, kd=0.01 s-1
+
+initial_species [II, V, VII, VIIa, VIII, IX, X, PC, ATIII, TFPI]@domain
+initial_species TF@TF_patch, TM@TM_patch
