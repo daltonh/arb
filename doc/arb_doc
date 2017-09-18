@@ -201,7 +201,7 @@ if [ $oupdate -eq 1 ] ; then
 # use the file via -f
   makeline="make -f $doc_dir/src/makefile arbdir=\"$arb_dir\" docdir=\"$doc_dir\" rootvar=\"$root_var\" contentdir=\"$content_dir\" htmldir=\"$html_dir\"";
   echo "INFO: running make using commands: $makeline"; echo
-  eval $makeline;
+  eval "$makeline";
 
 #------------------------------------------------------------
 fi ;

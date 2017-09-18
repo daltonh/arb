@@ -81,14 +81,15 @@ createhtmlfiles : $(htmlfiles)
 
 # compile vimhl.hs script using haskel compiler
 $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
-	ghc --make $< -o $@
+	ghc --make "$<" -o "$@"
 
 #%.html : %.md
 
 %.html : %.md $(docdir)/src/makefile $(assemblerdir)/assembler.pl $(assemblerdir)/assembler_pre.html $(assemblerdir)/assembler_post.html $(assemblerdir)/vimhl
 	@echo "  INFO: recreating $@"
 #cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(htmldir) $(arbdir) >>debug.log
-	cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(htmldir) $(arbdir) | pandoc -S -F $(assemblerdir)/vimhl -o $@
+	cd "$(assemblerdir)" && ./assembler.pl "$<" '$(rootvar)' "$(htmldir)" "$(arbdir)" | pandoc -S -F "$(assemblerdir)/vimhl" -o "$@"
+#cd "$(assemblerdir)" && ./assembler.pl "$<" '$(rootvar)' "$(htmldir)" "$(arbdir)" > "$@"
 
 
 

@@ -29,6 +29,12 @@ my ($markdown_dirname) = $markdown_filename =~ /^(.*\/)index.md/;
 my $rel_var = abs2rel($markdown_dirname,$html_dir); # find system and html file location relative to the root
 #print "rel_var = $rel_var\n";
 
+my $debug = 0; # debugging output to file
+if ($debug) {
+  open (DEBUG, ">>$html_dir/debug_assembler");
+  print DEBUG "INFO: root_var = $root_var\n";
+  close(DEBUG);
+}
 # find various directories from filename
 #my ($markdown_dir) = $markdown_filename =~ /^(.*\/)/;
 #my ($body_dir) = $markdown_filename =~ /^(.*\/doc\/wiki\/body\/)/;
