@@ -105,7 +105,6 @@ function usage () {
   echo "  --no-sparse: do not download the sparse (v1.4b) libraries and link these in";
   echo "  --no-downloads: do not download any files during the compilation process (equivalent to --no-suitesparse, --no-mgmres and --no-sparse)";
 # echo "  --externals|-e: incorporate the following user fortran external file into the equation_module";
-  echo "  --wiki: create wiki pages from markdown source within doc/wiki";
   echo "  --help|-h: display this HELP INFO";
   echo;
   exit 1;
@@ -270,14 +269,6 @@ do
     "--no-opt") oopt=0;; # this is optimisation turned off
     "-O"?) oopt=${1:2};;
     "--opt"?) oopt=${1:5};;
-    "--wiki") # link to the documentation and make the documentation from the markdown files
-      echo "INFO: creating link to wiki at $root_dir/doc/wiki/body/index.html";
-      ln -s $root_dir/doc/wiki/body/index.html >/dev/null 2>/dev/null ;
-      cd doc/wiki;
-#     echo "INFO: about to make wiki in" `pwd` "with rootdir=$root_dir";
-      echo "INFO: about to make wiki in" `pwd`;
-      make all rootdir=$root_dir;
-      exit;;
     "-o"|"--output") # get output directory to be used
       shift;
       if [ -n "$1" ]; then output_dir="$1"; else echo "ERROR: output directory not found after option"; usage; fi;

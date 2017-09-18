@@ -14,5 +14,5 @@
 [setup_equations.pl]: <<<arbroot>>>/src/setup_equations/setup_equations.pl
 [setup_equations]: <<<arbroot>>>/src/setup_equations
 [StringCode.pm]: <<<arbroot>>>/src/setup_equations/StringCode.pm
-[templates]: <<<arbroot>>>/templates
-[examples]: <<<arbroot>>>/examples
+[templates_dir]: <<<arbroot>>>/templates
+[examples_dir]: <<<arbroot>>>/examples

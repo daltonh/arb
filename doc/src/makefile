@@ -50,6 +50,7 @@ assemblerdir = $(docdir)/src/assembler
 #markdownfiles := $(wildcard $(htmldir)/*/*.md)
 markdownfiles :=  $(shell find $(htmldir) -type f -name '*.md')
 listfiles :=  $(shell find $(htmldir) -type f -name 'list')
+definitionsfiles :=  $(shell find $(htmldir) -type f -name 'definitions')
 htmlfiles := $(patsubst %.md,%.html,$(markdownfiles))
 htmlcontentfiles := $(patsubst %/index.md,%/contents.html,$(markdownfiles))
 
@@ -66,6 +67,7 @@ print :
 	@echo " htmldir: $(htmldir)"
 	@echo " markdownfiles: $(markdownfiles)"
 	@echo " listfiles: $(listfiles)"
+	@echo " definitionsfiles: $(definitionsfiles)"
 	@echo " htmlfiles: $(htmlfiles)"
 	@echo " htmlcontentfiles: $(htmlcontentfiles)"
 
@@ -85,7 +87,7 @@ $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
 
 #%.html : %.md
 
-%.html : %.md $(docdir)/src/makefile $(assemblerdir)/assembler.pl $(assemblerdir)/assembler_pre.html $(assemblerdir)/assembler_post.html $(assemblerdir)/vimhl
+%.html : %.md $(docdir)/arb_doc $(docdir)/src/makefile $(assemblerdir)/assembler.pl $(assemblerdir)/assembler_pre.html $(assemblerdir)/assembler_post.html $(assemblerdir)/vimhl $(definitionsfiles) $(listfiles)
 	@echo "  INFO: recreating $@"
 #cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(htmldir) $(arbdir) >>debug.log
 	cd "$(assemblerdir)" && ./assembler.pl "$<" '$(rootvar)' "$(htmldir)" "$(arbdir)" | pandoc -S -F "$(assemblerdir)/vimhl" -o "$@"
