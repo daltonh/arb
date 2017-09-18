@@ -67,16 +67,27 @@ function usage () {
 }
 #-------------------------------------------------------------------------------
 # function to dereference symlinks and find the real path of a file
-# call with the (possibly symlinked) file
-# result is returned in (global) variable real_path
+# call with the (possibly symlinked) file (not a directory)
+# result is returned in (global) variable real_path - no not any more
+# now called as a="$(resolve_real_path "$a")";
 function resolve_real_path {
   real_path=$1;
   next_path=`readlink $real_path`;
   while [ -n "$next_path" ] ; do
-    real_path=$next_path;
+    real_path="$(dirname "$real_path")/$next_path";
     next_path=`readlink $real_path`;
   done
+# simplify directory links
+  real_path="$(sanitise_filename "$real_path")";
+# now return this as a string
+  echo "$real_path";
   unset next_path;
+  unset real_path;
+}
+#-------------------------------------------------------------------------------
+# idea from http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
+function sanitise_filename {
+  echo "$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")";
 }
 #-------------------------------------------------------------------------------
 # main script:
@@ -110,9 +121,8 @@ done ;
 # now (re)set variables that depend on the user-specified options
 
 # get the real path to the script with any symlinks resolved/dereferenced
-resolve_real_path "${BASH_SOURCE[0]}";
-arb_script=$real_path; # the result of resolve_real_path is held in this global variable
-# from http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
+arb_script="${BASH_SOURCE[0]}";
+arb_script="$(resolve_real_path "$arb_script")"; # the result of resolve_real_path is held in this global variable
 bin_dir="$(cd "$(dirname "$arb_script")" && pwd -P)"; # directory that holds this arb script, which determines...
 arb_dir="${bin_dir%"/bin"}"; # arb root directory, known as arb_dir, with no trailing slash
 

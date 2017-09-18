@@ -47,8 +47,8 @@
 # NB: many more options now - see below
 #
 # examples:
-# ./arb --quiet --no-compile: runs arb without compiling and sends output to output/output.scr
-# ./arb --continue : creates fortran, compiles arb, runs arb continuing from previous run
+# arb --quiet --no-compile: runs arb without compiling and sends output to output/output.scr
+# arb --continue : creates fortran, compiles arb, runs arb continuing from previous run
 #
 # exit status:
 # 0: successful
@@ -58,7 +58,7 @@
 # usage function
 function usage () {
   echo
-  echo "HELP/USAGE: ./arb [options] [input_file1.arb [input_file2.arb]]";
+  echo "HELP/USAGE: arb [options] [input_file1.arb [input_file2.arb]]";
   echo
   echo "If no input files are specified on the command line, then all .arb files, and failing that, all .in files,";
   echo "    in the working directory are used";
@@ -132,16 +132,27 @@ function logprocess {
 }
 #-------------------------------------------------------------------------------
 # function to dereference symlinks and find the real path of a file
-# call with the (possibly symlinked) file
-# result is returned in (global) variable real_path
+# call with the (possibly symlinked) file (not a directory)
+# result is returned in (global) variable real_path - no not any more
+# now called as a="$(resolve_real_path "$a")";
 function resolve_real_path {
   real_path=$1;
   next_path=`readlink $real_path`;
   while [ -n "$next_path" ] ; do
-    real_path=$next_path;
+    real_path="$(dirname "$real_path")/$next_path";
     next_path=`readlink $real_path`;
   done
+# simplify directory links
+  real_path="$(sanitise_filename "$real_path")";
+# now return this as a string
+  echo "$real_path";
   unset next_path;
+  unset real_path;
+}
+#-------------------------------------------------------------------------------
+# idea from http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
+function sanitise_filename {
+  echo "$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")";
 }
 #-------------------------------------------------------------------------------
 # main script:
@@ -151,12 +162,11 @@ function resolve_real_path {
 
 working_dir=`pwd -P`; # directory from which the script is run
 # get the real path to the arb script with any symlinks resolved/dereferenced
-resolve_real_path "${BASH_SOURCE[0]}";
-arb_script=$real_path; # the result of resolve_real_path is held in this global variable
-# from http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
+arb_script="${BASH_SOURCE[0]}";
+arb_script="$(resolve_real_path "$arb_script")"; # the result of resolve_real_path is held in this global variable
 bin_dir="$(cd "$(dirname "$arb_script")" && pwd -P)"; # directory that holds this arb script, which determines...
 arb_dir="${bin_dir%"/bin"}"; # arb root directory, known as arb_dir, with no trailing slash
-# setup other arb related directories, and check on their existence
+# setup other arb related directory references and check on their existence
 src_dir="$arb_dir/src";
 misc_dir="$arb_dir/misc";
 templates_dir="$arb_dir/templates";
@@ -434,7 +444,7 @@ fi
 # now that quiet option has been dealt with, announce our arrival and list options etc
 echo "arb finite volume solver (see http://people.eng.unimelb.edu.au/daltonh/downloads/arb/)";
 echo
-echo "INFO: for usage options, try ./arb --help";
+echo "INFO: for usage options, try arb --help";
 echo "INFO: for licence see $arb_dir/licence";
 echo "INFO: script run with options: clean=$oclean, clean-setup=$ocleansetup, clean-compile=$ocleancompile, setup=$osetup, compile=$ocompile, run=$orun, quiet=$oquiet, continue=$ocontinue, debug=$odebug, compiler=$compiler, debugger=$debugger, omp=$oomp, opt=$oopt, process-logging=$oprocesslogging";
 echo "INFO: arb_dir = $arb_dir"

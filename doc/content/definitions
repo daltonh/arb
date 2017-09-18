@@ -1,0 +1,18 @@
+<!-- these are links to be used within content -->
+
+[contents]: <<<root>>>/index.html
+[Introduction]: <<<root>>>/introduction/index.html
+[Installation]: <<<root>>>/installation/index.html
+[Simulation Setup]: <<<root>>>/simulation_setup/index.html
+[Regions]: <<<root>>>/regions/index.html
+[Variables]: <<<root>>>/variables/index.html
+[Templates]: <<<root>>>/templates/index.html
+[Examples]: <<<root>>>/examples/index.html
+[Coding Reference]: <<<root>>>/coding_reference/index.html
+[css]: <<<root>>>/css
+[general_module.f90]: <<<arbroot>>>/src/general_module.f90
+[setup_equations.pl]: <<<arbroot>>>/src/setup_equations/setup_equations.pl
+[setup_equations]: <<<arbroot>>>/src/setup_equations
+[StringCode.pm]: <<<arbroot>>>/src/setup_equations/StringCode.pm
+[templates]: <<<arbroot>>>/templates
+[examples]: <<<arbroot>>>/examples

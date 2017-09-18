@@ -1,0 +1,10 @@
+# ignore everything except the specified directories within this doc directory
+/*
+!/arb_doc
+!/content/
+!/install/
+!/manual/
+!/src/
+
+# include any gitignore files in any directories that are already included
+!.gitignore
