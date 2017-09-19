@@ -53,10 +53,12 @@ function usage () {
   echo
   echo "Possible options (consistent with long-form command line syntax (--), words are separated by -, and a preceeding --no- negates an option) :";
   echo "  --root: name of root location to be fed to html pages, either an html root or a file directory (no trailing slash, default $working_dir/html).  Set this after --html-dir if setting that too."
-  echo "  --update: whether to recreate the tree (default)";
-  echo "  --no-update: do not recreate the tree";
+# echo "  --update: whether to recreate the tree (default)";
+# echo "  --no-update: do not recreate the tree";
   echo "  --content-dir: file directory that contains the content, in primarily markdown index.md files (no trailing slash, default $arb_dir/doc/content)"
   echo "  --html-dir: file directory that the html contents will be written to (no trailing slash, default $working_dir/html).  Note, also sets root_var to this directory (full path), overwritting any previous assignment."
+  echo "  --include-arb: include the arb directory files within the html tree (default)."
+  echo "  --no-include-arb: do not include the arb directory files within the html tree and instead link to files within arb_dir."
   echo "  --help|-h: display this HELP INFO";
   echo;
   exit 1;
@@ -125,7 +127,8 @@ echo "INFO: arb_dir = $arb_dir"
 echo "INFO: working_dir = $working_dir"
 
 # set default variables and locations
-oupdate=1;
+#oupdate=1;
+oincludearb=1;
 content_dir="$arb_dir/doc/content";
 html_dir="$working_dir/html";
 root_var="$html_dir";
@@ -139,8 +142,10 @@ do
       shift;
       if [ -n "$1" ]; then root_var="$1"; else echo "ERROR: root location not understood from calling options"; usage; fi;
       ;;
-    "--update") oupdate=1;;
-    "--no-update") oupdate=0;;
+#   "--update") oupdate=1;;
+#   "--no-update") oupdate=0;;
+    "--include-arb") oincludearb=1;;
+    "--no-include-arb") oincludearb=0;;
     "--content-dir") # get content file directory
       shift;
       if [ -n "$1" ]; then content_dir="$1"; else echo "ERROR: content directory not understood from calling options"; usage; fi;
@@ -156,13 +161,20 @@ do
   shift;
 done ;
 
+if [ $oincludearb -eq 1 ] ; then
+  arb_var="$root_var/arb";
+else
+  arb_var="$arb_dir";
+fi
+
 echo "INFO: root_var = $root_var"
-echo "INFO: oupdate = $oupdate"
+echo "INFO: arb_var = $arb_var"
+#echo "INFO: oupdate = $oupdate"
 echo "INFO: content_dir = $content_dir"
 echo "INFO: html_dir = $html_dir"
 
 #---------------------------
-if [ $oupdate -eq 1 ] ; then
+#if [ $oupdate -eq 1 ] ; then
 #------------------------------------------------------------
 # sanity checks and create directories
 # TODO: check that directories don't have trailing slashes
@@ -174,14 +186,23 @@ if [ $oupdate -eq 1 ] ; then
   echo "INFO: rsyncing content_dir to html_dir"
   rsync -au --progress --exclude "index.html" "$content_dir/" $html_dir;
 
+# if including the arb directory files then do this too using arb_clone
+  if [ $oincludearb -eq 1 ] ; then
+    $("$arb_dir/bin/arb_clone" --overwrite --clean-git --local-directory "$arb_dir" --directory "$html_dir/arb_files");
+    arbroot_var="$root_var/arb_files";
+  else
+    arbroot_var="$arb_dir";
+  fi
+
 # assemble makeline and make
 # use the file via -f
-  makeline="make -f $doc_dir/src/makefile arbdir=\"$arb_dir\" docdir=\"$doc_dir\" rootvar=\"$root_var\" contentdir=\"$content_dir\" htmldir=\"$html_dir\"";
+  makeline="make -f $doc_dir/src/makefile arbdir=\"$arb_dir\" docdir=\"$doc_dir\" rootvar=\"$root_var\" arbrootvar=\"$arbroot_var\" contentdir=\"$content_dir\" htmldir=\"$html_dir\"";
   echo "INFO: running make using commands: $makeline"; echo
   eval "$makeline";
 
+#fi ;
 #------------------------------------------------------------
-fi ;
+
 exit $errorstatus ;
 # done
 #-------------------------------------------------------------------------------

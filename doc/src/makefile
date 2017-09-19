@@ -37,6 +37,7 @@
 arbdir = "ERROR: not set";
 docdir = "ERROR: not set";
 rootvar = "ERROR: not set";
+arbrootvar = "ERROR: not set";
 contentdir = "ERROR: not set";
 htmldir = "ERROR: not set";
 
@@ -63,6 +64,7 @@ print :
 	@echo " arbdir: $(arbdir)"
 	@echo " docdir: $(docdir)"
 	@echo " rootvar: $(rootvar)"
+	@echo " arbrootvar: $(arbrootvar)"
 	@echo " contentdir: $(contentdir)"
 	@echo " htmldir: $(htmldir)"
 	@echo " markdownfiles: $(markdownfiles)"
@@ -90,7 +92,7 @@ $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
 %.html : %.md $(docdir)/arb_doc $(docdir)/src/makefile $(assemblerdir)/assembler.pl $(assemblerdir)/assembler_pre.html $(assemblerdir)/assembler_post.html $(assemblerdir)/vimhl $(definitionsfiles) $(listfiles)
 	@echo "  INFO: recreating $@"
 #cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(htmldir) $(arbdir) >>debug.log
-	cd "$(assemblerdir)" && ./assembler.pl "$<" '$(rootvar)' "$(htmldir)" "$(arbdir)" | pandoc -S -F "$(assemblerdir)/vimhl" -o "$@"
+	cd "$(assemblerdir)" && ./assembler.pl "$<" '$(rootvar)' "$(htmldir)" "$(arbdir)" '$(arbrootvar)' | pandoc -S -F "$(assemblerdir)/vimhl" -o "$@"
 #cd "$(assemblerdir)" && ./assembler.pl "$<" '$(rootvar)' "$(htmldir)" "$(arbdir)" > "$@"
 
 

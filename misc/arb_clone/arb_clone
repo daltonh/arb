@@ -53,19 +53,20 @@ usage () {
   echo "Possible options:";
   echo "  -b|--branch: branch to get (default = $branch)";
   echo "  -d|--directory: output directory name to use (default = arb_$branch)";
+  echo "  -o|--overwrite: delete the target directory if it already exists (not default)";
   echo "  -l|--local: clone from local directory if possible (default)";
   echo "  -r|--remote: clone from remote server (using ssh by default)";
   echo "  -u|--user: user name that hosts arb project (default = $user)";
   echo "  -p|--port: port number of git server for http requests (default = $port)";
   echo "  --server: server name to use, only for remote ssh (default = $server)";
-  echo "  -h|--http: use http transport from git rather than ssh (for remote)";
-  echo "  -s|--ssh: use ssh transport from git rather than http (default for remote)";
+  echo "  -h|--http: use remote http transport from git (accepts gitlab username and password, so use if ssh keys aren't setup)";
+  echo "  -s|--ssh: use remote ssh transport from git (must have ssh keys setup to use this)";
   echo "  --local-directory: local arb_dir directory use, only for local (default is $local_dir)";
   echo "  --develop: get develop branch (default)";
   echo "  --master: get master branch";
-  echo "  --date: add date to default branch name TODO";
-  echo "  --clean-git: remove git repository files TODO";
-  echo "  --archive: tar and gzip subsequent cloned branch (implies --date and --clean-git) TODO";
+# echo "  --date: add date to default branch name TODO";
+  echo "  --clean-git: remove git repository files";
+# echo "  --archive: tar and gzip subsequent cloned branch (implies --date and --clean-git) TODO";
 # echo "  --closed-source: include any closed-source directory contents TODO";
   echo "  -h|--help: display this HELP INFO";
   echo;
@@ -121,7 +122,9 @@ server="vof.chemeng.unimelb.edu.au";
 directory="";
 local_dir="$arb_dir";
 port="8000";
-transport="local"; # default remote transport is ssh, but others are http and local
+transport="default"; # default transport is first local, but if this not present, then ssh
+ocleangit=0; # by default leave the git files in the cloned directory
+ooverwrite=0; # by default do not overwrite an existing directory
 #-------------------------------------------------------------------------------
 # better case implementation from http://www.linuxtopia.org/online_books/advanced_bash_scripting_guide/testbranch.html
 while [ $# -gt 0 ]; do
@@ -132,12 +135,14 @@ while [ $# -gt 0 ]; do
     "--local-directory") if [ ! -n "$2" ]; then echo "ERROR: local-directory not understood from option list"; usage; fi; local_dir=$2; shift;;
     "-d"|"--directory") if [ ! -n "$2" ]; then echo "ERROR: directory not understood from option list"; usage; fi; directory=$2; shift;;
     "-p"|"--port") if [ ! -n "$2" ]; then echo "ERROR: port not understood from option list"; usage; fi; port=$2; shift;;
+    "-o"|"--overwrite") ooverwrite=1;;
     "-h"|"--http") transport="http";;
     "-s"|"--ssh") transport="ssh";;
-    "-r"|"--remote") transport="ssh";;
+    "-r"|"--remote") transport="remote";;
     "-l"|"--local") transport="local";;
     "--develop") branch="develop";;
     "--master") branch="master";;
+    "--clean-git") ocleangit=1;;
     "-h"|"--help") usage;;
     "--"*|"-"*) echo "ERROR: unknown option $i passed to getarb"; usage;;
     *) echo "ERROR: unknown command line entry $i"; usage;;
@@ -149,34 +154,50 @@ done
 
 if [ "${directory}" = "" ]; then directory="arb_$branch"; echo "setting output directory based on branch to $directory"; fi;
 
+if [ -d "$directory" ] ; then
+  if [ $ooverwrite -eq 1 ] ; then
+    rm -rf "$directory";
+  else
+    echo "ERROR: target directory $directory already exists: delete this first or use the --overwrite option";
+    exit 1;
+  fi
+fi
+
 #-----------------------------------------------------------------------------
 # if local is specified, check that local git repository exists
 
-if [ $transport == "local" ] ; then
+if [ $transport == "local" ] || [ $transport == "default" ] ; then
 # now determine whether arb_clone is in a valid arb_dir, or just by itself
 # first test whether other arb related directories exist
   for sub_dir in "src" "misc" "templates" "examples" ; do
     if [ ! -d "$local_dir/$sub_dir" ] ; then
       echo "INFO: cannot find $local_dir/$sub_dir relative to the arb_clone script.  A local repository cannot be found from the arb_clone location";
       echo "INFO: changing transport to ssh";
-      transport="ssh"; # change transport to remote
+      transport="remote"; # change transport to remote
       break; # exit the loop prematurely
     fi;
   done;
 fi;
   
-if [ $transport == "local" ] ; then
+if [ $transport == "local" ] || [ $transport == "default"  ] ; then
 # now check whether git thinks this is a valid directory
   git_check="$(git -C $local_dir rev-parse 2>&1)"; # send both stdout and stderr to the one variable
 # echo "git_check = |$git_check|";
   if [ ! -z "$git_check" ] ; then
     echo "INFO: the local directory $local_dir is not a valid git repository.  Error from git: $git_check";
     echo "INFO: changing transport to ssh";
-    transport="ssh"; # change transport to remote
+    transport="remote"; # change transport to remote
   fi;
 # echo "git command: "`git -C $local_dir rev-parse`;
 fi;
 
+# based on the above, now determine actual transport
+if [ $transport == "default" ] ; then
+  transport="local"; # local directory must exist so choose this
+fi
+if [ $transport == "remote" ] ; then
+  transport="ssh"; # default remote transport is ssh - maybe need to make this html
+fi
 #-----------------------------------------------------------------------------
 # now do the clone
 
@@ -191,6 +212,10 @@ else
   git clone -b $branch $local_dir $directory;
 fi
 
+# if clean-git is specified remove all .git* files (.git and .gitignore)
+if [ $ocleangit -eq 1 ] ; then
+  find $directory -depth \( -name .git* \) -exec 'rm' '-fr' '{}' ';' ;
+fi
 
 exit $errorstatus ;
 # done

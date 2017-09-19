@@ -4,11 +4,13 @@
 # needs arb_manual_server to be running on bunyip
 
 # config
-arb_manual_dir="/home/daltonh/arb_manual"; # on bunyip
+arb_manual_dir="/home/daltonh/arb_manual"; # on bunyip, directory that houses html directory that is served
+arb_manual_local_dir="/Users/daltonh/arb/manual/bunyip"; # on roo, directory that will be used to construct html tree before syncing to bunyip
+arb_manual_server_script="/Users/daltonh/codes/arb/development/current/doc/misc/arb_manual_server/arb_manual_server"; # on roo, full path of server file that will also be synced across to bunyip
+rootvar="http://bunyip.chemeng.unimelb.edu.au:8000"; # root address to be given to webpages, with no trailing slash
+
 html_dir="$arb_manual_dir/html"; # on bunyip
-arb_manual_local_dir="/Users/daltonh/arb/manual"; # on roo
 html_local_dir="$arb_manual_local_dir/html"; # on roo
-rootvar="http://bunyip.chemeng.unimelb.edu.au:8000"; # no trailing slash
 
 echo "INFO: updating local html directory for bunyip";
 arb_doc --html-dir "$html_local_dir" --root "$rootvar"
@@ -16,8 +18,8 @@ arb_doc --html-dir "$html_local_dir" --root "$rootvar"
 echo "INFO: syncing the html directory over to bunyip";
 rsync -au --delete --progress "$html_local_dir" bunyip:"$arb_manual_dir"
 echo "INFO: updating arb_manual_server script on bunyip";
-rsync -au --progress "$arb_manual_local_dir/arb_manual_server" bunyip:"$arb_manual_dir"
+rsync -au --progress "$arb_manual_server_script" bunyip:"$arb_manual_dir"
 echo "INFO: stopping and starting html server again on bunyip";
-ssh bunyip "/home/daltonh/arb_manual/arb_manual_server stop"
-ssh bunyip -t "/home/daltonh/arb_manual/arb_manual_server start &"
+ssh bunyip "$arb_manual_dir/arb_manual_server stop"
+ssh bunyip -t "$arb_manual_dir/arb_manual_server start &"
 echo "INFO: done";

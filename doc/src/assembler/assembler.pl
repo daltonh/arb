@@ -25,6 +25,7 @@ my $markdown_filename = $ARGV[0]; # markdown filename to be read, from calling m
 my $root_var = $ARGV[1]; # rootvar to be referenced in html pages, from calling makefile command
 my $html_dir = $ARGV[2]; # htmldir which is the filesystem root of the html pages, from calling makefile command
 my $arb_dir = $ARGV[3]; # arbdir, from calling makefile command
+my $arbroot_var = $ARGV[4]; # root of the arb files directory to be referenced in the html pages
 my ($markdown_dirname) = $markdown_filename =~ /^(.*\/)index.md/;
 my $rel_var = abs2rel($markdown_dirname,$html_dir); # find system and html file location relative to the root
 #print "rel_var = $rel_var\n";
@@ -69,7 +70,7 @@ $replacements{"<<<root>>>"}=$root_var;
 # contents
 $replacements{"<<<contents>>>"}="not done";
 # arbroot, root location of arb dir to be passed to html pages
-$replacements{"<<<arbroot>>>"}=$arb_dir;
+$replacements{"<<<arbroot>>>"}=$arbroot_var;
 # # linkrootdir
 # $replacements{"<<linkrootdir>>"}=$markdown_dir;
 # $replacements{"<<markdowndir>>"}=$markdown_dir;
