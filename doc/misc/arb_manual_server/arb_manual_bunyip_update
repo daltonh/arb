@@ -1,0 +1,23 @@
+#!/bin/bash
+# script to recreate manual using arb_doc and sync it over to bunyip
+# manual address (root=rootvar) will be http://bunyip.chemeng.unimelb.edu.au:8000/
+# needs arb_manual_server to be running on bunyip
+
+# config
+arb_manual_dir="/home/daltonh/arb_manual"; # on bunyip
+html_dir="$arb_manual_dir/html"; # on bunyip
+arb_manual_local_dir="/Users/daltonh/arb/manual"; # on roo
+html_local_dir="$arb_manual_local_dir/html"; # on roo
+rootvar="http://bunyip.chemeng.unimelb.edu.au:8000"; # no trailing slash
+
+echo "INFO: updating local html directory for bunyip";
+arb_doc --html-dir "$html_local_dir" --root "$rootvar"
+# need to have ssh keys generated to allow this rsync to happen quietly
+echo "INFO: syncing the html directory over to bunyip";
+rsync -au --delete --progress "$html_local_dir" bunyip:"$arb_manual_dir"
+echo "INFO: updating arb_manual_server script on bunyip";
+rsync -au --progress "$arb_manual_local_dir/arb_manual_server" bunyip:"$arb_manual_dir"
+echo "INFO: stopping and starting html server again on bunyip";
+ssh bunyip "/home/daltonh/arb_manual/arb_manual_server stop"
+ssh bunyip -t "/home/daltonh/arb_manual/arb_manual_server start &"
+echo "INFO: done";

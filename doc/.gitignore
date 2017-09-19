@@ -5,6 +5,7 @@
 !/install/
 !/manual/
 !/src/
+!/misc/
 
 # include any gitignore files in any directories that are already included
 !.gitignore

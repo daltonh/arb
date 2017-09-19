@@ -64,7 +64,8 @@ usage () {
   echo "  --develop: get develop branch (default)";
   echo "  --master: get master branch";
   echo "  --date: add date to default branch name TODO";
-  echo "  --archive: tar and gzip subsequent cloned branch (implies --date) TODO";
+  echo "  --clean-git: remove git repository files TODO";
+  echo "  --archive: tar and gzip subsequent cloned branch (implies --date and --clean-git) TODO";
 # echo "  --closed-source: include any closed-source directory contents TODO";
   echo "  -h|--help: display this HELP INFO";
   echo;

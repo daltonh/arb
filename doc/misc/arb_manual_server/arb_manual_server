@@ -1,0 +1,22 @@
+#!/bin/bash
+# simple script to start and stop python server of arb_manual
+# run this as root (su will require user) or user on server
+# manual address (root=rootvar) will be http://bunyip.chemeng.unimelb.edu.au:8000/
+# also ln this to /etc/init.d and then link that to /etc/rc2.d using sudo ln -s /etc/init.d/arb_manual_server S99arb_manual_start from within rc2.d so that it starts on system start
+arb_manual_dir="/home/daltonh/arb_manual";
+html_dir="$arb_manual_dir/html";
+port=8000;
+user="daltonh";
+case "$1" in
+  start)
+  if [[ `whoami` == "$user" ]] ; then
+    $(cd $html_dir && /usr/bin/python -m SimpleHTTPServer "$port" > /dev/null 2>&1 &);
+  else
+# note swapping to user $user (although whoami still shows root), but file ownership is $user
+    /bin/su -m $user -c "cd $html_dir && /usr/bin/python -m SimpleHTTPServer "$port" > /dev/null 2>&1 &";
+  fi ;
+	;;
+  stop)
+  /usr/bin/pkill -f "SimpleHTTPServer $port" # -f is to match against the full command line
+	;;
+esac

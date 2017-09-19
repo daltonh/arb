@@ -147,7 +147,7 @@ do
       ;;
     "--html-dir") # get html file directory
       shift;
-      if [ -n "$1" ]; then html_dir="$(sanitise_dirname "$1")"; root_var=$html_dir; else echo "ERROR: html directory not found after option"; usage; fi;
+      if [ -n "$1" ]; then html_dir="$1"; root_var=$html_dir; else echo "ERROR: html directory not understood from callling options"; usage; fi;
       ;;
     "--help"|"-h") usage;;
     "--"*|"-"*) echo "ERROR: unknown option $1 passed to arb_doc"; usage;;
