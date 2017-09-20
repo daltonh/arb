@@ -383,7 +383,7 @@ sub parse_solver_code {
 
 #-------------------
 # deal with cases where skip is active
-  if ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^(END_SKIP)$/i) { print ::DEBUG "INFO: found \U$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; $unwrapped_ignore = 1; }
+  if ($code_blocks[$#code_blocks]{"skip"} && $line =~ /^(END_(SKIP|MARKDOWN))$/i) { print ::DEBUG "INFO: found \U$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=0; $unwrapped_ignore = 1; }
   elsif ($code_blocks[$#code_blocks]{"skip"}) { $unwrapped_ignore = 1; }
 
 #-------------------
@@ -460,7 +460,7 @@ sub parse_solver_code {
 
 #-------------------
 # check for opening of skip statement
-  elsif ($line =~ /^(SKIP)$/i) { print ::DEBUG "INFO: found \U$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=1; $unwrapped_ignore = 1; }
+  elsif ($line =~ /^(SKIP|MARKDOWN)$/i) { print ::DEBUG "INFO: found \U$1\E statement in $file\n"; $code_blocks[$#code_blocks]{"skip"}=1; $unwrapped_ignore = 1; }
 
 #-------------------
 # look for code block sections
