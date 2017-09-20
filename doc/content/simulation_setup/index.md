@@ -4,7 +4,7 @@ author: Dalton Harvie
 date: 6/12/16
 ---
 
-# Simulation Setup
+# Simulation setup
 
 ## arb coding syntax
 
@@ -47,36 +47,48 @@ INFO_DESCRIPTION "Jack & Jill" # will break the line at &
 Escaping these characters could be implemented in the future if the burning need arises.
 
 
-### String variables and string code
+### String variables and embedded perl code
 
-#### String Variables and Solver Code String Statements
+#### String variables and string statements
 
-'String variables' are used to perform replacements on the arb solver code as it is read in (parsed) by [setup_equations.pl].  String variables can be set using either solver code string statements, or via the more complex but powerful string code (see below).
-
-An example solver code string statements is the this:
+'String variables' are used to perform replacements on the arb solver code as it is read in (parsed) by [setup_equations.pl].  String variables can be set using either solver code string statements, or via the more complex but powerful [embedded perl code](#embedded-perl-code) (see below).  The main purpose of string variables is to allow 'chunks' of arb code to be tailored to specific applications.  The meaning of this will become clearer when discussing [include statements](#include-statements) below.
+_
+An example string statement is the following:
 ```arb
 REPLACEMENTS REPLACE "a string" WITH "another string"
 ```
-This will cause all occurrences of 'a string' in the remainder of the file to be replaced by the string 'another string', except within other solver code string statements and within [string code](#string_code) (see below).
+This will cause all occurrences of the string 'a string' in the remainder of the current code block (see below) to be replaced by the string 'another string', except within other solver code string statements and within any [embedded perl code](#embedded-perl-code).
+
+The string statement has a number of variations, illustrated by:
+```arb
+REPLACEMENTS R "a string" W "another string" # R is a short form of REPLACE, and W is a short form of WITH
+REPLACEMENTS CANCEL "a string" # will cancel a previously set string replacement
+REPLACEMENTS C "a string" # C is a short form of CANCEL
+REPLACEMENTS R "string1" W "another string" R "string2" W "another string2" # multiple replacements can be specified on the one line
+REPLACEMENTS DEFAULT "a string" WITH "another string" # 'DEFAULT' means only set this string if it isn't already set
+REPLACEMENTS D "a string" W "another string" # and 'D' is short for 'DEFAULT'
+```
+
+<!-- TODO: separate pandoc call into -B and -A html headers, possibly with separate css option -->
 
 
-####String code
+####Embedded perl code {#embedded-perl-code}
 
-Lying alongside solver code is 'string code', which is code that is embedded within the solver code and used to
+Lying alongside solver code is perl code, which is code that is embedded within the solver code and used to
 
-*  set string replacement variables (termed string variables) that perform replacements on the surrounding solver code (string replacement variables can also be set using solver string statements), and also to
+*  set string replacement variables (termed string variables) that perform replacements on the surrounding solver code (string replacement variables can also be set using solver string statements described above), and also to
 *  generated solver code directly.
 
-String code is delimited by {{ and }}.  The basic syntax rules of string code are:
+Embedded perl code is delimited by {{ and }}.  The basic syntax rules of perl code are:
 
-*  string replacements are not performed on string code
-*  string code can be placed anywhere within the solver code, EXCEPT in
+*  string replacements are not performed on perl code
+*  perl code can be placed anywhere within the solver code, EXCEPT in
      -  comments (where it is just a comment)
      -  solver code string statements (eg, `'REPLACE '<<a>>' WITH '1'`)
-*  there is no limitation to the characters used within string code, EXCEPT for }}, which even when enclosed within a string will terminate the string code
-*  needs to be valid perl code
+*  there is no limitation to the characters used within embedded perl code, EXCEPT for }}, which even when enclosed within a string will terminate the embedded perl code
+*  needs to be valid perl
 
-String code is interpreted directly by perl, evaluated using the 'eval' (string) function (<http://perldoc.perl.org/functions/eval.html>).  For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) [StringCode.pm] module of [setup_equations.pl], and whatever is returned from that eval (think subroutine) is substituted into the solver code in place of the string code.  So the following string code
+Embedded perl code is interpreted directly by perl, evaluated using the 'eval' (string) function (<http://perldoc.perl.org/functions/eval.html>).  For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) [StringCode.pm] module of [setup_equations.pl], and whatever is returned from that eval (think subroutine) is substituted into the solver code in place of the perl code.  So the following perl code
 ```arb
 {{ return "TRANSIENT_SIMULATION" }}
 ```
@@ -84,22 +96,22 @@ becomes the following solver code when arb is run,
 ```arb
 TRANSIENT_SIMULATION
 ```
-Note that if no return value is specified then any string code block evaluates as an empty string, and hence has no (immediate) effect within the solver code:
+Note that if no return value is specified then any perl code block evaluates as an empty string, and hence has no (immediate) effect within the solver code:
 ```arb
 NONE_CON{{ my $a = 1; }}STANT <a> 1.d0 # the solver code keyword becomes NONE_CONSTANT here
 ```
-The file unwrapped_input.arb within the setup_data output subdirectory is generated whenever arb is run, and contains the input file with the string code 'unwrapped' - that is, pure solver code.  The unwrapped_input.arb file can infact be used as a subsequent input to arb.
+The file unwrapped_input.arb within the setup_data output subdirectory is generated whenever arb is run, and contains the input file with the perl code 'unwrapped' - that is, pure arb solver code.  The unwrapped_input.arb file can infact be used as a subsequent input to arb.
 
-A print statement within a string code block is printed to the standard output (the screen, or output.scr), and not to the solver code:
+A print statement within a perl code block is printed to the standard output (the screen, or output.scr), and not to the solver code:
 ```arb
 {{ print "INFO: this message will appear on the screen\n"; }}
 ```
 
-Comments and line continuations are allowed in the string code, in the same way that they are allowed in perl code:
+Comments and line continuations are allowed in embedded perl code, in the same way that they are allowed in perl:
 
 ```arb
 {{
-# new lines and comments within string code follow perl rules, as the code is parsed as perl code
+# new lines and comments within embedded perl code follow perl rules, as the code is parsed as perl
 
   my $a = 1; # set a local variable to 1
   my $b = $a*3; # setting another local variable
@@ -109,7 +121,7 @@ Comments and line continuations are allowed in the string code, in the same way 
 }}
 ```
 
-Note that the & line continuation symbol is not used in string code (no line continuation is required in perl), and that commands need to finish with a semi-colon (;) otherwise quite criptic error messages can result.
+Note that the & line continuation symbol is not used in perl code (no line continuation is required in perl), and that commands need to finish with a semi-colon (;) otherwise quite criptic error messages can result.
 
 #### Local variables versus string variables
 

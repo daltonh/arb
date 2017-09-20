@@ -92,6 +92,8 @@ $(assemblerdir)/vimhl : $(assemblerdir)/vimhl.hs
 %.html : %.md $(docdir)/arb_doc $(docdir)/src/makefile $(assemblerdir)/assembler.pl $(assemblerdir)/assembler_pre.html $(assemblerdir)/assembler_post.html $(assemblerdir)/vimhl $(definitionsfiles) $(listfiles)
 	@echo "  INFO: recreating $@"
 #cd $(assemblerdir) && ./assembler.pl $< $(rootvar) $(htmldir) $(arbdir) >>debug.log
+#cd "$(assemblerdir)" && ./assembler.pl "$<" '$(rootvar)' "$(htmldir)" "$(arbdir)" '$(arbrootvar)' | pandoc -f markdown_mmd -S -F "$(assemblerdir)/vimhl" -s --mathjax -o "$@"
+#cd "$(assemblerdir)" && ./assembler.pl "$<" '$(rootvar)' "$(htmldir)" "$(arbdir)" '$(arbrootvar)' | pandoc -S -F "$(assemblerdir)/vimhl" -s --mathjax -o "$@"
 	cd "$(assemblerdir)" && ./assembler.pl "$<" '$(rootvar)' "$(htmldir)" "$(arbdir)" '$(arbrootvar)' | pandoc -S -F "$(assemblerdir)/vimhl" -o "$@"
 #cd "$(assemblerdir)" && ./assembler.pl "$<" '$(rootvar)' "$(htmldir)" "$(arbdir)" > "$@"
 
