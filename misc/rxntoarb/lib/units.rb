@@ -1,6 +1,6 @@
 # Unit conversion module
 # (C) Copyright Christian Biscombe 2017
-# 2017-09-04
+# 2017-09-21
 
 module Units
 
@@ -173,8 +173,8 @@ module Units
     # Convert to double precision format if required
     if options[:double_precision]
       value_out.tr!('Ee','d') # express converted value as double precision
-      value_out << 'd0' unless value_out['d'] # add exponent if not present
-      value_out.sub!('d','.d') unless value_out['.'] # add decimal point if not present
+      value_out << 'd0' unless value_out.include?('d') # add exponent if not present
+      value_out.sub!('d','.d') unless value_out.include?('.') # add decimal point if not present
     end
 
     return value_out, units_out.strip

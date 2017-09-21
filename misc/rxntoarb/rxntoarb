@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 
 PROGNAME = 'rxntoarb'
-VERSION = 2.1
-DATE = '2017-09-07'
+VERSION = 2.2
+DATE = '2017-09-21'
 info = "#{PROGNAME} v. #{VERSION} (#{DATE})
 Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
 (C) Copyright Christian Biscombe 2016-2017"
@@ -196,7 +196,11 @@ def parse_reaction(reaction)
 
   # Check unit consistency
   units = []
-  extract_units = ->(array) { array.map { |_,region| $surface_regions.include?(region) ? 'mol m-2' : 'mol m-3' } }
+  extract_units = lambda do |species_hash|
+    unit_list = []
+    species_hash.each { |(_,region),coeff| unit_list << "mol#{coeff} m-#{coeff*($surface_regions.include?(region) ? 2 : 3)}" }
+    unit_list.join(' ')
+  end
   consistency_check = lambda do
     return if regions.empty? # concentration units unknown so skip check
     units << "mol #{centring == :FACE ? 'm-2' : 'm-3'} s-1" unless $options[:none_centred] # reaction rate should have these units based on reaction location
@@ -225,8 +229,8 @@ def parse_reaction(reaction)
  	  $rates.last << "-<kd_#{@parent_label}>"
  	  rates_and_sources.call(reversible_products,false,:+)
     if @check_units
-      units = ["#{@parameter_units['ka']} #{extract_units.call(reversible_reactants.keys).join(' ')}"] # units of forward reaction rate
-      units << "#{@parameter_units['kd']} #{extract_units.call(reversible_products.keys).join(' ')}" # units of reverse reaction rate
+      units = ["#{@parameter_units['ka']} #{extract_units.call(reversible_reactants)}"] # units of forward reaction rate
+      units << "#{@parameter_units['kd']} #{extract_units.call(reversible_products)}" # units of reverse reaction rate
       consistency_check.call
     end
   end
@@ -237,7 +241,7 @@ def parse_reaction(reaction)
  	  rates_and_sources.call(irreversible_reactants,false,:-)
     rates_and_sources.call(irreversible_products,true,:+) if irreversible_products
     if @check_units
-      units = ["#{@parameter_units['k']} #{extract_units.call(irreversible_reactants.keys).join(' ')}"] # units of reaction rate
+      units = ["#{@parameter_units['k']} #{extract_units.call(irreversible_reactants)}"] # units of reaction rate
       consistency_check.call
     end
   end
@@ -291,7 +295,7 @@ end
 # Process command-line options; initialise {{{
 $options = {}
 $options[:none_centred] = true # none_centred by default; overridden by -n flag or surface|volume_region statements
-$options[:template_file] = File.exists?("#{Dir.pwd}/#{PROGNAME}rc") ? "#{Dir.pwd}/#{PROGNAME}rc" : "#{File.dirname(File.realpath(__FILE__))}/#{PROGNAME}rc" # if it exists, default to template file in the working directory; otherwise use global template. In Ruby >= 2.0.0 can replace File.dirname(File.realpath(__FILE__)) with __dir__
+$options[:template_file] = File.file?("#{Dir.pwd}/#{PROGNAME}rc") ? "#{Dir.pwd}/#{PROGNAME}rc" : "#{File.dirname(File.realpath(__FILE__))}/#{PROGNAME}rc" # if it exists, default to template file in the working directory; otherwise use global template. In Ruby >= 2.0.0 can replace File.dirname(File.realpath(__FILE__)) with __dir__
 opts = OptionParser.new do |opt|
   opt.banner = "#{info}\nUsage: #{PROGNAME} [options] <list of input files>, where options may be:"
   opt.on('-d', '--debug', 'Print debugging output') { $options[:debug] = true }
@@ -313,14 +317,14 @@ if ARGV.empty?
 end
 print_debug('$options'){}
 
-abort "ERROR: could not find template file #{$options[:template_file]}" unless File.exists?($options[:template_file])
+abort "ERROR: could not find template file #{$options[:template_file]} (or it isn't a regular file)" unless File.file?($options[:template_file])
 TEMPLATE = File.read($options[:template_file])
 
 PARAMETER_NAMES = {'k' => 'k', 'ka' => 'ka', 'kf' => 'ka', 'kon' => 'ka', 'kd' => 'kd', 'kr' => 'kd', 'koff' => 'kd', 'KM' => 'KM', 'Km' => 'KM', 'kcat' => 'kcat'}
 
 ARGV.each do |infile|
   $infile = infile
-  abort "ERROR: specified input file #{$infile} does not exist" unless File.exists?($infile)
+  abort "ERROR: specified input file #{$infile} does not exist (or it isn't a regular file)" unless File.file?($infile)
   outfile = $options[:outfile] && ARGV.size == 1 ? $options[:outfile] : File.basename($infile,'.*') + '.arb'
   while $options[:interactive] && File.exists?(outfile)
     print "WARNING: Output file #{outfile} already exists. Overwrite it? [y/n] "
@@ -503,8 +507,8 @@ ARGV.each do |infile|
       # Handle if_rxn statements in the template
       # These take the form if_rxn(if_location[=if_region]){if_clause}[{else_clause}], where if_location = none|surface|volume
       # Clauses may span multiple lines. Nested {} pairs (but not nested if_rxn statements) are allowed
-      TEMPLATE.scan(/\bif_rxn\s*(\((?<if_location>\w+)(\s*=\s*(?<if_region>.*?))?\))?\s*(?<if_clause>{((?>[^{}]+)|\g<if_clause>)*})?(?<else_clause>{((?>[^{}]+)|\g<else_clause>)*})?/i) do |if_location,if_region,if_clause,else_clause|
-        replace = $&
+      TEMPLATE.scan(/^[^#\n]*\bif_rxn\s*(\((?<if_location>\w+)(\s*=\s*(?<if_region>.*?))?\))?\s*(?<if_clause>{((?>[^{}]+)|\g<if_clause>)*})?(?<else_clause>{((?>[^{}]+)|\g<else_clause>)*})?/i) do |if_location,if_region,if_clause,else_clause|
+        replace = $&[/\bif_rxn.*/m]
         if_location.downcase!
         raise "missing or unrecognised location in if_rxn statement in template file #{$options[:template_file]}" unless if_location =~ /\A(none|surface|volume)\z/
         if_region &&= region_array(if_region) # convert to array
@@ -639,23 +643,22 @@ ARGV.each do |infile|
   #}}}
 # Format output {{{
   output = []
-  format_output = lambda do |array,*options|
+  format_output = lambda do |array,options={}|
     array -= ['',[]] # remove empty entries
     return if array.empty?
-    name, pre, post = options
-    output << ["# #{name} {{{",''] if name
-    output << pre if pre
+    output << ["# #{options[:name]} {{{",''] if options[:name]
+    output << options[:pre] if options[:pre]
     output << array
-    output << post if post
+    output << options[:post] if options[:post]
     output << ''
-    output << '#}}}' if name
+    output << '#}}}' if options[:name]
   end
   format_output.call($header << "# Generated from #{$infile} by #{PROGNAME} v. #{VERSION}, #{Time.now.strftime('%F %T')}")
-  format_output.call($constants,'Constants and regions')
-  format_output.call($rates,'Reaction rates','DEFAULT_OPTIONS output','DEFAULT_OPTIONS')
-  format_output.call($sources.values,'Source terms','DEFAULT_OPTIONS output','DEFAULT_OPTIONS')
-  format_output.call($equations,'Equations')
-  format_output.call($magnitudes.values,'Magnitudes')
+  format_output.call($constants,{name: 'Constants and regions'})
+  format_output.call($rates,{name: 'Reaction rates', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
+  format_output.call($sources.values,{name: 'Source terms', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
+  format_output.call($equations,{name: 'Equations'})
+  format_output.call($magnitudes.values,{name: 'Magnitudes'})
   File.write(outfile, output.join("\n"))
   warn "INFO: output written to #{outfile}\n#{'*'*200}" if $options[:debug]
 
