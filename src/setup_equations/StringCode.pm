@@ -121,9 +121,10 @@ sub string_delete {
   foreach my $name ( reverse( @names ) ) {
     my ($code_block_found,$string_variable_found) = string_search($name);
     if ($code_block_found == -1) {
-      syntax_problem("string variable $name not found during string_delete: $ReadInputFiles::filelinelocator");
+      syntax_problem("string variable $name not found during string_delete: $ReadInputFiles::filelinelocator","warning");
+    } else {
+      splice(@{$code_blocks[$code_block_found]{"string_variables"}},$string_variable_found,1);
     }
-    splice(@{$code_blocks[$code_block_found]{"string_variables"}},$string_variable_found,1);
   }
   
 }

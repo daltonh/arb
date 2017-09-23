@@ -504,6 +504,7 @@ sub parse_solver_code {
       my $found_depth = 1; # this is used only for file::find used within the template include
       if (empty($include_type)) {
   # if this is a plain INCLUDE statement then we cycle through the list of paths looking for the file or directory
+# ref: include_paths
 # possible TODO: make include path search also recursive through code_blocks
         for my $search_path ( reverse( @{$code_blocks[$#code_blocks]{"include_path"}} ) ) {
           ($found_name,$found_type) = check_for_arbfile_or_dir($search_path.'/'.$new_file);
@@ -1402,7 +1403,7 @@ sub push_code_block {
 
   if ($#code_blocks) {
     if (defined($abs_name)) {
-# set to last include_path of previous code_block, which is where calling file must be, for a block created from a new file
+# set to last include_path of previous code_block, which is where included file must be, for a block created from a new file
       $code_blocks[$#code_blocks]{"include_path"}[0] = $code_blocks[$#code_blocks-1]{"include_path"}[$#{$code_blocks[$#code_blocks-1]{"include_path"}}];
     } else {
       if (1) {
