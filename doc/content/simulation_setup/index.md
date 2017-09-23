@@ -93,10 +93,7 @@ Also, multiple strings may be defined on the one line, illustrated by
 GLOBAL_REPLACEMENTS R "string1" W "another string" R "string2" W "another string2" # multiple replacements can be specified on the one line
 ```
 
-<!-- TODO: separate pandoc call into -B and -A html headers, possibly with separate css option -->
-
-
-<!-- ### String variables and embedded perl code -->
+There are certain system generated global string variables that a set automatically but can also be changed by the user.  These include a number of variables that set the coordinate dimensions used by various variable operators.  Use the search hint `ref: string system variables` to find the list of these in `sub string_setup` within [StringCode.pm].
 
 ###Embedded perl code {#embedded-perl-code}
 
@@ -378,6 +375,7 @@ INCLUDE_WORKING "u_f2" # found u_f2.arb in user's working directory, but do not 
 INCLUDE # remove the user's working directory from the stack unless it was the last path left on the stack
 ```
 
+Partnering the include file capability is the ability to read in multiple definitions for the same variable.  The ultimate position of a variable's definition is that of the first definition for that variable.  The ultimate expression used for a variable is that given (read in) last. This functionality allows a variable's expression to be changed from what is used in (say) a template file by specifying a new definition lower in the file, after the template file include statement.  Options can also be added to previously specified options for a variable by including more definition statements (that may only contain options and not expressions) lower in the input file. Similarly for units.
 
 ###If statements
 

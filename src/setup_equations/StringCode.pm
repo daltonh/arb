@@ -337,7 +337,7 @@ sub string_setup {
 # ref: string system variables
 # setup default string_variables
 # loose convention is that replacement strings be delimited by <<>>, however any strings can (and will) be matched/valued
-# convention is that valuement names that end with "comment" are meant to preceed statements in the files, converting them to comments if they are not relevant
+# convention is that names that end with "comment" are meant to precede statements in the files, converting them to comments if they are not relevant
 # this string is for batcher integration - if a file is run through batcher, this string will be valued by an empty string, so can be used to precede arb lines that are specific to the batcher runs
   string_set("<<batchercomment>>","#","global");
   string_set("<<nobatchercomment>>","","global");
@@ -347,7 +347,7 @@ sub string_setup {
   string_set("<<dim3comment>>","","global");
   string_set("<<cartesiancomment>>","","global"); # default is cartesian
   string_set("<<cylindricalcomment>>","#","global");
-# convention is that valuement names that end with "flag" are either on (1) or off (0), so can be used within expressions
+# convention is that names that end with "flag" are either on (1) or off (0), so can be used within expressions
   string_set("<<cartesianflag>>","1","global"); # default is cartesian
   string_set("<<cylindricalflag>>","0","global");
 # these two should be overwritten by the relevant radius in the input file if using cylindrical coordinates: eg R "<<radius_c>>" W "<cellx[l=1]>" R "<<radius_f>>" W "<facex[l=1]>"

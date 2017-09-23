@@ -46,12 +46,10 @@ assemblerdir = $(docdir)/src/assembler
 #bodydir = $(wikidir)/body
 #bodycssfile = $(wikidir)/css/arb_body.css
 
-# find all of the markdown files within the body directory and first level of body subdirectories
-#markdownfiles := $(wildcard $(htmldir)/*.md) $(wildcard $(htmldir)/*/*.md)
-#markdownfiles := $(wildcard $(htmldir)/*/*.md)
-markdownfiles :=  $(shell find $(htmldir) -type f -name '*.md')
-listfiles :=  $(shell find $(htmldir) -type f -name 'list')
-definitionsfiles :=  $(shell find $(htmldir) -type f -name 'definitions')
+# find all of the markdown files within the html directory, excluding files within arb_files
+markdownfiles :=  $(shell find $(htmldir) -type f -name '*.md' -not -path $(htmldir)'/arb_files/*' )
+listfiles :=  $(shell find $(htmldir) -type f -a -name 'list' -not -path $(htmldir)'/arb_files/*' )
+definitionsfiles :=  $(shell find $(htmldir) -type f -name 'definitions' -not -path $(htmldir)'/arb_files/*' )
 htmlfiles := $(patsubst %.md,%.html,$(markdownfiles))
 htmlcontentfiles := $(patsubst %/index.md,%/contents.html,$(markdownfiles))
 
