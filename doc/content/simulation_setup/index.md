@@ -72,15 +72,27 @@ REPLACEMENTS CANCEL "a string" # will cancel a previously set string replacement
 ```
 If the variable has not already been set then a cancel statement issues a warning but is otherwise ignored.
 
-The scope of a standard string replacement variable is all code within the remaining code block (including any descendant blocks).  The precise definition of a [code block](#code-block) is detailed below, however most commonly a code block corresponds to the contents of the current arb code file.  Hence, if an arb code file 'A.arb' includes a code file 'B.arb', and a standard string variable is defined in code file 'B.arb', then this string variable will not be defined back in (the remainder of) code file 'A.arb'.  In other words, the scope of a standard string variable is only the remainder of the code block in which the variable is defined and this block's children, and not the parents of the defining code block.  For this reason standard string variables are known as local string variables.
+The scope of a standard string replacement variable is all code within the remaining code block in which the variable is first defined (including any descendant blocks).  The precise definition of a [code block](#code-block) is detailed below, however most commonly a code block corresponds to the contents of an arb code file.  Hence, if an arb code file 'A.arb' includes a code file 'B.arb', and a standard string variable is defined in code file 'B.arb', then this string variable will not be defined back in (the remainder of) code file 'A.arb'.  In other words, the scope of a standard string variable is only the remainder of the code block in which the variable is defined and this block's children, and not the parents of the defining code block.  For this reason standard string variables are known as local string variables.
 
-The alternative to a local string variable is a global string variable.  The scope of a global string variable is all code blocks (actually the grandparent of all code blocks), so a global string variable defined in file 'B.arb' in the previous example will be used to replace strings in the remainder of file 'B.arb' as well as within the remainder of its calling file 'A.arb'.  Global variables are set using the `GLOBAL_REPLACEMENTS` keyword (or the legacy version of this, being `GENERAL_REPLACEMENTS`):
+One way of making a local string available within a larger scope is to first define the string within the larger scope, but actually set its value within the smaller (sub) scope.  For example, in the previous example where a local variable was set within file 'B.arb', if this variable was first defined (to say an empty string) in file 'A.arb' using
+```arb
+REPLACEMENTS R "<<a string>>" W "" # the scope of a variable is defined by the block in which it is first defined
+```
+then its value set in file 'B.arb' would be available back in file 'A.arb'.
+
+Note that if a string is cancelled using (eg)
+```arb
+REPLACEMENTS CANCEL "<<a string>>" # completely removes string and defining scope
+```
+then all information about the string variable is lost, including its scope.  Hence any subsequent definitions will set the string's code block scope afresh.
+
+The alternative to a local string variable is a global string variable.  The scope of a global string variable is all code blocks (actually the grandparent or first code block, which spawns all other code blocks), so a global string variable defined in file 'B.arb' in the previous example will be used to replace strings in the remainder of file 'B.arb' as well as within the remainder of its calling file 'A.arb'.  Global variables are set using the `GLOBAL_REPLACEMENTS` keyword (or the legacy version of this, being `GENERAL_REPLACEMENTS`):
 ```arb
 GLOBAL_REPLACEMENTS REPLACE "a string" WITH "a better string" # this replacement will occur in all code blocks subsequent to this statement
 GENERAL_REPLACEMENTS REPLACE "a string" WITH "a better string" # GENERAL_REPLACEMENTS is a legacy and entirely equivalent form of the GLOBAL_REPLACEMENTS keyword
 ```
 
-In terms of how these scoping rules are implemented, string variables are each associated with a specific code block, with replacements performed using any string variable that is defined within the current code block or its parents (see `@code_blocks[]{"string_variables"}` array hash in [StringCode.pm]).  Global string variables are associated with the first code block so are available for replacement in all subsequently formed code blocks.
+In terms of how these scoping rules are implemented, string variables are each associated with a specific code block, with replacements performed using any string variable that is defined within the current code block or its children (see `@code_blocks[]{"string_variables"}` array hash in [StringCode.pm]).  Global string variables are associated with the first code block so are available for replacement in all subsequently formed code blocks.
 
 Finally, there are short forms of the string setting statements illustrated by
 ```arb
@@ -446,56 +458,29 @@ END_IF
 
 ##Meshes
 
-arb uses an unstructured mesh composed of cell elements that are
-separated by face elements. The dimension of each element is specified
-on a per-element basis, consistent with the particular computational
-domain that the element is within (that is, not globally). Cell elements
-are classified as either boundary cells (that is, on the boundary of a
-domain) or domain cells (that is, contained within a domain). Domain
-cells have a dimension that is equal to that of the domain they are in
-(ie, dimension 3/2/1 if the domain is a volume/surface/line, resp.).
-Boundary cells have a dimension that is one less than that of the
-associated domain (ie, dimension 2/1/0 if the domain is a
-volume/surface/line, resp.). Face elements are any elements that
-separate cell elements. Face elements also have a dimension that is one
-less than that of the domain they are within. Some face elements are
-specified explicitly within a file (if they are part of a physical
-entity such as for example), while the remainder are generated by arb
-when the mesh is read in. Face elements are also classified as being
-either domain faces or boundary faces. Each boundary face has the same
-geometry, and is conincident with, a boundary cell. Hence, a mesh has
-the same number of boundary faces as boundary cells.
+###Types of elements
 
-Meshes are read in from files, generally produced by the gmsh program.
-Multiple files can be read in by arb for each simulation. arb has been
-coded to be able to handle any poly-sided first order elements supported
-by the gmsh file format. It has been tested to date (v0.3) with
-tetrahedron, boxes and prisms in 3D, triangles and rectangles in 2D,
-lines in 1D and points in 0D. Tetrahedron, triangles, lines and points
-are the default element geometries created by gmsh.
+arb uses an unstructured mesh composed of cell elements that are separated by face elements. Node elements are the points demarcating the face and cell elements.  The dimension of each element is specified on a per-element basis, consistent with the particular computational domain that the element is within (that is, not globally).
 
-Meshes and data are also exported by arb using the format. During every
-simulation all domains and all output-enabled data will be written by
-default to the file. Other files may also be written, corresponding to
-any files that are read in (with any associated output-enabled data).
-Regions imported from files as well as regions created by arb will be
-exported to any written files, however note that as the physical
-entities handled by gmsh can only have a single dimension, elements that
-have a dimension that is less than any others within a region will not
-be associated with that region in any arb-created files. This is
-relevant for example when a compound region is created that contains
-both domain and boundary cells. When this arb-written file is displayed
-by gmsh it will only appear to contain the domain cells.
+Cell elements are classified as either boundary cells (that is, on the boundary of a domain) or domain cells (that is, contained within a domain). Domain cells have a dimension that is equal to that of the domain they are in (ie, dimension 3/2/1 if the domain is a volume/surface/line, resp.).  Boundary cells have a dimension that is one less than that of the associated domain (ie, dimension 2/1/0 if the domain is a volume/surface/line, resp.).
 
-### Cell and face element specification
+Face elements are any elements that separate cell elements. Face elements also have a dimension that is one less than that of the domain they are within. Some face elements are specified explicitly within a file (if they are part of a physical entity such as for example), while the remainder are generated by arb when the mesh is read in. Face elements are also classified as being either domain faces or boundary faces. Each boundary face has the same geometry, and is conincident with, a boundary cell. Hence, a mesh has the same number of boundary faces as boundary cells.
 
-The distinction between cell elements and face elements is not made by
-gmsh or contained explicitly in the file, but rather must be made by arb
-when a file is read in. Gmsh’s behaviour is to only write an element to
-a file if it is a member of a physical entity. Further, each physical
-entity has a single dimension. So, to decide whether an element is
-either a face or cell element, arb does two things when reading in each
-file:
+Node elements are the vertices that bound both the face and cell elements.  Node elements always have a dimension of point (0) and appear as geometry->points in [gmsh].
+
+###File format
+
+Meshes are read in from files, in the format of the open source [gmsh] program having extension `.msh`.  [Pointwise] is a commercial meshing program that also exports to this format.  Multiple files can be read in by arb for each simulation.
+
+arb has been coded to be able to handle any poly-sided first order elements supported by the gmsh file format. It has been tested to date with tetrahedron, boxes and prisms in 3D, triangles and rectangles in 2D, lines in 1D and points in 0D. Tetrahedron, triangles, lines and points are the default element geometries created by gmsh.  
+
+Meshes and data are also exported by arb using the same [gmsh] format. During every simulation all domains and all output-enabled data will be written by default to the file. Other files may also be written, corresponding to any files that are read in (with any associated output-enabled data).
+
+Regions imported from files as well as regions created by arb will be exported to any written files, however note that as the physical entities handled by gmsh can only have a single dimension, elements that have a dimension that is less than any others within a region will not be associated with that region in any arb-created files. This is relevant for example when a compound region is created that contains both domain and boundary cells. When this arb-written file is displayed by gmsh it will only appear to contain the domain cells.
+
+### Multiple domains: Cell and face element specification
+
+The distinction between cell elements and face elements is not made by gmsh or contained explicitly in the file, but rather must be made by arb when a file is read in. Gmsh's behaviour is to only write an element to a file if it is a member of a physical entity. Further, each physical entity has a single dimension. So, to decide whether an element is either a face or cell element, arb does two things when reading in each file:
 
 1.  The maximum dimension of all physical entities with the file
     is found. This is stored as the dimension of the particular mesh;
@@ -506,9 +491,9 @@ file:
     face element. If it has a dimension that is two or more less than
     that of the mesh, then the element is ignored.
 
-So what’s the implication of all this? Generally arb will be able to
+So what's the implication of all this? Generally arb will be able to
 work out from each file which elements within it are cell elements and
-which are face elements. The only time it won’t is when *there are
+which are face elements. The only time it won't is when *there are
 multiple domains having different dimensions contained within the one
 file*. For example, you have both a volume domain and a surface domain
 specified within a file, on which you want separate (but possibly
@@ -522,7 +507,7 @@ explicitly specified. For example, if a file contains both a volume and
 a surface domain, then all regions associated with the surface domain
 must have their centring explicitly specified. Statements for specifying
 this cell/face centring for particular regions (gmsh physical entities)
-are described in section \[sec:gmsh\_regions\]. Alternatively, there is
+are described in section [gmsh-regions]. Alternatively, there is
 another way that may work for your simulation: As arb can read multiple
 files for each simulation, it may be easier to place domains of
 different dimensions in separate files. The cell/face specification will
@@ -530,45 +515,40 @@ then be handled automatically without additional statements in the file
 (If you want multiple domains to share common mesh features however this
 may be difficult to accomplish using gmsh).
 
-### Data and mesh file rereading
+### Data and mesh file reading
 
-The files written by can contain data. Variables associated with cell
-elements can be written in either (a uniform value for each cell) or
-(values vary linearly within each cell) gmsh formats. Variables
-associated with face elements will only be written in format. Variables
-which are centred are written using a special format which gmsh won’t
-display. Note that face and cell boundary elements are not written
-separately to each file by arb, but rather as a single element. Hence
-both cell and face boundary data is associated with a single element in
-each file.
+Mesh and data input and output is specified by `MSH_FILE` statements within the arb file, having the generic format:
+```arb
+MSH_FILE "msh_file_name_including_path" comma,separated,list,of,options # comments
+```
+The file name here refers to the read location of the file.  If a file is to be written it will always be written to the output directory which defaults to `output` within the user's working directory (see option `--output` that can be passed to the [arb script](#arb-script) to change this directory name).  As all `.msh` files could be written to this same output directory, all `.msh` file basenames must be unique.  Options for the default `output.msh` file should be referred to by `output/output.msh` if the default `output` directory is used (which is the read location for this file if it did exist).  File paths in the `MSH_FILE` statement are relative to the user's working directory (the directory from which `arb` is being run`).
 
-One purpose of exporting data to a file is to provide initial conditions
-for another (or next) simulation. In this case generally you just have
-to specify the file from the previous simulation as the mesh file to be
-read in for the next simulation. Note that each arb-written file
-contains all the information about a mesh that was originally contained
-in the mesh-only gmsh-written file: Hence, when starting a simulation
-from an arb-written datafile is it not necessary (nor does it make
-sense) to also read in the original gmsh file. Also note that data files
-that contain variable values can only refer to mesh elements that are
-specified in the same data file (unless some fancy magic is worked in
-your equations).
+The `.msh` files written by arb can contain data. Variables associated with cell elements can be written in either `ElementData` (a uniform value for each cell), `ElementNodeData` (values vary linearly within each cell) or `ElementNodeLimitedData` gmsh formats (uses the gmsh `ElementNodeData` format, however gradients are limited such that extreme in-cell values are bounded by surrounding cell values). `ElementNodeData` and `ElementNodeLimitedData` formats generate larger `.msh` files than `ElementData` as data values for each node element *of each cell element* have to be written in the former cases:  However, for visualisation these formats look much better for (particularly) scalar cell data.  There is little reason to use `ElementNodeData` over `ElementNodeLimitedData`.  Variables associated with face or node elements will only be written in `ElementData` format. Variables which are none centred are written using a special `Data` format which gmsh won’t display, however these values can be read in by subsequent arb simulations.
+
+Note that face and cell boundary elements are not written separately to each `.msh` file by arb, but rather as a single element. Hence both cell and face boundary data is associated with a single element in each `.msh` file.
+
+One purpose of exporting data to a `.msh` file is to provide initial conditions for another (or next) simulation. In this case generally you just have to specify the `output/output.msh` file from the previous simulation as the mesh file to be read in for the next simulation, as in
+```arb
+MSH_FILE "output/output.msh" input # note that the read location of each file needs to be specified
+```
+A disadvantage of restarting in this manner however is that the old `output.msh` file will be overwritten.  Hence an alternative is to copy the output file first and place/rename it within the user's working directory so that it is saved for a subsequent restart, and then restart from the copied file.
+
+Note that each arb-written file contains all the information about a mesh that was originally contained in the mesh-only gmsh-written `.msh` file: Hence, when starting a simulation from an arb-written `.msh` datafile is it not necessary (nor does it make sense) to also read in the original gmsh `.msh` file.
+
+Also note that `.msh` data files that contain variable values can only refer to mesh elements that are specified in the same named `.msh` data file (unless some fancy magic is worked in your equations). Hence, if two mesh files are read in, as in
+```arb
+MSH_FILE "domain1.msh" input,output # region <domain1> is contained here
+MSH_FILE "domain2.msh" input,output # region <domain2> is contained here
+MSH_FILE "output.msh" output # contains all regions
+CELL_OUTPUT <a variable> "1.d0" ON <domain1> # data associated with <domain1> will be written to output/domain1.msh and output/output.msh, but not output/domain2.msh
+```
+then regions and their associated data will only be written to output `.msh` files corresponding to the filenames in which they were originally defined.  The `output.msh` file is handled differently however and will contain all regions on output, irrespective of the regions contained in any `output.msh` file that is read in.
 
 ### Mesh read and write options
 
-Mesh and data input and output is specified by statements within the
-file:
-
-    MSH_FILE "msh_file_name_including_path" comma,separated,list,of,options # comments
-
-The file name refers to the read location. Options for the default file
-should be referred to by (which is the read location if it did exist).
-If a file is to be written it will always be written to the directory.
-As a result, all file basenames must be unique.
-
 Three types of options are available for each file:
 
-*Output options:*
+####Output options:
 
 These options specify what information is to be written to the file.
 

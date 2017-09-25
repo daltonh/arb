@@ -17,3 +17,5 @@
 [ReadInputFiles.pm]: <<<arbroot>>>/src/setup_equations/ReadInputFiles.pm
 [templates_dir]: <<<arbroot>>>/templates
 [examples_dir]: <<<arbroot>>>/examples
+[gmsh]: http://gmsh.info
+[Pointwise]: http://www.pointwise.com

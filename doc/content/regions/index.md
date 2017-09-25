@@ -4,6 +4,8 @@ author: Dalton Harvie
 date: 5/10/17
 ---
 
+<!-- add ##Gmsh Regions -->
+
 # Regions
 
 Regions are sets of elements that are used to locate user-defined

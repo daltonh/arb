@@ -1,11 +1,11 @@
 # this is a list of titles that lead off from this directory, in the order they should appear in the contents
 # rule is to lowercase all letters and replace spaces with underscores
 Introduction
-Installation
 Simulation Setup
 Regions
 Variables
 Templates
 Examples
+Installation
 Coding Reference
 #css
