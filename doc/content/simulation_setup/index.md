@@ -474,46 +474,9 @@ Meshes are read in from files, in the format of the open source [gmsh] program h
 
 arb has been coded to be able to handle any poly-sided first order elements supported by the gmsh file format. It has been tested to date with tetrahedron, boxes and prisms in 3D, triangles and rectangles in 2D, lines in 1D and points in 0D. Tetrahedron, triangles, lines and points are the default element geometries created by gmsh.  
 
-Meshes and data are also exported by arb using the same [gmsh] format. During every simulation all domains and all output-enabled data will be written by default to the file. Other files may also be written, corresponding to any files that are read in (with any associated output-enabled data).
+Meshes and data are also exported by arb using the same [gmsh] `.msh` format. During every simulation all domains and all output-enabled data will be written by default to an `output.msh` file. Other `.msh` files may also be written, corresponding to any `.msh` files that are read in (with any associated output-enabled data).
 
 Regions imported from files as well as regions created by arb will be exported to any written files, however note that as the physical entities handled by gmsh can only have a single dimension, elements that have a dimension that is less than any others within a region will not be associated with that region in any arb-created files. This is relevant for example when a compound region is created that contains both domain and boundary cells. When this arb-written file is displayed by gmsh it will only appear to contain the domain cells.
-
-### Multiple domains: Cell and face element specification
-
-The distinction between cell elements and face elements is not made by gmsh or contained explicitly in the file, but rather must be made by arb when a file is read in. Gmsh's behaviour is to only write an element to a file if it is a member of a physical entity. Further, each physical entity has a single dimension. So, to decide whether an element is either a face or cell element, arb does two things when reading in each file:
-
-1.  The maximum dimension of all physical entities with the file
-    is found. This is stored as the dimension of the particular mesh;
-
-2.  When an element is read in that has the same dimension as that of
-    the mesh, it is regarded as a cell element. If it has a dimension
-    that is one less than that of the mesh, it is regarded as a
-    face element. If it has a dimension that is two or more less than
-    that of the mesh, then the element is ignored.
-
-So what's the implication of all this? Generally arb will be able to
-work out from each file which elements within it are cell elements and
-which are face elements. The only time it won't is when *there are
-multiple domains having different dimensions contained within the one
-file*. For example, you have both a volume domain and a surface domain
-specified within a file, on which you want separate (but possibly
-linked) sets of equations solved.
-
-If you do have multiple domains having different dimensions contained
-within the one file then the dimension of all regions (that is, physical
-entities) contained within the file that belong to any domains that have
-a dimension that is *less than* that of the file need their centring
-explicitly specified. For example, if a file contains both a volume and
-a surface domain, then all regions associated with the surface domain
-must have their centring explicitly specified. Statements for specifying
-this cell/face centring for particular regions (gmsh physical entities)
-are described in section [gmsh-regions]. Alternatively, there is
-another way that may work for your simulation: As arb can read multiple
-files for each simulation, it may be easier to place domains of
-different dimensions in separate files. The cell/face specification will
-then be handled automatically without additional statements in the file
-(If you want multiple domains to share common mesh features however this
-may be difficult to accomplish using gmsh).
 
 ### Data and mesh file reading
 
@@ -523,11 +486,9 @@ MSH_FILE "msh_file_name_including_path" comma,separated,list,of,options # commen
 ```
 The file name here refers to the read location of the file.  If a file is to be written it will always be written to the output directory which defaults to `output` within the user's working directory (see option `--output` that can be passed to the [arb script](#arb-script) to change this directory name).  As all `.msh` files could be written to this same output directory, all `.msh` file basenames must be unique.  Options for the default `output.msh` file should be referred to by `output/output.msh` if the default `output` directory is used (which is the read location for this file if it did exist).  File paths in the `MSH_FILE` statement are relative to the user's working directory (the directory from which `arb` is being run`).
 
-The `.msh` files written by arb can contain data. Variables associated with cell elements can be written in either `ElementData` (a uniform value for each cell), `ElementNodeData` (values vary linearly within each cell) or `ElementNodeLimitedData` gmsh formats (uses the gmsh `ElementNodeData` format, however gradients are limited such that extreme in-cell values are bounded by surrounding cell values). `ElementNodeData` and `ElementNodeLimitedData` formats generate larger `.msh` files than `ElementData` as data values for each node element *of each cell element* have to be written in the former cases:  However, for visualisation these formats look much better for (particularly) scalar cell data.  There is little reason to use `ElementNodeData` over `ElementNodeLimitedData`.  Variables associated with face or node elements will only be written in `ElementData` format. Variables which are none centred are written using a special `Data` format which gmsh won’t display, however these values can be read in by subsequent arb simulations.
-
 Note that face and cell boundary elements are not written separately to each `.msh` file by arb, but rather as a single element. Hence both cell and face boundary data is associated with a single element in each `.msh` file.
 
-One purpose of exporting data to a `.msh` file is to provide initial conditions for another (or next) simulation. In this case generally you just have to specify the `output/output.msh` file from the previous simulation as the mesh file to be read in for the next simulation, as in
+The `.msh` files written by arb can contain data.  One purpose of exporting data to a `.msh` file is to provide initial conditions for another (or next) simulation. In this case generally you just have to specify the `output/output.msh` file from the previous simulation as the mesh file to be read in for the next simulation, as in
 ```arb
 MSH_FILE "output/output.msh" input # note that the read location of each file needs to be specified
 ```
@@ -550,72 +511,87 @@ Three types of options are available for each file:
 
 ####Output options:
 
-These options specify what information is to be written to the file.
+These options specify how and what information is to be written to output `.msh` files:
 
--   : Both a mesh and all specified variables will be written.
+- `output`: Both a mesh and all specified variables will be written.
 
--   : Both a mesh and all specified variables will be written. Output
-    will be split between three files, each containing variables of only
-    a single centring (cell, face and none). This can be handy for gmsh
+- `centringoutput`: As per `output`, but output
+    will be split between four files, each containing variables of only
+    a single centring (cell, face, node and none). This can be handy for gmsh
     compatibility when doing cutgrid and streamtrace operations
-    for example.
+    for example.  Use the vtk version of this (`centringvtkoutput`) for [paraview].
 
--   : Only the mesh is written, split between three files as above.
+- `centringmeshoutput`: Only the mesh is written, split between four centring-specific files as per `centringoutput`.
 
--   : Only the mesh is written.
+- `meshoutput`: Only the mesh is written.
 
--   : Neither the mesh or any data will be written.
+- `nooutput`: Neither the mesh or any data will be written.
 
--   : Same as the file options, but for output, compatible with ParaView
-    (for example). The default is .
+- `vtkoutput`,`centringvtkoutput`,`meshvtkoutput`,`centringmeshvtkoutput`,`novtkoutput`: Same as the `.msh` file options, but for `.vtk` output, compatible with [paraview] (for example). The default is `novtkoutput`.  
 
--   : Same as the file options, but for output, compatible with Tecplot.
-    The default is .
+- `datoutput`,`centringdatoutput`,`meshdatoutput`,`centringmeshdatoutput`,`nodatoutput`: Same as the `.msh` file options, but for `.dat` output, compatible with [Tecplot] (for example). The default is `nodatoutput`.  
 
-By default all meshes have the option specified, with the exception of
-the mesh, which has option .
+- `outputscale=N`: Scale the mesh on output by a factor $N$.  This works by changing the coordinates of the nodes, from which the location of all other elements is derived.  A `outputscale=2` would double the size of the mesh region, while `outputscale=1.d+3` would (eg) change the units of the mesh from metres (used in the arb simulation) to millimetres (dimensions used in output file).
 
-*Input options:*
+- `outputinversescale=N`: As per `outputscale` but scale by a factor $1/N$.  This is useful to 'reverse' an `inputscale=N` option so that the input and output `.msh` files have the same dimensions.
+
+By default all meshes have the `nooutput` option specified, with the exception of
+the `output.msh` file, which has option `output`.
+
+####Input options:
 
 These options specify what information is to be read from the file.
 
--   : Both a mesh and all relevant data will be read.
+- `input`: Both a mesh and all relevant data will be read.
 
--   : Both a mesh and all relevant data will be read. In this case the
-    existing is split into three, each containing variables of only a
-    single centring (cell, face and none) as output from a previous
-    simulation employing . In this case the filename should be specified
-    without the centring, for example (rather than ).
+- `centringinput`: Both a mesh and all relevant data will be read. In this case the input `.msh` files must be split between four files, each containing variables of only a single centring (cell, face, node and none) as output from a previous simulation employing the `centringoutput` option. In this case the filename should be specified without the centring, for example `output.msh` (rather than `output.cell.msh` which could be one of the actual file names).  
 
--   : Only the mesh is read, split between three files as above.
+- `centringmeshinput`: Only the mesh is read, split between four files as per `centringinput`.
 
--   : Only the mesh is read.
+- `meshinput`: Only the mesh is read.
 
--   : Neither the mesh or any data will be read.
+- `noinput`: Neither the mesh or any data will be read.
 
-By default all meshes have the option specified, with the exception of
-the mesh, which has option .
+- `inputscale=N`: Scale the mesh on input by a factor $N$.  This works by changing the coordinates of the nodes, from which the location of all other elements is derived.  A `inputscale=2` would double the size of the mesh region, while `inputscale=1.d-3` would (eg) change the units of the mesh from millimetres (units of mesh file) to metres (units used in arb simulation).  (More tricky scalings and translations can be performed by altering the `function transform_coordinates` in [gmesh_module.f90].)
 
-*Data format options:*
+- `inputinversescale=N`: As per `inputscale` but scale by a factor $1/N$.
 
-These options specify how cell centred data will be written to the file.
-These options overwrite any data format options specific to individual
-variables.
+By default all meshes have the `input` option specified, with the exception of
+the default `output.msh` mesh, which has option `noinput`.  Meshes and data cannot be read using the vtk or dat file formats.
 
--   : All cell data will be written using the format.
+####Data format options:
 
--   : All cell data will be written using the format.
+Variables associated with cell elements can be written in the following formats:
 
--   : All cell data will be written using the format, but with the
-    gradients in each cell limited so that each vertex value is bounded
-    by surrounding cell values.
+* `elementdata`: a uniform value for each cell (gmsh format `ElementData`);
+* `elementnodedata`: values vary linearly within each cell (gmsh format `ElementNodeData`); or
+* `elementnodelimiteddata`: uses the gmsh `ElementNodeData` format, however gradients are limited such that extreme in-cell values are bounded by surrounding cell values
 
-By default all meshes have no data format options specified, the format
-instead being determined by the options contained in the individual
-variable definitions within input file.
+`elementnodedata` and `elementnodelimiteddata` formats generate larger `.msh` files than the `elementdata` format as data values for each node element *of each cell element* have to be written to the `.msh` file:  However, these node formats look much better for scalar cell data.  There is little reason to use `elementnodedata` over `elementnodelimiteddata`.  Variables associated with face or node elements will only be written in `elementdata` format. Variables that are none centred are written using a special `data` format which gmsh won’t display, however these values can be read in by subsequent arb simulations.
 
-Simulation options
-------------------
+Default data formats for each variable are (search `ref: default output` in [setup_module.f90]):
+
+* `data` for all none centred variables
+* `elementnodelimiteddata` for all cell centred scalar compound variables
+* `elementdata` for all components of variables and all other compound variables (ie vectors and tensors, and all other face, node and cell centred variables)
+
+The default formats can be overwritten on a per-variable or per-file basis.  An option such as `elementdata` added to the `MSH_FILE` command will cause all applicable data to be written in this format within this file.  Similarly, an option such as `elementnodedata` added to a variable definition statement will cause just this variable to be written in this format (if applicable).  The per-file format option takes precedence over any per-variable format options.
+
+### Multiple domains: Cell and face element specification
+
+The distinction between cell elements and face elements is not made by gmsh or contained explicitly in the file, but rather must be made by arb when a file is read in. Gmsh's behaviour is to only write an element to a file if it is a member of a physical entity. Further, each physical entity has a single dimension. So, to decide whether an element is either a face or cell element, arb does two things when reading in each file: 
+
+1.  The maximum dimension of all physical entities with the file is found. This is stored as the dimension of the particular mesh (ie `.msh` file);
+
+2.  When an element is read in that has the same dimension as that of the mesh, it is regarded as a cell element. If it has a dimension that is one less than that of the mesh, it is regarded as a face element. If it has a dimension that is two or more less than that of the mesh, then the element is ignored.
+
+So what's the implication of all this? Generally arb will be able to work out from each `.msh` file which elements within it are cell elements and which are face elements. The only time it won't is when *there are multiple domains having different dimensions contained within the one `.msh` file*. For example, you have both a volume domain and a surface domain specified within the one `.msh` file, on which you want separate (but possibly linked) sets of equations solved.
+
+If you do have multiple domains having different dimensions contained within the one `.msh` file then the dimension of all regions (that is, physical entities) contained within that file that belong to any domains that have a dimension that is *less than* that of the file need their centring explicitly specified. For example, if a file contains both a volume and a surface domain, then all regions associated with the surface domain must have their centring explicitly specified. Statements for specifying this cell/face/node centring for particular regions (gmsh physical entities) are described in section [gmsh-regions].
+
+Alternatively, there is another way that may work for your simulation: As arb can read multiple files for each simulation, it may be easier to place domains of different dimensions in separate `.msh` files. The cell/face/node specification will then be handled automatically without additional statements in the arb input file.  However, if you want multiple domains to share common mesh features (such as a common unstructured surface) this may be difficult to accomplish using gmsh.  
+
+##Simulation options
 
 -   : choose between the two types of simulation.
 
@@ -637,8 +613,7 @@ Simulation options
 
 -   : choose the type of linear solver to use.
 
-Kernel options
---------------
+##Kernel options
 
 There are many options that can be used to change the kernels used. For
 example
@@ -646,8 +621,7 @@ example
 specifies that when averaging/differentiating quantities to/at faces,
 ensure that a second order polynomial would be reproduced precisely.
 
-Glued boundaries
-----------------
+##Glued boundaries
 
 Used to implement periodic or reflection boundaries by glueing two
 boundary face regions together. Boundary regions to be glued must have
@@ -667,8 +641,7 @@ when they are operating on the component of a vector, that needs to be
 reflected over this reflection boundary. See the options for each
 operator.
 
-Simulation Info
----------------
+##Simulation Info
 
 The following strings can be used within an input file to help keep
 track of what the file contains. These and other automatically generated
