@@ -1,14 +1,12 @@
 ---
-title: 'simulation setup'
+title: 'arb file syntax'
 author: Dalton Harvie
 date: 6/12/16
 ---
 
-# Simulation setup
+# arb file syntax
 
-## arb file syntax
-
-### Solver code syntax
+## Solver code syntax
 
 Most of the arb input file consists of 'solver code', which follows these basic syntax rules:
 
@@ -48,7 +46,7 @@ Escaping these characters could be implemented in the future if the burning need
 
 
 
-### String variables and solver code string statements
+## String variables and solver code string statements
 
 'String variables' are used to perform replacements on the arb solver code as it is read in (parsed) by [setup_equations.pl].  String variables can be set using either solver code string statements, or via (the more complex but powerful) [embedded perl code](#embedded-perl-code) (see below).  The main purpose of string variables is to allow 'chunks' of arb code to be tailored to specific applications.  The meaning of this will become clearer when discussing [include statements](#include-statements) later.
 
@@ -107,9 +105,9 @@ GLOBAL_REPLACEMENTS R "string1" W "another string" R "string2" W "another string
 
 There are certain system generated global string variables that a set automatically but can also be changed by the user.  These include a number of variables that set the coordinate dimensions used by various variable operators.  Use the search hint `ref: string system variables` to find the list of these in `sub string_setup` within [StringCode.pm].
 
-###Embedded perl code {#embedded-perl-code}
+##Embedded perl code {#embedded-perl-code}
 
-####Embedded code syntax
+###Embedded code syntax
 
 Lying alongside solver code is embedded perl code, which is code that is embedded within the solver code and used to
 
@@ -162,7 +160,7 @@ Comments and line continuations are allowed in embedded perl code, in the same w
 
 Note that the & line continuation symbol is not used in embedded code (no line continuation is required in perl), and that commands need to finish with a semi-colon (;) otherwise quite criptic error messages can result.
 
-#### Using string variables within embedded perl code
+### Using string variables within embedded perl code
 
 As each embedded code chunk is evaluated using a separate perl eval call, perl variables defined within one embedded code chunk are not available within subsequent chunks, as in:
 ```arb
@@ -221,7 +219,7 @@ A `default` option passed to string_set means 'only set this variable if it is n
 }}
 ```
 
-####Embedded code purpose
+###Embedded code purpose
 
 Embedded perl code allows more flexibility in coding arb, but is (probably) for more advanced uses.  For example looping is possible using embedded code;
 ```arb
@@ -274,7 +272,7 @@ With some perl hackery there's lots that can be done if required using embedded 
 }}
 ```
 
-### Code blocks
+## Code blocks
 
 Code blocks are separate 'chunks' of code that define the scope of the string variables, as well as the scope of file include paths.  Code blocks can be defined within the one arb file using the `BLOCK` and `END_BLOCK` keywords, as in:
 ```arb
@@ -290,9 +288,9 @@ END_BLOCK
 
 More commonly code blocks are defined when including other files and when parsing if statements.
 
-### Include statements
+## Include statements
 
-#### Include statement overview
+### Include statement overview
 
 Include statements allow other input files to be included.   These files can be user written, or be from a library of template files within the [templates directory](#templates_dir).  As an example, 
 ```arb
@@ -321,7 +319,7 @@ INCLUDE_LOCAL "another_arb_code" R "<mu_f>" W "<mu>" # is equivalent to the last
 
 <!--Where the code searches for any included file depends on the specific include statement used, as well as what current paths are listed on an include path 'stack'.  These 'stacks' or list of include paths are associated with each code block (see `@{$code_blocks[$#code_blocks]{"include_path"}}` in [ReadInputFiles.pm]).  When a -->
 
-#### Include statement types
+### Include statement types
 
 The most basic form of the include statement is
 ```arb
@@ -354,10 +352,8 @@ then `template_directory` is searched for within the [templates directory](#temp
 
 * `INCLUDE_ARB "path/to/filename"`:  This include statement is similar to `INCLUDE_LOCAL` but the path to the file is relative to the current arb directory, being the directory which contains the current `bin/arb` script.
 
-<!--: command to include a file from the most recent directory (or subdirectory thereof), possibly also specifying file-specific string replacements using the syntax (or the shorter ). If an directory has not been specified (or cancelled with a blank statement) then the templates directories will be searched until a matching file is found (up to two subdirectory levels right now).  -   : include the following files from the working directory. This command does not affect and is not influenced by the directory and is (basically) used to include sets of user-written statements (i.e., like a local a function).  Partnering the include file capability is the ability to read in multiple definitions for the same variable. The ultimate position of a variable’s definition is that of the first definition for that variable.  The ultimate expression used for a variable is that given (read in) last. This functionality allows a variable’s expression to be changed from what is used in (say) a template file by specifying a new definition lower in the file, after the template file include statement.  Options can also be added to previously specified options for a variable by including more definition statements (that may only contain options and not expressions) lower in the input file. Similarly for units.  There are two types of string replacements that occur when a line from an input file is parsed: i) file-specific replacements, which occur recursively through ‘child’ file inclusions, and ii) general replacements, which occur throughout all files from their point of definition onwards, until (possibly) cancelled. The following demonstrates a general replacement statement specifying two general replacement strings, using a long and short form: There are certain system generated general replacements that occur automatically unless specifically changed by the user. Use the search hint to find the list of these in .  The above demonstrates how to cancel a search string replacement, using either a long () or short () form. Note that both general and file specific replacements do not occur on a line of an input file if the line is itself a general replacement definition line (specifically, it begins with the keyword), or is an include line for a file (begins with some type of keyword).
--->
 
-#### Include statement examples
+### Include statement examples
 
 The include path stacks are designed to make using input files from a variety of locations easy.
 
@@ -389,7 +385,7 @@ INCLUDE # remove the user's working directory from the stack unless it was the l
 
 Partnering the include file capability is the ability to read in multiple definitions for the same variable.  The ultimate position of a variable's definition is that of the first definition for that variable.  The ultimate expression used for a variable is that given (read in) last. This functionality allows a variable's expression to be changed from what is used in (say) a template file by specifying a new definition lower in the file, after the template file include statement.  Options can also be added to previously specified options for a variable by including more definition statements (that may only contain options and not expressions) lower in the input file. Similarly for units.
 
-###If statements
+##If statements
 
 The following demonstrates a solver code if statement:
 ```arb
@@ -449,197 +445,6 @@ END_IF
 {{ print "a = ".string_eval('$a').": b = ".string_eval('$b')."\n"; }} # this will work
 {{ print "c = ".string_eval('$c')."\n"; }} # this won't work as the code_block in which $c was defined has been destroyed
 ```
-
-
-
-
-
-
-
-##Meshes
-
-###Types of elements
-
-arb uses an unstructured mesh composed of cell elements that are separated by face elements. Node elements are the points demarcating the face and cell elements.  The dimension of each element is specified on a per-element basis, consistent with the particular computational domain that the element is within (that is, not globally).
-
-Cell elements are classified as either boundary cells (that is, on the boundary of a domain) or domain cells (that is, contained within a domain). Domain cells have a dimension that is equal to that of the domain they are in (ie, dimension 3/2/1 if the domain is a volume/surface/line, resp.).  Boundary cells have a dimension that is one less than that of the associated domain (ie, dimension 2/1/0 if the domain is a volume/surface/line, resp.).
-
-Face elements are any elements that separate cell elements. Face elements also have a dimension that is one less than that of the domain they are within. Some face elements are specified explicitly within a file (if they are part of a physical entity such as for example), while the remainder are generated by arb when the mesh is read in. Face elements are also classified as being either domain faces or boundary faces. Each boundary face has the same geometry, and is conincident with, a boundary cell. Hence, a mesh has the same number of boundary faces as boundary cells.
-
-Node elements are the vertices that bound both the face and cell elements.  Node elements always have a dimension of point (0) and appear as geometry->points in [gmsh].
-
-###File format
-
-Meshes are read in from files, in the format of the open source [gmsh] program having extension `.msh`.  [Pointwise] is a commercial meshing program that also exports to this format.  Multiple files can be read in by arb for each simulation.
-
-arb has been coded to be able to handle any poly-sided first order elements supported by the gmsh file format. It has been tested to date with tetrahedron, boxes and prisms in 3D, triangles and rectangles in 2D, lines in 1D and points in 0D. Tetrahedron, triangles, lines and points are the default element geometries created by gmsh.  
-
-Meshes and data are also exported by arb using the same [gmsh] `.msh` format. During every simulation all domains and all output-enabled data will be written by default to an `output.msh` file. Other `.msh` files may also be written, corresponding to any `.msh` files that are read in (with any associated output-enabled data).
-
-Regions imported from files as well as regions created by arb will be exported to any written files, however note that as the physical entities handled by gmsh can only have a single dimension, elements that have a dimension that is less than any others within a region will not be associated with that region in any arb-created files. This is relevant for example when a compound region is created that contains both domain and boundary cells. When this arb-written file is displayed by gmsh it will only appear to contain the domain cells.
-
-### Data and mesh file reading
-
-Mesh and data input and output is specified by `MSH_FILE` statements within the arb file, having the generic format:
-```arb
-MSH_FILE "msh_file_name_including_path" comma,separated,list,of,options # comments
-```
-The file name here refers to the read location of the file.  If a file is to be written it will always be written to the output directory which defaults to `output` within the user's working directory (see option `--output` that can be passed to the [arb script](#arb-script) to change this directory name).  As all `.msh` files could be written to this same output directory, all `.msh` file basenames must be unique.  Options for the default `output.msh` file should be referred to by `output/output.msh` if the default `output` directory is used (which is the read location for this file if it did exist).  File paths in the `MSH_FILE` statement are relative to the user's working directory (the directory from which `arb` is being run`).
-
-Note that face and cell boundary elements are not written separately to each `.msh` file by arb, but rather as a single element. Hence both cell and face boundary data is associated with a single element in each `.msh` file.
-
-The `.msh` files written by arb can contain data.  One purpose of exporting data to a `.msh` file is to provide initial conditions for another (or next) simulation. In this case generally you just have to specify the `output/output.msh` file from the previous simulation as the mesh file to be read in for the next simulation, as in
-```arb
-MSH_FILE "output/output.msh" input # note that the read location of each file needs to be specified
-```
-A disadvantage of restarting in this manner however is that the old `output.msh` file will be overwritten.  Hence an alternative is to copy the output file first and place/rename it within the user's working directory so that it is saved for a subsequent restart, and then restart from the copied file.
-
-Note that each arb-written file contains all the information about a mesh that was originally contained in the mesh-only gmsh-written `.msh` file: Hence, when starting a simulation from an arb-written `.msh` datafile is it not necessary (nor does it make sense) to also read in the original gmsh `.msh` file.
-
-Also note that `.msh` data files that contain variable values can only refer to mesh elements that are specified in the same named `.msh` data file (unless some fancy magic is worked in your equations). Hence, if two mesh files are read in, as in
-```arb
-MSH_FILE "domain1.msh" input,output # region <domain1> is contained here
-MSH_FILE "domain2.msh" input,output # region <domain2> is contained here
-MSH_FILE "output.msh" output # contains all regions
-CELL_OUTPUT <a variable> "1.d0" ON <domain1> # data associated with <domain1> will be written to output/domain1.msh and output/output.msh, but not output/domain2.msh
-```
-then regions and their associated data will only be written to output `.msh` files corresponding to the filenames in which they were originally defined.  The `output.msh` file is handled differently however and will contain all regions on output, irrespective of the regions contained in any `output.msh` file that is read in.
-
-### Mesh read and write options
-
-Three types of options are available for each file:
-
-####Output options:
-
-These options specify how and what information is to be written to output `.msh` files:
-
-- `output`: Both a mesh and all specified variables will be written.
-
-- `centringoutput`: As per `output`, but output
-    will be split between four files, each containing variables of only
-    a single centring (cell, face, node and none). This can be handy for gmsh
-    compatibility when doing cutgrid and streamtrace operations
-    for example.  Use the vtk version of this (`centringvtkoutput`) for [paraview].
-
-- `centringmeshoutput`: Only the mesh is written, split between four centring-specific files as per `centringoutput`.
-
-- `meshoutput`: Only the mesh is written.
-
-- `nooutput`: Neither the mesh or any data will be written.
-
-- `vtkoutput`,`centringvtkoutput`,`meshvtkoutput`,`centringmeshvtkoutput`,`novtkoutput`: Same as the `.msh` file options, but for `.vtk` output, compatible with [paraview] (for example). The default is `novtkoutput`.  
-
-- `datoutput`,`centringdatoutput`,`meshdatoutput`,`centringmeshdatoutput`,`nodatoutput`: Same as the `.msh` file options, but for `.dat` output, compatible with [Tecplot] (for example). The default is `nodatoutput`.  
-
-- `outputscale=N`: Scale the mesh on output by a factor $N$.  This works by changing the coordinates of the nodes, from which the location of all other elements is derived.  A `outputscale=2` would double the size of the mesh region, while `outputscale=1.d+3` would (eg) change the units of the mesh from metres (used in the arb simulation) to millimetres (dimensions used in output file).
-
-- `outputinversescale=N`: As per `outputscale` but scale by a factor $1/N$.  This is useful to 'reverse' an `inputscale=N` option so that the input and output `.msh` files have the same dimensions.
-
-By default all meshes have the `nooutput` option specified, with the exception of
-the `output.msh` file, which has option `output`.
-
-####Input options:
-
-These options specify what information is to be read from the file.
-
-- `input`: Both a mesh and all relevant data will be read.
-
-- `centringinput`: Both a mesh and all relevant data will be read. In this case the input `.msh` files must be split between four files, each containing variables of only a single centring (cell, face, node and none) as output from a previous simulation employing the `centringoutput` option. In this case the filename should be specified without the centring, for example `output.msh` (rather than `output.cell.msh` which could be one of the actual file names).  
-
-- `centringmeshinput`: Only the mesh is read, split between four files as per `centringinput`.
-
-- `meshinput`: Only the mesh is read.
-
-- `noinput`: Neither the mesh or any data will be read.
-
-- `inputscale=N`: Scale the mesh on input by a factor $N$.  This works by changing the coordinates of the nodes, from which the location of all other elements is derived.  A `inputscale=2` would double the size of the mesh region, while `inputscale=1.d-3` would (eg) change the units of the mesh from millimetres (units of mesh file) to metres (units used in arb simulation).  (More tricky scalings and translations can be performed by altering the `function transform_coordinates` in [gmesh_module.f90].)
-
-- `inputinversescale=N`: As per `inputscale` but scale by a factor $1/N$.
-
-By default all meshes have the `input` option specified, with the exception of
-the default `output.msh` mesh, which has option `noinput`.  Meshes and data cannot be read using the vtk or dat file formats.
-
-####Data format options:
-
-Variables associated with cell elements can be written in the following formats:
-
-* `elementdata`: a uniform value for each cell (gmsh format `ElementData`);
-* `elementnodedata`: values vary linearly within each cell (gmsh format `ElementNodeData`); or
-* `elementnodelimiteddata`: uses the gmsh `ElementNodeData` format, however gradients are limited such that extreme in-cell values are bounded by surrounding cell values
-
-`elementnodedata` and `elementnodelimiteddata` formats generate larger `.msh` files than the `elementdata` format as data values for each node element *of each cell element* have to be written to the `.msh` file:  However, these node formats look much better for scalar cell data.  There is little reason to use `elementnodedata` over `elementnodelimiteddata`.  Variables associated with face or node elements will only be written in `elementdata` format. Variables that are none centred are written using a special `data` format which gmsh won’t display, however these values can be read in by subsequent arb simulations.
-
-Default data formats for each variable are (search `ref: default output` in [setup_module.f90]):
-
-* `data` for all none centred variables
-* `elementnodelimiteddata` for all cell centred scalar compound variables
-* `elementdata` for all components of variables and all other compound variables (ie vectors and tensors, and all other face, node and cell centred variables)
-
-The default formats can be overwritten on a per-variable or per-file basis.  An option such as `elementdata` added to the `MSH_FILE` command will cause all applicable data to be written in this format within this file.  Similarly, an option such as `elementnodedata` added to a variable definition statement will cause just this variable to be written in this format (if applicable).  The per-file format option takes precedence over any per-variable format options.
-
-### Multiple domains: Cell and face element specification
-
-The distinction between cell elements and face elements is not made by gmsh or contained explicitly in the file, but rather must be made by arb when a file is read in. Gmsh's behaviour is to only write an element to a file if it is a member of a physical entity. Further, each physical entity has a single dimension. So, to decide whether an element is either a face or cell element, arb does two things when reading in each file: 
-
-1.  The maximum dimension of all physical entities with the file is found. This is stored as the dimension of the particular mesh (ie `.msh` file);
-
-2.  When an element is read in that has the same dimension as that of the mesh, it is regarded as a cell element. If it has a dimension that is one less than that of the mesh, it is regarded as a face element. If it has a dimension that is two or more less than that of the mesh, then the element is ignored.
-
-So what's the implication of all this? Generally arb will be able to work out from each `.msh` file which elements within it are cell elements and which are face elements. The only time it won't is when *there are multiple domains having different dimensions contained within the one `.msh` file*. For example, you have both a volume domain and a surface domain specified within the one `.msh` file, on which you want separate (but possibly linked) sets of equations solved.
-
-If you do have multiple domains having different dimensions contained within the one `.msh` file then the dimension of all regions (that is, physical entities) contained within that file that belong to any domains that have a dimension that is *less than* that of the file need their centring explicitly specified. For example, if a file contains both a volume and a surface domain, then all regions associated with the surface domain must have their centring explicitly specified. Statements for specifying this cell/face/node centring for particular regions (gmsh physical entities) are described in section [gmsh-regions].
-
-Alternatively, there is another way that may work for your simulation: As arb can read multiple files for each simulation, it may be easier to place domains of different dimensions in separate `.msh` files. The cell/face/node specification will then be handled automatically without additional statements in the arb input file.  However, if you want multiple domains to share common mesh features (such as a common unstructured surface) this may be difficult to accomplish using gmsh.  
-
-##Simulation options
-
--   : choose between the two types of simulation.
-
--   : end input
-
--   : ignore the text between these statements.
-
--   : add the following options to every subsequent variable, until
-    cleared again using a blank statement. When listed in order, default
-    options precede a variable’s individually specified options - hence,
-    in the case of conflicting option statements, individual options
-    take precedence over default options (ie, the individual options
-    have a higher priority).
-
--   : are the same as , except that they follow a variable’s
-    individually specified options, and so in the case of conflicting
-    option statements, take precedence over the individual options (ie,
-    the override options have a higher priority).
-
--   : choose the type of linear solver to use.
-
-##Kernel options
-
-There are many options that can be used to change the kernels used. For
-example
-
-specifies that when averaging/differentiating quantities to/at faces,
-ensure that a second order polynomial would be reproduced precisely.
-
-##Glued boundaries
-
-Used to implement periodic or reflection boundaries by glueing two
-boundary face regions together. Boundary regions to be glued must have
-the same element structure (size and number). Individual element
-matching between the boundaries is accomplished by matching the closest
-element locations, relative to the region centroids (much like the and
-operators).
-
-Example of a periodic boundary glueing the top and bottom boundaries of
-a domain:
-
-Example of a reflection (axis of symmetry) boundary along the left side
-of a domain:
-
-In the case of reflection, certain operators (eg, ) need to be aware
-when they are operating on the component of a vector, that needs to be
-reflected over this reflection boundary. See the options for each
-operator.
 
 ##Simulation Info
 

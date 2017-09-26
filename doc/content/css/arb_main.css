@@ -112,7 +112,8 @@ a:hover {
 }
 #rightcontents ul {
     list-style-type: none;
-    padding-left:0;
+    padding-left:15px;
+    text-indent:-15px;
 }
 #rightcontents a:link {
         color: gray;
