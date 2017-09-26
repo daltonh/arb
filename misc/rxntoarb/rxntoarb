@@ -2,7 +2,7 @@
 
 PROGNAME = 'rxntoarb'
 VERSION = 2.2
-DATE = '2017-09-21'
+DATE = '2017-09-26'
 info = "#{PROGNAME} v. #{VERSION} (#{DATE})
 Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
 (C) Copyright Christian Biscombe 2016-2017"
@@ -523,15 +523,15 @@ ARGV.each do |infile|
       # These take the form [region_list].each { |loopvar| expression }
       # '*' in region_list is a shorthand for all reaction regions (surface_regions that bound volume_region)
       if location == :volume
-        TEMPLATE.scan(/^\s*(?<array>\[((?>[^\[\]]+)|\g<array>)*\])\.each\s*(?<brace_group>{((?>[^{}]+)|\g<brace_group>)*})?/i) do |array,block|
-          replace = $&[/^\s*(.*)/,1]
+        template.dup.scan(/^\s*(?<array>\[((?>[^\[\]]+)|\g<array>)*\])\.each\s*(?<brace_group>{((?>[^{}]+)|\g<brace_group>)*})?/i) do |array,block|
+          replace = $&[/^\s*(.*)/m,1]
           region_list = region_array(array[1..-2]) # convert to array
           if region_list.include?('*') # add all reaction regions to region_list
             region_list[region_list.index('*')] = $volume_regions[region][1]
             region_list.flatten!.uniq!
           end
           raise "missing each block in template file #{$options[:template_file]} (possibly missing opening or closing brace)" unless block
-          loopvar, expression = block.match(/\A{\s*(\|[^|]+\|)?\s*(.*)}\z/).captures
+          loopvar, expression = block.match(/\A{\s*(\|[^|]+\|)?\s*(.*)}\z/m).captures
           raise "missing loop variable in each block in template file #{$options[:template_file]}" unless loopvar
           expression = expression.split("\n").map(&:strip) - [''] # strip newlines and indentation and delete any empty lines
           replacement = []
