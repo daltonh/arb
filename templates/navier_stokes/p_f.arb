@@ -12,7 +12,7 @@ REPLACEMENTS R "<<pfadjacentcells>>" W "1"
 
 High order adjacentcell averaging is as per low order adjacentcell averaging, except that the gradient within each cell is used to get a better estimate of the pressure on each side of the interface.  The amount of gradient used is set by `<p_f_grad_limiter>` which should be between 0.d0 (low order) and 1.d0 after the file is included.  To use this high order averaging set
 ```arb
-REPLACEMENTS R "<<pfadjacentcells>>" W "1"
+REPLACEMENTS R "<<pfadjacentcellshighorder>>" W "1"
 NONE_CONSTANT <p_f_gradient_limiter> 1.d0 # keep this between 0.d0 and 1.d0
 ```
 END_MARKDOWN
