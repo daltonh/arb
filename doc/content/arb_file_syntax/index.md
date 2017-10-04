@@ -103,7 +103,195 @@ Also, multiple strings may be defined on the one line, illustrated by
 GLOBAL_REPLACEMENTS R "string1" W "another string" R "string2" W "another string2" # multiple replacements can be specified on the one line
 ```
 
-There are certain system generated global string variables that a set automatically but can also be changed by the user.  These include a number of variables that set the coordinate dimensions used by various variable operators.  Use the search hint `ref: string system variables` to find the list of these in `sub string_setup` within [StringCode.pm].
+There are certain system generated global string variables that are set automatically but can also be changed by the user.  These include a number of variables that set the coordinate dimensions used by various variable operators.  Use the search hint `ref: string system variables` to find the list of these in `sub string_setup` within [StringCode.pm].
+
+## Code blocks
+
+Code blocks are separate 'chunks' of code that define the scope of the string variables, as well as the scope of file include paths.  Code blocks can be defined within the one arb file using the `BLOCK` and `END_BLOCK` keywords, as in:
+```arb
+BLOCK
+{{ string_set('$a','1.d0'); }}
+{{ string_set('$b','2.d0',"global"); }}
+{{ print string_eval('$a'); }} # prints 1.d0
+{{ print string_eval('$b'); }} # prints 2.d0
+END_BLOCK
+{{ print string_eval('$a'); }} # error as $a is no longer defined in the parent block
+{{ print string_eval('$b'); }} # prints 2.d0 as $b was defined as a global variable
+```
+
+More commonly code blocks are defined when including other files and when parsing if statements.
+
+## Include statements
+
+### Include statement overview
+
+Include statements allow other input files to be included.   These files can be user written, or be from a library of template files within the [templates directory](#templates_dir).  As an example, 
+```arb
+INCLUDE_TEMPLATE "navier_stokes/complete_equations"
+```
+will include the file `complete_equations.arb` from the `templates/navier_stokes` directory, replacing this include statement with the contents of the `complete_equations.arb` file.  Similarly 
+```arb
+INCLUDE "my_function" # this could be located in a variety of locations searched through
+```
+would include the arb file `my_function.arb` from the (eg) user's working directory.  Note that a trailing '.arb' file extension is implied within all include statements (and hence not required).
+
+A new code block is started whenever a new file is included:
+```arb
+INCLUDE_LOCAL "some_arb_code" # a new block is created after the string "some_arb_code" has been read
+```
+This means that any string variables that are defined within the included file are not available outside of that file (except in its included children), unless these string variables are defined as global.
+
+String replacements (or substitutions) that occur as the file is read in allow included files to be (effectively) used as functions.  More specifically, string code that follows an include statement is included as the first statement in the newly created block:
+```arb
+INCLUDE_LOCAL "another_arb_code" R "<mu_f>" W "<mu>" # so the replacement is done on the contents of another_arb_code.arb
+```
+This allows the template files to be used as functions or called repeatedly with different arguments.  An equivalent perl embedded statement can also be used, as in
+```arb
+INCLUDE_LOCAL "another_arb_code" {{ string_set("<mu_f>","<mu>"); }} # is equivalent to the last case
+```
+
+### Include statement types
+
+The most basic form of the include statement is
+```arb
+INCLUDE "filename"
+```
+For this statement, the code searches (backwards) through a list of 'include paths' to find the named file `filename.arb` and replaces the include statement with the contents of that file.
+
+The include path list which is used to find the file is stored as a 'stack' of paths associated with the current code block (see `@{$code_blocks[$#code_blocks]{"include_path"}}` in [ReadInputFiles.pm], `ref: include_paths`).  The include path stack grows and shrinks via the following rules (see `sub push_code_block` within [ReadInputFiles.pm]):
+
+* When a new code block is formed by opening a new file, the last include path from the stack of the previous code block is added as the first path in the new include path stack.  This will correspond to the location of the included file:  Hence, the first path in any code block path stack will correspond to the location of the file that is currently being read.
+* When a new code block is formed without opening a new file (eg, by an `BLOCK` or `IF` statement) then the entire include path stack from the parent code block is copied to the new code block.  Hence, again, the first path in the code block stack will correspond to the location of the currently read file.
+* Every time a new file is included, AND if the current upper-most include path does not correspond to the location of the new file, then the file's location is added to the include path stack.
+* An empty `INCLUDE` keyword (ie, with no trailing filename) removes the upper-most include path from the current code block include path stack, unless there is only the first path (and hence current file location) left on the stack (in which case a warning is issued).
+
+Other include statements search in specific locations for the specified files and/or directories:
+
+* `INCLUDE_TEMPLATE "template_directory/filename"`: search through the [templates directory](#templates_dir) looking for a `filename.arb` contained within a specific `template_directory`.  When the file is found, the path to the file is added to the include path stack of the current (calling) code block.  If a directory name is specified but not a filename, as in
+```arb
+INCLUDE_TEMPLATE "template_directory"
+```
+then `template_directory` is searched for within the [templates directory](#templates_dir) and its location is added to the include path stack of the calling code block.  The `INCLUDE_TEMPLATE` include statement is unique in that the [templates directory](#templates_dir) is searched through recursively (depth prioritised search) to find the specified directory and filename.
+
+* `INCLUDE_ABSOLUTE "/an/absolute/path/and/filename"`:  This include statement includes a file using its absolute path.  The first `/` is optional.  The path to the file will also be added to the current code block's include path stack.  If only a directory name is given then no file is included, but the path is still added to the current code block's include path stack.
+
+* `INCLUDE_LOCAL "path/relative/to/calling/file/filename"`:  This include statement is similar to `INCLUDE_ABSOLUTE` but the path to the file is relative to the location of the file from which it is being included.  If the path starts with `/` however the path is assumed to be absolute.
+
+* `INCLUDE_LAST "path/to/filename"`:  This include statement is similar to `INCLUDE_LOCAL` but the path to the file is relative to the last include path on the current code block's stack.
+
+* `INCLUDE_WORKING "path/to/filename"`:  This include statement is similar to `INCLUDE_LOCAL` but the path to the file is relative to the user's working directory, being the directory from which the `arb` command was run.
+
+* `INCLUDE_ARB "path/to/filename"`:  This include statement is similar to `INCLUDE_LOCAL` but the path to the file is relative to the current arb directory, being the directory which contains the current `bin/arb` script.
+
+
+### Include statement examples
+
+The include path stacks are designed to make using input files from a variety of locations easy.
+
+A common application would be to include files from number of template directories.  For example
+```arb
+INCLUDE_TEMPLATE "navier_stokes"
+INCLUDE_TEMPLATE "volume_of_fluid"
+```
+will find the template directories `navier_stokes` and `free_surface/volume_of_fluid` and add these to the current code block include path stack.  Then, subsequent include statements will find file names in either of these two directories, searching within `templates/free_surface/volume_of_fluid` first, then `templates/navier_stokes`, and finally any remaining paths on the current stack (include the location of the calling file), as in
+```arb
+INCLUDE "u_f" # will find templates/navier_stokes/u_f.arb
+INCLUDE "normals" # will find templates/free_surface/volume_of_fluid/normals.arb
+INCLUDE "a_users_file" # will find a_users_file.arb if it existed in the same location as the calling file
+```
+
+The only time in which more fine grained control of the include path stack is required is when files of the same name are found in multiple locations.  This can be handled by specifying the location of files specifically so that the file's location is always on the top of the include path stack, as in
+```arb
+INCLUDE_TEMPLATE "navier_stokes/u_f" # found in templates/navier_stokes/u_f.arb
+INCLUDE_WORKING "u_f" # found u_f.arb in user's working directory
+```
+For extra safety (ie, avoiding bugs), paths can be removed from the stacks after the files have been included, as in
+```arb
+INCLUDE_TEMPLATE "navier_stokes/u_f" # found in templates/navier_stokes/u_f.arb and added templates/navier_stokes directory to the stack
+INCLUDE # removes templates/navier_stokes from the current include path stack
+INCLUDE_WORKING "u_f" # found u_f.arb in user's working directory and add user's working directory to the stack if not already there
+INCLUDE_WORKING "u_f2" # found u_f2.arb in user's working directory, but do not add working directory to the stack as it is already on the top
+INCLUDE # remove the user's working directory from the stack unless it was the last path left on the stack
+```
+
+Partnering the include file capability is the ability to read in multiple definitions for the same variable or region.  The ultimate position of a variable or region's definition is that of the first definition for that variable or region.  The ultimate expression used for a variable/region is that given (read in) last. This functionality allows a variable/region's expression to be changed from what is used in (say) a template file by specifying a new definition lower in the file, after the template file include statement.  Options can also be added to previously specified options for a variable or region by including more definition statements (that may only contain options and not expressions) lower in the input file. Similarly for units for variables.
+
+##If statements
+
+The following demonstrates a solver code if statement:
+```arb
+IF 1
+  NONE_CONSTANT <a> 1.d0
+END_IF
+```
+Code flow through an `IF` statement is dependent on what follows the `IF` keyword:  An empty string or '0' evaluates as false, whereas anything else is true.  So the following are all true,
+```arb
+IF 1
+IF asd afsdf sdg sdgfas # some comment
+IF 0 adfd
+IF "0" # note this!
+```
+whereas the following are all false
+```arb
+IF 0
+IF # possible trailing comment
+IF
+IF&
+  & # line continuation
+```
+
+There are also the continuation statements of `ELSE_IF` and `ELSE` demonstrated by:
+```arb
+IF 0
+  NONE_CONSTANT <a> 1.d0
+ELSE_IF 1
+  NONE_CONSTANT <a> 2.d0
+ELSE
+  NONE_CONSTANT <a> 3.d0
+END_IF
+```
+`IF`, `ELSE_IF`, `ELSE` and `END_IF` are all solver code keywords, so require their own lines.
+
+In practice `IF` statements are used in conjunction with string replacements or embedded perl code, as in
+```arb
+IF <<transientflag>> # here <<transientflag>> is a system generated string variable which is replaced by 1 for a transient simulation
+  CONSTANT <dt> 0.1d0
+ELSE_IF {{ return string_eval('$some_string_variable') }} # here the embedded code enclosed in {{ }} evaluates as the return value, which here would be the value of the string variable $some_string_variable which would have been previously set
+  CONSTANT <dt> 1.d0
+ELSE
+  CONSTANT <dt> 2.d0
+END_IF
+```
+
+Note that code within an if 'block' is evaluated as a separate code block, so to make a local string variable available after the if block you would need to either declare it before the block (the scope of a variable is dictated by the code block in which it is first defined), or declare it as a global variable:
+```arb
+{{ string_set('$a'); }} # a set with no other argument sets the variable to the empty string, but defines its scope as being in this code block
+IF 1 # a new code block is created here
+  {{
+      string_set('$a','1.d0');
+      string_set('$b','2.d0','global');
+      string_set('$c','1.d0');
+  }}
+END_IF
+{{ print "a = ".string_eval('$a').": b = ".string_eval('$b')."\n"; }} # this will work
+{{ print "c = ".string_eval('$c')."\n"; }} # this won't work as the code_block in which $c was defined has been destroyed
+```
+
+##Simulation Info
+
+The following strings can be used within an input file to help keep track of what the file contains. These and other automatically generated info strings are included as comments in most of the output files.
+
+* `INFO_TITLE`: title for simulation
+* `INFO_DESCRIPTION`: description
+* `INFO_DATE`: interpreted as last modification date
+* `INFO_AUTHOR`:
+* `VERSION`: to be set as the arb version of the file, which is checked against the version of arb run
+
+The `INFO_TITLE` and `INFO_DESCRIPTION` fields can accept an increment to their previously set value, using a `+` sign, as in
+```arb
+INFO_DESCRIPTION "a funky simulation"
+INFO_DESCRIPTION+ ", now with extra funky bits" # giving a total description of "a funky simulation, now with extra funky bits"
+```
 
 ##Embedded perl code {#embedded-perl-code}
 
@@ -271,185 +459,5 @@ With some perl hackery there's lots that can be done if required using embedded 
   }
 }}
 ```
-
-## Code blocks
-
-Code blocks are separate 'chunks' of code that define the scope of the string variables, as well as the scope of file include paths.  Code blocks can be defined within the one arb file using the `BLOCK` and `END_BLOCK` keywords, as in:
-```arb
-BLOCK
-{{ string_set('$a','1.d0'); }}
-{{ string_set('$b','2.d0',"global"); }}
-{{ print string_eval('$a'); }} # prints 1.d0
-{{ print string_eval('$b'); }} # prints 2.d0
-END_BLOCK
-{{ print string_eval('$a'); }} # error as $a is no longer defined in the parent block
-{{ print string_eval('$b'); }} # prints 2.d0 as $b was defined as a global variable
-```
-
-More commonly code blocks are defined when including other files and when parsing if statements.
-
-## Include statements
-
-### Include statement overview
-
-Include statements allow other input files to be included.   These files can be user written, or be from a library of template files within the [templates directory](#templates_dir).  As an example, 
-```arb
-INCLUDE_TEMPLATE "navier_stokes/complete_equations"
-```
-will include the file `complete_equations.arb` from the `templates/navier_stokes` directory, replacing this include statement with the contents of the `complete_equations.arb` file.  Similarly 
-```arb
-INCLUDE "my_function" # this could be located in a variety of locations searched through
-```
-would include the arb file `my_function.arb` from the (eg) user's working directory.  Note that a trailing '.arb' file extension is implied within all include statement (and hence not required).
-
-A new code block is started whenever a new file is included:
-```arb
-INCLUDE_LOCAL "some_arb_code" # a new block is created after the string "some_arb_code" has been read
-```
-This means that any string variables that are defined within the included file are not available outside of that file (except in its included children), unless these string variables are defined as global.
-
-String replacements (or substitutions) that occur as the file is read in allow included files to be (effectively) used as functions.  More specifically, string code that follows an include statement is included as the first statement in the newly created block:
-```arb
-INCLUDE_LOCAL "another_arb_code" {{ string_set("<mu_f>","<mu>"); }} # so the replacement is done on the contents of another_arb_code.arb
-```
-This allows the template files to be used as functions or called repeatedly with different arguments.  An equivalent solver code string set statement can also be used, as in
-```arb
-INCLUDE_LOCAL "another_arb_code" R "<mu_f>" W "<mu>" # is equivalent to the last case
-```
-
-<!--Where the code searches for any included file depends on the specific include statement used, as well as what current paths are listed on an include path 'stack'.  These 'stacks' or list of include paths are associated with each code block (see `@{$code_blocks[$#code_blocks]{"include_path"}}` in [ReadInputFiles.pm]).  When a -->
-
-### Include statement types
-
-The most basic form of the include statement is
-```arb
-INCLUDE "filename"
-```
-For this statement, the code searches (backwards) through a list of 'include paths' to find the named file `filename.arb` and replaces the include statement with the contents of that file.
-
-The include path list which is used to find the file is stored as a 'stack' of paths associated with the current code block (see `@{$code_blocks[$#code_blocks]{"include_path"}}` in [ReadInputFiles.pm], `ref: include_paths`).  The include path stack grows and shrinks via the following rules (see `sub push_code_block` within [ReadInputFiles.pm]):
-
-* When a new code block is formed by opening a new file, the last include path from the stack of the previous code block is added as the first path in the new include path stack.  This will correspond to the location of the included file:  Hence, the first path in any code block path stack will correspond to the location of the file that is currently being read.
-* When a new code block is formed without opening a new file (eg, by an `BLOCK` or `IF` statement) then the entire include path stack from the parent code block is copied to the new code block.  Hence, again, the first path in the code block stack will correspond to the location of the currently read file.
-* Every time a new file is included, AND if the current upper-most include path does not correspond to the location of the new file, then the file's location is added to the include path stack.
-* An empty `INCLUDE` keyword (ie, with no trailing filename) removes the upper-most include path from the current code block include path stack, unless there is only the first path (and hence current file location) left on the stack (in which case a warning is issued).
-
-Other include statements search in specific locations for the specified files and/or directories:
-
-* `INCLUDE_TEMPLATE "template_directory/filename"`: search through the [templates directory](#templates_dir) looking for a `filename.arb` contained within a specific `template_directory`.  When the file is found, the path to the file is added to the include path stack of the current (calling) code block.  If a directory name is specified but not a filename, as in
-```arb
-INCLUDE_TEMPLATE "template_directory"
-```
-then `template_directory` is searched for within the [templates directory](#templates_dir) and its location is added to the include path stack of the calling code block.  The `INCLUDE_TEMPLATE` include statement is unique in that the [templates directory](#templates_dir) is searched through recursively (depth prioritised search) to find the specified directory and filename.
-
-* `INCLUDE_ABSOLUTE "/an/absolute/path/and/filename"`:  This include statement includes a file using its absolute path.  The first `/` is optional.  The path to the file will also be added to the current code block's include path stack.  If only a directory name is given then no file is included, but the path is still added to the current code block's include path stack.
-
-* `INCLUDE_LOCAL "path/relative/to/calling/file/filename"`:  This include statement is similar to `INCLUDE_ABSOLUTE` but the path to the file is relative to the location of the file from which it is being included.  If the path starts with `/` however the path is assumed to be absolute.
-
-* `INCLUDE_LAST "path/to/filename"`:  This include statement is similar to `INCLUDE_LOCAL` but the path to the file is relative to the last include path on the current code block's stack.
-
-* `INCLUDE_WORKING "path/to/filename"`:  This include statement is similar to `INCLUDE_LOCAL` but the path to the file is relative to the user's working directory, being the directory from which the `arb` command was run.
-
-* `INCLUDE_ARB "path/to/filename"`:  This include statement is similar to `INCLUDE_LOCAL` but the path to the file is relative to the current arb directory, being the directory which contains the current `bin/arb` script.
-
-
-### Include statement examples
-
-The include path stacks are designed to make using input files from a variety of locations easy.
-
-A common application would be to include files from number of template directories.  For example
-```arb
-INCLUDE_TEMPLATE "navier_stokes"
-INCLUDE_TEMPLATE "volume_of_fluid"
-```
-will find the template directories `navier_stokes` and `free_surface/volume_of_fluid` and add these to the current code block include path stack.  Then, subsequent include statements will find file names in either of these two directories, searching within `templates/free_surface/volume_of_fluid` first, then `templates/navier_stokes`, and finally any remaining paths on the current stack (include the location of the calling file), as in
-```arb
-INCLUDE "u_f" # will find templates/navier_stokes/u_f.arb
-INCLUDE "normals" # will find templates/free_surface/volume_of_fluid/normals.arb
-INCLUDE "a_users_file" # will find a_users_file.arb if it existed in the same location as the calling file
-```
-
-The only time in which more fine grained control of the include path stack is required is when files of the same name are found in multiple locations.  This can be handled by specifying the location of files specifically so that the file's location is always on the top of the include path stack, as in
-```arb
-INCLUDE_TEMPLATE "navier_stokes/u_f" # found in templates/navier_stokes/u_f.arb
-INCLUDE_WORKING "u_f" # found u_f.arb in user's working directory
-```
-For extra safety (ie, avoiding bugs), paths can be removed from the stacks after the files have been included, as in
-```arb
-INCLUDE_TEMPLATE "navier_stokes/u_f" # found in templates/navier_stokes/u_f.arb and added templates/navier_stokes directory to the stack
-INCLUDE # removes templates/navier_stokes from the current include path stack
-INCLUDE_WORKING "u_f" # found u_f.arb in user's working directory and add user's working directory to the stack if not already there
-INCLUDE_WORKING "u_f2" # found u_f2.arb in user's working directory, but do not add working directory to the stack as it is already on the top
-INCLUDE # remove the user's working directory from the stack unless it was the last path left on the stack
-```
-
-Partnering the include file capability is the ability to read in multiple definitions for the same variable.  The ultimate position of a variable's definition is that of the first definition for that variable.  The ultimate expression used for a variable is that given (read in) last. This functionality allows a variable's expression to be changed from what is used in (say) a template file by specifying a new definition lower in the file, after the template file include statement.  Options can also be added to previously specified options for a variable by including more definition statements (that may only contain options and not expressions) lower in the input file. Similarly for units.
-
-##If statements
-
-The following demonstrates a solver code if statement:
-```arb
-IF 1
-  NONE_CONSTANT <a> 1.d0
-END_IF
-```
-Code flow through an `IF` statement is dependent on what follows the `IF` keyword:  An empty string or '0' evaluates as false, whereas anything else is true.  So the following are all true,
-```arb
-IF 1
-IF asd afsdf sdg sdgfas # some comment
-IF 0 adfd
-IF "0" # note this!
-```
-whereas the following are all false
-```arb
-IF 0
-IF # possible trailing comment
-IF
-IF&
-  & # line continuation
-```
-
-There are also the continuation statements of `ELSE_IF` and `ELSE` demonstrated by:
-```arb
-IF 0
-  NONE_CONSTANT <a> 1.d0
-ELSE_IF 1
-  NONE_CONSTANT <a> 2.d0
-ELSE
-  NONE_CONSTANT <a> 3.d0
-END_IF
-```
-`IF`, `ELSE_IF`, `ELSE` and `END_IF` are all solver code keywords, so require their own lines.
-
-In practice `IF` statements are used in conjunction with string replacements or embedded perl code, as in
-```arb
-IF <<transientflag>> # here <<transientflag>> is a system generated string variable which is replaced by 1 for a transient simulation
-  CONSTANT <dt> 0.1d0
-ELSE_IF {{ return string_eval('$some_string_variable') }} # here the embedded code enclosed in {{ }} evaluates as the return value, which here would be the value of the string variable $some_string_variable which would have been previously set
-  CONSTANT <dt> 1.d0
-ELSE
-  CONSTANT <dt> 2.d0
-END_IF
-```
-
-Note that code within an if 'block' is evaluated as a separate code block, so to make a local string variable available after the if block you would need to either declare it before the block (the scope of a variable is dictated by the code block in which it is first defined), or declare it as a global variable:
-```arb
-{{ string_set('$a'); }} # a set with no other argument sets the variable to the empty string, but defines its scope as being in this code block
-IF 1 # a new code block is created here
-  {{
-      string_set('$a','1.d0');
-      string_set('$b','2.d0','global');
-      string_set('$c','1.d0');
-  }}
-END_IF
-{{ print "a = ".string_eval('$a').": b = ".string_eval('$b')."\n"; }} # this will work
-{{ print "c = ".string_eval('$c')."\n"; }} # this won't work as the code_block in which $c was defined has been destroyed
-```
-
-##Simulation Info
-
-The following strings can be used within an input file to help keep
-track of what the file contains. These and other automatically generated
-info strings are included as comments in most of the output files.
 
 
