@@ -25,7 +25,7 @@ REPLACEMENTS D "<<pfadjacentcells>>" W "0" D "<<pfadjacentcellshighorder>>" W "0
 
 IF <<pfadjacentcells>>
   VARIABLE <p_f> "faceave[adjacentcells](<p>)" output
-ELSE_IF <<pfadjcentcellshighorder>>
+ELSE_IF <<pfadjacentcellshighorder>>
   NONE_CONSTANT <p_f_gradient_limiter> 1.d0 # ranging from 1.d0 (highest order) to 0.d0 which will give same as <<pfadjacentcells>> above
   IF 1
     VARIABLE <p_f> "faceave[adjacentcells](cellave[lastface](faceave[advection](<p>,<facefromcelldirection>,<p_f_gradient_limiter>)))" output
