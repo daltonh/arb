@@ -1,6 +1,6 @@
 # Rxntoarb::Reaction
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-09
+# 2017-10-10
 
 require_relative 'reaction'
 
@@ -8,12 +8,14 @@ module Rxntoarb
 
   class Rxn
 
-    attr_accessor :bounding_regions, :check_units, :file, :initial_species, :labels, :parameters, :par_units, :parent_label, :reactions, :species, :surface_regions, :volume_regions, :volume_species
+    attr_accessor :aliases, :bounding_regions, :check_units, :file, :header, :initial_species, :labels, :parameters, :par_units, :parent_label, :reactions, :species, :surface_regions, :volume_regions, :volume_species
 
     def initialize(file) #{{{
+      @aliases = {}
       @bounding_regions = Hash.new([]) # key is volume_region, value is array of all surface_regions that bound that volume_region
       @check_units = nil
       @file = file
+      @header = []
       @initial_species = [] # elements are species.tags
       @labels = []
       @parameters = []
@@ -26,7 +28,7 @@ module Rxntoarb
       @volume_species = Hash.new([]) # key is volume_region, value is array of all species defined on that volume_region
     end #}}}
 
-    def parse(arb) #{{{
+    def parse #{{{
       surface_region_list = [nil]
       volume_region_list = [nil]
       warn "#{'*'*200}\nINFO: parsing input file #{@file}" if Rxntoarb.options[:debug]
@@ -42,7 +44,7 @@ module Rxntoarb
 
         # Comment lines to be retained in the header start with !
         when /^\s*!/
-          arb.header << line.sub('!', '#').chomp
+          @header << line.sub('!', '#').chomp
 
         # Include/exclude lines based on regexp match. Maximum of one include and one exclude statement allowed
         when /^\s*(include_only|exclude)\s+\/(.*?)(?<!\\)\/(i)?/i
@@ -96,16 +98,16 @@ module Rxntoarb
               end
               begin
                 reaction = Reaction.new(rline, self)
+                @reactions << reaction
+                reaction.all_species.each do |species|
+                  @species |= [species]
+                  @volume_species[species.region] |= [species] if species.free? # add species to volume_species hash so we know that a source term is required on all surface_regions that bound this volume_region
+                end
+                @parameters += reaction.parameters if reaction.parameters
+                @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka
               ensure
                 Rxntoarb.print_debug(:reaction){}
               end
-              @reactions << reaction
-              reaction.all_species.each do |species|
-                @species |= [species]
-                @volume_species[species.region] |= [species] if species.free? # add species to volume_species hash so we know that a source term is required on all surface_regions that bound this volume_region
-              end
-              @parameters += reaction.parameters if reaction.parameters
-              arb.create_rates(reaction, self)
             end
           end
         end

@@ -1,6 +1,6 @@
 # Rxntoarb::Arb
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-09
+# 2017-10-10
 
 require_relative 'parameter'
 require_relative 'rxn'
@@ -9,73 +9,66 @@ module Rxntoarb
 
   class Arb
 
-    attr_accessor :aliases, :constants, :equations, :file, :header, :magnitudes, :output, :rates, :sources, :species_present
+    attr_accessor :constants, :equations, :file, :magnitudes, :output, :rates, :sources
 
     def initialize(file) #{{{
-      @aliases = {}
       @constants = []
       @equations = []
       @file = file
-      @header = []
-      @magnitudes = []
+      @magnitudes = {} # key is species.tag, value is magnitude expression
       @output = []
       @rates = []
-      @sources = {} # key is [species, source_region]
-      @species_present = [] # keeps track of the order in which new species appear (used to determine magnitudes)
-    end #}}}
-
-    def create_rates(reaction, rxn) #{{{
-
-      @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka
-      reaction.all_species.each do |species|
-        @sources[[species, Rxntoarb.options[:none_centred] ? nil : species.region]] ||= '0.d0' # ensure that species has a source term originating in its own region
-      end
-
-      # Format kinetic parameters
-      if reaction.parameters
-        reaction.parameters.each do |par|
-          @constants << "CONSTANT <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{@aliases[reaction.aka]}" if reaction.aka}"
-        end
-      end
-
-      # Generate rate expressions
-      conc_powers = ->(species) { "*<#{species.conc}_pos>#{"**#{species.coeff}" if species.coeff > 1}" }
-      if reaction.type == :reversible || reaction.type == :twostep # reversible must come before irreversible because same code handles two-step reactions
-        reaction.label << '_i' if reaction.type == :twostep
-        @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<ka_#{reaction.parent_label}>"
-        reaction.reactants.each { |reactant| @rates.last << conc_powers.call(reactant) }
-        @rates.last << "-<kd_#{reaction.parent_label}>"
-        if reaction.type == :twostep
-          reaction.intermediates.each { |intermediate| @rates.last << conc_powers.call(intermediate) }
-        else
-          reaction.products.each { |product| @rates.last << conc_powers.call(product) }
-        end
-        create_sources(reaction)
-      end
-      if reaction.type == :irreversible || reaction.type == :twostep
-        reaction.label << 'i' if reaction.type == :twostep
-        @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<k_#{reaction.parent_label}>"
-        if reaction.type == :twostep
-          reaction.intermediates.each { |intermediate| @rates.last << conc_powers.call(intermediate) }
-        else
-          reaction.reactants.each { |reactant| @rates.last << conc_powers.call(reactant) }
-        end
-        create_sources(reaction)
-      end
-      if reaction.type == :MichaelisMenten
-        reactant_conc = "#{reaction.reactants.first.conc}_pos"
-        enzyme_conc = "#{reaction.enzyme.first.conc}_pos"
-        @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<kcat_#{reaction.parent_label}>*<#{enzyme_conc}>*<#{reactant_conc}>/(<KM_#{reaction.parent_label}>+<#{reactant_conc}>)"
-        create_sources(reaction)
-      end
-
+      @sources = {} # key is [species, source_region], value is source term
     end #}}}
 
     def write(rxn) #{{{
 
+      # Process reactions
+      rxn.reactions.each do |reaction|
+        reaction.all_species.each do |species|
+          @sources[[species, Rxntoarb.options[:none_centred] ? nil : species.region]] ||= '0.d0' # ensure that species has a source term originating in its own region
+        end
+        # Format kinetic parameters
+        if reaction.parameters
+          reaction.parameters.each do |par|
+            @constants << "CONSTANT <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka}"
+          end
+        end
+        # Generate rate expressions
+        conc_powers = ->(species) { "*<#{species.conc}_pos>#{"**#{species.coeff}" if species.coeff > 1}" }
+        if reaction.type == :reversible || reaction.type == :twostep # reversible must come before irreversible because same code handles two-step reactions
+          reaction.label << '_i' if reaction.type == :twostep
+          @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<ka_#{reaction.parent_label}>"
+          reaction.reactants.each { |reactant| @rates.last << conc_powers.call(reactant) }
+          @rates.last << "-<kd_#{reaction.parent_label}>"
+          if reaction.type == :twostep
+            reaction.intermediates.each { |intermediate| @rates.last << conc_powers.call(intermediate) }
+          else
+            reaction.products.each { |product| @rates.last << conc_powers.call(product) }
+          end
+          create_sources(reaction)
+        end
+        if reaction.type == :irreversible || reaction.type == :twostep
+          reaction.label << 'i' if reaction.type == :twostep
+          @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<k_#{reaction.parent_label}>"
+          if reaction.type == :twostep
+            reaction.intermediates.each { |intermediate| @rates.last << conc_powers.call(intermediate) }
+          else
+            reaction.reactants.each { |reactant| @rates.last << conc_powers.call(reactant) }
+          end
+          create_sources(reaction)
+        end
+        if reaction.type == :MichaelisMenten
+          reactant_conc = "#{reaction.reactants.first.conc}_pos"
+          enzyme_conc = "#{reaction.enzyme.first.conc}_pos"
+          @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<kcat_#{reaction.parent_label}>*<#{enzyme_conc}>*<#{reactant_conc}>/(<KM_#{reaction.parent_label}>+<#{reactant_conc}>)"
+          create_sources(reaction)
+        end
+      end
+
       # Perform alias substitution on any kinetic parameters defined as strings
       @constants.each do |constant|
-        @aliases.each { |old, new| constant.sub!(/<#{$1}_#{$2}>/, "<#{$1}_#{new}>") << " # alias: #{old} => #{new}" if constant =~ /<(#{Regexp.union(Parameter::NAMES.values)})_(#{Regexp.escape(old)})>/ }
+        rxn.aliases.each { |old, new| constant.sub!(/<#{$1}_#{$2}>/, "<#{$1}_#{new}>") << " # alias: #{old} => #{new}" if constant =~ /<(#{Regexp.union(Parameter::NAMES.values)})_(#{Regexp.escape(old)})>/ }
       end
 
       # Store region areas/volumes and define new regions for equations
@@ -93,7 +86,7 @@ module Rxntoarb
       end
 
       # Format source terms and generate equations based on template file
-      warn "#{'*'*200}\nINFO: creating equations" if Rxntoarb.options[:debug]
+      warn 'INFO: creating equations' if Rxntoarb.options[:debug]
       @sources.each do |key, source|
         species, source_region = key
         source_centring = if Rxntoarb.options[:none_centred] # source_centring is the centring of the source_region in which the reaction is occurring
@@ -114,67 +107,59 @@ module Rxntoarb
       end
       warn "INFO: equation creation complete" if Rxntoarb.options[:debug]
 
-      # Determine magnitude dependencies for each species by ordering reactions
-      # Initially only reactions involving initial species (specified by the initial_species statement) can proceed.
-      # Products of these initial reactions are added to species_present.
-      # Any reactions that depend on these new products and any of the other previously existing species may now proceed.
-      # The process is repeated until all (or as many as possible) of the species in the system have been produced.
+      # Determine magnitudes for each species by ordering reactions:
+      #   1. Initially only reactions involving initial species (specified by the initial_species statement) can proceed.
+      #   2. Any reactions that depend on the new products and any of the previously existing species may then proceed.
+      #   3. The process is repeated until all (or as many as possible) of the species in the system have been produced.
       # The magnitude of each species is the minimum of the magnitudes of the reactants that produce it earliest.
       warn "INFO: determining magnitudes" if Rxntoarb.options[:debug]
-      size = 0
-      rxn.species.each { |species| @species_present << species if rxn.initial_species.include?(species.tag) }
-      until size == @species_present.size
-        size = @species_present.size
-        present = []
+      rxn.species.each { |species| @magnitudes[species] = "CONSTANT <#{species.conc} magnitude> \"<#{species.conc}_0>\"" if rxn.initial_species.include?(species.tag) } # magnitudes of initial species are their initial concentrations
+      loop do
+        precursors = Hash.new([]) # key is species, value is array of other species that produce it
         rxn.reactions.each do |reaction|
-          next if reaction.all_species.all? { |species| @species_present.include?(species) } # all species in reaction already exist
-          next if reaction.type == :MichaelisMenten && !@species_present.include?(reaction.enzyme.first) # enzyme doesn't already exist
+          next if reaction.type == :MichaelisMenten && !@magnitudes[reaction.enzyme.first] # enzyme isn't present yet
+          next if reaction.all_species.all? { |species| @magnitudes[species] } # all species in reaction already present
           if reaction.type == :twostep
-            find_precursors(reaction.reactants, reaction.intermediates, present)
-            find_precursors(reaction.intermediates, reaction.reactants, present)
+            find_precursors(reaction.reactants, reaction.intermediates, precursors)
+            find_precursors(reaction.intermediates, reaction.reactants, precursors)
           end
-          find_precursors(reaction.reactants, reaction.products, present)
-          find_precursors(reaction.products, reaction.reactants, present) if reaction.type == :reversible
+          find_precursors(reaction.reactants, reaction.products, precursors)
+          find_precursors(reaction.products, reaction.reactants, precursors) if reaction.type == :reversible
         end
-        @species_present |= present
-      end
-      (rxn.species-@species_present).each { |species| warn "WARNING in #{rxn.file}: unable to determine magnitude for species #{species.tag}" }
-
-      # Format magnitudes
-      @species_present.each do |species|
-        if rxn.initial_species.include?(species.tag)
-          species.magnitude = "<#{species.conc}_0>" # magnitudes of initial species are their initial concentrations
-        else
-          species.precursors.each do |precursor|
-            species.magnitude << if species.bound?
-                                   if precursor.bound? || Rxntoarb.options[:none_centred]
-                                     "nonemin(<#{precursor.conc} magnitude>,"
-                                   else
-                                     "nonemin(<#{precursor.conc} magnitude>*<volume(#{precursor.region})>/<area(#{species.region})>," # convert surface concentration to volume concentration
-                                   end
-                                 else
-                                   if precursor.free? || Rxntoarb.options[:none_centred]
-                                     "nonemin(<#{precursor.conc} magnitude>,"
-                                   else
-                                     "nonemin(<#{precursor.conc} magnitude>*<area(#{precursor.region})>/<volume(#{species.region})>," # convert volume concentration to surface concentration
-                                   end
-                                 end
+        break if precursors.empty?
+        precursors.each_key do |species|
+          @magnitudes[species] = "CONSTANT <#{species.conc} magnitude> \""
+          precursors[species].each do |precursor|
+            @magnitudes[species] << if species.bound?
+                                      if precursor.bound? || Rxntoarb.options[:none_centred]
+                                        "nonemin(<#{precursor.conc} magnitude>,"
+                                      else
+                                        "nonemin(<#{precursor.conc} magnitude>*<volume(#{precursor.region})>/<area(#{species.region})>," # convert surface concentration to volume concentration
+                                      end
+                                    else
+                                      if precursor.free? || Rxntoarb.options[:none_centred]
+                                        "nonemin(<#{precursor.conc} magnitude>,"
+                                      else
+                                        "nonemin(<#{precursor.conc} magnitude>*<area(#{precursor.region})>/<volume(#{species.region})>," # convert volume concentration to surface concentration
+                                      end
+                                    end
           end
-          species.magnitude << "<huge>#{')'*species.precursors.size}"
+          @magnitudes[species] << "<huge>#{')'*precursors[species].size}\""
         end
-        @magnitudes << "CONSTANT <#{species.conc} magnitude> \"#{species.magnitude}\""
+        break if @magnitudes.size == rxn.species.size
       end
+      (rxn.species-@magnitudes.keys).each { |species| warn "WARNING in #{rxn.file}: unable to determine magnitude for species #{species.tag}" }
       warn "INFO: magnitudes done" if Rxntoarb.options[:debug]
 
       # Format output
-      format_output(@header << "# Generated from #{rxn.file} by #{PROGNAME} v. #{VERSION}, #{Time.now.strftime('%F %T')}")
+      format_output(rxn.header << "# Generated from #{rxn.file} by #{PROGNAME} v. #{VERSION}, #{Time.now.strftime('%F %T')}")
       format_output(@constants, {name: 'Constants and regions'})
       format_output(@rates, {name: 'Reaction rates', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
       format_output(@sources.values, {name: 'Source terms', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
       format_output(@equations, {name: 'Equations'})
-      format_output(@magnitudes, {name: 'Magnitudes'})
+      format_output(@magnitudes.values, {name: 'Magnitudes'})
       File.write(@file, @output.join("\n"))
-      warn "INFO: output written to #{@file}\n#{'*'*200}" if Rxntoarb.options[:debug]
+      warn "INFO: output written to #{@file}" if Rxntoarb.options[:debug]
 
     rescue => msg
       warn "ERROR: #{msg}"
@@ -272,13 +257,9 @@ module Rxntoarb
 
     end #}}}
 
-    def find_precursors(reactants, products, present) #{{{
-      return unless reactants.all? { |reactant| @species_present.include?(reactant) } # check whether all reactants are present yet; if so add products to the list of species
-      products.each do |product|
-        next if reactants.include?(product)
-        present << product
-        product.precursors ||= reactants - products
-      end
+    def find_precursors(reactants, products, precursors) #{{{
+      return unless reactants.all? { |reactant| @magnitudes[reactant] } # check whether all reactants are present yet
+      products.each { |product| precursors[product] |= reactants - products unless reactants.include?(product) || @magnitudes[product] }
     end #}}}
 
     def format_output(array, options={}) #{{{

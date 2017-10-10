@@ -1,6 +1,6 @@
 # Rxntoarb::Species
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-09
+# 2017-10-10
 
 require_relative 'rxn'
 
@@ -10,7 +10,6 @@ module Rxntoarb
 
     INT_ATTR = [:bound, :centring, :conc, :free, :location, :mw, :name, :region, :tag, :units] # intrinsic attributes that determine equality of species objects
     attr_reader *(INT_ATTR + [:coeff, :units_power])
-    attr_accessor :magnitude, :precursors
 
     def initialize(species, rxn) #{{{
       match = /\A\s*(\d+)?\s*[*.]?\s*([^@]+?)(?:@(\w+|<[^>]+>))?\s*\z/.match(species)
@@ -36,7 +35,6 @@ module Rxntoarb
       @tag = "#{@name}#{"@#{@region}" if @region}" # unique identifier of the form 'name@region'
       @conc = "#{@bound ? 's' : 'c'}_#{@tag}" # using 's' for surface concentrations and 'c' for volume (or none_centred) concentrations
       @mw = @bound ? nil : "(#{@name.tr('()[]', '').split(':').map { |component| "+<MW_#{component}>" }.join})" # calculate molecular weight as sum of MWs of components
-      @magnitude = ''
 
       @centring, @location = if Rxntoarb.options[:none_centred]
                                ['NONE', :none]

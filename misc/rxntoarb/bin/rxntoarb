@@ -2,9 +2,9 @@
 
 # rxntoarb
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-09
+# 2017-10-10
 
 abort "ERROR: Ruby 1.9 or newer required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9'
 
-require_relative '../lib/rxntoarb/main'
-Rxntoarb::Main.run
+require_relative '../lib/rxntoarb/rxntoarb'
+Rxntoarb.run

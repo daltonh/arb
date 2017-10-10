@@ -1,10 +1,10 @@
 # Rxntoarb::Reaction
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-09
+# 2017-10-10
 
-require_relative 'main'
 require_relative 'parameter'
 require_relative 'rxn'
+require_relative 'rxntoarb'
 require_relative 'species'
 
 module Rxntoarb
