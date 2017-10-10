@@ -1,3 +1,4 @@
+# rxntoarbrc, v. 2.3 (2017-10-08)
 CONSTANT </c/_0> [/units/] 0.d0 # set initial concentration to zero (overwrite later if necessary)
 if_rxn(volume){<<calculatediffusivities>>CONSTANT <D_/species/> [m2 s-1] "8.34d-16*<T>/(<mu>*/MW/**(1.d0/3.d0))" # Young1980; viscosity in Pa s, MW in kDa}
 /CENTRING/_UNKNOWN </c/> [/units/] "if_rxn(volume){noneif(<<zeroinitialvolumeconcentrationsflag>>,0.d0,</c/_0>)}{</c/_0>}" ON </associatedcells(region)/> magnitude=</c/ magnitude>
