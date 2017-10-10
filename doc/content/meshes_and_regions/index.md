@@ -145,12 +145,7 @@ Alternatively, there is another way that may work for your simulation: As arb ca
 
 ##Glued boundaries
 
-Used to implement periodic or reflection boundaries by glueing two
-boundary face regions together. Boundary regions to be glued must have
-the same element structure (size and number). Individual element
-matching between the boundaries is accomplished by matching the closest
-element locations, relative to the region centroids (much like the and
-operators).
+The `GLUE_FACES` keyword is used to implement periodic or reflection boundaries by glueing two boundary face regions together. Boundary regions to be glued must have the same element structure (size and number). Individual element matching between the boundaries is accomplished by matching the closest element locations, relative to the region centroids (much like the and operators).
 
 Example of a periodic boundary glueing the top and bottom boundaries of
 a domain:
@@ -158,93 +153,63 @@ a domain:
 Example of a reflection (axis of symmetry) boundary along the left side
 of a domain:
 
-In the case of reflection, certain operators (eg, ) need to be aware
-when they are operating on the component of a vector, that needs to be
-reflected over this reflection boundary. See the options for each
-operator.
+In the case of reflection, certain operators (eg, ) need to be aware when they are operating on the component of a vector, that needs to be reflected over this reflection boundary. See the options for each operator.
 
-# Regions
+## Regions
 
-Regions are sets of elements that are used to locate user-defined
-variables and equations. Each region may contain only mesh elements of
-the same centring (that is, either cell or face elements, but not both).
-Regions may contain elements of different dimensions (see caveat in
-previous section regarding gmsh display of this though). Regions can be
-defined by the user directly in gmsh when the mesh is generated, or via
-statements in the file that are interpreted when is run. There are also
-several generic system generated regions. Region names must be delimited
-by the characters, and within these delimiters cannot contain the
-characters , , or . Apart from these four characters their names may
-contain any non-alphanumeric characters.
+Regions are sets of elements that are used to locate user-defined variables and equations. Each region may contain only mesh elements of the same centring (that is, one of either cell, face or node elements).  Regions may contain elements of different dimensions (see caveat in previous section regarding gmsh display of this though). Regions can be defined by the user directly in gmsh when the mesh is generated, or via statements in the file that are interpreted when is run. There are also several generic system generated regions. Region names follow similar rules to variable names:  They must be delimited by the `<` and `>` characters, and within these delimiters cannot contain the character (sets) `{{`, `}}`, `#` or `&`. Apart from these their names may contain any non-alphanumeric characters.
 
 ### Defining regions via gmsh \[sec:gmsh\_regions\]
 
-Regions are specified in gmsh by defining and then naming physical
-entities. To do this via the gmsh GUI:
+Regions are specified in gmsh by defining and then naming physical entities. To do this via the gmsh GUI:
 
--   Add a physical entity (under the physical groups tab) by selecting
-    various elemental entities.
+-   Add a physical entity (under the physical groups tab) by selecting various elemental entities.
 
--   Edit the geometry file (using the edit tab) and change the physical
-    entity’s name from the numerical name given by gmsh to the required
-    delimited name suitable for arb.
+-   Edit the geometry file (using the edit tab) and change the physical entity’s name from the numerical name given by gmsh to the required delimited name suitable for arb.
 
 -   Save the file.
 
--   Reload the file again (using the reload tab). If you now check under
-    the visibility menu that the physical entity is visible.
+-   Reload the file again (using the reload tab). If you now check under the visibility menu that the physical entity is visible.
 
-You can specify the cell or face designation of any gmsh element using
-the following commands within the file. This is seldom necessary
-(although it doesn’t hurt either), unless the file it is contained
-within contains multiple domains, of differing dimensions (see
-discussion in previous section).
-
-    CELL_REGION <gmsh_region_name> 
-    FACE_REGION <gmsh_region_name>
+You can specify the cell, face or node designation of any gmsh element using the following:
+```arb
+CELL_REGION <cell_region_name> 
+FACE_REGION <face_region_name>
+NODE_REGION <noderegion_name>
+```
+However, this is seldom necessary (although it doesn't hurt either), unless the `.msh` file it is contained within contains multiple domains, of differing dimensions (see discussion in previous section).
 
 ### Defining regions within the file
 
-There are several types of region specification statements that can be
-used in the file. Regions specified by these statements will overwrite
-any regions defined in the files, however a warning is issued (This
-allows files to be reread without altering region definition
-statements). The specification statements are:
+There are several types of region specification statements that can be used in the file. Regions specified by these statements will overwrite any regions defined in the files, however a warning is issued (This allows files to be reread without altering region definition statements).  Regions that are defined within the arb input file are handled by [equation_module_template.f90] (search for `ref: compound`, or `ref: at` etc).
 
-*Compound region:*
+The specification statements are detailed below:
 
-    CELL_REGION <name> "COMPOUND +<region1>+<region2>-<region3>" # comments
-    FACE_REGION <name> "COMPOUND <region1>-<region2>" # comments
+####Compound region:
 
-A compound region is defined using other existing regions. All regions
-that are used in the definition (ie, , and in the above examples) must
-have the (same) centring that is specified by the keyword. If a sign
-precedes a region name in the list of regions, then all the mesh
-elements that are in the following region are added to the new compound
-region, if they are not already members. If a sign precedes a region
-name in the list of regions, then all the mesh elements that are in the
-following region are removed from the new compound region, if they are
-(at that stage) members of the new compound region. If no sign
-immediately precedes a region name in the defining list then a sign is
-assumed. When constructing a compound region deals with each region in
-the defining list sequentially; so whether a mesh element is included in
-the compound region or not may depend on the order that the regions are
-listed.
+```arb
+CELL_REGION <cell_region_name> "compound(+<region1>+<region2>-<region3>)" ON <parent_cell_region> # comments
+FACE_REGION <face_region_name> "compound(<region4>-<region5>)" ON <parent_face_region> # comments
+NODE_REGION <node_region_name> "compound(<region6>-<region7>)" ON <parent_node_region> # comments
+```
 
-*At region:*
+A compound region is defined using other existing regions. All regions that are used in the definition (eg `<region1>`, `<region2>` etc in the above examples) must have the (same) centring that is specified by the keyword.
 
-    CELL_REGION <name> "AT x1 x2 x3" # comments
-    CELL_REGION <name> "AT x1 x2 x3 PART OF <domain>" # comments
-    FACE_REGION <name> "AT x1 x2 x3" # comments
-    FACE_REGION <name> "AT x1 x2 x3 PART OF <inlet>" # comments
+The contents of the newly formed region is created using sequential addition (union) and subtraction operations. If a `+` sign precedes a region name in the list of regions, then all the mesh elements that are in the following region are added to the new compound region, if they are not already members. If a `-` sign precedes a region name in the list of regions, then all the mesh elements that are in the following region are removed from the new compound region, if they are (at that stage) members of the new compound region. If no sign immediately precedes a region name in the defining list then a `+` sign is assumed. When constructing a compound region the code deals with each region in the defining list sequentially; so whether a mesh element is included in the compound region or not may depend on the order that the regions are listed.
 
-This statement defines a region that contains one cell or one face mesh
-element. The element chosen lies closest to the point . The values , and
-can be real or double precision floats. An optional confines the choice
-of an element to those within . In this case must have the same centring
-as the region statement.
+Finally, as per all region definition statements, the resulting compound region can only include elements that are contained within the parent region, specified using `ON <parent_region>`.  If a parent region is not specified, then all of the elements of the applicable centring is implied (ie, `ON <allcells>` for a `CELL_REGION` statement).
 
-*Within box region:*
+####At region:
+
+```arb
+CELL_REGION <name> "at(x1,x2,x3)" ON <domain> # comments
+FACE_REGION <name> "at(x1,x2,x3)" ON <inlet> # comments
+NODE_REGION <name> "at(x1,x2,x3)"
+```
+
+This statement defines a region that contains one cell, face or node mesh element. The element chosen lies closest to the point specified by the coordinates `x1,x2,x3`. The coordinate values can be real or double precision floats.
+
+####Within box region:
 
     CELL_REGION <name> "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" # comments
     FACE_REGION <name> "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" # comments

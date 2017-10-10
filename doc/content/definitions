@@ -21,6 +21,7 @@
 [output_module.f90]: <<<arbroot>>>/src/output_module.f90
 [region_module.f90]: <<<arbroot>>>/src/region_module.f90
 [linear_module.f90]: <<<arbroot>>>/src/linear_module.f90
+[equation_module_template.f90]: <<<arbroot>>>/src/equation_module_template.f90
 [free_surface_funtions.f90]: <<<arbroot>>>/src/free_surface_functions.f90
 [setup_equations.pl]: <<<arbroot>>>/src/setup_equations/setup_equations.pl
 [setup_equations]: <<<arbroot>>>/src/setup_equations
