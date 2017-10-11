@@ -8,8 +8,7 @@ module Rxntoarb
 
   class Species
 
-    INT_ATTR = [:bound, :centring, :conc, :free, :location, :mw, :name, :region, :tag, :units] # intrinsic attributes that determine equality of species objects
-    attr_reader *(INT_ATTR + [:coeff, :units_power])
+    attr_reader :bound, :centring, :coeff, :conc, :free, :location, :mw, :name, :region, :tag, :units, :units_power
 
     def initialize(species, rxn) #{{{
       match = /\A\s*(\d+)?\s*[*.]?\s*([^@]+?)(?:@(\w+|<[^>]+>))?\s*\z/.match(species)
@@ -51,11 +50,11 @@ module Rxntoarb
     end #}}}
 
     def ==(other) #{{{
-      self.class == other.class && (INT_ATTR).all? { |attr| self.instance_variable_get("@#{attr}") == other.instance_variable_get("@#{attr}") } # equality of species objects based on intrinsic attributes only
+      self.class == other.class && @tag == other.tag # equality of species objects based on tags (name and region) only
     end #}}}
 
     def hash #{{{
-      INT_ATTR.map(&:hash).inject(:^) # equality of species objects based on intrinsic attributes only
+      @tag.hash # equality of species objects based on tags (name and region) only
     end #}}}
 
     alias bound? bound
