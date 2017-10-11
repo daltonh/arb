@@ -1,6 +1,6 @@
 # Rxntoarb::Species
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-10
+# 2017-10-11
 
 require_relative 'rxn'
 
@@ -51,7 +51,7 @@ module Rxntoarb
     end #}}}
 
     def ==(other) #{{{
-      self.class == other.class && (INT_ATTR).all? { |attr| eval("@#{attr} == other.#{attr}") } # equality of species objects based on intrinsic attributes only
+      self.class == other.class && (INT_ATTR).all? { |attr| self.instance_variable_get("@#{attr}") == other.instance_variable_get("@#{attr}") } # equality of species objects based on intrinsic attributes only
     end #}}}
 
     def hash #{{{
