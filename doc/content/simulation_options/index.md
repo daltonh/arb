@@ -32,7 +32,26 @@ date: 6/12/16
 
 -   : choose the type of linear solver to use.
 
+```arb
+#-------------------------------------------------------------------
+# system constants
+SOLVER_OPTIONS linearsolver=intelpardisosafer
+
+SOLVER_OPTIONS linearsolver=intelparadiso
+KERNEL_OPTIONS polynomialorder=3 # setting order of kernel function for face derivatives
+KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2 # setting order of kernel function for face derivatives
+KERNEL_OPTIONS polynomialorder=2 # setting order of kernel function for face derivatives
+KERNEL_OPTIONS polynomialaverageorder=2 # setting order of kernel function for face derivatives
+KERNEL_OPTIONS automaximumseparation=.false.
+KERNEL_OPTIONS automaximumseparation=.false.,minimumseparation=2
+KERNEL_OPTIONS checkminw=.true.,minimumminw=0.5d0 # reducing the minw a bit which will decrease the size of the kernels
+KERNEL_OPTIONS minimumseparation=2
+
+# for structured meshes 
+INCLUDE_TEMPLATE "kernel_presets"
+INCLUDE "kernel_1st_order_compact"
 ##Kernel options
+```
 
 There are many options that can be used to change the kernels used. For
 example

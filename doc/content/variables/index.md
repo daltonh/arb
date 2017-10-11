@@ -33,6 +33,27 @@ All variables have an associated compound variable type (scalar, vector or tenso
 
 ## Variable Centring
 
+## Variable Options
+
+```arb
+
+# options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
+#p  derivative/noderivative - for DERIVED, EQUATION, LOCAL : do or do not calculate Jacobian derivatives for this variable
+#p  positive/negative/nocheck - for DERIVED, UNKNOWN, EQUATION, LOCAL : check at each iteration that variable is positive/negative
+#f  output/nooutput - for ALL : output compound to msh files
+#f  componentoutput/nocomponentoutput - for ALL : output just this component to msh files
+#f  stepoutput/stepoutputnoupdate/nostepoutput - for ALL : output compound to step file.  The noupdate one does not update the variable when the step file is written (needed for recording when output occurred for example).
+#f  componentstepoutput/componentstepoutputnoupdate/nocomponentstepoutput - for ALL : output just this component to step files
+#f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
+#f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
+#f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component)
+#p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
+#f  magnitude=value - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
+#f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
+#f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
+#   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
+```
+
 ## Variable types
 
 ### Constant

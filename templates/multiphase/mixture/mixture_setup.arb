@@ -1,0 +1,20 @@
+MARKDOWN
+Setup unknowns for the mixture.  Mixture variables are unnamed, such as `<u[l=:]>` as the volume averaged mixture velocity, and `<p[l=:]>` as the mixture pressure
+END_MARKDOWN
+
+{{ return vector_expand(
+  'CELL_UNKNOWN <u[l=$l]> [m/s] "0.d0" ON <allcells> magnitude=<u_av> # velocity component $l',
+  'CELL_TRANSIENT <u[l=$l,r=1]> [m/s] "<u[l=$l]>" "<u[l=$l]>" ON <allcells>'
+); }}
+CELL_UNKNOWN <p> [Pa] "0.d0" ON <allcells> magnitude=1.d0 # pressure
+
+# also calculate properties of mixture, at this stage just placeholders
+CELL_DERIVED <rho> [kg/m^3] "0.d0" ON <allcells> # this density will be incremented within the solid and fluid setup files
+CELL_TRANSIENT <rho[r=1]> [kg/m^3] "" "<rho>" ON <allcells> # transient mixture density
+
+INCLUDE "mixture_viscosity" # this will default to quemada expression: see template file for string replacements to change this
+
+# calculate face centred mixture viscosity here
+FACE_DERIVED <mu_f> "faceave[harmonic](<mu>)" ON <allfaces>
+
+CELL_LOCAL <phi_total_species> "1.d0-<phi_fluid>" ON <allcells> # this will be a sum of all disperse phase volume fractions

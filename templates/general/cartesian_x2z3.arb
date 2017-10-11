@@ -1,0 +1,6 @@
+MARKDOWN
+sets general replacements for cartesian 2D coordinates in the yz plane
+END_MARKDOWN
+
+GENERAL_REPLACEMENTS REPLACE "<<dim1comment>>" WITH "#"
+GENERAL_REPLACEMENTS R "<<dimensions>>" W "2,3"

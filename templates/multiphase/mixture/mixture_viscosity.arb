@@ -1,0 +1,26 @@
+MARKDOWN
+This file calculates the mixture viscosity, <mu> from the total solid volume fraction <phi_total_species>
+END_MARKDOWN
+
+# all variables defined here start with <mu_
+
+# set default viscosity calculation method to quemada - overwrite string on input to select other method
+REPLACEMENTS D "<<mumixtureliquid>>" W "0" D "<<mumixturedilute>>" W "0" D "<<mumixturequemada>>" W "1"
+
+IF <<mumixtureliquid>>
+# constant viscosity equal to liquid viscosity
+  CELL_DERIVED <mu> "<mu_l>"
+ELSE_IF <<mumixturedilute>>
+# dilute regime viscosity
+  CELL_DERIVED <mu> "<mu_l>*(1.d0 + 2.5d0*<phi_total_species>)"
+ELSE_IF <<mumixturequemada>>
+# Quemada's equation from Bouchoux et al., with cutoff 
+  NONE_CONSTANT <mu_phi_solid_cutoff> 0.67d0
+  NONE_CONSTANT <mu_phi_solid_max> 0.7d0
+  CELL_DERIVED <mu_nd_low> "1.d0/(1.d0-(cellmin(<phi_total_species>,<mu_phi_solid_cutoff>))/(<mu_phi_solid_max>))^2" ON <allcells>
+  NONE_CONSTANT <mu_nd_cutoff> "1.d0/(1.d0-(<mu_phi_solid_cutoff>/<mu_phi_solid_max>))^2" output #Quemada's equation from Bouchoux et al. 
+  NONE_CONSTANT <mu_nd_grad> "2.d0/(<mu_phi_solid_max>*(1.d0-(<mu_phi_solid_cutoff>/<mu_phi_solid_max>))^3)"
+  CELL_DERIVED <mu> "<mu_l>*cellif(<phi_total_species>,cellif(<phi_total_species>-<mu_phi_solid_cutoff>,<mu_nd_cutoff>+<mu_nd_grad>*(<phi_total_species>-<mu_phi_solid_cutoff>),<mu_nd_low>),1.d0)" output
+ELSE
+  ERROR "mixture viscosity type not known in mixture_viscosity template"
+END_IF

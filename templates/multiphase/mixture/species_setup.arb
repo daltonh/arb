@@ -1,0 +1,35 @@
+MARKDOWN
+Setup unknowns for a species named `/species/', which if not set, defaults to 'solid'
+END_MARKDOWN
+
+# setup default species name
+REPLACEMENTS D "/species/" W "solid"
+
+# define some positive and limited volume fractions
+# not sure which of these we actually need yet...
+
+# NONE_CONSTANT <phi_/species/_max> 0.7d0 # Maximum closed packing volume fraction
+# CONSTANT <phi_/species/_upper> 0.99999d0 # maximum allowable volume fraction
+# CONSTANT <phi_/species/_small> 1.d-9 # a small volume fraction, used to stop divide by zeros etc
+# CELL_LOCAL <phi_/species/_pos> "cellmin(cellmax(<phi_/species/>,0.d0),<phi_/species/_upper>)" ON <allcells> # between 0 and 1
+# #CELL_LOCAL <phi_/species/_pos> "cellmin(cellmax(<phi_/species/>,<phi_/species/_small>),<phi_/species/_upper>)" ON <allcells> # between 0 and 1
+# # faces
+# # generally, do face averaging first, then any limiting
+# #FACE_DERIVED <phi_/species/_f> "faceave[adjacentcells](<phi_/species/>)" ON <allfaces> output # this is used a lot, so save it
+# FACE_DERIVED <phi_/species/_f> "faceave(<phi_/species/>)" ON <allfaces> output # this is used a lot, so save it
+# FACE_LOCAL <phi_/species/_pos_f> "facemin(facemax(<phi_/species/_f>,0.d0),<phi_/species/_upper>)" ON <allfaces> # between 0 and 1
+# #FACE_LOCAL <phi_/species/_pos_f> "facemin(facemax(<phi_/species/_f>,<phi_/species/_small>),<phi_/species/_upper>)" ON <allfaces> # between 0 and 1
+
+CELL_LOCAL <phi_/species/_initial> "0.d0"
+CELL_UNKNOWN <phi_/species/> "<phi_/species/_initial>" magnitude=1.d0 ON <allcells>
+CELL_TRANSIENT <phi_/species/[r=1]> "<phi_/species/_initial>" "<phi_/species/>" ON <allcells> # transient volume fraction
+
+# account for this volume fraction on the fluid volume fraction too
+VARIABLE <phi_fluid> "<phi_fluid>-<phi_/species/>"
+
+NONE_CONSTANT <rho_/species/> [kg/m^3] 1.d+3 # density of pure /species/
+
+CELL_LOCAL <phi_/species/_pos> "cellmax(cellmin(<phi_/species/>,1.d0),0.d0)" ON <allcells>
+
+# increment mixture density
+VARIABLE <rho> "<rho> + <rho_/species/>*<phi_/species/_pos>"
