@@ -3,8 +3,8 @@
 abort "ERROR: Ruby 1.9 or newer required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9'
 
 PROGNAME = 'convert_units'
-VERSION = 1.1
-DATE = '2017-10-09'
+VERSION = 1.2
+DATE = '2017-10-11'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})
   Performs unit conversions.
@@ -44,7 +44,7 @@ if ARGV.empty?
 end
 
 # Do unit conversion
-value_in = ARGV[0].sub(/(\d)\.?[DdEe](\d)/, '\1e\2') # convert exponents to consistent form
+value_in = ARGV[0]
 units_out = ARGV[1].to_s.empty? ? '' : ARGV[1]
 begin
   value_out, units_out = Units.convert(value_in, units_out, options)

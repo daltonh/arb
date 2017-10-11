@@ -1,6 +1,6 @@
 # Units module
 # (C) Copyright Christian Biscombe 2017
-# 2017-10-09
+# 2017-10-11
 
 module Units
 
@@ -47,6 +47,7 @@ module Units
     # derived units
     Unit.new('becquerel', 'Bq', 's-1', 1.0),
     Unit.new('coulomb', 'C', 'A s', 1.0),
+    Unit.new('degree Celsius', 'degC', 'K', 1.0, 273.15), # special case - could refer to absolute temperature or (with -t flag) temperature difference
     Unit.new('farad', 'F', 'A2 s4 kg-1 m-2', 1.0),
     Unit.new('', 'g', 'kg', 1e-3), # gram, needed so that prefixes other than k will match. Named '' so that it doesn't appear in unit list
     Unit.new('gray', 'Gy', 'm2 s-2', 1.0),
@@ -67,7 +68,6 @@ module Units
     Unit.new('volt', 'V', 'kg m2 A-1 s-3', 1.0),
     Unit.new('watt', 'W', 'kg m2 s-3', 1.0),
     Unit.new('weber', 'Wb', 'kg m2 A-1 s-2', 1.0),
-    Unit.new('degree Celsius', 'degC', 'K', 1.0, 273.15), # special case - could refer to absolute temperature or (with -t flag) temperature difference
     # other units used with the SI
     Unit.new('angstrom', 'angstrom', 'm', 1e-10),
     Unit.new('atmosphere', 'atm', 'kg m-1 s-2', 1.01325e5),
@@ -87,24 +87,29 @@ module Units
     Unit.new('second (angle)', "''", 'rad', Math::PI/6.48e5),
     # others
     Unit.new('British thermal unit', 'BTU', 'kg m2 s-2', 1055.06),
+    Unit.new('calorie (thermochemical)', 'cal', 'kg m2 s-2', 4.184),
+    Unit.new('degree Fahrenheit', 'degF', 'K', 5.0/9.0, 459.67), # special case - could refer to absolute temperature or (with -t flag) temperature difference
+    Unit.new('degree Rankine', 'degR', 'K', 5.0/9.0, 0.0), # special case - could refer to absolute temperature or (with -t flag) temperature difference
     Unit.new('dyne', 'dyn', 'kg m s-2', 1e-5),
     Unit.new('erg', 'erg', 'kg m2 s-2', 1e-7),
+    Unit.new('faraday', 'faraday', 'A s', 9.648533289e4),
     Unit.new('foot', 'ft', 'm', 0.3048),
     Unit.new('gallon (UK)', 'gal_UK', 'm3', 4.54609e-3),
     Unit.new('gallon (US)', 'gal_US', 'm3', 3.785411784e-3),
+    Unit.new('gauss', 'G', 'kg A-1 s-2', 1e-4),
     Unit.new('horsepower (imperial)', 'hp', 'kg m2 s-3', 745.69987158227022),
     Unit.new('inch', 'in', 'm', 0.0254),
-    Unit.new('pound', 'lb', 'kg', 0.45359237),
-    Unit.new('pound-force', 'lbf', 'kg m s-2', 4.4482216152605),
+    Unit.new('maxwell', 'Mx', 'kg m2 A-1 s-2', 1e-8),
     Unit.new('mile', 'mile', 'm', 1609.344),
     Unit.new('millimetres of mercury', 'mmHg', 'kg m-1 s-2', 133.322387415),
-    Unit.new('ounce', 'oz', 'kg', 28.349523125e-3),
-    Unit.new('pounds per square inch', 'psi', 'kg m-1 s-2', 6.894757e3),
+    Unit.new('ounce (avoirdupois)', 'oz', 'kg', 28.349523125e-3),
     Unit.new('poise', 'P', 'kg m-1 s-1', 0.1),
+    Unit.new('pound', 'lb', 'kg', 0.45359237),
+    Unit.new('pound-force', 'lbf', 'kg m s-2', 4.4482216152605),
+    Unit.new('pounds per square inch', 'psi', 'kg m-1 s-2', 6.894757e3),
+    Unit.new('revolutions per minute', 'rpm', 'rad s-1', 2.0*Math::PI/60.0),
     Unit.new('yard', 'yd', 'm', 0.9144),
-    Unit.new('degree Fahrenheit', 'degF', 'K', 5.0/9.0, 459.67), # special case - could refer to absolute temperature or (with -t flag) temperature difference
-    Unit.new('degree Rankine', 'degR', 'K', 5.0/9.0, 0.0) # special case - could refer to absolute temperature or (with -t flag) temperature difference
-  ].sort_by! { |unit| unit.name.downcase }
+  ].sort_by { |unit| unit.name.downcase }
   UNITS = {}
   UNIT_LIST.each { |unit| UNITS[unit.sym] = unit }
 
@@ -144,6 +149,7 @@ module Units
   def convert(string_in, units_out, options={})
     value_in, units_in = /\A\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?)?\s*(.*?)\s*\z/.match(string_in).captures
     value_in ||= '1.0'
+    options[:double_precision] = true if value_in.downcase.include?('d') # double precision output if double precision input
     value_in = value_in.tr('DdE', 'e').sub(/\.e/, 'e').sub(/\.\z/, '') # ensure that value_in is a valid Ruby float
     factor_in, units_in_dim = convert_SI(units_in)
     if units_out.empty? # default to SI units
