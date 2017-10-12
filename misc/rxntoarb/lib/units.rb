@@ -5,7 +5,7 @@ module Units
 
   module_function
 
-  # SI prefixes
+  # SI prefixes #{{{
   PREFIXES = {
     'Y' => 1e24,
     'Z' => 1e21,
@@ -28,11 +28,11 @@ module Units
     'z' => 1e-21,
     'y' => 1e-24
   }
-  PREFIXES.default = 1.0 # default value if no prefix given
+  PREFIXES.default = 1.0 # default value if no prefix given #}}}
 
   SI_UNITS = %w[A cd kg K m mol rad s sr]
 
-  # Create unit definitions
+  # Create unit definitions #{{{
   Unit = Struct.new(:name, :sym, :si, :factor, :offset) # attributes are unit name, unit symbol, equivalent SI units, factor to multiply by to convert to SI units, offset (only for temperatures)
   UNIT_LIST = [
     # base SI units
@@ -106,48 +106,19 @@ module Units
     Unit.new('pound', 'lb', 'kg', 0.45359237),
     Unit.new('pound-force', 'lbf', 'kg m s-2', 4.4482216152605),
     Unit.new('pounds per square inch', 'psi', 'kg m-1 s-2', 6.894757e3),
-    Unit.new('revolutions per minute', 'rpm', 'rad s-1', 2.0*Math::PI/60.0),
     Unit.new('yard', 'yd', 'm', 0.9144),
-  ].sort_by { |unit| unit.name.downcase }
+  ].sort_by { |unit| unit.name.downcase } #}}}
 
   UNITS = {}
   UNIT_LIST.each { |unit| UNITS[unit.sym] = unit }
   
   UNIT_MATCH = /\A(#{Regexp.union(PREFIXES.keys)})??(#{Regexp.union(UNITS.keys)})\^?((?:\+|-)?\d+)?\z/
 
-  # Print list of available units
-  def list()
+  def list() #{{{
     UNIT_LIST.each { |unit| puts "#{unit.name}: #{unit.sym}" unless unit.name.empty? }
-  end
+  end #}}}
 
-  # Extract prefix, unit, and exponent
-  def extract(part)
-    match = UNIT_MATCH.match(part)
-    raise "unrecognised unit #{part}" unless match
-    prefix, unit, exponent = match.captures
-    return prefix, unit, exponent ? exponent.to_i : 1
-  end
-
-  # Convert to SI units
-  def convert_SI(units)
-    factor = 1.0 # this will be the factor to multiply units by to convert to SI
-    units_dim = {} # this will contain the dimensions of units in terms of SI base units
-    SI_UNITS.each { |unit| units_dim[unit] = 0 }
-    units.split(/ |\.|\*/).each do |part|
-      prefix, unit, exponent = extract(part)
-      factor *= (PREFIXES[prefix]*UNITS[unit].factor)**exponent
-      # determine the dimensions of each of the SI units comprising units
-      UNITS[unit].si.split.each do |part|
-        _, si_unit, si_exponent = extract(part)
-        si_unit = 'kg' if si_unit == 'g' # kilograms are a special case (base unit contains prefix)
-        units_dim[si_unit] += si_exponent*exponent
-      end
-    end
-    return factor, units_dim
-  end
-
-  # Convert input units to output units (via conversion to SI)
-  def convert(string_in, units_out, options={})
+  def convert(string_in, units_out, options={}) #{{{
     value_in, units_in = /\A\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?)?\s*(.*?)\s*\z/.match(string_in).captures
     value_in ||= '1.0'
     options[:double_precision] = true if value_in.downcase.include?('d') # double precision output if double precision input
@@ -186,7 +157,31 @@ module Units
     end
 
     return value_out, units_out.strip
-  end
+  end #}}}
+
+  def convert_SI(units) #{{{
+    factor = 1.0 # this will be the factor to multiply units by to convert to SI
+    units_dim = {} # this will contain the dimensions of units in terms of SI base units
+    SI_UNITS.each { |unit| units_dim[unit] = 0 }
+    units.split(/ |\.|\*/).each do |part|
+      prefix, unit, exponent = extract(part)
+      factor *= (PREFIXES[prefix]*UNITS[unit].factor)**exponent
+      # determine the dimensions of each of the SI units comprising units
+      UNITS[unit].si.split.each do |part|
+        _, si_unit, si_exponent = extract(part)
+        si_unit = 'kg' if si_unit == 'g' # kilograms are a special case (base unit contains prefix)
+        units_dim[si_unit] += si_exponent*exponent
+      end
+    end
+    return factor, units_dim
+  end #}}}
+
+  def extract(part) #{{{
+    match = UNIT_MATCH.match(part)
+    raise "unrecognised unit #{part}" unless match
+    prefix, unit, exponent = match.captures
+    return prefix, unit, exponent ? exponent.to_i : 1
+  end #}}}
 
   private_constant :PREFIXES, :SI_UNITS, :UNIT_LIST, :UNIT_MATCH, :UNITS
   private_class_method :extract, :convert_SI

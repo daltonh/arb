@@ -19,32 +19,15 @@ module Rxntoarb
       raise 'syntax error or unrecognised reaction type' unless match
       @indent, @aka, reactants, intermediates, enzyme, arrow, products, parameters, @comment = match.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
 
-      label = ''
-      all_species = []
+      @all_species = Set.new
       @species_regions = Set.new
-      [reactants, intermediates, enzyme, products].each do |string|
-        if string.nil? || string =~ /\A\s*\z/
-          all_species << nil
-          next
-        end
-        species_array = []
-        string.split(/\s+\+\s+/).each do |term| # spaces around + required so that + can be used in species names (e.g. ions)
-          begin
-            species = Species.new(term, rxn)
-          ensure
-            Rxntoarb.print_debug(:species){}
-          end
-          species_array << species
-        end
-        label << "|" unless label.empty?
-        label << species_array.map(&:tag).join(',')
-        @species_regions += species_array.map(&:region).compact
-        all_species << species_array
-      end
-      @reactants, @intermediates, @enzyme, @products = all_species
-      @all_species = all_species.flatten.compact.uniq
-      raise "duplicate label #{label}. Most likely there is a duplicate reaction" if rxn.labels.include?(label)
-      @label = label
+      @label = ''
+      @reactants = extract_species(reactants, rxn)
+      raise 'no reactants in reaction' unless @reactants
+      @intermediates = extract_species(intermediates, rxn)
+      @enzyme = extract_species(enzyme, rxn)
+      @products = extract_species(products, rxn)
+      raise "duplicate label #{@label}. Most likely there is a duplicate reaction" if rxn.labels.include?(@label)
       rxn.labels << @label
 
       if @indent
@@ -124,6 +107,26 @@ module Rxntoarb
       rxn.error("inconsistent units in reaction rate (#{units.last} vs #{units.first})", :WARNING) unless units.size == 1 # check that terms in rate expressions have consistent units
       rxn.error("reaction rate has unexpected units", :WARNING) if units.any? { |unit| unit !~ /\Amol m-[23] s-1\z/ } # check that all reaction rates actually have units of reaction rate
 
+    end #}}}
+
+    private
+
+    def extract_species(string, rxn) #{{{
+      return nil if string.nil? || string =~ /\A\s*\z/
+      species_array = []
+      string.split(/\s+\+\s+/).each do |term| # spaces around + required so that + can be used in species names (e.g. ions)
+        begin
+          species = Species.new(term, rxn)
+        ensure
+          Rxntoarb.print_debug(:species){}
+        end
+        species_array << species
+      end
+      @label << "|" unless @label.empty?
+      @all_species += species_array
+      @species_regions += species_array.map(&:region).compact
+      @label << species_array.map(&:tag).join(',')
+      species_array
     end #}}}
 
     alias inspect label
