@@ -1,7 +1,7 @@
 # Rxntoarb::Arb
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-10
 
+require 'set'
 require_relative 'parameter'
 require_relative 'rxn'
 
@@ -67,8 +67,9 @@ module Rxntoarb
       end
 
       # Perform alias substitution on any kinetic parameters defined as strings
+      par_names = Regexp.union(Parameter::ALIASES.values)
       @constants.each do |constant|
-        rxn.aliases.each { |old, new| constant.sub!(/<#{$1}_#{$2}>/, "<#{$1}_#{new}>") << " # alias: #{old} => #{new}" if constant =~ /<(#{Regexp.union(Parameter::NAMES.values)})_(#{Regexp.escape(old)})>/ }
+        rxn.aliases.each { |old, new| constant.sub!(/<#{$1}_#{$2}>/, "<#{$1}_#{new}>") << " # alias: #{old} => #{new}" if constant =~ /<(#{par_names})_(#{Regexp.escape(old)})>/ }
       end
 
       # Store region areas/volumes and define new regions for equations
@@ -115,21 +116,21 @@ module Rxntoarb
       warn "INFO: determining magnitudes" if Rxntoarb.options[:debug]
       rxn.species.each { |species| @magnitudes[species] = "CONSTANT <#{species.conc} magnitude> \"<#{species.conc}_0>\"" if rxn.initial_species.include?(species.tag) } # magnitudes of initial species are their initial concentrations
       loop do
-        precursors = Hash.new([]) # key is species, value is array of other species that produce it
+        new_species = Hash.new(Set.new) # key is species, value is set of other species that produce it
         rxn.reactions.each do |reaction|
           next if reaction.type == :MichaelisMenten && !@magnitudes[reaction.enzyme.first] # enzyme isn't present yet
           next if reaction.all_species.all? { |species| @magnitudes[species] } # all species in reaction already present
           if reaction.type == :twostep
-            find_precursors(reaction.reactants, reaction.intermediates, precursors)
-            find_precursors(reaction.intermediates, reaction.reactants, precursors)
+            find_precursors(reaction.reactants, reaction.intermediates, new_species)
+            find_precursors(reaction.intermediates, reaction.reactants, new_species)
           end
-          find_precursors(reaction.reactants, reaction.products, precursors)
-          find_precursors(reaction.products, reaction.reactants, precursors) if reaction.type == :reversible
+          find_precursors(reaction.reactants, reaction.products, new_species)
+          find_precursors(reaction.products, reaction.reactants, new_species) if reaction.type == :reversible
         end
-        break if precursors.empty?
-        precursors.each_key do |species|
+        break if new_species.empty?
+        new_species.each do |species, precursors|
           @magnitudes[species] = "CONSTANT <#{species.conc} magnitude> \""
-          precursors[species].each do |precursor|
+          precursors.each do |precursor|
             @magnitudes[species] << if species.bound?
                                       if precursor.bound? || Rxntoarb.options[:none_centred]
                                         "nonemin(<#{precursor.conc} magnitude>,"
@@ -144,7 +145,7 @@ module Rxntoarb
                                       end
                                     end
           end
-          @magnitudes[species] << "<huge>#{')'*precursors[species].size}\""
+          @magnitudes[species] << "<huge>#{')'*precursors.size}\""
         end
         break if @magnitudes.size == rxn.species.size
       end
@@ -219,7 +220,7 @@ module Rxntoarb
           replace = $&[/^\s*(.*)/m, 1]
           region_list = array[1..-2].split(/,\s*/).map { |region| region.tr('<>', '').strip } # convert to array
           if region_list.include?('*') # add all reaction regions to region_list
-            region_list[region_list.index('*')] = rxn.bounding_regions[source_region]
+            region_list[region_list.index('*')] = rxn.bounding_regions[source_region].to_a
             region_list.flatten!.uniq!
           end
           raise "missing each block in template file #{Rxntoarb.options[:template_file]} (possibly missing opening or closing brace)" unless block
@@ -257,9 +258,9 @@ module Rxntoarb
 
     end #}}}
 
-    def find_precursors(reactants, products, precursors) #{{{
+    def find_precursors(reactants, products, new_species) #{{{
       return unless reactants.all? { |reactant| @magnitudes[reactant] } # check whether all reactants are present yet
-      products.each { |product| precursors[product] |= reactants - products unless reactants.include?(product) || @magnitudes[product] }
+      products.each { |product| new_species[product] += reactants - products unless reactants.include?(product) || @magnitudes[product] }
     end #}}}
 
     def format_output(array, options={}) #{{{

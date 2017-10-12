@@ -1,6 +1,5 @@
 # Rxntoarb::Species
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-11
 
 require_relative 'rxn'
 
@@ -54,7 +53,7 @@ module Rxntoarb
     end #}}}
 
     def hash #{{{
-      @tag.hash # equality of species objects based on tags (name and region) only
+      self.class.hash ^ @tag.hash # equality of species objects based on tags (name and region) only
     end #}}}
 
     alias bound? bound

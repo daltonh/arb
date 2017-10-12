@@ -1,7 +1,7 @@
 # Rxntoarb::Reaction
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-10
 
+require 'set'
 require_relative 'parameter'
 require_relative 'rxn'
 require_relative 'rxntoarb'
@@ -20,8 +20,8 @@ module Rxntoarb
       @indent, @aka, reactants, intermediates, enzyme, arrow, products, parameters, @comment = match.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
 
       label = ''
-      species_regions = []
       all_species = []
+      @species_regions = Set.new
       [reactants, intermediates, enzyme, products].each do |string|
         if string.nil? || string =~ /\A\s*\z/
           all_species << nil
@@ -38,7 +38,7 @@ module Rxntoarb
         end
         label << "|" unless label.empty?
         label << species_array.map(&:tag).join(',')
-        species_regions |= species_array.map(&:region)
+        @species_regions += species_array.map(&:region).compact
         all_species << species_array
       end
       @reactants, @intermediates, @enzyme, @products = all_species
@@ -46,7 +46,6 @@ module Rxntoarb
       raise "duplicate label #{label}. Most likely there is a duplicate reaction" if rxn.labels.include?(label)
       @label = label
       rxn.labels << @label
-      @species_regions = species_regions.compact
 
       if @indent
         raise 'alias specified for indented reaction' if @aka

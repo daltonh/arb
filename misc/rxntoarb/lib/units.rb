@@ -1,6 +1,5 @@
 # Units module
 # (C) Copyright Christian Biscombe 2017
-# 2017-10-11
 
 module Units
 
@@ -110,8 +109,11 @@ module Units
     Unit.new('revolutions per minute', 'rpm', 'rad s-1', 2.0*Math::PI/60.0),
     Unit.new('yard', 'yd', 'm', 0.9144),
   ].sort_by { |unit| unit.name.downcase }
+
   UNITS = {}
   UNIT_LIST.each { |unit| UNITS[unit.sym] = unit }
+  
+  UNIT_MATCH = /\A(#{Regexp.union(PREFIXES.keys)})??(#{Regexp.union(UNITS.keys)})\^?((?:\+|-)?\d+)?\z/
 
   # Print list of available units
   def list()
@@ -120,7 +122,7 @@ module Units
 
   # Extract prefix, unit, and exponent
   def extract(part)
-    match = /\A(#{Regexp.union(PREFIXES.keys)})??(#{Regexp.union(UNITS.keys)})\^?((?:\+|-)?\d+)?\z/.match(part)
+    match = UNIT_MATCH.match(part)
     raise "unrecognised unit #{part}" unless match
     prefix, unit, exponent = match.captures
     return prefix, unit, exponent ? exponent.to_i : 1
@@ -129,18 +131,17 @@ module Units
   # Convert to SI units
   def convert_SI(units)
     factor = 1.0 # this will be the factor to multiply units by to convert to SI
-    units_dim = Array.new(SI_UNITS.length, 0) # this will contain the dimensions of units ordered the same way as SI_UNITS
+    units_dim = {} # this will contain the dimensions of units in terms of SI base units
+    SI_UNITS.each { |unit| units_dim[unit] = 0 }
     units.split(/ |\.|\*/).each do |part|
       prefix, unit, exponent = extract(part)
       factor *= (PREFIXES[prefix]*UNITS[unit].factor)**exponent
-      # determine the dimensions of each input unit (ordered the same way as SI_UNITS)
-      dim = Array.new(SI_UNITS.length, 0)
+      # determine the dimensions of each of the SI units comprising units
       UNITS[unit].si.split.each do |part|
         _, si_unit, si_exponent = extract(part)
         si_unit = 'kg' if si_unit == 'g' # kilograms are a special case (base unit contains prefix)
-        dim[SI_UNITS.index(si_unit)] = si_exponent
+        units_dim[si_unit] += si_exponent*exponent
       end
-      units_dim = units_dim.map.with_index { |d, i| d+dim[i]*exponent }
     end
     return factor, units_dim
   end
@@ -155,7 +156,7 @@ module Units
     if units_out.empty? # default to SI units
       factor_out, units_out_dim = 1.0, units_in_dim
       [1, -1].each do |sign| # construct output units string
-        units_in_dim.each.with_index { |d, i| units_out << "#{SI_UNITS[i]}#{d unless d == 1} " if sign*d > 0 }
+        units_in_dim.each { |unit, dim| units_out << "#{unit}#{dim unless dim == 1} " if sign*dim > 0 }
       end
     else
       factor_out, units_out_dim = convert_SI(units_out.strip)
@@ -187,7 +188,7 @@ module Units
     return value_out, units_out.strip
   end
 
-  private_constant :PREFIXES, :SI_UNITS, :UNIT_LIST, :UNITS
+  private_constant :PREFIXES, :SI_UNITS, :UNIT_LIST, :UNIT_MATCH, :UNITS
   private_class_method :extract, :convert_SI
 
 end
