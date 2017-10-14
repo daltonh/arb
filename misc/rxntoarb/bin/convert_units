@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-abort "ERROR: Ruby 1.9 or newer required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9'
+abort "ERROR: Ruby 1.9.3 or newer required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9.3'
 
 PROGNAME = 'convert_units'
 VERSION = 1.3
