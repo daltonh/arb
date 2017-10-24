@@ -35,7 +35,7 @@ module Rxntoarb
           end
         end
         # Generate rate expressions
-        conc_powers = ->(species) { "*<#{species.conc}_pos>#{"**#{species.coeff}" if species.coeff > 1}" }
+        conc_powers = ->(species) { "*<#{species.conc}_pos>#{"**#{species.coeff}" if species.coeff > 1}#{"/#{species.cluster_coeff}.d0" if species.cluster_coeff > 1}" }
         if reaction.type == :reversible || reaction.type == :twostep # reversible must come before irreversible because same code handles two-step reactions
           reaction.label << '_i' if reaction.type == :twostep
           @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<ka_#{reaction.parent_label}>"
@@ -186,7 +186,7 @@ module Rxntoarb
         species_array.each do |species|
           key = [species, reaction.region]
           @sources[key] = '' if @sources[key] == '0.d0'
-          (@sources[key] ||= '') << "#{source_sign}#{"#{species.coeff}.d0*" if species.coeff > 1}<R_#{reaction.label}>" # add rate to source term for this species
+          (@sources[key] ||= '') << "#{source_sign}#{"#{species.coeff}.d0*" if species.coeff > 1}#{"#{species.cluster_coeff}.d0*" if species.cluster_coeff > 1}<R_#{reaction.label}>" # add rate to source term for this species
         end
       end
       @rates.last << "\"#{" ON <#{reaction.region}>" if reaction.region}" # finalise rate expression

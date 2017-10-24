@@ -112,7 +112,7 @@ module Rxntoarb
           end
         end
       end
-      puts "INFO: read #{@species.size} species, #{@reactions.size} reactions, #{@parameters.size} parameters from input file #{@file}"
+      puts "INFO: read #{@species.size} species, #{@reactions.size} reaction#{'s' unless @reactions.size == 1}, #{@parameters.size} parameter#{'s' unless @parameters.size == 1} from input file #{@file}"
       warn "INFO: parse complete for input file #{@file}\n#{'*'*200}" if Rxntoarb.options[:debug]
 
     rescue => msg
