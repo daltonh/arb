@@ -22,6 +22,7 @@ module Rxntoarb
       @par_units = {}
       @parent_label = ''
       @reactions = Set.new
+      @replacements = {}
       @species = Set.new
       @surface_regions = Set.new
       @volume_regions = Set.new
@@ -33,6 +34,7 @@ module Rxntoarb
       volume_region_list = Set.new([nil])
       warn "#{'*'*200}\nINFO: parsing input file #{@file}" if Rxntoarb.options[:debug]
       File.foreach(@file) do |line|
+        @replacements.each { |sub, rep| line.gsub!(sub, rep) }
         if Rxntoarb.options[:debug]
           warn '='*200
           Rxntoarb.print_debug([:$., :line]){}
@@ -45,6 +47,10 @@ module Rxntoarb
         # Comment lines to be retained in the header start with !
         when /^\s*!/
           @header << line.sub('!', '#').chomp
+
+        # Replacement definition
+        when /^\s*let\s+([^#]+)=([^#]+)/i
+          @replacements[$1.strip] = $2.strip
 
         # Include/exclude lines based on regexp match. Maximum of one include and one exclude statement allowed
         when /^\s*(include_only|exclude)\s+\/(.*?)(?<!\\)\/(i)?/i
