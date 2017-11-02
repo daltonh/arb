@@ -495,6 +495,8 @@ sub check_setup_status {
       delete $variable_copy{$type}[$mvar]{"options"}; # delete removes value and key for a hash
       delete $variable_copy{$type}[$mvar]{"comments"}; # delete removes value and key for a hash
       delete $variable_copy{$type}[$mvar]{"constant_list"}; # delete removes value and key for a hash
+      delete $variable_copy{$type}[$mvar]{"filename"}; # delete removes value and key for a hash
+      delete $variable_copy{$type}[$mvar]{"absfilename"}; # delete removes value and key for a hash
       foreach my $repeats (keys(%statement_repeats)) {
         delete $variable_copy{$type}[$mvar]{$repeats}; # delete removes value and key for a hash
       }
@@ -506,6 +508,8 @@ sub check_setup_status {
     delete $region_copy[$n]{"options"}; # delete removes value and key for a hash
     delete $region_copy[$n]{"comments"}; # delete removes value and key for a hash
     delete $region_copy[$n]{"redefinitions"}; # delete removes value and key for a hash
+    delete $region_copy[$n]{"filename"}; # delete removes value and key for a hash
+    delete $region_copy[$n]{"absfilename"}; # delete removes value and key for a hash
   }
 
   $Storable::canonical=1; # the data structure will have its keys sorted before being created

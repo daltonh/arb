@@ -129,8 +129,10 @@ sub arbthread {
 # assemble arb command line
       $systemcall="$::arb_script --quiet";
 # deal with previous output reuse
-# TODO: not working
-      if ($::use_previous_build && $n > 0) {
+#     if ($::use_previous_build && $n > 0) {
+# now reuse previous output if the last run has been left in batcher_output, as opposed to always running
+# if this directory doesn't exist then arb will just continue anyway
+      if ($::use_previous_build && $ndir > 0) {
         my $previous_run_record_dir = "../run_".scalar($ndir-1)."/output";
         if ($debug) {print "BATCHER DEBUG: previous_run_record_dir = $previous_run_record_dir\n";}
         $systemcall.=" -po $previous_run_record_dir";
