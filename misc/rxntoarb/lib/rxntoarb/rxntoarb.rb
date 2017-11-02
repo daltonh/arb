@@ -1,6 +1,5 @@
 # Rxntoarb
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-10
 
 require 'optparse'
 require_relative 'arb'
@@ -9,8 +8,8 @@ require_relative 'rxn'
 module Rxntoarb
 
   PROGNAME = 'rxntoarb'
-  VERSION = 2.4
-  DATE = '2017-10-10'
+  VERSION = 2.7
+  DATE = '2017-10-26'
   INFO = <<-INFO.gsub(/^\s+/, '') # prefer squiggly heredoc <<~ in Ruby 2.3+
     #{PROGNAME} v. #{VERSION} (#{DATE})
     Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.

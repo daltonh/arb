@@ -1,7 +1,7 @@
 # Rxntoarb::Reaction
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-10
 
+require 'set'
 require_relative 'reaction'
 
 module Rxntoarb
@@ -12,27 +12,29 @@ module Rxntoarb
 
     def initialize(file) #{{{
       @aliases = {}
-      @bounding_regions = Hash.new([]) # key is volume_region, value is array of all surface_regions that bound that volume_region
+      @bounding_regions = Hash.new(Set.new) # key is volume_region, value is array of all surface_regions that bound that volume_region
       @check_units = nil
       @file = file
       @header = []
-      @initial_species = [] # elements are species.tags
-      @labels = []
-      @parameters = []
+      @initial_species = Set.new # elements are species.tags
+      @labels = Set.new
+      @parameters = Set.new
       @par_units = {}
       @parent_label = ''
-      @reactions = []
-      @species = []
-      @surface_regions = []
-      @volume_regions = []
-      @volume_species = Hash.new([]) # key is volume_region, value is array of all species defined on that volume_region
+      @reactions = Set.new
+      @replacements = {}
+      @species = Set.new
+      @surface_regions = Set.new
+      @volume_regions = Set.new
+      @volume_species = Hash.new(Set.new) # key is volume_region, value is array of all species defined on that volume_region
     end #}}}
 
     def parse #{{{
-      surface_region_list = [nil]
-      volume_region_list = [nil]
+      surface_region_list = Set.new([nil])
+      volume_region_list = Set.new([nil])
       warn "#{'*'*200}\nINFO: parsing input file #{@file}" if Rxntoarb.options[:debug]
       File.foreach(@file) do |line|
+        @replacements.each { |sub, rep| line.gsub!(sub, rep) }
         if Rxntoarb.options[:debug]
           warn '='*200
           Rxntoarb.print_debug([:$., :line]){}
@@ -45,6 +47,10 @@ module Rxntoarb
         # Comment lines to be retained in the header start with !
         when /^\s*!/
           @header << line.sub('!', '#').chomp
+
+        # Replacement definition
+        when /^\s*let\s+([^#]+)=([^#]+)/i
+          @replacements[$1.strip] = $2.strip
 
         # Include/exclude lines based on regexp match. Maximum of one include and one exclude statement allowed
         when /^\s*(include_only|exclude)\s+\/(.*?)(?<!\\)\/(i)?/i
@@ -62,8 +68,8 @@ module Rxntoarb
               next
             end
             region.tr!('<>', '')
-            eval "#{location}_region_list |= [region]"
-            eval "@#{location}_regions |= [region]"
+            eval "#{location}_region_list << region"
+            eval "@#{location}_regions << region"
           end
 
         # Species present initially determine the magnitudes of all other species
@@ -75,7 +81,7 @@ module Rxntoarb
             region_list.each do |region|
               species_list.each do |species|
                 species.tr!('<>', '')
-                @initial_species |= ["#{species}#{"@#{region}" if region}"]
+                @initial_species << "#{species}#{"@#{region}" if region}"
               end
             end
           end
@@ -88,7 +94,7 @@ module Rxntoarb
           end
           volume_region_list.each do |volume_region|
             surface_region_list.each do |surface_region|
-              @bounding_regions[volume_region] |= [surface_region] if surface_region && volume_region # keep track of surface_regions that bound each volume_region
+              @bounding_regions[volume_region] << surface_region if surface_region && volume_region # keep track of surface_regions that bound each volume_region
               rline = line.dup # dup line as substitutions below need to be done for each surface_region and volume_region
               rline.gsub!(/@s\b/, "@#{surface_region}") if surface_region
               rline.gsub!(/@v\b/, "@#{volume_region}") if volume_region
@@ -100,8 +106,8 @@ module Rxntoarb
                 reaction = Reaction.new(rline, self)
                 @reactions << reaction
                 reaction.all_species.each do |species|
-                  @species |= [species]
-                  @volume_species[species.region] |= [species] if species.free? # add species to volume_species hash so we know that a source term is required on all surface_regions that bound this volume_region
+                  @species << species
+                  @volume_species[species.region] << species if species.free? # add species to volume_species hash so we know that a source term is required on all surface_regions that bound this volume_region
                 end
                 @parameters += reaction.parameters if reaction.parameters
                 @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka
@@ -112,7 +118,7 @@ module Rxntoarb
           end
         end
       end
-      puts "INFO: read #{@species.size} species, #{@reactions.size} reactions, #{@parameters.size} parameters from input file #{@file}"
+      puts "INFO: read #{@species.size} species, #{@reactions.size} reaction#{'s' unless @reactions.size == 1}, #{@parameters.size} parameter#{'s' unless @parameters.size == 1} from input file #{@file}"
       warn "INFO: parse complete for input file #{@file}\n#{'*'*200}" if Rxntoarb.options[:debug]
 
     rescue => msg

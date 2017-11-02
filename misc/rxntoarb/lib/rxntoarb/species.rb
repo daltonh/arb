@@ -1,6 +1,5 @@
 # Rxntoarb::Species
 # (C) Copyright Christian Biscombe 2016-2017
-# 2017-10-11
 
 require_relative 'rxn'
 
@@ -8,14 +7,16 @@ module Rxntoarb
 
   class Species
 
-    attr_reader :bound, :centring, :coeff, :conc, :free, :location, :mw, :name, :region, :tag, :units, :units_power
+    attr_reader :bound, :centring, :coeff, :conc, :free, :location, :meta_coeff, :mw, :name, :region, :tag, :units, :units_power
 
     def initialize(species, rxn) #{{{
-      match = /\A\s*(\d+)?\s*[*.]?\s*([^@]+?)(?:@(\w+|<[^>]+>))?\s*\z/.match(species)
+      match = /\A\s*(\d+)?\s*[*.]?\s*\[?(\d+)?\s*[*.]?\s*([^@]+?)(?:@(\w+|<[^>]+>))?\]?\s*\z/.match(species)
       raise 'syntax error or unrecognised reaction type' unless match
-      @coeff, @name, @region = match.captures
+      @coeff, @meta_coeff, @name, @region = match.captures
       @coeff ||= 1
       @coeff = @coeff.to_i
+      @meta_coeff ||= 1 # 'metaspecies' are groups of entities that behave as a single entity in reactions, e.g. a cluster of phospholipids comprising a binding site
+      @meta_coeff = @meta_coeff.to_i
       @name.tr!('<>', '')
       unless Rxntoarb.options[:none_centred]
         unless @region
@@ -54,7 +55,7 @@ module Rxntoarb
     end #}}}
 
     def hash #{{{
-      @tag.hash # equality of species objects based on tags (name and region) only
+      self.class.hash ^ @tag.hash # equality of species objects based on tags (name and region) only
     end #}}}
 
     alias bound? bound
