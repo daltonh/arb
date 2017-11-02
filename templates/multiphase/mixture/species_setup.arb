@@ -33,3 +33,6 @@ CELL_LOCAL <phi_/species/_pos> "cellmax(cellmin(<phi_/species/>,1.d0),0.d0)" ON 
 
 # increment mixture density
 VARIABLE <rho> "<rho> + <rho_/species/>*<phi_/species/_pos>"
+
+# setup pressure specific to this species, as local
+CELL_LOCAL <p_/species/>
