@@ -1,6 +1,11 @@
-# dynamic force is the pressure force that could cause fluid movement
-# it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
-# dynamic force now has the physically correct sign!
+MARKDOWN
+dynamic force is the pressure force that could cause fluid movement
+it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
+dynamic force now has the physically correct sign!
+<dynamic_force_f> is calculated within <p_error>, which this file is called from
+
+Other dynamic_force templates (eg, vof, electrokinetics) increment <dynamic_force_c[l=:]> set in this file, as well as <dynamic_force_f>
+END_MARKDOWN
 
 #FACE_DERIVED <p_f> "faceave(<p>)" ON <allfaces>
 INCLUDE "p_f"
