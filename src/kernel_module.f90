@@ -2324,10 +2324,14 @@ constraint_loop: do
     active,active_change,phase,linear_error,error)
 
   if (error) call error_stop('unresolvable error during '//trim(phase)//' phase of optimisation_kernel_constraints: '// &
-    'Most likely this is a symptom of this particular kernel mask not including enough elements.  As a first resort try '// &
-    'increasing the minimumseparation and/or ensuring that limitkernelmasktosharednodes is .false..  As a second resort '// &
-    'set debug=.true. in kernel_module.f90 to see which element is causing this problem')
+    'Most likely this is a symptom of this particular kernel mask not including enough elements.  If checkminw is on and '// &
+    'minimumminw is set to a reasonable number, most likely you already have a warning message about this particular kernel '// &
+    'mask that suggests possible solutions.  As a first resort you can try increasing the minimumseparation, '// &
+    'maximumseparation and/or ensuring that limitkernelmasktosharednodes is .false..  As a second resort '// &
+    'set debug=.true. in kernel_module.f90 to produce a more detailed debug file.')
 
+logical :: check_minw = .true. ! (.true., userable) check that the minw value is large enough
+double precision :: minimum_minw = 1.0d0 ! (1.0d0, userable, changed default from 1.d0 to 0.5d0, and then back to 1.d0 for v0.50) minimum value of SVD minw allowed for mask to be acceptable when using adaptive_mask_size
 
   if (.not.active_change) exit
   if (n_kernel_steps > maximum_constraint_steps) &

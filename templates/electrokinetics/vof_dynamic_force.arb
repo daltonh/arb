@@ -1,9 +1,0 @@
-# standard lines to overwrite dynamic_force_c and dynamic_force_f from navier_stokes p_error_facegrad file to include surface tension force in p_error calculation
-# also this includes the electrostatic force
-
-<<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "<dynamic_force_c[l=1]>-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=1](<U_f>)" ON <allcells>
-<<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "<dynamic_force_c[l=2]>-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=2](<U_f>)" ON <allcells>
-<<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=3](<U_f>)" ON <allcells>
-# differencing has to be consistent with that used for <vof_F_f>
-# now on all faces to allow use as a BC too
-FACE_LOCAL <dynamic_force_f> "<dynamic_force_f>-<BK^2/Re^2>*<rho_e_hf>*facegrad[dxunit](<U>)" ON <allfaces>
