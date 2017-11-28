@@ -18,7 +18,7 @@
 ######################
 
 # basic arb dependencies
-port install maxima gnuplot
+port install maxima gnuplot wget
 # install gfortran
 port install gcc49 +gfortran gdb
 # install SuiteSparse
