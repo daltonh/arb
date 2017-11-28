@@ -2330,9 +2330,6 @@ constraint_loop: do
     'maximumseparation and/or ensuring that limitkernelmasktosharednodes is .false..  As a second resort '// &
     'set debug=.true. in kernel_module.f90 to produce a more detailed debug file.')
 
-logical :: check_minw = .true. ! (.true., userable) check that the minw value is large enough
-double precision :: minimum_minw = 1.0d0 ! (1.0d0, userable, changed default from 1.d0 to 0.5d0, and then back to 1.d0 for v0.50) minimum value of SVD minw allowed for mask to be acceptable when using adaptive_mask_size
-
   if (.not.active_change) exit
   if (n_kernel_steps > maximum_constraint_steps) &
     call error_stop('constraint loop is out of control in optimisation_kernel_constraints')
