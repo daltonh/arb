@@ -74,9 +74,9 @@ module Rxntoarb
 
       # Store region areas/volumes and define new regions for equations
       unless Rxntoarb.options[:none_centred]
-        rxn.surface_regions.each { |region| @constants << "CONSTANT <area(#{region})> \"facesum(<<radius_f>>*<facearea>, region=<#{region}>)\"" }
+        rxn.surface_regions.each { |region| @constants << "CONSTANT <area(#{region})> \"noneif(<<cylindricalflag>>,2.d0*<pi>,1.d0)*facesum(<<radius_f>>*<facearea>, region=<#{region}>)\"" }
         rxn.volume_regions.each do |region|
-          @constants << "CONSTANT <volume(#{region})> \"cellsum(<<radius_c>>*<cellvol>, region=<#{region}>)\""
+          @constants << "CONSTANT <volume(#{region})> \"noneif(<<cylindricalflag>>,2.d0*<pi>,1.d0)*cellsum(<<radius_c>>*<cellvol>, region=<#{region}>)\""
           @constants << "FACE_REGION <associatedfaces(#{region})> \"associatedwith(<#{region}>)\""
           @constants << "CELL_REGION <associatedcells(#{region})> \"associatedwith(<#{region}>)\""
           @constants << "CELL_REGION <domainof(#{region})> \"domainof(<#{region}>)\""
@@ -129,8 +129,11 @@ module Rxntoarb
         end
         break if new_species.empty?
         new_species.each do |species, precursors|
+          species_coeff = species.coeff*species.meta_coeff
           @magnitudes[species] = "CONSTANT <#{species.conc} magnitude> \""
           precursors.each do |precursor|
+            precursor_coeff = precursor.coeff*precursor.meta_coeff
+            @magnitudes[species] << "#{species_coeff}.d0#{"/#{precursor_coeff}.d0" unless precursor_coeff == 1}*" unless species_coeff.to_f/precursor_coeff.to_f == 1.0 # adjust magnitude for stoichiometry
             @magnitudes[species] << if species.bound?
                                       if precursor.bound? || Rxntoarb.options[:none_centred]
                                         "nonemin(<#{precursor.conc} magnitude>,"
