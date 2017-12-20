@@ -29,7 +29,7 @@ syn match arbFilename "\%(\w\|/\|\.\)\+" contained
 syn region arbExpression start=/"/ end=/"/ contains=arbDeprecated,arbFunction,arbFortranFunction,arbNumber,arbOperator,arbPerlCode,arbStatement,arbSystemFlag,arbSystemVar,arbUserFlag,arbUserVar
 syn match arbLogical "\.\%(true\|false\)\." contained
 syn include @Perl syntax/perl.vim
-syn region arbPerlCode matchgroup=arbPerlCodeDelimiter start="{{" end="}}" contains=@Perl keepend " highlighting fails if closing }} is on the same line as a (Perl) comment
+syn region arbPerlCode matchgroup=arbPerlCodeDelimiter start="{{" end="}}" contains=@Perl,arbComment keepend
 syn match arbLineContinuation "&" " highlighting fails if line continuation is used (i) within keywords (obviously), (ii) before a nextgroup or (iii) within syntax regions that keepend
 
 syn match arbComment "#.*$" contains=arbTodo
