@@ -54,8 +54,8 @@ usage () {
   echo "  -b|--branch: branch to get (default = $branch)";
   echo "  -d|--directory: output directory name to use (default = arb_$branch)";
   echo "  -o|--overwrite: delete the target directory if it already exists (not default)";
-  echo "  -l|--local: clone from local directory if possible (default)";
-  echo "  -r|--remote: clone from remote server (using ssh by default)";
+  echo "  -l|--local: clone from local directory if possible (not default)";
+  echo "  -r|--remote: clone from remote server (default is remote using ssh for transport)";
   echo "  -u|--user: user name that hosts arb project (default = $user)";
   echo "  -p|--port: port number of git server for http requests (default = $port)";
   echo "  --server: server name to use, only for remote ssh (default = $server)";
@@ -166,7 +166,13 @@ fi
 #-----------------------------------------------------------------------------
 # if local is specified, check that local git repository exists
 
-if [ $transport == "local" ] || [ $transport == "default" ] ; then
+# now default is to try to get it remotely unless specifically asked
+if [ $transport == "default" ] ; then
+  transport="remote";
+fi
+
+# for local transport
+if [ $transport == "local" ] ; then
 # now determine whether arb_clone is in a valid arb_dir, or just by itself
 # first test whether other arb related directories exist
   for sub_dir in "src" "misc" "templates" "examples" ; do
@@ -179,7 +185,7 @@ if [ $transport == "local" ] || [ $transport == "default" ] ; then
   done;
 fi;
   
-if [ $transport == "local" ] || [ $transport == "default"  ] ; then
+if [ $transport == "local" ] ; then
 # now check whether git thinks this is a valid directory
   git_check="$(git -C $local_dir rev-parse 2>&1)"; # send both stdout and stderr to the one variable
 # echo "git_check = |$git_check|";
@@ -191,10 +197,6 @@ if [ $transport == "local" ] || [ $transport == "default"  ] ; then
 # echo "git command: "`git -C $local_dir rev-parse`;
 fi;
 
-# based on the above, now determine actual transport
-if [ $transport == "default" ] ; then
-  transport="local"; # local directory must exist so choose this
-fi
 if [ $transport == "remote" ] ; then
   transport="ssh"; # default remote transport is ssh - maybe need to make this html
 fi
