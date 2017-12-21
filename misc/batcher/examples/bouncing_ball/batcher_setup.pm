@@ -23,7 +23,7 @@ sub simulation_setup {
 
   $::prune_output_structure = 0; # clear build and other run files from run_dir
 
-  $::use_string_variables = 0; # if on uses arb runtime global string variables rather than batcher whole of file replacements (default)
+  $::use_string_variables = 1; # if on uses arb runtime global string variables rather than batcher whole of file replacements (default)
 
   $::use_previous_build = 1; # if on uses build information from previous run
 
