@@ -67,6 +67,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       
       
       
+      
    #(hash inserted during unwrap)INCLUDE
    
    # variables etc
@@ -90,8 +91,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # strings can also be set when calling the template files using per-file replacements
             #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
-            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)MARKDOWN
+            #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)END_MARKDOWN
+            
             
             
             
@@ -225,8 +229,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # check default strings are set
             #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
-            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)MARKDOWN
+            #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)END_MARKDOWN
+            
             
             
             
@@ -241,11 +248,64 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             
                #(comment created during unwrap): new block = ../../templates/navier_stokes/dynamic_force.arb: sub_block = 0
                #(hash inserted during unwrap)INCLUDE "dynamic_force" # cell centred dynamic force
-               # dynamic force is the pressure force that could cause fluid movement
-               # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
-               # dynamic force now has the physically correct sign!
+               #(hash inserted during unwrap)MARKDOWN
+               #(hash inserted during unwrap)dynamic force is the pressure force that could cause fluid movement
+               #(hash inserted during unwrap)it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
+               #(hash inserted during unwrap)dynamic force now has the physically correct sign!
+               #(hash inserted during unwrap)<dynamic_force_f> is calculated within <p_error>, which this file is called from
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)Other dynamic_force templates (eg, vof, electrokinetics) increment <dynamic_force_c[l=:]> set in this file, as well as <dynamic_force_f>
+               #(hash inserted during unwrap)END_MARKDOWN
                
-               FACE_DERIVED <p_f> "faceave(<p>)" ON <allfaces>
+               #FACE_DERIVED <p_f> "faceave(<p>)" ON <allfaces>
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 0
+                  #(hash inserted during unwrap)INCLUDE "p_f"
+                  #(hash inserted during unwrap)MARKDOWN
+                  #(hash inserted during unwrap)Here we average the cell centred pressure <p> to the faces producing <p_f>.  The standard method is to use arithmetic averaging, as in
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)```arb
+                  #(hash inserted during unwrap)FACE_DERIVED <p_f> "faceave(<p>)" ON <allfaces>
+                  #(hash inserted during unwrap)```
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)Low order averaging adjacentcell averaging use a distance weighted average of the adjacent cell values.  Select this by setting
+                  #(hash inserted during unwrap)```arb
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)```
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)High order adjacentcell averaging is as per low order adjacentcell averaging, except that the gradient within each cell is used to get a better estimate of the pressure on each side of the interface.  The amount of gradient used is set by `<p_f_grad_limiter>` which should be between 0.d0 (low order) and 1.d0 after the file is included.  To use this high order averaging set
+                  #(hash inserted during unwrap)```arb
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)NONE_CONSTANT <p_f_gradient_limiter> 1.d0 # keep this between 0.d0 and 1.d0
+                  #(hash inserted during unwrap)```
+                  #(hash inserted during unwrap)END_MARKDOWN
+                  
+                  # this is the default pressure interpolation
+                  FACE_DERIVED <p_f> "faceave(<p>)" ON <allfaces>
+                  
+                  # the following are based on averaging from the adjacentcells only, but possibly using high order averaging
+                  
+                  
+                     #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 1
+                     #(hash inserted during unwrap)IF 0
+                     #(hash inserted during unwrap)VARIABLE <p_f> "faceave[adjacentcells](<p>)" output
+                     #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 1
+                     #(hash inserted during unwrap)ELSE_IF 0
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_f_gradient_limiter> 1.d0 # ranging from 1.d0 (highest order) to 0.d0 which will give same as <<pfadjacentcells>> above
+                        #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 2
+                        #(hash inserted during unwrap)IF 1
+                        #(hash inserted during unwrap)VARIABLE <p_f> "faceave[adjacentcells](cellave[lastface](faceave[advection](<p>,<facefromcelldirection>,<p_f_gradient_limiter>)))" output
+                        #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 2
+                        #(hash inserted during unwrap)ELSE_IF 0
+                        #(hash inserted during unwrap)VARIABLE <p_f> "faceave[adjacentcellsevenweighting](cellave[lastface](faceave[advection](<p>,<facefromcelldirection>,<p_f_gradient_limiter>)))" output
+                        #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 2
+                        #(hash inserted during unwrap)ELSE
+                        #(hash inserted during unwrap)VARIABLE <p_f> "0.5d0*(faceave[advection](<p>,1.d0,<p_f_gradient_limiter>)+faceave[advection](<p>,-1.d0,<p_f_gradient_limiter>))" output
+                           #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 3
+                           #(hash inserted during unwrap)IF 1
+                           #(hash inserted during unwrap)VARIABLE <p_f> "faceif(facedelta(<boundaries>),<p>,<p_f>)" # special case boundary face pressure value to be equal to boundary cell value.  Without this the boundary pressure will be equally weighted.
+                           #(hash inserted during unwrap)END_IF
+                        #(hash inserted during unwrap)END_IF
+                     #(hash inserted during unwrap)END_IF
                CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <allcells>
                CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <allcells>
                #CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <allcells>
@@ -360,8 +420,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # check default strings are set
             #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
-            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)MARKDOWN
+            #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)END_MARKDOWN
+            
             
             
             
@@ -391,8 +454,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # check default strings are set
             #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
-            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)MARKDOWN
+            #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)END_MARKDOWN
+            
             
             
             
@@ -414,8 +480,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # check default strings are set
             #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
-            # these strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-            # they specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)MARKDOWN
+            #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
+            #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)END_MARKDOWN
+            
             
             
             
