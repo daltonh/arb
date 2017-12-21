@@ -1339,6 +1339,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
     write(82,*) "now processing local_location"
     write(82,*) "type = "//trim(local_location%type)
     write(82,*) "description = "//trim(local_location%description)
+    write(82,*) "glueface = ",local_location%glueface
     if (allocated(local_location%floats)) write(82,*) "floats = ",local_location%floats
     if (allocated(local_location%integers)) write(82,*) "integers = ",local_location%integers
     if (allocated(local_location%regions)) write(82,*) "regions = ",local_location%regions
@@ -1768,6 +1769,11 @@ else if (trim(region(m)%type) /= 'gmsh') then
 
 !-----------------------------------------------------------------
 end if
+
+! also include glued faces is glueface is on, and face centred
+if (region(m)%centring == 'face'.and.local_location%glueface) then
+  write(*,'(a)') 'TODO: glueface in update_region'
+endif
 
 if (allocated(elementisin)) then
   setijk = .true.

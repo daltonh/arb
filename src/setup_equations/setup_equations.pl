@@ -900,6 +900,13 @@ sub process_regions {
       @{$region[$n]{$key}{"integers"}} = location_description_scan($region[$n]{$key}{"description"},"integers",$n);
       @{$region[$n]{$key}{"variablenames"}} = location_description_scan($region[$n]{$key}{"description"},"variablenames",$n);
       @{$region[$n]{$key}{"variablecentrings"}} = location_description_scan($region[$n]{$key}{"description"},"variablecentrings",$n);
+# default for user regions defined by location is that all faces glued to faces that are within the region are included in the region - opposite is glueface
+# for other regions where glueface isn't defined, fortran writer will set glueface to false
+      if (location_description_scan($region[$n]{$key}{"description"},"options",$n) =~ /(^|\,)\s*noglueface\s*(\,|$)/i ) {
+        $region[$n]{$key}{"glueface"} = 0;
+      } else {
+        $region[$n]{$key}{"glueface"} = 1;
+      }
 
 # check that location type is consistent with dynamic
       if (!($region[$n]{"dynamic"}) && ($region[$n]{$key}{"type"} eq "variable" || $region[$n]{$key}{"type"} eq "separation")) {
@@ -1141,6 +1148,10 @@ sub process_regions {
             if (nonempty($region[$n]{$key}{"type"})) {
               $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
                 "region($m)%".$key."%type = \"$region[$n]{$key}{type}\"\n";
+            }
+            if (nonempty($region[$n]{$key}{"glueface"})) {
+              $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
+                "region($m)%".$key."%glueface = ".fortran_logical_string($region[$n]{$key}{glueface})."\n";
             }
             for my $key2 ( "variables", "regions", "integers", "floats" ) {
               if (nonempty(@{$region[$n]{$key}{$key2}})) {
@@ -2113,7 +2124,7 @@ sub mequation_interpolation {
         } else {
 # face from_centring
 # lastface averaging - suppress interpolation to current cell centre using values from the last face instead
-# unlike lastfacenoglue, this will move to the particular face that is adjacent to the current cell in the case that the lastface was a glued face
+# unlike lastfacenoglue, this will move to the particular face that is glued to the current cell in the case that the lastface was a glued face
           if ($options && $options =~ /(^|\,)\s*lastface\s*(\,|$)/) {
             $inbit[$nbits] = $expression;
             create_someloop($inbit[$nbits],"sum","face","<lastface>",$deriv,$otype,$omvar);

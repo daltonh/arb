@@ -149,6 +149,7 @@ type region_location_type
   double precision, dimension(:), allocatable :: floats ! list of floats used in this description
   integer, dimension(:), allocatable :: variables ! list of fortran m numbers used in this description
   character(len=100), dimension(:), allocatable :: variabletypes ! list of fortran m numbers used in this description
+  logical :: glueface = .false. ! if a face-centred region, whether to include faces that are external to the region but glued to faces that are within the region
 end type region_location_type
 
 ! type for regions
