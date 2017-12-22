@@ -900,12 +900,25 @@ sub process_regions {
       @{$region[$n]{$key}{"integers"}} = location_description_scan($region[$n]{$key}{"description"},"integers",$n);
       @{$region[$n]{$key}{"variablenames"}} = location_description_scan($region[$n]{$key}{"description"},"variablenames",$n);
       @{$region[$n]{$key}{"variablecentrings"}} = location_description_scan($region[$n]{$key}{"description"},"variablecentrings",$n);
-# default for user regions defined by location is that all faces glued to faces that are within the region are included in the region - opposite is glueface
-# for other regions where glueface isn't defined, fortran writer will set glueface to false
-      if (location_description_scan($region[$n]{$key}{"description"},"options",$n) =~ /(^|\,)\s*noglueface\s*(\,|$)/i ) {
-        $region[$n]{$key}{"glueface"} = 0;
-      } else {
+# check and specify defaults for the glueface option, which specifies that faces that are glued to faces within the region are also included (if they are in the part_of region too)
+      if (location_description_scan($region[$n]{$key}{"description"},"options",$n) =~ /(^|\,)\s*glueface\s*(\,|$)/i ) {
+# region must be face centred
+        if ($region[$n]{"centring"} ne "face") {
+          error_stop("region $region[$n]{name} that uses the region operator $region[$n]{$key}{type} within its $key has the glueface option specified, but this is inconsistent with the region's $region[$n]{centring} centring (the glueface option can only be used within face centred regions)")
+# and the following regions can't use glueface
+        } elsif ($region[$n]{$key}{"type"} eq "at" || $region[$n]{$key}{"type"} eq "expand" || $region[$n]{$key}{"type"} eq "all" || $region[$n]{$key}{"type"} eq "none") {
+          error_stop("region $region[$n]{name} that uses the region operator $region[$n]{$key}{type} within its $key has the glueface option specified, but this is not allowed for this operator (if you really want this, create a compound region with the glueface option from the at derived region)")
+        }
         $region[$n]{$key}{"glueface"} = 1;
+# glueface specifically off
+      } elsif (location_description_scan($region[$n]{$key}{"description"},"options",$n) =~ /(^|\,)\s*noglueface\s*(\,|$)/i ) {
+        $region[$n]{$key}{"glueface"} = 0;
+# deal with defaults
+      } elsif ($region[$n]{"centring"} eq "face" && ( $region[$n]{$key}{"type"} eq "boundaryof" || $region[$n]{$key}{"type"} eq "domainof" ||
+        $region[$n]{$key}{"type"} eq "associatedwith" || $region[$n]{$key}{"type"} eq "surrounds" ) ) {
+        $region[$n]{$key}{"glueface"} = 1; # glueface is only the default for the face-centred regions which are created by association with other regions
+      } else {
+        $region[$n]{$key}{"glueface"} = 0;
       }
 
 # check that location type is consistent with dynamic
@@ -1151,7 +1164,7 @@ sub process_regions {
             }
             if (nonempty($region[$n]{$key}{"glueface"})) {
               $sub_string{"allocate_regions"}=$sub_string{"allocate_regions"}.
-                "region($m)%".$key."%glueface = ".fortran_logical_string($region[$n]{$key}{glueface})."\n";
+                "region($m)%".$key."%glue_face = ".fortran_logical_string($region[$n]{$key}{glueface})."\n";
             }
             for my $key2 ( "variables", "regions", "integers", "floats" ) {
               if (nonempty(@{$region[$n]{$key}{$key2}})) {

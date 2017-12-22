@@ -1339,7 +1339,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
     write(82,*) "now processing local_location"
     write(82,*) "type = "//trim(local_location%type)
     write(82,*) "description = "//trim(local_location%description)
-    write(82,*) "glueface = ",local_location%glueface
+    write(82,*) "glue_face = ",local_location%glue_face
     if (allocated(local_location%floats)) write(82,*) "floats = ",local_location%floats
     if (allocated(local_location%integers)) write(82,*) "integers = ",local_location%integers
     if (allocated(local_location%regions)) write(82,*) "regions = ",local_location%regions
@@ -1595,6 +1595,7 @@ else if (trim(region(m)%type) /= 'gmsh') then
 ! a region composed of a compound list of other regions, or a region that has all of the listed regions in common
 ! we use elementisin here as the ns index of the elements is unknown when they are being added
 ! ns and ijk will be calculated below from elementisin
+! NB, alternative but equivalent names supported by setup_equations: intersection = common and union = compound
 
   else if (trim(local_location%type) == "compound" .or. trim(local_location%type) == "common") then
 
@@ -1652,6 +1653,17 @@ else if (trim(region(m)%type) /= 'gmsh') then
       end do
 
     end do
+
+! deal with possible glued faces, making sure that they are also in the region if also in the part_of region
+    if (local_location%glue_face) then
+      do ijk = 1, ijktotal
+        if (.not.elementisin(ijk)) cycle ! face isn't in region
+        if (face(ijk)%glue_jface == 0) cycle ! face is not glued to another
+        if (elementisin(face(ijk)%glue_jface)) cycle ! element is already in region
+        if (region(region(m)%part_of)%ns(face(ijk)%glue_jface) == 0) cycle ! element isn't in part_of region
+        elementisin(face(ijk)%glue_jface) = .true.
+      end do
+    end if
 
 !---------------------
 ! ref: variable
@@ -1770,11 +1782,6 @@ else if (trim(region(m)%type) /= 'gmsh') then
 !-----------------------------------------------------------------
 end if
 
-! also include glued faces is glueface is on, and face centred
-if (region(m)%centring == 'face'.and.local_location%glueface) then
-  write(*,'(a)') 'TODO: glueface in update_region'
-endif
-
 if (allocated(elementisin)) then
   setijk = .true.
   setns = .true.
@@ -1795,10 +1802,10 @@ if (allocated(elementisin)) then
   deallocate(elementisin)
 end if
 
+
 ! if ns isn't already set, find ns indicies which give the data number corresponding to location i, j or k
 ! alternatively, if ijk isn't already set, set it using reverse lookup
 ! also make sure that nsregion is set to be the number of elements in the region
-
 if (.not.setns) then
   nsregion = allocatable_size(region(m)%ijk)
   if (setijk) then
@@ -1807,6 +1814,26 @@ if (.not.setns) then
     end do
   end if
 else if (.not.setijk.and.setns) then
+
+! deal with glued faces only for regions that use setijk off and setns on (compound/common regions are handled separately in their section)
+! when glueface is on, check that faces glued to the faces within the region are also included, if they are within the part_of region
+  if (local_location%glue_face) then
+! sanity check on region centring
+    if (region(m)%centring /= 'face') &
+      call error_stop("subroutine update_system_region has been called with glueface on, but region "//trim(region(m)%name)// &
+      " has incorrect (non-face) "//trim(region(m)%centring)//" centring")
+! now add any missing faces
+    do ijk = 1, ijktotal
+      if (region(m)%ns(ijk) == 0) cycle ! face isn't in region
+      if (face(ijk)%glue_jface == 0) cycle ! face isn't glued to another
+      if (region(m)%ns(face(ijk)%glue_jface) /= 0) cycle ! glued face is already included
+      if (region(region(m)%part_of)%ns(face(ijk)%glue_jface) == 0) cycle ! glued face isn't in part_of region
+! otherwise add face
+      nsregion = nsregion + 1
+      region(m)%ns(face(ijk)%glue_jface) = nsregion
+    end do
+  end if
+
 ! if setns is true, then nsregion must hold number of elements within region
   call resize_integer_array(array=region(m)%ijk,new_size=nsregion,keep_data=.false.)
   do ijk = 1, ijktotal
