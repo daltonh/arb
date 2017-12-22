@@ -63,7 +63,7 @@ type node_type
   double precision :: dx_kernel ! characteristic dimension of mesh around this node to be used in kernel scaling - approximately equal to the equivalent radii of surrounding cells (not diameter)
   integer, dimension(:), allocatable :: jface ! array storing j indices of surrounding faces (directly connected, not via glue)
   integer, dimension(:), allocatable :: icell ! array storing i indices of surrounding cells (both directly connected and via glue)
-  integer, dimension(:), allocatable :: glue_knode ! array storing k indices of any coincident nodes (due to faces being glued together) - unallocated if no faces are glueds to this one
+  integer, dimension(:), allocatable :: glue_knode ! array storing k indices of any coincident nodes (due to faces being glued together) - unallocated if no nodes are glueds to this one
   logical :: glue_present ! signifies that some faces that are attached to this node are glued
   logical :: reflect_present ! signifies that some faces within the icells are not only glued, but also includes reflections (in practice means that reflect_multipliers should be allocated and have non-unity values)
   integer, dimension(:,:), allocatable :: reflect_multiplier ! reflect_multiplier for cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position

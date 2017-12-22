@@ -1216,7 +1216,7 @@ integer :: m ! region number to be updated
 logical :: initial ! whether the the initial or normal location string is to be used
 type(region_location_type) :: local_location ! set to either initial or normal location
 integer :: i, j, k, n, nregion, ijkregion, nsregion, ns, ii, jj, kk, ijk, l, ijktotal, ns2, donor_region, part_of_region, &
-  nsnext, iinext, inext, separation, iimax
+  nsnext, iinext, inext, separation, iimax, glue_ijk
 double precision :: tmp, tmpmax
 double precision, dimension(totaldimensions) :: x, xmin, xmax, unitnormal ! a single location
 character(len=1000) :: formatline
@@ -1654,14 +1654,34 @@ else if (trim(region(m)%type) /= 'gmsh') then
 
     end do
 
-! deal with possible glued faces, making sure that they are also in the region if also in the part_of region
+! deal with possible glued faces (and nodes), making sure that they are also in the region if also in the part_of region
     if (local_location%glue_face) then
+! sanity check on centring
+      if (region(m)%centring /= 'face'.and.region(m)%centring /= 'node') &
+        call error_stop("subroutine update_system_region has been called with glueface on, but region "//trim(region(m)%name)// &
+        " has incorrect "//trim(region(m)%centring)//" centring (must be either face or node centred to use glueface option)")
       do ijk = 1, ijktotal
-        if (.not.elementisin(ijk)) cycle ! face isn't in region
-        if (face(ijk)%glue_jface == 0) cycle ! face is not glued to another
-        if (elementisin(face(ijk)%glue_jface)) cycle ! element is already in region
-        if (region(region(m)%part_of)%ns(face(ijk)%glue_jface) == 0) cycle ! element isn't in part_of region
-        elementisin(face(ijk)%glue_jface) = .true.
+        if (.not.elementisin(ijk)) cycle ! face/node isn't in region
+! there is only one possible glued face, but an array of possible glued nodes, so deal with separately
+        if (region(m)%centring == 'face') then
+          glue_ijk = face(ijk)%glue_jface
+          if (glue_ijk == 0) cycle ! face/node isn't glued to another
+          if (elementisin(glue_ijk)) cycle ! face/node is already in region
+          if (region(region(m)%part_of)%ns(glue_ijk) == 0) cycle ! glued face/node isn't in part_of region
+! otherwise add face
+          nsregion = nsregion + 1
+          elementisin(glue_ijk) = .true.
+        else
+          do kk = 1, allocatable_integer_size(node(ijk)%glue_knode)
+            glue_ijk = node(ijk)%glue_knode(kk)
+!           if (glue_ijk == 0) cycle ! face/node isn't glued to another - assume that this array doesn't have zero elements
+            if (elementisin(glue_ijk)) cycle ! face/node is already in region
+            if (region(region(m)%part_of)%ns(glue_ijk) == 0) cycle ! glued face/node isn't in part_of region
+! otherwise add node
+            nsregion = nsregion + 1
+            elementisin(glue_ijk) = .true.
+          end do
+        end if
       end do
     end if
 
@@ -1816,21 +1836,35 @@ if (.not.setns) then
 else if (.not.setijk.and.setns) then
 
 ! deal with glued faces only for regions that use setijk off and setns on (compound/common regions are handled separately in their section)
-! when glueface is on, check that faces glued to the faces within the region are also included, if they are within the part_of region
+! when glueface is on, check that faces/nodes glued to the faces/nodes within the region are also included, if they are within the part_of region
   if (local_location%glue_face) then
-! sanity check on region centring
-    if (region(m)%centring /= 'face') &
+! sanity check on centring
+    if (region(m)%centring /= 'face'.and.region(m)%centring /= 'node') &
       call error_stop("subroutine update_system_region has been called with glueface on, but region "//trim(region(m)%name)// &
-      " has incorrect (non-face) "//trim(region(m)%centring)//" centring")
-! now add any missing faces
+      " has incorrect "//trim(region(m)%centring)//" centring (must be either face or node centred to use glueface option)")
+! now add any missing faces/nodes
     do ijk = 1, ijktotal
-      if (region(m)%ns(ijk) == 0) cycle ! face isn't in region
-      if (face(ijk)%glue_jface == 0) cycle ! face isn't glued to another
-      if (region(m)%ns(face(ijk)%glue_jface) /= 0) cycle ! glued face is already included
-      if (region(region(m)%part_of)%ns(face(ijk)%glue_jface) == 0) cycle ! glued face isn't in part_of region
+      if (region(m)%ns(ijk) == 0) cycle ! face/node isn't in region
+! there is only one possible glued face, but an array of possible glued nodes, so deal with separately
+      if (region(m)%centring == 'face') then
+        glue_ijk = face(ijk)%glue_jface
+        if (glue_ijk == 0) cycle ! face/node isn't glued to another
+        if (region(m)%ns(glue_ijk) /= 0) cycle ! glued face/node is already included
+        if (region(region(m)%part_of)%ns(glue_ijk) == 0) cycle ! glued face/node isn't in part_of region
 ! otherwise add face
-      nsregion = nsregion + 1
-      region(m)%ns(face(ijk)%glue_jface) = nsregion
+        nsregion = nsregion + 1
+        region(m)%ns(glue_ijk) = nsregion
+      else
+        do kk = 1, allocatable_integer_size(node(ijk)%glue_knode)
+          glue_ijk = node(ijk)%glue_knode(kk)
+!         if (glue_ijk == 0) cycle ! face/node isn't glued to another - assume that this array doesn't have zero elements
+          if (region(m)%ns(glue_ijk) /= 0) cycle ! glued face/node is already included
+          if (region(region(m)%part_of)%ns(glue_ijk) == 0) cycle ! glued face/node isn't in part_of region
+! otherwise add node
+          nsregion = nsregion + 1
+          region(m)%ns(glue_ijk) = nsregion
+        end do
+      end if
     end do
   end if
 
