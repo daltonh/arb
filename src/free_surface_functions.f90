@@ -597,6 +597,11 @@ if (deriv > 0) call error_stop("subroutine facevofphi cannot handle derivative y
 i = ilast ! this is the upwind cell to
 j = jlast ! this face, over which we are calculating the advection
 
+! now correct for possible glueing operations, so that j used in analysis is actually the face attached to this cell
+if (face(jlast)%glue_jface /= 0) then
+  if (face(jlast)%icell(2) == ilast) j = face(jlast)%glue_jface
+end if
+
 if (debug) then
   write(50,*) 'm,ilast,jlast,klast,thread = ',m,ilast,jlast,klast,thread
   write(50,*) 'deriv = ',deriv
