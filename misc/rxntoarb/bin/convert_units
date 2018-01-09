@@ -3,12 +3,12 @@
 abort "ERROR: Ruby 1.9.3 or newer required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9.3'
 
 PROGNAME = 'convert_units'
-VERSION = 1.3
-DATE = '2017-10-12'
+VERSION = 1.4
+DATE = '2018-01-09'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})
   Performs unit conversions.
-  (C) Copyright Christian Biscombe 2017
+  (C) Copyright Christian Biscombe 2017-2018
 INFO
 
 require 'optparse'
@@ -30,7 +30,7 @@ opts = OptionParser.new do |opt|
   opt.on('-l', '--list', 'List all recognised units and their abbreviations') { Units.list(); exit if ARGV.empty? }
   opt.on('-s', '--sig-figs', 'Output with same number of significant figures as input (overrides -f)') { options[:sig_figs] = true }
   opt.on('-t', '--tdiff', 'Interpret input temperature as temperature difference rather than reference to an absolute temperature') { options[:tdiff] = true }
-  opt.on('-v', '--version', 'Print version information') { puts info; exit if ARGV.empty? }
+  opt.on('-v', '--version', 'Print version information') { puts INFO; exit if ARGV.empty? }
 end
 begin opts.parse!
 rescue OptionParser::InvalidOption => msg

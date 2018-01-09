@@ -8,12 +8,12 @@ require_relative 'rxn'
 module Rxntoarb
 
   PROGNAME = 'rxntoarb'
-  VERSION = 2.8
-  DATE = '2017-12-06'
+  VERSION = 2.9
+  DATE = '2018-01-09'
   INFO = <<-INFO.gsub(/^\s+/, '') # prefer squiggly heredoc <<~ in Ruby 2.3+
     #{PROGNAME} v. #{VERSION} (#{DATE})
     Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
-    (C) Copyright Christian Biscombe 2016-2017
+    (C) Copyright Christian Biscombe 2016-2018
   INFO
 
   class << self
@@ -40,7 +40,7 @@ module Rxntoarb
       opt.on('-o', '--outfile <output_file>', 'Write output to output_file (option ignored if multiple input files)') { |outfile| options[:outfile] = outfile }
     # opt.on('-s', '--sbml <sbml_output_file>', 'Write SBML file') { |sbmlfile| require 'libSBML'; options[:sbmlfile] = sbmlfile } # TODO in version 3
       opt.on('-t', '--template <template_file>', 'Read arb equation format from template_file') { |template_file| options[:template_file] = template_file }
-      opt.on('-v', '--version', 'Print version information') { puts info; exit if ARGV.empty? }
+      opt.on('-v', '--version', 'Print version information') { puts INFO; exit if ARGV.empty? }
     end
     begin opts.parse!
     rescue OptionParser::InvalidOption => msg
