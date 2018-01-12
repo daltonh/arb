@@ -687,6 +687,7 @@ sub create_system_regions {
   push(@region,{ name => '<adjacentcellicells>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<nocadjacentcellicells>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfaceicells>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentfaceicellsnoglue>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfaceupcell>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfacedowncell>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfaceothercell>', type => 'internal', centring => 'cell' });
@@ -2138,15 +2139,32 @@ sub mequation_interpolation {
 
         } else {
 # face from_centring
+# ref: lastface ref: lastfacenoglue ref: lastfaceglue
 # lastface averaging - suppress interpolation to current cell centre using values from the last face instead
-# unlike lastfacenoglue, this will move to the particular face that is glued to the current cell in the case that the lastface was a glued face
-          if ($options && $options =~ /(^|\,)\s*lastface\s*(\,|$)/) {
+
+# the difference between lastface, lastfaceglue and lastfacenoglue is concerned with what face we are interpolating from, in the case that the face is glued
+# for faces that aren't glued, lastface, lastfaceglue and lastfacenoglue all do the same thing (although lastfast is the most efficient)
+
+# in the case of glued faces, whether the default lastface refers to either the original face or the glued face adjacent to the context cell depends on the cell region being looped through:
+# - for upwindfaceicells and downwindfaceicells regions (as used in the advection routines), the default last face is the face adjacent to the context cell (ie, moved from the real jlast).  Thus, when a cellave[lastface](<blah>) appears within the expression being fluxed by default the <blah> will be evaluated at the face adjacent to the context cell (ie, interpolation does not move through any glue).  Now also applies to adjacentfaceicellsnoglue
+# - for all other regions the lastface refers to the previous face used, irrespective of whether it is adjacent to the context cell or not
+
+# more control over the glued cells can be gained by lastfacenoglue and lastfaceglue, however these may not be what you think they are for periodic domains that are only one cell in width:
+# lastfacenoglue:
+# if (face(jlast)%glued_jface /= 0) then
+#   if (face(jlast)%icell(1) /= ilast.and.face(jlast)%icell(2) == ilast) i = face(jlast)%icell(1)
+# end if
+# lastfaceglue:
+# if (face(jlast)%glued_jface /= 0) then
+#   if (face(jlast)%icell(1) == ilast.and.face(jlast)%icell(2) /= ilast) i = face(jlast)%icell(2)
+# end if
+
+          if ($options && $options =~ /(^|\,)\s*(lastface(noglue|glue))\s*(\,|$)/) {
             $inbit[$nbits] = $expression;
-            create_someloop($inbit[$nbits],"sum","face","<lastface>",$deriv,$otype,$omvar);
+            create_someloop($inbit[$nbits],"sum","face","<$2>",$deriv,$otype,$omvar); # pass region name to someloop
             $variable{"someloop"}[$m{"someloop"}]{"checkj"} = 1; # in fortran will need to check that the jlast is defined
 
-# lastfacenoglue averaging - suppress interpolation to current cell centre using values from the last face instead
-          } elsif ($options && $options =~ /(^|\,)\s*lastfacenoglue\s*(\,|$)/) {
+          } elsif ($options && $options =~ /(^|\,)\s*lastface\s*(\,|$)/) {
             $inbit[$nbits] = $expression;
             create_someloop($inbit[$nbits],"sum","face","<noloop>",$deriv,$otype,$omvar);
             $variable{"someloop"}[$m{"someloop"}]{"checkj"} = 1; # in fortran will need to check that the jlast is defined
@@ -2177,22 +2195,21 @@ sub mequation_interpolation {
           ($flux,$name) = search_operator_contents("flux",$next_contents_number);
           if (empty($flux)) { error_stop("flux part for $operator in $otype $variable{$otype}[$omvar]{name} not found:\n  operator_contents = ".Dumper(\%operator_contents)); }
           ($limiter,$name) = search_operator_contents("limiter",$next_contents_number);
-          if (empty($limiter)) { $limiter = "1"; print "INFO: using default limiter = 1 for $operator in $otype $variable{$otype}[$omvar]{name}\n"; } # default limiter is 1
+          if (empty($limiter)) { $limiter = "0"; print "INFO: using default limiter = 0 (low order upwind advection) for $operator in $otype $variable{$otype}[$omvar]{name}\n"; } # default limiter is 0 now, changed from 1 in pre v0.57
           print DEBUG "advection operator components found: expression = $expression: flux = $flux: limiter = $limiter\n";
 
 # pull out optional gradient too
           $inbit[$nbits] = $expression; # assemble expression
-#         if ($limiter) {
+# this conditional put back in v0.57
+          if ($limiter) {
             foreach $l ( 1 .. 3 ) {
               ($gradient,$name) = search_operator_contents("gradient[l=$l]",$next_contents_number);
-#             if ($gradient eq "") { $gradient = "cellsum(cellkernel[ilast,$l,ns]*(".$expression.'),<cellkernelregion[l='.$l.']>)';
               if (empty($gradient)) { $gradient = "cellgrad[l=$l".$reflect_option_string."](".$expression.')'; # passes reflect options through to gradient
               } else { print "INFO: found gradient[l=$l] expression for $operator in $otype $variable{$otype}[$omvar]{name}\n"; }
               $inbit[$nbits] = $inbit[$nbits].
-#               "+(".$limiter.")*cellsum(cellkernel[ilast,$l,ns]*(".$expression.'),<cellkernelregion[l='.$l.']>)'.
                 "+(".$limiter.")*(".$gradient.")*(cellave[lastface](facex[j,$l])-cellx[i,$l])";
             }
-#         }
+          }
           create_someloop($inbit[$nbits],"sum","cell","<upwindfaceicells>",$deriv,$otype,$omvar);
           $someloop_mvar = $m{"someloop"}; # save someloop type
 
@@ -4610,6 +4627,15 @@ sub create_fortran_equations {
 #                 "do ns = 1, 2\n".
 #                 "i = face(j)%icell(ns)\n";
 #             }
+        } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfaceicellsnoglue>') {
+          $sub_string{$type}=$sub_string{$type}.
+            "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
+            "do ns = 1, 2\n".
+            "i = face(j)%icell(ns)\n".
+            "if (face(jlast)%glue_jface /= 0) then\n".
+            "if (ns == 2) j = face(jlast)%glue_jface\n".
+            "end if\n".
+            $reflect_string_form;
         } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfaceupcell>') {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
@@ -4658,14 +4684,22 @@ sub create_fortran_equations {
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
 #           "do ns = (3-flux_direction)/2, (3-flux_direction)/2\n".
             "ns = (3-flux_direction)/2\n".
-            "i = face(j)%icell(ns)\n".$reflect_string_form;
+            "i = face(j)%icell(ns)\n".
+            "if (ns == 2) then\n".
+            "if (face(j)%glue_jface /= 0) j = face(j)%glue_jface\n". # upwindfaceicells and downwindfaceicells also change jlast, so that lastface now references the face that is attached to the context cell
+            "endif\n".
+            $reflect_string_form;
             $openloop = 0;
         } elsif ($variable{$type}[$mvar]{"region"} eq '<downwindfaceicells>') {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
 #           "do ns = (3+flux_direction)/2, (3+flux_direction)/2\n".
             "ns = (3+flux_direction)/2\n".
-            "i = face(j)%icell(ns)\n".$reflect_string_form;
+            "i = face(j)%icell(ns)\n".
+            "if (ns == 2) then\n".
+            "if (face(j)%glue_jface /= 0) j = face(j)%glue_jface\n". # upwindfaceicells and downwindfaceicells also change jlast, so that lastface now references the face that is attached to the context cell
+            "endif\n".
+            $reflect_string_form;
             $openloop = 0;
         } elsif ($variable{$type}[$mvar]{"region"} eq '<cellkernelregion[l=0]>') {
           $sub_string{$type}=$sub_string{$type}.
@@ -4699,13 +4733,19 @@ sub create_fortran_equations {
 #           "ns = 1\n".
             "if (face(jlast)%glue_jface /= 0) j = face(jlast)%glue_jface\n";
             $openloop = 0;
-        } elsif ($variable{$type}[$mvar]{"region"} eq '<lastface>') {
+        } elsif ($variable{$type}[$mvar]{"region"} eq '<lastfaceglue>') {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".
-#           "do ns = 1, 1\n".
-#           "ns = 1\n".
-#           "if (face(jlast)%icell(2) == i.and.face(jlast)%glue_jface /= 0) j = face(jlast)%glue_jface\n";
-            "if (face(jlast)%glue_jface /= 0) then\nif (face(jlast)%icell(2) == i) j = face(jlast)%glue_jface\nend if\n"; # more efficient nested conditionals
+            "if (face(jlast)%glue_jface /= 0) then\n".
+            "if (face(jlast)%icell(1) == ilast.and.face(jlast)%icell(2) /= ilast) i = face(jlast)%icell(2)\n".
+            "end if\n";
+            $openloop = 0;
+        } elsif ($variable{$type}[$mvar]{"region"} eq '<lastfacenoglue>') {
+          $sub_string{$type}=$sub_string{$type}.
+            "! loop is conducted around region $variable{$type}[$mvar]{region}\n".
+            "if (face(jlast)%glue_jface /= 0) then\n".
+            "if (face(jlast)%icell(1) /= ilast.and.face(jlast)%icell(2) == ilast) i = face(jlast)%icell(1)\n".
+            "end if\n";
             $openloop = 0;
         } elsif ($variable{$type}[$mvar]{"region"} =~ /<separationcentre(\d*)>/) {
           $sub_string{$type}=$sub_string{$type}.

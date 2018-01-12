@@ -1,5 +1,6 @@
 # first calculate the low order face-centred advection values
 FACE_DERIVED <phi_f low order> "faceave[advection](<phi>,<u_f>,0.d0)" ON <allfaces>
 # TODO: need to limit this in cases of zero velocity
+# TODO: need to check whether this is compatible with changes to lastface in v0.57
 CELL_DERIVED <phi_c low order> "celldiv(faceif(-<facefromcelldirection>*<u_f>,-<u_f>*<phi_f low order>,0.d0))/cellmax(celldiv(faceif(<facefromcelldirection>*<u_f>,<u_f>,0.d0)),1.d-10)" ON <allcells>
 
