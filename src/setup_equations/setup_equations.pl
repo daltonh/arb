@@ -690,11 +690,15 @@ sub create_system_regions {
   push(@region,{ name => '<adjacentfaceicellsnoglue>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfaceupcell>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfacedowncell>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentfaceupcellnoglue>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentfacedowncellnoglue>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfaceothercell>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<upwindfaceicells>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<downwindfaceicells>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<glueface>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<lastface>', type => 'internal', centring => 'face' });
+  push(@region,{ name => '<lastfacenoglue>', type => 'internal', centring => 'face' });
+  push(@region,{ name => '<lastfaceglue>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<noloop>', type => 'internal', centring => '' }); # this special case has no centring
   push(@region,{ name => '<cellkernelregion\[l=0\]>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<cellkernelregion\[l=([123])\]>', type => 'internal', centring => 'cell' });
@@ -2190,6 +2194,7 @@ sub mequation_interpolation {
       } elsif ($centring eq "face") {
 
 # advection averaging - takes a cell centred expression, a face centred flux, and optionally a cell centred gradient limiter (0->1)
+# the noglue option is always applied to advection averaging, as the region upwindfaceicells is used, which is a noglue region (ie, jlast moves to the adjacent face)
         if ($options && $options =~ /(^|\,)\s*advection\s*(\,|$)/) {
 
           ($flux,$name) = search_operator_contents("flux",$next_contents_number);
@@ -2258,18 +2263,21 @@ sub mequation_interpolation {
 # average based on adjacent cells only, weighted by distance
         } elsif ($options && ( $options =~ /(^|\,)\s*adjacentcells(|weighted)\s*(\,|$)/ )) {
 
+          my $someloopregion = "<adjacentfaceicells>";
+          if ( $options =~ /(^|\,)\s*noglue\s*(\,|$)/ ) { $someloopregion = "<adjacentfaceicellsnoglue>"; }
+
           $dx = '';
           foreach $l ( 1 .. 3 ) {
             $dx = $dx."+cellave[othercell](facetoicellr[j,$l,ns])*cellave[lastface](facenorm[j,$l])";
           }
           $top = "abs($dx)*($expression)$reflect_multiplier_string"; # here dx is the distance normal to the interface on the other side of the face
-          create_someloop($top,"sum","cell","<adjacentfaceicells>",$deriv,$otype,$omvar);
+          create_someloop($top,"sum","cell",$someloopregion,$deriv,$otype,$omvar);
           if (@reflect) { @{$variable{"someloop"}[$m{"someloop"}]{"reflect"}} = @reflect; }
           $dx = '';
           foreach $l ( 1 .. 3 ) {
             $dx = $dx."+facetoicellr[j,$l,ns]*cellave[lastface](facenorm[j,$l])";
           }
-          $bottom = "cellsum(expression=abs($dx),region=<adjacentfaceicells>)"; # here dx is the distance normal to the interface on this side of the face
+          $bottom = "cellsum(expression=abs($dx),region=$someloopregion)"; # here dx is the distance normal to the interface on this side of the face
           create_someloop($bottom,"max","cell","<noloop>",0,$otype,$omvar);
           $variable{"someloop"}[$m{"someloop"}]{"default"} = "tinyish";
 
@@ -2313,8 +2321,10 @@ sub mequation_interpolation {
 
 # average based on adjacent cells only, no weighting
         } elsif ($options && ( $options =~ /(^|\,)\s*adjacentcellsevenweighting\s*(\,|$)/ )) {
+          my $someloopregion = "<adjacentfaceicells>";
+          if ( $options =~ /(^|\,)\s*noglue\s*(\,|$)/ ) { $someloopregion = "<adjacentfaceicellsnoglue>"; }
           $inbit[$nbits] = "($expression)$reflect_multiplier_string";
-          create_someloop($inbit[$nbits],"sum","cell","<adjacentfaceicells>",$deriv,$otype,$omvar);
+          create_someloop($inbit[$nbits],"sum","cell",$someloopregion,$deriv,$otype,$omvar);
           if (@reflect) { @{$variable{"someloop"}[$m{"someloop"}]{"reflect"}} = @reflect; }
           $inbit[$nbits] = "(($inbit[$nbits])/2.d0)"
 
@@ -2324,16 +2334,13 @@ sub mequation_interpolation {
           create_someloop($inbit[$nbits],"sum","cell","<noloop>",$deriv,$otype,$omvar);
           $variable{"someloop"}[$m{"someloop"}]{"checki"} = 1; # in fortran will need to check that the ilast is defined
 
-# upcell averaging - only use face(j)%icell(2), that is, cell in direction of face normal
-        } elsif ($options && $options =~ /(^|\,)\s*upcell\s*(\,|$)/) {
+# upcell and downcell averaging - only use face(j)%icell(2) and face(j)%icell(1), respectively, that is, cell in direction and opposite direction of face normal
+# now allows for noglue option, which determines whether an incorporated lastface refers to the original (default) or adjacent (noglue) face to this cell
+        } elsif ($options && $options =~ /(^|\,)\s*((up|down)cell)\s*(\,|$)/) {
+          my $someloopregion = "adjacentface$2";
+          if ( $options =~ /(^|\,)\s*noglue\s*(\,|$)/ ) { $someloopregion = "<".$someloopregion."noglue>"; } else { $someloopregion = "<".$someloopregion.">"; }
           $inbit[$nbits]=$expression.$reflect_multiplier_string;
-          create_someloop($inbit[$nbits],"sum","cell","<adjacentfaceupcell>",$deriv,$otype,$omvar);
-          if (@reflect) { @{$variable{"someloop"}[$m{"someloop"}]{"reflect"}} = @reflect; }
-
-# downcell averaging - only use face(j)%icell(1), that is, cell in opposite direction to the face normal
-        } elsif ($options && $options =~ /(^|\,)\s*downcell\s*(\,|$)/) {
-          $inbit[$nbits]=$expression.$reflect_multiplier_string;
-          create_someloop($inbit[$nbits],"sum","cell","<adjacentfacedowncell>",$deriv,$otype,$omvar);
+          create_someloop($inbit[$nbits],"sum","cell",$someloopregion,$deriv,$otype,$omvar);
           if (@reflect) { @{$variable{"someloop"}[$m{"someloop"}]{"reflect"}} = @reflect; }
 
 # othercell averaging - use the cell on the otherside of the lastface to the lastcell
@@ -4631,24 +4638,30 @@ sub create_fortran_equations {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
             "do ns = 1, 2\n".
-            "i = face(j)%icell(ns)\n".
+            "i = face(jlast)%icell(ns)\n".
             "if (face(jlast)%glue_jface /= 0) then\n".
-            "if (ns == 2) j = face(jlast)%glue_jface\n".
+            "if (ns == 2) then\nj = face(jlast)%glue_jface\nelse\nj = jlast\nend if\n".
             "end if\n".
             $reflect_string_form;
         } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfaceupcell>') {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
-#           "do ns = 2, 2\n".
             "ns = 2\n".
-            "i = face(j)%icell(ns)\n".$reflect_string_form;
+            "i = face(jlast)%icell(ns)\n".$reflect_string_form;
             $openloop = 0;
-        } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfacedowncell>') {
+        } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfaceupcellnoglue>') {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
-#           "do ns = 1, 1\n".
+            "ns = 2\n".
+            "i = face(jlast)%icell(ns)\n".
+            "if (face(jlast)%glue_jface /= 0) j = face(jlast)%glue_jface".
+            $reflect_string_form;
+            $openloop = 0;
+        } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfacedowncell>' || $variable{$type}[$mvar]{"region"} eq '<adjacentfacedowncellnoglue>') {
+          $sub_string{$type}=$sub_string{$type}.
+            "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
             "ns = 1\n".
-            "i = face(j)%icell(ns)\n".$reflect_string_form;
+            "i = face(jlast)%icell(ns)\n".$reflect_string_form;
             $openloop = 0;
         } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfaceothercell>') {
 #         $sub_string{$type}=$sub_string{$type}.
@@ -4684,9 +4697,9 @@ sub create_fortran_equations {
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
 #           "do ns = (3-flux_direction)/2, (3-flux_direction)/2\n".
             "ns = (3-flux_direction)/2\n".
-            "i = face(j)%icell(ns)\n".
+            "i = face(jlast)%icell(ns)\n".
             "if (ns == 2) then\n".
-            "if (face(j)%glue_jface /= 0) j = face(j)%glue_jface\n". # upwindfaceicells and downwindfaceicells also change jlast, so that lastface now references the face that is attached to the context cell
+            "if (face(jlast)%glue_jface /= 0) j = face(jlast)%glue_jface\n". # upwindfaceicells and downwindfaceicells also change jlast, so that lastface now references the face that is attached to the context cell
             "endif\n".
             $reflect_string_form;
             $openloop = 0;
@@ -4695,9 +4708,9 @@ sub create_fortran_equations {
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
 #           "do ns = (3+flux_direction)/2, (3+flux_direction)/2\n".
             "ns = (3+flux_direction)/2\n".
-            "i = face(j)%icell(ns)\n".
+            "i = face(jlast)%icell(ns)\n".
             "if (ns == 2) then\n".
-            "if (face(j)%glue_jface /= 0) j = face(j)%glue_jface\n". # upwindfaceicells and downwindfaceicells also change jlast, so that lastface now references the face that is attached to the context cell
+            "if (face(jlast)%glue_jface /= 0) j = face(jlast)%glue_jface\n". # upwindfaceicells and downwindfaceicells also change jlast, so that lastface now references the face that is attached to the context cell
             "endif\n".
             $reflect_string_form;
             $openloop = 0;

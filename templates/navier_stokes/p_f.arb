@@ -5,7 +5,7 @@ Here we average the cell centred pressure <p> to the faces producing <p_f>.  The
 FACE_DERIVED <p_f> "faceave(<p>)" ON <allfaces>
 ```
 
-Low order averaging adjacentcell averaging use a distance weighted average of the adjacent cell values.  Select this by setting
+Low order averaging adjacentcell averaging uses a distance weighted average of the adjacent cell values.  Select this by setting
 ```arb
 REPLACEMENTS R "<<pfadjacentcells>>" W "1"
 ```
