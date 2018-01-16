@@ -1,27 +1,23 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/arb/testsuite/arb_master/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/arb/testsuite/arb_master/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: 1d_fully_developed_flow.arb
-#(hash added during unwrap)INCLUDE_WORKING "1d_fully_developed_flow.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../1d_fully_developed_flow.arb without any search/replace combinations
+   #(comment created during unwrap): new block = 1d_fully_developed_flow.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "1d_fully_developed_flow.arb"
    INFO_TITLE "Fully developed 1d flow between two plates"
    INFO_AUTHOR "Dalton Harvie"
    INFO_DATE "13/2/17"
    
    MSH_FILE "line.msh" # this is a vertical line, parallel with the y [l=2] axis
-   #(hash added during unwrap)INCLUDE_TEMPLATE "fluid_properties/water"
-   #(comment generated during unwrap) adding new include_path ../templates/fluid_properties, making include_path array = .. ../templates/fluid_properties
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/fluid_properties/water.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/fluid_properties/water.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "fluid_properties/water"
       # physical data for water at roughly 20 degreesC
       CONSTANT <mu> [Pa.s] 1.d-3 # viscosity
       CONSTANT <rho> [kg/m^3] 1.d3 # density
-      #(comment generated during unwrap) INCLUDE finished for ../templates/fluid_properties/water.arb
-      #(comment generated during unwrap)--------------------------------------------------------
+      CONSTANT <eps_fluid> [1] 78.0d0 # relatic static permittivity
    
    CONSTANT <width> "facesum(<facex[l=2]>,region=<top>)-facesum(<facex[l=2]>,region=<bottom>)"
    CONSTANT <half_width> "<width>/2.d0"
@@ -33,44 +29,37 @@ EXTERNALS "src/free_surface_functions.f90"
    FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,](<u[l=1]>)" ON <allfaces>
    
    # to invoke a carreau fluid, set this to the empty string, otherwise for a newtonian fluid set this to "#"
-   #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<carreaucomment>>" W ""
+   
    INFO_TITLE+ ": Carreau shear-thinning fluid"
    
    # calculate the average strain rate using templates files
-   #(hash added during unwrap)INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude"
-   #(comment generated during unwrap) adding new include_path ../templates/navier_stokes, making include_path array = .. ../templates/fluid_properties ../templates/navier_stokes
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/strain_rate_magnitude.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/navier_stokes/strain_rate_magnitude.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude"
       # here we calculate the 'magnitude of the strain rate tensor', as used for example in generalised non-Newtonian fluids
       # for the specific constants and form employed here refer to Bird, Stewart and Lightfoot (2002) p 241, where the strain rate tensor does not have a half multiplier, and the strain rate magnitude is defined as the square root of the second invariant of this strain rate tensor
       
       # the strain rate tensor is calculated from the stress tensor template using a few substitutions
-      #(hash added during unwrap)INCLUDE "total_stress" R "<mu_f>" W "(-1.d0)" R "<udiv_f>/3.d0" W "(0.d0)" R "<tau" W "<gamma"
-      #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/total_stress.arb with the following search/replace combinations: replace <mu_f> with (-1.d0): replace <udiv_f>/3.d0 with (0.d0): replace <tau with <gamma
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "total_stress" 
+         
          # total stress tensor
-         #(hash added during unwrap)INCLUDE "u_gradient_tensor"
-         #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes, as it is already on the top of include_path array = ../templates/navier_stokes
-            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/fortran/arb/testsuite/arb_master/build/../templates/navier_stokes/u_gradient_tensor.arb without any search/replace combinations
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_gradient_tensor.arb: sub_block = 0
+            #(hash inserted during unwrap)INCLUDE "u_gradient_tensor"
             # a tensor of face centred gradients that respects any reflections
             # used in the total stress and boundary conditions now
             # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
-                           FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,](<u[l=1]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,](<u[l=1]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,](<u[l=2]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,](<u[l=1]>)" ON <allfaces>
-                           FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,](<u[l=2]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,](<u[l=2]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,](<u[l=1]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,](<u[l=2]>)" ON <allfaces>
-                           FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,](<u[l=3]>)" ON <allfaces>
-            #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/u_gradient_tensor.arb
-            #(comment generated during unwrap)--------------------------------------------------------
+            FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,](<u[l=3]>)" ON <allfaces>
          
          # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
-         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<udivfcomment>>" W "#"
+         
          # calculate the velocity divergence (numerical) on each face
          #FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces>
          
@@ -79,8 +68,8 @@ EXTERNALS "src/free_surface_functions.f90"
          FACE_LOCAL <gamma[l=1,1]> "-(-1.d0)*2.d0*<ugrad_f[l=1,1]>" ON <allfaces>
          FACE_LOCAL <gamma[l=2,2]> "-(-1.d0)*2.d0*<ugrad_f[l=2,2]>" ON <allfaces>
          FACE_LOCAL <gamma[l=3,3]> "-(-1.d0)*2.d0*<ugrad_f[l=3,3]>" ON <allfaces>
-         # overwrite theses if the numerical velocity divergence is to be included, see # string replacement above
-         # Note: "(0.d0)" is specifically replaced in strain_rate_magnitude template
+         # overwrite theses if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
+         # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
          #FACE_LOCAL <gamma[l=1,1]> "-(-1.d0)*2.d0*(<ugrad_f[l=1,1]>-(0.d0))" ON <allfaces>
          #FACE_LOCAL <gamma[l=2,2]> "-(-1.d0)*2.d0*(<ugrad_f[l=2,2]>-(0.d0))" ON <allfaces>
          #FACE_LOCAL <gamma[l=3,3]> "-(-1.d0)*2.d0*(<ugrad_f[l=3,3]>-(0.d0))" ON <allfaces>
@@ -90,15 +79,11 @@ EXTERNALS "src/free_surface_functions.f90"
          FACE_LOCAL <gamma[l=2,1]> "<gamma[l=1,2]>" ON <allfaces>
          FACE_LOCAL <gamma[l=3,1]> "<gamma[l=1,3]>" ON <allfaces>
          FACE_LOCAL <gamma[l=3,2]> "<gamma[l=2,3]>" ON <allfaces>
-         #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/total_stress.arb
-         #(comment generated during unwrap)--------------------------------------------------------
       
       # now calculate the double dot product on the faces, then average to the cells before square rooting
       CELL_DERIVED <gamma_magnitude> "sqrt(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)))" ON <allcells>
       # the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
       #CELL_DERIVED <gamma_magnitude> "sqrt(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))+2.d0*(<u[l=0]>/<cellx[l=0]>)**2)" ON <allcells>
-      #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes/strain_rate_magnitude.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    VARIABLE <gamma_magnitude> output
    FACE_DERIVED <gamma_magnitude_f> "sqrt(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))" ON <allfaces> output
    NONE_CONSTANT <mu_f> "<mu>" # will be overwritten for a carreau fluid
@@ -120,6 +105,4 @@ EXTERNALS "src/free_surface_functions.f90"
    
    NEWTSTEPMAX 50
    #INCLUDE_TEMPLATE "kernel_presets/kernel_1st_order_compact"
-   #(comment generated during unwrap) INCLUDE finished for ../1d_fully_developed_flow.arb
-   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

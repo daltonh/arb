@@ -1,0 +1,52 @@
+CONSTANT <aa> 1.d0
+{{ string_set('<<a>>','1.d0'); }}
+
+# testing of skip notation
+SKIP {{
+  print "INFO: this will be printed as the skip line hasn't finished yet\n";
+  }} # a skip section starts after the completion of the line that the skip statement is on
+# during any skip section, replacements are not done on any text until the end of the END_SKIP solver line
+
+# no string code is parsed within a skip section, but is instead replaced by the empty string
+ {{ print "INFO: this statement will not be printed\n";
+    string_set('<<a>>','2.d0');
+  }}
+
+CONSTANT <bb> 3.d0
+
+END_SKIP  {{
+  print "INFO: this statement will not be printed either, as it is on the same line as the END_SKIP statement\n";
+}}
+
+{{ print "INFO: value of <<a>> is ".string_eval('<<a>>')."\n"; }}
+
+BLOCK
+
+CONSTANT <cc> 4.d0
+
+END_BLOCK
+
+COMMENT # this will generate a deprecated syntax message
+
+END_COMMENT
+
+IF 0
+
+ELSE_IF 1
+
+  IF 1
+    CONSTANT <ee> 5.d0
+  ELSE
+    CONSTANT <ff> 6.d0
+  END_IF
+
+ELSE
+
+END_IF
+
+IF 0
+ELSE
+#END
+END_IF
+
+CONSTANT <gg> 7.d0

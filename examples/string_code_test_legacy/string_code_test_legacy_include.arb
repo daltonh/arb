@@ -1,0 +1,4 @@
+# an include file for testing purposes
+
+CONSTANT <d> 4.d0 # an arb statement
+REPLACEMENTS R "<<a>>" W "error" # this isn't a global replacement so won't affect parent file

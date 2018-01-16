@@ -1,0 +1,1 @@
+* remove variable $input_files[$#input_files]{"ref_name"} and instead change equivalent {"name"} variable to {"abs_name"} - ie, only reference absolute paths now

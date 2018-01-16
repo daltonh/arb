@@ -1,1 +1,0 @@
-examples/parasitic_currents/batcher_setup.pm

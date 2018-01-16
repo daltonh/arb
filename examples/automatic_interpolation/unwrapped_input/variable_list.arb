@@ -1,0 +1,26 @@
+# Reconstructed list of the variables in arb format:
+#--------------------------------------------------------------------------------
+# constant variables:
+#--------------------------------------------------------------------------------
+# transient variables:
+#--------------------------------------------------------------------------------
+# newtient variables:
+#--------------------------------------------------------------------------------
+# unknown variables:
+#--------------------------------------------------------------------------------
+# derived variables:
+#--------------------------------------------------------------------------------
+# equation variables:
+#--------------------------------------------------------------------------------
+# output variables:
+CELL_OUTPUT <test1> [1] "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allcells> # other information: region = <allcells>: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = automatic_interpolation.arb: absfilename = /home/daltonh/arb/testsuite/arb_master/examples/automatic_interpolation/automatic_interpolation.arb: comments = empty
+CELL_OUTPUT <test2> [1] "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allcells> # other information: region = <allcells>: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = automatic_interpolation.arb: absfilename = /home/daltonh/arb/testsuite/arb_master/examples/automatic_interpolation/automatic_interpolation.arb: comments = empty
+FACE_OUTPUT <test3> [1] "nodegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allfaces> # other information: region = <allfaces>: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = automatic_interpolation.arb: absfilename = /home/daltonh/arb/testsuite/arb_master/examples/automatic_interpolation/automatic_interpolation.arb: comments = empty
+FACE_OUTPUT <test4> [1] "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <allfaces> # other information: region = <allfaces>: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = automatic_interpolation.arb: absfilename = /home/daltonh/arb/testsuite/arb_master/examples/automatic_interpolation/automatic_interpolation.arb: comments = empty
+NODE_OUTPUT <test5> [1] "facegrad[l=1,reflect=1](<cellx[l=1]>)" ON <allnodes> # other information: region = <allnodes>: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = automatic_interpolation.arb: absfilename = /home/daltonh/arb/testsuite/arb_master/examples/automatic_interpolation/automatic_interpolation.arb: comments = empty
+NODE_OUTPUT <test6> [1] "cellgrad[l=1,reflect=1](<cellx[l=1]>)" ON <allnodes> # other information: region = <allnodes>: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = automatic_interpolation.arb: absfilename = /home/daltonh/arb/testsuite/arb_master/examples/automatic_interpolation/automatic_interpolation.arb: comments = empty
+#--------------------------------------------------------------------------------
+# condition variables:
+#--------------------------------------------------------------------------------
+# local variables:
+#--------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 ! file src/output_module.f90
 !
-! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -11,7 +11,8 @@
 ! to run, most notably the computer algebra system maxima
 ! <http://maxima.sourceforge.net/> which is released under the GNU GPL.
 ! 
-! The copyright of arb is held by Dalton Harvie.
+! The original copyright of arb is held by Dalton Harvie, however the
+! project is now under collaborative development.
 ! 
 ! arb is released under the GNU GPL.  arb is free software: you can
 ! redistribute it and/or modify it under the terms of the GNU General
@@ -63,7 +64,6 @@ use gmesh_module
 use solver_module
 integer :: gmesh_number
 character(len=100) :: output_option, vtkoutput_option, datoutput_option
-character(len=1000) :: formatline
 logical, optional :: debug_dump ! dumps all component variables to the file output.debug.msh
 logical :: debug_dump_local
 logical, optional :: intermediate ! if this is an nonconverged intermediate output
@@ -81,57 +81,41 @@ call update_and_check_outputs ! update any output-only variables
 if (.false..or.maximum_dimensions <=1 ) call output_txt ! write txt files containing data
 
 do gmesh_number = 0, ubound(gmesh,1)
-  formatline = '(a,'//trim(dindexformat(gmesh_number))//',a)'
 
   output_option = trim(check_option(gmesh(gmesh_number)%options,output_gmesh_options))
   if (trim(output_option) == "centringoutput" .or. trim(output_option) == "centringmeshoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='cell',intermediate=intermediate_local) ! write gmsh output file for cell centred variables
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='face',intermediate=intermediate_local) ! write gmsh output file for face centred variables
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='node',intermediate=intermediate_local) ! write gmsh output file for face centred variables
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='none',intermediate=intermediate_local) ! write gmsh output file for none centred variables
   else if (trim(output_option) == "output" .or. trim(output_option) == "meshoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='all',intermediate=intermediate_local) ! write gmsh output file for all variables
   else if (trim(output_option) == "nooutput") then
-    if (debug) write(*,fmt=formatline) 'INFO: skipping write for gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
+    if (debug) write(*,'(a)') 'INFO: skipping write for msh file having basename '//trim(gmesh(gmesh_number)%basename)
   end if
 
 ! repeat process for vtk output
   vtkoutput_option = trim(check_option(gmesh(gmesh_number)%options,vtkoutput_gmesh_options))
   if (trim(vtkoutput_option) == "centringvtkoutput" .or. trim(vtkoutput_option) == "centringmeshvtkoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing vtk gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='cell',fileformat='vtk',intermediate=intermediate_local)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='face',fileformat='vtk',intermediate=intermediate_local)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='node',fileformat='vtk',intermediate=intermediate_local)
   else if (trim(vtkoutput_option) == "vtkoutput" .or. trim(vtkoutput_option) == "meshvtkoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing vtk gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='all',fileformat='vtk',intermediate=intermediate_local)
   else if (trim(output_option) == "novtkoutput") then
-    if (debug) write(*,fmt=formatline) 'INFO: skipping write for vtk gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
+    if (debug) write(*,'(a)') 'INFO: skipping write for vtk file having basename '//trim(gmesh(gmesh_number)%basename)
   end if
 
 ! repeat process for dat output
   datoutput_option = trim(check_option(gmesh(gmesh_number)%options,datoutput_gmesh_options))
   if (trim(datoutput_option) == "centringdatoutput" .or. trim(datoutput_option) == "centringmeshdatoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing dat gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='cell',fileformat='dat',intermediate=intermediate_local)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='face',fileformat='dat',intermediate=intermediate_local)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='node',fileformat='dat',intermediate=intermediate_local)
   else if (trim(datoutput_option) == "datoutput" .or. trim(datoutput_option) == "meshdatoutput") then
-    if (debug.or..true.) write(*,fmt=formatline) 'INFO: writing dat gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
     call write_gmesh(gmesh_number=gmesh_number,debug_dump=.false.,centring='all',fileformat='dat',intermediate=intermediate_local)
   else if (trim(output_option) == "nodatoutput") then
-    if (debug) write(*,fmt=formatline) 'INFO: skipping write for dat gmesh file (',gmesh_number,') having basename '// &
-      trim(gmesh(gmesh_number)%basename)
+    if (debug) write(*,'(a)') 'INFO: skipping write for dat file having basename '//trim(gmesh(gmesh_number)%basename)
   end if
 
 end do
@@ -162,7 +146,8 @@ use equation_module
 
 integer :: error, i, j, k, l, m, list_length
 integer, dimension(:), allocatable :: local_list
-character(len=100) :: filename, cellxname(3), facexname(3), nodexname(3)
+character(len=1000) :: filename
+character(len=100) :: cellxname(3), facexname(3), nodexname(3)
 character(len=1000) :: formatline
 character(len=1) :: delimiter=' '
 logical :: therel
@@ -179,7 +164,7 @@ end do
 
 !----------------------------------------------------
 ! open output file
-filename = "output/output.txt"
+filename = trim(output_dir)//"output.txt"
 therel = .false.
 inquire (file=trim(filename),exist=therel)
 open(foutput,file=trim(filename),access='append',iostat=error)
@@ -309,7 +294,8 @@ subroutine output_stat
 
 use general_module
 integer :: error, ns, m, max_loc, min_loc, ntype, nvar
-character(len=100) :: filename, type
+character(len=1000) :: filename
+character(len=100) :: type
 character(len=1000) :: formatline, textline
 real :: total_update_time, maximum_update_time
 logical :: therel
@@ -318,7 +304,7 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine output_stat'
 
-filename = "output/output.stat"
+filename = trim(output_dir)//"output.stat"
 therel = .false.
 inquire (file=trim(filename),exist=therel)
 open(foutput,file=trim(filename),access='append',iostat=error)
@@ -508,11 +494,12 @@ end if
 fileformatl = 'msh'
 if (present(fileformat)) fileformatl = fileformat
 
-! assemble filename based on options
+! ref: filename ref: output filename
+! assemble output filename based on options
+! for debug_dump: (debug.|)basename(.cell|.face|.node|.none|).(msh|dat|vtk)
+! for non-debug_dump: basename(.newt<newtstep>|)(.<timestep>|)(.cell|.face|.node|.none|).(msh|dat|vtk)
 filename = trim(gmesh(gmesh_number)%basename)
-!if (debug_dump) filename = trim(filename)//'.debug'
 if (debug_dump) filename = 'debug.'//trim(filename)
-if (centring /= 'all')  filename = trim(filename)//'.'//centring
 if (intermediate.and..not.debug_dump) then
   formatline = '(a,'//trim(dindexformat(newtstep))//')'
   write(filename,fmt=formatline) trim(filename)//'.newt',newtstep
@@ -521,20 +508,25 @@ if (transient_simulation.and..not.debug_dump) then
   formatline = '(a,'//trim(dindexformat(timestep))//')'
   write(filename,fmt=formatline) trim(filename)//'.',timestep
 end if
+if (centring /= 'all') filename = trim(filename)//'.'//centring
 
 filename = trim(filename)//'.'//fileformatl
 
+if (.true.) write(*,'(a)') 'INFO: writing '//fileformatl//' gmesh file with basename = '//trim(gmesh(gmesh_number)%basename)//': '//trim(filename)
+
+! ref: linkname
 ! create latest link before the filename has the leading directory
+! latest.basename(.cell|.face|.node|.none|).(msh|dat|vtk)
 if (.not.debug_dump) then
-  linkname = "output/latest."//trim(gmesh(gmesh_number)%basename)
+  linkname = trim(output_dir)//"latest."//trim(gmesh(gmesh_number)%basename)
   if (centring /= 'all')  linkname = trim(linkname)//'.'//centring
   linkname = trim(linkname)//'.'//fileformatl
   write(system_command,'(a)') 'ln -sf '//trim(filename)//' '//trim(linkname)
   call system(system_command)
 end if
 
-! add leading directory and open file
-filename = "output/"//trim(filename)
+! add output directory and open file
+filename = trim(output_dir)//trim(filename)
 open(foutput,file=trim(filename),status='replace',iostat=error)
 if (error /= 0) call error_stop('problem opening file '//trim(filename))
 
@@ -901,8 +893,8 @@ character(len=*) :: action
 logical, optional, intent(in) :: do_update_outputs
 integer :: mm, m, mc, nvar, region_number, nvar_local, ns, error, name_length, formatline_length
 integer, dimension(:), allocatable :: m_list
-character(len=100) :: filename, cut_name
-character(len=100) :: formatline
+character(len=1000) :: filename, cut_name
+character(len=1000) :: formatline
 !character(len=:), allocatable, save :: repeatformatline ! this is sized for large output_step headers, fortran 2003, and allocated during setup only
 character(len=100000) :: repeatformatline ! gfortran 4.6 doesn't support dynamically allocated character strings, so leave this for now (v0.53)
 character(len=2) :: cont_bit
@@ -997,8 +989,7 @@ if (trim(action) == "setup") then
   end if
 
 ! open file
-! filename = "output/output.step"
-  filename = "output/output_step.csv"
+  filename = trim(output_dir)//"output_step.csv"
   therel = .false.
   inquire (file=trim(filename),exist=therel)
   open(foutputstep,file=trim(filename),access='append',iostat=error)

@@ -1,4 +1,0 @@
-* exclude working_dir and code_scraps from makefile html targets
-* create a template page and link to that - for now it includes static list of toc pages, detailed to possibly be replaced later by local TOC
-* create a contents maker script, which tailors the contents to each page, and includes it as the index.html
-* infact, this runs pandoc itself

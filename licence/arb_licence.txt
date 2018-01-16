@@ -1,6 +1,6 @@
 arb finite volume solver licence details:
 
-Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
+Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
 
 This file is part of arb finite volume solver, referred to as `arb'.
 
@@ -11,7 +11,8 @@ code and shell scripts.  arb replies on certain third party software
 to run, most notably the computer algebra system maxima
 <http://maxima.sourceforge.net/> which is released under the GNU GPL.
 
-The copyright of arb is held by Dalton Harvie.
+The original copyright of arb is held by Dalton Harvie, however the
+project is now under collaborative development.
 
 arb is released under the GNU GPL.  arb is free software: you can
 redistribute it and/or modify it under the terms of the GNU General

@@ -111,7 +111,7 @@ NONE_CONSTANT <z_threshold> 0.8 stepoutput
 #
 # example:
 # here we create a trigger and name it as <trigger_z
-INCLUDE "trigger_create" R "<trigger_expression>" W "<z_threshold>-<z>" R "<trigger" W "<trigger_z" # create a namespace called <trigger_z
+INCLUDE "trigger_create" R "<trigger" W "<trigger_z" R "<trigger_expression>" W "<z_threshold>-<z>" # create a namespace called <trigger_z
 
 # trigger_link
 # link variables to a particular trigger
@@ -134,8 +134,8 @@ INCLUDE "trigger_create" R "<trigger_expression>" W "<z_threshold>-<z>" R "<trig
 # here we link <z> to <trigger_z>, which was created above
 # we demonstrate the use of <linked_on_trigger_occurence> to store the values of <z> on the first and second activation of <trigger_z>
 # and name these values <z_triggered_one> and <z_triggered_two>, respectively
-INCLUDE "trigger_link" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "1.d0" R "<trigger" W "<trigger_z" R "<linked" W "<z_triggered_one" # use the <trigger_z namespace
-INCLUDE "trigger_link" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "2.d0" R "<trigger" W "<trigger_z" R "<linked" W "<z_triggered_two" # use the <trigger_z namespace
+INCLUDE "trigger_link" R "<trigger" W "<trigger_z" R "<linked" W "<z_triggered_one" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "1.d0" # use the <trigger_z namespace
+INCLUDE "trigger_link" R "<trigger" W "<trigger_z" R "<linked" W "<z_triggered_two" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "2.d0" # use the <trigger_z namespace
 
 # we can store the number of times <z> has passed through <z_threshold> by accessing the {<trigger}_logical> variable
 NONE_DERIVED <cumulative passes> "<trigger_z_logical>" stepoutput
@@ -162,7 +162,7 @@ INCLUDE "trigger_link" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trig
 #   stores the maximum value of <var_tracked> over the course of the simulation
 #
 # example
-INCLUDE "series_nonemax" R "<var_tracked>" W "<z>" R "<var" W "<z"
+INCLUDE "series_nonemax" R "<var" W "<z" R "<var_tracked>" W "<z>"
 
 # series_nonemin
 # minimum over entire timeseries
@@ -177,4 +177,4 @@ INCLUDE "series_nonemax" R "<var_tracked>" W "<z>" R "<var" W "<z"
 #   stores the minimum value of <var_tracked> over the course of the simulation
 #
 # example
-INCLUDE "series_nonemin" R "<var_tracked>" W "<z>" R "<var" W "<z"
+INCLUDE "series_nonemin" R "<var" W "<z" R "<var_tracked>" W "<z>"
