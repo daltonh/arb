@@ -13,3 +13,10 @@ CONSTANT <sigma> [1] "1.d0/<We>"
 CONSTANT <mu> "1.d0/<Re>"
 CONSTANT <rho> 1.d0
 CONSTANT <u_av> 1.d0
+
+# non-dimensional gravity
+# this will only come into effect if buoyancy_dynamic_force is included
+CONSTANT <Fr> 1.d-2 # Froude number
+<<dim1comment>>CONSTANT <gravity[l=1]> [m/s^2] 0.d0
+<<dim2comment>>CONSTANT <gravity[l=2]> [m/s^2] "-1.d0/(<Fr>^2)"
+<<dim3comment>>CONSTANT <gravity[l=3]> [m/s^2] 0.d0

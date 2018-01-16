@@ -1,0 +1,21 @@
+# Reconstructed list of the regions in arb format:
+#--------------------------------------------------------------------------------
+# setup regions:
+#--------------------------------------------------------------------------------
+# gmsh regions:
+FACE_GMSH_REGION <north> "gmsh from context region associated with face constant variable <vertical_thickness_new>" # other information: user = 0: dynamic = 0: parent = empty: rindex = empty: fortran = 10: part_of_fortran = empty: parent_fortran = empty: last_variable_masread = empty: newtstepmax = empty: newtstepmin = empty: filename = empty: absfilename = empty: comments = empty
+#--------------------------------------------------------------------------------
+# constant regions:
+#--------------------------------------------------------------------------------
+# transient regions:
+#--------------------------------------------------------------------------------
+# newtient regions:
+#--------------------------------------------------------------------------------
+# derived regions:
+#--------------------------------------------------------------------------------
+# equation regions:
+#--------------------------------------------------------------------------------
+# output regions:
+#--------------------------------------------------------------------------------
+# condition regions:
+#--------------------------------------------------------------------------------

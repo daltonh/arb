@@ -1,13 +1,12 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: asymptote_sensor.arb
-#(hash added during unwrap)INCLUDE_WORKING "asymptote_sensor.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../asymptote_sensor.arb without any search/replace combinations
+   #(comment created during unwrap): new block = asymptote_sensor.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "asymptote_sensor.arb"
    # arb finite volume solver
    # Copyright 2009-2011 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -65,8 +64,7 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_CONSTANT <z_horizontal_asymptote> 2.d0 stepoutput
    NONE_DERIVED <z> [m] "<z_horizontal_asymptote>-1.d0/(<t>+1.d0)" stepoutput # a mock profile with a horizontal asymptote
    
-   #(hash added during unwrap)INCLUDE_TEMPLATE "general"
-   #(comment generated during unwrap) adding new include_path ../templates/general, making include_path array = .. ../templates/general
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "general"
    
    # trigger_create_asymptote_expression
    #
@@ -88,54 +86,45 @@ EXTERNALS "src/free_surface_functions.f90"
    #
    # example:
    # here we create an asymptote expression
-   #(hash added during unwrap)INCLUDE "trigger_create_asymptote_expression" R "<var_tracked>" W "<z>" R "<asymptote" W "<z_asymptote"
-   #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = .. ../templates/general
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/trigger_create_asymptote_expression.arb with the following search/replace combinations: replace <var_tracked> with <z>: replace <asymptote with <z_asymptote
+      #(comment created during unwrap): new block = ../../templates/general/trigger_create_asymptote_expression.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "trigger_create_asymptote_expression" 
+      
       NONE_CONSTANT <z_asymptote_timestep_bin_width> 100.0 #N; or number of bins for mean test
       NONE_DERIVED <z_asymptote_check> "noneif(abs(mod(<timestep>,<z_asymptote_timestep_bin_width>)-1.d0),0,1)" #return 1 if timestep is N+1,2N+1,3N+1 etc. 
-      NONE_DERIVED <z_asymptote_total> "noneif(<z_asymptote_check>,0.d0+<z>,<z_asymptote_total[r=1]>+<z>)" #add end-of-current-timestep <z> to the running total
+      NONE_DERIVED <z_asymptote_total> "noneif(<z_asymptote_check>,0.d0+<z>,<z_asymptote_total[r=1]>+<z>)" #add end-of-current-timestep <var_tracked> to the running total
       NONE_TRANSIENT <z_asymptote_total[r=1]> "0.d0" "<z_asymptote_total>"
       NONE_DERIVED <z_asymptote_mean> "noneif(<z_asymptote_check>,<z_asymptote_total[r=1]>/<z_asymptote_timestep_bin_width>,<z_asymptote_mean[r=1]>)" stepoutput
       NONE_TRANSIENT <z_asymptote_mean[r=1]> "0.d0" "<z_asymptote_mean>"
-      NONE_DERIVED <z_asymptote_measure> "abs(noneif(<z_asymptote_check>,noneif(<z_asymptote_mean[r=0]>,<z_asymptote_mean[r=1]>/<z_asymptote_mean[r=0]>,2.d0),0.d0)-1.d0)" #ratio of means; <z_asymptote_mean[r=1]> is the mean over the period {<timestep>-2N-1 to <timestep>-N-1}, <z_asymptote_mean[r=0]> is the mean over the period {<timestep>-N-1 to <timestep>-1}; where N is the bin width
-      NONE_CONSTANT <z_asymptote_tolerance> 0.01 stepoutput #how close must <z_asymptote_mean[r=1]>/<z_asymptote_mean[r=0]> be to 1.0 in order to cause a sign change in <z_asymptote_expression>
+      NONE_DERIVED <z_asymptote_measure> "abs(noneif(<z_asymptote_check>,noneif(<z_asymptote_mean[r=0]>,<z_asymptote_mean[r=1]>/<z_asymptote_mean[r=0]>,2.d0),0.d0)-1.d0)" #ratio of means; <asymptote_mean[r=1]> is the mean over the period {<timestep>-2N-1 to <timestep>-N-1}, <asymptote_mean[r=0]> is the mean over the period {<timestep>-N-1 to <timestep>-1}; where N is the bin width
+      NONE_CONSTANT <z_asymptote_tolerance> 0.01 stepoutput #how close must <asymptote_mean[r=1]>/<asymptote_mean[r=0]> be to 1.0 in order to cause a sign change in <asymptote_expression>
       NONE_CONDITION <z_asymptote_expression> "<z_asymptote_tolerance>-<z_asymptote_measure>"
       
-      # track the minimum of <z_asymptote_measure>
-      #(hash added during unwrap)INCLUDE "series_nonemin" R "<var_tracked>" W "<asymptote_measure>" R "<var" W "<asymptote_measure"
-      #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/series_nonemin.arb with the following search/replace combinations: replace <var_tracked> with <asymptote_measure>: replace <var with <asymptote_measure
+      # track the minimum of <asymptote_measure>
+      #INCLUDE "series_nonemin" R "<var_tracked>" W "<asymptote_measure>" R "<var" W "<asymptote_measure"
+      # after v0.57 order of replacements is from last to first, consistent with the order on a line and within the file
+         #(comment created during unwrap): new block = ../../templates/general/series_nonemin.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "series_nonemin" 
+         
          NONE_LOCAL <z_asymptote_measure_decrement> "<z_asymptote_measure_min[r=1]>-<z_asymptote_measure>"
          NONE_DERIVED <z_asymptote_measure_min> "noneif(<z_asymptote_measure_decrement>,<z_asymptote_measure_min[r=1]>-<z_asymptote_measure_decrement>,<z_asymptote_measure_min[r=1]>)" stepoutput # decrement the var_min value only if we need to
          NONE_TRANSIENT <z_asymptote_measure_min[r=1]> "<z_asymptote_measure>" "<z_asymptote_measure_min>" input,output
-         #(comment generated during unwrap) INCLUDE finished for ../templates/general/series_nonemin.arb
-         #(comment generated during unwrap)--------------------------------------------------------
-      # just rename <z_asymptote_measure_min> to <z_asymptote_progress>
+      # just rename <asymptote_measure_min> to <asymptote_progress>
       VARIABLE <z_asymptote_measure_min> nooutput,nostepoutput
       NONE_DERIVED <z_asymptote_progress> "<z_asymptote_measure_min>" stepoutput
       
-      #(comment generated during unwrap) INCLUDE finished for ../templates/general/trigger_create_asymptote_expression.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    VARIABLE <z_asymptote_timestep_bin_width> 300.0 # (default is 100 <timestep> bin width)
    VARIABLE <z_asymptote_tolerance> 0.001 # (default is 0.01 tolerance)
    
    # here we create a trigger and link it to the asymptote created above
-   #(hash added during unwrap)INCLUDE "trigger_create" R "<trigger_expression>" W "<z_asymptote_expression>"
-   #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = .. ../templates/general
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/trigger_create.arb with the following search/replace combinations: replace <trigger_expression> with <z_asymptote_expression>
+      #(comment created during unwrap): new block = ../../templates/general/trigger_create.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "trigger_create" 
+      
       NONE_DERIVED <trigger> "noneif(<z_asymptote_expression>,1.d0,0.d0)"
       NONE_TRANSIENT <trigger[r=1]> "0.d0" "<trigger>"
       
       # if <trigger> changes sign over the course of the timestep, then increment <trigger_logical>
       NONE_DERIVED <trigger_logical> "cellif(abs(<trigger>-<trigger[r=1]>)-1e-10,<trigger_logical[r=1]>+1.d0,<trigger_logical[r=1]>)"
       NONE_TRANSIENT <trigger_logical[r=1]> "0.d0" "<trigger_logical>"
-      #(comment generated during unwrap) INCLUDE finished for ../templates/general/trigger_create.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    NONE_CONDITION <z_asymptote_based_stop_condition> "<trigger_logical>" stopcondition
    VARIABLE <trigger_logical> stepoutput
-   #(comment generated during unwrap) INCLUDE finished for ../asymptote_sensor.arb
-   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

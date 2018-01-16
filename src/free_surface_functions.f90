@@ -1,6 +1,6 @@
 ! file src/free_surface_functions.f90
 !
-! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -11,7 +11,8 @@
 ! to run, most notably the computer algebra system maxima
 ! <http://maxima.sourceforge.net/> which is released under the GNU GPL.
 ! 
-! The copyright of arb is held by Dalton Harvie.
+! The original copyright of arb is held by Dalton Harvie, however the
+! project is now under collaborative development.
 ! 
 ! arb is released under the GNU GPL.  arb is free software: you can
 ! redistribute it and/or modify it under the terms of the GNU General
@@ -596,6 +597,11 @@ if (deriv > 0) call error_stop("subroutine facevofphi cannot handle derivative y
 i = ilast ! this is the upwind cell to
 j = jlast ! this face, over which we are calculating the advection
 
+! now correct for possible glueing operations, so that j used in analysis is actually the face attached to this cell
+if (face(jlast)%glue_jface /= 0) then
+  if (face(jlast)%icell(2) == ilast) j = face(jlast)%glue_jface
+end if
+
 if (debug) then
   write(50,*) 'm,ilast,jlast,klast,thread = ',m,ilast,jlast,klast,thread
   write(50,*) 'deriv = ',deriv
@@ -606,10 +612,18 @@ if (debug) then
   write(50,*) 'method = ',method
 end if
 
+! TODO: remove reference to phi, or deal with more consistently - is it a face centred phi anyway?
+! remove check on normal magnitude as a unit normal - assume that normal being passed in is a unit normal already, unless given option of nonunitnormal (versus unitnormal option) - deriv breaks for nonunitnormal
+
+! if phi is passed in, it is used to determine where phi 
 ! examine phi first
-! save phi in a temporary variable
-if (msomeloop_phi <= 0) call error_stop('error with msomeloop_phi passed to facevofphi')
-phi = someloop(thread)%funk(msomeloop_phi)%v
+! save phi in a temporary variable, if it is defined
+! if (msomeloop_phi <= 0) call error_stop('error with msomeloop_phi passed to facevofphi')
+if (msomeloop_phi > 0) then
+  phi = someloop(thread)%funk(msomeloop_phi)%v
+else
+  phi = 0.5d0
+end if
 ! find phitol
 if (msomeloop_phitol > 0) then
   phitol = someloop(thread)%funk(msomeloop_phitol)%v
@@ -622,7 +636,7 @@ if (debug) then
   write(50,*) 'phitol = ',phitol
 end if
 
-if (phi < phitol.or.phi > 1.d0-phitol) then
+if (msomeloop_phi > 0.and.(phi < phitol.or.phi > 1.d0-phitol)) then
   someloop(thread)%funk(m)%v = phi ! if this isn't an interface cell then upwinding is used
   if (debug) write(50,*) 'facevofphi = ',someloop(thread)%funk(m)%v 
   if (debug) write(50,*) 'upwinding used as this isn''t an interface cell according to phi and phitol'

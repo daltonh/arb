@@ -1,3 +1,9 @@
+# list of fundamental physical constants
+# note, in all of these definitions, the word subscript is given in small letters, except for degreesC
 CONSTANT <k_boltzmann> [J/K] 1.3806488d-23 # boltzmann's constant, wiki
 CONSTANT <N_avagadro> [1/mol] 6.022140857d+23 # avagadro's constant, wiki
 CONSTANT <R_gas_constant> [J/K.mol] "<k_boltzmann>*<N_avagadro>"
+CONSTANT <e_electron> [C] 1.60210d-19 # charge of an electron
+CONSTANT <eps_o> [F/m] 8.854187817d-12 # vacuum permittivity
+CONSTANT <T_absolute_zero> [C] -273.15d0 # absolute zero in celcius
+CONSTANT <T_zero_degreesC> [K] "-<T_absolute_zero>" # zero degrees celcius in kelvin

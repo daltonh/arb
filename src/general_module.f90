@@ -1,6 +1,6 @@
 ! file src/general_module.f90
 !
-! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -11,7 +11,8 @@
 ! to run, most notably the computer algebra system maxima
 ! <http://maxima.sourceforge.net/> which is released under the GNU GPL.
 ! 
-! The copyright of arb is held by Dalton Harvie.
+! The original copyright of arb is held by Dalton Harvie, however the
+! project is now under collaborative development.
 ! 
 ! arb is released under the GNU GPL.  arb is free software: you can
 ! redistribute it and/or modify it under the terms of the GNU General
@@ -62,7 +63,7 @@ type node_type
   double precision :: dx_kernel ! characteristic dimension of mesh around this node to be used in kernel scaling - approximately equal to the equivalent radii of surrounding cells (not diameter)
   integer, dimension(:), allocatable :: jface ! array storing j indices of surrounding faces (directly connected, not via glue)
   integer, dimension(:), allocatable :: icell ! array storing i indices of surrounding cells (both directly connected and via glue)
-  integer, dimension(:), allocatable :: glue_knode ! array storing k indices of any coincident nodes (due to faces being glued together) - unallocated if no faces are glueds to this one
+  integer, dimension(:), allocatable :: glue_knode ! array storing k indices of any coincident nodes (due to faces being glued together) - unallocated if no nodes are glueds to this one
   logical :: glue_present ! signifies that some faces that are attached to this node are glued
   logical :: reflect_present ! signifies that some faces within the icells are not only glued, but also includes reflections (in practice means that reflect_multipliers should be allocated and have non-unity values)
   integer, dimension(:,:), allocatable :: reflect_multiplier ! reflect_multiplier for cells in the icell array, taking account of any glued faces.  First index is dimension (1:3), second is icell position
@@ -148,6 +149,7 @@ type region_location_type
   double precision, dimension(:), allocatable :: floats ! list of floats used in this description
   integer, dimension(:), allocatable :: variables ! list of fortran m numbers used in this description
   character(len=100), dimension(:), allocatable :: variabletypes ! list of fortran m numbers used in this description
+  logical :: glue_face = .false. ! if a face-centred region, whether to include faces that are external to the region but glued to faces that are within the region
 end type region_location_type
 
 ! type for regions
@@ -167,6 +169,12 @@ type region_type
   real :: update_time = 0.d0 ! total cpu time that has been spent on updating this region (only for dynamic variables)
   integer :: update_number = 0 ! total number of times that this region has been updated (only for dynamic variables)
   integer :: nslast = 0 ! this is the last index of the cells one separation less than the maximum in region(m) - 0 means that there is no information stored about this separation level, as it is one below the minimum ijk index
+  logical :: timestep_rewind = .false. ! whether this region will be rewound to previous values on a timestep rewind
+  logical :: newtstep_rewind = .false. ! whether this region will be rewound to previous values on a newtstep rewind
+  integer, dimension(:), allocatable :: nslast_timestep_rewind_history
+  integer, dimension(:,:), allocatable :: ijk_timestep_rewind_history ! first index is element number, second is timestep_rewind_history index (eg, timestep_rewind_history_first)
+  integer, dimension(:), allocatable :: nslast_newtstep_rewind_history
+  integer, dimension(:,:), allocatable :: ijk_newtstep_rewind_history ! first index is element number, second is newtstep_rewind_history index (eg, newtstep_rewind_history_first)
 end type region_type
 
 ! data type for any functions that ultimately depend on field data
@@ -175,6 +183,8 @@ type funk_type
   double precision, dimension(:), allocatable :: dv ! value of derivative, in 1:1 with pp
   integer, dimension(:), allocatable :: pp ! phi variable which derivative is taken wrt
   integer :: ndv ! number of derivative elements that currently contain valid data
+  double precision, dimension(:), allocatable :: v_timestep_rewind_history ! value of function in previous timesteps, with v_timestep_rewind_history(timestep_rewind_history_first) referencing the earliest held data
+  double precision, dimension(:), allocatable :: v_newtstep_rewind_history ! value of function in previous newtsteps
 end type funk_type
 
 ! meta data type for general variables
@@ -202,6 +212,9 @@ type var_type
   double precision :: dynamic_magnitude_multiplier ! multiplier that limits the change in each unknown/equation magnitude when being dynamically adjusted.  Set >1. (=1 is equivalent to having static magnitudes, =large places no restriction on the change in magnitude)
   real :: update_time = 0.d0 ! total cpu time that has been spent on updating this variable
   integer :: update_number = 0 ! total number of times that this variable has been updated
+  logical :: timestep_rewind = .false. ! whether this variable will be rewound to previous values on a timestep rewind
+  double precision :: timestep_rewind_multiplier = 1.d0 ! multiplier used when this variable is rewound on a timestep rewind
+  logical :: newtstep_rewind = .false. ! whether this variable will be rewound to previous values on a newtstep rewind
 end type var_type
 
 ! data type for var_lists
@@ -337,8 +350,10 @@ integer :: maximum_faceknodes = 0 ! maximum number of nodes that a face has
 integer :: nthreads = 0 ! if > 1 is the number of openmp threads in use, if == 1 then this signifies either a serial calculation or omp calculation with one thread in use (distinction not important from programming point of view)
 integer :: msomeloop = 0 ! set in allocate_meta_arrays, this is the maximum someloop number (ie, number of someloops)
 integer :: mseparation_list = 0 ! set in allocate_meta_arrays, this is the maximum separation_list (ie, number of separation_lists)
+double precision, dimension(:), allocatable :: newtstep_rewind_lambda_history ! array of previously used lambdas
 integer :: backline = 6, newtline = 4, timeline = 2, totalline = 80 ! length of delimiter lines in the output
-character(len=100) :: input_file = "build/fortran_input.arb" ! fortran specific input file generated by the arb script
+character(len=1000) :: input_file ! fortran specific input file generated by the arb script, set in subroutine setup_dirs
+character(len=1000) :: output_dir ! path to the output_dir from the working_dir, set in subroutine setup_dirs
 type(funk_type), dimension(:), allocatable :: funkt ! funk container which is used to assemble combined funk
 integer, dimension(:), allocatable :: unknown_var_from_pp ! an array for fast lookup of the unknown var number from p
 character(len=100), dimension(:), allocatable :: kernel_options ! list of kernel options, with highest priority on the right
@@ -353,6 +368,19 @@ character(len=100), parameter :: realformat='g15.8' ! formating used for outputt
 character(len=100), parameter :: stringformat='a18' ! formating used for outputting strings (basically variable names) throughout program
 ! reals apparently have about 7 decimal places and width has to be d+7 (ifort)
 integer, parameter :: fwarn = 11, fdetail = 12, foutput = 13, fgmsh = 14, finput = 15, fconverge = 16, foutputstep = 17 ! various file handles
+
+! variables specific to the timestep and newtstep rewind capability
+logical :: timestep_rewind = .false. ! whether timestep rewinding is active
+integer :: timestep_rewind_history = 1 ! (userable, history) number of timesteps remembered
+integer :: timestep_rewind_history_first = 0 ! array index for v_timestep_rewind_history in funks that corresponds to earliest data stored
+integer :: timestep_rewind_history_last = 0 ! array index for v_timestep_rewind_history in funks that corresponds to the latest data stored
+integer :: timestep_rewind_newtstep = 10 ! (userable, newtstep) number of newtsteps that if exceeded in newton loop triggers timestep_rewind
+logical :: newtstep_rewind = .false. ! whether timestep rewinding is active
+integer :: newtstep_rewind_history = 1 ! (userable, history) number of newtsteps remembered
+integer :: newtstep_rewind_history_first = 0 ! array index for v_newtstep_rewind_history in funks that corresponds to earliest data stored
+integer :: newtstep_rewind_history_last = 0 ! array index for v_newtstep_rewind_history in funks that corresponds to the latest data stored
+integer :: newtstep_rewind_lambda = 1.d-4 ! (userable, lambda) lambda limit that if reduced below this triggers a newtstep rewind
+integer :: newtstep_rewind_lambdamultiplier = 0.5d0 ! (userable, lambdamultiplier) what previous lambda is multiplied by
 
 ! define some string parameter arrays
 character(len=100), dimension(9), parameter :: var_types = [ "constant   ", "transient  ", "newtient   ", "unknown    ", &
@@ -389,11 +417,12 @@ logical :: kernel_availability_nodegrad = .false. ! (.false.)
 logical :: kernel_availability_nodeave = .false. ! (.false.)
 
 ! code version details
-real, parameter :: version = 0.56 ! current version
+real, parameter :: version = 0.57 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
-character(len=100), parameter :: versionname = "flexible frogger"
+character(len=100), parameter :: versionname = "roaming ronny"
 
 ! the following are default values for various parameters which can be altered here (and not via user input options)
+! TODO: make these userable via GENERAL_OPTIONS
 double precision, parameter :: limitertolerance = 1.d-10 ! (1.d-10) tolerance used when calculating advection gradient limiting - set to small positive number
 double precision, parameter :: limitercontgrad = 2.d0 ! factor that determines the gradient of the continuous advection limiter - set ~> 1.15 and ~< 2
 double precision, parameter :: normalised_variable_limit = 1.d+10 ! ratio between unknown/equation magnitude and specified order of variable that signals an error 
@@ -406,11 +435,11 @@ logical, parameter :: output_detailed_timings = .false. ! (.false.) whether to g
 logical, parameter :: output_variable_update_times = .true. ! (.true.) time how long it takes to update each variable (on average) and report in output.stat
 logical, parameter :: output_region_update_times = .true. ! (.true.) time how long it takes to update each dynamic region (on average) and report in output.stat
 logical, parameter :: ignore_initial_update_times = .true. ! (.true.) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
-logical, parameter :: kernel_details_file = .false. ! (.false.) print out a text file (output/kernel_details.txt) with all the kernel details
-logical, parameter :: mesh_details_file = .false. ! (.false.) print out a text file (output/mesh_details.txt) with all the mesh details
-logical, parameter :: region_details_file = .false. ! (.false.) print out a text file (output/region_details.txt) with all the region details
-logical, parameter :: link_details_file = .false. ! (.false.) print out a text file (output/link_details.txt) with all the link details
-logical, parameter :: convergence_details_file = .true. ! (.true.) write some convergence debugging data to output/convergence_details.txt
+logical, parameter :: kernel_details_file = .false. ! (.false.) print out a text file (kernel_details.txt) with all the kernel details
+logical, parameter :: mesh_details_file = .false. ! (.false.) print out a text file (mesh_details.txt) with all the mesh details
+logical, parameter :: region_details_file = .false. ! (.false.) print out a text file (region_details.txt) with all the region details
+logical, parameter :: link_details_file = .false. ! (.false.) print out a text file (link_details.txt) with all the link details
+logical, parameter :: convergence_details_file = .true. ! (.true.) write some convergence debugging data to convergence_details.txt
 
 !----------------------------------------------------------------------------
 
@@ -3231,6 +3260,7 @@ end function dindexformat
 function basename(fullname)
 
 ! this function extracts a file's basename from a file's fullname
+! basename has the path stripped off, and trailing extension
 
 character(len=1000) :: basename
 character(len=*) :: fullname
@@ -3243,6 +3273,27 @@ if (cutr - 1 - (cutl + 1) > 1000) stop "ERROR: file name too long in basename"
 basename = trim(adjustl(fullname(cutl+1:cutr-1)))
 
 end function basename
+
+!-----------------------------------------------------------------
+
+function dirname(fullname)
+
+! this function extracts a file's path from a file's fullname
+! if the path is found, it includes the trailing /
+
+character(len=1000) :: dirname
+character(len=*) :: fullname
+integer :: cutr, cutl
+
+cutl=scan(fullname,'/',.true.) ! find rightmost occurance of directory separator
+if (cutl == 0) then
+  dirname = '' ! there is no leading directory, so return an empty string
+else
+! use this to strip off the basename
+  dirname = trim(fullname(1:cutl))
+end if
+
+end function dirname
 
 !-----------------------------------------------------------------
 
@@ -5075,6 +5126,40 @@ call random_seed(put=seed) ! for gnu compiler need to generate unique seed, put 
 deallocate(seed)
 
 end subroutine initialise_random_number
+
+!-----------------------------------------------------------------
+
+subroutine copy_integer_2d_array(original,copy)
+
+! copy 2d allocatable original array to copy array
+
+integer, dimension(:,:), allocatable :: original, copy
+integer, dimension(2) :: new_size
+
+if (allocated(original)) then ! silently ignore if original isn't already allocated
+  new_size = [ ubound(original,1), ubound(original,2) ]
+  call resize_integer_2d_array(keep_data=.false.,array=copy,new_size=new_size)
+  copy = original
+end if
+
+end subroutine copy_integer_2d_array
+
+!-----------------------------------------------------------------
+
+subroutine copy_double_precision_2d_array(original,copy)
+
+! copy 2d allocatable original array to copy array
+
+double precision, dimension(:,:), allocatable :: original, copy
+integer, dimension(2) :: new_size
+
+if (allocated(original)) then ! silently ignore if original isn't already allocated
+  new_size = [ ubound(original,1), ubound(original,2) ]
+  call resize_double_precision_2d_array(keep_data=.false.,array=copy,new_size=new_size)
+  copy = original
+end if
+
+end subroutine copy_double_precision_2d_array
 
 !-----------------------------------------------------------------
 

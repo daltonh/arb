@@ -1,0 +1,287 @@
+# file todo
+#
+# Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+# 
+# This file is part of arb finite volume solver, referred to as `arb'.
+# 
+# arb is a software package designed to solve arbitrary partial
+# differential equations on unstructured meshes using the finite volume
+# method.  Primarily it consists of fortran source code, perl source
+# code and shell scripts.  arb replies on certain third party software
+# to run, most notably the computer algebra system maxima
+# <http://maxima.sourceforge.net/> which is released under the GNU GPL.
+# 
+# The original copyright of arb is held by Dalton Harvie, however the
+# project is now under collaborative development.
+# 
+# arb is released under the GNU GPL.  arb is free software: you can
+# redistribute it and/or modify it under the terms of the GNU General
+# Public License (version 3) as published by the Free Software Foundation.
+# You should have received a copy of the GNU General Public Licence
+# along with arb (see file licence/gpl.txt after unpacking).  If not,
+# see <http://www.gnu.org/licences/>.
+# 
+# arb is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public Licence
+# for more details.
+# 
+# For full details of arb's licence see the licence directory.
+# 
+# The current homepage for the arb finite volume solver project is
+# <http://people.eng.unimelb.edu.au/daltonh/downloads/arb>.
+#
+#-------------------------------------------------------------------------
+
+This file contains details of past changes, current features and the future development direction for arb.
+This information is now basically hosted on our local gitlab server - this file only contains major release summaries
+
+***************************************************************
+CURRENT VERSION:
+
+v0.57
+* rewind capability
+* string (perl) code
+
+-------------------------------
+LONG TERM DESIRABLES:
+
+* loops
+* viscoelastic capability
+* robust two fluid
+* probe operator
+* locate operator
+* lagrangian particle tracking
+* arrays
+* matrix separation
+* adaptive mesh
+* moving mesh
+
+***************************************************************
+PREVIOUS VERSIONS:
+
+-------------------------------
+v0.1
+
+* newton-ralphson + maxima integration (December 2009)
+
+-------------------------------
+v0.2
+
+* multidimensional support
+* dot and ddot operators
+
+-------------------------------
+v0.21 - promising pete
+
+* least-squares kernels (170510)
+* 3d cell geometries (170510)
+* gmsh vector and tensor output (180510)
+* least-sqaures kernel error handling - go back to default if dimensions aren't enough or.. (200510)
+* face centred kernels for all types of derivative (200510)
+* in setup_equations.pl make special somesum cell region <surrounding_faces_move_boundaries> to be used for divergences which is shifted to neighbouring cells (200510)
+* navier-stokes working (200510)
+* facetangents (200510)
+* working for velocity specified (200510)
+* decrease kernel size function where possible (240510)
+* better kernel error handling (messages etc) (240510)
+* general wall bcs for navier-stokes
+* more efficient handling of funk%dv - no duplication and in order? (280510)
+* basic mls kernel method working (050610)
+* mls kernel improvements - specify h_kernel which is independent of number of cells in kernel, and weighting function with long tail (100610)
+* check kernel in 3d (100610)
+
+-------------------------------
+v0.22 - promising penelope
+
+* basic steady-state advection (160610)
+* make somesum someloop with sum, max, min functions (160610)
+* max/min loops take user entered default (170610)
+* incorporate someloop into face_to_equation etc, and combine face_to_equation, cell_to_equation and none_to_equation as one (170610)
+* new faceave and cellave types, including options for advection, limited, gradient etc (170610)
+* limiter for steady-state advection - change adv operator to allow (170610)
+* facemax/min and cellmax/min functions to cycle over regions (170610)
+* max/min standalone operators (170610)
+* if operator (170610)
+* local advection gradient limiting (210610)
+* navier-stokes pressure correction (240610)
+* pack and unpack script (300610)
+* delta function for regions - use in rhie-chow correction (070710)
+* better region treatment in output/input files (070710)
+* list regions each element is a member of (070710)
+
+-------------------------------
+v0.23 - promising percival
+
+* combine equation, dep, phi, consts and rconsts to one var data type, indexed to specific region (210710)
+* combine compounds into one compound data type (210710)
+* field (variables) on cell, face and none regions (210710)
+* remove substitution of 1,2,idiv etc in setup_equations maxima_to_fortran (210710)
+* none centred data written to gmsh file (210710)
+* numerical constants get specific variables with inbuilt defaults (ie newtresmin) (210710)
+* remove gmsh_output_debugging and make flag for debugging output in gmsh_output (210710)
+* output var type (220710)
+* treatment of constants in equations.in and constants.in slightly different - quoted and allows expressions in equations.in, but only a single value (no region_list multiples) (220710)
+* fix up region_list and region_constant treatment - work through region_constants - CELL/FACE_REGION_LIST - CELL/FACE_CONSTANT reads in number of values as specified by region_list (220710)
+* incorporate hsl routines, distinguish between hsl and intel sparsity patterns (250810)
+* version number use in input files (200810)
+* move all contributed software into separate directories and improve makefile handling of this (080910)
+* also replace gaussj with lud routine (080910)
+* replace spatial basis calculation for kernels (140910)
+* automatic kernel resizing based on kernel quality and general cleanup of mls kernels (220910)
+* out-of-core option for pardiso (220910)
+* remove numerical recipes nongpl dependence (230910)
+* lapack svd routine (230910)
+* all contributed software in separate source directory with automatic make detection (230910)
+* gmsh output has element_data option (071010)
+* rewrite and bugfix of construct kernel basis routines for consistent lapack and numrec behaviour (111010)
+* rewrite of run script, now called arb (111010)
+* mesh reading stats to multiples of 10 (151010)
+* tidy up GNU GPL licence details (191010)
+
+-------------------------------
+v0.24 - promising patricia
+
+* setup_equations now checks to see whether things have changed (121110)
+* arb wrapper script handles whole checking and checks on compiler and maxima presence (121110)
+* removal of src_equation directory (121110)
+* packer/history file (151110)
+* solver creates only csr sparse format, conversion done in individual linear solver wrapper modules (091210)
+* implementation of suitesparse umf solver with metis contribution (101210)
+* manual - update install and overall (131210)
+* all set logicals become parameters (141210)
+* BOUNDARY OF user defined region type (141210)
+* sumloop product (141210)
+* harmonic faceave option (141210)
+* check 1D kernel behaviour - 1D test problem (141210)
+* reduction in jacobian matrix size feature (100110)
+* lock suitesparse version number at 3.6.0 (020211)
+
+-------------------------------
+v0.25 - promising percy
+
+* combine gmsh and examples directory (030211)
+* update copyright notice (030211)
+* change variable names:  dependent -> derived, independent -> unknown (030211)
+* better error messages, error checks, someloop definitions and record variable dependencies (080211)
+* quickstart guide for ubuntu/osX (080211)
+* facelink function for dealing with periodic boundaries and connecting regions (230311)
+* major rewrite of gmesh read and write capability, defining multiple gmeshes with individual dimensions, options and split centring output (060411)
+* more gmesh rewriting, allowing data input and related individual variable options (120411)
+* previous_run data now saved to tmp directory (120411)
+* variable length integer format (250411)
+* DEFAULT_OPTIONS (250411)
+
+-------------------------------
+v0.3 - useful ulmar
+
+* transient - major changes including examine_name sub, transient and initial_transient variables, condition variables (010511)
+* DOMAIN OF and ASSOCIATED WITH user defined region types (040511)
+* allow real floats for version numbers and print warning rather than killing simulation dependent on compatibility (040511)
+* CELL_REGION and FACE_REGION specifications allowed in constants.in that overwrite defaults based on gmsh physical entity dimension (050511)
+* create link to latest output files (180511)
+* kill, stop and halt files (010611)
+* more rigorous private/public in fortran modules (020611)
+* no-equation/unknown allowed (060611)
+* WITHIN BOX user defined region type (090611)
+* OsX maxima script handles maxima version 5.24 (150611)
+* use perl storable for better data structure compare (220611)
+* LOCAL variables implemented including check variable (120811)
+* arb --help option to list all options (150811)
+* convergence_details_file option and details file info combined in general_module.f90 (250811)
+* major improvements to the backstepping method, including consistent equation scaling, cautious lambda limiting and false root lambda limiting (270911)
+* output.step file capability, including plot_step misc script for plotting of this file using gnuplot (121011)
+* improvements to variable someloop substitution during variable initialisation (191011)
+* bellcondition (221011)
+* DEFAULT option for linear solvers (301011)
+* rewritten variable dependency checks in setup_equations.pl (081211)
+* optimisation kernels (010312)
+* maxima reuses previous results from current and last arb run (220312)
+* newtstep and timestep stored and reused from msh files (210612)
+* dump files implemented and stop files redone (210612)
+* added openmp support for intel mkl pardiso via arb option omp (210612)
+* added arb optimisation option opt (210612)
+* openmp implemented for all general variables via arb option omp (220612)
+* vtk (paraview) and dat (tecplot) output options added with elementdata functionality (180712)
+* higher order kernel checked and kernel options can be set in constants.in file via KERNEL keyword (100812)
+* automatic kernel separation calculator (140912)
+* bugfix to allow 2D simulations in the xz plane (140912)
+* bugfix to suitesparse makefile (140912)
+
+-------------------------------
+v0.4 - flexible freddy
+
+* INCLUDE file functionality, including major rewrite of input file parsing and fortran input structure, changes in input file syntax and case insensitivity (1/13)
+* advection limiter improvements (3/13)
+* NEWTSTEPOUT keyword to allow outputting every newtonstep (for debugging) (160313)
+* newtonupdate function and some new system variables (210313)
+* bugfix to get suitesparse solver working again (190413)
+* bugfix to 3d advection limiter and better parameter choice (070513)
+* bugfixes, valgrind linux support and openmp under gfortran (although not suitesparse) (130613)
+* PART OF region constraint on AT region definitions (180613)
+* speedup of region linking lookup including omp (180613)
+
+-------------------------------
+
+v0.41 - flexible freeda
+
+* plot_step dynamically refreshes using the -r option (010713)
+* GLUE_FACES functionality allowing true periodic and reflection boundaries (150713)
+* improvements to level-set and navier-stokes template files (150713)
+* improvements to someloop implementations (150713)
+* finally implemented elementnodelimiteddata option and made this the default for all cell centred variables (100913)
+
+-------------------------------
+
+v0.42 - flexible frankie
+
+* hyperbolic optimisation kernel weights (181213)
+* electrokinetic template files, and changes to (including p_error) in navier-stokes/stokes templates files (201213)
+* gmsh workaround/bugfix to element (231213)
+* bugfix for ia32 detection in two makefiles (180114)
+* if linear solver finds a singularity perturb solution and try again (220114)
+* capability to loop through cell regions in order of increasing separation (140214)
+* option for separation loops to spread only across faces, with optional flag evaluated on each face (200314)
+* lots of formatting improvements to plot_step and units included in output_step.csv file (010414)
+* INFO_TITLE, and other info fields added to input file, and automatically generated (080414)
+* generic VARIABLE keyword can reference a previously defined variable, so that new (eg) options, units, expression or region can be specified (140414)
+* external functions capability initiated, concentrating initially on free_surface_functions.f90 (140414)
+* vof setup, interface positioning and advection operators fully implemented in 2D, to lower accurately in 3D (in free_surface_functions.f90) (140514)
+* bugfix for regions that contain no elements (220514)
+* newtstepmax/newtstepmin options for derived and equations control range of newtsteps over which variable will be updated (270514)
+
+-------------------------------
+v0.50 - nosey nodey
+
+* basic implementation of node centred variables, including input and output routines, but not kernels yet (300614)
+* COMMON (also called INTERSECTION) regions command, which produces a new region which has elements of others in common (030714)
+* COMPOUND region is equivalently UNION region command (030714)
+* significant changes to volume_of_fluid templates files (040714)
+* kernel parameters changed (090714)
+* output of gmsh geometrical regions altered to be consistent with msh file standard, particularly for zero dimensional mesh elements (150714)
+* better 2d geometry treatment for faces and cells that are slightly curved (220714)
+* added support for the native pardiso solver (linearsolver=pardiso or pardisoiterative) under ifort on linux, and gfortran on both osx and linux (230714)
+* support for long integer (ilp64) under ifort only (230714)
+* for pointwise compatibility add delimiters onto regions on readin if not already present (300814)
+* improvements in prandtl zero equation, prandtl one equation and wilcox06 turbulence models (280914)
+* decreased the forgotten parameter eps_dv in general_module.f90 to 1.d-40 from 1.d-20 (131014)
+* stop pesky OsX .DS_Store files from being packed via pack (131014)
+* INCLUDE_ROOT statements are hierarchical now, meaning that an included file's INCLUDE_ROOT statement does not alter the parent file's INCLUDE_ROOT directory, allowing routines to include code from other directories without altering the upstream file's behaviour (271014)
+* added cellfromcellave[separationcentreN] averaging so that can pick up properties of a separation cell centre (from the last nth separation loop) in a separation cell (031214)
+* fixed potentially serious bug around faceave[adjacentcells|harmonic|etc] which may have caused an error when used as a demoninator (081214)
+* default kernel polynomialorder and polynomialaverageorder=2 now, and increase in minw with automaximumseparation has been dropped (131214)
+* <<radialdim>> and <<axialdim>> general replacement variables now for 2D cylindrical coordinates (161214)
+* adopting git distribution control (090115)
+
+-------------------------------
+v0.51
+v0.52 - more complete implementation of node-centred variables
+v0.53 - major rewrite of region treatment, including dynamic regions
+* node centred variables
+* dynamic masks for ls and vof
+* clsvof capability
+v0.54 - mainly bugfixes
+v0.55 - introduction of network flow templates and new suite of home-made iterative solvers
+v0.56 - changes to include file paths etc
+
+-------------------------------

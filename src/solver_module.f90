@@ -1,6 +1,6 @@
 ! file src/solver_module.f90
 !
-! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -11,7 +11,8 @@
 ! to run, most notably the computer algebra system maxima
 ! <http://maxima.sourceforge.net/> which is released under the GNU GPL.
 ! 
-! The copyright of arb is held by Dalton Harvie.
+! The original copyright of arb is held by Dalton Harvie, however the
+! project is now under collaborative development.
 ! 
 ! arb is released under the GNU GPL.  arb is free software: you can
 ! redistribute it and/or modify it under the terms of the GNU General
@@ -40,7 +41,7 @@ public newtsolver, residual, update_magnitudes, check_variable_validity, update_
   update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
 
 ! type of linear solver
-character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, intelpardisosafer, suitesparse, hslma28, pardiso, multigrid, mgmres, bicg, bicgstab, descent, doglegdescent, flexible
+character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, intelpardisosafer, suitesparse, hslma28, pardiso, sparse, mgmres, multigrid, bicg, bicgstab, descent, doglegdescent, flexible
 
 ! backstepping parameters for the newton-raphson method
 ! recommended defaults for each parameter are in braces
@@ -60,8 +61,8 @@ double precision :: weight_large_equation_errors_factor = 1.d0 ! (1.d0, userable
 ! debugging options:
 logical, parameter :: print_all_equations_on_delphi_error = .true. ! (.true.) if there is a problem with a delphi, print a list of equations that depend or are collocated with that unknown
 logical, parameter :: print_dependent_equations_on_delphi_error = .true. ! (.true.) if there is a problem with a delphi, print a list of all equations and their derivatives
-logical, parameter :: manage_funk_dv_memory = .true. ! (.true.) whether to deallocate and allocate derived and equation dvs each time to minimise memory requirements
-logical, parameter :: check_solution_accuracy = .false. ! (.false.) calculate how well solution satisfies linear equation - requires manage_funk_dv_memory to be false
+logical :: manage_funk_dv_memory = .true. ! (.true., userable) whether to deallocate and allocate derived and equation dvs each time to minimise memory requirements
+logical :: check_solution_accuracy = .false. ! (.false., userable) calculate how well solution satisfies linear equation - requires manage_funk_dv_memory to be false
 
 ! debugging array:
 integer, dimension(:), allocatable, save :: debug_list_p ! debug_list_p is a list of all unknown delphis that have a problem, referenced by their p index
@@ -442,6 +443,7 @@ use pardiso_module
 use hsl_ma28d_module
 use suitesparse_module
 use mgmres_module
+use sparse_module
 
 double precision, dimension(:), allocatable :: aa
 integer, dimension(:), allocatable :: iaa, jaa
@@ -450,7 +452,7 @@ double precision :: aa_max, varmag, normalisation_multiplier
 character(len=1000) :: formatline
 logical :: singular
 logical, parameter :: normalise_matrix = .false. ! use the variable magnitudes (unknowns/equations) to normalise the matrix coefficients and rhs
-logical, parameter :: perturb_singular = .true. ! if the linear solver carks it complaining about a singularity, try perturbing the solution instead
+logical, parameter :: perturb_singular = .false. ! if the linear solver carks it complaining about a singularity, try perturbing the solution instead
 logical, parameter :: reduce = .false. ! true to reduce the matrix according to order of magnitude of elements*varmag
 double precision :: aa_reduce = 1.d-1 ! if reducing matrix, relative level at which components*varmag are zeroed
 logical, parameter :: condition_number = .false. ! calculate the condition number of the matrix rather than solving the system - requires lots of memory as matrix is reconstructed in full
@@ -687,6 +689,11 @@ else if (trim(linear_solver) == "mgmres") then
 ! mgmres iterative solver
 
   call mgmres_linear_solver(aa,iaa,jaa,delphi,ierror)
+
+else if (trim(linear_solver) == "sparse") then
+! sparse iterative solver
+
+  call sparse_linear_solver(aa,iaa,jaa,delphi,ierror)
 
 else if (trim(linear_solver) == "hslma28") then
 ! hsl_ma28 solver
@@ -1156,7 +1163,7 @@ equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_
           'unknown variables is zero (or very small).  Note that every equation must depend on atleast one unknown variable '// &
           'at all times, otherwise the jacobian has a zero row and is singular.  One possibility is that one of the variables '// &
           'used has the option ''noderivative'' set explicitly or implicitly (by being an output variable for example).  You '// &
-          'may be able to find more clues in the output/convergence_details.txt file, created if convergence_details_file '// &
+          'may be able to find more clues in the convergence_details.txt file, created if convergence_details_file '// &
           'is set to true in general_module.f90.  As a last resort set debug = .true. in subroutine update_magnitudes.'
         ierror = 1
         cycle equation_magnitude_loop
@@ -2080,6 +2087,20 @@ do n = 1, allocatable_character_size(solver_options) ! precedence is now as read
       call error_stop("requested solver weightlargeequationerrorsfactor should be greater than zero")
     end if
     write(*,'(a,g10.3)') 'INFO: setting solver weightlargeequationerrorsfactor = ',weight_large_equation_errors_factor
+  else if (trim(option_name) == "managefunkdvmemory") then
+! manage_funk_dv_memory
+    manage_funk_dv_memory = extract_option_logical(solver_options(n),error)
+    if (error) call error_stop("could not determine managefunkdvmemory from the solver option "// &
+      trim(solver_options(n)))
+    write(*,'(a,l1)') 'INFO: setting solver managefunkdvmemory = ',manage_funk_dv_memory
+  else if (trim(option_name) == "checksolutionaccuracy") then
+! check_solution_accuracy
+    check_solution_accuracy = extract_option_logical(solver_options(n),error)
+    if (error) call error_stop("could not determine checksolutionaccuracy from the solver option "// &
+      trim(solver_options(n)))
+    write(*,'(a,l1)') 'INFO: setting solver checksolutionaccuracy = ',check_solution_accuracy
+    write(*,'(a)') 'INFO: at the same time, turning off managefunkdvmemory to allow checksolutionaccuracy'
+    manage_funk_dv_memory = .false.
   else
     call error_stop(trim(option_name)//" is not a (valid) solver option that can be set from the input file")
   end if
@@ -2116,7 +2137,7 @@ else if (.not.(trim(linear_solver) == "intelpardiso".or.trim(linear_solver) == "
   trim(linear_solver) == "multigrid".or.trim(linear_solver) == "singlegrid".or. &
   trim(linear_solver) == "bicg".or.trim(linear_solver) == "bicgstab".or. &
   trim(linear_solver) == "descent".or.trim(linear_solver) == "doglegdescent".or. &
-  trim(linear_solver) == "flexible".or. &
+  trim(linear_solver) == "flexible".or.trim(linear_solver) == "sparse".or. &
   trim(linear_solver) == "mgmres".or.trim(linear_solver) == "none")) then
   call error_stop('unknown linear solver specified: '//trim(linear_solver))
 end if

@@ -1,0 +1,40 @@
+MARKDOWN
+Here we average the cell centred pressure <p> to the faces producing <p_f>.  The standard method is to use arithmetic averaging, as in
+
+```arb
+FACE_DERIVED <p_f> "faceave(<p>)" ON <allfaces>
+```
+
+Low order averaging adjacentcell averaging use a distance weighted average of the adjacent cell values.  Select this by setting
+```arb
+REPLACEMENTS R "<<pfadjacentcells>>" W "1"
+```
+
+High order adjacentcell averaging is as per low order adjacentcell averaging, except that the gradient within each cell is used to get a better estimate of the pressure on each side of the interface.  The amount of gradient used is set by `<p_f_grad_limiter>` which should be between 0.d0 (low order) and 1.d0 after the file is included.  To use this high order averaging set
+```arb
+REPLACEMENTS R "<<pfadjacentcellshighorder>>" W "1"
+NONE_CONSTANT <p_f_gradient_limiter> 1.d0 # keep this between 0.d0 and 1.d0
+```
+END_MARKDOWN
+
+# this is the default pressure interpolation
+FACE_DERIVED <p_f> "faceave(<p>)" ON <allfaces>
+
+# the following are based on averaging from the adjacentcells only, but possibly using high order averaging
+REPLACEMENTS D "<<pfadjacentcells>>" W "0" D "<<pfadjacentcellshighorder>>" W "0"
+
+IF <<pfadjacentcells>>
+  VARIABLE <p_f> "faceave[adjacentcells](<p>)" output
+ELSE_IF <<pfadjacentcellshighorder>>
+  NONE_CONSTANT <p_f_gradient_limiter> 1.d0 # ranging from 1.d0 (highest order) to 0.d0 which will give same as <<pfadjacentcells>> above
+  IF 1
+    VARIABLE <p_f> "faceave[adjacentcells](cellave[lastface](faceave[advection](<p>,<facefromcelldirection>,<p_f_gradient_limiter>)))" output
+  ELSE_IF 0
+    VARIABLE <p_f> "faceave[adjacentcellsevenweighting](cellave[lastface](faceave[advection](<p>,<facefromcelldirection>,<p_f_gradient_limiter>)))" output
+  ELSE
+    VARIABLE <p_f> "0.5d0*(faceave[advection](<p>,1.d0,<p_f_gradient_limiter>)+faceave[advection](<p>,-1.d0,<p_f_gradient_limiter>))" output
+    IF 1
+      VARIABLE <p_f> "faceif(facedelta(<boundaries>),<p>,<p_f>)" # special case boundary face pressure value to be equal to boundary cell value.  Without this the boundary pressure will be equally weighted.
+    END_IF
+  END_IF
+END_IF

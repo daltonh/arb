@@ -2,6 +2,6 @@
 <<dim1comment>>VARIABLE <dynamic_force_c[l=1]> "<dynamic_force_c[l=1]>+<sigma>*<vof_F_c[l=1]>"
 <<dim2comment>>VARIABLE <dynamic_force_c[l=2]> "<dynamic_force_c[l=2]>+<sigma>*<vof_F_c[l=2]>"
 <<dim3comment>>VARIABLE <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>+<sigma>*<vof_F_c[l=3]>"
-# differencing has to be consistent with that used for <vof_F_f>
+# different types of face discretisations are used when calculating <vof_F_f> in force template file
 VARIABLE <dynamic_force_f> "<dynamic_force_f>+<sigma>*<vof_F_f>"
 

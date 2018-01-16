@@ -1,6 +1,6 @@
 ! file src/contributed/intel_pardiso/intel_pardiso_dummy_module.f90
 !
-! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -11,7 +11,8 @@
 ! to run, most notably the computer algebra system maxima
 ! <http://maxima.sourceforge.net/> which is released under the GNU GPL.
 ! 
-! The copyright of arb is held by Dalton Harvie.
+! The original copyright of arb is held by Dalton Harvie, however the
+! project is now under collaborative development.
 ! 
 ! arb is released under the GNU GPL.  arb is free software: you can
 ! redistribute it and/or modify it under the terms of the GNU General
@@ -50,7 +51,8 @@ logical, optional :: ooc, safer
 write(*,*)
 write(*,*) 'ERROR: the intel mkl pardiso routine has not been compiled into the arb executable'
 write(*,*) 'Check that you are using the intel ifort compiler, and that the intel mkl libraries are present'
-write(*,*) 'Then make clean in obj and rerun'
+write(*,*) 'One problem may be that the pardiso libraries are included.  See the arb option --no-pardiso to remove'
+write(*,*) 'these and allow the intel pardiso libraries to be used'
 write(*,*) 'Alternatively, try another matrix inversion technique'
 stop
 
