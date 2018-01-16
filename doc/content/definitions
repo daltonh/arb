@@ -27,8 +27,10 @@
 [setup_equations]: <<<arbroot>>>/src/setup_equations
 [StringCode.pm]: <<<arbroot>>>/src/setup_equations/StringCode.pm
 [ReadInputFiles.pm]: <<<arbroot>>>/src/setup_equations/ReadInputFiles.pm
-[templates_dir]: <<<arbroot>>>/templates
-[examples_dir]: <<<arbroot>>>/examples
+[templates directory]: <<<arbroot>>>/templates
+[templates general directory]: <<<arbroot>>>/templates/general
+[cylindrical_reflect_r1z3.arb]: <<<arbroot>>>/templates/general/cylindrical_reflect_r1z3.arb
+[examples directory]: <<<arbroot>>>/examples
 [gmsh]: http://gmsh.info
 [Pointwise]: http://www.pointwise.com
 [paraview]: https://www.paraview.org

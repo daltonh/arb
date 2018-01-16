@@ -125,7 +125,7 @@ More commonly code blocks are defined when including other files and when parsin
 
 ### Include statement overview
 
-Include statements allow other input files to be included.   These files can be user written, or be from a library of template files within the [templates directory](#templates_dir).  As an example, 
+Include statements allow other input files to be included.   These files can be user written, or be from a library of template files within the [templates directory].  As an example, 
 ```arb
 INCLUDE_TEMPLATE "navier_stokes/complete_equations"
 ```

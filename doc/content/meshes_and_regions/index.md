@@ -145,15 +145,44 @@ Alternatively, there is another way that may work for your simulation: As arb ca
 
 ##Glued boundaries
 
-The `GLUE_FACES` keyword is used to implement periodic or reflection boundaries by glueing two boundary face regions together. Boundary regions to be glued must have the same element structure (size and number). Individual element matching between the boundaries is accomplished by matching the closest element locations, relative to the region centroids (much like the and operators).
+###Glued faces statement
+The `GLUE_FACES` keyword is used to implement periodic or reflection boundaries by glueing two boundary face regions together.  The boundary regions to be glued must have the same element structure (size and number).  Individual element matching between the boundaries is accomplished by matching the closest element locations, relative to the region centroids (much like the `facelink` and `celllink` operators).
 
-Example of a periodic boundary glueing the top and bottom boundaries of
-a domain:
+Example of a periodic boundary glueing the top and bottom boundaries of a domain:
+```arb
+GLUE_FACES <north> <south>
+```
+Example of a reflection (axis of symmetry) boundary along the left side of a domain:
+```arb
+GLUE_FACES <west> <west> reflect=1
+GLUE_FACES <west> reflect=1 # equivalent shorter form
+```
+If only one region is specified after the `GLUE_FACES` keyword, then the region is assumed to be glued to itself, and hence, the above two reflection commands are equivalent.
 
-Example of a reflection (axis of symmetry) boundary along the left side
-of a domain:
+###Reflection boundaries
 
-In the case of reflection, certain operators (eg, ) need to be aware when they are operating on the component of a vector, that needs to be reflected over this reflection boundary. See the options for each operator.
+What reflection statements to use can be confusing.  There are two types of `reflect=?` statements: those associated with the faces (as specified in the above `GLUE_FACE` command), and those associated with variables (as specified in certain operators).  The `reflect=1` string in the above `GLUE_FACES` statement is the first type, and means that both the geometry (i.e., mesh) and any vector components should be reflected in a direction normal to the glued face when moving through the face.
+
+The second type of reflect statement is affiliated with variables used within certain operators (eg, `facegrad`, `faceave` etc) as these operators need to be aware when they are operating on the component of a vector, that needs to be reflected over this reflection boundary.  As an example of the second, 
+```arb
+FACE_OUTPUT <my variable> "faceave[reflect=1](<u[l=1]>)" # reflect=1 option has been added to the faceave operator so that this operator works correctly over a yz symmetry plane
+```
+would be appropriate in conjunction with the above `GLUE_FACES <west> reflect=1` command to inform faceave that when it moves through the face to the glued domain, the expression it is averaging (here `<u[l=1]>`) is the first component of a vector).  If the operator is not acting on a vector component in a direction of a reflect boundary within the domain, then no reflect string is required.  Hence, in the following `reflect=1` is not required in any operator as there is no `reflect=1` reflection boundary within the simulation:
+```arb
+GLUE_FACES <south> reflect=2 # axis of symmetry along the base of the domain
+FACE_OUTPUT <ugrad_f[l=1,2]> "facegrad[l=1,reflect=2](<u[l=2]>)"
+FACE_OUTPUT <ugrad_f[l=1,1]> "facegrad[l=1](<u[l=1]>)" # reflect=1 not required
+```
+Including `reflect=?` statements in operators incurs a small efficiency penalty when computing the values.  For this reason it is worthwhile ensuring that these operator reflect options are only included when the simulation requires.  Within the templates files this is achieved by string replacements of the form `<<reflect=1>>` which is replaced by `reflect=1` in applicable operators when the domain contains a `reflect=1` boundary, and the empty string otherwise.  Standard setup files are available in the [templates general directory] for setting these reflect replacement strings for commonly used reflection scenarios.  For example, [cylindrical_reflect_r1z3.arb] sets the necessary operator reflect strings within the templates files for an cylindrical simulation conducted in the l=1 (radial) and l=3 (axial) plane.
+
+###Potential problems
+
+Generally glued faces work as you hope that they might, provided that the correct operator reflect option strings are given.  However there are some gotchas in their use due to the fact that glued faces remain as separate faces between the same two adjacent cells.  For example, when looping from a glued face through cells specified by the system region `<adjacentfaceicells>` (as used in `faceave[adjacentcells]` for example), the `cellave[lastface](<blah>)` operator will refer to `<blah>` at the original context face (in the case of glued periodic faces), rather than the particular face that is adjacent to the current cell.  The `faceave` operator accepts a `noglue` option to alter the behaviour of `cellave[lastface]` used in its expression:
+```arb
+FACE_CONSTANT <demo> "faceave[adjacentcells](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" # here the facenorm will come from the context location of <demo> in the case of a periodic glued face
+FACE_CONSTANT <demo2> "faceave[adjacentcells,noglue](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" # here the facenorm will come from the face that is attached (adjacent) to each cell in the case of a periodic glued face, which is probably not what is desirable here
+```
+Other things to note in this context:  Some system regions change the context face to the adjacent face when interpolating to a cell, such as `<adjacentfaceicellsnoglue>`, `<adjacentfaceupcellnoglue>` and `<adjacentfacedowncellnoglue>`.  This change in context face also occurs during `faceave[advection](<blah>)` averaging, meaning that any `cellave[lastface]` referred to in `<blah>` refers to the face that is always adjacent to the current cell.  There is also the averaging operators `cellave[lastfacenoglue]` which attempts to find the adjacent face to a cell instead of (potentially) its glued counterpart, but this option may fail in the case of a single column of periodic cells (may work, not really tested, and not really recommended either).
 
 ## Regions
 
