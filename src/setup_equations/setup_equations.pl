@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # file src/setup_equations/setup_equations.pl
 #
-# Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+# Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
 # 
@@ -63,7 +63,7 @@ use ReadInputFiles; # deals with reading the input files, including sub read_inp
 
 # set global variables that can be accessed from the local packages
 # our is used so that other packages can access these variables
-our $version="0.57";
+our $version="0.58";
 our $minimum_version="0.40";
 
 # now called from build directory and sent these three directories

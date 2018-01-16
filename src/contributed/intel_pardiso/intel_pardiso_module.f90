@@ -1,6 +1,6 @@
 ! file src/contributed/intel_pardiso/intel_pardiso_module.f90
 !
-! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 

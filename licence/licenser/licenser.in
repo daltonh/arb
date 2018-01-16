@@ -35,11 +35,13 @@ src/contributed/mgmres/makefile
 src/contributed/pardiso/pardiso_dummy_module.f90
 src/contributed/pardiso/pardiso_module.f90
 doc/manual/manual.tex
-misc/packer/unpack
-misc/packer/pack.pl
 misc/arb_gnuplot/arb_gnuplot.pl
 misc/test_suite/test_suite
 misc/batcher/batcher.pl
+misc/arb_gnuplot/arb_gnuplot.pl
 install/install_globally.sh
-licence/todo
+misc/arb_clone/arb_clone
+licence/version_history
 bin/arb
+bin/arb_dir
+doc/arb_doc

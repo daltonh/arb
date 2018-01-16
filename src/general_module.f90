@@ -1,6 +1,6 @@
 ! file src/general_module.f90
 !
-! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -417,7 +417,7 @@ logical :: kernel_availability_nodegrad = .false. ! (.false.)
 logical :: kernel_availability_nodeave = .false. ! (.false.)
 
 ! code version details
-real, parameter :: version = 0.57 ! current version
+real, parameter :: version = 0.58 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "roaming ronny"
 
