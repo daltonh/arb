@@ -8,5 +8,8 @@ NONE_CONSTANT <mu_l> [Pa.s] 1.d-3 # viscosity of pure liquid phase
 CELL_LOCAL <phi_fluid> "1.d0" ON <allcells> # this volume fraction will be incremented within the solid_unknowns files
 CELL_LOCAL <phi_fluid_pos> "cellmax(cellmin(<phi_fluid>,1.d0),0.d0)" ON <allcells>
 
+# advection terms
+#CELL_LOCAL <phi_fluid_smoothed> "1.d0-<phi_solid_smoothed>" ON <allcells> output##WRONG! Need to sum all phi_/species/_smoothed??
+CELL_LOCAL <phi_fluid_smoothed> "cellmax(1.d0-<phi_solid_smoothed>,<small_number>)" ON <allcells> output##WRONG! Need to sum all phi_/species/_smoothed??
 # also increment mixture density
-VARIABLE <rho> "<rho> + <rho_l>*<phi_fluid_pos>"
+#VARIABLE <rho> "<rho> + <rho_l>*<phi_fluid_pos>"
