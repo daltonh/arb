@@ -1,7 +1,0 @@
-# setup default species name
-REPLACEMENTS D "/species/" W "solid"
-
-CELL_DERIVED <u_/species/[l=1]> "<u[l=1]>+<sedimentation_hindrance_f>*<u_slip_celldivgrad[l=1]>/(<phi_/species/_smoothed>)" ON <allcells>
-CELL_DERIVED <u_/species/[l=2]> "<u[l=2]>+<sedimentation_hindrance_f>*<u_slip_celldivgrad[l=2]>/(<phi_/species/_smoothed>)" ON <allcells>
-
-FACE_DERIVED <j_/species/_f> "faceave[advection,](<phi_/species/_smoothed>,<u_f>,<adv_limiter>)*<u_f>+<j_pstress_f>" ON <allfaces> # solids fraction at faces
