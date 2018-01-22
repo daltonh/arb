@@ -204,11 +204,11 @@ fi
 # now do the clone
 
 if [ $transport == "ssh" ] ; then
-  echo "performing: git clone -b $branch git@$server:$user/arb.git $directory";
-  git clone -b $branch git@$server:$user/arb.git $directory;
+  echo "performing: git clone -b $branch git@$server:daltonh/arb.git $directory";
+  git clone -b $branch git@$server:daltonh/arb.git $directory;
 elif [ $transport == "http" ] ; then
-  echo "performing: git clone -b $branch http://$server:$port/$user/arb.git $directory";
-  git clone -b $branch http://$server:$port/$user/arb.git $directory;
+  echo "performing: git clone -b $branch http://$user@$server:$port/daltonh/arb.git $directory";
+  git clone -b $branch http://$user@$server:$port/daltonh/arb.git $directory;
 else
   echo "performing: git clone -b $branch $local_dir $directory";
   git clone -b $branch $local_dir $directory;

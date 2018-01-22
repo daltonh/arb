@@ -1,0 +1,16 @@
+# setup default species name
+REPLACEMENTS D "/species/" W "solid"
+
+# include this to define dimensional varying properties
+##NONE_CONSTANT <rho_diff> "<rho_d>-<rho_c>"
+##
+##CELL_LOCAL <vof_rho_c[r=0]> "<vof_phi_lim>*<rho_diff>+<rho_c>" ON <allcells>
+##CELL_LOCAL <vof_rho_c[r=1]> "<vof_phi[r=1]>*<rho_diff>+<rho_c>" ON <allcells>
+###FACE_LOCAL <vof_rho_advection_f[r=1]> "<vof_phi_f_adjusted[r=1]>*<rho_diff>+<rho_c>" ON <allfaces> # advection interpolation to use in fluxes calculation
+### now making <vof_rho_advection_f[r=1]> dependent on <vof_phi_f[r=1]> instead of adjusted one to remove feedback link between <u_f> and <vof_phi> once newtstepmax's start to take effect
+### note, <vof_phi_lim> and <vof_phi_f[r=1]> are both newtstepmaxed, so after a certain number of newtsteps these properties become constant
+##FACE_LOCAL <vof_rho_advection_f[r=1]> "<vof_phi_f[r=1]>*<rho_diff>+<rho_c>" ON <allfaces> # advection interpolation to use in fluxes calculation
+##FACE_LOCAL <vof_rho_f> "<vof_phi_delta_f>*<rho_diff>+<rho_c>" ON <allfaces> # simple interpolation to use in velocity correction calculation
+
+CELL_DERIVED <rho> "<phi_/species/>*<rho_/species/>+(1-<phi_/species/>)*<rho_l>" ON <allcells>
+FACE_DERIVED <rho_f> "<phi_/species/_f>*<rho_/species/>+(1-<phi_/species/_f>)*<rho_l>" ON <allfaces>
