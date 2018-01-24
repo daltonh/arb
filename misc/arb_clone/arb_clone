@@ -216,7 +216,7 @@ fi
 
 # if clean-git is specified remove all .git* files (.git and .gitignore)
 if [ $ocleangit -eq 1 ] ; then
-  find $directory -depth \( -name .git* \) -exec 'rm' '-fr' '{}' ';' ;
+  find $directory -depth \( -name '.git*' \) -exec 'rm' '-fr' '{}' ';' ;
 fi
 
 exit $errorstatus ;

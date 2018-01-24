@@ -30,7 +30,7 @@ Regarding the syntax used in this list:
 -  options may be integers, character strings, floats (double precision) or logicals.  For reference these are interpreted within the fortran using (eg) `function extract_option_string` within [general_module.f90].  Strings may be quoted or unquoted.
 -  the name used in the arb file is the same as the fortran name, except with the underscore characters completely removed (ie, option name written as a single concatenated word).
 
-For example, the fortran option variable `linear_solver` is set to the value `pardiso` using the arb syntax
+For example, the fortran solver option string variable `linear_solver` is set to the value `pardiso` using the arb syntax
 ```arb
 SOLVER_OPTIONS linearsolver=pardiso
 ```
