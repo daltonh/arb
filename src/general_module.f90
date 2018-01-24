@@ -423,6 +423,7 @@ character(len=100), parameter :: versionname = "roaming ronny"
 
 ! the following are default values for various parameters which can be altered here (and not via user input options)
 ! TODO: make these userable via GENERAL_OPTIONS
+! ref: general options
 double precision, parameter :: limitertolerance = 1.d-10 ! (1.d-10) tolerance used when calculating advection gradient limiting - set to small positive number
 double precision, parameter :: limitercontgrad = 2.d0 ! factor that determines the gradient of the continuous advection limiter - set ~> 1.15 and ~< 2
 double precision, parameter :: normalised_variable_limit = 1.d+10 ! ratio between unknown/equation magnitude and specified order of variable that signals an error 
