@@ -1,0 +1,10 @@
+# generic file to calculate the cross product c = a x b
+# c = | delta_1 delta_2 delta_3 |
+#     |     a_1     a_2     a_3 |
+#     |     b_1     b_2     b_3 |
+# assumes that all three vectors have already been defined
+# do replacements on '<a', '<b' and '<c'
+
+VARIABLE <c[l=1]> "<a[l=2]>*<b[l=3]>-<a[l=3]>*<b[l=2]>"
+VARIABLE <c[l=2]> "-<a[l=1]>*<b[l=3]>+<a[l=3]>*<b[l=1]>"
+VARIABLE <c[l=3]> "<a[l=1]>*<b[l=2]>-<a[l=2]>*<b[l=1]>"

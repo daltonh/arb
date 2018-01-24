@@ -1,0 +1,6 @@
+#!/bin/bash
+codetopdfdir=".";
+#cat codetopdf_pre.md /Users/daltonh/codes/arb/owncloud/arb_doc/current/src/main.f90 codetopdf_post.md | pandoc -S -F $(codetopdfdir)/vimhl -o main.pdf
+#cat codetopdf_pre.md /Users/daltonh/codes/arb/owncloud/arb_doc/current/src/main.f90 codetopdf_post.md > main.md
+#cat codetopdf_pre.html codetopdf_pre.md /Users/daltonh/codes/arb/owncloud/arb_doc/current/src/main.f90 codetopdf_post.md codetopdf_post.html > main.md
+cat codetopdf_pre.html codetopdf_pre.md $1 codetopdf_post.md codetopdf_post.html | pandoc -S -F ./vimhl -o `basename $1 .f90`.html

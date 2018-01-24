@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+# rxntoarb
+# (C) Copyright Christian Biscombe 2016-2017
+
+abort "ERROR: Ruby 1.9.3 or newer required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9.3'
+
+require_relative '../lib/rxntoarb/rxntoarb'
+Rxntoarb.run

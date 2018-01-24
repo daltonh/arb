@@ -1,13 +1,12 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_lastfaceglue/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_lastfaceglue/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: maxima_functions.arb
-#(hash added during unwrap)INCLUDE_WORKING "maxima_functions.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../maxima_functions.arb without any search/replace combinations
+   #(comment created during unwrap): new block = maxima_functions.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "maxima_functions.arb"
    # here we test the implementation of some maxima functions
    # no idea what the solutions to these equations are - point is just to make sure that we can calculate the derivatives to these functions without error
    
@@ -16,6 +15,4 @@ EXTERNALS "src/free_surface_functions.f90"
    NONE_EQUATION <x eq> "mod(<x>,<a>)+<x>"
    NONE_UNKNOWN <y> "1.2d0"
    NONE_EQUATION <y eq> "floor(<y>)+<y>"
-   #(comment generated during unwrap) INCLUDE finished for ../maxima_functions.arb
-   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

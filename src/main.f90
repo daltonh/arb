@@ -1,6 +1,6 @@
 ! file src/main.f90
 !
-! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -11,7 +11,8 @@
 ! to run, most notably the computer algebra system maxima
 ! <http://maxima.sourceforge.net/> which is released under the GNU GPL.
 ! 
-! The copyright of arb is held by Dalton Harvie.
+! The original copyright of arb is held by Dalton Harvie, however the
+! project is now under collaborative development.
 ! 
 ! arb is released under the GNU GPL.  arb is free software: you can
 ! redistribute it and/or modify it under the terms of the GNU General
@@ -157,8 +158,6 @@ time_loop: do while ( &
 
     newtstep = newtstep + 1
 
-    if (newtstep >= newtstepdebugout) newtstepout = 1 ! turn on debugging output if simulation looks like its not converging
-
     formatline = "(a,"//trim(dindexformat(newtstep))//",a)"
     write(*,fmt=formatline) repeat('+',newtline)//' newtstep ',newtstep,' starting '//repeat('+',totalline-newtline)
     if (convergence_details_file) then
@@ -238,7 +237,9 @@ time_loop: do while ( &
 
     if (trim(output_step_file) == "newtstep") call output_step(action="write")
 
-    if (check_dumpfile("dumpnewt").or.(newtstepout /= 0.and.mod(newtstep,max(newtstepout,1)) == 0)) then
+! also start writing output files is newtstep >= newtstepdebugout
+
+    if (check_dumpfile("dumpnewt").or.(newtstepout /= 0.and.mod(newtstep,max(newtstepout,1)) == 0).or.newtstep >= newtstepdebugout) then
       write(*,'(a)') 'INFO: user has requested output via a dump file or newtstepout specification'
       call time_process
       call output(intermediate=.true.)
@@ -357,7 +358,7 @@ if (output_timings) write(*,'(2(a,g10.3))') 'TIMING: total wall time = ',total_w
 ! if there was an error or earlier stop requested then exit without closing timestep
 if (ierror /= 0) then
   write(*,'(a)') "WARNING: the last output is not converged"
-  write(*,'(a)') 'INFO: a debug output file (output/debug.output.msh) is being written that contains the current values of '// &
+  write(*,'(a)') 'INFO: a debug output file (debug.output.msh) is being written that contains the current values of '// &
     'all variable components'
   call output(debug_dump=.true.)
   if (trim(output_step_file) == "timestep") call output_step(action="write",do_update_outputs=.false.)

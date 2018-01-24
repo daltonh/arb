@@ -1,13 +1,12 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_lastfaceglue/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_lastfaceglue/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb
-#(hash added during unwrap)INCLUDE_WORKING "oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb without any search/replace combinations
+   #(comment created during unwrap): new block = oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb"
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -26,18 +25,18 @@ EXTERNALS "src/free_surface_functions.f90"
    INFO_DATE "04/2/15" # interpreted as the last modification date
    
    # for a cylindrical droplet
-   #GENERAL_REPLACEMENTS R "#" W "" R "" W "#"
+   #GENERAL_REPLACEMENTS R "<<cylindricalcomment>>" W "" R "<<cartesiancomment>>" W "#"
    # for a cartesian droplet don't need to change anything from their defaults, just comment out the above, as these two strings are set automatically
    
    # for uniform properties (rho and mu) include the following line
    #GENERAL_REPLACEMENTS R "<<uniformcomment>>" W "" R "<<nonuniformcomment>>" W "#"
    # or for nonuniform properties (rho and mu) include the following line
-   #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<uniformcomment>>" W "#" R "<<nonuniformcomment>>" W ""
+   
    
    # for a single mesh domain (all on the fluid mesh) include the following
-   #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<singledomaincomment>>" W "" R "<<doubledomaincomment>>" W "#"
+   
    # for a double mesh domain everything except the curvature calculation (and its dependent smoothed phi and normals) is done on the fluid domain, and the rest on the free surface domain which is coincident and larger
-   #GENERAL_REPLACEMENTS R "" W "#" R "#" W ""
+   #GENERAL_REPLACEMENTS R "<<singledomaincomment>>" W "#" R "<<doubledomaincomment>>" W ""
    
    # the default is for normals calculated at nodes, and then averaged to surrounding cells
    # to use normals based on cellgrad directly include the following which alters the behaviour within the normals templates file:
@@ -82,19 +81,14 @@ EXTERNALS "src/free_surface_functions.f90"
    
    #-------------------------------------------------------------------
    
-   #(hash added during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
-   #(comment generated during unwrap) adding new include_path ../templates/free_surface/volume_of_fluid, making include_path array = .. ../templates/free_surface/volume_of_fluid
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
    # commands to form the single mesh regions from the fluid msh file
-   #(hash added during unwrap)INCLUDE "single_region_formation"
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/single_region_formation.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/single_region_formation.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "single_region_formation"
       # regions specific to fluid mesh
       FACE_REGION <walls> "compound(<boundaries>)"
       FACE_REGION <one face> "at(1.d+4,1.d+4,0.d0)" ON <walls>
       FACE_REGION <walls sans one face> "compound(<walls>-<one face>)"
-      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/single_region_formation.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    # commands to form the double mesh regions from both the fluid and free surface msh files
    # also do general region name replacements
    #INCLUDE "double_region_formation"
@@ -106,24 +100,19 @@ EXTERNALS "src/free_surface_functions.f90"
    #INCLUDE_TEMPLATE "general"
    #INCLUDE "cylindrical_reflect_r1z2"
    # these statements only necessary in cartesian as already included in above files, but GENERAL_REPLACEMENT statements can't be commented out by other strings, so just repeat them
-   #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
-   #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
+   # comment out any references to the third dimension in any included files
+   
    # include this for both cylindrical and cartesian when using a quadrant
-   #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2"
+   
    
    # bring in default physical and numerical constants
-   #(hash added during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
-   #(comment generated during unwrap) adding new include_path ../templates/navier_stokes_v0.54, making include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
-   #(hash added during unwrap)INCLUDE "nondimensional_constants"
-   #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/nondimensional_constants.arb without any search/replace combinations
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/nondimensional_constants.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "nondimensional_constants"
       # use this constants file if solving nondimensionally
       
-      #(hash added during unwrap)INCLUDE "constants"
-      #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/constants.arb without any search/replace combinations
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/constants.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "constants"
          # physical data
          CONSTANT <mu> [Pa.s] 1.d-3 # viscosity of liquid
          CONSTANT <rho> [kg/m^3] 1.d0 # density
@@ -131,34 +120,29 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # replace any references to the face centred fluid properties with the constant values
          # get rid of these replacements and define alternative statements for the face centred fluid properties if they do vary
-         #(hash added during unwrap)GENERAL_REPLACEMENTS REPLACE "<mu_f>" WITH "<mu>" REPLACE "<rho_f>" WITH "<rho>"
+         
          
          # setup transient and steady-state general replacements that are specific to navier-stokes equations, based on simulation type
          # NB, this could be overwritten if using a transient simulation of the steady-state equations for example
-         ##GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
-         #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W ""
+         #<<transientcomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+         #<<steadystatecomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W ""
          
          # now just assume that simulation is steady-state, overwriting this with the transient replacments in the transient_setup files
-         #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W ""
+         
          
          # numerical data
          CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
          CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
          
          # find an estimate of the domain size using general template
-         #(hash added during unwrap)INCLUDE_TEMPLATE "general"
-         #(comment generated during unwrap) adding new include_path ../templates/general, making include_path array = ../templates/navier_stokes_v0.54 ../templates/general
-         #(hash added during unwrap)INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
-         #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54 ../templates/general
-            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/domain_lengthscale.arb without any search/replace combinations
+         #(hash inserted during unwrap)INCLUDE_TEMPLATE "general"
+            #(comment created during unwrap): new block = ../../templates/general/domain_lengthscale.arb: sub_block = 0
+            #(hash inserted during unwrap)INCLUDE "domain_lengthscale" # this will find the none constant <a_lengthscale>
             # find an estimate of the domain size
             # here we use the maximum domain length in each dimension
             # previously used a more accurate but expensive formulation (see minimum_face_boundary_distance)
-            #(hash added during unwrap)INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
-            #(comment generated during unwrap) not adding new include_path ../templates/general, as it is already on the top of include_path array = ../templates/general
-               #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-               #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/general/domain_lengths.arb without any search/replace combinations
+               #(comment created during unwrap): new block = ../../templates/general/domain_lengths.arb: sub_block = 0
+               #(hash inserted during unwrap)INCLUDE "domain_lengths" # this will find a constant vector domain length in each dimension
                # based on node locations, here we calculate the maximum length of the domain in each dimension
                # these loops could be conducted over <boundarynodes>, but although cheaper, this will break if the domain has no boundaries (ie, fully periodic)
                # as this is only a single loop through each node this isn't an expensive calculation anyway (unlike the levelset-based minimum boundary distance)
@@ -171,20 +155,14 @@ EXTERNALS "src/free_surface_functions.f90"
                NONE_CONSTANT <domain_length[l=1]> "<nodexmax[l=1]>-<nodexmin[l=1]>"
                NONE_CONSTANT <domain_length[l=2]> "<nodexmax[l=2]>-<nodexmin[l=2]>"
                #NONE_CONSTANT <domain_length[l=3]> "<nodexmax[l=3]>-<nodexmin[l=3]>"
-               #(comment generated during unwrap) INCLUDE finished for ../templates/general/domain_lengths.arb
-               #(comment generated during unwrap)--------------------------------------------------------
             # this is based on a vector from the minimum to the maximum coordinates
             #NONE_CONSTANT <a_lengthscale> "sqrt(nonemax(dot(<domain_length[l=:]>,<domain_length[l=:]>),0.d0))"
             # this is based on the maximum domain length over the three dimensions
             NONE_CONSTANT <a_lengthscale> "nonemax(<domain_length[l=1]>,nonemax(<domain_length[l=2]>,<domain_length[l=3]>))"
-            #(comment generated during unwrap) INCLUDE finished for ../templates/general/domain_lengthscale.arb
-            #(comment generated during unwrap)--------------------------------------------------------
          
          # for reference calculate some nondimensional quantities
          # these should be overwritten by real nondimensional quantities if this is a nondimensional problem
          CONSTANT <Re> "<u_av>*<rho>*<a_lengthscale>/<mu>" # Reynolds number
-         #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/constants.arb
-         #(comment generated during unwrap)--------------------------------------------------------
       
       # set Reynolds number here to a value so that it isn't left as a function of <mu> from constants
       CONSTANT <Re> [1] 1.d-2 # Reynolds number, overwrite this after this file is included
@@ -193,20 +171,14 @@ EXTERNALS "src/free_surface_functions.f90"
       CONSTANT <mu> "1.d0/<Re>"
       CONSTANT <rho> 1.d0
       CONSTANT <u_av> 1.d0
-      #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/nondimensional_constants.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    
    # v0.50 - now use transient setup files
-   #(hash added during unwrap)INCLUDE "transient_dynamic_setup" # a dynamic timestep to keep the CFL number at a specified level
-   #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/transient_dynamic_setup.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/transient_dynamic_setup.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "transient_dynamic_setup" # a dynamic timestep to keep the CFL number at a specified level
       # use this file to initial a transient Navier-Stokes simulation using explicit dynamic timestepping
-      #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<dynamictimestepcomment>>" W "" R "<<constanttimestepcomment>>" W "#"
-      #(hash added during unwrap)INCLUDE "transient_all_setup"
-      #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/transient_all_setup.arb without any search/replace combinations
+      
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/transient_all_setup.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "transient_all_setup"
          # setup things needed for transient flow
          # this file works for either dynamic or constant timestepping
          # designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
@@ -225,16 +197,16 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # transient bits
          TRANSIENT_SIMULATION
-         #(hash added during unwrap)GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+         
          
          # the default is for constant as opposed to dynamic timestepping
-         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<constanttimestepcomment>>" W "" DEFAULT "<<dynamictimestepcomment>>" W "#"
+         
          
          #---------------------------------------------------------------------------------------------------------
          # dynamic timestepping
          
          # by default there is a explicit newtstep timestep limitation - to remove it reverse the following string replacement
-         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "" DEFAULT "<<nonnewtsteptimestepcomment>>" W "#"
+         
          
          # dynamic timestep constants
          CONSTANT <dt_increase> 1.2d0
@@ -249,17 +221,16 @@ EXTERNALS "src/free_surface_functions.f90"
          #NONE_LOCAL <dt_newtstep_increase[r=1]> "<dt_increase>" # placeholder for nonnewtsteplimited timestepping
          
          # the default is for explicit timestepping, but implicit can also be enabled by reversing the following strings
-         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+         
          
          NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
          FACE_TRANSIENT <u_f[r=1]> "0.d0" "<u_f>" ON <allfaces> # don't actually need this for implicit timestepping, but it is used in input files for some of the problems for output, so in the interests of not breaking things...
          
          # explicit
          # use CFL_number template, but make the calculation explicit - ie, based on r=1 values
-         #(hash added during unwrap)INCLUDE "CFL_number" R "<CFL local/dt>" W "<CFL local/dt[r=1]>" R "<u_f>" W "<u_f[r=1]>" R "<CFL local>" W "<CFL local[r=1]>" R "<dt>" W "<dt[r=1]>" R "NONE_OUTPUT <CFL>" W 'NONE_TRANSIENT <CFL[r=1]> ""'
-         #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/CFL_number.arb with the following search/replace combinations: replace <CFL local/dt> with <CFL local/dt[r=1]>: replace <u_f> with <u_f[r=1]>: replace <CFL local> with <CFL local[r=1]>: replace <dt> with <dt[r=1]>: replace NONE_OUTPUT <CFL> with NONE_TRANSIENT <CFL[r=1]> ""
+            #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/CFL_number.arb: sub_block = 0
+            #(hash inserted during unwrap)INCLUDE "CFL_number" 
+            
             # these lines just output the global CFL number for a transient simulation
             # replace nooutput with output to also output local CFL number
             # <facedivop> is positive if a face normal points outwards from the last cell, so these numbers are based on the total flowrate out of each cell
@@ -267,9 +238,7 @@ EXTERNALS "src/free_surface_functions.f90"
             #CELL_LOCAL <CFL local/dt[r=1]> "facesum(faceif(<facedivop>*<u_f[r=1]>,1.d0*<facedivop>*<u_f[r=1]>,0.d0),region=<celljfaces>)/1.d0" ON <domain> nooutput
             CELL_LOCAL <CFL local[r=1]> "<dt[r=1]>*<CFL local/dt[r=1]>" ON <domain> nooutput
             NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)"
-            #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/CFL_number.arb
-            #(comment generated during unwrap)--------------------------------------------------------
-         #NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
+         #<<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <CFL[r=1]> "" "cellmax(<CFL local[r=1]>,region=<domain>)" output,stepoutput
          NONE_TRANSIENT <CFL[r=1]> output,stepoutput
          NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
          
@@ -282,10 +251,10 @@ EXTERNALS "src/free_surface_functions.f90"
          #NONE_LOCAL <dt_target> "nonemax(nonemin(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>)),<dt_max>),<dt_min>)"
          # harmonically averaged, for smoother convergence than the straight minimum which can bounce around
          # disadvantage of the particular harmonic function used is for a factor of two (see below) the dt could be up to twice what the CFL criterion dictates, but using a factor of one can unreasonably decrease timestep below the CFL limit for many timestep combinations
-         ##NONE_LOCAL <dt_explicit_target> "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
-         ##NONE_LOCAL <dt_CFL_target> "nonemax(<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>),<dt_min>)" stepoutput
+         #<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_explicit_target> "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
+         #<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_CFL_target> "nonemax(<CFL_max>/cellmax(<CFL local/dt>,default=<tiny>,region=<domain>),<dt_min>)" stepoutput
          # using two factor here which really doesn't respect dt_increase and CFL_max values correctly, but performs best when both timescales are about the same - ie, more thought required
-         ##NONE_LOCAL <dt_target> "2.d0/(1.d0/<dt_explicit_target>+1.d0/<dt_CFL_target>)" stepoutput
+         #<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_LOCAL <dt_target> "2.d0/(1.d0/<dt_explicit_target>+1.d0/<dt_CFL_target>)" stepoutput
          #NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
          
          #---------------------------------------------------------------------------------------------------------
@@ -303,10 +272,6 @@ EXTERNALS "src/free_surface_functions.f90"
          CELL_TRANSIENT <u[l=2,r=1]> "" "<u[l=2]>" ON <allcells>
          #CELL_TRANSIENT <u[l=3,r=1]> "" "<u[l=3]>" ON <allcells>
          
-         #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/transient_all_setup.arb
-         #(comment generated during unwrap)--------------------------------------------------------
-      #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/transient_dynamic_setup.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    #INCLUDE "transient_implicit_setup" # a dynamic timestep to keep the CFL number at a specified level
    #INCLUDE "transient_constant_setup" # a constant timestep
    
@@ -319,26 +284,17 @@ EXTERNALS "src/free_surface_functions.f90"
    #CONSTANT <dt_surf> "0.5d0*sqrt(0.5d0*<We>*<celldxave>^3/<pi>)"
    #NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
    
-   #(hash added during unwrap)INCLUDE "nonuniform_properties" # this just cancels the previous general property replacements on <mu_f> and <rho_f>
-   #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/nonuniform_properties.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/nonuniform_properties.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "nonuniform_properties" # this just cancels the previous general property replacements on <mu_f> and <rho_f>
       # for now this just cancels the general variable property replacements done in constants.arb
-      #(hash added during unwrap)GENERAL_REPLACEMENTS CANCEL "<mu_f>" CANCEL "<rho_f>"
-      #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/nonuniform_properties.arb
-      #(comment generated during unwrap)--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
-   #(comment generated during unwrap) adding new include_path ../templates/free_surface/volume_of_fluid, making include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-   #(hash added during unwrap)INCLUDE "nondimensional_constants"
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/nondimensional_constants.arb without any search/replace combinations
+      
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/nondimensional_constants.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "nondimensional_constants"
       # use this constants file if solving nondimensionally
       
-      #(hash added during unwrap)INCLUDE "constants"
-      #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = ../templates/free_surface/volume_of_fluid
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/constants.arb without any search/replace combinations
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/constants.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "constants"
          # physical data
          CONSTANT <sigma> [N/m] 0.072d0 # surface tension coefficient
          
@@ -346,8 +302,12 @@ EXTERNALS "src/free_surface_functions.f90"
          CONSTANT <Ca> "<u_av>*<mu>/<sigma>"
          CONSTANT <We> "<Ca>*<Re>"
          CONSTANT <S> "1.d0/(<We>+<Ca>)"
-         #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/constants.arb
-         #(comment generated during unwrap)--------------------------------------------------------
+         
+         # conventional vertical gravity, defined whether buoyancy is on or off
+         # whether this is included as a force is determined by whether buoyancy_dynamic_force is included
+         CONSTANT <gravity[l=1]> [m/s^2] 0.d0
+         CONSTANT <gravity[l=2]> [m/s^2] -9.81d0
+         #CONSTANT <gravity[l=3]> [m/s^2] 0.d0
       
       CONSTANT <S> 1.d+3 # surface tension strength nondimensional number, see harvie 2004
       
@@ -360,14 +320,17 @@ EXTERNALS "src/free_surface_functions.f90"
       CONSTANT <mu> "1.d0/<Re>"
       CONSTANT <rho> 1.d0
       CONSTANT <u_av> 1.d0
-      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/nondimensional_constants.arb
-      #(comment generated during unwrap)--------------------------------------------------------
+      
+      # non-dimensional gravity
+      # this will only come into effect if buoyancy_dynamic_force is included
+      CONSTANT <Fr> 1.d-2 # Froude number
+      CONSTANT <gravity[l=1]> [m/s^2] 0.d0
+      CONSTANT <gravity[l=2]> [m/s^2] "-1.d0/(<Fr>^2)"
+      #CONSTANT <gravity[l=3]> [m/s^2] 0.d0
    # calculate the mac2 cartesian vof velocity errors for reference (http://dx.doi.org/10.1016/j.apm.2005.08.015)
    #INCLUDE "parasitic_mac2_correlation"
-   #(hash added during unwrap)INCLUDE "parasitic_nonuniform_properties_mac2_correlation"
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/parasitic_nonuniform_properties_mac2_correlation.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/parasitic_nonuniform_properties_mac2_correlation.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "parasitic_nonuniform_properties_mac2_correlation"
       # calculates the parasitic current magnitude based on dhamm06 paper, using nondimensional numbers <We> and <Ca>
       # now for nonuniform density and viscosity
       
@@ -382,27 +345,22 @@ EXTERNALS "src/free_surface_functions.f90"
       CONSTANT <parasitic_mac2_u_A> "<parasitic_mac2_uu_A>*<parasitic_mac2_a_A>" stepoutput
       NONE_TRANSIENT <parasitic_mac2_u_T> "" "<parasitic_mac2_uu_T>*<parasitic_mac2_a_T>" stepoutput
       NONE_TRANSIENT <parasitic_mac2_u_p> "" "nonemin(<parasitic_mac2_u_V>,nonemin(<parasitic_mac2_u_A>,<parasitic_mac2_u_T>))" stepoutput
-      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/parasitic_nonuniform_properties_mac2_correlation.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    # for nonuniform properties, define them
-   #(hash added during unwrap)INCLUDE "nondimensional_nonuniform_properties"
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/nondimensional_nonuniform_properties.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/nondimensional_nonuniform_properties.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "nondimensional_nonuniform_properties"
       # include this to define nondimensional varying properties
       CONSTANT <vof_rho_d_ratio> 1.d0 # dimensional <rho_d>/<rho_c>
       CONSTANT <vof_mu_d_ratio> 1.d0 # dimensional <mu_d>/<mu_c>
       # include dimensional properties, noting that now properties are scaled by continuous phase, but also multiplied by <rho> and <mu> (which may include nondimensional groups say)
-      #(hash added during unwrap)INCLUDE "nonuniform_properties" R "<rho_c>" W "<rho>" R "<mu_c>" W "<mu>"
-      #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = ../templates/free_surface/volume_of_fluid
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/nonuniform_properties.arb with the following search/replace combinations: replace <rho_c> with <rho>: replace <mu_c> with <mu>
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/nonuniform_properties.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "nonuniform_properties" 
+         
          # include this to define dimensional varying properties
          NONE_CONSTANT <rho_diff> "<rho_d>-<rho>"
          NONE_CONSTANT <mu_diff> "<mu_d>-<mu>"
          CELL_LOCAL <vof_rho_c[r=0]> "<vof_phi_lim>*<rho_diff>+<rho>" ON <allcells>
          CELL_LOCAL <vof_rho_c[r=1]> "<vof_phi[r=1]>*<rho_diff>+<rho>" ON <allcells>
-         #FACE_LOCAL <vof_rho_advection_f[r=1]> "<vof_phi_f_adjusted[r=1]>*<rho_diff>+<rho>" ON <allfaces> # advection interpolation to use in fluxes calculation
+         #FACE_LOCAL <vof_rho_advection_f[r=1]> "<vof_phi_f_adjusted[r=1]>*<rho_diff>+<rho_c>" ON <allfaces> # advection interpolation to use in fluxes calculation
          # now making <vof_rho_advection_f[r=1]> dependent on <vof_phi_f[r=1]> instead of adjusted one to remove feedback link between <u_f> and <vof_phi> once newtstepmax's start to take effect
          # note, <vof_phi_lim> and <vof_phi_f[r=1]> are both newtstepmaxed, so after a certain number of newtsteps these properties become constant
          FACE_LOCAL <vof_rho_advection_f[r=1]> "<vof_phi_f[r=1]>*<rho_diff>+<rho>" ON <allfaces> # advection interpolation to use in fluxes calculation
@@ -410,8 +368,6 @@ EXTERNALS "src/free_surface_functions.f90"
          CELL_LOCAL <vof_mu_c> "<vof_phi_lim>*<mu_diff>+<mu>" ON <allcells>
          FACE_LOCAL <vof_mu_f> "faceave(<vof_mu_c>)" ON <allfaces>
          FACE_LOCAL <vof_mu_harmonic_f> "faceave[harmonic](<vof_mu_c>)" ON <allfaces>
-         #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/nonuniform_properties.arb
-         #(comment generated during unwrap)--------------------------------------------------------
       NONE_CONSTANT <rho_diff> "(<vof_rho_d_ratio>-1.d0)*<rho>"
       NONE_CONSTANT <mu_diff> "(<vof_mu_d_ratio>-1.d0)*<mu>"
       
@@ -424,8 +380,6 @@ EXTERNALS "src/free_surface_functions.f90"
       #CELL_LOCAL <vof_mu_c> "(cellmax(<vof_phi_lim>,0.d0)*(<vof_mu_d_ratio>-1.d0)+1.d0)*<mu>" ON <allcells>
       #FACE_LOCAL <vof_mu_f> "faceave(<vof_mu_c>)" ON <allfaces>
       #FACE_LOCAL <vof_mu_harmonic_f> "faceave[harmonic](<vof_mu_c>)" ON <allfaces>
-      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/nondimensional_nonuniform_properties.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    
    # physical data, now for nondimensional uniform properties
    # set these
@@ -441,12 +395,9 @@ EXTERNALS "src/free_surface_functions.f90"
    CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
    
    # CSF based levelset formulation with reinitialisation
-   #(hash added during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-   #(hash added during unwrap)INCLUDE "setup"
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/setup.arb without any search/replace combinations
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/setup.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "setup"
       # first set up some constants relating to the discretisation
       
       # phi fraction below which (for either phase) indicates that we aren't in an interface cell 
@@ -484,9 +435,9 @@ EXTERNALS "src/free_surface_functions.f90"
       #CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi>" "<vof_phi>" ON <allcells> nooutput
       
       # mask setup:
-      #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<vofmaskcomment>>" W "" # if this is not set then no masks are defined.  If you don't want to use masks, then include remove_masks near the start of the input file.
-      #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<maxfaceaveseparation>>" W "3" # default maximum separation used for the faceave kernels, which can be overwritten outside of this routine
-      #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<maxfacegradseparation>>" W "3" # default maximum separation used for the facegrad kernels, which can be overwritten outside of this routine
+      # if this is not set then no masks are defined.  If you don't want to use masks, then include remove_masks near the start of the input file.
+      # default maximum separation used for the faceave kernels, which can be overwritten outside of this routine
+      # default maximum separation used for the facegrad kernels, which can be overwritten outside of this routine
       
       # interface masks (on fluid domain):
       # first we deal with the interface masks, which are concerned with the phi advection calculation, as well as the 
@@ -506,8 +457,6 @@ EXTERNALS "src/free_surface_functions.f90"
       # normal masks are now calculated where the normals are calculated.
       
       CELL_LOCAL <vof_phi_initial> "0.d0" # default initial phi value - set this to something in the actual input file
-      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/setup.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    
    # define real initial vof
    NONE_CONSTANT <vof_phi_initial_tol> 1.d-4 # accuracy in computing initial shapes (in terms of volume fraction per cell)
@@ -528,16 +477,12 @@ EXTERNALS "src/free_surface_functions.f90"
    # calculate the interface curvature using the normal (low order) vof technique
    #INCLUDE "interface_geometry"
    # or, instead by solving a separate level-set-like field to calculate the normals, termed a high order vof technique
-   #(hash added during unwrap)INCLUDE "high_order_interface_geometry"
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/high_order_interface_geometry.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/high_order_interface_geometry.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "high_order_interface_geometry"
       # these are the standard includes necessary to calculate the surface curvature, using a higher-order reconstructed level-set type formulation, which does not require 
       
-      #(hash added during unwrap)INCLUDE "implicit_reconstructed_levelset"
-      #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = ../templates/free_surface/volume_of_fluid
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb without any search/replace combinations
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "implicit_reconstructed_levelset"
          # implicit reconstructed levelset idea
          CELL_UNKNOWN <vof_s> "2.d0*<vof_phi_interface>-1.d0" ON <allcells> magnitude=1.d0
          CONSTANT <vof_s_interface_width> 1.d0 # this controls the thickness of the interface, roughly in terms of the local cell width
@@ -547,16 +492,13 @@ EXTERNALS "src/free_surface_functions.f90"
          FACE_DERIVED <vof_s_j> "-<vof_s_D>*facegrad(<vof_s>)" ON <allfaces>
          CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
          FACE_EQUATION <vof_s boundary> "2.d0*<vof_phi_interface>-1.d0-<vof_s>" ON <boundaries>
-         #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb
-         #(comment generated during unwrap)--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "normals" R "<vof_phi_smoothed>" W "<vof_s>"
-      #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = ../templates/free_surface/volume_of_fluid
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/normals.arb with the following search/replace combinations: replace <vof_phi_smoothed> with <vof_s>
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "normals" 
+         
          # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
          
          # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
-         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<vofnodenormalscomment>>" W "" DEFAULT "<<vofcellnormalscomment>>" W "#"
+         
          
          # first calculate masks for the normals
          CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=3,faceseparation](<vof_delta_mask[r=1]>)" ON <allcells>
@@ -578,12 +520,8 @@ EXTERNALS "src/free_surface_functions.f90"
          CELL_DERIVED <vof_phigrad_unit[l=1]> "<vof_phigrad[l=1]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]> output
          CELL_DERIVED <vof_phigrad_unit[l=2]> "<vof_phigrad[l=2]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]>
          #CELL_DERIVED <vof_phigrad_unit[l=3]> "<vof_phigrad[l=3]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]>
-         #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/normals.arb
-         #(comment generated during unwrap)--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "curvature"
-      #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = ../templates/free_surface/volume_of_fluid
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/curvature.arb without any search/replace combinations
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/curvature.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "curvature"
          # within this file we calculate the curvature
          
          # uses implicit cell centred unit normals
@@ -595,51 +533,57 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # cell centred curvature is calculated directly from face centred curvature now
          CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" ON <vof_delta_mask[r=1]> output
-         #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/curvature.arb
-         #(comment generated during unwrap)--------------------------------------------------------
-      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/high_order_interface_geometry.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    
    # and now move back to the fluid mesh
    #INCLUDE "cancel_free_surface_replacements"
    #INCLUDE "fluid_replacements"
    
-   #(hash added during unwrap)INCLUDE "force" # force done back on the fluid mesh
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/force.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "force" # force done back on the fluid mesh
       # within this file we calculate the cell centred surface force and face centred force used in the <u_f> interpolation
       
       CELL_DERIVED <vof_F_c[l=1]> "<vof_kappa_c>*celldivgrad[l=1](<vof_phi_delta_f>)" ON <vof_delta_mask[r=1]>
       CELL_DERIVED <vof_F_c[l=2]> "<vof_kappa_c>*celldivgrad[l=2](<vof_phi_delta_f>)" ON <vof_delta_mask[r=1]>
       #CELL_DERIVED <vof_F_c[l=3]> "<vof_kappa_c>*celldivgrad[l=3](<vof_phi_delta_f>)" ON <vof_delta_mask[r=1]>
       
-      # differencing type used here must match that in the p_error calc
-      FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
-      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/force.arb
-      #(comment generated during unwrap)--------------------------------------------------------
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 1
+         #(hash inserted during unwrap)IF 1
+         # the following copied from navier-stokes p_error
+         # for evaluating the face centred dynamic force there are three options: dxunit, facegrad and adjacentcells
+         # uncomment the comment string corresponding to the one you want
+         # default is dxunit
+         # remember to set all of these strings on entry if changing from the default, with only the requested one uncommented
+         
+         
+         # differencing type used here must match that in the p_error calc
+         # dxunit method
+         FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+         # facegrad method
+         #FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad(<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+         # adjacentcells method
+         #FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[adjacentcells](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 1
+         #(hash inserted during unwrap)ELSE
+         #(hash inserted during unwrap)FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+         #(hash inserted during unwrap)END_IF
    
    # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
-   #(hash added during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
-   #(comment generated during unwrap) adding new include_path ../templates/navier_stokes_v0.54, making include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
    # nonuniform
-   #(hash added during unwrap)INCLUDE "total_stress" R "<mu_f>" W "<vof_mu_harmonic_f>"
-   #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/total_stress.arb with the following search/replace combinations: replace <mu_f> with <vof_mu_harmonic_f>
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/total_stress.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "total_stress" 
+      
       # total stress tensor
-      #(hash added during unwrap)INCLUDE "u_gradient_tensor"
-      #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/u_gradient_tensor.arb without any search/replace combinations
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/u_gradient_tensor.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "u_gradient_tensor"
          # a tensor of face centred gradients that respects any reflections
          # used in the total stress and boundary conditions now
          # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
-                        FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,reflect=1](<u[l=1]>)" ON <allfaces>
+         FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,reflect=1](<u[l=1]>)" ON <allfaces>
          FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,reflect=2](<u[l=2]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <allfaces>
          FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,reflect=1](<u[l=1]>)" ON <allfaces>
-                        FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,reflect=2](<u[l=2]>)" ON <allfaces>
+         FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,reflect=2](<u[l=2]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,reflect=1](<u[l=1]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,reflect=2](<u[l=2]>)" ON <allfaces>
@@ -650,18 +594,16 @@ EXTERNALS "src/free_surface_functions.f90"
          # this is a now a placeholder for where this should be calculated
          # to include this contribution just include u_divergence_face somewhere after this file and <udiv_f> will be correctly calculated
          FACE_DERIVED <udiv_f> "0.d0" ON <allfaces>
-         #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/u_gradient_tensor.arb
-         #(comment generated during unwrap)--------------------------------------------------------
       
       # no both cartesian and cylindrical stresses don't include pressure
       # without the numerical velocity divergence
-      # FACE_LOCAL <tau[l=1,1]> "-<vof_mu_harmonic_f>*2.d0*<ugrad_f[l=1,1]>" ON <allfaces>
-      # FACE_LOCAL <tau[l=2,2]> "-<vof_mu_harmonic_f>*2.d0*<ugrad_f[l=2,2]>" ON <allfaces>
-      ## FACE_LOCAL <tau[l=3,3]> "-<vof_mu_harmonic_f>*2.d0*<ugrad_f[l=3,3]>" ON <allfaces>
+      #<<dim1comment>> FACE_LOCAL <tau[l=1,1]> "-<mu_f>*2.d0*<ugrad_f[l=1,1]>" ON <allfaces>
+      #<<dim2comment>> FACE_LOCAL <tau[l=2,2]> "-<mu_f>*2.d0*<ugrad_f[l=2,2]>" ON <allfaces>
+      #<<dim3comment>> FACE_LOCAL <tau[l=3,3]> "-<mu_f>*2.d0*<ugrad_f[l=3,3]>" ON <allfaces>
       # with the numerical velocity divergence (although it is generally set to zero in u_gradient_tensor anyway)
       # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
-       FACE_LOCAL <tau[l=1,1]> "-<vof_mu_harmonic_f>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <allfaces>
-       FACE_LOCAL <tau[l=2,2]> "-<vof_mu_harmonic_f>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <allfaces>
+      FACE_LOCAL <tau[l=1,1]> "-<vof_mu_harmonic_f>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <allfaces>
+      FACE_LOCAL <tau[l=2,2]> "-<vof_mu_harmonic_f>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <allfaces>
       # FACE_LOCAL <tau[l=3,3]> "-<vof_mu_harmonic_f>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <allfaces>
       FACE_LOCAL <tau[l=1,2]> "-<vof_mu_harmonic_f>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <allfaces>
       #FACE_LOCAL <tau[l=1,3]> "-<vof_mu_harmonic_f>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <allfaces>
@@ -669,25 +611,18 @@ EXTERNALS "src/free_surface_functions.f90"
       FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <allfaces>
       #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <allfaces>
       #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <allfaces>
-      #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/total_stress.arb
-      #(comment generated during unwrap)--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "advection_flux" R "<rho_f>" W "<vof_rho_f>" R "<mu_f>" W "<vof_mu_f>"
-   #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/advection_flux.arb with the following search/replace combinations: replace <rho_f> with <vof_rho_f>: replace <mu_f> with <vof_mu_f>
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/advection_flux.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "advection_flux" 
+      
       # uses a rhie-chow type interpolation method to calculate the fluid flux (velocity) over and in the direction of each face
       
-      #(hash added during unwrap)INCLUDE "p_error"
-      #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/p_error.arb without any search/replace combinations
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/p_error.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "p_error"
          # a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
          # pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
          
-         #(hash added during unwrap)INCLUDE "dynamic_force" # cell centred dynamic force
-         #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-            #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/dynamic_force.arb without any search/replace combinations
+            #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/dynamic_force.arb: sub_block = 0
+            #(hash inserted during unwrap)INCLUDE "dynamic_force" # cell centred dynamic force
             # dynamic force is the pressure force that could cause fluid movement
             # it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
             # dynamic force now has the physically correct sign!
@@ -700,16 +635,10 @@ EXTERNALS "src/free_surface_functions.f90"
             FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[reflect=1,adjacentcells](<dynamic_force_c[l=1]>)"
             FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[reflect=2,adjacentcells](<dynamic_force_c[l=2]>)"
             #FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
-            #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/dynamic_force.arb
-            #(comment generated during unwrap)--------------------------------------------------------
          FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
          FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domainfaces>
-         #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/p_error.arb
-         #(comment generated during unwrap)--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "u_f"
-      #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/u_f.arb without any search/replace combinations
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/u_f.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "u_f"
          # calculate the Rhie-Chow type velocity correction, only applied (nonzero) on the domain faces
          FACE_LOCAL <u_f_vect[l=1]> "faceave[reflect=1](<u[l=1]>)"
          FACE_LOCAL <u_f_vect[l=2]> "faceave[reflect=2](<u[l=2]>)"
@@ -722,16 +651,16 @@ EXTERNALS "src/free_surface_functions.f90"
          # alternative v0.5 method based on average velocity magnitude
          #CELL_DERIVED <u_mag2> "dot(<u[l=:]>,<u[l=:]>)" ON <allcells>
          #FACE_DERIVED <u_mag2_f> "facemax(<u_mag2>,0.d0)" ON <domainfaces>
-         #FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<vof_rho_f>)" ON <domainfaces>
+         #FACE_LOCAL <u_mf_{adv}> "-sqrt(<u_mag2_f>)+sqrt(<u_mag2_f>+<eps_p>*<facedx>/<rho_f>)" ON <domainfaces>
          # pre v0.5 method based on component of velocity in direction of face normal
          FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<vof_rho_f>)" ON <domainfaces>
-         #FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<vof_rho_f>)" ON <domainfaces>
+         #FACE_LOCAL <u_mf_{adv}> "sqrt(<eps_p>*<facedx>/<rho_f>)" ON <domainfaces>
          
          # viscous limiter
          # this didn't seem to work
-         #FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<vof_mu_f>" ON <domainfaces>
+         #<<cartesiancomment>>FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu_f>" ON <domainfaces>
          ## additional contribution to velocity interpolation from cylindrical hoop-stress term
-         ##FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<vof_mu_f>,<eps_p>*1.d0^2/(2.d0*<vof_mu_f>))" ON <domainfaces>
+         #<<cylindricalcomment>>FACE_LOCAL <u_mf_{vis}> "facemin(<eps_p>*<facedx>^2/<mu_f>,<eps_p>*<<radius_f>>^2/(2.d0*<mu_f>))" ON <domainfaces>
          FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<vof_mu_f>" ON <domainfaces>
          
          # this file now does both steady-state and transient using transient comments string replacements, which are set in constants.arb
@@ -746,8 +675,8 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # combined limiter, using one of two possible methods
          # use a straight minimum of the three or two correction velocities
-         #FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domainfaces>
-         ##FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domainfaces>
+         #<<transientnavierstokescomment>>FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(facemin(<u_mf_{adv}>,<u_mf_{vis}>),<u_mf_{transient}>)" ON <domainfaces>
+         #<<steadystatenavierstokescomment>>FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domainfaces>
          # alternatively, average the reciprocal of the three of two correction velocities
          # in pre v0.53 these weren't limited using <tinyish> which could case a problem if one is zero
          FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>/(1.d0/facemax(<u_mf_{transient}>,<tinyish>)+1.d0/facemax(<u_mf_{adv}>,<tinyish>)+1.d0/facemax(<u_mf_{vis}>,<tinyish>))" ON <domainfaces>
@@ -766,37 +695,26 @@ EXTERNALS "src/free_surface_functions.f90"
          
          # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
          # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
-         # if # hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
-         #(hash added during unwrap)GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+         # if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
+         
          #NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
          #NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
-         #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/u_f.arb
-         #(comment generated during unwrap)--------------------------------------------------------
-      #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/advection_flux.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    # uniform
    #INCLUDE "total_stress"
    #INCLUDE "advection_flux"
    
-   #(hash added during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
-   #(comment generated during unwrap) adding new include_path ../templates/free_surface/volume_of_fluid, making include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-   #(hash added during unwrap)INCLUDE "dynamic_force"
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/dynamic_force.arb without any search/replace combinations
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/dynamic_force.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "dynamic_force"
       # now uses selfreferencing to just add surface tension force to existing dynamic forces
       VARIABLE <dynamic_force_c[l=1]> "<dynamic_force_c[l=1]>+<sigma>*<vof_F_c[l=1]>"
       VARIABLE <dynamic_force_c[l=2]> "<dynamic_force_c[l=2]>+<sigma>*<vof_F_c[l=2]>"
       #VARIABLE <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>+<sigma>*<vof_F_c[l=3]>"
-      # differencing has to be consistent with that used for <vof_F_f>
+      # different types of face discretisations are used when calculating <vof_F_f> in force template file
       VARIABLE <dynamic_force_f> "<dynamic_force_f>+<sigma>*<vof_F_f>"
       
-      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/dynamic_force.arb
-      #(comment generated during unwrap)--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "equation" # all phi advection done on fluid mesh
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/equation.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/equation.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "equation" # all phi advection done on fluid mesh
       # here we advect <vof> using the implicit <u_f> and explicit <vof_phi[r=1]>
       
       # these unit normals are carried over from the previous timestep curvature calculation
@@ -837,24 +755,18 @@ EXTERNALS "src/free_surface_functions.f90"
       #CELL_DERIVED <vof_phi_advected> "<vof_phi[r=1]>-<dt>*celldiv((<vof_phi_f_adjusted[r=1]>-faceave[lastcell](<vof_phi>))*<u_f>)" ON <allcells> nooutput
       #CELL_EQUATION <vof_equation_domain> "<vof_phi>-<vof_phi_advected>" ON <domain>
       
-      #CELL_EQUATION <vof_equation_domain> "(<vof_phi>-<vof_phi[r=1]>)/<dt> + celldiv(<vof_phi_f_adjusted[r=1]>*<u_f>)" ON <domain> nooutput
-      ##CELL_EQUATION <vof_equation_domain> "(<vof_phi>-<vof_phi[r=1]>)/<dt> + celldiv(1.d0*<vof_phi_f_adjusted[r=1]>*<u_f>)/1.d0" ON <domain> nooutput
+      #<<cartesiancomment>>CELL_EQUATION <vof_equation_domain> "(<vof_phi>-<vof_phi[r=1]>)/<dt> + celldiv(<vof_phi_f_adjusted[r=1]>*<u_f>)" ON <domain> nooutput
+      #<<cylindricalcomment>>CELL_EQUATION <vof_equation_domain> "(<vof_phi>-<vof_phi[r=1]>)/<dt> + celldiv(<<radius_f>>*<vof_phi_f_adjusted[r=1]>*<u_f>)/<<radius_c>>" ON <domain> nooutput
       CELL_EQUATION <vof_equation_domain> "cellif(celldelta(<vof_interface_mask[r=1]>),(<vof_phi>-<vof_phi[r=1]>)/<dt> + celldiv((<vof_phi_f_adjusted[r=1]>-faceave[lastcell](<vof_phi[r=1]>))*<u_f>),<vof_phi>-<vof_phi[r=1]>)" ON <domain> nooutput
       #CELL_EQUATION <vof_equation_domain> "cellif(celldelta(<vof_interface_mask[r=1]>),(<vof_phi>-<vof_phi[r=1]>)/<dt> + celldiv(1.d0*(<vof_phi_f_adjusted[r=1]>-faceave[lastcell](<vof_phi[r=1]>))*<u_f>)/1.d0,<vof_phi>-<vof_phi[r=1]>)" ON <domain> nooutput
-      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/equation.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    
-   #(hash added during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
-   #(comment generated during unwrap) adding new include_path ../templates/navier_stokes_v0.54, making include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
    # nonuniform
-   #(hash added during unwrap)INCLUDE "momentum_flux_transient_constant_rho" R "<rho>" W "<vof_rho_advection_f[r=1]>"
-   #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/momentum_flux_transient_constant_rho.arb with the following search/replace combinations: replace <rho> with <vof_rho_advection_f[r=1]>
-      #(hash added during unwrap)INCLUDE "momentum_flux_steady_state_constant_rho"
-      #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/momentum_flux_steady_state_constant_rho.arb without any search/replace combinations
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/momentum_flux_transient_constant_rho.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "momentum_flux_transient_constant_rho" 
+      
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/momentum_flux_steady_state_constant_rho.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "momentum_flux_steady_state_constant_rho"
          # flux of momentum over and in the direction of each face
          
          # flux now split to allow easier overwriting of the advection component
@@ -866,17 +778,12 @@ EXTERNALS "src/free_surface_functions.f90"
          FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+<J_advection_f[l=1]>" ON <allfaces> # component of momentum transport from stress and advection
          FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+<J_advection_f[l=2]>" ON <allfaces> # component of momentum transport from stress and advection
          #FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)+<J_advection_f[l=3]>" ON <allfaces> # component of momentum transport from stress and advection
-         #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/momentum_flux_steady_state_constant_rho.arb
-         #(comment generated during unwrap)--------------------------------------------------------
       FACE_LOCAL <J_advection_f[l=1]> "<vof_rho_advection_f[r=1]>*faceave[advection,reflect=1](<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
       FACE_LOCAL <J_advection_f[l=2]> "<vof_rho_advection_f[r=1]>*faceave[advection,reflect=2](<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
       #FACE_LOCAL <J_advection_f[l=3]> "<vof_rho_advection_f[r=1]>*faceave[advection,](<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-      #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/momentum_flux_transient_constant_rho.arb
-      #(comment generated during unwrap)--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE "conservation_incompressible_transient_varying_rho" R "<rho>" W "<vof_rho_c>" R "<rho[r=1]>" W "<vof_rho_c[r=1]>" R "<mu>" W "<vof_mu_c>"
-   #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/conservation_incompressible_transient_varying_rho.arb with the following search/replace combinations: replace <rho> with <vof_rho_c>: replace <rho[r=1]> with <vof_rho_c[r=1]>: replace <mu> with <vof_mu_c>
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/conservation_incompressible_transient_varying_rho.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "conservation_incompressible_transient_varying_rho" 
+      
       # conservation equations solved over each domain cell (finite volume method)
       
       # cartesian
@@ -887,64 +794,43 @@ EXTERNALS "src/free_surface_functions.f90"
       
       # cylindrical
       #CELL_EQUATION <continuity> "celldiv(1.d0*<u_f>)/1.d0" ON <domain> # continuity
-      ##CELL_EQUATION <momentum[l=1]> "celldiv(1.d0*<J_f[l=1]>)/1.d0-<dynamic_force_c[l=1]>" ON <domain> # momentum component
-      ##CELL_EQUATION <momentum[l=2]> "celldiv(1.d0*<J_f[l=2]>)/1.d0-<dynamic_force_c[l=2]>" ON <domain> # momentum component
-      ###CELL_EQUATION <momentum[l=3]> "celldiv(1.d0*<J_f[l=3]>)/1.d0-<dynamic_force_c[l=3]>" ON <domain> # momentum component
+      #<<cylindricalcomment>><<dim1comment>>CELL_EQUATION <momentum[l=1]> "celldiv(<<radius_f>>*<J_f[l=1]>)/<<radius_c>>-<dynamic_force_c[l=1]>" ON <domain> # momentum component
+      #<<cylindricalcomment>><<dim2comment>>CELL_EQUATION <momentum[l=2]> "celldiv(<<radius_f>>*<J_f[l=2]>)/<<radius_c>>-<dynamic_force_c[l=2]>" ON <domain> # momentum component
+      #<<cylindricalcomment>><<dim3comment>>CELL_EQUATION <momentum[l=3]> "celldiv(<<radius_f>>*<J_f[l=3]>)/<<radius_c>>-<dynamic_force_c[l=3]>" ON <domain> # momentum component
       # these also include the hoop stress terms when <<radiusdim?flag>> is appropriately set
       #CELL_EQUATION <momentum[l=1]> "(<vof_rho_c>*<u[l=1]>-<vof_rho_c[r=1]>*<u[l=1,r=1]>)/<dt>+celldiv(1.d0*<J_f[l=1]>)/1.d0-<dynamic_force_c[l=1]>+0*2.d0*<u[l=1]>*<vof_mu_c>/(<cellx[l=1]>**2)" ON <domain> # momentum component
       #CELL_EQUATION <momentum[l=2]> "(<vof_rho_c>*<u[l=2]>-<vof_rho_c[r=1]>*<u[l=2,r=1]>)/<dt>+celldiv(1.d0*<J_f[l=2]>)/1.d0-<dynamic_force_c[l=2]>+0*2.d0*<u[l=2]>*<vof_mu_c>/(<cellx[l=2]>**2)" ON <domain> # momentum component
       ##CELL_EQUATION <momentum[l=3]> "(<vof_rho_c>*<u[l=3]>-<vof_rho_c[r=1]>*<u[l=3,r=1]>)/<dt>+celldiv(1.d0*<J_f[l=3]>)/1.d0-<dynamic_force_c[l=3]>+0*2.d0*<u[l=3]>*<vof_mu_c>/(<cellx[l=3]>**2)" ON <domain> # momentum component
-      #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/conservation_incompressible_transient_varying_rho.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    # uniform
    #INCLUDE "momentum_flux_transient_constant_rho"
    #INCLUDE "conservation_incompressible_transient_constant_rho"
    
    # fluid boundary conditions on nonslip walls
-   #(hash added during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
-   #(comment generated during unwrap) adding new include_path ../templates/free_surface/volume_of_fluid, making include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-   #(hash added during unwrap)INCLUDE "walls_nonwetting" # NB: BC applied on fluid walls
-   #(comment generated during unwrap) not adding new include_path ../templates/free_surface/volume_of_fluid, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/free_surface/volume_of_fluid/walls_nonwetting.arb without any search/replace combinations
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/walls_nonwetting.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "walls_nonwetting" # NB: BC applied on fluid walls
       # boundary equations for walls
       # here the continuous phase completely wets the wall (contact angle = 180degrees), disperse does not (contact angle = 0degrees)
       FACE_EQUATION <vof_equation_walls> "<vof_phi>" ON <walls>
-      #(comment generated during unwrap) INCLUDE finished for ../templates/free_surface/volume_of_fluid/walls_nonwetting.arb
-      #(comment generated during unwrap)--------------------------------------------------------
-   #(hash added during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
-   #(comment generated during unwrap) adding new include_path ../templates/navier_stokes_v0.54, making include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
-   #(hash added during unwrap)INCLUDE "walls_p_set"
-   #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = .. ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54 ../templates/free_surface/volume_of_fluid ../templates/navier_stokes_v0.54
-      #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-      #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/walls_p_set.arb without any search/replace combinations
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes_v0.54"
+      #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/walls_p_set.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "walls_p_set"
       # same as walls, but we have one face which is used to set pressure
       # uses the two extra face regions which are contained within <walls>, <walls sans one face> and <one face>
-      #(hash added during unwrap)INCLUDE "p_extrapolation" R "<region>" W "<walls>" R "<equation>" W "<p_walls>"
-      #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/p_extrapolation.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <p_walls>
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/p_extrapolation.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "p_extrapolation" 
+         
          FACE_EQUATION <p_walls> "<dynamic_force_f>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
-         #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/p_extrapolation.arb
-         #(comment generated during unwrap)--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "noflux" R "<region>" W "<walls sans one face>" R "<equation>" W "<noflux_walls>"
-      #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/noflux.arb with the following search/replace combinations: replace <region> with <walls sans one face>: replace <equation> with <noflux_walls>
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/noflux.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "noflux" 
+         
          FACE_EQUATION <noflux_walls> "<u_f>" ON <walls sans one face> # no flux normal to region
-         #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/noflux.arb
-         #(comment generated during unwrap)--------------------------------------------------------
-      #(hash added during unwrap)INCLUDE "noslip" R "<region>" W "<walls>" R "<equation>" W "<noslip_walls>"
-      #(comment generated during unwrap) not adding new include_path ../templates/navier_stokes_v0.54, as it is already on the top of include_path array = ../templates/navier_stokes_v0.54
-         #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-         #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../templates/navier_stokes_v0.54/noslip.arb with the following search/replace combinations: replace <region> with <walls>: replace <equation> with <noslip_walls>
+         #(comment created during unwrap): new block = ../../templates/navier_stokes_v0.54/noslip.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "noslip" 
+         
          FACE_EQUATION <equation1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
          #FACE_EQUATION <equation2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
-         #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/noslip.arb
-         #(comment generated during unwrap)--------------------------------------------------------
       FACE_EQUATION <one face p set> "<p>" ON <one face>
-      #(comment generated during unwrap) INCLUDE finished for ../templates/navier_stokes_v0.54/walls_p_set.arb
-      #(comment generated during unwrap)--------------------------------------------------------
    
    #-------------------------------------------------------------------
    NONE_OUTPUT <integrated volume> "cellsum(<vof_phi>*<cellvol>,<domain>)"
@@ -1013,6 +899,4 @@ EXTERNALS "src/free_surface_functions.f90"
    TIMESTEPOUT 2
    TIMESTEPMAX 4 # just compute the first 5 timesteps for this trial simulation
    #-------------------------------------------------------------------
-   #(comment generated during unwrap) INCLUDE finished for ../oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb
-   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

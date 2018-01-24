@@ -1,0 +1,213 @@
+#!/bin/bash
+#
+# file arb_doc
+#
+# Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
+# 
+# This file is part of arb finite volume solver, referred to as `arb'.
+# 
+# arb is a software package designed to solve arbitrary partial
+# differential equations on unstructured meshes using the finite volume
+# method.  Primarily it consists of fortran source code, perl source
+# code and shell scripts.  arb replies on certain third party software
+# to run, most notably the computer algebra system maxima
+# <http://maxima.sourceforge.net/> which is released under the GNU GPL.
+# 
+# The original copyright of arb is held by Dalton Harvie, however the
+# project is now under collaborative development.
+# 
+# arb is released under the GNU GPL.  arb is free software: you can
+# redistribute it and/or modify it under the terms of the GNU General
+# Public License (version 3) as published by the Free Software Foundation.
+# You should have received a copy of the GNU General Public Licence
+# along with arb (see file licence/gpl.txt after unpacking).  If not,
+# see <http://www.gnu.org/licences/>.
+# 
+# arb is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public Licence
+# for more details.
+# 
+# For full details of arb's licence see the licence directory.
+# 
+# The current homepage for the arb finite volume solver project is
+# <http://people.eng.unimelb.edu.au/daltonh/downloads/arb>.
+#
+#-------------------------------------------------------------------------
+#
+# a script to create and update an instance of the arb manual
+# daltonh, 2/9/17
+#
+# see usage function for help
+#
+# exit status:
+# 0: successful
+# 1: failed
+# 
+#-------------------------------------------------------------------------------
+# usage function
+function usage () {
+  echo
+
+  echo "HELP/USAGE: arb_doc [options]";
+  echo
+  echo "Possible options (consistent with long-form command line syntax (--), words are separated by -, and a preceeding --no- negates an option) :";
+  echo "  --root: name of root location to be fed to html pages, either an html root or a file directory (no trailing slash, default $working_dir/html).  Set this after --html-dir if setting that too."
+# echo "  --update: whether to recreate the tree (default)";
+# echo "  --no-update: do not recreate the tree";
+  echo "  --content-dir: file directory that contains the content, in primarily markdown index.md files (no trailing slash, default $arb_dir/doc/content)"
+  echo "  --html-dir: file directory that the html contents will be written to (no trailing slash, default $working_dir/html).  Note, also sets root_var to this directory (full path), overwritting any previous assignment."
+  echo "  --include-arb: include the arb directory files within the html tree (default)."
+  echo "  --no-include-arb: do not include the arb directory files within the html tree and instead link to files within arb_dir."
+  echo "  --help|-h: display this HELP INFO";
+  echo;
+  exit 1;
+}
+#-------------------------------------------------------------------------------
+# function to dereference symlinks and find the real path of a file
+# call with the (possibly symlinked) file (not a directory)
+# result is returned in (global) variable real_path - no not any more
+# now called as a="$(resolve_real_path "$a")";
+function resolve_real_path {
+  real_path=$1;
+  next_path=`readlink $real_path`;
+  while [ -n "$next_path" ] ; do
+    real_path="$(dirname "$real_path")/$next_path";
+    next_path=`readlink $real_path`;
+  done
+# simplify directory links
+  real_path="$(sanitise_filename "$real_path")";
+# now return this as a string
+  echo "$real_path";
+  unset next_path;
+  unset real_path;
+}
+#-------------------------------------------------------------------------------
+# idea from http://stackoverflow.com/questions/4774054/reliable-way-for-a-bash-script-to-get-the-full-path-to-itself
+function sanitise_filename {
+  echo "$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")";
+}
+function sanitise_dirname {
+  echo "$(cd "$1" && pwd -P)";
+}
+#-------------------------------------------------------------------------------
+# main script:
+
+#---------------------------
+# define some default variables, directories and flags to say what has to be done
+
+working_dir=`pwd -P`; # directory from which the script is run
+# get the real path to the arb script with any symlinks resolved/dereferenced
+arb_script="${BASH_SOURCE[0]}";
+arb_script="$(resolve_real_path "$arb_script")"; # the result of resolve_real_path is held in this global variable
+doc_dir="$(dirname "$arb_script")"; # directory that holds this arb script, which determines...
+arb_dir="${doc_dir%"/doc"}"; # arb root directory, known as arb_dir, with no trailing slash
+# setup other arb related directory references and check on their existence
+src_dir="$arb_dir/src";
+misc_dir="$arb_dir/misc";
+templates_dir="$arb_dir/templates";
+examples_dir="$arb_dir/examples";
+file_separator="##################################################################################"
+# check that all of the directories are present in the arb_dir
+#echo "working_dir = $working_dir";
+#echo "arb_script = $arb_script";
+#echo "doc_dir = $doc_dir";
+#echo "arb_dir = $arb_dir";
+if [ ! -d "$src_dir" ] ; then echo "ERROR: cannot find the arb src directory that corresponds to this arb script.  Possibly the arb directory $arb_dir has been corrupted, or alternatively the arb script has been moved/copied out of the arb directory (if you want to refer to the arb script outside of its arb directory, create a soft link to it, which will be dereferenced when the script is called)."; usage; fi;
+if [ ! -d "$misc_dir" ] ; then echo "ERROR: cannot find the arb misc directory that corresponds to this arb script.  Possibly the arb directory $arb_dir has been corrupted, or alternatively the arb script has been moved/copied out of the arb directory (if you want to refer to the arb script outside of its arb directory, create a soft link to it, which will be dereferenced when the script is called)."; usage; fi;
+if [ ! -d "$templates_dir" ] ; then echo "ERROR: cannot find the arb templates directory that corresponds to this arb script.  Possibly the arb directory $arb_dir has been corrupted, or alternatively the arb script has been moved/copied out of the arb directory (if you want to refer to the arb script outside of its arb directory, create a soft link to it, which will be dereferenced when the script is called)."; usage; fi;
+if [ ! -d "$examples_dir" ] ; then echo "ERROR: cannot find the arb examples directory that corresponds to this arb script.  Possibly the arb directory $arb_dir has been corrupted, or alternatively the arb script has been moved/copied out of the arb directory (if you want to refer to the arb script outside of its arb directory, create a soft link to it, which will be dereferenced when the script is called)."; usage; fi;
+
+errorstatus=0;
+
+echo "arb_doc script for creating the manual";
+echo
+echo "INFO: for usage options, try arb_doc --help";
+echo "INFO: arb_dir = $arb_dir"
+echo "INFO: working_dir = $working_dir"
+
+# set default variables and locations
+#oupdate=1;
+oincludearb=1;
+content_dir="$arb_dir/doc/content";
+html_dir="$working_dir/html";
+root_var="$html_dir";
+
+#---------------------------
+# loop through options and update any variables
+until [ -z "$1" ];
+do
+  case $1 in
+    "--root") # get root location fed to html pages
+      shift;
+      if [ -n "$1" ]; then root_var="$1"; else echo "ERROR: root location not understood from calling options"; usage; fi;
+      ;;
+#   "--update") oupdate=1;;
+#   "--no-update") oupdate=0;;
+    "--include-arb") oincludearb=1;;
+    "--no-include-arb") oincludearb=0;;
+    "--content-dir") # get content file directory
+      shift;
+      if [ -n "$1" ]; then content_dir="$1"; else echo "ERROR: content directory not understood from calling options"; usage; fi;
+      ;;
+    "--html-dir") # get html file directory
+      shift;
+      if [ -n "$1" ]; then html_dir="$1"; root_var=$html_dir; else echo "ERROR: html directory not understood from callling options"; usage; fi;
+      ;;
+    "--help"|"-h") usage;;
+    "--"*|"-"*) echo "ERROR: unknown option $1 passed to arb_doc"; usage;;
+    *) echo "ERROR: unknown command line entry $1"; usage;;
+  esac
+  shift;
+done ;
+
+if [ $oincludearb -eq 1 ] ; then
+  arb_var="$root_var/arb";
+else
+  arb_var="$arb_dir";
+fi
+
+echo "INFO: root_var = $root_var"
+echo "INFO: arb_var = $arb_var"
+#echo "INFO: oupdate = $oupdate"
+echo "INFO: content_dir = $content_dir"
+echo "INFO: html_dir = $html_dir"
+
+#---------------------------
+#if [ $oupdate -eq 1 ] ; then
+#------------------------------------------------------------
+# sanity checks and create directories
+# TODO: check that directories don't have trailing slashes
+
+  if [ ! -d "$content_dir" ] ; then echo "ERROR: cannot find the content directory."; usage; fi;
+
+# use rsync to mirror directory structure and all non-md files
+
+  echo "INFO: rsyncing content_dir to html_dir"
+  rsync -au --progress --exclude "index.html" "$content_dir/" $html_dir;
+
+# if including the arb directory files then do this too using arb_clone
+  if [ $oincludearb -eq 1 ] ; then
+    $("$arb_dir/bin/arb_clone" --overwrite --clean-git --local-directory "$arb_dir" --directory "$html_dir/arb_files");
+    arbroot_var="$root_var/arb_files";
+  else
+    arbroot_var="$arb_dir";
+  fi
+
+# assemble makeline and make
+# use the file via -f
+  makeline="make -f $doc_dir/src/makefile arbdir=\"$arb_dir\" docdir=\"$doc_dir\" rootvar=\"$root_var\" arbrootvar=\"$arbroot_var\" contentdir=\"$content_dir\" htmldir=\"$html_dir\"";
+  echo "INFO: running make using commands: $makeline"; echo
+  eval "$makeline";
+
+#fi ;
+#------------------------------------------------------------
+
+exit $errorstatus ;
+# done
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------

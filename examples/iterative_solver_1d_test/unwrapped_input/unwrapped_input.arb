@@ -1,13 +1,12 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: src/free_surface_functions.f90
-EXTERNALS "src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_lastfaceglue/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_lastfaceglue/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: iterative_solver_1d_test.arb
-#(hash added during unwrap)INCLUDE_WORKING "iterative_solver_1d_test.arb"
-#(comment generated during unwrap) not adding new include_path .., as it is already on the top of include_path array = ..
-   #(comment generated during unwrap)++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-   #(comment generated during unwrap) the following is INCLUDED from /home/daltonh/codes/arb/testsuite/arb_develop/build/../iterative_solver_1d_test.arb without any search/replace combinations
+   #(comment created during unwrap): new block = iterative_solver_1d_test.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "iterative_solver_1d_test.arb"
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -58,6 +57,4 @@ EXTERNALS "src/free_surface_functions.f90"
    #ITERSTEPMAX 100 # maximum number of iteration steps to do - should be large
    ITERSTEPCHECK 10 # this is how often the iterative solver routine dumps output to the screen, and calculates/compares the inner newton residual against iterrestol (but otherwise does compare the less accurate inner residual every step) - don't do too much output otherwise file sizes will be too large, and computation possibly slowed by screen refreshing
    #-------------------------------------------------------------------
-   #(comment generated during unwrap) INCLUDE finished for ../iterative_solver_1d_test.arb
-   #(comment generated during unwrap)--------------------------------------------------------
 ##################################################################################

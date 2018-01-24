@@ -1,8 +1,19 @@
-# this overwrites the dynamic forces calculated for the navier_stokes equations to include the electrical forcing terms
-# dynamic force is included in the navier-stokes conservation equations, so they don't need any other modification
-# <U_f> should also be defined previously
+MARKDOWN
+This increments the dynamic forces calculated for the navier_stokes equations to include the electrical forcing terms
+dynamic force is included in the navier-stokes conservation equations, so they don't need any other modification
+<U_f> should also be defined previously
+END_MARKDOWN
 
-<<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=1](<U_f>)" ON <allcells>
-<<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=2](<U_f>)" ON <allcells>
-<<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=3](<U_f>)" ON <allcells>
-FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)-<BK^2/Re^2>*<rho_e_hf>*facegrad[dxunit](<U>)" ON <allfaces>
+<<dim1comment>>VARIABLE <dynamic_force_c[l=1]> "<dynamic_force_c[l=1]>-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=1](<U_f>)"
+<<dim2comment>>VARIABLE <dynamic_force_c[l=2]> "<dynamic_force_c[l=2]>-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=2](<U_f>)"
+<<dim3comment>>VARIABLE <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=3](<U_f>)"
+
+# method of incrementing <dynamic_force_f> needs to be consistent with the method chosen in navier_stokes/p_error
+# use the strings set in navier_stokes/p_error to define this method
+
+# dxunit method
+<<dynamicforcefdxunitcomment>>VARIABLE <dynamic_force_f> "<dynamic_force_f>-<BK^2/Re^2>*<rho_e_hf>*facegrad[dxunit](<U>)"
+# facegrad method
+<<dynamicforceffacegradcomment>>VARIABLE <dynamic_force_f> "<dynamic_force_f>-<BK^2/Re^2>*<rho_e_hf>*facegrad(<U>)" ON <allfaces>
+# adjacentcells method
+<<dynamicforcefadjacentcellscomment>>VARIABLE <dynamic_force_f> "<dynamic_force_f>-<BK^2/Re^2>*<rho_e_hf>*facegrad[adjacentcells](<U>)"

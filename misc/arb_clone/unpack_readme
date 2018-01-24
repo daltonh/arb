@@ -1,0 +1,9 @@
+arb finite volume solver
+
+This directory contains a tar file with all the code files needed to run arb.
+
+To unpack the archive type `./unpack'.  A number of directories will be created within this directory and the tar file will be removed.  To run the default heat conduction problem type `./arb'.
+
+Once unpacked, you can find a manual within `doc'.  This readme file will be archived as misc/packer/unpack_readme.  Scripts to automate the installation process are in install.
+
+Originally written by Dalton Harvie (daltonh@unimelb.edu.au), arb is now a GPL GNU licensed public collaborative project.  For more details see the file license which should be in the same directory as this file.  Alternatively, once unpacked, see the license directory which contains the license archived as license/arb_license.txt.

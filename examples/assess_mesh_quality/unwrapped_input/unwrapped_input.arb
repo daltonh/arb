@@ -1,0 +1,68 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+# root_input.arb file created by the arb script
+##################################################################################
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_lastfaceglue/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_lastfaceglue/src/free_surface_functions.f90"
+##################################################################################
+# the following working directory files found by the arb script: assess_mesh_quality.arb
+   #(comment created during unwrap): new block = assess_mesh_quality.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "assess_mesh_quality.arb"
+   INFO_TITLE "Mesh quality assessment"
+   INFO_DESCRIPTION "Example file showing how to calculate and interpret some basic mesh quality statistics"
+   INFO_AUTHOR "Dalton Harvie"
+   INFO_DATE "20/9/17"
+   VERSION 0.57
+   
+   # change this to refer to the msh file you are interested in
+   MSH_FILE "3d_cylinder_unstructured.msh"
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)The mesh quality template examines the basic geometric parameters of the cells, calculating:
+   #(hash inserted during unwrap)1. <cell aspect ratio> is the largest face that surrounds a cell divided the smallest face from around that cell.  This parameter is calculated for all <domain> cells, and should be close to 1 everywhere.
+   #(hash inserted during unwrap)2. <cell adjacent volume ratio> is the ratio of adjacent cell volumes for each face between domain cells (<domainfaces>).  This parameter should be near 1 everywhere.
+   #(hash inserted during unwrap)END_MARKDOWN
+      #(comment created during unwrap): new block = ../../templates/general/mesh_quality.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/mesh_quality"
+      # some metrics on mesh quality
+         #(comment created during unwrap): new block = ../../templates/general/cell_aspect_ratio.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "cell_aspect_ratio" # keep < 100 say for structured meshes, or as close to 1 as possible
+         CELL_OUTPUT <cell aspect ratio> "facemax(<facearea>,region=<celljfaces>)/cellmax(facemin(<facearea>,region=<celljfaces>),<tinyish>)" ON <domain>
+         NONE_OUTPUT <maximum cell aspect ratio> "cellmax(<cell aspect ratio>,region=<domain>)"
+         #(comment created during unwrap): new block = ../../templates/general/cell_adjacent_volume_ratio.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "cell_adjacent_volume_ratio" # keep < 1.2 say, or as close to 1 as possible
+         # for each cell within the domain, this is the ratio between the maximum surround cell volume and the cell's volume, indicating how uniform cell sizes are
+         #CELL_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<nocadjacentcellicells>)/<cellvol>" ON <domain> # NB boundary cells have cellvol = 0 so will not contribute to this calculation, as required
+         #NONE_OUTPUT <maximum cell adjacent volume ratio> "cellmax(<cell adjacent volume ratio>,region=<domain>)"
+         FACE_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<adjacentfaceicells>)/cellmin(<cellvol>,default=<hugeish>,region=<adjacentfaceicells>)" ON <domainfaces>
+         NONE_OUTPUT <maximum cell adjacent volume ratio> "facemax(<cell adjacent volume ratio>,region=<domainfaces>)"
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)TODO: look at notes and improve these explanations
+   #(hash inserted during unwrap)The kernel parameters template looks at the quality of the kernels generated on the mesh.  The following parameters are defined in terms of the contribution from surrounding cells to the calculation of a face value, in the context of advection stability (need to check notes here).  Specifically the following are calculated:
+   #(hash inserted during unwrap)1. <crosskernel output> (definition: cross_kernel = maxval(abs(temporary_kernel(jj)%v(2:ubound(temporary_kernel(jj)%v,1)))))  Cross_kernel is the maximum kernel element that goes to make up delphi, except for the central element.  From memory in an ideal case this should be maximum 0.5, with larger values representing a problem.
+   #(hash inserted during unwrap)2. <centralkernel output> (definition: central_kernel = abs(temporary_kernel(jj)%v(1)))  Central_kernel is the contribution from the central cell.  This should be zero ideally.
+   #(hash inserted during unwrap)3. <kernelsum output> (definition: kernel_sum = sum(abs(temporary_kernel(jj)%v)))  Should be zero?
+   #(hash inserted during unwrap)END_MARKDOWN
+      #(comment created during unwrap): new block = ../../templates/general/kernel_parameters.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/kernel_parameters"
+      CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <allcells>
+      CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <allcells>
+      CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <allcells>
+      CELL_OUTPUT <cell deriv kernel elements output> "cellsum(1.d0,region=<cellkernelregion[l=1]>)" ON <allcells>
+      FACE_OUTPUT <face deriv kernel elements output> "cellsum(1.d0,region=<facekernelregion[l=1]>)" ON <allfaces>
+      NODE_OUTPUT <node deriv kernel elements output> "cellsum(1.d0,region=<nodekernelregion[l=1]>)" ON <allnodes>
+      CELL_OUTPUT <celldxkernel output> "<celldxkernel>" ON <allcells>
+      FACE_OUTPUT <facedxkernel output> "<facedxkernel>" ON <allfaces>
+      NODE_OUTPUT <nodedxkernel output> "<nodedxkernel>" ON <allnodes>
+   
+   # now try doing corrections to face centred kernels
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)These parameters are attempts are correcting the stability characteristics of the face centred kernels, at the expense of formal polynomial order accuracy.  As this is only applied to face centred kernels, will not affect the above advection based kernel parameters.
+   #(hash inserted during unwrap)1. averagestabilitycorrections zeros negative averaging kernel elements, right now only applied to face kernels
+   #(hash inserted during unwrap)2. gradientstabilitycorrections zeros negative direction-equivalent gradient kernel elements, right now only applied to face kernels
+   #(hash inserted during unwrap)END_MARKDOWN
+      #(comment created during unwrap): new block = assess_mesh_quality.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)KERNEL_OPTIONS averagestabilitycorrections=.true.,gradientstabilitycorrections=.true.
+      #(hash inserted during unwrap)END_IF
+##################################################################################

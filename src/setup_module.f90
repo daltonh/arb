@@ -1,6 +1,6 @@
 ! file src/setup_module.f90
 !
-! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -11,7 +11,8 @@
 ! to run, most notably the computer algebra system maxima
 ! <http://maxima.sourceforge.net/> which is released under the GNU GPL.
 ! 
-! The copyright of arb is held by Dalton Harvie.
+! The original copyright of arb is held by Dalton Harvie, however the
+! project is now under collaborative development.
 ! 
 ! arb is released under the GNU GPL.  arb is free software: you can
 ! redistribute it and/or modify it under the terms of the GNU General
@@ -59,6 +60,10 @@ use region_module
 logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine setup'
+
+if (debug) write(*,*) 'calling setup_dirs'
+
+call setup_dirs ! setup the various file/dir locations
 
 if (convergence_details_file) then
 
@@ -115,15 +120,30 @@ if (debug) write(*,'(a/80(1h-))') 'subroutine setup'
 end subroutine setup
 
 !-----------------------------------------------------------------
+! get the output_dir details from the executable path
+
+subroutine setup_dirs
+
+use general_module
+! find output_dir that this executable is in
+call get_command_argument(0,output_dir) ! this will place the path to the executable from the working dir in the variable output_dir
+! now remove build/arb to leave the output dir
+output_dir=output_dir(1:len_trim(output_dir)-9)
+input_file=trim(output_dir)//"build/fortran_input.arb"
+write(*,'(a)') 'INFO: output_dir = '//trim(output_dir)
+
+end subroutine setup_dirs
+
+!-----------------------------------------------------------------
 
 subroutine setup_convergence_file
 
 use general_module
-character(len=100) :: filename
+character(len=1000) :: filename
 integer :: ierror
 
 ! open convergence output file if requested
-filename = "output/convergence_details.txt"
+filename = trim(output_dir)//"convergence_details.txt"
 open(fconverge,file=trim(filename),access='append',iostat=ierror)
 if (ierror /= 0) call error_stop('problem opening file '//trim(filename))
 
@@ -150,10 +170,12 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_input_file'
 
-! push default mesh (index 0) which will include everything
-call push_gmesh(filename='output/output.msh')
+! push default mesh (index 0) first which will include everything
+! no directory is given which will result in an empty dirname, to be set at the end of the file read (end of this subroutine)
+call push_gmesh(filename='output.msh')
 
-write(*,'(a)') "INFO: reading simulation information from arb input file "//trim(input_file)
+!write(*,'(a)') "INFO: reading simulation information from arb input file "//trim(basename(input_file))//".arb"
+write(*,'(a)') "INFO: reading simulation information from arb input file" ! the actual file name means nothing to the user
 open(unit=finput,file=trim(input_file),status='old',iostat=ierror)
 if (ierror /= 0) call error_stop('problem opening arb input file '//trim(input_file))
 
@@ -222,9 +244,9 @@ fileloop: do
       end if
     end do
     formatline = '(a,'//trim(dindexformat(gmesh_number))//',a)'
-    write(*,fmt=formatline) 'INFO: gmesh created from arb input file: gmesh_number = ',gmesh_number,': fullname = '// &
-      trim(gmesh(gmesh_number)%filename)//': basename = '//trim(gmesh(gmesh_number)%basename)// &
-      ': current (prioritised) user-set options ='//trim(options)
+    write(*,fmt=formatline) 'INFO: gmesh created from arb input file: gmesh_number = ',gmesh_number,': basename = '// &
+      trim(gmesh(gmesh_number)%basename)//': dirname (read location) = '//trim(gmesh(gmesh_number)%dirname)// &
+      ': current (right prioritised) user-set options ='//trim(options)
   end if
 
 !---------------
@@ -405,7 +427,7 @@ fileloop: do
     if (allocatable_character_size(kernel_options) - array_size == 0) then ! the options array was the same size as before, which is an error really
       write(*,'(a)') 'WARNING: the '//trim(keyword)//' keyword was found but no options were read in'
     else if (allocated(kernel_options)) then
-      write(*,'(101(a))') 'INFO: the following (prioritised) user-set kernel options have been read in:', &
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set kernel options have been read in:', &
         (' '//trim(kernel_options(n)),n=1,ubound(kernel_options,1))
     end if
   end if
@@ -420,7 +442,7 @@ fileloop: do
     if (allocatable_character_size(solver_options) - array_size == 0) then ! the options array was the same size as before, which is an error really
       write(*,'(a)') 'WARNING: the '//trim(keyword)//' keyword was found but no options were read in'
     else if (allocated(solver_options)) then
-      write(*,'(101(a))') 'INFO: the following (prioritised) user-set solver options have been read in:', &
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set solver options have been read in:', &
         (' '//trim(solver_options(n)),n=1,ubound(solver_options,1))
     end if
   end if
@@ -440,7 +462,7 @@ fileloop: do
     if (allocatable_character_size(var(m)%options) - array_size == 0) then ! the options array was the same size as before, which is an error really
       write(*,'(a)') 'WARNING: the '//trim(keyword)//' keyword was found but no options were read in for variable '//trim(name)
     else if (allocated(var(m)%options)) then
-      write(*,'(101(a))') 'INFO: the following (prioritised) user-set options for variable '//trim(name)//' have been read in:', &
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set options for variable '//trim(name)//' have been read in:', &
         (' '//trim(var(m)%options(n)),n=1,ubound(var(m)%options,1))
     end if
   end if
@@ -460,7 +482,7 @@ fileloop: do
     if (allocatable_character_size(compound(m)%options) - array_size == 0) then ! the options array was the same size as before, which is an error really
       write(*,'(a)') 'WARNING: the '//trim(keyword)//' keyword was found but no options were read in for compound '//trim(name)
     else if (allocated(compound(m)%options)) then
-      write(*,'(101(a))') 'INFO: the following (prioritised) user-set options for compound '//trim(name)//' have been read in:', &
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set options for compound '//trim(name)//' have been read in:', &
         (' '//trim(compound(m)%options(n)),n=1,ubound(compound(m)%options,1))
     end if
   end if
@@ -503,6 +525,8 @@ fileloop: do
 end do fileloop
 
 close(finput)
+
+if (trim(gmesh(0)%dirname) == '') gmesh(0)%dirname = trim(output_dir) ! if the read location for the output file was never set, do it now
 
 if (debug) write(*,'(a/80(1h-))') 'subroutine read_input_file'
 
@@ -1090,7 +1114,7 @@ write(*,fmt=formatline) ' CELLS: itotal = ',itotal,': idomain = ',idomain,': ibo
 if (mesh_details_file) then
   if (debug) write(*,*) 'writing mesh details to mesh_details.txt file'
 
-  filename = "output/mesh_details.txt"
+  filename = trim(output_dir)//"mesh_details.txt"
   open(fdetail,file=trim(filename),status='replace',iostat=ierror)
   if (ierror /= 0) call error_stop('problem opening file '//trim(filename))
 
@@ -1132,7 +1156,8 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_constants'
 
-write(*,'(a)') "INFO: reading numerical constant values from file "//trim(input_file)
+!write(*,'(a)') "INFO: reading numerical constant values from file "//trim(input_file)
+write(*,'(a)') "INFO: reading numerical constant values from arb input file"
 open(unit=finput,file=trim(input_file),status='old',iostat=ierror)
 if (ierror /= 0) call error_stop('problem opening arb input file '//trim(input_file))
 
@@ -1516,7 +1541,7 @@ if (debug_sparse) then
             ': rank = '//trim(var(m)%rank)// &
             ': relstep = ',var(m)%relstep, &
             ': someloop = ',var(m)%someloop, &
-            ': (prioritised) options =',(' '//trim(var(m)%options(o)),o=1,allocatable_size(var(m)%options))
+            ': (right prioritised) options =',(' '//trim(var(m)%options(o)),o=1,allocatable_size(var(m)%options))
         else
           formatline = '(a,'// &
             trim(dindexformat(m))//',a,'// &
@@ -1539,7 +1564,7 @@ if (debug_sparse) then
             ': ijk(1) = ',region(var(m)%region_number)%ijk(1), &
             ': ijk(',ubound(region(var(m)%region_number)%ijk,1),') = ', &
             region(var(m)%region_number)%ijk(ubound(region(var(m)%region_number)%ijk,1)), &
-            ': (prioritised) options =',(' '//trim(var(m)%options(o)),o=1,allocatable_size(var(m)%options))
+            ': (right prioritised) options =',(' '//trim(var(m)%options(o)),o=1,allocatable_size(var(m)%options))
         end if
       end do
     end do
@@ -1572,7 +1597,7 @@ if (debug_sparse) then
           ': rank = '//trim(compound(m)%rank)// &
           ': relstep = ',compound(m)%relstep, &
           ': component_list = '//trim(component_list)// &
-          ': (prioritised) options =',(' '//trim(compound(m)%options(o)),o=1,allocatable_size(compound(m)%options))
+          ': (right prioritised) options =',(' '//trim(compound(m)%options(o)),o=1,allocatable_size(compound(m)%options))
       else
         formatline = '(a,'// &
           trim(dindexformat(m))//',a,'// &
@@ -1588,7 +1613,7 @@ if (debug_sparse) then
           ': region = '//trim(compound(m)%region)// &
           ': region_number = ',compound(m)%region_number, &
           ': component_list = '//trim(component_list)// &
-          ': (prioritised) options =',(' '//trim(compound(m)%options(o)),o=1,allocatable_size(compound(m)%options))
+          ': (right prioritised) options =',(' '//trim(compound(m)%options(o)),o=1,allocatable_size(compound(m)%options))
       end if
     end do
   end do
@@ -1618,7 +1643,8 @@ subroutine glue_faces
 
 use general_module
 integer :: n, m, jj, j, jjmax, kk, k, kkmax, m1, m2, jj1, jj2, j1, j2, norphans, jglue, kk2, k2, kk3, k3, ksister
-character(len=100) :: option_name, formatline
+character(len=100) :: option_name
+character(len=1000) :: formatline
 double precision, dimension(totaldimensions) :: centre, targetx, rel_x
 double precision :: maxdist, maxdist2, dist2, dist
 logical :: error, translate

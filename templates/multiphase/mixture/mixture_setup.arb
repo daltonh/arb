@@ -1,0 +1,29 @@
+MARKDOWN
+Setup unknowns for the mixture.  Mixture variables are unnamed, such as `<u[l=:]>` as the volume averaged mixture velocity, and `<p[l=:]>` as the mixture pressure
+END_MARKDOWN
+
+#{{ return vector_expand(
+#  'CELL_UNKNOWN <u[l=$l]> [m/s] "0.d0" ON <allcells> magnitude=<u_av> # velocity component $l',
+#  '<<transientnavierstokescomment>> CELL_TRANSIENT <u[l=$l,r=1]> [m/s] "<u[l=$l]>" "<u[l=$l]>" ON <allcells>'
+#); }}
+
+CELL_UNKNOWN <u[l=1]> [m/s] "0.d0" ON <allcells> magnitude=<u_av> # velocity component $l'
+CELL_UNKNOWN <u[l=2]> [m/s] "0.d0" ON <allcells> magnitude=<u_av> # velocity component $l'
+<<dim3comment>> CELL_UNKNOWN <u[l=3]> [m/s] "0.d0" ON <allcells> magnitude=<u_av> # velocity component $l'
+
+CELL_UNKNOWN <p> [Pa] "0.d0" ON <allcells> magnitude=1.d0 # pressure
+
+# also calculate properties of mixture, at this stage just placeholders
+CELL_DERIVED <rho> [kg/m^3] "0.d0" ON <allcells> # this density will be incremented within the solid and fluid setup files
+<<transientnavierstokescomment>> CELL_TRANSIENT <rho[r=1]> [kg/m^3] "" "<rho>" ON <allcells> # transient mixture density
+INCLUDE "mixture_density"
+
+#INCLUDE "mixture_viscosity" # this will default to quemada expression: see template file for string replacements to change this
+INCLUDE "mixture_viscosity"  R "<mu_s_l>" W "<mu_l>" R "<mu" W "<mu_s" R "<<mumixturequemada>>" W "0" R "<<mumixturemb1999>>" W "1"  R "<<munormalmb1999>>" W "0"
+INCLUDE "mixture_viscosity"  R "<mu_n_l>" W "<mu_l>" R "<mu" W "<mu_n" R "<<mumixturequemada>>" W "0" R "<<mumixturemb1999>>" W "0" R "<<munormalmb1999>>" W "1"
+
+# calculate face centred mixture viscosity here
+FACE_DERIVED <mu_s_f> "faceave[harmonic](<mu_s>)" ON <allfaces>
+FACE_DERIVED <mu_n_f> "faceave[harmonic](<mu_n>)" ON <allfaces>
+
+CELL_LOCAL <phi_total_species> "1.d0-<phi_fluid>" ON <allcells> # this will be a sum of all disperse phase volume fractions

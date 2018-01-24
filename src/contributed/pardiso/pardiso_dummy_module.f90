@@ -1,6 +1,6 @@
 ! file src/contributed/pardiso/pardiso_dummy_module.f90
 !
-! Copyright 2009-2015 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -11,7 +11,8 @@
 ! to run, most notably the computer algebra system maxima
 ! <http://maxima.sourceforge.net/> which is released under the GNU GPL.
 ! 
-! The copyright of arb is held by Dalton Harvie.
+! The original copyright of arb is held by Dalton Harvie, however the
+! project is now under collaborative development.
 ! 
 ! arb is released under the GNU GPL.  arb is free software: you can
 ! redistribute it and/or modify it under the terms of the GNU General
@@ -49,12 +50,15 @@ logical, optional :: iterative
 
 write(*,*)
 write(*,*) 'ERROR: the pardiso (native, not intel MKL) routine has not been compiled into the arb executable'
-write(*,*) 'A number of stars have to align to be able to use this solver'
-write(*,*) 'On osx, it is only available using the gnu (gfortran) compiler'
-write(*,*) 'On linux, it is available for both gfortran and ifort (intel) compilers (although the iterative '
-write(*,*) 'solver doesn''t seem to work under gfortran on linux)'
-write(*,*) 'You need to download a license file and the relevant library for your compiler and architecture from '
-write(*,*) 'http://www.pardiso-project.org and place both of them in src/contributed/pardiso'
+write(*,*) 'A number of stars have to align to be able to use this solver:'
+write(*,*) '* On osx, it is only available using the gnu (gfortran) compiler'
+write(*,*) '* On linux, it is available for both gfortran and ifort (intel) compilers (although the iterative '
+write(*,*) '  solver doesn''t seem to work under gfortran on linux)'
+write(*,*) '* You need to download the relevant library for your compiler and architecture from '
+write(*,*) '  http://www.pardiso-project.org and place it in src/contributed/pardiso'
+write(*,*) '* You also need to download a license file from http://www.pardiso-project.org '
+write(*,*) '  which will be specific to your username (filename = pardiso.lic).  Specify this file location using'
+write(*,*) '  the arb option --pardiso-lic-path, or see src/contributed/pardiso/readme for other methods'
 write(*,*) 'Have a look at src/contributed/pardiso/readme for more details'
 write(*,*) 'Alternatively, try another matrix inversion technique'
 stop

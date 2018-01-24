@@ -1,0 +1,181 @@
+# arb finite volume solver
+# Copyright 2009-2011 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+# file equations.in
+VERSION 0.57
+#----------------------------------------------------------------------------
+
+# variable definition reference:
+# REGION_LIST <region_1> <region_2> ... <region_n> # comments: line has the ordered names of any regions
+# (CELL_|FACE_)REGION_CONSTANT <name> [multiplier*units] numerical_value_for_region_1 .. value_for_region_n options # comments: sets a constant that varies with region
+# (CELL_|FACE_|NONE_|)CONSTANT <name> [multiplier*units] numerical_value ON <region> options # comments: sets a constant specific to one region or no regions and has the form
+# (CELL_|FACE_|NONE|)CONSTANT <name> [units] "expression (involving only constants)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)TRANSIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)NEWTIENT <name> [units] "expression (initial value, optional, evaluated in descending relstep order)" "expression (evaluated in ascending relstep order)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)DERIVED <name> [units] "expression" ON <region> options # comments
+# (CELL_|FACE_|NONE|)UNKNOWN <name> [units] "expression (initial value, optional)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)EQUATION <name> [units] "expression (equation equaling zero)" ON <region> options # comments
+# (CELL_|FACE_|NONE|)OUTPUT <name> [units] "expression" ON <region> options # comments
+# (CELL_|FACE_|NONE|)CONDITION <name> [units] "expression" ON <region> options # comments
+# (CELL_|FACE_|NONE|)LOCAL <name> [units] "expression" ON <region> options # comments
+
+# options include (with p=perl and f=fortran indicating which piece of code needs to know the option):
+#p  derivative/noderivative - for DERIVED, EQUATION, LOCAL : do or do not calculate Jacobian derivatives for this variable
+#p  positive/negative/nocheck - for DERIVED, UNKNOWN, EQUATION, LOCAL : check at each iteration that variable is positive/negative
+#f  output/nooutput - for ALL : output compound to msh files
+#f  componentoutput/nocomponentoutput - for ALL : output just this component to msh files
+#f  stepoutput/stepoutputnoupdate/nostepoutput - for ALL : output compound to step file.  The noupdate one does not update the variable when the step file is written (needed for recording when output occurred for example).
+#f  componentstepoutput/componentstepoutputnoupdate/nocomponentstepoutput - for ALL : output just this component to step files
+#f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
+#f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
+#f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component)
+#p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
+#f  magnitude=value - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
+#f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude
+#f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
+#   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
+
+# physical data
+<<batchercomment>>CONSTANT <z_0> [m] <<z_init>> # initial ball height
+<<nobatchercomment>>CONSTANT <z_0> [m] 1.5d0 # initial ball height
+CONSTANT <w_0> [m/s] 0.d0 # inital ball velocity (positive is up)
+CONSTANT <D> [m] 0.065d0 # ball diameter (tennis ball)
+CONSTANT <m> [kg] 0.057d0 # ball mass (tennis ball)
+CONSTANT <rho_g> [kg/m^3] 1.d0 # density of surrounding gas (assume constant at the start)
+CONSTANT <mu_g> [Pa s] 1.d-5 # viscosity of surrounding gas (assume constant at the start)
+CONSTANT <g> [m/s^2] -9.81d0 # acceleration due to gravity in z direction
+CONSTANT <coefficient of restitution> [] 0.8 # tennis ball http://en.wikipedia.org/wiki/Coefficient_of_restitution gives 0.94 which is too high?
+CONSTANT <max_bounces> [] 10 # maximum number of bounces
+CONSTANT <tend> [] 1.d+2 # time for simulation to stop
+
+# numerical data
+CONSTANT <dt> [] 1.d-2 # constant timestep
+
+# transient bits
+TRANSIENT_SIMULATION
+NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt>" # time
+NONE_TRANSIENT <t[r=1]> "<t>-<dt>" "<t>" # time at last step
+NONE_TRANSIENT <t[r=2]> "<t[r=1]>-<dt>" "<t[r=1]>" # time at last step
+NONE_CONDITION <time based stop condition> "<t>-<tend>" stopcondition # when this becomes true (>0.) the simulation stops
+
+# position and velocity, with approximate treatment of bounce
+NONE_UNKNOWN <z> [m] "<z_0>" # position of ball
+NONE_TRANSIENT <z[r=1]> [m] "<z>-<w_0>*<dt>" "<z_real>" # position of ball at r=1
+NONE_DERIVED <w> [m/s] "(<z>-<z[r=1]>)/<dt>" # velocity of ball
+NONE_TRANSIENT <w[r=1]> [m/s] "<w>" "<w_real>" # velocity of ball at r=1
+NONE_DERIVED <w_real> [m/s] "noneif(<z>,<w>,-<coefficient of restitution>*<w>)" output,input # real velocity of ball after possible bounce
+NONE_DERIVED <z_real> [m] "noneif(<z>,<z>,<z>*<w_real>/<w[r=1]>)" output,input # real position of ball after possible bounce
+
+# drag force
+NONE_DERIVED <Re_D> [] "<rho_g>*abs(<w>)*<D>/<mu_g>" # Reynolds number for ball
+NONE_DERIVED <Re> [] "nonemax(<Re_D>,1.d-4)" # limit Re to be > zero even when velocity is zero
+NONE_DERIVED <C_D> [] "24.d0/<Re>*(1.d0+0.27d0*<Re>)^(0.43d0)+0.47d0*(1.d0-exp(-0.04d0*<Re>^0.38d0))" # coefficient of drag, from http://www3.ntu.edu.sg/home/cnscheng/Publications/reprint/Accepted%20Manuscript%20(Cd-Re%20Sphere).pdf
+NONE_CONSTANT <area> [m^2] "<pi>*<D>^2/4.d0" # projected area of ball
+NONE_DERIVED <F_drag> [N] "-<C_D>*<rho_g>*<w>*abs(<w>)*<area>/2.d0" # drag force on ball
+
+# equation of motion
+NONE_EQUATION <force_balance> [N] "<m>*(<w>-<w[r=1]>)/<dt>-(<m>*<g>+<F_drag>)" # Newton's second law applied to the ball
+
+# count number of bounces
+NONE_TRANSIENT <bounces> [] "0" "<bounces[r=1]>+noneif(<z>,0.d0,1.d0)" stepoutput
+NONE_TRANSIENT <bounces[r=1]> [] "0" "<bounces>"
+NONE_CONDITION <bounce based stop condition> [] "<bounces>-<max_bounces>" stopcondition # stop the simulation when the maximum number of bounces has been reached
+
+#-------------------------------------------------------------------
+
+# this is an example of trigger based sampling
+
+INCLUDE_TEMPLATE "general"
+# we sample variables when <trigger expression> first returns true
+# for example, here <z> is initially 1.5 and begins to decrease as the ball travels towards the wall
+# we want to sample certain variables when <z> first passes through 0.8, so we would set <trigger expression> to 
+# <z_threshold>-<z>, where <z_threshold> takes the value 0.8
+
+NONE_CONSTANT <z_threshold> 0.8 stepoutput
+
+# trigger_create
+#
+# usage:
+#
+# user input variables:
+# <trigger_expression>
+#     {<trigger}> will return true whenever <trigger_expression> changes sign between sequential time steps
+#
+# template variables:
+# {<trigger}>
+#     {<trigger}> will return true whenever <trigger_expression> changes sign between sequential time steps
+# {<trigger}_logical>
+#     {<trigger}_logical> stores the total number of times that <trigger_expression> has changed sign since the start of the simulation
+#
+# example:
+# here we create a trigger and name it as <trigger_z
+INCLUDE "trigger_create" R "<trigger" W "<trigger_z" R "<trigger_expression>" W "<z_threshold>-<z>" # create a namespace called <trigger_z
+
+# trigger_link
+# link variables to a particular trigger
+#
+# usage:
+# 
+# user input variables:
+# <linked_variable_to_store>
+#      <linked_variable_to_store> will be stored in {<linked}> whenever {<trigger}> is activated
+# <linked_on_trigger_occurence>, none-centred integer
+#      store when {<trigger}> has been actived the number of times specified by <linked_on_trigger_occurence>
+#
+# template variables:
+# {<linked}> stepoutput
+#       the name of the stored output variable that is newly created
+# {<trigger}_logical>
+#       a reference to an existing trigger
+#
+# example:
+# here we link <z> to <trigger_z>, which was created above
+# we demonstrate the use of <linked_on_trigger_occurence> to store the values of <z> on the first and second activation of <trigger_z>
+# and name these values <z_triggered_one> and <z_triggered_two>, respectively
+INCLUDE "trigger_link" R "<linked" W "<z_triggered_one" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "1.d0" R "<trigger" W "<trigger_z" # use the <trigger_z namespace
+INCLUDE "trigger_link" R "<linked" W "<z_triggered_two" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "2.d0" R "<trigger" W "<trigger_z" # use the <trigger_z namespace
+
+# we can store the number of times <z> has passed through <z_threshold> by accessing the {<trigger}_logical> variable
+NONE_DERIVED <cumulative passes> "<trigger_z_logical>" stepoutput
+
+# alternative minimal example
+# here we create a trigger using it's default variable names
+# and link it to the variable <z>
+INCLUDE "trigger_create" R "<trigger_expression>" W "<z_threshold>-<z>"
+INCLUDE "trigger_link" R "<linked_variable_to_store>" W "<z>" R "<linked_on_trigger_occurrence>" W "1.d0"
+
+#-------------------------------------------------------------------
+# this is an example of storing the minimum and maximum values of a none-centred variable over the course of a transient simulation
+
+# series_nonemax
+# max over entire timeseries
+# usage:
+#
+# user input variables:
+# <var_tracked>
+#     the name of the variable to track
+#
+# template variables:
+# {<var}_max> input,output
+#   stores the maximum value of <var_tracked> over the course of the simulation
+#
+# example
+INCLUDE "series_nonemax" R "<var" W "<z" R "<var_tracked>" W "<z>"
+
+# series_nonemin
+# minimum over entire timeseries
+# usage:
+#
+# user input variables:
+# <var_tracked>
+#     the name of the variable to track
+#
+# template variables:
+# {<var}_min> input,output
+#   stores the minimum value of <var_tracked> over the course of the simulation
+#
+# example
+INCLUDE "series_nonemin" R "<var" W "<z" R "<var_tracked>" W "<z>"

@@ -1,0 +1,13 @@
+NONE_CONSTANT <phi_total_species_max_drag> 0.99d0
+
+CELL_LOCAL <drag_factor> "(2*<a>^2)/(9.d0*<mu_l>)"
+
+CELL_LOCAL <sedimentation_hindrance_low> "<drag_factor>*(1.d0-(<phi_total_species>/<mu_s_phi_total_species_max>))*(1.d0-<phi_total_species>)^2" ON <all cells> # this is used for 0 <= <e_s> < <e_s_max_drag>
+#CELL_LOCAL <sedimentation_hindrance_low> "<drag_factor>*(1.d0-<phi_total_species>)^2/<mu>" ON <all cells> # this is used for 0 <= <e_s> < <e_s_max_drag>
+#CELL_LOCAL <sedimentation_hindrance_low> "<drag_factor>*(1.d0-<phi_total_species>)" ON <all cells> # this is used for 0 <= <e_s> < <e_s_max_drag>
+
+CELL_DERIVED <sedimentation_hindrance_c> "<sedimentation_hindrance_low>" ON <all cells>
+FACE_LOCAL <sedimentation_hindrance_f> "faceave[adjacentcells](<sedimentation_hindrance_c>)" ON <all faces> # use arithmetic averaging to the faces, which will tend towards overestimating kappa and probably more stability
+
+#FACE_DERIVED <drag_function_f> "<mu_l>/<sedimentation_hindrance_f>" ON <all faces> output
+#CELL_DERIVED <drag_function_c> "<mu_l>/<sedimentation_hindrance_c>" ON <all cells> output
