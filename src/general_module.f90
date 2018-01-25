@@ -43,6 +43,19 @@ implicit none
 ! all variables referenced in the general_module should be saved
 save ! note, under the 2008 fortran standard, I have read that all allocatable arrays in a module would automatically be saved anyway, but now including this specifically
 
+! ref: general options
+! the following are the main general option variables that can be set from the arb input file
+logical :: transient_simulation = .false. ! (.false., userable) whether simulation is transient or steady-state
+logical :: newtient_simulation = .false. ! (.false., userable) whether simulation is newtient or not (ie, has variables that are evaluated only outside of the newton loop)
+
+integer :: newtstepmax = 1000 ! maximum number of steps performed by newton proceedure
+integer :: newtstepdebugout = 990 ! after this many newtsteps newtstepout is set to 1 to produce debugging output
+integer :: newtstepmin = 1 ! minimum number of steps performed by newton proceedure
+integer :: iterstepmax = 1000000 ! maximum number of steps performed by linear iteration solver
+integer :: iterstepcheck = 100 ! how often linear iteration solver checks for kill file and outputs to screen residuals etc
+double precision :: newtrestol = 1.d-10 ! tolerance that indicates convergence of the newton proceedure
+double precision :: iterrestol = 1.d-11 ! tolerance that indicates convergence of the linear iteration solver
+double precision :: iterresreltol = 0.d0 ! tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres
 integer, parameter :: totaldimensions=3 ! this is maximum number of dimensions, possibly hardcode in future
 
 ! a generic kernel for calculating averages and derivatives
@@ -324,16 +337,6 @@ double precision, dimension(:), allocatable :: phiold, delphi ! single dimension
 integer :: transient_relstepmax ! maximum relstep value for all transients (variables and dynamic regions)
 integer :: newtient_relstepmax ! maximum relstep value for all newtients (variables and dynamic regions)
 double precision :: newtres = 0.d0 ! last evaluated value of the newton residual
-logical :: transient_simulation = .false. ! whether simulation is transient or steady-state
-logical :: newtient_simulation = .false. ! whether simulation is newtient or not (ie, has variables that are evaluated only outside of the newton loop)
-integer :: newtstepmax = 1000 ! maximum number of steps performed by newton proceedure
-integer :: newtstepdebugout = 990 ! after this many newtsteps newtstepout is set to 1 to produce debugging output
-integer :: newtstepmin = 1 ! minimum number of steps performed by newton proceedure
-integer :: iterstepmax = 1000000 ! maximum number of steps performed by linear iteration solver
-integer :: iterstepcheck = 100 ! how often linear iteration solver checks for kill file and outputs to screen residuals etc
-double precision :: newtrestol = 1.d-10 ! tolerance that indicates convergence of the newton proceedure
-double precision :: iterrestol = 1.d-11 ! tolerance that indicates convergence of the linear iteration solver
-double precision :: iterresreltol = 0.d0 ! tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres
 double precision, parameter :: tinyish = 1.d2*sqrt(tiny(0.d0)) ! something that is a bit bigger than tiny(0.d0)
 double precision, parameter :: hugeish = 1.d-2*sqrt(huge(0.d0)) ! something that is a bit smaller than huge(0.d0)
 integer :: timestepmax = huge(timestepmax) ! maximum number of timesteps performed

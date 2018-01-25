@@ -532,8 +532,10 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
         fi
       else
         if [ $compiler = "intel" ] ; then
-          echo "ERROR: requested intel compiler is not in the path" ;
+          echo "ERROR: requested intel compiler is not available.  Check that the compiler is installed and can be found within your path (does 'ifort --version' at the command line work?)." ;
           cd "$working_dir"; exit 1;
+        else
+          echo "INFO: intel compiler is not available";
         fi
       fi
     fi
@@ -544,14 +546,16 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
         compiler="gnu";
       else
         if [ $compiler = "gnu" ] ; then
-          echo "ERROR: requested gnu compiler is not in the path" ;
+          echo "ERROR: requested gnu compiler is not available.  Check that the compiler is installed and can be found within your path (does 'gfortran --version' at the command line work?)." ;
           cd "$working_dir"; exit 1;
+        else
+          echo "INFO: gnu compiler is not available" ;
         fi
       fi
     fi
   # if nothing is found 
     if [ $compiler = "default" ] ; then
-      echo "ERROR: no compiler is present";
+      echo "ERROR: no compiler is available";
       cd "$working_dir"; exit 1;
     elif [ ! $compiler = "intel" -a ! $compiler = "gnu" ] ; then
       echo "ERROR: unknown requested compiler $compiler";

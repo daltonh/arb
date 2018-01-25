@@ -12,7 +12,7 @@ date: 6/12/16
 
 There are three categories of options that can be set within an arb file, with the names corresponding to the fortran modules in which the options are stored.  The three types of options/modules are kernel, solver and general, corresponding to the modules [kernel_module.f90], [solver_module.f90] and [general_module.f90].
 
-The fortran variables that store the individual options, along with an explanation of their use is generally given near the top of each respective module.  For example, near the top of [solver_module.f90] (search for ref: solver options) is a list of the solver options, including the following:
+The fortran variables that store the individual options, along with a brief explanation of their use is generally given near the top of each respective module.  For example, near the top of [solver_module.f90] (search for ref: solver options) is a list of the solver options, including the following:
 ```fortran
 character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, intelpardisosafer, suitesparse, hslma28, pardiso, sparse, mgmres, multigrid, bicg, bicgstab, descent, doglegdescent, flexible
 
@@ -43,6 +43,33 @@ More details of specific options are given in this chapter.
 
 ##General options
 
+###Transient versus steady-state simulation type
+
+arb can be run either in steady-state mode, or in transient mode.  In steady-state mode a backstepped Newton-Raphson procedure is used to advance the solution towards convergence, and the steps used by this `newton` procedure as referred to as `newtsteps`.  In transient mode the `newtsteps` loop is nested with a transient `timestep` loop.  General options are available to choose the simulation type, and to control the progress and running of both of the `timestep` and `newtstep` loops.
+
+Note that the `timestep` loop need not be for simulating a physically transient problem, as there is no particular need to associate each `timestep` with a physical time.  A transient simulation can just as well be used for running multiple steady-state simulations in series, useful (for example) for performing a parametric study whereby a certain parameter is changed as a function of the `timestep` (note that `arb_batcher` is also available for performing parametric studies).
+
+To choose between the simulation types set the `transientsimulation` option using
+```arb
+GENERAL_OPTIONS transientsimulation=.true. # specifies that the timestep loop will be used
+GENERAL_OPTIONS transientsimulation=.false. # specifies that the timestep loop will not be used, ie, a steady-state simulation (default)
+```
+The default simulation type is steady-state, unless any transient variables or dynamic regions have been defined (in which case the default simulation type becomes transient).
+
+###Newtient simulations
+
+During the newton loop variables are updated and the jacobian matrix calculated at the end of the loop, at the same time as the newton loop residual (`newtres`) is calculated and convergence criteria checked.  arb has the ability to also update variables again once the newton loop has converged but before the next `newtstep` is undertaken - if this is required then the simulation is referred to as a `newtient` simulation, and the variables/regions that are to be updated in this fashion are known as `NEWTIENT` variables/regions.  The purpose of `NEWTIENT` variables/regions is to aid convergence for some types of equations (however they are rarely employed or needed for well-defined problems).
+
+The commands to specify a newtient simulation are
+```arb
+GENERAL_OPTIONS newtientsimulation=.true. # specifies that newtient variables are to be updated after the newton loop has converged
+GENERAL_OPTIONS newtientsimulation=.false. # no newtient variables are to be updated (default)
+```
+Again, the default is false unless any `NEWTIENT` variables or regions are defined.
+
+###Transient (timestep) loop options
+
+###Newton (newtstep) loop options
 
 
 ##Simulation options
