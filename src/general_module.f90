@@ -56,7 +56,8 @@ integer :: iterstepcheck = 100 ! how often linear iteration solver checks for ki
 double precision :: newtrestol = 1.d-10 ! tolerance that indicates convergence of the newton proceedure
 double precision :: iterrestol = 1.d-11 ! tolerance that indicates convergence of the linear iteration solver
 double precision :: iterresreltol = 0.d0 ! tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres
-integer, parameter :: totaldimensions=3 ! this is maximum number of dimensions, possibly hardcode in future
+
+integer, parameter :: totaldimensions=3 ! this is maximum number of dimensions: for all intents and purposes this can't be changed
 
 ! a generic kernel for calculating averages and derivatives
 type kernel_type

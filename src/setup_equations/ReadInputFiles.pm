@@ -1144,6 +1144,25 @@ sub check_deprecated_solver_code {
 
   my $line = $_[0];
 
+# first deal with any depreciated syntax that doesn't require string substitution to find the alternative, and only requires a warning
+  our %depreciated_syntax = (
+    "READ_GMSH" => 'MSH_FILE',
+    "(START_|BEGIN_)SKIP" => "SKIP",
+    "STOP_SKIP" => "END_SKIP",
+    "(START_|BEGIN_|)COMMENT(S){0,1}" => "SKIP",
+    "(STOP_|END_|)COMMENT(S){0,1}" => "END_SKIP",
+    "(NONTRANSIENT|STEADY(-|_|)STATE)_SIMULATION" => "GLOBAL_OPTIONS transientsimulation=.false.",
+    "TRANSIENT_SIMULATION" => "GLOBAL_OPTIONS transientsimulation=.true.",
+  );
+
+  foreach my $depreciated_syntax_regex ( keys(%depreciated_syntax) ) {
+    if ($line =~ /^\E($depreciated_syntax_regex)($|\s)/i) {
+      $line = $`."\E$depreciated_syntax{$depreciated_syntax_regex}".$+.$'; # $+ is the last matched bracket
+      syntax_problem("$1 keyword has been deprecated, use $depreciated_syntax{$depreciated_syntax_regex} instead: $filelinelocator","warning");
+    }
+  }
+
+# now loop through more complex language changes, or those that require more informative messages or produce errors
 # very old variable name types
   if ($line =~ /^(CELL_|FACE_|NODE_|NONE_|)(INDEPENDENT|FIELD|DEPENDENT)($|\s)/i) {
     my $deprecatedtype = "\U$2";
@@ -1157,33 +1176,45 @@ sub check_deprecated_solver_code {
     syntax_problem("$deprecatedtype type has been deprecated, use $type instead: $filelinelocator","warning");
 
 # READ_GMSH
-  } elsif ( $line =~ /^(READ_GMSH)($|\s)/i ) {
-    $line = $`."MSH_FILE".$2.$';
-    syntax_problem("$1 keyword has been deprecated, use MSH_FILE instead: $filelinelocator","warning");
+# } elsif ( $line =~ /^(READ_GMSH)($|\s)/i ) {
+#   $line = $`."MSH_FILE".$2.$';
+#   syntax_problem("$1 keyword has been deprecated, use MSH_FILE instead: $filelinelocator","warning");
 
 # various COMMENT(S) keywords has been replaced by SKIP/END_SKIP only
-  } elsif ( $line =~ /^((START_|BEGIN_)SKIP)($|\s)/i ) {
-    $line = $`."SKIP".$3.$';
-    syntax_problem("$1 keyword has been deprecated, use SKIP instead: $filelinelocator","warning");
-  } elsif ( $line =~ /^(STOP_SKIP)($|\s)/i ) {
-    $line = $`."END_SKIP".$2.$';
-    syntax_problem("$1 keyword has been deprecated, use END_SKIP instead: $filelinelocator","warning");
-  } elsif ( $line =~ /^((START_|BEGIN_|)COMMENT(S){0,1})($|\s)/i ) {
-    $line = $`."SKIP".$4.$';
-    syntax_problem("$1 keyword has been deprecated, use SKIP instead: $filelinelocator","warning");
-  } elsif ( $line =~ /^((STOP_|END_|)COMMENT(S){0,1})($|\s)/i ) {
-    $line = $`."END_SKIP".$4.$';
-    syntax_problem("$1 keyword has been deprecated, use END_SKIP instead: $filelinelocator","warning");
+# } elsif ( $line =~ /^((START_|BEGIN_)SKIP)($|\s)/i ) {
+#   $line = $`."SKIP".$3.$';
+#   syntax_problem("$1 keyword has been deprecated, use SKIP instead: $filelinelocator","warning");
+# } elsif ( $line =~ /^(STOP_SKIP)($|\s)/i ) {
+#   $line = $`."END_SKIP".$2.$';
+#   syntax_problem("$1 keyword has been deprecated, use END_SKIP instead: $filelinelocator","warning");
+# } elsif ( $line =~ /^((START_|BEGIN_|)COMMENT(S){0,1})($|\s)/i ) {
+#   $line = $`."SKIP".$4.$';
+#   syntax_problem("$1 keyword has been deprecated, use SKIP instead: $filelinelocator","warning");
+# } elsif ( $line =~ /^((STOP_|END_|)COMMENT(S){0,1})($|\s)/i ) {
+#   $line = $`."END_SKIP".$4.$';
+#   syntax_problem("$1 keyword has been deprecated, use END_SKIP instead: $filelinelocator","warning");
 
 # deprecated include statements
   } elsif ($line =~ /^INCLUDE(_ROOT|_FROM)($|\s)/i) {
-    $line = $`."INCLUDE_TEMPLATE".$2.$';
-    syntax_problem("INCLUDE_"."\U$1"." has been deprecated.  Use INCLUDE_TEMPLATE instead which searches through the templates directory tree for a specific file, and at the same time, adds the file's path to the include_path stack.  Or, if the include_path stack already includes the path for the template file, you can just use the INCLUDE command as this searches through the include_path stack: $filelinelocator","warning");
+    my $alternative="INCLUDE_TEMPLATE";
+    $line = $`.$alternative.$+.$';
+    syntax_problem("$1 keyword has been deprecated.  Use $alternative instead which searches through the templates directory tree for a specific file, and at the same time, adds the file's path to the include_path stack.  Or, if the include_path stack already includes the path for the template file, you can just use the INCLUDE command as this searches through the include_path stack: $filelinelocator","warning");
 
-# deprecated nontransient simulation
-  } elsif ($line =~ /^(NONTRANSIENT_SIMULATION)($|\s)/i) {
-    $line = $`."STEADYSTATE_SIMULATION".$2.$';
-    syntax_problem("$1 keyword has been deprecated, use STEADYSTATE_SIMULATION instead: $filelinelocator","warning");
+# deprecated nontransient simulation, and now (v0.58) also changing these types of statements to GENERAL_OPTIONS
+# } elsif ($line =~ /^((NONTRANSIENT|STEADY(-|_|)STATE)_SIMULATION)($|\s)/i) {
+#   my $alternative="GLOBAL_OPTIONS transientsimulation=.false.";
+#   $line = $`.$alternative.$2.$';
+#   syntax_problem("$1 keyword has been deprecated, use $alternative instead: $filelinelocator","warning");
+
+# } elsif ($line =~ /^(TRANSIENT_SIMULATION)($|\s)/i) {
+#   my $alternative="GLOBAL_OPTIONS transientsimulation=.true.";
+#   $line = $`.$alternative.$2.$';
+#   syntax_problem("$1 keyword has been deprecated, use $alternative instead: $filelinelocator","warning");
+
+  } elsif ( $line =~ /^(ITERRES(TOL|RELTOL)|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT|START)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL|START))(\s+)/i ) {
+    my $alternative="GLOBAL_OPTIONS \L$1=$'";
+    $line = $`.$alternative;
+    syntax_problem("$1 keyword has been deprecated, use $alternative instead: $filelinelocator","warning");
 
 # linear solver
   } elsif ( $line =~ /^(LINEAR_SOLVER)($|\s)/i ) {
