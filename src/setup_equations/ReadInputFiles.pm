@@ -636,18 +636,6 @@ sub parse_solver_code {
     }
 
 #-------------------
-# look for transient/steady-state simulation keyword
-  } elsif ($line =~ /^(TRANSIENT|STEADY(-|_|)STATE)_SIMULATION($|\s)/i) {
-    print ::DEBUG "$1_SIMULATION set directly: $filelinelocator\n";
-    if ($1 =~ /^TRANSIENT$/i) { string_set_transient_simulation(1); $::transient_simulation=1; } else { string_set_transient_simulation(0); $::transient_simulation=0; }
-
-#-------------------
-# look for newtient simulation keyword
-  } elsif ($line =~ /^\s*((NON|)NEWTIENT)_SIMULATION($|\s)/i) {
-    print ::DEBUG "$1_SIMULATION set directly: $filelinelocator\n";
-    if ($1 =~ /^NEWTIENT$/i) { $::newtient_simulation=1; } else { $::newtient_simulation=0; }
-
-#-------------------
 # ref: default options
 # set or reset any default options for variables (these go before the individual options so any relevant individual options take precedence over these)
 # also, each DEFAULT_OPTIONS statement clears previous DEFAULT_OPTIONS statements
@@ -675,15 +663,30 @@ sub parse_solver_code {
 
 #-------------------
 # these are commands that need to be transferred unaltered to the arb input file
-# TODO: remove time/newt/iter options from here and more to general_options
 # TODO: standardise options keyword -> KERNEL_OPTION only - is plural used elsewhere?
-  } elsif ( $line =~ /^(((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|ITERRESTOL|ITERRESRELTOL|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES|((TIME|NEWT)STEP_REWIND))($|\s)/i ) {
+# also check on specific transientsimulation and newtientsimulation (option) statements
+  } elsif ( $line =~ /^(((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|GLUE_FACES)($|\s)/i ) {
     my $keyword = "\U$1";
     $line = $'; $line =~ s/^\s*//;
-    if ($keyword =~ /^((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))$/) {$keyword = "$2_OPTIONS";} # standardise the statement for fortran input
+
+    if ($keyword =~ /^((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))$/) {
+      $keyword = "$2_OPTIONS";  # standardise the statement for fortran input
+# also check for transientsimulation or newtientsimulation keywords as these have to be set here
+      if ($line =~ /(^|\,)\s*transientsimulation(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
+        if (nonempty($4)) { string_set_transient_simulation(0); $::transient_simulation=0; } else { string_set_transient_simulation(1); $::transient_simulation=1; };
+        print "INFO: transientsimulation set to ".fortran_logical_string($::transient_simulation)." directly\n";
+        print ::DEBUG "INFO: transientsimulation set to ".fortran_logical_string($::transient_simulation)." directly: $filelinelocator\n";
+      }
+      if ($line =~ /(^|\,)\s*newtientsimulation(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
+        if (nonempty($4)) { $::newtient_simulation=0; } else { $::newtient_simulation=1; };
+        print "INFO: newtientsimulation set to ".fortran_logical_string($::newtient_simulation)." directly\n";
+        print ::DEBUG "INFO: newtientsimulation set to ".fortran_logical_string($::newtient_simulation)." directly: $filelinelocator\n";
+      }
+
+    } elsif ($keyword =~ /^GLUE_FACES/i) {
 # if this is a GLUE_FACES then check if reflect=? has been specified and if so, set general_replacement string automatically
 # not setting this in the arb input file has caught me out so many times that it is now automatic, but can be overwritten after the GLUE_FACES command if need be
-    if ($keyword =~ /^GLUE_FACES/i) {
+
       my $tmp = $line;
 # strip any region definitions from line, just in case a region contains a reflect=N statement in it...
       while ($tmp =~ /\s*<(.+?)>\s*/) { $tmp = $`." ".$'; }
@@ -1151,13 +1154,13 @@ sub check_deprecated_solver_code {
     "STOP_SKIP" => "END_SKIP",
     "(START_|BEGIN_|)COMMENT(S){0,1}" => "SKIP",
     "(STOP_|END_|)COMMENT(S){0,1}" => "END_SKIP",
-    "(NONTRANSIENT|STEADY(-|_|)STATE)_SIMULATION" => "GLOBAL_OPTIONS transientsimulation=.false.",
-    "TRANSIENT_SIMULATION" => "GLOBAL_OPTIONS transientsimulation=.true.",
+    "(NONTRANSIENT|STEADY(-|_|)STATE)_SIMULATION" => "GENERAL_OPTIONS transientsimulation=.false.",
+    "TRANSIENT_SIMULATION" => "GENERAL_OPTIONS transientsimulation=.true.",
   );
 
   foreach my $depreciated_syntax_regex ( keys(%depreciated_syntax) ) {
-    if ($line =~ /^\E($depreciated_syntax_regex)($|\s)/i) {
-      $line = $`."\E$depreciated_syntax{$depreciated_syntax_regex}".$+.$'; # $+ is the last matched bracket
+    if ($line =~ /^($depreciated_syntax_regex)($|\s)/i) {
+      $line = $`."$depreciated_syntax{$depreciated_syntax_regex}".$+.$'; # $+ is the last matched bracket
       syntax_problem("$1 keyword has been deprecated, use $depreciated_syntax{$depreciated_syntax_regex} instead: $filelinelocator","warning");
     }
   }
@@ -1175,44 +1178,15 @@ sub check_deprecated_solver_code {
     $line = $`.$1.$type.$3.$';
     syntax_problem("$deprecatedtype type has been deprecated, use $type instead: $filelinelocator","warning");
 
-# READ_GMSH
-# } elsif ( $line =~ /^(READ_GMSH)($|\s)/i ) {
-#   $line = $`."MSH_FILE".$2.$';
-#   syntax_problem("$1 keyword has been deprecated, use MSH_FILE instead: $filelinelocator","warning");
-
-# various COMMENT(S) keywords has been replaced by SKIP/END_SKIP only
-# } elsif ( $line =~ /^((START_|BEGIN_)SKIP)($|\s)/i ) {
-#   $line = $`."SKIP".$3.$';
-#   syntax_problem("$1 keyword has been deprecated, use SKIP instead: $filelinelocator","warning");
-# } elsif ( $line =~ /^(STOP_SKIP)($|\s)/i ) {
-#   $line = $`."END_SKIP".$2.$';
-#   syntax_problem("$1 keyword has been deprecated, use END_SKIP instead: $filelinelocator","warning");
-# } elsif ( $line =~ /^((START_|BEGIN_|)COMMENT(S){0,1})($|\s)/i ) {
-#   $line = $`."SKIP".$4.$';
-#   syntax_problem("$1 keyword has been deprecated, use SKIP instead: $filelinelocator","warning");
-# } elsif ( $line =~ /^((STOP_|END_|)COMMENT(S){0,1})($|\s)/i ) {
-#   $line = $`."END_SKIP".$4.$';
-#   syntax_problem("$1 keyword has been deprecated, use END_SKIP instead: $filelinelocator","warning");
-
 # deprecated include statements
   } elsif ($line =~ /^INCLUDE(_ROOT|_FROM)($|\s)/i) {
     my $alternative="INCLUDE_TEMPLATE";
     $line = $`.$alternative.$+.$';
     syntax_problem("$1 keyword has been deprecated.  Use $alternative instead which searches through the templates directory tree for a specific file, and at the same time, adds the file's path to the include_path stack.  Or, if the include_path stack already includes the path for the template file, you can just use the INCLUDE command as this searches through the include_path stack: $filelinelocator","warning");
 
-# deprecated nontransient simulation, and now (v0.58) also changing these types of statements to GENERAL_OPTIONS
-# } elsif ($line =~ /^((NONTRANSIENT|STEADY(-|_|)STATE)_SIMULATION)($|\s)/i) {
-#   my $alternative="GLOBAL_OPTIONS transientsimulation=.false.";
-#   $line = $`.$alternative.$2.$';
-#   syntax_problem("$1 keyword has been deprecated, use $alternative instead: $filelinelocator","warning");
-
-# } elsif ($line =~ /^(TRANSIENT_SIMULATION)($|\s)/i) {
-#   my $alternative="GLOBAL_OPTIONS transientsimulation=.true.";
-#   $line = $`.$alternative.$2.$';
-#   syntax_problem("$1 keyword has been deprecated, use $alternative instead: $filelinelocator","warning");
-
+# general options that were pre v0.58 set by keywords
   } elsif ( $line =~ /^(ITERRES(TOL|RELTOL)|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT|START)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL|START))(\s+)/i ) {
-    my $alternative="GLOBAL_OPTIONS \L$1=$'";
+    my $alternative="GENERAL_OPTIONS \L$1=$'";
     $line = $`.$alternative;
     syntax_problem("$1 keyword has been deprecated, use $alternative instead: $filelinelocator","warning");
 

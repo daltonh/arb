@@ -38,6 +38,12 @@ Multiple options can be included on the one line, as in
 ```arb
 KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2,automaximumseparation=.false.
 ```
+For logical variables the specification of `.true.` can be ommited, while to negate a logical option `.false.` must be used, as in
+```arb
+GENERAL_OPTIONS automaximumseparation # turns on automaximumseparation
+GENERAL_OPTIONS automaximumseparation=.true. # equivalently turns on automaximumseparation
+GENERAL_OPTIONS automaximumseparation=.false. # turns off automaximumseparation
+```
 
 More details of specific options are given in this chapter.
 

@@ -4245,21 +4245,6 @@ sub run_maxima_fortran {
 }
 
 #-------------------------------------------------------------------------------
-
-sub fortran_logical_string {
-
-  my $string;
-
-  if ($_[0]) {
-    $string = ".true.";
-  } else {
-    $string = ".false.";
-  }
-  return $string;
-
-}
-
-#-------------------------------------------------------------------------------
 # this takes a single maxima line and converts it into a single fortran line with
 #  references suitable for the final code
 
