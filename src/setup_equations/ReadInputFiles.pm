@@ -672,13 +672,16 @@ sub parse_solver_code {
     if ($keyword =~ /^((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))$/) {
       $keyword = "$2_OPTIONS";  # standardise the statement for fortran input
 # also check for transientsimulation or newtientsimulation keywords as these have to be set here
-      if ($line =~ /(^|\,)\s*transientsimulation(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
-        if (nonempty($4)) { string_set_transient_simulation(0); $::transient_simulation=0; } else { string_set_transient_simulation(1); $::transient_simulation=1; };
+# and remove these lines so not passed to the fortran (to allow for error checking in the fortran)
+      while ($line =~ /(^|\,)\s*(no|)transientsimulation(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
+        if (nonempty($2) || nonempty($5)) { string_set_transient_simulation(0); $::transient_simulation=0; } else { string_set_transient_simulation(1); $::transient_simulation=1; };
+        $line = $`.$1.$+.$'; # remove the transient string
         print "INFO: transientsimulation set to ".fortran_logical_string($::transient_simulation)." directly\n";
         print ::DEBUG "INFO: transientsimulation set to ".fortran_logical_string($::transient_simulation)." directly: $filelinelocator\n";
       }
-      if ($line =~ /(^|\,)\s*newtientsimulation(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
-        if (nonempty($4)) { $::newtient_simulation=0; } else { $::newtient_simulation=1; };
+      while ($line =~ /(^|\,)\s*(no|)newtientsimulation(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
+        if (nonempty($2) || nonempty($5)) { $::newtient_simulation=0; } else { $::newtient_simulation=1; };
+        $line = $`.$1.$+.$'; # remove the newtient string
         print "INFO: newtientsimulation set to ".fortran_logical_string($::newtient_simulation)." directly\n";
         print ::DEBUG "INFO: newtientsimulation set to ".fortran_logical_string($::newtient_simulation)." directly: $filelinelocator\n";
       }

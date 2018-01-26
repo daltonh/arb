@@ -85,6 +85,10 @@ if (debug) write(*,*) 'calling read_input_file'
 
 call read_input_file ! read arb input file for numerical data, some region and mesh info
 
+if (debug) write(*,*) 'calling process_general_options'
+
+call process_general_options ! convert any general_options to fortran variables
+
 if (debug) write(*,*) 'calling setup_mesh'
 
 call setup_mesh ! read in meshes
@@ -323,12 +327,12 @@ fileloop: do
 !---------------
 ! timestepmax
 
-  if (trim(keyword) == 'TIMESTEPMAX') then
-    read(textline,*,iostat=ierror) timestepmax
-    if (ierror /= 0) call error_stop('problem reading in maximum number of time steps from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(timestepmax))//')'
-    write(*,fmt=formatline) 'INFO: timestepmax = ',timestepmax
-  end if
+! if (trim(keyword) == 'TIMESTEPMAX') then
+!   read(textline,*,iostat=ierror) timestepmax
+!   if (ierror /= 0) call error_stop('problem reading in maximum number of time steps from line '//otextline)
+!   formatline = '(a,'//trim(dindexformat(timestepmax))//')'
+!   write(*,fmt=formatline) 'INFO: timestepmax = ',timestepmax
+! end if
 
 !---------------
 ! timestepmin
@@ -418,9 +422,22 @@ fileloop: do
   end if
 
 !---------------
+! general options
+
+  if (trim(keyword) == 'GENERAL'.or.trim(keyword) == 'GENERAL_OPTION'.or.trim(keyword) == 'GENERAL_OPTIONS') then
+! extract any options and add to the start of the options array
+    array_size = allocatable_character_size(general_options)
+    call extract_options(textline,general_options)
+    if (allocated(general_options)) then
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set general options have been read in:', &
+        (' '//trim(general_options(n)),n=1,ubound(general_options,1))
+    end if
+  end if
+
+!---------------
 ! kernel options
 
-  if (trim(keyword) == 'KERNEL'.or.trim(keyword) == 'KERNELS'.or.trim(keyword) == 'KERNEL_OPTIONS') then
+  if (trim(keyword) == 'KERNEL'.or.trim(keyword) == 'KERNEL_OPTION'.or.trim(keyword) == 'KERNEL_OPTIONS') then
 ! extract any options and add to the start of the options array
     array_size = allocatable_character_size(kernel_options)
     call extract_options(textline,kernel_options)
@@ -435,7 +452,7 @@ fileloop: do
 !---------------
 ! solver options
 
-  if (trim(keyword) == 'SOLVER'.or.trim(keyword) == 'SOLVERS'.or.trim(keyword) == 'SOLVER_OPTIONS') then
+  if (trim(keyword) == 'SOLVER'.or.trim(keyword) == 'SOLVER_OPTION'.or.trim(keyword) == 'SOLVER_OPTIONS') then
 ! extract any options and add to the start of the options array
     array_size = allocatable_character_size(solver_options)
     call extract_options(textline,solver_options)
@@ -1846,6 +1863,208 @@ if (debug) write(*,'(a/80(1h-))') 'subroutine glue_faces'
 
 end subroutine glue_faces
 
+!-----------------------------------------------------------------
+
+subroutine process_general_options
+
+! run through requested general options, including user set ones (from input files)
+! NB, as a general rule, options do not have underscores in them
+! ref: general options
+
+use general_module
+integer :: n, max_polynomial_order
+character(len=100) :: option_name
+logical :: error
+logical, parameter :: debug = .true.
+
+if (debug) write(*,'(80(1h+)/a)') 'subroutine process_general_options'
+
+!do n = allocatable_character_size(general_options), 1, -1
+do n = 1, allocatable_character_size(general_options) ! precedence is now as read, that is, options will be applied in the order that they are written
+  option_name = extract_option_name(general_options(n),error)
+  if (debug) write(*,'(a)') "INFO: processing option_name = "//trim(option_name)//": option = "//trim(general_options(n))
+  if (error) then
+    write(*,'(a)') "WARNING: could not determine what the desired general option is from the following: "//trim(general_options(n))
+  else if (trim(option_name) == "timestepmax") then
+! timestepmax
+    call set_option_integer(general_options(n),option_name,timestepmax,'general')
+
+! else if (trim(option_name) == "generalmethod") then
+! general_method
+!   general_method = trim(extract_option_string(general_options(n),error))
+!   if (error) then
+!     call error_stop("could not determine the required generalmethod from the general option "//trim(general_options(n)))
+!   else if (trim(general_method) == 'mls' .or. trim(general_method) == 'optimisation' .or. trim(general_method) == 'simple' .or. trim(general_method) == 'none') then
+!     write(*,'(a)') 'INFO: setting generalmethod = '//trim(general_method)
+!   else
+!     call error_stop("requested generalmethod "//trim(general_method)//" is not valid")
+!   end if
+! else if (trim(option_name) == "polynomialorder") then
+! polynomial_order
+!   polynomial_order = extract_option_integer(general_options(n),error)
+!   if (error) then
+!     call error_stop("could not determine the required polynomialorder from the general option "//trim(general_options(n)))
+!   else if (polynomial_order > 3 .or. polynomial_order < 1) then
+!     call error_stop("requested general polynomialorder outside of allowable range 1 -> 3")
+!   end if
+!   write(*,'(a,i1)') 'INFO: setting general polynomialorder = ',polynomial_order
+! else if (trim(option_name) == "polynomialaverageorder") then
+! polynomial_average_order
+!   polynomial_average_order = extract_option_integer(general_options(n),error)
+!   if (error) then
+!     call error_stop("could not determine the required polynomialaverageorder from the general option "//trim(general_options(n)))
+!   else if (polynomial_average_order > 3 .or. polynomial_average_order < 1) then
+!     call error_stop("requested general polynomialaverageorder outside of allowable range 1 -> 3")
+!   end if
+!   write(*,'(a,i1)') 'INFO: setting general polynomialaverageorder = ',polynomial_average_order
+! else if (trim(option_name) == "polynomialcellorder") then
+! polynomial_cell_order
+!   polynomial_cell_order = extract_option_integer(general_options(n),error)
+!   if (error) then
+!     call error_stop("could not determine the required polynomialcellorder from the general option "//trim(general_options(n)))
+!   else if (polynomial_cell_order > 3 .or. polynomial_cell_order < 1) then
+!     call error_stop("requested general polynomialcellorder outside of allowable range 1 -> 3")
+!   end if
+!   write(*,'(a,i1)') 'INFO: setting general polynomialcellorder = ',polynomial_cell_order
+! else if (trim(option_name) == "polynomialnodeorder") then
+! polynomial_node_order
+!   polynomial_node_order = extract_option_integer(general_options(n),error)
+!   if (error) then
+!     call error_stop("could not determine the required polynomialnodeorder from the general option "//trim(general_options(n)))
+!   else if (polynomial_node_order > 3 .or. polynomial_node_order < 1) then
+!     call error_stop("requested general polynomialnodeorder outside of allowable range 1 -> 3")
+!   end if
+!   write(*,'(a,i1)') 'INFO: setting general polynomialnodeorder = ',polynomial_node_order
+! else if (trim(option_name) == "minimumseparation") then
+! minimum_separation
+!   minimum_domain_separation = extract_option_integer(general_options(n),error)
+!   if (error) then
+!     call error_stop("could not determine the required general minimumseparation from the general option "//trim(general_options(n)))
+!   else if (minimum_domain_separation < 1) then
+!     call error_stop("requested general minimumseparation should be greater than zero")
+!   end if
+!   write(*,'(a,i1)') 'INFO: setting general minimumseparation = ',minimum_domain_separation
+!   minimum_boundary_separation = minimum_domain_separation
+! else if (trim(option_name) == "maximumseparation") then
+! maximum_separation
+!   maximum_domain_separation = extract_option_integer(general_options(n),error)
+!   if (error) then
+!     call error_stop("could not determine the required general maximumseparation from the general option "//trim(general_options(n)))
+!   else if (maximum_domain_separation < 1) then
+!     call error_stop("requested general maximumseparation should be greater than zero")
+!   end if
+!   write(*,'(a,i1)') 'INFO: setting general maximumseparation = ',maximum_domain_separation
+!   maximum_boundary_separation = maximum_domain_separation
+! else if (trim(option_name) == "maximumcellseparation") then
+! maximum_cell_separation
+!   maximum_cell_domain_separation = extract_option_integer(general_options(n),error)
+!   if (error) then
+!     call error_stop("could not determine the required general maximumcellseparation from the general option "// &
+!     trim(general_options(n)))
+!   else if (maximum_cell_domain_separation < 1) then
+!     call error_stop("requested general maximumcellseparation should be greater than zero")
+!   end if
+!   write(*,'(a,i1)') 'INFO: setting general maximumcellseparation = ',maximum_cell_domain_separation
+!   maximum_cell_boundary_separation = maximum_cell_domain_separation
+! else if (trim(option_name) == "limitgeneralmasktosharednodes") then
+! limit_general_mask_to_shared_nodes
+!   limit_general_mask_to_shared_nodes = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the limitgeneralmasktosharednodes from the general option "// &
+!     trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general limitgeneralmasktosharednodes = ',limit_general_mask_to_shared_nodes
+! else if (trim(option_name) == "boundarynodeseparations") then
+! boundary_node_separations
+!   boundary_node_separations = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the boundarynodeseparations from the general option "// &
+!     trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general boundarynodeseparations = ',boundary_node_separations
+! else if (trim(option_name) == "automaximumseparation") then
+! auto_maximum_separation
+!   auto_maximum_separation = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the automaximumseparation from the general option "//trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general automaximumseparation = ',auto_maximum_separation
+! else if (trim(option_name) == "checkminw") then
+! check_minw
+!   check_minw = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the checkminw from the general option "//trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general checkminw = ',check_minw
+! else if (trim(option_name) == "minimumminw") then
+! minimum_minw
+!   minimum_minw = extract_option_double_precision(general_options(n),error)
+!   if (error) call error_stop("could not determine the minimumminw from the general option "//trim(general_options(n)))
+!   if (minimum_minw < 0.d0) call error_stop("attempting to make minimumminw too small")
+!   write(*,'(a,g10.3)') 'INFO: setting general minimumminw = ',minimum_minw
+! else if (trim(option_name) == "weightseparationmultiplier") then
+! weight_separation_multiplier
+!   weight_separation_multiplier = extract_option_double_precision(general_options(n),error)
+!   if (error) call error_stop("could not determine the weightseparationmultiplier from the general option "// &
+!     trim(general_options(n)))
+!   if (weight_separation_multiplier <= 0.d0) call error_stop("attempting to make weightseparationmultiplier too small")
+!   if (weight_separation_multiplier > 1.d0) call error_stop("attempting to make weightseparationmultiplier too large")
+!   write(*,'(a,g10.3)') 'INFO: setting general weightseparationmultiplier = ',weight_separation_multiplier
+! else if (trim(option_name) == "hyperbolicb") then
+! hyperbolic_b
+!   hyperbolic_b = extract_option_double_precision(general_options(n),error)
+!   if (error) call error_stop("could not determine the hyperbolicb from the general option "// &
+!     trim(general_options(n)))
+!   if (hyperbolic_b <= 0.d0) call error_stop("attempting to make hyperbolicb too small")
+!   write(*,'(a,g10.3)') 'INFO: setting general hyperbolicb = ',hyperbolic_b
+! else if (trim(option_name) == "shifthyperbolicdistance") then
+! shift_hyperbolic_distance
+!   shift_hyperbolic_distance = extract_option_double_precision(general_options(n),error)
+!   if (error) call error_stop("could not determine the shifthyperbolicdistance from the general option "// &
+!     trim(general_options(n)))
+!   write(*,'(a,g10.3)') 'INFO: setting general shifthyperbolicdistance = ',shift_hyperbolic_distance
+! else if (trim(option_name) == "separationmultipliedtrialgenerals") then
+! separation_multiplied_trial_generals
+!   separation_multiplied_trial_generals = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the separationmultipliedtrialgenerals from the general option "// &
+!     trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general separationmultipliedtrialgenerals = ',separation_multiplied_trial_generals
+! else if (trim(option_name) == "hyperbolicgeneral") then
+! hyperbolic_general
+!   hyperbolic_general = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the hyperbolicgeneral from the general option "//trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general hyperbolicgeneral = ',hyperbolic_general
+! else if (trim(option_name) == "partialhyperbolicgeneral") then
+! hyperbolic_general
+!   partial_hyperbolic_general = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the partialhyperbolicgeneral from the general option "//trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general partialhyperbolicgeneral = ',partial_hyperbolic_general
+! else if (trim(option_name) == "shiftboundaryweightcentre") then
+! shift_boundary_weight_centre
+!   shift_boundary_weight_centre = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the shiftboundaryweightcentre from the general option "//trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general shiftboundaryweightcentre = ',shift_boundary_weight_centre
+! else if (trim(option_name) == "zerononorientedweights") then
+! zero_nonoriented_weights
+!   zero_nonoriented_weights = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the zerononorientedweights from the general option "// &
+!     trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general zerononorientedweights = ',zero_nonoriented_weights
+! else if (trim(option_name) == "averagestabilitycorrections") then
+! average_stability_corrections
+!   average_stability_corrections = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the averagestabilitycorrections from the general option "//trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general averagestabilitycorrections = ',average_stability_corrections
+! else if (trim(option_name) == "gradientstabilitycorrections") then
+! gradient_stability_corrections
+!   gradient_stability_corrections = extract_option_logical(general_options(n),error)
+!   if (error) call error_stop("could not determine the gradientstabilitycorrections from the general option "//trim(general_options(n)))
+!   write(*,'(a,l1)') 'INFO: setting general gradientstabilitycorrections = ',gradient_stability_corrections
+  else
+!   write(*,'(a)') "WARNING: "//trim(option_name)//" is not a (valid) general option that can be set from the input file"
+    call error_stop(trim(option_name)//" is not a (valid) general option that can be set from the input file")
+  end if
+end do
+
+if (debug) write(*,'(a/80(1h-))') 'subroutine process_general_options'
+
+!------------------------------------------
+
+end subroutine process_general_options
+
+!-----------------------------------------------------------------
 !-----------------------------------------------------------------
 
 end module setup_module

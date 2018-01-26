@@ -41,8 +41,9 @@ KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2,automaximumseparation=
 For logical variables the specification of `.true.` can be ommited, while to negate a logical option `.false.` must be used, as in
 ```arb
 GENERAL_OPTIONS automaximumseparation # turns on automaximumseparation
+GENERAL_OPTIONS noautomaximumseparation # turns off automaximumseparation
 GENERAL_OPTIONS automaximumseparation=.true. # equivalently turns on automaximumseparation
-GENERAL_OPTIONS automaximumseparation=.false. # turns off automaximumseparation
+GENERAL_OPTIONS automaximumseparation=.false. # equivalently turns off automaximumseparation
 ```
 
 More details of specific options are given in this chapter.
