@@ -285,13 +285,13 @@ fileloop: do
 !---------------
 ! timestepstart
 
-  if (trim(keyword) == 'TIMESTEPSTART') then
-    read(textline,*,iostat=ierror) timestep
-    if (ierror /= 0) call error_stop('problem reading in starting timestep from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(timestep))//')'
-    write(*,fmt=formatline) 'INFO: initial timestep = ',timestep
-    if (transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
-  end if
+! if (trim(keyword) == 'TIMESTEPSTART') then
+!   read(textline,*,iostat=ierror) timestep
+!   if (ierror /= 0) call error_stop('problem reading in starting timestep from line '//otextline)
+!   formatline = '(a,'//trim(dindexformat(timestep))//')'
+!   write(*,fmt=formatline) 'INFO: initial timestep = ',timestep
+!   if (transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
+! end if
 
 !---------------
 ! timestepadditional
@@ -337,22 +337,22 @@ fileloop: do
 !---------------
 ! timestepmin
 
-  if (trim(keyword) == 'TIMESTEPMIN') then
-    read(textline,*,iostat=ierror) timestepmin
-    if (ierror /= 0) call error_stop('problem reading in minimum number of time steps from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(timestepmin))//')'
-    write(*,fmt=formatline) 'INFO: timestepmin = ',timestepmin
-  end if
+! if (trim(keyword) == 'TIMESTEPMIN') then
+!   read(textline,*,iostat=ierror) timestepmin
+!   if (ierror /= 0) call error_stop('problem reading in minimum number of time steps from line '//otextline)
+!   formatline = '(a,'//trim(dindexformat(timestepmin))//')'
+!   write(*,fmt=formatline) 'INFO: timestepmin = ',timestepmin
+! end if
 
 !---------------
 ! timestepout
 
-  if (trim(keyword) == 'TIMESTEPOUT') then
-    read(textline,*,iostat=ierror) timestepout
-    if (ierror /= 0) call error_stop('problem reading in number of time steps between output from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(timestepout))//')'
-    write(*,fmt=formatline) 'INFO: timestepout = ',timestepout
-  end if
+! if (trim(keyword) == 'TIMESTEPOUT') then
+!   read(textline,*,iostat=ierror) timestepout
+!   if (ierror /= 0) call error_stop('problem reading in number of time steps between output from line '//otextline)
+!   formatline = '(a,'//trim(dindexformat(timestepout))//')'
+!   write(*,fmt=formatline) 'INFO: timestepout = ',timestepout
+! end if
 
 !---------------
 ! newtstepout
@@ -1875,7 +1875,7 @@ use general_module
 integer :: n, max_polynomial_order
 character(len=100) :: option_name
 logical :: error
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine process_general_options'
 
@@ -1886,9 +1886,41 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
   if (error) then
     write(*,'(a)') "WARNING: could not determine what the desired general option is from the following: "//trim(general_options(n))
   else if (trim(option_name) == "timestepmax") then
-! timestepmax
-    call set_option_integer(general_options(n),option_name,timestepmax,'general')
+    call set_option_integer(general_options(n),"timestepmax (maximum number of timesteps to complete)",timestepmax,'general')
+  else if (trim(option_name) == "timestepmin") then
+    call set_option_integer(general_options(n),"timestepmin (minimum number of timesteps to complete)",timestepmin,'general')
+  else if (trim(option_name) == "timestepadditional") then
+    call set_option_integer(general_options(n), &
+      "timestepadditional (minimum number of timesteps that must be completed during current run)",timestepadditional,'general')
+  else if (trim(option_name) == "timestepout") then
+    call set_option_integer(general_options(n), &
+      "timestepout (maximum number of timesteps between output, with zero indicating no output)",timestepout,'general')
+  else if (trim(option_name) == "timestep" .or. trim(option_name) == "timestepstart") then ! accommodate either name
+    call set_option_integer(general_options(n),"timestep (starting timestep, overwritting any file ones)",timestep,'general')
+    if (transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
 
+  else if (trim(option_name) == "newtstepmax") then
+    call set_option_integer(general_options(n),"newtstepmax (maximum number of newtsteps to complete)",newtstepmax,'general')
+  else if (trim(option_name) == "newtstepmin") then
+    call set_option_integer(general_options(n),"newtstepmin (minimum number of newtsteps to complete)",newtstepmin,'general')
+  else if (trim(option_name) == "newtstepout") then
+    call set_option_integer(general_options(n), &
+      "newtstepout (maximum number of newtsteps between output, with zero indicating no output)",newtstepout,'general')
+  else if (trim(option_name) == "newtstepdebugout") then
+    call set_option_integer(general_options(n), &
+      "newtstepdebugout (after this many newtsteps newtstepout is set to 1 to produce debugging output)",newtstepdebugout,'general')
+  else if (trim(option_name) == "newtrestol") then
+    call set_option_double_precision(general_options(n), &
+      "newtrestol (tolerance that indicates convergence of the newton proceedure)",newtrestol,'general')
+
+!integer :: newtstepmax = 1000 ! (1000, userable) maximum number of steps performed by newton proceedure
+!integer :: newtstepmin = 1 ! (1, userable) minimum number of steps performed by newton proceedure
+!integer :: newtstepout = 0 ! (0, userable) maximum number of newtsteps between output, with zero indicating no output
+!integer :: newtstepdebugout = 990 ! (990, userable) after this many newtsteps newtstepout is set to 1 to produce debugging output
+!double precision :: newtrestol = 1.d-10 ! (1.d-10, userable) tolerance that indicates convergence of the newton proceedure
+!   if (.not.transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
+!integer :: timestepadditional = 0 ! (0, userable) minimum number of timesteps that must be completed during current run
+!integer :: timestepout = 0 ! (0, userable) maximum number of timesteps between output, with zero indicating no output
 ! else if (trim(option_name) == "generalmethod") then
 ! general_method
 !   general_method = trim(extract_option_string(general_options(n),error))

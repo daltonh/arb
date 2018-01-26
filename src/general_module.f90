@@ -48,20 +48,22 @@ save ! note, under the 2008 fortran standard, I have read that all allocatable a
 logical :: transient_simulation = .false. ! (.false., userable) whether simulation is transient or steady-state
 logical :: newtient_simulation = .false. ! (.false., userable) whether simulation is newtient or not (ie, has variables that are evaluated only outside of the newton loop)
 
-integer :: timestepmax = huge(timestepmax) ! maximum number of timesteps performed
+integer :: timestepmax = huge(1) ! (huge, userable) maximum number of timesteps performed
+integer :: timestepmin = 0 ! (0, userable) minimum number of timesteps performed
+integer :: timestepadditional = 0 ! (0, userable) minimum number of timesteps that must be completed during current run
+integer :: timestepout = 0 ! (0, userable) maximum number of timesteps between output, with zero indicating no output
+integer :: timestep = 0 ! (0, userable) timestep indices (with initial value being initial timestep)
 
-integer :: newtstepmax = 1000 ! maximum number of steps performed by newton proceedure
-integer :: newtstepdebugout = 990 ! after this many newtsteps newtstepout is set to 1 to produce debugging output
-integer :: newtstepmin = 1 ! minimum number of steps performed by newton proceedure
+integer :: newtstepmax = 1000 ! (1000, userable) maximum number of steps performed by newton proceedure
+integer :: newtstepmin = 1 ! (1, userable) minimum number of steps performed by newton proceedure
+integer :: newtstepout = 0 ! (0, userable) maximum number of newtsteps between output, with zero indicating no output
+integer :: newtstepdebugout = 990 ! (990, userable) after this many newtsteps newtstepout is set to 1 to produce debugging output
+double precision :: newtrestol = 1.d-10 ! (1.d-10, userable) tolerance that indicates convergence of the newton proceedure
+
 integer :: iterstepmax = 1000000 ! maximum number of steps performed by linear iteration solver
 integer :: iterstepcheck = 100 ! how often linear iteration solver checks for kill file and outputs to screen residuals etc
-double precision :: newtrestol = 1.d-10 ! tolerance that indicates convergence of the newton proceedure
 double precision :: iterrestol = 1.d-11 ! tolerance that indicates convergence of the linear iteration solver
 double precision :: iterresreltol = 0.d0 ! tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres
-integer :: timestepmin = 0 ! minimum number of timesteps performed
-integer :: timestepadditional = 0 ! minimum number of timesteps that must be completed during current run
-integer :: timestepout = 0 ! maximum number of timesteps between output, with zero indicating no output
-integer :: newtstepout = 0 ! maximum number of newtsteps between output, with zero indicating no output
 
 integer, parameter :: totaldimensions=3 ! this is maximum number of dimensions: for all intents and purposes this can't be changed
 
@@ -346,7 +348,7 @@ integer :: newtient_relstepmax ! maximum relstep value for all newtients (variab
 double precision :: newtres = 0.d0 ! last evaluated value of the newton residual
 double precision, parameter :: tinyish = 1.d2*sqrt(tiny(0.d0)) ! something that is a bit bigger than tiny(0.d0)
 double precision, parameter :: hugeish = 1.d-2*sqrt(huge(0.d0)) ! something that is a bit smaller than huge(0.d0)
-integer :: timestep = 0, newtstep = 0 ! timestep and newtonstep indices
+integer :: newtstep = 0 ! newtonstep indices
 logical :: ignore_gmesh_step = .false. ! if a TIMESTEPSTART (for transient) or NEWTSTEPSTART (for steady-state) is specified in the input file then the step from any gmesh file is ignored
 integer :: maximum_dimensions = 0 ! maximum dimensions of any region used in the simulation
 integer :: maximum_celljfaces = 0 ! maximum number of faces that a cell has
@@ -3671,6 +3673,31 @@ end function extract_option_integer
 
 !-----------------------------------------------------------------
 
+subroutine set_option_string(option,option_name,option_variable,option_type)
+
+! subroutine that sets the option_variable whose name is option_name to the string in the option string
+
+character(len=*) :: option ! will have length 100
+character(len=*) :: option_name
+character(len=*), optional :: option_type ! ie, general, kernel, solver etc
+character(len=20) :: option_type_l ! 
+character(len=*) :: option_variable
+character(len=1000) :: formatline
+logical :: error
+
+option_type_l = ''
+if (present(option_type)) option_type_l = " "//option_type
+  
+error = .false.
+option_variable = extract_option_string(option,error)
+if (error) call error_stop("could not determine the required "//trim(option_name)//" from the"//trim(option_type_l)// &
+  " option "//trim(option))
+write(*,'(a)') "INFO: setting"//trim(option_type_l)//" option "//trim(option_name)//" = "//trim(option_variable)
+
+end subroutine set_option_string
+
+!-----------------------------------------------------------------
+
 function extract_option_string(option,error)
 
 ! function to extract a string value from a full option listing
@@ -3699,6 +3726,32 @@ end function extract_option_string
 
 !-----------------------------------------------------------------
 
+subroutine set_option_double_precision(option,option_name,option_variable,option_type)
+
+! subroutine that sets the option_variable whose name is option_name to the double_precision in the option string
+
+character(len=*) :: option ! will have length 100
+character(len=*) :: option_name
+character(len=*), optional :: option_type ! ie, general, kernel, solver etc
+character(len=20) :: option_type_l ! 
+double precision :: option_variable
+character(len=1000) :: formatline
+logical :: error
+
+option_type_l = ''
+if (present(option_type)) option_type_l = " "//option_type
+  
+error = .false.
+option_variable = extract_option_double_precision(option,error)
+if (error) call error_stop("could not determine the required "//trim(option_name)//" from the"//trim(option_type_l)// &
+  " option "//trim(option))
+formatline = '(a,'//trim(floatformat)//')'
+write(*,fmt=formatline) "INFO: setting"//trim(option_type_l)//" option "//trim(option_name)//" = ",option_variable
+
+end subroutine set_option_double_precision
+
+!-----------------------------------------------------------------
+
 function extract_option_double_precision(option,error)
 
 ! function to extract an double precision (or real) value from a full option listing
@@ -3720,6 +3773,32 @@ else
 end if
 
 end function extract_option_double_precision
+
+!-----------------------------------------------------------------
+
+subroutine set_option_logical(option,option_name,option_variable,option_type)
+
+! subroutine that sets the option_variable whose name is option_name to the logical in the option string
+
+character(len=*) :: option ! will have length 100
+character(len=*) :: option_name
+character(len=*), optional :: option_type ! ie, general, kernel, solver etc
+character(len=20) :: option_type_l ! 
+logical :: option_variable
+character(len=1000) :: formatline
+logical :: error
+
+option_type_l = ''
+if (present(option_type)) option_type_l = " "//option_type
+  
+error = .false.
+option_variable = extract_option_logical(option,error)
+if (error) call error_stop("could not determine the required "//trim(option_name)//" from the"//trim(option_type_l)// &
+  " option "//trim(option))
+formatline = '(a,a)'
+write(*,fmt=formatline) "INFO: setting"//trim(option_type_l)//" option "//trim(option_name)//" = ",option_variable
+
+end subroutine set_option_logical
 
 !-----------------------------------------------------------------
 
