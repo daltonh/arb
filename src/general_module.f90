@@ -57,6 +57,7 @@ integer :: timestepmax = huge(1) ! (huge, userable) maximum number of timesteps 
 integer :: timestepmin = 0 ! (0, userable) minimum number of timesteps performed in total
 integer :: timestepadditional = 0 ! (0, userable) minimum number of timesteps that must be completed during current run, useful when restarting a simulation
 integer :: timestepout = 0 ! (0, userable) maximum number of timesteps between output, with zero indicating no output
+integer :: timesteprewind = 0 ! (0, userable) maximum number of timesteps to remember for timestep rewinding purposes - 0 turns off timestep rewinding
 
 ! newtstep variables (newton loop)
 integer :: newtstep = 0 ! (0, userable) newtstep index (with initial value being initial newtstep, used for restarts)
@@ -71,9 +72,6 @@ integer :: iterstepmax = 1000000 ! (1000000, userable) maximum number of steps p
 integer :: iterstepcheck = 100 ! (100, userable) how often linear iteration solver checks for kill file and outputs to screen residuals etc
 double precision :: iterrestol = 1.d-11 ! (1.d-11, userable) tolerance that indicates convergence of the linear iteration solver
 double precision :: iterresreltol = 0.d0 ! (0.d0, userable) tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres - actual tolerance uses max(iterrestol,iterresreltol*newtres), so if iterresreltol is set to zero then it is inactive and only iterrestol is used
-
-! variables specific to the timestep and newtstep rewind capability
-integer :: timesteprewind = 0 ! (0, userable) maximum number of timesteps to remember for timestep rewinding purposes - 0 turns off timestep rewinding
 
 ! the following are default values for various parameters which can be altered here (and not via user input options)
 character(len=100) :: output_step_file = "default" ! (default, userable) whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
@@ -119,7 +117,7 @@ integer :: backline = 6, newtline = 4, timeline = 2, totalline = 80 ! length of 
 logical :: newtstepconverged = .true. ! reports on whether the last conducted newton loop step converged or not
 logical :: newtstepfailed = .false. ! reports on whether there was an error during the last conducted newton loop step
 
-
+! variables specific to the timestep and newtstep rewind capability
 integer :: timestep_rewind_history_first = 0 ! array index for v_timestep_rewind_history in funks that corresponds to earliest data stored
 integer :: timestep_rewind_history_last = 0 ! array index for v_timestep_rewind_history in funks that corresponds to the latest data stored
 integer :: timestep_rewind_newtstep = 10 ! (userable, newtstep) number of newtsteps that if exceeded in newton loop triggers timestep_rewind

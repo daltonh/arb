@@ -61,7 +61,7 @@ To choose between the simulation types set the `transientsimulation` option usin
 GENERAL_OPTIONS transientsimulation=.true. # specifies that the timestep loop will be used
 GENERAL_OPTIONS transientsimulation=.false. # specifies that the timestep loop will not be used, ie, a steady-state simulation (default)
 ```
-The default simulation type is steady-state, unless any transient variables or dynamic regions have been defined (in which case the default simulation type becomes transient).
+The default simulation type is steady-state, unless any transient variables or dynamic regions have been defined (in which case the default simulation type becomes transient).  This variable can be referenced by `<transientsimulation>` (0 or 1) in any expressions.
 
 ###Newtient simulations
 
@@ -76,39 +76,36 @@ Again, the default is false unless any `NEWTIENT` variables or regions are defin
 
 ###Transient (timestep) loop options
 
+- `timestep`: timestep index, with initial value being initial timestep.  This variable is mainly useful for restarts when you overwrite the `timestep` value read in from the mesh files with another starting value.  Setting this variable will overwrite the initial (default = 0) timestep or read-in restart timestep.
+- `timestepmax`: maximum number of timesteps performed in total, or more accurately, the timestep after which the simulation stops (in the case of restarts and the initial newtstep isn't 0 - default is huge)
+- `timestepmin`: minimum number of timesteps performed in total, or more accurately, the timestep that must be completed before the simulation stops (default 0)
+- `timestepadditional`: minimum number of timesteps that must be completed during current run, useful when restarting a simulation (default 0)
+- `timestepout`: maximum number of timesteps between output, with zero indicating no output (default 0).  Output can also be triggered by `CONDITION` variables (especially when using dynamic timestep sizing).
+- `timesteprewind`: maximum number of timesteps to remember for timestep rewinding purposes with 0 turning off timestep rewinding.  This option can either be set using a logical format or integer format, as in
+```arb
+GENERAL_OPTIONS timestepwind # turns on timestep rewinding, and sets number of timesteprewind steps to 1
+GENERAL_OPTIONS notimestepwind # turns off timestep rewinding, and sets number of timesteprewind steps to 0
+GENERAL_OPTIONS timestepwind=3 # turns on timestep rewinding, and sets number of timesteprewind steps to 3
+GENERAL_OPTIONS timestepwind=0 # turns off timestep rewinding, and sets number of timesteprewind steps to 0
+```
+
 ###Newton (newtstep) loop options
 
 
-##Simulation options
+##Solver options
 
--   : choose between the two types of simulation.
-
--   : end input
-
--   : ignore the text between these statements.
-
--   : add the following options to every subsequent variable, until
-    cleared again using a blank statement. When listed in order, default
-    options precede a variable’s individually specified options - hence,
-    in the case of conflicting option statements, individual options
-    take precedence over default options (ie, the individual options
-    have a higher priority).
-
--   : are the same as , except that they follow a variable’s
-    individually specified options, and so in the case of conflicting
-    option statements, take precedence over the individual options (ie,
-    the override options have a higher priority).
-
--   : choose the type of linear solver to use.
+```arb
+#-------------------------------------------------------------------
+# system constants
+SOLVER_OPTIONS linearsolver=intelpardisosafer
+SOLVER_OPTIONS linearsolver=intelparadiso
+```
 
 ##Kernel options
 
 ```arb
 #-------------------------------------------------------------------
 # system constants
-SOLVER_OPTIONS linearsolver=intelpardisosafer
-
-SOLVER_OPTIONS linearsolver=intelparadiso
 KERNEL_OPTIONS polynomialorder=3 # setting order of kernel function for face derivatives
 KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2 # setting order of kernel function for face derivatives
 KERNEL_OPTIONS polynomialorder=2 # setting order of kernel function for face derivatives

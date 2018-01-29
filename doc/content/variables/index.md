@@ -54,6 +54,11 @@ All variables have an associated compound variable type (scalar, vector or tenso
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 ```
 
+- `DEFAULT_OPTIONS`: add the following options to every subsequent variable, until cleared again using a blank statement. When listed in order, default options precede a variable's individually specified options - hence, in the case of conflicting option statements, individual options take precedence over default options (ie, the individual options have a higher priority).
+
+- `OVERRIDE_OPTIONS`: are the same as, except that they follow a variable's individually specified options, and so in the case of conflicting option statements, take precedence over the individual options (ie, the override options have a higher priority).
+
+
 ## Variable types
 
 ### Constant
