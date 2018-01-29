@@ -113,6 +113,8 @@ character(len=100), parameter :: stringformat='a18' ! formating used for outputt
 ! reals apparently have about 7 decimal places and width has to be d+7 (ifort)
 integer, parameter :: fwarn = 11, fdetail = 12, foutput = 13, fgmsh = 14, finput = 15, fconverge = 16, foutputstep = 17 ! various file handles
 integer :: backline = 6, newtline = 4, timeline = 2, totalline = 80 ! length of delimiter lines in the output
+logical :: newtstepconverged = .true. ! reports on whether the last conducted newton loop step converged or not
+logical :: newtstepfailed = .false. ! reports on whether there was an error during the last conducted newton loop step
 
 ! variables specific to the timestep and newtstep rewind capability
 logical :: timestep_rewind = .false. ! whether timestep rewinding is active
@@ -2530,6 +2532,23 @@ if (trim(var(m)%type) /= "unknown" .and. trim(var(m)%type) /= "equation") &
 magnitude = max(var(m)%magnitude,0.d0)
 
 end function magnitude
+
+!-----------------------------------------------------------------
+
+function arb_variable_from_fortran_logical(logical_variable)
+
+! this function returns 0 for .false., and 1 for .true.
+
+logical :: logical_variable
+double precision :: arb_variable_from_fortran_logical
+
+if (logical_variable) then
+  arb_variable_from_fortran_logical = 1.d0
+else
+  arb_variable_from_fortran_logical = 0.d0
+end if
+
+end function arb_variable_from_fortran_logical
 
 !-----------------------------------------------------------------
 ! these are some trig hyperbolic functions which are not fortran intrinsics

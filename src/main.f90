@@ -47,7 +47,6 @@ use output_module
 implicit none
 character(len=1000) :: formatline
 integer :: ierror = 0
-logical :: newtconverged
 logical, parameter :: debug = .true.
 
 !---------------------------------------------------
@@ -147,13 +146,14 @@ time_loop: do while ( &
 !--------------------
 ! newton loop
 
-  newtconverged = .false.
-  if (newtres <= newtrestol) newtconverged = .true.
-  if (.not.newtconverged) then
-    if (check_condition("convergence")) newtconverged = .true.
+  newtstepconverged = .false.
+  if (newtres <= newtrestol) newtstepconverged = .true.
+  if (.not.newtstepconverged) then
+    if (check_condition("convergence")) newtstepconverged = .true.
   end if
+  newtstepfailed = .false.
 
-  newt_loop: do while (((.not.newtconverged.and.newtstep < newtstepmax).or. &
+  newt_loop: do while (((.not.newtstepconverged.and.newtstep < newtstepmax).or. &
       newtstep < newtstepmin).and.ierror == 0)
 
     newtstep = newtstep + 1
@@ -186,7 +186,7 @@ time_loop: do while ( &
     if (convergence_details_file) write(fconverge,'(a,g16.9,a)') &
       "INFO: initial newton loop newtres = ",newtres," after updating variable magnitudes"
 
-    if (newtconverged.and.newtstep > newtstepmin) then
+    if (newtstepconverged.and.newtstep > newtstepmin) then
       write(*,'(a,g10.3,a)') "INFO: skipping newtsolver as newtres/newtrestol = ",newtres/newtrestol," using existing unknowns"
       if (convergence_details_file) write(fconverge,'(a,g10.3,a)') "INFO: skipping newtsolver as newtres/newtrestol = ", &
         newtres/newtrestol," using existing unknowns"
@@ -270,13 +270,13 @@ time_loop: do while ( &
     if (convergence_details_file) call flush(fconverge)
 
 ! check whether solution is converged
-    if (newtres <= newtrestol) newtconverged = .true.
-    if (.not.newtconverged) then
-      if (check_condition("convergence")) newtconverged = .true.
+    if (newtres <= newtrestol) newtstepconverged = .true.
+    if (.not.newtstepconverged) then
+      if (check_condition("convergence")) newtstepconverged = .true.
     end if
 
 ! only check for stopfile if output isn't converged
-    if (.not.newtconverged) then
+    if (.not.newtstepconverged) then
       if (check_stopfile("stopnewt")) then
         write(*,'(a)') 'INFO: user has requested simulation stop via a stop file'
         ierror = -1 ! negative ierror indicates that user stopped arb before convergence complete
@@ -293,6 +293,8 @@ time_loop: do while ( &
   end do newt_loop
 !--------------------
 
+  if (ierror > 0) newtstepfailed = .true. ! update <newtstepfailed>
+
   if (ierror > 0) then
     formatline = "(a,"//trim(dindexformat(ierror))//")"
     write(*,fmt=formatline) 'ERROR: problem in some solution routine within newton loop: error number = ',ierror
@@ -300,7 +302,7 @@ time_loop: do while ( &
   else if (ierror < 0) then
     write(*,'(a)') 'ERROR: newton solver did not converge due to user created stop file'
     exit time_loop
-  else if (newtconverged) then
+  else if (newtstepconverged) then
     if (newtres <= newtrestol) then
       write(*,'(a)') 'INFO: newton iterations have converged due to newtres condition'
     else

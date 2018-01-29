@@ -1706,13 +1706,13 @@ sub organise_user_variables {
   }
 
 #-----------------------------------------------------
-# set transientdelta and newtientdelta system variables, and simulation type based on transient/newtient variables (noting that it is too late for string replacements)
+# set transientsimulation and newtientsimulation system variables, and simulation type based on transient/newtient variables (noting that it is too late for string replacements)
 
   if ($variable{"transient"} && ! ($transient_simulation) ) { $transient_simulation=1; print DEBUG "INFO: setting simulation type to transient based on the detection of at least one transient variable\n"; }
   if ($variable{"newtient"} && ! ($newtient_simulation) ) { $newtient_simulation=1; print DEBUG "INFO: setting simulation type to newtient based on detection of at least one newtient variable\n"; }
   foreach $mvar ( 1 .. $m{"system"} ) {
-    if ($variable{"system"}[$mvar]{"name"} eq "<transientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $transient_simulation; }
-    if ($variable{"system"}[$mvar]{"name"} eq "<newtientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $newtient_simulation; }
+    if ($variable{"system"}[$mvar]{"name"} eq "<transientsimulation>") { $variable{"system"}[$mvar]{"maxima"} = $transient_simulation; }
+    if ($variable{"system"}[$mvar]{"name"} eq "<newtientsimulation>") { $variable{"system"}[$mvar]{"maxima"} = $newtient_simulation; }
   }
 
 # tell the user if multiple definitions were used anywhere
@@ -4269,7 +4269,7 @@ sub maxima_to_fortran {
 
     foreach $mvar ( 1 .. $m{$type}) {
 
-      if (nonempty($variable{$type}[$mvar]{"mfortran"})) { # mfortran is empty in (system) variables that have a maxima name that is an actual value (eq transientdelta)
+      if (nonempty($variable{$type}[$mvar]{"mfortran"})) { # mfortran is empty in (system) variables that have a maxima name that is an actual value (eq transientsimulation)
         push(@searches,$variable{$type}[$mvar]{"mfortran"});
         push(@replaces,$variable{$type}[$mvar]{"fortran"});
 				if (nonempty($variable{$type}[$mvar]{"kernel_type"})) {
@@ -5498,13 +5498,21 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"maxima"} = "random";
   $variable{"system"}[$m{"system"}]{"fortran"} = "random()";
   $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timestep>"; # double precision representation of timestep
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timestep";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timestep)";
+  $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtstep>"; # double precision representation of newtstep
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtstep";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(newtstep)";
   $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<timestep>"; # double precision representation of timestep
-  $variable{"system"}[$m{"system"}]{"maxima"} = "timestep";
-  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timestep)";
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtstepconverged>"; # 0 or 1 depending on whether latest newtstep loop converged
+  $variable{"system"}[$m{"system"}]{"maxima"} = "newtstepconverged";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "arb_variable_from_fortran_logical(newtstepconverged)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtstepfailed>"; # 0 or 1 depending on whether latest newtstep loop failed (ie, there was an error during the step)
+  $variable{"system"}[$m{"system"}]{"maxima"} = "newtstepfailed";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "arb_variable_from_fortran_logical(newtstepfailed)";
   $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtres>"; # latest evalulation of the newton residual
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtres";
@@ -5514,11 +5522,11 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"maxima"} = "separation";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(someloop(thread)%separation_list(someloop(thread)%current_separation_list(1))%nseparation)";
   $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<transientdelta>"; # 0 or 1 depending on whether simulation is transient or not
-# actual values for transientdelta and newtientdelta have to be set once the input files have been read
+  $variable{"system"}[$m{"system"}]{"name"} = "<transientsimulation>"; # 0 or 1 depending on whether simulation is transient or not (formerly <transientdelta>, but renamed v0.58)
+# actual values for transientsimulation and newtientsimulation have to be set once the input files have been read
   $variable{"system"}[$m{"system"}]{"maxima"} = 0;
   $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<newtientdelta>"; # 0 or 1 depending on whether simulation is newtient or not
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtientsimulation>"; # 0 or 1 depending on whether simulation is newtient or not (formerly <newtientdelta>, but renamed v0.58)
   $variable{"system"}[$m{"system"}]{"maxima"} = 0;
 
 #------------------------------------
