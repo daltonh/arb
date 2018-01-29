@@ -1751,6 +1751,11 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
   else if (trim(option_name) == "timestep" .or. trim(option_name) == "timestepstart") then ! accommodate either name
     call set_option_integer(general_options(n),"timestep (starting timestep, overwritting any file ones)",timestep,'general')
     if (transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
+  else if (trim(option_name) == "timesteprewind") then
+! bit of a special option that can be treated either as a logical or as an integer, however perl deals with massaging this into the integer format required here
+    call set_option_integer(general_options(n), &
+      "timesteprewind (maximum number of timesteps to remember for timestep rewinding purposes)",timesteprewind,'general')
+    if (timesteprewind < 0) timesteprewind = 0
 
 ! newtstep options
   else if (trim(option_name) == "newtstepmax") then

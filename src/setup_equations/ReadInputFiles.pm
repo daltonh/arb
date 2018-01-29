@@ -671,19 +671,31 @@ sub parse_solver_code {
 
     if ($keyword =~ /^((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))$/) {
       $keyword = "$2_OPTIONS";  # standardise the statement for fortran input
+
 # also check for transientsimulation or newtientsimulation keywords as these have to be set here
 # and remove these lines so not passed to the fortran (to allow for error checking in the fortran)
       while ($line =~ /(^|\,)\s*(no|)transientsimulation(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
+        if (nonempty($2) && nonempty($3)) { error_stop("incorrect transientsimulation option specification: $filelinelocator"); }
         if (nonempty($2) || nonempty($5)) { string_set_transient_simulation(0); $::transient_simulation=0; } else { string_set_transient_simulation(1); $::transient_simulation=1; };
         $line = $`.$1.$+.$'; # remove the transient string
         print "INFO: transientsimulation set to ".fortran_logical_string($::transient_simulation)." directly\n";
         print ::DEBUG "INFO: transientsimulation set to ".fortran_logical_string($::transient_simulation)." directly: $filelinelocator\n";
       }
       while ($line =~ /(^|\,)\s*(no|)newtientsimulation(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
+        if (nonempty($2) && nonempty($3)) { error_stop("incorrect newtientsimulation option specification: $filelinelocator"); }
         if (nonempty($2) || nonempty($5)) { $::newtient_simulation=0; } else { $::newtient_simulation=1; };
         $line = $`.$1.$+.$'; # remove the newtient string
         print "INFO: newtientsimulation set to ".fortran_logical_string($::newtient_simulation)." directly\n";
         print ::DEBUG "INFO: newtientsimulation set to ".fortran_logical_string($::newtient_simulation)." directly: $filelinelocator\n";
+      }
+# also convert timesteprewind and newtsteprewind general options into integer format if set using logical option format
+      while ($line =~ /(^|\,)\s*(no|)(time|newt)steprewind(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
+        if (nonempty($2) && nonempty($4)) { error_stop("incorrect $3steprewind option specification: $filelinelocator"); }
+        if (nonempty($2) || nonempty($6)) {
+          $line = $`.$1.$3."steprewind=0".$+.$';
+        } else {
+          $line = $`.$1.$3."steprewind=1".$+.$'; # default if these are turned on is to remember one step
+        }
       }
 
     } elsif ($keyword =~ /^GLUE_FACES/i) {

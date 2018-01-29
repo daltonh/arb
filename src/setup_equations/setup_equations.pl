@@ -5502,6 +5502,10 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"maxima"} = "timestep";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timestep)";
   $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewind>"; # double precision representation of timestep
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewind";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewind)";
+  $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtstep>"; # double precision representation of newtstep
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtstep";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(newtstep)";
@@ -5518,16 +5522,20 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtres";
   $variable{"system"}[$m{"system"}]{"fortran"} = "newtres";
   $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<separation>"; # double precision representation of current separation
-  $variable{"system"}[$m{"system"}]{"maxima"} = "separation";
-  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(someloop(thread)%separation_list(someloop(thread)%current_separation_list(1))%nseparation)";
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtrestol>"; # latest evalulation of the newton residual
+  $variable{"system"}[$m{"system"}]{"maxima"} = "newtrestol";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "newtrestol";
   $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<transientsimulation>"; # 0 or 1 depending on whether simulation is transient or not (formerly <transientdelta>, but renamed v0.58)
-# actual values for transientsimulation and newtientsimulation have to be set once the input files have been read
+# actual values for transientsimulation and newtientsimulation have to be set once the input files have been read - done in the interests of simplification of maximum equations
   $variable{"system"}[$m{"system"}]{"maxima"} = 0;
   $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtientsimulation>"; # 0 or 1 depending on whether simulation is newtient or not (formerly <newtientdelta>, but renamed v0.58)
   $variable{"system"}[$m{"system"}]{"maxima"} = 0;
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<separation>"; # double precision representation of current separation
+  $variable{"system"}[$m{"system"}]{"maxima"} = "separation";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(someloop(thread)%separation_list(someloop(thread)%current_separation_list(1))%nseparation)";
 
 #------------------------------------
 
