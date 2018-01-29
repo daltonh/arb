@@ -254,155 +254,6 @@ fileloop: do
   end if
 
 !---------------
-! newtrestol
-
-  if (trim(keyword) == 'NEWTRESTOL') then
-    read(textline,*,iostat=ierror) newtrestol
-    if (ierror /= 0) call error_stop('problem reading in newton loop tolerance from line '//otextline)
-    write(*,'(a,g14.6)') 'INFO: newtrestol = ',newtrestol
-  end if
-
-!---------------
-! newtstepmax
-
-  if (trim(keyword) == 'NEWTSTEPMAX') then
-    read(textline,*,iostat=ierror) newtstepmax
-    if (ierror /= 0) call error_stop('problem reading in maximum number of newton steps from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(newtstepmax))//')'
-    write(*,fmt=formatline) 'INFO: newtstepmax = ',newtstepmax
-  end if
-
-!---------------
-! newtstepmin
-
-  if (trim(keyword) == 'NEWTSTEPMIN') then
-    read(textline,*,iostat=ierror) newtstepmin
-    if (ierror /= 0) call error_stop('problem reading in minimum number of newton steps from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(newtstepmin))//')'
-    write(*,fmt=formatline) 'INFO: newtstepmin = ',newtstepmin
-  end if
-
-!---------------
-! timestepstart
-
-! if (trim(keyword) == 'TIMESTEPSTART') then
-!   read(textline,*,iostat=ierror) timestep
-!   if (ierror /= 0) call error_stop('problem reading in starting timestep from line '//otextline)
-!   formatline = '(a,'//trim(dindexformat(timestep))//')'
-!   write(*,fmt=formatline) 'INFO: initial timestep = ',timestep
-!   if (transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
-! end if
-
-!---------------
-! timestepadditional
-
-  if (trim(keyword) == 'TIMESTEPADDITIONAL') then
-    read(textline,*,iostat=ierror) timestepadditional
-    if (ierror /= 0) call error_stop('problem reading in starting timestepadditional from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(timestepadditional))//')'
-    write(*,fmt=formatline) 'INFO: timestepadditional = ',timestepadditional
-  end if
-
-!---------------
-! newtstepstart
-
-  if (trim(keyword) == 'NEWTSTEPSTART') then
-    read(textline,*,iostat=ierror) newtstep
-    if (ierror /= 0) call error_stop('problem reading in starting newtstep from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(newtstep))//')'
-    write(*,fmt=formatline) 'INFO: initial newtstep = ',newtstep
-    if (.not.transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
-  end if
-
-!---------------
-! newtstepdebugout
-
-  if (trim(keyword) == 'NEWTSTEPDEBUGOUT') then
-    read(textline,*,iostat=ierror) newtstepdebugout
-    if (ierror /= 0) call error_stop('problem reading in maximum number of newton steps before debugging from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(newtstepdebugout))//')'
-    write(*,fmt=formatline) 'INFO: newtstepdebugout = ',newtstepdebugout
-  end if
-
-!---------------
-! timestepmax
-
-! if (trim(keyword) == 'TIMESTEPMAX') then
-!   read(textline,*,iostat=ierror) timestepmax
-!   if (ierror /= 0) call error_stop('problem reading in maximum number of time steps from line '//otextline)
-!   formatline = '(a,'//trim(dindexformat(timestepmax))//')'
-!   write(*,fmt=formatline) 'INFO: timestepmax = ',timestepmax
-! end if
-
-!---------------
-! timestepmin
-
-! if (trim(keyword) == 'TIMESTEPMIN') then
-!   read(textline,*,iostat=ierror) timestepmin
-!   if (ierror /= 0) call error_stop('problem reading in minimum number of time steps from line '//otextline)
-!   formatline = '(a,'//trim(dindexformat(timestepmin))//')'
-!   write(*,fmt=formatline) 'INFO: timestepmin = ',timestepmin
-! end if
-
-!---------------
-! timestepout
-
-! if (trim(keyword) == 'TIMESTEPOUT') then
-!   read(textline,*,iostat=ierror) timestepout
-!   if (ierror /= 0) call error_stop('problem reading in number of time steps between output from line '//otextline)
-!   formatline = '(a,'//trim(dindexformat(timestepout))//')'
-!   write(*,fmt=formatline) 'INFO: timestepout = ',timestepout
-! end if
-
-!---------------
-! newtstepout
-
-  if (trim(keyword) == 'NEWTSTEPOUT') then
-    read(textline,*,iostat=ierror) newtstepout
-    if (ierror /= 0) call error_stop('problem reading in number of newt steps between output from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(newtstepout))//')'
-    write(*,fmt=formatline) 'INFO: newtstepout = ',newtstepout
-  end if
-
-!---------------
-! iterrestol
-
-  if (trim(keyword) == 'ITERRESTOL') then
-    read(textline,*,iostat=ierror) iterrestol
-    if (ierror /= 0) call error_stop('problem reading in iteration loop tolerance from line '//otextline)
-    write(*,'(a,g14.6)') 'INFO: iterrestol = ',iterrestol
-  end if
-
-!---------------
-! iterresreltol
-
-  if (trim(keyword) == 'ITERRESRELTOL') then
-    read(textline,*,iostat=ierror) iterresreltol
-    if (ierror /= 0) call error_stop('problem reading in iteration loop relative tolerance from line '//otextline)
-    write(*,'(a,g14.6)') 'INFO: iterresreltol = ',iterresreltol
-  end if
-
-!---------------
-! iterstepmax
-
-  if (trim(keyword) == 'ITERSTEPMAX') then
-    read(textline,*,iostat=ierror) iterstepmax
-    if (ierror /= 0) call error_stop('problem reading in maximum number of iteration steps from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(iterstepmax))//')'
-    write(*,fmt=formatline) 'INFO: iterstepmax = ',iterstepmax
-  end if
-
-!---------------
-! iterstepcheck
-
-  if (trim(keyword) == 'ITERSTEPCHECK') then
-    read(textline,*,iostat=ierror) iterstepcheck
-    if (ierror /= 0) call error_stop('problem reading in number of iteration steps between output/checks from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(iterstepcheck))//')'
-    write(*,fmt=formatline) 'INFO: iterstepcheck = ',iterstepcheck
-  end if
-
-!---------------
 ! version
 
   if (trim(keyword) == 'VERSION') then
@@ -1885,6 +1736,8 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
   if (debug) write(*,'(a)') "INFO: processing option_name = "//trim(option_name)//": option = "//trim(general_options(n))
   if (error) then
     write(*,'(a)') "WARNING: could not determine what the desired general option is from the following: "//trim(general_options(n))
+
+! timestep options
   else if (trim(option_name) == "timestepmax") then
     call set_option_integer(general_options(n),"timestepmax (maximum number of timesteps to complete)",timestepmax,'general')
   else if (trim(option_name) == "timestepmin") then
@@ -1899,6 +1752,7 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_integer(general_options(n),"timestep (starting timestep, overwritting any file ones)",timestep,'general')
     if (transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
 
+! newtstep options
   else if (trim(option_name) == "newtstepmax") then
     call set_option_integer(general_options(n),"newtstepmax (maximum number of newtsteps to complete)",newtstepmax,'general')
   else if (trim(option_name) == "newtstepmin") then
@@ -1912,178 +1766,23 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
   else if (trim(option_name) == "newtrestol") then
     call set_option_double_precision(general_options(n), &
       "newtrestol (tolerance that indicates convergence of the newton proceedure)",newtrestol,'general')
+  else if (trim(option_name) == "newtstep" .or. trim(option_name) == "newtstepstart") then ! accommodate either name
+    call set_option_integer(general_options(n),"newtstep (starting newtstep, overwritting any file ones)",newtstep,'general')
+    if (.not.transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
 
-!integer :: newtstepmax = 1000 ! (1000, userable) maximum number of steps performed by newton proceedure
-!integer :: newtstepmin = 1 ! (1, userable) minimum number of steps performed by newton proceedure
-!integer :: newtstepout = 0 ! (0, userable) maximum number of newtsteps between output, with zero indicating no output
-!integer :: newtstepdebugout = 990 ! (990, userable) after this many newtsteps newtstepout is set to 1 to produce debugging output
-!double precision :: newtrestol = 1.d-10 ! (1.d-10, userable) tolerance that indicates convergence of the newton proceedure
-!   if (.not.transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
-!integer :: timestepadditional = 0 ! (0, userable) minimum number of timesteps that must be completed during current run
-!integer :: timestepout = 0 ! (0, userable) maximum number of timesteps between output, with zero indicating no output
-! else if (trim(option_name) == "generalmethod") then
-! general_method
-!   general_method = trim(extract_option_string(general_options(n),error))
-!   if (error) then
-!     call error_stop("could not determine the required generalmethod from the general option "//trim(general_options(n)))
-!   else if (trim(general_method) == 'mls' .or. trim(general_method) == 'optimisation' .or. trim(general_method) == 'simple' .or. trim(general_method) == 'none') then
-!     write(*,'(a)') 'INFO: setting generalmethod = '//trim(general_method)
-!   else
-!     call error_stop("requested generalmethod "//trim(general_method)//" is not valid")
-!   end if
-! else if (trim(option_name) == "polynomialorder") then
-! polynomial_order
-!   polynomial_order = extract_option_integer(general_options(n),error)
-!   if (error) then
-!     call error_stop("could not determine the required polynomialorder from the general option "//trim(general_options(n)))
-!   else if (polynomial_order > 3 .or. polynomial_order < 1) then
-!     call error_stop("requested general polynomialorder outside of allowable range 1 -> 3")
-!   end if
-!   write(*,'(a,i1)') 'INFO: setting general polynomialorder = ',polynomial_order
-! else if (trim(option_name) == "polynomialaverageorder") then
-! polynomial_average_order
-!   polynomial_average_order = extract_option_integer(general_options(n),error)
-!   if (error) then
-!     call error_stop("could not determine the required polynomialaverageorder from the general option "//trim(general_options(n)))
-!   else if (polynomial_average_order > 3 .or. polynomial_average_order < 1) then
-!     call error_stop("requested general polynomialaverageorder outside of allowable range 1 -> 3")
-!   end if
-!   write(*,'(a,i1)') 'INFO: setting general polynomialaverageorder = ',polynomial_average_order
-! else if (trim(option_name) == "polynomialcellorder") then
-! polynomial_cell_order
-!   polynomial_cell_order = extract_option_integer(general_options(n),error)
-!   if (error) then
-!     call error_stop("could not determine the required polynomialcellorder from the general option "//trim(general_options(n)))
-!   else if (polynomial_cell_order > 3 .or. polynomial_cell_order < 1) then
-!     call error_stop("requested general polynomialcellorder outside of allowable range 1 -> 3")
-!   end if
-!   write(*,'(a,i1)') 'INFO: setting general polynomialcellorder = ',polynomial_cell_order
-! else if (trim(option_name) == "polynomialnodeorder") then
-! polynomial_node_order
-!   polynomial_node_order = extract_option_integer(general_options(n),error)
-!   if (error) then
-!     call error_stop("could not determine the required polynomialnodeorder from the general option "//trim(general_options(n)))
-!   else if (polynomial_node_order > 3 .or. polynomial_node_order < 1) then
-!     call error_stop("requested general polynomialnodeorder outside of allowable range 1 -> 3")
-!   end if
-!   write(*,'(a,i1)') 'INFO: setting general polynomialnodeorder = ',polynomial_node_order
-! else if (trim(option_name) == "minimumseparation") then
-! minimum_separation
-!   minimum_domain_separation = extract_option_integer(general_options(n),error)
-!   if (error) then
-!     call error_stop("could not determine the required general minimumseparation from the general option "//trim(general_options(n)))
-!   else if (minimum_domain_separation < 1) then
-!     call error_stop("requested general minimumseparation should be greater than zero")
-!   end if
-!   write(*,'(a,i1)') 'INFO: setting general minimumseparation = ',minimum_domain_separation
-!   minimum_boundary_separation = minimum_domain_separation
-! else if (trim(option_name) == "maximumseparation") then
-! maximum_separation
-!   maximum_domain_separation = extract_option_integer(general_options(n),error)
-!   if (error) then
-!     call error_stop("could not determine the required general maximumseparation from the general option "//trim(general_options(n)))
-!   else if (maximum_domain_separation < 1) then
-!     call error_stop("requested general maximumseparation should be greater than zero")
-!   end if
-!   write(*,'(a,i1)') 'INFO: setting general maximumseparation = ',maximum_domain_separation
-!   maximum_boundary_separation = maximum_domain_separation
-! else if (trim(option_name) == "maximumcellseparation") then
-! maximum_cell_separation
-!   maximum_cell_domain_separation = extract_option_integer(general_options(n),error)
-!   if (error) then
-!     call error_stop("could not determine the required general maximumcellseparation from the general option "// &
-!     trim(general_options(n)))
-!   else if (maximum_cell_domain_separation < 1) then
-!     call error_stop("requested general maximumcellseparation should be greater than zero")
-!   end if
-!   write(*,'(a,i1)') 'INFO: setting general maximumcellseparation = ',maximum_cell_domain_separation
-!   maximum_cell_boundary_separation = maximum_cell_domain_separation
-! else if (trim(option_name) == "limitgeneralmasktosharednodes") then
-! limit_general_mask_to_shared_nodes
-!   limit_general_mask_to_shared_nodes = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the limitgeneralmasktosharednodes from the general option "// &
-!     trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general limitgeneralmasktosharednodes = ',limit_general_mask_to_shared_nodes
-! else if (trim(option_name) == "boundarynodeseparations") then
-! boundary_node_separations
-!   boundary_node_separations = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the boundarynodeseparations from the general option "// &
-!     trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general boundarynodeseparations = ',boundary_node_separations
-! else if (trim(option_name) == "automaximumseparation") then
-! auto_maximum_separation
-!   auto_maximum_separation = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the automaximumseparation from the general option "//trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general automaximumseparation = ',auto_maximum_separation
-! else if (trim(option_name) == "checkminw") then
-! check_minw
-!   check_minw = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the checkminw from the general option "//trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general checkminw = ',check_minw
-! else if (trim(option_name) == "minimumminw") then
-! minimum_minw
-!   minimum_minw = extract_option_double_precision(general_options(n),error)
-!   if (error) call error_stop("could not determine the minimumminw from the general option "//trim(general_options(n)))
-!   if (minimum_minw < 0.d0) call error_stop("attempting to make minimumminw too small")
-!   write(*,'(a,g10.3)') 'INFO: setting general minimumminw = ',minimum_minw
-! else if (trim(option_name) == "weightseparationmultiplier") then
-! weight_separation_multiplier
-!   weight_separation_multiplier = extract_option_double_precision(general_options(n),error)
-!   if (error) call error_stop("could not determine the weightseparationmultiplier from the general option "// &
-!     trim(general_options(n)))
-!   if (weight_separation_multiplier <= 0.d0) call error_stop("attempting to make weightseparationmultiplier too small")
-!   if (weight_separation_multiplier > 1.d0) call error_stop("attempting to make weightseparationmultiplier too large")
-!   write(*,'(a,g10.3)') 'INFO: setting general weightseparationmultiplier = ',weight_separation_multiplier
-! else if (trim(option_name) == "hyperbolicb") then
-! hyperbolic_b
-!   hyperbolic_b = extract_option_double_precision(general_options(n),error)
-!   if (error) call error_stop("could not determine the hyperbolicb from the general option "// &
-!     trim(general_options(n)))
-!   if (hyperbolic_b <= 0.d0) call error_stop("attempting to make hyperbolicb too small")
-!   write(*,'(a,g10.3)') 'INFO: setting general hyperbolicb = ',hyperbolic_b
-! else if (trim(option_name) == "shifthyperbolicdistance") then
-! shift_hyperbolic_distance
-!   shift_hyperbolic_distance = extract_option_double_precision(general_options(n),error)
-!   if (error) call error_stop("could not determine the shifthyperbolicdistance from the general option "// &
-!     trim(general_options(n)))
-!   write(*,'(a,g10.3)') 'INFO: setting general shifthyperbolicdistance = ',shift_hyperbolic_distance
-! else if (trim(option_name) == "separationmultipliedtrialgenerals") then
-! separation_multiplied_trial_generals
-!   separation_multiplied_trial_generals = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the separationmultipliedtrialgenerals from the general option "// &
-!     trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general separationmultipliedtrialgenerals = ',separation_multiplied_trial_generals
-! else if (trim(option_name) == "hyperbolicgeneral") then
-! hyperbolic_general
-!   hyperbolic_general = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the hyperbolicgeneral from the general option "//trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general hyperbolicgeneral = ',hyperbolic_general
-! else if (trim(option_name) == "partialhyperbolicgeneral") then
-! hyperbolic_general
-!   partial_hyperbolic_general = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the partialhyperbolicgeneral from the general option "//trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general partialhyperbolicgeneral = ',partial_hyperbolic_general
-! else if (trim(option_name) == "shiftboundaryweightcentre") then
-! shift_boundary_weight_centre
-!   shift_boundary_weight_centre = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the shiftboundaryweightcentre from the general option "//trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general shiftboundaryweightcentre = ',shift_boundary_weight_centre
-! else if (trim(option_name) == "zerononorientedweights") then
-! zero_nonoriented_weights
-!   zero_nonoriented_weights = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the zerononorientedweights from the general option "// &
-!     trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general zerononorientedweights = ',zero_nonoriented_weights
-! else if (trim(option_name) == "averagestabilitycorrections") then
-! average_stability_corrections
-!   average_stability_corrections = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the averagestabilitycorrections from the general option "//trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general averagestabilitycorrections = ',average_stability_corrections
-! else if (trim(option_name) == "gradientstabilitycorrections") then
-! gradient_stability_corrections
-!   gradient_stability_corrections = extract_option_logical(general_options(n),error)
-!   if (error) call error_stop("could not determine the gradientstabilitycorrections from the general option "//trim(general_options(n)))
-!   write(*,'(a,l1)') 'INFO: setting general gradientstabilitycorrections = ',gradient_stability_corrections
+! iterstep options
+  else if (trim(option_name) == "iterstepmax") then
+    call set_option_integer(general_options(n),"iterstepmax (maximum number of itersteps to complete)",iterstepmax,'general')
+  else if (trim(option_name) == "iterstepcheck") then
+    call set_option_integer(general_options(n), &
+      "iterstepcheck (how often linear iteration solver communicates with outside world)",iterstepcheck,'general')
+  else if (trim(option_name) == "iterrestol") then
+    call set_option_double_precision(general_options(n), &
+      "iterrestol (tolerance that indicates convergence of the iterative proceedure)",iterrestol,'general')
+  else if (trim(option_name) == "iterresreltol") then
+    call set_option_double_precision(general_options(n), &
+      "iterresreltol (tolerance that indicates convergence of the iterative proceedure)",iterresreltol,'general')
+
   else
 !   write(*,'(a)') "WARNING: "//trim(option_name)//" is not a (valid) general option that can be set from the input file"
     call error_stop(trim(option_name)//" is not a (valid) general option that can be set from the input file")

@@ -43,29 +43,102 @@ implicit none
 ! all variables referenced in the general_module should be saved
 save ! note, under the 2008 fortran standard, I have read that all allocatable arrays in a module would automatically be saved anyway, but now including this specifically
 
+!----------------------------------------------------------
 ! ref: general options
 ! the following are the main general option variables that can be set from the arb input file
+
+! these two options are set from the perl, but are still userable (able to set from the arb file)
 logical :: transient_simulation = .false. ! (.false., userable) whether simulation is transient or steady-state
 logical :: newtient_simulation = .false. ! (.false., userable) whether simulation is newtient or not (ie, has variables that are evaluated only outside of the newton loop)
 
-integer :: timestepmax = huge(1) ! (huge, userable) maximum number of timesteps performed
-integer :: timestepmin = 0 ! (0, userable) minimum number of timesteps performed
-integer :: timestepadditional = 0 ! (0, userable) minimum number of timesteps that must be completed during current run
+! timestep variables
+integer :: timestep = 0 ! (0, userable) timestep index (with initial value being initial timestep, used for restarts)
+integer :: timestepmax = huge(1) ! (huge, userable) maximum number of timesteps performed in total
+integer :: timestepmin = 0 ! (0, userable) minimum number of timesteps performed in total
+integer :: timestepadditional = 0 ! (0, userable) minimum number of timesteps that must be completed during current run, useful when restarting a simulation
 integer :: timestepout = 0 ! (0, userable) maximum number of timesteps between output, with zero indicating no output
-integer :: timestep = 0 ! (0, userable) timestep indices (with initial value being initial timestep)
 
+! newtstep variables (newton loop)
+integer :: newtstep = 0 ! (0, userable) newtstep index (with initial value being initial newtstep, used for restarts)
 integer :: newtstepmax = 1000 ! (1000, userable) maximum number of steps performed by newton proceedure
 integer :: newtstepmin = 1 ! (1, userable) minimum number of steps performed by newton proceedure
 integer :: newtstepout = 0 ! (0, userable) maximum number of newtsteps between output, with zero indicating no output
 integer :: newtstepdebugout = 990 ! (990, userable) after this many newtsteps newtstepout is set to 1 to produce debugging output
 double precision :: newtrestol = 1.d-10 ! (1.d-10, userable) tolerance that indicates convergence of the newton proceedure
 
-integer :: iterstepmax = 1000000 ! maximum number of steps performed by linear iteration solver
-integer :: iterstepcheck = 100 ! how often linear iteration solver checks for kill file and outputs to screen residuals etc
-double precision :: iterrestol = 1.d-11 ! tolerance that indicates convergence of the linear iteration solver
-double precision :: iterresreltol = 0.d0 ! tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres
+! iterstep variables (iterative solver loop, if being used)
+integer :: iterstepmax = 1000000 ! (1000000, userable) maximum number of steps performed by linear iteration solver
+integer :: iterstepcheck = 100 ! (100, userable) how often linear iteration solver checks for kill file and outputs to screen residuals etc
+double precision :: iterrestol = 1.d-11 ! (1.d-11, userable) tolerance that indicates convergence of the linear iteration solver
+double precision :: iterresreltol = 0.d0 ! (0.d0, userable) tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres - actual tolerance uses max(iterrestol,iterresreltol*newtres), so if iterresreltol is set to zero then it is inactive and only iterrestol is used
 
+! the following are default values for various parameters which can be altered here (and not via user input options)
+character(len=100) :: output_step_file = "default" ! (default, userable) whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
+logical, parameter :: output_timings = .true. ! (.true., userable) whether to time processes and output results to screen (see subroutine time_process)
+logical, parameter :: output_timings_on_mesh_write = .false. ! (.false., userable) output timings each time a mesh file is written - requires that output_timings be on
+logical, parameter :: output_detailed_timings = .false. ! (.false., userable) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
+logical, parameter :: output_variable_update_times = .true. ! (.true., userable) time how long it takes to update each variable (on average) and report in output.stat
+logical, parameter :: output_region_update_times = .true. ! (.true., userable) time how long it takes to update each dynamic region (on average) and report in output.stat
+logical, parameter :: ignore_initial_update_times = .true. ! (.true., userable) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
+logical, parameter :: kernel_details_file = .false. ! (.false., userable) print out a text file (kernel_details.txt) with all the kernel details
+logical, parameter :: mesh_details_file = .false. ! (.false., userable) print out a text file (mesh_details.txt) with all the mesh details
+logical, parameter :: region_details_file = .false. ! (.false., userable) print out a text file (region_details.txt) with all the region details
+logical, parameter :: link_details_file = .false. ! (.false., userable) print out a text file (link_details.txt) with all the link details
+logical, parameter :: convergence_details_file = .true. ! (.true., userable) write some convergence debugging data to convergence_details.txt
+
+!----------------------------------------------------------
+! set some numerical and mathematical parameters, non-userable
+
+! code version details
+real, parameter :: version = 0.58 ! current version
+real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
+character(len=100), parameter :: versionname = "roaming romesh"
+
+! TODO: could make the following userable, at a small efficiency cost
+double precision, parameter :: limitertolerance = 1.d-10 ! (1.d-10) tolerance used when calculating advection gradient limiting - set to small positive number
+double precision, parameter :: limitercontgrad = 2.d0 ! factor that determines the gradient of the continuous advection limiter - set ~> 1.15 and ~< 2
+double precision, parameter :: normalised_variable_limit = 1.d+10 ! ratio between unknown/equation magnitude and specified order of variable that signals an error 
+double precision, parameter :: eps_dv = 1.d-40 ! minimum derivative magnitude to be considered when constructing jacobians, decreased from 1.d-20 -> 1.d-40 for v0.5
+
+! mainly parameters, or almost parameters
 integer, parameter :: totaldimensions=3 ! this is maximum number of dimensions: for all intents and purposes this can't be changed
+double precision, parameter :: pi = 4.d0*atan(1.d0)
+double precision, parameter :: tinyish = 1.d2*sqrt(tiny(0.d0)) ! something that is a bit bigger than tiny(0.d0)
+double precision, parameter :: hugeish = 1.d-2*sqrt(huge(0.d0)) ! something that is a bit smaller than huge(0.d0)
+character(len=100), parameter :: indexformat = 'i8' ! formating used for outputting integers throughout program, although now largely superseeding by dynamic format statements
+character(len=100), parameter :: floatformat='g18.10' ! formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places: now seems to be d+8 required
+character(len=100), parameter :: compactformat='g11.4' ! compact formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places
+character(len=100), parameter :: realformat='g15.8' ! formating used for outputting variables truncated as reals throughout program (ie, treal), including variables in the msh files:  as exponent is truncated to two decimal places, w = d+6 here (gw.d)
+character(len=100), parameter :: stringformat='a18' ! formating used for outputting strings (basically variable names) throughout program
+! reals apparently have about 7 decimal places and width has to be d+7 (ifort)
+integer, parameter :: fwarn = 11, fdetail = 12, foutput = 13, fgmsh = 14, finput = 15, fconverge = 16, foutputstep = 17 ! various file handles
+integer :: backline = 6, newtline = 4, timeline = 2, totalline = 80 ! length of delimiter lines in the output
+
+! variables specific to the timestep and newtstep rewind capability
+logical :: timestep_rewind = .false. ! whether timestep rewinding is active
+integer :: timestep_rewind_history = 1 ! (userable, history) number of timesteps remembered
+integer :: timestep_rewind_history_first = 0 ! array index for v_timestep_rewind_history in funks that corresponds to earliest data stored
+integer :: timestep_rewind_history_last = 0 ! array index for v_timestep_rewind_history in funks that corresponds to the latest data stored
+integer :: timestep_rewind_newtstep = 10 ! (userable, newtstep) number of newtsteps that if exceeded in newton loop triggers timestep_rewind
+logical :: newtstep_rewind = .false. ! whether timestep rewinding is active
+integer :: newtstep_rewind_history = 1 ! (userable, history) number of newtsteps remembered
+integer :: newtstep_rewind_history_first = 0 ! array index for v_newtstep_rewind_history in funks that corresponds to earliest data stored
+integer :: newtstep_rewind_history_last = 0 ! array index for v_newtstep_rewind_history in funks that corresponds to the latest data stored
+integer :: newtstep_rewind_lambda = 1.d-4 ! (userable, lambda) lambda limit that if reduced below this triggers a newtstep rewind
+integer :: newtstep_rewind_lambdamultiplier = 0.5d0 ! (userable, lambdamultiplier) what previous lambda is multiplied by
+
+! kernel availability (whether they are calculated or not) is calculated by the setup_equations.pl script, however, the settings can be overwritten (as true) here
+logical :: kernel_availability_faceave = .false. ! (.false.) needed for varcdivgrad, but this routine itself is not needed under normal circumstances, so set false
+logical :: kernel_availability_facegrad = .false. ! (.false.)
+logical :: kernel_availability_cellfromnodegrad = .false. ! (.false.)
+logical :: kernel_availability_cellgrad = .true. ! (.true.) needed for varcgrad used in variable output (for elementnodedata) so always keep on
+logical :: kernel_availability_cellave = .false. ! (.false.)
+logical :: kernel_availability_cellfromnodeave = .true. ! (.true.) needed when reading in elementnodedata so always keep on
+logical :: kernel_availability_nodegrad = .false. ! (.false.)
+logical :: kernel_availability_nodeave = .false. ! (.false.)
+
+!----------------------------------------------------------
+! now set some types and more complex data structures
 
 ! a generic kernel for calculating averages and derivatives
 type kernel_type
@@ -346,9 +419,6 @@ double precision, dimension(:), allocatable :: phiold, delphi ! single dimension
 integer :: transient_relstepmax ! maximum relstep value for all transients (variables and dynamic regions)
 integer :: newtient_relstepmax ! maximum relstep value for all newtients (variables and dynamic regions)
 double precision :: newtres = 0.d0 ! last evaluated value of the newton residual
-double precision, parameter :: tinyish = 1.d2*sqrt(tiny(0.d0)) ! something that is a bit bigger than tiny(0.d0)
-double precision, parameter :: hugeish = 1.d-2*sqrt(huge(0.d0)) ! something that is a bit smaller than huge(0.d0)
-integer :: newtstep = 0 ! newtonstep indices
 logical :: ignore_gmesh_step = .false. ! if a TIMESTEPSTART (for transient) or NEWTSTEPSTART (for steady-state) is specified in the input file then the step from any gmesh file is ignored
 integer :: maximum_dimensions = 0 ! maximum dimensions of any region used in the simulation
 integer :: maximum_celljfaces = 0 ! maximum number of faces that a cell has
@@ -358,7 +428,6 @@ integer :: nthreads = 0 ! if > 1 is the number of openmp threads in use, if == 1
 integer :: msomeloop = 0 ! set in allocate_meta_arrays, this is the maximum someloop number (ie, number of someloops)
 integer :: mseparation_list = 0 ! set in allocate_meta_arrays, this is the maximum separation_list (ie, number of separation_lists)
 double precision, dimension(:), allocatable :: newtstep_rewind_lambda_history ! array of previously used lambdas
-integer :: backline = 6, newtline = 4, timeline = 2, totalline = 80 ! length of delimiter lines in the output
 character(len=1000) :: input_file ! fortran specific input file generated by the arb script, set in subroutine setup_dirs
 character(len=1000) :: output_dir ! path to the output_dir from the working_dir, set in subroutine setup_dirs
 type(funk_type), dimension(:), allocatable :: funkt ! funk container which is used to assemble combined funk
@@ -368,27 +437,6 @@ character(len=100), dimension(:), allocatable :: kernel_options ! list of kernel
 character(len=100), dimension(:), allocatable :: solver_options ! list of kernel options, with highest priority on the right
 type(var_list_type), dimension(:), allocatable :: var_list ! array of var_lists, according to type, centring, and now also region
 integer :: var_list_number_unknown, var_list_number_equation ! these two commonly used var_list_numbers are stored for quick access and calculated in equation_module
-double precision, parameter :: pi = 4.d0*atan(1.d0)
-character(len=100), parameter :: indexformat = 'i8' ! formating used for outputting integers throughout program, although now largely superseeding by dynamic format statements
-character(len=100), parameter :: floatformat='g18.10' ! formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places: now seems to be d+8 required
-character(len=100), parameter :: compactformat='g11.4' ! compact formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places
-character(len=100), parameter :: realformat='g15.8' ! formating used for outputting variables truncated as reals throughout program (ie, treal), including variables in the msh files:  as exponent is truncated to two decimal places, w = d+6 here (gw.d)
-character(len=100), parameter :: stringformat='a18' ! formating used for outputting strings (basically variable names) throughout program
-! reals apparently have about 7 decimal places and width has to be d+7 (ifort)
-integer, parameter :: fwarn = 11, fdetail = 12, foutput = 13, fgmsh = 14, finput = 15, fconverge = 16, foutputstep = 17 ! various file handles
-
-! variables specific to the timestep and newtstep rewind capability
-logical :: timestep_rewind = .false. ! whether timestep rewinding is active
-integer :: timestep_rewind_history = 1 ! (userable, history) number of timesteps remembered
-integer :: timestep_rewind_history_first = 0 ! array index for v_timestep_rewind_history in funks that corresponds to earliest data stored
-integer :: timestep_rewind_history_last = 0 ! array index for v_timestep_rewind_history in funks that corresponds to the latest data stored
-integer :: timestep_rewind_newtstep = 10 ! (userable, newtstep) number of newtsteps that if exceeded in newton loop triggers timestep_rewind
-logical :: newtstep_rewind = .false. ! whether timestep rewinding is active
-integer :: newtstep_rewind_history = 1 ! (userable, history) number of newtsteps remembered
-integer :: newtstep_rewind_history_first = 0 ! array index for v_newtstep_rewind_history in funks that corresponds to earliest data stored
-integer :: newtstep_rewind_history_last = 0 ! array index for v_newtstep_rewind_history in funks that corresponds to the latest data stored
-integer :: newtstep_rewind_lambda = 1.d-4 ! (userable, lambda) lambda limit that if reduced below this triggers a newtstep rewind
-integer :: newtstep_rewind_lambdamultiplier = 0.5d0 ! (userable, lambdamultiplier) what previous lambda is multiplied by
 
 ! define some string parameter arrays
 character(len=100), dimension(9), parameter :: var_types = [ "constant   ", "transient  ", "newtient   ", "unknown    ", &
@@ -413,42 +461,6 @@ character(len=8), dimension(7), parameter :: stopfilelist = [ "kill    ", "stopb
 character(len=8), dimension(3), parameter :: dumpfilelist = [ "dumpnewt", "dump    ", "dumptime" ]
 logical, dimension(totaldimensions) :: array_mask1 = [.true.,.false.,.false.], array_mask2 = [.false.,.true.,.false.], &
   array_mask3 = [.false.,.false.,.true.]
-
-! kernel availability (whether they are calculated or not) is calculated by the setup_equations.pl script, however, the settings can be overwritten (as true) here
-logical :: kernel_availability_faceave = .false. ! (.false.) needed for varcdivgrad, but this routine itself is not needed under normal circumstances, so set false
-logical :: kernel_availability_facegrad = .false. ! (.false.)
-logical :: kernel_availability_cellfromnodegrad = .false. ! (.false.)
-logical :: kernel_availability_cellgrad = .true. ! (.true.) needed for varcgrad used in variable output (for elementnodedata) so always keep on
-logical :: kernel_availability_cellave = .false. ! (.false.)
-logical :: kernel_availability_cellfromnodeave = .true. ! (.true.) needed when reading in elementnodedata so always keep on
-logical :: kernel_availability_nodegrad = .false. ! (.false.)
-logical :: kernel_availability_nodeave = .false. ! (.false.)
-
-! code version details
-real, parameter :: version = 0.58 ! current version
-real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
-character(len=100), parameter :: versionname = "roaming ronny"
-
-! the following are default values for various parameters which can be altered here (and not via user input options)
-! TODO: make these userable via GENERAL_OPTIONS
-! ref: general options
-double precision, parameter :: limitertolerance = 1.d-10 ! (1.d-10) tolerance used when calculating advection gradient limiting - set to small positive number
-double precision, parameter :: limitercontgrad = 2.d0 ! factor that determines the gradient of the continuous advection limiter - set ~> 1.15 and ~< 2
-double precision, parameter :: normalised_variable_limit = 1.d+10 ! ratio between unknown/equation magnitude and specified order of variable that signals an error 
-double precision, parameter :: eps_dv = 1.d-40 ! minimum derivative magnitude to be considered when constructing jacobians, decreased from 1.d-20 -> 1.d-40 for v0.5
-character(len=100) :: output_step_file = "default" ! whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
-!character(len=100) :: output_step_file = "newtstep" ! whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
-logical, parameter :: output_timings = .true. ! (.true.) whether to time processes and output results to screen (see subroutine time_process)
-logical, parameter :: output_timings_on_mesh_write = .false. ! (.false.) output timings each time a mesh file is written - requires that output_timings be on
-logical, parameter :: output_detailed_timings = .false. ! (.false.) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
-logical, parameter :: output_variable_update_times = .true. ! (.true.) time how long it takes to update each variable (on average) and report in output.stat
-logical, parameter :: output_region_update_times = .true. ! (.true.) time how long it takes to update each dynamic region (on average) and report in output.stat
-logical, parameter :: ignore_initial_update_times = .true. ! (.true.) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
-logical, parameter :: kernel_details_file = .false. ! (.false.) print out a text file (kernel_details.txt) with all the kernel details
-logical, parameter :: mesh_details_file = .false. ! (.false.) print out a text file (mesh_details.txt) with all the mesh details
-logical, parameter :: region_details_file = .false. ! (.false.) print out a text file (region_details.txt) with all the region details
-logical, parameter :: link_details_file = .false. ! (.false.) print out a text file (link_details.txt) with all the link details
-logical, parameter :: convergence_details_file = .true. ! (.true.) write some convergence debugging data to convergence_details.txt
 
 !----------------------------------------------------------------------------
 
