@@ -74,17 +74,17 @@ double precision :: iterresreltol = 0.d0 ! (0.d0, userable) tolerance that indic
 
 ! the following are default values for various parameters which can be altered here (and not via user input options)
 character(len=100) :: output_step_file = "default" ! (default, userable) whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
-logical, parameter :: output_timings = .true. ! (.true., userable) whether to time processes and output results to screen (see subroutine time_process)
-logical, parameter :: output_timings_on_mesh_write = .false. ! (.false., userable) output timings each time a mesh file is written - requires that output_timings be on
-logical, parameter :: output_detailed_timings = .false. ! (.false., userable) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
-logical, parameter :: output_variable_update_times = .true. ! (.true., userable) time how long it takes to update each variable (on average) and report in output.stat
-logical, parameter :: output_region_update_times = .true. ! (.true., userable) time how long it takes to update each dynamic region (on average) and report in output.stat
-logical, parameter :: ignore_initial_update_times = .true. ! (.true., userable) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
-logical, parameter :: kernel_details_file = .false. ! (.false., userable) print out a text file (kernel_details.txt) with all the kernel details
-logical, parameter :: mesh_details_file = .false. ! (.false., userable) print out a text file (mesh_details.txt) with all the mesh details
-logical, parameter :: region_details_file = .false. ! (.false., userable) print out a text file (region_details.txt) with all the region details
-logical, parameter :: link_details_file = .false. ! (.false., userable) print out a text file (link_details.txt) with all the link details
-logical, parameter :: convergence_details_file = .true. ! (.true., userable) write some convergence debugging data to convergence_details.txt
+logical :: output_timings = .true. ! (.true., userable) whether to time processes and output results to screen (see subroutine time_process)
+logical :: output_timings_on_mesh_write = .false. ! (.false., userable) output timings each time a mesh file is written - requires that output_timings be on
+logical :: output_detailed_timings = .false. ! (.false., userable) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
+logical :: output_variable_update_times = .true. ! (.true., userable) time how long it takes to update each variable (on average) and report in output.stat
+logical :: output_region_update_times = .true. ! (.true., userable) time how long it takes to update each dynamic region (on average) and report in output.stat
+logical :: ignore_initial_update_times = .true. ! (.true., userable) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
+logical :: kernel_details_file = .false. ! (.false., userable) print out a text file (kernel_details.txt) with all the kernel details
+logical :: mesh_details_file = .false. ! (.false., userable) print out a text file (mesh_details.txt) with all the mesh details
+logical :: region_details_file = .false. ! (.false., userable) print out a text file (region_details.txt) with all the region details
+logical :: link_details_file = .false. ! (.false., userable) print out a text file (link_details.txt) with all the link details
+logical :: convergence_details_file = .true. ! (.true., userable) write some convergence debugging data to convergence_details.txt
 
 !----------------------------------------------------------
 ! set some numerical and mathematical parameters, non-userable
@@ -3788,15 +3788,16 @@ end function extract_option_double_precision
 
 !-----------------------------------------------------------------
 
-subroutine set_option_logical(option,option_name,option_variable,option_type)
+subroutine set_option_logical(option,option_name,option_description,option_variable,option_type)
 
 ! subroutine that sets the option_variable whose name is option_name to the logical in the option string
 
-character(len=*) :: option ! will have length 100
-character(len=*) :: option_name
+character(len=*) :: option ! full option string, will have length 100
+character(len=*) :: option_name ! the referenced name of the option (eg, outputtimings)
+character(len=*) :: option_description ! this is a short description of the variables, used only in messages
+logical :: option_variable ! this is the variable to set
 character(len=*), optional :: option_type ! ie, general, kernel, solver etc
-character(len=20) :: option_type_l ! 
-logical :: option_variable
+character(len=20) :: option_type_l ! local version of option_type (eg, general, kernel, solver etc)
 character(len=1000) :: formatline
 logical :: error
 
@@ -3805,10 +3806,24 @@ if (present(option_type)) option_type_l = " "//option_type
   
 error = .false.
 option_variable = extract_option_logical(option,error)
-if (error) call error_stop("could not determine the required "//trim(option_name)//" from the"//trim(option_type_l)// &
-  " option "//trim(option))
-formatline = '(a,a)'
-write(*,fmt=formatline) "INFO: setting"//trim(option_type_l)//" option "//trim(option_name)//" = ",option_variable
+if (error) then
+! no option for a logical means, set to true, unless name is negated as in nooutputtimings
+  if (trim(extract_option_name(option,error)) == "no"//trim(option_name)) then
+    option_variable = .false.
+  else
+    option_variable = .true.
+  end if
+  if (error) &
+    call error_stop("could not determine the required "//trim(option_name)//" ("//trim(option_description)//") from the"// &
+      trim(option_type_l)//" option "//trim(option))
+else
+  if (trim(extract_option_name(option,error)) == "no"//trim(option_name)) &
+    call error_stop("could not determine the required "//trim(option_name)//" ("//trim(option_description)//") from the"// &
+      trim(option_type_l)//" option "//trim(option))
+end if
+formatline = '(a,l1)'
+write(*,fmt=formatline) "INFO: setting"//trim(option_type_l)//" option "//trim(option_name)//" ("//trim(option_description)// &
+  ") = ",option_variable
 
 end subroutine set_option_logical
 

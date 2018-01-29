@@ -65,14 +65,6 @@ if (debug) write(*,*) 'calling setup_dirs'
 
 call setup_dirs ! setup the various file/dir locations
 
-if (convergence_details_file) then
-
-  if (debug) write(*,*) 'calling setup_convergence_file'
-
-  call setup_convergence_file ! setup convergence file
-
-end if
-
 if (debug) write(*,*) 'calling setup_gmesh'
 
 call setup_gmesh_elements ! create reference gtype_list array which has details of the gmsh element types
@@ -88,6 +80,14 @@ call read_input_file ! read arb input file for numerical data, some region and m
 if (debug) write(*,*) 'calling process_general_options'
 
 call process_general_options ! convert any general_options to fortran variables
+
+if (convergence_details_file) then ! this option is set from input file
+
+  if (debug) write(*,*) 'calling setup_convergence_file'
+
+  call setup_convergence_file ! setup convergence file
+
+end if
 
 if (debug) write(*,*) 'calling setup_mesh'
 
@@ -1782,6 +1782,55 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
   else if (trim(option_name) == "iterresreltol") then
     call set_option_double_precision(general_options(n), &
       "iterresreltol (tolerance that indicates convergence of the iterative proceedure)",iterresreltol,'general')
+
+! output file selection
+  else if (trim(option_name) == "outputstepfile") then
+! this string is checked within output_module.f90
+    call set_option_string(general_options(n),"outputstepfile (whether to print output.step file or not)",output_step_file, &
+      'general')
+  else if (trim(option_name) == "kerneldetailsfile" .or. trim(option_name) == "nokerneldetailsfile") then
+    call set_option_logical(general_options(n),'kerneldetailsfile', &
+      "print out a text file (kernel_details.txt) with all the kernel details", &
+      kernel_details_file,'general')
+  else if (trim(option_name) == "meshdetailsfile" .or. trim(option_name) == "nomeshdetailsfile") then
+    call set_option_logical(general_options(n),'meshdetailsfile', &
+      "print out a text file (mesh_details.txt) with all the mesh details", &
+      mesh_details_file,'general')
+  else if (trim(option_name) == "regiondetailsfile" .or. trim(option_name) == "noregiondetailsfile") then
+    call set_option_logical(general_options(n),'regiondetailsfile', &
+      "print out a text file (region_details.txt) with all the region details", &
+      region_details_file,'general')
+  else if (trim(option_name) == "linkdetailsfile" .or. trim(option_name) == "nolinkdetailsfile") then
+    call set_option_logical(general_options(n),'linkdetailsfile', &
+      "print out a text file (link_details.txt) with all the link details", &
+      link_details_file,'general')
+  else if (trim(option_name) == "convergencedetailsfile" .or. trim(option_name) == "noconvergencedetailsfile") then
+    call set_option_logical(general_options(n),'convergencedetailsfile', &
+      "write some convergence debugging data to convergence_details.txt", &
+      convergence_details_file,'general')
+
+! timing of various routines
+  else if (trim(option_name) == "outputtimings" .or. trim(option_name) == "nooutputtimings") then
+    call set_option_logical(general_options(n),'outputtimings',"whether to time processes and output results to screen", &
+      output_timings,'general')
+  else if (trim(option_name) == "outputtimingsonmeshwrite" .or. trim(option_name) == "nooutputtimingsonmeshwrite") then
+    call set_option_logical(general_options(n),'outputtimingsonmeshwrite',"output timings each time a mesh file is written", &
+      output_timings_on_mesh_write,'general')
+    if (output_timings_on_mesh_write.and..not.output_timings) output_timings = .true.
+  else if (trim(option_name) == "outputdetailedtimings" .or. trim(option_name) == "nooutputdetailedtimings") then
+    call set_option_logical(general_options(n),'outputdetailedtimings', &
+      "whether to give outputs for each routine (rather than just totals)",output_detailed_timings,'general')
+    if (output_detailed_timings.and..not.output_timings) output_timings = .true.
+  else if (trim(option_name) == "outputvariableupdatetimes" .or. trim(option_name) == "nooutputvariableupdatetimes") then
+    call set_option_logical(general_options(n),'outputvariableupdatetimes', &
+      "time how long it takes to update each variable (on average)",output_variable_update_times,'general')
+  else if (trim(option_name) == "outputregionupdatetimes" .or. trim(option_name) == "nooutputregionupdatetimes") then
+    call set_option_logical(general_options(n),'outputregionupdatetimes', &
+      "time how long it takes to update each dynamic region (on average)",output_region_update_times,'general')
+  else if (trim(option_name) == "ignoreinitialupdatetimes" .or. trim(option_name) == "noignoreinitialupdatetimes") then
+    call set_option_logical(general_options(n),'ignoreinitialupdatetimes', &
+      "ignore how long it takes to update each variable when initialising", &
+      ignore_initial_update_times,'general')
 
   else
 !   write(*,'(a)') "WARNING: "//trim(option_name)//" is not a (valid) general option that can be set from the input file"
