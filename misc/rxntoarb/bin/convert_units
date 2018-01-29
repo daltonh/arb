@@ -3,7 +3,7 @@
 abort "ERROR: Ruby 1.9.3 or newer required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9.3'
 
 PROGNAME = 'convert_units'
-VERSION = 1.4
+VERSION = 1.5
 DATE = '2018-01-09'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})

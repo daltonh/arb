@@ -1,5 +1,5 @@
-# Rxntoarb::Reaction
-# (C) Copyright Christian Biscombe 2016-2017
+# Rxntoarb::Rxn
+# (C) Copyright Christian Biscombe 2016-2018
 
 require 'set'
 require_relative 'reaction'

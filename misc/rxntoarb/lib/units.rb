@@ -1,5 +1,5 @@
 # Units module
-# (C) Copyright Christian Biscombe 2017
+# (C) Copyright Christian Biscombe 2017-2018
 
 module Units
 
@@ -20,7 +20,9 @@ module Units
     'd' => 1e-1,
     'c' => 1e-2,
     'm' => 1e-3,
-    'u' => 1e-6,
+    "\u00b5" => 1e-6, # micro sign
+    "\u03bc" => 1e-6, # Greek small letter mu
+         'u' => 1e-6, # closest ASCII
     'n' => 1e-9,
     'p' => 1e-12,
     'f' => 1e-15,
@@ -33,20 +35,20 @@ module Units
   SI_UNITS = %w[A cd kg K m mol rad s sr]
 
   # Create unit definitions #{{{
-  Unit = Struct.new(:name, :sym, :si, :factor, :offset) # attributes are unit name, unit symbol, equivalent SI units, factor to multiply by to convert to SI units, offset (only for temperatures)
+  Unit = Struct.new(:name, :sym, :si, :factor, :offset) # attributes are unit name, unit symbol(s) (as array if more than one), equivalent SI units, factor to multiply by to convert to SI units, offset (only for temperatures)
   UNIT_LIST = [
     # base SI units
     Unit.new('ampere', 'A', 'A', 1.0),
     Unit.new('candela', 'cd', 'cd', 1.0),
     Unit.new('kilogram', 'kg', 'kg', 1.0),
-    Unit.new('kelvin', 'K', 'K', 1.0),
+    Unit.new('kelvin', 'K', 'K', 1.0, 0.0),
     Unit.new('metre', 'm', 'm', 1.0),
     Unit.new('mole', 'mol', 'mol', 1.0),
     Unit.new('second', 's', 's', 1.0),
     # derived units
     Unit.new('becquerel', 'Bq', 's-1', 1.0),
     Unit.new('coulomb', 'C', 'A s', 1.0),
-    Unit.new('degree Celsius', 'degC', 'K', 1.0, 273.15), # special case - could refer to absolute temperature or (with -t flag) temperature difference
+    Unit.new('degree Celsius', ['degC', "\u2103"], 'K', 1.0, 273.15), # special case - could refer to absolute temperature or (with -t flag) temperature difference
     Unit.new('farad', 'F', 'A2 s4 kg-1 m-2', 1.0),
     Unit.new('', 'g', 'kg', 1e-3), # gram, needed so that prefixes other than k will match. Named '' so that it doesn't appear in unit list
     Unit.new('gray', 'Gy', 'm2 s-2', 1.0),
@@ -57,7 +59,7 @@ module Units
     Unit.new('lumen', 'lm', 'cd', 1.0),
     Unit.new('lux', 'lx', 'cd m-2', 1.0),
     Unit.new('newton', 'N', 'kg m s-2', 1.0),
-    Unit.new('ohm', 'ohm', 'kg m2 A-2 s-3', 1.0),
+    Unit.new('ohm', ['ohm', "\u03a9", "\u2126"], 'kg m2 A-2 s-3', 1.0),
     Unit.new('pascal', 'Pa', 'kg m-1 s-2', 1.0),
     Unit.new('radian', 'rad', 'rad', 1.0),
     Unit.new('steradian', 'sr', 'sr', 1.0),
@@ -68,26 +70,25 @@ module Units
     Unit.new('watt', 'W', 'kg m2 s-3', 1.0),
     Unit.new('weber', 'Wb', 'kg m2 A-1 s-2', 1.0),
     # other units used with the SI
-    Unit.new('angstrom', 'angstrom', 'm', 1e-10),
+    Unit.new('angstrom', ['angstrom', "\u00c5", "\u212b"], 'm', 1e-10),
     Unit.new('atmosphere', 'atm', 'kg m-1 s-2', 1.01325e5),
     Unit.new('bar', 'bar', 'kg m-1 s-2', 1e5),
     Unit.new('day', 'day', 's', 8.64e4), # can't use d because cd and yd would be ambiguous
     Unit.new('dalton', 'Da', 'kg mol-1', 1e-3),
     Unit.new('electronvolt', 'eV', 'kg m2 s-2', 1.6021766208e-19),
     Unit.new('hour', 'h', 's', 3.6e3),
-    Unit.new('litre', 'l', 'm3', 1e-3),
-    Unit.new('litre', 'L', 'm3', 1e-3),
+    Unit.new('litre', ['l', 'L'], 'm3', 1e-3),
     Unit.new('minute', 'min', 's', 60.0),
     Unit.new('molar', 'M', 'mol m-3', 1e3),
     Unit.new('tonne', 'tonne', 'kg', 1e3), # can't use t because ft would be ambiguous
     Unit.new('unified atomic mass unit', 'u', 'kg mol-1', 1e-3),
-    Unit.new('degree (angle)', 'deg', 'rad', Math::PI/180.0),
+    Unit.new('degree (angle)', ['deg', "\u00b0"], 'rad', Math::PI/180.0),
     Unit.new('minute (angle)', "'", 'rad', Math::PI/1.08e4),
     Unit.new('second (angle)', "''", 'rad', Math::PI/6.48e5),
     # others
     Unit.new('British thermal unit', 'BTU', 'kg m2 s-2', 1055.06),
     Unit.new('calorie (thermochemical)', 'cal', 'kg m2 s-2', 4.184),
-    Unit.new('degree Fahrenheit', 'degF', 'K', 5.0/9.0, 459.67), # special case - could refer to absolute temperature or (with -t flag) temperature difference
+    Unit.new('degree Fahrenheit', ['degF', "\u2109"], 'K', 5.0/9.0, 459.67), # special case - could refer to absolute temperature or (with -t flag) temperature difference
     Unit.new('degree Rankine', 'degR', 'K', 5.0/9.0, 0.0), # special case - could refer to absolute temperature or (with -t flag) temperature difference
     Unit.new('dyne', 'dyn', 'kg m s-2', 1e-5),
     Unit.new('erg', 'erg', 'kg m2 s-2', 1e-7),
@@ -105,17 +106,19 @@ module Units
     Unit.new('poise', 'P', 'kg m-1 s-1', 0.1),
     Unit.new('pound', 'lb', 'kg', 0.45359237),
     Unit.new('pound-force', 'lbf', 'kg m s-2', 4.4482216152605),
-    Unit.new('pounds per square inch', 'psi', 'kg m-1 s-2', 6.894757e3),
+    Unit.new('pound per square inch', 'psi', 'kg m-1 s-2', 6.894757e3),
     Unit.new('yard', 'yd', 'm', 0.9144),
   ].sort_by { |unit| unit.name.downcase } #}}}
 
   UNITS = {}
-  UNIT_LIST.each { |unit| UNITS[unit.sym] = unit }
+  UNIT_LIST.each do |unit| 
+    [unit.sym].flatten.each { |sym| UNITS[sym] = unit }
+  end
   
   UNIT_MATCH = /\A(#{Regexp.union(PREFIXES.keys)})??(#{Regexp.union(UNITS.keys)})\^?((?:\+|-)?\d+)?\z/
 
   def list() #{{{
-    UNIT_LIST.each { |unit| puts "#{unit.name}: #{unit.sym}" unless unit.name.empty? }
+    UNIT_LIST.each { |unit| puts "#{unit.name}: #{[unit.sym].flatten.join(', ')}" unless unit.name.empty? }
   end #}}}
 
   def convert(string_in, units_out, options={}) #{{{
@@ -134,10 +137,12 @@ module Units
     end
     raise "input and output units have different dimensions" unless units_in_dim == units_out_dim
 
-    if units_in =~ /\A(deg[CFR]|K)\z/ && !options[:tdiff] # input refers to an absolute temperature
-      temp_in_K = units_in =~ /deg[CFR]/ ? (value_in.to_f + UNITS[units_in].offset)*UNITS[units_in].factor : value_in.to_f
-      value_out = units_out =~ /deg[CFR]/ ? temp_in_K/UNITS[units_out].factor - UNITS[units_out].offset : temp_in_K
-    else
+    if units_in_dim == {'K'=>1} && !options[:tdiff] # input refers to an absolute temperature
+      _, _units, _ = extract(units_in)
+      temp_in_K = value_in.to_f*factor_in + UNITS[_units].offset*UNITS[_units].factor
+      _, _units, _ = extract(units_out.strip)
+      value_out = (temp_in_K - UNITS[_units].offset*UNITS[_units].factor)/factor_out
+    else # any other input, including temperature difference
       value_out = factor_in/factor_out*value_in.to_f
     end
 
@@ -161,8 +166,7 @@ module Units
 
   def convert_SI(units) #{{{
     factor = 1.0 # this will be the factor to multiply units by to convert to SI
-    units_dim = {} # this will contain the dimensions of units in terms of SI base units
-    SI_UNITS.each { |unit| units_dim[unit] = 0 }
+    units_dim = Hash.new(0) # this will contain the dimensions of units in terms of SI base units
     units.split(/ |\.|\*/).each do |part|
       prefix, unit, exponent = extract(part)
       factor *= (PREFIXES[prefix]*UNITS[unit].factor)**exponent
