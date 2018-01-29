@@ -1033,8 +1033,8 @@ sub parse_solver_code {
     } else {
       if ($masread >= 0) {
         $::region[$masread]{"redefinitions"}++; 
-        print "INFO: a secondary definition statement (number $::region[$masread]{definitions}) for region $name has been found in file = $file\n";
-        print ::DEBUG "INFO: a secondary definition statement (number $::region[$masread]{definitions}) for region $name has been found based on: $filelinelocator\n";
+        print "INFO: a secondary definition statement (number $::region[$masread]{redefinitions}) for region $name has been found in file = $file\n";
+        print ::DEBUG "INFO: a secondary definition statement (number $::region[$masread]{redefinitions}) for region $name has been found based on: $filelinelocator\n";
   # a variable has been identified, now check whether the centring has changed
         if (nonempty($centring)) {
           if ($centring ne $::region[$masread]{"centring"} && nonempty($::region[$masread]{"centring"})) {

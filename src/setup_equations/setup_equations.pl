@@ -816,10 +816,23 @@ sub organise_regions {
               $region[$n]{$option_name} = $match;
             }
           } else { error_stop("option $option specified for region $type $region[$n]{name} cannot be used for this type of region"); }
+        } elsif ($option =~ /^((no|)((time|newt)steprewind)(|\s*=\s*(.true.|(.false.))))$/i) { # timesteprewind variable needs to be passed to fortran, in sanitised nooption form
+            if ($region[$n]{"dynamic"}) { # can only be applied to dynamic regions
+              $option = "\L$3";
+              if (nonempty($2) || nonempty($7)) { $option = "no".$option; }
+              $region[$n]{"options"} = $region[$n]{"options"}.",$option";
+            } else { print "WARNING: option $option specified for $type $region[$n]{name} can only be used for dynamic regions and is ignored here\n";
+            }
         } else {
           error_stop("the option $option specified for region $type $region[$n]{name} is not valid");
         }
       }
+  
+# remove extra leading comma and output to fortran file
+      $region[$n]{"options"} =~ s/^\s*\,//;
+      print FORTRAN_INPUT "REGION_OPTIONS $region[$n]{name} $region[$n]{options}\n";
+      print "INFO: the $region[$n]{type} $region[$n]{name} has the final component-specific options of: $region[$n]{options}\n";
+      print DEBUG "INFO: the $region[$n]{type} $region[$n]{name} has the final component-specific options of: $region[$n]{options}\n";
     }
   }
 
@@ -1413,6 +1426,9 @@ sub organise_user_variables {
     if ($type eq "unknown" || $type eq "equation") {
       $variable{$type}[$mvar]{"magnitude_constant"} = 0; # specifies that it is not to be set from a none-centred constant value
     }
+    if ($type ne "local") {
+      $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = 0; # specifies that by default timesteprewindmultiplier is not a variable, but a constant
+    }
 
 # check a centring was defined, and if not, try to work out a default
     if (empty($variable{$type}[$mvar]{"centring"})) { $variable{$type}[$mvar]{"centring"} = 'none';
@@ -1584,8 +1600,12 @@ sub organise_user_variables {
             $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$1$2";
             if ($type eq "equation") { print "WARNING: are you sure that you want option $option specified for variable $name?\n"; }
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
-        elsif ($option =~ /^(dynamic|static)magnitude$/i) {
+        elsif ($option =~ /^((no|)dynamic|(static))magnitude$/i) {
           if ($type eq "unknown" || $type eq "equation") {
+            if (nonempty($3)) {
+              syntax_problem("staticmagnitude option has been replaced by nodynamicmagnitude, found in variable $variable{$type}[$mvar]{name}","warning");
+              $option = "nodynamicmagnitude";
+            }
             $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$option";
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         elsif ($option =~ /^(magnitude|dynamicmagnitudemultiplier)\s*=\s*([\+\-\d\.][\+\-\ded\.]*)$/i) {
@@ -1630,9 +1650,11 @@ sub organise_user_variables {
 #         } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
           } else { error_stop("option $option specified for variable $type $name cannot be used for this type of region"); } }
 # ref: timesteprewind ref: newtsteprewind ref: rewind
-        elsif ($option =~ /^((no|)((time|newt)steprewind))$/i) {
+        elsif ($option =~ /^((no|)((time|newt)steprewind))(|\s*=\s*(.true.|(.false.)))$/i) { # able to deal with both forms of setting, but need to decide whether this is to be across the board
           if ($type ne "local" ) {
-            $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$option";
+            $option = "\L$3";
+            if (nonempty($2) || nonempty($7)) { $option = "no".$option; }
+            $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",$option";
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
 # ref: timesteprewindmultiplier
         elsif ($option =~ /^(timesteprewindmultiplier)\s*=\s*([\+\-\d\.][\+\-\ded\.]*)$/i) {
@@ -1641,7 +1663,12 @@ sub organise_user_variables {
           $match =~ s/e/d/; if ($match !~ /d/) { $match = $match."d0"; } if ($match !~ /\./) { $match =~ s/d/.d/; }
           if ($type ne "local") {
             $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",$option_name=$match";
+            $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = 0; # reset variable reference
           } else { print "WARNING: option $option_name specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
+        elsif ($option =~ /^timesteprewindmultiplier\s*=\s*(<.+?>)$/i) { # alternatively, timesteprewindmultiplier may be specified as a none centred variable, which will be checked later
+          if ($type ne "local") {
+            $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = examine_name($1,"name");
+          } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         else { error_stop("unknown option of $option specified for $type $name"); }
       }
 # remove extra leading comma and output to fortran file
@@ -1679,7 +1706,7 @@ sub organise_user_variables {
   }
 
 #-----------------------------------------------------
-# find and check none-centred constant magnitude variable
+# find and check none-centred constant magnitude variable, and convert to fortran number
 
   foreach $type ( "unknown", "equation" ) {
     foreach $mvar ( 1 .. $m{$type} ) {
@@ -1701,6 +1728,38 @@ sub organise_user_variables {
 # if we are here then we have identified a none centred constant variable that should be used to set the magnitude - store the fortran number of this variable
         print DEBUG "INFO: identified the none centred constant $name which will be used as the magnitude of $type $variable{$type}[$mvar]{name}\n";
         $variable{$type}[$mvar]{"magnitude_constant"} = $variable{"constant"}[$variable{$type}[$mvar]{"magnitude_constant"}]{"fortran_number"};
+      }
+    }
+  }
+
+#-----------------------------------------------------
+# find and check none-centred timesteprewindmagnitude variable, and convert number to fortran number
+
+  foreach $type ( @user_types ) {
+    if ($type eq "local") { next; }
+    foreach $mvar ( 1 .. $m{$type} ) {
+      if ($variable{$type}[$mvar]{"timesteprewindmultiplier_variable"}) { # TODO: need to rework this as type and mvar
+        $name = $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"};
+        my $typefound = 0;
+        my $mvarfound = 0;
+        TYPE_LOOP: for my $typec ( @user_types ) {
+          for my $mvarc ( 1 .. $m{$typec} ) {
+            if ($name eq $variable{$typec}[$mvarc]{"name"}) {
+              $mvarfound = $mvarc;
+              $typefound = $typec;
+              last TYPE_LOOP;
+            }
+          }
+        }
+        if (!($typefound)) {
+          error_stop("the variable $name used to specify the timesteprewindmagnitude of $type $variable{$type}[$mvar]{name} is not found");
+        } elsif ($variable{$typefound}[$mvarfound]{"centring"} ne "none") {
+          error_stop("the variable $name used to specify the timesteprewindmagnitude of $type $variable{$type}[$mvar]{name} needs to be none centred: ".
+            "it is $variable{$typefound}[$mvarfound]{centring} centred");
+        }
+# if we are here then we have identified a none centred constant variable that should be used to set the magnitude - store the fortran number of this variable
+        print DEBUG "INFO: identified the none centred constant $name which will be used as the timesteprewindmagnitude of $type $variable{$type}[$mvar]{name}\n";
+        $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = $variable{$typefound}[$mvarfound]{"fortran_number"};
       }
     }
   }
@@ -3933,6 +3992,10 @@ sub create_allocations {
         if ($type eq "unknown" || $type eq "equation") {
           $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.
             "$basename{$type}($variable{$type}[$mvar]{fortran_number})%magnitude_constant=$variable{$type}[$mvar]{magnitude_constant}\n";
+        }
+        if ($type ne "local") {
+          $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.
+            "$basename{$type}($variable{$type}[$mvar]{fortran_number})%timesteprewindmultiplier_variable=$variable{$type}[$mvar]{timesteprewindmultiplier_variable}\n";
         }
       } else {
         $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.

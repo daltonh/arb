@@ -336,6 +336,26 @@ fileloop: do
   end if
 
 !---------------
+! region options
+
+  if (trim(keyword) == 'REGION_OPTIONS') then
+    name = extract_next_string(textline,error,empty=empty,delimiter="<")
+    if (error.or.empty) call error_stop('region name in '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
+! find number for this name
+    m = region_number_from_name(name)
+    if (m == 0) call error_stop('region '//trim(name)//' specified in arb input file was not found')
+! extract any options and add to the start of the options array
+    array_size = allocatable_character_size(region(m)%options)
+    call extract_options(textline,region(m)%options)
+    if (allocatable_character_size(region(m)%options) - array_size == 0) then ! the options array was the same size as before, which is an error really
+      write(*,'(a)') 'WARNING: the '//trim(keyword)//' keyword was found but no options were read in for region '//trim(name)
+    else if (allocated(region(m)%options)) then
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set options for region '//trim(name)//' have been read in:', &
+        (' '//trim(region(m)%options(n)),n=1,ubound(region(m)%options,1))
+    end if
+  end if
+
+!---------------
 ! compound options
 
   if (trim(keyword) == 'COMPOUND_OPTIONS') then
@@ -1262,12 +1282,14 @@ do n = 1, allocatable_size(var_list(var_list_number_l)%list)
   newtient_relstepmax = max(newtient_relstepmax,relstep)
 end do
 
+! set a range of options for unknowns and equations from the option lists
 ! find user-set magnitude and whether dynamically adjusted magnitudes are set
 !formatline = '(a,'//trim(floatformat)//')'
 formatline = '(a,'//trim(compactformat)//')'
 do m = 1, ubound(var,1)
   if (var(m)%type /= 'unknown'.and.var(m)%type /= 'equation') cycle
 ! set defaults
+  var(m)%magnitude = -1.d0
   if (var(m)%type == 'equation') then
     var(m)%dynamic_magnitude = .true.
     var(m)%dynamic_magnitude_multiplier = 1.1d0
@@ -1275,17 +1297,17 @@ do m = 1, ubound(var,1)
     var(m)%dynamic_magnitude = .false.
     var(m)%dynamic_magnitude_multiplier = 2.d0
   end if
-  if (trim(check_option(var(m)%options,magnitude_options)) == 'dynamicmagnitude') then
-    var(m)%dynamic_magnitude = .true.
-    write(*,'(a)') 'INFO: setting dynamically adjusted magnitudes for '//trim(var(m)%type)//' '//trim(var(m)%name)
-  else if (trim(check_option(var(m)%options,magnitude_options)) == 'staticmagnitude') then
-    var(m)%dynamic_magnitude = .false.
-    write(*,'(a)') 'INFO: setting static magnitudes for '//trim(var(m)%type)//' '//trim(var(m)%name)
-  end if
+! now run through list of user-set options overwriting above defaults
   do n = 1, allocatable_size(var(m)%options) ! read through list from left to right, so that rightmost setting takes precedence
     option_name = extract_option_name(var(m)%options(n),error)
     if (error) cycle
-    if (trim(option_name) == 'magnitude') then
+    if (trim(option_name) == 'dynamicmagnitude') then
+      var(m)%dynamic_magnitude = .true.
+      write(*,'(a)') 'INFO: setting dynamically adjusted magnitudes for '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'nodynamicmagnitude' .or. trim(option_name) == 'staticmagnitude') then ! legacy staticmagnitude to be removed
+      var(m)%dynamic_magnitude = .false.
+      write(*,'(a)') 'INFO: setting nodynamicmagnitude (static) magnitudes for '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'magnitude') then
       if (var(m)%magnitude_constant /= 0) cycle ! skip setting this magnitude if it will be set by a magnitude_constant
       var(m)%magnitude = extract_option_double_precision(var(m)%options(n),error)
       if (error) call error_stop("could not determine the user-set magnitude for variable "//trim(var(m)%name)// &
@@ -1299,6 +1321,45 @@ do m = 1, ubound(var,1)
       write(*,fmt=formatline) 'INFO: setting the dynamicmagitudemultiplier for '//trim(var(m)%type)//' '//trim(var(m)%name)// &
         ' to ',var(m)%dynamic_magnitude_multiplier
       if (var(m)%dynamic_magnitude_multiplier < 1.d0) call error_stop("each dynamicmagnitudemultiplier must be >= 1.d0")
+    end if
+  end do
+end do
+
+! set options for all variables
+! set timestep and newtstep rewind options for variables:
+do m = 1, ubound(var,1)
+! first set default timesteprewind behaviours
+  if (var(m)%type == 'unknown'.or.var(m)%type == 'transient') then
+    var(m)%timesteprewind = .true.
+    var(m)%newtsteprewind = .true.
+  else
+    var(m)%timesteprewind = .false.
+    var(m)%newtsteprewind = .false.
+  end if
+  var(m)%timesteprewindmultiplier = 1.d0
+! now overwrite possibly with user-set values
+  do n = 1, allocatable_size(var(m)%options) ! read through list from left to right, so that rightmost setting takes precedence
+    option_name = extract_option_name(var(m)%options(n),error)
+    if (error) cycle
+    if (trim(option_name) == 'timesteprewind') then
+      var(m)%timesteprewind = .true.
+      write(*,'(a)') 'INFO: setting timesteprewind for variable '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'notimesteprewind') then
+      var(m)%timesteprewind = .false.
+      write(*,'(a)') 'INFO: setting notimesteprewind for variable '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'newtsteprewind') then
+      var(m)%newtsteprewind = .true.
+      write(*,'(a)') 'INFO: setting newtsteprewind for variable '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'nonewtsteprewind') then
+      var(m)%newtsteprewind = .false.
+      write(*,'(a)') 'INFO: setting nonewtsteprewind for variable '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'timesteprewindmultiplier') then
+      if (var(m)%timesteprewindmultiplier_variable /= 0) cycle ! skip setting this magnitude if it will be set by a magnitude_constant
+      var(m)%timesteprewindmultiplier = extract_option_double_precision(var(m)%options(n),error)
+      if (error) call error_stop("could not determine the user-set timesteprewindmultiplier for variable "//trim(var(m)%name)// &
+        " from the option "//trim(var(m)%options(n)))
+      write(*,fmt=formatline) 'INFO: setting the timesteprewindmultiplier for '//trim(var(m)%type)//' '//trim(var(m)%name)// &
+        ' to ',var(m)%timesteprewindmultiplier
     end if
   end do
 end do

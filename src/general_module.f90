@@ -64,6 +64,7 @@ integer :: newtstep = 0 ! (0, userable) newtstep index (with initial value being
 integer :: newtstepmax = 1000 ! (1000, userable) maximum number of steps performed by newton proceedure
 integer :: newtstepmin = 1 ! (1, userable) minimum number of steps performed by newton proceedure
 integer :: newtstepout = 0 ! (0, userable) maximum number of newtsteps between output, with zero indicating no output
+integer :: newtsteprewind = 0 ! (0, userable) maximum number of newtsteps to remember for newtstep rewinding purposes - 0 turns off newtstep rewinding
 integer :: newtstepdebugout = 990 ! (990, userable) after this many newtsteps newtstepout is set to 1 to produce debugging output
 double precision :: newtrestol = 1.d-10 ! (1.d-10, userable) tolerance that indicates convergence of the newton proceedure
 
@@ -118,15 +119,13 @@ logical :: newtstepconverged = .true. ! reports on whether the last conducted ne
 logical :: newtstepfailed = .false. ! reports on whether there was an error during the last conducted newton loop step
 
 ! variables specific to the timestep and newtstep rewind capability
-integer :: timestep_rewind_history_first = 0 ! array index for v_timestep_rewind_history in funks that corresponds to earliest data stored
-integer :: timestep_rewind_history_last = 0 ! array index for v_timestep_rewind_history in funks that corresponds to the latest data stored
-integer :: timestep_rewind_newtstep = 10 ! (userable, newtstep) number of newtsteps that if exceeded in newton loop triggers timestep_rewind
-logical :: newtstep_rewind = .false. ! whether timestep rewinding is active
-integer :: newtstep_rewind_history = 1 ! (userable, history) number of newtsteps remembered
-integer :: newtstep_rewind_history_first = 0 ! array index for v_newtstep_rewind_history in funks that corresponds to earliest data stored
-integer :: newtstep_rewind_history_last = 0 ! array index for v_newtstep_rewind_history in funks that corresponds to the latest data stored
-integer :: newtstep_rewind_lambda = 1.d-4 ! (userable, lambda) lambda limit that if reduced below this triggers a newtstep rewind
-integer :: newtstep_rewind_lambdamultiplier = 0.5d0 ! (userable, lambdamultiplier) what previous lambda is multiplied by
+integer :: timesteprewind_history_first = 0 ! array index for v_timesteprewind_history in funks that corresponds to earliest data stored
+integer :: timesteprewind_history_last = 0 ! array index for v_timesteprewind_history in funks that corresponds to the latest data stored
+integer :: timesteprewind_newtstep = 10 ! (userable, newtstep) number of newtsteps that if exceeded in newton loop triggers timesteprewind
+integer :: newtsteprewind_history_first = 0 ! array index for v_newtsteprewind_history in funks that corresponds to earliest data stored
+integer :: newtsteprewind_history_last = 0 ! array index for v_newtsteprewind_history in funks that corresponds to the latest data stored
+integer :: newtsteprewind_lambda = 1.d-4 ! (userable, lambda) lambda limit that if reduced below this triggers a newtstep rewind
+integer :: newtsteprewind_lambdamultiplier = 0.5d0 ! (userable, lambdamultiplier) what previous lambda is multiplied by
 
 ! kernel availability (whether they are calculated or not) is calculated by the setup_equations.pl script, however, the settings can be overwritten (as true) here
 logical :: kernel_availability_faceave = .false. ! (.false.) needed for varcdivgrad, but this routine itself is not needed under normal circumstances, so set false
@@ -254,6 +253,7 @@ type region_type
   character(len=100) :: type ! region type: gmsh, static, constant, transient, newtient, derived, equation, output, condition
   character(len=4) :: centring ! whether cell or face centred
   integer :: dimensions = -1 ! maximum dimensions of the elements within the region (-1 means unset)
+  character(len=100), dimension(:), allocatable :: options ! array of options for this region, with highest priority on the right
   logical :: dynamic = .false. ! whether region is static (user, static or gmsh) or a dynamic region
   integer :: relstep ! relative timestep, with relstep=0 being the current step
   type(region_location_type) :: location ! location of region
@@ -265,12 +265,12 @@ type region_type
   real :: update_time = 0.d0 ! total cpu time that has been spent on updating this region (only for dynamic variables)
   integer :: update_number = 0 ! total number of times that this region has been updated (only for dynamic variables)
   integer :: nslast = 0 ! this is the last index of the cells one separation less than the maximum in region(m) - 0 means that there is no information stored about this separation level, as it is one below the minimum ijk index
-  logical :: timestep_rewind = .false. ! whether this region will be rewound to previous values on a timestep rewind
-  logical :: newtstep_rewind = .false. ! whether this region will be rewound to previous values on a newtstep rewind
-  integer, dimension(:), allocatable :: nslast_timestep_rewind_history
-  integer, dimension(:,:), allocatable :: ijk_timestep_rewind_history ! first index is element number, second is timestep_rewind_history index (eg, timestep_rewind_history_first)
-  integer, dimension(:), allocatable :: nslast_newtstep_rewind_history
-  integer, dimension(:,:), allocatable :: ijk_newtstep_rewind_history ! first index is element number, second is newtstep_rewind_history index (eg, newtstep_rewind_history_first)
+  logical :: timesteprewind ! whether this region will be rewound to previous values on a timestep rewind
+  logical :: newtsteprewind ! whether this region will be rewound to previous values on a newtstep rewind
+  integer, dimension(:), allocatable :: nslast_timesteprewind_history
+  integer, dimension(:,:), allocatable :: ijk_timesteprewind_history ! first index is element number, second is timesteprewind_history index (eg, timesteprewind_history_first)
+  integer, dimension(:), allocatable :: nslast_newtsteprewind_history
+  integer, dimension(:,:), allocatable :: ijk_newtsteprewind_history ! first index is element number, second is newtsteprewind_history index (eg, newtsteprewind_history_first)
 end type region_type
 
 ! data type for any functions that ultimately depend on field data
@@ -279,8 +279,8 @@ type funk_type
   double precision, dimension(:), allocatable :: dv ! value of derivative, in 1:1 with pp
   integer, dimension(:), allocatable :: pp ! phi variable which derivative is taken wrt
   integer :: ndv ! number of derivative elements that currently contain valid data
-  double precision, dimension(:), allocatable :: v_timestep_rewind_history ! value of function in previous timesteps, with v_timestep_rewind_history(timestep_rewind_history_first) referencing the earliest held data
-  double precision, dimension(:), allocatable :: v_newtstep_rewind_history ! value of function in previous newtsteps
+  double precision, dimension(:), allocatable :: v_timesteprewind_history ! value of function in previous timesteps, with v_timesteprewind_history(timesteprewind_history_first) referencing the earliest held data
+  double precision, dimension(:), allocatable :: v_newtsteprewind_history ! value of function in previous newtsteps
 end type funk_type
 
 ! meta data type for general variables
@@ -288,7 +288,7 @@ type var_type
   character(len=1000) :: name ! name of the variable
   character(len=1000) :: units ! character string of the units
   double precision :: multiplier ! multiplier appended to units when interacting with outside world
-  double precision :: magnitude = -1.d0 ! an order of magnitude estimate of the variable, calculated from initial conditions or dynamically (option dynamicmagnitude/staticmagnitude) and only for unknown and equation variables right now.  -1 indicates that this magnitude has not been set
+  double precision :: magnitude ! an order of magnitude estimate of the variable, calculated from initial conditions or dynamically (option dynamicmagnitude/nodynamicmagnitude) and only for unknown and equation variables right now.  -1 indicates that this magnitude has not been set
   integer :: magnitude_constant = 0 ! fortran var number of a none-centred constant that is to be used as the magnitude of this variable, only for unknowns and equations, and if this is set, it takes precedence over any default magnitude values
   character(len=4) :: centring
   character(len=100) :: type ! variable type: constant, transient, newtient, unknown, derived, equation, output, condition, local
@@ -308,9 +308,10 @@ type var_type
   double precision :: dynamic_magnitude_multiplier ! multiplier that limits the change in each unknown/equation magnitude when being dynamically adjusted.  Set >1. (=1 is equivalent to having static magnitudes, =large places no restriction on the change in magnitude)
   real :: update_time = 0.d0 ! total cpu time that has been spent on updating this variable
   integer :: update_number = 0 ! total number of times that this variable has been updated
-  logical :: timestep_rewind = .false. ! whether this variable will be rewound to previous values on a timestep rewind
-  double precision :: timestep_rewind_multiplier = 1.d0 ! multiplier used when this variable is rewound on a timestep rewind
-  logical :: newtstep_rewind = .false. ! whether this variable will be rewound to previous values on a newtstep rewind
+  logical :: timesteprewind ! whether this variable will be rewound to previous values on a timestep rewind
+  double precision :: timesteprewindmultiplier ! multiplier used when this variable is rewound on a timestep rewind, unless timesteprewindmultiplier_variable is set
+  integer :: timesteprewindmultiplier_variable = 0 ! fortran var number of a none-centred variable that is to be used as the timesteprewindmultiplier for this variable, and if this is set, it takes precedence over any default magnitude values
+  logical :: newtsteprewind ! whether this variable will be rewound to previous values on a newtstep rewind
 end type var_type
 
 ! data type for var_lists
@@ -428,7 +429,7 @@ integer :: maximum_faceknodes = 0 ! maximum number of nodes that a face has
 integer :: nthreads = 0 ! if > 1 is the number of openmp threads in use, if == 1 then this signifies either a serial calculation or omp calculation with one thread in use (distinction not important from programming point of view)
 integer :: msomeloop = 0 ! set in allocate_meta_arrays, this is the maximum someloop number (ie, number of someloops)
 integer :: mseparation_list = 0 ! set in allocate_meta_arrays, this is the maximum separation_list (ie, number of separation_lists)
-double precision, dimension(:), allocatable :: newtstep_rewind_lambda_history ! array of previously used lambdas
+double precision, dimension(:), allocatable :: newtsteprewind_lambda_history ! array of previously used lambdas
 character(len=1000) :: input_file ! fortran specific input file generated by the arb script, set in subroutine setup_dirs
 character(len=1000) :: output_dir ! path to the output_dir from the working_dir, set in subroutine setup_dirs
 type(funk_type), dimension(:), allocatable :: funkt ! funk container which is used to assemble combined funk
@@ -456,7 +457,6 @@ character(len=100), dimension(5), parameter :: input_gmesh_options = ["input    
 character(len=100), dimension(3), parameter :: data_options = ["elementdata           ", "elementnodedata       ", &
   "elementnodelimiteddata"]
 character(len=100), dimension(2), parameter :: input_options = ["input            ", "noinput          "]
-character(len=100), dimension(2), parameter :: magnitude_options = ["dynamicmagnitude", "staticmagnitude "]
 character(len=8), dimension(7), parameter :: stopfilelist = [ "kill    ", "stopback", "stopiter", "stopnewt", "stop    ", &
   "stoptime", "halt    " ]
 character(len=8), dimension(3), parameter :: dumpfilelist = [ "dumpnewt", "dump    ", "dumptime" ]
