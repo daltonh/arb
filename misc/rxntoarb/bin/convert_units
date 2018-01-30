@@ -4,7 +4,7 @@ abort "ERROR: Ruby 1.9.3 or newer required (Ruby #{RUBY_VERSION} installed)" if 
 
 PROGNAME = 'convert_units'
 VERSION = 1.5
-DATE = '2018-01-09'
+DATE = '2018-01-30'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})
   Performs unit conversions.

@@ -48,7 +48,7 @@ module Units
     # derived units
     Unit.new('becquerel', 'Bq', 's-1', 1.0),
     Unit.new('coulomb', 'C', 'A s', 1.0),
-    Unit.new('degree Celsius', ['degC', "\u2103"], 'K', 1.0, 273.15), # special case - could refer to absolute temperature or (with -t flag) temperature difference
+    Unit.new('degree Celsius', ['degC', "\u2103", "\u00b0C"], 'K', 1.0, 273.15), # special case - could refer to absolute temperature or (with -t flag) temperature difference
     Unit.new('farad', 'F', 'A2 s4 kg-1 m-2', 1.0),
     Unit.new('', 'g', 'kg', 1e-3), # gram, needed so that prefixes other than k will match. Named '' so that it doesn't appear in unit list
     Unit.new('gray', 'Gy', 'm2 s-2', 1.0),
@@ -88,8 +88,8 @@ module Units
     # others
     Unit.new('British thermal unit', 'BTU', 'kg m2 s-2', 1055.06),
     Unit.new('calorie (thermochemical)', 'cal', 'kg m2 s-2', 4.184),
-    Unit.new('degree Fahrenheit', ['degF', "\u2109"], 'K', 5.0/9.0, 459.67), # special case - could refer to absolute temperature or (with -t flag) temperature difference
-    Unit.new('degree Rankine', 'degR', 'K', 5.0/9.0, 0.0), # special case - could refer to absolute temperature or (with -t flag) temperature difference
+    Unit.new('degree Fahrenheit', ['degF', "\u2109", "\u00b0F"], 'K', 5.0/9.0, 459.67), # special case - could refer to absolute temperature or (with -t flag) temperature difference
+    Unit.new('degree Rankine', ['degR', "\u00b0R"], 'K', 5.0/9.0, 0.0), # special case - could refer to absolute temperature or (with -t flag) temperature difference
     Unit.new('dyne', 'dyn', 'kg m s-2', 1e-5),
     Unit.new('erg', 'erg', 'kg m2 s-2', 1e-7),
     Unit.new('faraday', 'faraday', 'A s', 9.648533289e4),
