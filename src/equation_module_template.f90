@@ -48,7 +48,7 @@ implicit none
 private
 public allocate_meta_arrays, update_derived_and_equations, update_constants, update_unknowns, update_newtients, &
   update_initial_newtients, update_transients, update_initial_transients, update_outputs, &
-  check_variable_constraints, check_condition, var_value, varcdivgrad, varcgrad, varcgrad_nodelimited, &
+  check_variable_constraints, check_condition, find_condition, var_value, varcdivgrad, varcgrad, varcgrad_nodelimited, &
   setup_external_functions, read_initial_outputs, update_region
 
 ! include external functions preambles here
@@ -927,15 +927,16 @@ end subroutine read_initial_outputs
 
 !-----------------------------------------------------------------
 
-function check_condition(condition_type)
+function find_condition(condition_type)
 
-! here we check whether a condition is satisfied for action = output|stop|convergence|bell
+! here we check whether a condition is satisfied for action = output|stop|error|convergence|bell|(time|newt)steprewind
 ! do this in series as if in parallel all threads would be attempting to alter the one logical
 ! could be done but not worth it (conditions are usually none centred anyway)
+! returns fortran number of condition that is true
 
 use general_module
 character(len=*) :: condition_type
-logical :: check_condition
+integer :: find_condition
 integer, save :: var_list_number_l = -1
 integer :: nvar, m, ns, i, j, k
 integer :: thread = 1
@@ -944,9 +945,9 @@ character(len=1000) :: formatline
 character(len=1000) :: error_string
 logical, parameter :: debug = .false.
                   
-if (debug) write(*,'(80(1h+)/a)') 'function check_condition'
+if (debug) write(*,'(80(1h+)/a)') 'function find_condition'
 
-check_condition = .false.
+find_condition = 0 ! indicating that the condition has not been satisfied
 
 if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="condition",include_regions=.false.)
 do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
@@ -975,7 +976,24 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
 
 end do
 
-if (debug) write(*,'(a/80(1h-))') 'function check_condition'
+if (debug) write(*,'(a/80(1h-))') 'function find_condition'
+
+end function find_condition
+
+!-----------------------------------------------------------------
+
+function check_condition(condition_type)
+
+! wrapper function that returns a check on a condition as a logical
+use general_module
+character(len=*) :: condition_type
+logical :: check_condition
+
+if (find_condition(condition_type) == 0) then
+  check_condition = .false.
+else
+  check_condition = .true.
+end if
 
 end function check_condition
 
