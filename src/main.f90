@@ -304,10 +304,10 @@ time_loop: do while ( &
     exit time_loop
   else if (newtstepconverged) then
     if (newtres <= newtrestol) then
-      write(*,'(a)') 'INFO: newton iterations have converged due to newtres condition'
+      write(*,'(a)') 'INFO: newton iterations have converged as newtres satisfies (<=) newtrestol'
     else
       write(*,'(a)') &
-        'INFO: user-specified newton loop convergence condition satisfied'
+        'INFO: user-specified newton loop convergencecondition satisfied'
     end if
   else
     write(*,'(a)') 'ERROR: newton solver did not converge'
@@ -362,7 +362,7 @@ if (ierror /= 0.or.check_condition("error")) then
   if (ierror /= 0) then
     write(*,'(a)') "WARNING: the last output is not converged"
   else
-    write(*,'(a)') "WARNING: simulation finishing due to user set error condition "//trim(var(find_condition("error"))%name)
+    write(*,'(a)') "WARNING: simulation stopping due to user-specified errorcondition "//trim(var(find_condition("error"))%name)
   end if
   write(*,'(a)') 'INFO: a debug output file (debug.output.msh) is being written that contains the current values of '// &
     'all variable components'
@@ -370,6 +370,8 @@ if (ierror /= 0.or.check_condition("error")) then
   if (trim(output_step_file) == "timestep") call output_step(action="write",do_update_outputs=.false.)
   write(*,'(a)') "ERROR: the simulation was not successful"
 else
+  if (check_condition("stop")) write(*,'(a)') "INFO: simulation stopping due to user-specified stopcondition "// &
+    trim(var(find_condition("stop"))%name)
   write(*,'(a)') "SUCCESS: the simulation finished gracefully"
 end if
 
