@@ -304,7 +304,7 @@ time_loop: do while ( &
     exit time_loop
   else if (newtstepconverged) then
     if (newtres <= newtrestol) then
-      write(*,'(a)') 'INFO: newton iterations have converged as newtres satisfies (<=) newtrestol'
+      write(*,'(a)') 'INFO: newton iterations have converged based on newtres (<= newtrestol)'
     else
       write(*,'(a)') &
         'INFO: user-specified newton loop convergencecondition satisfied'
