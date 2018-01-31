@@ -1817,6 +1817,12 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_integer(general_options(n), &
       "timesteprewind (maximum number of timesteps to remember for timestep rewinding purposes)",timesteprewind,'general')
     if (timesteprewind < 0) timesteprewind = 0
+    if (.not.transient_simulation.and.timesteprewind > 0) &
+      call error_stop("timesteprewind can only be used for a transient simulation")
+  else if (trim(option_name) == "timesteprewindmax") then
+    call set_option_integer(general_options(n), &
+      "timesteprewindmax (maximum number of consecutive timesteprewinds that are allowed)",timesteprewindmax,'general')
+    if (timesteprewindmax < 1) call error_stop("timesteprewindmax must be greater than one")
 
 ! newtstep options
   else if (trim(option_name) == "newtstepmax") then
@@ -1835,6 +1841,10 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
   else if (trim(option_name) == "newtstep" .or. trim(option_name) == "newtstepstart") then ! accommodate either name
     call set_option_integer(general_options(n),"newtstep (starting newtstep, overwritting any file ones)",newtstep,'general')
     if (.not.transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
+  else if (trim(option_name) == "newtstepmaxiftimesteprewind") then
+    call set_option_integer(general_options(n), &
+      "newtstepmaxiftimesteprewind (maximum number of steps performed by newton proceedure if timesteprewind is on)", &
+      newtstepmaxiftimesteprewind,'general')
 
 ! iterstep options
   else if (trim(option_name) == "iterstepmax") then

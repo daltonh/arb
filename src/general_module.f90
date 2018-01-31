@@ -58,6 +58,7 @@ integer :: timestepmin = 0 ! (0, userable) minimum number of timesteps performed
 integer :: timestepadditional = 0 ! (0, userable) minimum number of timesteps that must be completed during current run, useful when restarting a simulation
 integer :: timestepout = 0 ! (0, userable) maximum number of timesteps between output, with zero indicating no output
 integer :: timesteprewind = 0 ! (0, userable) maximum number of timesteps to remember for timestep rewinding purposes - 0 turns off timestep rewinding
+integer :: timesteprewindmax = 10 ! (10, userable) maximum number of timesteprewinds to do before giving up
 
 ! newtstep variables (newton loop)
 integer :: newtstep = 0 ! (0, userable) newtstep index (with initial value being initial newtstep, used for restarts)
@@ -67,6 +68,7 @@ integer :: newtstepout = 0 ! (0, userable) maximum number of newtsteps between o
 integer :: newtsteprewind = 0 ! (0, userable) maximum number of newtsteps to remember for newtstep rewinding purposes - 0 turns off newtstep rewinding
 integer :: newtstepdebugout = 990 ! (990, userable) after this many newtsteps newtstepout is set to 1 to produce debugging output
 double precision :: newtrestol = 1.d-10 ! (1.d-10, userable) tolerance that indicates convergence of the newton proceedure
+integer :: newtstepmaxiftimesteprewind = huge(1) ! (huge, userable) maximum number of steps performed by newton proceedure if timesteprewind is on and timesteprewindsdone < timesteprewindmax (ie, this is a way to jump out of the newton loop if it isn't converging)
 
 ! iterstep variables (iterative solver loop, if being used)
 integer :: iterstepmax = 1000000 ! (1000000, userable) maximum number of steps performed by linear iteration solver
@@ -117,15 +119,6 @@ integer, parameter :: fwarn = 11, fdetail = 12, foutput = 13, fgmsh = 14, finput
 integer :: backline = 6, newtline = 4, timeline = 2, totalline = 80 ! length of delimiter lines in the output
 logical :: newtstepconverged = .true. ! reports on whether the last conducted newton loop step converged or not
 logical :: newtstepfailed = .false. ! reports on whether there was an error during the last conducted newton loop step
-
-! variables specific to the timestep and newtstep rewind capability
-integer :: timesteprewind_history_first = 0 ! array index for v_timesteprewind_history in funks that corresponds to earliest data stored
-integer :: timesteprewind_history_last = 0 ! array index for v_timesteprewind_history in funks that corresponds to the latest data stored
-integer :: timesteprewind_newtstep = 10 ! (userable, newtstep) number of newtsteps that if exceeded in newton loop triggers timesteprewind
-integer :: newtsteprewind_history_first = 0 ! array index for v_newtsteprewind_history in funks that corresponds to earliest data stored
-integer :: newtsteprewind_history_last = 0 ! array index for v_newtsteprewind_history in funks that corresponds to the latest data stored
-integer :: newtsteprewind_lambda = 1.d-4 ! (userable, lambda) lambda limit that if reduced below this triggers a newtstep rewind
-integer :: newtsteprewind_lambdamultiplier = 0.5d0 ! (userable, lambdamultiplier) what previous lambda is multiplied by
 
 ! kernel availability (whether they are calculated or not) is calculated by the setup_equations.pl script, however, the settings can be overwritten (as true) here
 logical :: kernel_availability_faceave = .false. ! (.false.) needed for varcdivgrad, but this routine itself is not needed under normal circumstances, so set false
@@ -439,6 +432,17 @@ character(len=100), dimension(:), allocatable :: kernel_options ! list of kernel
 character(len=100), dimension(:), allocatable :: solver_options ! list of kernel options, with highest priority on the right
 type(var_list_type), dimension(:), allocatable :: var_list ! array of var_lists, according to type, centring, and now also region
 integer :: var_list_number_unknown, var_list_number_equation ! these two commonly used var_list_numbers are stored for quick access and calculated in equation_module
+
+! variables specific to the timestep and newtstep rewind capability
+integer :: timesteprewindsdone = 0 ! number of consecutive timesteprewinds that have been done, to be compared against timesteprewindmax
+integer :: newtstepmaxtimesteprewindlimited = huge(1) ! under a timesteprewind simulation this newtstepmax adjusts according to whether timesteprewindsdone < timesteprewindmax (ie, based on the above)
+! integer :: timesteprewind_history_first = 0 ! array index for v_timesteprewind_history in funks that corresponds to earliest data stored
+! integer :: timesteprewind_history_last = 0 ! array index for v_timesteprewind_history in funks that corresponds to the latest data stored
+! integer :: timesteprewind_newtstep = 10 ! (userable, newtstep) number of newtsteps that if exceeded in newton loop triggers timesteprewind
+! integer :: newtsteprewind_history_first = 0 ! array index for v_newtsteprewind_history in funks that corresponds to earliest data stored
+! integer :: newtsteprewind_history_last = 0 ! array index for v_newtsteprewind_history in funks that corresponds to the latest data stored
+! integer :: newtsteprewind_lambda = 1.d-4 ! (userable, lambda) lambda limit that if reduced below this triggers a newtstep rewind
+! integer :: newtsteprewind_lambdamultiplier = 0.5d0 ! (userable, lambdamultiplier) what previous lambda is multiplied by
 
 ! define some string parameter arrays
 character(len=100), dimension(9), parameter :: var_types = [ "constant   ", "transient  ", "newtient   ", "unknown    ", &

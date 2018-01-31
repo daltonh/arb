@@ -547,6 +547,8 @@ variables:
     NONE_CONDITION <bouncing bell> "noneif(<z>,-1.d0,1.d0)" bellcondition # is positive when <z> is negative at the end of a timestep
     NONE_CONDITION <output test> "<t>-<tout>-<dtout>" outputcondition # this will be true (>0.) whenever we are <dtout> from last output
 
+Note: condition variables are evaluated in the order they are defined, only until one condition returns true.  Hence, a condition variable value may not become positive in a simulation (ie, in the output) if another condition of the same type (eg, errorcondition) is evaluated as true before hand.
+
 ### Local type variable defined in 
 
 *Synopsis:*

@@ -46,7 +46,7 @@ use output_module
 
 implicit none
 character(len=1000) :: formatline
-integer :: ierror = 0
+integer :: ierror = 0, condition_number
 logical, parameter :: debug = .true.
 
 !---------------------------------------------------
@@ -90,6 +90,8 @@ if (.not.transient_simulation) then
   backline = newtline
   newtline = timeline
 end if
+
+if (timesteprewind /= 0) newtstepmaxtimesteprewindlimited = newtstepmaxiftimesteprewind
 
 !---------------------------------------
 time_loop: do while ( &
@@ -153,8 +155,8 @@ time_loop: do while ( &
   end if
   newtstepfailed = .false.
 
-  newt_loop: do while (((.not.newtstepconverged.and.newtstep < newtstepmax).or. &
-      newtstep < newtstepmin).and.ierror == 0)
+  newt_loop: do while ((.not.newtstepconverged.and.newtstep < min(newtstepmax,newtstepmaxtimesteprewindlimited)).or. &
+      newtstep < newtstepmin)
 
     newtstep = newtstep + 1
 
@@ -295,6 +297,36 @@ time_loop: do while ( &
 
   if (ierror > 0) newtstepfailed = .true. ! update <newtstepfailed>
 
+  if (timesteprewind > 0) then
+    condition_number = find_condition("timesteprewind")
+    if (condition_number /= 0) then
+      formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a,"//trim(dindexformat(timestep))//")"
+      write(*,fmt=formatline) 'TIMESTEPREWIND: timesteprewind triggered by timesteprewindcondition variable '// &
+        trim(var(condition_number)%name)//': before rewind: timesteprewindsdone = ',timesteprewindsdone,': timestep = ',timestep
+      if (timesteprewindsdone < timesteprewindmax) then
+        timesteprewindsdone = timesteprewindsdone + 1
+        if (timesteprewindsdone == timesteprewindmax) then
+          if (newtstepmaxtimesteprewindlimited /= huge(1)) then
+            newtstepmaxtimesteprewindlimited = huge(1) ! this the last possible rewind step, so remove the newtstep limit
+            write(*,'(a)') 'TIMESTEPREWIND: removing newtstepmaxiftimesteprewind restricting for the next timesteprewind'
+          end if
+        end if
+        timestep = timestep - 1
+!       call timesteprewind
+        formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a,"//trim(dindexformat(timestep))//")"
+        write(*,fmt=formatline) 'TIMESTEPREWIND: data rewound to previous timestep: timesteprewindsdone = ',timesteprewindsdone, &
+          ': timestep = ',timestep
+        cycle time_loop
+      else
+        formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a)"
+        write(*,fmt=formatline) &
+          'TIMESTEPREWIND: timesteprewind cancelled as timesteprewindsdone is already equal to timesteprewindmax'// &
+          ': timesteprewindmax = ',timesteprewindmax
+      end if
+    end if
+!   write(*,fmt=formatline) 'TIMESTEPREWIND: not triggered'
+  end if
+    
   if (ierror > 0) then
     formatline = "(a,"//trim(dindexformat(ierror))//")"
     write(*,fmt=formatline) 'ERROR: problem in some solution routine within newton loop: error number = ',ierror
@@ -350,6 +382,20 @@ time_loop: do while ( &
 ! if not a transient simulation then exit loop
   if (.not.transient_simulation) exit time_loop
 
+! reset timesteprewindsdone if this is a timesteprewind simulation, noting that to be here the last step must have been successful
+  if (timesteprewind > 0) then
+    if (timesteprewindsdone > 0) then
+      formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a,"//trim(dindexformat(timestep))//")"
+      write(*,fmt=formatline) 'TIMESTEPREWIND: after successful timestep resetting timesteprewindsdone '// &
+        ': before reset: timesteprewindsdone = ',timesteprewindsdone,': timestep = ',timestep
+      timesteprewindsdone = 0
+      if (newtstepmaxtimesteprewindlimited /= newtstepmaxiftimesteprewind) then
+        newtstepmaxtimesteprewindlimited = newtstepmaxiftimesteprewind ! reset this as it is based on timesteprewindsdone
+        write(*,'(a)') 'TIMESTEPREWIND: reinstating newtstepmaxiftimesteprewind restricting for the next timesteprewind'
+      end if
+    end if
+  end if
+
 end do time_loop
 !---------------------------------------
 
@@ -358,11 +404,12 @@ if (trim(output_step_file) == "final") call output_step(action="write")
 if (output_timings) write(*,'(2(a,g10.3))') 'TIMING: total wall time = ',total_wall_time,': total cpu time = ',total_cpu_time
 
 ! if there was an error or earlier stop requested then exit without closing timestep
-if (ierror /= 0.or.check_condition("error")) then
+condition_number = find_condition("error")
+if (ierror /= 0.or.condition_number /= 0) then
   if (ierror /= 0) then
     write(*,'(a)') "WARNING: the last output is not converged"
   else
-    write(*,'(a)') "WARNING: simulation stopping due to user-specified errorcondition "//trim(var(find_condition("error"))%name)
+    write(*,'(a)') "WARNING: simulation stopping due to user-specified errorcondition "//trim(var(condition_number)%name)
   end if
   write(*,'(a)') 'INFO: a debug output file (debug.output.msh) is being written that contains the current values of '// &
     'all variable components'
@@ -370,8 +417,9 @@ if (ierror /= 0.or.check_condition("error")) then
   if (trim(output_step_file) == "timestep") call output_step(action="write",do_update_outputs=.false.)
   write(*,'(a)') "ERROR: the simulation was not successful"
 else
-  if (check_condition("stop")) write(*,'(a)') "INFO: simulation stopping due to user-specified stopcondition "// &
-    trim(var(find_condition("stop"))%name)
+  condition_number = find_condition("stop")
+  if (condition_number /= 0) write(*,'(a)') "INFO: simulation stopping due to user-specified stopcondition "// &
+    trim(var(condition_number)%name)
   write(*,'(a)') "SUCCESS: the simulation finished gracefully"
 end if
 
