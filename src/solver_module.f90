@@ -2261,7 +2261,7 @@ subroutine timesteprewind_rewind
 
 use general_module
 use equation_module
-integer :: m, nvar, ns
+integer :: m, nvar, ns, nsregion, ijk
 logical :: region_l
 character(len=1000) :: formatline
 logical, parameter :: debug = .true.
@@ -2290,9 +2290,19 @@ do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
   if (region_l) then
     if (.not.region(m)%timesteprewind) cycle ! and only for timesteprewind variables
     if (debug) write(*,'(a)') 'rewinding ns_timesteprewind for region: name = '//trim(region(m)%name)//': centring = '//region(m)%centring
-    region(m)%ns = region(m)%ns_timesteprewind(:,timesteprewindlatest)
 
-! TODO: redo ijk array
+!   region(m)%ns = region(m)%ns_timesteprewind(:,timesteprewindlatest)
+
+! while resetting data, find size required for ijk array
+    nsregion = 0
+    do ijk = 1, allocatable_integer_size(region(m)%ns)
+      region(m)%ns(ijk) = region(m)%ns_timesteprewind(ijk,timesteprewindlatest)
+      if (region(m)%ns(ijk) /= 0) nsregion = nsregion + 1
+    end do
+    call resize_integer_array(array=region(m)%ijk,new_size=nsregion,keep_data=.false.)
+    do ijk = 1, allocatable_integer_size(region(m)%ns)
+      if (region(m)%ns(ijk) /= 0) region(m)%ijk(region(m)%ns(ijk)) = ijk
+    end do
 
   else
     if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
