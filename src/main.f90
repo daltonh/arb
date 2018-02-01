@@ -91,7 +91,11 @@ if (.not.transient_simulation) then
   newtline = timeline
 end if
 
-if (timesteprewind /= 0) newtstepmaxtimesteprewindlimited = newtstepmaxiftimesteprewind
+if (timesteprewind /= 0) then
+  newtstepmaxtimesteprewindlimited = newtstepmaxiftimesteprewind
+  call timesteprewind_setup ! setup the timesteprewind data structures
+  call timesteprewind_save ! save the timesteprewind data
+end if
 
 !---------------------------------------
 time_loop: do while ( &
@@ -300,9 +304,11 @@ time_loop: do while ( &
   if (timesteprewind > 0) then
     condition_number = find_condition("timesteprewind")
     if (condition_number /= 0) then
-      formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a,"//trim(dindexformat(timestep))//")"
+      formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a,"//trim(dindexformat(timestep))// &
+       ",a,"//trim(dindexformat(timesteprewindstored))//")"
       write(*,fmt=formatline) 'TIMESTEPREWIND: timesteprewind triggered by timesteprewindcondition variable '// &
-        trim(var(condition_number)%name)//': before rewind: timesteprewindsdone = ',timesteprewindsdone,': timestep = ',timestep
+        trim(var(condition_number)%name)//': before rewind: timesteprewindsdone = ',timesteprewindsdone,': timestep = ',timestep, &
+        ': timesteprewindstored = ',timesteprewindstored
       if (timesteprewindsdone < timesteprewindmax) then
         timesteprewindsdone = timesteprewindsdone + 1
         if (timesteprewindsdone == timesteprewindmax) then
@@ -311,11 +317,11 @@ time_loop: do while ( &
             write(*,'(a)') 'TIMESTEPREWIND: removing newtstepmaxiftimesteprewind restricting for the next timesteprewind'
           end if
         end if
-        timestep = timestep - 1
-!       call timesteprewind
-        formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a,"//trim(dindexformat(timestep))//")"
-        write(*,fmt=formatline) 'TIMESTEPREWIND: data rewound to previous timestep: timesteprewindsdone = ',timesteprewindsdone, &
-          ': timestep = ',timestep
+        call timesteprewind_rewind ! this also rewinds timestep
+        formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a,"//trim(dindexformat(timestep))// &
+         ",a,"//trim(dindexformat(timesteprewindstored))//")"
+        write(*,fmt=formatline) 'TIMESTEPREWIND: after rewind: timesteprewindsdone = ',timesteprewindsdone, &
+          ': timestep = ',timestep,': timesteprewindstored = ',timesteprewindstored
         cycle time_loop
       else
         formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a)"
@@ -394,6 +400,7 @@ time_loop: do while ( &
         write(*,'(a)') 'TIMESTEPREWIND: reinstating newtstepmaxiftimesteprewind restricting for the next timesteprewind'
       end if
     end if
+    call timesteprewind_save ! save the data from the successful step
   end if
 
 end do time_loop

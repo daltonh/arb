@@ -58,7 +58,7 @@ integer :: timestepmin = 0 ! (0, userable) minimum number of timesteps performed
 integer :: timestepadditional = 0 ! (0, userable) minimum number of timesteps that must be completed during current run, useful when restarting a simulation
 integer :: timestepout = 0 ! (0, userable) maximum number of timesteps between output, with zero indicating no output
 integer :: timesteprewind = 0 ! (0, userable) maximum number of timesteps to remember for timestep rewinding purposes - 0 turns off timestep rewinding
-integer :: timesteprewindmax = 10 ! (10, userable) maximum number of timesteprewinds to do before giving up
+integer :: timesteprewindmax = 10 ! (10, userable) maximum number of consecutive timesteprewinds to do before giving up
 
 ! newtstep variables (newton loop)
 integer :: newtstep = 0 ! (0, userable) newtstep index (with initial value being initial newtstep, used for restarts)
@@ -260,10 +260,7 @@ type region_type
   integer :: nslast = 0 ! this is the last index of the cells one separation less than the maximum in region(m) - 0 means that there is no information stored about this separation level, as it is one below the minimum ijk index
   logical :: timesteprewind ! whether this region will be rewound to previous values on a timestep rewind
   logical :: newtsteprewind ! whether this region will be rewound to previous values on a newtstep rewind
-  integer, dimension(:), allocatable :: nslast_timesteprewind_history
-  integer, dimension(:,:), allocatable :: ijk_timesteprewind_history ! first index is element number, second is timesteprewind_history index (eg, timesteprewind_history_first)
-  integer, dimension(:), allocatable :: nslast_newtsteprewind_history
-  integer, dimension(:,:), allocatable :: ijk_newtsteprewind_history ! first index is element number, second is newtsteprewind_history index (eg, newtsteprewind_history_first)
+  integer, dimension(:,:), allocatable :: ns_timesteprewind ! first index is ijk number, second is timesteprewind index (eg, timesteprewindearliest etc)
 end type region_type
 
 ! data type for any functions that ultimately depend on field data
@@ -272,8 +269,8 @@ type funk_type
   double precision, dimension(:), allocatable :: dv ! value of derivative, in 1:1 with pp
   integer, dimension(:), allocatable :: pp ! phi variable which derivative is taken wrt
   integer :: ndv ! number of derivative elements that currently contain valid data
-  double precision, dimension(:), allocatable :: v_timesteprewind_history ! value of function in previous timesteps, with v_timesteprewind_history(timesteprewind_history_first) referencing the earliest held data
-  double precision, dimension(:), allocatable :: v_newtsteprewind_history ! value of function in previous newtsteps
+  double precision, dimension(:), allocatable :: v_timesteprewind ! value of function in previous timesteps, with v_timesteprewind(timesteprewindhistory(timestepmax)) referencing the earliest held data, and v_timesteprewind(timesteprewindhistory(1)) referencing the latest held data
+  double precision, dimension(:), allocatable :: v_newtsteprewind ! value of function in previous newtsteps
 end type funk_type
 
 ! meta data type for general variables
@@ -295,7 +292,7 @@ type var_type
   integer :: compound_number ! number of the compound variable of which this scalar is a component
   integer, dimension(:), allocatable :: component ! ordered list of the compound variable of which this scalar is a component
   character(len=100), dimension(:), allocatable :: options ! array of options for this var, with highest priority on the right
-  type(funk_type), dimension(:), allocatable :: funk ! an array of the data, which depending on centring, may contain 1 (none), itotal (cell) or jtotal (face) elements
+  type(funk_type), dimension(:), allocatable :: funk ! an array of the data, which depending on centring, may contain 1 (none), itotal (cell), jtotal (face) or ktotal (node) elements
   integer :: someloop ! if this variable is not to be stored (ie, local is on) then this is the someloop number to be used instead (otherwise if local is off someloop = 0)
   logical :: dynamic_magnitude ! adjust the magnitude of the unknown or equation dynamically, under-relaxing it based on present values
   double precision :: dynamic_magnitude_multiplier ! multiplier that limits the change in each unknown/equation magnitude when being dynamically adjusted.  Set >1. (=1 is equivalent to having static magnitudes, =large places no restriction on the change in magnitude)
@@ -431,11 +428,19 @@ character(len=100), dimension(:), allocatable :: general_options ! list of gener
 character(len=100), dimension(:), allocatable :: kernel_options ! list of kernel options, with highest priority on the right
 character(len=100), dimension(:), allocatable :: solver_options ! list of kernel options, with highest priority on the right
 type(var_list_type), dimension(:), allocatable :: var_list ! array of var_lists, according to type, centring, and now also region
-integer :: var_list_number_unknown, var_list_number_equation ! these two commonly used var_list_numbers are stored for quick access and calculated in equation_module
+! these commonly used var_list_numbers are stored for quick access and calculated in equation_module
+integer :: var_list_number_unknown, var_list_number_equation, var_list_number_condition ! these ones don't include regions
+integer :: var_list_number_all_region, var_list_number_derived_region, var_list_number_equation_region, &
+  var_list_number_constant_region, var_list_number_unknown_region, var_list_number_newtient_region, &
+  var_list_number_transient_region, var_list_number_output_region ! these ones do include regions
 
 ! variables specific to the timestep and newtstep rewind capability
 integer :: timesteprewindsdone = 0 ! number of consecutive timesteprewinds that have been done, to be compared against timesteprewindmax
 integer :: newtstepmaxtimesteprewindlimited = huge(1) ! under a timesteprewind simulation this newtstepmax adjusts according to whether timesteprewindsdone < timesteprewindmax (ie, based on the above)
+!integer, dimension(:), allocatable :: timesteprewindhistory ! array that stores the index of (eg) v_timesteprewind data that corresponds to each previous relative timestep
+integer :: timesteprewindearliest ! index of the v_timesteprewind array that references the earliest stored data
+integer :: timesteprewindlatest ! index of the v_timesteprewind array that references the latest stored data
+integer :: timesteprewindstored ! number of timesteps stored in the v_timesteprewind arrays
 ! integer :: timesteprewind_history_first = 0 ! array index for v_timesteprewind_history in funks that corresponds to earliest data stored
 ! integer :: timesteprewind_history_last = 0 ! array index for v_timesteprewind_history in funks that corresponds to the latest data stored
 ! integer :: timesteprewind_newtstep = 10 ! (userable, newtstep) number of newtsteps that if exceeded in newton loop triggers timesteprewind

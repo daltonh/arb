@@ -5571,9 +5571,21 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"maxima"} = "timestep";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timestep)";
   $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewind>"; # double precision representation of timestep
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewind>"; # double precision representation of timesteprewind, which is the number of timesteps to rewind during a timesteprewind (or 0 for timesteprewind off)
   $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewind";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewind)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewindmax>"; # double precision representation of timesteprewindmax, which is the maximum number of consecutive timesteprewinds to do
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewindmax";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewindmax)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewindsdone>"; # double precision representation of timesteprewindsdone
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewindsdone";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewindsdone)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewindstored>"; # double precision representation of timesteprewindstored
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewindstored";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewindstored)";
   $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtstep>"; # double precision representation of newtstep
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtstep";

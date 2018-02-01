@@ -38,7 +38,8 @@ implicit none
 private
 public newtsolver, residual, update_magnitudes, check_variable_validity, update_and_check_derived_and_equations, &
   update_and_check_unknowns, update_and_check_constants, update_and_check_transients, update_and_check_newtients, &
-  update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
+  update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver, &
+  timesteprewind_setup, timesteprewind_save, timesteprewind_rewind
 
 ! ref: solver options
 ! type of linear solver
@@ -2147,6 +2148,167 @@ if (trim(linear_solver) == "intelpardisoooc".and.nthreads > 1) &
   call error_stop('intelpardisoooc linear solver can only be used in a serial (non-omp) calculation')
 
 end subroutine setup_solver
+
+!-----------------------------------------------------------------
+
+subroutine timesteprewind_setup
+
+! setup the data structures for timesteprewinding
+use general_module
+use equation_module
+integer :: m, nvar, ns
+logical :: region_l
+logical, parameter :: debug = .true.
+
+if (debug) write(*,'(80(1h+)/a)') 'subroutine timesteprewind_setup'
+
+! set the array referencing pointers, with 0 on the first two indicating not set
+timesteprewindearliest = 1 ! index of the v_timesteprewind array that references the earliest stored data (nb, starting behaviour requires 1 here)
+timesteprewindlatest = 0 ! index of the v_timesteprewind array that references the latest stored data
+timesteprewindstored = 0 ! number of timesteps stored in the v_timesteprewind arrays
+
+! allocate data storage structures in each variable
+
+! loop through all variables and regions
+do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
+  m = var_list(var_list_number_all_region)%list(nvar)
+  region_l = var_list(var_list_number_all_region)%region(nvar)
+
+  if (region_l) then
+    if (.not.region(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (debug) write(*,'(a)') 'allocating ns_timesteprewind for region: name = '//trim(region(m)%name)//': centring = '//region(m)%centring
+    allocate(region(m)%ns_timesteprewind(allocatable_integer_size(region(m)%ns),timesteprewind)) ! NB, indicies are in same order as used when referencing var(m)%funk(ns)%v_timesteprewind(?)
+  else
+    if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (var(m)%someloop /= 0) cycle ! ignore local variables (this check shouldn't be needed?)
+    if (debug) write(*,'(a)') 'allocating v_timesteprewind for var: name = '//trim(var(m)%name)//': centring = '//var(m)%centring
+    do ns = 1, ubound(var(m)%funk,1)
+      allocate(var(m)%funk(ns)%v_timesteprewind(timesteprewind))
+      var(m)%funk(ns)%v_timesteprewind = 0.d0 ! neat and tidy, but not necessary...
+    end do
+  end if
+
+end do
+
+if (debug) write(*,'(a/80(1h-))') 'subroutine timesteprewind_setup'
+
+end subroutine timesteprewind_setup
+
+!-----------------------------------------------------------------
+
+subroutine timesteprewind_save
+
+! save the timesteprewinding data
+! timesteprewind data isn't moved when added, but rather pointers are calculated that correspond to array locations of the earliest and latest held data
+
+use general_module
+use equation_module
+integer :: m, nvar, ns
+logical :: region_l
+logical, parameter :: debug = .true.
+
+if (debug) write(*,'(80(1h+)/a)') 'subroutine timesteprewind_save'
+
+if (debug) write(*,'(a,3(a,i1),a,i10)') 'INFO: timesteprewind pointers before saving',': earliest = ',timesteprewindearliest, &
+  ': latest = ',timesteprewindlatest,': stored = ',timesteprewindstored,': timestep = ',timestep
+
+! set the array referencing pointers
+timesteprewindlatest = timesteprewindlatest + 1 ! increment latest, indicating where this data should be stored
+if (timesteprewindlatest == timesteprewind + 1) timesteprewindlatest = 1 ! wrap latest pointer around once arrays have reached capacity
+if (timesteprewindstored == timesteprewind ) then
+! increment earliest (loosing earliest data) but leave stored as is
+  timesteprewindearliest = timesteprewindearliest + 1
+  if (timesteprewindearliest == timesteprewind + 1) timesteprewindearliest = 1 ! wrap earliest pointer around once arrays have reached capacity
+else
+! increment stored but leave earliest where it is, noting that earliest starts at 1
+  timesteprewindstored = timesteprewindstored + 1
+end if
+  
+if (debug) write(*,'(a,3(a,i1),a,i10)') 'INFO: timesteprewind pointers after saving',': earliest = ',timesteprewindearliest, &
+  ': latest = ',timesteprewindlatest,': stored = ',timesteprewindstored,': timestep = ',timestep
+
+! save data in each variable
+
+! loop through all variables and regions
+do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
+  m = var_list(var_list_number_all_region)%list(nvar)
+  region_l = var_list(var_list_number_all_region)%region(nvar)
+
+  if (region_l) then
+    if (.not.region(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (debug) write(*,'(a)') 'saving ns_timesteprewind for region: name = '//trim(region(m)%name)//': centring = '//region(m)%centring
+    region(m)%ns_timesteprewind(:,timesteprewindlatest) = region(m)%ns
+  else
+    if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (var(m)%someloop /= 0) cycle ! ignore local variables (this check shouldn't be needed?)
+    if (debug) write(*,'(a)') 'saving v_timesteprewind for var: name = '//trim(var(m)%name)//': centring = '//var(m)%centring
+    do ns = 1, ubound(var(m)%funk,1)
+      var(m)%funk(ns)%v_timesteprewind(timesteprewindlatest) = var(m)%funk(ns)%v
+    end do
+  end if
+
+end do
+
+if (debug) write(*,'(a/80(1h-))') 'subroutine timesteprewind_save'
+
+end subroutine timesteprewind_save
+
+!-----------------------------------------------------------------
+
+subroutine timesteprewind_rewind
+
+! rewind the timesteprewind variables to the earliest data held
+
+use general_module
+use equation_module
+integer :: m, nvar, ns
+logical :: region_l
+logical, parameter :: debug = .true.
+
+if (debug) write(*,'(80(1h+)/a)') 'subroutine timesteprewind_rewind'
+
+if (debug) write(*,'(a,3(a,i1),a,i10)') 'INFO: timesteprewind pointers before rewinding',': earliest = ',timesteprewindearliest, &
+  ': latest = ',timesteprewindlatest,': stored = ',timesteprewindstored,': timestep = ',timestep
+
+! rewind timestep
+timestep = timestep - timesteprewindstored
+! rewind array referencing pointers
+timesteprewindlatest = timesteprewindearliest
+timesteprewindstored = 1
+
+if (debug) write(*,'(a,3(a,i1),a,i10)') 'INFO: timesteprewind pointers after rewinding',': earliest = ',timesteprewindearliest, &
+  ': latest = ',timesteprewindlatest,': stored = ',timesteprewindstored,': timestep = ',timestep
+
+! rewind data in each variable
+
+! loop through all variables and regions
+do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
+  m = var_list(var_list_number_all_region)%list(nvar)
+  region_l = var_list(var_list_number_all_region)%region(nvar)
+
+  if (region_l) then
+    if (.not.region(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (debug) write(*,'(a)') 'rewinding ns_timesteprewind for region: name = '//trim(region(m)%name)//': centring = '//region(m)%centring
+    region(m)%ns = region(m)%ns_timesteprewind(:,timesteprewindlatest)
+
+! TODO: redo ijk array
+  else
+    if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (var(m)%someloop /= 0) cycle ! ignore local variables (this check shouldn't be needed?)
+    if (debug) write(*,'(a)') 'rewinding v_timesteprewind for var: name = '//trim(var(m)%name)//': centring = '//var(m)%centring
+    do ns = 1, ubound(var(m)%funk,1)
+      var(m)%funk(ns)%v = var(m)%funk(ns)%v_timesteprewind(timesteprewindlatest)
+    end do
+  end if
+
+end do
+
+! TODO: calculate multipliers, based on already-rewound data
+! efficiency isn't quite as big an issue in this routine, which is only called during rewinds (upsets)
+
+if (debug) write(*,'(a/80(1h-))') 'subroutine timesteprewind_rewind'
+
+end subroutine timesteprewind_rewind
 
 !-----------------------------------------------------------------
 
