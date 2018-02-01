@@ -2322,7 +2322,7 @@ do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
   end if
 end do
 
-! finally apply any multipliers
+! finally apply any multipliers and resave the modified timesteprewind data
 do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
   m = var_list(var_list_number_all_region)%list(nvar)
   region_l = var_list(var_list_number_all_region)%region(nvar)
@@ -2330,6 +2330,7 @@ do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
   if (var(m)%timesteprewindmultiplier /= 1.d0) then
     do ns = 1, ubound(var(m)%funk,1)
       var(m)%funk(ns)%v = var(m)%funk(ns)%v*var(m)%timesteprewindmultiplier
+      var(m)%funk(ns)%v_timesteprewind(timesteprewindlatest) = var(m)%funk(ns)%v
     end do
     write(*,fmt=formatline) 'TIMESTEPREWIND: applying timesteprewindmultiplier for var: name = '//trim(var(m)%name)// &
       ': timesteprewindmultiplier = ',var(m)%timesteprewindmultiplier
