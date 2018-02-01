@@ -1427,7 +1427,7 @@ sub organise_user_variables {
       $variable{$type}[$mvar]{"magnitude_constant"} = 0; # specifies that it is not to be set from a none-centred constant value
     }
     if ($type ne "local") {
-      $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = 0; # specifies that by default timesteprewindmultiplier is not a variable, but a constant
+      $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = 0; # specifies that by default timesteprewindmultiplier is not a variable, but a float
     }
 
 # check a centring was defined, and if not, try to work out a default
@@ -1553,7 +1553,7 @@ sub organise_user_variables {
 #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next) (default is 1.1 for equations, 2.0 for unknowns)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 #f  timesteprewind - this variable gets rewound if a timestep rewind is performed
-#f  timesteprewindmultiplier - and further that it is multiplied by this amount on rewind
+#f  timesteprewindmultiplier - and further that it is multiplied by this amount on rewind, either a number or a reference to a none-centred variable (can be a local)
 #f  newtsteprewind - this variable gets rewound if a newtstep rewind is performed
 
 # general rule with options is that they don't include any underscores between words

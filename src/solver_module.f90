@@ -2263,6 +2263,7 @@ use general_module
 use equation_module
 integer :: m, nvar, ns
 logical :: region_l
+character(len=1000) :: formatline
 logical, parameter :: debug = .true.
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine timesteprewind_rewind'
@@ -2292,6 +2293,7 @@ do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
     region(m)%ns = region(m)%ns_timesteprewind(:,timesteprewindlatest)
 
 ! TODO: redo ijk array
+
   else
     if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
     if (var(m)%someloop /= 0) cycle ! ignore local variables (this check shouldn't be needed?)
@@ -2303,8 +2305,36 @@ do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
 
 end do
 
-! TODO: calculate multipliers, based on already-rewound data
-! efficiency isn't quite as big an issue in this routine, which is only called during rewinds (upsets)
+! now that all data has been rewound (but note deriveds and equations have not been unless specifically timesteprewind optioned) calculated any variable rewindmultipliers
+formatline = "(a,"//trim(floatformat)//")"
+do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
+  m = var_list(var_list_number_all_region)%list(nvar)
+  region_l = var_list(var_list_number_all_region)%region(nvar)
+  if (region_l) cycle
+  if (var(m)%timesteprewindmultiplier_variable /= 0) then
+    if (trim(var(var(m)%timesteprewindmultiplier_variable)%centring) /= 'none') call error_stop( &
+      'centring of timesteprewindmultiplier '//trim(var(var(m)%timesteprewindmultiplier_variable)%name)//' for var ' &
+      //trim(var(m)%name)//' is not none centred')
+    var(m)%timesteprewindmultiplier = var_value(var(m)%timesteprewindmultiplier_variable,1,noerror=.false.)
+    write(*,fmt=formatline) 'TIMESTEPREWIND: calculated timesteprewindmultiplier for var: name = '//trim(var(m)%name)// &
+      ': timesteprewindmultiplier name = '//trim(var(var(m)%timesteprewindmultiplier_variable)%name)//': timesteprewindmultiplier = ', &
+      var(m)%timesteprewindmultiplier
+  end if
+end do
+
+! finally apply any multipliers
+do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
+  m = var_list(var_list_number_all_region)%list(nvar)
+  region_l = var_list(var_list_number_all_region)%region(nvar)
+  if (region_l) cycle
+  if (var(m)%timesteprewindmultiplier /= 1.d0) then
+    do ns = 1, ubound(var(m)%funk,1)
+      var(m)%funk(ns)%v = var(m)%funk(ns)%v*var(m)%timesteprewindmultiplier
+    end do
+    write(*,fmt=formatline) 'TIMESTEPREWIND: applying timesteprewindmultiplier for var: name = '//trim(var(m)%name)// &
+      ': timesteprewindmultiplier = ',var(m)%timesteprewindmultiplier
+  end if
+end do
 
 if (debug) write(*,'(a/80(1h-))') 'subroutine timesteprewind_rewind'
 

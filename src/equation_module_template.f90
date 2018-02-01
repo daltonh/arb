@@ -1029,6 +1029,7 @@ end subroutine check_variable_constraints
 function var_value(m,ns,noerror)
 
 ! little function to find value of var, irrespective of whether it is local (ie not stored) or not
+! if noerror is omitted, then the default is not to issue an error message but instead return a 0.d0 result
 
 use general_module
 integer, intent(in) :: m ! var number

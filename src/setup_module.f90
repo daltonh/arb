@@ -1329,7 +1329,8 @@ end do
 ! set timestep and newtstep rewind options for variables:
 do m = 1, ubound(var,1)
 ! first set default timesteprewind behaviours
-  if (var(m)%type == 'unknown'.or.var(m)%type == 'transient') then
+! if (var(m)%type == 'unknown'.or.var(m)%type == 'transient') then
+  if (var(m)%type == 'unknown'.or.var(m)%type == 'transient'.or.var(m)%type == 'newtient') then ! could think more about efficiency of newtient inclusion here, but very edge case
     var(m)%timesteprewind = .true.
     var(m)%newtsteprewind = .true.
   else
