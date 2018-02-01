@@ -391,13 +391,19 @@ time_loop: do while ( &
 ! reset timesteprewindsdone if this is a timesteprewind simulation, noting that to be here the last step must have been successful
   if (timesteprewind > 0) then
     if (timesteprewindsdone > 0) then
-      formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a,"//trim(dindexformat(timestep))//")"
-      write(*,fmt=formatline) 'TIMESTEPREWIND: after successful timestep resetting timesteprewindsdone '// &
-        ': before reset: timesteprewindsdone = ',timesteprewindsdone,': timestep = ',timestep
-      timesteprewindsdone = 0
-      if (newtstepmaxtimesteprewindlimited /= newtstepmaxiftimesteprewind) then
-        newtstepmaxtimesteprewindlimited = newtstepmaxiftimesteprewind ! reset this as it is based on timesteprewindsdone
-        write(*,'(a)') 'TIMESTEPREWIND: reinstating newtstepmaxiftimesteprewind restricting for the next timesteprewind'
+      formatline = "(a,"//trim(dindexformat(timesteprewindstored))//",a,"//trim(dindexformat(timesteprewindsdone))//",a,"// &
+        trim(dindexformat(timestep))//")"
+      if (timesteprewindstored == timesteprewind) then
+        write(*,fmt=formatline) 'TIMESTEPREWIND: after ',timesteprewindstored,' successful timestep(s) resetting '// &
+          'timesteprewindsdone : before reset: timesteprewindsdone = ',timesteprewindsdone,': timestep = ',timestep
+        timesteprewindsdone = 0
+        if (newtstepmaxtimesteprewindlimited /= newtstepmaxiftimesteprewind) then
+          newtstepmaxtimesteprewindlimited = newtstepmaxiftimesteprewind ! reset this as it is based on timesteprewindsdone
+          write(*,'(a)') 'TIMESTEPREWIND: reinstating newtstepmaxiftimesteprewind restricting for the next timesteprewind'
+        end if
+      else
+        write(*,fmt=formatline) 'TIMESTEPREWIND: only ',timesteprewindstored,' successful timestep(s) since rewind: not '// &
+          'resetting timesteprewindsdone yet: timesteprewindsdone = ',timesteprewindsdone,': timestep = ',timestep
       end if
     end if
     call timesteprewind_save ! save the data from the successful step
