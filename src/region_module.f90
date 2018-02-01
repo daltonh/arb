@@ -174,7 +174,7 @@ if (debug_sparse) then
   write(*,'(a)') 'INFO: regions:'
   do m=1,ubound(region,1)
     if (region(m)%dynamic) then
-      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a,' &
+      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a' &
         //repeat(',a',allocatable_size(region(m)%options))//',a)'
       write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': dynamic: type = '// &
         trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
@@ -182,14 +182,14 @@ if (debug_sparse) then
         ': location = '//trim(region(m)%location%description)//': initial_location = '// &
         trim(region(m)%initial_location%description)
     else if (allocatable_size(region(m)%ijk) == 0) then
-      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a,' &
+      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a' &
         //repeat(',a',allocatable_size(region(m)%options))//',a)'
       write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': static: type = '// &
         trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
         ': (right prioritised) options =',(' '//trim(region(m)%options(o)),o=1,allocatable_size(region(m)%options)), &
         ': location = '//trim(region(m)%location%description)//': contains no elements'
     else
-      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a,' &
+      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a' &
         //repeat(',a',allocatable_size(region(m)%options))// &
         ',a,'//trim(dindexformat(region(m)%ijk(1)))// &
         ',a,'//trim(dindexformat(allocatable_size(region(m)%ijk)))// &
