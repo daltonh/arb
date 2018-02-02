@@ -1168,9 +1168,9 @@ sub check_deprecated_solver_code {
     "(START_|BEGIN_)SKIP" => "SKIP",
     "STOP_SKIP" => "END_SKIP",
     "(START_|BEGIN_|)COMMENT(S){0,1}" => "SKIP",
-    "(STOP_|END_|)COMMENT(S){0,1}" => "END_SKIP",
-    "(NONTRANSIENT|STEADY(-|_|)STATE)_SIMULATION" => "GENERAL_OPTIONS transientsimulation=.false.",
-    "TRANSIENT_SIMULATION" => "GENERAL_OPTIONS transientsimulation=.true.",
+    "(STOP_|END_)COMMENT(S){0,1}" => "END_SKIP",
+    "(NONTRANSIENT|STEADY(-|_|)STATE)_SIMULATION" => "GENERAL_OPTIONS notransientsimulation",
+    "TRANSIENT_SIMULATION" => "GENERAL_OPTIONS transientsimulation",
   );
 
   foreach my $depreciated_syntax_regex ( keys(%depreciated_syntax) ) {
