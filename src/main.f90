@@ -296,6 +296,9 @@ time_loop: do while ( &
       call flush(fconverge)
     end if
 
+! exit now, basically from stopfile
+    if (ierror /= 0) exit newt_loop
+
   end do newt_loop
 !--------------------
 
@@ -322,6 +325,7 @@ time_loop: do while ( &
          ",a,"//trim(dindexformat(timesteprewindstored))//")"
         write(*,fmt=formatline) 'TIMESTEPREWIND: after rewind: timesteprewindsdone = ',timesteprewindsdone, &
           ': timestep = ',timestep,': timesteprewindstored = ',timesteprewindstored
+        ierror = 0 ! reset ierror if required
         cycle time_loop
       else
         formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a)"

@@ -60,11 +60,16 @@ integer, parameter :: normtype = 2 ! (2 = L2 norm) newton loop residual norm typ
 logical :: weight_large_equation_errors = .false. ! (.false., userable) when calculating the residual, increase the weighting of equations that have large normalised magnitudes
 double precision :: weight_large_equation_errors_factor = 1.d0 ! (1.d0, userable) approximately the normalised equation size that will increase the residual by 1/2
 
-! debugging options:
-logical, parameter :: print_all_equations_on_delphi_error = .true. ! (.true.) if there is a problem with a delphi, print a list of equations that depend or are collocated with that unknown
-logical, parameter :: print_dependent_equations_on_delphi_error = .true. ! (.true.) if there is a problem with a delphi, print a list of all equations and their derivatives
+! debugging options: userable
 logical :: manage_funk_dv_memory = .true. ! (.true., userable) whether to deallocate and allocate derived and equation dvs each time to minimise memory requirements
 logical :: check_solution_accuracy = .false. ! (.false., userable) calculate how well solution satisfies linear equation - requires manage_funk_dv_memory to be false
+
+! debugging options: nonuserable
+logical, parameter :: print_all_equations_on_delphi_error = .false. ! (.false.) if there is a problem with a delphi, print a list of equations that depend or are collocated with that unknown
+logical, parameter :: print_dependent_equations_on_delphi_error = .false. ! (.false.) if there is a problem with a delphi, print a list of all equations and their derivatives
+logical, parameter :: randomly_failing_linear_solver = .false. ! (.false.) debugging option to test how the upstream code deals with a linear solver that fails
+double precision, parameter :: randomly_failing_linear_solver_proportion = 0.01d0 ! (0.01d0) ie, 1% of the time the solver fails
+double precision, parameter :: randomly_failing_linear_solver_multiplier = 1.d30 ! (1.d30) ie, a random increment is added to each delphi that is a multiple of this and the var magnitude, for the first failure mode
 
 ! debugging array:
 integer, dimension(:), allocatable, save :: debug_list_p ! debug_list_p is a list of all unknown delphis that have a problem, referenced by their p index
@@ -184,13 +189,30 @@ if (manage_funk_dv_memory) then
   call time_process(description='reallocating derived funk memory')
 end if
 
-if (ierror /= 0) return
+! debugging section where we simulate a solver failure
+if (randomly_failing_linear_solver) then
+  if (random() < randomly_failing_linear_solver_proportion) then
+    write(*,'(a)') 'WARNING: randomly_failing_linear_solver is on and happening NOW!'
+    if (random() < 0.5d0) then
+      write(*,'(a)') 'WARNING: failure mode is a linear solver that returns rubbish numbers'
+! this replicates a linear solver that returns rubbish numbers
+      p = 0
+      do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+        m = var_list(var_list_number_unknown)%list(n)
+        do ns = 1, ubound(var(m)%funk,1)
+          p = p + 1
+          delphi(p) = delphi(p) + random()*var(m)%magnitude*randomly_failing_linear_solver_multiplier
+        end do
+      end do
+    else
+      write(*,'(a)') 'WARNING: failure mode is a linear solver that returns an error'
+! this replicates a linear solver that returns an error
+      ierror = 1
+    end if
+  end if
+end if
 
-! temp &&&&
-!if (newtstep == 1) then
-!  delphi(15) = 1.d+14
-!  delphi(5) = 1.d+16
-!end if
+if (ierror /= 0) return
 
 ! check on validity of delphi and for convergence file find largest normalised magnitude delphi
 p = 0
@@ -1831,6 +1853,9 @@ logical :: orphaned_unknown, completely_orphaned_unknown
 double precision :: mindv
 
 mindv = huge(1.d0)
+mindvm = 0
+mindvns = 0
+
 write(*,'(a)') 'NOTE: writing details of problem unknown updates to fort.96'
 
 do pp = 1, allocatable_size(debug_list_p)
@@ -1879,8 +1904,12 @@ do pp = 1, allocatable_size(debug_list_p)
 
 end do
 
-write(96,'(a,g15.8,3(a,i8))') 'minimum colocated dv = ',mindv,': at '//trim(ijkstring(var(mindvm)%centring))//' = ', &
-  ijkvar(mindvm,mindvns),': mindvm = ',mindvm,': mindvns = ',mindvns
+if (mindvm /= 0.and.mindvns /= 0) then
+  write(96,'(a,g15.8,3(a,i8))') 'minimum colocated dv = ',mindv,': at '//trim(ijkstring(var(mindvm)%centring))//' = ', &
+    ijkvar(mindvm,mindvns),': mindvm = ',mindvm,': mindvns = ',mindvns
+else
+  write(96,'(a)') 'minimum colocated dv was not found'
+end if
 
 end subroutine find_debug_list_p_dependent_equations
 
