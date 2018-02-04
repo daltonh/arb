@@ -1330,7 +1330,9 @@ end do
 do m = 1, ubound(var,1)
 ! first set default timesteprewind behaviours
 ! if (var(m)%type == 'unknown'.or.var(m)%type == 'transient') then
-  if (var(m)%type == 'unknown'.or.var(m)%type == 'transient'.or.var(m)%type == 'newtient') then ! could think more about efficiency of newtient inclusion here, but very edge case
+  if (var(m)%type == 'unknown'.or.var(m)%type == 'transient'.or.var(m)%type == 'newtient'.or. &
+    (timesteprewindincludederiveds.and.var(m)%type == 'derived').or. &
+    (timesteprewindincludeoutputs.and.var(m)%type == 'output')) then ! could think more about efficiency of newtient inclusion here, but very edge case
     var(m)%timesteprewind = .true.
     var(m)%newtsteprewind = .true.
   else
@@ -1824,6 +1826,14 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_integer(general_options(n), &
       "timesteprewindmax (maximum number of consecutive timesteprewinds that are allowed)",timesteprewindmax,'general')
     if (timesteprewindmax < 1) call error_stop("timesteprewindmax must be greater than one")
+  else if (trim(option_name) == "timesteprewindincludederiveds" .or. trim(option_name) == "notimesteprewindincludederiveds") then
+    call set_option_logical(general_options(n),'timesteprewindincludederiveds', &
+      "give derived variables and regions the timesteprewind option by default", &
+      timesteprewindincludederiveds,'general')
+  else if (trim(option_name) == "timesteprewindincludeoutputs" .or. trim(option_name) == "notimesteprewindincludeoutputs") then
+    call set_option_logical(general_options(n),'timesteprewindincludeoutputs', &
+      "give derived variables and regions the timesteprewind option by default", &
+      timesteprewindincludeoutputs,'general')
 
 ! newtstep options
   else if (trim(option_name) == "newtstepmax") then
@@ -1842,6 +1852,15 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
   else if (trim(option_name) == "newtstep" .or. trim(option_name) == "newtstepstart") then ! accommodate either name
     call set_option_integer(general_options(n),"newtstep (starting newtstep, overwritting any file ones)",newtstep,'general')
     if (.not.transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
+  else if (trim(option_name) == "newtsteprewind") then
+! bit of a special option that can be treated either as a logical or as an integer, however perl deals with massaging this into the integer format required here
+    call set_option_integer(general_options(n), &
+      "newtsteprewind (maximum number of timesteps to remember for timestep rewinding purposes)",newtsteprewind,'general')
+    if (newtsteprewind < 0) newtsteprewind = 0
+! newtsteprewind isn't implemented yet
+    if (newtsteprewind > 0) call error_stop &
+      ("newtsteprewind functionality isn't implemented yet - let me know if you need this for something, "// &
+      "or consider doing a false transient simulation")
   else if (trim(option_name) == "newtstepmaxiftimesteprewind") then
     call set_option_integer(general_options(n), &
       "newtstepmaxiftimesteprewind (maximum number of steps performed by newton proceedure if timesteprewind is on)", &

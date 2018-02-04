@@ -2187,7 +2187,7 @@ use general_module
 use equation_module
 integer :: m, nvar, ns
 logical :: region_l
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine timesteprewind_setup'
 
@@ -2234,7 +2234,7 @@ use general_module
 use equation_module
 integer :: m, nvar, ns
 logical :: region_l
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine timesteprewind_save'
 
@@ -2293,7 +2293,7 @@ use equation_module
 integer :: m, nvar, ns, nsregion, ijk
 logical :: region_l
 character(len=1000) :: formatline
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 
 if (debug) write(*,'(80(1h+)/a)') 'subroutine timesteprewind_rewind'
 
