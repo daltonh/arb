@@ -6,7 +6,7 @@ NONE_DERIVED <asymptote_mean> "noneif(<asymptote_check>,<asymptote_total[r=1]>/<
 NONE_TRANSIENT <asymptote_mean[r=1]> "0.d0" "<asymptote_mean>"
 NONE_DERIVED <asymptote_measure> "abs(noneif(<asymptote_check>,noneif(<asymptote_mean[r=0]>,<asymptote_mean[r=1]>/<asymptote_mean[r=0]>,2.d0),0.d0)-1.d0)" #ratio of means; <asymptote_mean[r=1]> is the mean over the period {<timestep>-2N-1 to <timestep>-N-1}, <asymptote_mean[r=0]> is the mean over the period {<timestep>-N-1 to <timestep>-1}; where N is the bin width
 NONE_CONSTANT <asymptote_tolerance> 0.01 stepoutput #how close must <asymptote_mean[r=1]>/<asymptote_mean[r=0]> be to 1.0 in order to cause a sign change in <asymptote_expression>
-NONE_CONDITION <asymptote_expression> "<asymptote_tolerance>-<asymptote_measure>"
+NONE_CONDITION <asymptote_expression> "<asymptote_tolerance>-<asymptote_measure>" stopcondition # stop condition added for v0.58, not sure if this was what was wanted
 
 # track the minimum of <asymptote_measure>
 #INCLUDE "series_nonemin" R "<var_tracked>" W "<asymptote_measure>" R "<var" W "<asymptote_measure"

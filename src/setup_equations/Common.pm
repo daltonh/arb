@@ -40,7 +40,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem replace_substring find_region match_region); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem replace_substring find_region match_region fortran_logical_string); # list of subroutines and variables that will by default be made available to calling routine
 
 #-------------------------------------------------------------------------------
 # chomp and remove mac linefeads too if present
@@ -331,6 +331,21 @@ sub match_region {
   }
 
 }
+#-------------------------------------------------------------------------------
+
+sub fortran_logical_string {
+
+  my $string;
+
+  if ($_[0]) {
+    $string = ".true.";
+  } else {
+    $string = ".false.";
+  }
+  return $string;
+
+}
+
 #-------------------------------------------------------------------------------
 
 1;

@@ -65,14 +65,6 @@ if (debug) write(*,*) 'calling setup_dirs'
 
 call setup_dirs ! setup the various file/dir locations
 
-if (convergence_details_file) then
-
-  if (debug) write(*,*) 'calling setup_convergence_file'
-
-  call setup_convergence_file ! setup convergence file
-
-end if
-
 if (debug) write(*,*) 'calling setup_gmesh'
 
 call setup_gmesh_elements ! create reference gtype_list array which has details of the gmsh element types
@@ -84,6 +76,18 @@ call allocate_meta_arrays ! allocate arrays that have meta data about variables
 if (debug) write(*,*) 'calling read_input_file'
 
 call read_input_file ! read arb input file for numerical data, some region and mesh info
+
+if (debug) write(*,*) 'calling process_general_options'
+
+call process_general_options ! convert any general_options to fortran variables
+
+if (convergence_details_file) then ! this option is set from input file
+
+  if (debug) write(*,*) 'calling setup_convergence_file'
+
+  call setup_convergence_file ! setup convergence file
+
+end if
 
 if (debug) write(*,*) 'calling setup_mesh'
 
@@ -250,155 +254,6 @@ fileloop: do
   end if
 
 !---------------
-! newtrestol
-
-  if (trim(keyword) == 'NEWTRESTOL') then
-    read(textline,*,iostat=ierror) newtrestol
-    if (ierror /= 0) call error_stop('problem reading in newton loop tolerance from line '//otextline)
-    write(*,'(a,g14.6)') 'INFO: newtrestol = ',newtrestol
-  end if
-
-!---------------
-! newtstepmax
-
-  if (trim(keyword) == 'NEWTSTEPMAX') then
-    read(textline,*,iostat=ierror) newtstepmax
-    if (ierror /= 0) call error_stop('problem reading in maximum number of newton steps from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(newtstepmax))//')'
-    write(*,fmt=formatline) 'INFO: newtstepmax = ',newtstepmax
-  end if
-
-!---------------
-! newtstepmin
-
-  if (trim(keyword) == 'NEWTSTEPMIN') then
-    read(textline,*,iostat=ierror) newtstepmin
-    if (ierror /= 0) call error_stop('problem reading in minimum number of newton steps from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(newtstepmin))//')'
-    write(*,fmt=formatline) 'INFO: newtstepmin = ',newtstepmin
-  end if
-
-!---------------
-! timestepstart
-
-  if (trim(keyword) == 'TIMESTEPSTART') then
-    read(textline,*,iostat=ierror) timestep
-    if (ierror /= 0) call error_stop('problem reading in starting timestep from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(timestep))//')'
-    write(*,fmt=formatline) 'INFO: initial timestep = ',timestep
-    if (transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
-  end if
-
-!---------------
-! timestepadditional
-
-  if (trim(keyword) == 'TIMESTEPADDITIONAL') then
-    read(textline,*,iostat=ierror) timestepadditional
-    if (ierror /= 0) call error_stop('problem reading in starting timestepadditional from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(timestepadditional))//')'
-    write(*,fmt=formatline) 'INFO: timestepadditional = ',timestepadditional
-  end if
-
-!---------------
-! newtstepstart
-
-  if (trim(keyword) == 'NEWTSTEPSTART') then
-    read(textline,*,iostat=ierror) newtstep
-    if (ierror /= 0) call error_stop('problem reading in starting newtstep from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(newtstep))//')'
-    write(*,fmt=formatline) 'INFO: initial newtstep = ',newtstep
-    if (.not.transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
-  end if
-
-!---------------
-! newtstepdebugout
-
-  if (trim(keyword) == 'NEWTSTEPDEBUGOUT') then
-    read(textline,*,iostat=ierror) newtstepdebugout
-    if (ierror /= 0) call error_stop('problem reading in maximum number of newton steps before debugging from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(newtstepdebugout))//')'
-    write(*,fmt=formatline) 'INFO: newtstepdebugout = ',newtstepdebugout
-  end if
-
-!---------------
-! timestepmax
-
-  if (trim(keyword) == 'TIMESTEPMAX') then
-    read(textline,*,iostat=ierror) timestepmax
-    if (ierror /= 0) call error_stop('problem reading in maximum number of time steps from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(timestepmax))//')'
-    write(*,fmt=formatline) 'INFO: timestepmax = ',timestepmax
-  end if
-
-!---------------
-! timestepmin
-
-  if (trim(keyword) == 'TIMESTEPMIN') then
-    read(textline,*,iostat=ierror) timestepmin
-    if (ierror /= 0) call error_stop('problem reading in minimum number of time steps from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(timestepmin))//')'
-    write(*,fmt=formatline) 'INFO: timestepmin = ',timestepmin
-  end if
-
-!---------------
-! timestepout
-
-  if (trim(keyword) == 'TIMESTEPOUT') then
-    read(textline,*,iostat=ierror) timestepout
-    if (ierror /= 0) call error_stop('problem reading in number of time steps between output from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(timestepout))//')'
-    write(*,fmt=formatline) 'INFO: timestepout = ',timestepout
-  end if
-
-!---------------
-! newtstepout
-
-  if (trim(keyword) == 'NEWTSTEPOUT') then
-    read(textline,*,iostat=ierror) newtstepout
-    if (ierror /= 0) call error_stop('problem reading in number of newt steps between output from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(newtstepout))//')'
-    write(*,fmt=formatline) 'INFO: newtstepout = ',newtstepout
-  end if
-
-!---------------
-! iterrestol
-
-  if (trim(keyword) == 'ITERRESTOL') then
-    read(textline,*,iostat=ierror) iterrestol
-    if (ierror /= 0) call error_stop('problem reading in iteration loop tolerance from line '//otextline)
-    write(*,'(a,g14.6)') 'INFO: iterrestol = ',iterrestol
-  end if
-
-!---------------
-! iterresreltol
-
-  if (trim(keyword) == 'ITERRESRELTOL') then
-    read(textline,*,iostat=ierror) iterresreltol
-    if (ierror /= 0) call error_stop('problem reading in iteration loop relative tolerance from line '//otextline)
-    write(*,'(a,g14.6)') 'INFO: iterresreltol = ',iterresreltol
-  end if
-
-!---------------
-! iterstepmax
-
-  if (trim(keyword) == 'ITERSTEPMAX') then
-    read(textline,*,iostat=ierror) iterstepmax
-    if (ierror /= 0) call error_stop('problem reading in maximum number of iteration steps from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(iterstepmax))//')'
-    write(*,fmt=formatline) 'INFO: iterstepmax = ',iterstepmax
-  end if
-
-!---------------
-! iterstepcheck
-
-  if (trim(keyword) == 'ITERSTEPCHECK') then
-    read(textline,*,iostat=ierror) iterstepcheck
-    if (ierror /= 0) call error_stop('problem reading in number of iteration steps between output/checks from line '//otextline)
-    formatline = '(a,'//trim(dindexformat(iterstepcheck))//')'
-    write(*,fmt=formatline) 'INFO: iterstepcheck = ',iterstepcheck
-  end if
-
-!---------------
 ! version
 
   if (trim(keyword) == 'VERSION') then
@@ -418,9 +273,22 @@ fileloop: do
   end if
 
 !---------------
+! general options
+
+  if (trim(keyword) == 'GENERAL'.or.trim(keyword) == 'GENERAL_OPTION'.or.trim(keyword) == 'GENERAL_OPTIONS') then
+! extract any options and add to the start of the options array
+    array_size = allocatable_character_size(general_options)
+    call extract_options(textline,general_options)
+    if (allocated(general_options)) then
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set general options have been read in:', &
+        (' '//trim(general_options(n)),n=1,ubound(general_options,1))
+    end if
+  end if
+
+!---------------
 ! kernel options
 
-  if (trim(keyword) == 'KERNEL'.or.trim(keyword) == 'KERNELS'.or.trim(keyword) == 'KERNEL_OPTIONS') then
+  if (trim(keyword) == 'KERNEL'.or.trim(keyword) == 'KERNEL_OPTION'.or.trim(keyword) == 'KERNEL_OPTIONS') then
 ! extract any options and add to the start of the options array
     array_size = allocatable_character_size(kernel_options)
     call extract_options(textline,kernel_options)
@@ -435,7 +303,7 @@ fileloop: do
 !---------------
 ! solver options
 
-  if (trim(keyword) == 'SOLVER'.or.trim(keyword) == 'SOLVERS'.or.trim(keyword) == 'SOLVER_OPTIONS') then
+  if (trim(keyword) == 'SOLVER'.or.trim(keyword) == 'SOLVER_OPTION'.or.trim(keyword) == 'SOLVER_OPTIONS') then
 ! extract any options and add to the start of the options array
     array_size = allocatable_character_size(solver_options)
     call extract_options(textline,solver_options)
@@ -464,6 +332,26 @@ fileloop: do
     else if (allocated(var(m)%options)) then
       write(*,'(101(a))') 'INFO: the following (right prioritised) user-set options for variable '//trim(name)//' have been read in:', &
         (' '//trim(var(m)%options(n)),n=1,ubound(var(m)%options,1))
+    end if
+  end if
+
+!---------------
+! region options
+
+  if (trim(keyword) == 'REGION_OPTIONS') then
+    name = extract_next_string(textline,error,empty=empty,delimiter="<")
+    if (error.or.empty) call error_stop('region name in '//trim(keyword)//' in input file incorrect on line:'//trim(otextline))
+! find number for this name
+    m = region_number_from_name(name)
+    if (m == 0) call error_stop('region '//trim(name)//' specified in arb input file was not found')
+! extract any options and add to the start of the options array
+    array_size = allocatable_character_size(region(m)%options)
+    call extract_options(textline,region(m)%options)
+    if (allocatable_character_size(region(m)%options) - array_size == 0) then ! the options array was the same size as before, which is an error really
+      write(*,'(a)') 'WARNING: the '//trim(keyword)//' keyword was found but no options were read in for region '//trim(name)
+    else if (allocated(region(m)%options)) then
+      write(*,'(101(a))') 'INFO: the following (right prioritised) user-set options for region '//trim(name)//' have been read in:', &
+        (' '//trim(region(m)%options(n)),n=1,ubound(region(m)%options,1))
     end if
   end if
 
@@ -1394,12 +1282,14 @@ do n = 1, allocatable_size(var_list(var_list_number_l)%list)
   newtient_relstepmax = max(newtient_relstepmax,relstep)
 end do
 
+! set a range of options for unknowns and equations from the option lists
 ! find user-set magnitude and whether dynamically adjusted magnitudes are set
 !formatline = '(a,'//trim(floatformat)//')'
 formatline = '(a,'//trim(compactformat)//')'
 do m = 1, ubound(var,1)
   if (var(m)%type /= 'unknown'.and.var(m)%type /= 'equation') cycle
 ! set defaults
+  var(m)%magnitude = -1.d0
   if (var(m)%type == 'equation') then
     var(m)%dynamic_magnitude = .true.
     var(m)%dynamic_magnitude_multiplier = 1.1d0
@@ -1407,17 +1297,17 @@ do m = 1, ubound(var,1)
     var(m)%dynamic_magnitude = .false.
     var(m)%dynamic_magnitude_multiplier = 2.d0
   end if
-  if (trim(check_option(var(m)%options,magnitude_options)) == 'dynamicmagnitude') then
-    var(m)%dynamic_magnitude = .true.
-    write(*,'(a)') 'INFO: setting dynamically adjusted magnitudes for '//trim(var(m)%type)//' '//trim(var(m)%name)
-  else if (trim(check_option(var(m)%options,magnitude_options)) == 'staticmagnitude') then
-    var(m)%dynamic_magnitude = .false.
-    write(*,'(a)') 'INFO: setting static magnitudes for '//trim(var(m)%type)//' '//trim(var(m)%name)
-  end if
+! now run through list of user-set options overwriting above defaults
   do n = 1, allocatable_size(var(m)%options) ! read through list from left to right, so that rightmost setting takes precedence
     option_name = extract_option_name(var(m)%options(n),error)
     if (error) cycle
-    if (trim(option_name) == 'magnitude') then
+    if (trim(option_name) == 'dynamicmagnitude') then
+      var(m)%dynamic_magnitude = .true.
+      write(*,'(a)') 'INFO: setting dynamically adjusted magnitudes for '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'nodynamicmagnitude' .or. trim(option_name) == 'staticmagnitude') then ! legacy staticmagnitude to be removed
+      var(m)%dynamic_magnitude = .false.
+      write(*,'(a)') 'INFO: setting nodynamicmagnitude (static) magnitudes for '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'magnitude') then
       if (var(m)%magnitude_constant /= 0) cycle ! skip setting this magnitude if it will be set by a magnitude_constant
       var(m)%magnitude = extract_option_double_precision(var(m)%options(n),error)
       if (error) call error_stop("could not determine the user-set magnitude for variable "//trim(var(m)%name)// &
@@ -1431,6 +1321,45 @@ do m = 1, ubound(var,1)
       write(*,fmt=formatline) 'INFO: setting the dynamicmagitudemultiplier for '//trim(var(m)%type)//' '//trim(var(m)%name)// &
         ' to ',var(m)%dynamic_magnitude_multiplier
       if (var(m)%dynamic_magnitude_multiplier < 1.d0) call error_stop("each dynamicmagnitudemultiplier must be >= 1.d0")
+    end if
+  end do
+end do
+
+! set options for all variables
+! set timestep and newtstep rewind options for variables:
+do m = 1, ubound(var,1)
+! first set default timesteprewind behaviours
+  if (var(m)%type == 'unknown'.or.var(m)%type == 'transient'.or.var(m)%type == 'newtient') then
+    var(m)%timesteprewind = .true.
+    var(m)%newtsteprewind = .true.
+  else
+    var(m)%timesteprewind = .false.
+    var(m)%newtsteprewind = .false.
+  end if
+  var(m)%timesteprewindmultiplier = 1.d0
+! now overwrite possibly with user-set values
+  do n = 1, allocatable_size(var(m)%options) ! read through list from left to right, so that rightmost setting takes precedence
+    option_name = extract_option_name(var(m)%options(n),error)
+    if (error) cycle
+    if (trim(option_name) == 'timesteprewind') then
+      var(m)%timesteprewind = .true.
+      write(*,'(a)') 'INFO: setting timesteprewind for variable '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'notimesteprewind') then
+      var(m)%timesteprewind = .false.
+      write(*,'(a)') 'INFO: setting notimesteprewind for variable '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'newtsteprewind') then
+      var(m)%newtsteprewind = .true.
+      write(*,'(a)') 'INFO: setting newtsteprewind for variable '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'nonewtsteprewind') then
+      var(m)%newtsteprewind = .false.
+      write(*,'(a)') 'INFO: setting nonewtsteprewind for variable '//trim(var(m)%type)//' '//trim(var(m)%name)
+    else if (trim(option_name) == 'timesteprewindmultiplier') then
+      if (var(m)%timesteprewindmultiplier_variable /= 0) cycle ! skip setting this magnitude if it will be set by a magnitude_constant
+      var(m)%timesteprewindmultiplier = extract_option_double_precision(var(m)%options(n),error)
+      if (error) call error_stop("could not determine the user-set timesteprewindmultiplier for variable "//trim(var(m)%name)// &
+        " from the option "//trim(var(m)%options(n)))
+      write(*,fmt=formatline) 'INFO: setting the timesteprewindmultiplier for '//trim(var(m)%type)//' '//trim(var(m)%name)// &
+        ' to ',var(m)%timesteprewindmultiplier
     end if
   end do
 end do
@@ -1846,6 +1775,161 @@ if (debug) write(*,'(a/80(1h-))') 'subroutine glue_faces'
 
 end subroutine glue_faces
 
+!-----------------------------------------------------------------
+
+subroutine process_general_options
+
+! run through requested general options, including user set ones (from input files)
+! NB, as a general rule, options do not have underscores in them
+! ref: general options
+
+use general_module
+integer :: n, max_polynomial_order
+character(len=100) :: option_name
+logical :: error
+logical, parameter :: debug = .false.
+
+if (debug) write(*,'(80(1h+)/a)') 'subroutine process_general_options'
+
+!do n = allocatable_character_size(general_options), 1, -1
+do n = 1, allocatable_character_size(general_options) ! precedence is now as read, that is, options will be applied in the order that they are written
+  option_name = extract_option_name(general_options(n),error)
+  if (debug) write(*,'(a)') "INFO: processing option_name = "//trim(option_name)//": option = "//trim(general_options(n))
+  if (error) then
+    write(*,'(a)') "WARNING: could not determine what the desired general option is from the following: "//trim(general_options(n))
+
+! timestep options
+  else if (trim(option_name) == "timestepmax") then
+    call set_option_integer(general_options(n),"timestepmax (maximum number of timesteps to complete)",timestepmax,'general')
+  else if (trim(option_name) == "timestepmin") then
+    call set_option_integer(general_options(n),"timestepmin (minimum number of timesteps to complete)",timestepmin,'general')
+  else if (trim(option_name) == "timestepadditional") then
+    call set_option_integer(general_options(n), &
+      "timestepadditional (minimum number of timesteps that must be completed during current run)",timestepadditional,'general')
+  else if (trim(option_name) == "timestepout") then
+    call set_option_integer(general_options(n), &
+      "timestepout (maximum number of timesteps between output, with zero indicating no output)",timestepout,'general')
+  else if (trim(option_name) == "timestep" .or. trim(option_name) == "timestepstart") then ! accommodate either name
+    call set_option_integer(general_options(n),"timestep (starting timestep, overwritting any file ones)",timestep,'general')
+    if (transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
+  else if (trim(option_name) == "timesteprewind") then
+! bit of a special option that can be treated either as a logical or as an integer, however perl deals with massaging this into the integer format required here
+    call set_option_integer(general_options(n), &
+      "timesteprewind (maximum number of timesteps to remember for timestep rewinding purposes)",timesteprewind,'general')
+    if (timesteprewind < 0) timesteprewind = 0
+    if (.not.transient_simulation.and.timesteprewind > 0) &
+      call error_stop("timesteprewind can only be used for a transient simulation")
+  else if (trim(option_name) == "timesteprewindmax") then
+    call set_option_integer(general_options(n), &
+      "timesteprewindmax (maximum number of consecutive timesteprewinds that are allowed)",timesteprewindmax,'general')
+    if (timesteprewindmax < 1) call error_stop("timesteprewindmax must be greater than one")
+
+! newtstep options
+  else if (trim(option_name) == "newtstepmax") then
+    call set_option_integer(general_options(n),"newtstepmax (maximum number of newtsteps to complete)",newtstepmax,'general')
+  else if (trim(option_name) == "newtstepmin") then
+    call set_option_integer(general_options(n),"newtstepmin (minimum number of newtsteps to complete)",newtstepmin,'general')
+  else if (trim(option_name) == "newtstepout") then
+    call set_option_integer(general_options(n), &
+      "newtstepout (maximum number of newtsteps between output, with zero indicating no output)",newtstepout,'general')
+  else if (trim(option_name) == "newtstepdebugout") then
+    call set_option_integer(general_options(n), &
+      "newtstepdebugout (after this many newtsteps newtstepout is set to 1 to produce debugging output)",newtstepdebugout,'general')
+  else if (trim(option_name) == "newtrestol") then
+    call set_option_double_precision(general_options(n), &
+      "newtrestol (tolerance that indicates convergence of the newton proceedure)",newtrestol,'general')
+  else if (trim(option_name) == "newtstep" .or. trim(option_name) == "newtstepstart") then ! accommodate either name
+    call set_option_integer(general_options(n),"newtstep (starting newtstep, overwritting any file ones)",newtstep,'general')
+    if (.not.transient_simulation) ignore_gmesh_step = .true. ! signal that step from gmesh file is not to be overwritten by values in file
+  else if (trim(option_name) == "newtsteprewind") then
+! bit of a special option that can be treated either as a logical or as an integer, however perl deals with massaging this into the integer format required here
+    call set_option_integer(general_options(n), &
+      "newtsteprewind (maximum number of timesteps to remember for timestep rewinding purposes)",newtsteprewind,'general')
+    if (newtsteprewind < 0) newtsteprewind = 0
+! newtsteprewind isn't implemented yet
+    if (newtsteprewind > 0) call error_stop &
+      ("newtsteprewind functionality isn't implemented yet - let me know if you need this for something, "// &
+      "or consider doing a false transient simulation")
+  else if (trim(option_name) == "newtstepmaxiftimesteprewind") then
+    call set_option_integer(general_options(n), &
+      "newtstepmaxiftimesteprewind (maximum number of steps performed by newton proceedure if timesteprewind is on)", &
+      newtstepmaxiftimesteprewind,'general')
+
+! iterstep options
+  else if (trim(option_name) == "iterstepmax") then
+    call set_option_integer(general_options(n),"iterstepmax (maximum number of itersteps to complete)",iterstepmax,'general')
+  else if (trim(option_name) == "iterstepcheck") then
+    call set_option_integer(general_options(n), &
+      "iterstepcheck (how often linear iteration solver communicates with outside world)",iterstepcheck,'general')
+  else if (trim(option_name) == "iterrestol") then
+    call set_option_double_precision(general_options(n), &
+      "iterrestol (tolerance that indicates convergence of the iterative proceedure)",iterrestol,'general')
+  else if (trim(option_name) == "iterresreltol") then
+    call set_option_double_precision(general_options(n), &
+      "iterresreltol (tolerance that indicates convergence of the iterative proceedure)",iterresreltol,'general')
+
+! output file selection
+  else if (trim(option_name) == "outputstepfile") then
+! this string is checked within output_module.f90
+    call set_option_string(general_options(n),"outputstepfile (whether to print output.step file or not)",output_step_file, &
+      'general')
+  else if (trim(option_name) == "kerneldetailsfile" .or. trim(option_name) == "nokerneldetailsfile") then
+    call set_option_logical(general_options(n),'kerneldetailsfile', &
+      "print out a text file (kernel_details.txt) with all the kernel details", &
+      kernel_details_file,'general')
+  else if (trim(option_name) == "meshdetailsfile" .or. trim(option_name) == "nomeshdetailsfile") then
+    call set_option_logical(general_options(n),'meshdetailsfile', &
+      "print out a text file (mesh_details.txt) with all the mesh details", &
+      mesh_details_file,'general')
+  else if (trim(option_name) == "regiondetailsfile" .or. trim(option_name) == "noregiondetailsfile") then
+    call set_option_logical(general_options(n),'regiondetailsfile', &
+      "print out a text file (region_details.txt) with all the region details", &
+      region_details_file,'general')
+  else if (trim(option_name) == "linkdetailsfile" .or. trim(option_name) == "nolinkdetailsfile") then
+    call set_option_logical(general_options(n),'linkdetailsfile', &
+      "print out a text file (link_details.txt) with all the link details", &
+      link_details_file,'general')
+  else if (trim(option_name) == "convergencedetailsfile" .or. trim(option_name) == "noconvergencedetailsfile") then
+    call set_option_logical(general_options(n),'convergencedetailsfile', &
+      "write some convergence debugging data to convergence_details.txt", &
+      convergence_details_file,'general')
+
+! timing of various routines
+  else if (trim(option_name) == "outputtimings" .or. trim(option_name) == "nooutputtimings") then
+    call set_option_logical(general_options(n),'outputtimings',"whether to time processes and output results to screen", &
+      output_timings,'general')
+  else if (trim(option_name) == "outputtimingsonmeshwrite" .or. trim(option_name) == "nooutputtimingsonmeshwrite") then
+    call set_option_logical(general_options(n),'outputtimingsonmeshwrite',"output timings each time a mesh file is written", &
+      output_timings_on_mesh_write,'general')
+    if (output_timings_on_mesh_write.and..not.output_timings) output_timings = .true.
+  else if (trim(option_name) == "outputdetailedtimings" .or. trim(option_name) == "nooutputdetailedtimings") then
+    call set_option_logical(general_options(n),'outputdetailedtimings', &
+      "whether to give outputs for each routine (rather than just totals)",output_detailed_timings,'general')
+    if (output_detailed_timings.and..not.output_timings) output_timings = .true.
+  else if (trim(option_name) == "outputvariableupdatetimes" .or. trim(option_name) == "nooutputvariableupdatetimes") then
+    call set_option_logical(general_options(n),'outputvariableupdatetimes', &
+      "time how long it takes to update each variable (on average)",output_variable_update_times,'general')
+  else if (trim(option_name) == "outputregionupdatetimes" .or. trim(option_name) == "nooutputregionupdatetimes") then
+    call set_option_logical(general_options(n),'outputregionupdatetimes', &
+      "time how long it takes to update each dynamic region (on average)",output_region_update_times,'general')
+  else if (trim(option_name) == "ignoreinitialupdatetimes" .or. trim(option_name) == "noignoreinitialupdatetimes") then
+    call set_option_logical(general_options(n),'ignoreinitialupdatetimes', &
+      "ignore how long it takes to update each variable when initialising", &
+      ignore_initial_update_times,'general')
+
+  else
+!   write(*,'(a)') "WARNING: "//trim(option_name)//" is not a (valid) general option that can be set from the input file"
+    call error_stop(trim(option_name)//" is not a (valid) general option that can be set from the input file")
+  end if
+end do
+
+if (debug) write(*,'(a/80(1h-))') 'subroutine process_general_options'
+
+!------------------------------------------
+
+end subroutine process_general_options
+
+!-----------------------------------------------------------------
 !-----------------------------------------------------------------
 
 end module setup_module

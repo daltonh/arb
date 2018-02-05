@@ -38,8 +38,10 @@ implicit none
 private
 public newtsolver, residual, update_magnitudes, check_variable_validity, update_and_check_derived_and_equations, &
   update_and_check_unknowns, update_and_check_constants, update_and_check_transients, update_and_check_newtients, &
-  update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver
+  update_and_check_initial_transients, update_and_check_initial_newtients, update_and_check_outputs, setup_solver, &
+  timesteprewind_setup, timesteprewind_save, timesteprewind_rewind
 
+! ref: solver options
 ! type of linear solver
 character(len=100) :: linear_solver = "default" ! (default, userable) type of linear solver used: default will choose optimal solver available, starting with all of the direct solvers.  Specific options are: none, direct (choosing best available direct method), iterative (choosing best available iterative method), intelpardiso, intelpardisoooc, intelpardisosafer, suitesparse, hslma28, pardiso, sparse, mgmres, multigrid, bicg, bicgstab, descent, doglegdescent, flexible
 
@@ -58,11 +60,16 @@ integer, parameter :: normtype = 2 ! (2 = L2 norm) newton loop residual norm typ
 logical :: weight_large_equation_errors = .false. ! (.false., userable) when calculating the residual, increase the weighting of equations that have large normalised magnitudes
 double precision :: weight_large_equation_errors_factor = 1.d0 ! (1.d0, userable) approximately the normalised equation size that will increase the residual by 1/2
 
-! debugging options:
-logical, parameter :: print_all_equations_on_delphi_error = .true. ! (.true.) if there is a problem with a delphi, print a list of equations that depend or are collocated with that unknown
-logical, parameter :: print_dependent_equations_on_delphi_error = .true. ! (.true.) if there is a problem with a delphi, print a list of all equations and their derivatives
+! debugging options: userable
 logical :: manage_funk_dv_memory = .true. ! (.true., userable) whether to deallocate and allocate derived and equation dvs each time to minimise memory requirements
 logical :: check_solution_accuracy = .false. ! (.false., userable) calculate how well solution satisfies linear equation - requires manage_funk_dv_memory to be false
+
+! debugging options: nonuserable
+logical, parameter :: print_all_equations_on_delphi_error = .false. ! (.false.) if there is a problem with a delphi, print a list of equations that depend or are collocated with that unknown
+logical, parameter :: print_dependent_equations_on_delphi_error = .false. ! (.false.) if there is a problem with a delphi, print a list of all equations and their derivatives
+logical, parameter :: randomly_failing_linear_solver = .false. ! (.false.) debugging option to test how the upstream code deals with a linear solver that fails
+double precision, parameter :: randomly_failing_linear_solver_proportion = 0.01d0 ! (0.01d0) ie, 1% of the time the solver fails
+double precision, parameter :: randomly_failing_linear_solver_multiplier = 1.d30 ! (1.d30) ie, a random increment is added to each delphi that is a multiple of this and the var magnitude, for the first failure mode
 
 ! debugging array:
 integer, dimension(:), allocatable, save :: debug_list_p ! debug_list_p is a list of all unknown delphis that have a problem, referenced by their p index
@@ -182,13 +189,30 @@ if (manage_funk_dv_memory) then
   call time_process(description='reallocating derived funk memory')
 end if
 
-if (ierror /= 0) return
+! debugging section where we simulate a solver failure
+if (randomly_failing_linear_solver) then
+  if (random() < randomly_failing_linear_solver_proportion) then
+    write(*,'(a)') 'WARNING: randomly_failing_linear_solver is on and happening NOW!'
+    if (random() < 0.5d0) then
+      write(*,'(a)') 'WARNING: failure mode is a linear solver that returns rubbish numbers'
+! this replicates a linear solver that returns rubbish numbers
+      p = 0
+      do n = 1, allocatable_size(var_list(var_list_number_unknown)%list)
+        m = var_list(var_list_number_unknown)%list(n)
+        do ns = 1, ubound(var(m)%funk,1)
+          p = p + 1
+          delphi(p) = delphi(p) + random()*var(m)%magnitude*randomly_failing_linear_solver_multiplier
+        end do
+      end do
+    else
+      write(*,'(a)') 'WARNING: failure mode is a linear solver that returns an error'
+! this replicates a linear solver that returns an error
+      ierror = 1
+    end if
+  end if
+end if
 
-! temp &&&&
-!if (newtstep == 1) then
-!  delphi(15) = 1.d+14
-!  delphi(5) = 1.d+16
-!end if
+if (ierror /= 0) return
 
 ! check on validity of delphi and for convergence file find largest normalised magnitude delphi
 p = 0
@@ -1829,6 +1853,9 @@ logical :: orphaned_unknown, completely_orphaned_unknown
 double precision :: mindv
 
 mindv = huge(1.d0)
+mindvm = 0
+mindvns = 0
+
 write(*,'(a)') 'NOTE: writing details of problem unknown updates to fort.96'
 
 do pp = 1, allocatable_size(debug_list_p)
@@ -1877,8 +1904,12 @@ do pp = 1, allocatable_size(debug_list_p)
 
 end do
 
-write(96,'(a,g15.8,3(a,i8))') 'minimum colocated dv = ',mindv,': at '//trim(ijkstring(var(mindvm)%centring))//' = ', &
-  ijkvar(mindvm,mindvns),': mindvm = ',mindvm,': mindvns = ',mindvns
+if (mindvm /= 0.and.mindvns /= 0) then
+  write(96,'(a,g15.8,3(a,i8))') 'minimum colocated dv = ',mindv,': at '//trim(ijkstring(var(mindvm)%centring))//' = ', &
+    ijkvar(mindvm,mindvns),': mindvm = ',mindvm,': mindvns = ',mindvns
+else
+  write(96,'(a)') 'minimum colocated dv was not found'
+end if
 
 end subroutine find_debug_list_p_dependent_equations
 
@@ -2146,6 +2177,210 @@ if (trim(linear_solver) == "intelpardisoooc".and.nthreads > 1) &
   call error_stop('intelpardisoooc linear solver can only be used in a serial (non-omp) calculation')
 
 end subroutine setup_solver
+
+!-----------------------------------------------------------------
+
+subroutine timesteprewind_setup
+
+! setup the data structures for timesteprewinding
+use general_module
+use equation_module
+integer :: m, nvar, ns
+logical :: region_l
+logical, parameter :: debug = .false.
+
+if (debug) write(*,'(80(1h+)/a)') 'subroutine timesteprewind_setup'
+
+! set the array referencing pointers, with 0 on the first two indicating not set
+timesteprewindearliest = 1 ! index of the v_timesteprewind array that references the earliest stored data (nb, starting behaviour requires 1 here)
+timesteprewindlatest = 0 ! index of the v_timesteprewind array that references the latest stored data
+timesteprewindstored = 0 ! number of timesteps stored in the v_timesteprewind arrays
+
+! allocate data storage structures in each variable
+
+! loop through all variables and regions
+do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
+  m = var_list(var_list_number_all_region)%list(nvar)
+  region_l = var_list(var_list_number_all_region)%region(nvar)
+
+  if (region_l) then
+    if (.not.region(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (debug) write(*,'(a)') 'allocating ns_timesteprewind for region: name = '//trim(region(m)%name)//': centring = '//region(m)%centring
+    allocate(region(m)%ns_timesteprewind(allocatable_integer_size(region(m)%ns),timesteprewind)) ! NB, indicies are in same order as used when referencing var(m)%funk(ns)%v_timesteprewind(?)
+  else
+    if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (var(m)%someloop /= 0) cycle ! ignore local variables (this check shouldn't be needed?)
+    if (debug) write(*,'(a)') 'allocating v_timesteprewind for var: name = '//trim(var(m)%name)//': centring = '//var(m)%centring
+    do ns = 1, ubound(var(m)%funk,1)
+      allocate(var(m)%funk(ns)%v_timesteprewind(timesteprewind))
+      var(m)%funk(ns)%v_timesteprewind = 0.d0 ! neat and tidy, but not necessary...
+    end do
+  end if
+
+end do
+
+if (debug) write(*,'(a/80(1h-))') 'subroutine timesteprewind_setup'
+
+end subroutine timesteprewind_setup
+
+!-----------------------------------------------------------------
+
+subroutine timesteprewind_save
+
+! save the timesteprewinding data
+! timesteprewind data isn't moved when added, but rather pointers are calculated that correspond to array locations of the earliest and latest held data
+
+use general_module
+use equation_module
+integer :: m, nvar, ns
+logical :: region_l
+logical, parameter :: debug = .false.
+
+if (debug) write(*,'(80(1h+)/a)') 'subroutine timesteprewind_save'
+
+if (debug) write(*,'(a,3(a,i1),a,i10)') 'INFO: timesteprewind pointers before saving',': earliest = ',timesteprewindearliest, &
+  ': latest = ',timesteprewindlatest,': stored = ',timesteprewindstored,': timestep = ',timestep
+
+! set the array referencing pointers
+timesteprewindlatest = timesteprewindlatest + 1 ! increment latest, indicating where this data should be stored
+if (timesteprewindlatest == timesteprewind + 1) timesteprewindlatest = 1 ! wrap latest pointer around once arrays have reached capacity
+if (timesteprewindstored == timesteprewind ) then
+! increment earliest (loosing earliest data) but leave stored as is
+  timesteprewindearliest = timesteprewindearliest + 1
+  if (timesteprewindearliest == timesteprewind + 1) timesteprewindearliest = 1 ! wrap earliest pointer around once arrays have reached capacity
+else
+! increment stored but leave earliest where it is, noting that earliest starts at 1
+  timesteprewindstored = timesteprewindstored + 1
+end if
+  
+if (debug) write(*,'(a,3(a,i1),a,i10)') 'INFO: timesteprewind pointers after saving',': earliest = ',timesteprewindearliest, &
+  ': latest = ',timesteprewindlatest,': stored = ',timesteprewindstored,': timestep = ',timestep
+
+! save data in each variable
+
+! loop through all variables and regions
+do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
+  m = var_list(var_list_number_all_region)%list(nvar)
+  region_l = var_list(var_list_number_all_region)%region(nvar)
+
+  if (region_l) then
+    if (.not.region(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (debug) write(*,'(a)') 'saving ns_timesteprewind for region: name = '//trim(region(m)%name)//': centring = '//region(m)%centring
+    region(m)%ns_timesteprewind(:,timesteprewindlatest) = region(m)%ns
+  else
+    if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (var(m)%someloop /= 0) cycle ! ignore local variables (this check shouldn't be needed?)
+    if (debug) write(*,'(a)') 'saving v_timesteprewind for var: name = '//trim(var(m)%name)//': centring = '//var(m)%centring
+    do ns = 1, ubound(var(m)%funk,1)
+      var(m)%funk(ns)%v_timesteprewind(timesteprewindlatest) = var(m)%funk(ns)%v
+    end do
+  end if
+
+end do
+
+if (debug) write(*,'(a/80(1h-))') 'subroutine timesteprewind_save'
+
+end subroutine timesteprewind_save
+
+!-----------------------------------------------------------------
+
+subroutine timesteprewind_rewind
+
+! rewind the timesteprewind variables to the earliest data held
+
+use general_module
+use equation_module
+integer :: m, nvar, ns, nsregion, ijk
+logical :: region_l
+character(len=1000) :: formatline
+logical, parameter :: debug = .false.
+
+if (debug) write(*,'(80(1h+)/a)') 'subroutine timesteprewind_rewind'
+
+if (debug) write(*,'(a,3(a,i1),a,i10)') 'INFO: timesteprewind pointers before rewinding',': earliest = ',timesteprewindearliest, &
+  ': latest = ',timesteprewindlatest,': stored = ',timesteprewindstored,': timestep = ',timestep
+
+! rewind timestep
+timestep = timestep - timesteprewindstored
+! rewind array referencing pointers
+timesteprewindlatest = timesteprewindearliest
+timesteprewindstored = 1
+
+if (debug) write(*,'(a,3(a,i1),a,i10)') 'INFO: timesteprewind pointers after rewinding',': earliest = ',timesteprewindearliest, &
+  ': latest = ',timesteprewindlatest,': stored = ',timesteprewindstored,': timestep = ',timestep
+
+! rewind data in each variable
+
+! loop through all variables and regions
+do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
+  m = var_list(var_list_number_all_region)%list(nvar)
+  region_l = var_list(var_list_number_all_region)%region(nvar)
+
+  if (region_l) then
+    if (.not.region(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (debug) write(*,'(a)') 'rewinding ns_timesteprewind for region: name = '//trim(region(m)%name)//': centring = '//region(m)%centring
+
+!   region(m)%ns = region(m)%ns_timesteprewind(:,timesteprewindlatest)
+
+! while resetting data, find size required for ijk array
+    nsregion = 0
+    do ijk = 1, allocatable_integer_size(region(m)%ns)
+      region(m)%ns(ijk) = region(m)%ns_timesteprewind(ijk,timesteprewindlatest)
+      if (region(m)%ns(ijk) /= 0) nsregion = nsregion + 1
+    end do
+    call resize_integer_array(array=region(m)%ijk,new_size=nsregion,keep_data=.false.)
+    do ijk = 1, allocatable_integer_size(region(m)%ns)
+      if (region(m)%ns(ijk) /= 0) region(m)%ijk(region(m)%ns(ijk)) = ijk
+    end do
+
+  else
+    if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
+    if (var(m)%someloop /= 0) cycle ! ignore local variables (this check shouldn't be needed?)
+    if (debug) write(*,'(a)') 'rewinding v_timesteprewind for var: name = '//trim(var(m)%name)//': centring = '//var(m)%centring
+    do ns = 1, ubound(var(m)%funk,1)
+      var(m)%funk(ns)%v = var(m)%funk(ns)%v_timesteprewind(timesteprewindlatest)
+    end do
+  end if
+
+end do
+
+! now that all data has been rewound (but note deriveds and equations have not been unless specifically timesteprewind optioned) calculated any variable rewindmultipliers
+formatline = "(a,"//trim(floatformat)//")"
+do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
+  m = var_list(var_list_number_all_region)%list(nvar)
+  region_l = var_list(var_list_number_all_region)%region(nvar)
+  if (region_l) cycle
+  if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
+  if (var(m)%timesteprewindmultiplier_variable /= 0) then
+    if (trim(var(var(m)%timesteprewindmultiplier_variable)%centring) /= 'none') call error_stop( &
+      'centring of timesteprewindmultiplier '//trim(var(var(m)%timesteprewindmultiplier_variable)%name)//' for var ' &
+      //trim(var(m)%name)//' is not none centred')
+    var(m)%timesteprewindmultiplier = var_value(var(m)%timesteprewindmultiplier_variable,1,noerror=.false.)
+    write(*,fmt=formatline) 'TIMESTEPREWIND: calculated timesteprewindmultiplier for var: name = '//trim(var(m)%name)// &
+      ': timesteprewindmultiplier name = '//trim(var(var(m)%timesteprewindmultiplier_variable)%name)//': timesteprewindmultiplier = ', &
+      var(m)%timesteprewindmultiplier
+  end if
+end do
+
+! finally apply any multipliers and resave the modified timesteprewind data
+do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
+  m = var_list(var_list_number_all_region)%list(nvar)
+  region_l = var_list(var_list_number_all_region)%region(nvar)
+  if (region_l) cycle
+  if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
+  if (var(m)%timesteprewindmultiplier /= 1.d0) then
+    do ns = 1, ubound(var(m)%funk,1)
+      var(m)%funk(ns)%v = var(m)%funk(ns)%v*var(m)%timesteprewindmultiplier
+      var(m)%funk(ns)%v_timesteprewind(timesteprewindlatest) = var(m)%funk(ns)%v
+    end do
+    write(*,fmt=formatline) 'TIMESTEPREWIND: applying timesteprewindmultiplier for var: name = '//trim(var(m)%name)// &
+      ': timesteprewindmultiplier = ',var(m)%timesteprewindmultiplier
+  end if
+end do
+
+if (debug) write(*,'(a/80(1h-))') 'subroutine timesteprewind_rewind'
+
+end subroutine timesteprewind_rewind
 
 !-----------------------------------------------------------------
 

@@ -48,7 +48,7 @@ implicit none
 private
 public allocate_meta_arrays, update_derived_and_equations, update_constants, update_unknowns, update_newtients, &
   update_initial_newtients, update_transients, update_initial_transients, update_outputs, &
-  check_variable_constraints, check_condition, var_value, varcdivgrad, varcgrad, varcgrad_nodelimited, &
+  check_variable_constraints, check_condition, find_condition, var_value, varcdivgrad, varcgrad, varcgrad_nodelimited, &
   setup_external_functions, read_initial_outputs, update_region
 
 ! include external functions preambles here
@@ -76,9 +76,19 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine allocate_meta_arrays'
 ! allocate var_lists which are lists of variables and regions used for fast looping
 !<sub_string:allocate_var_lists>
 
-! set these two commonly used variable-only var_list_numbers
+! set these commonly used variable-only var_list_numbers
 var_list_number_unknown = var_list_number(centring="all",type="unknown",include_regions=.false.)
 var_list_number_equation = var_list_number(centring="all",type="equation",include_regions=.false.)
+var_list_number_condition = var_list_number(centring="all",type="condition",include_regions=.false.)
+! and these variable and region ones
+var_list_number_all_region = var_list_number(centring="all",type="all",include_regions=.true.)
+var_list_number_derived_region = var_list_number(centring="all",type="derived",include_regions=.true.)
+var_list_number_equation_region = var_list_number(centring="all",type="equation",include_regions=.true.)
+var_list_number_constant_region = var_list_number(centring="all",type="constant",include_regions=.true.)
+var_list_number_unknown_region = var_list_number(centring="all",type="unknown",include_regions=.true.)
+var_list_number_newtient_region = var_list_number(centring="all",type="newtient",include_regions=.true.)
+var_list_number_transient_region = var_list_number(centring="all",type="transient",include_regions=.true.)
+var_list_number_output_region = var_list_number(centring="all",type="output",include_regions=.true.)
 
 ! setup msomeloop which is used to allocate the funks within the someloop (thread) containers
 !<sub_string:set_msomeloop>
@@ -129,7 +139,6 @@ use gmesh_module
 !$ use omp_lib
 logical :: setup ! now needs to know whether we are in the setup phase or not - if so, posibly read in data
 integer :: nvar, m, ns, i, j, k
-integer, save :: var_list_number_l_derived = -1, var_list_number_l_equation = -1
 logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -141,10 +150,9 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine update_derived_and_equations'
 
 if (debug) write(*,'(40(1h+)/a)') 'derived updates'
 
-if (var_list_number_l_derived < 0) var_list_number_l_derived = var_list_number(centring="all",type="derived",include_regions=.true.)
-do nvar = 1, allocatable_size(var_list(var_list_number_l_derived)%list)
-  m = var_list(var_list_number_l_derived)%list(nvar)
-  region_l = var_list(var_list_number_l_derived)%region(nvar)
+do nvar = 1, allocatable_size(var_list(var_list_number_derived_region)%list)
+  m = var_list(var_list_number_derived_region)%list(nvar)
+  region_l = var_list(var_list_number_derived_region)%region(nvar)
 
   if (region_l) then
 
@@ -194,10 +202,9 @@ if (debug) write(*,'(a/40(1h-))') 'derived updates'
 
 if (debug) write(*,'(40(1h+)/a)') 'equation updates'
 
-if (var_list_number_l_equation < 0) var_list_number_l_equation = var_list_number(centring="all",type="equation",include_regions=.true.)
-do nvar = 1, allocatable_size(var_list(var_list_number_l_equation)%list)
-  m = var_list(var_list_number_l_equation)%list(nvar)
-  region_l = var_list(var_list_number_l_equation)%region(nvar)
+do nvar = 1, allocatable_size(var_list(var_list_number_equation_region)%list)
+  m = var_list(var_list_number_equation_region)%list(nvar)
+  region_l = var_list(var_list_number_equation_region)%region(nvar)
 
   if (region_l) then
 
@@ -303,7 +310,6 @@ use general_module
 use gmesh_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k
-integer, save :: var_list_number_l = -1
 logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -313,10 +319,9 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_constants'
 
-if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="constant",include_regions=.true.)
-do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
-  m = var_list(var_list_number_l)%list(nvar)
-  region_l = var_list(var_list_number_l)%region(nvar)
+do nvar = 1, allocatable_size(var_list(var_list_number_constant_region)%list)
+  m = var_list(var_list_number_constant_region)%list(nvar)
+  region_l = var_list(var_list_number_constant_region)%region(nvar)
 
   if (region_l) then
 
@@ -376,7 +381,6 @@ use gmesh_module
 double precision, optional :: lambda ! if initial=.false. then lambda is the backstepping parameter and needs to be specified
 logical :: initial ! whether this is the first initialisation of the unknowns (true) or the backstepping update of them (false)
 integer :: nvar, m, ns, i, j, k, p
-integer, save :: var_list_number_l = -1
 logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -386,10 +390,9 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_unknowns'
 
-if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="unknown",include_regions=.true.)
-do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
-  m = var_list(var_list_number_l)%list(nvar)
-  region_l = var_list(var_list_number_l)%region(nvar)
+do nvar = 1, allocatable_size(var_list(var_list_number_unknown_region)%list)
+  m = var_list(var_list_number_unknown_region)%list(nvar)
+  region_l = var_list(var_list_number_unknown_region)%region(nvar)
 
   if (region_l) then
 
@@ -459,7 +462,6 @@ use general_module
 use gmesh_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
-integer, save :: var_list_number_l = -1
 logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -469,11 +471,10 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_newtients'
 
-if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="newtient",include_regions=.true.)
 do relstep = newtient_relstepmax, 0, -1 ! look through newtient variables in reverse order
-  do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
-    m = var_list(var_list_number_l)%list(nvar)
-    region_l = var_list(var_list_number_l)%region(nvar)
+  do nvar = 1, allocatable_size(var_list(var_list_number_newtient_region)%list)
+    m = var_list(var_list_number_newtient_region)%list(nvar)
+    region_l = var_list(var_list_number_newtient_region)%region(nvar)
 
     if (region_l) then
 
@@ -542,7 +543,6 @@ use general_module
 use gmesh_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
-integer, save :: var_list_number_l = -1
 logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -552,11 +552,10 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_initial_newtients'
 
-if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="newtient",include_regions=.true.)
 do relstep = 0, newtient_relstepmax ! look through newtient variables in forward order
-  do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
-    m = var_list(var_list_number_l)%list(nvar)
-    region_l = var_list(var_list_number_l)%region(nvar)
+  do nvar = 1, allocatable_size(var_list(var_list_number_newtient_region)%list)
+    m = var_list(var_list_number_newtient_region)%list(nvar)
+    region_l = var_list(var_list_number_newtient_region)%region(nvar)
 
     if (region_l) then
 
@@ -627,7 +626,6 @@ use general_module
 use gmesh_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
-integer, save :: var_list_number_l = -1
 logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -637,11 +635,10 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_transients'
 
-if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="transient",include_regions=.true.)
 do relstep = transient_relstepmax, 0, -1 ! look through transient variables in reverse order
-  do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
-    m = var_list(var_list_number_l)%list(nvar)
-    region_l = var_list(var_list_number_l)%region(nvar)
+  do nvar = 1, allocatable_size(var_list(var_list_number_transient_region)%list)
+    m = var_list(var_list_number_transient_region)%list(nvar)
+    region_l = var_list(var_list_number_transient_region)%region(nvar)
 
     if (region_l) then
 
@@ -710,7 +707,6 @@ use general_module
 use gmesh_module
 !$ use omp_lib
 integer :: nvar, m, ns, i, j, k, relstep
-integer, save :: var_list_number_l = -1
 logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -720,12 +716,11 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine update_initial_transients'
 
-if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="transient",include_regions=.true.)
-if (debug) write(*,*) 'var_list_number_l = ',var_list_number_l
+if (debug) write(*,*) 'var_list_number_transient_region = ',var_list_number_transient_region
 do relstep = 0, transient_relstepmax ! look through transient variables in forward order
-  do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
-    m = var_list(var_list_number_l)%list(nvar)
-    region_l = var_list(var_list_number_l)%region(nvar)
+  do nvar = 1, allocatable_size(var_list(var_list_number_transient_region)%list)
+    m = var_list(var_list_number_transient_region)%list(nvar)
+    region_l = var_list(var_list_number_transient_region)%region(nvar)
 
     if (debug) write(*,*) 'relstep = ',relstep,': nvar = ',nvar,': m = ',m,': region_l = ',region_l
     if (region_l) then
@@ -798,7 +793,6 @@ use general_module
 logical, optional, intent(in) :: stepoutput
 logical :: stepoutput_local
 integer :: nvar, m, ns, i, j, k
-integer, save :: var_list_number_l = -1
 logical :: region_l
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -813,10 +807,9 @@ if (present(stepoutput)) then
   stepoutput_local = stepoutput
 end if
 
-if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="output",include_regions=.true.)
-do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
-  m = var_list(var_list_number_l)%list(nvar)
-  region_l = var_list(var_list_number_l)%region(nvar)
+do nvar = 1, allocatable_size(var_list(var_list_number_output_region)%list)
+  m = var_list(var_list_number_output_region)%list(nvar)
+  region_l = var_list(var_list_number_output_region)%region(nvar)
 
   if (region_l) then
 
@@ -881,7 +874,6 @@ subroutine read_initial_outputs
 use general_module
 use gmesh_module
 integer :: nvar, m, ns
-integer, save :: var_list_number_l = -1
 logical :: region_l
 character(len=1000) :: formatline
 character(len=1000) :: error_string
@@ -889,10 +881,9 @@ logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_initial_outputs'
 
-if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="output",include_regions=.true.)
-do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
-  m = var_list(var_list_number_l)%list(nvar)
-  region_l = var_list(var_list_number_l)%region(nvar)
+do nvar = 1, allocatable_size(var_list(var_list_number_output_region)%list)
+  m = var_list(var_list_number_output_region)%list(nvar)
+  region_l = var_list(var_list_number_output_region)%region(nvar)
 
   if (region_l) then
 
@@ -927,16 +918,16 @@ end subroutine read_initial_outputs
 
 !-----------------------------------------------------------------
 
-function check_condition(condition_type)
+function find_condition(condition_type)
 
-! here we check whether a condition is satisfied for action = output|stop|convergence|bell
+! here we check whether a condition is satisfied for action = output|stop|error|convergence|bell|(time|newt)steprewind
 ! do this in series as if in parallel all threads would be attempting to alter the one logical
 ! could be done but not worth it (conditions are usually none centred anyway)
+! returns fortran number of condition that is true
 
 use general_module
 character(len=*) :: condition_type
-logical :: check_condition
-integer, save :: var_list_number_l = -1
+integer :: find_condition
 integer :: nvar, m, ns, i, j, k
 integer :: thread = 1
 double precision :: derivative_multiplier
@@ -944,13 +935,13 @@ character(len=1000) :: formatline
 character(len=1000) :: error_string
 logical, parameter :: debug = .false.
                   
-if (debug) write(*,'(80(1h+)/a)') 'function check_condition'
+if (debug) write(*,'(80(1h+)/a)') 'function find_condition'
 
-check_condition = .false.
+find_condition = 0 ! indicating that the condition has not been satisfied
 
-if (var_list_number_l < 0) var_list_number_l = var_list_number(centring="all",type="condition",include_regions=.false.)
-do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
-  m = var_list(var_list_number_l)%list(nvar)
+if (var_list_number_condition < 0) var_list_number_condition = var_list_number(centring="all",type="condition",include_regions=.false.)
+do nvar = 1, allocatable_size(var_list(var_list_number_condition)%list)
+  m = var_list(var_list_number_condition)%list(nvar)
 
   i = 0
   j = 0
@@ -975,7 +966,24 @@ do nvar = 1, allocatable_size(var_list(var_list_number_l)%list)
 
 end do
 
-if (debug) write(*,'(a/80(1h-))') 'function check_condition'
+if (debug) write(*,'(a/80(1h-))') 'function find_condition'
+
+end function find_condition
+
+!-----------------------------------------------------------------
+
+function check_condition(condition_type)
+
+! wrapper function that returns a check on a condition as a logical
+use general_module
+character(len=*) :: condition_type
+logical :: check_condition
+
+if (find_condition(condition_type) == 0) then
+  check_condition = .false.
+else
+  check_condition = .true.
+end if
 
 end function check_condition
 
@@ -1021,6 +1029,7 @@ end subroutine check_variable_constraints
 function var_value(m,ns,noerror)
 
 ! little function to find value of var, irrespective of whether it is local (ie not stored) or not
+! if noerror is omitted, then the default is not to issue an error message but instead return a 0.d0 result
 
 use general_module
 integer, intent(in) :: m ! var number

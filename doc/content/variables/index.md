@@ -54,6 +54,11 @@ All variables have an associated compound variable type (scalar, vector or tenso
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 ```
 
+- `DEFAULT_OPTIONS`: add the following options to every subsequent variable, until cleared again using a blank statement. When listed in order, default options precede a variable's individually specified options - hence, in the case of conflicting option statements, individual options take precedence over default options (ie, the individual options have a higher priority).
+
+- `OVERRIDE_OPTIONS`: are the same as, except that they follow a variable's individually specified options, and so in the case of conflicting option statements, take precedence over the individual options (ie, the override options have a higher priority).
+
+
 ## Variable types
 
 ### Constant
@@ -541,6 +546,8 @@ variables:
     NONE_CONDITION <time based stop condition> "<t>-<tend>" stopcondition # when this becomes true (>0.) the simulation stops
     NONE_CONDITION <bouncing bell> "noneif(<z>,-1.d0,1.d0)" bellcondition # is positive when <z> is negative at the end of a timestep
     NONE_CONDITION <output test> "<t>-<tout>-<dtout>" outputcondition # this will be true (>0.) whenever we are <dtout> from last output
+
+Note: condition variables are evaluated in the order they are defined, only until one condition returns true.  Hence, a condition variable value may not become positive in a simulation (ie, in the output) if another condition of the same type (eg, errorcondition) is evaluated as true before hand.
 
 ### Local type variable defined in 
 

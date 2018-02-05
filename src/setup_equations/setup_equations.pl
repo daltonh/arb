@@ -816,10 +816,23 @@ sub organise_regions {
               $region[$n]{$option_name} = $match;
             }
           } else { error_stop("option $option specified for region $type $region[$n]{name} cannot be used for this type of region"); }
+        } elsif ($option =~ /^((no|)((time|newt)steprewind)(|\s*=\s*(.true.|(.false.))))$/i) { # timesteprewind variable needs to be passed to fortran, in sanitised nooption form
+            if ($region[$n]{"dynamic"}) { # can only be applied to dynamic regions
+              $option = "\L$3";
+              if (nonempty($2) || nonempty($7)) { $option = "no".$option; }
+              $region[$n]{"options"} = $region[$n]{"options"}.",$option";
+            } else { print "WARNING: option $option specified for $type $region[$n]{name} can only be used for dynamic regions and is ignored here\n";
+            }
         } else {
           error_stop("the option $option specified for region $type $region[$n]{name} is not valid");
         }
       }
+  
+# remove extra leading comma and output to fortran file
+      $region[$n]{"options"} =~ s/^\s*\,//;
+      print FORTRAN_INPUT "REGION_OPTIONS $region[$n]{name} $region[$n]{options}\n";
+      print "INFO: the $region[$n]{type} $region[$n]{name} has the final component-specific options of: $region[$n]{options}\n";
+      print DEBUG "INFO: the $region[$n]{type} $region[$n]{name} has the final component-specific options of: $region[$n]{options}\n";
     }
   }
 
@@ -1413,6 +1426,9 @@ sub organise_user_variables {
     if ($type eq "unknown" || $type eq "equation") {
       $variable{$type}[$mvar]{"magnitude_constant"} = 0; # specifies that it is not to be set from a none-centred constant value
     }
+    if ($type ne "local") {
+      $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = 0; # specifies that by default timesteprewindmultiplier is not a variable, but a float
+    }
 
 # check a centring was defined, and if not, try to work out a default
     if (empty($variable{$type}[$mvar]{"centring"})) { $variable{$type}[$mvar]{"centring"} = 'none';
@@ -1531,13 +1547,13 @@ sub organise_user_variables {
 #f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
 #f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
 #f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component) (equivalently compoundelementdata,compoundelementnodedata,compoundelementnodelimiteddata)
-#p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
+#p  outputcondition,stopcondition,errorcondition,convergencecondition,bellcondition,timesteprewindcondition,newtsteprewindcondition - for CONDITION, type of condition, can have multiple conditions for the one variable, defaulting to stopcondition if no others are given
 #f  magnitude=[value|<a none centred constant>] - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
 #f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude (default is dynamic for equations, and static for unknowns)
 #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next) (default is 1.1 for equations, 2.0 for unknowns)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 #f  timesteprewind - this variable gets rewound if a timestep rewind is performed
-#f  timesteprewindmultiplier - and further that it is multiplied by this amount on rewind
+#f  timesteprewindmultiplier - and further that it is multiplied by this amount on rewind, either a number or a reference to a none-centred variable (can be a local)
 #f  newtsteprewind - this variable gets rewound if a newtstep rewind is performed
 
 # general rule with options is that they don't include any underscores between words
@@ -1584,11 +1600,16 @@ sub organise_user_variables {
             $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$1$2";
             if ($type eq "equation") { print "WARNING: are you sure that you want option $option specified for variable $name?\n"; }
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
-        elsif ($option =~ /^(dynamic|static)magnitude$/i) {
+        elsif ($option =~ /^((no|)dynamic|(static))magnitude$/i) {
           if ($type eq "unknown" || $type eq "equation") {
+            if (nonempty($3)) {
+              syntax_problem("staticmagnitude option has been replaced by nodynamicmagnitude, found in variable $variable{$type}[$mvar]{name}","warning");
+              $option = "nodynamicmagnitude";
+            }
             $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$option";
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         elsif ($option =~ /^(magnitude|dynamicmagnitudemultiplier)\s*=\s*([\+\-\d\.][\+\-\ded\.]*)$/i) {
+# magnitude as a number
           $option_name = "\L$1";
           $match = "\L$2"; # match is the magnitude of the variable, converted to double precision
           $match =~ s/e/d/; if ($match !~ /d/) { $match = $match."d0"; } if ($match !~ /\./) { $match =~ s/d/.d/; }
@@ -1597,14 +1618,16 @@ sub organise_user_variables {
             if ($option_name eq "magnitude") { $variable{$type}[$mvar]{"magnitude_constant"} = 0; } # this also resets the magnitude_constant variable
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         elsif ($option =~ /^magnitude\s*=\s*(<.+?>)$/i) { # alternatively, the magnitude may be specified as a none centred constant variable, which will be checked later
+# magnitude as a variable
           if ($type eq "unknown" || $type eq "equation") {
             $variable{$type}[$mvar]{"magnitude_constant"} = examine_name($1,"name");
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
-        elsif ($option =~ /^(output|stop|convergence|bell)condition$/i) {
+        elsif ($option =~ /^(output|stop|error|convergence|bell|(time|newt)steprewind)condition$/i) {
           $condition = "\L$1";
           if ($type eq "condition") {
             if (empty($variable{$type}[$mvar]{'conditions'})) { $variable{$type}[$mvar]{'conditions'} = $condition; }
             else { $variable{$type}[$mvar]{'conditions'} = $variable{$type}[$mvar]{'conditions'}.','.$condition; }
+            if ($condition eq "error") { $variable{$type}[$mvar]{'conditions'} = $variable{$type}[$mvar]{'conditions'}.',stop'; } # for error condition, to avoid double checking within the fortran, also include stopcondition
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         elsif ($option =~ /^(positive|negative|nocheck)$/i) {
           if ($type eq "derived" || $type eq "unknown" || $type eq "equation" || $type eq "local") {
@@ -1630,27 +1653,42 @@ sub organise_user_variables {
 #         } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
           } else { error_stop("option $option specified for variable $type $name cannot be used for this type of region"); } }
 # ref: timesteprewind ref: newtsteprewind ref: rewind
-        elsif ($option =~ /^((no|)((time|newt)steprewind))$/i) {
+        elsif ($option =~ /^((no|)((time|newt)steprewind))(|\s*=\s*(.true.|(.false.)))$/i) { # able to deal with both forms of setting, but need to decide whether this is to be across the board
           if ($type ne "local" ) {
-            $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$option";
+            $option = "\L$3";
+            if (nonempty($2) || nonempty($7)) { $option = "no".$option; }
+            $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",$option";
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
 # ref: timesteprewindmultiplier
+# as a number
         elsif ($option =~ /^(timesteprewindmultiplier)\s*=\s*([\+\-\d\.][\+\-\ded\.]*)$/i) {
           $option_name = "\L$1";
           $match = "\L$2"; # match is the magnitude of the variable, converted to double precision
           $match =~ s/e/d/; if ($match !~ /d/) { $match = $match."d0"; } if ($match !~ /\./) { $match =~ s/d/.d/; }
           if ($type ne "local") {
             $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",$option_name=$match";
+            $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = 0; # reset variable reference
           } else { print "WARNING: option $option_name specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
+# as a variable
+        elsif ($option =~ /^timesteprewindmultiplier\s*=\s*(<.+?>)$/i) { # alternatively, timesteprewindmultiplier may be specified as a none centred variable, which will be checked later
+          if ($type ne "local") {
+            $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = examine_name($1,"name");
+          } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         else { error_stop("unknown option of $option specified for $type $name"); }
       }
+
 # remove extra leading comma and output to fortran file
       $variable{$type}[$mvar]{"options"} =~ s/^\s*\,//;
       if (nonempty($variable{$type}[$mvar]{options})) {
         print FORTRAN_INPUT "VARIABLE_OPTIONS $name $variable{$type}[$mvar]{options}\n";
-        print "INFO: the $type $name has the final component-specific options of: $variable{$type}[$mvar]{options}\n";
-        print DEBUG "INFO: the $type $name has the final component-specific options of: $variable{$type}[$mvar]{options}\n";
+        print "INFO: the $type $name has the final component-specific fortran options of: $variable{$type}[$mvar]{options}\n";
+        print DEBUG "INFO: the $type $name has the final component-specific fortran options of: $variable{$type}[$mvar]{options}\n";
       }
+    }
+
+# for a condition variable check that a condition option has been chosen
+    if ($type eq "condition") {
+      if (empty($variable{$type}[$mvar]{'conditions'})) { error_stop("condition variable $name had no condition option set"); }
     }
 
 # create maxima names for the variable
@@ -1679,7 +1717,7 @@ sub organise_user_variables {
   }
 
 #-----------------------------------------------------
-# find and check none-centred constant magnitude variable
+# find and check none-centred constant magnitude variable, and convert to fortran number
 
   foreach $type ( "unknown", "equation" ) {
     foreach $mvar ( 1 .. $m{$type} ) {
@@ -1706,13 +1744,45 @@ sub organise_user_variables {
   }
 
 #-----------------------------------------------------
-# set transientdelta and newtientdelta system variables, and simulation type based on transient/newtient variables (noting that it is too late for string replacements)
+# find and check none-centred timesteprewindmagnitude variable, and convert number to fortran number
+
+  foreach $type ( @user_types ) {
+    if ($type eq "local") { next; }
+    foreach $mvar ( 1 .. $m{$type} ) {
+      if ($variable{$type}[$mvar]{"timesteprewindmultiplier_variable"}) {
+        $name = $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"};
+        my $typefound = 0;
+        my $mvarfound = 0;
+        TYPE_LOOP: for my $typec ( @user_types ) {
+          for my $mvarc ( 1 .. $m{$typec} ) {
+            if ($name eq $variable{$typec}[$mvarc]{"name"}) {
+              $mvarfound = $mvarc;
+              $typefound = $typec;
+              last TYPE_LOOP;
+            }
+          }
+        }
+        if (!($typefound)) {
+          error_stop("the variable $name used to specify the timesteprewindmagnitude of $type $variable{$type}[$mvar]{name} is not found");
+        } elsif ($variable{$typefound}[$mvarfound]{"centring"} ne "none") {
+          error_stop("the variable $name used to specify the timesteprewindmagnitude of $type $variable{$type}[$mvar]{name} needs to be none centred: ".
+            "it is $variable{$typefound}[$mvarfound]{centring} centred");
+        }
+# if we are here then we have identified a none centred constant variable that should be used to set the magnitude - store the fortran number of this variable
+        print DEBUG "INFO: identified the none centred constant $name which will be used as the timesteprewindmagnitude of $type $variable{$type}[$mvar]{name}\n";
+        $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = $variable{$typefound}[$mvarfound]{"fortran_number"};
+      }
+    }
+  }
+
+#-----------------------------------------------------
+# set transientsimulation and newtientsimulation system variables, and simulation type based on transient/newtient variables (noting that it is too late for string replacements)
 
   if ($variable{"transient"} && ! ($transient_simulation) ) { $transient_simulation=1; print DEBUG "INFO: setting simulation type to transient based on the detection of at least one transient variable\n"; }
   if ($variable{"newtient"} && ! ($newtient_simulation) ) { $newtient_simulation=1; print DEBUG "INFO: setting simulation type to newtient based on detection of at least one newtient variable\n"; }
   foreach $mvar ( 1 .. $m{"system"} ) {
-    if ($variable{"system"}[$mvar]{"name"} eq "<transientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $transient_simulation; }
-    if ($variable{"system"}[$mvar]{"name"} eq "<newtientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $newtient_simulation; }
+    if ($variable{"system"}[$mvar]{"name"} eq "<transientsimulation>") { $variable{"system"}[$mvar]{"maxima"} = $transient_simulation; }
+    if ($variable{"system"}[$mvar]{"name"} eq "<newtientsimulation>") { $variable{"system"}[$mvar]{"maxima"} = $newtient_simulation; }
   }
 
 # tell the user if multiple definitions were used anywhere
@@ -3934,6 +4004,10 @@ sub create_allocations {
           $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.
             "$basename{$type}($variable{$type}[$mvar]{fortran_number})%magnitude_constant=$variable{$type}[$mvar]{magnitude_constant}\n";
         }
+        if ($type ne "local") {
+          $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.
+            "$basename{$type}($variable{$type}[$mvar]{fortran_number})%timesteprewindmultiplier_variable=$variable{$type}[$mvar]{timesteprewindmultiplier_variable}\n";
+        }
       } else {
         $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.
           "\n!$type: $variable{$type}[$mvar]{name} of $variable{$type}[$mvar]{rank} rank\n".
@@ -4245,21 +4319,6 @@ sub run_maxima_fortran {
 }
 
 #-------------------------------------------------------------------------------
-
-sub fortran_logical_string {
-
-  my $string;
-
-  if ($_[0]) {
-    $string = ".true.";
-  } else {
-    $string = ".false.";
-  }
-  return $string;
-
-}
-
-#-------------------------------------------------------------------------------
 # this takes a single maxima line and converts it into a single fortran line with
 #  references suitable for the final code
 
@@ -4284,7 +4343,7 @@ sub maxima_to_fortran {
 
     foreach $mvar ( 1 .. $m{$type}) {
 
-      if (nonempty($variable{$type}[$mvar]{"mfortran"})) { # mfortran is empty in (system) variables that have a maxima name that is an actual value (eq transientdelta)
+      if (nonempty($variable{$type}[$mvar]{"mfortran"})) { # mfortran is empty in (system) variables that have a maxima name that is an actual value (eq transientsimulation)
         push(@searches,$variable{$type}[$mvar]{"mfortran"});
         push(@replaces,$variable{$type}[$mvar]{"fortran"});
 				if (nonempty($variable{$type}[$mvar]{"kernel_type"})) {
@@ -4437,23 +4496,18 @@ sub create_fortran_equations {
           "$variable{$type}[$mvar]{fortranns} = 1.d0\n\n";
       }
 
-# for conditions write skip statements
+# for conditions write skip statements (existence of at least one condition now previously done)
       if ($type eq "condition") {
-        if (nonempty($variable{$type}[$mvar]{"conditions"})) {
-          $sub_string{$type}=$sub_string{$type}."if (.not.(";
-          $firstcondition = 1;
-          foreach my $condition_type ("output", "stop", "convergence", "bell") {
-            if ($variable{$type}[$mvar]{"conditions"} =~ /(^|\,)\s*($condition_type)\s*(\,|$)/) {
-              if (!($firstcondition)) { $sub_string{$type}=$sub_string{$type}.".or."; }
-              $sub_string{$type} = $sub_string{$type}."condition_type == \"$condition_type\"";
-              $firstcondition = 0;
-            }
+        $sub_string{$type}=$sub_string{$type}."if (.not.(";
+        $firstcondition = 1;
+        foreach my $condition_type ("output", "stop", "error", "convergence", "bell", "timesteprewind", "newtsteprewind") {
+          if ($variable{$type}[$mvar]{"conditions"} =~ /(^|\,)\s*($condition_type)\s*(\,|$)/) {
+            if (!($firstcondition)) { $sub_string{$type}=$sub_string{$type}.".or."; }
+            $sub_string{$type} = $sub_string{$type}."condition_type == \"$condition_type\"";
+            $firstcondition = 0;
           }
-          $sub_string{$type}=$sub_string{$type}.")) cycle\n\n";
-        } else {
-          $sub_string{$type}=$sub_string{$type}."cycle\n\n";
-          print "WARNING: CONDITION variable $variable{$type}[$mvar]{name} has no condition option listed\n";
         }
+        $sub_string{$type}=$sub_string{$type}.")) cycle\n\n";
       }
 
 # form reflect strings for relevant kernel, cellicells and faceicells based regions
@@ -4962,7 +5016,7 @@ sub create_fortran_equations {
 # for a condition check on the sign and possibly exit
       if ($type eq "condition") {
         $sub_string{$type}=$sub_string{$type}.
-          "if ($variable{$type}[$mvar]{fortranns} > 0.d0) then\ncheck_condition = .true.\nreturn\nend if\n\n";
+          "if ($variable{$type}[$mvar]{fortranns} > 0.d0) then\nfind_condition = m\nreturn\nend if\n\n";
       }
 
 # close loop, possibly dealing with separation stuff
@@ -5513,28 +5567,56 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"maxima"} = "random";
   $variable{"system"}[$m{"system"}]{"fortran"} = "random()";
   $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timestep>"; # double precision representation of timestep
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timestep";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timestep)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewind>"; # double precision representation of timesteprewind, which is the number of timesteps to rewind during a timesteprewind (or 0 for timesteprewind off)
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewind";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewind)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewindmax>"; # double precision representation of timesteprewindmax, which is the maximum number of consecutive timesteprewinds to do
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewindmax";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewindmax)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewindsdone>"; # double precision representation of timesteprewindsdone
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewindsdone";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewindsdone)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewindstored>"; # double precision representation of timesteprewindstored
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewindstored";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewindstored)";
+  $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtstep>"; # double precision representation of newtstep
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtstep";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(newtstep)";
   $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<timestep>"; # double precision representation of timestep
-  $variable{"system"}[$m{"system"}]{"maxima"} = "timestep";
-  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timestep)";
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtstepconverged>"; # 0 or 1 depending on whether latest newtstep loop converged
+  $variable{"system"}[$m{"system"}]{"maxima"} = "newtstepconverged";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "arb_variable_from_fortran_logical(newtstepconverged)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtstepfailed>"; # 0 or 1 depending on whether latest newtstep loop failed (ie, there was an error during the step)
+  $variable{"system"}[$m{"system"}]{"maxima"} = "newtstepfailed";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "arb_variable_from_fortran_logical(newtstepfailed)";
   $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtres>"; # latest evalulation of the newton residual
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtres";
   $variable{"system"}[$m{"system"}]{"fortran"} = "newtres";
   $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtrestol>"; # latest evalulation of the newton residual
+  $variable{"system"}[$m{"system"}]{"maxima"} = "newtrestol";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "newtrestol";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<transientsimulation>"; # 0 or 1 depending on whether simulation is transient or not (formerly <transientdelta>, but renamed v0.58)
+# actual values for transientsimulation and newtientsimulation have to be set once the input files have been read - done in the interests of simplification of maximum equations
+  $variable{"system"}[$m{"system"}]{"maxima"} = 0;
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtientsimulation>"; # 0 or 1 depending on whether simulation is newtient or not (formerly <newtientdelta>, but renamed v0.58)
+  $variable{"system"}[$m{"system"}]{"maxima"} = 0;
+  $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<separation>"; # double precision representation of current separation
   $variable{"system"}[$m{"system"}]{"maxima"} = "separation";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(someloop(thread)%separation_list(someloop(thread)%current_separation_list(1))%nseparation)";
-  $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<transientdelta>"; # 0 or 1 depending on whether simulation is transient or not
-# actual values for transientdelta and newtientdelta have to be set once the input files have been read
-  $variable{"system"}[$m{"system"}]{"maxima"} = 0;
-  $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<newtientdelta>"; # 0 or 1 depending on whether simulation is newtient or not
-  $variable{"system"}[$m{"system"}]{"maxima"} = 0;
 
 #------------------------------------
 

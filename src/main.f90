@@ -46,8 +46,7 @@ use output_module
 
 implicit none
 character(len=1000) :: formatline
-integer :: ierror = 0
-logical :: newtconverged
+integer :: ierror = 0, condition_number
 logical, parameter :: debug = .true.
 
 !---------------------------------------------------
@@ -90,6 +89,12 @@ end if
 if (.not.transient_simulation) then
   backline = newtline
   newtline = timeline
+end if
+
+if (timesteprewind /= 0) then
+  newtstepmaxtimesteprewindlimited = newtstepmaxiftimesteprewind
+  call timesteprewind_setup ! setup the timesteprewind data structures
+  call timesteprewind_save ! save the timesteprewind data
 end if
 
 !---------------------------------------
@@ -147,14 +152,15 @@ time_loop: do while ( &
 !--------------------
 ! newton loop
 
-  newtconverged = .false.
-  if (newtres <= newtrestol) newtconverged = .true.
-  if (.not.newtconverged) then
-    if (check_condition("convergence")) newtconverged = .true.
+  newtstepconverged = .false.
+  if (newtres <= newtrestol) newtstepconverged = .true.
+  if (.not.newtstepconverged) then
+    if (check_condition("convergence")) newtstepconverged = .true.
   end if
+  newtstepfailed = .false.
 
-  newt_loop: do while (((.not.newtconverged.and.newtstep < newtstepmax).or. &
-      newtstep < newtstepmin).and.ierror == 0)
+  newt_loop: do while ((.not.newtstepconverged.and.newtstep < min(newtstepmax,newtstepmaxtimesteprewindlimited)).or. &
+      newtstep < newtstepmin)
 
     newtstep = newtstep + 1
 
@@ -186,7 +192,7 @@ time_loop: do while ( &
     if (convergence_details_file) write(fconverge,'(a,g16.9,a)') &
       "INFO: initial newton loop newtres = ",newtres," after updating variable magnitudes"
 
-    if (newtconverged.and.newtstep > newtstepmin) then
+    if (newtstepconverged.and.newtstep > newtstepmin) then
       write(*,'(a,g10.3,a)') "INFO: skipping newtsolver as newtres/newtrestol = ",newtres/newtrestol," using existing unknowns"
       if (convergence_details_file) write(fconverge,'(a,g10.3,a)') "INFO: skipping newtsolver as newtres/newtrestol = ", &
         newtres/newtrestol," using existing unknowns"
@@ -270,13 +276,13 @@ time_loop: do while ( &
     if (convergence_details_file) call flush(fconverge)
 
 ! check whether solution is converged
-    if (newtres <= newtrestol) newtconverged = .true.
-    if (.not.newtconverged) then
-      if (check_condition("convergence")) newtconverged = .true.
+    if (newtres <= newtrestol) newtstepconverged = .true.
+    if (.not.newtstepconverged) then
+      if (check_condition("convergence")) newtstepconverged = .true.
     end if
 
 ! only check for stopfile if output isn't converged
-    if (.not.newtconverged) then
+    if (.not.newtstepconverged) then
       if (check_stopfile("stopnewt")) then
         write(*,'(a)') 'INFO: user has requested simulation stop via a stop file'
         ierror = -1 ! negative ierror indicates that user stopped arb before convergence complete
@@ -290,9 +296,47 @@ time_loop: do while ( &
       call flush(fconverge)
     end if
 
+! exit now, basically from stopfile
+    if (ierror /= 0) exit newt_loop
+
   end do newt_loop
 !--------------------
 
+  if (ierror > 0) newtstepfailed = .true. ! update <newtstepfailed>
+
+  if (timesteprewind > 0) then
+    condition_number = find_condition("timesteprewind")
+    if (condition_number /= 0) then
+      formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a,"//trim(dindexformat(timestep))// &
+       ",a,"//trim(dindexformat(timesteprewindstored))//")"
+      write(*,fmt=formatline) 'TIMESTEPREWIND: timesteprewind triggered by timesteprewindcondition variable '// &
+        trim(var(condition_number)%name)//': before rewind: timesteprewindsdone = ',timesteprewindsdone,': timestep = ',timestep, &
+        ': timesteprewindstored = ',timesteprewindstored
+      if (timesteprewindsdone < timesteprewindmax) then
+        timesteprewindsdone = timesteprewindsdone + 1
+        if (timesteprewindsdone == timesteprewindmax) then
+          if (newtstepmaxtimesteprewindlimited /= huge(1)) then
+            newtstepmaxtimesteprewindlimited = huge(1) ! this the last possible rewind step, so remove the newtstep limit
+            write(*,'(a)') 'TIMESTEPREWIND: removing newtstepmaxiftimesteprewind restricting for the next timesteprewind'
+          end if
+        end if
+        call timesteprewind_rewind ! this also rewinds timestep
+        formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a,"//trim(dindexformat(timestep))// &
+         ",a,"//trim(dindexformat(timesteprewindstored))//")"
+        write(*,fmt=formatline) 'TIMESTEPREWIND: after rewind: timesteprewindsdone = ',timesteprewindsdone, &
+          ': timestep = ',timestep,': timesteprewindstored = ',timesteprewindstored
+        ierror = 0 ! reset ierror if required
+        cycle time_loop
+      else
+        formatline = "(a,"//trim(dindexformat(timesteprewindsdone))//",a)"
+        write(*,fmt=formatline) &
+          'TIMESTEPREWIND: timesteprewind cancelled as timesteprewindsdone is already equal to timesteprewindmax'// &
+          ': timesteprewindmax = ',timesteprewindmax
+      end if
+    end if
+!   write(*,fmt=formatline) 'TIMESTEPREWIND: not triggered'
+  end if
+    
   if (ierror > 0) then
     formatline = "(a,"//trim(dindexformat(ierror))//")"
     write(*,fmt=formatline) 'ERROR: problem in some solution routine within newton loop: error number = ',ierror
@@ -300,12 +344,12 @@ time_loop: do while ( &
   else if (ierror < 0) then
     write(*,'(a)') 'ERROR: newton solver did not converge due to user created stop file'
     exit time_loop
-  else if (newtconverged) then
+  else if (newtstepconverged) then
     if (newtres <= newtrestol) then
-      write(*,'(a)') 'INFO: newton iterations have converged due to newtres condition'
+      write(*,'(a)') 'INFO: newton iterations have converged based on newtres (<= newtrestol)'
     else
       write(*,'(a)') &
-        'INFO: user-specified newton loop convergence condition satisfied'
+        'INFO: user-specified newton loop convergencecondition satisfied'
     end if
   else
     write(*,'(a)') 'ERROR: newton solver did not converge'
@@ -348,6 +392,27 @@ time_loop: do while ( &
 ! if not a transient simulation then exit loop
   if (.not.transient_simulation) exit time_loop
 
+! reset timesteprewindsdone if this is a timesteprewind simulation, noting that to be here the last step must have been successful
+  if (timesteprewind > 0) then
+    if (timesteprewindsdone > 0) then
+      formatline = "(a,"//trim(dindexformat(timesteprewindstored))//",a,"//trim(dindexformat(timesteprewindsdone))//",a,"// &
+        trim(dindexformat(timestep))//")"
+      if (timesteprewindstored == timesteprewind) then
+        write(*,fmt=formatline) 'TIMESTEPREWIND: after ',timesteprewindstored,' successful timestep(s) resetting '// &
+          'timesteprewindsdone : before reset: timesteprewindsdone = ',timesteprewindsdone,': timestep = ',timestep
+        timesteprewindsdone = 0
+        if (newtstepmaxtimesteprewindlimited /= newtstepmaxiftimesteprewind) then
+          newtstepmaxtimesteprewindlimited = newtstepmaxiftimesteprewind ! reset this as it is based on timesteprewindsdone
+          write(*,'(a)') 'TIMESTEPREWIND: reinstating newtstepmaxiftimesteprewind restricting for the next timesteprewind'
+        end if
+      else
+        write(*,fmt=formatline) 'TIMESTEPREWIND: only ',timesteprewindstored,' successful timestep(s) since rewind: not '// &
+          'resetting timesteprewindsdone yet: timesteprewindsdone = ',timesteprewindsdone,': timestep = ',timestep
+      end if
+    end if
+    call timesteprewind_save ! save the data from the successful step
+  end if
+
 end do time_loop
 !---------------------------------------
 
@@ -356,14 +421,22 @@ if (trim(output_step_file) == "final") call output_step(action="write")
 if (output_timings) write(*,'(2(a,g10.3))') 'TIMING: total wall time = ',total_wall_time,': total cpu time = ',total_cpu_time
 
 ! if there was an error or earlier stop requested then exit without closing timestep
-if (ierror /= 0) then
-  write(*,'(a)') "WARNING: the last output is not converged"
+condition_number = find_condition("error")
+if (ierror /= 0.or.condition_number /= 0) then
+  if (ierror /= 0) then
+    write(*,'(a)') "WARNING: the last output is not converged"
+  else
+    write(*,'(a)') "WARNING: simulation stopping due to user-specified errorcondition "//trim(var(condition_number)%name)
+  end if
   write(*,'(a)') 'INFO: a debug output file (debug.output.msh) is being written that contains the current values of '// &
     'all variable components'
   call output(debug_dump=.true.)
   if (trim(output_step_file) == "timestep") call output_step(action="write",do_update_outputs=.false.)
   write(*,'(a)') "ERROR: the simulation was not successful"
 else
+  condition_number = find_condition("stop")
+  if (condition_number /= 0) write(*,'(a)') "INFO: simulation stopping due to user-specified stopcondition "// &
+    trim(var(condition_number)%name)
   write(*,'(a)') "SUCCESS: the simulation finished gracefully"
 end if
 
