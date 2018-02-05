@@ -635,11 +635,13 @@ sub parse_solver_code {
     }
 
 #-------------------
-# ref: default and override options
+# ref: default and ref: override options
 # set or reset any generic options for variables
 # default options go before the individual options so any relevant individual options take precedence over these
 # override options go at the end of the individual options so override any individual options
-# also, each DEFAULT|OVERRIDE_OPTIONS statement clears previous statement of the same form
+# also, an empty DEFAULT|OVERRIDE_OPTIONS statement clears previous statement of the same form (optionally DEFAULT_OPTIONS CANCEL etc too)
+# new for v0.58, options are appended to previously defined options
+# note that options are stored in a hash, so the order that they are applied is random (within each specific category)
 # now these can be specific to variables, regions, centrings etc: format is DEFAULT|OVERRIDE_CENTRING (optional)_TYPE (UNKNOWN|DERIVED etc, optional)_VARIABLE|REGION (optional)_OPTIONS
   } elsif ($line =~ /^((DEFAULT|OVERRIDE)_((NONE|CELL|FACE|NODE)_|)((UNKNOWN|DERIVED|EQUATION|OUTPUT|TRANSIENT|NEWTIENT|CONDITION|LOCAL)_|)((VARIABLE|REGION)_|)OPTION(S|))\s*($|\s)/i) {
     my $option_key = "\L$1";
@@ -996,8 +998,8 @@ sub parse_solver_code {
       $::asread_variable[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
       $::asread_variable[$masread]{"options"} =~ s/\s*//g;
       if (nonempty($::asread_variable[$masread]{"options"})) {
-        print "INFO: adding options to: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
-        print ::DEBUG "INFO: adding options to: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
+        print "INFO: adding options to variable: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
+        print ::DEBUG "INFO: adding options to variable: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
       }
     }
 #-------
@@ -1138,15 +1140,61 @@ sub parse_solver_code {
         else { $::region[$masread]{"part_of"} = ''; print ::DEBUG "INFO: cancelling any possible ON region for region $name\n"; }
       }
         
-  # region options
+#     $line =~ s/^\s*//; # remove any leading space from the line
+#     if (nonempty($line)) {
+#       $::region[$masread]{"options"} = $::region[$masread]{"options"}.",".$line;
+#       $::region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
+#       $::region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
+#       print ::DEBUG "INFO: adding options to: region = $::region[$masread]{name}: masread = $masread: options = $::region[$masread]{options}\n";
+#       $line = ''; # nothing is now left in the line
+#     }
+
+
+# region options
       $line =~ s/^\s*//; # remove any leading space from the line
-      if (nonempty($line)) {
+# add any specific options to string, worrying about duplicate commas etc later
+      if (empty($::region[$masread]{"options"})) {
+        $::region[$masread]{"options"} = $line;
+      } else {
         $::region[$masread]{"options"} = $::region[$masread]{"options"}.",".$line;
-        $::region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
-        $::region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
-        print ::DEBUG "INFO: adding options to: region = $::region[$masread]{name}: masread = $masread: options = $::region[$masread]{options}\n";
-        $line = ''; # nothing is now left in the line
       }
+      $line = ''; # nothing is now left in the line
+# run through default and override options looking for any that are relevant:
+#print "MATCH: variable has: centring = $::region[$masread]{centring}: type = $::region[$masread]{type}\n"; 
+      foreach my $option_key ( keys(%default_override_options) ) {
+#print "MATCH: option_key = $option_key\n";
+# examine key to determine whether it is specific to this variable
+        if ($option_key =~ /^((DEFAULT|OVERRIDE)_((NONE|CELL|FACE|NODE)_|)((UNKNOWN|DERIVED|EQUATION|OUTPUT|TRANSIENT|NEWTIENT|CONDITION|LOCAL)_|)((VARIABLE|REGION)_|)OPTION(|S))$/i) {
+#                             12                  34                       56                                                                      78                        
+#print "MATCH: looking for match: 2 = $2: 4 = $4: 6 = $6: 8 = $8\n";
+          if (nonempty($8)) { if ($8 ne "region") { next; } } # only for regions or no specification (ie, variables and regions)
+          if (nonempty($4)) { if ($4 ne $::region[$masread]{centring}) { next; } } # only for same centring, or no specification (ie all centrings)
+          if (nonempty($6)) { if ($6 ne $::region[$masread]{type}) { next; } } # only for same type, or no specification (ie all types)
+          if ($2 eq "default") { # default goes before
+            $::region[$masread]{"options"} = $default_override_options{$option_key}.",".$::region[$masread]{"options"};
+          } else { # override goes after
+            $::region[$masread]{"options"} = $::region[$masread]{"options"}.",".$default_override_options{$option_key};
+          }
+        } else {
+          error_stop("internal error with option_key = $option_key");
+        }
+      }
+# remove leading, trailing and duplicate commas, and any space
+      $::region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
+      $::region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
+      $::region[$masread]{"options"} =~ s/\s*//g;
+      if (nonempty($::region[$masread]{"options"})) {
+        print "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}\n";
+        print ::DEBUG "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}\n";
+      }
+
+
+
+
+
+
+
+
 
       print "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".
         "type = $::region[$masread]{type}: location = $::region[$masread]{location}{description}: ".
