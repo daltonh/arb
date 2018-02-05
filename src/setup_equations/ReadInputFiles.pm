@@ -69,8 +69,7 @@ my $unwrapped_inserted_hash = "#(hash inserted during unwrap)"; # hash to add wh
 my $unwrapped_created_hash = "#(comment created during unwrap)"; # hash to add whenever a line is not to be included in the unwrapped_input.arb file
 
 my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
-my $default_options = ""; # default options prepended to each statement read in
-my $override_options = ""; # override options appended to each statement read in
+my %default_override_options; # default options prepended to each statement read in, override options appended to each statement read in
 
 #--------------------------------------------------------------
 # parse all *.arb files - this is called from main
@@ -636,34 +635,33 @@ sub parse_solver_code {
     }
 
 #-------------------
-# ref: default options
-# set or reset any default options for variables (these go before the individual options so any relevant individual options take precedence over these)
-# also, each DEFAULT_OPTIONS statement clears previous DEFAULT_OPTIONS statements
-  } elsif ($line =~ /^DEFAULT_OPTIONS\s*($|\s)/i) {
-    $default_options = $';
-    ($default_options) = $default_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
-    if (empty($default_options)) {
-      print ::DEBUG "INFO: default options have been removed via: $filelinelocator\n";
+# ref: default and override options
+# set or reset any generic options for variables
+# default options go before the individual options so any relevant individual options take precedence over these
+# override options go at the end of the individual options so override any individual options
+# also, each DEFAULT|OVERRIDE_OPTIONS statement clears previous statement of the same form
+# now these can be specific to variables, regions, centrings etc: format is DEFAULT|OVERRIDE_CENTRING (optional)_TYPE (UNKNOWN|DERIVED etc, optional)_VARIABLE|REGION (optional)_OPTIONS
+  } elsif ($line =~ /^((DEFAULT|OVERRIDE)_((NONE|CELL|FACE|NODE)_|)((UNKNOWN|DERIVED|EQUATION|OUTPUT|TRANSIENT|NEWTIENT|CONDITION|LOCAL)_|)((VARIABLE|REGION)_|)OPTION(S|))\s*($|\s)/i) {
+    my $option_key = "\L$1";
+    my $option_string = $';
+    ($option_string) = $option_string =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
+    if (empty($option_string) || $option_string =~ /^CANCEL$/i ) {
+      $default_override_options{$option_key} = '';
+      print "INFO: "."\U$option_key"." options have been removed\n";
+      print ::DEBUG "INFO: "."\U$option_key"." options have been removed via: $filelinelocator\n";
     } else {
-      print ::DEBUG "INFO: default options have been set to $default_options via: $filelinelocator\n";
-    }
-
-#-------------------
-# ref: override options
-# set or reset any override options (these go at the end of the individual options so override any individual options)
-# also, each OVERRIDE_OPTIONS statement clears previous OVERRIDE_OPTIONS statements
-  } elsif ($line =~ /^OVERRIDE_OPTIONS\s*($|\s)/i) {
-    $override_options = $';
-    ($override_options) = $override_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
-    if (empty($override_options)) {
-      print ::DEBUG "INFO: override options have been removed via: $filelinelocator\n";
-    } else {
-      print ::DEBUG "INFO: override options have been set to $override_options via: $filelinelocator\n";
+      if (empty($default_override_options{$option_key})) {
+        $default_override_options{$option_key} = $option_string;
+      } else {
+        $default_override_options{$option_key} = $default_override_options{$option_key}.",".$option_string;
+      }
+      print "INFO: "."\U$option_key"." have been set to $default_override_options{$option_key}\n";
+      print ::DEBUG "INFO: "."\U$option_key"." have been set to $default_override_options{$option_key} via: $filelinelocator\n";
     }
 
 #-------------------
 # these are commands that need to be transferred unaltered to the arb input file
-# TODO: standardise options keyword -> KERNEL_OPTION only - is plural used elsewhere?
+# TODO: standardise options keyword -> KERNEL_OPTION only - is plural used elsewhere? - Yes, plural should be the default, but now allow both
 # also check on specific transientsimulation and newtientsimulation (option) statements
   } elsif ( $line =~ /^(((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|GLUE_FACES)($|\s)/i ) {
     my $keyword = "\U$1";
@@ -963,21 +961,43 @@ sub parse_solver_code {
         $line = $';
       }
 
-  # store raw options in the ::asread_variable array now
-  # variable and compound option lists will be assembled later
+# store raw options in the ::asread_variable array now
+# variable and compound option lists will be assembled later
       $line =~ s/^\s*//; # remove any leading space from the line
-      if (nonempty($line) || nonempty($default_options) || nonempty($override_options)) {
-        $line = $default_options.','.$line.','.$override_options;
-        $line =~ s/(^\,+\s*)|(\s*\,+$)//;
-        $line =~ s/\s*\,+\s*/,/g;
-        if (empty($::asread_variable[$masread]{"options"})) {
-          $::asread_variable[$masread]{"options"} = $line;
+# add any specific options to string, worrying about duplicate commas etc later
+      if (empty($::asread_variable[$masread]{"options"})) {
+        $::asread_variable[$masread]{"options"} = $line;
+      } else {
+        $::asread_variable[$masread]{"options"} = $::asread_variable[$masread]{"options"}.",".$line;
+      }
+      $line = ''; # nothing is now left in the line
+# run through default and override options looking for any that are relevant:
+#print "MATCH: variable has: centring = $::asread_variable[$masread]{centring}: type = $::asread_variable[$masread]{type}\n"; 
+      foreach my $option_key ( keys(%default_override_options) ) {
+#print "MATCH: option_key = $option_key\n";
+# examine key to determine whether it is specific to this variable
+        if ($option_key =~ /^((DEFAULT|OVERRIDE)_((NONE|CELL|FACE|NODE)_|)((UNKNOWN|DERIVED|EQUATION|OUTPUT|TRANSIENT|NEWTIENT|CONDITION|LOCAL)_|)((VARIABLE|REGION)_|)OPTION(|S))$/i) {
+#                             12                  34                       56                                                                      78                        
+#print "MATCH: looking for match: 2 = $2: 4 = $4: 6 = $6: 8 = $8\n";
+          if (nonempty($8)) { if ($8 ne "variable") { next; } } # only for variables or no specification (ie, variables and regions)
+          if (nonempty($4)) { if ($4 ne $::asread_variable[$masread]{centring}) { next; } } # only for same centring, or no specification (ie all centrings)
+          if (nonempty($6)) { if ($6 ne $::asread_variable[$masread]{type}) { next; } } # only for same type, or no specification (ie all types)
+          if ($2 eq "default") { # default goes before
+            $::asread_variable[$masread]{"options"} = $default_override_options{$option_key}.",".$::asread_variable[$masread]{"options"};
+          } else { # override goes after
+            $::asread_variable[$masread]{"options"} = $::asread_variable[$masread]{"options"}.",".$default_override_options{$option_key};
+          }
         } else {
-          $::asread_variable[$masread]{"options"} = $::asread_variable[$masread]{"options"}.",".$line;
+          error_stop("internal error with option_key = $option_key");
         }
-        print ::DEBUG "INFO: adding options $line to: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
-  # now clean up by removing any leading, repeated or trailing commas
-        $line = ''; # nothing is now left in the line
+      }
+# remove leading, trailing and duplicate commas, and any space
+      $::asread_variable[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
+      $::asread_variable[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
+      $::asread_variable[$masread]{"options"} =~ s/\s*//g;
+      if (nonempty($::asread_variable[$masread]{"options"})) {
+        print "INFO: adding options to: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
+        print ::DEBUG "INFO: adding options to: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
       }
     }
 #-------
