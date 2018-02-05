@@ -2350,6 +2350,7 @@ do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
   m = var_list(var_list_number_all_region)%list(nvar)
   region_l = var_list(var_list_number_all_region)%region(nvar)
   if (region_l) cycle
+  if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
   if (var(m)%timesteprewindmultiplier_variable /= 0) then
     if (trim(var(var(m)%timesteprewindmultiplier_variable)%centring) /= 'none') call error_stop( &
       'centring of timesteprewindmultiplier '//trim(var(var(m)%timesteprewindmultiplier_variable)%name)//' for var ' &
@@ -2366,6 +2367,7 @@ do nvar = 1, allocatable_size(var_list(var_list_number_all_region)%list)
   m = var_list(var_list_number_all_region)%list(nvar)
   region_l = var_list(var_list_number_all_region)%region(nvar)
   if (region_l) cycle
+  if (.not.var(m)%timesteprewind) cycle ! and only for timesteprewind variables
   if (var(m)%timesteprewindmultiplier /= 1.d0) then
     do ns = 1, ubound(var(m)%funk,1)
       var(m)%funk(ns)%v = var(m)%funk(ns)%v*var(m)%timesteprewindmultiplier

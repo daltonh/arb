@@ -769,7 +769,7 @@ subroutine read_gmesh_file(gmesh_number,file_centring,contents,var_number)
 ! - defines faces (dimensions, icell, knode, gtype), adds to relevant region list and sets jtotal
 
 use general_module
-integer :: gmesh_number, gmsh_bin, n, error
+integer :: gmesh_number, gmsh_bin, error
 integer, optional :: var_number
 real :: gmsh_version
 character(len=1000) :: textline, filename
@@ -786,14 +786,6 @@ else
 ! noting that centring is the last addition to the gmesh filename
   filename = trim(gmesh(gmesh_number)%basename)//"."//trim(file_centring)//".msh"
 end if
-
-! filename = trim(gmesh(gmesh_number)%filename)
-! ! for centringinput alter filename to suit either cell or face
-! if (file_centring == "cell" .or. file_centring == "face" .or. file_centring == "node" .or. file_centring == "none") then
-!   n = scan(filename,'.',.true.)
-!   if (n == 0) call error_stop("problem constructing centring filename in subroutine read_gmesh_file: "//trim(filename))
-!   filename = filename(1:n)//trim(file_centring)//"."//filename(n+1:len(filename))
-! end if
 
 if (debug) write(*,*) ' reading in filename = '//trim(filename)
 open(unit=fgmsh,file=trim(gmesh(gmesh_number)%dirname)//trim(filename),status='old',iostat=error)

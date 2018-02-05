@@ -94,9 +94,7 @@ do m = 1, ubound(region,1)
 ! set timestep and newtstep rewind options for regions:
 ! first set default timesteprewind behaviours, other defaults are set in general_module.f90
   if (region(m)%dynamic.and. &
-    (region(m)%type == 'unknown'.or.region(m)%type == 'transient'.or.region(m)%type == 'newtient'.or. &
-    (timesteprewindincludederiveds.and.region(m)%type == 'derived').or. &
-    (timesteprewindincludeoutputs.and.region(m)%type == 'output'))) then ! could think more about efficiency of newtient inclusion here, but very edge case
+    (region(m)%type == 'unknown'.or.region(m)%type == 'transient'.or.region(m)%type == 'newtient')) then
     region(m)%timesteprewind = .true.
     region(m)%newtsteprewind = .true.
   else

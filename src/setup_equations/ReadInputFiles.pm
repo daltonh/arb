@@ -1140,16 +1140,6 @@ sub parse_solver_code {
         else { $::region[$masread]{"part_of"} = ''; print ::DEBUG "INFO: cancelling any possible ON region for region $name\n"; }
       }
         
-#     $line =~ s/^\s*//; # remove any leading space from the line
-#     if (nonempty($line)) {
-#       $::region[$masread]{"options"} = $::region[$masread]{"options"}.",".$line;
-#       $::region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
-#       $::region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
-#       print ::DEBUG "INFO: adding options to: region = $::region[$masread]{name}: masread = $masread: options = $::region[$masread]{options}\n";
-#       $line = ''; # nothing is now left in the line
-#     }
-
-
 # region options
       $line =~ s/^\s*//; # remove any leading space from the line
 # add any specific options to string, worrying about duplicate commas etc later
@@ -1187,14 +1177,6 @@ sub parse_solver_code {
         print "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}\n";
         print ::DEBUG "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}\n";
       }
-
-
-
-
-
-
-
-
 
       print "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".
         "type = $::region[$masread]{type}: location = $::region[$masread]{location}{description}: ".

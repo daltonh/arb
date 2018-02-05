@@ -1329,10 +1329,7 @@ end do
 ! set timestep and newtstep rewind options for variables:
 do m = 1, ubound(var,1)
 ! first set default timesteprewind behaviours
-! if (var(m)%type == 'unknown'.or.var(m)%type == 'transient') then
-  if (var(m)%type == 'unknown'.or.var(m)%type == 'transient'.or.var(m)%type == 'newtient'.or. &
-    (timesteprewindincludederiveds.and.var(m)%type == 'derived').or. &
-    (timesteprewindincludeoutputs.and.var(m)%type == 'output')) then ! could think more about efficiency of newtient inclusion here, but very edge case
+  if (var(m)%type == 'unknown'.or.var(m)%type == 'transient'.or.var(m)%type == 'newtient') then
     var(m)%timesteprewind = .true.
     var(m)%newtsteprewind = .true.
   else
@@ -1826,14 +1823,6 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_integer(general_options(n), &
       "timesteprewindmax (maximum number of consecutive timesteprewinds that are allowed)",timesteprewindmax,'general')
     if (timesteprewindmax < 1) call error_stop("timesteprewindmax must be greater than one")
-  else if (trim(option_name) == "timesteprewindincludederiveds" .or. trim(option_name) == "notimesteprewindincludederiveds") then
-    call set_option_logical(general_options(n),'timesteprewindincludederiveds', &
-      "give derived variables and regions the timesteprewind option by default", &
-      timesteprewindincludederiveds,'general')
-  else if (trim(option_name) == "timesteprewindincludeoutputs" .or. trim(option_name) == "notimesteprewindincludeoutputs") then
-    call set_option_logical(general_options(n),'timesteprewindincludeoutputs', &
-      "give derived variables and regions the timesteprewind option by default", &
-      timesteprewindincludeoutputs,'general')
 
 ! newtstep options
   else if (trim(option_name) == "newtstepmax") then

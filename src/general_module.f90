@@ -59,8 +59,6 @@ integer :: timestepadditional = 0 ! (0, userable) minimum number of timesteps th
 integer :: timestepout = 0 ! (0, userable) maximum number of timesteps between output, with zero indicating no output
 integer :: timesteprewind = 0 ! (0, userable) maximum number of timesteps to remember for timestep rewinding purposes - 0 turns off timestep rewinding
 integer :: timesteprewindmax = 10 ! (10, userable) maximum number of consecutive timesteprewinds to do before giving up
-logical :: timesteprewindincludederiveds = .false. ! (.false., userable) by default derived vars and regions aren't given the timesteprewind option, but if this is on, they are (useful for debugging especially, but less efficient)
-logical :: timesteprewindincludeoutputs = .false. ! (.false., userable) by default output vars and regions aren't given the timesteprewind option, but if this is on, they are (useful for debugging especially, but less efficient)
 
 ! newtstep variables (newton loop)
 integer :: newtstep = 0 ! (0, userable) newtstep index (with initial value being initial newtstep, used for restarts)
@@ -3329,7 +3327,7 @@ function dirname(fullname)
 
 character(len=1000) :: dirname
 character(len=*) :: fullname
-integer :: cutr, cutl
+integer :: cutl
 
 cutl=scan(fullname,'/',.true.) ! find rightmost occurance of directory separator
 if (cutl == 0) then
@@ -3719,7 +3717,6 @@ character(len=*) :: option_name
 character(len=*), optional :: option_type ! ie, general, kernel, solver etc
 character(len=20) :: option_type_l ! 
 character(len=*) :: option_variable
-character(len=1000) :: formatline
 logical :: error
 
 option_type_l = ''
