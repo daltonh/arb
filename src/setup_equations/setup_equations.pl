@@ -1744,7 +1744,7 @@ sub organise_user_variables {
   }
 
 #-----------------------------------------------------
-# find and check none-centred timesteprewindmagnitude variable, and convert number to fortran number
+# find and check none-centred timesteprewindmultiplier variable, and convert number to fortran number
 
   foreach $type ( @user_types ) {
     if ($type eq "local") { next; }
