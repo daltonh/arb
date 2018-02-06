@@ -32,8 +32,6 @@ module Units
   }
   PREFIXES.default = 1.0 # default value if no prefix given #}}}
 
-  SI_UNITS = %w[A cd kg K m mol rad s sr]
-
   # Create unit definitions #{{{
   Unit = Struct.new(:name, :sym, :si, :factor, :offset) # attributes are unit name, unit symbol(s) (as array if more than one), equivalent SI units, factor to multiply by to convert to SI units, offset (only for temperatures)
   UNIT_LIST = [
@@ -107,6 +105,7 @@ module Units
     Unit.new('pound', 'lb', 'kg', 0.45359237),
     Unit.new('pound-force', 'lbf', 'kg m s-2', 4.4482216152605),
     Unit.new('pound per square inch', 'psi', 'kg m-1 s-2', 6.894757e3),
+    Unit.new('torr', 'Torr', 'kg m-1 s-2', 1.01325e5/7.6e2),
     Unit.new('yard', 'yd', 'm', 0.9144),
   ].sort_by { |unit| unit.name.downcase } #}}}
 
@@ -130,7 +129,7 @@ module Units
     if units_out.empty? # default to SI units
       factor_out, units_out_dim = 1.0, units_in_dim
       [1, -1].each do |sign| # construct output units string
-        units_in_dim.each { |unit, dim| units_out << "#{unit}#{dim unless dim == 1} " if sign*dim > 0 }
+        Hash[units_in_dim.sort].each { |unit, dim| units_out << "#{unit}#{dim unless dim == 1} " if sign*dim > 0 }
       end
     else
       factor_out, units_out_dim = convert_SI(units_out.strip)
@@ -187,7 +186,7 @@ module Units
     return prefix, unit, exponent ? exponent.to_i : 1
   end #}}}
 
-  private_constant :PREFIXES, :SI_UNITS, :UNIT_LIST, :UNIT_MATCH, :UNITS
+  private_constant :PREFIXES, :UNIT_LIST, :UNIT_MATCH, :UNITS
   private_class_method :extract, :convert_SI
 
 end
