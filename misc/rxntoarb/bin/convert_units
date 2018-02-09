@@ -3,8 +3,8 @@
 abort "ERROR: Ruby 1.9.3 or newer required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9.3'
 
 PROGNAME = 'convert_units'
-VERSION = 1.5
-DATE = '2018-01-30'
+VERSION = 1.6
+DATE = '2018-02-09'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})
   Performs unit conversions.
@@ -44,10 +44,8 @@ if ARGV.empty?
 end
 
 # Do unit conversion
-value_in = ARGV[0]
-units_out = ARGV[1].to_s.empty? ? '' : ARGV[1]
 begin
-  value_out, units_out = Units.convert(value_in, units_out, options)
+  value_out, units_out = Units.convert(ARGV[0], ARGV[1].to_s, options)
 rescue => msg
   abort "ERROR: #{msg}"
 end
