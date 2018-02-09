@@ -97,6 +97,9 @@ our $debug_info_file="debugging_info.txt"; # this is where all the debugging inf
 our $syntax_problems_file="$setup_current_dir/syntax_problems.txt"; # specifically for syntax related messages
 our $setup_equation_file="$build_dir/last_setup_equation_data"; # this file is used to store all of the setup equation data prior to the (expensive) fortran generation
 our $version_file="$arb_dir/licence/version";
+our $rxntoarb_dir="$arb_dir/misc/rxntoarb"; # directory which should contain reactions script
+our $rxntoarb_bin="$rxntoarb_dir/bin/rxntoarb"; # actual rxntoarb script
+if (!(-e $rxntoarb_bin)) { error_stop("rxntoarb script (arb_reactions) is not where it is supposed to be"); };
 
 # create and clear out setup directory of any files
 if (-d $setup_current_dir) { rmtree($setup_current_dir) or error_stop("could not remove existing $setup_current_dir"); } # using rmtree for older File::Path compatibility

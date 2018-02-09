@@ -1433,6 +1433,33 @@ sub extract_deprecated_replacements {
 }
 
 #-------------------------------------------------------------------------------
+# converts an rxn file to an arb file using the rxntoarb script (held in $rxntoarb_bin), changing appropriate code_blocks elements
+# need to think more about options to pass to rxntoarb
+# 
+# on input
+# _[0] = array index of relevant code block
+sub convert_rxn_to_arb_file {
+
+  my $rxn_block = $_[0];
+  $code_blocks[$rxn_block]{"abs_rxn_name"} = $code_blocks[$rxn_block]{"abs_name"};
+  $code_blocks[$rxn_block]{"rxn_name"} = $code_blocks[$rxn_block]{"name"};
+  $code_blocks[$rxn_block]{"abs_name"} =~ s/\.rxn$/.arb/;
+  $code_blocks[$rxn_block]{"name"} =~ s/\.rxn$/.arb/;
+  $code_blocks[$rxn_block]{"file_type"} = 'rxn';
+  
+  print "INFO: attempting to create arb file $code_blocks[$rxn_block]{abs_name} from rxn file $code_blocks[$rxn_block]{abs_rxn_name}\n";
+  print ::DEBUG "INFO: attempting to create arb file $code_blocks[$rxn_block]{abs_name} from rxn file $code_blocks[$rxn_block]{abs_rxn_name}\n";
+  if (-e $code_blocks[$rxn_block]{"abs_name"}) {
+    unlink($code_blocks[$rxn_block]{"abs_name"}) or error_stop("could not remove existing $code_blocks[$rxn_block]{abs_name} when running attempting to run rxntoarb on $code_blocks[$rxn_block]{abs_rxn_name}");  
+  }
+  print "INFO: the following output is from the rxntoarb script:\n";
+  my $systemcall="$::rxntoarb_bin -o $code_blocks[$rxn_block]{abs_name} $code_blocks[$rxn_block]{abs_rxn_name}";
+  (!(system("$systemcall"))) or error_stop("problem running rxntoarb: file = $code_blocks[$rxn_block]{abs_rxn_name}: systemcall = $systemcall");
+  print "INFO: rxntoarb script finished: arb file successfully created\n";
+  print ::DEBUG "INFO: rxntoarb script finished: arb file successfully created\n";
+
+}
+#-------------------------------------------------------------------------------
 # adds a code block to the top of the code_blocks array
 # if a name and actual name (absolute path) are provided, assumes this is a file and opens that too (new_file = 1)
 # otherwise assumes that block is in the same file (new_file = 0)
@@ -1455,6 +1482,10 @@ sub push_code_block {
     $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a new filehandle for the file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
     $code_blocks[$#code_blocks]{"line_number"} = 0; # signals line has not yet been read
     $code_blocks[$#code_blocks]{"raw_line"} = ''; # signals line has not yet been read
+    $code_blocks[$#code_blocks]{"file_type"} = 'arb'; # by default new file is assumed to contain arb code
+
+# check if the file is an rxn file, and if so, run rxntoarb first to create the arb file
+    if ($abs_name =~ /\.rxn$/) { convert_rxn_to_arb_file($#code_blocks); }
 
 # open file
     my $handle = $code_blocks[$#code_blocks]{"handle"};
@@ -1469,6 +1500,7 @@ sub push_code_block {
     $code_blocks[$#code_blocks]{"handle"}=$code_blocks[$#code_blocks-1]{"handle"};
     $code_blocks[$#code_blocks]{"line_number"}=$code_blocks[$#code_blocks-1]{"line_number"};
     $code_blocks[$#code_blocks]{"raw_line"}=$code_blocks[$#code_blocks-1]{"raw_line"};
+    $code_blocks[$#code_blocks]{"raw_line"}='';
   }
 
   if ($#code_blocks) {
