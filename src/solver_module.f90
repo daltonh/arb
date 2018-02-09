@@ -1126,7 +1126,7 @@ unknown_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_u
   end if
   if (debug_sparse) write(*,'(a,g13.6)') '  final: magnitude = ',var(m)%magnitude
   if (var(m)%magnitude < error_magnitude) call error_stop("The magnitude for unknown variable "//trim(var(m)%name)// &
-    "is approaching zero.  The best scenario is that the solution to the problem has this variable equal to "// &
+    " is approaching zero.  The best scenario is that the solution to the problem has this variable equal to "// &
     "zero.  If this is the case then consider setting the magnitude of this unknown statically "// &
     "(staticmagnitude option in the input file) or decrease the dynamic magnitude multiplier for this variable (via "// &
     "the option dynamicmagnitudemultiplier=value).")
@@ -1207,7 +1207,7 @@ equation_magnitude_loop: do nvar = 1, allocatable_size(var_list(var_list_number_
   end if
   if (debug_sparse) write(*,'(a,g13.6)') '  final: magnitude = ',var(m)%magnitude
   if (var(m)%magnitude < error_magnitude) &
-    call error_stop("The magnitude for equation variable "//trim(var(m)%name)//"is approaching zero.")
+    call error_stop("The magnitude for equation variable "//trim(var(m)%name)//" is approaching zero.")
 end do equation_magnitude_loop
 
 if (debug_sparse) write(*,'(a/80(1h-))') 'subroutine update_magnitudes'
