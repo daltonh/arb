@@ -1,5 +1,5 @@
 # Rxntoarb::Arb
-# (C) Copyright Christian Biscombe 2016-2017
+# (C) Copyright Christian Biscombe 2016-2018
 
 require 'set'
 require_relative 'parameter'
@@ -31,7 +31,7 @@ module Rxntoarb
         # Format kinetic parameters
         if reaction.parameters
           reaction.parameters.each do |par|
-            @constants << "CONSTANT <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka}"
+            @constants << "#{par.value =~ /^['"]/ ? "#{reaction.centring}_DERIVED" : 'CONSTANT'} <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka}" # parameters defined as strings may not be constants
           end
         end
         # Generate rate expressions
