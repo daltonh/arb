@@ -569,7 +569,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       NONE_DERIVED <u_av_calc> "facesum(-<u_f>*<facearea>,<inlet>)/facesum(<facearea>,<inlet>)" # calculate average velocity directed into the domain
       #NONE_DERIVED <u_av_calc> "facesum(-<u_f>*<facearea>*1.d0,<inlet>)/facesum(<facearea>*1.d0,<inlet>)" # calculate average velocity directed into the domain
       
-      # now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <inlet sans centreline> and <inlet centreline>
+      # now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <inlet sans centreline> and <inlet centreline> (from eg inlet_centreline_region template)
       NONE_EQUATION <inlet centreline flowrate equation> "<u_av_calc>-<u_av>" # set flowrate through inlet to give required average velocity
       NONE_DERIVED <inlet centreline gradp> "facesum(<dynamic_force_f>,region=<inlet centreline>)"
       FACE_EQUATION <inlet flowrate equation> "<dynamic_force_f>-<inlet centreline gradp>" ON <inlet sans centreline> # apply specified pressure over inlet
