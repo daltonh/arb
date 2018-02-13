@@ -803,6 +803,7 @@ if (debug) write(*,'(80(1h+)/a)') 'subroutine residual'
 
 newtres = 0.d0
 ierror = 0
+newtstepconverged = .false.
 
 aatmpmax = 0.d0
 nserr = 0
@@ -838,6 +839,12 @@ if (normtype == 1.or.normtype == 2) newtres = newtres/dble(max(ptotal,1))
 if (normtype == 2) newtres = sqrt(newtres)
 
 if (.not.number_is_valid(newtres)) ierror = 3
+
+! update newtstepconverged variable at the same time, also checking on user-specified convergence criteria
+if (newtres <= newtrestol) newtstepconverged = .true.
+if (.not.newtstepconverged) then
+  if (check_condition("convergence")) newtstepconverged = .true.
+end if
 
 if (debug) then ! this is done in check_variable_validity routinely now if convergence_details_file is on
   if (min(nserr,merr) > 0) then

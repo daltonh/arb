@@ -8,7 +8,7 @@
 VERSION 0.58
 INFO_TITLE "Bouncing ball problem, now with dynamic timestepping and timesteprewind"
 INFO_DESCRIPTION "Within this example you can choose either a constant or dynamic timestep, with both working with timestep rewinding.  Also a nasty change to the gravitational constant is introduced to cause numerical havoc.  Remove the limitation on timestepmax at the end of the file to do the full problem"
-INFO_DATE "5/2/18"
+INFO_DATE "13/2/18"
 INFO_AUTHOR "Dalton Harvie"
 #----------------------------------------------------------------------------
 
@@ -68,14 +68,27 @@ IF 1 # turn this on to enable the timesteprewindmultiplier
 # line up the conditions that are going to cause a timesteprewind
 # 1. if the newton step fails (ie, linear solver comes back with an error), do a timesteprewind: this is a pretty standard condition
   CONDITION <newtstep timesteprewind failure condition> "<newtstepfailed>" stepoutput,timesteprewindcondition
+  IF 0
 # 2. if the number of newton steps required to get convergence is greater than this, then do a timesteprewind
-# (an alternative to this is to use newtstepmaxiftimesteprewind=2 combined with an accuracy condition, as in "<newtres>-<newtrestol>" to detect when the newton loop doesn't converge
-  NONE_CONSTANT <newtstep accept> 2.d0
-  CONDITION <newtstep timesteprewind accept condition> "<newtstep>-<newtstep accept>" stepoutput,timesteprewindcondition
+    NONE_CONSTANT <newtstep accept> 2.d0
+    CONDITION <newtstep timesteprewind accept condition> "<newtstep>-<newtstep accept>" stepoutput,timesteprewindcondition
+  ELSE
+# 2. An alternative to this is to use newtstepmaxiftimesteprewind=2 combined with an accuracy condition, as in "<newtres>-<newtrestol>" to detect when the newton loop doesn't converge
+    GENERAL_OPTIONS newtstepmaxiftimesteprewind=2
+#   CONDITION <newtstep timesteprewind accuracy condition> "<newtres>-<newtrestol>" timesteprewindcondition
+    CONDITION <newtstep timesteprewind accuracy condition> "1.d0-<newtstepconverged>" timesteprewindcondition
+  END_IF
 
-# try to get some outputs too
+# output some things about the timesteprewinding process
   NONE_OUTPUT <timesteprewindsdone_output> "<timesteprewindsdone>" # this is the number of rewinds done in a row prior to the timesteprewind data filling back up again
   NONE_OUTPUT <timesteprewindstored_output> "<timesteprewindstored>" # this is the number of timesteprewind data points stored, which will max out at the timesteprewind integer
+  NONE_OUTPUT <newtres_output> "<newtres>"
+  IF 0
+# the only way to see the following variables is to turn on newtstepout=1, as output is generally only written for a successful step 
+    NONE_OUTPUT <newtstepconverged_output> "<newtstepconverged>"
+    NONE_OUTPUT <newtstepfailed_output> "<newtstepfailed>"
+    GENERAL_OPTIONS newtstepout=1
+  END_IF
 END_IF
 
 NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt>" timesteprewind # time
@@ -115,8 +128,10 @@ IF 1
   NONE_TRANSIENT <g> "noneif(<t>-<t_destabilise>,<g_multiplier>,1.d0)*<g_normal>"
 END_IF
 
-NONE_OUTPUT <newtres_output> "<newtres>"
+# also make things generally harder for the linear solver
+GENERAL_OPTIONS newtrestol=1.d-12
+
 #-------------------------------------------------------------------
 # for test problem limit the number of timesteps
-GENERAL_OPTIONS timestepout=2,timestepmax=10
+GENERAL_OPTIONS timestepout=2,timestepmax=20
 #-------------------------------------------------------------------

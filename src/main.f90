@@ -152,11 +152,6 @@ time_loop: do while ( &
 !--------------------
 ! newton loop
 
-  newtstepconverged = .false.
-  if (newtres <= newtrestol) newtstepconverged = .true.
-  if (.not.newtstepconverged) then
-    if (check_condition("convergence")) newtstepconverged = .true.
-  end if
   newtstepfailed = .false.
 
   newt_loop: do while ((.not.newtstepconverged.and.newtstep < min(newtstepmax,newtstepmaxtimesteprewindlimited)).or. &
@@ -274,12 +269,6 @@ time_loop: do while ( &
       end if
     end if
     if (convergence_details_file) call flush(fconverge)
-
-! check whether solution is converged
-    if (newtres <= newtrestol) newtstepconverged = .true.
-    if (.not.newtstepconverged) then
-      if (check_condition("convergence")) newtstepconverged = .true.
-    end if
 
 ! only check for stopfile if output isn't converged
     if (.not.newtstepconverged) then
