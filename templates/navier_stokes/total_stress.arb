@@ -6,6 +6,11 @@ GENERAL_REPLACEMENTS DEFAULT "<<udivfcomment>>" W "#"
 # calculate the velocity divergence (numerical) on each face
 <<udivfcomment>>FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces>
 
+# deal with uniform/nonuniform viscosity
+IF <<uniformviscosity>> # here using flag-type string rather than comment-type string
+  REPLACEMENTS D "<mu_f>" W "<mu>" # only apply this replacement if some specific replacement for <mu_f> hasn't already been defined (as from strain_rate_magnitude for example), noting that the scope of this replacement defined by this line is just this file
+END_IF
+
 # no both cartesian and cylindrical stresses don't include pressure
 # without the numerical velocity divergence
 <<dim1comment>>FACE_LOCAL <tau[l=1,1]> "-<mu_f>*2.d0*<ugrad_f[l=1,1]>" ON <allfaces>

@@ -413,15 +413,17 @@ sub string_set_transient_simulation {
 
   my $simulation = $_[0];
   if ($simulation) {
-    string_set("<<transientcomment>>","","global");
-    string_set("<<steadystatecomment>>","#","global");
-    string_set("<<transientflag>>","1","global");
-    string_set("<<steadystateflag>>","0","global");
+    string_set("<<transientcomment>>","","global"); # use <<transientsimulation>> instead
+    string_set("<<steadystatecomment>>","#","global"); # use <<transientsimulation>> instead
+    string_set("<<transientsimulation>>","1","global");
+    string_set("<<transientflag>>","1","global"); # do not use, this string to be removed in the future
+    string_set("<<steadystateflag>>","0","global"); # do not use, this string to be removed in the future
   } else {
-    string_set("<<transientcomment>>","#","global");
-    string_set("<<steadystatecomment>>","","global");
-    string_set("<<transientflag>>","0","global");
-    string_set("<<steadystateflag>>","1","global");
+    string_set("<<transientcomment>>","#","global"); # use <<transientsimulation>> instead
+    string_set("<<steadystatecomment>>","","global"); # use <<transientsimulation>> instead
+    string_set("<<transientsimulation>>","0","global");
+    string_set("<<transientflag>>","0","global"); # do not use, this string to be removed in the future
+    string_set("<<steadystateflag>>","1","global"); # do not use, this string to be removed in the future
   }
 
 }

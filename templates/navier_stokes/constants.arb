@@ -6,24 +6,25 @@ CONSTANT <u_av> [m/s] 1.d0 # required average inlet velocity (if used, sets flow
 #-------------
 # set default strings using the following template file, which sets up a steady-state solution to the navier-stokes equations, with uniform viscosity and density
 # see below for appropriate statements to change these decisions
-# strings can also be set when calling the template files using per-file replacements
+# these strings are used throughout the navier_stokes template files
+# strings can also be set when calling the template files using per-file replacements, although not advisable
 INCLUDE "default_string_replacements"
 
 # use the following to setup a transient simulation
-#GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+#GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
 
 # could set the transient status based on what type of arb simulation it is, but inadvisable really
-#<<transientcomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
-#<<steadystatecomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W ""
+#<<transientcomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
+#<<steadystatecomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W "" R "<<transientnavierstokes>>" W "0"
 
 # use the following to specify the stokes equations
-#GENERAL_REPLACEMENTS R "<<stokescomment>>" W "" R "<<navierstokescomment>>" W "#"
+#GENERAL_REPLACEMENTS R "<<stokescomment>>" W "" R "<<navierstokescomment>>" W "#" R "<<stokes>>" W "1"
 
 # use the following to specify nonuniform viscosity
-#GENERAL_REPLACEMENTS R "<<uniformviscositycomment>>" W "#" R "<<nonuniformviscositycomment>>" W ""
+#GENERAL_REPLACEMENTS R "<<uniformviscositycomment>>" W "#" R "<<nonuniformviscositycomment>>" W "" R "<<uniformviscosity>>" W "0"
 
 # use the following to specify nonuniform density
-#GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W ""
+#GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W "" R "<<uniformdensity>>" W "0"
 #-------------
 
 # replace any references to the face centred fluid properties with the constant values if they don't vary
