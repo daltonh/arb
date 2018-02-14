@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: channel_flow_with_reflect.arb
    #(comment created during unwrap): new block = channel_flow_with_reflect.arb: sub_block = 0
@@ -64,7 +64,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       # centreline is normal to the 2 axis
       
       # activate cylindrical specific definitions
-      
+      # try not to use these in the future
       
       
       
@@ -88,40 +88,39 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          #-------------
          # set default strings using the following template file, which sets up a steady-state solution to the navier-stokes equations, with uniform viscosity and density
          # see below for appropriate statements to change these decisions
-         # strings can also be set when calling the template files using per-file replacements
+         # these strings are used throughout the navier_stokes template files
+         # strings can also be set when calling the template files using per-file replacements, although this isn't the standard way of implementing these settings
             #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_string_replacements"
             #(hash inserted during unwrap)MARKDOWN
             #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
             #(hash inserted during unwrap)END_MARKDOWN
             
             
             
+            # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
          
          # use the following to setup a transient simulation
-         #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+         #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
          
-         # could set the transient status based on what type of arb simulation it is, but inadvisable really
-         #<<transientcomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
-         #<<steadystatecomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W ""
+         # could set the transient status based on what type of arb simulation it is, but inadvisable really as there are many instances when only a partial-transient simulation is desired
+         #<<transientcomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
+         #<<steadystatecomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W "" R "<<transientnavierstokes>>" W "0"
          
          # use the following to specify the stokes equations
-         #GENERAL_REPLACEMENTS R "<<stokescomment>>" W "" R "<<navierstokescomment>>" W "#"
+         #GENERAL_REPLACEMENTS R "<<stokescomment>>" W "" R "<<navierstokescomment>>" W "#" R "<<stokes>>" W "1"
          
          # use the following to specify nonuniform viscosity
-         #GENERAL_REPLACEMENTS R "<<uniformviscositycomment>>" W "#" R "<<nonuniformviscositycomment>>" W ""
+         #GENERAL_REPLACEMENTS R "<<uniformviscositycomment>>" W "#" R "<<nonuniformviscositycomment>>" W "" R "<<uniformviscosity>>" W "0"
          
          # use the following to specify nonuniform density
-         #GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W ""
+         #GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W "" R "<<uniformdensity>>" W "0"
          #-------------
-         
-         # replace any references to the face centred fluid properties with the constant values if they don't vary
-         # get rid of these replacements and define alternative statements for the face centred fluid properties if they do vary
-         
-         
          
          # numerical data
          CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
@@ -206,12 +205,21 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # calculate the velocity divergence (numerical) on each face
          #FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces>
          
+         # deal with uniform/nonuniform viscosity, allowing for possibility of user setting <mu_f> directly
+         # if you want to overwrite <mu_f>, just define it prior to calling this file and your replacement will overwrite the following
+         # first define this local replacement string in the same scope of the definition statements below (ie, outside scope of if block)
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1  # this evaluates as true (1) if replacement string '<mu_f>' isn't defined, AND <<uniformviscosity>> is on (1)
+            # if we are here then we apply the uniform viscosity substitution, with 'S'='SUBSTITUTE' meaning to replace the value of this string in its previous (above code block here) definition
+            #(hash inserted during unwrap)END_IF
+         #{{ print "IN template total_stress\n".string_debug; }}
+         
          # no both cartesian and cylindrical stresses don't include pressure
          # without the numerical velocity divergence
          FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*<ugrad_f[l=1,1]>" ON <allfaces>
          FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*<ugrad_f[l=2,2]>" ON <allfaces>
          #FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*<ugrad_f[l=3,3]>" ON <allfaces>
-         # overwrite theses if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
+         # overwrite these if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
          # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
          #FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <allfaces>
          #FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <allfaces>
@@ -232,10 +240,13 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)MARKDOWN
             #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
             #(hash inserted during unwrap)END_MARKDOWN
             
             
             
+            # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
          
@@ -376,6 +387,12 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          
          # all equation variants here have viscous contribution, so add this first
          # the rf stands for reciprocal and face centred
+         # same piece of code as in total_stress to deal with <mu_f> replacement
+         # first define this local replacement string in the same scope of the definition statements below (ie, outside scope of if block)
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1  # this evaluates as true (1) if replacement string '<mu_f>' isn't defined, AND <<uniformviscosity>> is on (1)
+            # if we are here then we apply the uniform viscosity substitution
+            #(hash inserted during unwrap)END_IF
          FACE_LOCAL <u_rf_{vis}> "<mu>/<facedx>^2" ON <domainfaces>
          FACE_DERIVED <u_f_{correction}> "<u_rf_{vis}>" ON <domainfaces>
          
@@ -385,19 +402,24 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # include the following line in your input file prior to loading this template file to access the more complex contribution
          #GENERAL_REPLACEMENTS R <<ufadvectioncomplexcomment>> W ""
          
+         # first define this local replacement string in the same scope of the definition statements below (ie, outside scope of if block)
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1  # this evaluates as true (1) if replacement string '<rho_f>' isn't defined, AND <<uniformviscosity>> is on (1)
+            # if we are here then we apply the uniform density substitution
+            #(hash inserted during unwrap)END_IF
          # form opposite string to be consistent with <<ufadvectioncomplexcomment>> 
          
          #GENERAL_REPLACEMENTS R  W "#" 
          # next add simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
-         FACE_LOCAL <u_rf_{adv}> "2.d0*<rho>*abs(<u_f_{raw}>)/<facedx>" ON <domainfaces>
+         FACE_LOCAL <u_rf_{adv}> "2.d0*<mu>*abs(<u_f_{raw}>)/<facedx>" ON <domainfaces>
          # or more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
          #FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <domainfaces>
-         #FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>))" ON <domainfaces>
+         #FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<mu>))" ON <domainfaces>
          
          FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
          
          # for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
-         #FACE_LOCAL <u_rf_{transient}> "<rho>/<dt>" ON <domainfaces>
+         #FACE_LOCAL <u_rf_{transient}> "<mu>/<dt>" ON <domainfaces>
          #FACE_DERIVED <u_f_{correction}> "(-<C_{Rhie-Chow}>*<p_error>+<u_rf_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_{correction}>+<u_rf_{transient}>)"
          # for steady-state just take reciprocal and add pressure contribution
          FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<p_error>/(<u_f_{correction}>)"
@@ -423,10 +445,13 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)MARKDOWN
             #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
             #(hash inserted during unwrap)END_MARKDOWN
             
             
             
+            # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
          
@@ -457,10 +482,13 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)MARKDOWN
             #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
             #(hash inserted during unwrap)END_MARKDOWN
             
             
             
+            # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
          
@@ -483,25 +511,51 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)MARKDOWN
             #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
             #(hash inserted during unwrap)END_MARKDOWN
             
             
             
+            # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
          
-         # cartesian specific
-         #CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
-         #CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
-         #CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
-         ##CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
-         
-         # cylindrical specific
-         CELL_EQUATION <continuity> "celldiv(<facex[l=2]>*<u_f>)/<cellx[l=2]>" ON <domain> # continuity
-         # these also include the hoop stress terms when <<radiusdim?flag>> is appropriately set
-         CELL_EQUATION <momentum[l=1]> "celldiv(<facex[l=2]>*<J_f[l=1]>)/<cellx[l=2]>-<dynamic_force_c[l=1]>+0*2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)" ON <domain> # momentum component
-         CELL_EQUATION <momentum[l=2]> "celldiv(<facex[l=2]>*<J_f[l=2]>)/<cellx[l=2]>-<dynamic_force_c[l=2]>+1*2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)" ON <domain> # momentum component
-         #CELL_EQUATION <momentum[l=3]> "celldiv(<facex[l=2]>*<J_f[l=3]>)/<cellx[l=2]>-<dynamic_force_c[l=3]>+0*2.d0*<u[l=3]>*<mu>/(<cellx[l=3]>**2)" ON <domain> # momentum component
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)# old way
+            #(hash inserted during unwrap)# cartesian specific
+            #(hash inserted during unwrap)#CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
+            #(hash inserted during unwrap)#CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
+            #(hash inserted during unwrap)#CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
+            #(hash inserted during unwrap)##CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)# cylindrical specific
+            #(hash inserted during unwrap)CELL_EQUATION <continuity> "celldiv(<facex[l=2]>*<u_f>)/<cellx[l=2]>" ON <domain> # continuity
+            #(hash inserted during unwrap)# these also include the hoop stress terms when <<radiusdim?flag>> is appropriately set
+            #(hash inserted during unwrap)CELL_EQUATION <momentum[l=1]> "celldiv(<facex[l=2]>*<J_f[l=1]>)/<cellx[l=2]>-<dynamic_force_c[l=1]>+0*2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)" ON <domain> # momentum component
+            #(hash inserted during unwrap)CELL_EQUATION <momentum[l=2]> "celldiv(<facex[l=2]>*<J_f[l=2]>)/<cellx[l=2]>-<dynamic_force_c[l=2]>+1*2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)" ON <domain> # momentum component
+            #(hash inserted during unwrap)#CELL_EQUATION <momentum[l=3]> "celldiv(<facex[l=2]>*<J_f[l=3]>)/<cellx[l=2]>-<dynamic_force_c[l=3]>+0*2.d0*<u[l=3]>*<mu>/(<cellx[l=3]>**2)" ON <domain> # momentum component
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE
+            # compact way, with hoop stress calculated more efficiently
+            
+            # define cylindrical divergence modifier terms
+            
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 1
+               
+               #(hash inserted during unwrap)END_IF
+            
+            # now create equations
+            CELL_EQUATION <continuity> "celldiv(<facex[l=2]>*<u_f>)/<cellx[l=2]>" ON <domain> # continuity
+            CELL_EQUATION <momentum[l=1]> "celldiv(<facex[l=2]>*<J_f[l=1]>)/<cellx[l=2]>-<dynamic_force_c[l=1]>" ON <domain> # momentum component
+            CELL_EQUATION <momentum[l=2]> "celldiv(<facex[l=2]>*<J_f[l=2]>)/<cellx[l=2]>-<dynamic_force_c[l=2]>" ON <domain> # momentum component
+            
+            
+            # add on hoop stress term separately
+            VARIABLE <momentum[l=2]> "<momentum[l=2]>+2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)"
+            #(hash inserted during unwrap)END_IF
          
          # add transient term which is independent on cartesian or cylindrical coordinates
          #VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
