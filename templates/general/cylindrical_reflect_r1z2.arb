@@ -2,8 +2,8 @@
 GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
 GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1" # centreline is normal to the 1 axis
 
-GENERAL_REPLACEMENTS REPLACE "<<cartesiancomment>>" WITH "#" REPLACE "<<cylindricalcomment>>" WITH "" # activate cylindrical specific definitions
-GENERAL_REPLACEMENTS REPLACE "<<cartesianflag>>" WITH "0" REPLACE "<<cylindricalflag>>" WITH "1"
+GENERAL_REPLACEMENTS REPLACE "<<cartesiancomment>>" WITH "#" REPLACE "<<cylindricalcomment>>" WITH "" REPLACE "<<cylindrical>>" WITH "1" # activate cylindrical specific definitions
+GENERAL_REPLACEMENTS REPLACE "<<cartesianflag>>" WITH "0" REPLACE "<<cylindricalflag>>" WITH "1" # try not to use these in the future
 GENERAL_REPLACEMENTS REPLACE "<<radius_f>>" WITH "<facex[l=1]>" REPLACE "<<radius_c>>" WITH "<cellx[l=1]>" REPLACE "<<radiusdim1flag>>" WITH "1"
 GENERAL_REPLACEMENTS REPLACE "<<radialdim>>" WITH "1" REPLACE "<<axialdim>>" WITH "2"
 GENERAL_REPLACEMENTS R "<<dimensions>>" W "1,2"

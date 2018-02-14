@@ -389,19 +389,16 @@ sub string_setup {
   string_set("<<batchercomment>>","#","global");
   string_set("<<nobatchercomment>>","","global");
 # geometry and equation related
-  string_set("<<dim1comment>>","","global");
-  string_set("<<dim2comment>>","","global");
-  string_set("<<dim3comment>>","","global");
+  string_set("<<cylindrical>>","0","global"); # default is for a non-cylindrical simulation, this is the preferrable variable to use
   string_set("<<cartesiancomment>>","","global"); # default is cartesian
   string_set("<<cylindricalcomment>>","#","global");
-# convention is that names that end with "flag" are either on (1) or off (0), so can be used within expressions
-  string_set("<<cartesianflag>>","1","global"); # default is cartesian
-  string_set("<<cylindricalflag>>","0","global");
+  string_set("<<cylindricalflag>>","0","global"); # legacy string, use <<cylindrical>> instead in new applications
+  string_set("<<cartesianflag>>","1","global"); # legacy string, use <<cylindrical>> instead in new applications
 # these two should be overwritten by the relevant radius in the input file if using cylindrical coordinates: eg R "<<radius_c>>" W "<cellx[l=1]>" R "<<radius_f>>" W "<facex[l=1]>"
   string_set("<<radius_c>>","1.d0","global");
   string_set("<<radius_f>>","1.d0","global");
   string_set("<<radius_n>>","1.d0","global");
-  string_set("<<radiusdim1flag>>","0","global"); # for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
+  string_set("<<radiusdim1flag>>","0","global"); # legacy, use <<radialdim>> instead: for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
   string_set("<<radiusdim2flag>>","0","global");
   string_set("<<radiusdim3flag>>","0","global");
   string_set("<<radialdim>>","0","global"); # for 2D cylindrical this is the radial coordinate direction
@@ -412,6 +409,9 @@ sub string_setup {
   string_set("<<reflect=3>>","","global");
 # dimensions that are being used
   string_set("<<dimensions>>","1,2,3","global"); # defaults to 3D, and should be accessed using the list form of string_eval('<<dimensions>>','list') to be used in (say) a foreach loop
+  string_set("<<dim1comment>>","","global"); # try to use <<dimensions>> instead where possible, but these comments will stay
+  string_set("<<dim2comment>>","","global");
+  string_set("<<dim3comment>>","","global");
 # set the transient versus steady_state strings using the sub
   string_set_transient_simulation(0); # default is steady_state
 

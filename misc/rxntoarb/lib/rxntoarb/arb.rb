@@ -74,9 +74,9 @@ module Rxntoarb
 
       # Store region areas/volumes and define new regions for equations
       unless Rxntoarb.options[:none_centred]
-        rxn.surface_regions.each { |region| @constants << "CONSTANT <area(#{region})> \"noneif(<<cylindricalflag>>,2.d0*<pi>,1.d0)*facesum(<<radius_f>>*<facearea>, region=<#{region}>)\"" }
+        rxn.surface_regions.each { |region| @constants << "CONSTANT <area(#{region})> \"noneif(<<cylindrical>>,2.d0*<pi>,1.d0)*facesum(<<radius_f>>*<facearea>, region=<#{region}>)\"" }
         rxn.volume_regions.each do |region|
-          @constants << "CONSTANT <volume(#{region})> \"noneif(<<cylindricalflag>>,2.d0*<pi>,1.d0)*cellsum(<<radius_c>>*<cellvol>, region=<#{region}>)\""
+          @constants << "CONSTANT <volume(#{region})> \"noneif(<<cylindrical>>,2.d0*<pi>,1.d0)*cellsum(<<radius_c>>*<cellvol>, region=<#{region}>)\""
           @constants << "FACE_REGION <associatedfaces(#{region})> \"associatedwith(<#{region}>)\""
           @constants << "CELL_REGION <associatedcells(#{region})> \"associatedwith(<#{region}>)\""
           @constants << "CELL_REGION <domainof(#{region})> \"domainof(<#{region}>)\""

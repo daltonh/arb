@@ -30,8 +30,8 @@ if_rxn(volume){
   FACE_EQUATION <flux_/species/@/region/@walls> "<j_f_/species/@/region/>" ON <walls>
   [*].each { |source_region| FACE_EQUATION <flux_/species/@/region/@|source_region|> "<j_f_/species/@/region/>+<S_/species/@/region/@|source_region|>" ON <|source_region|> }
 }
-if_rxn(surface){NONE_OUTPUT </c/_ave (pmol m-2)> "1.d12*noneif(<<cylindricalflag>>,2.d0*<pi>,1.d0)*facesum(</c/>*<<radius_f>>*<facearea>,region=</region/>)/<area(/region/)>"}
+if_rxn(surface){NONE_OUTPUT </c/_ave (pmol m-2)> "1.d12*noneif(<<cylindrical>>,2.d0*<pi>,1.d0)*facesum(</c/>*<<radius_f>>*<facearea>,region=</region/>)/<area(/region/)>"}
 if_rxn(volume){
-  NONE_OUTPUT </c/_ave (nM)> "1.d6*noneif(<<cylindricalflag>>,2.d0*<pi>,1.d0)*cellsum(</c/>*<<radius_c>>*<cellvol>,region=</region/>)/<volume(/region/)>"
-  [inlet,outlet].each { |boundary| NONE_OUTPUT </c/_bulk_ave@|boundary| (nM)> "noneif(<u_f_integrated@|boundary|>,1.d6*abs(noneif(<<cylindricalflag>>,2.d0*<pi>,1.d0)*facesum(</c/>*<u_f>*<<radius_f>>*<facearea>,region=<|boundary|>))/<u_f_integrated@|boundary|>,0.d0)" }
+  NONE_OUTPUT </c/_ave (nM)> "1.d6*noneif(<<cylindrical>>,2.d0*<pi>,1.d0)*cellsum(</c/>*<<radius_c>>*<cellvol>,region=</region/>)/<volume(/region/)>"
+  [inlet,outlet].each { |boundary| NONE_OUTPUT </c/_bulk_ave@|boundary| (nM)> "noneif(<u_f_integrated@|boundary|>,1.d6*abs(noneif(<<cylindrical>>,2.d0*<pi>,1.d0)*facesum(</c/>*<u_f>*<<radius_f>>*<facearea>,region=<|boundary|>))/<u_f_integrated@|boundary|>,0.d0)" }
 }
