@@ -241,11 +241,21 @@ sub tensor_expand {
 #  $_[2*n-2)] = name for string n = 1 .. N
 #  $_[2*n-1)] = value for string n = 1 .. N
 #  $_[2*N] = comma separated list of options (string) to be applied for all strings:
+#
+# the following control whether the string active replaces solver code:
 #    - replace: this string name will be searched for in solver code and replaced with its value, which is default for most string names
 #    - noreplace: opposite of replace, which is the default for strings whose names start with $, as in "$a"
+#
+# the following control the scope of the string variable:
+#    - without default, substitute or global:
+#          - search only in current code block for the string, and if not found, set it in the current code block
 #    - default: only set the string if the string is not already defined anywhere
-#          - search is done over all code blocks, irrespective of global setting
-#          - so global and replace or noreplace options are only relevant here if the string variable is not already set
+#          - search is done over all code blocks (including the global one)
+#          - global, replace and noreplace options are only relevant here if the string variable is not already set
+#          - substitute option doesn't make sense here
+#    - substitute: opposite of default, only set the string if it is set already, otherwise exit with error
+#          - search is done over all code blocks (including the global one)
+#          - global and default options don't make sense here
 #    - global: set the string in the root code_blocks ($code_blocks[0]) so that it is available even after the current block has closed - ie, globally
 
 # on entry if number of arguments is:
@@ -272,13 +282,22 @@ sub string_set {
 # check validity of options
   my $options_save = $options;
   while (nonempty($options)) {
-    if ($options =~ /^\s*((no|)replace|default|global|)\s*(,|$)/) {
+    if ($options =~ /^\s*((no|)replace|default|global|substitute|)\s*(,|$)/) {
       $options = $';
     } else {
       syntax_problem("unknown string within string_set options of $options: $ReadInputFiles::filelinelocator");
     }
   }
   $options = $options_save;
+
+# sanity check on requested options
+  if ($options =~ /(^|,|\s)substitute($|,|\s)/) {
+    if ($options =~ /(^|,|\s)default($|,|\s)/) {
+      error_stop('both default and substitute options requested for string variable $name_value_pairs[0]');
+    } elsif ($options =~ /(^|,|\s)global($|,|\s)/) {
+      error_stop('both global and substitute options requested for string variable $name_value_pairs[0]');
+    }
+  }
 
   while (@name_value_pairs) {
 
@@ -305,8 +324,13 @@ sub string_set {
     my ($code_block_set,$string_variable_set) = (-1,-1); # define scope of variables
     if ($options =~ /(^|,|\s)global($|,|\s)/) {
       ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],0); # for global only look in global block
+    } elsif ($options =~ /(^|,|\s)substitute($|,|\s)/) {
+      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0]); # with the substitute option, we look anywhere for string
+      if ($code_block_set == -1) { # not finding the string here is an error as it indicates that the user does not know at what block the string was to be set - too dangerous for now
+        error_stop("substitute option given for string replacement $name_value_pairs[0] but the string has not been previously set")
+      }
     } else {
-      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0]); # without the global option, we look anywhere for string
+      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],$#code_blocks); # without no substitute/global option, we only look locally for the string
     }
     print ::DEBUG "INFO: in string_set, after string search: code_block_set = $code_block_set: string_variable_set = $string_variable_set: options = $options\n";
     if ($code_block_set == -1) { # string was not found, so set to next available indicies
@@ -442,6 +466,7 @@ sub string_set_transient_simulation {
 # second argument is list of options, including
 # global = only returns 1 if string is found and is a global
 # noglobal = only returns 1 if string is found and is not a global
+# local = only returns 1 if string is found and local to the current code block
 sub string_examine {
 
   my $string = $_[0];
@@ -459,6 +484,20 @@ sub string_examine {
       if ($code_block_found ge 0) { return 1; } else { return 0; };
     }
   }
+
+}
+#-------------------------------------------------------------------------------
+# prints out a formatted list of the string replacements
+
+sub string_debug {
+  
+  my $options = '';
+  if (defined($_[1])) { $options = $_[1]; }
+
+  my ($lower_code_block,$upper_code_block) = (0,$#code_blocks);
+  if ($options =~ /(^|,)\s*global\s*($|,)/) {
+    $upper_code_block = 0;
+  } elsif ($options =~ /(^|,)\s*noglobal\s*($|,)/) {
 
 }
 #-------------------------------------------------------------------------------

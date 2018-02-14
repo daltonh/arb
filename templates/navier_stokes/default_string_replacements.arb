@@ -2,11 +2,11 @@ MARKDOWN
 These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
 They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
 
-Now moving to flags, as in `<<uniformviscosity>>` rather than the comment strings.
+Some of these use both comment and flag type variables, requires three things to be set for each option
 END_MARKDOWN
 
 GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W "" D "<<transientnavierstokes>>" W "0"
 GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W "" D "<<stokes>>" W "0"
-# note, both of these now require the three strings to be set - this is awkward, so instead call the nonuniform_viscosity and nonuniform_density files to do this for you
+# note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
 GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#" D "<<uniformviscosity>>" W "1" 
 GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#" D "<<uniformdensity>>" W "1" 
