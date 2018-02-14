@@ -10,9 +10,9 @@ REPLACEMENTS DEFAULT "<<udivfcomment>>" W "#"
 # if you want to overwrite <mu_f>, just define it prior to calling this file and your replacement will overwrite the following
 REPLACEMENTS R "<<mu_f>>" W "<mu_f>" # first define this local replacement string in the same scope of the definition statements below (ie, outside scope of if block)
 IF {{ return ( !(string_examine('<mu_f>')) && string_eval('<<uniformviscosity>>') ) }}  # this evaluates as true (1) if replacement string '<mu_f>' isn't defined, AND <<uniformviscosity>> is on (1)
-  REPLACEMENTS S "<<mu_f>>" W "<mu>" # if we are here then we apply the uniform viscosity substitution
+  REPLACEMENTS S "<<mu_f>>" W "<mu>" # if we are here then we apply the uniform viscosity substitution, with 'S'='SUBSTITUTE' meaning to replace the value of this string in its previous (above code block here) definition
 END_IF
-{{ print "IN total_stress\n".string_debug; }}
+#{{ print "IN template total_stress\n".string_debug; }}
 
 # no both cartesian and cylindrical stresses don't include pressure
 # without the numerical velocity divergence
