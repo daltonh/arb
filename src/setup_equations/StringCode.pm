@@ -40,7 +40,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_examine string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
 use Common;
 use Data::Alias 'alias';
 
@@ -299,17 +299,34 @@ sub string_set {
     }
 
 # if we are here then the string will be set or reset, so
-# 1. search for string name in the relevant code block (to be reset if it is found there), or
-# 2. if it doesn't exist in that block, find the next available indicies in that block and set it
+# 1. search for string name in the global or all code blocks (to be reset wherever it is found), or
+# 2. if it doesn't exist in that block(s), find the next available indicies in the global or local block and set it
 
-    my $code_block_search = $#code_blocks; # the block to limit our activities to
-    if ($options =~ /(^|,|\s)global($|,|\s)/) { $code_block_search = 0; }
-    my ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],$code_block_search);
-    print ::DEBUG "INFO: in string_set, after string search: code_block_search = $code_block_search: code_block_set = $code_block_set: string_variable_set = $string_variable_set\n";
-    if ($code_block_set == -1) { # string was not found, so set to next available indicies
-      ($code_block_set,$string_variable_set) = ($code_block_search,$#{$code_blocks[$code_block_search]{"string_variables"}}+1);
+    my ($code_block_set,$string_variable_set) = (-1,-1); # define scope of variables
+    if ($options =~ /(^|,|\s)global($|,|\s)/) {
+      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],0); # for global only look in global block
+    } else {
+      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0]); # without the global option, we look anywhere for string
     }
-    print ::DEBUG "INFO: in string_set, about to set string: code_block_search = $code_block_search: code_block_set = $code_block_set: string_variable_set = $string_variable_set\n";
+    print ::DEBUG "INFO: in string_set, after string search: code_block_set = $code_block_set: string_variable_set = $string_variable_set: options = $options\n";
+    if ($code_block_set == -1) { # string was not found, so set to next available indicies
+      print ::DEBUG "INFO: in string_set, string $name_value_pairs[0] not found: creating new string\n";
+      if ($options =~ /(^|,|\s)global($|,|\s)/) {
+        $code_block_set = 0; # for global string
+      } else {
+        $code_block_set = $#code_blocks; # otherwise use current block
+      }
+      $string_variable_set = $#{$code_blocks[$code_block_set]{"string_variables"}}+1; # increment index in the relevant block
+    }
+    print ::DEBUG "INFO: in string_set, about to set string: code_block_set = $code_block_set: string_variable_set = $string_variable_set: options = $options\n";
+
+#   my $code_block_search = $#code_blocks; # the block to limit our activities to
+#   $code_block_search = 0; }
+#   my ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],$code_block_search);
+
+#   if ($code_block_set == -1) { # string was not found, so set to next available indicies
+#     ($code_block_set,$string_variable_set) = ($code_block_search,$#{$code_blocks[$code_block_search]{"string_variables"}}+1);
+#   }
 
 # if we are here, then the new or reused indices are ready to go
     $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} = shift(@name_value_pairs);
@@ -428,6 +445,30 @@ sub string_set_transient_simulation {
 
 }
 
+#-------------------------------------------------------------------------------
+# little routine that returns 1 if a string is defined, or 0 otherwise
+# second argument is list of options, including
+# global = only returns 1 if string is found and is a global
+# noglobal = only returns 1 if string is found and is not a global
+sub string_examine {
+
+  my $string = $_[0];
+  my $options = '';
+  if (defined($_[1])) { $options = $_[1]; }
+
+  if ($options =~ /(^|,)\s*global\s*($|,)/) {
+    my ($code_block_found,$string_variable_found) = string_search($string,0);
+    if ($code_block_found ge 0) { return 1; } else { return 0; };
+  } else {
+    my ($code_block_found,$string_variable_found) = string_search($string);
+    if ($options =~ /(^|,)\s*noglobal\s*($|,)/) {
+      if ($code_block_found ge 1) { return 1; } else { return 0; };
+    } else {
+      if ($code_block_found ge 0) { return 1; } else { return 0; };
+    }
+  }
+
+}
 #-------------------------------------------------------------------------------
 
 1;

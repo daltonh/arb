@@ -266,4 +266,6 @@ OVERRIDE_CELL_OPTIONS output # applied to all cell centred variables and dynamic
 OVERRIDE_LOCAL_VARIABLE_OPTIONS output # applied to all local variables
 OVERRIDE_VARIABLE_OPTIONS output # applied to all variables, but not dynamic regions
 ```
-Not all qualifiers need be listed for these option keywords, but if they are, they need to be in the order of centring (eg `NONE`), variable/region type (eg `UNKNOWN`) and then variable or region (eg `VARIABLE).
+Not all qualifiers need be listed for these option keywords, but if they are, they need to be in the order of centring (eg `NONE`), variable/region type (eg `UNKNOWN`) and then variable or region (eg `VARIABLE`).
+
+

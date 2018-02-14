@@ -27,11 +27,6 @@ INCLUDE "default_string_replacements"
 #GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W "" R "<<uniformdensity>>" W "0"
 #-------------
 
-# replace any references to the face centred fluid properties with the constant values if they don't vary
-# get rid of these replacements and define alternative statements for the face centred fluid properties if they do vary
-<<uniformviscositycomment>>GENERAL_REPLACEMENTS REPLACE "<mu_f>" WITH "<mu>"
-<<uniformdensitycomment>>GENERAL_REPLACEMENTS REPLACE "<rho_f>" WITH "<rho>"
-
 # numerical data
 CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type velocity interpolation
 CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
