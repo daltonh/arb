@@ -1,0 +1,4 @@
+# call this file after constants to specify nonuniform properties
+GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W "" R "<<uniformdensity>>" W "0"
+# the following is just a placeholder - you will need to add a real expression for the varying density elsewhere
+FACE_LOCAL <rho_f> "<rho>" ON <allfaces>

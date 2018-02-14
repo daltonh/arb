@@ -320,14 +320,6 @@ sub string_set {
     }
     print ::DEBUG "INFO: in string_set, about to set string: code_block_set = $code_block_set: string_variable_set = $string_variable_set: options = $options\n";
 
-#   my $code_block_search = $#code_blocks; # the block to limit our activities to
-#   $code_block_search = 0; }
-#   my ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],$code_block_search);
-
-#   if ($code_block_set == -1) { # string was not found, so set to next available indicies
-#     ($code_block_set,$string_variable_set) = ($code_block_search,$#{$code_blocks[$code_block_search]{"string_variables"}}+1);
-#   }
-
 # if we are here, then the new or reused indices are ready to go
     $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} = shift(@name_value_pairs);
     $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"value"} = shift(@name_value_pairs);

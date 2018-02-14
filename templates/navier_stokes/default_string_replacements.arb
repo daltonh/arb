@@ -7,5 +7,6 @@ END_MARKDOWN
 
 GENERAL_REPLACEMENTS D "<<transientnavierstokescomment>>" W "#" D "<<steadystatenavierstokescomment>>" W "" D "<<transientnavierstokes>>" W "0"
 GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W "" D "<<stokes>>" W "0"
+# note, both of these now require the three strings to be set - this is awkward, so instead call the nonuniform_viscosity and nonuniform_density files to do this for you
 GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#" D "<<uniformviscosity>>" W "1" 
 GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#" D "<<uniformdensity>>" W "1" 
