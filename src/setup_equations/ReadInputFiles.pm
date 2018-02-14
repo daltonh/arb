@@ -1369,9 +1369,9 @@ sub correct_deprecated_string_replacement_code {
     }
 
 # tell the user about the change if there was one
-    if ($warn) { syntax_problem("legacy string code has been found and replaced by newer string code at $filelinelocator",
-      "legacy string code has been found and replaced by newer string code at $filelinelocator\n".
-      "  legacy string code = $oinput\n  replaced string code = $buffer","warning"); }
+    if ($warn) { syntax_problem("solver string code has been found and replaced by string code at $filelinelocator",
+      "solver string code has been found and replaced by string code at $filelinelocator\n".
+      "  solver string code = $oinput\n  replaced string code = $buffer","warning"); }
 
     $_[0] = $buffer;
   } else {
@@ -1384,10 +1384,11 @@ sub extract_deprecated_replacements {
 # extracts a search and replace pair from a deprecated string code line
 # on input
 # $_[0] = line of text
-# exit with two strings and two flags
-#  ( search, replace, cancel, default )
+# exit with two strings and three flags
+#  ( search, replace, cancel, default, substitute )
 # $_[3] = cancel = 0,1, indicates whether the CANCEL "string" was used
-# $_[4] = default = 0,1, indicates whether the REPLACE* or R* or DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
+# $_[4] = default = 0,1, indicates whether the DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
+# $_[5] = substitute = 0,1, indicates whether the SUBSTITUTE "string" was used, which indicates that string replacement is only set if it is set already
 # if search is empty then no string was found
 
   my $line = $_[0];
@@ -1396,13 +1397,15 @@ sub extract_deprecated_replacements {
   my $replace = '';
   my $cancel = 0;
   my $default = 0;
+  my $substitute = 0;
 
 # print ::DEBUG "INFO: start of extract_deprecated_replacements: line = $line\n";
 
 # if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement - as far as I can remember, *'ed form was never used instead of D|DEFAULT - get rid of it
-  if ($line =~ /^((R|REPLACE)|(DEFAULT|D))\s+/i) { # found a replacement
+  if ($line =~ /^((R|REPLACE)|(DEFAULT|D)|(SUBSTITUTE|S))\s+/i) { # found a replacement
 #   print ::DEBUG "found a replace statement specified as $1: $'\n";
     if (nonempty($3)) { $default=1; }
+    if (nonempty($4)) { $substitute=1; }
     $line = $';
 #   print ::DEBUG "line = $line\n";
     ($search,$error) = extract_first($line);
@@ -1428,7 +1431,7 @@ sub extract_deprecated_replacements {
 
 # print ::DEBUG "INFO: end of extract_deprecated_replacements: line = $line\n";
   $_[0] = $line;
-  return ($search,$replace,$cancel,$default);
+  return ($search,$replace,$cancel,$default,$substitute);
 
 }
 

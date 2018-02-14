@@ -40,7 +40,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_examine string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_examine string_debug string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
 use Common;
 use Data::Alias 'alias';
 
@@ -74,6 +74,7 @@ sub parse_string_code {
 # options include:
 #  (no|)replace = whether to treat this string variable as a replacement in the following arb code
 #  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists)
+# options are passed to string search so supports global, noglobal and local options
 # on output
 #  @_ = unchanged
 sub string_option {
@@ -82,7 +83,7 @@ sub string_option {
   my $name = $_[0];
   my $options = ''; if (defined($_[1])) { $options = $_[1]; }; # options is optional
 
-  my ($code_block_found,$string_variable_found) = string_search($name);
+  my ($code_block_found,$string_variable_found) = string_search($name,$options);
   if ($code_block_found == -1) {
     if ($options =~ /(^|,)\s*checkexists\s*(,|$)/) {
       $options = $`.','.$'; # remove this string from the options
@@ -111,15 +112,19 @@ sub string_option {
 #-------------------------------------------------------------------------------
 # deletes a string
 # on input
-#  $_[0] = string name
+#  $_[0] = string name (can be an list of strings, but in this case options must be set, possibly to the empty string)
+#  $_[$#_] = options, passed to string_search (ie global, noglobal and local)
 # on output
 #  $_[0] = unchanged
 sub string_delete {
 
   alias my @code_blocks = @ReadInputFiles::code_blocks;
   my @names = @_; # string_delete now accepts multiple strings
+  my $options = ''; if (defined($_[1])) { # if the number of arguments is greater than one, then the last will be options
+    $options = pop(@names); # pop off these options
+  };
   foreach my $name ( reverse( @names ) ) {
-    my ($code_block_found,$string_variable_found) = string_search($name);
+    my ($code_block_found,$string_variable_found) = string_search($name,$options);
     if ($code_block_found == -1) {
       syntax_problem("string variable $name not found during string_delete: $ReadInputFiles::filelinelocator","warning");
     } else {
@@ -136,6 +141,7 @@ sub string_delete {
 # possible options:
 #  list = return the string as a list containing the string split at commas (useful for using within foreach loops etc)
 #  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists)
+# options also passed to string_search so accepts local, global and noglobal
 # on output
 #  $_[0] = unchanged
 # returns string value if found, or dies or returns if string is not found
@@ -146,7 +152,7 @@ sub string_eval {
   my $name = $_[0];
   my $options = ''; if (defined($_[1])) { $options = $_[1]; }; # options is optional
 
-  my ($code_block_found,$string_variable_found) = string_search($name);
+  my ($code_block_found,$string_variable_found) = string_search($name,$options);
 
   if ($code_block_found == -1) {
     if ($options =~ /(^|,)\s*checkexists\s*(,|$)/) {
@@ -169,24 +175,31 @@ sub string_eval {
 # on input
 #  $_[0] = string variable name
 #  $_[1] = test string
+#  $_[2] = options, which is also passed to string_search so supports global, noglobal and local
 # on output
 #  $_[0] = '1' if test string is given and string variable is defined and equal to the value of test string
-#        = '1' if test string isn't given by variable is defined
-#        = '' otherwise
+#        = '0' otherwise
+# now throws an error if test string is not provided or string is not found
+# see string_examine for checking on existence of strings
 
 sub string_test {
 
   alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $name = $_[0];
-  my ($code_block_found,$string_variable_found) = string_search($name);
+  my $options = '';
 
   if (!(defined($_[1]))) { # no test string was passed to routine, so just return whether string is defined
-    if ($code_block_found == -1) { return ''; } else { return '1'; }
-  } else { # need to check
-    if ($code_block_found == -1) { return ''; }
-    elsif ($code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $_[1]) { return '1'; }
-    else { return ''; }
+    error_stop("no test string has been passed to string_test: name = $name");
   }
+  if (defined($_[2])) { $options = $_[2]; }
+
+  my ($code_block_found,$string_variable_found) = string_search($name,$options);
+
+  if ($code_block_found == -1) {
+    error_stop("test string has been passed to string_test was not found: name = $name");
+  }
+  
+  if ($code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $_[1]) { return '1'; } else { return '0'; }
   
 }
 #-------------------------------------------------------------------------------
@@ -323,14 +336,14 @@ sub string_set {
 
     my ($code_block_set,$string_variable_set) = (-1,-1); # define scope of variables
     if ($options =~ /(^|,|\s)global($|,|\s)/) {
-      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],0); # for global only look in global block
+      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],'global'); # for global only look in global block
     } elsif ($options =~ /(^|,|\s)substitute($|,|\s)/) {
       ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0]); # with the substitute option, we look anywhere for string
       if ($code_block_set == -1) { # not finding the string here is an error as it indicates that the user does not know at what block the string was to be set - too dangerous for now
         error_stop("substitute option given for string replacement $name_value_pairs[0] but the string has not been previously set")
       }
     } else {
-      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],$#code_blocks); # without no substitute/global option, we only look locally for the string
+      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],'local'); # without no substitute/global option, we only look locally for the string
     }
     print ::DEBUG "INFO: in string_set, after string search: code_block_set = $code_block_set: string_variable_set = $string_variable_set: options = $options\n";
     if ($code_block_set == -1) { # string was not found, so set to next available indicies
@@ -410,7 +423,10 @@ sub string_setup {
 # search through string_variables for search string
 # on input
 #  $_[0] = name of string to find
-#  $_[1] = if defined, is the specific code block in which is searched, otherwise if not defined, all code blocks are searched (from last = $#code_blocks to root = 0)
+#  $_[1] = is a list of options determining the scope of the search
+#    - local: only in $#code_blocks local block
+#    - global: only in 0 global code_block
+#    - noglobal: in all code blocks except for 0
 # on output, @_ unchanged
 # on output, returns ($code_block_found,$string_variable_found), default both to -1 if not found
 
@@ -420,7 +436,15 @@ sub string_search {
 
   my $name = $_[0];
   my ($code_block_lower,$code_block_upper) = (0,$#code_blocks);
-  if (defined($_[1])) { $code_block_lower = $_[1]; $code_block_upper = $_[1]; }
+  my $options = '';
+  if (defined($_[1])) { $options = $_[1]; }
+  if ($options =~ /(^|,)\s*global\s*($|,)/) {
+    $code_block_upper = 0;
+  } elsif ($options =~ /(^|,)\s*local\s*($|,)/) {
+    $code_block_lower = $#code_blocks;
+  } elsif ($options =~ /(^|,)\s*nolocal\s*($|,)/) {
+    $code_block_lower = 1;
+  }
     
   my $string_variable_found = -1; # on output returns -1 if not found, or string_variables index if found
   my $code_block_found = -1; # on output returns -1 if not found, or code_blocks index if found
@@ -463,41 +487,61 @@ sub string_set_transient_simulation {
 
 #-------------------------------------------------------------------------------
 # little routine that returns 1 if a string is defined, or 0 otherwise
-# second argument is list of options, including
+# second argument is list of options, taken straight from string_search:
 # global = only returns 1 if string is found and is a global
 # noglobal = only returns 1 if string is found and is not a global
 # local = only returns 1 if string is found and local to the current code block
+# string_test can do a similar thing, but without the options (but with the test functionality)
 sub string_examine {
 
+  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $string = $_[0];
   my $options = '';
   if (defined($_[1])) { $options = $_[1]; }
 
-  if ($options =~ /(^|,)\s*global\s*($|,)/) {
-    my ($code_block_found,$string_variable_found) = string_search($string,0);
-    if ($code_block_found ge 0) { return 1; } else { return 0; };
-  } else {
-    my ($code_block_found,$string_variable_found) = string_search($string);
-    if ($options =~ /(^|,)\s*noglobal\s*($|,)/) {
-      if ($code_block_found ge 1) { return 1; } else { return 0; };
-    } else {
-      if ($code_block_found ge 0) { return 1; } else { return 0; };
-    }
-  }
+# options string can be passed straight to string_search which knows global, noglobal and local
+  my ($code_block_found,$string_variable_found) = string_search($string,$options);
+  if ($code_block_found ge 0) { return 1; } else { return 0; };
 
 }
 #-------------------------------------------------------------------------------
 # prints out a formatted list of the string replacements
+# first argument is list of options, including the string search ones of global, noglobal and local
 
 sub string_debug {
   
+  alias my @code_blocks = @ReadInputFiles::code_blocks;
+
+# this is the string that we will form (to be printed, as in {{ print string_debug('local') }})
+  my $debug_output = "STRING DEBUG OUTPUT (a listing of the string replacement strings at this point in time):\n";
+
+# deal with options
   my $options = '';
   if (defined($_[1])) { $options = $_[1]; }
+  $debug_output .= "Called with: options = $options\n";
 
-  my ($lower_code_block,$upper_code_block) = (0,$#code_blocks);
+  my ($code_block_lower,$code_block_upper) = (0,$#code_blocks);
   if ($options =~ /(^|,)\s*global\s*($|,)/) {
-    $upper_code_block = 0;
-  } elsif ($options =~ /(^|,)\s*noglobal\s*($|,)/) {
+    $code_block_upper = 0;
+  } elsif ($options =~ /(^|,)\s*local\s*($|,)/) {
+    $code_block_lower = $#code_blocks;
+  } elsif ($options =~ /(^|,)\s*nolocal\s*($|,)/) {
+    $code_block_lower = 1;
+  }
+    
+  my $string_variable_found = -1; # on output returns -1 if not found, or string_variables index if found
+  my $code_block_found = -1; # on output returns -1 if not found, or code_blocks index if found
+
+  CODE_BLOCK_LOOP: for my $m ( reverse( $code_block_lower .. $code_block_upper ) ) {
+    if ($m eq 0) { $debug_output .= "Global "; }
+    if ($m eq $#code_blocks) { $debug_output = $debug_output."Local "; }
+    $debug_output .= "Code Block $m:\n";
+    for my $n ( reverse( 0 .. $#{$code_blocks[$m]{"string_variables"}} ) ) {
+      $debug_output .= "  String Variable $n: name = $code_blocks[$m]{string_variables}[$n]{name}: value = $code_blocks[$m]{string_variables}[$n]{value}: replace = $code_blocks[$m]{string_variables}[$n]{replace}\n";
+    }
+  }
+
+  return $debug_output;
 
 }
 #-------------------------------------------------------------------------------
