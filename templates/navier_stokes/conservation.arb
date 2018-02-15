@@ -32,8 +32,14 @@ ELSE
     'CELL_EQUATION <momentum[l=$l]> "celldiv(<<radius_top>><J_f[l=$l]>)<<radius_bottom>>-<dynamic_force_c[l=$l]>" ON <domain> # momentum component'
     ) }}
 
-# add on hoop stress term separately
-  VARIABLE <momentum[l=<<radialdim>>]> "<momentum[l=<<radialdim>>]>+2.d0*<u[l=<<radialdim>>]>*<mu>/(<cellx[l=<<radialdim>>]>**2)"
+# add on hoop stress term separately for cylindrical coordinates
+  IF <<cylindrical>>
+# perform a check that <<radialdim>> has been correctly defined
+    IF {{ return (!( string_eval('<<radialdim>>') ge 1 && string_eval('<<radialdim>>') le 3)) }}
+      ERROR 'This is a cylindrical coordinate simulation however the string <<radialdim>> has not been correctly defined'
+    END_IF
+    VARIABLE <momentum[l=<<radialdim>>]> "<momentum[l=<<radialdim>>]>+2.d0*<u[l=<<radialdim>>]>*<mu>/(<cellx[l=<<radialdim>>]>**2)"
+  END_IF
 END_IF
 
 # add transient term which is independent on cartesian or cylindrical coordinates
