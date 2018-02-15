@@ -142,7 +142,7 @@ CONSTANT <S> <<batcherS>> # surface tension strength nondimensional number, see 
 <<nonuniformcomment>>CONSTANT <vof_rho_d_ratio> <<batcherrho>> # dimensional <rho_d>/<rho_c>
 <<nonuniformcomment>>CONSTANT <vof_mu_d_ratio> <<batchermu>> # dimensional <mu_d>/<mu_c>
 
-NONE_CONSTANT <p initial> "(2.d0^<<cylindricalflag>>)/<We>" stepoutput
+NONE_CONSTANT <p initial> "(2.d0^<<cylindrical>>)/<We>" stepoutput
 CELL_UNKNOWN <p> [] "<p initial>*<vof_phi>" ON <allcells> elementdata # pressure
 CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
 CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component

@@ -14,12 +14,11 @@ INFO_DATE "22/4/15" # interpreted as the last modification date
 
 # choose coordinate system
 # for cartesian slit flow include the following:
-GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+INCLUDE_TEMPLATE "general/cartesian_x1y2"
 GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centreline is horizontal need to include reflect=2 when differentiating of averaging any l=2 vector components
 INFO_DESCRIPTION+ ": cartesian slit flow"
 # for cylindrical pipe flow include the following:
-#INCLUDE_TEMPLATE "general"
-#INCLUDE "cylindrical_reflect_r2z1"
+#INCLUDE_TEMPLATE "general/cylindrical_reflect_r2z1"
 #INFO_DESCRIPTION+ ": cylindrical pipe flow (note, analytical expressions are not correct for this yet)"
 
 # for both coordinate systems the centreline is normal to the x_2 (ie, y) axis, so glue this back on itself while setting the reflection direction to use

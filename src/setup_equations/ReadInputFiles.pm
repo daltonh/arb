@@ -44,7 +44,7 @@
 #   - previous solver code has replacements done using perform_string_replacements
 #   - if previous solver code starts with the INCLUDE_* keyword, then solver code is regarded as input to the about-to-be-formed code_block, and solver_code is sent to parse_solver_code for processing
 #   - otherwise code is read until closing string code delimiters }} are found, then this code is sent to parse_string_code and then added to solver_code
-# 3. if suspected legacy keywords (GENERAL_|GLOBAL_|)REPLACEMENTS or INCLUDE* that could contain REPLACE type statements, these are converted to new string_code using legacy_string_code_converter
+# 3. if suspected solver string (legacy, but not really legacy) keywords (GENERAL_|GLOBAL_|)REPLACEMENTS or INCLUDE* that could contain REPLACE type statements, these are converted to new string_code using legacy_string_code_converter
 #   - legacy keywords are only identified if the preceeding solver_code is evalutated as an empty string, once any string replacements have taken place
 #   - if a false match is found to a suspected legacy keyword, then $buffer_offset is set so these legacy keywords aren't matched again
 # 4. an end-of-line indicated by either # or $ (which preceeds a final newline character) then the preceeding solver code is sent to perform_string_replacements, and then parse_solver_code for processing
@@ -1279,18 +1279,18 @@ sub legacy_string_code_converter {
 
   if ($debug) { print ::DEBUG "INFO: start of legacy_string_code_converter: global = $global: old_buffer = $old_buffer\n"; }
   my $opened = 0; # if any legacy operations were found
-  my ($search,$replace,$cancel,$default);
+  my ($search,$replace,$cancel,$default,$substitute);
   $search = 1;
   my $buffer = '';
 
   while (nonempty($search) && nonempty($old_buffer)) {
-    ($search,$replace,$cancel,$default) = extract_deprecated_replacements($old_buffer);
+    ($search,$replace,$cancel,$default,$substitute) = extract_legacy_replacements($old_buffer);
     if (nonempty($search)) {
       if (!($opened)) { $buffer .= '{{ '; $opened = 1; } else { $buffer .= '; '; }
       if ($cancel) {
         $buffer .= "string_delete(\'$search\') "; # add this cancel operation
       } else {
-        $buffer .= "string_set(\'$search\',\'$replace\',\'"."global" x $global.",default" x $default."\') ";
+        $buffer .= "string_set(\'$search\',\'$replace\',\'"."global" x $global.",default" x $default.",substitute" x $substitute."\') ";
       }
     } else {
       if ($opened) { $buffer .= '}} '; }
@@ -1306,88 +1306,15 @@ sub legacy_string_code_converter {
 
 }
 #-------------------------------------------------------------------------------
-# examines buffer line and corrects any replace/with pairs, either in GENERAL_REPLACEMENTS or INCLUDE* statements
-# from v0.57 onwards, string coding has changed considerably
-# these next two subroutines utilise legacy coding to rewrite the older string replacement syntax with the new
-sub correct_deprecated_string_replacement_code {
-  my $input = $_[0];
-  my $oinput = $input; # save input string for messages
-  my $buffer = '';
-  my $in_string_code = 0; # 0 means no string code, 1 means the next statement could be string code but the last wasn't, and 2 means the next could be and the last was
-  my $warn = 0;
-  my $global = 0; # indicates that we are doing a general replacement
-
-# look for keywords that could indicate potential string code
-# roughly in line with legacy language, only <<>> delimited replacement strings could appear before these statements
-# this should match any INCLUDE statement that could possibly preceed a deprecated replace/with pair
-  if ($input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s+\S+\s*/i || # space delimited filename
-      $input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s*".*?"\s*/i || # " delimited filename
-      $input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s*'.*?'\s*/i ) { # ' delimited filename
-#   print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 1\n";
-    $buffer .= $&;
-    $input = $';
-    $in_string_code = 1;
-
-# this should match any REPLACEMENTS statement that preceeds a deprecated replace/with pair
-  } elsif ($input =~ /^(\s*(<<.*>>|)\s*)((GENERAL_|)REPLACEMENTS)(\s*)/i ) { # GENERAL_REPLACEMENTS type keywords
-#   print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 2\n";
-    $buffer .= $1.$5;
-    $input = $';
-    $in_string_code = 1;
-    $global = 1;
-
-  }
-
-  if ($in_string_code) {
-    while (nonempty($input) || $in_string_code) {
-
-#     print ::DEBUG "INFO: in correct_deprecated_string_replacement_code loop with: input = $input: buffer = $buffer: in_string_code = $in_string_code\n";
-      if ($in_string_code) {
-        my ($search,$replace,$cancel,$default) = extract_deprecated_replacements($input);
-        if (nonempty($search)) {
-          if ($in_string_code == 1) {
-            $buffer .= '{{ ';
-            $in_string_code = 2;
-            $warn = 1;
-          } else { # $in_string_code == 2
-            $buffer .= '; ';
-          }
-          if ($cancel) {
-            $buffer .= "cancel(\'$search\') "; # add this cancel operation
-          } else {
-            $buffer .= "\'$search\' ="."g" x $global."d" x $default." \'$replace\' "; # add this found search/replace pair
-          }
-        } else {
-          if ($in_string_code == 2) { $buffer .= '}} '; }
-          $in_string_code = 0;
-        }
-
-      } else {
-        $buffer .= $input;
-        $input = '';
-      }
-    }
-
-# tell the user about the change if there was one
-    if ($warn) { syntax_problem("legacy string code has been found and replaced by newer string code at $filelinelocator",
-      "legacy string code has been found and replaced by newer string code at $filelinelocator\n".
-      "  legacy string code = $oinput\n  replaced string code = $buffer","warning"); }
-
-    $_[0] = $buffer;
-  } else {
-    $_[0] = $oinput; # no strings found, line returned as original input
-  }
-
-}
-#-------------------------------------------------------------------------------
-sub extract_deprecated_replacements {
-# extracts a search and replace pair from a deprecated string code line
+sub extract_legacy_replacements {
+# extracts a search and replace pair from a solver (legacy) string code line
 # on input
 # $_[0] = line of text
-# exit with two strings and two flags
-#  ( search, replace, cancel, default )
+# exit with two strings and three flags
+#  ( search, replace, cancel, default, substitute )
 # $_[3] = cancel = 0,1, indicates whether the CANCEL "string" was used
-# $_[4] = default = 0,1, indicates whether the REPLACE* or R* or DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
+# $_[4] = default = 0,1, indicates whether the DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
+# $_[5] = substitute = 0,1, indicates whether the SUBSTITUTE "string" was used, which indicates that string replacement is only set if it is set already
 # if search is empty then no string was found
 
   my $line = $_[0];
@@ -1396,13 +1323,15 @@ sub extract_deprecated_replacements {
   my $replace = '';
   my $cancel = 0;
   my $default = 0;
+  my $substitute = 0;
 
-# print ::DEBUG "INFO: start of extract_deprecated_replacements: line = $line\n";
+# print ::DEBUG "INFO: start of extract_legacy_replacements: line = $line\n";
 
 # if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement - as far as I can remember, *'ed form was never used instead of D|DEFAULT - get rid of it
-  if ($line =~ /^((R|REPLACE)|(DEFAULT|D))\s+/i) { # found a replacement
+  if ($line =~ /^((R|REPLACE)|(DEFAULT|D)|(SUBSTITUTE|S))\s+/i) { # found a replacement
 #   print ::DEBUG "found a replace statement specified as $1: $'\n";
     if (nonempty($3)) { $default=1; }
+    if (nonempty($4)) { $substitute=1; }
     $line = $';
 #   print ::DEBUG "line = $line\n";
     ($search,$error) = extract_first($line);
@@ -1426,9 +1355,9 @@ sub extract_deprecated_replacements {
     }
   }
 
-# print ::DEBUG "INFO: end of extract_deprecated_replacements: line = $line\n";
+# print ::DEBUG "INFO: end of extract_legacy_replacements: line = $line\n";
   $_[0] = $line;
-  return ($search,$replace,$cancel,$default);
+  return ($search,$replace,$cancel,$default,$substitute);
 
 }
 

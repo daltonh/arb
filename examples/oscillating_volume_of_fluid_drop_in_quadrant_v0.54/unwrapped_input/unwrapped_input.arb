@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb
    #(comment created during unwrap): new block = oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb: sub_block = 0
@@ -97,10 +97,15 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    #INCLUDE "fluid_replacements"
    
    # setup basic cylindrical general replacements by including the following two lines
-   #INCLUDE_TEMPLATE "general"
-   #INCLUDE "cylindrical_reflect_r1z2"
-   # these statements only necessary in cartesian as already included in above files, but GENERAL_REPLACEMENT statements can't be commented out by other strings, so just repeat them
-   # comment out any references to the third dimension in any included files
+   #INCLUDE_TEMPLATE "general/cylindrical_reflect_r1z2"
+      #(comment created during unwrap): new block = ../../templates/general/cartesian_x1y2.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cartesian_x1y2"
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)sets general replacements for cartesian 2D coordinates in the xy plane
+      #(hash inserted during unwrap)END_MARKDOWN
+      
+      
+      
    
    # include this for both cylindrical and cartesian when using a quadrant
    

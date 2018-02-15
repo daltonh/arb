@@ -104,7 +104,7 @@ MSH_FILE "turbulent_channel_containing_cylinder_2d_coarse.msh" inputscale=0.5d0 
 #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 
-GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+INCLUDE_TEMPLATE "general/cartesian_x1y2" # comment out any references to the third dimension and set the <<dimensions>> list, used in the template files
 
 # variables etc
 

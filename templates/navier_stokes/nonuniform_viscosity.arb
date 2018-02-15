@@ -1,0 +1,4 @@
+# call this file after constants to specify nonuniform properties
+GENERAL_REPLACEMENTS R "<<uniformviscositycomment>>" W "#" R "<<nonuniformviscositycomment>>" W "" R "<<uniformviscosity>>" W "0"
+# the following is just a placeholder - you will need to add a real expression for the varying viscosity elsewhere
+FACE_LOCAL <mu_f> "<mu>" ON <allfaces>
