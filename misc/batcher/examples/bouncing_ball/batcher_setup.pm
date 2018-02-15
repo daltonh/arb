@@ -51,6 +51,7 @@ sub case_setup {
     my $m=$#case+1;
 
 # always include these now, complementing automatic arb strings
+    $case[$m]{"replacements"}{"<<batcher>>"} = '1';
     $case[$m]{"replacements"}{"<<batchercomment>>"} = '';
     $case[$m]{"replacements"}{"<<nobatchercomment>>"} = '#';
 

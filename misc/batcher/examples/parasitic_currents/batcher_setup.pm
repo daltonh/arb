@@ -76,6 +76,7 @@ sub case_setup {
           $case[$m]{"arboptions"}='--omp2 --opt -pl'; # using process logging (-pl) here allows memory use (memoryrss) to be reported
 
 # always include these now, complementing automatic arb strings
+          $case[$m]{"replacements"}{"<<batcher>>"} = '1';
           $case[$m]{"replacements"}{"<<batchercomment>>"} = '';
           $case[$m]{"replacements"}{"<<nobatchercomment>>"} = '#';
 

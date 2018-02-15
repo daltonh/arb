@@ -384,6 +384,7 @@ sub string_setup {
 # setup default string_variables
 # loose convention is that replacement strings be delimited by <<>>, however any strings can (and will) be matched/valued
 # convention is that names that end with "comment" are meant to precede statements in the files, converting them to comments if they are not relevant
+#
 # this string is for batcher integration - if a file is run through batcher, this string will be valued by an empty string, so can be used to precede arb lines that are specific to the batcher runs
   string_set("<<batcher>>","0","global"); # (0 not using batcher, 1 using batcher, to be set in batcher_setup.m) use this from now on over the comment strings
   string_set("<<batchercomment>>","#","global");
