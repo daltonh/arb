@@ -8,7 +8,7 @@ VERSION 0.42
 #INCLUDE_TEMPLATE "general"
 #INCLUDE "cylindrical_reflect_r1z2"
 # or, setup basic cartesian reflect general replacements
-GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+INCLUDE_TEMPLATE "general/cartesian_x1y2"
 GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
 GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
 
