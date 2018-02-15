@@ -83,11 +83,9 @@ INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
 <<doubledomaincomment>>INCLUDE "fluid_replacements"
 
 # setup basic cylindrical general replacements by including the following two lines
-<<cylindricalcomment>>INCLUDE_TEMPLATE "general"
-<<cylindricalcomment>>INCLUDE "cylindrical_reflect_r1z2"
-# these statements only necessary in cartesian as already included in above files, but GENERAL_REPLACEMENT statements can't be commented out by other strings, so just repeat them
-GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
-GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
+<<cylindricalcomment>>INCLUDE_TEMPLATE "general/cylindrical_reflect_r1z2"
+<<cartesiancomment>>INCLUDE_TEMPLATE "general/cartesian_x1y2"
+<<cartesiancomment>>GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
 # include this for both cylindrical and cartesian when using a quadrant
 GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2"
 

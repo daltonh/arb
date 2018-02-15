@@ -399,11 +399,11 @@ sub string_setup {
   string_set("<<radius_c>>","1.d0","global");
   string_set("<<radius_f>>","1.d0","global");
   string_set("<<radius_n>>","1.d0","global");
+  string_set("<<radialdim>>","0","global"); # for 2D cylindrical this is the radial coordinate direction
+  string_set("<<axialdim>>","0","global"); # for 2D cylindrical this is the axial coordinate direction
   string_set("<<radiusdim1flag>>","0","global"); # legacy, use <<radialdim>> instead: for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
   string_set("<<radiusdim2flag>>","0","global");
   string_set("<<radiusdim3flag>>","0","global");
-  string_set("<<radialdim>>","0","global"); # for 2D cylindrical this is the radial coordinate direction
-  string_set("<<axialdim>>","0","global"); # for 2D cylindrical this is the axial coordinate direction
 # these strings should be overwritten by the normal coordinate directions of any reflection boundaries in the domain: eg R "<<reflect=1>>" W "reflect=1"
   string_set("<<reflect=1>>","","global");
   string_set("<<reflect=2>>","","global");

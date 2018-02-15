@@ -16,7 +16,7 @@ INFO_DESCRIPTION "Does a linear advection test in line with that presented in DO
 
 #KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2,polynomialcellorder=2
 
-GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+INCLUDE_TEMPLATE "general/cartesian_x1y2" # comment out any references to the third dimension and set the <<dimensions>> list, used in the template files
 
 TIMESTEPMAX 5 # just compute 5 timesteps
 
