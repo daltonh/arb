@@ -39,7 +39,7 @@ GENERAL_REPLACEMENTS D <<ufadvectioncomplexcomment>> W "#"
 
 REPLACEMENTS R "<<rho_f>>" W "<rho_f>" # first define this local replacement string in the same scope of the definition statements below (ie, outside scope of if block)
 IF {{ return ( !(string_examine('<rho_f>')) && string_eval('<<uniformdensity>>') ) }}  # this evaluates as true (1) if replacement string '<rho_f>' isn't defined, AND <<uniformviscosity>> is on (1)
-  REPLACEMENTS S "<<rho_f>>" W "<mu>" # if we are here then we apply the uniform density substitution
+  REPLACEMENTS S "<<rho_f>>" W "<rho>" # if we are here then we apply the uniform density substitution
 END_IF
 # form opposite string to be consistent with <<ufadvectioncomplexcomment>> 
 GENERAL_REPLACEMENTS R <<ufadvectionsimplecomment>> W "" 
