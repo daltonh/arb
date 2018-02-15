@@ -4,9 +4,9 @@
 # the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90
 EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: sphere_with_reflect.arb
-   #(comment created during unwrap): new block = sphere_with_reflect.arb: sub_block = 0
-   #(hash inserted during unwrap)INCLUDE_WORKING "sphere_with_reflect.arb"
+# the following working directory files found by the arb script: flow_around_sphere.arb
+   #(comment created during unwrap): new block = flow_around_sphere.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "flow_around_sphere.arb"
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -573,8 +573,16 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             CELL_EQUATION <momentum[l=2]> "celldiv(<facex[l=2]>*<J_f[l=2]>)/<cellx[l=2]>-<dynamic_force_c[l=2]>" ON <domain> # momentum component
             
             
-            # add on hoop stress term separately
-            VARIABLE <momentum[l=2]> "<momentum[l=2]>+2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)"
+            # add on hoop stress term separately for cylindrical coordinates
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 1
+               # perform a check that <<radialdim>> has been correctly defined
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 3
+                  #(hash inserted during unwrap)IF 
+                  #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation however the string 2 has not been correctly defined'
+                  #(hash inserted during unwrap)END_IF
+               VARIABLE <momentum[l=2]> "<momentum[l=2]>+2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)"
+               #(hash inserted during unwrap)END_IF
             #(hash inserted during unwrap)END_IF
          
          # add transient term which is independent on cartesian or cylindrical coordinates
