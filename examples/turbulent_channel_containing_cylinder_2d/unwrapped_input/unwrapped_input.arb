@@ -1,4 +1,4 @@
-#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
 # the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90
@@ -122,7 +122,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
    #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next)
    #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
    
-   # comment out any references to the third dimension in any included files
+      #(comment created during unwrap): new block = ../../templates/general/cartesian_x1y2.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cartesian_x1y2" # comment out any references to the third dimension and set the <<dimensions>> list, used in the template files
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)sets general replacements for cartesian 2D coordinates in the xy plane
+      #(hash inserted during unwrap)END_MARKDOWN
+      
+      
+      
    
    # variables etc
    
@@ -782,15 +789,15 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
          
          #GENERAL_REPLACEMENTS R  W "#" 
          # next add simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
-         FACE_LOCAL <u_rf_{adv}> "2.d0*<turb_mu_u_c>*abs(<u_f_{raw}>)/<facedx>" ON <domainfaces>
+         FACE_LOCAL <u_rf_{adv}> "2.d0*<rho>*abs(<u_f_{raw}>)/<facedx>" ON <domainfaces>
          # or more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
          #FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <domainfaces>
-         #FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<turb_mu_u_c>))" ON <domainfaces>
+         #FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>))" ON <domainfaces>
          
          FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
          
          # for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
-         #FACE_LOCAL <u_rf_{transient}> "<turb_mu_u_c>/<dt>" ON <domainfaces>
+         #FACE_LOCAL <u_rf_{transient}> "<rho>/<dt>" ON <domainfaces>
          #FACE_DERIVED <u_f_{correction}> "(-<C_{Rhie-Chow}>*<p_error>+<u_rf_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_{correction}>+<u_rf_{transient}>)"
          # for steady-state just take reciprocal and add pressure contribution
          FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<p_error>/(<u_f_{correction}>)"
@@ -922,7 +929,6 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
             CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
             CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
-            #CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
             
             
             # add on hoop stress term separately for cylindrical coordinates
