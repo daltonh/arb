@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: impacting_volume_of_fluid_drop_in_halfplane.arb
    #(comment created during unwrap): new block = impacting_volume_of_fluid_drop_in_halfplane.arb: sub_block = 0
@@ -125,9 +125,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
    # user-defined constants
    
    # setup basic cylindrical general replacements by including the following two lines
-   #(hash inserted during unwrap)INCLUDE_TEMPLATE "general"
       #(comment created during unwrap): new block = ../../templates/general/cylindrical_reflect_r1z2.arb: sub_block = 0
-      #(hash inserted during unwrap)INCLUDE "cylindrical_reflect_r1z2"
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cylindrical_reflect_r1z2"
       # sets general replacements for cylindrical 2D coordinates with the 2-axis being the centreline (z) and 1-axis being radius (r)
       # comment out any references to the third dimension in any included files
       # centreline is normal to the 1 axis
@@ -137,7 +136,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
       
       
       
-   #GENERAL_REPLACEMENTS REPLACE "#" WITH "#" # comment out any references to the third dimension in any included files
+   #INCLUDE_TEMPLATE "general/cartesian_x1y2"
    #GENERAL_REPLACEMENTS REPLACE "reflect=1" WITH "reflect=1"
    
    # bring in default physical and numerical constants
@@ -1172,8 +1171,16 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
          CELL_EQUATION <momentum[l=2]> "celldiv(<facex[l=1]>*<J_f[l=2]>)/<cellx[l=1]>-<dynamic_force_c[l=2]>" ON <fluid domain> # momentum component
          
          
-         # add on hoop stress term separately
-         VARIABLE <momentum[l=1]> "<momentum[l=1]>+2.d0*<u[l=1]>*<vof_mu_c>/(<cellx[l=1]>**2)"
+         # add on hoop stress term separately for cylindrical coordinates
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+            #(hash inserted during unwrap)IF 1
+            # perform a check that <<radialdim>> has been correctly defined
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 3
+               #(hash inserted during unwrap)IF 
+               #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation however the string 1 has not been correctly defined'
+               #(hash inserted during unwrap)END_IF
+            VARIABLE <momentum[l=1]> "<momentum[l=1]>+2.d0*<u[l=1]>*<vof_mu_c>/(<cellx[l=1]>**2)"
+            #(hash inserted during unwrap)END_IF
          #(hash inserted during unwrap)END_IF
       
       # add transient term which is independent on cartesian or cylindrical coordinates

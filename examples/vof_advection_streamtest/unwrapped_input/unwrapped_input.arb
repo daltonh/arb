@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: vof_advection_streamtest.arb
    #(comment created during unwrap): new block = vof_advection_streamtest.arb: sub_block = 0
@@ -25,7 +25,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
    
    #KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2,polynomialcellorder=2
    
-   # comment out any references to the third dimension in any included files
+      #(comment created during unwrap): new block = ../../templates/general/cartesian_x1y2.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cartesian_x1y2" # comment out any references to the third dimension and set the <<dimensions>> list, used in the template files
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)sets general replacements for cartesian 2D coordinates in the xy plane
+      #(hash inserted during unwrap)END_MARKDOWN
+      
+      
+      
    
    TIMESTEPMAX 5 # just compute 5 timesteps
    

@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: stokes_flow_through_cylinder.arb
    #(comment created during unwrap): new block = stokes_flow_through_cylinder.arb: sub_block = 0
@@ -405,15 +405,15 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
          
          #GENERAL_REPLACEMENTS R  W "#" 
          # next add simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
-         #FACE_LOCAL <u_rf_{adv}> "2.d0*<mu>*abs(<u_f_{raw}>)/<facedx>" ON <domainfaces>
+         #FACE_LOCAL <u_rf_{adv}> "2.d0*<rho>*abs(<u_f_{raw}>)/<facedx>" ON <domainfaces>
          # or more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
          ##FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <domainfaces>
-         ##FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<mu>))" ON <domainfaces>
+         ##FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>))" ON <domainfaces>
          
          #FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
          
          # for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
-         #FACE_LOCAL <u_rf_{transient}> "<mu>/<dt>" ON <domainfaces>
+         #FACE_LOCAL <u_rf_{transient}> "<rho>/<dt>" ON <domainfaces>
          #FACE_DERIVED <u_f_{correction}> "(-<C_{Rhie-Chow}>*<p_error>+<u_rf_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_{correction}>+<u_rf_{transient}>)"
          # for steady-state just take reciprocal and add pressure contribution
          FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<p_error>/(<u_f_{correction}>)"
