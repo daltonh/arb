@@ -140,6 +140,11 @@ GLOBAL_REPLACEMENTS R "string1" W "another string" D "string2" W "another string
 
 There are certain system generated global string variables that are set automatically but can also be changed by the user.  These include a number of variables that set the coordinate dimensions used by various variable operators.  Use the search hint `ref: string system variables` to find the list of these in `sub string_setup` within [StringCode.pm].
 
+Also, for debugging purposes the perl subroutine `string_debug` can be used to print out all of the replacement strings at any point in the file, using (for example):
+```arb
+{{ print "DEBUGGING: string debug =\n".string_debug(); }}
+```
+
 ## Code blocks
 
 Code blocks are separate 'chunks' of code that define the scope of the string variables, as well as the scope of file include paths.  Code blocks can be defined within the one arb file using the `BLOCK` and `END_BLOCK` keywords, as in:

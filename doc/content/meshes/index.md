@@ -1,16 +1,14 @@
 ---
-title: 'regions and meshes'
+title: 'meshes'
 author: Dalton Harvie
 date: 5/10/17
 ---
 
 <!-- add ##Gmsh Regions -->
 
-#Regions and meshes
+#Meshes
 
-##Meshes
-
-###Types of elements
+##Types of elements
 
 arb uses an unstructured mesh composed of cell elements that are separated by face elements. Node elements are the points demarcating the face and cell elements.  The dimension of each element is specified on a per-element basis, consistent with the particular computational domain that the element is within (that is, not globally).
 
@@ -20,7 +18,7 @@ Face elements are any elements that separate cell elements. Face elements also h
 
 Node elements are the vertices that bound both the face and cell elements.  Node elements always have a dimension of point (0) and appear as geometry->points in [gmsh].
 
-###File format
+##File format
 
 Meshes are read in from files, in the format of the open source [gmsh] program having extension `.msh`.  [Pointwise] is a commercial meshing program that also exports to this format.  Multiple files can be read in by arb for each simulation.
 
@@ -30,7 +28,7 @@ Meshes and data are also exported by arb using the same [gmsh] `.msh` format. Du
 
 Regions imported from files as well as regions created by arb will be exported to any written files, however note that as the physical entities handled by gmsh can only have a single dimension, elements that have a dimension that is less than any others within a region will not be associated with that region in any arb-created files. This is relevant for example when a compound region is created that contains both domain and boundary cells. When this arb-written file is displayed by gmsh it will only appear to contain the domain cells.
 
-### Data and mesh file reading
+## Data and mesh file reading
 
 Mesh and data input and output is specified by `MSH_FILE` statements within the arb file, having the generic format:
 ```arb
@@ -57,11 +55,11 @@ CELL_OUTPUT <a variable> "1.d0" ON <domain1> # data associated with <domain1> wi
 ```
 then regions and their associated data will only be written to output `.msh` files corresponding to the filenames in which they were originally defined.  The `output.msh` file is handled differently however and will contain all regions on output, irrespective of the regions contained in any `output.msh` file that is read in.
 
-### Mesh read and write options
+## Mesh read and write options
 
 Three types of options are available for each file:
 
-####Output options:
+###Output options:
 
 These options specify how and what information is to be written to output `.msh` files:
 
@@ -90,7 +88,7 @@ These options specify how and what information is to be written to output `.msh`
 By default all meshes have the `nooutput` option specified, with the exception of
 the `output.msh` file, which has option `output`.
 
-####Input options:
+###Input options:
 
 These options specify what information is to be read from the file.
 
@@ -111,7 +109,7 @@ These options specify what information is to be read from the file.
 By default all meshes have the `input` option specified, with the exception of
 the default `output.msh` mesh, which has option `noinput`.  Meshes and data cannot be read using the vtk or dat file formats.
 
-####Data format options:
+###Data format options:
 
 Variables associated with cell elements can be written in the following formats:
 
@@ -129,7 +127,7 @@ Default data formats for each variable are (search `ref: default output` in [set
 
 The default formats can be overwritten on a per-variable or per-file basis.  An option such as `elementdata` added to the `MSH_FILE` command will cause all applicable data to be written in this format within this file.  Similarly, an option such as `elementnodedata` added to a variable definition statement will cause just this variable to be written in this format (if applicable).  The per-file format option takes precedence over any per-variable format options.
 
-### Multiple domains: Cell and face element specification
+## Multiple domains: Cell and face element specification
 
 The distinction between cell elements and face elements is not made by gmsh or contained explicitly in the file, but rather must be made by arb when a file is read in. Gmsh's behaviour is to only write an element to a file if it is a member of a physical entity. Further, each physical entity has a single dimension. So, to decide whether an element is either a face or cell element, arb does two things when reading in each file: 
 
@@ -143,9 +141,9 @@ If you do have multiple domains having different dimensions contained within the
 
 Alternatively, there is another way that may work for your simulation: As arb can read multiple files for each simulation, it may be easier to place domains of different dimensions in separate `.msh` files. The cell/face/node specification will then be handled automatically without additional statements in the arb input file.  However, if you want multiple domains to share common mesh features (such as a common unstructured surface) this may be difficult to accomplish using gmsh.  
 
-##Glued boundaries
+#Glued boundaries
 
-###Glued faces statement
+##Glued faces statement
 The `GLUE_FACES` keyword is used to implement periodic or reflection boundaries by glueing two boundary face regions together.  The boundary regions to be glued must have the same element structure (size and number).  Individual element matching between the boundaries is accomplished by matching the closest element locations, relative to the region centroids (much like the `facelink` and `celllink` operators).
 
 Example of a periodic boundary glueing the top and bottom boundaries of a domain:
@@ -159,7 +157,7 @@ GLUE_FACES <west> reflect=1 # equivalent shorter form
 ```
 If only one region is specified after the `GLUE_FACES` keyword, then the region is assumed to be glued to itself, and hence, the above two reflection commands are equivalent.
 
-###Reflection boundaries
+##Reflection boundaries
 
 What reflection statements to use can be confusing.  There are two types of `reflect=?` statements: those associated with the faces (as specified in the above `GLUE_FACE` command), and those associated with variables (as specified in certain operators).  The `reflect=1` string in the above `GLUE_FACES` statement is the first type, and means that both the geometry (i.e., mesh) and any vector components should be reflected in a direction normal to the glued face when moving through the face.
 
@@ -175,7 +173,7 @@ FACE_OUTPUT <ugrad_f[l=1,1]> "facegrad[l=1](<u[l=1]>)" # reflect=1 not required
 ```
 Including `reflect=?` statements in operators incurs a small efficiency penalty when computing the values.  For this reason it is worthwhile ensuring that these operator reflect options are only included when the simulation requires.  Within the templates files this is achieved by string replacements of the form `<<reflect=1>>` which is replaced by `reflect=1` in applicable operators when the domain contains a `reflect=1` boundary, and the empty string otherwise.  Standard setup files are available in the [templates general directory] for setting these reflect replacement strings for commonly used reflection scenarios.  For example, [cylindrical_reflect_r1z3.arb] sets the necessary operator reflect strings within the templates files for an cylindrical simulation conducted in the l=1 (radial) and l=3 (axial) plane.
 
-###Potential problems
+##Potential problems
 
 Generally glued faces work as you hope that they might, provided that the correct operator reflect option strings are given.  However there are some gotchas in their use due to the fact that glued faces remain as separate faces between the same two adjacent cells.  For example, when looping from a glued face through cells specified by the system region `<adjacentfaceicells>` (as used in `faceave[adjacentcells]` for example), the `cellave[lastface](<blah>)` operator will refer to `<blah>` at the original context face (in the case of glued periodic faces), rather than the particular face that is adjacent to the current cell.  The `faceave` operator accepts a `noglue` option to alter the behaviour of `cellave[lastface]` used in its expression:
 ```arb
@@ -183,143 +181,4 @@ FACE_CONSTANT <demo> "faceave[adjacentcells](dot(<u[l=:]>,cellave[lastface](<fac
 FACE_CONSTANT <demo2> "faceave[adjacentcells,noglue](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" # here the facenorm will come from the face that is attached (adjacent) to each cell in the case of a periodic glued face, which is probably not what is desirable here
 ```
 Other things to note in this context:  Some system regions change the context face to the adjacent face when interpolating to a cell, such as `<adjacentfaceicellsnoglue>`, `<adjacentfaceupcellnoglue>` and `<adjacentfacedowncellnoglue>`.  This change in context face also occurs during `faceave[advection](<blah>)` averaging, meaning that any `cellave[lastface]` referred to in `<blah>` refers to the face that is always adjacent to the current cell.  There is also the averaging operators `cellave[lastfacenoglue]` which attempts to find the adjacent face to a cell instead of (potentially) its glued counterpart, but this option may fail in the case of a single column of periodic cells (may work, not really tested, and not really recommended either).
-
-## Regions
-
-Regions are sets of elements that are used to locate user-defined variables and equations. Each region may contain only mesh elements of the same centring (that is, one of either cell, face or node elements).  Regions may contain elements of different dimensions (see caveat in previous section regarding gmsh display of this though). Regions can be defined by the user directly in gmsh when the mesh is generated, or via statements in the file that are interpreted when is run. There are also several generic system generated regions. Region names follow similar rules to variable names:  They must be delimited by the `<` and `>` characters, and within these delimiters cannot contain the character (sets) `{{`, `}}`, `#` or `&`. Apart from these their names may contain any non-alphanumeric characters.
-
-### Defining regions via gmsh \[sec:gmsh\_regions\]
-
-Regions are specified in gmsh by defining and then naming physical entities. To do this via the gmsh GUI:
-
--   Add a physical entity (under the physical groups tab) by selecting various elemental entities.
-
--   Edit the geometry file (using the edit tab) and change the physical entity’s name from the numerical name given by gmsh to the required delimited name suitable for arb.
-
--   Save the file.
-
--   Reload the file again (using the reload tab). If you now check under the visibility menu that the physical entity is visible.
-
-You can specify the cell, face or node designation of any gmsh element using the following:
-```arb
-CELL_REGION <cell_region_name> 
-FACE_REGION <face_region_name>
-NODE_REGION <noderegion_name>
-```
-However, this is seldom necessary (although it doesn't hurt either), unless the `.msh` file it is contained within contains multiple domains, of differing dimensions (see discussion in previous section).
-
-### Defining regions within the file
-
-There are several types of region specification statements that can be used in the file. Regions specified by these statements will overwrite any regions defined in the files, however a warning is issued (This allows files to be reread without altering region definition statements).  Regions that are defined within the arb input file are handled by [equation_module_template.f90] (search for `ref: compound`, or `ref: at` etc).
-
-The specification statements are detailed below:
-
-####Compound region:
-
-```arb
-CELL_REGION <cell_region_name> "compound(+<region1>+<region2>-<region3>)" ON <parent_cell_region> # comments
-FACE_REGION <face_region_name> "compound(<region4>-<region5>)" ON <parent_face_region> # comments
-NODE_REGION <node_region_name> "compound(<region6>-<region7>)" ON <parent_node_region> # comments
-```
-
-A compound region is defined using other existing regions. All regions that are used in the definition (eg `<region1>`, `<region2>` etc in the above examples) must have the (same) centring that is specified by the keyword.
-
-The contents of the newly formed region is created using sequential addition (union) and subtraction operations. If a `+` sign precedes a region name in the list of regions, then all the mesh elements that are in the following region are added to the new compound region, if they are not already members. If a `-` sign precedes a region name in the list of regions, then all the mesh elements that are in the following region are removed from the new compound region, if they are (at that stage) members of the new compound region. If no sign immediately precedes a region name in the defining list then a `+` sign is assumed. When constructing a compound region the code deals with each region in the defining list sequentially; so whether a mesh element is included in the compound region or not may depend on the order that the regions are listed.
-
-Finally, as per all region definition statements, the resulting compound region can only include elements that are contained within the parent region, specified using `ON <parent_region>`.  If a parent region is not specified, then all of the elements of the applicable centring is implied (ie, `ON <allcells>` for a `CELL_REGION` statement).
-
-####At region:
-
-```arb
-CELL_REGION <name> "at(x1,x2,x3)" ON <domain> # comments
-FACE_REGION <name> "at(x1,x2,x3)" ON <inlet> # comments
-NODE_REGION <name> "at(x1,x2,x3)"
-```
-
-This statement defines a region that contains one cell, face or node mesh element. The element chosen lies closest to the point specified by the coordinates `x1,x2,x3`. The coordinate values can be real or double precision floats.
-
-####Within box region:
-
-    CELL_REGION <name> "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" # comments
-    FACE_REGION <name> "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" # comments
-
-This statement defines a region including all elements (cell or face)
-that lie within a box with faces orientated with the coordinate
-directions, and location defined by the two corner points having the
-minimum () and maximum () coordinate values. An optional function is
-planned.
-
-*Boundary of region:*
-
-    CELL_REGION <name> "BOUNDARY OF <region>" # comments
-    FACE_REGION <name> "BOUNDARY OF <region>" # comments
-
-This statement defines a region that contains *only* the boundary
-elements (either cell or face) that border the region .
-
-*Domain of region:*
-
-    CELL_REGION <name> "DOMAIN OF <region>" # comments
-    FACE_REGION <name> "DOMAIN OF <region>" # comments
-
-This statement defines a region that contains *only* the domain elements
-(either cell or face) that are associated with the region .
-
-*Associated with region:*
-
-    CELL_REGION <name> "ASSOCIATED WITH <region>" # comments
-    FACE_REGION <name> "ASSOCIATED WITH <region>" # comments
-
-This statement defines a region that contains *both* the domain and
-boundary elements (either cell or face) that are associated with the
-region . Effectively this is a combination of the and statements.
-
-### System generated regions
-
-The following regions are generated by at the start of a simulation. The
-names cannot be used for user-defined regions:
-
-<span>lp<span>10cm</span></span> region name & description\
- & all cells\
- & internal domain cells\
- & cells located on the boundary\
- & all faces\
- & internal domain faces\
- & faces located on the boundary\
-
-Additionally, there are a number of system regions which may be used in
-user-written expressions (see section \[sec:language\]) which specify
-sets of mesh elements relative to the current position. These names
-cannot be used for user-defined regions either:
-
-<span>llp<span>8cm</span></span> region name & rel. to& description\
- & cell & faces that surround the current cell\
- & cell & faces that surround the current cell, unless the current cell
-is on a boundary. In that instance move to the neighbouring domain cell
-and then cycle around the surrounding face cells.\
- & cell & cells that are local to the current cell (more than just the
-adjacent cells)\
- & face & cells that are local to the current face (more than just the
-adjacent cells)\
- & cell & cells that are strictly adjacent to the current cell\
- & face & cells that are strictly adjacent to the current face (always
-two)\
- & face & cell that is adjacent to the current face in the direction of
-the normal\
- & face & cell that is adjacent to the current face in the opposite
-direction to the normal\
- & face & the cell that is upwind of the face, used when performing
-averaging (see section \[sec:language\]. Not really a user region.\
- & face & the cell that is downwind of the face, used when performing
-averaging (see section \[sec:language\]. Not really a user region.\
- & cell & surrounding faces used in a cell averaging kernel (see section
-\[sec:language\]. Not really a user region.\
- & cell & surrounding cells used in cell derivative kernels (see section
-\[sec:language\]. Not really a user region.\
- & cell & surrounding nodes used in a cell averaging kernels (see
-section \[sec:language\]. Not really a user region.\
- & face & surrounding cells used in face averaging and derivative
-kernels (see section \[sec:language\]. Not really a user region.\
- & face/cell & dummy region which specifies no elements, or the last
-element used in an operator’s context.\
 
