@@ -29,7 +29,7 @@ ELSE
 # now create equations
   CELL_EQUATION <continuity> "celldiv(<<radius_top>><u_f>)<<radius_bottom>>" ON <domain> # continuity
   {{ return vector_expand(
-    'CELL_EQUATION <momentum[l=$l]> "celldiv(<<radius_top>><J_f[l=$l]>)<<radius_bottom>>-<dynamic_force_c[l=$l]>" ON <domain> # momentum component'
+    '<<dim$lcomment>>CELL_EQUATION <momentum[l=$l]> "celldiv(<<radius_top>><J_f[l=$l]>)<<radius_bottom>>-<dynamic_force_c[l=$l]>" ON <domain> # momentum component'
     ) }}
 
 # add on hoop stress term separately for cylindrical coordinates

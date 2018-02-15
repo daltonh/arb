@@ -410,7 +410,7 @@ sub string_setup {
   string_set("<<reflect=3>>","","global");
 # dimensions that are being used
   string_set("<<dimensions>>","1,2,3","global"); # defaults to 3D, and should be accessed using the list form of string_eval('<<dimensions>>','list') to be used in (say) a foreach loop
-  string_set("<<dim1comment>>","","global"); # try to use <<dimensions>> instead where possible, but these comments will stay
+  string_set("<<dim1comment>>","","global"); # try to use and set <<dimensions>> where possible, with the idea that eventually the comment strings may go
   string_set("<<dim2comment>>","","global");
   string_set("<<dim3comment>>","","global");
 # set the transient versus steady_state strings using the sub
