@@ -3,7 +3,7 @@
 
 module Units
 
-  VERSION = 1.6
+  VERSION = '1.6'
   DATE = '2018-02-09'
 
   module_function
