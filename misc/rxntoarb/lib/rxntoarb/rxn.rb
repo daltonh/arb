@@ -48,6 +48,11 @@ module Rxntoarb
         when /^\s*!/
           @header << line.sub('!', '#').chomp
 
+        # Command-line options can also be specified in the input file (using exactly the same syntax)
+        # These take precedence over command-line options
+        when /^\s*options\s+([^#]+)/i
+          Rxntoarb.optparse($1.split)
+
         # Replacement definition
         when /^\s*let\s+([^#]+)=([^#]+)/i
           @replacements[$1.strip] = $2.strip

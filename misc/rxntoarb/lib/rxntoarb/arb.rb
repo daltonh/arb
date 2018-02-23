@@ -25,15 +25,9 @@ module Rxntoarb
 
       # Process reactions
       rxn.reactions.each do |reaction|
-        reaction.all_species.each do |species|
-          @sources[[species, Rxntoarb.options[:none_centred] ? nil : species.region]] ||= '0.d0' # ensure that species has a source term originating in its own region
-        end
+        reaction.all_species.each { |species| @sources[[species, Rxntoarb.options[:none_centred] ? nil : species.region]] ||= '0.d0' } # ensure that species has a source term originating in its own region
         # Format kinetic parameters
-        if reaction.parameters
-          reaction.parameters.each do |par|
-            @constants << "#{par.value =~ /^['"]/ ? "#{reaction.centring}_DERIVED" : 'CONSTANT'} <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka}" # parameters defined as strings may not be constants
-          end
-        end
+        reaction.parameters.each { |par| @constants << "#{par.value =~ /^['"]/ ? "#{reaction.centring}_DERIVED" : 'CONSTANT'} <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka}" } if reaction.parameters
         # Generate rate expressions
         conc_powers = ->(species) { "*<#{species.conc}_pos>#{"**#{species.coeff}" if species.coeff > 1}#{"/#{species.meta_coeff}.d0" if species.meta_coeff > 1}" }
         if reaction.type == :reversible || reaction.type == :twostep # reversible must come before irreversible because same code handles two-step reactions
