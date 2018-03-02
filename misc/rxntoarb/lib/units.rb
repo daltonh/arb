@@ -4,7 +4,7 @@
 module Units
 
   VERSION = '1.6'
-  DATE = '2018-02-09'
+  DATE = '2018-03-02'
 
   module_function
 
@@ -127,7 +127,7 @@ module Units
 
   UnitIO = Struct.new(:value, :units, :dim, :factor)
 
-  def list() #{{{
+  def list #{{{
     UNIT_LIST.each { |unit| puts "#{unit.name}: #{[unit.sym].flatten.join(', ')}" unless unit.name.empty? }
   end #}}}
 

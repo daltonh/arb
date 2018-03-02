@@ -1,8 +1,6 @@
 # Rxntoarb::Species
 # (C) Copyright Christian Biscombe 2016-2018
 
-require_relative 'rxn'
-
 module Rxntoarb
 
   class Species
@@ -17,17 +15,18 @@ module Rxntoarb
       @coeff = @coeff.to_i
       @meta_coeff ||= 1 # 'metaspecies' are groups of entities that behave as a single entity in reactions, e.g. a cluster of phospholipids comprising a binding site
       @meta_coeff = @meta_coeff.to_i
-      @name.tr!('<>', '')
+      @name = Rxntoarb.debracket(@name)
+      regions = rxn.surface_regions + rxn.volume_regions
       unless Rxntoarb.options[:none_centred]
         unless @region
-          if (rxn.surface_regions+rxn.volume_regions).size == 1 # if there is only one region, it needn't be specified explicitly
-            @region = (rxn.surface_regions+rxn.volume_regions).first.dup
+          if regions.size == 1 # if there is only one region, it needn't be specified explicitly
+            @region = regions.first.dup
           else
             raise "missing region for species #{@name}"
           end
         end
-        @region.tr!('<>', '')
-        raise "unknown region #{@region}" unless (rxn.surface_regions+rxn.volume_regions).include?(@region)
+        @region = Rxntoarb.debracket(@region)
+        raise "unknown region #{@region}" unless regions.include?(@region)
       end
 
       @bound = rxn.surface_regions.include?(@region) # true if species is surface-bound
