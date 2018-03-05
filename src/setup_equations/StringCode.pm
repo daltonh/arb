@@ -42,7 +42,6 @@ use Exporter 'import';
 #our $VERSION = '1.00';
 our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_examine string_debug string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
 use Common;
-use Data::Alias 'alias';
 
 #-------------------------------------------------------------------------------
 sub parse_string_code {
@@ -79,7 +78,6 @@ sub parse_string_code {
 #  @_ = unchanged
 sub string_option {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $name = $_[0];
   my $options = ''; if (defined($_[1])) { $options = $_[1]; }; # options is optional
 
@@ -97,9 +95,9 @@ sub string_option {
         $options = $';
         if (nonempty($2)) {
           if (empty($3)) {
-            $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 1;
+            $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 1;
           } else {
-            $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 0;
+            $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 0;
           }
         }
       } else {
@@ -118,7 +116,6 @@ sub string_option {
 #  $_[0] = unchanged
 sub string_delete {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my @names = @_; # string_delete now accepts multiple strings
   my $options = ''; if (defined($_[1])) { # if the number of arguments is greater than one, then the last will be options
     $options = pop(@names); # pop off these options
@@ -128,7 +125,7 @@ sub string_delete {
     if ($code_block_found == -1) {
       syntax_problem("string variable $name not found during string_delete: $ReadInputFiles::filelinelocator","warning");
     } else {
-      splice(@{$code_blocks[$code_block_found]{"string_variables"}},$string_variable_found,1);
+      splice(@{$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}},$string_variable_found,1);
     }
   }
   
@@ -148,7 +145,6 @@ sub string_delete {
 
 sub string_eval {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $name = $_[0];
   my $options = ''; if (defined($_[1])) { $options = $_[1]; }; # options is optional
 
@@ -163,9 +159,9 @@ sub string_eval {
     
   } else {
     if ($options =~ /(^|,)list($|,)/) {
-      return split(/,/,$code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
+      return split(/,/,$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
     } else {
-      return $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+      return $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
     }
   }
   
@@ -184,7 +180,6 @@ sub string_eval {
 
 sub string_test {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $name = $_[0];
   my $options = '';
 
@@ -199,7 +194,7 @@ sub string_test {
     error_stop("test string has been passed to string_test was not found: name = $name");
   }
   
-  if ($code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $_[1]) { return '1'; } else { return '0'; }
+  if ($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $_[1]) { return '1'; } else { return '0'; }
   
 }
 #-------------------------------------------------------------------------------
@@ -269,7 +264,7 @@ sub tensor_expand {
 #    - substitute: opposite of default, only set the string if it is set already, otherwise exit with error
 #          - search is done over all code blocks (including the global one)
 #          - global and default options don't make sense here
-#    - global: set the string in the root code_blocks ($code_blocks[0]) so that it is available even after the current block has closed - ie, globally
+#    - global: set the string in the root code_blocks ($ReadInputFiles::code_blocks[0]) so that it is available even after the current block has closed - ie, globally
 
 # on entry if number of arguments is:
 # 1 -> name of string
@@ -280,7 +275,6 @@ sub tensor_expand {
 
 sub string_set {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my @name_value_pairs = @_; # place all arguments in this array to start
 
 # if there is only one value passed in, it is the name, so set the value to an empty string
@@ -351,24 +345,24 @@ sub string_set {
       if ($options =~ /(^|,|\s)global($|,|\s)/) {
         $code_block_set = 0; # for global string
       } else {
-        $code_block_set = $#code_blocks; # otherwise use current block
+        $code_block_set = $#ReadInputFiles::code_blocks; # otherwise use current block
       }
-      $string_variable_set = $#{$code_blocks[$code_block_set]{"string_variables"}}+1; # increment index in the relevant block
+      $string_variable_set = $#{$ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}}+1; # increment index in the relevant block
     }
     print ::DEBUG "INFO: in string_set, about to set string: code_block_set = $code_block_set: string_variable_set = $string_variable_set: options = $options\n";
 
 # if we are here, then the new or reused indices are ready to go
-    $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} = shift(@name_value_pairs);
-    $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"value"} = shift(@name_value_pairs);
+    $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} = shift(@name_value_pairs);
+    $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"value"} = shift(@name_value_pairs);
 
 # also set replace variable
-    $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 1; # default value
+    $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 1; # default value
     if ($options =~ /(^|,|\s)(no|)replace($|,|\s)/) {
       if (nonempty($2)) {
-        $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
+        $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
       }
-    } elsif ($code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} =~ /^$/) {
-      $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
+    } elsif ($ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} =~ /^$/) {
+      $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
     }
 
   }
@@ -427,7 +421,7 @@ sub string_setup {
 # on input
 #  $_[0] = name of string to find
 #  $_[1] = is a list of options determining the scope of the search
-#    - local: only in $#code_blocks local block
+#    - local: only in $#ReadInputFiles::code_blocks local block
 #    - global: only in 0 global code_block
 #    - noglobal: in all code blocks except for 0
 # on output, @_ unchanged
@@ -435,16 +429,14 @@ sub string_setup {
 
 sub string_search {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
-
   my $name = $_[0];
-  my ($code_block_lower,$code_block_upper) = (0,$#code_blocks);
+  my ($code_block_lower,$code_block_upper) = (0,$#ReadInputFiles::code_blocks);
   my $options = '';
   if (defined($_[1])) { $options = $_[1]; }
   if ($options =~ /(^|,)\s*global\s*($|,)/) {
     $code_block_upper = 0;
   } elsif ($options =~ /(^|,)\s*local\s*($|,)/) {
-    $code_block_lower = $#code_blocks;
+    $code_block_lower = $#ReadInputFiles::code_blocks;
   } elsif ($options =~ /(^|,)\s*nolocal\s*($|,)/) {
     $code_block_lower = 1;
   }
@@ -453,8 +445,8 @@ sub string_search {
   my $code_block_found = -1; # on output returns -1 if not found, or code_blocks index if found
 
   CODE_BLOCK_LOOP: for my $m ( reverse( $code_block_lower .. $code_block_upper ) ) {
-    for my $n ( reverse( 0 .. $#{$code_blocks[$m]{"string_variables"}} ) ) {
-      if ($name eq $code_blocks[$m]{"string_variables"}[$n]{"name"}) { # found existing general replacements
+    for my $n ( reverse( 0 .. $#{$ReadInputFiles::code_blocks[$m]{"string_variables"}} ) ) {
+      if ($name eq $ReadInputFiles::code_blocks[$m]{"string_variables"}[$n]{"name"}) { # found existing general replacements
         $string_variable_found = $n;
         $code_block_found = $m;
         last CODE_BLOCK_LOOP;
@@ -497,7 +489,6 @@ sub string_set_transient_simulation {
 # string_test can do a similar thing, but without the options (but with the test functionality)
 sub string_examine {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $string = $_[0];
   my $options = '';
   if (defined($_[1])) { $options = $_[1]; }
@@ -513,8 +504,6 @@ sub string_examine {
 
 sub string_debug {
   
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
-
 # this is the string that we will form (to be printed, as in {{ print string_debug('local') }})
   my $debug_output = "STRING DEBUG OUTPUT (a listing of the string replacement strings at this point in time):\n";
 
@@ -523,11 +512,11 @@ sub string_debug {
   if (defined($_[1])) { $options = $_[1]; }
   $debug_output .= "Called with: options = $options\n";
 
-  my ($code_block_lower,$code_block_upper) = (0,$#code_blocks);
+  my ($code_block_lower,$code_block_upper) = (0,$#ReadInputFiles::code_blocks);
   if ($options =~ /(^|,)\s*global\s*($|,)/) {
     $code_block_upper = 0;
   } elsif ($options =~ /(^|,)\s*local\s*($|,)/) {
-    $code_block_lower = $#code_blocks;
+    $code_block_lower = $#ReadInputFiles::code_blocks;
   } elsif ($options =~ /(^|,)\s*nolocal\s*($|,)/) {
     $code_block_lower = 1;
   }
@@ -537,10 +526,10 @@ sub string_debug {
 
   CODE_BLOCK_LOOP: for my $m ( reverse( $code_block_lower .. $code_block_upper ) ) {
     if ($m eq 0) { $debug_output .= "Global "; }
-    if ($m eq $#code_blocks) { $debug_output = $debug_output."Local "; }
+    if ($m eq $#ReadInputFiles::code_blocks) { $debug_output = $debug_output."Local "; }
     $debug_output .= "Code Block $m:\n";
-    for my $n ( reverse( 0 .. $#{$code_blocks[$m]{"string_variables"}} ) ) {
-      $debug_output .= "  String Variable $n: name = $code_blocks[$m]{string_variables}[$n]{name}: value = $code_blocks[$m]{string_variables}[$n]{value}: replace = $code_blocks[$m]{string_variables}[$n]{replace}\n";
+    for my $n ( reverse( 0 .. $#{$ReadInputFiles::code_blocks[$m]{"string_variables"}} ) ) {
+      $debug_output .= "  String Variable $n: name = $ReadInputFiles::code_blocks[$m]{string_variables}[$n]{name}: value = $ReadInputFiles::code_blocks[$m]{string_variables}[$n]{value}: replace = $ReadInputFiles::code_blocks[$m]{string_variables}[$n]{replace}\n";
     }
   }
 
