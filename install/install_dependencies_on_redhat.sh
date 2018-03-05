@@ -21,7 +21,7 @@ yum install maxima
 yum install valgrind
 yum install lapack-devel
 yum install suitesparse-devel suiteparse-static
-yum install perl-Data-Alias
+#yum install perl-Data-Alias
 
 # red hat doesn't have these libraries, so need to copy from ... ??
 # cp /<matplotlibsource>/backend_wx*.py /usr/lib64/python2.7/site-packages/matplotlib/backends
