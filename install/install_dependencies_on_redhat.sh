@@ -44,5 +44,4 @@ pip install cycler
 # for Christian's rxntoarb script
 yum install ruby
 
-#echo "INFO: you may now want to install the free suitesparse linear solver umfpack fortran 90 wrapper routine.  If so, cd src/contributed/suitesparse and type make";
-echo "INFO: you could now add the arb/bin directory to your path using one of the include_path.*sh scripts";
+echo "INFO: you can now add the arb/bin directory to your path and make alternative linear solvers using the include_globally.sh script";
