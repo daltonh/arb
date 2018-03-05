@@ -1,10 +1,7 @@
 # Rxntoarb::Reaction
-# (C) Copyright Christian Biscombe 2016-2017
+# (C) Copyright Christian Biscombe 2016-2018
 
 require 'set'
-require_relative 'parameter'
-require_relative 'rxn'
-require_relative 'rxntoarb'
 require_relative 'species'
 
 module Rxntoarb

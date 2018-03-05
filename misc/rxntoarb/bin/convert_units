@@ -1,18 +1,21 @@
 #!/usr/bin/env ruby
 
+# convert_units
+# (C) Copyright Christian Biscombe 2017-2018
+
 abort "ERROR: Ruby 1.9.3 or newer required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9.3'
+
+require 'optparse'
+require_relative '../lib/units'
 
 PROGNAME = 'convert_units'
 VERSION = '1.6'
-DATE = '2018-02-13'
+DATE = '2018-03-02'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})
   Performs unit conversions.
   (C) Copyright Christian Biscombe 2017-2018
 INFO
-
-require 'optparse'
-require_relative '../lib/units'
 
 # Command-line options
 BANNER = <<-BANNER.gsub(/^\s+/, '')
@@ -22,24 +25,25 @@ BANNER = <<-BANNER.gsub(/^\s+/, '')
 BANNER
 options = {}
 options[:format] = '%g' # default format for numerical output
-opts = OptionParser.new do |opt|
+OPTIONS = OptionParser.new do |opt|
   opt.banner = BANNER
   opt.on('-a', '--arb', 'Output in arb format (implies -d)') { options[:arb] = true; options[:double_precision] = true }
   opt.on('-d', '--double-precision', "Use d for exponents (only alters output; doesn't affect numerical precision)") { options[:double_precision] = true }
   opt.on('-f', '--format <format>', 'Format string for numerical output (default %g)') { |f| options[:format] = f }
-  opt.on('-l', '--list', 'List all recognised units and their abbreviations') { Units.list(); exit if ARGV.empty? }
+  opt.on('-l', '--list', 'List all recognised units and their abbreviations') { Units.list; exit if ARGV.empty? }
   opt.on('-s', '--sig-figs', 'Output with same number of significant figures as input (overrides -f)') { options[:sig_figs] = true }
   opt.on('-t', '--tdiff', 'Interpret input temperature as temperature difference rather than reference to an absolute temperature') { options[:tdiff] = true }
   opt.on('-v', '--version', 'Print version information') { puts INFO; exit if ARGV.empty? }
 end
-begin opts.parse!
-rescue OptionParser::InvalidOption => msg
-  warn opts
+begin 
+  OPTIONS.parse!
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument => msg
+  warn OPTIONS
   abort "ERROR: #{msg}"
 end
 
 if ARGV.empty?
-  warn opts
+  warn OPTIONS
   abort "ERROR: no input"
 end
 

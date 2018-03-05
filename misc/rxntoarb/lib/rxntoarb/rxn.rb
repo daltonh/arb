@@ -37,7 +37,7 @@ module Rxntoarb
         @replacements.each { |sub, rep| line.gsub!(sub, rep) }
         if Rxntoarb.options[:debug]
           warn '='*200
-          Rxntoarb.print_debug([:$., :line]){}
+          Rxntoarb.print_debug(:$., :line){}
         end
         case line
         # Skip full-line comments and blank lines
@@ -47,6 +47,11 @@ module Rxntoarb
         # Comment lines to be retained in the header start with !
         when /^\s*!/
           @header << line.sub('!', '#').chomp
+
+        # Command-line options can also be specified in the input file (using exactly the same syntax)
+        # These take precedence over command-line options
+        when /^\s*options\s+([^#]+)/i
+          Rxntoarb.optparse($1.split)
 
         # Replacement definition
         when /^\s*let\s+([^#]+)=([^#]+)/i
@@ -67,7 +72,7 @@ module Rxntoarb
               warn "INFO: region #{region} excluded due to include_only or exclude statement" if Rxntoarb.options[:debug]
               next
             end
-            region.tr!('<>', '')
+            region = Rxntoarb.debracket(region)
             eval "#{location}_region_list << region"
             eval "@#{location}_regions << region"
           end
@@ -75,12 +80,12 @@ module Rxntoarb
         # Species present initially determine the magnitudes of all other species
         when /^\s*initial_species\s+([^#]+)/i
           $1.scan(/(?<species>[^@]+)(?:@(?<region>\w+|<[^>]+>|(?<array>\[((?>[^\[\]]+)|\g<array>)*\])))?,?\s*/) do |species_list, region_list|
-            species_list = species_list[/\A\[?(.*?)\]?\Z/, 1].split(/,\s*/)
-            region_list &&= region_list[/\A\[?(.*?)\]?\Z/, 1].split(/,\s*/).map { |region| region.tr('<>', '').strip }
+            species_list = Rxntoarb.arrayify(species_list[/\A\[?(.*?)\]?\Z/, 1])
+            region_list &&= Rxntoarb.arrayify(region_list[/\A\[?(.*?)\]?\Z/, 1])
             region_list ||= [nil]
             region_list.each do |region|
               species_list.each do |species|
-                species.tr!('<>', '')
+                species = Rxntoarb.debracket(species)
                 @initial_species << "#{species}#{"@#{region}" if region}"
               end
             end
