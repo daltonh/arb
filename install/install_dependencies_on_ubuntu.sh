@@ -13,7 +13,8 @@ ubuntu_version=`lsb_release -sr`;
 echo "INFO: ubuntu_version = $ubuntu_version"
 
 # basic arb dependencies
-apt-get install maxima maxima-share gfortran liblapack-dev libblas-dev curl gnuplot valgrind libsuitesparse-dev libdata-alias-perl
+apt-get install maxima maxima-share gfortran liblapack-dev libblas-dev curl gnuplot valgrind libsuitesparse-dev
+# libdata-alias-perl no longer needed
 
 # not sure if also need libumfpack5.4.0 - test on new machine
 
