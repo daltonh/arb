@@ -159,7 +159,21 @@ sub string_eval {
     
   } else {
     if ($options =~ /(^|,)list($|,)/) {
-      return split(/,/,$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
+      my @string_eval_array=();
+      my $string_text=$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+      print "STRING TEXT: $string_text\n";
+      while ($string_text) {
+        print "STRING TEXT IN LOOP: $string_text\n";
+        $string_text =~ s/^\s*,\s*//g;
+        my ($string_bit,$error) = extract_first($string_text);
+        print "A: string_bit = $string_bit: error = $error\n";
+        if (!($error)) {
+          push(@string_eval_array,$string_bit);
+        }
+      }
+      print "RETURNED LIST = @string_eval_array\n";
+      return @string_eval_array;
+#     return split(/,/,$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
     } else {
       return $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
     }
