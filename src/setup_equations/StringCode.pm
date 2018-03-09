@@ -170,7 +170,8 @@ sub string_eval {
     
   } else {
     if ($options =~ /(^|,)((commaseparated|spaceseparated|variable|region|)list)($|,)/) {
-      return string_split($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"},$2);
+      my $option = $2;
+      return string_split($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"},$option);
 
 #     my @string_eval_array=();
 #     my $string_text=$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
@@ -210,34 +211,42 @@ sub string_split {
   my $string = $_[0];
   my $ostring = $string;
   my $options = '';
+  my $debug=1;
   if (defined($_[1])) { $options = $_[1]; }
   my @elements = (); # this is what will be passed out
   my $element_delimiter=" "; # default element delimiter is a space
   if ($options =~ /(^|,)(commaseparated|)list($|,)/) { $element_delimiter = ","; }
 
+  if ($debug) { print ::DEBUG "STRING_SPLIT: entering with: string = $string: options = $options\n"; }
   while ($string) {
     $string =~ s/^\s*//; # remove leading spaces using greedy match
+    if ($debug) { print ::DEBUG "STRING_SPLIT: after space clear, start of loop: string = $string: elements = @elements\n"; }
     if ($string =~ /^(["'])/) {
       my $delimiter = $1;
       if ($string =~ /^$delimiter(.*?)$delimiter\s*($element_delimiter|$)/) {
+        $string = $';
         push(@elements,$1);
       } else {
         error_stop("problem with delimiting of string_split $ostring: $ReadInputFiles::filelinelocator");
       }
     } elsif ($options =~ /(^|,)(variable|region)list($|,)/) {
       if ($string =~ /^(<.*?>)\s*($element_delimiter|$)/) {
+        $string = $';
         push(@elements,$1);
       } else {
         error_stop("problem with delimiting of string_split $ostring: $ReadInputFiles::filelinelocator");
       }
     } else {
       if ($string =~ /^(.*?)\s*($element_delimiter|$)/) {
+        $string = $';
         push(@elements,$1);
       } else {
         error_stop("problem with delimiting of string_split $ostring: $ReadInputFiles::filelinelocator");
       }
     }
+    if ($debug) { print ::DEBUG "STRING_SPLIT: at end of loop: string = $string: elements = @elements\n"; }
   }
+  if ($debug) { print ::DEBUG "STRING_SPLIT: exiting with: string = $string: elements = @elements\n"; }
 
   return @elements;
 
@@ -366,7 +375,7 @@ sub string_set {
 # check validity of options
   my $options_save = $options;
   while (nonempty($options)) {
-    if ($options =~ /^\s*((no|)replace|default|global|substitute|suffix|prefix)\s*(,|$)/) {
+    if ($options =~ /^\s*((no|)replace|default|global|substitute|suffix|prefix|)\s*(,|$)/) { # note trailing | to match just the delimiter
       $options = $';
     } else {
       syntax_problem("unknown string within string_set options of $options: $ReadInputFiles::filelinelocator");
@@ -605,6 +614,7 @@ sub string_examine {
 #-------------------------------------------------------------------------------
 # prints out a formatted list of the string replacements
 # first argument is list of options, including the string search ones of global, noglobal and local
+# use it in arb code as eg print string_debug;
 
 sub string_debug {
   
@@ -625,9 +635,6 @@ sub string_debug {
     $code_block_lower = 1;
   }
     
-  my $string_variable_found = -1; # on output returns -1 if not found, or string_variables index if found
-  my $code_block_found = -1; # on output returns -1 if not found, or code_blocks index if found
-
   CODE_BLOCK_LOOP: for my $m ( reverse( $code_block_lower .. $code_block_upper ) ) {
     if ($m eq 0) { $debug_output .= "Global "; }
     if ($m eq $#ReadInputFiles::code_blocks) { $debug_output = $debug_output."Local "; }

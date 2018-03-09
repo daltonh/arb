@@ -1,17 +1,26 @@
+MARKDOWN
+Here we add the suffix of <<suffix>> (defaults to _/species/) to every variable involved in the navier-stokes equations, making them specific to one phase (for example)
+Also accepts an <<action>>=cancel option which cancels these replacements
+END_MARKDOWN
 
-REPLACEMENTS D "<<action>>" W "replace"
-INFO_TITLE "another thing"
+{{ print "BEFORE: navier_stokes_replacements:\n".string_debug; }}
+
+{{ string_set("<<action>>","replace","default,noreplace");
+   string_set("<<suffix>>","_/species/","default,noreplace"); }}
+
+{{ print "AFTER DEFAULTS: navier_stokes_replacements:\n".string_debug; }}
 
 {{
 # setup list of variables that need the suffix added
   string_set("<<navier_stokes_variables>>",
   '<u_f> <ugrad_f[l=:,:]> <u[l=:]> <p_f> <p> <rho> <mu> <u_av> <Re>', 
-  "global")
-
+  "default,noreplace");
+}}
+{{
 # loop through the variables (a space separated variable list) either adding suffix replacement string, or removing this string
   foreach my $i ( string_eval("<<navier_stokes_variables>>","variablelist") ) {
     if (string_test("<<action>>","replace")) {
-      string_set($i,"_/species/","suffix,global");
+      string_set($i,string_eval("<<suffix>>"),"suffix,global"); # the suffix option
     } else {
       string_delete($i,"suffix,global");
     }
@@ -19,7 +28,9 @@ INFO_TITLE "another thing"
 }}
 
 
+{{ print "AFTER: navier_stokes_replacements:\n".string_debug; }}
 
+# '<u_f> <ugrad_f[l=:,:]> <u[l=:]> <p_f> <p> <rho> <mu> <u_av> <Re>', 
 
 #   R "<u_f>" W "<u_f_/species/>" &
 #   R "<ugrad_f[" W "<ugrad_f_/species/[" &

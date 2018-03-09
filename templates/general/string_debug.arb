@@ -1,0 +1,15 @@
+# this is just a reminder about how to get a list of replacement strings printed to the scr (or output.scr under -q)
+{{ print string_debug; }}
+
+# these are some ideas for debugging variables that are lists
+# {{
+#   print string_debug;
+#   my $all_elements='ALL_ELEMENTS: ';
+#   foreach my $i (string_eval('<<dimensions>>','list')) {
+#     print "in loop: i = $i\n";
+#     $all_elements=$all_elements." $i";
+#   }
+#   print "$all_elements\n";
+#
+#
+# }}
