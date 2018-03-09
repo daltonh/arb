@@ -201,11 +201,11 @@ sub examine_name {
 }
 
 #-------------------------------------------------------------------------------
-# simple subroutine to extract the first string entry from a line of text, possibly removing any delimiters at the same time
+# simple subroutine to extract the first string entry from a space-separated-list (SSL) of text, possibly removing any delimiters at the same time
 # delimiter is governed by what starts the string:
 #  if it is a " or ', string is delimited by the closest matching delimiter, with no escaping of characters in the middle
-#  now also accepts <> as delimiters
-#  otherwise the string is delimited by the closest space (which becomes the delimiter) or comma
+#  now also accepts <> as delimiters - NO, breaks everything - same with commas as delimiters
+#  otherwise the string is delimited by the closest space (which becomes the delimiter)
 # input
 # $_[0] = string that we want something extracted from
 # output
@@ -226,23 +226,28 @@ sub extract_first {
   if ($debug) { print ::DEBUG "INFO: at start of extract_first: input = $input\n"; }
   if (nonempty($remainder)) {
     $remainder=~s/^\s*//; #remove leading spaces
-    if ($remainder=~/^(['"<])/) {
-      my $delimiter1=$1;
-      my $delimiter2=$delimiter1;
-      if ($delimiter1 eq "<") { $delimiter2=">"; }
-      if ($remainder=~/^$delimiter1(.*?)$delimiter2/) {
+# to delimit with < as well
+#   if ($remainder=~/^(['"<])/) {
+#     my $delimiter1=$1;
+#     my $delimiter2=$delimiter1;
+#     if ($delimiter1 eq "<") { $delimiter2=">"; }
+#     if ($remainder=~/^$delimiter1(.*?)$delimiter2/) {
+    if ($remainder=~/^(['"])/) {
+      my $delimiter=$1;
+      if ($remainder=~/^$delimiter(.*?)$delimiter/) {
         $string=$1; # $string is whatever is between closest delimiters
         $remainder=$';
       } else { print "WARNING: matching delimiters not found in the following string: $input\n"; $error=1; }
     } else {
-      $remainder=~/^(.+?)(\s|,|$)/; # $string is whatever is before closest space or now comma too
+#     $remainder=~/^(.+?)(\s|,|$)/; # $string is whatever is before closest space or now comma too
+      $remainder=~/^(.+?)(\s|$)/; # $string is whatever is before closest space
       if (!defined($1)) {  print "WARNING: string missing in the following string: $input\n"; $error=1; }
       $string=$1;
       $remainder=$2.$';
 #     $remainder=$';
     }
     $remainder=~s/^\h*//; #remove leading spaces, noting that \h matches hoizontal space, whereas \s matches vertical (\v) and horizontal (\h) space
-    $remainder=~s/^,\h*//; #remove leading commas too
+#   $remainder=~s/^,\h*//; #remove leading commas too
 #   $remainder=~s/\h*$//; #remove trailing spaces too now # not any more, as this removed linebreak
   } else {
     $remainder = ''; # remainder could have been blank, so set it to nothing explicitly

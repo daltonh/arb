@@ -1,31 +1,21 @@
 
 REPLACEMENTS D "<<action>>" W "replace"
+INFO_TITLE "another thing"
 
+{{
 # setup list of variables that need the suffix added
-{{ string_set("<<navier_stokes_variables>>",
+  string_set("<<navier_stokes_variables>>",
   '<u_f> <ugrad_f[l=:,:]> <u[l=:]> <p_f> <p> <rho> <mu> <u_av> <Re>', 
   "global")
-}}
 
-{{ # loop through a number of variables, either adding suffix replacement string, or removing this string
-  my $return_string = "GENERAL_REPLACEMENTS ";
-  foreach my $i ( string_eval("<<navier_stokes_variables>>","list") ) {
-    if ($i =~ /^((<.*)\[).*\]>$/) {
-      if (string_test("<<action>>","replace")) {
-        $return_string = $return_string." R \"$1\" W \"$2_/species/[\"";
-      } else {
-        $return_string = $return_string." C \"$1\"";
-      }
-    } elsif ($i =~ /^((<.*)>)$/) {
-      if (string_test("<<action>>","replace")) {
-        $return_string = $return_string." R \"$1\" W \"$2_/species/>\"";
-      } else {
-        $return_string = $return_string." C \"$1\"";
-      }
+# loop through the variables (a space separated variable list) either adding suffix replacement string, or removing this string
+  foreach my $i ( string_eval("<<navier_stokes_variables>>","variablelist") ) {
+    if (string_test("<<action>>","replace")) {
+      string_set($i,"_/species/","suffix,global");
+    } else {
+      string_delete($i,"suffix,global");
     }
   }
-  print "# STRING ".$return_string;
-  return $return_string;
 }}
 
 
