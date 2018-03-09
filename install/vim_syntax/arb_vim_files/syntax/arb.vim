@@ -1,7 +1,7 @@
 " Vim syntax file for arb finite volume solver
 " Language:     arb
 " Version:      0.58
-" Modified:     2018/03/01
+" Modified:     2018/03/09
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 
 " NOTE match patterns starting with \%(\) are used to prevent following syntax elements from appearing in the omni completion list
@@ -27,7 +27,7 @@ syn match arbUnquotedString "\S\+" contained
 syn region arbString start="'" end="'" contained
 syn region arbString start=/"/ end=/"/ contained
 syn match arbFilename "\%(\w\|/\|\.\)\+" contained
-syn region arbExpression start=/"/ end=/"/ contains=arbDeprecated,arbFunction,arbFortranFunction,arbNumber,arbOperator,arbPerlCode,arbStatement,arbSystemFlag,arbSystemVar,arbUserFlag,arbUserVar
+syn region arbExpression start=/"/ end=/"/ contains=arbDeprecated,arbFunction,arbFortranFunction,arbNumber,arbOperator,arbPerlCode,arbSystemFlag,arbSystemVar,arbUserFlag,arbUserVar
 syn match arbLogical "\.\%(true\|false\)\."
 syn include @Perl syntax/perl.vim
 syn region arbPerlCode matchgroup=arbPerlCodeDelimiter start="{{" end="}}" contains=@Perl,arbComment keepend

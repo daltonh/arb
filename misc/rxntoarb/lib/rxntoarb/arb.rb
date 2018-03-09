@@ -167,8 +167,7 @@ module Rxntoarb
 
     def conc_powers(species) #{{{
       "*<#{species.conc}_pos>#{"**#{species.coeff}" if species.coeff > 1}#{"/#{species.meta_coeff}.d0" if species.meta_coeff > 1}"
-    end
-    #}}}
+    end #}}}
 
     def create_sources(reaction) #{{{
       if reaction.type == :twostep
@@ -259,7 +258,7 @@ module Rxntoarb
     end #}}}
 
     def unindent(text) #{{{
-      text.gsub(/^#{text.scan(/^\s*/).min_by { |l| l.length}}/, '').squeeze("\n") # strip indentation of least indented line and delete any empty lines
+      text.gsub(/^#{text.scan(/^\s*/).min_by { |l| l.length }}/, '').squeeze("\n") # strip indentation of least indented line and delete any empty lines
     end #}}}
 
     def find_precursors(reactants, products, new_species) #{{{

@@ -1,4 +1,6 @@
-# physical data for water at roughly 20 degreesC
-CONSTANT <mu> [Pa.s] 1.d-3 # viscosity
-CONSTANT <rho> [kg/m^3] 1.d3 # density
-CONSTANT <eps_fluid> [1] 78.0d0 # relatic static permittivity
+GENERAL_REPLACEMENTS D "<T_celsius>" W "25.d0"
+CONSTANT <T_kelvin> "<T_celsius>+273.15"
+# The following correlations are accurate within the temperature range 0-150 degrees Celsius, at least
+CONSTANT <rho> [kg m-3] "(((((-2.8054253d-10*<T_celsius>+1.0556302d-7)*<T_celsius>-4.6170461d-5)*<T_celsius>-0.0079870401d0)*<T_celsius>+16.945176d0)*<T_celsius>+999.83952d0)/(1.d0+0.01687985d0*<T_celsius>)" # Eq. (16) of Kell (1975), J. Chem. Eng. Data 20: 97
+CONSTANT <mu> [Pa s] "1.d-3*(<T_celsius>+246.d0)/((0.05594d0*<T_celsius>+5.2842d0)*<T_celsius>+137.37d0)" # Eq. (11) of Laliberte (2007), J. Chem. Eng. Data 52: 321
+CONSTANT <eps_fluid> [1] "10.d0**(1.d0/(1.d0+0.0012/(1.d-3*<rho>)**2)*((0.4117d0+366.6d0/<T_kelvin>-1.491d5/<T_kelvin>**2+9.190d6/<T_kelvin>**3)+(0.667d0-11.41d0/<T_kelvin>-3.526d4/<T_kelvin>**2)*log10(1.d-3*<rho>))+0.290d0+275.4d0/<T_kelvin>+0.3245d5/<T_kelvin>**2+log10(1.d-3*<rho>))+1.d0" # Eq. (2) of Marshall (2008), Nat. Preced., http://dx.doi.org/10.1038/npre.2008.2472.1

@@ -130,13 +130,13 @@ module Rxntoarb
       error(msg)
     end #}}}
 
-  def error(msg, type=:ERROR) #{{{
-    warn "#{type} in #{@file} at line #{$.}: #{msg}"
-    if type == :ERROR
-      warn msg.backtrace if Rxntoarb.options[:debug]
-      abort
-    end
-  end #}}}
+    def error(msg, type=:ERROR) #{{{
+      warn "#{type} in #{@file} at line #{$.}: #{msg}"
+      if type == :ERROR
+        warn msg.backtrace if Rxntoarb.options[:debug]
+        abort
+      end
+    end #}}}
 
     private
 

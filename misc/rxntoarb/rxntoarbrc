@@ -13,17 +13,17 @@ END_IF
 /CENTRING/_LOCAL </c/_pos> "/centring/max(</c/>,0.d0)" ON </associatedcells(region)/>
 if_rxn(volume){
   IF <<specieshighorderadvection>> # high-order advection
-  INCLUDE_TEMPLATE "advection_limiters/implicit"
+    INCLUDE_TEMPLATE "advection_limiters/implicit"
     IF <<transientsimulation>>
       INCLUDE "relative_transient_limiter.arb" R "<phi" W "</c/"
     ELSE
       INCLUDE "relative_steady_state_limiter.arb" R "<phi" W "</c/"
     END_IF
-  #INCLUDE "conservative_parameters" R "<phi" W "</c/"
-  FACE_DERIVED </c/_f> "faceave[advection](</c/>,<u_f>,</c/ limiter>,gradient[l=1]=</c/ limiter grad[l=1]>,gradient[l=2]=</c/ limiter grad[l=2]>,gradient[l=3]=</c/ limiter grad[l=3]>)" ON </associatedfaces(region)/>
+    #INCLUDE "conservative_parameters" R "<phi" W "</c/"
+    FACE_DERIVED </c/_f> "faceave[advection](</c/>,<u_f>,</c/ limiter>,gradient[l=1]=</c/ limiter grad[l=1]>,gradient[l=2]=</c/ limiter grad[l=2]>,gradient[l=3]=</c/ limiter grad[l=3]>)" ON </associatedfaces(region)/>
   ELSE # low-order (or non-limited high-order) advection
-  CONSTANT </species/ limiter> 0.d0
-  FACE_DERIVED </c/_f> "faceave[advection](</c/>,<u_f>,</species/ limiter>)" ON </associatedfaces(region)/>
+    CONSTANT </species/ limiter> 0.d0
+    FACE_DERIVED </c/_f> "faceave[advection](</c/>,<u_f>,</species/ limiter>)" ON </associatedfaces(region)/>
   END_IF
   FACE_DERIVED <j_f_/species/@/region/> "</c/_f>*<u_f>-<D_/species/>*facegrad(</c/>)" ON </associatedfaces(region)/> output
 }
