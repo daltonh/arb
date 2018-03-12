@@ -13,7 +13,7 @@ END_MARKDOWN
 {{
 # setup list of variables that need the suffix added
   string_set("<<navier_stokes_variables>>",
-'<mu> <rho> <u_av> <Re> <u[l=1]> <u[l=2]> <p> <ugrad_f[l=1,1]> <ugrad_f[l=1,2]> <ugrad_f[l=2,1]> <ugrad_f[l=2,2]> <p_f> <dynamic_force_c[l=1]> <dynamic_force_c[l=2]> <p_error> <u_f_{raw}> <u_f_{correction}> <u_f> <J_f[l=1]> <J_f[l=2]> <continuity> <momentum[l=1]> <momentum[l=2]> <outlet fully developed> <outlet no slip1> <outlet flowrate equation> <walls noflux> <walls noslip1> <walls p_extrapolation> <inlet fully developed> <inlet no slip1> <inlet flowrate equation> <tau[l=1,1]> <tau[l=2,2]> <tau[l=1,2]> <tau[l=2,1]> <dynamic_force_f> <u_f_vect[l=1]> <u_f_vect[l=2]> <u_rf_{vis}> <u_rf_{adv}> <J_advection_f[l=1]> <J_advection_f[l=2]>',
+'<mu> <rho> <u_av> <Re> <u[l=:]> <p> <ugrad_f[l=:,:]> <p_f> <dynamic_force_c[l=:]> <p_error> <u_f_{raw}> <u_f_{correction}> <u_f_{correction}[r=:]> <u_f> <J_f[l=:]> <continuity> <momentum[l=:]> <outlet fully developed> <outlet no slip1> <outlet flowrate equation> <walls noflux> <walls noslip1> <walls p_extrapolation> <inlet fully developed> <inlet no slip1> <inlet flowrate equation> <tau[l=:,:]> <dynamic_force_f> <u_f_vect[l=:]> <u_rf_{vis}> <u_rf_{adv}> <J_advection_f[l=:]>',
 # '<u_f> <ugrad_f[l=:,:]> <u[l=:]> <p_f> <p> <rho> <mu> <u_av> <Re>', 
   "default,noreplace");
 }}
