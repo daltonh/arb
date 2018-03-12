@@ -1,14 +1,19 @@
 MARKDOWN
 Here we run through all species setting constants
 END_MARKDOWN
+
+# get boltzmann's constant
+INCLUDE_TEMPLATE "general"
+INCLUDE "physical_constants"
+# set some constants related to the solids
+CONSTANT <T> [K] 298.15 # temperature
+
 {{
   my $return_string = '';
   foreach my $species (string_eval("<<multifluid_species_list>>","list")) {
-# sandwich each include statement between global replacements of <<species>>
-#   $return_string .= "GLOBAL_REPLACEMENT R '<<species>>' W '$species'\nINCLUDE 'constants_one_species'\nGLOBAL_REPLACEMENTS C '<<species>>'\n";
-# sandwich each include statement between global replacements of <<species>>
-#   $return_string .= "INCLUDE 'constants_one_species' R '<<species>>' W '$species'\n";
     $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/constants' R '<mu>' W '<mu_$species>' R '<rho>' W '<rho_$species>' R '<Re>' W '<Re_$species>' R '<u_av>' W '<u_av_$species>'\n";
+    $return_string .= "CONSTANT <a_$species> [m] 1.d-6\n";
+    $return_string .= "CONSTANT <V_$species> [m^3] '4.d0*<pi>*<a_$species>^3/3.d0'\n";
   }
   return $return_string;
 }}

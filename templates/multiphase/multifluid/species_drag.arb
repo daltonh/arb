@@ -1,0 +1,13 @@
+MARKDOWN
+Here we find <beta_species0_species> for each disperse phase species
+END_MARKDOWN
+
+ERROR "todo"
+IF 1 # linear osmotic pressure
+  NONE_CONSTANT <p_osmotic_gradient_<<species>>> [Pa] "<k_boltzmann>*<T>/<V_<<species>>>" # this can be atmost a function of <phi_lim_<<species>>>
+  CELL_DERIVED <p_<<species>>> "<p_osmotic_gradient_<<species>>>*<phi_<<species>>>" ON <allcells>
+ELSE
+  ERROR "no other osmotic pressure coded up yet"
+END_IF
+
+FACE_DERIVED <p_f_<<species>>> "faceave(<p_<<species>>>)" ON <allfaces>
