@@ -1,0 +1,23 @@
+MARKDOWN
+Here we setup the cell-centred velocities, pressures and volume fractions for each phase
+END_MARKDOWN
+
+{{
+  my $return_string = '';
+  my $phif = '1.d0';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "# species $species\n";
+    for my $l (string_eval('<<dimensions>>','list')) {
+      $return_string .= "CELL_UNKNOWN <u_$species"."[l=$l]> [] '0.d0' ON <allcells> magnitude=<u_av_$species>\n";
+    }
+    if ($species eq "species0") {
+      $return_string .= "CELL_UNKNOWN <p_$species> [] '1.d0' ON <allcells>\n";
+      $phif .= "-<phi_$species>";
+    } else {
+      $return_string .= "CELL_LOCAL <p_$species> [] '0.d0' ON <allcells>\n";
+      $return_string .= "CELL_UNKNOWN <phi_$species> [] '0.d0' ON <allcells> magnitude=1.d0\n";
+    }
+  }
+  $return_string .= "CELL_DERIVED <phi_species0> [] '$phif' ON <allcells>\n";
+  return $return_string;
+}}

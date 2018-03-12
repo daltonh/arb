@@ -1,0 +1,8 @@
+MARKDOWN
+Here we include constants just relating to a single species, with the variables taking their names from <<species>> (eg, species0)
+END_MARKDOWN
+# create <<suffix>> string from <<species>>, which will be picked up by add_suffix routine
+{{ string_set('<<suffix>>',"_".string_eval('<<species>>')); }}
+INCLUDE_TEMPLATE "general/add_suffix" R "<<replacement_variables>>" W "<mu> <rho> <Re> <u_av>" R "<<action>>" W "replace"
+INCLUDE_TEMPLATE "navier_stokes/constants"
+INCLUDE_TEMPLATE "general/add_suffix" R "<<replacement_variables>>" W "<mu> <rho> <Re> <u_av>" R "<<action>>" W "cancel"

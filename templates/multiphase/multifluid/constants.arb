@@ -1,0 +1,24 @@
+MARKDOWN
+Here we run through all species setting constants
+END_MARKDOWN
+{{
+  my $return_string = '';
+  foreach my $species (string_eval("<<multifluid_species_list>>","list")) {
+# sandwich each include statement between global replacements of <<species>>
+#   $return_string .= "GLOBAL_REPLACEMENT R '<<species>>' W '$species'\nINCLUDE 'constants_one_species'\nGLOBAL_REPLACEMENTS C '<<species>>'\n";
+# sandwich each include statement between global replacements of <<species>>
+#   $return_string .= "INCLUDE 'constants_one_species' R '<<species>>' W '$species'\n";
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/constants' R '<mu>' W '<mu_$species>' R '<rho>' W '<rho_$species>' R '<Re>' W '<Re_$species>' R '<u_av>' W '<u_av_$species>'\n";
+  }
+  return $return_string;
+}}
+
+# Also construct some overall variables
+# <u_av> which is the maximum of all phase <u_av>'s
+{{
+  my $return_string = '<u_av_species0>';
+  foreach my $species (string_eval("<<multifluid_disperse_species_list>>","list")) {
+    $return_string = "nonemax($return_string,<u_av_$species>)";
+  }
+  return "CONSTANT <u_av> '$return_string'\n";
+}}

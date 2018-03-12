@@ -1,0 +1,26 @@
+MARKDOWN
+This is the multiphase equivalent of the navier_stokes/transient_all_setup, using that file as a template
+END_MARKDOWN
+
+INCLUDE_TEMPLATE "navier_stokes/transient_all_setup"
+
+# cancel the single phase <u[l=:,r=1]> variables that were defined in the navier_stokes file, and replace with phase specific ones
+{{
+  my $return_string = '';
+  foreach my $l (string_eval('<<dimensions>>','list')) {
+    $return_string .= "CELL_TRANSIENT <u[l=$l,r=1]> CANCEL\n";
+  }
+  return $return_string;
+}}
+
+# now define saved r=1 phase specific velocities and phi
+{{
+  my $return_string = '';
+  foreach my $species (string_eval('<<multifluid_species_list>>','list')) {
+    foreach my $l (string_eval('<<dimensions>>','list')) {
+      $return_string .= "CELL_TRANSIENT <u_$species"."[l=$l,r=1]> '' '<u_$species"."[l=$l]>' ON <allcells>\n";
+    }
+    $return_string .= "CELL_TRANSIENT <phi_$species"."[r=1]> '' '<phi_$species>' ON <allcells>\n";
+  }
+  return $return_string;
+}}
