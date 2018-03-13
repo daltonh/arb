@@ -8,10 +8,19 @@ INCLUDE "physical_constants"
 # set some constants related to the solids
 CONSTANT <T> [K] 298.15 # temperature
 
+# first the constants that are in common with the navier_stokes equations
 {{
   my $return_string = '';
   foreach my $species (string_eval("<<multifluid_species_list>>","list")) {
     $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/constants' R '<mu>' W '<mu_$species>' R '<rho>' W '<rho_$species>' R '<Re>' W '<Re_$species>' R '<u_av>' W '<u_av_$species>'\n";
+  }
+  return $return_string;
+}}
+
+# now particle radius and volume, for each disperse phase
+{{
+  my $return_string = '';
+  foreach my $species (string_eval("<<multifluid_disperse_species_list>>","list")) {
     $return_string .= "CONSTANT <a_$species> [m] 1.d-6\n";
     $return_string .= "CONSTANT <V_$species> [m^3] '4.d0*<pi>*<a_$species>^3/3.d0'\n";
   }

@@ -1,0 +1,17 @@
+MARKDOWN
+Boundary conditions for walls
+END_MARKDOWN
+
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/noflux' R '<u_f>' W '<u_f_$species>' R '<equation>' W '<walls noflux $species>' R '<region>' W '<walls>'\n";
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/noslip' R '<u_f_vect[' W '<u_f_vect_$species"."[' R '<equation' W '<walls noslip $species' R '<region>' W '<walls>'\n";
+#   if ($species eq 'species0') {
+      $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_extrapolation' R '<dynamic_force_f>' W '<dynamic_force_f_$species>' R '<equation>' W '<walls p_extrapolation $species>' R '<region>' W '<walls>'\n";
+#   } else {
+#     $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_extrapolation' R '<dynamic_force_f> W '<dynamic_force_f_$species>' R '<equation>' W '<walls p_extrapolation $species>' R '<region>' W '<walls>'\n";
+#   }
+  }
+  return $return_string;
+}}

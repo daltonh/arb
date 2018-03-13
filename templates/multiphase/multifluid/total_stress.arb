@@ -1,11 +1,10 @@
 MARKDOWN
-Here we setup the viscous stresses for each phase, including the gradients, using the navier_stokes template file
+Here we setup the viscous stresses for each phase, including the velocity gradients, using the navier_stokes template file
 END_MARKDOWN
 
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
-    $return_string .= "INCLUDE species_viscosity R '<<species>>' W '$species'\n";
     $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/total_stress' ".
       "R '<u[' W '<u_$species"."[' R '<ugrad_f[' W '<ugrad_f_$species"."[' ".
       "R '<tau[' W '<tau_$species"."[' R '<mu_f>' W '<mu_f_$species>'\n".

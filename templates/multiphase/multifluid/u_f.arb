@@ -2,16 +2,6 @@ MARKDOWN
 Here we setup the face flux velocity u_f for each phase, using the navier_stokes template file
 END_MARKDOWN
 
-# calculate the disperse species pressures
-{{
-  my $return_string = '';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-    $return_string .= "INCLUDE 'species_pressure' R '<<species>>' W '$species'\n";
-    $return_string .= "INCLUDE 'species_drag' R '<<species>>' W '$species'\n";
-  }
-  return $return_string;
-}}
-
 # do the whole u_f thing, including defining the dynamic pressures, p_errors, etc
 {{
   my $return_string = '';
@@ -38,7 +28,7 @@ END_MARKDOWN
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-    $return_string .= "INCLUDE 'species_dynamic_force' R '<<species>>' W '$species'\n";
+    $return_string .= "INCLUDE 'single_species_dynamic_force' R '<<species>>' W '$species'\n";
   }
   return $return_string;
 }}

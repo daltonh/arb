@@ -1,12 +1,11 @@
 MARKDOWN
-Here we find <p_species> for each disperse phase species
+Here we setup the pressure for each species, using the single_species_pressure template file
 END_MARKDOWN
 
-IF 1 # linear osmotic pressure
-  NONE_CONSTANT <p_osmotic_gradient_<<species>>> [Pa] "<k_boltzmann>*<T>/<V_<<species>>>" # this can be atmost a function of <phi_lim_<<species>>>
-  CELL_DERIVED <p_<<species>>> "<p_osmotic_gradient_<<species>>>*<phi_<<species>>>" ON <allcells>
-ELSE
-  ERROR "no other osmotic pressure coded up yet"
-END_IF
-
-FACE_DERIVED <p_f_<<species>>> "faceave(<p_<<species>>>)" ON <allfaces>
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+    $return_string .= "INCLUDE 'single_species_pressure' R '<<species>>' W '$species'\n";
+  }
+  return $return_string;
+}}

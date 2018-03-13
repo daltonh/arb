@@ -1,13 +1,11 @@
 MARKDOWN
-Here we find <beta_species0_species> for each disperse phase species
+Here we setup the drag functions for each disperse phase species, using the single_species_drag template file.  Right now only drag between the continuous (species0) and disperse phases is included.
 END_MARKDOWN
 
-ERROR "todo"
-IF 1 # linear osmotic pressure
-  NONE_CONSTANT <p_osmotic_gradient_<<species>>> [Pa] "<k_boltzmann>*<T>/<V_<<species>>>" # this can be atmost a function of <phi_lim_<<species>>>
-  CELL_DERIVED <p_<<species>>> "<p_osmotic_gradient_<<species>>>*<phi_<<species>>>" ON <allcells>
-ELSE
-  ERROR "no other osmotic pressure coded up yet"
-END_IF
-
-FACE_DERIVED <p_f_<<species>>> "faceave(<p_<<species>>>)" ON <allfaces>
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+    $return_string .= "INCLUDE 'single_species_drag' R '<<species>>' W '$species'\n";
+  }
+  return $return_string;
+}}
