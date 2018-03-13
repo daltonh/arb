@@ -10,10 +10,10 @@ END_MARKDOWN
       $return_string .= "CELL_UNKNOWN <u_$species"."[l=$l]> [] '0.d0' ON <allcells> magnitude=<u_av_$species>\n";
     }
     if ($species eq "species0") {
-      $return_string .= "CELL_UNKNOWN <p_$species> [] '1.d0' ON <allcells>\n";
+      $return_string .= "CELL_UNKNOWN <p_$species> [] '<p_in>' ON <allcells>\n";
     } else {
       $return_string .= "CELL_LOCAL <p_$species> [] '0.d0' ON <allcells>\n";
-      $return_string .= "CELL_UNKNOWN <phi_$species> [] '0.d0' ON <allcells> magnitude=1.d0\n";
+      $return_string .= "CELL_UNKNOWN <phi_$species> [] '<phi_in_$species>' ON <allcells> magnitude=1.d0\n";
       $phif .= "-<phi_$species>";
     }
   }

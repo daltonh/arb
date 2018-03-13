@@ -6,6 +6,7 @@ IF {{ string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
 
+# calculate kappa*, which only has one value for each combination of species, define with the lower index coming first
 IF 1 # stokes drag
   CELL_DERIVED <kappa*_species0_<<species>>> "2.d0*<a_<<species>>>^2/9.d0" ON <allcells>
 ELSE

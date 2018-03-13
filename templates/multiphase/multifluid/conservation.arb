@@ -40,8 +40,8 @@ INCLUDE "momentum_viscous_flux" # calculate momentum advection flux for all spec
 # and opposite to continuous phase term
       $return_string .= "CELL_EQUATION <momentum_species0[l=$l]> '<momentum_species0[l=$l]>+<beta*_species0_$species>*(<u_species0[l=$l]>-<u_$species"."[l=$l]>)'\n";
 # also increment the correction velocity bits onto the viscosity component
-      $return_string .= "VARIABLE <u_rf_{vis}_$species> '<u_rf_{vis}_$species>+<beta*_$species"."_species0>'\n";
-      $return_string .= "VARIABLE <u_rf_{vis}_species0> '<u_rf_{vis}_species0>+<beta*_species0_$species>'\n";
+#     $return_string .= "VARIABLE <u_rf_{vis}_$species> '<u_rf_{vis}_$species>+<beta*_$species"."_species0>'\n";
+#     $return_string .= "VARIABLE <u_rf_{vis}_species0> '<u_rf_{vis}_species0>+<beta*_species0_$species>'\n";
     }
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
 # finally multiply by phi
