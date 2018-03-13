@@ -19,8 +19,8 @@ CONSTANT <K^2/2> [1] "<K>^2/2.d0"
 CONSTANT <BK^2/Re^2> [1] "<B>*<K>^2/(<Re>^2)"
 CONSTANT <eps_fluid> [1] 1.d0
 CONSTANT <wall charge> [1] "<S>"
-CONSTANT <e> [1] 1.d0
-CONSTANT <eps_o> [1] 1.d0
+CONSTANT <e_electron> [1] 1.d0
+CONSTANT <eps_0> [1] 1.d0
 CONSTANT <e/kT> [1] 1.d0
 
 # zero some undefined dimensional constants
