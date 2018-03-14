@@ -18,12 +18,15 @@ END_MARKDOWN
       "R '<dynamic_force_c_f[' W '<dynamic_force_c_f_$species"."[' ".
       "R '<dynamic_force_c[' W '<dynamic_force_c_$species"."[' ".
       "R '<dynamic_force_f>' W '<dynamic_force_f_$species>' ".
-      "R '<p>' W '<p_species0>' R '<p_f>' W '<p_f_species0>'\n".
-      "INCLUDE\n"
+      "R '<p>' W '<p_species0>' R '<p_f>' W '<p_f_species0>'\n";
+# redefine the viscosity u_rf
+    $return_string .= "VARIABLE <u_rf_{vis}_$species> '<mu_f_$species>/(<facedx>^2*<phi_f_$species>)'\n";
   }
   return $return_string;
 }}
 
+#IF 1
+# now return and cancel 
 # add on osmotic pressure contribution to dynamic force for the disperse species
 {{
   my $return_string = '';
