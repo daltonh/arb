@@ -25,8 +25,17 @@ END_MARKDOWN
   return $return_string;
 }}
 
-#IF 1
-# now return and cancel 
+IF 1 # species aware fancier method, with species0 having to be done first
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "INCLUDE_TEMPLATE 'single_species_u_f' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
+
 # add on osmotic pressure contribution to dynamic force for the disperse species
 {{
   my $return_string = '';

@@ -1,0 +1,41 @@
+MARKDOWN
+Here we create a better estimate of the correction velocity, using ingredients however from the navier_stokes u_f file, done with replacements
+END_MARKDOWN
+
+# first compile the local summary variables, A and D
+FACE_LOCAL <u_f_{correction}_A_<<species>>> '-<C_{Rhie-Chow}>*<p_error_<<species>>>+<u_rf_{transient}_<<species>>>*<u_f_{correction}_<<species>>[r=1]>' ON <allfaces>
+FACE_LOCAL <u_f_{correction}_D_<<species>>> '<u_rf_{transient}_<<species>>>+<u_rf_{adv}_<<species>>>+<u_rf_{vis}_<<species>>>' ON <allfaces>
+{{
+  my $return_string='';
+  if (string_test('<<species>>','species0')) {
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <u_f_{correction}_D_$species> '<u_f_{correction}_D_$species>+<beta*_species0_$species>'\n";
+    }
+  } else {
+    $return_string .= "VARIABLE <u_f_{correction}_D_<<species>>> '<u_f_{correction}_D_<<species>>>+<beta*_<<species>>_species0>'\n";
+  }
+  return $return_string;
+}}
+  
+# now cancel the previous correction velocities so that they can be calculated in the correct order
+VARIABLE <u_f_{correction}_<<species>>> CANCEL # need to reposition these variables later in the file
+VARIABLE <u_f_<<species>>> CANCEL
+
+{{
+  my $return_string='';
+  if (string_test('<<species>>','species0')) {
+    my $top = "<u_f_{correction}_A_species0>";
+    my $bottom = "<u_f_{correction}_D_species0>";
+    for my $i (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $top .= "-<beta*_species0_$i>*<u_f_{correction}_A_$i>/<u_f_{correction}_D_$i>";
+      $bottom .= "-<beta*_species0_$i>*<beta*_$i"."_species0>/<u_f_{correction}_D_$i>";
+    }
+    $return_string .= "FACE_DERIVED <u_f_{correction}_species0> '($top)/($bottom)' ON <domainfaces>\n";
+  } else {
+    $return_string .= "FACE_DERIVED <u_f_{correction}_<<species>>> '(<u_f_{correction}_A_<<species>>>-<beta*_<<species>>_species0>*<u_f_{correction}_species0>)/<u_f_{correction}_D_<<species>>>' ON <domainfaces>\n";
+  }
+  return $return_string;
+}}
+
+# redefine final velocity
+FACE_DERIVED <u_f_<<species>>> "<u_f_{raw}_<<species>>>+faceif(facedelta(<domainfaces>),<u_f_{correction}_<<species>>>,0.d0)" ON <allfaces>
