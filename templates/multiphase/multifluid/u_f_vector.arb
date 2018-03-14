@@ -1,0 +1,13 @@
+MARKDOWN
+Multifluid equivalent of u_f_vector from navier_stokes, which gives visualisation of u_f.  Here also allows visualisation of raw and correction components by chosing string <<component>> to be '', '_{raw}' or '_{correction}'
+END_MARKDOWN
+
+REPLACEMENTS D "<<component>>" W '' # other alternatives are '_{raw}' and '_{correction}'
+
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/u_f_vector' R '<u_f".string_eval('<<component>>').">' W '<u_f".string_eval('<<component>>')."_$species>' R '<u_f_vect[' W '<u_f".string_eval('<<component>>')."_vect_$species"."['\n";
+  }
+  return $return_string;
+}}
