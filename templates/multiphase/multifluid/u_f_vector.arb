@@ -7,7 +7,7 @@ REPLACEMENTS D "<<component>>" W '' # other alternatives are '_{raw}' and '_{cor
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
-    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/u_f_vector' R '<u_f".string_eval('<<component>>').">' W '<u_f".string_eval('<<component>>')."_$species>' R '<u_f_vect[' W '<u_f".string_eval('<<component>>')."_vect_$species"."['\n";
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/u_f_vector' R '<u_f>' W '<u_f".string_eval('<<component>>')."_$species>' R '<u_f_visualise[' W '<u_f".string_eval('<<component>>')."_visualise_$species"."['\n";
   }
   return $return_string;
 }}

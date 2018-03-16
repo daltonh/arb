@@ -5,7 +5,7 @@ END_MARKDOWN
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
-    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/u_f_vector' R '<u_f>' W '<dynamic_force_f_$species>' R '<u_f_vect[' W '<dynamic_force_f_vect_$species"."['\n";
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/u_f_vector' R '<u_f>' W '<dynamic_force_f_$species>' R '<u_f_visualise[' W '<dynamic_force_f_visualise_$species"."['\n";
   }
   return $return_string;
 }}

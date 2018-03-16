@@ -4,6 +4,16 @@ END_MARKDOWN
 
 INCLUDE_TEMPLATE "navier_stokes/transient_all_setup"
 
+# define a <u_f[r=1]> from the current phi_f_adv and <u_f_species> to use in CFL calculation, overwriting above expression
+{{
+  my $return_string = 'FACE_TRANSIENT <u_f[r=1]> "0.d0" "';
+  foreach my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "+<u_f_$species>*<phi_f_adv_$species>";
+  }
+  $return_string .= '" ON <allfaces>';
+  return $return_string;
+}}
+
 # cancel the single phase <u[l=:,r=1]> variables that were defined in the navier_stokes file, and replace with phase specific ones
 {{
   my $return_string = '';

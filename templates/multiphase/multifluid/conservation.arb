@@ -14,7 +14,11 @@ END_IF
 {{
   my $return_string='';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
-    $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+    if (string_test('<<transientnavierstokescomment>>','')) {
+      $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+    } else {
+      $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+    }
     $return_string .= "CELL_EQUATION <continuity_$species> 'celldiv(<<radius_top>><phi_f_adv_$species>*<u_f_$species>)<<radius_bottom>>' ON <domain>\n";
     if (string_test('<<transientnavierstokescomment>>','')) {
       $return_string .= "CELL_EQUATION <continuity_$species> '(<phi_$species>-<phi_$species"."[r=1]>)/<dt>+<continuity_$species>' ON <domain>\n";
