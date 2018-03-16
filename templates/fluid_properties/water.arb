@@ -1,6 +1,6 @@
 # Physical data for liquid water
 # The correlations used are accurate within the temperature range 0-150 degrees Celsius, at least
-GENERAL_REPLACEMENTS D "<T_celsius>" W "25.d0"
+REPLACEMENTS D "<T_celsius>" W "25.d0"
 CONSTANT <T_kelvin> "<T_celsius>+273.15d0"
 CONSTANT <rho> [kg m-3] "(((((-2.8054253d-10*<T_celsius>+1.0556302d-7)*<T_celsius>-4.6170461d-5)*<T_celsius>-0.0079870401d0)*<T_celsius>+16.945176d0)*<T_celsius>+999.83952d0)/(1.d0+0.01687985d0*<T_celsius>)" # density; Eq. (16) of Kell (1975), J. Chem. Eng. Data 20: 97
 CONSTANT <mu> [Pa s] "1.d-3*(<T_celsius>+246.d0)/((0.05594d0*<T_celsius>+5.2842d0)*<T_celsius>+137.37d0)" # viscosity; Eq. (11) of Laliberte (2007), J. Chem. Eng. Data 52: 321
