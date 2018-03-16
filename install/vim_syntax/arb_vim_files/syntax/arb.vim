@@ -1,7 +1,7 @@
 " Vim syntax file for arb finite volume solver
 " Language:     arb
 " Version:      0.58
-" Modified:     2018/03/09
+" Modified:     2018/03/16
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 
 " NOTE match patterns starting with \%(\) are used to prevent following syntax elements from appearing in the omni completion list
@@ -51,7 +51,7 @@ syn keyword arbStatement BLOCK COMPOUND_OPTIONS END_BLOCK END GENERAL_REPLACEMEN
 syn match arbOmniList "\%(DEFAULT_OPTIONS\|GENERAL_OPTIONS\|KERNEL_OPTIONS\|OVERRIDE_OPTIONS\|SOLVER_OPTIONS\)"
 syn match arbStatement "\%(\)\<\%(GENERAL\|KERNEL\|SOLVER\)\%(_OPTIONS\?\)\?\>"
 syn match arbStatement "\%(\)\<\%(DEFAULT\|OVERRIDE\)\%(_\%(CELL\|FACE\|NONE\|NODE\)\)\?\%(_\%(CONDITION\|DERIVED\|EQUATION\|LOCAL\|NEWTIENT\|OUTPUT\|TRANSIENT\|UNKNOWN\)\)\?\%(_\%(REGION\|VARIABLE\)\)\?_OPTIONS\?\>"
-syn keyword arbStatement INCLUDE INCLUDE_ABSOLUTE INCLUDE_LAST INCLUDE_LOCAL INCLUDE_TEMPLATE INCLUDE_WORKING MSH_FILE nextgroup=arbString,arbFilename skipwhite
+syn keyword arbStatement INCLUDE INCLUDE_ABSOLUTE INCLUDE_ARB INCLUDE_LAST INCLUDE_LOCAL INCLUDE_TEMPLATE INCLUDE_WORKING MSH_FILE nextgroup=arbString,arbFilename skipwhite
 syn match arbStatement "\<\%(EXTERNALS\?\)\>" nextgroup=arbString,arbFilename skipwhite
 syn keyword arbStatement C CANCEL D DEFAULT R REPLACE S SUBSTITUTE W WITH nextgroup=arbString,arbUnquotedString,arbComment skipwhite
 syn match arbStatement "\<\%(ERROR\|INFO\|INFO_ABSFILENAME\|INFO_AUTHOR\|INFO_DATE\|INFO_DESCRIPTION\|INFO_FILENAME\|INFO_RUNDATE\|INFO_RUNHOST\|INFO_RUNVERSION\|INFO_TITLE\|INFO_VERSION\|WARNING\)\>\%(+\|-\)\?" nextgroup=arbString,arbUnquotedString skipwhite
