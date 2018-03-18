@@ -7,7 +7,7 @@ REPLACEMENTS R '<region>' W '<walls>'
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
     $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/noflux' R '<u_f>' W '<u_f_$species>' R '<equation>' W '<walls noflux $species>'\n";
-    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/noslip' R '<u_f_vect[' W '<u_f_vect_$species"."[' R '<equation' W '<walls noslip $species'\n";
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/noslip' R '<u_f_vect[' W '<u_f_vect_$species"."[' R '<equation1>' W '<walls noslip equation1 $species>' R '<equation2>' W '<walls noslip equation2 $species>'\n";
     $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_extrapolation' R '<dynamic_force_f>' W '<dynamic_force_f_$species>' R '<equation>' W '<walls p_extrapolation $species>'\n";
   }
   return $return_string;
