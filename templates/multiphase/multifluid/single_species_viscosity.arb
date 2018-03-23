@@ -25,7 +25,7 @@ IF {{string_test('<<viscosity_method>>','thomas')}}
   IF {{ string_test('<<species>>','species0') }}
     CELL_LOCAL <mu_correction_<<species>>> "1"
   ELSE
-    CELL_LOCAL <mu_correction_<<species>>> "10.05d0*<phi_lim_<<species>>>+0.00273d0*exp(16.6d0*<phi_lim_<<species>>>)/<phi_lim_<<species>>>"
+    CELL_LOCAL <mu_correction_<<species>>> "10.05d0*<phi_bounded_<<species>>>+0.00273d0*exp(16.6d0*<phi_bounded_<<species>>>)/<phi_lim_<<species>>>"
   END_IF
 ELSE
 # default is einstein's dilute result

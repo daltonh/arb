@@ -22,11 +22,12 @@ END_MARKDOWN
 }}
 
 # also define some derivatives of phi here
-NONE_CONSTANT <phi_tol> 1.d-6 # this is a minimum phi to consider any phase present
+NONE_CONSTANT <phi_tol> 1.d-6 # this is a minimum phi to consider any phase present, contributing to <phi_lim_speciesN>
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
-    $return_string .= "CELL_LOCAL <phi_lim_$species> [] 'cellmax(<phi_$species>,<phi_tol>)'\n";
+    $return_string .= "CELL_LOCAL <phi_lim_$species> [] 'cellmax(cellmin(<phi_$species>,1.d0-<phi_tol>),<phi_tol>)'\n";
+    $return_string .= "CELL_LOCAL <phi_bounded_$species> [] 'cellmax(cellmin(<phi_$species>,1.d0),0.d0)'\n";
     $return_string .= "FACE_DERIVED <phi_f_$species> [] 'faceave(<phi_lim_$species>)' ON <allfaces>\n";
     $return_string .= "CELL_LOCAL <phi_fc_$species> [] 'cellave(<phi_f_$species>)' ON <allcells>\n";
   }

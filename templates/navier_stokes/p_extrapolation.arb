@@ -1,1 +1,7 @@
-p_extrapolation_zero_dynamic.arb
+
+REPLACEMENTS D "<<pextrapolationrhiechow>>" W "1"
+IF <<pextrapolationrhiechow>>
+  INCLUDE "p_extrapolation_rhie_chow"
+ELSE
+  INCLUDE "p_extrapolation_zero_dynamic"
+END_IF

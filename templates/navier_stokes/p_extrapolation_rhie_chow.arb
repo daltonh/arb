@@ -1,0 +1,12 @@
+MARKDOWN
+Here we link the pressure gradient (contained within <dynamic_force_f>) to the boundary velocity using the previously calculated rhie-chow interpolation terms
+
+Note that the <u_f_{correction}> term is based on <p_error>, which for boundary cells equates to the difference between <dynamic_force_f> and <dynamic_force_c> (component) evaluated in the downcell, as celldiv applied in a boundary cell automatically takes its value from the adjacent domain cell.
+END_MARKDOWN
+
+FACE_EQUATION <equation> "<u_f>-faceave[downcell](dot(<u_f_vect[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<u_f_{correction}>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+
+# in order to do this, we have to calculate some variables on the boundary faces that were previously only calculated on <domainfaces>
+VARIABLE <p_error> ON <allfaces> output
+VARIABLE <dot_facenorm_facedxunit> ON <allfaces> output
+VARIABLE <u_f_{correction}> ON <allfaces>
