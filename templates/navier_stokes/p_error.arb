@@ -32,7 +32,11 @@ GENERAL_REPLACEMENTS D "<<dynamicforcefdxunitcomment>>" W "" D "<<dynamicforceff
 # dxunit - dynamicforcecf
 # lastface is required when averaging the normal when we have periodic gluing, as we require the normal to be orientated relative to the original face, rather than its glued counterpart - this is now the default when cycling through the region adjacentfaceicells, which is used by faceave[adjacentcells]
 # for reflect gluing, <p_error> is zero anyway
-<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+#<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+# need to fix code for adjacentdomaincells for this line to work
+#<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentdomaincells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+# workaround, explicit code
+<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceif(facedelta(region=<boundaries>),faceave[downcell](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))),faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>),0.d0)" ON <domainfaces>
 
 # facegrad method
 <<dynamicforceffacegradcomment>>FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <allfaces>
@@ -46,7 +50,8 @@ GENERAL_REPLACEMENTS D "<<dynamicforcefdxunitcomment>>" W "" D "<<dynamicforceff
 # adjacentcells + dynamicforcecf
 <<dynamicforcecfcomment>><<dynamicforcefadjacentcellscomment>>FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domainfaces>
 # adjacentcells - dynamicforcecf
-<<nodynamicforcecfcomment>><<dynamicforcefadjacentcellscomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+#<<nodynamicforcecfcomment>><<dynamicforcefadjacentcellscomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+<<nodynamicforcecfcomment>><<dynamicforcefadjacentcellscomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentdomaincells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
 
 # the following are two template lines for setting the strings prior to entering this file
 #GENERAL_REPLACEMENTS R "<<dynamicforcecfcomment>>" W "#"

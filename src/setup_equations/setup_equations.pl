@@ -2392,6 +2392,16 @@ sub mequation_interpolation {
 # #         $inbit[$nbits] = "(faceave[upcell]($inbit[$nbits])*$dxdown+faceave[downcell]($inbit[$nbits])*$dxup)/($dxup+$dxdown)";
 # #         create_someloop($inbit[$nbits],"sum","face","<noloop>",$deriv,$otype,$omvar);
 
+# adjacentdomaincells
+# same as adjacentcells, except on boundaries where it becomes downcell
+#       } elsif ($options && ( $options =~ /(^|\,)\s*adjacentdomaincells\s*(\,|$)/ )) {
+
+# remove the adjacentdomaincells option so that we can add any remaining options back to averaging operators
+#         $options =~ s/(^|\,)\s*adjacentdomaincells\s*(\,|$)/,/;
+#         
+#         $inbit[$nbits] = "faceif(facedelta(region=<boundaries>),faceave[downcell,$options]($expression),faceave[adjacentcells,$options]($expression))";
+#         die "adjacentdomaincells is broken\n";
+
 # average based on adjacent cells only, no weighting
         } elsif ($options && ( $options =~ /(^|\,)\s*adjacentcellsevenweighting\s*(\,|$)/ )) {
           my $someloopregion = "<adjacentfaceicells>";
