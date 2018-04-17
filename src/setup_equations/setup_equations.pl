@@ -63,7 +63,7 @@ use ReadInputFiles; # deals with reading the input files, including sub read_inp
 
 # set global variables that can be accessed from the local packages
 # our is used so that other packages can access these variables
-our $version="0.58";
+our $version="0.59";
 our $minimum_version="0.40";
 
 # now called from build directory and sent these three directories
