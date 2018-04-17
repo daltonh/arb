@@ -159,7 +159,7 @@ INCLUDE "force" R "<allcells>" W "<level set all cells>" R "<allfaces>" W "<leve
 # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
 INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "total_stress" R "<allfaces>" W "<fluid all faces>"
-INCLUDE "u_f" R "<allcells>" W "<fluid all cells>" R "<domainfaces>" W "<fluid domain faces>" R "<allfaces>" W "<fluid all faces>"
+INCLUDE "u_f" R "<allcells>" W "<fluid all cells>" R "<domainfaces>" W "<fluid domain faces>" R "<allfaces>" W "<fluid all faces>" R "<boundaries>" W "<fluid boundaries>"
 INCLUDE "advection_flux" R "<allfaces>" W "<fluid all faces>"
 INCLUDE "momentum_flux" R "<allfaces>" W "<fluid all faces>"
 INCLUDE "conservation" R "<domain>" W "<fluid domain>"
@@ -181,7 +181,7 @@ INCLUDE "equation" R "<domain>" W "<level set domain>" R "<allcells>" W "<level 
 # fluid boundary conditions on nonslip walls
 INCLUDE "walls_ls_grad_set" R "<walls>" W "<level set walls>"
 INCLUDE_TEMPLATE "navier_stokes"
-INCLUDE "walls_p_set" R "<walls>" W "<fluid walls>"
+INCLUDE "walls_p_set" R "<walls>" W "<fluid walls>" R "<allfaces>" W "<fluid all faces>"
 
 #-------------------------------------------------------------------
 NONE_OUTPUT <integrated volume> "cellsum(<ls_phi>*<cellvol>,<level set domain>)"
