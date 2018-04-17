@@ -26,7 +26,7 @@ GENERAL_REPLACEMENTS D "<<dynamicforcefdxunitcomment>>" W "" D "<<dynamicforceff
 
 # dxunit method
 <<dynamicforcefdxunitcomment>>FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
-<<dynamicforcefdxunitcomment>>FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domainfaces>
+<<dynamicforcefdxunitcomment>>FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
 # dxunit + dynamicforcecf
 <<dynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domainfaces>
 # dxunit - dynamicforcecf
