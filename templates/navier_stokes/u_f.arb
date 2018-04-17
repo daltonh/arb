@@ -28,7 +28,7 @@ REPLACEMENTS R "<<mu_f>>" W "<mu_f>" # first define this local replacement strin
 IF {{ return ( !(string_examine('<mu_f>')) && string_eval('<<uniformviscosity>>') ) }}  # this evaluates as true (1) if replacement string '<mu_f>' isn't defined, AND <<uniformviscosity>> is on (1)
   REPLACEMENTS S "<<mu_f>>" W "<mu>" # if we are here then we apply the uniform viscosity substitution
 END_IF
-FACE_LOCAL <u_rf_{vis}> "<<mu_f>>/<facedx>^2" ON <domainfaces>
+FACE_LOCAL <u_rf_{vis}> "<<mu_f>>/<facedx>^2" ON <allfaces> # incase pextrapolationrhiechow is on, define these locals on allfaces (makes no difference to efficiency as they are locals anyway)
 FACE_DERIVED <u_f_{correction}> "<u_rf_{vis}>" ON <domainfaces>
 
 # advective contribution can be either simple or more complex (set by <<ufadvectioncomplexcomment>>)
@@ -45,15 +45,15 @@ END_IF
 GENERAL_REPLACEMENTS R <<ufadvectionsimplecomment>> W "" 
 <<ufadvectioncomplexcomment>>GENERAL_REPLACEMENTS R <<ufadvectionsimplecomment>> W "#" 
 # next add simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
-<<ufadvectionsimplecomment>><<navierstokescomment>>FACE_LOCAL <u_rf_{adv}> "2.d0*<<rho_f>>*abs(<u_f_{raw}>)/<facedx>" ON <domainfaces>
+<<ufadvectionsimplecomment>><<navierstokescomment>>FACE_LOCAL <u_rf_{adv}> "2.d0*<<rho_f>>*abs(<u_f_{raw}>)/<facedx>" ON <allfaces>
 # or more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
-<<ufadvectioncomplexcomment>><<navierstokescomment>>FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <domainfaces>
-<<ufadvectioncomplexcomment>><<navierstokescomment>>FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<<rho_f>>))" ON <domainfaces>
+<<ufadvectioncomplexcomment>><<navierstokescomment>>FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <allfaces>
+<<ufadvectioncomplexcomment>><<navierstokescomment>>FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<<rho_f>>))" ON <allfaces>
 
 <<navierstokescomment>>FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
 
 # for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
-<<transientnavierstokescomment>>FACE_LOCAL <u_rf_{transient}> "<<rho_f>>/<dt>" ON <domainfaces>
+<<transientnavierstokescomment>>FACE_LOCAL <u_rf_{transient}> "<<rho_f>>/<dt>" ON <allfaces>
 <<transientnavierstokescomment>>FACE_DERIVED <u_f_{correction}> "(-<C_{Rhie-Chow}>*<p_error>+<u_rf_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_{correction}>+<u_rf_{transient}>)"
 # for steady-state just take reciprocal and add pressure contribution
 <<steadystatenavierstokescomment>>FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<p_error>/(<u_f_{correction}>)"

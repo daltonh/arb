@@ -10,3 +10,4 @@ FACE_EQUATION <equation> "<u_f>-faceave[downcell](dot(<u[l=:]>,cellave[lastface]
 VARIABLE <p_error> ON <allfaces> output
 VARIABLE <dot_facenorm_facedxunit> ON <allfaces> output
 VARIABLE <u_f_{correction}> ON <allfaces>
+VARIABLE <u_f_{correction}[r=1]> ON <allfaces>
