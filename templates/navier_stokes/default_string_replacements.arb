@@ -10,3 +10,6 @@ GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W "
 # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
 GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#" D "<<uniformviscosity>>" W "1" 
 GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#" D "<<uniformdensity>>" W "1" 
+
+# by default pressure extrapolation on the boundary is accomplished by setting <dynamic_force_f> to zero.  Use the following to implement rhie-chow type pressure interpolation on the walls and at fully-developed ports (see p_extrapolation.arb for more info)
+GENERAL_REPLACEMENTS D "<<pextrapolationrhiechow>>" W "1"
