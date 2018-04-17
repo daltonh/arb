@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/arb/testsuite/arb_two_fluid/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/arb/testsuite/arb_two_fluid/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: flow_around_sphere.arb
    #(comment created during unwrap): new block = flow_around_sphere.arb: sub_block = 0
@@ -124,6 +124,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
+            
+            # by default pressure extrapolation on the boundary is accomplished by setting <dynamic_force_f> to zero.  Use the following to implement rhie-chow type pressure interpolation on the walls and at fully-developed ports (see p_extrapolation.arb for more info)
+            
          
          # use the following to setup a transient simulation
          #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
@@ -140,6 +143,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
          
          # use the following to specify nonuniform density
          #GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W "" R "<<uniformdensity>>" W "0"
+         
+         # use the following to implement rhie-chow type pressure interpolation on the walls and at fully-developed ports (default is off)
+         #GENERAL_REPLACEMENTS R "<<pextrapolationrhiechow>>" W "1"
          #-------------
          
          # numerical data
@@ -269,6 +275,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
+            
+            # by default pressure extrapolation on the boundary is accomplished by setting <dynamic_force_f> to zero.  Use the following to implement rhie-chow type pressure interpolation on the walls and at fully-developed ports (see p_extrapolation.arb for more info)
+            
          
          # start by calculating the difference between the local face centred (dynamic) pressure gradient and average of cell centred (dynamic) pressure gradients in the face direction
          # `dynamic' pressure here means the pressure that is able to cause fluid flow, ie, possibly accounting for hydrostatic pressure variations (for example)
@@ -364,13 +373,17 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             
             # dxunit method
             FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
-            FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <domainfaces>
+            FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
             # dxunit + dynamicforcecf
             #FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domainfaces>
             # dxunit - dynamicforcecf
             # lastface is required when averaging the normal when we have periodic gluing, as we require the normal to be orientated relative to the original face, rather than its glued counterpart - this is now the default when cycling through the region adjacentfaceicells, which is used by faceave[adjacentcells]
             # for reflect gluing, <p_error> is zero anyway
-            FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+            #<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+            # need to fix code for adjacentdomaincells for this line to work
+            #<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentdomaincells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+            # workaround, explicit code
+            FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceif(facedelta(region=<boundaries>),faceave[downcell](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))),faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>),0.d0)" ON <domainfaces>
             
             # facegrad method
             #FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <allfaces>
@@ -384,7 +397,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             # adjacentcells + dynamicforcecf
             ##FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domainfaces>
             # adjacentcells - dynamicforcecf
-            #FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+            #<<nodynamicforcecfcomment>><<dynamicforcefadjacentcellscomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+            #FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentdomaincells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
             
             # the following are two template lines for setting the strings prior to entering this file
             #GENERAL_REPLACEMENTS R "<<dynamicforcecfcomment>>" W "#"
@@ -413,7 +427,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             #(hash inserted during unwrap)IF 1  # this evaluates as true (1) if replacement string '<mu_f>' isn't defined, AND <<uniformviscosity>> is on (1)
             # if we are here then we apply the uniform viscosity substitution
             #(hash inserted during unwrap)END_IF
-         FACE_LOCAL <u_rf_{vis}> "<mu>/<facedx>^2" ON <domainfaces>
+         FACE_LOCAL <u_rf_{vis}> "<mu>/<facedx>^2" ON <allfaces> # incase pextrapolationrhiechow is on, define these locals on allfaces (makes no difference to efficiency as they are locals anyway)
          FACE_DERIVED <u_f_{correction}> "<u_rf_{vis}>" ON <domainfaces>
          
          # advective contribution can be either simple or more complex (set by <<ufadvectioncomplexcomment>>)
@@ -431,15 +445,15 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
          
          #GENERAL_REPLACEMENTS R  W "#" 
          # next add simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
-         FACE_LOCAL <u_rf_{adv}> "2.d0*<rho>*abs(<u_f_{raw}>)/<facedx>" ON <domainfaces>
+         FACE_LOCAL <u_rf_{adv}> "2.d0*<rho>*abs(<u_f_{raw}>)/<facedx>" ON <allfaces>
          # or more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
-         #FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <domainfaces>
-         #FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>))" ON <domainfaces>
+         #FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <allfaces>
+         #FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>))" ON <allfaces>
          
          FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
          
          # for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
-         #FACE_LOCAL <u_rf_{transient}> "<rho>/<dt>" ON <domainfaces>
+         #FACE_LOCAL <u_rf_{transient}> "<rho>/<dt>" ON <allfaces>
          #FACE_DERIVED <u_f_{correction}> "(-<C_{Rhie-Chow}>*<p_error>+<u_rf_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_{correction}>+<u_rf_{transient}>)"
          # for steady-state just take reciprocal and add pressure contribution
          FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<p_error>/(<u_f_{correction}>)"
@@ -473,6 +487,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             
             # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
+            
+            
+            # by default pressure extrapolation on the boundary is accomplished by setting <dynamic_force_f> to zero.  Use the following to implement rhie-chow type pressure interpolation on the walls and at fully-developed ports (see p_extrapolation.arb for more info)
             
          
          
@@ -511,6 +528,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
+            
+            # by default pressure extrapolation on the boundary is accomplished by setting <dynamic_force_f> to zero.  Use the following to implement rhie-chow type pressure interpolation on the walls and at fully-developed ports (see p_extrapolation.arb for more info)
+            
          
          # start by placing in viscous momentum transport, applicable to both the stokes and navier-stokes equations
          FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <allfaces>
@@ -539,6 +559,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             
             # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
+            
+            
+            # by default pressure extrapolation on the boundary is accomplished by setting <dynamic_force_f> to zero.  Use the following to implement rhie-chow type pressure interpolation on the walls and at fully-developed ports (see p_extrapolation.arb for more info)
             
          
             #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
@@ -569,6 +592,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             
             # now create equations
             CELL_EQUATION <continuity> "celldiv(<facex[l=2]>*<u_f>)/<cellx[l=2]>" ON <domain> # continuity
+            
             CELL_EQUATION <momentum[l=1]> "celldiv(<facex[l=2]>*<J_f[l=1]>)/<cellx[l=2]>-<dynamic_force_c[l=1]>" ON <domain> # momentum component
             CELL_EQUATION <momentum[l=2]> "celldiv(<facex[l=2]>*<J_f[l=2]>)/<cellx[l=2]>-<dynamic_force_c[l=2]>" ON <domain> # momentum component
             
@@ -602,8 +626,28 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_fully_developed.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "u_fully_developed" 
             
-            #FACE_EQUATION <equation> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <region> # normal velocity component is fully developed
-            FACE_EQUATION <outlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <outlet> # normal velocity component is fully developed
+            
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/u_fully_developed.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 1
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation_rhie_chow.arb: sub_block = 0
+                  #(hash inserted during unwrap)INCLUDE "p_extrapolation_rhie_chow"
+                  #(hash inserted during unwrap)MARKDOWN
+                  #(hash inserted during unwrap)Here we link the pressure gradient (contained within <dynamic_force_f>) to the boundary velocity using the previously calculated rhie-chow interpolation terms.  In effect, adds a link between the pressure and velocity on the boundary.
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)Note that the <u_f_{correction}> term is based on <p_error>, which for boundary cells equates to the difference between <dynamic_force_f> and <dynamic_force_c> (component) evaluated in the downcell, as celldiv applied in a boundary cell automatically takes its value from the adjacent domain cell.
+                  #(hash inserted during unwrap)END_MARKDOWN
+                  
+                  FACE_EQUATION <outlet fully developed> "<u_f>-faceave[downcell](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<u_f_{correction}>" ON <outlet> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+                  
+                  # in order to do this, we have to calculate some variables on the boundary faces that were previously only calculated on <domainfaces>
+                  VARIABLE <p_error> ON <allfaces> output
+                  VARIABLE <u_f_{correction}> ON <allfaces>
+                  #VARIABLE <u_f_{correction}[r=1]> ON <allfaces>
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/u_fully_developed.arb: sub_block = 1
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)#FACE_EQUATION <equation> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <region> # normal velocity component is fully developed
+               #(hash inserted during unwrap)FACE_EQUATION <outlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <outlet> # normal velocity component is fully developed
+               #(hash inserted during unwrap)END_IF
             #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "noslip" 
             
@@ -627,7 +671,31 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
          #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "p_extrapolation" 
          
-         FACE_EQUATION <sphere p_extrapolation> "<dynamic_force_f>" ON <sphere> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)Here we choose how p on boundary cells should be extrapolated from the domain values.  With 1 the local boundary pressure gradient is used to couple the boundary velocity to the velocity in the (closest) adjacent domain cell using terms derived for the (within domain) rhie-chow interpolation method.  The alternative is to just set <dynamic_force_f> on the boundary to zero, which for no body forces implies that the boundary-evaluated pressure gradient is set to zero.
+         #(hash inserted during unwrap)END_MARKDOWN
+         
+         
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation_rhie_chow.arb: sub_block = 0
+               #(hash inserted during unwrap)INCLUDE "p_extrapolation_rhie_chow"
+               #(hash inserted during unwrap)MARKDOWN
+               #(hash inserted during unwrap)Here we link the pressure gradient (contained within <dynamic_force_f>) to the boundary velocity using the previously calculated rhie-chow interpolation terms.  In effect, adds a link between the pressure and velocity on the boundary.
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)Note that the <u_f_{correction}> term is based on <p_error>, which for boundary cells equates to the difference between <dynamic_force_f> and <dynamic_force_c> (component) evaluated in the downcell, as celldiv applied in a boundary cell automatically takes its value from the adjacent domain cell.
+               #(hash inserted during unwrap)END_MARKDOWN
+               
+               FACE_EQUATION <sphere p_extrapolation> "<u_f>-faceave[downcell](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<u_f_{correction}>" ON <sphere> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+               
+               # in order to do this, we have to calculate some variables on the boundary faces that were previously only calculated on <domainfaces>
+               VARIABLE <p_error> ON <allfaces> output
+               VARIABLE <u_f_{correction}> ON <allfaces>
+               #VARIABLE <u_f_{correction}[r=1]> ON <allfaces>
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE
+            #(hash inserted during unwrap)INCLUDE "p_extrapolation_zero_dynamic"
+            #(hash inserted during unwrap)END_IF
       #(comment created during unwrap): new block = ../../templates/navier_stokes/walls_slip.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "walls_slip" # slip walls BC
       # boundary conditions on nonslip walls
@@ -645,7 +713,31 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
          #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "p_extrapolation" 
          
-         FACE_EQUATION <walls p_extrapolation> "<dynamic_force_f>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)Here we choose how p on boundary cells should be extrapolated from the domain values.  With 1 the local boundary pressure gradient is used to couple the boundary velocity to the velocity in the (closest) adjacent domain cell using terms derived for the (within domain) rhie-chow interpolation method.  The alternative is to just set <dynamic_force_f> on the boundary to zero, which for no body forces implies that the boundary-evaluated pressure gradient is set to zero.
+         #(hash inserted during unwrap)END_MARKDOWN
+         
+         
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation_rhie_chow.arb: sub_block = 0
+               #(hash inserted during unwrap)INCLUDE "p_extrapolation_rhie_chow"
+               #(hash inserted during unwrap)MARKDOWN
+               #(hash inserted during unwrap)Here we link the pressure gradient (contained within <dynamic_force_f>) to the boundary velocity using the previously calculated rhie-chow interpolation terms.  In effect, adds a link between the pressure and velocity on the boundary.
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)Note that the <u_f_{correction}> term is based on <p_error>, which for boundary cells equates to the difference between <dynamic_force_f> and <dynamic_force_c> (component) evaluated in the downcell, as celldiv applied in a boundary cell automatically takes its value from the adjacent domain cell.
+               #(hash inserted during unwrap)END_MARKDOWN
+               
+               FACE_EQUATION <walls p_extrapolation> "<u_f>-faceave[downcell](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<u_f_{correction}>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+               
+               # in order to do this, we have to calculate some variables on the boundary faces that were previously only calculated on <domainfaces>
+               VARIABLE <p_error> ON <allfaces> output
+               VARIABLE <u_f_{correction}> ON <allfaces>
+               #VARIABLE <u_f_{correction}[r=1]> ON <allfaces>
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE
+            #(hash inserted during unwrap)INCLUDE "p_extrapolation_zero_dynamic"
+            #(hash inserted during unwrap)END_IF
    
    # inlet BCs have to be special cased a bit
       #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_u_fully_developed.arb: sub_block = 0
@@ -654,8 +746,28 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup
          #(comment created during unwrap): new block = ../../templates/navier_stokes/u_fully_developed.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "u_fully_developed" 
          
-         #FACE_EQUATION <equation> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <region> # normal velocity component is fully developed
-         FACE_EQUATION <inlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <inlet> # normal velocity component is fully developed
+         
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_fully_developed.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation_rhie_chow.arb: sub_block = 0
+               #(hash inserted during unwrap)INCLUDE "p_extrapolation_rhie_chow"
+               #(hash inserted during unwrap)MARKDOWN
+               #(hash inserted during unwrap)Here we link the pressure gradient (contained within <dynamic_force_f>) to the boundary velocity using the previously calculated rhie-chow interpolation terms.  In effect, adds a link between the pressure and velocity on the boundary.
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)Note that the <u_f_{correction}> term is based on <p_error>, which for boundary cells equates to the difference between <dynamic_force_f> and <dynamic_force_c> (component) evaluated in the downcell, as celldiv applied in a boundary cell automatically takes its value from the adjacent domain cell.
+               #(hash inserted during unwrap)END_MARKDOWN
+               
+               FACE_EQUATION <inlet fully developed> "<u_f>-faceave[downcell](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<u_f_{correction}>" ON <inlet> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+               
+               # in order to do this, we have to calculate some variables on the boundary faces that were previously only calculated on <domainfaces>
+               VARIABLE <p_error> ON <allfaces> output
+               VARIABLE <u_f_{correction}> ON <allfaces>
+               #VARIABLE <u_f_{correction}[r=1]> ON <allfaces>
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_fully_developed.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE
+            #(hash inserted during unwrap)#FACE_EQUATION <equation> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <region> # normal velocity component is fully developed
+            #(hash inserted during unwrap)FACE_EQUATION <inlet fully developed> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <inlet> # normal velocity component is fully developed
+            #(hash inserted during unwrap)END_IF
          #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "noslip" 
          
