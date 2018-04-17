@@ -3,7 +3,19 @@ Boundary conditions for walls
 END_MARKDOWN
 
 REPLACEMENTS R '<region>' W '<walls>'
-IF 0
+IF 1
+# v0.59 way
+# noting that <u_f> is equal to the normal component of <u[l=:]> on boundary faces
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/noflux' R '<u_f>' W '<u_f_$species>' R '<equation>' W '<walls noflux $species>'\n";
+      $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/noslip' R '<u_f_vect[' W '<u_f_vect_$species"."[' R '<equation1>' W '<walls noslip equation1 $species>' R '<equation2>' W '<walls noslip equation2 $species>'\n";
+      $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_rhie_chow' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+ELSE_IF 0
 # here setting <u_f_species> to be zero, and also dynamic_force_f to be zero
   {{
     my $return_string = '';
