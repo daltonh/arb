@@ -1,0 +1,12 @@
+MARKDOWN
+Calculate the momentum advection flux by modifying the navier_stokes template files
+END_MARKDOWN
+
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/advection_flux' R '<<uniformdensitycomment>>' W '' R '<<nonuniformdensitycomment>>' W '#' ".
+    "R '<J_advection_f[' W '<J_advection_f_$species"."[' R '<u[' W '<u_$species"."[' R '<u_f>' W '<u_f_$species>' R '<rho>' W '<rho_$species>*<phi_f_adv_$species>'\n";
+  }
+  return $return_string;
+}}
