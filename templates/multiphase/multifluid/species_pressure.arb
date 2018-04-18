@@ -5,7 +5,7 @@ END_MARKDOWN
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-    $return_string .= "INCLUDE 'single_species_pressure' R '<<species>>' W '$species'\n";
+    $return_string .= "INCLUDE_LOCAL 'single_species_pressure' R '<<species>>' W '$species'\n";
   }
   return $return_string;
 }}

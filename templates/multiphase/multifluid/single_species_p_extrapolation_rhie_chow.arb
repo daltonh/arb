@@ -7,7 +7,15 @@ VARIABLE <p_error_<<species>>> ON <allfaces> output
 VARIABLE <phiu_f_{correction}_<<species>>> ON <allfaces>
 <<transientnavierstokescomment>>VARIABLE <phiu_f_{correction}_<<species>>[r=1]> ON <allfaces>
 
-FACE_EQUATION <equation> "<phiu_f_<<species>>>-faceave[downcell](<phi_bounded_<<species>>>*dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<phiu_f_{correction}_<<species>>>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+IF 0
+  FACE_EQUATION <equation> "<phi_bounded_<<species>>>*(<u_f_{raw}_<<species>>>-faceave[downcell](dot(<u_<<species>>[l=:]>,cellave[lastface](<facenorm[l=:]>))))-<phiu_f_{correction}_<<species>>>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+ELSE_IF 1
+  FACE_EQUATION <equation> "<phi_bounded_<<species>>>*<u_f_{raw}_<<species>>>-faceave[downcell](<phi_bounded_<<species>>>*dot(<u_<<species>>[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<phiu_f_{correction}_<<species>>>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+ELSE_IF 0
+  FACE_EQUATION <equation> "<phi_lim_<<species>>>*<u_f_{raw}_<<species>>>-faceave[downcell](<phi_bounded_<<species>>>*dot(<u_<<species>>[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<phiu_f_{correction}_<<species>>>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+ELSE
+  FACE_EQUATION <equation> "<phiu_f_<<species>>>-faceave[downcell](<phi_bounded_<<species>>>*dot(<u_<<species>>[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<phiu_f_{correction}_<<species>>>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+END_IF
 
 # another idea is to use the advection <phi_f>
 #FACE_EQUATION <p_extrapolation <<species>>> "<phiu_f_<<species>>>-<phi_f_adv_<<species>>>*faceave[downcell](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<phiu_f_{correction}>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero

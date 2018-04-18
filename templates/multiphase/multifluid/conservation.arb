@@ -35,8 +35,8 @@ END_IF
   return $return_string;
 }}
 
-<<navierstokescomment>>INCLUDE "momentum_advection_flux" # calculate momentum advection flux for all species, only for non-stokes flow
-INCLUDE "momentum_viscous_flux" # calculate momentum advection flux for all species
+<<navierstokescomment>>INCLUDE_LOCAL "momentum_advection_flux" # calculate momentum advection flux for all species, only for non-stokes flow
+INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for all species
 
 # momentum conservation
 {{
@@ -44,7 +44,7 @@ INCLUDE "momentum_viscous_flux" # calculate momentum advection flux for all spec
   for my $l (string_eval('<<dimensions>>','list')) {
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
 # first add viscous stress flux and dynamic forces
-      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> 'celldiv(<<radius_top>><J_viscous_f_$species"."[l=$l]>)<<radius_bottom>>)-<dynamic_force_c_$species"."[l=$l]>' ON <domain>\n";
+      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> 'celldiv(<<radius_top>><J_viscous_f_$species"."[l=$l]>)<<radius_bottom>>-<dynamic_force_c_$species"."[l=$l]>' ON <domain>\n";
 # and add advection flux
       if (string_test('<<navierstokescomment>>','')) {
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+celldiv(<<radius_top>><J_advection_f_$species"."[l=$l]>)<<radius_bottom>>'\n";

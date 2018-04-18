@@ -8,7 +8,7 @@ END_MARKDOWN
     for my $l (string_eval('<<dimensions>>','list')) {
       $return_string .= "VARIABLE <dynamic_force_c_$species"."[l=$l]> '<dynamic_force_c_$species"."[l=$l]>+<phi_bounded_$species>*<gravity[l=$l]>*<rho_$species>'\n";
     }
-    $return_string .= "VARIABLE <dynamic_force_f_$species> '<dynamic_force_f_$species>+<phi_bounded_f_$species>*dot(<gravity[l=:]>,<facedxunit[l=:]>)*<rho_$species>'\n"
+    $return_string .= "VARIABLE <dynamic_force_f_$species> '<dynamic_force_f_$species>+<phi_f_bounded_$species>*dot(<gravity[l=:]>,<facedxunit[l=:]>)*<rho_$species>'\n"
   }
   return $return_string;
 }}
