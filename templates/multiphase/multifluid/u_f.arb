@@ -37,9 +37,9 @@ END_MARKDOWN
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
     for my $l (string_eval('<<dimensions>>','list')) {
-      $return_string .= "VARIABLE <dynamic_force_c_$species"."[l=$l]> '<phi_bounded_$species>*<dynamic_force_c_$species"."[l=$l]>'\n";
+      $return_string .= "VARIABLE <dynamic_force_c_$species"."[l=$l]> '<phi_bounded_$species>*(<dynamic_force_c_$species"."[l=$l]>)'\n";
     }
-    $return_string .= "VARIABLE <dynamic_force_f_$species> '<phi_f_bounded_$species>*<dynamic_force_f_$species>'\n";
+    $return_string .= "VARIABLE <dynamic_force_f_$species> '<phi_f_bounded_$species>*(<dynamic_force_f_$species>)'\n";
   }
   return $return_string;
 }}

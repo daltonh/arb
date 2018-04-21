@@ -11,12 +11,12 @@ IF 1
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
       $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/noflux' R '<u_f>' W '<u_f_$species>' R '<equation>' W '<walls noflux $species>'\n";
       $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/noslip' R '<u_f_vect[' W '<u_f_vect_$species"."[' R '<equation1>' W '<walls noslip equation1 $species>' R '<equation2>' W '<walls noslip equation2 $species>'\n";
-# not working
+# working for specific implementations
 #     $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_rhie_chow' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
 # this works
-#     $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_zero_dynamic' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
-# checking this now
-      $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_zero_perror' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
+#     $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_zero_perror' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
+# this works
+      $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_zero_dynamic' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
     }
     return $return_string;
   }}
