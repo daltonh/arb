@@ -23,7 +23,14 @@ CELL_LOCAL <beta*i_<<species>>_species0> "<beta*j_species0_<<species>>>" ON <all
 CELL_DERIVED <beta_species0_<<species>>> "<beta*i_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
 CELL_LOCAL <beta_<<species>>_species0> "<beta_species0_<<species>>>" ON <allcells>
 
-FACE_DERIVED <beta*i_f_<<species>>_species0> "faceave(<beta*i_<<species>>_species0>)" ON <allfaces>
-FACE_LOCAL <beta*j_f_<<species>>_species0> "<beta*i_f_<<species>>_species0> " ON <allfaces>
-FACE_DERIVED <beta*i_f_species0_<<species>>> "faceave(<beta*i_species0_<<species>>>)" ON <allfaces>
-FACE_LOCAL <beta*j_f_species0_<<species>>> "<beta*i_f_species0_<<species>>>" ON <allfaces>
+IF 0
+  FACE_DERIVED <beta*i_f_<<species>>_species0> "faceave(<beta*i_<<species>>_species0>)" ON <allfaces>
+  FACE_LOCAL <beta*j_f_<<species>>_species0> "<beta*i_f_<<species>>_species0> " ON <allfaces>
+  FACE_DERIVED <beta*i_f_species0_<<species>>> "faceave(<beta*i_species0_<<species>>>)" ON <allfaces>
+  FACE_LOCAL <beta*j_f_species0_<<species>>> "<beta*i_f_species0_<<species>>>" ON <allfaces>
+ELSE
+  FACE_DERIVED <beta*i_f_<<species>>_species0> "faceave[adjacentcells](<beta*i_<<species>>_species0>)" ON <allfaces>
+  FACE_LOCAL <beta*j_f_<<species>>_species0> "<beta*i_f_<<species>>_species0> " ON <allfaces>
+  FACE_DERIVED <beta*i_f_species0_<<species>>> "faceave[adjacentcells](<beta*i_species0_<<species>>>)" ON <allfaces>
+  FACE_LOCAL <beta*j_f_species0_<<species>>> "<beta*i_f_species0_<<species>>>" ON <allfaces>
+END_IF
