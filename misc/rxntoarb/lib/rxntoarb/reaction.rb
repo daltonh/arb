@@ -69,7 +69,7 @@ module Rxntoarb
           end
           @parameters << parameter
           rxn.par_units[parameter.name] = parameter.units # save units for consistency checking
-          rxn.check_units = false if parameter.units.nil? # skip check if parameter is defined in terms of a previously defined parameter (i.e. it's a string)
+          rxn.check_units = false unless parameter.units # skip check if parameter is defined in terms of a previously defined parameter (i.e. it's a string)
         end
 
         # Check that all required kinetic parameters are present
