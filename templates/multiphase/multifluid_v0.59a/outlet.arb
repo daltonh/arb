@@ -1,0 +1,5 @@
+MARKDOWN
+Wrapper for outlet boundary conditions, which have zero phi gradient and zero pressure.
+END_MARKDOWN
+
+INCLUDE_LOCAL "inlet" R '<region' W '<outlet'
