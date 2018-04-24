@@ -1,3 +1,7 @@
+MARKDOWN
+Compiles basic geometrical and index data about the elements in the mesh
+END_MARKDOWN
+
 # includes all element information files from general
 INCLUDE "element_coordinates.arb"
 INCLUDE "element_counts.arb"

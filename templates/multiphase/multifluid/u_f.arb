@@ -27,7 +27,8 @@ END_MARKDOWN
       "R '<p>' W '<p_$species>' ".
       "R '<p_f>' W '<p_f_$species>'\n";
 # redefine the viscosity u_rf, recognising that the correction is in terms of phiu, rather than u
-    $return_string .= "VARIABLE <u_rf_{vis}_$species> '<mu_f_$species>/(<facedx>^2*<phi_f_lim_$species>)'\n";
+#   $return_string .= "VARIABLE <u_rf_{vis}_$species> '<mu_f_$species>/(<facedx>^2*<phi_f_lim_$species>)'\n";
+    $return_string .= "VARIABLE <u_rf_{vis}_$species> '<mu_f_gradient_$species>/(<facedx>^2)'\n";
   }
   return $return_string;
 }}
