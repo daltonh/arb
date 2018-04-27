@@ -3,8 +3,8 @@
 
 module Units
 
-  VERSION = '1.6'
-  DATE = '2018-03-02'
+  VERSION = '1.7'
+  DATE = '2018-04-27'
 
   module_function
 
@@ -87,8 +87,8 @@ module Units
     Unit.new('tonne', 't', 'kg', 1e3), # ft (foot) ambiguous, but femtotonnes aren't cool
     Unit.new('unified atomic mass unit', 'u', 'kg mol-1', 1e-3),
     Unit.new('degree (angle)', ['deg', "\u00b0"], 'rad', Math::PI/180.0),
-    Unit.new('minute (angle)', "'", 'rad', Math::PI/1.08e4),
-    Unit.new('second (angle)', "''", 'rad', Math::PI/6.48e5),
+    Unit.new('minute (angle)', ["'", "\u2032"], 'rad', Math::PI/1.08e4),
+    Unit.new('second (angle)', ["''", "\u2033", "\u2032\u2032"], 'rad', Math::PI/6.48e5),
     # others
     Unit.new('acre', 'ac', 'm2', 4.0468564224e3),
     Unit.new('British thermal unit', 'BTU', 'kg m2 s-2', 1055.06),
@@ -106,10 +106,10 @@ module Units
     Unit.new('inch', 'in', 'm', 0.0254),
     Unit.new('maxwell', 'Mx', 'kg m2 A-1 s-2', 1e-8),
     Unit.new('mile', 'mile', 'm', 1609.344),
-    Unit.new('millimetres of mercury', 'mmHg', 'kg m-1 s-2', 133.322387415),
+    Unit.new('millimetre of mercury', 'mmHg', 'kg m-1 s-2', 133.322387415),
     Unit.new('ounce (avoirdupois)', 'oz', 'kg', 28.349523125e-3),
     Unit.new('poise', 'P', 'kg m-1 s-1', 0.1),
-    Unit.new('pound', 'lb', 'kg', 0.45359237),
+    Unit.new('pound (avoirdupois)', 'lb', 'kg', 0.45359237),
     Unit.new('pound-force', 'lbf', 'kg m s-2', 4.4482216152605),
     Unit.new('pound per square inch', 'psi', 'kg m-1 s-2', 6.894757e3),
     Unit.new('revolution', ['r', 'rev'], 'rad', 2*Math::PI),
@@ -123,7 +123,7 @@ module Units
     [unit.sym].flatten.each { |sym| UNITS[sym] = unit }
   end
   
-  UNIT_MATCH = /\A(#{Regexp.union(PREFIXES.keys)})??(#{Regexp.union(UNITS.keys)})\^?((?:\+|-)?\d+)?\z/
+  UNIT_MATCH = /\A(#{Regexp.union(PREFIXES.keys)})??(#{Regexp.union(UNITS.keys)})\^?([-+]?\d+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)?\z/
 
   UnitIO = Struct.new(:value, :units, :dim, :factor)
 
@@ -143,7 +143,7 @@ module Units
     if output.units.empty? # default to SI units
       output.factor, output.dim = 1.0, input.dim
       [1, -1].each do |sign| # construct output units string
-        Hash[input.dim.sort].each { |unit, dim| output.units << "#{unit}#{dim unless dim == 1} " if sign*dim > 0 }
+        Hash[input.dim.sort].each { |unit, dim| output.units << "#{unit}#{(dim.is_a?(Float) ? sprintf('%g', dim) : dim) unless dim == 1} " if sign*dim > 0 }
       end
     else
       output.factor, output.dim = convert_SI(output.units)
@@ -180,8 +180,8 @@ module Units
   def convert_SI(units) #{{{
     factor = 1.0 # this will be the factor to multiply units by to convert to SI
     dim = Hash.new(0) # this will contain the dimensions of units in terms of SI base units
-    units.split(/\s+|\s*\.\s*|\s*\*\s*/).each do |part|
-      prefix, unit, exponent = extract(part)
+    units.scan(/(.+?)(?:\s+|\s*[.*]\s*(?=[A-z])|\z)/).each do |part|
+      prefix, unit, exponent = extract(part.join)
       factor *= (PREFIXES[prefix]*UNITS[unit].factor)**exponent
       # determine the dimensions of each of the SI units comprising units
       UNITS[unit].si.split.each do |part|
@@ -190,6 +190,10 @@ module Units
         dim[si_unit] += si_exponent*exponent
       end
     end
+    dim.each do |unit, exponent|
+      dim[unit] = exponent.to_i if exponent.denominator == 1 # integer exponent
+      dim[unit] = exponent.to_f if units[/\d\.\d/] # if any exponent is decimal then make all non-integer exponents decimal
+    end
     return factor, dim
   end #}}}
 
@@ -197,7 +201,15 @@ module Units
     match = UNIT_MATCH.match(part)
     raise "unrecognised unit #{part}" unless match
     prefix, unit, exponent = match.captures
-    return prefix, unit, exponent ? exponent.to_i : 1
+    exponent ||= '1'
+    exponent = if exponent.include?('.') # decimal exponent (possibly with numerator and denominator; division performed by eval below), stored as rational for greatest precision
+                 (eval exponent).to_r
+               elsif exponent.include?('/') # rational exponent
+                 exponent.to_r
+               else # integer exponent
+                 exponent.to_i
+               end
+    return prefix, unit, exponent
   end #}}}
 
   private_constant :PREFIXES, :UNIT_LIST, :UNIT_MATCH, :UNITS
