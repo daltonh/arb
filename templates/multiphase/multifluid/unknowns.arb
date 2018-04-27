@@ -27,12 +27,14 @@ NONE_CONSTANT <phi_tol> 1.d-6 # this is a minimum phi to consider any phase pres
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
     $return_string .= "CELL_LOCAL <phi_lim_$species> [] 'cellmax(cellmin(<phi_$species>,1.d0-<phi_tol>),<phi_tol>)'\n";
+    $return_string .= "CELL_LOCAL <phi_lim_$species"."[r=1]> [] 'cellmax(cellmin(<phi_$species"."[r=1]>,1.d0-<phi_tol>),<phi_tol>)'\n";
     $return_string .= "CELL_LOCAL <phi_bounded_$species> [] 'cellmax(cellmin(<phi_$species>,1.d0),0.d0)'\n";
     $return_string .= "CELL_LOCAL <phi_bounded_$species"."[r=1]> [] 'cellmax(cellmin(<phi_$species"."[r=1]>,1.d0),0.d0)'\n";
     $return_string .= "FACE_DERIVED <phi_f_bounded_$species> [] 'faceave(<phi_bounded_$species>)' ON <allfaces>\n";
     $return_string .= "FACE_LOCAL <phi_f_lim_$species> [] 'faceave(<phi_lim_$species>)' ON <allfaces>\n";
     $return_string .= "FACE_LOCAL <phi_f_$species> [] 'faceave(<phi_$species>)' ON <allfaces>\n";
     $return_string .= "FACE_LOCAL <phi_f_bounded_adjacent_$species> [] 'faceave[adjacentcells](<phi_bounded_$species>)' ON <allfaces>\n";
+    $return_string .= "FACE_LOCAL <phi_f_lim_adjacent_$species"."[r=1]> [] 'faceave[adjacentcells](<phi_lim_$species"."[r=1]>)' ON <allfaces>\n";
     $return_string .= "CELL_LOCAL <phi_fc_bounded_$species> [] 'cellave(<phi_f_bounded_$species>)'\n";
   }
   return $return_string;

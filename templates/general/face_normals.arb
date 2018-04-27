@@ -1,0 +1,12 @@
+MARKDOWN
+Here we output the face normals (norm, tang1 and tang2) as vectors
+END_MARKDOWN
+
+{{ my $return_string = '';
+  for my $l (string_eval('<<dimensions>>','list')) {
+    $return_string .= "FACE_OUTPUT <facenorm output[l=$l]> '<facenorm[l=$l]>' ON <allfaces>\n";
+    $return_string .= "FACE_OUTPUT <facetang1 output[l=$l]> '<facetang1[l=$l]>' ON <allfaces>\n";
+    $return_string .= "FACE_OUTPUT <facetang2 output[l=$l]> '<facetang2[l=$l]>' ON <allfaces>\n";
+  }
+  return $return_string;
+}}
