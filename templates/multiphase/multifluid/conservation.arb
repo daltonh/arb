@@ -52,13 +52,24 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_advection_f_$species"."[l=$l]>'\n";
       }
 # now take divergence of both terms
-        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> 'celldiv(<<radius_top>>(<momentum_$species"."[l=$l]>))<<radius_bottom>>'\n";
+      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> 'celldiv(<<radius_top>>(<momentum_$species"."[l=$l]>))<<radius_bottom>>'\n";
+      if (1) {
+# newer method, where phi is removed from transient term
+# now divide these viscous and advection terms through by phi_bounded
+        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '((<momentum_$species"."[l=$l]>)/<phi_bounded_$species>)'\n";
+# and transient derivative based on phi_bounded, cancelling out from first term
+        if (string_test('<<transientnavierstokescomment>>','')) {
+          $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<rho_$species>*(<u_$species"."[l=$l]>-<phi_bounded_$species"."[r=1]>*<u_$species"."[l=$l,r=1]>/<phi_bounded_$species".">)/<dt>'\n";
+        }
+      } else {
+# original method, where transient term is first assembled, and then divided by <phi_bounded_speciesi>
 # and transient derivative based on phi_pos
-      if (string_test('<<transientnavierstokescomment>>','')) {
-        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<rho_$species>*(<phi_pos_$species>*<u_$species"."[l=$l]>-<phi_pos_$species"."[r=1]>*<u_$species"."[l=$l,r=1]>)/<dt>'\n";
-      }
+        if (string_test('<<transientnavierstokescomment>>','')) {
+          $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<rho_$species>*(<phi_pos_$species>*<u_$species"."[l=$l]>-<phi_pos_$species"."[r=1]>*<u_$species"."[l=$l,r=1]>)/<dt>'\n";
+        }
 # now divide these transient, viscous and advection terms through by phi_b
-      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '((<momentum_$species"."[l=$l]>)/<phi_bounded_$species>)'\n";
+        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '((<momentum_$species"."[l=$l]>)/<phi_bounded_$species>)'\n";
+      }
 # add dynamic forces
       $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>-<dynamic_force_c_$species"."[l=$l]>' ON <domain>\n";
     }
