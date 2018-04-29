@@ -15,17 +15,17 @@ END_MARKDOWN
       "R '<u_rf_{transient}>' W '<u_rf_{transient}_$species>' ".
       "R '<u_rf_{adv}>' W '<u_rf_{adv}_$species>' ".
       "R '<u_f_{raw}>' W '<u_f_{raw}_$species>' ".
-      "R '<u_f_{correction}>' W '<u_f_{correction}_$species>' ".
-      "R '<u_f_{correction}[r=1]>' W '<u_f_{correction}_$species"."[r=1]>' ".
-      "R '<u_f>' W '<u_f_$species>' ".
+      "R '<u_f_{correction}>' W '<phiu_f_{correction}_$species>' ".
+      "R '<u_f_{correction}[r=1]>' W '<phiu_f_{correction}_$species"."[r=1]>' ".
+      "R '<u_f>' W '<phiu_f_$species>' ".
       "R '<rho_f>' W '<rho_$species>' ".
       "R '<eps_p>' W '<eps_p_$species>' ".
       "R '<p_error>' W '<p_error_$species>' ".
-      "R '<dynamic_force_c_f[' W '<dynamic_force_c_f_$species"."[' ".
-      "R '<dynamic_force_c[' W '<dynamic_force_c_$species"."[' ".
-      "R '<dynamic_force_f>' W '<dynamic_force_f_$species>' ".
-      "R '<p>' W '<p_species0>' ".
-      "R '<p_f>' W '<p_f_species0>'\n";
+      "R '<dynamic_force_c_f[' W '<p_grad_c_f_$species"."[' ".
+      "R '<dynamic_force_c[' W '<p_grad_c_$species"."[' ".
+      "R '<dynamic_force_f>' W '<p_grad_f_$species>' ".
+      "R '<p>' W '<p_$species>' ".
+      "R '<p_f>' W '<p_f_$species>'\n";
 # redefine the viscosity u_rf, recognising that the correction is in terms of phiu, rather than u
 #   $return_string .= "VARIABLE <u_rf_{vis}_$species> '<mu_f_$species>/(<facedx>^2*<phi_f_lim_$species>)'\n";
     $return_string .= "VARIABLE <u_rf_{vis}_$species> '<mu_f_gradient_$species>/(<facedx>^2)'\n";
@@ -33,34 +33,27 @@ END_MARKDOWN
   return $return_string;
 }}
 
-# within the multifluid equations the dynamic force is weighted by phi, here phi_bounded
-SKIP
+# create the delta_dynamic_force_f from the pressure gradient differences, p_error
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
-    for my $l (string_eval('<<dimensions>>','list')) {
-#     $return_string .= "VARIABLE <dynamic_force_c_$species"."[l=$l]> '<phi_fc_bounded_$species>*(<dynamic_force_c_$species"."[l=$l]>)'\n";
-      $return_string .= "VARIABLE <dynamic_force_c_$species"."[l=$l]> '<phi_bounded_$species>*(<dynamic_force_c_$species"."[l=$l]>)'\n";
+    $return_string .= "FACE_LOCAL <delta_dynamic_force_f_$species> '-<phi_f_bounded_adjacent_$species>*<p_error_species0>' ON <allfaces>\n";
+    if ($species ne "species0") {
+      $return_string .= "VARIABLE <delta_dynamic_force_f_$species> '<delta_dynamic_force_f_$species>-<p_error_$species>'\n";
     }
-    $return_string .= "VARIABLE <dynamic_force_f_$species> '<phi_f_bounded_adjacent_$species>*(<dynamic_force_f_$species>)'\n";
-#   $return_string .= "VARIABLE <dynamic_force_f_$species> '<phi_f_bounded_$species>*(<dynamic_force_f_$species>)'\n";
   }
   return $return_string;
 }}
-END_SKIP
 
+# species aware fancier method, with species0 having to be done first
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "INCLUDE_LOCAL 'single_species_u_f' R '<<species>>' W '$species'\n";
+  }
+  return $return_string;
+}}
 
-IF 1 # species aware fancier method, with species0 having to be done first
-  {{
-    my $return_string = '';
-    for my $species (string_eval('<<multifluid_species_list>>','list')) {
-      $return_string .= "INCLUDE_LOCAL 'single_species_u_f' R '<<species>>' W '$species'\n";
-    }
-    return $return_string;
-  }}
-END_IF
-
-SKIP
 {{ print string_debug(); }}
 {{
   my $return_string = '';
@@ -71,12 +64,11 @@ SKIP
   }
   return $return_string;
 }}
-END_SKIP
 
-# add on osmotic pressure contribution to dynamic force for the disperse species
+# calculate the dynamic_force_c used in the momentum equations
 {{
   my $return_string = '';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
     $return_string .= "INCLUDE_LOCAL 'single_species_dynamic_force' R '<<species>>' W '$species'\n";
   }
   return $return_string;

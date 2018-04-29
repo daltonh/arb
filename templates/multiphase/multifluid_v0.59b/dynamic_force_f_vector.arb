@@ -1,0 +1,11 @@
+MARKDOWN
+Multifluid equivalent of u_f_vector from navier_stokes, but now applied to visualise the dynamic_force_f.
+END_MARKDOWN
+
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/u_f_vector' R '<u_f>' W '<dynamic_force_f_$species>' R '<u_f_visualise[' W '<dynamic_force_f_visualise_$species"."['\n";
+  }
+  return $return_string;
+}}

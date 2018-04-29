@@ -24,6 +24,6 @@ IF {{string_test('<<viscosity_method>>','thomas')}}
   END_IF
 END_IF
 
-CELL_LOCAL <mu_c_<<species>>> "<mu_c_gradient_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
+CELL_LOCAL <mu_c_<<species>>> "<mu_c_gradient_<<species>>>*<phi_lim_<<species>>>" ON <allcells>
 FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> # used in stress
 FACE_DERIVED <mu_f_gradient_<<species>>> "faceave[adjacentcells](<mu_c_gradient_<<species>>>)" ON <allfaces> # used in rhie-chow

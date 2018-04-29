@@ -14,9 +14,9 @@ IF 1
 # working for specific implementations
 #     $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_rhie_chow' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
 # this works
-#     $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_zero_perror' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
+      $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_zero_perror' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
 # this works
-      $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_zero_dynamic' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
+#     $return_string .= "INCLUDE_LOCAL 'single_species_p_extrapolation_zero_dynamic' R '<equation>' W '<walls p_extrapolation $species>' R '<<species>>' W '$species'\n";
     }
     return $return_string;
   }}

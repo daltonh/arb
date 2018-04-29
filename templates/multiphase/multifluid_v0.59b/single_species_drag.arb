@@ -13,7 +13,7 @@ ELSE
   ERROR "no other permeabilities coded up yet"
 END_IF
 
-#REPLACEMENTS R "bounded" W "pos"
+#REPLACEMENTS R "bounded" W "lim"
 CELL_DERIVED <beta**_species0_<<species>>> "<mu_species0>*<phi_bounded_species0>/<kappa*_species0_<<species>>>" ON <allcells>
 CELL_LOCAL <beta**_<<species>>_species0> "<beta**_species0_<<species>>>" ON <allcells>
 CELL_DERIVED <beta*i_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_species0>" ON <allcells>

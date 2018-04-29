@@ -1,0 +1,14 @@
+MARKDOWN
+Here we assemble the dynamic_force_c that will be used in the momentum equations for a single <<species>>
+END_MARKDOWN
+
+{{
+  my $return_string = '';
+  for my $l (string_eval('<<dimensions>>','list')) {
+    $return_string .= "CELL_LOCAL <dynamic_force_c_<<species>>"."[l=$l]> '<phi_bounded_<<species>>>*<p_grad_c_species0[l=$l]>' ON <allcells>\n";
+    if (!(string_test('<<species>>','species0'))) {
+      $return_string .= "VARIABLE <dynamic_force_c_<<species>>"."[l=$l]> '<dynamic_force_c_<<species>>"."[l=$l]>+<p_grad_c_<<species>>[l=$l]>'\n";
+    }
+  }
+  return $return_string;
+}}
