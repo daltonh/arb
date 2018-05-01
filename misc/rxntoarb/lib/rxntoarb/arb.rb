@@ -123,7 +123,7 @@ module Rxntoarb
         new_species.each do |species, precursors|
           @magnitudes[species] = "CONSTANT <#{species.conc} magnitude> \""
           precursors.each do |precursor|
-            @magnitudes[species] << "#{species.rate_coeff}.d0#{"/#{precursor.rate_coeff}.d0" unless precursor.rate_coeff == 1}*" unless species.rate_coeff.to_f/precursor.rate_coeff.to_f == 1.0 # adjust magnitude for stoichiometry
+            @magnitudes[species] << "#{species.rate_coeff}.d0#{"/#{precursor.rate_coeff}.d0" unless precursor.rate_coeff == 1}*" unless species.rate_coeff == precursor.rate_coeff # adjust magnitude for stoichiometry
             @magnitudes[species] << if species.bound?
                                       if precursor.bound? || Rxntoarb.options[:none_centred]
                                         "nonemin(<#{precursor.conc} magnitude>,"
