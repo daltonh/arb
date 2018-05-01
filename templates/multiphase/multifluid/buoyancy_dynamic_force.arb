@@ -2,6 +2,8 @@ MARKDOWN
 Include the weight body force in each of the equations, similar to the vof template
 END_MARKDOWN
 
+GENERAL_REPLACEMENTS R "<<buoyancy>>" W "1" # set this flag to be used in single_species_visualise_forces
+
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {

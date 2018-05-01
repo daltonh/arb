@@ -5,8 +5,8 @@ END_MARKDOWN
 {{
   my $return_string = '';
   for my $l (string_eval('<<dimensions>>','list')) {
-#    $return_string .= "VARIABLE <dynamic_force_c_<<species>>[l=$l]> '<dynamic_force_c_<<species>>[l=$l]>-celldivgrad[l=$l](<p_f_<<species>>>)/(<phi_bounded_<<species>>>)'\n";
-    $return_string .= "VARIABLE <dynamic_force_c_<<species>>[l=$l]> '<dynamic_force_c_<<species>>[l=$l]>-celldivgrad[l=$l](<p_f_<<species>>>)/(<phi_fc_bounded_<<species>>>)'\n";
+    $return_string .= "VARIABLE <dynamic_force_c_<<species>>[l=$l]> '<dynamic_force_c_<<species>>[l=$l]>-celldivgrad[l=$l](<p_f_<<species>>>)/(<phi_bounded_<<species>>>)'\n";
+#   $return_string .= "VARIABLE <dynamic_force_c_<<species>>[l=$l]> '<dynamic_force_c_<<species>>[l=$l]>-celldivgrad[l=$l](<p_f_<<species>>>)/(<phi_fc_bounded_<<species>>>)'\n";
   }
   return $return_string;
 }}

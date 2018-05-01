@@ -76,9 +76,12 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
 # now deal with drag terms
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
 # now add drag with continuous phase
-      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<beta*j_f_$species"."_species0>*(<u_$species"."[l=$l]>-<u_species0[l=$l]>)'\n";
+# was bug here with centring
+#     $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<beta*j_f_$species"."_species0>*(<u_$species"."[l=$l]>-<u_species0[l=$l]>)'\n";
+      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<beta*j_$species"."_species0>*(<u_$species"."[l=$l]>-<u_species0[l=$l]>)'\n";
 # and opposite to continuous phase term
-      $return_string .= "CELL_EQUATION <momentum_species0[l=$l]> '<momentum_species0[l=$l]>+<beta*j_f_species0_$species>*(<u_species0[l=$l]>-<u_$species"."[l=$l]>)'\n";
+#     $return_string .= "CELL_EQUATION <momentum_species0[l=$l]> '<momentum_species0[l=$l]>+<beta*j_f_species0_$species>*(<u_species0[l=$l]>-<u_$species"."[l=$l]>)'\n";
+      $return_string .= "CELL_EQUATION <momentum_species0[l=$l]> '<momentum_species0[l=$l]>+<beta*j_species0_$species>*(<u_species0[l=$l]>-<u_$species"."[l=$l]>)'\n";
     }
   }
   return $return_string;

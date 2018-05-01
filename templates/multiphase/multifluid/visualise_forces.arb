@@ -1,0 +1,11 @@
+MARKDOWN
+Make some vectors to visualise the forces for each phase - here we just loop through all applicable species
+END_MARKDOWN
+
+{{
+  my $return_string='';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "INCLUDE_LOCAL 'single_species_visualise_forces' R '<<species>>' W '$species'\n";
+  }
+  return $return_string;
+}}
