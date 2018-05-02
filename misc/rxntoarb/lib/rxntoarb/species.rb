@@ -34,10 +34,22 @@ module Rxntoarb
       @free = rxn.volume_regions.include?(@region) # true if species is in solution
       @tag = "#{@name}#{"@#{@region}" if @region}" # unique identifier of the form 'name@region'
       @conc = "#{@bound ? 's' : 'c'}_#{@tag}" # using 's' for surface concentrations and 'c' for volume (or none_centred) concentrations
-      @mw = @bound ? nil : "(#{@name.tr('()[]', '').split(':').map { |component| "+<MW_#{component}>" }.join})" # calculate molecular weight as sum of MWs of components
+
+      # Calculate molecular weight as sum of MWs of components
+      components = @name.tr('()[]', '').split(':')
+      if @free
+        mw = ''
+        components.each do |component|
+          coeff, species = component.match(/(\d+)?(.*)/).captures
+          mw << "+#{"#{coeff}*" if coeff}<MW_#{species}>"
+        end
+      else
+        mw = nil
+      end
+      @mw = "(#{mw})"
 
       @centring, @location, @units, @units_power = if Rxntoarb.options[:none_centred]
-                                                     ['NONE', :none] + (rxn.volume_regions.empty? ? ["mol m-2", "mol#{@coeff} m-#{@coeff*2}"] : ["mol m-3", "mol#{@coeff} m-#{@coeff*3}"])
+                                                     ['NONE', :none] + (rxn.volume_regions.empty? && !rxn.surface_regions.empty? ? ["mol m-2", "mol#{@coeff} m-#{@coeff*2}"] : ["mol m-3", "mol#{@coeff} m-#{@coeff*3}"])
                                                    elsif @bound
                                                      ['FACE', :surface, "mol m-2", "mol#{@coeff} m-#{@coeff*2}"]
                                                    else
