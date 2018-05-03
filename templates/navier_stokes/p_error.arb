@@ -36,7 +36,7 @@ GENERAL_REPLACEMENTS D "<<dynamicforcefdxunitcomment>>" W "" D "<<dynamicforceff
 # need to fix code for adjacentdomaincells for this line to work
 #<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentdomaincells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
 # workaround, explicit code
-<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceif(facedelta(region=<boundaries>),faceave[downcell](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))),faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>),0.d0)" ON <domainfaces>
+<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceif(facedelta(region=<boundaries>),faceave[downcell](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))),faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>)))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
 
 # facegrad method
 <<dynamicforceffacegradcomment>>FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <allfaces>
