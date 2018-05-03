@@ -8,13 +8,13 @@ module Rxntoarb
 
   class Reaction
 
-    attr_reader :aka, :all_species, :centring, :comment, :enzyme, :indent, :intermediates, :parameters, :parent_label, :products, :rate_units, :reactants, :region, :species_regions, :type
-    attr_accessor :label
+    attr_reader :aka, :all_species, :centring, :comment, :enzyme, :indented, :intermediates, :parent_label, :products, :rate_units, :reactants, :region, :species_regions, :type
+    attr_accessor :label, :parameters
 
     def initialize(reaction, rxn) #{{{
       match = /^(\s+)?(?:(.+?):\s+)?(.+?)(?:<=>(.+?)->|{(.+?)}->|(<=>|->))([^;#]+)?;?([^#\n]+)?(#.*)?$/.match(reaction)
       raise 'syntax error or unrecognised reaction type' unless match
-      @indent, @aka, reactants, intermediates, enzyme, arrow, products, parameters, @comment = match.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
+      @indented, @aka, reactants, intermediates, enzyme, arrow, products, parameters, @comment = match.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
 
       @all_species = Set.new
       @species_regions = Set.new
@@ -26,15 +26,6 @@ module Rxntoarb
       @products = extract_species(products, rxn)
       raise "duplicate label #{@label}. Most likely there is a duplicate reaction" if rxn.labels.include?(@label)
       rxn.labels << @label
-
-      if @indent
-        raise 'alias specified for indented reaction' if @aka
-        raise 'kinetic parameters specified for indented reaction' if parameters
-      else
-        raise 'missing kinetic parameters' unless parameters
-        rxn.parent_label = @label.dup
-      end
-      @parent_label = rxn.parent_label.dup # for indented reactions (children), parent_label is the label of the previous non-indented reaction (parent)
 
       @type = if @intermediates
                 :twostep
@@ -57,10 +48,15 @@ module Rxntoarb
                                           [:CELL, @species_regions.first, 'mol m-3 s-1']
                                         end
 
+      if @indented
+        raise 'alias specified for indented (child) reaction' if @aka
+        raise 'kinetic parameters specified for indented (child) reaction' if parameters
       @parameters = nil
-      if parameters
-        @parameters = []
+      else
+        raise 'missing kinetic parameters' unless parameters
+        rxn.parent_label = @label.dup
         rxn.check_units = !@species_regions.empty? # skip check when concentration units are unknown
+        @parameters = []
         parameters.scan(/(\S+)\s*=\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?|'[^']*'|"[^"]*")\s*(.*?)?(?:,|$)/) do |name, value, units|
           begin
             parameter = Parameter.new(name, value, units)
@@ -71,7 +67,6 @@ module Rxntoarb
           rxn.par_units[parameter.name] = parameter.units # save units for consistency checking
           rxn.check_units = false unless parameter.units # skip check if parameter is defined in terms of a previously defined parameter (i.e. it's a string)
         end
-
         # Check that all required kinetic parameters are present
         case @type
         when :twostep
@@ -85,6 +80,7 @@ module Rxntoarb
         end
         check_pars.each { |par| raise "missing #{par} for #{@type} reaction" unless @parameters.map(&:name).include?(par) }
       end
+      @parent_label = rxn.parent_label.dup # for indented reactions (children), parent_label is the label of the previous non-indented reaction (parent)
 
       # Check that units are consistent
       return unless rxn.check_units

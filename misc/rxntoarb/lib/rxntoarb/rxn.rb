@@ -8,7 +8,7 @@ module Rxntoarb
 
   class Rxn
 
-    attr_accessor :aliases, :bounding_regions, :check_units, :file, :header, :initial_species, :labels, :parameters, :par_units, :parent_label, :reactions, :species, :surface_regions, :volume_regions, :volume_species
+    attr_accessor :aliases, :bounding_regions, :check_units, :file, :header, :initial_species, :labels, :parameters, :par_units, :parent_label, :parent_parameters, :reactions, :species, :surface_regions, :volume_regions, :volume_species
 
     def initialize(file) #{{{
       @aliases = {}
@@ -21,6 +21,7 @@ module Rxntoarb
       @parameters = Set.new
       @par_units = {}
       @parent_label = ''
+      @parent_parameters = nil
       @reactions = Set.new
       @replacements = {}
       @species = Set.new
@@ -103,16 +104,21 @@ module Rxntoarb
               rline = line.dup # dup line as substitutions below need to be done for each surface_region and volume_region
               rline.gsub!(/@s\b/, "@#{surface_region}") if surface_region
               rline.gsub!(/@v\b/, "@#{volume_region}") if volume_region
+              begin
+                reaction = Reaction.new(rline, self)
               if exclude?(rline) # reaction excluded by include_only or exclude statement
+                  @parent_parameters = reaction.parameters if reaction.parameters # save parameters from parent reaction in case parent is excluded but child is included
                 warn 'INFO: reaction excluded due to include_only or exclude statement' if Rxntoarb.options[:debug]
                 next
               end
-              begin
-                reaction = Reaction.new(rline, self)
                 @reactions << reaction
                 reaction.all_species.each do |species|
                   @species << species
                   @volume_species[species.region] << species if species.free? # add species to volume_species hash so we know that a source term is required on all surface_regions that bound this volume_region
+                end
+                if @parent_parameters && reaction.indented # apply parent parameters to first included child if parent reaction has been excluded
+                  reaction.parameters = @parent_parameters
+                  @parent_parameters = nil
                 end
                 @parameters += reaction.parameters if reaction.parameters
                 @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka

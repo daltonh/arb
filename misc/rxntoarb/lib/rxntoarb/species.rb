@@ -43,10 +43,10 @@ module Rxntoarb
           coeff, species = component.match(/(\d+)?(.*)/).captures
           mw << "+#{"#{coeff}*" if coeff}<MW_#{species}>"
         end
+        @mw = "(#{mw})"
       else
-        mw = nil
+        @mw = nil
       end
-      @mw = "(#{mw})"
 
       @centring, @location, @units, @units_power = if Rxntoarb.options[:none_centred]
                                                      ['NONE', :none] + (rxn.volume_regions.empty? && !rxn.surface_regions.empty? ? ["mol m-2", "mol#{@coeff} m-#{@coeff*2}"] : ["mol m-3", "mol#{@coeff} m-#{@coeff*3}"])
