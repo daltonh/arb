@@ -59,7 +59,9 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '((<momentum_$species"."[l=$l]>)/<phi_bounded_$species>)'\n";
 # and transient derivative based on phi_bounded, cancelling out from first term
         if (string_test('<<transientnavierstokescomment>>','')) {
-          $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<rho_$species>*(<u_$species"."[l=$l]>-<phi_bounded_$species"."[r=1]>*<u_$species"."[l=$l,r=1]>/<phi_bounded_$species".">)/<dt>'\n";
+# choice of using bounded or pos previous phi
+#         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<rho_$species>*(<u_$species"."[l=$l]>-<phi_bounded_$species"."[r=1]>*<u_$species"."[l=$l,r=1]>/<phi_bounded_$species".">)/<dt>'\n";
+          $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<rho_$species>*(<u_$species"."[l=$l]>-<phi_pos_$species"."[r=1]>*<u_$species"."[l=$l,r=1]>/<phi_bounded_$species".">)/<dt>'\n";
         }
       } else {
 # original method, where transient term is first assembled, and then divided by <phi_bounded_speciesi>

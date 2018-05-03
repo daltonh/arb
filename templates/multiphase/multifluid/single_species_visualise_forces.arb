@@ -31,7 +31,8 @@ REPLACEMENTS D "<<buoyancy>>" W "0"
 #     push(@force_list,'trans');
       $return_string .= "CELL_LOCAL <force_trans_new_<<species>>[l=$l]> '-(<rho_<<species>>>/<dt>)*<u_<<species>>[l=$l]>' ON <domain>\n";
       push(@force_list,'trans_new');
-      $return_string .= "CELL_LOCAL <force_trans_old_<<species>>[l=$l]> '+(<rho_<<species>>>/<dt>)*(<phi_bounded_<<species>>[r=1]>*<u_<<species>>[r=1,l=$l]>/<phi_bounded_<<species>>>)' ON <domain>\n";
+#     $return_string .= "CELL_LOCAL <force_trans_old_<<species>>[l=$l]> '+(<rho_<<species>>>/<dt>)*(<phi_bounded_<<species>>[r=1]>*<u_<<species>>[r=1,l=$l]>/<phi_bounded_<<species>>>)' ON <domain>\n";
+      $return_string .= "CELL_LOCAL <force_trans_old_<<species>>[l=$l]> '+(<rho_<<species>>>/<dt>)*(<phi_pos_<<species>>[r=1]>*<u_<<species>>[r=1,l=$l]>/<phi_bounded_<<species>>>)' ON <domain>\n";
       push(@force_list,'trans_old');
     }
 # buoyancy

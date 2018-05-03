@@ -10,3 +10,4 @@ END_MARKDOWN
   }
   return $return_string;
 }}
+FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <allfaces> output # also used in navier_stokes/p_error.arb
