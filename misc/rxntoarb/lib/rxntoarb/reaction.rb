@@ -11,7 +11,7 @@ module Rxntoarb
     attr_reader :aka, :all_species, :centring, :comment, :enzyme, :indented, :intermediates, :parent_label, :products, :rate_units, :reactants, :region, :species_regions, :type
     attr_accessor :label, :parameters
 
-    def initialize(reaction, rxn) #{{{
+    def initialize(reaction, rxn, excluded) #{{{
       match = /^(\s+)?(?:(.+?):\s+)?(.+?)(?:<=>(.+?)->|{(.+?)}->|(<=>|->))([^;#]+)?;?([^#\n]+)?(#.*)?$/.match(reaction)
       raise 'syntax error or unrecognised reaction type' unless match
       @indented, @aka, reactants, intermediates, enzyme, arrow, products, parameters, @comment = match.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
@@ -24,6 +24,29 @@ module Rxntoarb
       @intermediates = extract_species(intermediates, rxn)
       @enzyme = extract_species(enzyme, rxn)
       @products = extract_species(products, rxn)
+
+      if @indented
+        raise 'alias specified for indented (child) reaction' if @aka
+        raise 'kinetic parameters specified for indented (child) reaction' if parameters
+        @parameters = nil
+      else
+        raise 'missing kinetic parameters' unless parameters
+        rxn.parent_label = @label.dup
+        rxn.check_units = !@species_regions.empty? # skip check when concentration units are unknown
+        @parameters = []
+        parameters.scan(/(\S+)\s*=\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?|'[^']*'|"[^"]*")\s*(.*?)?(?:,|$)/) do |name, value, units|
+          begin
+            parameter = Parameter.new(name, value, units)
+          ensure
+            Rxntoarb.print_debug(:parameter){}
+          end
+          @parameters << parameter
+          rxn.par_units[parameter.name] = parameter.units # save units for consistency checking
+          rxn.check_units = false unless parameter.units # skip check if parameter is defined in terms of a previously defined parameter (i.e. it's a string)
+        end
+      end
+      return if excluded
+      @parent_label = rxn.parent_label.dup # for indented reactions (children), parent_label is the label of the previous non-indented reaction (parent)
       raise "duplicate label #{@label}. Most likely there is a duplicate reaction" if rxn.labels.include?(@label)
       rxn.labels << @label
 
@@ -48,39 +71,20 @@ module Rxntoarb
                                           [:CELL, @species_regions.first, 'mol m-3 s-1']
                                         end
 
-      if @indented
-        raise 'alias specified for indented (child) reaction' if @aka
-        raise 'kinetic parameters specified for indented (child) reaction' if parameters
-      @parameters = nil
-      else
-        raise 'missing kinetic parameters' unless parameters
-        rxn.parent_label = @label.dup
-        rxn.check_units = !@species_regions.empty? # skip check when concentration units are unknown
-        @parameters = []
-        parameters.scan(/(\S+)\s*=\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?|'[^']*'|"[^"]*")\s*(.*?)?(?:,|$)/) do |name, value, units|
-          begin
-            parameter = Parameter.new(name, value, units)
-          ensure
-            Rxntoarb.print_debug(:parameter){}
-          end
-          @parameters << parameter
-          rxn.par_units[parameter.name] = parameter.units # save units for consistency checking
-          rxn.check_units = false unless parameter.units # skip check if parameter is defined in terms of a previously defined parameter (i.e. it's a string)
-        end
+      if @parameters
         # Check that all required kinetic parameters are present
-        case @type
-        when :twostep
-          check_pars = %w[ka kd k]
-        when :MichaelisMenten
-          check_pars = %w[KM kcat]
-        when :reversible
-          check_pars = %w[ka kd]
-        else
-          check_pars = ['k']
-        end
+        check_pars = case @type
+                     when :twostep
+                       %w[ka kd k]
+                     when :MichaelisMenten
+                       %w[KM kcat]
+                     when :reversible
+                       %w[ka kd]
+                     else
+                       ['k']
+                     end
         check_pars.each { |par| raise "missing #{par} for #{@type} reaction" unless @parameters.map(&:name).include?(par) }
       end
-      @parent_label = rxn.parent_label.dup # for indented reactions (children), parent_label is the label of the previous non-indented reaction (parent)
 
       # Check that units are consistent
       return unless rxn.check_units
