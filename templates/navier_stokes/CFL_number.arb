@@ -4,4 +4,4 @@
 <<cartesiancomment>>CELL_LOCAL <CFL local/dt> "facesum(faceif(<facedivop>*<u_f>,<facedivop>*<u_f>,0.d0),region=<celljfaces>)" ON <domain> nooutput
 <<cylindricalcomment>>CELL_LOCAL <CFL local/dt> "facesum(faceif(<facedivop>*<u_f>,<<radius_f>>*<facedivop>*<u_f>,0.d0),region=<celljfaces>)/<<radius_c>>" ON <domain> nooutput
 CELL_LOCAL <CFL local> "<dt>*<CFL local/dt>" ON <domain> nooutput
-NONE_OUTPUT <CFL> "cellmax(<CFL local>,region=<domain>)"
+NONE_OUTPUT <CFL> "cellmax(<CFL local>,region=<domain>)" output

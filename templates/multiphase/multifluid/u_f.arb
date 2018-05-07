@@ -15,6 +15,7 @@ END_MARKDOWN
       "R '<u_rf_{transient}>' W '<u_rf_{transient}_$species>' ".
       "R '<u_rf_{adv}>' W '<u_rf_{adv}_$species>' ".
       "R '<u_f_{raw}>' W '<u_f_{raw}_$species>' ".
+      "R '<u_f_{raw}_magnitude>' W '<u_f_{raw}_magnitude_$species>' ".
       "R '<u_f_{correction}>' W '<u_f_{correction}_$species>' ".
       "R '<u_f_{correction}[r=1]>' W '<u_f_{correction}_$species"."[r=1]>' ".
       "R '<u_f>' W '<u_f_$species>' ".

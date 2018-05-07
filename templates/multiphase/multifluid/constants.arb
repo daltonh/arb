@@ -30,7 +30,7 @@ CONSTANT <T> [K] 298.15 # temperature
 CONSTANT <p_in> 10.d0
 
 # Also construct some overall variables
-# <u_av> which is the maximum of all phase <u_av>'s
+# <u_av> which is the maximum of all phase <u_av>'s, and used to set <dt_initial>
 {{
   my $return_string = '<u_av_species0>';
   foreach my $species (string_eval("<<multifluid_disperse_species_list>>","list")) {

@@ -2,17 +2,90 @@ MARKDOWN
 This is the multiphase equivalent of the navier_stokes/transient_all_setup, using that file as a template
 END_MARKDOWN
 
-INCLUDE_TEMPLATE "navier_stokes/transient_all_setup"
+# early definition of strings from navier-stokes file
+GLOBAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
+GLOBAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "" DEFAULT "<<nonnewtsteptimestepcomment>>" W "#"
 
+# now deal with CFL number calculation
+IF 1
+# species specific method
+
+  IF {{ return (string_test('<<dynamictimestepcomment>>','')) }}
+
+# first save species-specific u_fs
+    {{
+      my $return_string = "";
+      foreach my $species (string_eval('<<multifluid_species_list>>','list')) {
+        $return_string .= "FACE_TRANSIENT <u_f_$species"."[r=1]> '0.d0' '<u_f_$species>' ON <allfaces>\n";
+      }
+      return $return_string;
+    }}
+
+# now deal with CFL numbers, treating implicit and explicit timestepping differently
+    IF {{ return (string_test('<<implicittimestepcomment>>','')) }}
+# implicit timestepping
+# have to call CFL_number with correct species replacements, and also form mixture <CFL local/dt> for use in timestepping
+      {{
+        my $return_string = '';
+        foreach my $species (string_eval('<<multifluid_species_list>>','list')) {
+          $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/CFL_number' R '<CFL local/dt>' W '<CFL local/dt_$species>' R '<u_f>' W '<u_f_$species>' R '<CFL local>' W '<CFL local_$species>' R '<dt>' W '<dt[r=1]>' R '<CFL>' W '<CFL_$species>\n";
+        }
+        return $return_string;
+      }}
+      INCLUDE_TEMPLATE "navier_stokes/transient_all_setup"
+      VARIABLE <u_f[r=1]> CANCEL
+# redefine <CFL local/dt>
+      {{
+        my $return_string = "CELL_LOCAL <CFL local/dt> '0.d0' ON <domain> nooutput\n";
+        foreach my $species (string_eval('<<multifluid_species_list>>','list')) {
+          $return_string .= "VARIABLE <CFL local/dt> 'cellmax(<CFL local/dt_$species>,default=<CFL local/dt>,region=<noloop>)'\n";
+        }
+        return $return_string;
+      }}
+# mixture based CFL numbers for reporting purposes only
+      CELL_LOCAL <CFL local> "<dt>*<CFL local/dt>" ON <domain> nooutput
+      NONE_OUTPUT <CFL> "cellmax(<CFL local>,region=<domain>)" output
+    ELSE
+# explicit timestepping
+# timestep is based on explicit mixture <CFL[r=1]> which needs to be formed from species specific CFL's
+      {{
+        my $return_string = '';
+        foreach my $species (string_eval('<<multifluid_species_list>>','list')) {
+          $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/CFL_number' R '<CFL local/dt>' W '<CFL local/dt_$species"."[r=1]>' R '<u_f>' W '<u_f_$species"."[r=1]>' R '<CFL local>' W '<CFL local_$species"."[r=1]>' R '<dt>' W '<dt[r=1]>' R 'NONE_OUTPUT <CFL>' W 'NONE_TRANSIENT <CFL_$species"."[r=1]>'\n";
+        }
+        return $return_string;
+      }}
+      INCLUDE_TEMPLATE "navier_stokes/transient_all_setup"
+      VARIABLE <u_f[r=1]> CANCEL
+      VARIABLE <CFL local/dt[r=1]> CANCEL
+      VARIABLE <CFL local[r=1]> CANCEL
+# now redefine <CFL[r=1]> using species CFLs, but keep position
+      {{
+        my $return_string = "NONE_TRANSIENT <CFL[r=1]> '0.d0' output\n";
+        foreach my $species (string_eval('<<multifluid_species_list>>','list')) {
+          $return_string .= "VARIABLE <CFL[r=1]> 'nonemax(<CFL_$species"."[r=1]>,default=<CFL[r=1]>)'\n";
+        }
+        return $return_string;
+      }}
+    END_IF
+  END_IF
+
+ELSE
+
+  INCLUDE_TEMPLATE "navier_stokes/transient_all_setup"
+
+# mixture based CFL - doesn't work
 # define a <u_f[r=1]> from the current phi_f_adv and <u_f_species> to use in CFL calculation, overwriting above expression
-{{
-  my $return_string = 'FACE_TRANSIENT <u_f[r=1]> "0.d0" "';
-  foreach my $species (string_eval('<<multifluid_species_list>>','list')) {
-    $return_string .= "+<u_f_$species>*<phi_f_adv_$species>";
-  }
-  $return_string .= '" ON <allfaces>';
-  return $return_string;
-}}
+  {{
+    my $return_string = 'FACE_TRANSIENT <u_f[r=1]> "0.d0" "';
+    foreach my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "+<u_f_$species>*<phi_f_adv_$species>";
+    }
+    $return_string .= '" ON <allfaces>';
+    return $return_string;
+  }}
+
+END_IF
 
 # cancel the single phase <u[l=:,r=1]> variables that were defined in the navier_stokes file, and replace with phase specific ones
 {{
