@@ -1,4 +1,4 @@
-# rxntoarbrc, v. 2.5 (2018-03-02)
+# rxntoarbrc, v. 2.6 (2018-05-07)
 VERSION 0.58
 CONSTANT </c/_0> [/units/] 0.d0 # set initial concentration to zero (overwrite later if necessary)
 if_rxn(volume){
@@ -28,7 +28,11 @@ if_rxn(volume){
   FACE_DERIVED <j_f_/species/@/region/> "</c/_f>*<u_f>-<D_/species/>*facegrad(</c/>)" ON </associatedfaces(region)/> output
 }
 /CENTRING/_LOCAL <adv_diff_source_/species/@/region/> "if_rxn(volume){celldiv(<<radius_f>>*<j_f_/species/@/region/>)/<<radius_c>>} - <S_/species/@/region/@/source_region/>" ON </domainof(region)/>
-/CENTRING/_EQUATION </species/@/region/ conservation> "noneif(<<transientsimulation>>,(</c/>-</c/[r=1]>)/<dt[r=1]>,0.d0) + <adv_diff_source_/species/@/region/>" ON </domainof(region)/>
+IF <<transientsimulation>>
+  /CENTRING/_EQUATION </species/@/region/ conservation> "(</c/>-</c/[r=1]>)/<dt[r=1]> + <adv_diff_source_/species/@/region/>" ON </domainof(region)/>
+ELSE
+  /CENTRING/_EQUATION </species/@/region/ conservation> "<adv_diff_source_/species/@/region/>" ON </domainof(region)/>
+END_IF
 if_rxn(volume){
   # set boundary conditions here
   FACE_EQUATION </c/@inlet> "</c/>-</c/_0>" ON <inlet>

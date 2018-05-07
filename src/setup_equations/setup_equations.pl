@@ -2529,7 +2529,7 @@ sub mequation_interpolation {
       if (empty($false)) { $false = "0"; }
 #       error_stop("false expression in if operator not found in $otype $variable{$otype}[$omvar]{name}"); }
 
-      $inbit[$nbits] = $condition; # main expression is condition (giving the true value if >=0, else the false value)
+      $inbit[$nbits] = $condition; # main expression is condition (giving the true value if >0, else the false value)
       create_someloop($inbit[$nbits],$operator_type,$centring,"<noloop>",0,$otype,$omvar);
       $someloop_mvar = $m{"someloop"}; # save someloop type
 
