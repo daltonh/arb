@@ -12,7 +12,7 @@ module Rxntoarb
     attr_accessor :label, :parameters
 
     def initialize(reaction, rxn, excluded) #{{{
-      match = /^(\s+)?(?:(.+?):\s+)?(.+?)(?:<=>(.+?)->|{(.+?)}->|(<=>|->))([^;#]+)?;?([^#\n]+)?(#.*)?$/.match(reaction)
+      match = /^(\s+)?(?:(.+?):\s+)?(.+?)(?:<=>(.+?)->|{(.+?)}->|(<=>|->))([^;#]+)?(?:;\s*)?([^#\n]+)?(#.*)?$/.match(reaction)
       raise 'syntax error or unrecognised reaction type' unless match
       @indented, @aka, reactants, intermediates, enzyme, arrow, products, parameters, @comment = match.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
 
@@ -35,11 +35,7 @@ module Rxntoarb
         rxn.check_units = !@species_regions.empty? # skip check when concentration units are unknown
         @parameters = []
         parameters.scan(/(\S+)\s*=\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?|'[^']*'|"[^"]*")\s*(.*?)?(?:,|$)/) do |name, value, units|
-          begin
-            parameter = Parameter.new(name, value, units)
-          ensure
-            Rxntoarb.print_debug(:parameter){}
-          end
+          parameter = Parameter.new(name, value, units)
           @parameters << parameter
           rxn.par_units[parameter.name] = parameter.units # save units for consistency checking
           rxn.check_units = false unless parameter.units # skip check if parameter is defined in terms of a previously defined parameter (i.e. it's a string)
@@ -104,6 +100,10 @@ module Rxntoarb
       rxn.error("inconsistent units in reaction rate (#{units.last} vs #{units.first})", :WARNING) unless units.size == 1 # check that terms in rate expressions have consistent units
       rxn.error("reaction rate has unexpected units", :WARNING) if units.any? { |unit| unit !~ /\Amol m-[23] s-1\z/ } # check that all reaction rates actually have units of reaction rate
 
+    ensure
+      Rxntoarb.print_debug(:'match.captures'){} if match
+      reaction = self
+      Rxntoarb.print_debug(:reaction){}
     end #}}}
 
     private
@@ -112,11 +112,7 @@ module Rxntoarb
       return nil if string.nil? || string =~ /\A\s*\z/
       species_array = []
       string.split(/\s+\+\s+/).each do |term| # spaces around + required so that + can be used in species names (e.g. ions)
-        begin
-          species = Species.new(term, rxn)
-        ensure
-          Rxntoarb.print_debug(:species){}
-        end
+        species = Species.new(term, rxn)
         species_array << species
       end
       @label << "|" unless @label.empty?

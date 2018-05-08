@@ -39,7 +39,8 @@ module Rxntoarb
           @replacements.each { |sub, rep| line.gsub!(sub, rep) }
           if Rxntoarb.options[:debug]
             warn '='*200
-            Rxntoarb.print_debug(:$., :line){}
+            line_no = $.
+            Rxntoarb.print_debug(:line_no, :line){}
           end
           case line
           # Skip full-line comments and blank lines
@@ -164,8 +165,6 @@ module Rxntoarb
     end
     @parameters += reaction.parameters if reaction.parameters
     @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka
-  ensure
-    Rxntoarb.print_debug(:reaction){}
   end #}}}
 
   end

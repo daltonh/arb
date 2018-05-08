@@ -55,6 +55,10 @@ module Rxntoarb
                                                    else
                                                      ['CELL', :volume, "mol m-3", "mol#{@coeff} m-#{@coeff*3}"]
                                                    end
+    ensure
+      Rxntoarb.print_debug(:'match.captures'){} if match
+      species = self
+      Rxntoarb.print_debug(:species){}
     end #}}}
 
     def ==(other) #{{{

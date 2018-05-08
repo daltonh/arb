@@ -8,8 +8,8 @@ require_relative 'rxn'
 module Rxntoarb
 
   PROGNAME = 'rxntoarb'
-  VERSION = '2.16'
-  DATE = '2018-05-04'
+  VERSION = '2.17'
+  DATE = '2018-05-08'
   INFO = <<-INFO.gsub(/^\s+/, '') # prefer squiggly heredoc <<~ in Ruby 2.3+
     #{PROGNAME} v. #{VERSION} (#{DATE})
     Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
@@ -85,7 +85,8 @@ module Rxntoarb
     warn OPTIONS
     abort "ERROR: #{msg}"
   ensure
-    print_debug(:'self.options'){}
+    rxntoarb = self
+    print_debug(:'rxntoarb.options'){}
   end #}}}
 
   def print_debug(*vars, &b) #{{{

@@ -17,6 +17,9 @@ module Rxntoarb
       value, units = Units.convert("#{value} #{units}", '', {double_precision: true, sig_figs: true}) if units # convert to SI units
       @value = value
       @units = units
+    ensure
+      parameter = self
+      Rxntoarb.print_debug(:parameter){}
     end #}}}
 
     def inspect #{{{
