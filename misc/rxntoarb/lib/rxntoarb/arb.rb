@@ -225,9 +225,7 @@ module Rxntoarb
           raise "missing loop variable in each block in template file #{Rxntoarb.options[:template_file]}" unless loopvar
           expression = unindent(expression)
           replacement = []
-          region_list.each do |region| # duplicate expression for each region in region_list, replacing loopvar with region
-            replacement << expression.gsub(loopvar, region)
-          end
+          region_list.each { |region| replacement << expression.gsub(loopvar, region) } # duplicate expression for each region in region_list, replacing loopvar with region
           template.sub!(replace, replacement.join("\n")) # replace the each block
         end
       end

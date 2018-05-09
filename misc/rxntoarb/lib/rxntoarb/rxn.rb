@@ -57,13 +57,13 @@ module Rxntoarb
             Rxntoarb.optparse($1.split)
 
           # Replacement definition
-          when /^\s*let\s+([^#]+)=([^#]+)/i
-            @replacements[$1.strip] = $2.strip
+          when /^\s*substitute\s+(\S+|\/.*?(?<!\\)\/i?)\s+([^#]*)/i
+            @replacements[regexpify($1)] = $2.strip
 
-          # Include/exclude lines based on regexp match. Maximum of one include and one exclude statement allowed
-          when /^\s*(include_only|exclude)\s+\/(.*?)(?<!\\)\/(i)?/i
+          # Include/exclude lines based on string/regexp match. Maximum of one include and one exclude statement allowed
+          when /^\s*(include_only|exclude)\s+(\S+|\/.*?(?<!\\)\/i?)/i
             Rxntoarb.options[:keep] ||= {}
-            Rxntoarb.options[:keep][$1.to_sym] = Regexp.new($2, $3)
+            Rxntoarb.options[:keep][$1.to_sym] = regexpify($2)
 
           # Define surface or volume regions
           when /^\s*(surface|volume)_regions?\s+([^#]+)/i
@@ -129,6 +129,17 @@ module Rxntoarb
     end #}}}
 
     private
+
+    def regexpify(string) #{{{
+      case string 
+      when /^\/.*\/i$/i # case insensitive regexp
+        Regexp.new(string[1..-3], 'i')
+      when /^\/.*\/$/ # case sensitive regexp
+        Regexp.new(string[1..-2], nil)
+      else # just a string - no special escapes recognised
+        Regexp.new(Regexp.escape(string), nil)
+      end
+    end #}}}
 
     def exclude?(string, type=:default) #{{{
       return false unless Rxntoarb.options[:keep]
