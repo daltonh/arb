@@ -28,7 +28,8 @@ REPLACEMENTS D "<<buoyancy>>" W "0"
 # transient
     if (string_test('<<transientnavierstokescomment>>','')) {
 #     $return_string .= "CELL_LOCAL <force_trans_<<species>>[l=$l]> '-(<rho_<<species>>>/<dt>)*(<u_<<species>>[l=$l]>-<phi_bounded_<<species>>[r=1]>*<u_<<species>>[r=1,l=$l]>/<phi_bounded_<<species>>>)' ON <domain>\n";
-#     push(@force_list,'trans');
+      $return_string .= "CELL_LOCAL <force_trans_<<species>>[l=$l]> '-(<rho_<<species>>>/<dt>)*(<u_<<species>>[l=$l]>-<phi_pos_<<species>>[r=1]>*<u_<<species>>[r=1,l=$l]>/<phi_bounded_<<species>>>)' ON <domain>\n";
+      push(@force_list,'trans');
       $return_string .= "CELL_LOCAL <force_trans_new_<<species>>[l=$l]> '-(<rho_<<species>>>/<dt>)*<u_<<species>>[l=$l]>' ON <domain>\n";
       push(@force_list,'trans_new');
 #     $return_string .= "CELL_LOCAL <force_trans_old_<<species>>[l=$l]> '+(<rho_<<species>>>/<dt>)*(<phi_bounded_<<species>>[r=1]>*<u_<<species>>[r=1,l=$l]>/<phi_bounded_<<species>>>)' ON <domain>\n";
@@ -67,6 +68,7 @@ REPLACEMENTS D "<<buoyancy>>" W "0"
   $return_string .= "NONE_OUTPUT <force_maximum_magnitude_<<species>>> '0.d0'\n";
   for my $force (@force_list) {
     $return_string .= "NONE_LOCAL <force_$force"."_magnitude_<<species>>> 'cellmax(sqrt(dot(<force_$force"."_<<species>>[l=:]>,<force_$force"."_<<species>>[l=:]>)),region=<domain>)'\n";
+    if ($force =~ /^trans_/) { next; }
     $return_string .= "NONE_OUTPUT <force_maximum_magnitude_<<species>>> 'nonemax(<force_$force"."_magnitude_<<species>>>,<force_maximum_magnitude_<<species>>>)'\n";
   }
 
@@ -82,6 +84,7 @@ REPLACEMENTS D "<<buoyancy>>" W "0"
     for my $l (string_eval('<<dimensions>>','list')) {
       $return_string .= "CELL_OUTPUT <forcen_sum_<<species>>[l=$l]> '0.d0' ON <domain>\n";
       foreach my $force (@force_list) {
+        if ($force =~ /^trans_/) { next; }
         $return_string .= "CELL_OUTPUT <forcen_sum_<<species>>[l=$l]> '<forcen_sum_<<species>>[l=$l]>+(<forcen_$force"."_<<species>>[l=$l]>)'\n";
       }
     }
