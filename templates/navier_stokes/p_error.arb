@@ -23,6 +23,8 @@ IF <<dynamicforcecf>>
   <<dim3comment>>FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[<<reflect=3>>,adjacentcells](<dynamic_force_c[l=3]>)"
 END_IF
 
+{{ print "IN p_error.arb\n".string_debug(); }}
+
 IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
 # dxunit method
   FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
@@ -42,6 +44,12 @@ IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
   END_IF
 
 ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegrad'); }}
+#ELSE_IF {{ return "1"; }}
+#END_IF
+#IF {{ return "1"; }}
+#IF {{ return (string_test('<<dynamicforcefmethod>>','facegrad')); }}
+#ELSE_IF 1
+
 # facegrad method
   FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <allfaces>
   IF <<dynamicforcecf>>
