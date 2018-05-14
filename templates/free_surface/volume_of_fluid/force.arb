@@ -5,20 +5,21 @@
 <<dim3comment>>CELL_DERIVED <vof_F_c[l=3]> "<vof_kappa_c>*celldivgrad[l=3](<vof_phi_delta_f>)" ON <vof_delta_mask[r=1]>
 
 IF 1
-# the following copied from navier-stokes p_error
-  # for evaluating the face centred dynamic force there are three options: dxunit, facegrad and adjacentcells
-  # uncomment the comment string corresponding to the one you want
-  # default is dxunit
-  # remember to set all of these strings on entry if changing from the default, with only the requested one uncommented
-  GENERAL_REPLACEMENTS D "<<dynamicforcefdxunitcomment>>" W "" D "<<dynamicforceffacegradcomment>>" W "#" D "<<dynamicforcefadjacentcellscomment>>" W "#"
 
-  # differencing type used here must match that in the p_error calc
+# the following strings reused from navier-stokes p_error, so this must be called after that file
+  IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
   # dxunit method
-  <<dynamicforcefdxunitcomment>>FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+    FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+  ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegrad'); }}
   # facegrad method
-  <<dynamicforceffacegradcomment>>FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad(<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
-  # adjacentcells method
-  <<dynamicforcefadjacentcellscomment>>FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[adjacentcells](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+    FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad(<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+  ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegradadjacentcells'); }}
+  # facegradadjacentcells method
+    FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[adjacentcells](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+  ELSE
+    ERROR 'No valid dynamicforcefmethod is chosen in the volume_of_fluid/force template file: string currently set as <<dynamicforcefmethod>>'
+  END_IF
+
 ELSE
   FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
 END_IF
