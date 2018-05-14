@@ -6,11 +6,7 @@ INCLUDE "dynamic_force" # cell centred dynamic force
 # seems that using <dynamic_force_c_f[l=:]> usually consumes more memory and takes more time to compute, so remove it by default by including the following
 # in the far off future if nobody complains <dynamic_force_c_f[l=:]> may just disappear into the night
 # to bring back <dynamic_force_c_f[l=:]> set this string to empty using a general replacement or on calling
-# nodynamicforcecf should work with reflections, but not tested like heaps and heaps and heaps yet
 GENERAL_REPLACEMENTS D "<<dynamicforcecfcomment>>" W "#"
-# set the opposite automatically
-GENERAL_REPLACEMENTS R "<<nodynamicforcecfcomment>>" W ""
-<<dynamicforcecfcomment>>GENERAL_REPLACEMENTS R "<<nodynamicforcecfcomment>>" W "#"
 
 # for evaluating the face centred dynamic force there are three options: dxunit, facegrad and adjacentcells
 # uncomment the comment string corresponding to the one you want
@@ -20,15 +16,20 @@ GENERAL_REPLACEMENTS D "<<dynamicforcefdxunitcomment>>" W "" D "<<dynamicforceff
 
 # calculate <dynamic_force_c_f[l=:]> if requested
 # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
-<<dynamicforcecfcomment>><<dim1comment>>FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[<<reflect=1>>,adjacentcells](<dynamic_force_c[l=1]>)"
-<<dynamicforcecfcomment>><<dim2comment>>FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[<<reflect=2>>,adjacentcells](<dynamic_force_c[l=2]>)"
-<<dynamicforcecfcomment>><<dim3comment>>FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[<<reflect=3>>,adjacentcells](<dynamic_force_c[l=3]>)"
+IF {{ return string_test('<<dynamicforcecfcomment>>',''); }}
+  <<dim1comment>>FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[<<reflect=1>>,adjacentcells](<dynamic_force_c[l=1]>)"
+  <<dim2comment>>FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[<<reflect=2>>,adjacentcells](<dynamic_force_c[l=2]>)"
+  <<dim3comment>>FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[<<reflect=3>>,adjacentcells](<dynamic_force_c[l=3]>)"
+END_IF
 
+IF {{ return string_test('<<dynamicforcefdxunitcomment>>',''); }}
 # dxunit method
-<<dynamicforcefdxunitcomment>>FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
-<<dynamicforcefdxunitcomment>>FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
+  FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
+  FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
 # dxunit + dynamicforcecf
-<<dynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domainfaces>
+  IF {{ return string_test('<<dynamicforcecfcomment>>',''); }}
+    FACE_DERIVED <p_error> "(-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domainfaces>
+  ELSE
 # dxunit - dynamicforcecf
 # lastface is required when averaging the normal when we have periodic gluing, as we require the normal to be orientated relative to the original face, rather than its glued counterpart - this is now the default when cycling through the region adjacentfaceicells, which is used by faceave[adjacentcells]
 # for reflect gluing, <p_error> is zero anyway
@@ -36,22 +37,35 @@ GENERAL_REPLACEMENTS D "<<dynamicforcefdxunitcomment>>" W "" D "<<dynamicforceff
 # need to fix code for adjacentdomaincells for this line to work
 #<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceave[adjacentdomaincells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
 # workaround, explicit code
-<<nodynamicforcecfcomment>><<dynamicforcefdxunitcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceif(facedelta(region=<boundaries>),faceave[downcell](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))),faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>)))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+    FACE_DERIVED <p_error> "faceif(<facereflectnorm>,(-<dynamic_force_f>+faceif(facedelta(region=<boundaries>),faceave[downcell](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))),faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>)))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+  END_IF
 
+ELSE_IF {{ return string_test('<<dynamicforceffacegradcomment>>',''); }}
 # facegrad method
-<<dynamicforceffacegradcomment>>FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <allfaces>
+  FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <allfaces>
+  IF {{ return string_test('<<dynamicforcecfcomment>>',''); }}
 # facegrad + dynamicforcecf
-<<dynamicforcecfcomment>><<dynamicforceffacegradcomment>>FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domainfaces>
+    FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domainfaces>
+  ELSE
 # facegrad - dynamicforcecf
-<<nodynamicforcecfcomment>><<dynamicforceffacegradcomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+    FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+  END_IF
 
+ELSE_IF {{ return string_test('<<dynamicforcefadjacentcellscomment>>',''); }}
 # adjacentcells method
-<<dynamicforcefadjacentcellscomment>>FACE_LOCAL <dynamic_force_f> "-facegrad[adjacentcells](<p>)" ON <allfaces>
+  FACE_LOCAL <dynamic_force_f> "-facegrad[adjacentcells](<p>)" ON <allfaces>
+  IF {{ return string_test('<<dynamicforcecfcomment>>',''); }}
 # adjacentcells + dynamicforcecf
-<<dynamicforcecfcomment>><<dynamicforcefadjacentcellscomment>>FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domainfaces>
+    FACE_DERIVED <p_error> "-<dynamic_force_f>+dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domainfaces>
+  ELSE
 # adjacentcells - dynamicforcecf
 #<<nodynamicforcecfcomment>><<dynamicforcefadjacentcellscomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
-<<nodynamicforcecfcomment>><<dynamicforcefadjacentcellscomment>>FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentdomaincells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+    FACE_DERIVED <p_error> "faceif(<facereflectnorm>,-<dynamic_force_f>+faceave[adjacentdomaincells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+  END_IF
+
+ELSE
+  ERROR 'No valid method chosen in navier_stokes/p_error template file'
+END_IF
 
 # the following are two template lines for setting the strings prior to entering this file
 #GENERAL_REPLACEMENTS R "<<dynamicforcecfcomment>>" W "#"
