@@ -1,1 +1,1 @@
-FACE_EQUATION <U charged walls> "<eps_o>*<eps_fluid>*facegrad(<U>)-<wall charge>" ON <walls>
+FACE_EQUATION <U charged walls> "<eps_0>*<eps_fluid>*facegrad(<U>)-<wall charge>" ON <walls>

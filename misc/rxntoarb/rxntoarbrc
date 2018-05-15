@@ -1,6 +1,7 @@
-# rxntoarbrc, v. 2.5 (2018-03-02)
+# rxntoarbrc, v. 2.7 (2018-05-10)
 VERSION 0.58
-CONSTANT </c/_0> [/units/] 0.d0 # set initial concentration to zero (overwrite later if necessary)
+REPLACEMENTS D '<<calculatediffusivities>>' W '0' D '<<specieshighorderadvection>>' W '0' D '<<zeroinitialvolumeconcentrations>>' W '0'
+CONSTANT </c/_0> [/units/] 0.d0 # set boundary concentration to zero (overwrite later if necessary)
 if_rxn(volume){
   IF <<calculatediffusivities>>
     CONSTANT <D_/species/> [m2 s-1] "8.34d-16*<T>/(<mu>*/MW/**(1.d0/3.d0))" # Young1980; viscosity in Pa s, MW in kDa
@@ -13,22 +14,25 @@ END_IF
 /CENTRING/_LOCAL </c/_pos> "/centring/max(</c/>,0.d0)" ON </associatedcells(region)/>
 if_rxn(volume){
   IF <<specieshighorderadvection>> # high-order advection
-  INCLUDE_TEMPLATE "advection_limiters/implicit"
+    INCLUDE_TEMPLATE "advection_limiters/implicit"
     IF <<transientsimulation>>
       INCLUDE "relative_transient_limiter.arb" R "<phi" W "</c/"
     ELSE
       INCLUDE "relative_steady_state_limiter.arb" R "<phi" W "</c/"
     END_IF
-  #INCLUDE "conservative_parameters" R "<phi" W "</c/"
-  FACE_DERIVED </c/_f> "faceave[advection](</c/>,<u_f>,</c/ limiter>,gradient[l=1]=</c/ limiter grad[l=1]>,gradient[l=2]=</c/ limiter grad[l=2]>,gradient[l=3]=</c/ limiter grad[l=3]>)" ON </associatedfaces(region)/>
+    #INCLUDE "conservative_parameters" R "<phi" W "</c/"
+    FACE_DERIVED </c/_f> "faceave[advection](</c/>,<u_f>,</c/ limiter>,gradient[l=1]=</c/ limiter grad[l=1]>,gradient[l=2]=</c/ limiter grad[l=2]>,gradient[l=3]=</c/ limiter grad[l=3]>)" ON </associatedfaces(region)/>
   ELSE # low-order (or non-limited high-order) advection
-  CONSTANT </species/ limiter> 0.d0
-  FACE_DERIVED </c/_f> "faceave[advection](</c/>,<u_f>,</species/ limiter>)" ON </associatedfaces(region)/>
+    CONSTANT </species/ limiter> 0.d0
+    FACE_DERIVED </c/_f> "faceave[advection](</c/>,<u_f>,</species/ limiter>)" ON </associatedfaces(region)/>
   END_IF
   FACE_DERIVED <j_f_/species/@/region/> "</c/_f>*<u_f>-<D_/species/>*facegrad(</c/>)" ON </associatedfaces(region)/> output
 }
 /CENTRING/_LOCAL <adv_diff_source_/species/@/region/> "if_rxn(volume){celldiv(<<radius_f>>*<j_f_/species/@/region/>)/<<radius_c>>} - <S_/species/@/region/@/source_region/>" ON </domainof(region)/>
-/CENTRING/_EQUATION </species/@/region/ conservation> "noneif(<<transientsimulation>>,(</c/>-</c/[r=1]>)/<dt[r=1]>,0.d0) + <adv_diff_source_/species/@/region/>" ON </domainof(region)/>
+/CENTRING/_EQUATION </species/@/region/ conservation> "<adv_diff_source_/species/@/region/>" ON </domainof(region)/>
+IF <<transientsimulation>>
+  VARIABLE </species/@/region/ conservation> "</species/@/region/ conservation> + (</c/>-</c/[r=1]>)/<dt[r=1]>"
+END_IF
 if_rxn(volume){
   # set boundary conditions here
   FACE_EQUATION </c/@inlet> "</c/>-</c/_0>" ON <inlet>

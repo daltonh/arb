@@ -1,0 +1,154 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+# root_input.arb file created by the arb script
+##################################################################################
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+##################################################################################
+# the following working directory files found by the arb script: bouncing_ball_with_timesteprewind.arb
+   #(comment created during unwrap): new block = bouncing_ball_with_timesteprewind.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "bouncing_ball_with_timesteprewind.arb"
+   # arb finite volume solver
+   # Copyright 2009-2011 Dalton Harvie (daltonh@unimelb.edu.au)
+   #
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #-------------------------------------------------------------------
+   # file equations.in
+   VERSION 0.58
+   INFO_TITLE "Bouncing ball problem, now with dynamic timestepping and timesteprewind"
+   INFO_DESCRIPTION "Within this example you can choose either a constant or dynamic timestep, with both working with timestep rewinding.  Also a nasty change to the gravitational constant is introduced to cause numerical havoc.  Remove the limitation on timestepmax at the end of the file to do the full problem"
+   INFO_DATE "13/2/18"
+   INFO_AUTHOR "Dalton Harvie"
+   #----------------------------------------------------------------------------
+   
+   # see below for the timesteprewind commands
+   
+   #GENERAL_OPTIONS newtsteprewind # not implemented yet, will trigger an error message
+   
+   # physical data
+   CONSTANT <z_0> [m] 1.5d0 # initial ball height
+   CONSTANT <w_0> [m/s] 0.d0 # inital ball velocity (positive is up)
+   CONSTANT <D> [m] 0.065d0 # ball diameter (tennis ball)
+   CONSTANT <m> [kg] 0.057d0 # ball mass (tennis ball)
+   CONSTANT <rho_g> [kg/m^3] 1.d0 # density of surrounding gas (assume constant at the start)
+   CONSTANT <mu_g> [Pa s] 1.d-5 # viscosity of surrounding gas (assume constant at the start)
+   CONSTANT <g> [m/s^2] -9.81d0 # acceleration due to gravity in z direction
+   CONSTANT <coefficient of restitution> [] 0.8 # tennis ball http://en.wikipedia.org/wiki/Coefficient_of_restitution gives 0.94 which is too high?
+   CONSTANT <max_bounces> [] 10 # maximum number of bounces
+   CONSTANT <tend> [] 1.d+2 # time for simulation to stop
+   
+   # transient bits
+   # TRANSIENT_SIMULATION # legacy keyword, now replaced by...
+   GENERAL_OPTIONS transientsimulation
+   
+      #(comment created during unwrap): new block = bouncing_ball_with_timesteprewind.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 1 # set true for a dynamic timestep
+      # dynamic timestep, adjusted based on the number of newtsteps required during the previous timestep
+      CONSTANT <dt_initial> 1.d-1
+      CONSTANT <dt_decrease> 0.7d0
+      CONSTANT <dt_increase> 1.2d0
+      CONSTANT <dt_max> "<dt_initial>*1.d4"
+      CONSTANT <dt_min> "<dt_initial>*1.d-3"
+      CONSTANT <CFL_max> 0.25d0
+      CONSTANT <newtstepdtlimiterlow> 1.d0 # explicitly calculated timestep is only increased if <newtstep[r=1]> is <= than this value
+      CONSTANT <newtstepdtlimiterhigh> 2.d0 # explicitly calculated timestep is decreased if <newtstep[r=1]> is > than this value
+      NONE_TRANSIENT <newtstep[r=1]> "0.d0" "<newtstep>" # we save the previous timestep <newtstep> for the above explicit timestep calculation
+      NONE_TRANSIENT <dt_newtstep_increase[r=1]> "1.d0" "noneif(<newtstep[r=1]>-<newtstepdtlimiterhigh>,<dt_decrease>,noneif(<newtstep[r=1]>-<newtstepdtlimiterlow>,1.d0,<dt_increase>))" # apply this to the previous timestep to keep newtstep roughly between high/low ranges
+      NONE_TRANSIENT <dt[r=1]> "<dt_initial>" "<dt>" stepoutput
+      NONE_TRANSIENT <dt> "<dt_initial>" "nonemax(nonemin(<dt_newtstep_increase[r=1]>*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput
+      #(comment created during unwrap): new block = bouncing_ball_with_timesteprewind.arb: sub_block = 1
+      #(hash inserted during unwrap)ELSE
+      #(hash inserted during unwrap)# constant timestep
+      #(hash inserted during unwrap)CONSTANT <dt> [] 1.d-1 stepoutput # constant timestep, still works with timesteprewind
+      #(hash inserted during unwrap)END_IF
+   
+   # timesteprewindmultiplier
+      #(comment created during unwrap): new block = bouncing_ball_with_timesteprewind.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 1 # turn this on to enable the timesteprewindmultiplier
+      # turn timesteprewind on, saving this number of previous timesteps
+      GENERAL_OPTIONS timesteprewind=6
+      
+      # by default deriveds aren't saved, but these two need to be as they are carried forward to initialise the next timestep (which is a little unusual)
+      VARIABLE <w_real> timesteprewind,stepoutput
+      VARIABLE <z_real> timesteprewind,stepoutput
+      
+      # <dt> is multiplied by this number when a rewind is done
+      VARIABLE <dt> timesteprewindmultiplier=0.5d0
+      # timesteprewind will already be the default for <dt> for dynamic timestepping, but for a constant timestep we need to specify this explicitly
+      VARIABLE <dt> timesteprewind
+      
+      # line up the conditions that are going to cause a timesteprewind
+      # 1. if the newton step fails (ie, linear solver comes back with an error), do a timesteprewind: this is a pretty standard condition
+      CONDITION <newtstep timesteprewind failure condition> "<newtstepfailed>" stepoutput,timesteprewindcondition
+         #(comment created during unwrap): new block = bouncing_ball_with_timesteprewind.arb: sub_block = 2
+         #(hash inserted during unwrap)IF 0
+         #(hash inserted during unwrap)# 2. if the number of newton steps required to get convergence is greater than this, then do a timesteprewind
+         #(hash inserted during unwrap)NONE_CONSTANT <newtstep accept> 2.d0
+         #(hash inserted during unwrap)CONDITION <newtstep timesteprewind accept condition> "<newtstep>-<newtstep accept>" stepoutput,timesteprewindcondition
+         #(comment created during unwrap): new block = bouncing_ball_with_timesteprewind.arb: sub_block = 2
+         #(hash inserted during unwrap)ELSE
+         # 2. An alternative to this is to use newtstepmaxiftimesteprewind=2 combined with an accuracy condition, as in "<newtres>-<newtrestol>" to detect when the newton loop doesn't converge
+         GENERAL_OPTIONS newtstepmaxiftimesteprewind=2
+         #   CONDITION <newtstep timesteprewind accuracy condition> "<newtres>-<newtrestol>" timesteprewindcondition
+         CONDITION <newtstep timesteprewind accuracy condition> "1.d0-<newtstepconverged>" timesteprewindcondition
+         #(hash inserted during unwrap)END_IF
+      
+      # output some things about the timesteprewinding process
+      NONE_OUTPUT <timesteprewindsdone_output> "<timesteprewindsdone>" # this is the number of rewinds done in a row prior to the timesteprewind data filling back up again
+      NONE_OUTPUT <timesteprewindstored_output> "<timesteprewindstored>" # this is the number of timesteprewind data points stored, which will max out at the timesteprewind integer
+      NONE_OUTPUT <newtres_output> "<newtres>"
+         #(comment created during unwrap): new block = bouncing_ball_with_timesteprewind.arb: sub_block = 2
+         #(hash inserted during unwrap)IF 0
+         #(hash inserted during unwrap)# the only way to see the following variables is to turn on newtstepout=1, as output is generally only written for a successful step 
+         #(hash inserted during unwrap)NONE_OUTPUT <newtstepconverged_output> "<newtstepconverged>"
+         #(hash inserted during unwrap)NONE_OUTPUT <newtstepfailed_output> "<newtstepfailed>"
+         #(hash inserted during unwrap)GENERAL_OPTIONS newtstepout=1
+         #(hash inserted during unwrap)END_IF
+      #(hash inserted during unwrap)END_IF
+   
+   NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt>" timesteprewind # time
+   NONE_TRANSIENT <t[r=1]> "<t>-<dt>" "<t>" # time at last step
+   NONE_TRANSIENT <t[r=2]> "<t[r=1]>-<dt>" "<t[r=1]>" # time at last step
+   NONE_CONDITION <time based stop condition> "<t>-<tend>" stopcondition # when this becomes true (>0.) the simulation stops
+   
+   # position and velocity, with approximate treatment of bounce
+   NONE_UNKNOWN <z> [m] "<z_0>" # position of ball
+   NONE_TRANSIENT <z[r=1]> [m] "<z>-<w_0>*<dt>" "<z_real>" # position of ball at r=1
+   NONE_DERIVED <w> [m/s] "(<z>-<z[r=1]>)/<dt>" # velocity of ball
+   NONE_TRANSIENT <w[r=1]> [m/s] "<w>" "<w_real>" # velocity of ball at r=1
+   NONE_DERIVED <w_real> [m/s] "noneif(<z>,<w>,-<coefficient of restitution>*<w>)" output,input # real velocity of ball after possible bounce
+   NONE_DERIVED <z_real> [m] "noneif(<z>,<z>,<z>*<w_real>/<w[r=1]>)" output,input # real position of ball after possible bounce
+   
+   # drag force
+   NONE_DERIVED <Re_D> [] "<rho_g>*abs(<w>)*<D>/<mu_g>" # Reynolds number for ball
+   NONE_DERIVED <Re> [] "nonemax(<Re_D>,1.d-4)" # limit Re to be > zero even when velocity is zero
+   NONE_DERIVED <C_D> [] "24.d0/<Re>*(1.d0+0.27d0*<Re>)^(0.43d0)+0.47d0*(1.d0-exp(-0.04d0*<Re>^0.38d0))" # coefficient of drag, from http://www3.ntu.edu.sg/home/cnscheng/Publications/reprint/Accepted%20Manuscript%20(Cd-Re%20Sphere).pdf
+   NONE_CONSTANT <area> [m^2] "<pi>*<D>^2/4.d0" # projected area of ball
+   NONE_DERIVED <F_drag> [N] "-<C_D>*<rho_g>*<w>*abs(<w>)*<area>/2.d0" # drag force on ball
+   
+   # equation of motion
+   NONE_EQUATION <force_balance> [N] "<m>*(<w>-<w[r=1]>)/<dt>-(<m>*<g>+<F_drag>)" # Newton's second law applied to the ball
+   
+   # count number of bounces
+   NONE_TRANSIENT <bounces> [] "0" "<bounces[r=1]>+noneif(<z>,0.d0,1.d0)" stepoutput
+   NONE_TRANSIENT <bounces[r=1]> [] "0" "<bounces>"
+   NONE_CONDITION <bounce based stop condition> [] "<bounces>-<max_bounces>" stopcondition # stop the simulation when the maximum number of bounces has been reached
+   
+   #-------------------------------------------------------------------
+   # introduce some nasty changes in conditions meant to increase the newtsteps and stress the algorithm
+      #(comment created during unwrap): new block = bouncing_ball_with_timesteprewind.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 1
+      CONSTANT <g_normal> [m/s^2] -9.81d0 # acceleration due to gravity in z direction
+      CONSTANT <g_multiplier> 1.d2 # multiplier for gravity to increase convergence effort
+      CONSTANT <t_destabilise> 1.d0 # time at which we destabilise simulation
+      NONE_TRANSIENT <g> "noneif(<t>-<t_destabilise>,<g_multiplier>,1.d0)*<g_normal>"
+      #(hash inserted during unwrap)END_IF
+   
+   # also make things generally harder for the linear solver
+   GENERAL_OPTIONS newtrestol=1.d-12
+   
+   #-------------------------------------------------------------------
+   # for test problem limit the number of timesteps
+   GENERAL_OPTIONS timestepout=2,timestepmax=20
+   #-------------------------------------------------------------------
+##################################################################################

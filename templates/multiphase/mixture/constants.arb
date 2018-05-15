@@ -21,6 +21,6 @@ INCLUDE "constants" R "<mu>" W "<mu_l>" R "<rho>" W "<rho_l>"
 <<dim3comment>>CONSTANT <g[l=3]> [] 0.d0 # gravity component
 
 CONSTANT <a> 20.e-6 #Particle radius
-CONSTANT <volume> "4./3*pi*<a>^3"  # particle volume
+CONSTANT <volume> "4./3*<pi>*<a>^3"  # particle volume
 CONSTANT <k_b> [] 1.38d-23 # Boltzmann constant
 CONSTANT <T> [] 293 # Temperature

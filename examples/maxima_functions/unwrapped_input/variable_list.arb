@@ -1,21 +1,21 @@
 # Reconstructed list of the variables in arb format:
 #--------------------------------------------------------------------------------
 # constant variables:
-NONE_CONSTANT <a> [1] "numerical constant rather than an equation" # other information: region = empty: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = maxima_functions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/examples/maxima_functions/maxima_functions.arb: comments = empty
+NONE_CONSTANT <a> [1] "numerical constant rather than an equation" # other information: region = empty: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = maxima_functions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop/examples/maxima_functions/maxima_functions.arb: comments = empty
 #--------------------------------------------------------------------------------
 # transient variables:
 #--------------------------------------------------------------------------------
 # newtient variables:
 #--------------------------------------------------------------------------------
 # unknown variables:
-NONE_UNKNOWN <x> [1] "1.d0" # other information: region = empty: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = maxima_functions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/examples/maxima_functions/maxima_functions.arb: comments = empty
-NONE_UNKNOWN <y> [1] "1.2d0" # other information: region = empty: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = maxima_functions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/examples/maxima_functions/maxima_functions.arb: comments = empty
+NONE_UNKNOWN <x> [1] "1.d0" # other information: region = empty: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = maxima_functions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop/examples/maxima_functions/maxima_functions.arb: comments = empty
+NONE_UNKNOWN <y> [1] "1.2d0" # other information: region = empty: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = maxima_functions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop/examples/maxima_functions/maxima_functions.arb: comments = empty
 #--------------------------------------------------------------------------------
 # derived variables:
 #--------------------------------------------------------------------------------
 # equation variables:
-NONE_EQUATION <x eq> [1] "mod(<x>,<a>)+<x>" # other information: region = empty: deriv = 1: newtstepmax = empty: newtstepmin = empty: filename = maxima_functions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/examples/maxima_functions/maxima_functions.arb: comments = empty
-NONE_EQUATION <y eq> [1] "floor(<y>)+<y>" # other information: region = empty: deriv = 1: newtstepmax = empty: newtstepmin = empty: filename = maxima_functions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_nonuniform_properties_cleanup2/examples/maxima_functions/maxima_functions.arb: comments = empty
+NONE_EQUATION <x eq> [1] "mod(<x>,<a>)+<x>" # other information: region = empty: deriv = 1: newtstepmax = empty: newtstepmin = empty: filename = maxima_functions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop/examples/maxima_functions/maxima_functions.arb: comments = empty
+NONE_EQUATION <y eq> [1] "floor(<y>)+<y>" # other information: region = empty: deriv = 1: newtstepmax = empty: newtstepmin = empty: filename = maxima_functions.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop/examples/maxima_functions/maxima_functions.arb: comments = empty
 #--------------------------------------------------------------------------------
 # output variables:
 #--------------------------------------------------------------------------------

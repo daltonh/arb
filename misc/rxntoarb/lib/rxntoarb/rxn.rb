@@ -8,7 +8,7 @@ module Rxntoarb
 
   class Rxn
 
-    attr_accessor :aliases, :bounding_regions, :check_units, :file, :header, :initial_species, :labels, :parameters, :par_units, :parent_label, :reactions, :species, :surface_regions, :volume_regions, :volume_species
+    attr_accessor :aliases, :bounding_regions, :check_units, :file, :header, :initial_species, :labels, :parameters, :par_units, :parent_label, :parent_parameters, :reactions, :species, :surface_regions, :volume_regions, :volume_species
 
     def initialize(file) #{{{
       @aliases = {}
@@ -21,6 +21,7 @@ module Rxntoarb
       @parameters = Set.new
       @par_units = {}
       @parent_label = ''
+      @parent_parameters = nil
       @reactions = Set.new
       @replacements = {}
       @species = Set.new
@@ -34,93 +35,82 @@ module Rxntoarb
       volume_region_list = Set.new([nil])
       warn "#{'*'*200}\nINFO: parsing input file #{@file}" if Rxntoarb.options[:debug]
       File.foreach(@file) do |line|
-        @replacements.each { |sub, rep| line.gsub!(sub, rep) }
-        if Rxntoarb.options[:debug]
-          warn '='*200
-          Rxntoarb.print_debug(:$., :line){}
-        end
-        case line
-        # Skip full-line comments and blank lines
-        when /^\s*(#|$)/
-          next
-
-        # Comment lines to be retained in the header start with !
-        when /^\s*!/
-          @header << line.sub('!', '#').chomp
-
-        # Command-line options can also be specified in the input file (using exactly the same syntax)
-        # These take precedence over command-line options
-        when /^\s*options\s+([^#]+)/i
-          Rxntoarb.optparse($1.split)
-
-        # Replacement definition
-        when /^\s*let\s+([^#]+)=([^#]+)/i
-          @replacements[$1.strip] = $2.strip
-
-        # Include/exclude lines based on regexp match. Maximum of one include and one exclude statement allowed
-        when /^\s*(include_only|exclude)\s+\/(.*?)(?<!\\)\/(i)?/i
-          Rxntoarb.options[:keep] ||= {}
-          Rxntoarb.options[:keep][$1.to_sym] = Regexp.new($2, $3)
-
-        # Define surface or volume regions
-        when /^\s*(surface|volume)_regions?\s+([^#]+)/i
-          Rxntoarb.options[:none_centred] = false unless Rxntoarb.options[:none_centred] == :flag # not none_centred unless -n flag given on command line
-          location = $1.downcase
-          eval "#{location}_region_list = []"
-          $2.scan(/\w+|<[^>]+>/) do |region| # angle brackets optional unless region name contains spaces or special characters
-            if exclude?("@#{region}", :region) # region excluded by include_only or exclude statement
-              warn "INFO: region #{region} excluded due to include_only or exclude statement" if Rxntoarb.options[:debug]
-              next
-            end
-            region = Rxntoarb.debracket(region)
-            eval "#{location}_region_list << region"
-            eval "@#{location}_regions << region"
+        catch :next_line do
+          @replacements.each { |sub, rep| line.gsub!(sub, rep) }
+          if Rxntoarb.options[:debug]
+            warn '='*200
+            line_no = $.
+            Rxntoarb.print_debug(:line_no, :line){}
           end
+          case line
+          # Skip full-line comments and blank lines
+          when /^\s*(#|$)/
+            next
 
-        # Species present initially determine the magnitudes of all other species
-        when /^\s*initial_species\s+([^#]+)/i
-          $1.scan(/(?<species>[^@]+)(?:@(?<region>\w+|<[^>]+>|(?<array>\[((?>[^\[\]]+)|\g<array>)*\])))?,?\s*/) do |species_list, region_list|
-            species_list = Rxntoarb.arrayify(species_list[/\A\[?(.*?)\]?\Z/, 1])
-            region_list &&= Rxntoarb.arrayify(region_list[/\A\[?(.*?)\]?\Z/, 1])
-            region_list ||= [nil]
-            region_list.each do |region|
-              species_list.each do |species|
-                species = Rxntoarb.debracket(species)
-                @initial_species << "#{species}#{"@#{region}" if region}"
-              end
-            end
-          end
+          # Comment lines to be retained in the header start with !
+          when /^\s*!/
+            @header << line.sub('!', '#').chomp
 
-        # Reaction (or syntax error)
-        else
-          unless Rxntoarb.options[:none_centred] == :flag
-            raise 'missing surface_region definition for reaction' if surface_region_list == [nil] and line =~ /[^#]*?@s\b/
-            raise 'missing volume_region definition for reaction' if volume_region_list == [nil] and line =~ /[^#]*?@v\b/
-          end
-          volume_region_list.each do |volume_region|
-            surface_region_list.each do |surface_region|
-              @bounding_regions[volume_region] << surface_region if surface_region && volume_region # keep track of surface_regions that bound each volume_region
-              rline = line.dup # dup line as substitutions below need to be done for each surface_region and volume_region
-              rline.gsub!(/@s\b/, "@#{surface_region}") if surface_region
-              rline.gsub!(/@v\b/, "@#{volume_region}") if volume_region
-              if exclude?(rline) # reaction excluded by include_only or exclude statement
-                warn 'INFO: reaction excluded due to include_only or exclude statement' if Rxntoarb.options[:debug]
+          # Command-line options can also be specified in the input file (using exactly the same syntax)
+          # These take precedence over command-line options
+          when /^\s*options\s+([^#]+)/i
+            Rxntoarb.optparse($1.split)
+
+          # Replacement definition
+          when /^\s*substitute\s+(\S+|\/.*?(?<!\\)\/i?)\s+([^#]*)/i
+            @replacements[regexpify($1)] = $2.strip
+
+          # Include/exclude lines based on string/regexp match. Maximum of one include and one exclude statement allowed
+          when /^\s*(include_only|exclude)\s+(\S+|\/.*?(?<!\\)\/i?)/i
+            Rxntoarb.options[:keep] ||= {}
+            Rxntoarb.options[:keep][$1.to_sym] = regexpify($2)
+
+          # Define surface or volume regions
+          when /^\s*(surface|volume)_regions?\s+([^#]+)/i
+            Rxntoarb.options[:none_centred] = false unless Rxntoarb.options[:none_centred] == :flag # not none_centred unless -n flag given on command line
+            location = $1.downcase
+            eval "#{location}_region_list = []"
+            $2.scan(/\w+|<[^>]+>/) do |region| # angle brackets optional unless region name contains spaces or special characters
+              if exclude?("@#{region}", :region) # region excluded by include_only or exclude statement
+                warn "INFO: region #{region} excluded due to include_only or exclude statement" if Rxntoarb.options[:debug]
                 next
               end
-              begin
-                reaction = Reaction.new(rline, self)
-                @reactions << reaction
-                reaction.all_species.each do |species|
-                  @species << species
-                  @volume_species[species.region] << species if species.free? # add species to volume_species hash so we know that a source term is required on all surface_regions that bound this volume_region
+              region = Rxntoarb.debracket(region)
+              eval "#{location}_region_list << region"
+              eval "@#{location}_regions << region"
+            end
+
+          # Species present initially determine the magnitudes of all other species
+          when /^\s*initial_species\s+([^#]+)/i
+            $1.scan(/(?<species>[^@]+)(?:@(?<region>\w+|<[^>]+>|(?<array>\[((?>[^\[\]]+)|\g<array>)*\])))?,?\s*/) do |species_list, region_list|
+              species_list = Rxntoarb.arrayify(species_list[/\A\[?(.*?)\]?\Z/, 1])
+              region_list &&= Rxntoarb.arrayify(region_list[/\A\[?(.*?)\]?\Z/, 1])
+              region_list ||= [nil]
+              region_list.each do |region|
+                species_list.each do |species|
+                  species = Rxntoarb.debracket(species)
+                  @initial_species << "#{species}#{"@#{region}" if region}"
                 end
-                @parameters += reaction.parameters if reaction.parameters
-                @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka
-              ensure
-                Rxntoarb.print_debug(:reaction){}
+              end
+            end
+
+          # Reaction (or syntax error)
+          else
+            unless Rxntoarb.options[:none_centred] == :flag
+              raise 'missing surface_region definition for reaction' if surface_region_list == [nil] and line =~ /[^#]*?@s\b/
+              raise 'missing volume_region definition for reaction' if volume_region_list == [nil] and line =~ /[^#]*?@v\b/
+            end
+            volume_region_list.each do |volume_region|
+              surface_region_list.each do |surface_region|
+                @bounding_regions[volume_region] << surface_region if surface_region && volume_region # keep track of surface_regions that bound each volume_region
+                rline = line.dup # dup line as substitutions below need to be done for each surface_region and volume_region
+                rline.gsub!(/@s\b/, "@#{surface_region}") if surface_region
+                rline.gsub!(/@v\b/, "@#{volume_region}") if volume_region
+                read_reaction(rline)
               end
             end
           end
+
         end
       end
       puts "INFO: read #{@species.size} species, #{@reactions.size} reaction#{'s' unless @reactions.size == 1}, #{@parameters.size} parameter#{'s' unless @parameters.size == 1} from input file #{@file}"
@@ -130,15 +120,26 @@ module Rxntoarb
       error(msg)
     end #}}}
 
-  def error(msg, type=:ERROR) #{{{
-    warn "#{type} in #{@file} at line #{$.}: #{msg}"
-    if type == :ERROR
-      warn msg.backtrace if Rxntoarb.options[:debug]
-      abort
-    end
-  end #}}}
+    def error(msg, type=:ERROR) #{{{
+      warn "#{type} in #{@file} at line #{$.}: #{msg}"
+      if type == :ERROR
+        warn msg.backtrace if Rxntoarb.options[:debug]
+        abort
+      end
+    end #}}}
 
     private
+
+    def regexpify(string) #{{{
+      case string 
+      when /^\/.*\/i$/i # case insensitive regexp
+        Regexp.new(string[1..-3], 'i')
+      when /^\/.*\/$/ # case sensitive regexp
+        Regexp.new(string[1..-2], nil)
+      else # just a string - no special escapes recognised
+        Regexp.new(Regexp.escape(string), nil)
+      end
+    end #}}}
 
     def exclude?(string, type=:default) #{{{
       return false unless Rxntoarb.options[:keep]
@@ -155,6 +156,27 @@ module Rxntoarb
       end
       exclude
     end #}}}
+
+  def read_reaction(rline) #{{{
+    excluded = exclude?(rline)
+    reaction = Reaction.new(rline, self, excluded)
+    if excluded # reaction excluded by include_only or exclude statement
+      @parent_parameters = reaction.parameters if reaction.parameters # save parameters from parent reaction in case parent is excluded but child is included
+      warn 'INFO: reaction excluded due to include_only or exclude statement' if Rxntoarb.options[:debug]
+      throw :next_line
+    end
+    @reactions << reaction
+    reaction.all_species.each do |species|
+      @species << species
+      @volume_species[species.region] << species if species.free? # add species to volume_species hash so we know that a source term is required on all surface_regions that bound this volume_region
+    end
+    if @parent_parameters && reaction.indented # apply parent parameters to first included child if parent reaction has been excluded
+      reaction.parameters = @parent_parameters
+      @parent_parameters = nil
+    end
+    @parameters += reaction.parameters if reaction.parameters
+    @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka
+  end #}}}
 
   end
 

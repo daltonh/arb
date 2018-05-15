@@ -121,11 +121,9 @@ module Rxntoarb
         end
         break if new_species.empty?
         new_species.each do |species, precursors|
-          species_coeff = species.coeff*species.meta_coeff
           @magnitudes[species] = "CONSTANT <#{species.conc} magnitude> \""
           precursors.each do |precursor|
-            precursor_coeff = precursor.coeff*precursor.meta_coeff
-            @magnitudes[species] << "#{species_coeff}.d0#{"/#{precursor_coeff}.d0" unless precursor_coeff == 1}*" unless species_coeff.to_f/precursor_coeff.to_f == 1.0 # adjust magnitude for stoichiometry
+            @magnitudes[species] << "#{species.rate_coeff}.d0#{"/#{precursor.rate_coeff}.d0" unless precursor.rate_coeff == 1}*" unless species.rate_coeff == precursor.rate_coeff # adjust magnitude for stoichiometry
             @magnitudes[species] << if species.bound?
                                       if precursor.bound? || Rxntoarb.options[:none_centred]
                                         "nonemin(<#{precursor.conc} magnitude>,"
@@ -167,8 +165,7 @@ module Rxntoarb
 
     def conc_powers(species) #{{{
       "*<#{species.conc}_pos>#{"**#{species.coeff}" if species.coeff > 1}#{"/#{species.meta_coeff}.d0" if species.meta_coeff > 1}"
-    end
-    #}}}
+    end #}}}
 
     def create_sources(reaction) #{{{
       if reaction.type == :twostep
@@ -186,7 +183,7 @@ module Rxntoarb
         species_array.each do |species|
           key = [species, reaction.region]
           @sources[key] = '' if @sources[key] == '0.d0'
-          (@sources[key] ||= '') << "#{source_sign}#{"#{species.coeff}.d0*" if species.coeff > 1}#{"#{species.meta_coeff}.d0*" if species.meta_coeff > 1}<R_#{reaction.label}>" # add rate to source term for this species
+          (@sources[key] ||= '') << "#{source_sign}#{"#{species.rate_coeff}.d0*" if species.rate_coeff > 1}<R_#{reaction.label}>" # add rate to source term for this species
         end
       end
       @rates.last << "\"#{" ON <#{reaction.region}>" if reaction.region}" # finalise rate expression
@@ -228,9 +225,7 @@ module Rxntoarb
           raise "missing loop variable in each block in template file #{Rxntoarb.options[:template_file]}" unless loopvar
           expression = unindent(expression)
           replacement = []
-          region_list.each do |region| # duplicate expression for each region in region_list, replacing loopvar with region
-            replacement << expression.gsub(loopvar, region)
-          end
+          region_list.each { |region| replacement << expression.gsub(loopvar, region) } # duplicate expression for each region in region_list, replacing loopvar with region
           template.sub!(replace, replacement.join("\n")) # replace the each block
         end
       end
@@ -259,7 +254,7 @@ module Rxntoarb
     end #}}}
 
     def unindent(text) #{{{
-      text.gsub(/^#{text.scan(/^\s*/).min_by { |l| l.length}}/, '').squeeze("\n") # strip indentation of least indented line and delete any empty lines
+      text.gsub(/^#{text.scan(/^\s*/).min_by { |l| l.length }}/, '').squeeze("\n") # strip indentation of least indented line and delete any empty lines
     end #}}}
 
     def find_precursors(reactants, products, new_species) #{{{
