@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: electrokinetic_channel.arb
    #(comment created during unwrap): new block = electrokinetic_channel.arb: sub_block = 0
@@ -196,14 +196,22 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          CONSTANT <average ion z> [1] 1.d0 # average ion valency magnitude
          
          # fundamental constants
-         CONSTANT <e> [C] 1.60210d-19 # charge of an electron
-         CONSTANT <N_A> [1/mol] 6.02252d23 # avogadro's number
-         CONSTANT <eps_o> [F/m] 8.854187817d-12 # vacuum permittivity
-         CONSTANT <k> [J/K] 1.38054d-23 # boltzmann's constant
+            #(comment created during unwrap): new block = ../../templates/general/physical_constants.arb: sub_block = 0
+            #(hash inserted during unwrap)INCLUDE_TEMPLATE 'general/physical_constants'
+            # list of fundamental physical constants
+            # note, in all of these definitions, the word subscript is given in small letters, except for degreesC
+            # source: https://physics.nist.gov/cuu/Constants/Table/allascii.txt
+            CONSTANT <k_boltzmann> [J/K] 1.38064852d-23 # boltzmann constant
+            CONSTANT <N_avogadro> [1/mol] 6.022140857d+23 # avogadro constant
+            CONSTANT <R_gas_constant> [J/K.mol] "<k_boltzmann>*<N_avogadro>"
+            CONSTANT <e_electron> [C] 1.6021766208d-19 # elementary charge (magnitude of the charge of an electron)
+            CONSTANT <eps_0> [F/m] 8.854187817d-12 # vacuum permittivity
+            CONSTANT <T_absolute_zero> [C] -273.15d0 # absolute zero in celsius
+            CONSTANT <T_zero_degreesC> [K] "-<T_absolute_zero>" # zero degrees celsius in kelvin
          
          # some derived constants
-         CONSTANT <average ion n> [molecules/m^3] "<average ion n molarity>*<N_A>*1.d3" # note units
-         CONSTANT <e/kT> "<e>/(<k>*<T>)" # this is a dummy variable that is only used in the dimensional form of the equations
+         CONSTANT <average ion n> [molecules/m^3] "<average ion n molarity>*<N_avogadro>*1.d3" # note units
+         CONSTANT <e/kT> "<e_electron>/(<k_boltzmann>*<T>)" # this is a dummy variable that is only used in the dimensional form of the equations
          CONSTANT <K^2/2> [1] 1.d0 # this is a dummy variable that is only used in the nondimensional form of the equations
          CONSTANT <BK^2/Re^2> [1] 1.d0 # this is a dummy variable that is only used in the nondimensional form of the equations
          
@@ -211,8 +219,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # these should be overwritten by real nondimensional quantities if this is a nondimensional problem
          # assumes that <a_lengthscale> has been calculated previously (probably within navier-stokes constants file)
          
-         CONSTANT <K> "<a_lengthscale>*sqrt(2.d0*<e>^2*<average ion z>^2*<average ion n>/(<eps_o>*<eps_fluid>*<k>*<T>))" # nondimensional channel half-width
-         CONSTANT <S> "<wall charge>*<e>*<average ion z>*<a_lengthscale>/(<eps_o>*<eps_fluid>*<k>*<T>)" # nondimensional surface charge
+         CONSTANT <K> "<a_lengthscale>*sqrt(2.d0*<e_electron>^2*<average ion z>^2*<average ion n>/(<eps_0>*<eps_fluid>*<k_boltzmann>*<T>))" # nondimensional channel half-width
+         CONSTANT <S> "<wall charge>*<e_electron>*<average ion z>*<a_lengthscale>/(<eps_0>*<eps_fluid>*<k_boltzmann>*<T>)" # nondimensional surface charge
       
       # physical data
       CONSTANT <Re> [1] 1.d-2 # Reynolds number.  Overwrites value set in nondimensional_constants
@@ -231,8 +239,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       CONSTANT <BK^2/Re^2> [1] "<B>*<K>^2/(<Re>^2)"
       CONSTANT <eps_fluid> [1] 1.d0
       CONSTANT <wall charge> [1] "<S>"
-      CONSTANT <e> [1] 1.d0
-      CONSTANT <eps_o> [1] 1.d0
+      CONSTANT <e_electron> [1] 1.d0
+      CONSTANT <eps_0> [1] 1.d0
       CONSTANT <e/kT> [1] 1.d0
       
       # zero some undefined dimensional constants
@@ -269,9 +277,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          #FACE_DERIVED <ion n_hf> "faceave[harmonic](<ion n pos>)" ON <allfaces>
       
       # also define the following locals
-      CELL_LOCAL <rho_e> "<e>*(<ion+ z>*<ion+ n>+<ion- z>*<ion- n>)" ON <allcells> # used on right of poisson equation
-      CELL_LOCAL <rho_e pos> "<e>*(<ion+ z>*<ion+ n pos>+<ion- z>*<ion- n pos>)" ON <allcells> # used in momentum balance (navier-stokes)
-      FACE_LOCAL <rho_e_hf> "<e>*(<ion+ z>*<ion+ n_hf>+<ion- z>*<ion- n_hf>)" ON <allfaces> output
+      CELL_LOCAL <rho_e> "<e_electron>*(<ion+ z>*<ion+ n>+<ion- z>*<ion- n>)" ON <allcells> # used on right of poisson equation
+      CELL_LOCAL <rho_e pos> "<e_electron>*(<ion+ z>*<ion+ n pos>+<ion- z>*<ion- n pos>)" ON <allcells> # used in momentum balance (navier-stokes)
+      FACE_LOCAL <rho_e_hf> "<e_electron>*(<ion+ z>*<ion+ n_hf>+<ion- z>*<ion- n_hf>)" ON <allfaces> output
       CELL_LOCAL <n_0^2 signed> "cellmin(<ion+ n>,<ion- n>)*abs(cellmax(<ion+ n>,<ion- n>))" ON <allcells>
       
       # for error checking
@@ -886,11 +894,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       
       # calculate currents crossing into domain over inlet, most probably used in potential boundary conditions
       # cartesian
-      NONE_DERIVED <I+> "-<e>*<ion+ z>*facesum(<ion+ J_f>*<facearea>,<inlet>)"
-      NONE_DERIVED <I-> "-<e>*<ion- z>*facesum(<ion- J_f>*<facearea>,<inlet>)"
+      NONE_DERIVED <I+> "-<e_electron>*<ion+ z>*facesum(<ion+ J_f>*<facearea>,<inlet>)"
+      NONE_DERIVED <I-> "-<e_electron>*<ion- z>*facesum(<ion- J_f>*<facearea>,<inlet>)"
       # cylindrical
-      #NONE_DERIVED <I+> "-<e>*<ion+ z>*facesum(<ion+ J_f>*<facearea>*1.d0,<inlet>)*2.d0*<pi>"
-      #NONE_DERIVED <I-> "-<e>*<ion- z>*facesum(<ion- J_f>*<facearea>*1.d0,<inlet>)*2.d0*<pi>"
+      #NONE_DERIVED <I+> "-<e_electron>*<ion+ z>*facesum(<ion+ J_f>*<facearea>*1.d0,<inlet>)*2.d0*<pi>"
+      #NONE_DERIVED <I-> "-<e_electron>*<ion- z>*facesum(<ion- J_f>*<facearea>*1.d0,<inlet>)*2.d0*<pi>"
       NONE_DERIVED <I_total_calc> "<I+>+<I->"
       
       # overwrite inlet conditions to set concentration and a concentration gradient
@@ -905,12 +913,12 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # potential equations
          CELL_UNKNOWN <U> "1.d0" ON <allcells> # electrical potential
          # cartesian only
-         CELL_EQUATION <U poisson equation> "<eps_o>*celldiv(<eps_fluid>*facegrad(<U>))+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
+         CELL_EQUATION <U poisson equation> "<eps_0>*celldiv(<eps_fluid>*facegrad(<U>))+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
          # cylindrical and cartesian
-         #CELL_EQUATION <U poisson equation> "<eps_o>*celldiv(1.d0*<eps_fluid>*facegrad(<U>))/1.d0+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
+         #CELL_EQUATION <U poisson equation> "<eps_0>*celldiv(1.d0*<eps_fluid>*facegrad(<U>))/1.d0+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
          #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_charged_walls.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "potential_charged_walls"
-         FACE_EQUATION <U charged walls> "<eps_o>*<eps_fluid>*facegrad(<U>)-<wall charge>" ON <walls>
+         FACE_EQUATION <U charged walls> "<eps_0>*<eps_fluid>*facegrad(<U>)-<wall charge>" ON <walls>
          #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_outlet.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "potential_outlet"
          # these equations need <outlet>, <outlet centreline> and <outlet sans centreline> to be defined, by (eg)
