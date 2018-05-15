@@ -795,6 +795,7 @@ sub organise_regions {
       }
     }
 # process options - from now on the options string can be wiped and does not determine whether equations need re-running
+# TODO: separate routine here for creating list of options from line of options
     $region[$n]{"newtstepmin"}='';
     $region[$n]{"newtstepmax"}='';
     my $type = $region[$n]{"type"};
@@ -1531,6 +1532,8 @@ sub organise_user_variables {
     print DEBUG "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: redefinitions = $variable{$type}[$mvar]{redefinitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}: selfreferences = $variable{$type}[$mvar]{selfreferences}\n";
 
 # process variable options, removing clearoptions statements and creating individual variable options lists
+# TODO: rewrite this section so that (eg) variable names delimited by <> or '' are not counted as options
+# TODO: separate routine here for creating list of options from line of options
     if ($asread_variable[$masread]{"options"} =~ /.*(^|\,)\s*clearoptions\s*(\,|$)/i) { # match the last occurrence of this option by putting a greedy match of anything on the left
       $asread_variable[$masread]{"options"} = $'; # the only valid options on this line are those that follow the clearoptions statement
     }
@@ -1586,8 +1589,12 @@ sub organise_user_variables {
       $variable{$type}[$mvar]{"options"} = '';
       print DEBUG "INFO: before processing $type $name has loaded (unchecked) options of $tmp\n";
 # loop through list of options, removing individual options from the list one-by-one
-      while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
-        $option = $2; $tmp = $`.','.$';
+#     while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
+#TODO: fixme
+      while (nonempty($tmp) && $tmp =~ /(^|\,)\s*(.*?)\s*(\,|$)/i) {
+        $tmp = $`.','.$';
+        if (empty($2)) { next; }
+        $option = $2;
 # ignore compound specific options, as these will be compiled in create_compounds from the saved asread_variable[]{options} list
         if ($option =~ /^(|no)(|compound)(output|input)$/i) { next ;}
         elsif ($option =~ /^(|no)(|compound)stepoutput(|noupdate)$/i) { next ;}
@@ -1677,6 +1684,7 @@ sub organise_user_variables {
           if ($type ne "local") {
             $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = examine_name($1,"name");
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
+
         else { error_stop("unknown option of $option specified for $type $name"); }
       }
 
