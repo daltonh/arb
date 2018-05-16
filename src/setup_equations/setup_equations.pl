@@ -806,6 +806,7 @@ sub organise_regions {
       while (nonempty($tmp)) {
         my @extracted_option = extract_option($tmp);
         if ($extracted_option[3]) { error_stop("error in extracting options for $type region $region[$n]{name}: remaining options = $tmp"); };
+        if (empty($extracted_option[0])) { next; }
         my $option = $extracted_option[0];
         if ($option =~ /^(newtstep(max|min))(\s*=\s*([\+\-\d][\+\-\de]*))$/i) { # integer max/min of newtsteps during which this variable should be updated
           my $option_name = "\L$1";
@@ -1589,6 +1590,7 @@ sub organise_user_variables {
       while (nonempty($tmp)) {
         my @extracted_option = extract_option($tmp);
         if ($extracted_option[3]) { error_stop("error in extracting options for $type variable $name: remaining options = $tmp"); };
+        if (empty($extracted_option[0])) { next; }
         my $option = $extracted_option[0];
 # ignore compound specific options, as these will be compiled in create_compounds from the saved asread_variable[]{options} list
         if ($option =~ /^(|no)(|compound)(output|input)$/i) { next ;}
@@ -3850,6 +3852,7 @@ sub create_compounds {
       while (nonempty($tmp)) {
         my @extracted_option = extract_option($tmp);
         if ($extracted_option[3]) { error_stop("error in extracting options for $type compound $name: remaining options = $tmp"); };
+        if (empty($extracted_option[0])) { next; }
         my $option = $extracted_option[0];
         if ($option =~ /^(|no)(|compound)(output|(stepoutput(|noupdate)))$/i) {
           $variable{"compound"}[$mvar2]{"options"} = $variable{"compound"}[$mvar2]{"options"}.",\L$1$3"; }

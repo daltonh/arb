@@ -364,7 +364,9 @@ sub extract_option {
   my $error = 0; 
 
 # remove leading spaces and any leading (duplicate) commas
+  print "&&&& before removing commas: raw_options = $raw_options\n";
   $raw_options =~ s/^\s*((\,\s*)*)//;
+  print "&&&& after removing commas: raw_options = $raw_options\n";
 
 # now go through various match scenarios, noting that option_name contains only \w characters (which does not include = , < > ' " =) 
   if ($raw_options =~ /^(\w+?)\s*=\s*(\<(.*?)\>)\s*(\,|$)/) {
@@ -391,7 +393,7 @@ sub extract_option {
   } elsif ($raw_options =~ /^(\w+?)\s*(\,|$)/) {
     $raw_options = $';
     $extracted_option = $1;
-  } else {
+  } elsif (nonempty($raw_options)) {
     $error = 1;
 #   error_stop('there is a mistake in the following list of options, discovered in extract_option: $raw_options');
   }
@@ -416,10 +418,10 @@ sub sanitise_option_list {
 
   while ($raw_options) {
     my ($extracted_option,$extracted_name,$extracted_value,$error) = extract_option($raw_options);
-    if ($error) { error_stop('there is a mistake in the following list of options, discovered in sanitise_option_list: $saved_options'); }
+    if ($error) { error_stop("there is a mistake in the following list of options, discovered in sanitise_option_list: $saved_options"); }
     if ($extracted_option eq 'clearoptions') {
       $sanitised_options = '';
-    } else {
+    } elsif (nonempty($extracted_option)) {
       if ($sanitised_options) { $sanitised_options .= ','; }
       $sanitised_options .= $extracted_option;
     }
