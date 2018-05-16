@@ -364,9 +364,7 @@ sub extract_option {
   my $error = 0; 
 
 # remove leading spaces and any leading (duplicate) commas
-  print "&&&& before removing commas: raw_options = $raw_options\n";
   $raw_options =~ s/^\s*((\,\s*)*)//;
-  print "&&&& after removing commas: raw_options = $raw_options\n";
 
 # now go through various match scenarios, noting that option_name contains only \w characters (which does not include = , < > ' " =) 
   if ($raw_options =~ /^(\w+?)\s*=\s*(\<(.*?)\>)\s*(\,|$)/) {
