@@ -996,14 +996,11 @@ sub parse_solver_code {
           error_stop("internal error with option_key = $option_key");
         }
       }
-# remove leading, trailing and duplicate commas, and any space
-      $::asread_variable[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
-# TODO: temporary bugfix to stop variable/region names breaking
-#     $::asread_variable[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
-#     $::asread_variable[$masread]{"options"} =~ s/\s*//g;
+      $::asread_variable[$masread]{"raw_options"} = $::asread_variable[$masread]{"options"};
+      sanitise_option_list($::asread_variable[$masread]{"options"});
       if (nonempty($::asread_variable[$masread]{"options"})) {
         print "INFO: adding options to variable: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
-        print ::DEBUG "INFO: adding options to variable: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
+        print ::DEBUG "INFO: adding options to variable: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}: raw_options = $::asread_variable[$masread]{raw_options}\n";
       }
     }
 #-------
@@ -1173,14 +1170,11 @@ sub parse_solver_code {
           error_stop("internal error with option_key = $option_key");
         }
       }
-# remove leading, trailing and duplicate commas, and any space
-      $::region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
-# TODO: temporary bugfix to stop variable/region names breaking
-#     $::region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
-#     $::region[$masread]{"options"} =~ s/\s*//g;
+      $::region[$masread]{"raw_options"} = $::region[$masread]{"options"}; # save for messaging
+      sanitise_option_list($::region[$masread]{"options"});
       if (nonempty($::region[$masread]{"options"})) {
         print "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}\n";
-        print ::DEBUG "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}\n";
+        print ::DEBUG "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}: raw_options = $::region[$masread]{raw_options}\n";
       }
 
       print "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".

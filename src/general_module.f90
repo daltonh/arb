@@ -3609,6 +3609,9 @@ subroutine extract_options(textline,options)
 
 ! extract a list of options from textline, dumping in the allocatable character array options
 ! array will be ordered the same way that it appeared in the textline now, ie, from left to right
+! NB: perl sub extract_option in Common.pm will handble variable names in options, but this fortran
+!  routine won't, consistent with the idea that any options passed to the fortran do not contain
+!  variable names or arbitrary strings
 character(len=*) :: textline
 character(len=100), dimension(:), allocatable :: options ! option characters always have a length of 100 througout code
 character(len=100) :: option
