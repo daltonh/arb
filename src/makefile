@@ -187,9 +187,6 @@ ifeq "$(strip $(intel_mkl))" "present"
 # the following have been tested with versions 12.1.2, 13.0.1, 14.0.0
 # osX, static linking, 32bit integers (lp64), omp + blas95 and lapack95 interfaces
         libs := $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_intel_thread.a $(mklroot_local)/lib/libmkl_core.a -openmp -lpthread -lm
-# the above doesn't work with omp on osx 10.12 anymore, due to apple's SIP disabling DYLD_LIBRARY_PATH
-# below, trying to specify the path to these libraries directly, but not working yet..
-#       libs :=  -Wl,-rpath,/opt/intel/composer_xe_2013_sp1.4.201/compiler/lib -L/opt/intel/composer_xe_2013_sp1.4.201/compiler/lib -liomp5 $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_intel_thread.a $(mklroot_local)/lib/libmkl_core.a -openmp -lpthread -lm
       else
 # osX, static linking, 32bit integers (lp64), sequential + blas95 and lapack95 interfaces
         libs := $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_sequential.a $(mklroot_local)/lib/libmkl_core.a -lpthread -lm
