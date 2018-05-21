@@ -182,11 +182,14 @@ ifeq "$(strip $(intel_mkl))" "present"
   endif
 # see http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor/
   ifeq "$(os_type)" "Darwin"
-    ifeq "$(intel_link_version)" "12"
+    ifeq "$(intel_link_version)" "12" # version 12 and later
       ifeq "$(omp)" "on"
 # the following have been tested with versions 12.1.2, 13.0.1, 14.0.0
 # osX, static linking, 32bit integers (lp64), omp + blas95 and lapack95 interfaces
         libs := $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_intel_thread.a $(mklroot_local)/lib/libmkl_core.a -openmp -lpthread -lm
+# the above doesn't work with omp on osx 10.12 anymore, due to apple's SIP disabling DYLD_LIBRARY_PATH
+# below, trying to specify the path to these libraries directly, but not working yet..
+#       libs :=  -Wl,-rpath,/opt/intel/composer_xe_2013_sp1.4.201/compiler/lib -L/opt/intel/composer_xe_2013_sp1.4.201/compiler/lib -liomp5 $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_intel_thread.a $(mklroot_local)/lib/libmkl_core.a -openmp -lpthread -lm
       else
 # osX, static linking, 32bit integers (lp64), sequential + blas95 and lapack95 interfaces
         libs := $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_sequential.a $(mklroot_local)/lib/libmkl_core.a -lpthread -lm
@@ -201,6 +204,7 @@ ifeq "$(strip $(intel_mkl))" "present"
 #     libs = -L$(mklpath) $(mklpath)/libmkl_solver_lp64_sequential.a -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
     endif
   else
+# linux
     ifeq "$(intel_link_version)" "12"
 # working with 13.1.0 (same as v12)
       ifeq "$(mach_type)" "intel64"
