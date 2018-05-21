@@ -1,0 +1,27 @@
+VERSION 0.55 # the version of syntax used in this file
+
+INFO_TITLE "Read in the bone file, adding face boundaries and then outputting again with the data scaled"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "9/5/16" # interpreted as the last modification date
+
+<<batchercomment>>MSH_FILE "<<mshfile>>" input
+<<nobatchercomment>>MSH_FILE "2mm_meshes/BovineMESH2_2_2_8000.msh" input
+#<<nobatchercomment>>MSH_FILE "2mm_meshes/BovineMESH2_2_2_1000.msh" input
+
+# add face regions
+FACE_REGION <east> "normal(1.d0,0.d0,0.d0,1.d-3)" ON <boundaries>
+FACE_REGION <west> "normal(-1.d0,0.d0,0.d0,1.d-3)" ON <boundaries>
+FACE_REGION <north> "normal(0.d0,1.d0,0.d0,1.d-3)" ON <boundaries>
+FACE_REGION <south> "normal(0.d0,-1.d0,0.d0,1.d-3)" ON <boundaries>
+FACE_REGION <top> "normal(0.d0,0.d0,1.d0,1.d-3)" ON <boundaries>
+FACE_REGION <bottom> "normal(0.d0,0.d0,-1.d0,1.d-3)" ON <boundaries>
+# and a region for all cells to be output
+CELL_REGION <all bone cells> "all" ON <all cells> 
+
+
+#Read in the data - all cells
+CELL_CONSTANT <Material properties> "0.d0" ON <domain> input,nooutput # this is now fluid volume fraction
+
+#Output all domain and boundary 
+CELL_CONSTANT <phi> "cellif(celldelta(<domain>),<Material properties>,cellave(faceave[othercell](<Material properties>)))" ON <all cells> output,noinput
+
