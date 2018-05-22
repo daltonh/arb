@@ -115,38 +115,35 @@ time_loop: do while ( &
     call time_process
     call update_and_check_transients(ierror=ierror)
     call time_process(description='start of timestep update and check transients')
-    if (ierror /= 0) then
-      write(*,'(a)') 'ERROR: problem completing update_and_check_transients'
-      exit time_loop
-    end if
+    if (ierror /= 0) write(*,'(a)') 'ERROR: problem completing update_and_check_transients'
     newtstep = 0  ! only reset this for transient simulations, as may be required to carry-on from old newtstep for steady-state simulations - now resetting is delayed to allow saving in a transient
-    if (newtient_simulation) then
+    if (newtient_simulation.and.ierror == 0) then
       call time_process
       call update_and_check_initial_newtients(ierror=ierror)
       call time_process(description='start of timestep update and check initial newtients')
-      if (ierror /= 0) then
-        write(*,'(a)') 'ERROR: problem completing update_and_check_initial_newtients'
-        exit time_loop
-      end if
+      if (ierror /= 0) write(*,'(a)') 'ERROR: problem completing update_and_check_initial_newtients'
     end if
-    call time_process
-    call update_and_check_derived_and_equations(ierror=ierror)
-    call time_process(description='start of timestep update and check derived and equations')
-    if (ierror /= 0) then
-      write(*,'(a)') 'ERROR: problem completing update_and_check_derived_and_equations'
-      exit time_loop
+    if (ierror == 0) then
+      call time_process
+      call update_and_check_derived_and_equations(ierror=ierror)
+      call time_process(description='start of timestep update and check derived and equations')
+      if (ierror /= 0) write(*,'(a)') 'ERROR: problem completing update_and_check_derived_and_equations'
     end if
   end if
 
-  if (trim(output_step_file) == "newtstep") call output_step(action="write")
+  if (ierror == 0) then
+
+    if (trim(output_step_file) == "newtstep") call output_step(action="write")
 
 ! dump solution starting point if newtstepout is set to 1 or dumpnewt is found
-  if (check_dumpfile("dumpnewt").or.newtstepout /= 0) then
-    write(*,'(a)') 'INFO: user has requested output via a dump file or newtstepout specification'
-    call time_process
-    call output(intermediate=.true.)
-    call output_step(action="write",do_update_outputs=.false.)
-    call time_process(description='output')
+    if (check_dumpfile("dumpnewt").or.newtstepout /= 0) then
+      write(*,'(a)') 'INFO: user has requested output via a dump file or newtstepout specification'
+      call time_process
+      call output(intermediate=.true.)
+      call output_step(action="write",do_update_outputs=.false.)
+      call time_process(description='output')
+    end if
+
   end if
 
 !--------------------
@@ -154,8 +151,8 @@ time_loop: do while ( &
 
   newtstepfailed = .false.
 
-  newt_loop: do while ((.not.newtstepconverged.and.newtstep < min(newtstepmax,newtstepmaxtimesteprewindlimited)).or. &
-      newtstep < newtstepmin)
+  newt_loop: do while (((.not.newtstepconverged.and.newtstep < min(newtstepmax,newtstepmaxtimesteprewindlimited)).or. &
+      newtstep < newtstepmin).and.ierror == 0)
 
     newtstep = newtstep + 1
 
