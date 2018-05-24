@@ -1,0 +1,416 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+# root_input.arb file created by the arb script
+##################################################################################
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+##################################################################################
+# the following working directory files found by the arb script: charged_particle.arb
+   #(comment created during unwrap): new block = charged_particle.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "charged_particle.arb"
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #-------------------------------------------------------------------
+   VERSION 0.58
+   
+   INFO_TITLE "Interaction force between charged particles"
+   INFO_DESCRIPTION "Working out the force between two charged particles, for the purposes of validating the vof code discussed in Lachlan's thesis"
+   INFO_DESCRIPTION ": works with batcher as well as nobatcher"
+   INFO_DESCRIPTION ": gmsh insists on using xy plane for boundary layer mesh, so switching to this plane!"
+   INFO_AUTHOR "Dalton Harvie"
+   INFO_DATE "24/5/18" # interpreted as the last modification date
+   
+   # choose whether inner particle domain is present
+   # make this default so that we can use prior batcher replacement to overwrite
+   INFO_DESCRIPTION+ ": now solving field in the inner particle as well"
+   
+   # choose coordinate system
+      #(comment created during unwrap): new block = ../../templates/general/cylindrical_reflect_r1z2.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cylindrical_reflect_r1z2"
+      # sets general replacements for cylindrical 2D coordinates with the 2-axis being the centreline (z) and 1-axis being radius (r)
+      # comment out any references to the third dimension in any included files
+      # centreline is normal to the 1 axis
+      
+      # activate cylindrical specific definitions
+      # try not to use these in the future
+      
+      
+      
+   # add centreline symmetry
+   GLUE_FACES <centreline> reflect=1
+   # add base symmetry
+   GLUE_FACES <base> reflect=2
+   # also need to keep these strings in operators
+   
+      #(comment created during unwrap): new block = charged_particle.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)GLUE_FACES <inner centreline> reflect=1
+      #(hash inserted during unwrap)END_IF
+   
+   #----------------------------------------------------------------------------
+   # solver options
+   
+   # for electrokinetic problems, higher order kernels give significantly better results (these are now the default anyway)
+   KERNEL_OPTIONS polynomialaverageorder=2,polynomialorder=2 # specifies that when averaging/differentiating quantities to/at faces, ensure that function fits a second order polynomial
+   
+   # for now only output very select bunch of variables
+   OVERRIDE_VARIABLE_OPTIONS nooutput
+   
+      #(comment created during unwrap): new block = charged_particle.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)#MSH_FILE "<<mshfile>>"
+      #(hash inserted during unwrap)#MSH_FILE "particle.msh"
+      #(hash inserted during unwrap)MSH_FILE "particle_semi_structured.msh"
+      #(comment created during unwrap): new block = charged_particle.arb: sub_block = 1
+      #(hash inserted during unwrap)ELSE
+      MSH_FILE "particle_semi_structured.msh"
+      #MSH_FILE "particle.msh"
+      #(hash inserted during unwrap)END_IF
+   
+   # remove transient statements
+   
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "electrokinetics"
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/nondimensional_constants.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "nondimensional_constants" # and the same for the electrokinetic equations
+      # general setup for nondimensional electrokinetic problems
+      
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/constants.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "constants"
+         # general setup for electrokinetic problems
+         
+         CONSTANT <average ion n molarity> [molarity] 1.d-3 # molarity = mol/l
+         CONSTANT <T> [K] 298.15 # temperature
+         CONSTANT <eps_fluid> [1] 78.0d0 # relatic static permittivity
+         CONSTANT <wall charge> [C/m^2] -60.d-3 # wall surface charge
+         CONSTANT <I_total> [A] 0.d0 # specify the total amount of current flowing through the inlet.  Default is for electroviscous flow
+         CONSTANT <average ion D> [m^2/s] 1.d-9 # average ion diffusivities
+         CONSTANT <average ion z> [1] 1.d0 # average ion valency magnitude
+         
+         # fundamental constants
+            #(comment created during unwrap): new block = ../../templates/general/physical_constants.arb: sub_block = 0
+            #(hash inserted during unwrap)INCLUDE_TEMPLATE 'general/physical_constants'
+            # list of fundamental physical constants
+            # note, in all of these definitions, the word subscript is given in small letters, except for degreesC
+            # source: https://physics.nist.gov/cuu/Constants/Table/allascii.txt
+            CONSTANT <k_boltzmann> [J/K] 1.38064852d-23 # boltzmann constant
+            CONSTANT <N_avogadro> [1/mol] 6.022140857d+23 # avogadro constant
+            CONSTANT <R_gas_constant> [J/K.mol] "<k_boltzmann>*<N_avogadro>"
+            CONSTANT <e_electron> [C] 1.6021766208d-19 # elementary charge (magnitude of the charge of an electron)
+            CONSTANT <eps_0> [F/m] 8.854187817d-12 # vacuum permittivity
+            CONSTANT <T_absolute_zero> [C] -273.15d0 # absolute zero in celsius
+            CONSTANT <T_zero_degreesC> [K] "-<T_absolute_zero>" # zero degrees celsius in kelvin
+         
+         # some derived constants
+         CONSTANT <average ion n> [molecules/m^3] "<average ion n molarity>*<N_avogadro>*1.d3" # note units
+         CONSTANT <e/kT> "<e_electron>/(<k_boltzmann>*<T>)" # this is a dummy variable that is only used in the dimensional form of the equations
+         CONSTANT <K^2/2> [1] 1.d0 # this is a dummy variable that is only used in the nondimensional form of the equations
+         CONSTANT <BK^2/Re^2> [1] 1.d0 # this is a dummy variable that is only used in the nondimensional form of the equations
+         
+         # for reference and possible use in estimate_initial_potential, calculate some nondimensional quantities
+         # these should be overwritten by real nondimensional quantities if this is a nondimensional problem
+         # assumes that <a_lengthscale> has been calculated previously (probably within navier-stokes constants file)
+         
+         CONSTANT <K> "<a_lengthscale>*sqrt(2.d0*<e_electron>^2*<average ion z>^2*<average ion n>/(<eps_0>*<eps_fluid>*<k_boltzmann>*<T>))" # nondimensional channel half-width
+         CONSTANT <S> "<wall charge>*<e_electron>*<average ion z>*<a_lengthscale>/(<eps_0>*<eps_fluid>*<k_boltzmann>*<T>)" # nondimensional surface charge
+      
+      # physical data
+      CONSTANT <Re> [1] 1.d-2 # Reynolds number.  Overwrites value set in nondimensional_constants
+      CONSTANT <Sc> [1] 1.d+3 # Schmidt number
+      CONSTANT <B> [1] 2.34d-4 # B number
+      CONSTANT <K> [1] 1.d-1 # K
+      CONSTANT <S> [1] -2.d+1 # S (signed)
+      CONSTANT <I_total> [1] 0.d0 # total current passing through domain
+      
+      # calculate derived constants and make dummy ones unity
+      CONSTANT <u_av> [1] 1.d0
+      CONSTANT <average ion n> [1] 1.d0
+      CONSTANT <Pe> [1] "<Re>*<Sc>" # Peclet number
+      CONSTANT <average ion D> [1] "1/<Pe>"
+      CONSTANT <K^2/2> [1] "<K>^2/2.d0"
+      CONSTANT <BK^2/Re^2> [1] "<B>*<K>^2/(<Re>^2)"
+      CONSTANT <eps_fluid> [1] 1.d0
+      CONSTANT <wall charge> [1] "<S>"
+      CONSTANT <e_electron> [1] 1.d0
+      CONSTANT <eps_0> [1] 1.d0
+      CONSTANT <e/kT> [1] 1.d0
+      
+      # zero some undefined dimensional constants
+      CONSTANT <average ion n molarity> 0.d0
+      CONSTANT <T> 0.d0
+      
+      # lengthscale of the mesh - for nondimensional problems this needs to be 1
+      CONSTANT <a_lengthscale> "1.d0"
+   
+      #(comment created during unwrap): new block = charged_particle.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)# set up some region name replacements, to make equations specific to each domain
+      #(hash inserted during unwrap)FACE_REGION <outer allfaces> "associatedwith(<outer domain>)"
+      #(hash inserted during unwrap)CELL_REGION <outer allcells> "associatedwith(<outer domain>)"
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)END_IF
+   
+   # some concentrations and charges required in other equations, and also the face centred potential required in the dynamic_force calculation
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/binary_ion_combinations.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "binary_ion_combinations"
+      # these are relationships that involve combinations of ion properties
+      # here they are specific to a binary system of <ion+ n> and <ion- n>, so need overwriting for more complex systems
+      # include this early on, before p_error inclusion
+      
+      # include positive ion concentrations
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_concentrations.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "ion_concentrations" 
+         
+         # these are some derived concentrations
+         
+         CELL_LOCAL <ion+ n pos> "cellmax(<ion+ n>,0.d0)"
+         FACE_DERIVED <ion+ n_hf> "faceave[harmonicweighted](<ion+ n pos>)" ON <allfaces> # face centred concentrations used in pressure correction (p_error) and in nernst-planck ion transport
+         #FACE_DERIVED <ion n_hf> "faceave[harmonic](<ion n pos>)" ON <allfaces>
+      # include negative ion concentrations
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_concentrations.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "ion_concentrations" 
+         
+         # these are some derived concentrations
+         
+         CELL_LOCAL <ion- n pos> "cellmax(<ion- n>,0.d0)"
+         FACE_DERIVED <ion- n_hf> "faceave[harmonicweighted](<ion- n pos>)" ON <allfaces> # face centred concentrations used in pressure correction (p_error) and in nernst-planck ion transport
+         #FACE_DERIVED <ion n_hf> "faceave[harmonic](<ion n pos>)" ON <allfaces>
+      
+      # also define the following locals
+      CELL_LOCAL <rho_e> "<e_electron>*(<ion+ z>*<ion+ n>+<ion- z>*<ion- n>)" ON <allcells> # used on right of poisson equation
+      CELL_LOCAL <rho_e pos> "<e_electron>*(<ion+ z>*<ion+ n pos>+<ion- z>*<ion- n pos>)" ON <allcells> # used in momentum balance (navier-stokes)
+      FACE_LOCAL <rho_e_hf> "<e_electron>*(<ion+ z>*<ion+ n_hf>+<ion- z>*<ion- n_hf>)" ON <allfaces> output
+      CELL_LOCAL <n_0^2 signed> "cellmin(<ion+ n>,<ion- n>)*abs(cellmax(<ion+ n>,<ion- n>))" ON <allcells>
+      
+      # for error checking
+      #CELL_OUTPUT <rho_e error> "<rho_e>-<rho_e pos>" ON <allcells>
+      
+      # this face-averaged potential is needed early on in the derived calculations (for dynamic_force_c) so include it here
+      FACE_DERIVED <U_f> "faceave(<U>)" ON <allfaces> # this is needed in <dynamic_force_c> which will be calculated in p_error_dxunit
+   
+   # now ion transport and potential equation
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "electrokinetics"
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_stationary_equations.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "ion_stationary_equations" 
+      
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_constants.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "ion_constants"
+         # ion constants for one specific ion species
+         # all variables start with <ion so this can be replaced to make specific ions
+         
+         CONSTANT <ion+ z> [1] "<average ion z>" # valency of ion
+         CONSTANT <ion+ D> [m^2/s] "<average ion D>" # diffusivity of ion
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_stationary_domain.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "ion_stationary_domain"
+         # ion transport equations for one specific ion species
+         # all variables start with <ion so this can be replaced to make specific ions
+         # here the medium is stationary and steady-state
+         
+         #CELL_LOCAL <ion n initial> "<average ion n>"
+         # initial value now based on initial potential, so the potential expression will be unwrapped to use here
+         CELL_LOCAL <ion+ n initial> "<average ion n>*exp(-<ion+ z>*<e/kT>*<U>)"
+         CELL_UNKNOWN <ion+ n> [molecules/m^3] "<ion+ n initial>" ON <allcells> # ion concentration, note units
+         
+         FACE_DERIVED <ion+ J_f> [molecules/(m^2.s)] "-<ion+ D>*(facegrad(<ion+ n>)+<ion+ z>*<e/kT>*<ion+ n_hf>*facegrad(<U>))" ON <allfaces> # flux of ions across each face
+         
+         # conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
+         # cartesian only
+         #CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "celldiv(<ion+ J_f>)" ON <domain>
+         # cylindrical and cartesian
+         CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "celldiv(<facex[l=1]>*(<ion+ J_f>))/<cellx[l=1]>" ON <domain>
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_walls.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "ion_walls"
+         # ion wall boundary conditions for one specific ion species
+         # all variables start with <ion so this can be replaced to make specific ions
+         
+         FACE_EQUATION <ion+ particle> "<ion+ J_f>" ON <particle> # no flux of ions through walls
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_stationary_equations.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "ion_stationary_equations" 
+      
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_constants.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "ion_constants"
+         # ion constants for one specific ion species
+         # all variables start with <ion so this can be replaced to make specific ions
+         
+         CONSTANT <ion- z> [1] "<average ion z>" # valency of ion
+         CONSTANT <ion- D> [m^2/s] "<average ion D>" # diffusivity of ion
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_stationary_domain.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "ion_stationary_domain"
+         # ion transport equations for one specific ion species
+         # all variables start with <ion so this can be replaced to make specific ions
+         # here the medium is stationary and steady-state
+         
+         #CELL_LOCAL <ion n initial> "<average ion n>"
+         # initial value now based on initial potential, so the potential expression will be unwrapped to use here
+         CELL_LOCAL <ion- n initial> "<average ion n>*exp(-<ion- z>*<e/kT>*<U>)"
+         CELL_UNKNOWN <ion- n> [molecules/m^3] "<ion- n initial>" ON <allcells> # ion concentration, note units
+         
+         FACE_DERIVED <ion- J_f> [molecules/(m^2.s)] "-<ion- D>*(facegrad(<ion- n>)+<ion- z>*<e/kT>*<ion- n_hf>*facegrad(<U>))" ON <allfaces> # flux of ions across each face
+         
+         # conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
+         # cartesian only
+         #CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "celldiv(<ion- J_f>)" ON <domain>
+         # cylindrical and cartesian
+         CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "celldiv(<facex[l=1]>*(<ion- J_f>))/<cellx[l=1]>" ON <domain>
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_walls.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "ion_walls"
+         # ion wall boundary conditions for one specific ion species
+         # all variables start with <ion so this can be replaced to make specific ions
+         
+         FACE_EQUATION <ion- particle> "<ion- J_f>" ON <particle> # no flux of ions through walls
+   CONSTANT <ion- z> [1] "-<average ion z>" # valency of ion-
+   FACE_EQUATION <ion+ walls> "<ion+ n>-<average ion n>" ON <walls>
+   FACE_EQUATION <ion- walls> "<ion- n>-<average ion n>" ON <walls>
+   
+      #(comment created during unwrap): new block = charged_particle.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)END_IF
+   
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_stationary_equations.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "potential_stationary_equations" 
+      
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_domain.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "potential_domain"
+         # potential equations
+         CELL_UNKNOWN <U> "1.d0" ON <allcells> # electrical potential
+         # cartesian only
+         #CELL_EQUATION <U poisson equation> "<eps_0>*celldiv(<eps_fluid>*facegrad(<U>))+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
+         # cylindrical and cartesian
+         CELL_EQUATION <U poisson equation> "<eps_0>*celldiv(<facex[l=1]>*<eps_fluid>*facegrad(<U>))/<cellx[l=1]>+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
+         #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_charged_walls.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "potential_charged_walls"
+         FACE_EQUATION <U charged particle> "<eps_0>*<eps_fluid>*facegrad(<U>)-<wall charge>" ON <particle>
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_set_walls.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "potential_set_walls"
+      FACE_EQUATION <U set walls> "<U>" ON <walls>
+   
+      #(comment created during unwrap): new block = charged_particle.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)VARIABLE <U charged particle> "<U charged particle> + facetofacelink(<eps_0>*<eps_fluid>*facegrad(<U>),fromregion=<particle>,toregion=<inner particle>)" ON <particle>
+      #(hash inserted during unwrap)FACE_EQUATION <U charged particle continuity> "<U> - facetofacelink(<U>,fromregion=<particle>,toregion=<inner particle>)" ON <particle>
+      #(hash inserted during unwrap)# rewrite poisson equation so that charge is only added where ions are
+      #(hash inserted during unwrap)VARIABLE <U poisson equation> "<eps_0>*celldiv(<facex[l=1]>*<eps_fluid>*facegrad(<U>))/<cellx[l=1]>+cellif(celldelta(<outer domain>),<K^2/2>*<rho_e>,0.d0)" ON <domain> # other information: region = <domain>: deriv = 1: newtstepmax = empty: newtstepmin = empty: filename = ../../../development/current/templates/electrokinetics/potential_domain.arb: absfilename = /Users/daltonh/codes/arb/development/current/templates/electrokinetics/potential_domain.arb: comments = # Poisson potential equation
+      #(hash inserted during unwrap)END_IF
+   
+   # giving a better initial estimate leads to faster and more reliable convergence
+      #(comment created during unwrap): new block = ../../templates/electrokinetics/estimate_initial_potential.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "estimate_initial_potential" 
+      # sets the initial potential using a very rough correlation.  Initial ion concentrations reference this potential.
+      # based on the nondimensional parameters <S>, <K> and <a_lengthscale>, roughly estimate the initial potential field
+      # include this after the potential unknown equation
+      
+      # very rough estimate of the zeta potential based on correlations in dhjcis11, doi:10.1016/j.jcis.2011.07.076 
+      CONSTANT <alpha_large_S> "(3.d0*abs(<S>)+<pi>^2+6.d0-sqrt(nonemax(3.d0*(3.d0*<S>^2+12.d0*abs(<S>)+4.d0*<pi>^2+12.d0),0.d0)))/(2.d0*<pi>)"
+      CONSTANT <alpha_small_S> "sqrt(nonemax(-1.5d0+sqrt(2.25d0+1.5d0*abs(<S>)),0.d0))"
+      CONSTANT <alpha> "nonemin(<alpha_large_S>,<alpha_small_S>)"
+      CONSTANT <Z estimate> "signum(<S>)*nonemin(abs(<S>)*coth(<K>)/<K>,-2.d0*log(cos(<alpha>)))" # signed, nondimensional zeta potential, taken as minimum between low and high potential solutions
+      
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general"
+         #(comment created during unwrap): new block = ../../templates/general/domain_lengthscale_face_boundary_distance.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "domain_lengthscale_face_boundary_distance" # use this formulation of <a_lengthscale> as it needs to be consistent with <minimum_face_boundary_distance>
+         # find an estimate of the domain size
+         # here we use a more accurate estimate of the domain size based on minimum_face_boundary_distance (used in electrokinetic routines for example)
+            #(comment created during unwrap): new block = ../../templates/general/minimum_face_boundary_distance.arb: sub_block = 0
+            #(hash inserted during unwrap)INCLUDE "minimum_face_boundary_distance" # this will find a constant vector domain length in each dimension
+            # this bit of code taken from older level set routines, with a few name changes
+            # finds minimum distance to walls, but is expensive to calculate
+            FACE_LOCAL <face_from_cell_boundary_vector[l=1]> "<facex[l=1]>-faceave[lastcell](<cellx[l=1]>)"
+            FACE_LOCAL <face_from_cell_boundary_vector[l=2]> "<facex[l=2]>-faceave[lastcell](<cellx[l=2]>)"
+            #FACE_LOCAL <face_from_cell_boundary_vector[l=3]> "<facex[l=3]>-faceave[lastcell](<cellx[l=3]>)"
+            CELL_LOCAL <minimum_face_boundary_distance> "sqrt(facemin(dot(<face_from_cell_boundary_vector[l=:]>,<face_from_cell_boundary_vector[l=:]>),region=<particle>))"
+            
+            # see domain_lengthscale_face_boundary_distance for a <a_lengthscale> calculated from this
+         CONSTANT <a_lengthscale> "cellmax(<minimum_face_boundary_distance>,region=<domain>)" # an estimate of the mesh lengthscale (channel half-width) based on the minimum domain -> wall distance
+      CELL_CONSTANT <U initial> "cellif(1.d0/<K>-<minimum_face_boundary_distance>/<a_lengthscale>,<Z estimate>*<K>*(1.d0/<K>-<minimum_face_boundary_distance>/<a_lengthscale>),0.d0)/<e/kT>" ON <allcells> output
+      CELL_UNKNOWN <U> "<U initial>" # adopts region etc from real definition on the unknown <U>
+   #VARIABLE <minimum_face_boundary_distance> output
+   
+   #-------------------------------------------------------------------
+   # correct some magnitudes
+   # the following magnitudes are resonably well calculated from the initial potential estimate, so don't bother setting explicitly
+   #CELL_UNKNOWN <U> magnitude=1.d+1
+   #CELL_UNKNOWN <ion+ n> magnitude=1.d+4
+   #CELL_UNKNOWN <ion- n> magnitude=1.d+0
+   
+   # set nondimensional constants (these are based on a previous test case)
+   CONSTANT <Re> 0.1d0
+   CONSTANT <B>  2.34d-4
+   CONSTANT <K>  2.00d0
+   CONSTANT <S>  -10.d0
+   
+   # increase numerical precision for high K sims
+   GENERAL_OPTIONS newtrestol=1.d-13
+   
+   # overwrite some constants specific to batcher
+      #(comment created during unwrap): new block = charged_particle.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)CONSTANT <K> <<K>>
+      #(hash inserted during unwrap)END_IF
+   
+   # clear override options but keep these variables outputing
+   OVERRIDE_VARIABLE_OPTIONS
+   VARIABLE <U> output
+   VARIABLE <ion+ n> output
+   VARIABLE <ion- n> output
+   
+   #-----------------
+   # calculate some forces
+   
+      #(comment created during unwrap): new block = charged_particle.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 1
+      # calculate and check the area of the particle interface
+      FACE_OUTPUT <area_interface> "<facex[l=1]>*2.d0*<pi>*<facearea>" ON <particle>
+      NONE_OUTPUT <area_total> "facesum(<area_interface>,region=<particle>)"
+      NONE_OUTPUT <area_analytical> "4.d0*<pi>*0.5d0^2"
+      NONE_OUTPUT <area_error_normalised> "(<area_total>-<area_analytical>)/<area_analytical>"
+      
+      # calculate the force on the interface due to the charge and the field
+      # these 3 for reference
+      FACE_OUTPUT <E_ave_charge_facenorm> "-0.5d0*facegrad[l=4](<U>)" ON <particle>
+      FACE_OUTPUT <E_ave_charge_facetang1> "-facegrad[l=5](<U>)" ON <particle>
+      FACE_OUTPUT <E_ave_charge_facetang2> "-facegrad[l=6](<U>)" ON <particle>
+         #(comment created during unwrap): new block = charged_particle.arb: sub_block = 2
+         #(hash inserted during unwrap)IF 0
+         #(hash inserted during unwrap)FACE_REGION <both particle> "compound(<particle>+<inner particle>)" ON <boundaries>
+         #(hash inserted during unwrap)VARIABLE <E_ave_charge_facenorm> ON <both particle>
+         #(hash inserted during unwrap)VARIABLE <E_ave_charge_facetang1> ON <both particle>
+         #(hash inserted during unwrap)VARIABLE <E_ave_charge_facetang2> ON <both particle>
+         #(hash inserted during unwrap)END_IF
+         #(comment created during unwrap): new block = charged_particle.arb: sub_block = 2
+         #(hash inserted during unwrap)IF 0
+         #(hash inserted during unwrap)FACE_OUTPUT <E_ave_charge[l=1]> "-0.5d0*(facegrad[l=4](<U>)*<facenorm[l=1]>+facegrad[l=5](<U>)*<facetang1[l=1]>+facetofacelink(facegrad[l=4](<U>)*<facenorm[l=1]>+facegrad[l=5](<U>)*<facetang1[l=1]>,fromregion=<particle>,toregion=<inner particle>))" ON <particle> componentoutput
+         #(hash inserted during unwrap)FACE_OUTPUT <E_ave_charge[l=2]> "-0.5d0*(facegrad[l=4](<U>)*<facenorm[l=2]>+facegrad[l=5](<U>)*<facetang1[l=2]>+facetofacelink(facegrad[l=4](<U>)*<facenorm[l=2]>+facegrad[l=5](<U>)*<facetang1[l=2]>,fromregion=<particle>,toregion=<inner particle>))" ON <particle> componentoutput
+         #(comment created during unwrap): new block = charged_particle.arb: sub_block = 2
+         #(hash inserted during unwrap)ELSE
+         FACE_OUTPUT <E_ave_charge[l=1]> "-(0.5d0*facegrad[l=4](<U>)*<facenorm[l=1]>+facegrad[l=5](<U>)*<facetang1[l=1]>)" ON <particle> componentoutput
+         FACE_OUTPUT <E_ave_charge[l=2]> "-(0.5d0*facegrad[l=4](<U>)*<facenorm[l=2]>+facegrad[l=5](<U>)*<facetang1[l=2]>)" ON <particle> componentoutput
+         #(hash inserted during unwrap)END_IF
+      FACE_OUTPUT <F_charge/area[l=1]> "2.d0*<S>*<B>/(<Re>**2)*<E_ave_charge[l=1]>" ON <particle>
+      FACE_OUTPUT <F_charge/area[l=2]> "2.d0*<S>*<B>/(<Re>**2)*<E_ave_charge[l=2]>" ON <particle>
+      NONE_OUTPUT <F_charge_total[l=1]> "facesum(<F_charge/area[l=1]>*<area_interface>,region=<particle>)" componentoutput,stepoutput
+      NONE_OUTPUT <F_charge_total[l=2]> "facesum(<F_charge/area[l=2]>*<area_interface>,region=<particle>)" componentoutput,stepoutput
+      
+      # calculate the force on the particle due to pressure
+      CELL_OUTPUT <p_Pi> "2.d0*<BK^2/Re^2>*(cosh(<U>)-1.d0)" nooutput
+      FACE_OUTPUT <F_pressure/area[l=1]> "<p_Pi>*<facenorm[l=1]>" ON <particle>
+      FACE_OUTPUT <F_pressure/area[l=2]> "<p_Pi>*<facenorm[l=2]>" ON <particle>
+      NONE_OUTPUT <F_pressure_total[l=1]> "facesum(<F_pressure/area[l=1]>*<area_interface>,region=<particle>)" componentoutput,stepoutput
+      NONE_OUTPUT <F_pressure_total[l=2]> "facesum(<F_pressure/area[l=2]>*<area_interface>,region=<particle>)" componentoutput,stepoutput
+      
+      # sum the two contributions to the forces
+      FACE_OUTPUT <F_total/area[l=1]> "<F_pressure/area[l=1]>+<F_charge/area[l=1]>" ON <particle>
+      FACE_OUTPUT <F_total/area[l=2]> "<F_pressure/area[l=2]>+<F_charge/area[l=2]>" ON <particle>
+      NONE_OUTPUT <F_total_total[l=1]> "<F_pressure_total[l=1]>+<F_charge_total[l=1]>"
+      NONE_OUTPUT <F_total_total[l=2]> "<F_pressure_total[l=2]>+<F_charge_total[l=2]>"
+      
+      #(hash inserted during unwrap)END_IF
+   
+   #-----------------
+   
+   
+   #(hash inserted during unwrap)END

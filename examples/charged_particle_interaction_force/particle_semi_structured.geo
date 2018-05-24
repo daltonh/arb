@@ -11,7 +11,8 @@ innerparticle = 0; // whether to mesh particle as well
 structuredout = 1; // whether to put structured mesh around the outside of the particle
 
 // chose mesh resolution, by multiplying standard lc's with a multiplier
-lcmultiplier = 1.e0; // coarse
+//lcmultiplier = 1.e0; // coarse
+lcmultiplier = 4.e0; // super coarse for small file
 
 // standard (coarse) mesh resolutions that are multiplied by lcmultiplier later
 lcwall = 0.5e0; // mesh lengthscale at wall
