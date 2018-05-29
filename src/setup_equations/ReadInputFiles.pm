@@ -126,7 +126,10 @@ sub read_input_files {
       $buffer = $'; # anything that remains is left in the buffer
       $buffer_offset = 0;
       if ($debug) { print ::DEBUG "  INFO: string code identified within buffer:\n   string_code = $string_code:\n   (remaining) buffer = $buffer\n"; }
-      if ($code_blocks[$#code_blocks]{"skip"} || $code_blocks[$#code_blocks]{"if"} < 0) {
+#     if ($code_blocks[$#code_blocks]{"skip"} || $code_blocks[$#code_blocks]{"if"} < 0) {
+# string code is not parsed if we are in a skip area, or within an inactive if zone unless we need to evaluate a ELSE_IF condition
+      if ( ($code_blocks[$#code_blocks]{"skip"} || $code_blocks[$#code_blocks]{"if"} < 0) &&
+          !($code_blocks[$#code_blocks]{"if"} == -1 && $solver_code =~ /^\h*ELSE_IF/i ) ) {
         $string_code = '';
         if ($debug) { print ::DEBUG "  INFO: skipping parsing string code due to skip or if status:\n   skip = $code_blocks[$#code_blocks]{skip}: if = $code_blocks[$#code_blocks]{if}\n"; }
       } else {
@@ -220,9 +223,9 @@ sub read_input_files {
           $solver_code = $before_solver_code;
 # set global and deal with keeping/removing keyword
           my $global = 0;
-          if ($legacy_code =~ /^INCLUDE/) {
+          if ($legacy_code =~ /^INCLUDE/i) {
             $solver_code .= $legacy_code; # keep the include statement and potential filename (otherwise keyword is lost)
-          } elsif ($legacy_code =~ /^(GENERAL_|GLOBAL_)/) {
+          } elsif ($legacy_code =~ /^(GENERAL_|GLOBAL_)/i) {
             $global = 1; # we now allow both the REPLACEMENTS and (GLOBAL_|GENERAL_)REPLACEMENTS forms
           }
           $buffer = $after; # buffer now contains what followed the potential legacy keywords
@@ -257,7 +260,7 @@ sub read_input_files {
         $code_type = 'string'; # and set the code_type for the buffer
         
 # if the solver_code consists of an INCLUDE statement, then this is processed now and the buffer added to the start of the next code block
-        if ($solver_code =~ /^\h*INCLUDE(|_[A-Z]+)(\h+\S+\h+|\h*(".*"|'.*')\h*)$/) { # an INCLUDE type keyword has been found, which is followed by a string and then {{
+        if ($solver_code =~ /^\h*INCLUDE(|_[A-Z]+)(\h+\S+\h+|\h*(".*"|'.*')\h*)$/i) { # an INCLUDE type keyword has been found, which is followed by a string and then {{
           if ($debug) { print ::DEBUG "  INFO: an INCLUDE type keyword plus string has been found prior to some string code: solver code ready to process: solver_code = $solver_code\n"; }
 # before we process the solver_code (which is an include statement and will open a new code_block), keep getting lines until the string code (that will be added to new file) is complete
           while (!($buffer =~ /\}\}/)) {
@@ -993,13 +996,11 @@ sub parse_solver_code {
           error_stop("internal error with option_key = $option_key");
         }
       }
-# remove leading, trailing and duplicate commas, and any space
-      $::asread_variable[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
-      $::asread_variable[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
-      $::asread_variable[$masread]{"options"} =~ s/\s*//g;
+      $::asread_variable[$masread]{"raw_options"} = $::asread_variable[$masread]{"options"};
+      sanitise_option_list($::asread_variable[$masread]{"options"});
       if (nonempty($::asread_variable[$masread]{"options"})) {
         print "INFO: adding options to variable: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
-        print ::DEBUG "INFO: adding options to variable: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
+        print ::DEBUG "INFO: adding options to variable: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}: raw_options = $::asread_variable[$masread]{raw_options}\n";
       }
     }
 #-------
@@ -1169,13 +1170,11 @@ sub parse_solver_code {
           error_stop("internal error with option_key = $option_key");
         }
       }
-# remove leading, trailing and duplicate commas, and any space
-      $::region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
-      $::region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
-      $::region[$masread]{"options"} =~ s/\s*//g;
+      $::region[$masread]{"raw_options"} = $::region[$masread]{"options"}; # save for messaging
+      sanitise_option_list($::region[$masread]{"options"});
       if (nonempty($::region[$masread]{"options"})) {
         print "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}\n";
-        print ::DEBUG "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}\n";
+        print ::DEBUG "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}: raw_options = $::region[$masread]{raw_options}\n";
       }
 
       print "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".

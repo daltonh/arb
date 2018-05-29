@@ -11,8 +11,8 @@ CELL_LOCAL <vof_electro_phi pos> "cellmax(<vof_electro_phi>,1.d-20)" ON <allcell
 FACE_DERIVED <vof_electro_phi_hf> "faceave[harmonicweighted](<vof_electro_phi pos>)" ON <allfaces>
 
 # also redefine the following locals
-CELL_LOCAL <rho_e> "<vof_electro_phi>*<e>*(<ion+ z>*<ion+ n>+<ion- z>*<ion- n>)+cellif(celldelta(<vof_delta_mask[r=1]>),<interface charge>*<vof_phigrad_delta_mag>,0.d0)" # used on right of poisson equation
-CELL_LOCAL <rho_e pos> "<vof_electro_phi>*<e>*(<ion+ z>*<ion+ n pos>+<ion- z>*<ion- n pos>)+cellif(celldelta(<vof_delta_mask[r=1]>),<interface charge>*<vof_phigrad_delta_mag>,0.d0)" # used in momentum balance (navier-stokes)
-#FACE_LOCAL <rho_e_hf> "<e>*(<ion+ z>*<ion+ n_hf>+<ion- z>*<ion- n_hf>)" ON <allfaces> output
+CELL_LOCAL <rho_e> "<vof_electro_phi>*<e_electron>*(<ion+ z>*<ion+ n>+<ion- z>*<ion- n>)+cellif(celldelta(<vof_delta_mask[r=1]>),<interface charge>*<vof_phigrad_delta_mag>,0.d0)" # used on right of poisson equation
+CELL_LOCAL <rho_e pos> "<vof_electro_phi>*<e_electron>*(<ion+ z>*<ion+ n pos>+<ion- z>*<ion- n pos>)+cellif(celldelta(<vof_delta_mask[r=1]>),<interface charge>*<vof_phigrad_delta_mag>,0.d0)" # used in momentum balance (navier-stokes)
+#FACE_LOCAL <rho_e_hf> "<e_electron>*(<ion+ z>*<ion+ n_hf>+<ion- z>*<ion- n_hf>)" ON <allfaces> output
 FACE_LOCAL <rho_e_hf> "faceave[adjacentcells](<rho_e pos>)" ON <allfaces>
 CELL_LOCAL <n_0^2 signed> "cellmin(<ion+ n>,<ion- n>)*abs(cellmax(<ion+ n>,<ion- n>))"

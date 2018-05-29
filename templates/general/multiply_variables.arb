@@ -1,0 +1,22 @@
+MARKDOWN
+Use this template file to multiply (or optionally add, divide, subtract etc) a comma separated list of variables (contained within <<list of variables>>) by something else, contained in <<multiplier>>
+
+To use this for another arithmetic operation, set <<operator>> to the required operator, eg
+
+```arb
+REPLACEMENTS R '<<operator>>' W '+' # for addition
+```
+END_MARKDOWN
+
+REPLACEMENTS D '<<list of variables>>' W '' # these are the variables you want operated on
+REPLACEMENTS D '<<multiplier>>' W '1.d0' # this is what they are going to be multiplied with
+REPLACEMENTS D '<<operator>>' W '*' # this is the operation being performed
+IF <<list of variables>>
+  {{
+    my $return_string='';
+    for my $v (string_eval('<<list of variables>>','list')) {
+      $return_string .= "VARIABLE $v '($v) <<operator>> (<<multiplier>>)'\n";
+    }
+    return $return_string;
+  }}
+END_IF

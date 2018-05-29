@@ -182,7 +182,7 @@ ifeq "$(strip $(intel_mkl))" "present"
   endif
 # see http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor/
   ifeq "$(os_type)" "Darwin"
-    ifeq "$(intel_link_version)" "12"
+    ifeq "$(intel_link_version)" "12" # version 12 and later
       ifeq "$(omp)" "on"
 # the following have been tested with versions 12.1.2, 13.0.1, 14.0.0
 # osX, static linking, 32bit integers (lp64), omp + blas95 and lapack95 interfaces
@@ -201,6 +201,7 @@ ifeq "$(strip $(intel_mkl))" "present"
 #     libs = -L$(mklpath) $(mklpath)/libmkl_solver_lp64_sequential.a -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
     endif
   else
+# linux
     ifeq "$(intel_link_version)" "12"
 # working with 13.1.0 (same as v12)
       ifeq "$(mach_type)" "intel64"

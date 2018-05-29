@@ -1,0 +1,16 @@
+# ion transport equations for one specific ion species
+# all variables start with <ion so this can be replaced to make specific ions
+# here the medium is stationary and steady-state
+
+#CELL_LOCAL <ion n initial> "<average ion n>"
+# initial value now based on initial potential, so the potential expression will be unwrapped to use here
+CELL_LOCAL <ion n initial> "<average ion n>*exp(-<ion z>*<e/kT>*<U>)"
+CELL_UNKNOWN <ion n> [molecules/m^3] "<ion n initial>" ON <allcells> # ion concentration, note units
+
+FACE_DERIVED <ion J_f> [molecules/(m^2.s)] "-<ion D>*(facegrad(<ion n>)+<ion z>*<e/kT>*<ion n_hf>*facegrad(<U>))" ON <allfaces> # flux of ions across each face
+
+# conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
+# cartesian only
+<<cartesiancomment>>CELL_EQUATION <ion continuity> [molecules/(m^3.s)] "celldiv(<ion J_f>)" ON <domain>
+# cylindrical and cartesian
+<<cylindricalcomment>>CELL_EQUATION <ion continuity> [molecules/(m^3.s)] "celldiv(<<radius_f>>*(<ion J_f>))/<<radius_c>>" ON <domain>

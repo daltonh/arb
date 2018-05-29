@@ -27,7 +27,7 @@ Regarding the syntax used in this list:
 
 -  the braces within the comment line following each variable indicate what the default value for the option should be
 -  only options that also have the string `userable` within these braces can be set from the arb file (the others, such as `alf` in the above, have to be set within the source code if changes are required)
--  options may be integers, character strings, floats (double precision) or logicals.  For reference these are interpreted within the fortran using (eg) `function extract_option_string` within [general_module.f90].  Strings may be quoted or unquoted.  Some logicals only accept the `option = .true.` or `option = .false.` syntax, others the `option` versus `nooption` syntax, and others both.  Generally I am moving towards both option types accepting either format, with a slight preference at this stage for the `option`/`nooption` syntax (TODO kernel and solver options, general and variable options compatible with this).
+-  option values may be integers, character strings, floats (double precision) or logicals.  For reference these are interpreted within the fortran using (eg) `function extract_option_string` within [general_module.f90].  Strings should be unquoted (for now - at this stage there is no need to quote any of the possible strings).  Some logicals only accept the `option = .true.` or `option = .false.` syntax, others the `option` versus `nooption` syntax, and others both.  Generally I am moving towards both option types accepting either format, with a slight preference at this stage for the `option`/`nooption` syntax (TODO kernel and solver options, general and variable options compatible with this).
 -  the name used in the arb file is the same as the fortran name, except with the underscore characters completely removed (ie, option name written as a single concatenated word).
 
 For example, the fortran solver option string variable `linear_solver` is set to the value `pardiso` using the arb syntax
@@ -212,7 +212,7 @@ logical :: convergence_details_file = .true. ! (.true., userable) write some con
 #-------------------------------------------------------------------
 # system constants
 SOLVER_OPTIONS linearsolver=intelpardisosafer
-SOLVER_OPTIONS linearsolver=intelparadiso
+SOLVER_OPTIONS linearsolver=intelpardiso
 ```
 
 ##Kernel options

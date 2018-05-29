@@ -59,7 +59,7 @@ sub arbthread {
       if (!("$fffilename")) { next; }
       if ($debug) {print "BATCHER DEBUG: substitution files fffilename = $fffilename\n";}
       foreach my $ffilename (bsd_glob($fffilename)) {
-        if (!($::use_string_variables)) {print "BATCHER INFO: performing substitutions on $filetype $ffilename\n";}
+        if (!($::use_string_variables) || $filetype eq "geofile") {print "BATCHER INFO: performing substitutions on $filetype $ffilename\n";}
 # create directory structure if this isn't going to be placed directly in the run directory
         if ($ffilename =~ /^(.+)\/(.+?)$/) {
           my $create_path = "$run_record_dir/".$1;
@@ -72,9 +72,9 @@ sub arbthread {
         if ($debug) {print "BATCHER DEBUG: substitution files filename = $filename\n";}
         open(INFILE, ">".$filename) or error_stop("can't open substitute $filetype input file $filename");
         while (my $line=<ORIGINAL>) {
-          if (!($::use_string_variables) && $case[$n]{"replacements"}) {
+          if (( !($::use_string_variables) || $filetype eq "geofile" ) && $case[$n]{"replacements"}) {
             for my $key ( sort(keys(%{$case[$n]{"replacements"}})) ) {
-# use <<batchercomment>> and <<nobatchercomment>> (see ref: general_replacements in setup_equations) for more consistent and controllable behaviour
+# use <<batcher>>, <<batchercomment>> and <<nobatchercomment>> (see ref: general_replacements in setup_equations) for more consistent and controllable behaviour
               $line =~ s/\Q$key/$case[$n]{"replacements"}{"$key"}/g; # substitute value inplace of name if found
             }
           }

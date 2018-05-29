@@ -795,6 +795,7 @@ sub organise_regions {
       }
     }
 # process options - from now on the options string can be wiped and does not determine whether equations need re-running
+# TODO: separate routine here for creating list of options from line of options
     $region[$n]{"newtstepmin"}='';
     $region[$n]{"newtstepmax"}='';
     my $type = $region[$n]{"type"};
@@ -802,8 +803,11 @@ sub organise_regions {
       my $tmp = $region[$n]{"options"};
       $region[$n]{"options"} = '';
       print DEBUG "INFO: before processing region options $type $region[$n]{name} has loaded (unchecked) options of $tmp\n";
-      while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
-        my $option = $2; $tmp = $`.','.$';
+      while (nonempty($tmp)) {
+        my @extracted_option = extract_option($tmp);
+        if ($extracted_option[3]) { error_stop("error in extracting options for $type region $region[$n]{name}: remaining options = $tmp"); };
+        if (empty($extracted_option[0])) { next; }
+        my $option = $extracted_option[0];
         if ($option =~ /^(newtstep(max|min))(\s*=\s*([\+\-\d][\+\-\de]*))$/i) { # integer max/min of newtsteps during which this variable should be updated
           my $option_name = "\L$1";
           my $match;
@@ -1530,11 +1534,9 @@ sub organise_user_variables {
     print "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: redefinitions = $variable{$type}[$mvar]{redefinitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}: selfreferences = $variable{$type}[$mvar]{selfreferences}\n";
     print DEBUG "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: redefinitions = $variable{$type}[$mvar]{redefinitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}: selfreferences = $variable{$type}[$mvar]{selfreferences}\n";
 
-# process variable options, removing clearoptions statements and creating individual variable options lists
-    if ($asread_variable[$masread]{"options"} =~ /.*(^|\,)\s*clearoptions\s*(\,|$)/i) { # match the last occurrence of this option by putting a greedy match of anything on the left
-      $asread_variable[$masread]{"options"} = $'; # the only valid options on this line are those that follow the clearoptions statement
-    }
+# process variable options
     $variable{$type}[$mvar]{"options"} = $asread_variable[$masread]{"options"}; # save this straight to variable now
+
 # print some summary stuff now about the single line read
     if ($variable{$type}[$mvar]{"options"}) { print "INFO: options read in for $type $name = $variable{$type}[$mvar]{options}\n";} else { print "INFO: no options read in for $type $name\n"; }
     if ($variable{$type}[$mvar]{"options"}) { print DEBUG "INFO: options read in for $type $name = $variable{$type}[$mvar]{options}\n";} else { print DEBUG "INFO: no options read in for $type $name\n"; }
@@ -1556,7 +1558,7 @@ sub organise_user_variables {
 #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next) (default is 1.1 for equations, 2.0 for unknowns)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 #f  timesteprewind - this variable gets rewound if a timestep rewind is performed
-#f  timesteprewindmultiplier - and further that it is multiplied by this amount on rewind, either a number or a reference to a none-centred variable (can be a local)
+#f  timesteprewindmultiplier=value - and further that it is multiplied by this amount on rewind, either a number or a reference to a none-centred variable (can be a local)
 #f  newtsteprewind - this variable gets rewound if a newtstep rewind is performed
 
 # general rule with options is that they don't include any underscores between words
@@ -1585,9 +1587,11 @@ sub organise_user_variables {
       $tmp = $variable{$type}[$mvar]{"options"};
       $variable{$type}[$mvar]{"options"} = '';
       print DEBUG "INFO: before processing $type $name has loaded (unchecked) options of $tmp\n";
-# loop through list of options, removing individual options from the list one-by-one
-      while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
-        $option = $2; $tmp = $`.','.$';
+      while (nonempty($tmp)) {
+        my @extracted_option = extract_option($tmp);
+        if ($extracted_option[3]) { error_stop("error in extracting options for $type variable $name: remaining options = $tmp"); };
+        if (empty($extracted_option[0])) { next; }
+        my $option = $extracted_option[0];
 # ignore compound specific options, as these will be compiled in create_compounds from the saved asread_variable[]{options} list
         if ($option =~ /^(|no)(|compound)(output|input)$/i) { next ;}
         elsif ($option =~ /^(|no)(|compound)stepoutput(|noupdate)$/i) { next ;}
@@ -1677,7 +1681,8 @@ sub organise_user_variables {
           if ($type ne "local") {
             $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = examine_name($1,"name");
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
-        else { error_stop("unknown option of $option specified for $type $name"); }
+
+        else { error_stop("unknown option of $option specified for $type $name: remaining options = $tmp"); }
       }
 
 # remove extra leading comma and output to fortran file
@@ -2539,7 +2544,7 @@ sub mequation_interpolation {
       if (empty($false)) { $false = "0"; }
 #       error_stop("false expression in if operator not found in $otype $variable{$otype}[$omvar]{name}"); }
 
-      $inbit[$nbits] = $condition; # main expression is condition (giving the true value if >=0, else the false value)
+      $inbit[$nbits] = $condition; # main expression is condition (giving the true value if >0, else the false value)
       create_someloop($inbit[$nbits],$operator_type,$centring,"<noloop>",0,$otype,$omvar);
       $someloop_mvar = $m{"someloop"}; # save someloop type
 
@@ -3854,8 +3859,11 @@ sub create_compounds {
     if (nonempty($variable{"compound"}[$mvar2]{options})) {
       $tmp = $variable{"compound"}[$mvar2]{"options"};
       $variable{"compound"}[$mvar2]{"options"} = '';
-      while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
-        $option = $2; $tmp = $`.','.$';
+      while (nonempty($tmp)) {
+        my @extracted_option = extract_option($tmp);
+        if ($extracted_option[3]) { error_stop("error in extracting options for $type compound $name: remaining options = $tmp"); };
+        if (empty($extracted_option[0])) { next; }
+        my $option = $extracted_option[0];
         if ($option =~ /^(|no)(|compound)(output|(stepoutput(|noupdate)))$/i) {
           $variable{"compound"}[$mvar2]{"options"} = $variable{"compound"}[$mvar2]{"options"}.",\L$1$3"; }
         elsif ($option =~ /^(|no)(|compound)(element(|node|nodelimited)data)$/i) {

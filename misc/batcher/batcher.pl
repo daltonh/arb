@@ -65,15 +65,27 @@ use FindBin;
 use lib "$FindBin::RealBin/"; # this will be the script location, with links resolved, which is where Common.pl is
 use Common qw(arbthread chompm empty nonempty protect protectarray error_stop);
 
-# batcher_setup should be found in the working_dir, which is the directory from which the script is run
-use batcher_setup qw(simulation_setup case_setup output_setup); # brings in the user-written module that defines case-specific data
-
 our $batcher_dir="$FindBin::RealBin"; # batcher_dir is where the batcher.pl script is
 our ($arb_dir)=$batcher_dir=~/(^.*)\/misc\/batcher$/; # arb_dir is the arb (root) dir
 our $arb_bin_dir="$arb_dir/bin"; # this is the arb bin dir, used to access other arb executables globally
 our $arb_script="$arb_bin_dir/arb"; # this is the arb script, user to run arb globally
 #print "INFO: batcher_dir = $batcher_dir: arb_dir = $arb_dir: arb_bin_dir = $arb_bin_dir: arb_script = $arb_script\n";
 our $output_dir="batcher_output"; # this directory will store all of the output, which is off the working dir from which batcher is called 
+
+#---------------------------------
+print "arb_batcher script for running multiple arb simulations\n";
+# read through all command line arguments
+foreach my $argument ( @ARGV )  # first loop looks for distributable files and help request
+{
+  if ( $argument eq '-h' || $argument eq '--help' ) {
+    usage();
+  }
+}
+#---------------------------------
+
+# batcher_setup should be found in the working_dir, which is the directory from which the script is run
+use lib ".";
+use batcher_setup qw(simulation_setup case_setup output_setup); # brings in the user-written module that defines case-specific data
 
 #---------------------------------
 # give defaults to the simulation variables
@@ -98,15 +110,6 @@ our $pbs_pmem = '4000mb';
 #our $pbs_module_load_commands = ''; # for skink
 our $pbs_queue_name = 'serial'; # for edward
 our $pbs_module_load_commands = 'module load intel; module load maxima'; # for edward
-#---------------------------------
-print "arb_batcher script for running multiple arb simulations\n";
-# read through all command line arguments
-foreach my $argument ( @ARGV )  # first loop looks for distributable files and help request
-{
-  if ( $argument eq '-h' || $argument eq '--help' ) {
-    usage();
-  }
-}
 #---------------------------------
 
 simulation_setup(); # overwrite any of the default parameters in the batcher_setup.pm module

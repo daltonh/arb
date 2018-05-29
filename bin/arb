@@ -218,6 +218,17 @@ MKL_PARDISO_OOC_PATH="$mkl_pardiso_ooc_dir/intel_pardiso_ooc"; # environment var
 
 # environment variables that specify the location of files for the native pardiso solver
 LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$src_dir/contributed/pardiso"; # use this to tell the runtime linker where the pardiso libraries are
+# from osx 10.11 onwards, apple's annoying sip stops DYLD_LIBRARY_PATH from being exported to this script, so instead, construct a new DYLD_LIBRARY_PATH that includes the possible locations of the intel libraries
+os_type=`uname -s`;
+if [ "$os_type" == "Darwin" -a -n "$MKLROOT" -a -z "$DYLD_LIBRARY_PATH" ] ; then
+  intelroot=${MKLROOT/%\/mkl/}; # replace /mkl/ from the end of the path with nothing
+  if [ ! -d "$intelroot" ] ; then
+    echo "WARNING: intel root directory not found, and DYLD_LIBRARY_PATH not set, related to osx SIP problem: intelroot = $intelroot";
+  else
+#   echo "WARNING: getting around apple's SIP by setting DYLD_LIBRARY_PATH from intelroot = $intelroot";
+    DYLD_LIBRARY_PATH="$intelroot/compiler/lib:$intelroot/compiler/lib/intel64:$intelroot/mkl/lib";
+  fi;
+fi;
 DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:$src_dir/contributed/pardiso"; # use this to tell the runtime linker where the pardiso libraries are
 
 #---------------------------

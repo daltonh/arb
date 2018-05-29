@@ -40,7 +40,8 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem replace_substring find_region match_region fortran_logical_string); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(chompm empty nonempty ijkstring error_stop examine_name extract_first syntax_problem replace_substring find_region match_region
+  fortran_logical_string extract_option sanitise_option_list); # list of subroutines and variables that will by default be made available to calling routine
 
 #-------------------------------------------------------------------------------
 # chomp and remove mac linefeads too if present
@@ -315,7 +316,7 @@ sub find_region {
 
 }
 #-------------------------------------------------------------------------------
-# sees if a given region name ($_[1]) matches that of region[$_[0]], taking care of the name being a possible regex
+# sees if a given region name ($_[1]) matches that of region ($_[0]), taking care of the name being a possible regex
 # assumes that name has been passed through examine_name( ,'regionname') first to remove any synonyms
 
 sub match_region {
@@ -346,6 +347,87 @@ sub fortran_logical_string {
 
 }
 
+#-------------------------------------------------------------------------------
+# this subroutine extracts one option from a line of raw options (ie, a line that contains a list of options and possibly extra spaces and commas)
+# on entry:
+# $_[0] = line of text containing list of raw options
+# on exit:
+# $_[0] = line of text with extracted option removed
+# returns array containing: ( extracted_option, extracted_name, extracted_value, error )
+
+sub extract_option {
+
+  my $raw_options = $_[0]; # line of raw options
+  my $extracted_option = ''; # will include any string delimiters as per raw option
+  my $extracted_name = '';
+  my $extracted_value = ''; # will not be delimited, except by <> (but not by ' or ")
+  my $error = 0; 
+
+# remove leading spaces and any leading (duplicate) commas
+  $raw_options =~ s/^\s*((\,\s*)*)//;
+
+# now go through various match scenarios, noting that option_name contains only \w characters (which does not include = , < > ' " =) 
+  if ($raw_options =~ /^(\w+?)\s*=\s*(\<(.*?)\>)\s*(\,|$)/) {
+    $raw_options = $';
+    $extracted_option = $1."=".$2;
+    $extracted_name = $1;
+    $extracted_value = $2;
+# TODO: need to think more about possible quoted string use cases - now quotes are simply removed, as any possible option values don't need quoting right now, except for variables/regions, which are handled separately above
+  } elsif ($raw_options =~ /^(\w+?)\s*=\s*('(.*?)')\s*(\,|$)/) {
+    $raw_options = $';
+    $extracted_option = $1."=".$3;
+    $extracted_name = $1;
+    $extracted_value = $3;
+  } elsif ($raw_options =~ /^(\w+?)\s*=\s*("(.*?)")\s*(\,|$)/) {
+    $raw_options = $';
+    $extracted_option = $1."=".$3;
+    $extracted_name = $1;
+    $extracted_value = $3;
+  } elsif ($raw_options =~ /^(\w+?)\s*=\s*(.*?)\s*(\,|$)/) {
+    $raw_options = $';
+    $extracted_option = $1."=".$2;
+    $extracted_name = $1;
+    $extracted_value = $2;
+  } elsif ($raw_options =~ /^(\w+?)\s*(\,|$)/) {
+    $raw_options = $';
+    $extracted_option = $1;
+  } elsif (nonempty($raw_options)) {
+    $error = 1;
+#   error_stop('there is a mistake in the following list of options, discovered in extract_option: $raw_options');
+  }
+
+  $_[0] = $raw_options;
+  return ($extracted_option, $extracted_name, $extracted_value, $error);
+
+}
+#-------------------------------------------------------------------------------
+# this sub takes an option list and removes unnecessary commas and spaces
+# also deals with clearoptions statement, which removes all preceding options
+# on entry:
+# $_[0] = line of text containing list of raw options
+# on exit:
+# $_[0] = line of text with sanitised option list
+
+sub sanitise_option_list {
+
+  my $raw_options = $_[0]; # line of raw options
+  my $saved_options = $raw_options; # save for error output message
+  my $sanitised_options = '';
+
+  while ($raw_options) {
+    my ($extracted_option,$extracted_name,$extracted_value,$error) = extract_option($raw_options);
+    if ($error) { error_stop("there is a mistake in the following list of options, discovered in sanitise_option_list: $saved_options"); }
+    if ($extracted_option eq 'clearoptions') {
+      $sanitised_options = '';
+    } elsif (nonempty($extracted_option)) {
+      if ($sanitised_options) { $sanitised_options .= ','; }
+      $sanitised_options .= $extracted_option;
+    }
+  }
+
+  $_[0] = $sanitised_options;
+    
+}
 #-------------------------------------------------------------------------------
 
 1;

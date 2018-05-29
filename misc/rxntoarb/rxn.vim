@@ -1,6 +1,6 @@
 " Language:     rxn
-" Version:      2.12+
-" Modified:     2018/02/23
+" Version:      2.18+
+" Modified:     2018/05/09
 " Maintainer:   Christian Biscombe
 
 " For version 5.x: Clear all syntax items
@@ -18,14 +18,14 @@ syn match rxnComment "#.*$" contains=rxnTodo
 syn region rxnTodo start="\%(FIXME\|TODO\|XXX\)" end="$" contained
 syn match rxnRegion "@\%(\w\+\|<[^>]*>\)"
 syn keyword rxnStatement initial_species options surface_region[s] volume_region[s]
-syn keyword rxnStatement exclude include_only nextgroup=rxnRegexp skipwhite
+syn keyword rxnStatement exclude include_only substitute nextgroup=rxnRegexp skipwhite
 syn region rxnRegexp start="/" end="/\%(i\C\)\?" skip="\\/" contained oneline
-syn match rxnOperator "\%(\s\+\zs+\ze\s\+\|->\|<=>\|\d\s*\zs\*\|\d\s*\zs\.\|;\)"
-syn region rxnLet matchgroup=rxnStatement start="\<let\>" end="=" transparent
+syn match rxnOperator "\%(\s\+\zs+\ze\s\+\|->\|<=>\|[*.]\ze[A-z\(\)\[\]]\|;\)"
 syn region rxnEnzyme matchgroup=rxnOperator start="{" end="}->" transparent
 syn region rxnMetaspecies matchgroup=rxnOperator start="\[" end="\]" transparent
+syn match rxnCoeff "\<\d\+"
 syn match rxnParameter "\%(k\|ka\|kf\|kon\|kd\|kr\|koff\|KM\|Km\|kcat\)\s*=\s*" nextgroup=rxnUnit
-syn match rxnUnit "[A-Za-z0-9. ^*+-]*" contained
+syn match rxnUnit "[A-z0-9. ^*+-]*" contained
 syn region rxnUnit start="'" end="'" contained
 syn region rxnUnit start='"' end='"' contained
 
@@ -39,6 +39,7 @@ if version >= 508 || !exists("did_rxn_syn_inits")
   else
     command -nargs=+ HiLink hi def link <args>
   endif
+  HiLink rxnCoeff Number
   HiLink rxnComment Comment
   HiLink rxnHeader Special
   HiLink rxnLabel Type

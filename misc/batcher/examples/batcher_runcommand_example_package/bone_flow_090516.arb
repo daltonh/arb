@@ -1,0 +1,138 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+VERSION 0.55 # the version of syntax used in this file
+
+# the following strings describe the simulation and are passed to the output files
+INFO_TITLE "Flow through bone to find permeability"
+INFO_DESCRIPTION "3D geometry, with reflection on side walls"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "1/3/16" # interpreted as the last modification date
+
+<<batchercomment>>INFO_DESCRIPTION+ ": run under batcher"
+
+#-------------------------------------------------------------------
+# using iterative solver here
+SOLVER_OPTIONS linearsolver=doglegdescent
+NEWTRESTOL 1.d-8
+ITERRESTOL 1.d-9
+ITERSTEPCHECK 200
+ITERSTEPMAX 1000000000
+
+#-------------------------------------------------------------------
+# geometry
+MSH_FILE "bone_geometry.msh" input,nooutput # this msh has already been run through arb to create phi and add the names to the surrounding faces
+MSH_FILE "output/output.msh" centringvtkoutput,noinput,centringdatoutput
+
+#-------------------------------------------------------------------
+# read in geometry variables from previous simulation
+DEFAULT_OPTIONS nooutput
+FACE_CONSTANT <phi_f> "0.d0" ON <all faces> input
+CELL_CONSTANT <phi_c> "0.d0" ON <all cells> input
+CELL_CONSTANT <phi> "0.d0" ON <all cells> input
+<<dim1comment>>CELL_CONSTANT <phi_normal_c[l=1]> "0.d0" ON <all cells> input
+<<dim2comment>>CELL_CONSTANT <phi_normal_c[l=2]> "0.d0" ON <all cells> input
+<<dim3comment>>CELL_CONSTANT <phi_normal_c[l=3]> "0.d0" ON <all cells> input
+CELL_CONSTANT <phi_normal_c_mag> "0.d0" ON <all cells> input
+CELL_CONSTANT <vof_ugrad_l> "0.d0" ON <all cells> input
+CELL_CONSTANT <vof_stress_mask_indicator> "0.d0" ON <all cells> input
+CELL_CONSTANT <fluid_mask_indicator> "0.d0" ON <all cells> input
+CELL_CONSTANT <vof_s> "0.d0" ON <all cells> input
+# and recreate vof masks
+CELL_CONSTANT_REGION <fluid_mask> "variable(<fluid_mask_indicator>)" ON <all cells>
+CELL_CONSTANT_REGION <vof_stress_mask> "variable(<vof_stress_mask_indicator>)" ON <fluid_mask>
+# sparingly turn vof output variables on
+VARIABLE <phi> output
+VARIABLE <phi_c> output
+VARIABLE <vof_s> output
+VARIABLE <phi_normal_c_mag> output
+
+#-------------------------------------------------------------------
+# kernel
+INCLUDE_ROOT "kernel_presets"
+INCLUDE "kernel_1st_order_limited_mask"
+
+#-------------------------------------------------------------------
+# these are the generic equations to solve for network channel flow, in either 2D (x-y) or 3D (x-y-z) (also within the working directory)
+INCLUDE_ROOT "network_flow"
+
+# include the following line to remove vof_stress
+#GENERAL_REPLACEMENTS R "<<momentumwithvofstresscomment>>" W "#" # using less accurate non-vof discretisation
+INCLUDE "tensor_equations"
+DEFAULT_OPTIONS
+
+INCLUDE "permeability"
+INCLUDE "porosity"
+<<dim1comment>>VARIABLE <u[l=1]> output
+<<dim2comment>>VARIABLE <u[l=2]> output
+<<dim3comment>>VARIABLE <u[l=3]> output
+VARIABLE <p> output
+
+VARIABLE <pressure_gradient_mag> 1.d+0
+#CONSTANT <pressure_anchoring_factor> 1.d-16 # set this number to be small relative to one, but large enough so that pressure is linked everywhere still
+NONE_CONSTANT <pressure_gradient_phi> "<pi>/3.d0"
+<<dim3comment>>NONE_CONSTANT <pressure_gradient_theta> "<pi>/6.d0"
+
+NONE_CONSTANT <lc_calculated> "cellmax(<celldxmin>,region=<domain>)"
+
+# check on error in continuity equation (specifically looking for periodic problems)
+CELL_LOCAL <continuity_output> "celldiv(<phi_f>*<u_f>)-<pressure_anchoring_factor>*(<celldxmax>^2/<mu>)*celldiv(facegrad[dxunit](<p>))" ON <all cells>
+NONE_OUTPUT <continuity_error> "cellmax(abs(<continuity_output>),region=<domain>)"
+
+CELL_OUTPUT <u_mag> "sqrt(cellmax(dot(<u[l=:]>,<u[l=:]>),0.d0))" ON <all cells> output # also calculate the velocity magnitude
+CELL_OUTPUT <uphi_mag> "sqrt(cellmax(dot(<uphi[l=:]>,<uphi[l=:]>),0.d0))" ON <all cells> output # also calculate the uphi velocity magnitude
+
+# stop now for a single test
+END
+
+#-------------------------------------------------------------------
+# setup repetitions
+TRANSIENT_SIMULATION
+
+# convert the following constants to transients
+<<dim1comment>>NONE_TRANSIENT <pressure_gradient[l=1]>
+<<dim2comment>>NONE_TRANSIENT <pressure_gradient[l=2]>
+<<dim3comment>>NONE_TRANSIENT <pressure_gradient[l=3]>
+#NONE_TRANSIENT <pressure_gradient_phi> "<random>*2.d0*<pi>"
+#<<dim3comment>>NONE_TRANSIENT <pressure_gradient_theta> "<random>*<pi>"
+
+# instead do uniform distribution for 2D
+# needs modifying for 3D
+GENERAL_REPLACEMENTS R "<<timestepmax>>" W "32" # choose a power of 2 for the number of increments around 2*<pi>
+TIMESTEPOUT 2
+TIMESTEPMAX <<timestepmax>>
+NONE_TRANSIENT <pressure_gradient_phi> [rad] "0.d0" "(<timestep>-1.d0)*2.d0*<pi>/<<timestepmax>>"
+
+END
+#-------------------------------------------------------------------
+#-------------------------------------------------------------------
+# setup repetitions
+TRANSIENT_SIMULATION
+TIMESTEPOUT 1 # you probably don't need msh files written for each timestep, as the components should be written to the output_step.csv files
+TIMESTEPMAX 1 # for this 3D simulation do as many timesteps as you want.  
+
+# convert the following constants (that are defined in network_flow_tensor_equations.arb) to transients
+<<dim1comment>>NONE_TRANSIENT <B[l=1]>
+<<dim2comment>>NONE_TRANSIENT <B[l=2]>
+<<dim3comment>>NONE_TRANSIENT <B[l=3]>
+
+# for 3D choose a random distribution points over the 3D space
+# note phi and theta are swapped from the conventional spherical coordinates (to be consistent with 2D treatment)
+# http://mathworld.wolfram.com/SpherePointPicking.html
+NONE_TRANSIENT <B_phi> "0.d0" # <random> is evaluated as a random number in the range 0 <= <random> < 1
+<<dim3comment>>NONE_TRANSIENT <B_theta> "<pi>/2.d0"
+CELL_TRANSIENT <Bphi_c>
+FACE_TRANSIENT <Bphi_f>
+
+# instead do uniform distribution for 2D
+#TIMESTEPMAX 100
+#NONE_TRANSIENT <B_phi> "0.d0" "(<timestep>-1.d0)*2.d0*<pi>/100.d0"
+
+#-------------------------------------------------------------------
+
+#SOLVER_OPTIONS linearsolver=pardisoiterative
+#SOLVER_OPTIONS linearsolver=pardiso
+#SOLVER_OPTIONS linearsolver=suitesparse
