@@ -12,7 +12,8 @@ END_MARKDOWN
     if ($species eq "species0") {
       $return_string .= "CELL_UNKNOWN <p_$species> [] '<p_in>' ON <allcells>\n";
     } else {
-      $return_string .= "CELL_LOCAL <p_$species> [] '0.d0' ON <allcells>\n";
+# now only define disperse phase species as a derived later
+#     $return_string .= "CELL_LOCAL <p_$species> [] '0.d0' ON <allcells>\n";
       $return_string .= "CELL_UNKNOWN <phi_$species> [] '<phi_in_$species>' ON <allcells> magnitude=1.d0\n";
       $phif .= "-<phi_$species>";
     }

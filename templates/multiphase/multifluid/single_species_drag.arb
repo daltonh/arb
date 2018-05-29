@@ -2,7 +2,7 @@ MARKDOWN
 Here we find <beta*_<<species>>_species0> and <beta*_species0_<<species>>> for combinations of species in which one of them is the continuous phase (species0)
 END_MARKDOWN
 
-OVERRIDE_OPTIONS output
+#OVERRIDE_OPTIONS output
 IF {{ string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
@@ -35,4 +35,4 @@ ELSE
   FACE_DERIVED <beta*i_f_species0_<<species>>> "faceave[adjacentcells](<beta*i_species0_<<species>>>)" ON <allfaces>
   FACE_LOCAL <beta*j_f_<<species>>_species0> "<beta*i_f_species0_<<species>>>" ON <allfaces>
 END_IF
-OVERRIDE_OPTIONS
+#OVERRIDE_OPTIONS
