@@ -52,7 +52,7 @@ END_IF
 IF {{ return (string_test('<<navierstokescomment>>','')) }}
   REPLACEMENTS D "<ufadvectionmag>" W "1" # use this option to base the adv component on the total velocity magnitude, rather than the component over each face
   IF <ufadvectionmag>
-    FACE_LOCAL <u_f_{raw}_magnitude> "sqrt(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>))" ON <allfaces>
+    FACE_LOCAL <u_f_{raw}_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tiny>))" ON <allfaces>
     FACE_LOCAL <u_rf_{adv}> "2.d0*<<rho_f>>*<u_f_{raw}_magnitude>/<facedx>" ON <allfaces>
   ELSE_IF {{ return (string_test('<<ufadvectioncomplexcomment>>','')) }}
 # or more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
