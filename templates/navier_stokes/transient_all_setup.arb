@@ -16,7 +16,7 @@ CONSTANT <dt_out> [] "<CFL_out>*<celldxave>/<u_av>" # initial timestep based on 
 
 # transient bits
 GENERAL_OPTIONS transientsimulation
-GLOBAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+GLOBAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
 
 # the default is for constant as opposed to dynamic timestepping
 GLOBAL_REPLACEMENTS DEFAULT "<<constanttimestepcomment>>" W "" DEFAULT "<<dynamictimestepcomment>>" W "#"

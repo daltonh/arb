@@ -75,7 +75,7 @@ double precision, dimension(:), allocatable :: x_dummy
 logical, optional :: ooc ! whether out of core solver is required
 logical, optional :: safer ! whether to turn on safer (more stable) algorithms
 logical :: first = .true. ! this flag records the first use of the routine, when the iparm variables are set
-logical :: debug = .false., debug_sparse = .false.
+logical :: debug = .true., debug_sparse = .true.
 
 external pardisoinit
 external pardiso

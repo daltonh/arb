@@ -20,12 +20,6 @@ FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <allfaces> # 
 # assemble <u_f_{correction}>, taking advantage of variable reuse so that only one expression is formed for <u_f_{correction}> (to maximise code efficiency and maxima expression simplifications)
 
 # first assemble demoninator of expression:
-# temp
-# trying to see whether uniform rhie-chow terms give better response
-REPLACEMENTS D '<<celldxaverhiechow>>' W 0
-IF <<celldxaverhiechow>>
-  REPLACEMENTS R "<facedx>" W "<celldxave>"
-END_IF
 
 # all equation variants here have viscous contribution, so add this first
 # the rf stands for reciprocal and face centred
@@ -50,17 +44,33 @@ END_IF
 
 # advection term
 IF {{ return (string_test('<<navierstokescomment>>','')) }}
-  REPLACEMENTS D "<ufadvectionmag>" W "1" # use this option to base the adv component on the total velocity magnitude, rather than the component over each face
-  IF <ufadvectionmag>
-    FACE_LOCAL <u_f_{raw}_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tiny>))" ON <allfaces>
-    FACE_LOCAL <u_rf_{adv}> "2.d0*<<rho_f>>*<u_f_{raw}_magnitude>/<facedx>" ON <allfaces>
-  ELSE_IF {{ return (string_test('<<ufadvectioncomplexcomment>>','')) }}
-# or more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
+  REPLACEMENTS D "<<ufadvectionmag>>" W "1" # use this option to base the adv component on the total velocity magnitude, rather than the component over each face
+# the old way was to use <u_f_{raw}> which is the flux across the face when calculating the advective rhie-chow term
+  REPLACEMENTS R "<<ufmagnitude>>" W "abs(<u_f_{raw}>)"
+# the new way is based on the total velocity magnitude, so overwrite the string <<ufmagnitude>> with <u_f_vect_magnitude> which is the total magnitude of <u_f_vect[l=:]>
+  IF <<ufadvectionmag>>
+# for a transient simulation the previous velocity magnitude is used, consistent with that used in the momentum advection
+# (although this can be overwritten by setting <<ufvectmagnitudetransient>> = 0 directly to reproduce pre v0.59 behaviour)
+    REPLACEMENTS D "<<ufvectmagnitudetransient>>" W "<<transientnavierstokes>>"
+    IF <<ufvectmagnitudetransient>>
+      <<dim1comment>>FACE_LOCAL <u_f_vect[l=1,r=1]> "faceave[<<reflect=1>>](<u[l=1,r=1]>)"
+      <<dim2comment>>FACE_LOCAL <u_f_vect[l=2,r=1]> "faceave[<<reflect=2>>](<u[l=2,r=1]>)"
+      <<dim3comment>>FACE_LOCAL <u_f_vect[l=3,r=1]> "faceave[<<reflect=3>>](<u[l=3,r=1]>)"
+      FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
+      REPLACEMENTS S "<<ufmagnitude>>" W "<u_f_vect_magnitude[r=1]>" # S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
+    ELSE
+      FACE_LOCAL <u_f_vect_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tinyish>))" ON <allfaces>
+      REPLACEMENTS S "<<ufmagnitude>>" W "<u_f_vect_magnitude>" # S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
+    END_IF
+  END_IF
+# now calculate <u_rf_{adv}>
+  IF {{ return (string_test('<<ufadvectioncomplexcomment>>','')) }}
+# more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
     FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <allfaces>
-    FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<<rho_f>>))" ON <allfaces>
+    FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-<<ufmagnitude>>+sqrt(<<ufmagnitude>>^2+<eps_p>*<facedx>/<<rho_f>>))" ON <allfaces>
   ELSE
-# next add simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
-    FACE_LOCAL <u_rf_{adv}> "2.d0*<<rho_f>>*abs(<u_f_{raw}>)/<facedx>" ON <allfaces>
+# simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
+    FACE_LOCAL <u_rf_{adv}> "2.d0*<<rho_f>>*<<ufmagnitude>>/<facedx>" ON <allfaces>
   END_IF
   FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
 END_IF
