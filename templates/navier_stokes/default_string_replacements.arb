@@ -11,7 +11,7 @@ GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W "
 GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#" D "<<uniformviscosity>>" W "1" 
 GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#" D "<<uniformdensity>>" W "1" 
 
-# previously pressure extrapolation on any boundaries was accomplished by setting <dynamic_force_f> to zero.  Now the default is the following, which implements a rhie-chow type pressure interpolation on the walls and at fully-developed ports (see p_extrapolation_rhie_chow.arb for more info)
+# previously pressure extrapolation on any walls was accomplished by setting <dynamic_force_f> to zero.  Other options are rhiechow and zeroperror
 GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zerodynamic"
-GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zeroperror"
+#GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zeroperror"
 #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "rhiechow"

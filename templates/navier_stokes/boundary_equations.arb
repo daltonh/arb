@@ -1,14 +1,18 @@
 MARKDOWN
-Equations for a boundary, now generalised to handle ports or walls.  Generally call this using the wrapper template files, inlet_equations, outlet_equations and wall_equations.
+Equations for a boundary, now generalised to handle ports or walls.  Generally call this using the wrapper template files, inlet_equations, outlet_equations and wall_equations, generally setting the three method variables:
 
-There are two choices for the constraint on the gradient of normal velocity normal to the region, determined by <<boundarynormalmethod>>:
-1. a rhie-chow type calculation is used to relate the velocity normal to the boundary and at the boundary to the velocity just inside the domain (<<boundarynormalmethod=rhiechow)
-2. the gradient of the normal velocity normal to the boundary is zero (<<boundarynormalmethod>>=zero)
+This has a few variables that can be set:
+
+`<<boundarynormalmethod>>` sets some condition normal to the boundary, either a velocity gradient or pressure gradient, or combination
+`<<boundarytangentmethod>>` determines the shear conditions at the boundary
+`<<boundarymethod>>` sets the primary type of boundary condition.  This condition can use a choice of variables determined by `<<boundarymethodvariable>>`.  If a oneface region is required or not, then this can be set via `<<boundaryonecreateface>>`
+
+The defaults specify a fully developed flow through <region> with a set flowrate of <region u_av> created by varying the uniform <dynamic_force_f> (ie, an inlet).
 END_MARKDOWN
 
 # First equation is a constraint on normal velocity gradient normal to the boundary
 REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradu" # by default grad{u}:nn = 0
-#REPLACEMENTS D "<<boundarynormalmethod>>" W "rhiechow"
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "rhiechow" # a rhie-chow type calculation is used to relate the velocity normal to the boundary and at the boundary to the velocity just inside the domain (<<boundarynormalmethod=rhiechow)
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerodynamic"
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradp"
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "zeroperror"
