@@ -1,3 +1,5 @@
+INCLUDE "inlet.arb"
+
 # boundary conditions on inlet - fully developed flow
 INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
 INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"

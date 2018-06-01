@@ -1,10 +1,16 @@
 MARKDOWN
-Here we choose how p on boundary cells should be extrapolated from the domain values.  With <<pextrapolationrhiechow>> the local boundary pressure gradient is used to couple the boundary velocity to the velocity in the (closest) adjacent domain cell using terms derived for the (within domain) rhie-chow interpolation method.  The alternative is to just set <dynamic_force_f> on the boundary to zero, which for no body forces implies that the boundary-evaluated pressure gradient is set to zero.
+Here we choose how p on boundary cells should be extrapolated from the domain values.  With <<pextrapolation>> = rhiechow the local boundary pressure gradient is used to couple the boundary velocity to the velocity in the (closest) adjacent domain cell using terms derived for the (within domain) rhie-chow interpolation method.  The alternative is to just set <dynamic_force_f> on the boundary to zero (<<pextrapolation>> = zerodynamic), which for no body forces implies that the boundary-evaluated pressure gradient is set to zero.
 END_MARKDOWN
 
+# defaults are also set in...
 INCLUDE "default_string_replacements"
-IF <<pextrapolationrhiechow>>
+# or you could set these directly using (eg):
+#GENERAL_REPLACEMENTS R "<<pextrapolation>>" W "zerodynamic"
+#GENERAL_REPLACEMENTS R "<<pextrapolation>>" W "rhiechow"
+
+REPLACEMENTS D "<<pextrapolation>>" W "zerodynamic"
+IF {{ return string_test("<<pextrapolation>>","rhiechow"); }}
   INCLUDE "p_extrapolation_rhie_chow"
-ELSE
+ELSE_IF {{ return string_test("<<pextrapolation>>","zerodynamic"); }}
   INCLUDE "p_extrapolation_zero_dynamic"
 END_IF

@@ -1,0 +1,67 @@
+MARKDOWN
+Equations for a boundary, now generalised to handle ports or walls.  Generally call this using the wrapper template files, inlet_equations, outlet_equations and wall_equations.
+
+There are two choices for the constraint on the gradient of normal velocity normal to the region, determined by <<boundarynormalmethod>>:
+1. a rhie-chow type calculation is used to relate the velocity normal to the boundary and at the boundary to the velocity just inside the domain (<<boundarynormalmethod=rhiechow)
+2. the gradient of the normal velocity normal to the boundary is zero (<<boundarynormalmethod>>=zero)
+END_MARKDOWN
+
+# First equation is a constraint on normal velocity gradient normal to the boundary
+REPLACEMENTS D "<<boundarynormalmethod>>" W "zero" # by default grad{u}:nn = 0
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "rhiechow"
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "zerodynamic"
+IF {{ return string_test("<<boundarynormalmethod>>","rhiechow"); }}
+  INCLUDE "p_extrapolation_rhie_chow" REPLACE "<equation>" WITH "<region pextrapolation>"
+ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerodynamic"); }}
+  INCLUDE "p_extrapolation_zero_dynamic" REPLACE "<equation>" WITH "<region pextrapolation>"
+ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zero"); }}
+  INCLUDE "u_fully_developed" REPLACE "<equation>" WITH "<region fully developed>"
+ELSE
+  ERROR "boundarynormalmethod not known in boundary_equations.arb: <<boundarynormalmethod>>"
+END_IF
+
+# Second equation(s) (two here for 3D) is a constraint on the tangential velocity component
+REPLACEMENTS D "<<boundarytangentmethod>>" W "noslip"
+#REPLACEMENTS D "<<boundarytangentmethod>>" W "slip"
+IF {{ return string_test("<<boundarytangentmethod>>","slip"); }}
+  INCLUDE "slip" REPLACE "<equation" WITH "<region slip"
+ELSE_IF {{ return string_test("<<boundarytangentmethod>>","noslip"); }}
+  INCLUDE "noslip" REPLACE "<equation" WITH "<region no slip"
+ELSE
+  ERROR "boundarytangentmethod not known in boundary_equations.arb: <<boundarytangentmethod>>"
+END_IF
+
+# Third equation is a constraint on the velocity or pressure value at the boundary
+REPLACEMENTS D "<<boundarymethod>>" W "flowrate" # set flowrate (average velocity) to <region u_av>
+#REPLACEMENTS D "<<boundarymethod>>" W "pressure" # set pressure to <region p>
+#REPLACEMENTS D "<<boundarymethod>>" W "velocity" # set velocity to <region u_av>
+
+IF {{ return string_test("<<boundarymethod>>","pressure"); }}
+
+  FACE_EQUATION <region flowrate equation> "<p_f>-<region p>" ON <region> # specified pressure
+
+ELSE_IF {{ return string_test("<<boundarymethod>>","velocity"); }}
+
+  FACE_EQUATION <region flowrate equation> "<u_f>+<region u_av>" ON <region> # specified velocity
+
+ELSE_IF  {{ return string_test("<<boundarymethod>>","flowrate"); }}
+
+# alternatively, set some function of pressure to give a required average velocity (ie, a flowrate)
+  <<cartesiancomment>>NONE_DERIVED <region u_av_calc> "facesum(-<u_f>*<facearea>,<region>)/facesum(<facearea>,<region>)" # calculate average velocity directed into the domain
+  <<cylindricalcomment>>NONE_DERIVED <region u_av_calc> "facesum(-<u_f>*<facearea>*<<radius_f>>,<region>)/facesum(<facearea>*<<radius_f>>,<region>)" # calculate average velocity directed into the domain
+
+# now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <region sans centreline> and <region centreline> (from eg inlet_centreline_region template)
+
+  IF 1 # now include these region definitions here when required
+    # this are the region definitions required to define the single region face cell and corresponding inverse region region
+    FACE_REGION <region centreline> "at(0.d0,0.d0,0.d0)" ON <region>
+    FACE_REGION <region sans centreline> "compound(<region>-<region centreline>)" ON <region>
+  END_IF
+
+  NONE_EQUATION <inlet centreline flowrate equation> "<region u_av_calc>-<region u_av>" # set flowrate through inlet to give required average velocity
+  NONE_DERIVED <inlet centreline gradp> "facesum(<dynamic_force_f>,region=<inlet centreline>)"
+  FACE_EQUATION <inlet flowrate equation> "<dynamic_force_f>-<inlet centreline gradp>" ON <inlet sans centreline> # apply specified pressure over inlet
+
+ELSE
+  ERROR "boundarymethod not known in boundary_equations.arb: <<boundarymethod>>"
+END_IF

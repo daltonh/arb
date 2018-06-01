@@ -44,13 +44,14 @@ END_IF
 
 # advection term
 IF {{ return (string_test('<<navierstokescomment>>','')) }}
-  REPLACEMENTS D "<<ufadvectionmag>>" W "1" # use this option to base the adv component on the total velocity magnitude, rather than the component over each face
-# the old way was to use <u_f_{raw}> which is the flux across the face when calculating the advective rhie-chow term
-  REPLACEMENTS R "<<ufmagnitude>>" W "abs(<u_f_{raw}>)"
-# the new way is based on the total velocity magnitude, so overwrite the string <<ufmagnitude>> with <u_f_vect_magnitude> which is the total magnitude of <u_f_vect[l=:]>
-  IF <<ufadvectionmag>>
+# use this option to base the adv component on the total velocity magnitude, rather than the component over each face
+  REPLACEMENTS D "<<ufadvectionmag>>" W "1"
+# the old way (pre v0.59) was to use <u_f_{raw}> which is the flux across the face when calculating the advective rhie-chow term
+# the new way (v0.59 and onwards) is based on the total velocity magnitude, so overwrite the string <<ufmagnitude>> with <u_f_vect_magnitude> which is the total magnitude of <u_f_vect[l=:]>
+  REPLACEMENTS R "<<ufmagnitude>>" W "abs(<u_f_{raw}>)" # initialise variable using the old way, within the applicable block
+  IF <<ufadvectionmag>> # ie, the new way
 # for a transient simulation the previous velocity magnitude is used, consistent with that used in the momentum advection
-# (although this can be overwritten by setting <<ufvectmagnitudetransient>> = 0 directly to reproduce pre v0.59 behaviour)
+# (although this can be overwritten by setting <<ufvectmagnitudetransient>> = 0 directly)
     REPLACEMENTS D "<<ufvectmagnitudetransient>>" W "<<transientnavierstokes>>"
     IF <<ufvectmagnitudetransient>>
       <<dim1comment>>FACE_LOCAL <u_f_vect[l=1,r=1]> "faceave[<<reflect=1>>](<u[l=1,r=1]>)"

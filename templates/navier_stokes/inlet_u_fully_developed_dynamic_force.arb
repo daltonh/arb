@@ -1,5 +1,19 @@
-# boundary conditions on inlet - fully developed flow
-INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
+MARKDOWN
+Boundary conditions on inlet, specifying fully developed flow
+
+There are two choices here for the first equation which determines the relationship between the boundary and just-within domain velocities:
+1. the local pressure gradient at the inlet port is related to the inlet velocity via a rhie-chow type calculation (<<pextrapolationports>>=rhiechow) - this isn't the default, as it isn't really what most think fully developed is, or
+2. the gradient of the normal velocity normal to the port is zero (<<pextrapolationports>> != rhiechow)
+END_MARKDOWN
+
+#REPLACEMENTS D "<<pextrapolationports>>" W "<<pextrapolation>>" # an alternative default that picks up the wall pextrapolation method
+REPLACEMENTS D "<<pextrapolationports>>" W "0" # by default 
+IF {{ return string_test("<<pextrapolationports>>","rhiechow"); }}
+  INCLUDE "p_extrapolation_rhie_chow" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
+ELSE
+  INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
+END_IF
+
 INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"
 
 # alternatively, set uniform inlet pressure giving required average velocity

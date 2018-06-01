@@ -1,7 +1,6 @@
-REPLACEMENTS D "<<pextrapolationrhiechow>>" W "0"
-IF <<pextrapolationrhiechow>>
-  INCLUDE "p_extrapolation_rhie_chow"
-ELSE
-  #FACE_EQUATION <equation> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <region> # normal velocity component is fully developed
-  FACE_EQUATION <equation> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <region> # normal velocity component is fully developed
-END_IF
+MARKDOWN
+Sets the gradient of the normal component of velocity normal to a region to zero
+END_MARKDOWN
+
+#FACE_EQUATION <equation> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <region> # normal velocity component is fully developed
+FACE_EQUATION <equation> "ddot(<ugrad_f[l=:,:]>,<facenorm[l=:]>*<facenorm[l=:]>)" ON <region> # normal velocity component is fully developed

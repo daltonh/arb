@@ -1,0 +1,1 @@
+INCLUDE "boundary_equations" R "<region" W "<inlet" R "<region p>" W "<p_in>" R "<region u" W "<u"
