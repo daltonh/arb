@@ -9,4 +9,5 @@ VARIABLE <p_error> ON <allfaces> output
 VARIABLE <u_f_{correction}> ON <allfaces>
 <<transientnavierstokescomment>>VARIABLE <u_f_{correction}[r=1]> ON <allfaces>
 
+# this needs to be fixed up possibly so that direction is consistent with dxunit?
 FACE_EQUATION <equation> "<u_f>-faceave[downcell](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<u_f_{correction}>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero

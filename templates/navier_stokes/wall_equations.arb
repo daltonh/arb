@@ -1,1 +1,0 @@
-INCLUDE "boundary_equations" R "<region" W "<walls" R "<<boundarymethod>>" W "velocity" R "<<boundarynormalmethod>>" W "<<pextrapolation>>"

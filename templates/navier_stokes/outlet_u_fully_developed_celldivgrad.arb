@@ -1,12 +1,1 @@
-# boundary conditions on outlet - fully developed flow
-INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<outlet>" REPLACE "<equation>" WITH "<outlet fully developed>"
-INCLUDE "noslip" REPLACE "<region>" WITH "<outlet>" REPLACE "<equation" WITH "<outlet no slip"
-
-# now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <outlet sans centreline> and <outlet centreline>
-NONE_EQUATION <outlet centreline flowrate equation> "facesum(<p_f>,region=<outlet centreline>)" # set pressure at centreline to be zero
-# here basing this on celldivgrad
-<<dim1comment>> CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
-<<dim2comment>> CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
-<<dim3comment>> CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
-NONE_DERIVED <outlet centreline gradp> "facesum(dot(<celldivgradp[l=:]>,<facenorm[l=:]>),region=<outlet centreline>)"
-FACE_EQUATION <outlet flowrate equation> "dot(<celldivgradp[l=:]>,<facenorm[l=:]>)-<outlet centreline gradp>" ON <outlet sans centreline> # apply specified pressure over outlet
+INCLUDE "outlet_equations.arb" R "<<boundarymethod>>" W "onefacepressure" R "<<boundarymethodvariable>>" W "celldivgrad" R "<<boundarytangentmethod>>" W "noslip" R "<<boundarynormalmethod>>" W "zerogradu"

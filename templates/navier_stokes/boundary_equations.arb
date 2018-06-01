@@ -7,14 +7,20 @@ There are two choices for the constraint on the gradient of normal velocity norm
 END_MARKDOWN
 
 # First equation is a constraint on normal velocity gradient normal to the boundary
-REPLACEMENTS D "<<boundarynormalmethod>>" W "zero" # by default grad{u}:nn = 0
+REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradu" # by default grad{u}:nn = 0
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "rhiechow"
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerodynamic"
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradp"
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "zeroperror"
 IF {{ return string_test("<<boundarynormalmethod>>","rhiechow"); }}
   INCLUDE "p_extrapolation_rhie_chow" REPLACE "<equation>" WITH "<region pextrapolation>"
 ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerodynamic"); }}
-  INCLUDE "p_extrapolation_zero_dynamic" REPLACE "<equation>" WITH "<region pextrapolation>"
-ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zero"); }}
+  FACE_EQUATION <region pextrapolation> "<dynamic_force_f>" ON <region>
+ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zeroperror"); }}
+  FACE_EQUATION <region pextrapolation> "<p_error>" ON <region>
+ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerogradp"); }}
+  FACE_EQUATION <region pextrapolation> "facegrad(<p>)" ON <region>
+ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerogradu"); }}
   INCLUDE "u_fully_developed" REPLACE "<equation>" WITH "<region fully developed>"
 ELSE
   ERROR "boundarynormalmethod not known in boundary_equations.arb: <<boundarynormalmethod>>"
@@ -32,9 +38,12 @@ ELSE
 END_IF
 
 # Third equation is a constraint on the velocity or pressure value at the boundary
-REPLACEMENTS D "<<boundarymethod>>" W "flowrate" # set flowrate (average velocity) to <region u_av>
-#REPLACEMENTS D "<<boundarymethod>>" W "pressure" # set pressure to <region p>
-#REPLACEMENTS D "<<boundarymethod>>" W "velocity" # set velocity to <region u_av>
+REPLACEMENTS D "<<boundarymethod>>" W "flowrate" # set average velocity (flowrate) to <region u_av>
+#REPLACEMENTS D "<<boundarymethod>>" W "onefacepressure" # set pressure on oneface to <region p>
+#REPLACEMENTS D "<<boundarymethod>>" W "pressure" # set uniform pressure to <region p>
+#REPLACEMENTS D "<<boundarymethod>>" W "velocity" # set uniform velocity to <region u_av>
+#REPLACEMENTS D "<<boundarymethod>>" W "noflux" # set uniform velocity to 0. across the entire region
+#REPLACEMENTS D "<<boundarymethod>>" W "nofluxpset" # set uniform velocity to 0. across the entire region, except for <region oneface>, which has p set to zero
 
 IF {{ return string_test("<<boundarymethod>>","pressure"); }}
 
@@ -44,23 +53,64 @@ ELSE_IF {{ return string_test("<<boundarymethod>>","velocity"); }}
 
   FACE_EQUATION <region flowrate equation> "<u_f>+<region u_av>" ON <region> # specified velocity
 
-ELSE_IF  {{ return string_test("<<boundarymethod>>","flowrate"); }}
+ELSE_IF {{ return string_test("<<boundarymethod>>","noflux"); }}
 
-# alternatively, set some function of pressure to give a required average velocity (ie, a flowrate)
-  <<cartesiancomment>>NONE_DERIVED <region u_av_calc> "facesum(-<u_f>*<facearea>,<region>)/facesum(<facearea>,<region>)" # calculate average velocity directed into the domain
-  <<cylindricalcomment>>NONE_DERIVED <region u_av_calc> "facesum(-<u_f>*<facearea>*<<radius_f>>,<region>)/facesum(<facearea>*<<radius_f>>,<region>)" # calculate average velocity directed into the domain
+  FACE_EQUATION <region flowrate equation> "<u_f>" ON <region> # zero velocity
 
-# now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <region sans centreline> and <region centreline> (from eg inlet_centreline_region template)
+ELSE_IF  {{ return ( string_test("<<boundarymethod>>","flowrate") || string_test("<<boundarymethod>>","onefacepressure") ||
+  string_test("<<boundarymethod>>","nofluxpset") ); }}
+# all of these boundary methods require the oneface (or centreline) subdomain, so form these first
 
-  IF 1 # now include these region definitions here when required
-    # this are the region definitions required to define the single region face cell and corresponding inverse region region
-    FACE_REGION <region centreline> "at(0.d0,0.d0,0.d0)" ON <region>
-    FACE_REGION <region sans centreline> "compound(<region>-<region centreline>)" ON <region>
+# now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <region sans oneface> and <region region> (from eg oneface_region template)
+  REPLACEMENTS D "<<boundarycreateoneface>>" W "1" # by default create the single oneface region here
+  IF <<boundarycreateoneface>>
+    INCLUDE "oneface_region"
   END_IF
 
-  NONE_EQUATION <inlet centreline flowrate equation> "<region u_av_calc>-<region u_av>" # set flowrate through inlet to give required average velocity
-  NONE_DERIVED <inlet centreline gradp> "facesum(<dynamic_force_f>,region=<inlet centreline>)"
-  FACE_EQUATION <inlet flowrate equation> "<dynamic_force_f>-<inlet centreline gradp>" ON <inlet sans centreline> # apply specified pressure over inlet
+  IF  {{ return ( string_test("<<boundarymethod>>","nofluxpset"); }} 
+
+    FACE_EQUATION <region flowrate equation> "<u_f>" ON <region sans oneface> # zero velocity on most of the region
+    FACE_EQUATION <region oneface flowrate equation> "<p_f>" ON <region oneface>
+
+  ELSE
+    IF  {{ return string_test("<<boundarymethod>>","flowrate"); }}
+  # for a specified flowrate, set some function of pressure to give the required average velocity (ie, a flowrate)
+  # to do this we need to calculate what the average velocity through the boundary is (positive into the domain here)
+      <<cartesiancomment>>NONE_DERIVED <region u_av_calc> "facesum(-<u_f>*<facearea>,<region>)/facesum(<facearea>,<region>)" # calculate average velocity directed into the domain
+      <<cylindricalcomment>>NONE_DERIVED <region u_av_calc> "facesum(-<u_f>*<facearea>*<<radius_f>>,<region>)/facesum(<facearea>*<<radius_f>>,<region>)" # calculate average velocity directed into the domain
+
+    # this is the single equation that needs to be satisfied to set the average velocity of centreline pressure
+      NONE_EQUATION <region oneface flowrate equation> "<region u_av_calc>-<region u_av>" # set flowrate through region to give required average velocity
+    ELSE
+      FACE_EQUATION <region oneface flowrate equation> "<p_f>-<region p>" ON <region oneface> # set pressure at oneface to <region p>
+    END_IF
+
+  # and to do this we let another variable float (a function of pressure), but maintain this variable as uniform across the boundary to constrain the system
+    REPLACEMENTS D "<<boundarymethodvariable>>" W "dynamicforce"
+  # REPLACEMENTS D "<<boundarymethodvariable>>" W "celldivgrad"
+  # REPLACEMENTS D "<<boundarymethodvariable>>" W "facegrad"
+  # REPLACEMENTS D "<<boundarymethodvariable>>" W "p"
+
+    IF {{ return string_test("<<boundarymethodvariable>>","celldivgrad"); }}
+      <<dim1comment>> CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
+      <<dim2comment>> CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
+      <<dim3comment>> CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
+      NONE_DERIVED <region oneface gradp> "facesum(dot(<celldivgradp[l=:]>,<facenorm[l=:]>),region=<region oneface>)"
+      FACE_EQUATION <region flowrate equation> "dot(<celldivgradp[l=:]>,<facenorm[l=:]>)-<region oneface gradp>" ON <region sans oneface> # apply specified pressure over inlet
+    ELSE_IF {{ return string_test("<<boundarymethodvariable>>","dynamicforce"); }}
+      NONE_DERIVED <region oneface gradp> "facesum(<dynamic_force_f>,region=<region oneface>)"
+      FACE_EQUATION <region flowrate equation> "<dynamic_force_f>-<region oneface gradp>" ON <region sans oneface>
+    ELSE_IF {{ return string_test("<<boundarymethodvariable>>","facegrad"); }}
+      NONE_DERIVED <region oneface gradp> "facesum(facegrad(<p>),region=<region oneface>)"
+      FACE_EQUATION <region flowrate equation> "facegrad(<p>)-<region oneface gradp>" ON <region sans oneface>
+    ELSE_IF {{ return string_test("<<boundarymethodvariable>>","p"); }}
+      NONE_DERIVED <region oneface p> "facesum(<p_f>,region=<region oneface>)"
+      FACE_EQUATION <region flowrate equation> "<p_f>-<region oneface p>" ON <region sans oneface>
+    ELSE
+      ERROR "boundarymethodvariable not known in boundary_equations.arb: <<boundarymethodvariable>>"
+    END_IF
+
+  END_IF
 
 ELSE
   ERROR "boundarymethod not known in boundary_equations.arb: <<boundarymethod>>"
