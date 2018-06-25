@@ -40,7 +40,7 @@ This information is now basically hosted on our local gitlab server - this file 
 CURRENT VERSION:
 
 v0.59
-* pextrapolationrhiechow on boundaries
+* new boundary_equations template file as a one-stop shop for all types of boundaries, including a new rhiechow p extrapolation method
 * multifluid capability introduced, but needing more testing
 
 -------------------------------
