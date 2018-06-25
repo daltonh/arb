@@ -10,3 +10,8 @@ GENERAL_REPLACEMENTS D "<<stokescomment>>" W "#" D "<<navierstokescomment>>" W "
 # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
 GENERAL_REPLACEMENTS D "<<uniformviscositycomment>>" W "" D "<<nonuniformviscositycomment>>" W "#" D "<<uniformviscosity>>" W "1" 
 GENERAL_REPLACEMENTS D "<<uniformdensitycomment>>" W "" D "<<nonuniformdensitycomment>>" W "#" D "<<uniformdensity>>" W "1" 
+
+# previously pressure extrapolation on any walls was accomplished by setting <dynamic_force_f> to zero.  Other options are rhiechow and zeroperror
+GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zerodynamic"
+#GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zeroperror"
+#GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "rhiechow"

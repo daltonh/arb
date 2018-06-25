@@ -28,6 +28,7 @@ ELSE
 
 # now create equations
   CELL_EQUATION <continuity> "celldiv(<<radius_top>><u_f>)<<radius_bottom>>" ON <domain> # continuity
+
   {{ return vector_expand(
     '<<dim$lcomment>>CELL_EQUATION <momentum[l=$l]> "celldiv(<<radius_top>><J_f[l=$l]>)<<radius_bottom>>-<dynamic_force_c[l=$l]>" ON <domain> # momentum component'
     ) }}

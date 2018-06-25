@@ -1,0 +1,6 @@
+MARKDOWN
+This file provides all index etc information about the mesh elements, as well as indicators of mesh quality - ie, this is the most comprehensive one-stop mesh file
+END_MARKDOWN
+
+INCLUDE "element_information"
+INCLUDE "mesh_quality"

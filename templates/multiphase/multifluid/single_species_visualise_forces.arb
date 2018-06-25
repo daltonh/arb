@@ -1,0 +1,132 @@
+MARKDOWN
+Make some vectors to visualise the forces for each phase
+END_MARKDOWN
+
+# define cylindrical divergence modifier terms
+REPLACEMENTS R "<<radius_top>>" W "" R "<<radius_bottom>>" W ""
+IF <<cylindrical>>
+  REPLACEMENTS S "<<radius_top>>" W "<<radius_f>>*" S "<<radius_bottom>>" W "/<<radius_c>>"
+END_IF
+
+REPLACEMENTS D "<<buoyancy>>" W "0"
+
+# run through each of the dimensions and forces
+# at the same time assemble a list of the forces
+{{
+  my $return_string='';
+  my @force_list=(); # for convienience define this at the same time (redefine for each dimension, not efficient, but doesn't matter here)
+  for my $l (string_eval('<<dimensions>>','list')) {
+    @force_list=(); # clear force list
+# viscous
+    $return_string .= "CELL_LOCAL <force_vis_<<species>>[l=$l]> '(-celldiv(<<radius_top>>(<J_viscous_f_<<species>>[l=$l]>))<<radius_bottom>>)/<phi_bounded_<<species>>>' ON <domain>\n";
+    push(@force_list,'vis');
+# advection
+    if (string_test('<<navierstokescomment>>','')) {
+      $return_string .= "CELL_LOCAL <force_adv_<<species>>[l=$l]> '(-celldiv(<<radius_top>>(<J_advection_f_<<species>>[l=$l]>))<<radius_bottom>>)/<phi_bounded_<<species>>>' ON <domain>\n";
+      push(@force_list,'adv');
+    }
+# transient
+    if (string_test('<<transientnavierstokescomment>>','')) {
+#     $return_string .= "CELL_LOCAL <force_trans_<<species>>[l=$l]> '-(<rho_<<species>>>/<dt>)*(<u_<<species>>[l=$l]>-<phi_bounded_<<species>>[r=1]>*<u_<<species>>[r=1,l=$l]>/<phi_bounded_<<species>>>)' ON <domain>\n";
+      $return_string .= "CELL_LOCAL <force_trans_<<species>>[l=$l]> '-(<rho_<<species>>>/<dt>)*(<u_<<species>>[l=$l]>-<phi_pos_<<species>>[r=1]>*<u_<<species>>[r=1,l=$l]>/<phi_bounded_<<species>>>)' ON <domain>\n";
+      push(@force_list,'trans');
+      $return_string .= "CELL_LOCAL <force_trans_new_<<species>>[l=$l]> '-(<rho_<<species>>>/<dt>)*<u_<<species>>[l=$l]>' ON <domain>\n";
+      push(@force_list,'trans_new');
+#     $return_string .= "CELL_LOCAL <force_trans_old_<<species>>[l=$l]> '+(<rho_<<species>>>/<dt>)*(<phi_bounded_<<species>>[r=1]>*<u_<<species>>[r=1,l=$l]>/<phi_bounded_<<species>>>)' ON <domain>\n";
+      $return_string .= "CELL_LOCAL <force_trans_old_<<species>>[l=$l]> '+(<rho_<<species>>>/<dt>)*(<phi_pos_<<species>>[r=1]>*<u_<<species>>[r=1,l=$l]>/<phi_bounded_<<species>>>)' ON <domain>\n";
+      push(@force_list,'trans_old');
+    }
+# buoyancy
+    if (string_eval('<<buoyancy>>')) {
+      $return_string .= "CELL_LOCAL <force_grav_<<species>>[l=$l]> '-<rho_<<species>>>*<gravity[l=$l]>' ON <domain>\n";
+      push(@force_list,'grav');
+    }
+# fluid pressure
+    $return_string .= "CELL_LOCAL <force_pfluid_<<species>>[l=$l]> '-celldivgrad[l=$l](<p_f_species0>)' ON <domain>\n";
+    push(@force_list,'pfluid');
+# species pressure
+    if (string_test('<<species>>','species0')) {
+      $return_string .= "CELL_LOCAL <force_pspecies_<<species>>[l=$l]> '0.d0' ON <domain>\n";
+    } else {
+      $return_string .= "CELL_LOCAL <force_pspecies_<<species>>[l=$l]> '-celldivgrad[l=$l](<p_f_<<species>>>)/<phi_bounded_<<species>>>' ON <domain>\n";
+    }
+    push(@force_list,'pspecies');
+# drag
+    $return_string .= "CELL_LOCAL <force_drag_<<species>>[l=$l]> '0.d0' ON <domain>\n";
+    push(@force_list,'drag');
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      if ($species ne string_eval('<<species>>')) {
+        $return_string .= "CELL_LOCAL <force_drag_<<species>>[l=$l]> '<force_drag_<<species>>[l=$l]>-<beta*j_<<species>>_$species>*(<u_<<species>>[l=$l]>-<u_$species"."[l=$l]>)' ON <domain>\n";
+      }
+    }
+# residual or error
+    $return_string .= "CELL_LOCAL <force_error_<<species>>[l=$l]> '<momentum_<<species>>[l=$l]>' ON <domain>\n";
+    push(@force_list,'error');
+  }
+
+# now run through calculating a maximum magnitude for each of the forces, and a maximum of all of these
+  $return_string .= "NONE_OUTPUT <force_maximum_magnitude_<<species>>> '0.d0'\n";
+  for my $force (@force_list) {
+    $return_string .= "NONE_LOCAL <force_$force"."_magnitude_<<species>>> 'cellmax(sqrt(dot(<force_$force"."_<<species>>[l=:]>,<force_$force"."_<<species>>[l=:]>)),region=<domain>)'\n";
+    if ($force =~ /^trans_/) { next; }
+    $return_string .= "NONE_OUTPUT <force_maximum_magnitude_<<species>>> 'nonemax(<force_$force"."_magnitude_<<species>>>,<force_maximum_magnitude_<<species>>>)'\n";
+  }
+
+# now calculate normalised forces
+  foreach my $force (@force_list) {
+    for my $l (string_eval('<<dimensions>>','list')) {
+      $return_string .= "CELL_OUTPUT <forcen_$force"."_<<species>>[l=$l]> '<force_$force"."_<<species>>[l=$l]>/<force_maximum_magnitude_<<species>>>' ON <domain>\n";
+    }
+  }
+
+# calculate a sum of forces as a check
+  if (1) {
+    for my $l (string_eval('<<dimensions>>','list')) {
+      $return_string .= "CELL_OUTPUT <forcen_sum_<<species>>[l=$l]> '0.d0' ON <domain>\n";
+      foreach my $force (@force_list) {
+        if ($force =~ /^trans_/) { next; }
+        $return_string .= "CELL_OUTPUT <forcen_sum_<<species>>[l=$l]> '<forcen_sum_<<species>>[l=$l]>+(<forcen_$force"."_<<species>>[l=$l]>)'\n";
+      }
+    }
+  }
+
+  return $return_string;
+}}
+
+
+SKIP
+TODO
+
+IF {{ string_test('<<species>>','species0') }}
+  ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
+END_IF
+
+# calculate kappa*, which only has one value for each combination of species, define with the lower index coming first
+IF 1 # stokes drag
+  CELL_DERIVED <kappa*_species0_<<species>>> "2.d0*<a_<<species>>>^2/9.d0" ON <allcells>
+ELSE
+  ERROR "no other permeabilities coded up yet"
+END_IF
+
+#REPLACEMENTS R "bounded" W "pos"
+CELL_DERIVED <beta**_species0_<<species>>> "<mu_species0>*<phi_bounded_species0>/<kappa*_species0_<<species>>>" ON <allcells>
+CELL_LOCAL <beta**_<<species>>_species0> "<beta**_species0_<<species>>>" ON <allcells>
+CELL_DERIVED <beta*i_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_species0>" ON <allcells>
+CELL_LOCAL <beta*j_<<species>>_species0> "<beta*i_species0_<<species>>>" ON <allcells>
+CELL_DERIVED <beta*j_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
+CELL_LOCAL <beta*i_<<species>>_species0> "<beta*j_species0_<<species>>>" ON <allcells>
+CELL_DERIVED <beta_species0_<<species>>> "<beta*i_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
+CELL_LOCAL <beta_<<species>>_species0> "<beta_species0_<<species>>>" ON <allcells>
+
+IF 0
+  FACE_DERIVED <beta*i_f_<<species>>_species0> "faceave(<beta*i_<<species>>_species0>)" ON <allfaces>
+  FACE_LOCAL <beta*j_f_species0_<<species>>> "<beta*i_f_<<species>>_species0>" ON <allfaces>
+  FACE_DERIVED <beta*i_f_species0_<<species>>> "faceave(<beta*i_species0_<<species>>>)" ON <allfaces>
+  FACE_LOCAL <beta*j_f_<<species>>_species0> "<beta*i_f_species0_<<species>>>" ON <allfaces>
+ELSE
+  FACE_DERIVED <beta*i_f_<<species>>_species0> "faceave[adjacentcells](<beta*i_<<species>>_species0>)" ON <allfaces>
+  FACE_LOCAL <beta*j_f_species0_<<species>>> "<beta*i_f_<<species>>_species0>" ON <allfaces>
+  FACE_DERIVED <beta*i_f_species0_<<species>>> "faceave[adjacentcells](<beta*i_species0_<<species>>>)" ON <allfaces>
+  FACE_LOCAL <beta*j_f_<<species>>_species0> "<beta*i_f_species0_<<species>>>" ON <allfaces>
+END_IF
+END_SKIP

@@ -1,3 +1,0 @@
-# here including both diffusive and steric components
-CELL_DERIVED <Pi_sum_s> "<Pi_diffusive_s>+<Pi_steric_s>" ON <allcells> # the total osmotic pressure on the platelets
-CELL_DERIVED <p_tot> "<p>+<Pi_sum_s>" ON <allcells> output,elementdata # total mixture pressure, using in the dynamic forces

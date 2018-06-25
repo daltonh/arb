@@ -25,6 +25,7 @@ lser
 
 # any tmp files or directories created by scripts
 tmp.*
+grepper
 
 # ignore any code_scraps or resources directories completely
 code_scraps/

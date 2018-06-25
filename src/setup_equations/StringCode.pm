@@ -111,7 +111,7 @@ sub string_option {
 # deletes a string
 # on input
 #  $_[0] = string name (can be an list of strings, but in this case options must be set, possibly to the empty string)
-#  $_[$#_] = options, passed to string_search (ie global, noglobal and local)
+#  $_[$#_] = options, passed to string_search (ie global, noglobal and local, suffix|prefix removes the equivalent stripped variable name, as defined in string_set)
 # on output
 #  $_[0] = unchanged
 sub string_delete {
@@ -121,6 +121,17 @@ sub string_delete {
     $options = pop(@names); # pop off these options
   };
   foreach my $name ( reverse( @names ) ) {
+
+# change strings if we are requesting either a prefix or suffix
+    if ($options =~ /(^|,|\s)prefix|suffix($|,|\s)/) {
+      if ($name =~ /^(<.*\[).*\]>$/) {
+        $name = $1;
+      } elsif ($name =~ /^(<.*>)$/) {
+        $name = $1;
+      }
+      print ::DEBUG "INFO: in string_delete, having dealt with suffix/prefix options: name = $name\n";
+    }
+
     my ($code_block_found,$string_variable_found) = string_search($name,$options);
     if ($code_block_found == -1) {
       syntax_problem("string variable $name not found during string_delete: $ReadInputFiles::filelinelocator","warning");
@@ -158,13 +169,87 @@ sub string_eval {
     return ''; # return empty string if the variable doesn't exist
     
   } else {
-    if ($options =~ /(^|,)list($|,)/) {
-      return split(/,/,$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
+    if ($options =~ /(^|,)((commaseparated|spaceseparated|variable|region|)list)($|,)/) {
+      my $option = $2;
+      return string_split($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"},$option);
+
+#     my @string_eval_array=();
+#     my $string_text=$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+#     print "STRING TEXT: $string_text\n";
+#     while ($string_text) {
+#       print "STRING TEXT IN LOOP: $string_text\n";
+#       $string_text =~ s/^\s*,\s*//g;
+#       my ($string_bit,$error) = extract_first($string_text);
+#       print "A: string_bit = $string_bit: error = $error\n";
+#       if (!($error)) {
+#         push(@string_eval_array,$string_bit);
+#       }
+#     }
+#     print "RETURNED LIST = @string_eval_array\n";
+#     return @string_eval_array;
+
+#     return split(/,/,$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
     } else {
       return $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
     }
   }
   
+}
+#-------------------------------------------------------------------------------
+# splits a string that is a list into an array of elements, with type of list determined by options
+# regardless of comma, space or variable item delimiting, quoting with " or ' also works to preserve items
+# input:
+# $_[0]: string to split
+# $_[1]: options, optional:
+#  list|commaseparatedlist: items are separated by commas
+#  spaceseparatedlist: items are separated by spaces
+#  variablelist|regionlist: list of these items, ie, delimited by < and > and spaces
+# output:
+# $_[0]: unchanged
+# returns list of elements contained within string
+sub string_split {
+  my $string = $_[0];
+  my $ostring = $string;
+  my $options = '';
+  my $debug=1;
+  if (defined($_[1])) { $options = $_[1]; }
+  my @elements = (); # this is what will be passed out
+  my $element_delimiter=" "; # default element delimiter is a space
+  if ($options =~ /(^|,)(commaseparated|)list($|,)/) { $element_delimiter = ","; }
+
+  if ($debug) { print ::DEBUG "STRING_SPLIT: entering with: string = $string: options = $options\n"; }
+  while ($string) {
+    $string =~ s/^\s*//; # remove leading spaces using greedy match
+    if ($debug) { print ::DEBUG "STRING_SPLIT: after space clear, start of loop: string = $string: elements = @elements\n"; }
+    if ($string =~ /^(["'])/) {
+      my $delimiter = $1;
+      if ($string =~ /^$delimiter(.*?)$delimiter\s*($element_delimiter|$)/) {
+        $string = $';
+        push(@elements,$1);
+      } else {
+        error_stop("problem with delimiting of string_split $ostring: $ReadInputFiles::filelinelocator");
+      }
+    } elsif ($options =~ /(^|,)(variable|region)list($|,)/) {
+      if ($string =~ /^(<.*?>)\s*($element_delimiter|$)/) {
+        $string = $';
+        push(@elements,$1);
+      } else {
+        error_stop("problem with delimiting of string_split $ostring: $ReadInputFiles::filelinelocator");
+      }
+    } else {
+      if ($string =~ /^(.*?)\s*($element_delimiter|$)/) {
+        $string = $';
+        push(@elements,$1);
+      } else {
+        error_stop("problem with delimiting of string_split $ostring: $ReadInputFiles::filelinelocator");
+      }
+    }
+    if ($debug) { print ::DEBUG "STRING_SPLIT: at end of loop: string = $string: elements = @elements\n"; }
+  }
+  if ($debug) { print ::DEBUG "STRING_SPLIT: exiting with: string = $string: elements = @elements\n"; }
+
+  return @elements;
+
 }
 #-------------------------------------------------------------------------------
 # tests whether a string variable is equal to a particular test string, returning '1' or ''
@@ -265,6 +350,7 @@ sub tensor_expand {
 #          - search is done over all code blocks (including the global one)
 #          - global and default options don't make sense here
 #    - global: set the string in the root code_blocks ($ReadInputFiles::code_blocks[0]) so that it is available even after the current block has closed - ie, globally
+#    - suffix|prefix: create a string replacement that will change the variable|region names in this manner, dealing with presence of [l=:etc] brackets
 
 # on entry if number of arguments is:
 # 1 -> name of string
@@ -289,7 +375,7 @@ sub string_set {
 # check validity of options
   my $options_save = $options;
   while (nonempty($options)) {
-    if ($options =~ /^\s*((no|)replace|default|global|substitute|)\s*(,|$)/) {
+    if ($options =~ /^\s*((no|)replace|default|global|substitute|suffix|prefix|)\s*(,|$)/) { # note trailing | to match just the delimiter
       $options = $';
     } else {
       syntax_problem("unknown string within string_set options of $options: $ReadInputFiles::filelinelocator");
@@ -311,6 +397,33 @@ sub string_set {
 # see if string already exists, either in all code_blocks, or in code_blocks[0] for global
 
     print ::DEBUG "INFO: in string_set, dealing with: name = $name_value_pairs[0]: value = $name_value_pairs[1]\n";
+
+# change strings if we are requesting either a prefix or suffix
+    if ($options =~ /(^|,|\s)prefix|suffix($|,|\s)/) {
+      if ($options =~ /(^|,|\s)prefix($|,|\s)/) {
+        if ($name_value_pairs[0] =~ /^(<(.*\[)).*\]>$/) {
+          $name_value_pairs[0] = $1;
+          $name_value_pairs[1] = "<".$name_value_pairs[1].$2;
+        } elsif ($name_value_pairs[0] =~ /^(<(.*>))$/) {
+          $name_value_pairs[0] = $1;
+          $name_value_pairs[1] = "<".$name_value_pairs[1].$2;
+        } else {
+          $name_value_pairs[1] = "$name_value_pairs[1]$name_value_pairs[0]";
+        }
+      } else {
+        if ($name_value_pairs[0] =~ /^((<.*)\[).*\]>$/) {
+          $name_value_pairs[0] = $1;
+          $name_value_pairs[1] = $2.$name_value_pairs[1]."[";
+        } elsif ($name_value_pairs[0] =~ /^((<.*)>)$/) {
+          $name_value_pairs[0] = $1;
+          $name_value_pairs[1] = $2.$name_value_pairs[1].">";
+        } else {
+          $name_value_pairs[1] = "$name_value_pairs[0]$name_value_pairs[1]";
+        }
+      }
+      print ::DEBUG "INFO: in string_set, having dealt with suffix/prefix options: name = $name_value_pairs[0]: value = $name_value_pairs[1]\n";
+
+    }
 
 # first deal with default option
     if ($options =~ /(^|,|\s)default($|,|\s)/) { # if string is found and default option is on, we are done
@@ -501,6 +614,7 @@ sub string_examine {
 #-------------------------------------------------------------------------------
 # prints out a formatted list of the string replacements
 # first argument is list of options, including the string search ones of global, noglobal and local
+# use it in arb code as eg print string_debug;
 
 sub string_debug {
   
@@ -521,9 +635,6 @@ sub string_debug {
     $code_block_lower = 1;
   }
     
-  my $string_variable_found = -1; # on output returns -1 if not found, or string_variables index if found
-  my $code_block_found = -1; # on output returns -1 if not found, or code_blocks index if found
-
   CODE_BLOCK_LOOP: for my $m ( reverse( $code_block_lower .. $code_block_upper ) ) {
     if ($m eq 0) { $debug_output .= "Global "; }
     if ($m eq $#ReadInputFiles::code_blocks) { $debug_output = $debug_output."Local "; }

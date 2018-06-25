@@ -1,0 +1,35 @@
+MARKDOWN
+Here we find <mu_f_species> for each species
+END_MARKDOWN
+
+REPLACEMENTS D "<<viscosity_method>>" W "einstein"
+
+IF 1 # better split
+  IF {{ string_test('<<species>>','species0') }}
+    CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*<phi_lim_<<species>>>*<mu_correction_<<species>>>" ON <allcells>
+  ELSE
+    CELL_DERIVED <mu_c_<<species>>> [Pa.s] "3.5d0*<mu_species0>*<phi_lim_<<species>>>*<mu_correction_<<species>>>" ON <allcells>
+  END_IF
+ELSE_IF 0 # einstein viscosity, generalised, I think..
+  IF {{ string_test('<<species>>','species0') }}
+    CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>" ON <allcells>
+  ELSE
+    CELL_DERIVED <mu_c_<<species>>> [Pa.s] "2.5d0*<mu_species0>*<phi_lim_<<species>>>" ON <allcells>
+  END_IF
+ELSE
+  ERROR "no other viscosity coded up yet"
+END_IF
+
+# different functions specified through these correction factors
+IF {{string_test('<<viscosity_method>>','thomas')}}
+  IF {{ string_test('<<species>>','species0') }}
+    CELL_LOCAL <mu_correction_<<species>>> "1"
+  ELSE
+    CELL_LOCAL <mu_correction_<<species>>> "10.05d0*<phi_bounded_<<species>>>+0.00273d0*exp(16.6d0*<phi_bounded_<<species>>>)/<phi_lim_<<species>>>"
+  END_IF
+ELSE
+# default is einstein's dilute result
+  CELL_LOCAL <mu_correction_<<species>>> "1"
+END_IF
+
+FACE_DERIVED <mu_f_<<species>>> "faceave(<mu_c_<<species>>>)" ON <allfaces>

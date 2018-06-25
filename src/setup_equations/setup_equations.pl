@@ -63,7 +63,7 @@ use ReadInputFiles; # deals with reading the input files, including sub read_inp
 
 # set global variables that can be accessed from the local packages
 # our is used so that other packages can access these variables
-our $version="0.58";
+our $version="0.59";
 our $minimum_version="0.40";
 
 # now called from build directory and sent these three directories
@@ -2396,6 +2396,16 @@ sub mequation_interpolation {
 
 # #         $inbit[$nbits] = "(faceave[upcell]($inbit[$nbits])*$dxdown+faceave[downcell]($inbit[$nbits])*$dxup)/($dxup+$dxdown)";
 # #         create_someloop($inbit[$nbits],"sum","face","<noloop>",$deriv,$otype,$omvar);
+
+# adjacentdomaincells
+# same as adjacentcells, except on boundaries where it becomes downcell
+#       } elsif ($options && ( $options =~ /(^|\,)\s*adjacentdomaincells\s*(\,|$)/ )) {
+
+# remove the adjacentdomaincells option so that we can add any remaining options back to averaging operators
+#         $options =~ s/(^|\,)\s*adjacentdomaincells\s*(\,|$)/,/;
+#         
+#         $inbit[$nbits] = "faceif(facedelta(region=<boundaries>),faceave[downcell,$options]($expression),faceave[adjacentcells,$options]($expression))";
+#         die "adjacentdomaincells is broken\n";
 
 # average based on adjacent cells only, no weighting
         } elsif ($options && ( $options =~ /(^|\,)\s*adjacentcellsevenweighting\s*(\,|$)/ )) {

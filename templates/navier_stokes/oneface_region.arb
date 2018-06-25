@@ -1,0 +1,8 @@
+MARKDOWN
+Here we define two subregions of <region>, one being a single face (<region oneface>) and the remainder as <region sand oneface>, mainly for the use in setting inidividual equations on boundaries
+
+Call with a replacement to '<region' to specify where it is applied, as in '<inlet', '<outlet' or '<wall'.  Also can call with 'oneface' replaced by 'centreline' for inlet and outlet ports.
+END_MARKDOWN
+
+FACE_REGION <region oneface> "at(0.d0,0.d0,0.d0)" ON <region> # default single cell is chosen closest to the origin
+FACE_REGION <region sans oneface> "compound(<region>-<region oneface>)" ON <region>

@@ -25,6 +25,9 @@ INCLUDE "default_string_replacements"
 
 # use the following to specify nonuniform density
 #GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W "" R "<<uniformdensity>>" W "0"
+
+# use the following to implement rhie-chow type pressure interpolation on the walls and at fully-developed ports (default is off)
+#GENERAL_REPLACEMENTS R "<<pextrapolationrhiechow>>" W "1"
 #-------------
 
 # numerical data

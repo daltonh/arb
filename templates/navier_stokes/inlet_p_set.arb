@@ -1,5 +1,1 @@
-# boundary conditions on inlet - fully developed flow
-INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
-INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"
-
-FACE_EQUATION <inlet flowrate equation> "<p_f>-<p_in>" ON <inlet> # specified pressure
+INCLUDE "inlet_equations.arb" R "<<boundarymethod>>" W "pressure" R "<<boundarytangentmethod>>" W "noslip" R "<<boundarynormalmethod>>" W "zerogradu"

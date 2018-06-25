@@ -92,13 +92,13 @@ sub read_input_files {
   my $comments = ''; # additional comments that are found while buffer is being formed
   my $buffer_offset = 0; # leading offset to apply when performing searches on buffer
     
-  my $debug = 0; # set to true to get extra debugging information within the debug file from this routine
+  my $debug = 1; # set to true to get extra debugging information within the debug file from this routine
 
 #----------------------------------------------------------------------------
   while (@code_blocks) { # we keep forming the buffer and parsing the code until all code blocks are destroyed, noting that new files, block, if statements each create new code_blocks
 
     if ($debug) {
-      print ::DEBUG "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nINFO: start of code_blocks loop:\n #code_blocks = $#code_blocks:\n solver_code = $solver_code:\n buffer = $buffer:\n buffer_offset = $buffer_offset:\n code_type = $code_type:\n skip = $code_blocks[$#code_blocks]{skip}:\n comments = $comments\n filelinelocator = $filelinelocator\n++++++\n";
+      print ::DEBUG "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nINFO: start of code_blocks loop:\n #code_blocks = $#code_blocks:\n solver_code = $solver_code:\n buffer = $buffer:\n buffer_offset = $buffer_offset:\n code_type = $code_type:\n skip = $code_blocks[$#code_blocks]{skip}:\n if = $code_blocks[$#code_blocks]{if}::\n comments = $comments\n filelinelocator = $filelinelocator\n++++++\n";
     } else {
       print ::DEBUG "INFO: start of code_blocks loop: solver_code = $solver_code: buffer = $buffer: $filelinelocator\n";
     }
@@ -118,7 +118,7 @@ sub read_input_files {
       }
 
 #-----------------------------
-# we were in string code, but have now found a closing string code delimiter }}, so split buffer accordingly and process string code
+# we were in string code, but have now found a closing string code delimiter }}, so split buffer accordingly and process string code if required
     } elsif ($code_type eq "string" && $buffer =~ /(\}\})/i) {
 
       print ::DEBUG "  INFO: found string code closing in buffer\n";
@@ -319,7 +319,7 @@ sub read_input_files {
 
     if ($debug) {
       if (@code_blocks) {
-        print ::DEBUG "------\nINFO: end of code_blocks loop:\n #code_blocks = $#code_blocks:\n solver_code = $solver_code:\n buffer = $buffer:\n buffer_offset = $buffer_offset:\n code_type = $code_type:\n skip = $code_blocks[$#code_blocks]{skip}:\n comments = $comments\n filelinelocator = $filelinelocator\n".
+        print ::DEBUG "------\nINFO: end of code_blocks loop:\n #code_blocks = $#code_blocks:\n solver_code = $solver_code:\n buffer = $buffer:\n buffer_offset = $buffer_offset:\n code_type = $code_type:\n skip = $code_blocks[$#code_blocks]{skip}:\n if = $code_blocks[$#code_blocks]{if}:\n comments = $comments\n filelinelocator = $filelinelocator\n".
         "----------------------------------------------------------------------\n";
       } else {
         print ::DEBUG "INFO: code_blocks loop finished\n";

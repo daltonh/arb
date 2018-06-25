@@ -1,0 +1,27 @@
+MARKDOWN
+Include the weight body force in each of the equations, similar to the vof template
+END_MARKDOWN
+
+GENERAL_REPLACEMENTS R "<<buoyancy>>" W "1" # set this flag to be used in single_species_visualise_forces
+
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+
+# add buoyancy to cell centred force
+    for my $l (string_eval('<<dimensions>>','list')) {
+      $return_string .= "VARIABLE <dynamic_force_c_$species"."[l=$l]> '<dynamic_force_c_$species"."[l=$l]>+<gravity[l=$l]>*<rho_$species>'\n";
+    }
+
+# add buoyancy to face centred force, depending on 
+    if (string_test('<<dynamicforcefmethod>>','dxunit')) {
+      $return_string .= "VARIABLE <dynamic_force_f_$species> '<dynamic_force_f_$species>+dot(<gravity[l=:]>,<facedxunit[l=:]>)*<rho_$species>'\n"
+    } elsif (string_test('<<dynamicforcefmethod>>','facegrad') || string_test('<<dynamicforcefmethod>>','facegradadjacentcells')) {
+      $return_string .= "VARIABLE <dynamic_force_f_$species> '<dynamic_force_f_$species>+dot(<gravity[l=:]>,<facenorm[l=:]>)*<rho_$species>'\n"
+    } else {
+      $return_string .= "ERROR 'problem with <<dynamicforcefmethod>> in multifluid/buoyancy_dynamic_force template file\n";
+    }
+
+  }
+  return $return_string;
+}}

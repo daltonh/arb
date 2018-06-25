@@ -1,0 +1,15 @@
+MARKDOWN
+Here we find <p_species> for each disperse phase species
+END_MARKDOWN
+
+# start with linear osmotic pressure, dilute assumption
+NONE_CONSTANT <p_osmotic_gradient_<<species>>> [Pa] "<k_boltzmann>*<T>/<V_<<species>>>" # this can be atmost a function of <phi_lim_<<species>>>
+IF 1 # Carnahan and Starling
+  CELL_LOCAL <phi_upperbounded_<<species>>> "cellmin(<phi_pos_<<species>>>,1.d0-<phi_tol>)" ON <allcells>
+  CELL_DERIVED <p_osmotic_gradient_<<species>>> [Pa] "<p_osmotic_gradient_<<species>>>*(1.d0+<phi_upperbounded_<<species>>>+<phi_upperbounded_<<species>>>^2-<phi_upperbounded_<<species>>>^3)/((1.d0-<phi_upperbounded_<<species>>>)^3)" ON <allcells>
+ELSE
+  ERROR "no other osmotic pressure coded up yet"
+END_IF
+
+CELL_DERIVED <p_<<species>>> "<p_osmotic_gradient_<<species>>>*<phi_<<species>>>" ON <allcells> # note that phi here isn't limited
+FACE_DERIVED <p_f_<<species>>> "faceave(<p_<<species>>>)" ON <allfaces>

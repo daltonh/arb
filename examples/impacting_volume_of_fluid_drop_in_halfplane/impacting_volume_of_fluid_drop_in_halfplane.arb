@@ -5,7 +5,7 @@
 #
 #-------------------------------------------------------------------
 # file equations.in
-VERSION 0.55
+VERSION 0.58
 
 # the following strings describe the simulation and are passed to the output files
 INFO_TITLE "Impacting vof droplet"
@@ -246,9 +246,8 @@ VARIABLE <vof_phi_adjust[r=1]> output
 
 #-------------------------------------------------------------------
 # numerical options
-NEWTSTEPMAX 100
-NEWTSTEPDEBUGOUT 90
+GENERAL_OPTIONS newtstepmax=100,newtstepdebugout=90
 # for test simulation just do a few timesteps
-TIMESTEPOUT 2
-TIMESTEPMAX 4 # just compute the first 5 timesteps for this trial simulation
+# just compute the first 5 timesteps for this trial simulation
+GENERAL_OPTIONS timestepout=2,timestepmax=4
 #-------------------------------------------------------------------
