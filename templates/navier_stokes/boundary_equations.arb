@@ -12,7 +12,7 @@ END_MARKDOWN
 
 # First equation is a constraint on normal velocity gradient normal to the boundary
 REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradu" # by default grad{u}:nn = 0
-#REPLACEMENTS D "<<boundarynormalmethod>>" W "rhiechow" # a rhie-chow type calculation is used to relate the velocity normal to the boundary and at the boundary to the velocity just inside the domain (<<boundarynormalmethod=rhiechow)
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "rhiechow" # a rhie-chow type calculation is used to relate the velocity normal to the boundary and at the boundary to the velocity just inside the domain (<<boundarynormalmethod>>=rhiechow)
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerodynamic"
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradp"
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "zeroperror"
@@ -42,12 +42,15 @@ ELSE
 END_IF
 
 # Third equation is a constraint on the velocity or pressure value at the boundary
-REPLACEMENTS D "<<boundarymethod>>" W "flowrate" # set average velocity (flowrate) to <region u_av>
-#REPLACEMENTS D "<<boundarymethod>>" W "onefacepressure" # set pressure on oneface to <region p>
-#REPLACEMENTS D "<<boundarymethod>>" W "pressure" # set uniform pressure to <region p>
-#REPLACEMENTS D "<<boundarymethod>>" W "velocity" # set uniform velocity to <region u_av>
-#REPLACEMENTS D "<<boundarymethod>>" W "noflux" # set uniform velocity to 0. across the entire region
-#REPLACEMENTS D "<<boundarymethod>>" W "nofluxpset" # set uniform velocity to 0. across the entire region, except for <region oneface>, which has p set to zero
+# the first three all specify uniform conditions across the boundary:
+#REPLACEMENTS D "<<boundarymethod>>" W "pressure" # set pressure to <p_f>=<region p> everywhere along the boundary (ie, uniform specified pressure)
+#REPLACEMENTS D "<<boundarymethod>>" W "velocity" # set velocity to <u_f>=<region u_av> everywhere along the boundary (ie, uniform specified velocity)
+#REPLACEMENTS D "<<boundarymethod>>" W "noflux" # set velocity to 0. everywhere along the boundary, which is equivalent to <<boundarymethod>>="velocity" with <region u_av> = 0.d0 (ie, <u_f>=0.d0)
+# all of the remaining methods require a single face within the region to be special cased:
+#REPLACEMENTS D "<<boundarymethod>>" W "nofluxpset" # set uniform velocity to 0. across the entire region, except for <region oneface>, which has p set to zero - used for walls within a simulation that otherwise has not absolute pressure value set due to (eg) no inlet or outlet ports
+# the following two methods set whatever the <<boundarymethodvariable>> is to be uniform across the boundary (actually all sans faces are set to oneface), in addition to the following extra condition (so these use <<boundarymethodvariable>>, defaulting to <dynamic_force_f>)
+REPLACEMENTS D "<<boundarymethod>>" W "flowrate" # set average velocity (flowrate) to <region u_av> (as well as a uniform <<boundarymethodvariable over the boundary)
+#REPLACEMENTS D "<<boundarymethod>>" W "onefacepressure" # set pressure on oneface to <region p>  (as well as a uniform <<boundarymethodvariable over the boundary) - not really sure why you'd want this??
 
 IF {{ return string_test("<<boundarymethod>>","pressure"); }}
 
@@ -71,13 +74,13 @@ ELSE_IF  {{ return ( string_test("<<boundarymethod>>","flowrate") || string_test
     INCLUDE "oneface_region"
   END_IF
 
-  IF  {{ return ( string_test("<<boundarymethod>>","nofluxpset"); }} 
+  IF {{ return ( string_test("<<boundarymethod>>","nofluxpset") ); }} 
 
     FACE_EQUATION <region flowrate equation> "<u_f>" ON <region sans oneface> # zero velocity on most of the region
     FACE_EQUATION <region oneface flowrate equation> "<p_f>" ON <region oneface>
 
   ELSE
-    IF  {{ return string_test("<<boundarymethod>>","flowrate"); }}
+    IF {{ return string_test("<<boundarymethod>>","flowrate"); }}
   # for a specified flowrate, set some function of pressure to give the required average velocity (ie, a flowrate)
   # to do this we need to calculate what the average velocity through the boundary is (positive into the domain here)
       <<cartesiancomment>>NONE_DERIVED <region u_av_calc> "facesum(-<u_f>*<facearea>,<region>)/facesum(<facearea>,<region>)" # calculate average velocity directed into the domain
@@ -85,8 +88,10 @@ ELSE_IF  {{ return ( string_test("<<boundarymethod>>","flowrate") || string_test
 
     # this is the single equation that needs to be satisfied to set the average velocity of centreline pressure
       NONE_EQUATION <region oneface flowrate equation> "<region u_av_calc>-<region u_av>" # set flowrate through region to give required average velocity
-    ELSE
+    ELSE_IF {{ return string_test("<<boundarymethod>>","onefacepressure"); }}
       FACE_EQUATION <region oneface flowrate equation> "<p_f>-<region p>" ON <region oneface> # set pressure at oneface to <region p>
+    ELSE
+      ERROR "boundarymethod not known in boundary_equations.arb: <<boundarymethod>>"
     END_IF
 
   # and to do this we let another variable float (a function of pressure), but maintain this variable as uniform across the boundary to constrain the system
