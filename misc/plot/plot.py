@@ -46,7 +46,7 @@ try:
 except:
     pass
 
-old_matplotlib_version = True
+old_matplotlib_version = False
 running_matplotlib_version = LooseVersion(matplotlib.__version__)
 old_matplotlib_version_threshold = "1.5"
 if running_matplotlib_version < old_matplotlib_version_threshold:

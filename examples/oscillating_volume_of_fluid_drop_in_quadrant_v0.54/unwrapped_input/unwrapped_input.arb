@@ -97,10 +97,15 @@ EXTERNALS "/home/daltonh/arb/testsuite/arb_master/src/free_surface_functions.f90
    #INCLUDE "fluid_replacements"
    
    # setup basic cylindrical general replacements by including the following two lines
-   #INCLUDE_TEMPLATE "general"
-   #INCLUDE "cylindrical_reflect_r1z2"
-   # these statements only necessary in cartesian as already included in above files, but GENERAL_REPLACEMENT statements can't be commented out by other strings, so just repeat them
-   # comment out any references to the third dimension in any included files
+   #INCLUDE_TEMPLATE "general/cylindrical_reflect_r1z2"
+      #(comment created during unwrap): new block = ../../templates/general/cartesian_x1y2.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cartesian_x1y2"
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)sets general replacements for cartesian 2D coordinates in the xy plane
+      #(hash inserted during unwrap)END_MARKDOWN
+      
+      
+      
    
    # include this for both cylindrical and cartesian when using a quadrant
    

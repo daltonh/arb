@@ -13,7 +13,8 @@ ubuntu_version=`lsb_release -sr`;
 echo "INFO: ubuntu_version = $ubuntu_version"
 
 # basic arb dependencies
-apt-get install maxima maxima-share gfortran liblapack-dev libblas-dev curl gnuplot valgrind libsuitesparse-dev libdata-alias-perl
+apt-get install maxima maxima-share gfortran liblapack-dev libblas-dev curl gnuplot valgrind libsuitesparse-dev
+# libdata-alias-perl no longer needed
 
 # not sure if also need libumfpack5.4.0 - test on new machine
 
@@ -35,5 +36,4 @@ pip install --upgrade pandas
 pip install --upgrade numexpr
 pip install cycler
 
-#echo "INFO: you may now want to install the free suitesparse linear solver umfpack fortran 90 wrapper routine.  If so, cd src/contributed/suitesparse and type make";
-echo "INFO: you could now add the arb/bin directory to your path using one of the include_path.*sh scripts";
+echo "INFO: you can now add the arb/bin directory to your path and make alternative linear solvers using the include_globally.sh script";

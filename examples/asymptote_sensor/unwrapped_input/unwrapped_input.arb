@@ -97,7 +97,7 @@ EXTERNALS "/home/daltonh/arb/testsuite/arb_master/src/free_surface_functions.f90
       NONE_TRANSIENT <z_asymptote_mean[r=1]> "0.d0" "<z_asymptote_mean>"
       NONE_DERIVED <z_asymptote_measure> "abs(noneif(<z_asymptote_check>,noneif(<z_asymptote_mean[r=0]>,<z_asymptote_mean[r=1]>/<z_asymptote_mean[r=0]>,2.d0),0.d0)-1.d0)" #ratio of means; <asymptote_mean[r=1]> is the mean over the period {<timestep>-2N-1 to <timestep>-N-1}, <asymptote_mean[r=0]> is the mean over the period {<timestep>-N-1 to <timestep>-1}; where N is the bin width
       NONE_CONSTANT <z_asymptote_tolerance> 0.01 stepoutput #how close must <asymptote_mean[r=1]>/<asymptote_mean[r=0]> be to 1.0 in order to cause a sign change in <asymptote_expression>
-      NONE_CONDITION <z_asymptote_expression> "<z_asymptote_tolerance>-<z_asymptote_measure>"
+      NONE_CONDITION <z_asymptote_expression> "<z_asymptote_tolerance>-<z_asymptote_measure>" stopcondition # stop condition added for v0.58, not sure if this was what was wanted
       
       # track the minimum of <asymptote_measure>
       #INCLUDE "series_nonemin" R "<var_tracked>" W "<asymptote_measure>" R "<var" W "<asymptote_measure"

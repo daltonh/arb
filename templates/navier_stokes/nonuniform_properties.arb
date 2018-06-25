@@ -1,6 +1,3 @@
 # call this file before constants to specify nonuniform properties
-GENERAL_REPLACEMENTS R "<<uniformviscositycomment>>" W "#" R "<<nonuniformviscositycomment>>" W ""
-GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W ""
-# these are really just placeholders, and more accurate expressions should be used
-FACE_LOCAL <rho_f> "<rho>" ON <allfaces>
-FACE_LOCAL <mu_f> "<mu>" ON <allfaces>
+INCLUDE "nonuniform_viscosity"
+INCLUDE "nonuniform_density"

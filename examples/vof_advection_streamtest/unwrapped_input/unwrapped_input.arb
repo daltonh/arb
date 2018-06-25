@@ -25,7 +25,14 @@ EXTERNALS "/home/daltonh/arb/testsuite/arb_master/src/free_surface_functions.f90
    
    #KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2,polynomialcellorder=2
    
-   # comment out any references to the third dimension in any included files
+      #(comment created during unwrap): new block = ../../templates/general/cartesian_x1y2.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cartesian_x1y2" # comment out any references to the third dimension and set the <<dimensions>> list, used in the template files
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)sets general replacements for cartesian 2D coordinates in the xy plane
+      #(hash inserted during unwrap)END_MARKDOWN
+      
+      
+      
    
    TIMESTEPMAX 5 # just compute 5 timesteps
    

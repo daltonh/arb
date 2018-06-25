@@ -24,7 +24,7 @@ CONSTANT <MW_APC>   [kDa]  56.2d0
 CONSTANT <MW_ATIII> [kDa]  58.0d0
 CONSTANT <MW_TFPI>  [kDa]  34.0d0
 
-INCLUDE_LOCAL "reactions.arb" R "<<speciesloworderadvection>>" W "" R "<<specieshighorderadvection>>" W "#" R "<<zeroinitialvolumeconcentrationsflag>>" W "1" R <<calculatediffusivities>> W ""
+INCLUDE_LOCAL "reactions.arb" R "<<specieshighorderadvection>>" W "0" R "<<zeroinitialvolumeconcentrations>>" W "1" R <<calculatediffusivities>> W "1"
 
 # Initial concentrations must be specified AFTER reactions.arb inclusion. Species with zero initial concentration do not need to be listed here.
 CONSTANT <c_II@domain_0>    [mol m-3] 1400.0d-6

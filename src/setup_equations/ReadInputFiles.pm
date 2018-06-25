@@ -1,6 +1,6 @@
 # file src/perl_lib/ReadInputFiles.pm
 #
-# Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+# Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
 # 
@@ -44,7 +44,7 @@
 #   - previous solver code has replacements done using perform_string_replacements
 #   - if previous solver code starts with the INCLUDE_* keyword, then solver code is regarded as input to the about-to-be-formed code_block, and solver_code is sent to parse_solver_code for processing
 #   - otherwise code is read until closing string code delimiters }} are found, then this code is sent to parse_string_code and then added to solver_code
-# 3. if suspected legacy keywords (GENERAL_|GLOBAL_|)REPLACEMENTS or INCLUDE* that could contain REPLACE type statements, these are converted to new string_code using legacy_string_code_converter
+# 3. if suspected solver string (legacy, but not really legacy) keywords (GENERAL_|GLOBAL_|)REPLACEMENTS or INCLUDE* that could contain REPLACE type statements, these are converted to new string_code using legacy_string_code_converter
 #   - legacy keywords are only identified if the preceeding solver_code is evalutated as an empty string, once any string replacements have taken place
 #   - if a false match is found to a suspected legacy keyword, then $buffer_offset is set so these legacy keywords aren't matched again
 # 4. an end-of-line indicated by either # or $ (which preceeds a final newline character) then the preceeding solver code is sent to perform_string_replacements, and then parse_solver_code for processing
@@ -69,8 +69,7 @@ my $unwrapped_inserted_hash = "#(hash inserted during unwrap)"; # hash to add wh
 my $unwrapped_created_hash = "#(comment created during unwrap)"; # hash to add whenever a line is not to be included in the unwrapped_input.arb file
 
 my %region_list = (); # contains the centring and REGION_LIST most recently specified in the input file (as used for REGION_CONSTANT)
-my $default_options = ""; # default options prepended to each statement read in
-my $override_options = ""; # override options appended to each statement read in
+my %default_override_options; # default options prepended to each statement read in, override options appended to each statement read in
 
 #--------------------------------------------------------------
 # parse all *.arb files - this is called from main
@@ -127,7 +126,10 @@ sub read_input_files {
       $buffer = $'; # anything that remains is left in the buffer
       $buffer_offset = 0;
       if ($debug) { print ::DEBUG "  INFO: string code identified within buffer:\n   string_code = $string_code:\n   (remaining) buffer = $buffer\n"; }
-      if ($code_blocks[$#code_blocks]{"skip"} || $code_blocks[$#code_blocks]{"if"} < 0) {
+#     if ($code_blocks[$#code_blocks]{"skip"} || $code_blocks[$#code_blocks]{"if"} < 0) {
+# string code is not parsed if we are in a skip area, or within an inactive if zone unless we need to evaluate a ELSE_IF condition
+      if ( ($code_blocks[$#code_blocks]{"skip"} || $code_blocks[$#code_blocks]{"if"} < 0) &&
+          !($code_blocks[$#code_blocks]{"if"} == -1 && $solver_code =~ /^\h*ELSE_IF/i ) ) {
         $string_code = '';
         if ($debug) { print ::DEBUG "  INFO: skipping parsing string code due to skip or if status:\n   skip = $code_blocks[$#code_blocks]{skip}: if = $code_blocks[$#code_blocks]{if}\n"; }
       } else {
@@ -221,9 +223,9 @@ sub read_input_files {
           $solver_code = $before_solver_code;
 # set global and deal with keeping/removing keyword
           my $global = 0;
-          if ($legacy_code =~ /^INCLUDE/) {
+          if ($legacy_code =~ /^INCLUDE/i) {
             $solver_code .= $legacy_code; # keep the include statement and potential filename (otherwise keyword is lost)
-          } elsif ($legacy_code =~ /^(GENERAL_|GLOBAL_)/) {
+          } elsif ($legacy_code =~ /^(GENERAL_|GLOBAL_)/i) {
             $global = 1; # we now allow both the REPLACEMENTS and (GLOBAL_|GENERAL_)REPLACEMENTS forms
           }
           $buffer = $after; # buffer now contains what followed the potential legacy keywords
@@ -258,7 +260,7 @@ sub read_input_files {
         $code_type = 'string'; # and set the code_type for the buffer
         
 # if the solver_code consists of an INCLUDE statement, then this is processed now and the buffer added to the start of the next code block
-        if ($solver_code =~ /^\h*INCLUDE(|_[A-Z]+)(\h+\S+\h+|\h*(".*"|'.*')\h*)$/) { # an INCLUDE type keyword has been found, which is followed by a string and then {{
+        if ($solver_code =~ /^\h*INCLUDE(|_[A-Z]+)(\h+\S+\h+|\h*(".*"|'.*')\h*)$/i) { # an INCLUDE type keyword has been found, which is followed by a string and then {{
           if ($debug) { print ::DEBUG "  INFO: an INCLUDE type keyword plus string has been found prior to some string code: solver code ready to process: solver_code = $solver_code\n"; }
 # before we process the solver_code (which is an include statement and will open a new code_block), keep getting lines until the string code (that will be added to new file) is complete
           while (!($buffer =~ /\}\}/)) {
@@ -636,54 +638,73 @@ sub parse_solver_code {
     }
 
 #-------------------
-# look for transient/steady-state simulation keyword
-  } elsif ($line =~ /^(TRANSIENT|STEADY(-|_|)STATE)_SIMULATION($|\s)/i) {
-    print ::DEBUG "$1_SIMULATION set directly: $filelinelocator\n";
-    if ($1 =~ /^TRANSIENT$/i) { string_set_transient_simulation(1); $::transient_simulation=1; } else { string_set_transient_simulation(0); $::transient_simulation=0; }
-
-#-------------------
-# look for newtient simulation keyword
-  } elsif ($line =~ /^\s*((NON|)NEWTIENT)_SIMULATION($|\s)/i) {
-    print ::DEBUG "$1_SIMULATION set directly: $filelinelocator\n";
-    if ($1 =~ /^NEWTIENT$/i) { $::newtient_simulation=1; } else { $::newtient_simulation=0; }
-
-#-------------------
-# ref: default options
-# set or reset any default options for variables (these go before the individual options so any relevant individual options take precedence over these)
-# also, each DEFAULT_OPTIONS statement clears previous DEFAULT_OPTIONS statements
-  } elsif ($line =~ /^DEFAULT_OPTIONS\s*($|\s)/i) {
-    $default_options = $';
-    ($default_options) = $default_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
-    if (empty($default_options)) {
-      print ::DEBUG "INFO: default options have been removed via: $filelinelocator\n";
+# ref: default and ref: override options
+# set or reset any generic options for variables
+# default options go before the individual options so any relevant individual options take precedence over these
+# override options go at the end of the individual options so override any individual options
+# also, an empty DEFAULT|OVERRIDE_OPTIONS statement clears previous statement of the same form (optionally DEFAULT_OPTIONS CANCEL etc too)
+# new for v0.58, options are appended to previously defined options
+# note that options are stored in a hash, so the order that they are applied is random (within each specific category)
+# now these can be specific to variables, regions, centrings etc: format is DEFAULT|OVERRIDE_CENTRING (optional)_TYPE (UNKNOWN|DERIVED etc, optional)_VARIABLE|REGION (optional)_OPTIONS
+  } elsif ($line =~ /^((DEFAULT|OVERRIDE)_((NONE|CELL|FACE|NODE)_|)((UNKNOWN|DERIVED|EQUATION|OUTPUT|TRANSIENT|NEWTIENT|CONDITION|LOCAL)_|)((VARIABLE|REGION)_|)OPTION(S|))\s*($|\s)/i) {
+    my $option_key = "\L$1";
+    my $option_string = $';
+    ($option_string) = $option_string =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
+    if (empty($option_string) || $option_string =~ /^CANCEL$/i ) {
+      $default_override_options{$option_key} = '';
+      print "INFO: "."\U$option_key"." options have been removed\n";
+      print ::DEBUG "INFO: "."\U$option_key"." options have been removed via: $filelinelocator\n";
     } else {
-      print ::DEBUG "INFO: default options have been set to $default_options via: $filelinelocator\n";
-    }
-
-#-------------------
-# ref: override options
-# set or reset any override options (these go at the end of the individual options so override any individual options)
-# also, each OVERRIDE_OPTIONS statement clears previous OVERRIDE_OPTIONS statements
-  } elsif ($line =~ /^OVERRIDE_OPTIONS\s*($|\s)/i) {
-    $override_options = $';
-    ($override_options) = $override_options =~ /^\s*(.*?)\s*$/; # greedy space matches at the front and back remove all leading and trailing space
-    if (empty($override_options)) {
-      print ::DEBUG "INFO: override options have been removed via: $filelinelocator\n";
-    } else {
-      print ::DEBUG "INFO: override options have been set to $override_options via: $filelinelocator\n";
+      if (empty($default_override_options{$option_key})) {
+        $default_override_options{$option_key} = $option_string;
+      } else {
+        $default_override_options{$option_key} = $default_override_options{$option_key}.",".$option_string;
+      }
+      print "INFO: "."\U$option_key"." have been set to $default_override_options{$option_key}\n";
+      print ::DEBUG "INFO: "."\U$option_key"." have been set to $default_override_options{$option_key} via: $filelinelocator\n";
     }
 
 #-------------------
 # these are commands that need to be transferred unaltered to the arb input file
-# TODO: remove time/newt/iter options from here and more to general_options
-# TODO: standardise options keyword -> KERNEL_OPTION only - is plural used elsewhere?
-  } elsif ( $line =~ /^(((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|ITERRESTOL|ITERRESRELTOL|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL)|TIMESTEPSTART|NEWTSTEPSTART|GLUE_FACES|((TIME|NEWT)STEP_REWIND))($|\s)/i ) {
+# TODO: standardise options keyword -> KERNEL_OPTION only - is plural used elsewhere? - Yes, plural should be the default, but now allow both
+# also check on specific transientsimulation and newtientsimulation (option) statements
+  } elsif ( $line =~ /^(((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))|GLUE_FACES)($|\s)/i ) {
     my $keyword = "\U$1";
     $line = $'; $line =~ s/^\s*//;
-    if ($keyword =~ /^((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))$/) {$keyword = "$2_OPTIONS";} # standardise the statement for fortran input
+
+    if ($keyword =~ /^((KERNEL|SOLVER|GENERAL)(|_OPTION(|S)))$/) {
+      $keyword = "$2_OPTIONS";  # standardise the statement for fortran input
+
+# also check for transientsimulation or newtientsimulation keywords as these have to be set here
+# and remove these lines so not passed to the fortran (to allow for error checking in the fortran)
+      while ($line =~ /(^|\,)\s*(no|)transientsimulation(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
+        if (nonempty($2) && nonempty($3)) { error_stop("incorrect transientsimulation option specification: $filelinelocator"); }
+        if (nonempty($2) || nonempty($5)) { string_set_transient_simulation(0); $::transient_simulation=0; } else { string_set_transient_simulation(1); $::transient_simulation=1; };
+        $line = $`.$1.$+.$'; # remove the transient string
+        print "INFO: transientsimulation set to ".fortran_logical_string($::transient_simulation)." directly\n";
+        print ::DEBUG "INFO: transientsimulation set to ".fortran_logical_string($::transient_simulation)." directly: $filelinelocator\n";
+      }
+      while ($line =~ /(^|\,)\s*(no|)newtientsimulation(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
+        if (nonempty($2) && nonempty($3)) { error_stop("incorrect newtientsimulation option specification: $filelinelocator"); }
+        if (nonempty($2) || nonempty($5)) { $::newtient_simulation=0; } else { $::newtient_simulation=1; };
+        $line = $`.$1.$+.$'; # remove the newtient string
+        print "INFO: newtientsimulation set to ".fortran_logical_string($::newtient_simulation)." directly\n";
+        print ::DEBUG "INFO: newtientsimulation set to ".fortran_logical_string($::newtient_simulation)." directly: $filelinelocator\n";
+      }
+# also convert timesteprewind and newtsteprewind general options into integer format if set using logical option format
+      while ($line =~ /(^|\,)\s*(no|)(time|newt)steprewind(|\s*=\s*(.true.|(.false.)))\s*(\,|$)/i ) {
+        if (nonempty($2) && nonempty($4)) { error_stop("incorrect $3steprewind option specification: $filelinelocator"); }
+        if (nonempty($2) || nonempty($6)) {
+          $line = $`.$1.$3."steprewind=0".$+.$';
+        } else {
+          $line = $`.$1.$3."steprewind=1".$+.$'; # default if these are turned on is to remember one step
+        }
+      }
+
+    } elsif ($keyword =~ /^GLUE_FACES/i) {
 # if this is a GLUE_FACES then check if reflect=? has been specified and if so, set general_replacement string automatically
 # not setting this in the arb input file has caught me out so many times that it is now automatic, but can be overwritten after the GLUE_FACES command if need be
-    if ($keyword =~ /^GLUE_FACES/i) {
+
       my $tmp = $line;
 # strip any region definitions from line, just in case a region contains a reflect=N statement in it...
       while ($tmp =~ /\s*<(.+?)>\s*/) { $tmp = $`." ".$'; }
@@ -945,21 +966,41 @@ sub parse_solver_code {
         $line = $';
       }
 
-  # store raw options in the ::asread_variable array now
-  # variable and compound option lists will be assembled later
+# store raw options in the ::asread_variable array now
+# variable and compound option lists will be assembled later
       $line =~ s/^\s*//; # remove any leading space from the line
-      if (nonempty($line) || nonempty($default_options) || nonempty($override_options)) {
-        $line = $default_options.','.$line.','.$override_options;
-        $line =~ s/(^\,+\s*)|(\s*\,+$)//;
-        $line =~ s/\s*\,+\s*/,/g;
-        if (empty($::asread_variable[$masread]{"options"})) {
-          $::asread_variable[$masread]{"options"} = $line;
+# add any specific options to string, worrying about duplicate commas etc later
+      if (empty($::asread_variable[$masread]{"options"})) {
+        $::asread_variable[$masread]{"options"} = $line;
+      } else {
+        $::asread_variable[$masread]{"options"} = $::asread_variable[$masread]{"options"}.",".$line;
+      }
+      $line = ''; # nothing is now left in the line
+# run through default and override options looking for any that are relevant:
+#print "MATCH: variable has: centring = $::asread_variable[$masread]{centring}: type = $::asread_variable[$masread]{type}\n"; 
+      foreach my $option_key ( keys(%default_override_options) ) {
+#print "MATCH: option_key = $option_key\n";
+# examine key to determine whether it is specific to this variable
+        if ($option_key =~ /^((DEFAULT|OVERRIDE)_((NONE|CELL|FACE|NODE)_|)((UNKNOWN|DERIVED|EQUATION|OUTPUT|TRANSIENT|NEWTIENT|CONDITION|LOCAL)_|)((VARIABLE|REGION)_|)OPTION(|S))$/i) {
+#                             12                  34                       56                                                                      78                        
+#print "MATCH: looking for match: 2 = $2: 4 = $4: 6 = $6: 8 = $8\n";
+          if (nonempty($8)) { if ($8 ne "variable") { next; } } # only for variables or no specification (ie, variables and regions)
+          if (nonempty($4)) { if ($4 ne $::asread_variable[$masread]{centring}) { next; } } # only for same centring, or no specification (ie all centrings)
+          if (nonempty($6)) { if ($6 ne $::asread_variable[$masread]{type}) { next; } } # only for same type, or no specification (ie all types)
+          if ($2 eq "default") { # default goes before
+            $::asread_variable[$masread]{"options"} = $default_override_options{$option_key}.",".$::asread_variable[$masread]{"options"};
+          } else { # override goes after
+            $::asread_variable[$masread]{"options"} = $::asread_variable[$masread]{"options"}.",".$default_override_options{$option_key};
+          }
         } else {
-          $::asread_variable[$masread]{"options"} = $::asread_variable[$masread]{"options"}.",".$line;
+          error_stop("internal error with option_key = $option_key");
         }
-        print ::DEBUG "INFO: adding options $line to: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
-  # now clean up by removing any leading, repeated or trailing commas
-        $line = ''; # nothing is now left in the line
+      }
+      $::asread_variable[$masread]{"raw_options"} = $::asread_variable[$masread]{"options"};
+      sanitise_option_list($::asread_variable[$masread]{"options"});
+      if (nonempty($::asread_variable[$masread]{"options"})) {
+        print "INFO: adding options to variable: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}\n";
+        print ::DEBUG "INFO: adding options to variable: name = $name: masread = $masread: options = $::asread_variable[$masread]{options}: raw_options = $::asread_variable[$masread]{raw_options}\n";
       }
     }
 #-------
@@ -1015,8 +1056,8 @@ sub parse_solver_code {
     } else {
       if ($masread >= 0) {
         $::region[$masread]{"redefinitions"}++; 
-        print "INFO: a secondary definition statement (number $::region[$masread]{definitions}) for region $name has been found in file = $file\n";
-        print ::DEBUG "INFO: a secondary definition statement (number $::region[$masread]{definitions}) for region $name has been found based on: $filelinelocator\n";
+        print "INFO: a secondary definition statement (number $::region[$masread]{redefinitions}) for region $name has been found in file = $file\n";
+        print ::DEBUG "INFO: a secondary definition statement (number $::region[$masread]{redefinitions}) for region $name has been found based on: $filelinelocator\n";
   # a variable has been identified, now check whether the centring has changed
         if (nonempty($centring)) {
           if ($centring ne $::region[$masread]{"centring"} && nonempty($::region[$masread]{"centring"})) {
@@ -1100,14 +1141,40 @@ sub parse_solver_code {
         else { $::region[$masread]{"part_of"} = ''; print ::DEBUG "INFO: cancelling any possible ON region for region $name\n"; }
       }
         
-  # region options
+# region options
       $line =~ s/^\s*//; # remove any leading space from the line
-      if (nonempty($line)) {
+# add any specific options to string, worrying about duplicate commas etc later
+      if (empty($::region[$masread]{"options"})) {
+        $::region[$masread]{"options"} = $line;
+      } else {
         $::region[$masread]{"options"} = $::region[$masread]{"options"}.",".$line;
-        $::region[$masread]{"options"} =~ s/(^\,+\s*)|(\s*\,+$)//;
-        $::region[$masread]{"options"} =~ s/\s*\,+\s*/,/g;
-        print ::DEBUG "INFO: adding options to: region = $::region[$masread]{name}: masread = $masread: options = $::region[$masread]{options}\n";
-        $line = ''; # nothing is now left in the line
+      }
+      $line = ''; # nothing is now left in the line
+# run through default and override options looking for any that are relevant:
+#print "MATCH: variable has: centring = $::region[$masread]{centring}: type = $::region[$masread]{type}\n"; 
+      foreach my $option_key ( keys(%default_override_options) ) {
+#print "MATCH: option_key = $option_key\n";
+# examine key to determine whether it is specific to this variable
+        if ($option_key =~ /^((DEFAULT|OVERRIDE)_((NONE|CELL|FACE|NODE)_|)((UNKNOWN|DERIVED|EQUATION|OUTPUT|TRANSIENT|NEWTIENT|CONDITION|LOCAL)_|)((VARIABLE|REGION)_|)OPTION(|S))$/i) {
+#                             12                  34                       56                                                                      78                        
+#print "MATCH: looking for match: 2 = $2: 4 = $4: 6 = $6: 8 = $8\n";
+          if (nonempty($8)) { if ($8 ne "region") { next; } } # only for regions or no specification (ie, variables and regions)
+          if (nonempty($4)) { if ($4 ne $::region[$masread]{centring}) { next; } } # only for same centring, or no specification (ie all centrings)
+          if (nonempty($6)) { if ($6 ne $::region[$masread]{type}) { next; } } # only for same type, or no specification (ie all types)
+          if ($2 eq "default") { # default goes before
+            $::region[$masread]{"options"} = $default_override_options{$option_key}.",".$::region[$masread]{"options"};
+          } else { # override goes after
+            $::region[$masread]{"options"} = $::region[$masread]{"options"}.",".$default_override_options{$option_key};
+          }
+        } else {
+          error_stop("internal error with option_key = $option_key");
+        }
+      }
+      $::region[$masread]{"raw_options"} = $::region[$masread]{"options"}; # save for messaging
+      sanitise_option_list($::region[$masread]{"options"});
+      if (nonempty($::region[$masread]{"options"})) {
+        print "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}\n";
+        print ::DEBUG "INFO: adding options to region: name = $name: masread = $masread: options = $::region[$masread]{options}: raw_options = $::region[$masread]{raw_options}\n";
       }
 
       print "INFO: region statement has been read: name = $name: number = $masread: centring = $::region[$masread]{centring}: ".
@@ -1144,6 +1211,25 @@ sub check_deprecated_solver_code {
 
   my $line = $_[0];
 
+# first deal with any depreciated syntax that doesn't require string substitution to find the alternative, and only requires a warning
+  our %depreciated_syntax = (
+    "READ_GMSH" => 'MSH_FILE',
+    "(START_|BEGIN_)SKIP" => "SKIP",
+    "STOP_SKIP" => "END_SKIP",
+    "(START_|BEGIN_|)COMMENT(S){0,1}" => "SKIP",
+    "(STOP_|END_)COMMENT(S){0,1}" => "END_SKIP",
+    "(NONTRANSIENT|STEADY(-|_|)STATE)_SIMULATION" => "GENERAL_OPTIONS notransientsimulation",
+    "TRANSIENT_SIMULATION" => "GENERAL_OPTIONS transientsimulation",
+  );
+
+  foreach my $depreciated_syntax_regex ( keys(%depreciated_syntax) ) {
+    if ($line =~ /^($depreciated_syntax_regex)($|\s)/i) {
+      $line = $`."$depreciated_syntax{$depreciated_syntax_regex}".$+.$'; # $+ is the last matched bracket
+      syntax_problem("$1 keyword has been deprecated, use $depreciated_syntax{$depreciated_syntax_regex} instead: $filelinelocator","warning");
+    }
+  }
+
+# now loop through more complex language changes, or those that require more informative messages or produce errors
 # very old variable name types
   if ($line =~ /^(CELL_|FACE_|NODE_|NONE_|)(INDEPENDENT|FIELD|DEPENDENT)($|\s)/i) {
     my $deprecatedtype = "\U$2";
@@ -1156,34 +1242,17 @@ sub check_deprecated_solver_code {
     $line = $`.$1.$type.$3.$';
     syntax_problem("$deprecatedtype type has been deprecated, use $type instead: $filelinelocator","warning");
 
-# READ_GMSH
-  } elsif ( $line =~ /^(READ_GMSH)($|\s)/i ) {
-    $line = $`."MSH_FILE".$2.$';
-    syntax_problem("$1 keyword has been deprecated, use MSH_FILE instead: $filelinelocator","warning");
-
-# various COMMENT(S) keywords has been replaced by SKIP/END_SKIP only
-  } elsif ( $line =~ /^((START_|BEGIN_)SKIP)($|\s)/i ) {
-    $line = $`."SKIP".$3.$';
-    syntax_problem("$1 keyword has been deprecated, use SKIP instead: $filelinelocator","warning");
-  } elsif ( $line =~ /^(STOP_SKIP)($|\s)/i ) {
-    $line = $`."END_SKIP".$2.$';
-    syntax_problem("$1 keyword has been deprecated, use END_SKIP instead: $filelinelocator","warning");
-  } elsif ( $line =~ /^((START_|BEGIN_|)COMMENT(S){0,1})($|\s)/i ) {
-    $line = $`."SKIP".$4.$';
-    syntax_problem("$1 keyword has been deprecated, use SKIP instead: $filelinelocator","warning");
-  } elsif ( $line =~ /^((STOP_|END_|)COMMENT(S){0,1})($|\s)/i ) {
-    $line = $`."END_SKIP".$4.$';
-    syntax_problem("$1 keyword has been deprecated, use END_SKIP instead: $filelinelocator","warning");
-
 # deprecated include statements
   } elsif ($line =~ /^INCLUDE(_ROOT|_FROM)($|\s)/i) {
-    $line = $`."INCLUDE_TEMPLATE".$2.$';
-    syntax_problem("INCLUDE_"."\U$1"." has been deprecated.  Use INCLUDE_TEMPLATE instead which searches through the templates directory tree for a specific file, and at the same time, adds the file's path to the include_path stack.  Or, if the include_path stack already includes the path for the template file, you can just use the INCLUDE command as this searches through the include_path stack: $filelinelocator","warning");
+    my $alternative="INCLUDE_TEMPLATE";
+    $line = $`.$alternative.$+.$';
+    syntax_problem("$1 keyword has been deprecated.  Use $alternative instead which searches through the templates directory tree for a specific file, and at the same time, adds the file's path to the include_path stack.  Or, if the include_path stack already includes the path for the template file, you can just use the INCLUDE command as this searches through the include_path stack: $filelinelocator","warning");
 
-# deprecated nontransient simulation
-  } elsif ($line =~ /^(NONTRANSIENT_SIMULATION)($|\s)/i) {
-    $line = $`."STEADYSTATE_SIMULATION".$2.$';
-    syntax_problem("$1 keyword has been deprecated, use STEADYSTATE_SIMULATION instead: $filelinelocator","warning");
+# general options that were pre v0.58 set by keywords
+  } elsif ( $line =~ /^(ITERRES(TOL|RELTOL)|ITERSTEP(MAX|CHECK)|NEWTRESTOL|NEWTSTEP(MAX|MIN|OUT|DEBUGOUT|START)|TIMESTEP(MAX|MIN|OUT|ADDITIONAL|START))(\s+)/i ) {
+    my $alternative="GENERAL_OPTIONS \L$1=$'";
+    $line = $`.$alternative;
+    syntax_problem("$1 keyword has been deprecated, use $alternative instead: $filelinelocator","warning");
 
 # linear solver
   } elsif ( $line =~ /^(LINEAR_SOLVER)($|\s)/i ) {
@@ -1209,18 +1278,18 @@ sub legacy_string_code_converter {
 
   if ($debug) { print ::DEBUG "INFO: start of legacy_string_code_converter: global = $global: old_buffer = $old_buffer\n"; }
   my $opened = 0; # if any legacy operations were found
-  my ($search,$replace,$cancel,$default);
+  my ($search,$replace,$cancel,$default,$substitute);
   $search = 1;
   my $buffer = '';
 
   while (nonempty($search) && nonempty($old_buffer)) {
-    ($search,$replace,$cancel,$default) = extract_deprecated_replacements($old_buffer);
+    ($search,$replace,$cancel,$default,$substitute) = extract_legacy_replacements($old_buffer);
     if (nonempty($search)) {
       if (!($opened)) { $buffer .= '{{ '; $opened = 1; } else { $buffer .= '; '; }
       if ($cancel) {
         $buffer .= "string_delete(\'$search\') "; # add this cancel operation
       } else {
-        $buffer .= "string_set(\'$search\',\'$replace\',\'"."global" x $global.",default" x $default."\') ";
+        $buffer .= "string_set(\'$search\',\'$replace\',\'"."global" x $global.",default" x $default.",substitute" x $substitute."\') ";
       }
     } else {
       if ($opened) { $buffer .= '}} '; }
@@ -1236,88 +1305,15 @@ sub legacy_string_code_converter {
 
 }
 #-------------------------------------------------------------------------------
-# examines buffer line and corrects any replace/with pairs, either in GENERAL_REPLACEMENTS or INCLUDE* statements
-# from v0.57 onwards, string coding has changed considerably
-# these next two subroutines utilise legacy coding to rewrite the older string replacement syntax with the new
-sub correct_deprecated_string_replacement_code {
-  my $input = $_[0];
-  my $oinput = $input; # save input string for messages
-  my $buffer = '';
-  my $in_string_code = 0; # 0 means no string code, 1 means the next statement could be string code but the last wasn't, and 2 means the next could be and the last was
-  my $warn = 0;
-  my $global = 0; # indicates that we are doing a general replacement
-
-# look for keywords that could indicate potential string code
-# roughly in line with legacy language, only <<>> delimited replacement strings could appear before these statements
-# this should match any INCLUDE statement that could possibly preceed a deprecated replace/with pair
-  if ($input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s+\S+\s*/i || # space delimited filename
-      $input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s*".*?"\s*/i || # " delimited filename
-      $input =~ /^\s*(<<.*>>|)\s*(INCLUDE(|_[A-Z]+))\s*'.*?'\s*/i ) { # ' delimited filename
-#   print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 1\n";
-    $buffer .= $&;
-    $input = $';
-    $in_string_code = 1;
-
-# this should match any REPLACEMENTS statement that preceeds a deprecated replace/with pair
-  } elsif ($input =~ /^(\s*(<<.*>>|)\s*)((GENERAL_|)REPLACEMENTS)(\s*)/i ) { # GENERAL_REPLACEMENTS type keywords
-#   print ::DEBUG "INFO: in correct_deprecated_string_replacement_code: if 2\n";
-    $buffer .= $1.$5;
-    $input = $';
-    $in_string_code = 1;
-    $global = 1;
-
-  }
-
-  if ($in_string_code) {
-    while (nonempty($input) || $in_string_code) {
-
-#     print ::DEBUG "INFO: in correct_deprecated_string_replacement_code loop with: input = $input: buffer = $buffer: in_string_code = $in_string_code\n";
-      if ($in_string_code) {
-        my ($search,$replace,$cancel,$default) = extract_deprecated_replacements($input);
-        if (nonempty($search)) {
-          if ($in_string_code == 1) {
-            $buffer .= '{{ ';
-            $in_string_code = 2;
-            $warn = 1;
-          } else { # $in_string_code == 2
-            $buffer .= '; ';
-          }
-          if ($cancel) {
-            $buffer .= "cancel(\'$search\') "; # add this cancel operation
-          } else {
-            $buffer .= "\'$search\' ="."g" x $global."d" x $default." \'$replace\' "; # add this found search/replace pair
-          }
-        } else {
-          if ($in_string_code == 2) { $buffer .= '}} '; }
-          $in_string_code = 0;
-        }
-
-      } else {
-        $buffer .= $input;
-        $input = '';
-      }
-    }
-
-# tell the user about the change if there was one
-    if ($warn) { syntax_problem("legacy string code has been found and replaced by newer string code at $filelinelocator",
-      "legacy string code has been found and replaced by newer string code at $filelinelocator\n".
-      "  legacy string code = $oinput\n  replaced string code = $buffer","warning"); }
-
-    $_[0] = $buffer;
-  } else {
-    $_[0] = $oinput; # no strings found, line returned as original input
-  }
-
-}
-#-------------------------------------------------------------------------------
-sub extract_deprecated_replacements {
-# extracts a search and replace pair from a deprecated string code line
+sub extract_legacy_replacements {
+# extracts a search and replace pair from a solver (legacy) string code line
 # on input
 # $_[0] = line of text
-# exit with two strings and two flags
-#  ( search, replace, cancel, default )
+# exit with two strings and three flags
+#  ( search, replace, cancel, default, substitute )
 # $_[3] = cancel = 0,1, indicates whether the CANCEL "string" was used
-# $_[4] = default = 0,1, indicates whether the REPLACE* or R* or DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
+# $_[4] = default = 0,1, indicates whether the DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
+# $_[5] = substitute = 0,1, indicates whether the SUBSTITUTE "string" was used, which indicates that string replacement is only set if it is set already
 # if search is empty then no string was found
 
   my $line = $_[0];
@@ -1326,13 +1322,15 @@ sub extract_deprecated_replacements {
   my $replace = '';
   my $cancel = 0;
   my $default = 0;
+  my $substitute = 0;
 
-# print ::DEBUG "INFO: start of extract_deprecated_replacements: line = $line\n";
+# print ::DEBUG "INFO: start of extract_legacy_replacements: line = $line\n";
 
 # if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement - as far as I can remember, *'ed form was never used instead of D|DEFAULT - get rid of it
-  if ($line =~ /^((R|REPLACE)|(DEFAULT|D))\s+/i) { # found a replacement
+  if ($line =~ /^((R|REPLACE)|(DEFAULT|D)|(SUBSTITUTE|S))\s+/i) { # found a replacement
 #   print ::DEBUG "found a replace statement specified as $1: $'\n";
     if (nonempty($3)) { $default=1; }
+    if (nonempty($4)) { $substitute=1; }
     $line = $';
 #   print ::DEBUG "line = $line\n";
     ($search,$error) = extract_first($line);
@@ -1356,12 +1354,39 @@ sub extract_deprecated_replacements {
     }
   }
 
-# print ::DEBUG "INFO: end of extract_deprecated_replacements: line = $line\n";
+# print ::DEBUG "INFO: end of extract_legacy_replacements: line = $line\n";
   $_[0] = $line;
-  return ($search,$replace,$cancel,$default);
+  return ($search,$replace,$cancel,$default,$substitute);
 
 }
 
+#-------------------------------------------------------------------------------
+# converts an rxn file to an arb file using the rxntoarb script (held in $rxntoarb_bin), changing appropriate code_blocks elements
+# need to think more about options to pass to rxntoarb
+# 
+# on input
+# _[0] = array index of relevant code block
+sub convert_rxn_to_arb_file {
+
+  my $rxn_block = $_[0];
+  $code_blocks[$rxn_block]{"abs_rxn_name"} = $code_blocks[$rxn_block]{"abs_name"};
+  $code_blocks[$rxn_block]{"rxn_name"} = $code_blocks[$rxn_block]{"name"};
+  $code_blocks[$rxn_block]{"abs_name"} =~ s/\.rxn$/.arb/;
+  $code_blocks[$rxn_block]{"name"} =~ s/\.rxn$/.arb/;
+  $code_blocks[$rxn_block]{"file_type"} = 'rxn';
+  
+  print "INFO: attempting to create arb file $code_blocks[$rxn_block]{abs_name} from rxn file $code_blocks[$rxn_block]{abs_rxn_name}\n";
+  print ::DEBUG "INFO: attempting to create arb file $code_blocks[$rxn_block]{abs_name} from rxn file $code_blocks[$rxn_block]{abs_rxn_name}\n";
+  if (-e $code_blocks[$rxn_block]{"abs_name"}) {
+    unlink($code_blocks[$rxn_block]{"abs_name"}) or error_stop("could not remove existing $code_blocks[$rxn_block]{abs_name} when running attempting to run rxntoarb on $code_blocks[$rxn_block]{abs_rxn_name}");  
+  }
+  print "INFO: the following output is from the rxntoarb script:\n";
+  my $systemcall="$::rxntoarb_bin -o $code_blocks[$rxn_block]{abs_name} $code_blocks[$rxn_block]{abs_rxn_name}";
+  (!(system("$systemcall"))) or error_stop("problem running rxntoarb: file = $code_blocks[$rxn_block]{abs_rxn_name}: systemcall = $systemcall");
+  print "INFO: rxntoarb script finished: arb file successfully created\n";
+  print ::DEBUG "INFO: rxntoarb script finished: arb file successfully created\n";
+
+}
 #-------------------------------------------------------------------------------
 # adds a code block to the top of the code_blocks array
 # if a name and actual name (absolute path) are provided, assumes this is a file and opens that too (new_file = 1)
@@ -1385,6 +1410,10 @@ sub push_code_block {
     $code_blocks[$#code_blocks]{"handle"} = FileHandle->new(); # make a new filehandle for the file (taken from http://docstore.mik.ua/orelly/perl/cookbook/ch07_17.htm)
     $code_blocks[$#code_blocks]{"line_number"} = 0; # signals line has not yet been read
     $code_blocks[$#code_blocks]{"raw_line"} = ''; # signals line has not yet been read
+    $code_blocks[$#code_blocks]{"file_type"} = 'arb'; # by default new file is assumed to contain arb code
+
+# check if the file is an rxn file, and if so, run rxntoarb first to create the arb file
+    if ($abs_name =~ /\.rxn$/) { convert_rxn_to_arb_file($#code_blocks); }
 
 # open file
     my $handle = $code_blocks[$#code_blocks]{"handle"};
@@ -1399,6 +1428,7 @@ sub push_code_block {
     $code_blocks[$#code_blocks]{"handle"}=$code_blocks[$#code_blocks-1]{"handle"};
     $code_blocks[$#code_blocks]{"line_number"}=$code_blocks[$#code_blocks-1]{"line_number"};
     $code_blocks[$#code_blocks]{"raw_line"}=$code_blocks[$#code_blocks-1]{"raw_line"};
+    $code_blocks[$#code_blocks]{"raw_line"}='';
   }
 
   if ($#code_blocks) {

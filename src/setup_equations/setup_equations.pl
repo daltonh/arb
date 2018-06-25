@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # file src/setup_equations/setup_equations.pl
 #
-# Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+# Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
 # 
@@ -63,7 +63,7 @@ use ReadInputFiles; # deals with reading the input files, including sub read_inp
 
 # set global variables that can be accessed from the local packages
 # our is used so that other packages can access these variables
-our $version="0.57";
+our $version="0.58";
 our $minimum_version="0.40";
 
 # now called from build directory and sent these three directories
@@ -97,6 +97,9 @@ our $debug_info_file="debugging_info.txt"; # this is where all the debugging inf
 our $syntax_problems_file="$setup_current_dir/syntax_problems.txt"; # specifically for syntax related messages
 our $setup_equation_file="$build_dir/last_setup_equation_data"; # this file is used to store all of the setup equation data prior to the (expensive) fortran generation
 our $version_file="$arb_dir/licence/version";
+our $rxntoarb_dir="$arb_dir/misc/rxntoarb"; # directory which should contain reactions script
+our $rxntoarb_bin="$rxntoarb_dir/bin/rxntoarb"; # actual rxntoarb script
+if (!(-e $rxntoarb_bin)) { error_stop("rxntoarb script (arb_reactions) is not where it is supposed to be"); };
 
 # create and clear out setup directory of any files
 if (-d $setup_current_dir) { rmtree($setup_current_dir) or error_stop("could not remove existing $setup_current_dir"); } # using rmtree for older File::Path compatibility
@@ -687,13 +690,18 @@ sub create_system_regions {
   push(@region,{ name => '<adjacentcellicells>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<nocadjacentcellicells>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfaceicells>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentfaceicellsnoglue>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfaceupcell>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfacedowncell>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentfaceupcellnoglue>', type => 'internal', centring => 'cell' });
+  push(@region,{ name => '<adjacentfacedowncellnoglue>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<adjacentfaceothercell>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<upwindfaceicells>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<downwindfaceicells>', type => 'internal', centring => 'cell' });
   push(@region,{ name => '<glueface>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<lastface>', type => 'internal', centring => 'face' });
+  push(@region,{ name => '<lastfacenoglue>', type => 'internal', centring => 'face' });
+  push(@region,{ name => '<lastfaceglue>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<noloop>', type => 'internal', centring => '' }); # this special case has no centring
   push(@region,{ name => '<cellkernelregion\[l=0\]>', type => 'internal', centring => 'face' });
   push(@region,{ name => '<cellkernelregion\[l=([123])\]>', type => 'internal', centring => 'cell' });
@@ -787,6 +795,7 @@ sub organise_regions {
       }
     }
 # process options - from now on the options string can be wiped and does not determine whether equations need re-running
+# TODO: separate routine here for creating list of options from line of options
     $region[$n]{"newtstepmin"}='';
     $region[$n]{"newtstepmax"}='';
     my $type = $region[$n]{"type"};
@@ -794,8 +803,11 @@ sub organise_regions {
       my $tmp = $region[$n]{"options"};
       $region[$n]{"options"} = '';
       print DEBUG "INFO: before processing region options $type $region[$n]{name} has loaded (unchecked) options of $tmp\n";
-      while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
-        my $option = $2; $tmp = $`.','.$';
+      while (nonempty($tmp)) {
+        my @extracted_option = extract_option($tmp);
+        if ($extracted_option[3]) { error_stop("error in extracting options for $type region $region[$n]{name}: remaining options = $tmp"); };
+        if (empty($extracted_option[0])) { next; }
+        my $option = $extracted_option[0];
         if ($option =~ /^(newtstep(max|min))(\s*=\s*([\+\-\d][\+\-\de]*))$/i) { # integer max/min of newtsteps during which this variable should be updated
           my $option_name = "\L$1";
           my $match;
@@ -811,10 +823,23 @@ sub organise_regions {
               $region[$n]{$option_name} = $match;
             }
           } else { error_stop("option $option specified for region $type $region[$n]{name} cannot be used for this type of region"); }
+        } elsif ($option =~ /^((no|)((time|newt)steprewind)(|\s*=\s*(.true.|(.false.))))$/i) { # timesteprewind variable needs to be passed to fortran, in sanitised nooption form
+            if ($region[$n]{"dynamic"}) { # can only be applied to dynamic regions
+              $option = "\L$3";
+              if (nonempty($2) || nonempty($7)) { $option = "no".$option; }
+              $region[$n]{"options"} = $region[$n]{"options"}.",$option";
+            } else { print "WARNING: option $option specified for $type $region[$n]{name} can only be used for dynamic regions and is ignored here\n";
+            }
         } else {
           error_stop("the option $option specified for region $type $region[$n]{name} is not valid");
         }
       }
+  
+# remove extra leading comma and output to fortran file
+      $region[$n]{"options"} =~ s/^\s*\,//;
+      print FORTRAN_INPUT "REGION_OPTIONS $region[$n]{name} $region[$n]{options}\n";
+      print "INFO: the $region[$n]{type} $region[$n]{name} has the final component-specific options of: $region[$n]{options}\n";
+      print DEBUG "INFO: the $region[$n]{type} $region[$n]{name} has the final component-specific options of: $region[$n]{options}\n";
     }
   }
 
@@ -1408,6 +1433,9 @@ sub organise_user_variables {
     if ($type eq "unknown" || $type eq "equation") {
       $variable{$type}[$mvar]{"magnitude_constant"} = 0; # specifies that it is not to be set from a none-centred constant value
     }
+    if ($type ne "local") {
+      $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = 0; # specifies that by default timesteprewindmultiplier is not a variable, but a float
+    }
 
 # check a centring was defined, and if not, try to work out a default
     if (empty($variable{$type}[$mvar]{"centring"})) { $variable{$type}[$mvar]{"centring"} = 'none';
@@ -1506,11 +1534,9 @@ sub organise_user_variables {
     print "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: redefinitions = $variable{$type}[$mvar]{redefinitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}: selfreferences = $variable{$type}[$mvar]{selfreferences}\n";
     print DEBUG "INFO: formed user variable $type [$mvar]: name = $name: centring = $variable{$type}[$mvar]{centring}: rindex = $variable{$type}[$mvar]{rindex}: region = $variable{$type}[$mvar]{region}: multiplier = $variable{$type}[$mvar]{multiplier}: units = $variable{$type}[$mvar]{units}: redefinitions = $variable{$type}[$mvar]{redefinitions}: typechanges = $variable{$type}[$mvar]{typechanges}: centringchanges = $variable{$type}[$mvar]{centringchanges}: selfreferences = $variable{$type}[$mvar]{selfreferences}\n";
 
-# process variable options, removing clearoptions statements and creating individual variable options lists
-    if ($asread_variable[$masread]{"options"} =~ /.*(^|\,)\s*clearoptions\s*(\,|$)/i) { # match the last occurrence of this option by putting a greedy match of anything on the left
-      $asread_variable[$masread]{"options"} = $'; # the only valid options on this line are those that follow the clearoptions statement
-    }
+# process variable options
     $variable{$type}[$mvar]{"options"} = $asread_variable[$masread]{"options"}; # save this straight to variable now
+
 # print some summary stuff now about the single line read
     if ($variable{$type}[$mvar]{"options"}) { print "INFO: options read in for $type $name = $variable{$type}[$mvar]{options}\n";} else { print "INFO: no options read in for $type $name\n"; }
     if ($variable{$type}[$mvar]{"options"}) { print DEBUG "INFO: options read in for $type $name = $variable{$type}[$mvar]{options}\n";} else { print DEBUG "INFO: no options read in for $type $name\n"; }
@@ -1526,13 +1552,13 @@ sub organise_user_variables {
 #f  input/noinput - for CONSTANT, TRANSIENT, UNKNOWN : read in compound from msh files - only these 3 variable types can be read in
 #f  componentinput/nocomponentinput - for CONSTANT, TRANSIENT, UNKNOWN : read in just this component from msh files - only these 3 variable types can be read in
 #f  elementdata,elementnodedata,elementnodelimiteddata - for CELL centred var : data type when writing this compound (unless gmesh overide is specified) (also same for components with prefix component) (equivalently compoundelementdata,compoundelementnodedata,compoundelementnodelimiteddata)
-#p  outputcondition,stopcondition,convergencecondition,bellcondition - for CONDITION, type of condition, can have multiple conditions for the one variable
+#p  outputcondition,stopcondition,errorcondition,convergencecondition,bellcondition,timesteprewindcondition,newtsteprewindcondition - for CONDITION, type of condition, can have multiple conditions for the one variable, defaulting to stopcondition if no others are given
 #f  magnitude=[value|<a none centred constant>] - for EQUATION, UNKNOWN specifies the initial variable magnitude to be used (rather than being based on the initial variable values) - a negative number will cause the magnitude to be set based upon the initial values (which is the default)
 #f  dynamicmagnitude/staticmagnitude - for EQUATION, UNKNOWN, adjust magnitude of variable dynamically as the simulation progresses, or keep it constant at the initial magnitude (default is dynamic for equations, and static for unknowns)
 #f  dynamicmagnitudemultiplier=value - for EQUATION, UNKNOWN, multiplier to use when adjusting magnitude of variable dynamically (=>1.d0, with 1.d0 equivalent to static magnitudes, and large values placing no restriction on the change in magnitude from one newton iteration to the next) (default is 1.1 for equations, 2.0 for unknowns)
 #   clearoptions - remove all previously (to the left and above the clearoptions word) user-specified options for this variable
 #f  timesteprewind - this variable gets rewound if a timestep rewind is performed
-#f  timesteprewindmultiplier - and further that it is multiplied by this amount on rewind
+#f  timesteprewindmultiplier=value - and further that it is multiplied by this amount on rewind, either a number or a reference to a none-centred variable (can be a local)
 #f  newtsteprewind - this variable gets rewound if a newtstep rewind is performed
 
 # general rule with options is that they don't include any underscores between words
@@ -1561,9 +1587,11 @@ sub organise_user_variables {
       $tmp = $variable{$type}[$mvar]{"options"};
       $variable{$type}[$mvar]{"options"} = '';
       print DEBUG "INFO: before processing $type $name has loaded (unchecked) options of $tmp\n";
-# loop through list of options, removing individual options from the list one-by-one
-      while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
-        $option = $2; $tmp = $`.','.$';
+      while (nonempty($tmp)) {
+        my @extracted_option = extract_option($tmp);
+        if ($extracted_option[3]) { error_stop("error in extracting options for $type variable $name: remaining options = $tmp"); };
+        if (empty($extracted_option[0])) { next; }
+        my $option = $extracted_option[0];
 # ignore compound specific options, as these will be compiled in create_compounds from the saved asread_variable[]{options} list
         if ($option =~ /^(|no)(|compound)(output|input)$/i) { next ;}
         elsif ($option =~ /^(|no)(|compound)stepoutput(|noupdate)$/i) { next ;}
@@ -1579,11 +1607,16 @@ sub organise_user_variables {
             $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$1$2";
             if ($type eq "equation") { print "WARNING: are you sure that you want option $option specified for variable $name?\n"; }
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
-        elsif ($option =~ /^(dynamic|static)magnitude$/i) {
+        elsif ($option =~ /^((no|)dynamic|(static))magnitude$/i) {
           if ($type eq "unknown" || $type eq "equation") {
+            if (nonempty($3)) {
+              syntax_problem("staticmagnitude option has been replaced by nodynamicmagnitude, found in variable $variable{$type}[$mvar]{name}","warning");
+              $option = "nodynamicmagnitude";
+            }
             $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$option";
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         elsif ($option =~ /^(magnitude|dynamicmagnitudemultiplier)\s*=\s*([\+\-\d\.][\+\-\ded\.]*)$/i) {
+# magnitude as a number
           $option_name = "\L$1";
           $match = "\L$2"; # match is the magnitude of the variable, converted to double precision
           $match =~ s/e/d/; if ($match !~ /d/) { $match = $match."d0"; } if ($match !~ /\./) { $match =~ s/d/.d/; }
@@ -1592,14 +1625,16 @@ sub organise_user_variables {
             if ($option_name eq "magnitude") { $variable{$type}[$mvar]{"magnitude_constant"} = 0; } # this also resets the magnitude_constant variable
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         elsif ($option =~ /^magnitude\s*=\s*(<.+?>)$/i) { # alternatively, the magnitude may be specified as a none centred constant variable, which will be checked later
+# magnitude as a variable
           if ($type eq "unknown" || $type eq "equation") {
             $variable{$type}[$mvar]{"magnitude_constant"} = examine_name($1,"name");
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
-        elsif ($option =~ /^(output|stop|convergence|bell)condition$/i) {
+        elsif ($option =~ /^(output|stop|error|convergence|bell|(time|newt)steprewind)condition$/i) {
           $condition = "\L$1";
           if ($type eq "condition") {
             if (empty($variable{$type}[$mvar]{'conditions'})) { $variable{$type}[$mvar]{'conditions'} = $condition; }
             else { $variable{$type}[$mvar]{'conditions'} = $variable{$type}[$mvar]{'conditions'}.','.$condition; }
+            if ($condition eq "error") { $variable{$type}[$mvar]{'conditions'} = $variable{$type}[$mvar]{'conditions'}.',stop'; } # for error condition, to avoid double checking within the fortran, also include stopcondition
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
         elsif ($option =~ /^(positive|negative|nocheck)$/i) {
           if ($type eq "derived" || $type eq "unknown" || $type eq "equation" || $type eq "local") {
@@ -1625,27 +1660,43 @@ sub organise_user_variables {
 #         } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
           } else { error_stop("option $option specified for variable $type $name cannot be used for this type of region"); } }
 # ref: timesteprewind ref: newtsteprewind ref: rewind
-        elsif ($option =~ /^((no|)((time|newt)steprewind))$/i) {
+        elsif ($option =~ /^((no|)((time|newt)steprewind))(|\s*=\s*(.true.|(.false.)))$/i) { # able to deal with both forms of setting, but need to decide whether this is to be across the board
           if ($type ne "local" ) {
-            $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",\L$option";
+            $option = "\L$3";
+            if (nonempty($2) || nonempty($7)) { $option = "no".$option; }
+            $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",$option";
           } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
 # ref: timesteprewindmultiplier
+# as a number
         elsif ($option =~ /^(timesteprewindmultiplier)\s*=\s*([\+\-\d\.][\+\-\ded\.]*)$/i) {
           $option_name = "\L$1";
           $match = "\L$2"; # match is the magnitude of the variable, converted to double precision
           $match =~ s/e/d/; if ($match !~ /d/) { $match = $match."d0"; } if ($match !~ /\./) { $match =~ s/d/.d/; }
           if ($type ne "local") {
             $variable{$type}[$mvar]{"options"} = $variable{$type}[$mvar]{"options"}.",$option_name=$match";
+            $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = 0; # reset variable reference
           } else { print "WARNING: option $option_name specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
-        else { error_stop("unknown option of $option specified for $type $name"); }
+# as a variable
+        elsif ($option =~ /^timesteprewindmultiplier\s*=\s*(<.+?>)$/i) { # alternatively, timesteprewindmultiplier may be specified as a none centred variable, which will be checked later
+          if ($type ne "local") {
+            $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = examine_name($1,"name");
+          } else { print "WARNING: option $option specified for $type $name is not relevant for this type of variable and is ignored\n"; } }
+
+        else { error_stop("unknown option of $option specified for $type $name: remaining options = $tmp"); }
       }
+
 # remove extra leading comma and output to fortran file
       $variable{$type}[$mvar]{"options"} =~ s/^\s*\,//;
       if (nonempty($variable{$type}[$mvar]{options})) {
         print FORTRAN_INPUT "VARIABLE_OPTIONS $name $variable{$type}[$mvar]{options}\n";
-        print "INFO: the $type $name has the final component-specific options of: $variable{$type}[$mvar]{options}\n";
-        print DEBUG "INFO: the $type $name has the final component-specific options of: $variable{$type}[$mvar]{options}\n";
+        print "INFO: the $type $name has the final component-specific fortran options of: $variable{$type}[$mvar]{options}\n";
+        print DEBUG "INFO: the $type $name has the final component-specific fortran options of: $variable{$type}[$mvar]{options}\n";
       }
+    }
+
+# for a condition variable check that a condition option has been chosen
+    if ($type eq "condition") {
+      if (empty($variable{$type}[$mvar]{'conditions'})) { error_stop("condition variable $name had no condition option set"); }
     }
 
 # create maxima names for the variable
@@ -1674,7 +1725,7 @@ sub organise_user_variables {
   }
 
 #-----------------------------------------------------
-# find and check none-centred constant magnitude variable
+# find and check none-centred constant magnitude variable, and convert to fortran number
 
   foreach $type ( "unknown", "equation" ) {
     foreach $mvar ( 1 .. $m{$type} ) {
@@ -1701,13 +1752,45 @@ sub organise_user_variables {
   }
 
 #-----------------------------------------------------
-# set transientdelta and newtientdelta system variables, and simulation type based on transient/newtient variables (noting that it is too late for string replacements)
+# find and check none-centred timesteprewindmultiplier variable, and convert number to fortran number
+
+  foreach $type ( @user_types ) {
+    if ($type eq "local") { next; }
+    foreach $mvar ( 1 .. $m{$type} ) {
+      if ($variable{$type}[$mvar]{"timesteprewindmultiplier_variable"}) {
+        $name = $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"};
+        my $typefound = 0;
+        my $mvarfound = 0;
+        TYPE_LOOP: for my $typec ( @user_types ) {
+          for my $mvarc ( 1 .. $m{$typec} ) {
+            if ($name eq $variable{$typec}[$mvarc]{"name"}) {
+              $mvarfound = $mvarc;
+              $typefound = $typec;
+              last TYPE_LOOP;
+            }
+          }
+        }
+        if (!($typefound)) {
+          error_stop("the variable $name used to specify the timesteprewindmagnitude of $type $variable{$type}[$mvar]{name} is not found");
+        } elsif ($variable{$typefound}[$mvarfound]{"centring"} ne "none") {
+          error_stop("the variable $name used to specify the timesteprewindmagnitude of $type $variable{$type}[$mvar]{name} needs to be none centred: ".
+            "it is $variable{$typefound}[$mvarfound]{centring} centred");
+        }
+# if we are here then we have identified a none centred constant variable that should be used to set the magnitude - store the fortran number of this variable
+        print DEBUG "INFO: identified the none centred constant $name which will be used as the timesteprewindmagnitude of $type $variable{$type}[$mvar]{name}\n";
+        $variable{$type}[$mvar]{"timesteprewindmultiplier_variable"} = $variable{$typefound}[$mvarfound]{"fortran_number"};
+      }
+    }
+  }
+
+#-----------------------------------------------------
+# set transientsimulation and newtientsimulation system variables, and simulation type based on transient/newtient variables (noting that it is too late for string replacements)
 
   if ($variable{"transient"} && ! ($transient_simulation) ) { $transient_simulation=1; print DEBUG "INFO: setting simulation type to transient based on the detection of at least one transient variable\n"; }
   if ($variable{"newtient"} && ! ($newtient_simulation) ) { $newtient_simulation=1; print DEBUG "INFO: setting simulation type to newtient based on detection of at least one newtient variable\n"; }
   foreach $mvar ( 1 .. $m{"system"} ) {
-    if ($variable{"system"}[$mvar]{"name"} eq "<transientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $transient_simulation; }
-    if ($variable{"system"}[$mvar]{"name"} eq "<newtientdelta>") { $variable{"system"}[$mvar]{"maxima"} = $newtient_simulation; }
+    if ($variable{"system"}[$mvar]{"name"} eq "<transientsimulation>") { $variable{"system"}[$mvar]{"maxima"} = $transient_simulation; }
+    if ($variable{"system"}[$mvar]{"name"} eq "<newtientsimulation>") { $variable{"system"}[$mvar]{"maxima"} = $newtient_simulation; }
   }
 
 # tell the user if multiple definitions were used anywhere
@@ -2138,15 +2221,32 @@ sub mequation_interpolation {
 
         } else {
 # face from_centring
+# ref: lastface ref: lastfacenoglue ref: lastfaceglue
 # lastface averaging - suppress interpolation to current cell centre using values from the last face instead
-# unlike lastfacenoglue, this will move to the particular face that is glued to the current cell in the case that the lastface was a glued face
-          if ($options && $options =~ /(^|\,)\s*lastface\s*(\,|$)/) {
+
+# the difference between lastface, lastfaceglue and lastfacenoglue is concerned with what face we are interpolating from, in the case that the face is glued
+# for faces that aren't glued, lastface, lastfaceglue and lastfacenoglue all do the same thing (although lastfast is the most efficient)
+
+# in the case of glued faces, whether the default lastface refers to either the original face or the glued face adjacent to the context cell depends on the cell region being looped through:
+# - for upwindfaceicells and downwindfaceicells regions (as used in the advection routines), the default last face is the face adjacent to the context cell (ie, moved from the real jlast).  Thus, when a cellave[lastface](<blah>) appears within the expression being fluxed by default the <blah> will be evaluated at the face adjacent to the context cell (ie, interpolation does not move through any glue).  Now also applies to adjacentfaceicellsnoglue
+# - for all other regions the lastface refers to the previous face used, irrespective of whether it is adjacent to the context cell or not
+
+# more control over the glued cells can be gained by lastfacenoglue and lastfaceglue, however these may not be what you think they are for periodic domains that are only one cell in width:
+# lastfacenoglue:
+# if (face(jlast)%glued_jface /= 0) then
+#   if (face(jlast)%icell(1) /= ilast.and.face(jlast)%icell(2) == ilast) i = face(jlast)%icell(1)
+# end if
+# lastfaceglue:
+# if (face(jlast)%glued_jface /= 0) then
+#   if (face(jlast)%icell(1) == ilast.and.face(jlast)%icell(2) /= ilast) i = face(jlast)%icell(2)
+# end if
+
+          if ($options && $options =~ /(^|\,)\s*(lastface(noglue|glue))\s*(\,|$)/) {
             $inbit[$nbits] = $expression;
-            create_someloop($inbit[$nbits],"sum","face","<lastface>",$deriv,$otype,$omvar);
+            create_someloop($inbit[$nbits],"sum","face","<$2>",$deriv,$otype,$omvar); # pass region name to someloop
             $variable{"someloop"}[$m{"someloop"}]{"checkj"} = 1; # in fortran will need to check that the jlast is defined
 
-# lastfacenoglue averaging - suppress interpolation to current cell centre using values from the last face instead
-          } elsif ($options && $options =~ /(^|\,)\s*lastfacenoglue\s*(\,|$)/) {
+          } elsif ($options && $options =~ /(^|\,)\s*lastface\s*(\,|$)/) {
             $inbit[$nbits] = $expression;
             create_someloop($inbit[$nbits],"sum","face","<noloop>",$deriv,$otype,$omvar);
             $variable{"someloop"}[$m{"someloop"}]{"checkj"} = 1; # in fortran will need to check that the jlast is defined
@@ -2172,27 +2272,27 @@ sub mequation_interpolation {
       } elsif ($centring eq "face") {
 
 # advection averaging - takes a cell centred expression, a face centred flux, and optionally a cell centred gradient limiter (0->1)
+# the noglue option is always applied to advection averaging, as the region upwindfaceicells is used, which is a noglue region (ie, jlast moves to the adjacent face)
         if ($options && $options =~ /(^|\,)\s*advection\s*(\,|$)/) {
 
           ($flux,$name) = search_operator_contents("flux",$next_contents_number);
           if (empty($flux)) { error_stop("flux part for $operator in $otype $variable{$otype}[$omvar]{name} not found:\n  operator_contents = ".Dumper(\%operator_contents)); }
           ($limiter,$name) = search_operator_contents("limiter",$next_contents_number);
-          if (empty($limiter)) { $limiter = "1"; print "INFO: using default limiter = 1 for $operator in $otype $variable{$otype}[$omvar]{name}\n"; } # default limiter is 1
+          if (empty($limiter)) { $limiter = "0"; print "INFO: using default limiter = 0 (low order upwind advection) for $operator in $otype $variable{$otype}[$omvar]{name}\n"; } # default limiter is 0 now, changed from 1 in pre v0.57
           print DEBUG "advection operator components found: expression = $expression: flux = $flux: limiter = $limiter\n";
 
 # pull out optional gradient too
           $inbit[$nbits] = $expression; # assemble expression
-#         if ($limiter) {
+# this conditional put back in v0.57
+          if ($limiter) {
             foreach $l ( 1 .. 3 ) {
               ($gradient,$name) = search_operator_contents("gradient[l=$l]",$next_contents_number);
-#             if ($gradient eq "") { $gradient = "cellsum(cellkernel[ilast,$l,ns]*(".$expression.'),<cellkernelregion[l='.$l.']>)';
               if (empty($gradient)) { $gradient = "cellgrad[l=$l".$reflect_option_string."](".$expression.')'; # passes reflect options through to gradient
               } else { print "INFO: found gradient[l=$l] expression for $operator in $otype $variable{$otype}[$omvar]{name}\n"; }
               $inbit[$nbits] = $inbit[$nbits].
-#               "+(".$limiter.")*cellsum(cellkernel[ilast,$l,ns]*(".$expression.'),<cellkernelregion[l='.$l.']>)'.
                 "+(".$limiter.")*(".$gradient.")*(cellave[lastface](facex[j,$l])-cellx[i,$l])";
             }
-#         }
+          }
           create_someloop($inbit[$nbits],"sum","cell","<upwindfaceicells>",$deriv,$otype,$omvar);
           $someloop_mvar = $m{"someloop"}; # save someloop type
 
@@ -2241,18 +2341,21 @@ sub mequation_interpolation {
 # average based on adjacent cells only, weighted by distance
         } elsif ($options && ( $options =~ /(^|\,)\s*adjacentcells(|weighted)\s*(\,|$)/ )) {
 
+          my $someloopregion = "<adjacentfaceicells>";
+          if ( $options =~ /(^|\,)\s*noglue\s*(\,|$)/ ) { $someloopregion = "<adjacentfaceicellsnoglue>"; }
+
           $dx = '';
           foreach $l ( 1 .. 3 ) {
             $dx = $dx."+cellave[othercell](facetoicellr[j,$l,ns])*cellave[lastface](facenorm[j,$l])";
           }
           $top = "abs($dx)*($expression)$reflect_multiplier_string"; # here dx is the distance normal to the interface on the other side of the face
-          create_someloop($top,"sum","cell","<adjacentfaceicells>",$deriv,$otype,$omvar);
+          create_someloop($top,"sum","cell",$someloopregion,$deriv,$otype,$omvar);
           if (@reflect) { @{$variable{"someloop"}[$m{"someloop"}]{"reflect"}} = @reflect; }
           $dx = '';
           foreach $l ( 1 .. 3 ) {
             $dx = $dx."+facetoicellr[j,$l,ns]*cellave[lastface](facenorm[j,$l])";
           }
-          $bottom = "cellsum(expression=abs($dx),region=<adjacentfaceicells>)"; # here dx is the distance normal to the interface on this side of the face
+          $bottom = "cellsum(expression=abs($dx),region=$someloopregion)"; # here dx is the distance normal to the interface on this side of the face
           create_someloop($bottom,"max","cell","<noloop>",0,$otype,$omvar);
           $variable{"someloop"}[$m{"someloop"}]{"default"} = "tinyish";
 
@@ -2296,8 +2399,10 @@ sub mequation_interpolation {
 
 # average based on adjacent cells only, no weighting
         } elsif ($options && ( $options =~ /(^|\,)\s*adjacentcellsevenweighting\s*(\,|$)/ )) {
+          my $someloopregion = "<adjacentfaceicells>";
+          if ( $options =~ /(^|\,)\s*noglue\s*(\,|$)/ ) { $someloopregion = "<adjacentfaceicellsnoglue>"; }
           $inbit[$nbits] = "($expression)$reflect_multiplier_string";
-          create_someloop($inbit[$nbits],"sum","cell","<adjacentfaceicells>",$deriv,$otype,$omvar);
+          create_someloop($inbit[$nbits],"sum","cell",$someloopregion,$deriv,$otype,$omvar);
           if (@reflect) { @{$variable{"someloop"}[$m{"someloop"}]{"reflect"}} = @reflect; }
           $inbit[$nbits] = "(($inbit[$nbits])/2.d0)"
 
@@ -2307,16 +2412,13 @@ sub mequation_interpolation {
           create_someloop($inbit[$nbits],"sum","cell","<noloop>",$deriv,$otype,$omvar);
           $variable{"someloop"}[$m{"someloop"}]{"checki"} = 1; # in fortran will need to check that the ilast is defined
 
-# upcell averaging - only use face(j)%icell(2), that is, cell in direction of face normal
-        } elsif ($options && $options =~ /(^|\,)\s*upcell\s*(\,|$)/) {
+# upcell and downcell averaging - only use face(j)%icell(2) and face(j)%icell(1), respectively, that is, cell in direction and opposite direction of face normal
+# now allows for noglue option, which determines whether an incorporated lastface refers to the original (default) or adjacent (noglue) face to this cell
+        } elsif ($options && $options =~ /(^|\,)\s*((up|down)cell)\s*(\,|$)/) {
+          my $someloopregion = "adjacentface$2";
+          if ( $options =~ /(^|\,)\s*noglue\s*(\,|$)/ ) { $someloopregion = "<".$someloopregion."noglue>"; } else { $someloopregion = "<".$someloopregion.">"; }
           $inbit[$nbits]=$expression.$reflect_multiplier_string;
-          create_someloop($inbit[$nbits],"sum","cell","<adjacentfaceupcell>",$deriv,$otype,$omvar);
-          if (@reflect) { @{$variable{"someloop"}[$m{"someloop"}]{"reflect"}} = @reflect; }
-
-# downcell averaging - only use face(j)%icell(1), that is, cell in opposite direction to the face normal
-        } elsif ($options && $options =~ /(^|\,)\s*downcell\s*(\,|$)/) {
-          $inbit[$nbits]=$expression.$reflect_multiplier_string;
-          create_someloop($inbit[$nbits],"sum","cell","<adjacentfacedowncell>",$deriv,$otype,$omvar);
+          create_someloop($inbit[$nbits],"sum","cell",$someloopregion,$deriv,$otype,$omvar);
           if (@reflect) { @{$variable{"someloop"}[$m{"someloop"}]{"reflect"}} = @reflect; }
 
 # othercell averaging - use the cell on the otherside of the lastface to the lastcell
@@ -2432,7 +2534,7 @@ sub mequation_interpolation {
       if (empty($false)) { $false = "0"; }
 #       error_stop("false expression in if operator not found in $otype $variable{$otype}[$omvar]{name}"); }
 
-      $inbit[$nbits] = $condition; # main expression is condition (giving the true value if >=0, else the false value)
+      $inbit[$nbits] = $condition; # main expression is condition (giving the true value if >0, else the false value)
       create_someloop($inbit[$nbits],$operator_type,$centring,"<noloop>",0,$otype,$omvar);
       $someloop_mvar = $m{"someloop"}; # save someloop type
 
@@ -3747,8 +3849,11 @@ sub create_compounds {
     if (nonempty($variable{"compound"}[$mvar2]{options})) {
       $tmp = $variable{"compound"}[$mvar2]{"options"};
       $variable{"compound"}[$mvar2]{"options"} = '';
-      while ($tmp =~ /(^|\,)\s*([^\,]+?)\s*(\,|$)/i) {
-        $option = $2; $tmp = $`.','.$';
+      while (nonempty($tmp)) {
+        my @extracted_option = extract_option($tmp);
+        if ($extracted_option[3]) { error_stop("error in extracting options for $type compound $name: remaining options = $tmp"); };
+        if (empty($extracted_option[0])) { next; }
+        my $option = $extracted_option[0];
         if ($option =~ /^(|no)(|compound)(output|(stepoutput(|noupdate)))$/i) {
           $variable{"compound"}[$mvar2]{"options"} = $variable{"compound"}[$mvar2]{"options"}.",\L$1$3"; }
         elsif ($option =~ /^(|no)(|compound)(element(|node|nodelimited)data)$/i) {
@@ -3909,6 +4014,10 @@ sub create_allocations {
         if ($type eq "unknown" || $type eq "equation") {
           $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.
             "$basename{$type}($variable{$type}[$mvar]{fortran_number})%magnitude_constant=$variable{$type}[$mvar]{magnitude_constant}\n";
+        }
+        if ($type ne "local") {
+          $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.
+            "$basename{$type}($variable{$type}[$mvar]{fortran_number})%timesteprewindmultiplier_variable=$variable{$type}[$mvar]{timesteprewindmultiplier_variable}\n";
         }
       } else {
         $sub_string{"allocate_meta_arrays"}=$sub_string{"allocate_meta_arrays"}.
@@ -4221,21 +4330,6 @@ sub run_maxima_fortran {
 }
 
 #-------------------------------------------------------------------------------
-
-sub fortran_logical_string {
-
-  my $string;
-
-  if ($_[0]) {
-    $string = ".true.";
-  } else {
-    $string = ".false.";
-  }
-  return $string;
-
-}
-
-#-------------------------------------------------------------------------------
 # this takes a single maxima line and converts it into a single fortran line with
 #  references suitable for the final code
 
@@ -4260,7 +4354,7 @@ sub maxima_to_fortran {
 
     foreach $mvar ( 1 .. $m{$type}) {
 
-      if (nonempty($variable{$type}[$mvar]{"mfortran"})) { # mfortran is empty in (system) variables that have a maxima name that is an actual value (eq transientdelta)
+      if (nonempty($variable{$type}[$mvar]{"mfortran"})) { # mfortran is empty in (system) variables that have a maxima name that is an actual value (eq transientsimulation)
         push(@searches,$variable{$type}[$mvar]{"mfortran"});
         push(@replaces,$variable{$type}[$mvar]{"fortran"});
 				if (nonempty($variable{$type}[$mvar]{"kernel_type"})) {
@@ -4413,23 +4507,18 @@ sub create_fortran_equations {
           "$variable{$type}[$mvar]{fortranns} = 1.d0\n\n";
       }
 
-# for conditions write skip statements
+# for conditions write skip statements (existence of at least one condition now previously done)
       if ($type eq "condition") {
-        if (nonempty($variable{$type}[$mvar]{"conditions"})) {
-          $sub_string{$type}=$sub_string{$type}."if (.not.(";
-          $firstcondition = 1;
-          foreach my $condition_type ("output", "stop", "convergence", "bell") {
-            if ($variable{$type}[$mvar]{"conditions"} =~ /(^|\,)\s*($condition_type)\s*(\,|$)/) {
-              if (!($firstcondition)) { $sub_string{$type}=$sub_string{$type}.".or."; }
-              $sub_string{$type} = $sub_string{$type}."condition_type == \"$condition_type\"";
-              $firstcondition = 0;
-            }
+        $sub_string{$type}=$sub_string{$type}."if (.not.(";
+        $firstcondition = 1;
+        foreach my $condition_type ("output", "stop", "error", "convergence", "bell", "timesteprewind", "newtsteprewind") {
+          if ($variable{$type}[$mvar]{"conditions"} =~ /(^|\,)\s*($condition_type)\s*(\,|$)/) {
+            if (!($firstcondition)) { $sub_string{$type}=$sub_string{$type}.".or."; }
+            $sub_string{$type} = $sub_string{$type}."condition_type == \"$condition_type\"";
+            $firstcondition = 0;
           }
-          $sub_string{$type}=$sub_string{$type}.")) cycle\n\n";
-        } else {
-          $sub_string{$type}=$sub_string{$type}."cycle\n\n";
-          print "WARNING: CONDITION variable $variable{$type}[$mvar]{name} has no condition option listed\n";
         }
+        $sub_string{$type}=$sub_string{$type}.")) cycle\n\n";
       }
 
 # form reflect strings for relevant kernel, cellicells and faceicells based regions
@@ -4610,19 +4699,34 @@ sub create_fortran_equations {
 #                 "do ns = 1, 2\n".
 #                 "i = face(j)%icell(ns)\n";
 #             }
+        } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfaceicellsnoglue>') {
+          $sub_string{$type}=$sub_string{$type}.
+            "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
+            "do ns = 1, 2\n".
+            "i = face(jlast)%icell(ns)\n".
+            "if (face(jlast)%glue_jface /= 0) then\n".
+            "if (ns == 2) then\nj = face(jlast)%glue_jface\nelse\nj = jlast\nend if\n".
+            "end if\n".
+            $reflect_string_form;
         } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfaceupcell>') {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
-#           "do ns = 2, 2\n".
             "ns = 2\n".
-            "i = face(j)%icell(ns)\n".$reflect_string_form;
+            "i = face(jlast)%icell(ns)\n".$reflect_string_form;
             $openloop = 0;
-        } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfacedowncell>') {
+        } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfaceupcellnoglue>') {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
-#           "do ns = 1, 1\n".
+            "ns = 2\n".
+            "i = face(jlast)%icell(ns)\n".
+            "if (face(jlast)%glue_jface /= 0) j = face(jlast)%glue_jface".
+            $reflect_string_form;
+            $openloop = 0;
+        } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfacedowncell>' || $variable{$type}[$mvar]{"region"} eq '<adjacentfacedowncellnoglue>') {
+          $sub_string{$type}=$sub_string{$type}.
+            "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
             "ns = 1\n".
-            "i = face(j)%icell(ns)\n".$reflect_string_form;
+            "i = face(jlast)%icell(ns)\n".$reflect_string_form;
             $openloop = 0;
         } elsif ($variable{$type}[$mvar]{"region"} eq '<adjacentfaceothercell>') {
 #         $sub_string{$type}=$sub_string{$type}.
@@ -4658,14 +4762,22 @@ sub create_fortran_equations {
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
 #           "do ns = (3-flux_direction)/2, (3-flux_direction)/2\n".
             "ns = (3-flux_direction)/2\n".
-            "i = face(j)%icell(ns)\n".$reflect_string_form;
+            "i = face(jlast)%icell(ns)\n".
+            "if (ns == 2) then\n".
+            "if (face(jlast)%glue_jface /= 0) j = face(jlast)%glue_jface\n". # upwindfaceicells and downwindfaceicells also change jlast, so that lastface now references the face that is attached to the context cell
+            "endif\n".
+            $reflect_string_form;
             $openloop = 0;
         } elsif ($variable{$type}[$mvar]{"region"} eq '<downwindfaceicells>') {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".$reflect_string_init.
 #           "do ns = (3+flux_direction)/2, (3+flux_direction)/2\n".
             "ns = (3+flux_direction)/2\n".
-            "i = face(j)%icell(ns)\n".$reflect_string_form;
+            "i = face(jlast)%icell(ns)\n".
+            "if (ns == 2) then\n".
+            "if (face(jlast)%glue_jface /= 0) j = face(jlast)%glue_jface\n". # upwindfaceicells and downwindfaceicells also change jlast, so that lastface now references the face that is attached to the context cell
+            "endif\n".
+            $reflect_string_form;
             $openloop = 0;
         } elsif ($variable{$type}[$mvar]{"region"} eq '<cellkernelregion[l=0]>') {
           $sub_string{$type}=$sub_string{$type}.
@@ -4699,13 +4811,19 @@ sub create_fortran_equations {
 #           "ns = 1\n".
             "if (face(jlast)%glue_jface /= 0) j = face(jlast)%glue_jface\n";
             $openloop = 0;
-        } elsif ($variable{$type}[$mvar]{"region"} eq '<lastface>') {
+        } elsif ($variable{$type}[$mvar]{"region"} eq '<lastfaceglue>') {
           $sub_string{$type}=$sub_string{$type}.
             "! loop is conducted around region $variable{$type}[$mvar]{region}\n".
-#           "do ns = 1, 1\n".
-#           "ns = 1\n".
-#           "if (face(jlast)%icell(2) == i.and.face(jlast)%glue_jface /= 0) j = face(jlast)%glue_jface\n";
-            "if (face(jlast)%glue_jface /= 0) then\nif (face(jlast)%icell(2) == i) j = face(jlast)%glue_jface\nend if\n"; # more efficient nested conditionals
+            "if (face(jlast)%glue_jface /= 0) then\n".
+            "if (face(jlast)%icell(1) == ilast.and.face(jlast)%icell(2) /= ilast) i = face(jlast)%icell(2)\n".
+            "end if\n";
+            $openloop = 0;
+        } elsif ($variable{$type}[$mvar]{"region"} eq '<lastfacenoglue>') {
+          $sub_string{$type}=$sub_string{$type}.
+            "! loop is conducted around region $variable{$type}[$mvar]{region}\n".
+            "if (face(jlast)%glue_jface /= 0) then\n".
+            "if (face(jlast)%icell(1) /= ilast.and.face(jlast)%icell(2) == ilast) i = face(jlast)%icell(1)\n".
+            "end if\n";
             $openloop = 0;
         } elsif ($variable{$type}[$mvar]{"region"} =~ /<separationcentre(\d*)>/) {
           $sub_string{$type}=$sub_string{$type}.
@@ -4909,7 +5027,7 @@ sub create_fortran_equations {
 # for a condition check on the sign and possibly exit
       if ($type eq "condition") {
         $sub_string{$type}=$sub_string{$type}.
-          "if ($variable{$type}[$mvar]{fortranns} > 0.d0) then\ncheck_condition = .true.\nreturn\nend if\n\n";
+          "if ($variable{$type}[$mvar]{fortranns} > 0.d0) then\nfind_condition = m\nreturn\nend if\n\n";
       }
 
 # close loop, possibly dealing with separation stuff
@@ -5460,28 +5578,56 @@ sub create_system_variables {
   $variable{"system"}[$m{"system"}]{"maxima"} = "random";
   $variable{"system"}[$m{"system"}]{"fortran"} = "random()";
   $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timestep>"; # double precision representation of timestep
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timestep";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timestep)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewind>"; # double precision representation of timesteprewind, which is the number of timesteps to rewind during a timesteprewind (or 0 for timesteprewind off)
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewind";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewind)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewindmax>"; # double precision representation of timesteprewindmax, which is the maximum number of consecutive timesteprewinds to do
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewindmax";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewindmax)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewindsdone>"; # double precision representation of timesteprewindsdone
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewindsdone";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewindsdone)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<timesteprewindstored>"; # double precision representation of timesteprewindstored
+  $variable{"system"}[$m{"system"}]{"maxima"} = "timesteprewindstored";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timesteprewindstored)";
+  $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtstep>"; # double precision representation of newtstep
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtstep";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(newtstep)";
   $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<timestep>"; # double precision representation of timestep
-  $variable{"system"}[$m{"system"}]{"maxima"} = "timestep";
-  $variable{"system"}[$m{"system"}]{"fortran"} = "dble(timestep)";
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtstepconverged>"; # 0 or 1 depending on whether latest newtstep loop converged
+  $variable{"system"}[$m{"system"}]{"maxima"} = "newtstepconverged";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "arb_variable_from_fortran_logical(newtstepconverged)";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtstepfailed>"; # 0 or 1 depending on whether latest newtstep loop failed (ie, there was an error during the step)
+  $variable{"system"}[$m{"system"}]{"maxima"} = "newtstepfailed";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "arb_variable_from_fortran_logical(newtstepfailed)";
   $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<newtres>"; # latest evalulation of the newton residual
   $variable{"system"}[$m{"system"}]{"maxima"} = "newtres";
   $variable{"system"}[$m{"system"}]{"fortran"} = "newtres";
   $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtrestol>"; # latest evalulation of the newton residual
+  $variable{"system"}[$m{"system"}]{"maxima"} = "newtrestol";
+  $variable{"system"}[$m{"system"}]{"fortran"} = "newtrestol";
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<transientsimulation>"; # 0 or 1 depending on whether simulation is transient or not (formerly <transientdelta>, but renamed v0.58)
+# actual values for transientsimulation and newtientsimulation have to be set once the input files have been read - done in the interests of simplification of maximum equations
+  $variable{"system"}[$m{"system"}]{"maxima"} = 0;
+  $m{"system"}++;
+  $variable{"system"}[$m{"system"}]{"name"} = "<newtientsimulation>"; # 0 or 1 depending on whether simulation is newtient or not (formerly <newtientdelta>, but renamed v0.58)
+  $variable{"system"}[$m{"system"}]{"maxima"} = 0;
+  $m{"system"}++;
   $variable{"system"}[$m{"system"}]{"name"} = "<separation>"; # double precision representation of current separation
   $variable{"system"}[$m{"system"}]{"maxima"} = "separation";
   $variable{"system"}[$m{"system"}]{"fortran"} = "dble(someloop(thread)%separation_list(someloop(thread)%current_separation_list(1))%nseparation)";
-  $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<transientdelta>"; # 0 or 1 depending on whether simulation is transient or not
-# actual values for transientdelta and newtientdelta have to be set once the input files have been read
-  $variable{"system"}[$m{"system"}]{"maxima"} = 0;
-  $m{"system"}++;
-  $variable{"system"}[$m{"system"}]{"name"} = "<newtientdelta>"; # 0 or 1 depending on whether simulation is newtient or not
-  $variable{"system"}[$m{"system"}]{"maxima"} = 0;
 
 #------------------------------------
 

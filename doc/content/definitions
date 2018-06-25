@@ -3,11 +3,13 @@
 [contents]: <<<root>>>/index.html
 [Introduction]: <<<root>>>/introduction/index.html
 [arb file syntax]: <<<root>>>/arb_file_syntax/index.html
-[Meshes and regions]: <<<root>>>/meshes_and_regions/index.html
+[Meshes]: <<<root>>>/meshes/index.html
+[Regions]: <<<root>>>/regions/index.html
 [Variables]: <<<root>>>/variables/index.html
 [Simulation options]: <<<root>>>/simulation_options/index.html
 [Templates]: <<<root>>>/templates/index.html
 [Examples]: <<<root>>>/examples/index.html
+[Version changes]: <<<root>>>/version_changes/index.html
 [Coding Reference]: <<<root>>>/coding_reference/index.html
 [Installation]: <<<root>>>/installation/index.html
 [css]: <<<root>>>/css
@@ -27,8 +29,10 @@
 [setup_equations]: <<<arbroot>>>/src/setup_equations
 [StringCode.pm]: <<<arbroot>>>/src/setup_equations/StringCode.pm
 [ReadInputFiles.pm]: <<<arbroot>>>/src/setup_equations/ReadInputFiles.pm
-[templates_dir]: <<<arbroot>>>/templates
-[examples_dir]: <<<arbroot>>>/examples
+[templates directory]: <<<arbroot>>>/templates
+[templates general directory]: <<<arbroot>>>/templates/general
+[cylindrical_reflect_r1z3.arb]: <<<arbroot>>>/templates/general/cylindrical_reflect_r1z3.arb
+[examples directory]: <<<arbroot>>>/examples
 [gmsh]: http://gmsh.info
 [Pointwise]: http://www.pointwise.com
 [paraview]: https://www.paraview.org

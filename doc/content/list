@@ -2,11 +2,13 @@
 # rule is to lowercase all letters and replace spaces with underscores
 Introduction
 arb file syntax
-Meshes and regions
+Meshes
+Regions
 Variables
 Simulation options
 Templates
 Examples
+Version changes
 Installation
 Coding reference
 #css

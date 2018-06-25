@@ -4,16 +4,23 @@ END_MARKDOWN
 
 # set some parameters that are used within the navier_stokes templates, basically overwritting the default_string_replacements template from the navier_stokes directory
 # default is a transient simulation under the mixture model
-GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+#GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
 GENERAL_REPLACEMENTS R "<<stokescomment>>" W "#" R "<<navierstokescomment>>" W ""
 GENERAL_REPLACEMENTS R "<<uniformviscositycomment>>" W "#" R "<<nonuniformviscositycomment>>" W ""
 GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W ""
 
 # now include the standard navier_stokes templates
 # <mu_liq> is defined as the liquid viscosity, and <rho_liq> as the liquid density
-INCLUDE_TEMPLATE "navier_stokes/constants" R "<mu>" W "<mu_l>" R "<rho>" W "<rho_l>"
+#INCLUDE_TEMPLATE "navier_stokes/constants" R "<mu>" W "<mu_l>" R "<rho>" W "<rho_l>"
+INCLUDE_TEMPLATE "navier_stokes"
+INCLUDE "constants" R "<mu>" W "<mu_l>" R "<rho>" W "<rho_l>"
 
 # gravity components, bouyancy terms todo
 <<dim1comment>>CONSTANT <g[l=1]> [] 0.d0 # gravity component
 <<dim2comment>>CONSTANT <g[l=2]> [] 0.d0 # gravity component
 <<dim3comment>>CONSTANT <g[l=3]> [] 0.d0 # gravity component
+
+CONSTANT <a> 20.e-6 #Particle radius
+CONSTANT <volume> "4./3*<pi>*<a>^3"  # particle volume
+CONSTANT <k_b> [] 1.38d-23 # Boltzmann constant
+CONSTANT <T> [] 293 # Temperature

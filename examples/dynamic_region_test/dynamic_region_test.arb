@@ -33,7 +33,7 @@ GLUE_FACES <fluid west> reflect=1
 # user-defined constants
 
 # these statements only necessary in cartesian as already included in above files, but GENERAL_REPLACEMENT statements can't be commented out by other strings, so just repeat them
-GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+INCLUDE_TEMPLATE "general/cartesian_x1y2"
 GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
 
 # vof based CSF

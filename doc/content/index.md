@@ -10,11 +10,13 @@ This is the manual for arb, an open-source multiphysics finite volume solver.
 
 * [Introduction]
 * [arb file syntax]
-* [Meshes and regions]
+* [Meshes]
+* [Regions]
 * [Variables]
 * [Simulation options]
 * [Templates]
 * [Examples]
+* [Version changes]
 * [Installation]
 * [Coding Reference]
 

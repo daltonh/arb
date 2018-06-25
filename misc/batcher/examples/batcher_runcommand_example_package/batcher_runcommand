@@ -1,0 +1,18 @@
+#!/bin/bash
+#ARBOPTIONS="--quiet --omp2 -pl --opt"
+ARBOPTIONS="--quiet --omp -pl --opt"
+#ARBOPTIONS="--quiet"
+echo "INFO: running bone_mesh"
+./arb $ARBOPTIONS bone_mesh_090516.arb
+if [ $? -ne 0 ] ; then exit 1; fi # exit if there was a problem
+cp output/output.msh bone_mesh.msh
+if [ $? -ne 0 ] ; then exit 1; fi # exit if there was a problem
+echo "INFO: running bone_geometry"
+./arb $ARBOPTIONS bone_geometry_090516.arb
+if [ $? -ne 0 ] ; then exit 1; fi # exit if there was a problem
+cp output/output.msh bone_geometry.msh
+if [ $? -ne 0 ] ; then exit 1; fi # exit if there was a problem
+echo "INFO: running bone_flow"
+./arb $ARBOPTIONS bone_flow_090516.arb
+if [ $? -ne 0 ] ; then exit 1; fi # exit if there was a problem
+cp output/output.msh bone_flow.msh

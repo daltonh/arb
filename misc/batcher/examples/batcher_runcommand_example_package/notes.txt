@@ -1,0 +1,15 @@
+This is an example of how to run a script from arb_batcher.
+
+For this example three sequential runs were performed with the output from each feeding the input of the next.  This particular case was run using arb v0.55.
+
+The files are:
+
+1.  batcher_runcommand shell script that runs the simulations.  Note that this script picks up if there is an error in one of the simulations and halts.
+2.  the arb input files
+3.  batcher_setup.pm
+
+This file is taken from my directory: /Users/daltonh/codes/arb/bone/mesh_tests_090516/arb_develop.
+
+This example does not contain the mesh files etc required to perform this simulation, but is just included to show how to get batcher to call a script.
+
+Dalton, 21/5/18

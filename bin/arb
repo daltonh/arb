@@ -2,7 +2,7 @@
 #
 # file arb
 #
-# Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+# Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
 # 
@@ -97,7 +97,7 @@ function usage () {
   echo "  --debugger-none: do not run within a debugger environment (relevant for debug runs)";
   echo "          all debugger options turn debug on, but that can be overwritten using the --no-debug option given after";
   echo "  --no-pardiso: do not link in the native pardiso routines, allowing the intel pardiso routines to be used instead";
-  echo "  --pardiso-lic-path: set the path (directory) which holds the native pardiso licence file pardiso.lic, required if it is not contained in src/contributed/pardiso or the run directory";
+  echo "  --pardiso-lic-path: set the path (directory) which holds the native pardiso licence file pardiso.lic, required if it is not contained in src/contributed/pardiso or the run (working) directory.  Path is relative to the working directory unless starting with '/'.";
   echo "  --no-suitesparse: do not download the fortran 90 suitesparse interface or link in the packaged suitesparse routines";
   echo "  --mgmres: download the fortran 90 mgmres libraries and link these in";
   echo "  --no-mgmres: do not download the fortran 90 mgmres libraries and link these in (default)";
@@ -217,10 +217,18 @@ ulimit -s 65000; # set stacksize using ulimit, up to apparently hard limit that 
 MKL_PARDISO_OOC_PATH="$mkl_pardiso_ooc_dir/intel_pardiso_ooc"; # environment variable
 
 # environment variables that specify the location of files for the native pardiso solver
-if [ -z "$PARDISO_LIC_PATH" ] ; then # only set this if it is empty, allowing user to specify path in their shell setup that overrides this default location
-  PARDISO_LIC_PATH="$src_dir/contributed/pardiso"; # location of the pardiso.lic file required for the native pardiso solver
-fi
 LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$src_dir/contributed/pardiso"; # use this to tell the runtime linker where the pardiso libraries are
+# from osx 10.11 onwards, apple's annoying sip stops DYLD_LIBRARY_PATH from being exported to this script, so instead, construct a new DYLD_LIBRARY_PATH that includes the possible locations of the intel libraries
+os_type=`uname -s`;
+if [ "$os_type" == "Darwin" -a -n "$MKLROOT" -a -z "$DYLD_LIBRARY_PATH" ] ; then
+  intelroot=${MKLROOT/%\/mkl/}; # replace /mkl/ from the end of the path with nothing
+  if [ ! -d "$intelroot" ] ; then
+    echo "WARNING: intel root directory not found, and DYLD_LIBRARY_PATH not set, related to osx SIP problem: intelroot = $intelroot";
+  else
+#   echo "WARNING: getting around apple's SIP by setting DYLD_LIBRARY_PATH from intelroot = $intelroot";
+    DYLD_LIBRARY_PATH="$intelroot/compiler/lib:$intelroot/compiler/lib/intel64:$intelroot/mkl/lib";
+  fi;
+fi;
 DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:$src_dir/contributed/pardiso"; # use this to tell the runtime linker where the pardiso libraries are
 
 #---------------------------
@@ -325,8 +333,16 @@ scroutput="$output_dir/output.scr";
 # location of ooc temp files for out of core intel pardiso solver
 mkl_pardiso_ooc_dir="$build_dir/intel_pardiso_ooc";
 
-# check that pardiso licence path is absolute
-if [[ $PARDISO_LIC_PATH != /* ]] ; then
+# check that pardiso licence path is correct and absolute
+if [ -z "$PARDISO_LIC_PATH" ] ; then
+# if the path to the pardiso library has not been set, first assume that it is in src/contributed/pardiso
+  PARDISO_LIC_PATH="$src_dir/contributed/pardiso"; 
+  if [ ! -e "$PARDISO_LIC_PATH/pardiso.lic" ] ; then
+# if it isn't there, assume that it is in the working directory
+    PARDISO_LIC_PATH="$working_dir";
+  fi;
+elif [[ $PARDISO_LIC_PATH != /* ]] ; then
+# if the user has set this path, make sure it is absolute, otherwise assume that the path is relative to the working directory
   PARDISO_LIC_PATH="$working_dir/$PARDISO_LIC_PATH";
 fi;
 
@@ -446,6 +462,12 @@ echo "INFO: environment variable DYLD_LIBRARY_PATH = $DYLD_LIBRARY_PATH"
 echo "INFO: environment variable OMP_NUM_THREADS = $OMP_NUM_THREADS"
 if [ -n "${OMP_NUM_THREADS}" ] ; then echo "INFO: arb will be run with $OMP_NUM_THREADS omp threads" ; fi ;
 
+if [ ! -e "$PARDISO_LIC_PATH/pardiso.lic" ] ; then # finally tell the user if the file was not found
+  echo "INFO: pardiso licence not found"
+else
+  echo "INFO: pardiso licence found at: $PARDISO_LIC_PATH"
+fi;
+
 # check for input files.  If none have been set, then use any *.arb files that exist in the working directory, and failing that, any *.in files
 if [ -z "${arbfiles[0]}" ] ; then arbfiles=( `ls *.arb 2> /dev/null` ); fi ;
 if [ -z "${arbfiles[0]}" ] ; then arbfiles=( `ls *.in 2> /dev/null` ); fi ;
@@ -532,8 +554,10 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
         fi
       else
         if [ $compiler = "intel" ] ; then
-          echo "ERROR: requested intel compiler is not in the path" ;
+          echo "ERROR: requested intel compiler is not available.  Check that the compiler is installed and can be found within your path (does 'ifort --version' at the command line work?)." ;
           cd "$working_dir"; exit 1;
+        else
+          echo "INFO: intel compiler is not available";
         fi
       fi
     fi
@@ -544,14 +568,16 @@ if [ $ocompile -eq 1 -o $osetup -eq 1 ] ; then
         compiler="gnu";
       else
         if [ $compiler = "gnu" ] ; then
-          echo "ERROR: requested gnu compiler is not in the path" ;
+          echo "ERROR: requested gnu compiler is not available.  Check that the compiler is installed and can be found within your path (does 'gfortran --version' at the command line work?)." ;
           cd "$working_dir"; exit 1;
+        else
+          echo "INFO: gnu compiler is not available" ;
         fi
       fi
     fi
   # if nothing is found 
     if [ $compiler = "default" ] ; then
-      echo "ERROR: no compiler is present";
+      echo "ERROR: no compiler is available";
       cd "$working_dir"; exit 1;
     elif [ ! $compiler = "intel" -a ! $compiler = "gnu" ] ; then
       echo "ERROR: unknown requested compiler $compiler";

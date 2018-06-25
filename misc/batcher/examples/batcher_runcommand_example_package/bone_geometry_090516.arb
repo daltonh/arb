@@ -1,0 +1,49 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+VERSION 0.55 # the version of syntax used in this file
+
+# the following strings describe the simulation and are passed to the output files
+INFO_TITLE "Here we setup the (vof) geometry to be used for the arb simulations"
+INFO_DESCRIPTION "3D geometry, with reflection on side walls"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "9/5/16" # interpreted as the last modification date
+
+<<batchercomment>>INFO_DESCRIPTION+ ": run under batcher"
+
+#-------------------------------------------------------------------
+# using iterative solver here
+SOLVER_OPTIONS linearsolver=doglegdescent
+NEWTRESTOL 1.d-8
+ITERRESTOL 1.d-9
+ITERSTEPCHECK 200
+ITERSTEPMAX 1000000000
+
+#-------------------------------------------------------------------
+# geometry
+MSH_FILE "bone_mesh.msh" input,nooutput # this msh has already been run through arb to create phi and add the names to the surrounding faces
+
+#-------------------------------------------------------------------
+# read in phi from previous bone_mesh creation
+CELL_CONSTANT <phi> "0.d0" ON <all cells> input,output
+
+#-------------------------------------------------------------------
+# kernel
+INCLUDE_ROOT "kernel_presets"
+INCLUDE "kernel_1st_order_limited_mask"
+
+# create the various vof variables
+INCLUDE_ROOT "network_flow"
+INCLUDE "interface_geometry"
+
+# add high order vof/levelset field for contour plotting later (based on <phi_c>)
+OVERRIDE_OPTIONS nooutput
+INCLUDE_ROOT "free_surface/volume_of_fluid"
+INCLUDE "implicit_reconstructed_levelset" R "<vof_phi_interface>" W "<phi_c>"
+VARIABLE <vof_s boundary> CANCEL # remove boundary condition as there are no boundaries
+OVERRIDE_OPTIONS
+VARIABLE <vof_s> output
+VARIABLE <local smoothed celldx> "<celldxkernel>" # as the grid is uniform no smoothing is required

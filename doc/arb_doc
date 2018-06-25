@@ -2,7 +2,7 @@
 #
 # file arb_doc
 #
-# Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+# Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
 # 
@@ -188,7 +188,9 @@ echo "INFO: html_dir = $html_dir"
 
 # if including the arb directory files then do this too using arb_clone
   if [ $oincludearb -eq 1 ] ; then
-    $("$arb_dir/bin/arb_clone" --overwrite --clean-git --local-directory "$arb_dir" --directory "$html_dir/arb_files");
+    cd $arb_dir && git_branch=`git rev-parse --abbrev-ref HEAD`;
+    echo "INFO: local git_branch = $git_branch: pwd = "`pwd`;
+    $("$arb_dir/bin/arb_clone" --overwrite --clean-git --local --local-directory "$arb_dir" --directory "$html_dir/arb_files" --branch "$git_branch");
     arbroot_var="$root_var/arb_files";
   else
     arbroot_var="$arb_dir";

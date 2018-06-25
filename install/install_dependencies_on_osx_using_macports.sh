@@ -16,13 +16,30 @@
 #       port install wxmaxima
 
 ######################
+osxfullversion=`sw_vers -productVersion`
+osxversion=${osxfullversion:3:2} # extracts substring starting at 3 (0 referenced) and of length 2
+echo "INFO: the osx full version number is $osxfullversion, and osx version is $osxversion"
 
+if [ $osxversion -lt 12 ] ; then
+  port install maxima # see below for alternatives
+fi
 # basic arb dependencies
-port install maxima gnuplot wget
+port install gnuplot wget
 # install gfortran
 port install gcc49 +gfortran gdb
 # install SuiteSparse
 port install SuiteSparse
+# for graphviz and perl graphviz modules (GraphViz2)
+port install graphviz p5-graphviz2
+# alias module gone from macports
+#p5-data-alias
+
+# now as one big list to avoid multiple dialogues
+#port install maxima gnuplot wget gcc49 +gfortran gdb SuiteSparse python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8 py27-pydot py27-cycler graphviz p5-graphviz2 p5-data-alias
+# maxima not working right now under macports, trying wxmaxima binary instead
+# p5-data-alias port gone
+# port install gnuplot wget gcc49 +gfortran gdb SuiteSparse python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8 py27-pydot py27-cycler graphviz p5-graphviz2 p5-data-alias
+#port install gnuplot wget gcc49 +gfortran gdb SuiteSparse python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8 py27-pydot py27-cycler graphviz p5-graphviz2
 
 # for Lachlan's plot and track scripts
 port install python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8 py27-pydot py27-cycler
@@ -33,9 +50,6 @@ port select --set python python27
 #https://astrofrog.github.io/macports-python/
 #https://guide.macports.org
 #http://truongtx.me/2014/02/25/mac-os-install-python-pip-virtualenv-using-macports/
-
-# for graphviz and perl graphviz modules (GraphViz2), and alias module
-port install graphviz p5-graphviz2 p5-data-alias
 
 # the following directories and link are the only non-ports things done in this install script
 # finally, link the particular macports gfortran version name to a standard name within an accessible bin directory
@@ -65,6 +79,13 @@ fi;
 #             </array>
 #
 # Due to kernel caching, you usually need to restart Mac OS X for this option to effect.
-echo "INFO: doing a change to /System/Library/LaunchDaemons/com.apple.taskgated.plist to get ggdb (gnu debugger) to work, as advised by macports install - will apparently often require osx restart"
-/usr/bin/perl -p -i -e "s/<string>-s<\/string>/<string>-sp<\/string>/" /System/Library/LaunchDaemons/com.apple.taskgated.plist
-echo "INFO: you could now add the arb/bin directory to your path using one of the include_path.*sh scripts";
+if [ $osxversion -lt 12 ] ; then
+  echo "INFO: doing a change to /System/Library/LaunchDaemons/com.apple.taskgated.plist to get ggdb (gnu debugger) to work, as advised by macports install - will apparently often require osx restart"
+  /usr/bin/perl -p -i -e "s/<string>-s<\/string>/<string>-sp<\/string>/" /System/Library/LaunchDaemons/com.apple.taskgated.plist
+fi
+
+if [ $osxversion -ge 12 ] ; then
+  echo "WARNING: the macports version of maxima for sierra is currently broken.  Instead, install the binary version following the instructions provided at install/maxima_osx_binary_install"
+fi
+
+echo "INFO: you can now add the arb/bin directory to your path and make alternative linear solvers using the include_globally.sh script";

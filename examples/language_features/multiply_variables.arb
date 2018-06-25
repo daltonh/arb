@@ -1,0 +1,9 @@
+CONSTANT <amultiply> "1.d0"
+CONSTANT <bmultiply> "2.d0"
+CONSTANT <multiplier> "3.d0"
+# first multiply by another constant
+INCLUDE_TEMPLATE "general/multiply_variables" R '<<list of variables>>' W '<amultiply>,<bmultiply>' R '<<multiplier>>' W '<multiplier>'
+# now multiply by a number
+INCLUDE_TEMPLATE "general/multiply_variables" R '<<list of variables>>' W '<amultiply>,<bmultiply>' R '<<multiplier>>' W '3.d0'
+# now add on a number
+INCLUDE_TEMPLATE "general/multiply_variables" R '<<list of variables>>' W '<amultiply>,<bmultiply>' R '<<multiplier>>' W '1.d0' R "<<operator>>" W "+"

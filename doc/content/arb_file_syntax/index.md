@@ -48,7 +48,7 @@ Escaping these characters could be implemented in the future if the burning need
 
 ## String variables and solver code string statements
 
-'String variables' are used to perform replacements on the arb solver code as it is read in (parsed) by [setup_equations.pl].  String variables can be set using either solver code string statements, or via (the more complex but powerful) [embedded perl code](#embedded-perl-code) (see below).  The main purpose of string variables is to allow 'chunks' of arb code to be tailored to specific applications.  The meaning of this will become clearer when discussing [include statements](#include-statements) later.
+'String variables' are used to perform replacements on the arb solver code as it is read in (parsed) by [setup_equations.pl].  String variables can be set using either solver code string statements, or via (the more complex but powerful) [embedded perl code](#embedded-perl-code) (see below).  The main purpose of string variables is to allow 'chunks' of arb code to be tailored to specific applications, either by the direct replacement of solver code text, or through the use of `IF` statements to include and exclude specific code sections.  This will become clearer when discussing [include statements](#include-statements) later.
 
 An example string statement is the following:
 ```arb
@@ -58,31 +58,27 @@ This will cause all occurrences of the string 'a string' in the remainder of the
 ```arb
 REPLACEMENTS REPLACE "<c>" WITH "<c1>"
 ```
-which would replace subsequent references to the variable `<c>` to be replaced with references to the variable `<c1>`.
+which would cause subsequent references to the variable `<c>` to be replaced with references to the variable `<c1>`.
 
 The string statement has a number of variations.  The word `DEFAULT` can be used in place of `REPLACE`.  In this case the string variable will only be set if it hasn't been set already.  The default form is often used within template files to assume a default value of a variable if it has not already been set within the calling file.
 ```arb
 REPLACEMENTS DEFAULT "a string" WITH "another string" # 'DEFAULT' means only set this string if it isn't already set
 ```
+Conversely there is the `SUBSTITUTE` form of the replacement statement which only sets a string value if the string has previously been set.  This form is particularly useful to manipulate the scope of the replacement strings, discussed below.  An example is
+```arb
+REPLACEMENTS REPLACE '<<string>>' WITH 'another string' # sets <<string>>
+REPLACEMENTS SUBSTITUTE '<<string>>' WITH 'another other string' # redefines <<string>>, using its original scope
+```
+If the variable has not already been set then a `SUBSTITUTE` statement generates an error (as a safety feature related to variable scope).
 To remove a string variable assignment the `CANCEL` keyword can be used, as in
 ```arb
 REPLACEMENTS CANCEL "a string" # will cancel a previously set string replacement
 ```
-If the variable has not already been set then a cancel statement issues a warning but is otherwise ignored.
+If the variable has not already been set then a `CANCEL` statement issues a warning but is otherwise ignored.
 
-The scope of a standard string replacement variable is all code within the remaining code block in which the variable is first defined (including any descendant blocks).  The precise definition of a [code block](#code-block) is detailed below, however most commonly a code block corresponds to the contents of an arb code file.  Hence, if an arb code file 'A.arb' includes a code file 'B.arb', and a standard string variable is defined in code file 'B.arb', then this string variable will not be defined back in (the remainder of) code file 'A.arb'.  In other words, the scope of a standard string variable is only the remainder of the code block in which the variable is defined and this block's children, and not the parents of the defining code block.  For this reason standard string variables are known as local string variables.
+## String variable scoping
 
-One way of making a local string available within a larger scope is to first define the string within the larger scope, but actually set its value within the smaller (sub) scope.  For example, in the previous example where a local variable was set within file 'B.arb', if this variable was first defined (to say an empty string) in file 'A.arb' using
-```arb
-REPLACEMENTS R "<<a string>>" W "" # the scope of a variable is defined by the block in which it is first defined
-```
-then its value set in file 'B.arb' would be available back in file 'A.arb'.
-
-Note that if a string is cancelled using (eg)
-```arb
-REPLACEMENTS CANCEL "<<a string>>" # completely removes string and defining scope
-```
-then all information about the string variable is lost, including its scope.  Hence any subsequent definitions will set the string's code block scope afresh.
+The scope of a standard string replacement variable is all code within the remaining code block in which the variable is first defined (including any descendant blocks).  The precise definition of a [code block](#code-block) is detailed below, however most commonly a code block corresponds to the contents of an arb code file.  Hence, if an arb code file 'A.arb' includes a code file 'B.arb', and a standard string variable is defined in code file 'B.arb', then this string variable will not be defined back in (the remainder of) code file 'A.arb'.  In other words, the scope of a standard string variable is only the remainder of the code block in which the variable is defined and the block's children, and not the parents of the defining code block.  For this reason standard string variables are referred to as local string variables.
 
 The alternative to a local string variable is a global string variable.  The scope of a global string variable is all code blocks (actually the grandparent or first code block, which spawns all other code blocks), so a global string variable defined in file 'B.arb' in the previous example will be used to replace strings in the remainder of file 'B.arb' as well as within the remainder of its calling file 'A.arb'.  Global variables are set using the `GLOBAL_REPLACEMENTS` keyword (or the legacy version of this, being `GENERAL_REPLACEMENTS`):
 ```arb
@@ -90,20 +86,64 @@ GLOBAL_REPLACEMENTS REPLACE "a string" WITH "a better string" # this replacement
 GENERAL_REPLACEMENTS REPLACE "a string" WITH "a better string" # GENERAL_REPLACEMENTS is a legacy and entirely equivalent form of the GLOBAL_REPLACEMENTS keyword
 ```
 
-In terms of how these scoping rules are implemented, string variables are each associated with a specific code block, with replacements performed using any string variable that is defined within the current code block or its children (see `@code_blocks[]{"string_variables"}` array hash in [StringCode.pm]).  Global string variables are associated with the first code block so are available for replacement in all subsequently formed code blocks.
+In terms of how these scoping rules are implemented, string variables are each associated with a specific code block, with replacements performed using any string variable that is defined within the current code block or its parents (see `@code_blocks[]{"string_variables"}` array hash in [StringCode.pm]), searched from the child (local) to its parents (global).  Global string variables are associated with the first code block so are available for replacement in all subsequently formed code blocks.
+
+The different replacement string keywords and action statements also influence the scoping behaviour.  A normal `REPLACEMENTS REPLACE...` command will limit its actions to only the current (local) block.  Hence, 
+```arb
+REPLACEMENTS R "<<a string>>" W ""
+```
+will search through the strings within the local code block, and if `<<a string>>` is found, its value will be replaced by the empty string.  If this string is not found within the local code block then it will be set in the local code block and be available in the rest of that block and in all child blocks.  When the block is destroyed `<<a string>>` will also be destroyed.
+
+In the case of a `GLOBAL_REPLACEMENTS REPLACE...` the process is analogous, except that the search and setting is only conducted within the global code block (ie, the grandparent).  As the global block remains throughout the parsing process, a global string will always remain available.  However, as strings are searched for in reverse order through the code blocks during the replacement process, the value of a local string variable takes precedence over a global string variable of the same name when replacements are done.
+
+The `DEFAULT` action can be used to modify either the `GLOBAL_REPLACEMENTS` or `REPLACEMENTS` definitions.  In both cases all code blocks are first searched for the requested string.  Only if this string is not found is a new string variable created, with the code block that it is set in being either the global or local block, depending on the keyword.  Note that the blocks through which the search is conducted is not influenced by the choice of the `GLOBAL_REPLACMENTS` or `REPLACEMENTS` keyword.
+
+The `SUBSTITUTE` action acts quite differently.  Under this action all code blocks are searched for the relevant string (in reverse order, from the local block to the global block), and when found, this string's value is set to the new value, but in its original code block.  Hence, the `SUBSTITUTE` action allows strings to be redefined in blocks other than the local or global ones.
+
+`SUBSTITUTE` helps with traversing the scope of code blocks.  For instance, one way of making a local string available within a larger scope is to first define the string within the larger scope, but actually set its value within the smaller (sub) scope using `SUBSTITUTE`.  For example, in the previous example where a local variable was set within file 'B.arb', if this variable was first defined (to say an empty string) in file 'A.arb' using
+```arb
+REPLACEMENTS R "<<a string>>" W "" # the scope of a variable is defined by the block in which it is first defined
+```
+then its value can be set in file 'B.arb' using
+```arb
+REPLACEMENTS S "<<a string>>" W "a more useful value" # substitute retains the scope of the original definition
+```
+Now `<<a string>>` would be available back in file 'A.arb' as `a more useful value`.  A similar process can be used to set strings using `IF` statements, as in
+```arb
+REPLACEMENTS R '<<setme>>' W '' # define the scope of the string <<setme>>
+IF <<condition variable>>
+  REPLACEMENTS S '<<setme>>' W '1.d0' # a new block has been created, but S allows the scope of <<setme>> to escape from the IF block back to its parent block
+ELSE
+  REPLACEMENTS S '<<setme>>' W '2.d0'
+END_IF
+```
+If a string name is not found during a `SUBSTITUTE` action, an error results.  This is a safety mechanism to prevent `SUBSTITUTE` setting variables in code blocks that the user does not intend.
+
+Note that if a string is cancelled using (eg)
+```arb
+REPLACEMENTS CANCEL "<<a string>>" # completely removes string and defining scope
+```
+then all information about the string variable is lost, including its scope.  Hence any subsequent definitions will set the string's code block scope afresh.
+
 
 Finally, there are short forms of the string setting statements illustrated by
 ```arb
 REPLACEMENTS R "a string" W "another string" # R is a short form of REPLACE, and W is a short form of WITH
 REPLACEMENTS C "a string" # C is a short form of CANCEL
 REPLACEMENTS D "a string" W "another string" # and 'D' is short for 'DEFAULT'
+REPLACEMENTS S "a string" W "another string" # and 'S' is short for 'SUBSTITUTE'
 ```
 Also, multiple strings may be defined on the one line, illustrated by
 ```arb
-GLOBAL_REPLACEMENTS R "string1" W "another string" R "string2" W "another string2" # multiple replacements can be specified on the one line
+GLOBAL_REPLACEMENTS R "string1" W "another string" D "string2" W "another string2" # multiple replacements can be specified on the one line, with difference action words
 ```
 
 There are certain system generated global string variables that are set automatically but can also be changed by the user.  These include a number of variables that set the coordinate dimensions used by various variable operators.  Use the search hint `ref: string system variables` to find the list of these in `sub string_setup` within [StringCode.pm].
+
+Also, for debugging purposes the perl subroutine `string_debug` can be used to print out all of the replacement strings at any point in the file, using (for example):
+```arb
+{{ print "DEBUGGING: string debug =\n".string_debug(); }}
+```
 
 ## Code blocks
 
@@ -125,7 +165,7 @@ More commonly code blocks are defined when including other files and when parsin
 
 ### Include statement overview
 
-Include statements allow other input files to be included.   These files can be user written, or be from a library of template files within the [templates directory](#templates_dir).  As an example, 
+Include statements allow other input files to be included.   These files can be user written, or be from a library of template files within the [templates directory].  As an example, 
 ```arb
 INCLUDE_TEMPLATE "navier_stokes/complete_equations"
 ```
@@ -149,6 +189,7 @@ This allows the template files to be used as functions or called repeatedly with
 ```arb
 INCLUDE_LOCAL "another_arb_code" {{ string_set("<mu_f>","<mu>"); }} # is equivalent to the last case
 ```
+String replacements defined as part of `INCLUDE` statements are always local, meaning that their scope is defined by the code block of the included file.  Hence, once the entire file has been parsed these string replacements will be destroyed (and any previously defined ones of the same name will take over again).
 
 ### Include statement types
 

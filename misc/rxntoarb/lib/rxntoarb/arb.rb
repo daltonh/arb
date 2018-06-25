@@ -1,9 +1,8 @@
 # Rxntoarb::Arb
-# (C) Copyright Christian Biscombe 2016-2017
+# (C) Copyright Christian Biscombe 2016-2018
 
 require 'set'
 require_relative 'parameter'
-require_relative 'rxn'
 
 module Rxntoarb
 
@@ -25,26 +24,19 @@ module Rxntoarb
 
       # Process reactions
       rxn.reactions.each do |reaction|
-        reaction.all_species.each do |species|
-          @sources[[species, Rxntoarb.options[:none_centred] ? nil : species.region]] ||= '0.d0' # ensure that species has a source term originating in its own region
-        end
+        reaction.all_species.each { |species| @sources[[species, Rxntoarb.options[:none_centred] ? nil : species.region]] ||= '0.d0' } # ensure that species has a source term originating in its own region
         # Format kinetic parameters
-        if reaction.parameters
-          reaction.parameters.each do |par|
-            @constants << "CONSTANT <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka}"
-          end
-        end
+        reaction.parameters.each { |par| @constants << "#{par.value =~ /^['"]/ ? "#{reaction.centring}_DERIVED" : 'CONSTANT'} <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka}" } if reaction.parameters
         # Generate rate expressions
-        conc_powers = ->(species) { "*<#{species.conc}_pos>#{"**#{species.coeff}" if species.coeff > 1}#{"/#{species.meta_coeff}.d0" if species.meta_coeff > 1}" }
         if reaction.type == :reversible || reaction.type == :twostep # reversible must come before irreversible because same code handles two-step reactions
           reaction.label << '_i' if reaction.type == :twostep
           @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<ka_#{reaction.parent_label}>"
-          reaction.reactants.each { |reactant| @rates.last << conc_powers.call(reactant) }
+          reaction.reactants.each { |reactant| @rates.last << conc_powers(reactant) }
           @rates.last << "-<kd_#{reaction.parent_label}>"
           if reaction.type == :twostep
-            reaction.intermediates.each { |intermediate| @rates.last << conc_powers.call(intermediate) }
+            reaction.intermediates.each { |intermediate| @rates.last << conc_powers(intermediate) }
           else
-            reaction.products.each { |product| @rates.last << conc_powers.call(product) }
+            reaction.products.each { |product| @rates.last << conc_powers(product) }
           end
           create_sources(reaction)
         end
@@ -52,9 +44,9 @@ module Rxntoarb
           reaction.label << 'i' if reaction.type == :twostep
           @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<k_#{reaction.parent_label}>"
           if reaction.type == :twostep
-            reaction.intermediates.each { |intermediate| @rates.last << conc_powers.call(intermediate) }
+            reaction.intermediates.each { |intermediate| @rates.last << conc_powers(intermediate) }
           else
-            reaction.reactants.each { |reactant| @rates.last << conc_powers.call(reactant) }
+            reaction.reactants.each { |reactant| @rates.last << conc_powers(reactant) }
           end
           create_sources(reaction)
         end
@@ -74,9 +66,9 @@ module Rxntoarb
 
       # Store region areas/volumes and define new regions for equations
       unless Rxntoarb.options[:none_centred]
-        rxn.surface_regions.each { |region| @constants << "CONSTANT <area(#{region})> \"noneif(<<cylindricalflag>>,2.d0*<pi>,1.d0)*facesum(<<radius_f>>*<facearea>, region=<#{region}>)\"" }
+        rxn.surface_regions.each { |region| @constants << "CONSTANT <area(#{region})> \"noneif(<<cylindrical>>,2.d0*<pi>,1.d0)*facesum(<<radius_f>>*<facearea>, region=<#{region}>)\"" }
         rxn.volume_regions.each do |region|
-          @constants << "CONSTANT <volume(#{region})> \"noneif(<<cylindricalflag>>,2.d0*<pi>,1.d0)*cellsum(<<radius_c>>*<cellvol>, region=<#{region}>)\""
+          @constants << "CONSTANT <volume(#{region})> \"noneif(<<cylindrical>>,2.d0*<pi>,1.d0)*cellsum(<<radius_c>>*<cellvol>, region=<#{region}>)\""
           @constants << "FACE_REGION <associatedfaces(#{region})> \"associatedwith(<#{region}>)\""
           @constants << "CELL_REGION <associatedcells(#{region})> \"associatedwith(<#{region}>)\""
           @constants << "CELL_REGION <domainof(#{region})> \"domainof(<#{region}>)\""
@@ -129,11 +121,9 @@ module Rxntoarb
         end
         break if new_species.empty?
         new_species.each do |species, precursors|
-          species_coeff = species.coeff*species.meta_coeff
           @magnitudes[species] = "CONSTANT <#{species.conc} magnitude> \""
           precursors.each do |precursor|
-            precursor_coeff = precursor.coeff*precursor.meta_coeff
-            @magnitudes[species] << "#{species_coeff}.d0#{"/#{precursor_coeff}.d0" unless precursor_coeff == 1}*" unless species_coeff.to_f/precursor_coeff.to_f == 1.0 # adjust magnitude for stoichiometry
+            @magnitudes[species] << "#{species.rate_coeff}.d0#{"/#{precursor.rate_coeff}.d0" unless precursor.rate_coeff == 1}*" unless species.rate_coeff == precursor.rate_coeff # adjust magnitude for stoichiometry
             @magnitudes[species] << if species.bound?
                                       if precursor.bound? || Rxntoarb.options[:none_centred]
                                         "nonemin(<#{precursor.conc} magnitude>,"
@@ -173,6 +163,10 @@ module Rxntoarb
 
     private
 
+    def conc_powers(species) #{{{
+      "*<#{species.conc}_pos>#{"**#{species.coeff}" if species.coeff > 1}#{"/#{species.meta_coeff}.d0" if species.meta_coeff > 1}"
+    end #}}}
+
     def create_sources(reaction) #{{{
       if reaction.type == :twostep
         reactants, products = if reaction.label =~ /_i\z/ # first step
@@ -189,7 +183,7 @@ module Rxntoarb
         species_array.each do |species|
           key = [species, reaction.region]
           @sources[key] = '' if @sources[key] == '0.d0'
-          (@sources[key] ||= '') << "#{source_sign}#{"#{species.coeff}.d0*" if species.coeff > 1}#{"#{species.meta_coeff}.d0*" if species.meta_coeff > 1}<R_#{reaction.label}>" # add rate to source term for this species
+          (@sources[key] ||= '') << "#{source_sign}#{"#{species.rate_coeff}.d0*" if species.rate_coeff > 1}<R_#{reaction.label}>" # add rate to source term for this species
         end
       end
       @rates.last << "\"#{" ON <#{reaction.region}>" if reaction.region}" # finalise rate expression
@@ -206,22 +200,22 @@ module Rxntoarb
         replace = $&[/\bif_rxn.*/m]
         if_location.downcase!
         raise "missing or unrecognised location in if_rxn statement in template file #{Rxntoarb.options[:template_file]}" unless if_location =~ /\A(none|surface|volume)\z/
-        if_region &&= if_region.split(/,\s*/).map { |region| region.tr('<>', '').strip } # convert to array
-        if_clause &&= if_clause[1..-2].split("\n").map(&:strip) - [''] # remove braces, strip newlines and indentation, and delete any empty lines
+        if_region &&= Rxntoarb.arrayify(if_region)
+        if_clause &&= unindent(if_clause[1..-2])
         raise "missing clause in if_rxn statement in template file #{Rxntoarb.options[:template_file]} (possibly missing opening or closing brace)" unless if_clause
-        else_clause &&= else_clause[1..-2].split("\n").map(&:strip) - [''] # remove braces, strip newlines and indentation, and delete any empty lines
+        else_clause &&= unindent(else_clause[1..-2])
         condition = if_location == species.location.to_s # condition will be true if we are in the right location (species is located in same region as source here)
         condition = condition && if_region.include?(source_region) if if_region # if an if_region has been specified, condition will be true if we are in the right region
-        template.sub!(replace, condition ? if_clause.join("\n") : else_clause.to_a.join("\n")) # replace if_rxn statement with if_clause if condition is true, otherwise replace with else_clause (if present) or empty string
+        template.sub!(replace, condition ? if_clause : else_clause.to_s) # replace if_rxn statement with if_clause if condition is true, otherwise replace with else_clause (if present) or empty string
       end
 
       # Handle each blocks in the template
       # These take the form [region_list].each { |loopvar| expression }
       # '*' in region_list is a shorthand for all reaction regions (surface_regions that bound volume_region)
       if rxn.volume_regions.include?(source_region)
-        template.dup.scan(/^\s*(?<array>\[((?>[^\[\]]+)|\g<array>)*\])\.each\s*(?<brace_group>{((?>[^{}]+)|\g<brace_group>)*})?/i) do |array, block|
+        template.dup.scan(/^\s*(?<region_list>\[((?>[^\[\]]+)|\g<region_list>)*\])\.each\s*(?<block>{((?>[^{}]+)|\g<block>)*})?/i) do |region_list, block|
           replace = $&[/^\s*(.*)/m, 1]
-          region_list = array[1..-2].split(/,\s*/).map { |region| region.tr('<>', '').strip } # convert to array
+          region_list = Rxntoarb.arrayify(region_list[1..-2])
           if region_list.include?('*') # add all reaction regions to region_list
             region_list[region_list.index('*')] = rxn.bounding_regions[source_region].to_a
             region_list.flatten!.uniq!
@@ -229,17 +223,15 @@ module Rxntoarb
           raise "missing each block in template file #{Rxntoarb.options[:template_file]} (possibly missing opening or closing brace)" unless block
           loopvar, expression = block.match(/\A{\s*(\|[^|]+\|)?\s*(.*)}\z/m).captures
           raise "missing loop variable in each block in template file #{Rxntoarb.options[:template_file]}" unless loopvar
-          expression = expression.split("\n").map(&:strip) - [''] # strip newlines and indentation and delete any empty lines
+          expression = unindent(expression)
           replacement = []
-          region_list.each do |region| # duplicate expression for each region in region_list, replacing loopvar with region
-            replacement += expression.map { |line| line.gsub(loopvar, region) }
-          end
+          region_list.each { |region| replacement << expression.gsub(loopvar, region) } # duplicate expression for each region in region_list, replacing loopvar with region
           template.sub!(replace, replacement.join("\n")) # replace the each block
         end
       end
 
       # Do substitutions on template
-      template.gsub!("\n\n", "\n")
+      template.squeeze!("\n")
       template.gsub!('/c/', species.conc)
       template.gsub!('/species/', species.name)
       template.gsub!('@/region/', species.region ? "@#{species.region}" : '')
@@ -259,6 +251,10 @@ module Rxntoarb
 
       @equations << ["# #{species.tag} {{{", '', template, '#}}}']
 
+    end #}}}
+
+    def unindent(text) #{{{
+      text.gsub(/^#{text.scan(/^\s*/).min_by { |l| l.length }}/, '').squeeze("\n") # strip indentation of least indented line and delete any empty lines
     end #}}}
 
     def find_precursors(reactants, products, new_species) #{{{

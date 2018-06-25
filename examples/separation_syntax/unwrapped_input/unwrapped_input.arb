@@ -17,7 +17,14 @@ EXTERNALS "/home/daltonh/arb/testsuite/arb_master/src/free_surface_functions.f90
    #INCLUDE_TEMPLATE "general"
    #INCLUDE "cylindrical_reflect_r1z2"
    # or, setup basic cartesian reflect general replacements
-   # comment out any references to the third dimension in any included files
+      #(comment created during unwrap): new block = ../../templates/general/cartesian_x1y2.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cartesian_x1y2"
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)sets general replacements for cartesian 2D coordinates in the xy plane
+      #(hash inserted during unwrap)END_MARKDOWN
+      
+      
+      
    # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
    # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
    

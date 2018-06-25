@@ -1,0 +1,172 @@
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+VERSION 0.58
+
+INFO_TITLE "Interaction force between charged particles"
+INFO_DESCRIPTION "Working out the force between two charged particles, for the purposes of validating the vof code discussed in Lachlan's thesis"
+INFO_DESCRIPTION ": works with batcher as well as nobatcher"
+INFO_DESCRIPTION ": gmsh insists on using xy plane for boundary layer mesh, so switching to this plane!"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "24/5/18" # interpreted as the last modification date
+
+# choose whether inner particle domain is present
+REPLACEMENTS D "<<innerparticle>>" W "0" # make this default so that we can use prior batcher replacement to overwrite
+INFO_DESCRIPTION+ ": now solving field in the inner particle as well"
+
+# choose coordinate system
+INCLUDE_TEMPLATE "general/cylindrical_reflect_r1z2"
+# add centreline symmetry
+GLUE_FACES <centreline> reflect=1
+# add base symmetry
+GLUE_FACES <base> reflect=2
+GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2" # also need to keep these strings in operators
+
+IF <<innerparticle>>
+  GLUE_FACES <inner centreline> reflect=1
+END_IF
+
+#----------------------------------------------------------------------------
+# solver options
+
+# for electrokinetic problems, higher order kernels give significantly better results (these are now the default anyway)
+KERNEL_OPTIONS polynomialaverageorder=2,polynomialorder=2 # specifies that when averaging/differentiating quantities to/at faces, ensure that function fits a second order polynomial
+
+# for now only output very select bunch of variables
+OVERRIDE_VARIABLE_OPTIONS nooutput
+
+IF <<batcher>>
+  #MSH_FILE "<<mshfile>>"
+  #MSH_FILE "particle.msh"
+  MSH_FILE "particle_semi_structured.msh"
+ELSE
+  MSH_FILE "particle_semi_structured.msh"
+  #MSH_FILE "particle.msh"
+END_IF
+
+GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W "" # remove transient statements
+
+INCLUDE_TEMPLATE "electrokinetics"
+INCLUDE "nondimensional_constants" # and the same for the electrokinetic equations
+
+IF <<innerparticle>>
+# set up some region name replacements, to make equations specific to each domain
+  FACE_REGION <outer allfaces> "associatedwith(<outer domain>)"
+  CELL_REGION <outer allcells> "associatedwith(<outer domain>)"
+  GLOBAL_REPLACEMENTS R "<domain>" W "<outer domain>"
+  GLOBAL_REPLACEMENTS R "<allcells>" W "<outer allcells>"
+  GLOBAL_REPLACEMENTS R "<allfaces>" W "<outer allfaces>"
+  GLOBAL_REPLACEMENTS R "<domain>" W "<outer domain>"
+END_IF
+
+# some concentrations and charges required in other equations, and also the face centred potential required in the dynamic_force calculation
+INCLUDE "binary_ion_combinations"
+
+# now ion transport and potential equation
+INCLUDE_TEMPLATE "electrokinetics"
+INCLUDE "ion_stationary_equations" R "<ion" W "<ion+" R "walls" W "particle"
+INCLUDE "ion_stationary_equations" R "<ion" W "<ion-" R "walls" W "particle"
+CONSTANT <ion- z> [1] "-<average ion z>" # valency of ion-
+FACE_EQUATION <ion+ walls> "<ion+ n>-<average ion n>" ON <walls>
+FACE_EQUATION <ion- walls> "<ion- n>-<average ion n>" ON <walls>
+
+IF <<innerparticle>>
+  GLOBAL_REPLACEMENTS C "<domain>"
+  GLOBAL_REPLACEMENTS C "<allcells>"
+  GLOBAL_REPLACEMENTS C "<allfaces>"
+  GLOBAL_REPLACEMENTS C "<domain>"
+END_IF
+
+INCLUDE "potential_stationary_equations" R "walls" W "particle"
+INCLUDE "potential_set_walls"
+
+IF <<innerparticle>>
+  VARIABLE <U charged particle> "<U charged particle> + facetofacelink(<eps_0>*<eps_fluid>*facegrad(<U>),fromregion=<particle>,toregion=<inner particle>)" ON <particle>
+  FACE_EQUATION <U charged particle continuity> "<U> - facetofacelink(<U>,fromregion=<particle>,toregion=<inner particle>)" ON <particle>
+# rewrite poisson equation so that charge is only added where ions are
+  VARIABLE <U poisson equation> "<eps_0>*celldiv(<facex[l=1]>*<eps_fluid>*facegrad(<U>))/<cellx[l=1]>+cellif(celldelta(<outer domain>),<K^2/2>*<rho_e>,0.d0)" ON <domain> # other information: region = <domain>: deriv = 1: newtstepmax = empty: newtstepmin = empty: filename = ../../../development/current/templates/electrokinetics/potential_domain.arb: absfilename = /Users/daltonh/codes/arb/development/current/templates/electrokinetics/potential_domain.arb: comments = # Poisson potential equation
+END_IF
+
+# giving a better initial estimate leads to faster and more reliable convergence
+INCLUDE "estimate_initial_potential" R "walls" W "particle" # sets the initial potential using a very rough correlation.  Initial ion concentrations reference this potential.
+#VARIABLE <minimum_face_boundary_distance> output
+
+#-------------------------------------------------------------------
+# correct some magnitudes
+# the following magnitudes are resonably well calculated from the initial potential estimate, so don't bother setting explicitly
+#CELL_UNKNOWN <U> magnitude=1.d+1
+#CELL_UNKNOWN <ion+ n> magnitude=1.d+4
+#CELL_UNKNOWN <ion- n> magnitude=1.d+0
+
+# set nondimensional constants (these are based on a previous test case)
+CONSTANT <Re> 0.1d0
+CONSTANT <B>  2.34d-4
+CONSTANT <K>  2.00d0
+CONSTANT <S>  -10.d0
+
+# increase numerical precision for high K sims
+GENERAL_OPTIONS newtrestol=1.d-13
+
+# overwrite some constants specific to batcher
+IF <<batcher>>
+  CONSTANT <K> <<K>>
+END_IF
+
+# clear override options but keep these variables outputing
+OVERRIDE_VARIABLE_OPTIONS
+VARIABLE <U> output
+VARIABLE <ion+ n> output
+VARIABLE <ion- n> output
+
+#-----------------
+# calculate some forces
+
+IF 1
+# calculate and check the area of the particle interface
+  FACE_OUTPUT <area_interface> "<facex[l=1]>*2.d0*<pi>*<facearea>" ON <particle>
+  NONE_OUTPUT <area_total> "facesum(<area_interface>,region=<particle>)"
+  NONE_OUTPUT <area_analytical> "4.d0*<pi>*0.5d0^2"
+  NONE_OUTPUT <area_error_normalised> "(<area_total>-<area_analytical>)/<area_analytical>"
+
+# calculate the force on the interface due to the charge and the field
+# these 3 for reference
+  FACE_OUTPUT <E_ave_charge_facenorm> "-0.5d0*facegrad[l=4](<U>)" ON <particle>
+  FACE_OUTPUT <E_ave_charge_facetang1> "-facegrad[l=5](<U>)" ON <particle>
+  FACE_OUTPUT <E_ave_charge_facetang2> "-facegrad[l=6](<U>)" ON <particle>
+  IF <<innerparticle>>
+    FACE_REGION <both particle> "compound(<particle>+<inner particle>)" ON <boundaries>
+    VARIABLE <E_ave_charge_facenorm> ON <both particle>
+    VARIABLE <E_ave_charge_facetang1> ON <both particle>
+    VARIABLE <E_ave_charge_facetang2> ON <both particle>
+  END_IF
+  IF <<innerparticle>>
+    FACE_OUTPUT <E_ave_charge[l=1]> "-0.5d0*(facegrad[l=4](<U>)*<facenorm[l=1]>+facegrad[l=5](<U>)*<facetang1[l=1]>+facetofacelink(facegrad[l=4](<U>)*<facenorm[l=1]>+facegrad[l=5](<U>)*<facetang1[l=1]>,fromregion=<particle>,toregion=<inner particle>))" ON <particle> componentoutput
+    FACE_OUTPUT <E_ave_charge[l=2]> "-0.5d0*(facegrad[l=4](<U>)*<facenorm[l=2]>+facegrad[l=5](<U>)*<facetang1[l=2]>+facetofacelink(facegrad[l=4](<U>)*<facenorm[l=2]>+facegrad[l=5](<U>)*<facetang1[l=2]>,fromregion=<particle>,toregion=<inner particle>))" ON <particle> componentoutput
+  ELSE
+    FACE_OUTPUT <E_ave_charge[l=1]> "-(0.5d0*facegrad[l=4](<U>)*<facenorm[l=1]>+facegrad[l=5](<U>)*<facetang1[l=1]>)" ON <particle> componentoutput
+    FACE_OUTPUT <E_ave_charge[l=2]> "-(0.5d0*facegrad[l=4](<U>)*<facenorm[l=2]>+facegrad[l=5](<U>)*<facetang1[l=2]>)" ON <particle> componentoutput
+  END_IF
+  FACE_OUTPUT <F_charge/area[l=1]> "2.d0*<S>*<B>/(<Re>**2)*<E_ave_charge[l=1]>" ON <particle>
+  FACE_OUTPUT <F_charge/area[l=2]> "2.d0*<S>*<B>/(<Re>**2)*<E_ave_charge[l=2]>" ON <particle>
+  NONE_OUTPUT <F_charge_total[l=1]> "facesum(<F_charge/area[l=1]>*<area_interface>,region=<particle>)" componentoutput,stepoutput
+  NONE_OUTPUT <F_charge_total[l=2]> "facesum(<F_charge/area[l=2]>*<area_interface>,region=<particle>)" componentoutput,stepoutput
+
+# calculate the force on the particle due to pressure
+  CELL_OUTPUT <p_Pi> "2.d0*<BK^2/Re^2>*(cosh(<U>)-1.d0)" nooutput
+  FACE_OUTPUT <F_pressure/area[l=1]> "<p_Pi>*<facenorm[l=1]>" ON <particle>
+  FACE_OUTPUT <F_pressure/area[l=2]> "<p_Pi>*<facenorm[l=2]>" ON <particle>
+  NONE_OUTPUT <F_pressure_total[l=1]> "facesum(<F_pressure/area[l=1]>*<area_interface>,region=<particle>)" componentoutput,stepoutput
+  NONE_OUTPUT <F_pressure_total[l=2]> "facesum(<F_pressure/area[l=2]>*<area_interface>,region=<particle>)" componentoutput,stepoutput
+
+# sum the two contributions to the forces
+  FACE_OUTPUT <F_total/area[l=1]> "<F_pressure/area[l=1]>+<F_charge/area[l=1]>" ON <particle>
+  FACE_OUTPUT <F_total/area[l=2]> "<F_pressure/area[l=2]>+<F_charge/area[l=2]>" ON <particle>
+  NONE_OUTPUT <F_total_total[l=1]> "<F_pressure_total[l=1]>+<F_charge_total[l=1]>"
+  NONE_OUTPUT <F_total_total[l=2]> "<F_pressure_total[l=2]>+<F_charge_total[l=2]>"
+
+END_IF
+
+#-----------------
+
+
+END

@@ -1,6 +1,6 @@
 ! file src/free_surface_functions.f90
 !
-! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -598,6 +598,7 @@ i = ilast ! this is the upwind cell to
 j = jlast ! this face, over which we are calculating the advection
 
 ! now correct for possible glueing operations, so that j used in analysis is actually the face attached to this cell
+! should not be needed anymore, but keep in as a sanity check
 if (face(jlast)%glue_jface /= 0) then
   if (face(jlast)%icell(2) == ilast) j = face(jlast)%glue_jface
 end if

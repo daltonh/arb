@@ -1,0 +1,4 @@
+* fix header/footers so that multimarkdown is supported within md files
+* update variables
+* update regions
+* extract MARKDOWN from files using some generic command

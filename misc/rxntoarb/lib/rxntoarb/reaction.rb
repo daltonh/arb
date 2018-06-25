@@ -1,23 +1,20 @@
 # Rxntoarb::Reaction
-# (C) Copyright Christian Biscombe 2016-2017
+# (C) Copyright Christian Biscombe 2016-2018
 
 require 'set'
-require_relative 'parameter'
-require_relative 'rxn'
-require_relative 'rxntoarb'
 require_relative 'species'
 
 module Rxntoarb
 
   class Reaction
 
-    attr_reader :aka, :all_species, :centring, :comment, :enzyme, :indent, :intermediates, :parameters, :parent_label, :products, :rate_units, :reactants, :region, :species_regions, :type
-    attr_accessor :label
+    attr_reader :aka, :all_species, :centring, :comment, :enzyme, :indented, :intermediates, :parent_label, :products, :rate_units, :reactants, :region, :species_regions, :type
+    attr_accessor :label, :parameters
 
-    def initialize(reaction, rxn) #{{{
-      match = /^(\s+)?(?:(.+?):\s+)?(.+?)(?:<=>(.+?)->|{(.+?)}->|(<=>|->))([^;#]+)?;?([^#\n]+)?(#.*)?$/.match(reaction)
+    def initialize(reaction, rxn, excluded) #{{{
+      match = /^(\s+)?(?:(.+?):\s+)?(.+?)(?:<=>(.+?)->|{(.+?)}->|(<=>|->))([^;#]+)?(?:;\s*)?([^#\n]+)?(#.*)?$/.match(reaction)
       raise 'syntax error or unrecognised reaction type' unless match
-      @indent, @aka, reactants, intermediates, enzyme, arrow, products, parameters, @comment = match.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
+      @indented, @aka, reactants, intermediates, enzyme, arrow, products, parameters, @comment = match.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
 
       @all_species = Set.new
       @species_regions = Set.new
@@ -27,17 +24,27 @@ module Rxntoarb
       @intermediates = extract_species(intermediates, rxn)
       @enzyme = extract_species(enzyme, rxn)
       @products = extract_species(products, rxn)
-      raise "duplicate label #{@label}. Most likely there is a duplicate reaction" if rxn.labels.include?(@label)
-      rxn.labels << @label
 
-      if @indent
-        raise 'alias specified for indented reaction' if @aka
-        raise 'kinetic parameters specified for indented reaction' if parameters
+      if @indented
+        raise 'alias specified for indented (child) reaction' if @aka
+        raise 'kinetic parameters specified for indented (child) reaction' if parameters
+        @parameters = nil
       else
         raise 'missing kinetic parameters' unless parameters
         rxn.parent_label = @label.dup
+        rxn.check_units = !@species_regions.empty? # skip check when concentration units are unknown
+        @parameters = []
+        parameters.scan(/(\S+)\s*=\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?|'[^']*'|"[^"]*")\s*(.*?)?(?:,|$)/) do |name, value, units|
+          parameter = Parameter.new(name, value, units)
+          @parameters << parameter
+          rxn.par_units[parameter.name] = parameter.units # save units for consistency checking
+          rxn.check_units = false unless parameter.units # skip check if parameter is defined in terms of a previously defined parameter (i.e. it's a string)
+        end
       end
+      return if excluded
       @parent_label = rxn.parent_label.dup # for indented reactions (children), parent_label is the label of the previous non-indented reaction (parent)
+      raise "duplicate label #{@label}. Most likely there is a duplicate reaction" if rxn.labels.include?(@label)
+      rxn.labels << @label
 
       @type = if @intermediates
                 :twostep
@@ -60,32 +67,18 @@ module Rxntoarb
                                           [:CELL, @species_regions.first, 'mol m-3 s-1']
                                         end
 
-      @parameters = nil
-      if parameters
-        @parameters = []
-        rxn.check_units = !@species_regions.empty? # skip check when concentration units are unknown
-        parameters.scan(/(\S+)\s*=\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?|'[^']*'|"[^"]*")\s*(.*?)?(?:,|$)/) do |name, value, units|
-          begin
-            parameter = Parameter.new(name, value, units)
-          ensure
-            Rxntoarb.print_debug(:parameter){}
-          end
-          @parameters << parameter
-          rxn.par_units[parameter.name] = parameter.units # save units for consistency checking
-          rxn.check_units = false if parameter.units.nil? # skip check if parameter is defined in terms of a previously defined parameter (i.e. it's a string)
-        end
-
+      if @parameters
         # Check that all required kinetic parameters are present
-        case @type
-        when :twostep
-          check_pars = %w[ka kd k]
-        when :MichaelisMenten
-          check_pars = %w[KM kcat]
-        when :reversible
-          check_pars = %w[ka kd]
-        else
-          check_pars = ['k']
-        end
+        check_pars = case @type
+                     when :twostep
+                       %w[ka kd k]
+                     when :MichaelisMenten
+                       %w[KM kcat]
+                     when :reversible
+                       %w[ka kd]
+                     else
+                       ['k']
+                     end
         check_pars.each { |par| raise "missing #{par} for #{@type} reaction" unless @parameters.map(&:name).include?(par) }
       end
 
@@ -107,6 +100,10 @@ module Rxntoarb
       rxn.error("inconsistent units in reaction rate (#{units.last} vs #{units.first})", :WARNING) unless units.size == 1 # check that terms in rate expressions have consistent units
       rxn.error("reaction rate has unexpected units", :WARNING) if units.any? { |unit| unit !~ /\Amol m-[23] s-1\z/ } # check that all reaction rates actually have units of reaction rate
 
+    ensure
+      Rxntoarb.print_debug(:'match.captures'){} if match
+      reaction = self
+      Rxntoarb.print_debug(:reaction){}
     end #}}}
 
     private
@@ -115,11 +112,7 @@ module Rxntoarb
       return nil if string.nil? || string =~ /\A\s*\z/
       species_array = []
       string.split(/\s+\+\s+/).each do |term| # spaces around + required so that + can be used in species names (e.g. ions)
-        begin
-          species = Species.new(term, rxn)
-        ensure
-          Rxntoarb.print_debug(:species){}
-        end
+        species = Species.new(term, rxn)
         species_array << species
       end
       @label << "|" unless @label.empty?

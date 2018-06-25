@@ -1,6 +1,6 @@
 # file src/perl_lib/StringCode.pm
 #
-# Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+# Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 # 
 # This file is part of arb finite volume solver, referred to as `arb'.
 # 
@@ -40,9 +40,8 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_examine string_debug string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
 use Common;
-use Data::Alias 'alias';
 
 #-------------------------------------------------------------------------------
 sub parse_string_code {
@@ -74,15 +73,15 @@ sub parse_string_code {
 # options include:
 #  (no|)replace = whether to treat this string variable as a replacement in the following arb code
 #  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists)
+# options are passed to string search so supports global, noglobal and local options
 # on output
 #  @_ = unchanged
 sub string_option {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $name = $_[0];
   my $options = ''; if (defined($_[1])) { $options = $_[1]; }; # options is optional
 
-  my ($code_block_found,$string_variable_found) = string_search($name);
+  my ($code_block_found,$string_variable_found) = string_search($name,$options);
   if ($code_block_found == -1) {
     if ($options =~ /(^|,)\s*checkexists\s*(,|$)/) {
       $options = $`.','.$'; # remove this string from the options
@@ -96,9 +95,9 @@ sub string_option {
         $options = $';
         if (nonempty($2)) {
           if (empty($3)) {
-            $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 1;
+            $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 1;
           } else {
-            $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 0;
+            $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"replace"} = 0;
           }
         }
       } else {
@@ -111,19 +110,22 @@ sub string_option {
 #-------------------------------------------------------------------------------
 # deletes a string
 # on input
-#  $_[0] = string name
+#  $_[0] = string name (can be an list of strings, but in this case options must be set, possibly to the empty string)
+#  $_[$#_] = options, passed to string_search (ie global, noglobal and local)
 # on output
 #  $_[0] = unchanged
 sub string_delete {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my @names = @_; # string_delete now accepts multiple strings
+  my $options = ''; if (defined($_[1])) { # if the number of arguments is greater than one, then the last will be options
+    $options = pop(@names); # pop off these options
+  };
   foreach my $name ( reverse( @names ) ) {
-    my ($code_block_found,$string_variable_found) = string_search($name);
+    my ($code_block_found,$string_variable_found) = string_search($name,$options);
     if ($code_block_found == -1) {
       syntax_problem("string variable $name not found during string_delete: $ReadInputFiles::filelinelocator","warning");
     } else {
-      splice(@{$code_blocks[$code_block_found]{"string_variables"}},$string_variable_found,1);
+      splice(@{$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}},$string_variable_found,1);
     }
   }
   
@@ -136,17 +138,17 @@ sub string_delete {
 # possible options:
 #  list = return the string as a list containing the string split at commas (useful for using within foreach loops etc)
 #  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists)
+# options also passed to string_search so accepts local, global and noglobal
 # on output
 #  $_[0] = unchanged
 # returns string value if found, or dies or returns if string is not found
 
 sub string_eval {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $name = $_[0];
   my $options = ''; if (defined($_[1])) { $options = $_[1]; }; # options is optional
 
-  my ($code_block_found,$string_variable_found) = string_search($name);
+  my ($code_block_found,$string_variable_found) = string_search($name,$options);
 
   if ($code_block_found == -1) {
     if ($options =~ /(^|,)\s*checkexists\s*(,|$)/) {
@@ -157,9 +159,9 @@ sub string_eval {
     
   } else {
     if ($options =~ /(^|,)list($|,)/) {
-      return split(/,/,$code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
+      return split(/,/,$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
     } else {
-      return $code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+      return $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
     }
   }
   
@@ -169,24 +171,30 @@ sub string_eval {
 # on input
 #  $_[0] = string variable name
 #  $_[1] = test string
+#  $_[2] = options, which is also passed to string_search so supports global, noglobal and local
 # on output
 #  $_[0] = '1' if test string is given and string variable is defined and equal to the value of test string
-#        = '1' if test string isn't given by variable is defined
-#        = '' otherwise
+#        = '0' otherwise
+# now throws an error if test string is not provided or string is not found
+# see string_examine for checking on existence of strings
 
 sub string_test {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my $name = $_[0];
-  my ($code_block_found,$string_variable_found) = string_search($name);
+  my $options = '';
 
   if (!(defined($_[1]))) { # no test string was passed to routine, so just return whether string is defined
-    if ($code_block_found == -1) { return ''; } else { return '1'; }
-  } else { # need to check
-    if ($code_block_found == -1) { return ''; }
-    elsif ($code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $_[1]) { return '1'; }
-    else { return ''; }
+    error_stop("no test string has been passed to string_test: name = $name");
   }
+  if (defined($_[2])) { $options = $_[2]; }
+
+  my ($code_block_found,$string_variable_found) = string_search($name,$options);
+
+  if ($code_block_found == -1) {
+    error_stop("test string has been passed to string_test was not found: name = $name");
+  }
+  
+  if ($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $_[1]) { return '1'; } else { return '0'; }
   
 }
 #-------------------------------------------------------------------------------
@@ -241,12 +249,22 @@ sub tensor_expand {
 #  $_[2*n-2)] = name for string n = 1 .. N
 #  $_[2*n-1)] = value for string n = 1 .. N
 #  $_[2*N] = comma separated list of options (string) to be applied for all strings:
+#
+# the following control whether the string active replaces solver code:
 #    - replace: this string name will be searched for in solver code and replaced with its value, which is default for most string names
 #    - noreplace: opposite of replace, which is the default for strings whose names start with $, as in "$a"
+#
+# the following control the scope of the string variable:
+#    - without default, substitute or global:
+#          - search only in current code block for the string, and if not found, set it in the current code block
 #    - default: only set the string if the string is not already defined anywhere
-#          - search is done over all code blocks, irrespective of global setting
-#          - so global and replace or noreplace options are only relevant here if the string variable is not already set
-#    - global: set the string in the root code_blocks ($code_blocks[0]) so that it is available even after the current block has closed - ie, globally
+#          - search is done over all code blocks (including the global one)
+#          - global, replace and noreplace options are only relevant here if the string variable is not already set
+#          - substitute option doesn't make sense here
+#    - substitute: opposite of default, only set the string if it is set already, otherwise exit with error
+#          - search is done over all code blocks (including the global one)
+#          - global and default options don't make sense here
+#    - global: set the string in the root code_blocks ($ReadInputFiles::code_blocks[0]) so that it is available even after the current block has closed - ie, globally
 
 # on entry if number of arguments is:
 # 1 -> name of string
@@ -257,7 +275,6 @@ sub tensor_expand {
 
 sub string_set {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
   my @name_value_pairs = @_; # place all arguments in this array to start
 
 # if there is only one value passed in, it is the name, so set the value to an empty string
@@ -272,13 +289,22 @@ sub string_set {
 # check validity of options
   my $options_save = $options;
   while (nonempty($options)) {
-    if ($options =~ /^\s*((no|)replace|default|global|)\s*(,|$)/) {
+    if ($options =~ /^\s*((no|)replace|default|global|substitute|)\s*(,|$)/) {
       $options = $';
     } else {
       syntax_problem("unknown string within string_set options of $options: $ReadInputFiles::filelinelocator");
     }
   }
   $options = $options_save;
+
+# sanity check on requested options
+  if ($options =~ /(^|,|\s)substitute($|,|\s)/) {
+    if ($options =~ /(^|,|\s)default($|,|\s)/) {
+      error_stop('both default and substitute options requested for string variable $name_value_pairs[0]');
+    } elsif ($options =~ /(^|,|\s)global($|,|\s)/) {
+      error_stop('both global and substitute options requested for string variable $name_value_pairs[0]');
+    }
+  }
 
   while (@name_value_pairs) {
 
@@ -299,30 +325,44 @@ sub string_set {
     }
 
 # if we are here then the string will be set or reset, so
-# 1. search for string name in the relevant code block (to be reset if it is found there), or
-# 2. if it doesn't exist in that block, find the next available indicies in that block and set it
+# 1. search for string name in the global or all code blocks (to be reset wherever it is found), or
+# 2. if it doesn't exist in that block(s), find the next available indicies in the global or local block and set it
 
-    my $code_block_search = $#code_blocks; # the block to limit our activities to
-    if ($options =~ /(^|,|\s)global($|,|\s)/) { $code_block_search = 0; }
-    my ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],$code_block_search);
-    print ::DEBUG "INFO: in string_set, after string search: code_block_search = $code_block_search: code_block_set = $code_block_set: string_variable_set = $string_variable_set\n";
-    if ($code_block_set == -1) { # string was not found, so set to next available indicies
-      ($code_block_set,$string_variable_set) = ($code_block_search,$#{$code_blocks[$code_block_search]{"string_variables"}}+1);
+    my ($code_block_set,$string_variable_set) = (-1,-1); # define scope of variables
+    if ($options =~ /(^|,|\s)global($|,|\s)/) {
+      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],'global'); # for global only look in global block
+    } elsif ($options =~ /(^|,|\s)substitute($|,|\s)/) {
+      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0]); # with the substitute option, we look anywhere for string
+      if ($code_block_set == -1) { # not finding the string here is an error as it indicates that the user does not know at what block the string was to be set - too dangerous for now
+        error_stop("substitute option given for string replacement $name_value_pairs[0] but the string has not been previously set")
+      }
+    } else {
+      ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],'local'); # without no substitute/global option, we only look locally for the string
     }
-    print ::DEBUG "INFO: in string_set, about to set string: code_block_search = $code_block_search: code_block_set = $code_block_set: string_variable_set = $string_variable_set\n";
+    print ::DEBUG "INFO: in string_set, after string search: code_block_set = $code_block_set: string_variable_set = $string_variable_set: options = $options\n";
+    if ($code_block_set == -1) { # string was not found, so set to next available indicies
+      print ::DEBUG "INFO: in string_set, string $name_value_pairs[0] not found: creating new string\n";
+      if ($options =~ /(^|,|\s)global($|,|\s)/) {
+        $code_block_set = 0; # for global string
+      } else {
+        $code_block_set = $#ReadInputFiles::code_blocks; # otherwise use current block
+      }
+      $string_variable_set = $#{$ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}}+1; # increment index in the relevant block
+    }
+    print ::DEBUG "INFO: in string_set, about to set string: code_block_set = $code_block_set: string_variable_set = $string_variable_set: options = $options\n";
 
 # if we are here, then the new or reused indices are ready to go
-    $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} = shift(@name_value_pairs);
-    $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"value"} = shift(@name_value_pairs);
+    $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} = shift(@name_value_pairs);
+    $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"value"} = shift(@name_value_pairs);
 
 # also set replace variable
-    $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 1; # default value
+    $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 1; # default value
     if ($options =~ /(^|,|\s)(no|)replace($|,|\s)/) {
       if (nonempty($2)) {
-        $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
+        $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
       }
-    } elsif ($code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} =~ /^$/) {
-      $code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
+    } elsif ($ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"name"} =~ /^$/) {
+      $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
     }
 
   }
@@ -338,34 +378,37 @@ sub string_setup {
 # setup default string_variables
 # loose convention is that replacement strings be delimited by <<>>, however any strings can (and will) be matched/valued
 # convention is that names that end with "comment" are meant to precede statements in the files, converting them to comments if they are not relevant
+#
 # this string is for batcher integration - if a file is run through batcher, this string will be valued by an empty string, so can be used to precede arb lines that are specific to the batcher runs
   string_set("<<batcher>>","0","global"); # (0 not using batcher, 1 using batcher, to be set in batcher_setup.m) use this from now on over the comment strings
   string_set("<<batchercomment>>","#","global");
   string_set("<<nobatchercomment>>","","global");
 # geometry and equation related
-  string_set("<<dim1comment>>","","global");
-  string_set("<<dim2comment>>","","global");
-  string_set("<<dim3comment>>","","global");
-  string_set("<<cartesiancomment>>","","global"); # default is cartesian
-  string_set("<<cylindricalcomment>>","#","global");
-# convention is that names that end with "flag" are either on (1) or off (0), so can be used within expressions
-  string_set("<<cartesianflag>>","1","global"); # default is cartesian
-  string_set("<<cylindricalflag>>","0","global");
+  string_set("<<cylindrical>>","0","global"); # default is for a non-cylindrical simulation, this is the preferrable variable to use
+  string_set("<<azimuthal>>","0","global"); # for a cylindrical simulation, default is that there is no variation in the azimuthal direction
+  string_set("<<cartesiancomment>>","","global"); # default is cartesian, try to use above <<cylindrical>> flag instead, hoping to eventually remove this
+  string_set("<<cylindricalcomment>>","#","global"); # again, preference is to use <<cylindrical>> variable instead, but this could remain as a automatically generated string based on <<cylindrical>>
+  string_set("<<cylindricalflag>>","0","global"); # legacy string, use <<cylindrical>> instead in new applications
+  string_set("<<cartesianflag>>","1","global"); # legacy string, use <<cylindrical>> instead in new applications
 # these two should be overwritten by the relevant radius in the input file if using cylindrical coordinates: eg R "<<radius_c>>" W "<cellx[l=1]>" R "<<radius_f>>" W "<facex[l=1]>"
   string_set("<<radius_c>>","1.d0","global");
   string_set("<<radius_f>>","1.d0","global");
   string_set("<<radius_n>>","1.d0","global");
-  string_set("<<radiusdim1flag>>","0","global"); # for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
-  string_set("<<radiusdim2flag>>","0","global");
-  string_set("<<radiusdim3flag>>","0","global");
   string_set("<<radialdim>>","0","global"); # for 2D cylindrical this is the radial coordinate direction
   string_set("<<axialdim>>","0","global"); # for 2D cylindrical this is the axial coordinate direction
+  string_set("<<azimuthaldim>>","0","global"); # for 2D cylindrical this is the azimuthal coordinate direction, only used if <<azimuthal>> is on
+  string_set("<<radiusdim1flag>>","0","global"); # legacy, use <<radialdim>> instead if at all possible: for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
+  string_set("<<radiusdim2flag>>","0","global");
+  string_set("<<radiusdim3flag>>","0","global");
 # these strings should be overwritten by the normal coordinate directions of any reflection boundaries in the domain: eg R "<<reflect=1>>" W "reflect=1"
   string_set("<<reflect=1>>","","global");
   string_set("<<reflect=2>>","","global");
   string_set("<<reflect=3>>","","global");
 # dimensions that are being used
   string_set("<<dimensions>>","1,2,3","global"); # defaults to 3D, and should be accessed using the list form of string_eval('<<dimensions>>','list') to be used in (say) a foreach loop
+  string_set("<<dim1comment>>","","global"); # try to use and set <<dimensions>> where possible, with the idea that eventually the comment strings may go
+  string_set("<<dim2comment>>","","global");
+  string_set("<<dim3comment>>","","global");
 # set the transient versus steady_state strings using the sub
   string_set_transient_simulation(0); # default is steady_state
 
@@ -377,24 +420,33 @@ sub string_setup {
 # search through string_variables for search string
 # on input
 #  $_[0] = name of string to find
-#  $_[1] = if defined, is the specific code block in which is searched, otherwise if not defined, all code blocks are searched (from last = $#code_blocks to root = 0)
+#  $_[1] = is a list of options determining the scope of the search
+#    - local: only in $#ReadInputFiles::code_blocks local block
+#    - global: only in 0 global code_block
+#    - noglobal: in all code blocks except for 0
 # on output, @_ unchanged
 # on output, returns ($code_block_found,$string_variable_found), default both to -1 if not found
 
 sub string_search {
 
-  alias my @code_blocks = @ReadInputFiles::code_blocks;
-
   my $name = $_[0];
-  my ($code_block_lower,$code_block_upper) = (0,$#code_blocks);
-  if (defined($_[1])) { $code_block_lower = $_[1]; $code_block_upper = $_[1]; }
+  my ($code_block_lower,$code_block_upper) = (0,$#ReadInputFiles::code_blocks);
+  my $options = '';
+  if (defined($_[1])) { $options = $_[1]; }
+  if ($options =~ /(^|,)\s*global\s*($|,)/) {
+    $code_block_upper = 0;
+  } elsif ($options =~ /(^|,)\s*local\s*($|,)/) {
+    $code_block_lower = $#ReadInputFiles::code_blocks;
+  } elsif ($options =~ /(^|,)\s*nolocal\s*($|,)/) {
+    $code_block_lower = 1;
+  }
     
   my $string_variable_found = -1; # on output returns -1 if not found, or string_variables index if found
   my $code_block_found = -1; # on output returns -1 if not found, or code_blocks index if found
 
   CODE_BLOCK_LOOP: for my $m ( reverse( $code_block_lower .. $code_block_upper ) ) {
-    for my $n ( reverse( 0 .. $#{$code_blocks[$m]{"string_variables"}} ) ) {
-      if ($name eq $code_blocks[$m]{"string_variables"}[$n]{"name"}) { # found existing general replacements
+    for my $n ( reverse( 0 .. $#{$ReadInputFiles::code_blocks[$m]{"string_variables"}} ) ) {
+      if ($name eq $ReadInputFiles::code_blocks[$m]{"string_variables"}[$n]{"name"}) { # found existing general replacements
         $string_variable_found = $n;
         $code_block_found = $m;
         last CODE_BLOCK_LOOP;
@@ -413,19 +465,77 @@ sub string_set_transient_simulation {
 
   my $simulation = $_[0];
   if ($simulation) {
-    string_set("<<transientcomment>>","","global");
-    string_set("<<steadystatecomment>>","#","global");
-    string_set("<<transientflag>>","1","global");
-    string_set("<<steadystateflag>>","0","global");
+    string_set("<<transientcomment>>","","global"); # use <<transientsimulation>> instead
+    string_set("<<steadystatecomment>>","#","global"); # use <<transientsimulation>> instead
+    string_set("<<transientsimulation>>","1","global");
+    string_set("<<transientflag>>","1","global"); # do not use, this string to be removed in the future
+    string_set("<<steadystateflag>>","0","global"); # do not use, this string to be removed in the future
   } else {
-    string_set("<<transientcomment>>","#","global");
-    string_set("<<steadystatecomment>>","","global");
-    string_set("<<transientflag>>","0","global");
-    string_set("<<steadystateflag>>","1","global");
+    string_set("<<transientcomment>>","#","global"); # use <<transientsimulation>> instead
+    string_set("<<steadystatecomment>>","","global"); # use <<transientsimulation>> instead
+    string_set("<<transientsimulation>>","0","global");
+    string_set("<<transientflag>>","0","global"); # do not use, this string to be removed in the future
+    string_set("<<steadystateflag>>","1","global"); # do not use, this string to be removed in the future
   }
 
 }
 
+#-------------------------------------------------------------------------------
+# little routine that returns 1 if a string is defined, or 0 otherwise
+# second argument is list of options, taken straight from string_search:
+# global = only returns 1 if string is found and is a global
+# noglobal = only returns 1 if string is found and is not a global
+# local = only returns 1 if string is found and local to the current code block
+# string_test can do a similar thing, but without the options (but with the test functionality)
+sub string_examine {
+
+  my $string = $_[0];
+  my $options = '';
+  if (defined($_[1])) { $options = $_[1]; }
+
+# options string can be passed straight to string_search which knows global, noglobal and local
+  my ($code_block_found,$string_variable_found) = string_search($string,$options);
+  if ($code_block_found ge 0) { return 1; } else { return 0; };
+
+}
+#-------------------------------------------------------------------------------
+# prints out a formatted list of the string replacements
+# first argument is list of options, including the string search ones of global, noglobal and local
+
+sub string_debug {
+  
+# this is the string that we will form (to be printed, as in {{ print string_debug('local') }})
+  my $debug_output = "STRING DEBUG OUTPUT (a listing of the string replacement strings at this point in time):\n";
+
+# deal with options
+  my $options = '';
+  if (defined($_[1])) { $options = $_[1]; }
+  $debug_output .= "Called with: options = $options\n";
+
+  my ($code_block_lower,$code_block_upper) = (0,$#ReadInputFiles::code_blocks);
+  if ($options =~ /(^|,)\s*global\s*($|,)/) {
+    $code_block_upper = 0;
+  } elsif ($options =~ /(^|,)\s*local\s*($|,)/) {
+    $code_block_lower = $#ReadInputFiles::code_blocks;
+  } elsif ($options =~ /(^|,)\s*nolocal\s*($|,)/) {
+    $code_block_lower = 1;
+  }
+    
+  my $string_variable_found = -1; # on output returns -1 if not found, or string_variables index if found
+  my $code_block_found = -1; # on output returns -1 if not found, or code_blocks index if found
+
+  CODE_BLOCK_LOOP: for my $m ( reverse( $code_block_lower .. $code_block_upper ) ) {
+    if ($m eq 0) { $debug_output .= "Global "; }
+    if ($m eq $#ReadInputFiles::code_blocks) { $debug_output = $debug_output."Local "; }
+    $debug_output .= "Code Block $m:\n";
+    for my $n ( reverse( 0 .. $#{$ReadInputFiles::code_blocks[$m]{"string_variables"}} ) ) {
+      $debug_output .= "  String Variable $n: name = $ReadInputFiles::code_blocks[$m]{string_variables}[$n]{name}: value = $ReadInputFiles::code_blocks[$m]{string_variables}[$n]{value}: replace = $ReadInputFiles::code_blocks[$m]{string_variables}[$n]{replace}\n";
+    }
+  }
+
+  return $debug_output;
+
+}
 #-------------------------------------------------------------------------------
 
 1;

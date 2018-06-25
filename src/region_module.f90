@@ -1,6 +1,6 @@
 ! file src/region_module.f90
 !
-! Copyright 2009-2017 Dalton Harvie (daltonh@unimelb.edu.au)
+! Copyright 2009-2018 Dalton Harvie (daltonh@unimelb.edu.au)
 ! 
 ! This file is part of arb finite volume solver, referred to as `arb'.
 ! 
@@ -52,8 +52,10 @@ subroutine setup_regions
 
 use general_module
 use equation_module
-integer :: m, i, j, k, ns, ierror
+integer :: n, m, i, j, k, ns, o, ierror
 character(len=1000) :: formatline, filename, textline, textline2
+character(len=100) :: option_name
+logical :: error
 logical :: debug_sparse = .true.
 logical, parameter :: debug = .false.
 
@@ -88,6 +90,35 @@ do m = 1, ubound(region,1)
       call error_stop("the "//trim(region(m)%centring)//" of region "//trim(region(m)%name)//" does not match the " &
       //trim(region(region(m)%parent)%centring)//" centring of its parent region "//trim(region(region(m)%parent)%name))
   end if
+
+! set timestep and newtstep rewind options for regions:
+! first set default timesteprewind behaviours, other defaults are set in general_module.f90
+  if (region(m)%dynamic.and. &
+    (region(m)%type == 'unknown'.or.region(m)%type == 'transient'.or.region(m)%type == 'newtient')) then
+    region(m)%timesteprewind = .true.
+    region(m)%newtsteprewind = .true.
+  else
+    region(m)%timesteprewind = .false.
+    region(m)%newtsteprewind = .false.
+  end if
+! now user-set values
+  do n = 1, allocatable_size(region(m)%options) ! read through list from left to right, so that rightmost setting takes precedence
+    option_name = extract_option_name(region(m)%options(n),error)
+    if (error) cycle
+    if (trim(option_name) == 'timesteprewind') then
+      region(m)%timesteprewind = .true.
+      write(*,'(a)') 'INFO: setting timesteprewind for region '//trim(region(m)%type)//' '//trim(region(m)%name)
+    else if (trim(option_name) == 'notimesteprewind') then
+      region(m)%timesteprewind = .false.
+      write(*,'(a)') 'INFO: setting notimesteprewind for region '//trim(region(m)%type)//' '//trim(region(m)%name)
+    else if (trim(option_name) == 'newtsteprewind') then
+      region(m)%newtsteprewind = .true.
+      write(*,'(a)') 'INFO: setting newtsteprewind for region '//trim(region(m)%type)//' '//trim(region(m)%name)
+    else if (trim(option_name) == 'nonewtsteprewind') then
+      region(m)%newtsteprewind = .false.
+      write(*,'(a)') 'INFO: setting nonewtsteprewind for region '//trim(region(m)%type)//' '//trim(region(m)%name)
+    end if
+  end do
 
 ! and now perform the setup update of all of the system and gmsh (static) regions, calculating and allocating ijk, and from that, ns
 ! all gmsh regions must be done before the user regions as the user regions may refer to gmsh ns and ijk indicies
@@ -144,23 +175,29 @@ if (debug_sparse) then
   write(*,'(a)') 'INFO: regions:'
   do m=1,ubound(region,1)
     if (region(m)%dynamic) then
-      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a)'
+      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a' &
+        //repeat(',a',allocatable_size(region(m)%options))//',a)'
       write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': dynamic: type = '// &
         trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
+        ': (right prioritised) options =',(' '//trim(region(m)%options(o)),o=1,allocatable_size(region(m)%options)), &
         ': location = '//trim(region(m)%location%description)//': initial_location = '// &
         trim(region(m)%initial_location%description)
     else if (allocatable_size(region(m)%ijk) == 0) then
-      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a)'
+      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a' &
+        //repeat(',a',allocatable_size(region(m)%options))//',a)'
       write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': static: type = '// &
         trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
+        ': (right prioritised) options =',(' '//trim(region(m)%options(o)),o=1,allocatable_size(region(m)%options)), &
         ': location = '//trim(region(m)%location%description)//': contains no elements'
     else
-      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))// &
+      formatline = '(a,'//trim(dindexformat(m))//',a,'//trim(dindexformat(region(m)%dimensions))//',a' &
+        //repeat(',a',allocatable_size(region(m)%options))// &
         ',a,'//trim(dindexformat(region(m)%ijk(1)))// &
         ',a,'//trim(dindexformat(allocatable_size(region(m)%ijk)))// &
         ',a,'//trim(dindexformat(region(m)%ijk(allocatable_size(region(m)%ijk))))//')'
       write(*,fmt=formatline) ' region_number = ',m,': name = '//trim(region(m)%name)//': static: type = '// &
         trim(region(m)%type)//': centring = '//region(m)%centring//': dimensions = ',region(m)%dimensions, &
+        ': (right prioritised) options =',(' '//trim(region(m)%options(o)),o=1,allocatable_size(region(m)%options)), &
         ': location = '//trim(region(m)%location%description)// &
         ': ijk(1) = ',region(m)%ijk(1),': ijk(',allocatable_size(region(m)%ijk),') = ', &
         region(m)%ijk(allocatable_size(region(m)%ijk))

@@ -50,3 +50,39 @@ ELSE
 END_IF
 
 CONSTANT <gg> 7.d0
+
+IF {{ return "0"; }}
+  ERROR "IF: should not be here"
+ELSE_IF {{ return 1; }}
+  INFO "ELSE_IF: should be here"
+ELSE
+  ERROR "ELSE: should not be here"
+END_IF
+
+IF {{
+
+return "0";
+
+# comment within string code
+
+}}
+  ERROR "IF: should not be here"
+
+ELSE_IF {{
+
+# comment within string code
+return "1";
+
+}}
+  INFO "ELSE_IF: should be here"
+ELSE
+#  {{ asdfsfs }} # should not be evaluated
+  ERROR "ELSE: should not be here"
+END_IF
+
+IF 0
+  {{ return "ERROR: should not be evaluating this code\n"; }}
+# {{ sadfas }} # this will cause an error if evaluated
+ELSE
+  INFO "correctly avoided incorrect nested solver code in IF statement"
+END_IF

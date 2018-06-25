@@ -17,10 +17,9 @@ INFO_DESCRIPTION+ ": setup for cylindrical (default) or cartesian"
 #KERNEL_OPTIONS polynomialorder=2
 
 # setup basic cylindrical general replacements
-INCLUDE_TEMPLATE "general"
-INCLUDE "cylindrical_reflect_r1z2"
+INCLUDE_TEMPLATE "general/cylindrical_reflect_r1z2"
 # or, setup basic cartesian reflect general replacements
-#GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+#INCLUDE_TEMPLATE "general/cartesian_x1y2"
 #GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1" # as the centreline is horizontal need to include reflect=2 when differentiating l=2 vector components
 
 # bring in default physical and numerical constants
@@ -117,7 +116,7 @@ NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the 
 NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
 
 # unknown variables used for flow problems
-CELL_UNKNOWN <p> [] "(2.d0^<<cylindricalflag>>)*<ls_phi_fluid>/<We>" ON <fluid all cells> elementdata # pressure
+CELL_UNKNOWN <p> [] "(2.d0^<<cylindrical>>)*<ls_phi_fluid>/<We>" ON <fluid all cells> elementdata # pressure
 CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <fluid all cells> magnitude=1.d0 # velocity component
 CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <fluid all cells> magnitude=1.d0 # velocity component
 
@@ -198,7 +197,7 @@ NONE_OUTPUT <stretch[l=2]> "sqrt(cellsum(<cellvol>*(<cellx[l=2]>-<centroid[l=2]>
 
 CELL_LOCAL <central flag> "cellif(celltocelllink(expression=<ls_normalised>-<ls_phi_max>,localregion=<fluid domain>,remoteregion=<level set domain>),1.d0,0.d0)"
 NONE_OUTPUT <p central> "cellsum(<central flag>*<cellvol>*<p>,region=<fluid domain>)/cellsum(<central flag>*<cellvol>,region=<fluid domain>)"
-NONE_OUTPUT <p central We> "<p central>*<We>*(2.d0^<<cylindricalflag>>)"
+NONE_OUTPUT <p central We> "<p central>*<We>*(2.d0^<<cylindrical>>)"
 NONE_OUTPUT <p central We err> "abs(<p central>*<We>-1.d0)"
 NONE_OUTPUT <u rms> "sqrt(cellsum(<cellvol>*<u_mag>^2,region=<fluid domain>)/cellsum(<cellvol>,region=<fluid domain>))"
 NONE_OUTPUT <minimum boundary ls> "facemin(-<ls>,region=<level set boundaries>)/<ls_celldxmax>"
