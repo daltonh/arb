@@ -6,7 +6,9 @@
 
 IF 1
 
-# the following strings reused from navier-stokes p_error, so this must be called after that file
+# Note, this string is also used in navier_stokes/p_error, and the setting needs to be consistent, so if this is going to be changed set it globally before calling either file
+  GENERAL_REPLACEMENTS D "<<dynamicforcefmethod>>" W "dxunit"
+
   IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
   # dxunit method
     FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
