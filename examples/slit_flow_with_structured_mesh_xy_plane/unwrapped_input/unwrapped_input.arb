@@ -1,0 +1,137 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+# root_input.arb file created by the arb script
+##################################################################################
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+##################################################################################
+# the following working directory files found by the arb script: slit_flow_with_structured_mesh_xy_plane.arb
+   #(comment created during unwrap): new block = slit_flow_with_structured_mesh_xy_plane.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "slit_flow_with_structured_mesh_xy_plane.arb"
+   # arb finite volume solver
+   # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+   #
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #-------------------------------------------------------------------
+   # file equations.in
+   VERSION 0.40
+   INFO_DESCRIPTION "this uses an old explicit version of the Navier-Stokes equations - use templates files instead"
+   
+   #----------------------------------------------------------------------------
+   
+   # physical constants
+   CONSTANT <mu> [Pa.s] 1.d0  # viscosity of liquid
+   CONSTANT <rho> [kg/m^3] 1.d0 # density
+   CONSTANT <u_av> [m/s] 0.2d+0 # average inlet velocity
+   
+   # numerical constants
+   CONSTANT <C_{Rhie-Chow}> [] 1.0d+0 # multiplier for Rhie-Chow-type pressure oscillation control
+   CONSTANT <adv_limiter> [] 1.d0 # multiplier used to limit gradients when calculating advection fluxes
+   
+   #-------------------------------------------------------------------
+   # solver options
+   
+   KERNEL polynomialorder=2
+   #KERNEL polynomialaverage_order=1
+   
+   #-------------------------------------------------------------------
+   # geometry
+   
+   # CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
+   # where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
+   # where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
+   # where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
+   # where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
+   # where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
+   # where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
+   
+   FACE_REGION <walls> "COMPOUND <boundaries>-<inlet>-<outlet>"
+   
+   # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+   # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+   # input options are: input,centringinput,meshinput,centringmeshinput,noinput
+   # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+   MSH_FILE "surface.msh"
+   #MSH_FILE "output/output.msh" input,centringoutput
+   
+   NONE_CONSTANT <X max> "facemax(<facex[l=1]>,,<allfaces>)"
+   NONE_CONSTANT <X min> "facemin(<facex[l=1]>,,<allfaces>)"
+   NONE_CONSTANT <Y max> "facemax(<facex[l=2]>,,<allfaces>)"
+   NONE_CONSTANT <Y min> "facemin(<facex[l=2]>,,<allfaces>)"
+   # unknown variables used for flow problems
+   CELL_UNKNOWN <u[l=1]> [] "<u_av>" magnitude=1.d0 # velocity component
+   CELL_UNKNOWN <u[l=2]> [] "0.d0" magnitude=1.d0 # velocity component
+   CELL_UNKNOWN <p> [] "1.d0-<cellx[l=1]>" magnitude=1.d0 # pressure
+   
+   # total stress tensor
+   FACE_DERIVED <tau[l=1,1]> "<p> - <mu>*2.d0*facegrad[l=1](<u[l=1]>)" output
+   FACE_DERIVED <tau[l=1,2]> "- <mu>*(facegrad[l=2](<u[l=1]>)+facegrad[l=1](<u[l=2]>))" 
+   FACE_DERIVED <tau[l=2,2]> "<p> - <mu>*2.d0*facegrad[l=2](<u[l=2]>)"
+   FACE_DERIVED <tau[l=2,1]> "<tau[l=1,2]>"
+   
+   # a Rhie-Chow-type correction is applied to the face velocities
+   CELL_DERIVED <graddivp[l=1]> "celldivgrad[l=1](<p>)" # pressure gradient calculated via a divergence (consistent with momentum conservation)
+   CELL_DERIVED <graddivp[l=2]> "celldivgrad[l=2](<p>)" # pressure gradient calculated via a divergence (consistent with momentum conservation)
+   FACE_DERIVED <p_error> "facegrad(<p>) - dot(<graddivp[l=:]>,<facenorm[l=:]>)" ON <domainfaces> # difference between face centred and cell divergence type gradient at face and normal to the face
+   
+   # flux of mass (volume) and momentum components over each face
+   # calculate the Rhie-Chow type velocity correction, only applied (nonzero) on the domain faces
+   FACE_DERIVED <u_f_{raw}> "dot(<u[l=:]>,<facenorm[l=:]>)" # volume (velocity) transport
+   FACE_LOCAL <eps_p> "abs(<p_error>)" ON <domainfaces>
+   FACE_LOCAL <sign_p> "signum(<p_error>)" ON <domainfaces>
+   FACE_LOCAL <u_mf_{adv}> "-abs(<u_f_{raw}>)+sqrt(<u_f_{raw}>^2+<eps_p>*<facedx>/<rho>)" ON <domainfaces>
+   FACE_LOCAL <u_mf_{vis}> "<eps_p>*<facedx>^2/<mu>" ON <domainfaces>
+   FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<sign_p>*facemin(<u_mf_{adv}>,<u_mf_{vis}>)" ON <domainfaces> output
+   FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domainfaces>),<u_f_{correction}>,0.d0)" # volume (velocity) transport
+   FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)+<rho>*faceave[advection](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" output # component of momentum transport from stress and advection
+   FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)+<rho>*faceave[advection](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" # component of momentum transport from stress and advection
+   
+   # conservation equations solved over each domain cell (finite volume method)
+   CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
+   CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)" ON <domain> # momentum component
+   CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)" ON <domain> # momentum component
+   
+   # # boundary conditions on nonslip walls
+   # FACE_EQUATION <wall noflux> "<u_f>" ON <walls> # no flux normal to walls
+   # FACE_EQUATION <wall noslip> "dot(<u[l=:]>,<facetang1[l=:]>)" ON <walls> # nonslip
+   # #CELL_LOCAL <u_n> "dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>))"
+   # #CELL_LOCAL <d u_n d x[l=1]> "cellgrad[l=1](<u_n>)"
+   # #CELL_LOCAL <d u_n d x[l=2]> "cellgrad[l=2](<u_n>)"
+   # #CELL_LOCAL <d u_n d x_n> "dot(<d u_n d x[l=:]>,cellave[lastface](<facenorm[l=:]>))"
+   # #FACE_LOCAL <d^2 u_n d x_n^2> "facegrad(<d u_n d x_n>)" ON <boundaries> output
+   # #FACE_EQUATION <wall u extrapolation> "<d^2 u_n d x_n^2>" ON <walls> # zero second order derivative of velocity normal to wall
+   # CELL_LOCAL <d p d x[l=1]> "cellgrad[l=1](<p>)"
+   # CELL_LOCAL <d p d x[l=2]> "cellgrad[l=2](<p>)"
+   # CELL_LOCAL <d p d x_n> "dot(<d p d x[l=:]>,cellave[lastface](<facenorm[l=:]>))"
+   # FACE_EQUATION <wall p extrapolation> "facegrad(<d p d x_n>)" ON <walls> # extrapolate pressure to the wall using zero second derivative normal to wall
+   
+   # boundary conditions on nonslip walls
+   FACE_EQUATION <wall noflux> "<u_f>" ON <walls> # no flux normal to walls
+   FACE_EQUATION <wall noslip> "dot(<u[l=:]>,<facetang1[l=:]>)" ON <walls> # nonslip
+   CELL_LOCAL <u_n> "dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>))"
+   CELL_LOCAL <d2u_ndx2[l=1]> "cellgrad[l=1](cellgrad[l=1](<u_n>))"
+   CELL_LOCAL <d2u_ndx2[l=2]> "cellgrad[l=2](cellgrad[l=2](<u_n>))"
+   CELL_LOCAL <laplacian u_n> "<d2u_ndx2[l=1]>+<d2u_ndx2[l=2]>"
+   FACE_EQUATION <wall p extrapolation> "facegrad(<p>)-<laplacian u_n>*<mu>" ON <walls> # set pressure gradient next to wall equal to second normal derivative component of viscous stress
+   
+   # boundary conditions on outlet - fully developed flow
+   FACE_EQUATION <outlet fully developed> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <outlet> # normal velocity component is fully developed
+   FACE_EQUATION <outlet noslip> "dot(<u[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to outlet
+   FACE_EQUATION <outlet p> "<p>" ON <outlet> # specified uniform (zero) pressure
+   
+   # boundary conditions on inlet - fully developed flow
+   FACE_EQUATION <inlet fully developed> "facegrad(dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <inlet> # normal velocity component is fully developed
+   FACE_EQUATION <inlet noslip> "dot(<u[l=:]>,<facetang1[l=:]>)" ON <inlet> # no component tangential to inlet
+   
+   # alternatively, set uniform inlet pressure giving required average velocity
+   NONE_DERIVED <u_av_calc> "facesum(-<u_f>*<facearea>,<inlet>)/facesum(<facearea>,<inlet>)" # calculate average velocity directed into the domain
+   NONE_UNKNOWN <p_in> [Pa] "1.d0" # define the pressure at inlet
+   NONE_EQUATION <p_in for flowrate> "<u_av_calc>-<u_av>" # set flowrate through inlet to give required average velocity
+   FACE_EQUATION <inlet flowrate> "<p>-<p_in>" ON <inlet> # apply specified pressure over inlet
+   
+   CELL_OUTPUT <u analytical> "6.d0*<u_av>*(<cellx[l=2]>-<Y min>)*(<Y max>-<cellx[l=2]>+<Y min>)/((<Y max>-<Y min>)^2)"
+   CELL_OUTPUT <u error> "<u analytical> - <u[l=1]>"
+   NONE_OUTPUT <L2 norm> "sqrt(cellsum((<u error>^2)*<cellvol>,<domain>))/cellsum(<cellvol>,<domain>)"
+   
+   #-------------------------------------------------------------------
+##################################################################################

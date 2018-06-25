@@ -1,0 +1,60 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+# root_input.arb file created by the arb script
+##################################################################################
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+##################################################################################
+# the following working directory files found by the arb script: iterative_solver_1d_test.arb
+   #(comment created during unwrap): new block = iterative_solver_1d_test.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "iterative_solver_1d_test.arb"
+   # arb finite volume solver
+   # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+   #
+   # arb is released under the GNU GPL.  For full details see the license directory.
+   #
+   #----------------------------------------------------------------------------
+   VERSION 0.55
+   
+   # the following strings describe the simulation and are passed to the output files
+   INFO_TITLE "Diffusion equation test in 1D for debugging the iterative solver"
+   INFO_AUTHOR "Dalton Harvie"
+   INFO_DATE "28/4/16" # interpreted as the last modification date
+   
+   #-------------------------------------------------------------------
+   MSH_FILE "line_with_uniform_spacing.msh"
+   
+   CELL_UNKNOWN <T> [1] "1.d0" ON <allcells> magnitude=1.d0
+   FACE_DERIVED <q_f> [1] "-facegrad(<T>)" ON <allfaces> output # flux of heat across each face, in the direction of the face normal
+   CELL_EQUATION <T transport> "celldiv(<q_f>)" ON <domain> output #magnitude=1.d0 # diffusion equation, giving conservation of heat on each cell within the domain
+   FACE_EQUATION <T right> "<q_f>+1.d0" ON <right> output #magnitude=1.d0 # specified heat flux through hole surface: Note, face normals on boundary faces all point outwards, so this equation specifies a flux equal to <hole flux> directed out of the domain.  However, <hole flux> is set to a negative number above, giving a (physical) flux directed into the domain
+   FACE_EQUATION <T left> "<T>+0.d0" ON <left> output #magnitude=1.d0 # set temperature on the walls of the domain 
+   NONE_OUTPUT <T average> [1] "cellsum(<T>*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>)" # find average temperature in entire domain
+   
+   #CELL_OUTPUT <T transport normalised> "<T transport>/nonemagnitude(<T transport>)" ON <domain>
+   ##FACE_OUTPUT <T right normalised> "<T right>/nonemagnitude(variable=<T right>)" ON <right>
+   FACE_OUTPUT <T left normalised> "<T left>/nonemagnitude(variable=<T left>)" ON <left>
+   
+   #INCLUDE_TEMPLATE "general"
+   #INCLUDE "element_information"
+   
+   # there are many iterative solvers now, but doglegdescent is really the only viable one for reasonably sized problems
+   # preconditioning is very basic, given that we know little about the matrix structure for an arbitrary problem
+   SOLVER_OPTIONS linearsolver=iterative # this picks out the currently best iterative solver
+   #SOLVER_OPTIONS linearsolver=mgmres # packaged solver, not good, and need to pass option --mgmres to the arb script to download and compile in
+   #SOLVER_OPTIONS linearsolver=multigrid # multigrid idea, for some problems OK, but not competitive with descent/gradient methods
+   #SOLVER_OPTIONS linearsolver=singlegrid # single grid version of the multigrid solver, not good
+   #SOLVER_OPTIONS linearsolver=bicg # standard bicg - reasonably fast, seems to work well for small problems, but may not converge for anything serious
+   #SOLVER_OPTIONS linearsolver=bicgstab # stabilised version of bicg, but does not seem to be any better really
+   #SOLVER_OPTIONS linearsolver=descent # this is method of steepest descent, not so good
+   #SOLVER_OPTIONS linearsolver=doglegdescent # this is modification of steepest descent method, that steps in direction of currently steepest descent plus previous step direction - stable, and currently the fastest method, parallelises quite well
+   #SOLVER_OPTIONS linearsolver=flexible # a research algorithm, not suitable for production runs
+   #SOLVER_OPTIONS linearsolver=direct # this picks out the currently best direct solver that is available
+   
+   # when using iterative methods consider increasing tolerances to decrease the amount of work required
+   NEWTRESTOL 1.d-8 # upping this from the default of 1.d-10
+   ITERRESTOL 1.d-9 # this needs to be less than the NEWTRESTOL, otherwise you will get backstepping errors near convergence
+   #ITERRESRELTOL 1.d-4 # this limits the residual required within the iterative solver to be a multiple of the previous newtres - for non-linear problems this can save solving intermediate newton steps to excessive accuracy, however, for linear problems will cause more newton steps
+   #ITERSTEPMAX 100 # maximum number of iteration steps to do - should be large
+   ITERSTEPCHECK 10 # this is how often the iterative solver routine dumps output to the screen, and calculates/compares the inner newton residual against iterrestol (but otherwise does compare the less accurate inner residual every step) - don't do too much output otherwise file sizes will be too large, and computation possibly slowed by screen refreshing
+   #-------------------------------------------------------------------
+##################################################################################

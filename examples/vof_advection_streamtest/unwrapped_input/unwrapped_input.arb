@@ -1,0 +1,214 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+# root_input.arb file created by the arb script
+##################################################################################
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+##################################################################################
+# the following working directory files found by the arb script: vof_advection_streamtest.arb
+   #(comment created during unwrap): new block = vof_advection_streamtest.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "vof_advection_streamtest.arb"
+   VERSION 0.53
+   
+   # need to completely rethink the variable update order in this
+   
+   # simulation information
+   INFO_TITLE "VOF advection test 1 (uniform velocity) from the stream paper"
+   INFO_TITLE+ ": u=(2,1)"
+   INFO_TITLE+ ": circle"
+   INFO_AUTHOR "Dalton Harvie"
+   INFO_DATE "8/4/15"
+   INFO_VERSION "5"
+   INFO_DESCRIPTION "Does a linear advection test in line with that presented in DOI:10.1006/jcph.2000.6510, which itself is based on tests by Rudman and other workers"
+   
+   #-------------------------------------------------------------------
+   # user-defined constants
+   
+   #KERNEL_OPTIONS polynomialorder=2,polynomialaverageorder=2,polynomialcellorder=2
+   
+      #(comment created during unwrap): new block = ../../templates/general/cartesian_x1y2.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cartesian_x1y2" # comment out any references to the third dimension and set the <<dimensions>> list, used in the template files
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)sets general replacements for cartesian 2D coordinates in the xy plane
+      #(hash inserted during unwrap)END_MARKDOWN
+      
+      
+      
+   
+   TIMESTEPMAX 5 # just compute 5 timesteps
+   
+   # this should be a square box of sidelength 4 and origin at (0,0)
+   MSH_FILE "box.msh"
+   #MSH_FILE "box_unstructured.msh"
+   
+   NONE_CONSTANT <vof_phi_initial_tol> 1.d-3
+   # the cellvofphishape function takes two vectors, a size and centre, returning a volume fraction for each cell
+   # the size of the object is determined by the maximum size that is consistent with all of the object's dimensions (defaults to huge), so for a sphere set one size to the sphere's diameter
+   # the centre of the object is specified by the centre vector, defaulting to zero if a component is not specified
+   # for 2D shapes choose a 3D shape that gives the correct intersection with the 2D plane (ie, sphere for circle, box for rectangle)
+   OVERRIDE_OPTIONS noinput,output
+   # circle
+   CELL_CONSTANT <vof_phi_initial_saved> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"  input
+   CELL_CONSTANT <vof_phi_initial1> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)" input
+   CELL_CONSTANT <vof_phi_final1> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
+   CELL_CONSTANT <vof_phi_final2> "cellmax(cellmin(cellvofphishape[sphere](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[sphere](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
+   # square
+   #CELL_CONSTANT <vof_phi_initial> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"  input
+   #CELL_CONSTANT <vof_phi_initial1> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)" input
+   #CELL_CONSTANT <vof_phi_final1> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
+   #CELL_CONSTANT <vof_phi_final2> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
+   # rotated square (not working yet)
+   #CELL_CONSTANT <vof_phi_initial>  "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"  input
+   #CELL_CONSTANT <vof_phi_initial1> "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=0.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)" input
+   #CELL_CONSTANT <vof_phi_final1>   "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=0.5d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
+   #CELL_CONSTANT <vof_phi_final2>   "cellmax(cellmin(cellvofphishape[cube](size[l=1]=0.8d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>)-cellvofphishape[cube](size[l=1]=0.4d0,centre[l=1]=3.5d0,centre[l=2]=2.0d0,axis[l=3]=26.57*<pi>/180.d0,phitol=<vof_phi_initial_tol>),1.d0),0.d0)"   input
+   OVERRIDE_OPTIONS
+   
+   # set up velocity field
+   CELL_CONSTANT <u[l=1]> 2.d0
+   CELL_CONSTANT <u[l=2]> 1.d0
+   FACE_LOCAL <u_f_vect[l=1]> "faceave[reflect=1](<u[l=1]>)" output
+   FACE_LOCAL <u_f_vect[l=2]> "faceave[reflect=2](<u[l=2]>)"
+   FACE_CONSTANT <u_f> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" output
+   CELL_CONSTANT <CFL/dt local> "facesum(faceif(<facedivop>*<u_f>,<facedivop>*<u_f>,0.d0),region=<celljfaces>)" ON <domain> output
+   NONE_CONSTANT <CFL/dt> "cellmax(<CFL/dt local>,region=<domain>)" output
+   NONE_CONSTANT <CFL> 0.125d0 # this is the target CFL, based on the volume of fluid flowing out of each cell
+   NONE_CONSTANT <dt> "<CFL>/nonemax(<CFL/dt>,1.d-10)" # this is the timestep based on the target CFL
+   CONSTANT <celldxave> "cellsum(<celldxmax>,region=<domain>)/cellsum(1.d0,region=<domain>)" # average cell dimension
+   
+   # set up time variables
+   NONE_CONSTANT <t_end> "3.d0/cellmax(abs(<u[l=1]>),region=<domain>)" # base final time on form moving 3 in the horizontal direction
+   NONE_CONSTANT <dt_out> "<t_end>/20.d0" # base output time on a number of steps within the end time
+   TRANSIENT_SIMULATION
+   NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
+   NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
+   NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition # this will be true (>0.) whenever we are <dt_out> from last output
+   NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
+   NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops
+   
+   #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+   
+   # the following is roughly similar to what is contained in setup within volume_of_fluid, but adapted for transient problem
+   CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <allcells>
+   CELL_LOCAL <vof_phi_rounded> "cellif(<vof_phi>-<vof_phi_tol>,cellif(1.d0-<vof_phi_tol>-<vof_phi>,<vof_phi>,1.d0),0.d0)"
+   CELL_TRANSIENT <vof_phi[r=1]> "<vof_phi_initial>" "<vof_phi_rounded>" output
+   CONSTANT <vof_phi_tol> 1.d-8
+   CELL_LOCAL <vof_phi_lim> "<vof_phi[r=1]>"
+   CELL_LOCAL <vof_phi_interface> "<vof_phi[r=1]>"
+   
+   # get rid of all of the masks for debugging purposes
+   #INCLUDE "remove_masks"
+   
+   # mask setup:
+   # if this is not set then no masks are defined.  If you don't want to use masks, then include remove_masks near the start of the input file.
+   # default maximum separation used for the faceave kernels, which can be overwritten outside of this routine
+   # default maximum separation used for the facegrad kernels, which can be overwritten outside of this routine
+   CELL_TRANSIENT <vof_interface_indicator[r=1]> "" "cellmax(<vof_phi_lim>,region=<adjacentcellicells>)-cellmin(<vof_phi_lim>,region=<adjacentcellicells>)-<vof_phi_tol>" ON <allcells> output
+   CELL_TRANSIENT_REGION <vof_interface_mask[r=1]> "" "variable(<vof_interface_indicator[r=1]>)" ON <allcells>
+   FACE_TRANSIENT_REGION <vof_interface_mask_f[r=1]> "" "associatedwith(<vof_interface_mask[r=1]>)" ON <allfaces>
+   CELL_TRANSIENT_REGION <vof_delta_mask[r=1]> "" "expand[maxseparation=3,faceseparation](<vof_interface_mask[r=1]>)" ON <allcells>
+   FACE_TRANSIENT_REGION <vof_delta_mask_f[r=1]> "" "associatedwith(<vof_delta_mask[r=1]>)" ON <allfaces>
+   
+   # note that the following two includes are based on <vof_phi_lim>, which is actually a local equal to the previous timestep <vof_phi[r=1]>, so the normals are also based on this and hence explicit
+   # low order normals
+   #INCLUDE "smooth_phi" R "<vof_phi_smoothed>" W "<vof_phi_smoothed[r=1]>" R "DERIVED" W "TRANSIENT"
+   #INCLUDE "normals" R "[l=" W "[r=1,l=" R "<vof_phi_smoothed>" W "<vof_phi_smoothed[r=1]>" R "<vof_phigrad_mag>" W "<vof_phigrad_mag[r=1]>" R "<vof_phigrad_mag^2>" W "<vof_phigrad_mag^2[r=1]>" R "DERIVED" W "TRANSIENT"
+   
+   # alternatively use high order normals
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "implicit_reconstructed_levelset"
+      # implicit reconstructed levelset idea
+      CELL_UNKNOWN <vof_s> "2.d0*<vof_phi_interface>-1.d0" ON <allcells> magnitude=1.d0
+      CONSTANT <vof_s_interface_width> 1.d0 # this controls the thickness of the interface, roughly in terms of the local cell width
+      # the larger this is, the more uniform the calculated curvature -> lower errors on a sphere, but at the cost of reduced accuracy in regions of large curvature
+      CELL_CONSTANT <local smoothed celldx> "cellsum[maxseparation=3](<celldxkernel>,region=<domain>)/cellsum[maxseparation=3](1.d0,region=<domain>)" ON <allcells> output
+      FACE_CONSTANT <vof_s_D> "(<local smoothed celldx>*<vof_s_interface_width>)**2" ON <allfaces> output
+      FACE_DERIVED <vof_s_j> "-<vof_s_D>*facegrad(<vof_s>)" ON <allfaces>
+      CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
+      FACE_EQUATION <vof_s boundary> "2.d0*<vof_phi_interface>-1.d0-<vof_s>" ON <boundaries>
+   CELL_TRANSIENT <vof_s[r=1]> "" "<vof_s>" ON <allcells>
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "normals" 
+      
+      # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
+      
+      # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
+      
+      
+      # first calculate masks for the normals
+      CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=3,faceseparation](<vof_delta_mask[r=1]>)" ON <allcells>
+      NODE_TRANSIENT_REGION <vof_phigrad_mask_n[r=1]> "" "associatedwith(<vof_phigrad_mask[r=1]>)" ON <allnodes>
+      
+      NODE_TRANSIENT <vof_phigrad_n[r=1,l=1]> "nodefromcellgrad[r=1,l=1](<vof_s[r=1]>)" ON <vof_phigrad_mask_n[r=1]> output
+      NODE_TRANSIENT <vof_phigrad_n[r=1,l=2]> "nodefromcellgrad[r=1,l=2](<vof_s[r=1]>)" ON <vof_phigrad_mask_n[r=1]>
+      #NODE_TRANSIENT <vof_phigrad_n[r=1,l=3]> "nodefromcellgrad[r=1,l=3](<vof_s[r=1]>)" ON <vof_phigrad_mask_n[r=1]>
+      CELL_TRANSIENT <vof_phigrad[r=1,l=1]> "cellfromnodeave(<vof_phigrad_n[r=1,l=1]>)" ON <vof_phigrad_mask[r=1]> output
+      CELL_TRANSIENT <vof_phigrad[r=1,l=2]> "cellfromnodeave(<vof_phigrad_n[r=1,l=2]>)" ON <vof_phigrad_mask[r=1]>
+      #CELL_TRANSIENT <vof_phigrad[r=1,l=3]> "cellfromnodeave(<vof_phigrad_n[r=1,l=3]>)" ON <vof_phigrad_mask[r=1]>
+      
+      #CELL_TRANSIENT <vof_phigrad[r=1,l=1]> "cellgrad[r=1,l=1](<vof_s[r=1]>)" ON <vof_phigrad_mask[r=1]> output
+      #CELL_TRANSIENT <vof_phigrad[r=1,l=2]> "cellgrad[r=1,l=2](<vof_s[r=1]>)" ON <vof_phigrad_mask[r=1]>
+      ##CELL_TRANSIENT <vof_phigrad[r=1,l=3]> "cellgrad[r=1,l=3](<vof_s[r=1]>)" ON <vof_phigrad_mask[r=1]>
+      
+      CELL_LOCAL <vof_phigrad_mag^2[r=1]> "dot(<vof_phigrad[r=1,l=:]>,<vof_phigrad[r=1,l=:]>)" ON <vof_phigrad_mask[r=1]>
+      CELL_TRANSIENT <vof_phigrad_mag[r=1]> "sqrt(cellmax(<vof_phigrad_mag^2[r=1]>,1.d-10))" ON <vof_phigrad_mask[r=1]>
+      CELL_TRANSIENT <vof_phigrad_unit[r=1,l=1]> "<vof_phigrad[r=1,l=1]>/<vof_phigrad_mag[r=1]>" ON <vof_phigrad_mask[r=1]> output
+      CELL_TRANSIENT <vof_phigrad_unit[r=1,l=2]> "<vof_phigrad[r=1,l=2]>/<vof_phigrad_mag[r=1]>" ON <vof_phigrad_mask[r=1]>
+      #CELL_TRANSIENT <vof_phigrad_unit[r=1,l=3]> "<vof_phigrad[r=1,l=3]>/<vof_phigrad_mag[r=1]>" ON <vof_phigrad_mask[r=1]>
+   
+   # now do the update, doing the equivalent of what volume_of_fluid/equation.arb does, but using transients
+   CELL_TRANSIENT <vof_d[r=1]> "" "cellvofd[exact](phi=<vof_phi[r=1]>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>)" ON <vof_interface_mask[r=1]> output
+   FACE_TRANSIENT <vof_phi_f[r=1]> "faceif(facedelta(<vof_interface_mask_f[r=1]>),facevofphi[noderivative,linearone](phi=<vof_phi[r=1]>,d=<vof_d[r=1]>,flux=<u_f>,normal[l=1]=<vof_phigrad_unit[l=1,r=1]>,normal[l=2]=<vof_phigrad_unit[l=2,r=1]>,phitol=<vof_phi_tol>),faceave[adjacentcells](<vof_phi[r=1]>))" ON <allfaces> output
+   CELL_TRANSIENT <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>),0.d0)" ON <allcells>
+   #CELL_TRANSIENT <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=1.d0*<u_f>/faceave[lastcell](1.d0),dt=<dt>),0.d0)" ON <allcells>
+   FACE_LOCAL <vof_phi_f_adjusted[r=1]> "faceif(facedelta(<vof_interface_mask_f[r=1]>),facemax(facemin(<vof_phi_f[r=1]>+faceif(<u_f>,faceave[downcell](<vof_phi_adjust[r=1]>),faceave[upcell](<vof_phi_adjust[r=1]>)),1.d0),0.d0),<vof_phi_f[r=1]>)" ON <allfaces> output
+   
+   # update vof_phi explicitly
+   CELL_TRANSIENT <vof_phi> "<vof_phi_initial>" "cellif(celldelta(<boundarycells>),<vof_phi_initial>,cellif(celldelta(<vof_interface_mask[r=1]>),<vof_phi[r=1]>-<dt>*celldiv(<vof_phi_f_adjusted[r=1]>*<u_f>),<vof_phi[r=1]>))" ON <allcells> output
+   
+   #-------------------------------------------------------------------
+      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/output_masks.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "output_masks"
+      # this file contains variables that allow the outputing of the various dynamic region masks
+      
+      # have to cope with both single and double domain setups
+      
+      
+      CELL_OUTPUT <vof_interface_mask_output[r=1]> "1.d0" ON <vof_interface_mask[r=1]>
+      FACE_OUTPUT <vof_interface_mask_f_output[r=1]> "1.d0" ON <vof_interface_mask_f[r=1]>
+      CELL_OUTPUT <vof_delta_mask_output[r=1]> "1.d0" ON <vof_delta_mask[r=1]>
+      FACE_OUTPUT <vof_delta_mask_f_output[r=1]> "1.d0" ON <vof_delta_mask_f[r=1]>
+      
+      CELL_OUTPUT <vof_phigrad_mask_output[r=1]> "1.d0" ON <vof_phigrad_mask[r=1]>
+      NODE_OUTPUT <vof_phigrad_mask_n_output[r=1]> "1.d0" ON <vof_phigrad_mask_n[r=1]>
+      
+      #CELL_OUTPUT <vof_fs_interface_mask_output[r=1]> "1.d0" ON <vof_fs_interface_mask[r=1]>
+      #CELL_OUTPUT <vof_fs_delta_mask_output[r=1]> "1.d0" ON <vof_fs_delta_mask[r=1]>
+      #FACE_OUTPUT <vof_fs_delta_mask_f_output[r=1]> "1.d0" ON <vof_fs_delta_mask_f[r=1]>
+      #CELL_OUTPUT <vof_fs_phigrad_mask_output[r=1]> "1.d0" ON <vof_fs_phigrad_mask[r=1]>
+      #NODE_OUTPUT <vof_fs_phigrad_mask_n_output[r=1]> "1.d0" ON <vof_fs_phigrad_mask_n[r=1]>
+   
+   NONE_OUTPUT <integrated volume> "cellsum(<vof_phi>*<cellvol>,<domain>)"
+   
+   NONE_OUTPUT <centroid[l=1]> "cellsum(<cellvol>*<cellx[l=1]>*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>)"
+   NONE_OUTPUT <centroid[l=2]> "cellsum(<cellvol>*<cellx[l=2]>*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>)"
+   NONE_OUTPUT <stretch[l=1]> "sqrt(cellsum(<cellvol>*(<cellx[l=1]>-<centroid[l=1]>)^2*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>))"
+   NONE_OUTPUT <stretch[l=2]> "sqrt(cellsum(<cellvol>*(<cellx[l=2]>-<centroid[l=2]>)^2*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>))"
+   
+   NONE_OUTPUT <u_f_max> "facemax(abs(<u_f>),region=<allfaces>)"
+   NONE_OUTPUT <phi error> "sqrt(cellsum((<vof_phi>-<vof_phi_initial_saved>)**2*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>))"
+   
+   NONE_OUTPUT <vof_phi_max domain> "cellmax(<vof_phi>,region=<domain>)"
+   NONE_OUTPUT <vof_phi_min domain> "cellmin(<vof_phi>,region=<domain>)"
+   NONE_OUTPUT <vof_phi_max all cells> "cellmax(<vof_phi>,region=<allcells>)"
+   NONE_OUTPUT <vof_phi_min all cells> "cellmin(<vof_phi>,region=<allcells>)"
+   NONE_OUTPUT <vof_phi_adjust_max> "cellmax(<vof_phi_adjust[r=1]>,region=<allcells>)"
+   NONE_OUTPUT <vof_phi_adjust_min> "cellmin(<vof_phi_adjust[r=1]>,region=<allcells>)"
+   NONE_OUTPUT <vof_phi_error domain> "nonemax(abs(<vof_phi_max domain>-1.d0),abs(<vof_phi_min domain>))"
+   NONE_OUTPUT <vof_phi_error all cells> "nonemax(abs(<vof_phi_max all cells>-1.d0),abs(<vof_phi_min all cells>))"
+   
+   NONE_OUTPUT <error_initial_initial1> "cellsum(abs(<vof_phi_initial>-<vof_phi_initial1>),region=<domain>)/cellsum(<vof_phi_initial1>,region=<domain>)"
+   NONE_OUTPUT <error_final1> "cellsum(abs(<vof_phi>-<vof_phi_final1>),region=<domain>)/cellsum(<vof_phi>,region=<domain>)"
+   NONE_OUTPUT <error_final2> "cellsum(abs(<vof_phi>-<vof_phi_final2>),region=<domain>)/cellsum(<vof_phi>,region=<domain>)"
+   
+   #-------------------------------------------------------------------
+##################################################################################
