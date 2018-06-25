@@ -285,9 +285,7 @@ v0.54 - mainly bugfixes
 v0.55 - introduction of network flow templates and new suite of home-made iterative solvers
 v0.56 - changes to include file paths etc
 v0.57
-* rewind capability
 * string (perl) code
 * improvements to kernel
-
 
 -------------------------------
