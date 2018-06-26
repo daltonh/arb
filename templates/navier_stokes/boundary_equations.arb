@@ -36,7 +36,7 @@ REPLACEMENTS D "<<boundarytangentmethod>>" W "noslip"
 IF {{ return string_test("<<boundarytangentmethod>>","slip"); }}
   INCLUDE "slip" REPLACE "<equation" WITH "<region slip"
 ELSE_IF {{ return string_test("<<boundarytangentmethod>>","noslip"); }}
-  INCLUDE "noslip" REPLACE "<equation" WITH "<region no slip"
+  INCLUDE "noslip" REPLACE "<equation" WITH "<region noslip"
 ELSE
   ERROR "boundarytangentmethod not known in boundary_equations.arb: <<boundarytangentmethod>>"
 END_IF
