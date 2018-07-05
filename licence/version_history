@@ -40,7 +40,7 @@ This information is now basically hosted on our local gitlab server - this file 
 CURRENT VERSION:
 
 v0.58
-* rewind capability
+* rewind capability completed
 * introduction of SUBSTITUTE string replacement variable
 * changes to coding of navier-stokes template files (better use of loops and string variables) that should not affect final equations
 
@@ -285,9 +285,7 @@ v0.54 - mainly bugfixes
 v0.55 - introduction of network flow templates and new suite of home-made iterative solvers
 v0.56 - changes to include file paths etc
 v0.57
-* rewind capability
 * string (perl) code
 * improvements to kernel
-
 
 -------------------------------
