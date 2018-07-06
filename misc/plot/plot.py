@@ -35,6 +35,8 @@ from distutils.version import LooseVersion
 import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+#matplotlib.use('TkAgg')
+#from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 # turn of all warnings for matplotlib deprecated features (they are dealt with in the code though)
@@ -61,7 +63,7 @@ import argparse
 from collections import defaultdict
 
 # to output wx version
-#print wx.__version__
+print wx.__version__
 
 operating_system = os.uname()[0]
 
@@ -617,11 +619,13 @@ class FrameGenerator(wx.Frame):
         # put frame on second screen (if it exists)
         monitors = (wx.Display(i) for i in range(wx.Display.GetCount()))
         self.monitor_sizes = [monitor.GetGeometry().GetSize() for monitor in monitors]
-        if (len(self.monitor_sizes) > 1):
-            primary_monitor_width = self.monitor_sizes[0][0]
-            self.frame_x_location = primary_monitor_width + 50
-            self.frame_y_location = -50
-            self.SetPosition((self.frame_x_location, self.frame_y_location))
+# daltonh
+# this was removed when I upgraded to wxpython-3.0, as somehow this caused the window to be initiated out of the viewing area (but still visible via the application switcher)
+#       if (len(self.monitor_sizes) > 1):
+#           primary_monitor_width = self.monitor_sizes[0][0]
+#           self.frame_x_location = primary_monitor_width + 50
+#           self.frame_y_location = -50
+#           self.SetPosition((self.frame_x_location, self.frame_y_location))
 
         self.data_object_list = data_objects
 

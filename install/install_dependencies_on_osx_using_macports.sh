@@ -52,7 +52,9 @@ port install graphviz p5-graphviz2
 #port install gnuplot wget gcc49 +gfortran gdb SuiteSparse python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8 py27-pydot py27-cycler graphviz p5-graphviz2
 
 # for Lachlan's plot and track scripts
-port install python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8 py27-pydot py27-cycler
+#port install python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-2.8 py27-pydot py27-cycler
+# now matplotlib requires wxpython > 2.9
+port install python27 py27-matplotlib py27-numpy py27-scipy py27-pandas py27-numexpr py27-wxpython-3.0 py27-pydot py27-cycler
 #port select --list python # just for information
 port select --set python python27
 
