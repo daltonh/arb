@@ -20,13 +20,23 @@ osxfullversion=`sw_vers -productVersion`
 osxversion=${osxfullversion:3:2} # extracts substring starting at 3 (0 referenced) and of length 2
 echo "INFO: the osx full version number is $osxfullversion, and osx version is $osxversion"
 
-if [ $osxversion -lt 12 ] ; then
+#if [ $osxversion -lt 12 ] ; then
+# this is now working again, as of 5/7/18
   port install maxima # see below for alternatives
-fi
+#fi
 # basic arb dependencies
 port install gnuplot wget
 # install gfortran
-port install gcc49 +gfortran gdb
+# different versions on different osx versions
+if [ $osxversion -lt 12 ] ; then
+  echo "INFO: installing gcc version 4";
+  port install gcc49 +gfortran; # presumably this needs to be selected too, but don't have an osx version to test it on
+else
+  echo "INFO: installing gcc version 5";
+  port install gcc5; # no longer a separate variant for gfortran
+  port select --set gcc mp-gcc5
+fi;
+port install gdb
 # install SuiteSparse
 port install SuiteSparse
 # for graphviz and perl graphviz modules (GraphViz2)
@@ -84,8 +94,8 @@ if [ $osxversion -lt 12 ] ; then
   /usr/bin/perl -p -i -e "s/<string>-s<\/string>/<string>-sp<\/string>/" /System/Library/LaunchDaemons/com.apple.taskgated.plist
 fi
 
-if [ $osxversion -ge 12 ] ; then
-  echo "WARNING: the macports version of maxima for sierra is currently broken.  Instead, install the binary version following the instructions provided at install/maxima_osx_binary_install"
-fi
+#if [ $osxversion -ge 12 ] ; then
+#  echo "WARNING: the macports version of maxima for sierra is currently broken.  Instead, install the binary version following the instructions provided at install/maxima_osx_binary_install"
+#fi
 
 echo "INFO: you can now add the arb/bin directory to your path and make alternative linear solvers using the include_globally.sh script";
