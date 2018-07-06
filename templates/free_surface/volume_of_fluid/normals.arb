@@ -1,25 +1,31 @@
 # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
 
 # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
-GENERAL_REPLACEMENTS DEFAULT "<<vofnodenormalscomment>>" W "" DEFAULT "<<vofcellnormalscomment>>" W "#"
+# set these string globally so that they can be picked up by output_masks
+GENERAL_REPLACEMENTS D "<<vofnormalmethod>>" W "node"
+#GENERAL_REPLACEMENTS D "<<vofnormalmethod>>" W "cell"
 
-# first calculate masks for the normals
-<<vofmaskcomment>>CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=<<maxfacegradseparation>>,faceseparation](<vof_delta_mask[r=1]>)" ON <allcells>
-<<vofnodenormalscomment>><<vofmaskcomment>>NODE_TRANSIENT_REGION <vof_phigrad_mask_n[r=1]> "" "associatedwith(<vof_phigrad_mask[r=1]>)" ON <allnodes>
+# first calculate masks for the normals, if required
+IF {{ return string_test('<<vofmaskcomment>>','') }}
+  CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=<<maxfacegradseparation>>,faceseparation](<vof_delta_mask[r=1]>)" ON <allcells>
+  IF {{ return string_test('<<vofnormalmethod>>','node'); }} 
+    NODE_TRANSIENT_REGION <vof_phigrad_mask_n[r=1]> "" "associatedwith(<vof_phigrad_mask[r=1]>)" ON <allnodes>
+  END_IF
+END_IF
 
-<<vofnodenormalscomment>><<dim1comment>>NODE_DERIVED <vof_phigrad_n[l=1]> "nodefromcellgrad[l=1](<vof_phi_smoothed>)" ON <vof_phigrad_mask_n[r=1]> output
-<<vofnodenormalscomment>><<dim2comment>>NODE_DERIVED <vof_phigrad_n[l=2]> "nodefromcellgrad[l=2](<vof_phi_smoothed>)" ON <vof_phigrad_mask_n[r=1]>
-<<vofnodenormalscomment>><<dim3comment>>NODE_DERIVED <vof_phigrad_n[l=3]> "nodefromcellgrad[l=3](<vof_phi_smoothed>)" ON <vof_phigrad_mask_n[r=1]>
-<<vofnodenormalscomment>><<dim1comment>>CELL_DERIVED <vof_phigrad[l=1]> "cellfromnodeave(<vof_phigrad_n[l=1]>)" ON <vof_phigrad_mask[r=1]> output
-<<vofnodenormalscomment>><<dim2comment>>CELL_DERIVED <vof_phigrad[l=2]> "cellfromnodeave(<vof_phigrad_n[l=2]>)" ON <vof_phigrad_mask[r=1]>
-<<vofnodenormalscomment>><<dim3comment>>CELL_DERIVED <vof_phigrad[l=3]> "cellfromnodeave(<vof_phigrad_n[l=3]>)" ON <vof_phigrad_mask[r=1]>
-
-<<vofcellnormalscomment>><<dim1comment>>CELL_DERIVED <vof_phigrad[l=1]> "cellgrad[l=1](<vof_phi_smoothed>)" ON <vof_phigrad_mask[r=1]> output
-<<vofcellnormalscomment>><<dim2comment>>CELL_DERIVED <vof_phigrad[l=2]> "cellgrad[l=2](<vof_phi_smoothed>)" ON <vof_phigrad_mask[r=1]>
-<<vofcellnormalscomment>><<dim3comment>>CELL_DERIVED <vof_phigrad[l=3]> "cellgrad[l=3](<vof_phi_smoothed>)" ON <vof_phigrad_mask[r=1]>
+IF {{ return string_test('<<vofnormalmethod>>','node'); }} 
+  {{ return vector_expand(
+    'NODE_DERIVED <vof_phigrad_n[l=$l]> "nodefromcellgrad[l=$l](<vof_phi_smoothed>)" ON <vof_phigrad_mask_n[r=1]> output',
+    'CELL_DERIVED <vof_phigrad[l=$l]> "cellfromnodeave(<vof_phigrad_n[l=$l]>)" ON <vof_phigrad_mask[r=1]> output'
+  ); }}
+ELSE
+  {{ return vector_expand(
+    'CELL_DERIVED <vof_phigrad[l=$l]> "cellgrad[l=$l](<vof_phi_smoothed>)" ON <vof_phigrad_mask[r=1]> output'
+  ); }}
+END_IF
 
 CELL_LOCAL <vof_phigrad_mag^2> "dot(<vof_phigrad[l=:]>,<vof_phigrad[l=:]>)" ON <vof_phigrad_mask[r=1]>
 CELL_DERIVED <vof_phigrad_mag> "sqrt(cellmax(<vof_phigrad_mag^2>,1.d-10))" ON <vof_phigrad_mask[r=1]>
-<<dim1comment>>CELL_DERIVED <vof_phigrad_unit[l=1]> "<vof_phigrad[l=1]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]> output
-<<dim2comment>>CELL_DERIVED <vof_phigrad_unit[l=2]> "<vof_phigrad[l=2]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]>
-<<dim3comment>>CELL_DERIVED <vof_phigrad_unit[l=3]> "<vof_phigrad[l=3]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]>
+{{ return vector_expand(
+  'CELL_DERIVED <vof_phigrad_unit[l=$l]> "<vof_phigrad[l=$l]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]> output'
+); }}
