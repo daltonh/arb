@@ -97,7 +97,7 @@ REPLACEMENTS D "<<buoyancy>>" W "0"
 SKIP
 TODO
 
-IF {{ string_test('<<species>>','species0') }}
+IF {{ return string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
 

@@ -3,7 +3,7 @@ Here we find <beta*_<<species>>_species0> and <beta*_species0_<<species>>> for c
 END_MARKDOWN
 
 #OVERRIDE_OPTIONS output
-IF {{ string_test('<<species>>','species0') }}
+IF {{ return string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
 
