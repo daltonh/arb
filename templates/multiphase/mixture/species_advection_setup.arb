@@ -5,4 +5,4 @@ CELL_DERIVED <u_/species/[l=1]> "<u[l=1]>+<sedimentation_hindrance_f>*<u_slip_ce
 CELL_DERIVED <u_/species/[l=2]> "<u[l=2]>+<sedimentation_hindrance_f>*<u_slip_celldivgrad[l=2]>/(<phi_/species/_smoothed>)" ON <allcells>
 <<dim3comment>> CELL_DERIVED <u_/species/[l=3]> "<u[l=3]>+<sedimentation_hindrance_f>*<u_slip_celldivgrad[l=3]>/(<phi_/species/_smoothed>)" ON <allcells>
 
-FACE_DERIVED <j_/species/_f> "faceave[advection,](<phi_/species/_smoothed>,<u_f>,<adv_limiter>)*<u_f>+<j_pstress_f>" ON <allfaces> # solids fraction at faces
+FACE_DERIVED <j_/species/_f> "faceave[advection,](<phi_/species/>,<u_f>,<adv_limiter>)*<u_f>+<j_pstress_f>" ON <allfaces> # solids fraction at faces
