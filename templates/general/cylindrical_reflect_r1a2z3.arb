@@ -1,0 +1,9 @@
+# sets general replacements for cylindrical 2D coordinates with the 3-axis being the centreline (z) and 1-axis being radius (r)
+# with finite (constant) azimuthal velocity in the 2-axis direction
+GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1" # centreline is normal to the 1 axis
+
+GENERAL_REPLACEMENTS REPLACE "<<cartesiancomment>>" WITH "#" REPLACE "<<cylindricalcomment>>" WITH ""  REPLACE "<<azimuthalcomment>>" WITH ""# activate cylindrical specific definitions
+GENERAL_REPLACEMENTS REPLACE "<<cartesianflag>>" WITH "0" REPLACE "<<cylindricalflag>>" WITH "1" REPLACE "<<azimuthal>>" WITH "1"
+GENERAL_REPLACEMENTS REPLACE "<<radius_f>>" WITH "<facex[l=1]>" REPLACE "<<radius_c>>" WITH "<cellx[l=1]>" REPLACE "<<radiusdim1flag>>" WITH "1"
+GENERAL_REPLACEMENTS REPLACE "<<radialdim>>" WITH "1" REPLACE "<<azimuthaldim>>" WITH "2" REPLACE "<<axialdim>>" WITH "3"
+GENERAL_REPLACEMENTS R "<<dimensions>>" W "1,2,3"
