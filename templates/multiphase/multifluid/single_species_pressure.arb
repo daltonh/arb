@@ -2,6 +2,10 @@ MARKDOWN
 Here we find <p_species> for each disperse phase species
 END_MARKDOWN
 
+REPLACEMENTS D "<<shearinduceddiffusion>>" W "1"
+REPLACEMENTS D "<<anisotropic>>" W "0"
+REPLACEMENTS D "<<highPeSID>>" W "1" D "<<lowPeSID>>" W "0"
+
 # start with linear osmotic pressure, dilute assumption
 NONE_CONSTANT <p_osmotic_gradient_<<species>>> [Pa] "<k_boltzmann>*<T>/<V_<<species>>>" # this can be atmost a function of <phi_lim_<<species>>>
 IF 1 # Carnahan and Starling
@@ -11,5 +15,112 @@ ELSE
   ERROR "no other osmotic pressure coded up yet"
 END_IF
 
-CELL_DERIVED <p_<<species>>> "<p_osmotic_gradient_<<species>>>*<phi_<<species>>>" ON <allcells> # note that phi here isn't limited
+CELL_DERIVED <p_os_<<species>>> "<p_osmotic_gradient_<<species>>>*<phi_<<species>>>" ON <allcells> # note that phi here isn't limited
+CELL_DERIVED <p_<<species>>> "<p_os_<<species>>>"
+#VARIABLE <p_<<species>>> "1.0d0"
 FACE_DERIVED <p_f_<<species>>> "faceave(<p_<<species>>>)" ON <allfaces>
+
+#Calculate solid pressure due to shear induced diffusion
+IF <<shearinduceddiffusion>>
+
+  #Calculate shear rate at cell centres (This will need to be moved somewhere else - to strain_rate_magnitude)
+  IF 0
+    INCLUDE "total_stress" R "tensor" W "tensor_cell" R "_f" W "_c" R "<tau" W "<gamma_c" R "face" W "cell" R "FACE" W "CELL" R "<mu_f>" W "(-1.d0)" R "<udiv_f>/3.d0" W "(0.d0)"
+    CELL_DERIVED <gamma_magnitude_cell> "sqrt(0.5d0*ddot(<gamma_c[l=:,:]>,<gamma_c[l=:,:]>))" ON <allcells>
+    FACE_OUTPUT <gamma_magnitude_cell_f> "faceave(<gamma_magnitude_cell>)"
+
+    FACE_DERIVED <gamma_magnitude_f> "sqrt(0.5d0*ddot(<tau_fluid[l=:,:]>,<tau_fluid[l=:,:]>))/<mu_species0>" output
+    CELL_DERIVED <gamma_magnitude> "cellave(<gamma_magnitude_f>)" output
+
+  END_IF
+
+  #Alternatively, calculate shear rate based on celdivgrad of velocity field
+  CELL_DERIVED <udivgrad_c[l=1,1]> "celldivgrad[l=1](<u[l=1]>)" ON <allcells>
+  CELL_DERIVED <udivgrad_c[l=2,1]> "celldivgrad[l=2](<u[l=1]>)" ON <allcells>
+  CELL_DERIVED <udivgrad_c[l=3,1]> "celldivgrad[l=3](<u[l=1]>)" ON <allcells>
+  CELL_DERIVED <udivgrad_c[l=1,2]> "celldivgrad[l=1](<u[l=2]>)" ON <allcells>
+  CELL_DERIVED <udivgrad_c[l=2,2]> "celldivgrad[l=2](<u[l=2]>)" ON <allcells>
+  CELL_DERIVED <udivgrad_c[l=3,2]> "celldivgrad[l=3](<u[l=2]>)" ON <allcells>
+  CELL_DERIVED <udivgrad_c[l=1,3]> "celldivgrad[l=1](<u[l=3]>)" ON <allcells>
+  CELL_DERIVED <udivgrad_c[l=2,3]> "celldivgrad[l=2](<u[l=3]>)" ON <allcells>
+  CELL_DERIVED <udivgrad_c[l=3,3]> "celldivgrad[l=3](<u[l=3]>)" ON <allcells>
+
+  #CELL_OUTPUT <dudx_cellgrad> "<ugrad_c[l=1,1]>"
+  #CELL_OUTPUT <dudx_celldivgrad> "<udivgrad_c[l=1,1]>" ON <allcells>
+
+  <<dim1comment>>CELL_LOCAL <tau_fluid_celldivgrad[l=1,1]> "-<mu_species0>*2.d0*<udivgrad_c[l=1,1]>" ON <allcells>
+  <<dim2comment>>CELL_LOCAL <tau_fluid_celldivgrad[l=2,2]> "-<mu_species0>*2.d0*<udivgrad_c[l=2,2]>" ON <allcells>
+  <<dim3comment>>CELL_LOCAL <tau_fluid_celldivgrad[l=3,3]> "-<mu_species0>*2.d0*<udivgrad_c[l=3,3]>" ON <allcells>
+
+  <<dim1comment>><<dim2comment>>CELL_LOCAL <tau_fluid_celldivgrad[l=1,2]> "-<mu_species0>*(<udivgrad_c[l=1,2]>+<udivgrad_c[l=2,1]>)" ON <allcells>
+  <<dim1comment>><<dim3comment>>CELL_LOCAL <tau_fluid_celldivgrad[l=1,3]> "-<mu_species0>*(<udivgrad_c[l=1,3]>+<udivgrad_c[l=3,1]>)" ON <allcells>
+  <<dim2comment>><<dim3comment>>CELL_LOCAL <tau_fluid_celldivgrad[l=2,3]> "-<mu_species0>*(<udivgrad_c[l=2,3]>+<udivgrad_c[l=3,2]>)" ON <allcells>
+  <<dim2comment>><<dim1comment>>CELL_LOCAL <tau_fluid_celldivgrad[l=2,1]> "<tau_fluid_celldivgrad[l=1,2]>" ON <allcells>
+  <<dim3comment>><<dim1comment>>CELL_LOCAL <tau_fluid_celldivgrad[l=3,1]> "<tau_fluid_celldivgrad[l=1,3]>" ON <allcells>
+  <<dim3comment>><<dim2comment>>CELL_LOCAL <tau_fluid_celldivgrad[l=3,2]> "<tau_fluid_celldivgrad[l=2,3]>" ON <allcells>
+
+  IF <<azimuthal>>
+    IF 0
+      VARIABLE <tau_fluid_celldivgrad[l=<<radialdim>>,<<azimuthaldim>>]> "<tau_fluid_celldivgrad[l=<<radialdim>>,<<azimuthaldim>>]>+<mu_species0>*<u_f_vect[l=<<azimuthaldim>>]>/<facex[l=<<radialdim>>]>"
+      VARIABLE <tau_fluid_celldivgrad[l=<<azimuthaldim>>,<<radialdim>>]> "<tau_fluid_celldivgrad[l=<<radialdim>>,<<azimuthaldim>>]>"
+    ELSE
+      VARIABLE <tau_fluid_celldivgrad[l=<<radialdim>>,<<azimuthaldim>>]> "-<mu_species0>*<facex[l=<<radialdim>>]>*facegrad[l=<<radialdim>>,<<reflect=1>>](<u[l=<<azimuthaldim>>]>/<cellx[l=<<radialdim>>]>)"
+      VARIABLE <tau_fluid_celldivgrad[l=<<azimuthaldim>>,<<radialdim>>]> "<tau_fluid_celldivgrad[l=<<radialdim>>,<<azimuthaldim>>]>"
+    END_IF
+    VARIABLE <tau_fluid_celldivgrad[l=<<azimuthaldim>>,<<azimuthaldim>>]> "-<mu_species0>*2.d0*<u_f_vect[l=<<radialdim>>]>/<facex[l=<<radialdim>>]>"
+  END_IF
+
+
+  # CELL_LOCAL <tau_fluid_celldivgrad[l=1,1]> [1] "-<mu_species0>*2.d0*<udivgrad_c[l=1,1]>" ON <allcells>
+  # CELL_LOCAL <tau_fluid_celldivgrad[l=2,2]> [1] "-<mu_species0>*2.d0*<udivgrad_c[l=2,2]>" ON <allcells>
+  # CELL_LOCAL <tau_fluid_celldivgrad[l=3,3]> [1] "-<mu_species0>*2.d0*<udivgrad_c[l=3,3]>" ON <allcells>
+  # CELL_LOCAL <tau_fluid_celldivgrad[l=1,2]> [1] "-<mu_species0>*(<udivgrad_c[l=1,2]>+<udivgrad_c[l=2,1]>)" ON <allcells>
+  # CELL_LOCAL <tau_fluid_celldivgrad[l=1,3]> [1] "-<mu_species0>*(<udivgrad_c[l=1,2]>+<udivgrad_c[l=2,1]>)" ON <allcells>
+  # CELL_LOCAL <tau_fluid_celldivgrad[l=2,3]> [1] "-<mu_species0>*(<udivgrad_c[l=1,2]>+<udivgrad_c[l=2,1]>)" ON <allcells>
+  #
+  # CELL_LOCAL <tau_fluid_celldivgrad[l=2,1]> [1] "<tau_fluid_celldivgrad[l=1,2]>" ON <allcells>
+  # CELL_LOCAL <tau_fluid_celldivgrad[l=3,1]> [1] "<tau_fluid_celldivgrad[l=1,3]>" ON <allcells>
+  # CELL_LOCAL <tau_fluid_celldivgrad[l=3,2]> [1] "<tau_fluid_celldivgrad[l=2,3]>" ON <allcells>
+
+  CELL_DERIVED <gamma_magnitude_cdg> "sqrt(0.5d0*ddot(<tau_fluid_celldivgrad[l=:,:]>,<tau_fluid_celldivgrad[l=:,:]>))/<mu_species0>" output
+  FACE_DERIVED <gamma_magnitude_cdg_f> "faceave(<gamma_magnitude_cdg>)" output
+  #"cellgrad[l=1,<<reflect=1>>](<u[l=1]>)" ON <allcells>
+
+  #Calculate shear induced pressure here (Infinite Pe SID, Morris & Boulay J. Rheo. 1999)
+  IF <<highPeSID>>
+    CELL_LOCAL <p_sid_highPe> "<gamma_magnitude_cdg>*<mu_n>" ON <allcells> output
+  END_IF
+
+  IF <<lowPeSID>>
+      NONE_CONSTANT <A_sid> "0.4d0"
+
+      INCLUDE "mixture_viscosity_concentrated" R "<mu" W "<p_lowPeSID_func" R "<mu_l>" W "1.0d0" R "<<variable>>" W "(cellmin(<phi_total_species>,<mu_phi_total_species_cutoff>))" R "<<function>>" W "<<variable>>/(1.-<<variable>>/<mu_phi_total_species_max>)^3" R "<<cutoff_variable>>" W "<mu_phi_total_species_cutoff>" R "<<cutoff_function>>" W "<<cutoff_variable>>/(1.-<<cutoff_variable>>/<mu_phi_total_species_max>)^3" R "phi_total_species" W "phi_species1"
+
+      CELL_LOCAL <p_sid_lowPe> "<mu_species0>*<gamma_magnitude_cdg>*<A_sid>*<Pe_local>*<p_lowPeSID_func>" output
+  END_IF
+
+  #Blended SID function (Frank et al. 2003 JFM to account for finite Pe effects)
+  CELL_LOCAL <p_sid> "0.0d0"  output
+  IF <<highPeSID>>
+    IF <<lowPeSID>>
+      VARIABLE <p_sid> "<p_sid_highPe>*<p_sid_lowPe>/(<p_sid_highPe>+<p_sid_lowPe>+<tiny>)"
+    ELSE
+      VARIABLE <p_sid> "<p_sid_highPe>"
+    END_IF
+  ELSE_IF <<lowPeSID>>
+    VARIABLE <p_sid> "<p_sid_lowPe>"
+  ELSE
+    ERROR "Inconsistent specification of shear-induced diffusion in particle_stress.arb"
+
+  END_IF
+
+  CELL_OUTPUT <M_sid[l=1]> "-celldivgrad[l=1](<p_sid>)" ON <allcells>
+  CELL_OUTPUT <M_sid[l=2]> "-celldivgrad[l=2](<p_sid>)" ON <allcells>
+  <<dim3comment>> CELL_OUTPUT <M_sid[l=3]> "-celldivgrad[l=3](<p_sid>)" ON <allcells>
+
+  #Add to total solid pressure
+  #CELL_VARIABLE <p_<<species>>> "<p_<<species>>> + <p_sid>" ON <allcells> # note that phi here isn't limited
+  CELL_VARIABLE <p_<<species>>> "<p_<<species>>> + 1.d0*<p_sid>" ON <allcells> # note that phi here isn't limited
+  FACE_VARIABLE <p_f_<<species>>> "faceave(<p_<<species>>>)" ON <allfaces>
+
+END_IF
