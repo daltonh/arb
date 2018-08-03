@@ -385,7 +385,7 @@ export KMP_STACKSIZE
 # ready output directory and structure for writing
 
 # create it if it doesn't already exist
-if [ ! -d "$output_dir" ] ; then mkdir "$output_dir" ; fi ;
+if [ ! -d "$output_dir" ] ; then mkdir -p "$output_dir" ; fi ;
 # cp new .gitignore in the output directory if it isn't there already
 if [ ! -e "$output_dir/.gitignore" ] ; then cp -p "$misc_dir/git/gitignore_empty_directory" "$output_dir/.gitignore" >/dev/null 2>/dev/null  ; fi ;
 
