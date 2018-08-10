@@ -1,0 +1,27 @@
+MARKDOWN
+Here we setup an implicit relative limiter for <c_/species>, adding the necessary suffixes to all of the variables used in the limiter calculation
+END_MARKDOWN
+
+INCLUDE_TEMPLATE "advection_limiters/implicit" 
+
+# first do the replacement of <phi
+REPLACEMENTS R '<phi' W '<c'
+
+# now add the species suffix to all variables used on the advection scheme that are specific to each species
+# we do this by first defining the variable list <<replacment_variables>> here, so that the scope of this variable is local to this file
+REPLACEMENTS R "<<replacement_variables>>" W ''
+# the actual values are set by a REPLACEMENT SUBSTITUTE command in the following template file
+INCLUDE "set_replacement_variables"
+
+{{
+# loop through the variables (a space separated variable list) adding the suffix replacement strings
+  foreach my $i ( string_eval("<<replacement_variables>>","variablelist") ) {
+    string_set($i,'_/species/',"suffix"); # the suffix option
+  }
+}}
+
+<<steadystatecomment>>INCLUDE "relative_steady_state_limiter.arb"
+<<transientcomment>>INCLUDE "relative_transient_limiter.arb"
+#INCLUDE "conservative_parameters"
+
+# no need to cancel the suffix replacements again given that the scope is local to this file

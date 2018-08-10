@@ -4,22 +4,25 @@ Note that <<replacement_variables>> should be a list of variables, which is spac
 ```arb
 INCLUDE "add_suffix" R "<<replacement_variables>>" W "<u_f> '<my spacey variable>' <u[l=:]>" R "<<suffix>>" W "_myphase"
 ```
-Note also format for variables that contain [*]>, noting that anything past the first [ is ignored in the resulting string replacement.
+For vectors and tensors, note that anything past the first [ is ignored in the resulting string replacement, however still needs to be present, so the suggested form is <a variable[l=:]>
 Also accepts an <<action>>=cancel option which cancels these replacements, with <<action>>=replace being the default action.
 END_MARKDOWN
 
-{{ print "ADD SUFFIX: string_debug on entry:\n".string_debug; }}
+REPLACEMENTS D '<<debug>>' W '0'
+IF <<debug>>
+  {{ print "ADD SUFFIX: string_debug on entry:\n".string_debug; }}
+END_IF
 
+# set default action and suffix string if not already set
 {{ string_set("<<action>>","replace","default,noreplace");
    string_set("<<suffix>>","_/species/","default,noreplace"); }}
-
-{{ print "ADD SUFFIX: string_debug after setting defaults:\n".string_debug; }}
 
 REPLACEMENTS D "<<replacement_variables>>" W "" # default the list of replacement variables to an empty string if it isn't set
 
 {{
 # loop through the variables (a space separated variable list) either adding suffix replacement string, or removing this string
   foreach my $i ( string_eval("<<replacement_variables>>","variablelist") ) {
+#   print "ADD SUFFIX: dealing with variable $i\n";
     if (string_test("<<action>>","replace")) {
       string_set($i,string_eval("<<suffix>>"),"suffix,global"); # the suffix option
     } else {
@@ -28,5 +31,6 @@ REPLACEMENTS D "<<replacement_variables>>" W "" # default the list of replacemen
   }
 }}
 
-
-{{ print "ADD SUFFIX: string_debug after setting replacements:\n".string_debug; }}
+IF <<debug>>
+  {{ print "ADD SUFFIX: string_debug after setting replacements:\n".string_debug; }}
+END_IF
