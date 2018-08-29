@@ -47,8 +47,11 @@ FACE_EQUATION <c walls_/species/> "<c_j_f_/species/>" ON <walls> # on the walls 
   my $return_string = '';
   for my $port (string_eval('<<listofports>>','spaceseparatedlist')) {
     $return_string .= "FACE_EQUATION <c $port equation_/species/> '<c_j_f_/species/>' ON <$port>\n";
-    $return_string .= "NONE_OUTPUT <c ave $port"."_/species/> 'abs(facesum(<c_/species/>*<facearea>*<W_f>,region=<$port>))/nonemax(abs(facesum(<facearea>*<W_f>,region=<$port>)),1.d-10)'\n";
-    $return_string .= "NONE_OUTPUT <c bulk ave $port"."_/species/> 'abs(facesum(<c_/species/>*<facearea>*<W_f>*<u_f>,region=<$port>))/nonemax(abs(facesum(<facearea>*<W_f>*<u_f>,region=<$port>)),1.d-10)'\n";
+    $return_string .= "NONE_OUTPUT <$port"."_area> 'facesum(<facearea>*<W_f>,region=<$port>)'\n";
+    $return_string .= "NONE_OUTPUT <$port"."_flowrate> 'facesum(<facearea>*<W_f>*<u_f>,region=<$port>)'\n";
+    $return_string .= "NONE_OUTPUT <c ave $port"."_/species/> 'facesum(<c_/species/>*<facearea>*<W_f>,region=<$port>)/nonemax(<$port"."_area>,<tinyish>)'\n";
+    $return_string .= "NONE_OUTPUT <c flux $port"."_/species/> 'facesum(<c_/species/>*<facearea>*<W_f>*<u_f>,region=<$port>)'\n";
+    $return_string .= "NONE_OUTPUT <c bulk ave $port"."_/species/> '<c flux $port"."_/species/>/nonemax(<$port"."_flowrate>,<tinyish>)'\n";
   }
   return $return_string;
 }}
