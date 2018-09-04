@@ -67,6 +67,6 @@ FACE_EQUATION <c outlet equation_/species/> "faceif(<u_f>,facegrad(<c_/species/>
 # report some averaged and extreme variables
 NONE_OUTPUT <c maximum_/species/> [mol/m^3] "cellmax(<c_/species/>,region=<allcells>)"
 NONE_OUTPUT <c minimum_/species/> [mol/m^3] "cellmin(<c_/species/>,region=<allcells>)"
-NONE_OUTPUT <c total_/species/> [mol] "cellsum(<c_/species/>*<cellvol>,region=<domain>)"
-NONE_CONSTANT <total vol> [m^3] "cellsum(<cellvol>,region=<domain>)" output
+NONE_OUTPUT <c total_/species/> [mol] "cellsum(<c_/species/>*<cellvol>*<W_c>,region=<domain>)"
+NONE_CONSTANT <total vol> [m^3] "cellsum(<cellvol>*<W_c>,region=<domain>)" output
 NONE_OUTPUT <c average_/species/> [mol/m^3] "<c total_/species/>/<total vol>"
