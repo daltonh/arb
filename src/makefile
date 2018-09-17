@@ -395,15 +395,18 @@ ifeq "$(strip $(pardiso))" "present"
         libs := -L$(pardisodir) -lpardiso600-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
       endif
     else
+# now only the one new version, 7.20
+      ifneq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-GNU720-X86-64.so) )" ""
+        libs := -L$(pardisodir) -lpardiso600-GNU720-X86-64 $(oldlibs) -fopenmp -lpthread -lm
 # allow for two versions of the gnu pardiso libraries right now, 4.61 and 4.81
-      ifneq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-GNU461-X86-64.so) )" ""
-        libs := -L$(pardisodir) -lpardiso600-GNU461-X86-64 $(oldlibs) -fopenmp -lpthread -lm
+#     else
+#       ifneq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-GNU481-X86-64.so) )" ""
+#         libs := -L$(pardisodir) -lpardiso600-GNU481-X86-64 $(oldlibs) -fopenmp -lpthread -lm
+#       else
+#         pardiso = not present
+#       endif
       else
-        ifneq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-GNU481-X86-64.so) )" ""
-          libs := -L$(pardisodir) -lpardiso600-GNU481-X86-64 $(oldlibs) -fopenmp -lpthread -lm
-        else
-          pardiso = not present
-        endif
+        pardiso = not present
       endif
     endif
   endif
