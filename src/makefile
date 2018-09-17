@@ -376,31 +376,31 @@ ifeq "$(strip $(pardiso))" "present"
     ifeq "$(compiler)" "intel"
       pardiso = not present
     else
-      ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-MACOS-X86-64.dylib) )" ""
+      ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-MACOS-X86-64.dylib) )" ""
         pardiso = not present
       else
 # iterative solver doesn't seem to like framework accelerate, not sure why, so completely overwrite libs here
 # NB, otool -L build/arb on the mac lists the dynamic libraries that the executable needs
 # this works
-        libs := -L$(pardisodir) -lpardiso500-MACOS-X86-64 -lblas -llapack -fopenmp
+        libs := -L$(pardisodir) -lpardiso600-MACOS-X86-64 -lblas -llapack -fopenmp
       endif
     endif
   else
 # on linux both intel and gfortran
     ifeq "$(compiler)" "intel"
-      ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-INTEL1301-X86-64.so) )" ""
+      ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-INTEL1301-X86-64.so) )" ""
         pardiso = not present
       else
-#       libs += -L$(pardisodir) -lpardiso500-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 -lgfortran -fopenmp
-        libs := -L$(pardisodir) -lpardiso500-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
+#       libs += -L$(pardisodir) -lpardiso600-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 -lgfortran -fopenmp
+        libs := -L$(pardisodir) -lpardiso600-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
       endif
     else
 # allow for two versions of the gnu pardiso libraries right now, 4.61 and 4.81
-      ifneq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU461-X86-64.so) )" ""
-        libs := -L$(pardisodir) -lpardiso500-GNU461-X86-64 $(oldlibs) -fopenmp -lpthread -lm
+      ifneq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-GNU461-X86-64.so) )" ""
+        libs := -L$(pardisodir) -lpardiso600-GNU461-X86-64 $(oldlibs) -fopenmp -lpthread -lm
       else
-        ifneq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-GNU481-X86-64.so) )" ""
-          libs := -L$(pardisodir) -lpardiso500-GNU481-X86-64 $(oldlibs) -fopenmp -lpthread -lm
+        ifneq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-GNU481-X86-64.so) )" ""
+          libs := -L$(pardisodir) -lpardiso600-GNU481-X86-64 $(oldlibs) -fopenmp -lpthread -lm
         else
           pardiso = not present
         endif
@@ -628,9 +628,9 @@ print :
 	@echo " intel version is: $(intel_version)"
 	@echo " intel link line version is: $(intel_link_version)"
 	@echo " intel long integer (ilp64) support is: $(ilp)"
-#@echo "and: $(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso500-INTEL1301-X86-64.so) )"
+#@echo "and: $(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-INTEL1301-X86-64.so) )"
 #@echo "first: $(wildcard $(pardisolicencedir)/pardiso.lic)"
-#@echo "second: $(wildcard $(pardisodir)/libpardiso500-INTEL1301-X86-64.so)"
+#@echo "second: $(wildcard $(pardisodir)/libpardiso600-INTEL1301-X86-64.so)"
 #@echo "jibber: $(wildcard $(pardisolicencedir)/pardiso.lic)"
 #@echo " setup_equations_src files are: $(setup_equations_src)"
 #@echo " object files are: $(objects)"

@@ -2,6 +2,10 @@ MARKDOWN
 Here we create a better estimate of the correction velocity, using ingredients however from the navier_stokes u_f file, done with replacements
 END_MARKDOWN
 
+# use this to debug
+# produces a correction velocity sum equation
+REPLACEMENTS D '<<debug>>' W '0'
+
 # first compile the local summary variables, A and D
 # add bits in sections
 # as these are locals, keep the region as <allfaces> from the outset, noting that unless rhiechow extrapolation is employed somewhere on the boundaries, these will not be evaluated on the boundary faces
@@ -49,3 +53,19 @@ VARIABLE <u_f_<<species>>> CANCEL
 
 # redefine final velocity
 FACE_DERIVED <u_f_<<species>>> "<u_f_{raw}_<<species>>>+faceif(facedelta(<domainfaces>),<u_f_{correction}_<<species>>>,0.d0)" ON <allfaces>
+
+IF <<debug>>
+  FACE_OUTPUT <u_f_{correction}_equation_<<species>>> "<u_rf_{transient}_<<species>>>*(<u_f_{correction}_<<species>>>-<u_f_{correction}_<<species>>[r=1]>)" ON <domainfaces>
+  <<navierstokescomment>>VARIABLE <u_f_{correction}_equation_<<species>>> "<u_f_{correction}_equation_<<species>>>+<u_rf_{adv}_<<species>>>*<u_f_{correction}_<<species>>>"
+  VARIABLE <u_f_{correction}_equation_<<species>>> "<u_f_{correction}_equation_<<species>>>+<u_rf_{vis}_<<species>>>*<u_f_{correction}_<<species>>>"
+  {{
+    my $return_string='';
+    for my $j (string_eval('<<multifluid_species_list>>','list')) {
+      if (string_test('<<species>>',$j)) { next; }
+      $return_string .= "VARIABLE <u_f_{correction}_equation_<<species>>> '<u_f_{correction}_equation_<<species>>>+<beta*j_f_<<species>>_$j>*(<u_f_{correction}_<<species>>>-<u_f_{correction}_$j>)'\n";
+    }
+    return $return_string;
+  }}
+  VARIABLE <u_f_{correction}_equation_<<species>>> "<u_f_{correction}_equation_<<species>>>+<C_{Rhie-Chow}>*<p_error_<<species>>>"
+END_IF
+
