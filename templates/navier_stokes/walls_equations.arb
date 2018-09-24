@@ -3,4 +3,9 @@ Sets basic names etc for a wall, and only specifies the boundary normal method
 
 Use the template "walls" instead of calling this directly
 END_MARKDOWN
-INCLUDE "boundary_equations" R "<region" W "<walls" D "<<boundarynormalmethod>>" W "zerodynamic"
+IF 1
+# in v0.59 changed to default on 24/9/18 due to much better velocity and pressure distribution along slip walls in transient_flow_around_cylinder_with_species
+  INCLUDE "boundary_equations" D "<region" W "<walls" D "<<boundarynormalmethod>>" W "rhiechow"
+ELSE
+  INCLUDE "boundary_equations" D "<region" W "<walls" D "<<boundarynormalmethod>>" W "zerodynamic"
+END_IF
