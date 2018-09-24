@@ -87,8 +87,8 @@ INCLUDE "nondimensional_constants"
 # v0.50 - now use transient setup files
 # include the following to include a constraint based on the previous number of newtsteps
 #GENERAL_REPLACEMENTS REPLACE "<<newtsteptimestepcomment>>" W "" REPLACE "<<nonnewtsteptimestepcomment>>" W "#"
-#INCLUDE "transient_explicit_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
-INCLUDE "transient_implicit_setup" # a dynamic implicitly calculated timestep to keep the CFL number at a specified level
+INCLUDE "transient_explicit_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
+#INCLUDE "transient_implicit_setup" # a dynamic implicitly calculated timestep to keep the CFL number at a specified level
 #INCLUDE "transient_constant_setup" # a constant timestep
 
 # overwrite some transient specifications
@@ -160,7 +160,9 @@ INCLUDE_TEMPLATE "navier_stokes"
 # nonuniform
 <<nonuniformcomment>>INCLUDE "total_stress" R "<mu_f>" W "<vof_mu_harmonic_f>"
 <<nonuniformcomment>>INCLUDE "u_f" R "<rho_f>" W "<vof_rho_f>" R "<mu_f>" W "<vof_mu_f>"
-<<nonuniformcomment>>INCLUDE "advection_flux" R "<rho>" W "<vof_rho_advection_f[r=1]>" R "<<uniformdensitycomment>>" W "" R "<<nonuniformdensitycomment>>" W "#"
+#<<nonuniformcomment>>INCLUDE "advection_flux" R "<rho>" W "<vof_rho_advection_f[r=1]>" R "<<uniformdensitycomment>>" W "" R "<<nonuniformdensitycomment>>" W "#"
+# with changes to template files in v0.59, set <<uniformdensity>> string here rather than depreciated comment strings
+<<nonuniformcomment>>INCLUDE "advection_flux" R "<rho>" W "<vof_rho_advection_f[r=1]>" R "<<uniformdensity>>" W "1"
 # uniform
 <<uniformcomment>>INCLUDE "total_stress"
 <<uniformcomment>>INCLUDE "u_f"

@@ -58,9 +58,14 @@ ELSE
 END_IF
 
 # add transient term which is independent on cartesian or cylindrical coordinates
-<<transientnavierstokescomment>><<uniformdensitycomment>><<dim1comment>>VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-<<transientnavierstokescomment>><<uniformdensitycomment>><<dim2comment>>VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-<<transientnavierstokescomment>><<uniformdensitycomment>><<dim3comment>>VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
-<<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim1comment>>VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-<<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim2comment>>VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-<<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim3comment>>VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+IF <<transientnavierstokes>>
+  IF <<uniformdensity>>
+    <<dim1comment>>VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+    <<dim2comment>>VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+    <<dim3comment>>VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+  ELSE
+    <<dim1comment>>VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+    <<dim2comment>>VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+    <<dim3comment>>VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+  END_IF
+END_IF
