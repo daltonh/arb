@@ -100,7 +100,8 @@ FACE_REGION <walls sans one face> "compound(<fluid walls>-<one face>)"
 
 # transient bits
 TRANSIENT_SIMULATION
-GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
+# v0.59 update to set <<transientnavierstokes>> string as well, but this whole timestepping routine should be replaced by template files
+GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
 
 # dynamic timestep, next 2 lines
 NONE_TRANSIENT <CFL[r=1]> "<CFL>" "<CFL>" stepoutput # at this stage this will be the CFL from the last timestep, as it will be evaluated before any r=0 updates
