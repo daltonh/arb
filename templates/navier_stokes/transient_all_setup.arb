@@ -1,8 +1,14 @@
-# setup things needed for transient flow
-# this file works for either dynamic or constant timestepping
-# designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
-# string replacements default to constant timestepping, or if dynamic timestepping is specified, explicit dynamic timestepping
-# choice should be made by general replacements set from the calling files
+MARKDOWN
+setup things needed for transient flow
+this file works for either dynamic or constant timestepping
+designed to be called by either transient_constant_setup (linked to transient_setup) or transient_dynamic_setup
+string replacements default to constant timestepping, or if dynamic timestepping is specified, explicit dynamic timestepping
+choice can be made by performing replacements when calling
+END_MARKDOWN
+
+# first set global replacements strings that specify a transient simulation, and overwrite what is specified in default_string_replacements
+GENERAL_OPTIONS transientsimulation
+GLOBAL_REPLACEMENTS R "<<transientnavierstokes>>" W "1" R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#"
 
 # <dt_initial> is used to set the intial timestep during dynamic timestepping or constant timestep otherwise
 
@@ -13,10 +19,6 @@ CONSTANT <dt_initial> [] "<CFL_initial>*<celldxave>/<u_av>" # initial timestep b
 CONSTANT <CFL_out> 10.d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity
 CONSTANT <dt_out> [] "<CFL_out>*<celldxave>/<u_av>" # initial timestep based on cell dimension, expecting a velocity of magnitude <u_av>
 #CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
-
-# transient bits
-GENERAL_OPTIONS transientsimulation
-GLOBAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
 
 # the default is for constant as opposed to dynamic timestepping
 GLOBAL_REPLACEMENTS DEFAULT "<<constanttimestepcomment>>" W "" DEFAULT "<<dynamictimestepcomment>>" W "#"
@@ -72,8 +74,13 @@ GLOBAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<expli
 <<constanttimestepcomment>>NONE_CONSTANT <dt> "<dt_initial>"
 #---------------------------------------------------------------------------------------------------------
 
-NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
+<<dynamictimestepcomment>><<explicittimestepcomment>>NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
+<<constanttimestepcomment>>NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
+<<dynamictimestepcomment>><<implicittimestepcomment>>NONE_DERIVED <t[r=0]> "<t[r=1]>+<dt[r=0]>" # time
+#NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" # time
+
 NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" # time at last step
+
 NONE_CONDITION <output test> "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition # this will be true (>0.) whenever we are <dt_out> from last output
 NONE_OUTPUT <t_out> "<t>" stepoutputnoupdate # this will record the time of the last output
 NONE_CONDITION <stop test> "<t>-<t_end>" stopcondition # when this becomes true (>0.) the simulation stops

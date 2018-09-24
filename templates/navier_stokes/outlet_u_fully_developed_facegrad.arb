@@ -1,1 +1,1 @@
-INCLUDE "outlet_equations.arb" R "<<boundarymethod>>" W "onefacepressure" R "<<boundarymethodvariable>>" W "facegrad" R "<<boundarytangentmethod>>" W "noslip" R "<<boundarynormalmethod>>" W "zerogradu"
+INCLUDE "outlet_equations.arb" D "<<boundarymethod>>" W "onefacepressure" D "<<boundarymethodvariable>>" W "facegrad" D "<<boundarytangentmethod>>" W "noslip" D "<<boundarynormalmethod>>" W "zerogradu"

@@ -1,1 +1,1 @@
-INCLUDE "walls_equations" R "<<boundarymethod>>" W "noflux" R "<<boundarytangentmethod>>" W "noslip"
+INCLUDE "walls_equations" D "<<boundarymethod>>" W "noflux" D "<<boundarytangentmethod>>" W "noslip"

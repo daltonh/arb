@@ -15,7 +15,9 @@ FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <allfaces> # 
 # this file now does both steady-state and transient using transient comments string replacements, which are set in constants.arb
 
 # save old correction velocity for transient calculations
-<<transientnavierstokescomment>>FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <domainfaces>
+IF <<transientnavierstokes>>
+  FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <domainfaces>
+END_IF
 
 # assemble <u_f_{correction}>, taking advantage of variable reuse so that only one expression is formed for <u_f_{correction}> (to maximise code efficiency and maxima expression simplifications)
 
@@ -31,29 +33,26 @@ END_IF
 FACE_LOCAL <u_rf_{vis}> "<<mu_f>>/<facedx>^2" ON <allfaces> # incase pextrapolationrhiechow is on, define these locals on allfaces (makes no difference to efficiency as they are locals anyway)
 FACE_DERIVED <u_f_{correction}> "<u_rf_{vis}>" ON <domainfaces>
 
-# advective contribution can be either simple or more complex (set by <<ufadvectioncomplexcomment>>)
-# the default behaviour is to use the simple advective contribution
-GENERAL_REPLACEMENTS D <<ufadvectioncomplexcomment>> W "#"
-# include the following line in your input file prior to loading this template file to access the more complex contribution
-#GENERAL_REPLACEMENTS R <<ufadvectioncomplexcomment>> W ""
-
 REPLACEMENTS R "<<rho_f>>" W "<rho_f>" # first define this local replacement string in the same scope of the definition statements below (ie, outside scope of if block)
 IF {{ return ( !(string_examine('<rho_f>')) && string_eval('<<uniformdensity>>') ) }}  # this evaluates as true (1) if replacement string '<rho_f>' isn't defined, AND <<uniformviscosity>> is on (1)
   REPLACEMENTS S "<<rho_f>>" W "<rho>" # if we are here then we apply the uniform density substitution
 END_IF
 
+#############################################
 # advection term
-IF {{ return (string_test('<<navierstokescomment>>','')) }}
+IF {{ return (!(string_eval('<<stokes>>'))) }} # only for navier-stokes equations
+#--------------
 # use this option to base the adv component on the total velocity magnitude, rather than the component over each face
-  REPLACEMENTS D "<<ufadvectionmag>>" W "1"
 # the old way (pre v0.59) was to use <u_f_{raw}> which is the flux across the face when calculating the advective rhie-chow term
 # the new way (v0.59 and onwards) is based on the total velocity magnitude, so overwrite the string <<ufmagnitude>> with <u_f_vect_magnitude> which is the total magnitude of <u_f_vect[l=:]>
+  REPLACEMENTS D "<<ufadvectionmag>>" W "1"
+#--------------
   REPLACEMENTS R "<<ufmagnitude>>" W "abs(<u_f_{raw}>)" # initialise variable using the old way, within the applicable block
   IF <<ufadvectionmag>> # ie, the new way
 # for a transient simulation the previous velocity magnitude is used, consistent with that used in the momentum advection
-# (although this can be overwritten by setting <<ufvectmagnitudetransient>> = 0 directly)
-    REPLACEMENTS D "<<ufvectmagnitudetransient>>" W "<<transientnavierstokes>>"
-    IF <<ufvectmagnitudetransient>>
+# (although this can be overwritten by setting <<ufvectmagnitudeexplicit>> = 0 directly)
+    REPLACEMENTS D "<<ufvectmagnitudeexplicit>>" W "<<transientnavierstokes>>"
+    IF <<ufvectmagnitudeexplicit>>
       <<dim1comment>>FACE_LOCAL <u_f_vect[l=1,r=1]> "faceave[<<reflect=1>>](<u[l=1,r=1]>)"
       <<dim2comment>>FACE_LOCAL <u_f_vect[l=2,r=1]> "faceave[<<reflect=2>>](<u[l=2,r=1]>)"
       <<dim3comment>>FACE_LOCAL <u_f_vect[l=3,r=1]> "faceave[<<reflect=3>>](<u[l=3,r=1]>)"
@@ -65,7 +64,11 @@ IF {{ return (string_test('<<navierstokescomment>>','')) }}
     END_IF
   END_IF
 # now calculate <u_rf_{adv}>
-  IF {{ return (string_test('<<ufadvectioncomplexcomment>>','')) }}
+#-------------
+# advective contribution can be either simple or more complex (set by <<ufadvectioncomplex>>)
+# the default behaviour is to use the simple advective contribution
+  REPLACEMENTS D <<ufadvectioncomplex>> W "0"
+  IF <<ufadvectioncomplex>>
 # more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
     FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <allfaces>
     FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-<<ufmagnitude>>+sqrt(<<ufmagnitude>>^2+<eps_p>*<facedx>/<<rho_f>>))" ON <allfaces>
@@ -73,14 +76,21 @@ IF {{ return (string_test('<<navierstokescomment>>','')) }}
 # simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
     FACE_LOCAL <u_rf_{adv}> "2.d0*<<rho_f>>*<<ufmagnitude>>/<facedx>" ON <allfaces>
   END_IF
+# ---------
+# finally add on advection contribution
   FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
 END_IF
 
+#############################################
+IF <<transientnavierstokes>>
 # for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
-<<transientnavierstokescomment>>FACE_LOCAL <u_rf_{transient}> "<<rho_f>>/<dt>" ON <allfaces>
-<<transientnavierstokescomment>>FACE_DERIVED <u_f_{correction}> "(-<C_{Rhie-Chow}>*<p_error>+<u_rf_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_{correction}>+<u_rf_{transient}>)"
+  FACE_LOCAL <u_rf_{transient}> "<<rho_f>>/<dt>" ON <allfaces>
+  FACE_DERIVED <u_f_{correction}> "(-<C_{Rhie-Chow}>*<p_error>+<u_rf_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_{correction}>+<u_rf_{transient}>)"
+ELSE
 # for steady-state just take reciprocal and add pressure contribution
-<<steadystatenavierstokescomment>>FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<p_error>/(<u_f_{correction}>)"
+  FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<p_error>/(<u_f_{correction}>)"
+END_IF
+#############################################
 
 # final face velocity
 FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domainfaces>),<u_f_{correction}>,0.d0)" ON <allfaces> # volume (velocity) transport

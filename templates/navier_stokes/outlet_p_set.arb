@@ -1,1 +1,1 @@
-INCLUDE "inlet_p_set" REPLACE "inlet" WITH "outlet" REPLACE "<p_in>" WITH "0.d0"
+INCLUDE "inlet_p_set" D "inlet" W "outlet" D "<p_in>" W "0.d0"

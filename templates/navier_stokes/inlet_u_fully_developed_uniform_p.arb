@@ -1,1 +1,1 @@
-INCLUDE "inlet_equations.arb" R "<<boundarymethod>>" W "flowrate" R "<<boundarymethodvariable>>" W "p" R "<<boundarytangentmethod>>" W "noslip" R "<<boundarynormalmethod>>" W "zerogradu"
+INCLUDE "inlet_equations.arb" D "<<boundarymethod>>" W "flowrate" D "<<boundarymethodvariable>>" W "p" D "<<boundarytangentmethod>>" W "noslip" D "<<boundarynormalmethod>>" W "zerogradu"
