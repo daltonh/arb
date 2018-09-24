@@ -58,7 +58,9 @@ ELSE
 END_IF
 
 # add transient term which is independent on cartesian or cylindrical coordinates
-IF <<transientnavierstokes>>
+#IF <<transientnavierstokes>>
+# for now keep option of using comment string to turn off using comment string
+IF {{ return (string_eval('<<transientnavierstokes>>') && !(string_eval('<<transientnavierstokescomment>>')) ) }}
   IF <<uniformdensity>>
     <<dim1comment>>VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
     <<dim2comment>>VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
