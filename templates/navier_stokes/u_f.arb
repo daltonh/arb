@@ -97,7 +97,10 @@ FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domainfaces>),<u_f_{correction
 
 # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
 # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
-# if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
-GENERAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
-<<transientnavierstokescomment>><<implicittimestepcomment>>NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
-<<transientnavierstokescomment>><<implicittimestepcomment>>NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
+# this string will already have been set to 1 (as a general replacement) in transient_all_setup if this option is relevant
+# this is the default behaviour when using implicit dynamic timestepping
+REPLACEMENTS D "<<implicittimestepnewtstep>>" W "0"
+IF <<implicittimestepnewtstep>>
+  NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
+  NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
+END_IF

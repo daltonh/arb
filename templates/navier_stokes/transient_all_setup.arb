@@ -72,6 +72,10 @@ IF <<dynamictimestep>>
     NONE_TRANSIENT <t[r=1]> "-<dt[r=0]>" "<t>" timesteprewind,input,output # time at last step
     NONE_EQUATION <dt implicit equation> "<dt>-<dt_target>"
 
+# this causes <dt_target> to be made constant after a certain number of newtsteps
+# this is enacted in u_f.arb
+    GENERAL_REPLACEMENTS D "<<implicittimestepnewtstep>>" W "1"
+
   ELSE
 # explicit
 # use CFL_number template, but make the calculation explicit - ie, based on r=1 values
