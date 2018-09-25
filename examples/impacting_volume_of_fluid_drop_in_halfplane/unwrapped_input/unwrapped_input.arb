@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/codes/arb/testsuite/arb_master/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_master/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: impacting_volume_of_fluid_drop_in_halfplane.arb
    #(comment created during unwrap): new block = impacting_volume_of_fluid_drop_in_halfplane.arb: sub_block = 0
@@ -641,34 +641,56 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          FACE_DERIVED <vof_s_j> "-<vof_s_D>*facegrad(<vof_s>)" ON <free surface all faces>
          CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_fs_phi_interface>-1.d0-<vof_s>)" ON <free surface domain>
          FACE_EQUATION <vof_s boundary> "2.d0*<vof_fs_phi_interface>-1.d0-<vof_s>" ON <free surface boundaries>
-         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 0
+         
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)Conversion from the s function to a conventional phi, which varies between 0 and 1 (whereas s varies between -1 and 1).
+         #(hash inserted during unwrap)In future recast s analysis in terms of phi_s
+         #(hash inserted during unwrap)END_MARKDOWN
+         CELL_LOCAL <vof_phi_s> "0.5d0*(<vof_s>+1.d0)" ON <free surface all cells>
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/high_order_interface_geometry.arb: sub_block = 1
+         #(hash inserted during unwrap)IF 1
+            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 0
+            #(hash inserted during unwrap)INCLUDE "normals" 
+            # base interface forces on function that has similar properties to phi, rather than on s
+            # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
+            
+            # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
+            # set these string globally so that they can be picked up by output_masks
+            
+            #GENERAL_REPLACEMENTS D "<<vofnormalmethod>>" W "cell"
+            
+            # first calculate masks for the normals, if required
+               #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 1
+               CELL_TRANSIENT_REGION <vof_fs_phigrad_mask[r=1]> "" "expand[maxseparation=3,faceseparation](<vof_fs_delta_mask[r=1]>)" ON <free surface all cells>
+                  #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 2
+                  #(hash inserted during unwrap)IF 1 
+                  NODE_TRANSIENT_REGION <vof_fs_phigrad_mask_n[r=1]> "" "associatedwith(<vof_fs_phigrad_mask[r=1]>)" ON <free surface all nodes>
+                  #(hash inserted during unwrap)END_IF
+               #(hash inserted during unwrap)END_IF
+            
+               #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 1 
+               NODE_DERIVED <vof_fs_phigrad_n[l=1]> "nodefromcellgrad[l=1](<vof_phi_s>)" ON <vof_fs_phigrad_mask_n[r=1]> output
+               CELL_DERIVED <vof_fs_phigrad[l=1]> "cellfromnodeave(<vof_fs_phigrad_n[l=1]>)" ON <vof_fs_phigrad_mask[r=1]> output
+               NODE_DERIVED <vof_fs_phigrad_n[l=2]> "nodefromcellgrad[l=2](<vof_phi_s>)" ON <vof_fs_phigrad_mask_n[r=1]> output
+               CELL_DERIVED <vof_fs_phigrad[l=2]> "cellfromnodeave(<vof_fs_phigrad_n[l=2]>)" ON <vof_fs_phigrad_mask[r=1]> output
+               
+               #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 1
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)END_IF
+            
+            CELL_LOCAL <vof_fs_phigrad_mag^2> "dot(<vof_fs_phigrad[l=:]>,<vof_fs_phigrad[l=:]>)" ON <vof_fs_phigrad_mask[r=1]>
+            CELL_DERIVED <vof_fs_phigrad_mag> "sqrt(cellmax(<vof_fs_phigrad_mag^2>,1.d-10))" ON <vof_fs_phigrad_mask[r=1]>
+            CELL_DERIVED <vof_fs_phigrad_unit[l=1]> "<vof_fs_phigrad[l=1]>/<vof_fs_phigrad_mag>" ON <vof_fs_phigrad_mask[r=1]> output
+            CELL_DERIVED <vof_fs_phigrad_unit[l=2]> "<vof_fs_phigrad[l=2]>/<vof_fs_phigrad_mag>" ON <vof_fs_phigrad_mask[r=1]> output
+            
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/high_order_interface_geometry.arb: sub_block = 1
+         #(hash inserted during unwrap)ELSE
          #(hash inserted during unwrap)INCLUDE "normals" 
-         
-         # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
-         
-         # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
-         
-         
-         # first calculate masks for the normals
-         CELL_TRANSIENT_REGION <vof_fs_phigrad_mask[r=1]> "" "expand[maxseparation=3,faceseparation](<vof_fs_delta_mask[r=1]>)" ON <free surface all cells>
-         NODE_TRANSIENT_REGION <vof_fs_phigrad_mask_n[r=1]> "" "associatedwith(<vof_fs_phigrad_mask[r=1]>)" ON <free surface all nodes>
-         
-         NODE_DERIVED <vof_fs_phigrad_n[l=1]> "nodefromcellgrad[l=1](<vof_s>)" ON <vof_fs_phigrad_mask_n[r=1]> output
-         NODE_DERIVED <vof_fs_phigrad_n[l=2]> "nodefromcellgrad[l=2](<vof_s>)" ON <vof_fs_phigrad_mask_n[r=1]>
-         #NODE_DERIVED <vof_fs_phigrad_n[l=3]> "nodefromcellgrad[l=3](<vof_s>)" ON <vof_fs_phigrad_mask_n[r=1]>
-         CELL_DERIVED <vof_fs_phigrad[l=1]> "cellfromnodeave(<vof_fs_phigrad_n[l=1]>)" ON <vof_fs_phigrad_mask[r=1]> output
-         CELL_DERIVED <vof_fs_phigrad[l=2]> "cellfromnodeave(<vof_fs_phigrad_n[l=2]>)" ON <vof_fs_phigrad_mask[r=1]>
-         #CELL_DERIVED <vof_fs_phigrad[l=3]> "cellfromnodeave(<vof_fs_phigrad_n[l=3]>)" ON <vof_fs_phigrad_mask[r=1]>
-         
-         #CELL_DERIVED <vof_fs_phigrad[l=1]> "cellgrad[l=1](<vof_s>)" ON <vof_fs_phigrad_mask[r=1]> output
-         #CELL_DERIVED <vof_fs_phigrad[l=2]> "cellgrad[l=2](<vof_s>)" ON <vof_fs_phigrad_mask[r=1]>
-         ##CELL_DERIVED <vof_fs_phigrad[l=3]> "cellgrad[l=3](<vof_s>)" ON <vof_fs_phigrad_mask[r=1]>
-         
-         CELL_LOCAL <vof_fs_phigrad_mag^2> "dot(<vof_fs_phigrad[l=:]>,<vof_fs_phigrad[l=:]>)" ON <vof_fs_phigrad_mask[r=1]>
-         CELL_DERIVED <vof_fs_phigrad_mag> "sqrt(cellmax(<vof_fs_phigrad_mag^2>,1.d-10))" ON <vof_fs_phigrad_mask[r=1]>
-         CELL_DERIVED <vof_fs_phigrad_unit[l=1]> "<vof_fs_phigrad[l=1]>/<vof_fs_phigrad_mag>" ON <vof_fs_phigrad_mask[r=1]> output
-         CELL_DERIVED <vof_fs_phigrad_unit[l=2]> "<vof_fs_phigrad[l=2]>/<vof_fs_phigrad_mag>" ON <vof_fs_phigrad_mask[r=1]>
-         #CELL_DERIVED <vof_fs_phigrad_unit[l=3]> "<vof_fs_phigrad[l=3]>/<vof_fs_phigrad_mag>" ON <vof_fs_phigrad_mask[r=1]>
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)END_IF
          #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/curvature.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "curvature"
          # within this file we calculate the curvature
@@ -796,6 +818,22 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
       FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <fluid all faces>
       #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <fluid all faces>
       #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <fluid all faces>
+      
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 1
+         #(hash inserted during unwrap)IF 0
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)VARIABLE <tau[l=1,0]> "<tau[l=1,0]>+<vof_mu_harmonic_f>*<u_f_vect[l=0]>/<facex[l=1]>"
+            #(hash inserted during unwrap)VARIABLE <tau[l=0,1]> "<tau[l=1,0]>"
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
+            #(hash inserted during unwrap)ELSE
+            #(hash inserted during unwrap)VARIABLE <tau[l=1,0]> "-<vof_mu_harmonic_f>*<facex[l=1]>*facegrad[l=1,reflect=1](<u[l=0]>/<cellx[l=1]>)" OUTPUT
+            #(hash inserted during unwrap)VARIABLE <tau[l=0,1]> "<tau[l=1,0]>"  OUTPUT
+            #(hash inserted during unwrap)END_IF
+         #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "-<vof_mu_harmonic_f>*2.d0*<u_f_vect[l=1]>/<facex[l=1]>"
+         #(hash inserted during unwrap)END_IF
+      
+      
       #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "u_f" 
       
@@ -1258,14 +1296,19 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          
          # define cylindrical divergence modifier terms
          
+         
+         
             #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
             #(hash inserted during unwrap)IF 1
             
             #(hash inserted during unwrap)END_IF
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)END_IF
          
          # now create equations
          CELL_EQUATION <continuity> "celldiv(<facex[l=1]>*<u_f>)/<cellx[l=1]>" ON <fluid domain> # continuity
-         
          CELL_EQUATION <momentum[l=1]> "celldiv(<facex[l=1]>*<J_f[l=1]>)/<cellx[l=1]>-<dynamic_force_c[l=1]>" ON <fluid domain> # momentum component
          CELL_EQUATION <momentum[l=2]> "celldiv(<facex[l=1]>*<J_f[l=2]>)/<cellx[l=1]>-<dynamic_force_c[l=2]>" ON <fluid domain> # momentum component
          
@@ -1279,6 +1322,18 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation however the string 1 has not been correctly defined'
                #(hash inserted during unwrap)END_IF
             VARIABLE <momentum[l=1]> "<momentum[l=1]>+2.d0*<u[l=1]>*<vof_mu_c>/(<cellx[l=1]>**2)"
+            #(hash inserted during unwrap)END_IF
+         
+         #define momentum eqn for azimuthal component
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)# perform a check that <<azimuthaldim>> has been correctly defined
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 3
+               #(hash inserted during unwrap)IF 
+               #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 0 has not been correctly defined'
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv(<J_f[l=0]>)+<vof_rho_c>*<u_f_vect[l=1]>*<u_f_vect[l=0]>/<facex[l=1]>" ON <fluid domain> # momentum component'
+            #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "<momentum[l=1]>-<vof_rho_c>*<u_f_vect[l=0]>**2/<facex[l=1]>"
             #(hash inserted during unwrap)END_IF
          #(hash inserted during unwrap)END_IF
       
@@ -1384,8 +1439,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
                   #(hash inserted during unwrap)INCLUDE "noslip" 
                   
-                  FACE_EQUATION <walls no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
-                  #FACE_EQUATION <walls no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
+                  FACE_EQUATION <walls noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
+                  #FACE_EQUATION <walls noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE
                #(hash inserted during unwrap)ERROR "boundarytangentmethod not known in boundary_equations.arb: noslip"

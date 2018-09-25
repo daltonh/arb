@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/codes/arb/testsuite/arb_master/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_master/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: steady_state_channel_flow_with_cylinder.arb
    #(comment created during unwrap): new block = steady_state_channel_flow_with_cylinder.arb: sub_block = 0
@@ -235,6 +235,22 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <allfaces>
          #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <allfaces>
          #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <allfaces>
+         
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "<tau[l=0,0]>+<mu>*<u_f_vect[l=0]>/<facex[l=0]>"
+               #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "<tau[l=0,0]>"
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "-<mu>*<facex[l=0]>*facegrad[l=0,](<u[l=0]>/<cellx[l=0]>)" OUTPUT
+               #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "<tau[l=0,0]>"  OUTPUT
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "-<mu>*2.d0*<u_f_vect[l=0]>/<facex[l=0]>"
+            #(hash inserted during unwrap)END_IF
+         
+         
          #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "u_f"
          # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
@@ -630,6 +646,12 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             
             # define cylindrical divergence modifier terms
             
+            
+            
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)END_IF
                #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
                #(hash inserted during unwrap)IF 0
                #(hash inserted during unwrap)
@@ -637,7 +659,6 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             
             # now create equations
             CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
-            
             CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
             CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
             
@@ -651,6 +672,18 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation however the string 0 has not been correctly defined'
                   #(hash inserted during unwrap)END_IF
                #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "<momentum[l=0]>+2.d0*<u[l=0]>*<mu>/(<cellx[l=0]>**2)"
+               #(hash inserted during unwrap)END_IF
+            
+            #define momentum eqn for azimuthal component
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)# perform a check that <<azimuthaldim>> has been correctly defined
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 3
+                  #(hash inserted during unwrap)IF 
+                  #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 0 has not been correctly defined'
+                  #(hash inserted during unwrap)END_IF
+               #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv(<J_f[l=0]>)+<rho>*<u_f_vect[l=0]>*<u_f_vect[l=0]>/<facex[l=0]>" ON <domain> # momentum component'
+               #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "<momentum[l=0]>-<rho>*<u_f_vect[l=0]>**2/<facex[l=0]>"
                #(hash inserted during unwrap)END_IF
             #(hash inserted during unwrap)END_IF
          
@@ -735,8 +768,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                      #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
                      #(hash inserted during unwrap)INCLUDE "noslip" 
                      
-                     FACE_EQUATION <outlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to the face
-                     #FACE_EQUATION <outlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <outlet> # no component tangential to the face in the second tangential direction
+                     FACE_EQUATION <outlet noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to the face
+                     #FACE_EQUATION <outlet noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <outlet> # no component tangential to the face in the second tangential direction
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                   #(hash inserted during unwrap)ELSE
                   #(hash inserted during unwrap)ERROR "boundarytangentmethod not known in boundary_equations.arb: noslip"
@@ -924,8 +957,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
                   #(hash inserted during unwrap)INCLUDE "noslip" 
                   
-                  FACE_EQUATION <walls no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
-                  #FACE_EQUATION <walls no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
+                  FACE_EQUATION <walls noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
+                  #FACE_EQUATION <walls noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE
                #(hash inserted during unwrap)ERROR "boundarytangentmethod not known in boundary_equations.arb: noslip"
@@ -1102,8 +1135,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
                   #(hash inserted during unwrap)INCLUDE "noslip" 
                   
-                  FACE_EQUATION <inlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <inlet> # no component tangential to the face
-                  #FACE_EQUATION <inlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <inlet> # no component tangential to the face in the second tangential direction
+                  FACE_EQUATION <inlet noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <inlet> # no component tangential to the face
+                  #FACE_EQUATION <inlet noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <inlet> # no component tangential to the face in the second tangential direction
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE
                #(hash inserted during unwrap)ERROR "boundarytangentmethod not known in boundary_equations.arb: noslip"

@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/codes/arb/testsuite/arb_master/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_master/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb
    #(comment created during unwrap): new block = oscillating_volume_of_fluid_drop_in_quadrant_v0.54.arb: sub_block = 0
@@ -497,34 +497,56 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          FACE_DERIVED <vof_s_j> "-<vof_s_D>*facegrad(<vof_s>)" ON <allfaces>
          CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
          FACE_EQUATION <vof_s boundary> "2.d0*<vof_phi_interface>-1.d0-<vof_s>" ON <boundaries>
-         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 0
+         
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)Conversion from the s function to a conventional phi, which varies between 0 and 1 (whereas s varies between -1 and 1).
+         #(hash inserted during unwrap)In future recast s analysis in terms of phi_s
+         #(hash inserted during unwrap)END_MARKDOWN
+         CELL_LOCAL <vof_phi_s> "0.5d0*(<vof_s>+1.d0)" ON <allcells>
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/high_order_interface_geometry.arb: sub_block = 1
+         #(hash inserted during unwrap)IF 1
+            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 0
+            #(hash inserted during unwrap)INCLUDE "normals" 
+            # base interface forces on function that has similar properties to phi, rather than on s
+            # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
+            
+            # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
+            # set these string globally so that they can be picked up by output_masks
+            
+            #GENERAL_REPLACEMENTS D "<<vofnormalmethod>>" W "cell"
+            
+            # first calculate masks for the normals, if required
+               #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 1
+               CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=3,faceseparation](<vof_delta_mask[r=1]>)" ON <allcells>
+                  #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 2
+                  #(hash inserted during unwrap)IF 1 
+                  NODE_TRANSIENT_REGION <vof_phigrad_mask_n[r=1]> "" "associatedwith(<vof_phigrad_mask[r=1]>)" ON <allnodes>
+                  #(hash inserted during unwrap)END_IF
+               #(hash inserted during unwrap)END_IF
+            
+               #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 1 
+               NODE_DERIVED <vof_phigrad_n[l=1]> "nodefromcellgrad[l=1](<vof_phi_s>)" ON <vof_phigrad_mask_n[r=1]> output
+               CELL_DERIVED <vof_phigrad[l=1]> "cellfromnodeave(<vof_phigrad_n[l=1]>)" ON <vof_phigrad_mask[r=1]> output
+               NODE_DERIVED <vof_phigrad_n[l=2]> "nodefromcellgrad[l=2](<vof_phi_s>)" ON <vof_phigrad_mask_n[r=1]> output
+               CELL_DERIVED <vof_phigrad[l=2]> "cellfromnodeave(<vof_phigrad_n[l=2]>)" ON <vof_phigrad_mask[r=1]> output
+               
+               #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 1
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)END_IF
+            
+            CELL_LOCAL <vof_phigrad_mag^2> "dot(<vof_phigrad[l=:]>,<vof_phigrad[l=:]>)" ON <vof_phigrad_mask[r=1]>
+            CELL_DERIVED <vof_phigrad_mag> "sqrt(cellmax(<vof_phigrad_mag^2>,1.d-10))" ON <vof_phigrad_mask[r=1]>
+            CELL_DERIVED <vof_phigrad_unit[l=1]> "<vof_phigrad[l=1]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]> output
+            CELL_DERIVED <vof_phigrad_unit[l=2]> "<vof_phigrad[l=2]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]> output
+            
+         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/high_order_interface_geometry.arb: sub_block = 1
+         #(hash inserted during unwrap)ELSE
          #(hash inserted during unwrap)INCLUDE "normals" 
-         
-         # calculate the cell centred unit normals at the current timestep, to be used in both the curvature and advection calculations
-         
-         # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
-         
-         
-         # first calculate masks for the normals
-         CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=3,faceseparation](<vof_delta_mask[r=1]>)" ON <allcells>
-         NODE_TRANSIENT_REGION <vof_phigrad_mask_n[r=1]> "" "associatedwith(<vof_phigrad_mask[r=1]>)" ON <allnodes>
-         
-         NODE_DERIVED <vof_phigrad_n[l=1]> "nodefromcellgrad[l=1](<vof_s>)" ON <vof_phigrad_mask_n[r=1]> output
-         NODE_DERIVED <vof_phigrad_n[l=2]> "nodefromcellgrad[l=2](<vof_s>)" ON <vof_phigrad_mask_n[r=1]>
-         #NODE_DERIVED <vof_phigrad_n[l=3]> "nodefromcellgrad[l=3](<vof_s>)" ON <vof_phigrad_mask_n[r=1]>
-         CELL_DERIVED <vof_phigrad[l=1]> "cellfromnodeave(<vof_phigrad_n[l=1]>)" ON <vof_phigrad_mask[r=1]> output
-         CELL_DERIVED <vof_phigrad[l=2]> "cellfromnodeave(<vof_phigrad_n[l=2]>)" ON <vof_phigrad_mask[r=1]>
-         #CELL_DERIVED <vof_phigrad[l=3]> "cellfromnodeave(<vof_phigrad_n[l=3]>)" ON <vof_phigrad_mask[r=1]>
-         
-         #CELL_DERIVED <vof_phigrad[l=1]> "cellgrad[l=1](<vof_s>)" ON <vof_phigrad_mask[r=1]> output
-         #CELL_DERIVED <vof_phigrad[l=2]> "cellgrad[l=2](<vof_s>)" ON <vof_phigrad_mask[r=1]>
-         ##CELL_DERIVED <vof_phigrad[l=3]> "cellgrad[l=3](<vof_s>)" ON <vof_phigrad_mask[r=1]>
-         
-         CELL_LOCAL <vof_phigrad_mag^2> "dot(<vof_phigrad[l=:]>,<vof_phigrad[l=:]>)" ON <vof_phigrad_mask[r=1]>
-         CELL_DERIVED <vof_phigrad_mag> "sqrt(cellmax(<vof_phigrad_mag^2>,1.d-10))" ON <vof_phigrad_mask[r=1]>
-         CELL_DERIVED <vof_phigrad_unit[l=1]> "<vof_phigrad[l=1]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]> output
-         CELL_DERIVED <vof_phigrad_unit[l=2]> "<vof_phigrad[l=2]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]>
-         #CELL_DERIVED <vof_phigrad_unit[l=3]> "<vof_phigrad[l=3]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]>
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)END_IF
          #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/curvature.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "curvature"
          # within this file we calculate the curvature
