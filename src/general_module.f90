@@ -94,7 +94,7 @@ logical :: convergence_details_file = .true. ! (.true., userable) write some con
 ! set some numerical and mathematical parameters, non-userable
 
 ! code version details
-real, parameter :: version = 0.59 ! current version
+real, parameter :: version = 0.60 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "roaming romesh"
 
