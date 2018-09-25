@@ -13,13 +13,14 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
    # arb is released under the GNU GPL.  For full details see the license directory.
    #
    #-------------------------------------------------------------------
-   VERSION 0.55 # the version of syntax used in this file
+   VERSION 0.59 # the version of syntax used in this file
    
    # the following strings describe the simulation and are passed to the output files
    INFO_TITLE "Transient Stokes flow around an offset cylinder within a channel"
    INFO_DESCRIPTION "Here the transient Stokes equations are solved in 2D, using an unstructured mesh.  A uniform pressure is set along the upstream boundary (which is still very close to the cylinder BTW), which is a bit different to the set flowrate condition used in tutorial_3.  The viscous stress terms are treated explicitly, which means less memory is used, but the timestep is limited.  The convergence tolerance is set lower so that matrix inversion is often avoided, but this comes at a cost of transient accuracy."
    INFO_AUTHOR "Dalton Harvie"
-   INFO_DATE "15/1/16" # interpreted as the last modification date
+   INFO_DATE "15/1/16"
+   INFO_DATE+ ":25/9/18" # interpreted as the last modification date
    
    #-------------------------------------------------------------------
    # system constants
@@ -543,8 +544,11 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
       
       # calculate the momentum fluxes as transients
       # TODO: this file will be able to also handle the navier-stokes equations once an explicit <u_f> is saved
-      #ERROR "the template file domain_explicit cannot handle the navier-stokes equations yet"
-      #INCLUDE "advection_flux"
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/domain_explicit.arb: sub_block = 1
+         #(hash inserted during unwrap)IF 
+         #(hash inserted during unwrap)ERROR "the template file domain_explicit cannot handle the navier-stokes equations yet"
+         #(hash inserted during unwrap)INCLUDE "advection_flux"
+         #(hash inserted during unwrap)END_IF
          #(comment created during unwrap): new block = ../../templates/navier_stokes/momentum_flux.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "momentum_flux" 
          
@@ -573,9 +577,12 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
          #FACE_TRANSIENT <J_f[r=1,l=3]> "dot(<facenorm[l=:]>,<tau[r=1,l=:,3]>)" ON <allfaces>
          
          # and now add advection momentum transport for just the navier-stokes equations using self-referencing
-         #VARIABLE <J_f[r=1,l=1]> "<J_f[r=1,l=1]>+<J_advection_f[l=1]>"
-         #VARIABLE <J_f[r=1,l=2]> "<J_f[r=1,l=2]>+<J_advection_f[l=2]>"
-         ##VARIABLE <J_f[r=1,l=3]> "<J_f[r=1,l=3]>+<J_advection_f[l=3]>"
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/momentum_flux.arb: sub_block = 1
+            #(hash inserted during unwrap)IF  # this will be true for non-stokes (=navier-stokes) simulations
+            #(hash inserted during unwrap)VARIABLE <J_f[r=1,l=1]> "<J_f[r=1,l=1]>+<J_advection_f[l=1]>"
+            #(hash inserted during unwrap)VARIABLE <J_f[r=1,l=2]> "<J_f[r=1,l=2]>+<J_advection_f[l=2]>"
+            #(hash inserted during unwrap)#VARIABLE <J_f[r=1,l=3]> "<J_f[r=1,l=3]>+<J_advection_f[l=3]>"
+            #(hash inserted during unwrap)END_IF
       
       # this is an explicit update of the velocity
       CELL_LOCAL <u_explicit[l=1]> "<u[r=1,l=1]>-(<dt>/<rho>)*(celldiv(<J_f[r=1,l=1]>)-<dynamic_force_c[l=1]>)" ON <domain>
@@ -802,50 +809,50 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
          #############################################
          # advection term
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
-            #(hash inserted during unwrap)IF 1 # only for navier-stokes equations
-            #--------------
-            # use this option to base the adv component on the total velocity magnitude, rather than the component over each face
-            # the old way (pre v0.59) was to use <u_f_{raw}> which is the flux across the face when calculating the advective rhie-chow term
-            # the new way (v0.59 and onwards) is based on the total velocity magnitude, so overwrite the string <<ufmagnitude>> with <u_f_vect_magnitude> which is the total magnitude of <u_f_vect[l=:]>
-            
-            #--------------
-            # initialise variable using the old way, within the applicable block
+            #(hash inserted during unwrap)IF  # only for navier-stokes equations
+            #(hash inserted during unwrap)#--------------
+            #(hash inserted during unwrap)# use this option to base the adv component on the total velocity magnitude, rather than the component over each face
+            #(hash inserted during unwrap)# the old way (pre v0.59) was to use <u_f_{raw}> which is the flux across the face when calculating the advective rhie-chow term
+            #(hash inserted during unwrap)# the new way (v0.59 and onwards) is based on the total velocity magnitude, so overwrite the string <<ufmagnitude>> with <u_f_vect_magnitude> which is the total magnitude of <u_f_vect[l=:]>
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)#--------------
+            #(hash inserted during unwrap)# initialise variable using the old way, within the applicable block
                #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 2
-               #(hash inserted during unwrap)IF 1 # ie, the new way
-               # for a transient simulation the previous velocity magnitude is used, consistent with that used in the momentum advection
-               # (although this can be overwritten by setting <<ufvectmagnitudeexplicit>> = 0 directly)
-               
+               #(hash inserted during unwrap)IF <<ufadvectionmag>> # ie, the new way
+               #(hash inserted during unwrap)# for a transient simulation the previous velocity magnitude is used, consistent with that used in the momentum advection
+               #(hash inserted during unwrap)# (although this can be overwritten by setting <<ufvectmagnitudeexplicit>> = 0 directly)
+               #(hash inserted during unwrap)
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 3
-                  #(hash inserted during unwrap)IF 1
-                  FACE_LOCAL <u_f_vect[l=1,r=1]> "faceave[](<u[l=1,r=1]>)"
-                  FACE_LOCAL <u_f_vect[l=2,r=1]> "faceave[](<u[l=2,r=1]>)"
-                  #FACE_LOCAL <u_f_vect[l=3,r=1]> "faceave[](<u[l=3,r=1]>)"
-                  FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
-                  # S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
+                  #(hash inserted during unwrap)IF <<ufvectmagnitudeexplicit>>
+                  #(hash inserted during unwrap)FACE_LOCAL <u_f_vect[l=1,r=1]> "faceave[](<u[l=1,r=1]>)"
+                  #(hash inserted during unwrap)FACE_LOCAL <u_f_vect[l=2,r=1]> "faceave[](<u[l=2,r=1]>)"
+                  #(hash inserted during unwrap)#FACE_LOCAL <u_f_vect[l=3,r=1]> "faceave[](<u[l=3,r=1]>)"
+                  #(hash inserted during unwrap)FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
+                  #(hash inserted during unwrap)# S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 3
                   #(hash inserted during unwrap)ELSE
                   #(hash inserted during unwrap)FACE_LOCAL <u_f_vect_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tinyish>))" ON <allfaces>
                   #(hash inserted during unwrap)# S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
                   #(hash inserted during unwrap)END_IF
                #(hash inserted during unwrap)END_IF
-            # now calculate <u_rf_{adv}>
-            #-------------
-            # advective contribution can be either simple or more complex (set by <<ufadvectioncomplex>>)
-            # the default behaviour is to use the simple advective contribution
-            
+            #(hash inserted during unwrap)# now calculate <u_rf_{adv}>
+            #(hash inserted during unwrap)#-------------
+            #(hash inserted during unwrap)# advective contribution can be either simple or more complex (set by <<ufadvectioncomplex>>)
+            #(hash inserted during unwrap)# the default behaviour is to use the simple advective contribution
+            #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 2
-               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)IF <<ufadvectioncomplex>>
                #(hash inserted during unwrap)# more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
                #(hash inserted during unwrap)FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <allfaces>
-               #(hash inserted during unwrap)FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-<u_f_vect_magnitude[r=1]>+sqrt(<u_f_vect_magnitude[r=1]>^2+<eps_p>*<facedx>/<rho>))" ON <allfaces>
+               #(hash inserted during unwrap)FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-<<ufmagnitude>>+sqrt(<<ufmagnitude>>^2+<eps_p>*<facedx>/<rho>))" ON <allfaces>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 2
                #(hash inserted during unwrap)ELSE
-               # simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
-               FACE_LOCAL <u_rf_{adv}> "2.d0*<rho>*<u_f_vect_magnitude[r=1]>/<facedx>" ON <allfaces>
+               #(hash inserted during unwrap)# simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
+               #(hash inserted during unwrap)FACE_LOCAL <u_rf_{adv}> "2.d0*<rho>*<<ufmagnitude>>/<facedx>" ON <allfaces>
                #(hash inserted during unwrap)END_IF
-            # ---------
-            # finally add on advection contribution
-            FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
+            #(hash inserted during unwrap)# ---------
+            #(hash inserted during unwrap)# finally add on advection contribution
+            #(hash inserted during unwrap)FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
             #(hash inserted during unwrap)END_IF
          
          #############################################
@@ -973,12 +980,22 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
             #(hash inserted during unwrap)END_IF
          
          # add transient term which is independent on cartesian or cylindrical coordinates
-         VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-         VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-         #VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
-         #VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-         #VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-         ##VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+         #IF <<transientnavierstokes>>
+         # for now keep option of using comment string to turn off using comment string
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 1
+               VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+               VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+               #VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+               #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+               #(hash inserted during unwrap)#VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)END_IF
       VARIABLE <momentum[l=1]> CANCEL
       VARIABLE <momentum[l=2]> CANCEL
       #VARIABLE <momentum[l=3]> CANCEL
@@ -1029,15 +1046,14 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
    CONSTANT <c_mu_explicit> 0.25d0 # multiplier for explicit viscous term stability timestep constraint
    
    # also push this tolerance to a higher level to speed things up, if only trying to get a steady-state solution
-   NEWTRESTOL 1.d-5
+   GENERAL_OPTIONS newtrestol=1.d-5
    INFO "simulations will not be time accurate with a large NEWTRESTOL being set"
    
    # decrease time between outputs
    CONSTANT <CFL_out> 0.1d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity
    
    # for this example file limit the total number of iterations
-   TIMESTEPMAX 10
-   TIMESTEPOUT 5
+   GENERAL_OPTIONS timestepmax=10,timestepout=5
    
    # calculate drag and lift on object
    NONE_OUTPUT <F_drag> [N] "facesum(<facearea>*dot(<facenorm[l=:]>,<tau[r=1,l=:,1]>),<cylinder>)" # force on object in axial direction

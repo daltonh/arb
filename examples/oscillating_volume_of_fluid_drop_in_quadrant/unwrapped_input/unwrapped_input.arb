@@ -1284,6 +1284,8 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
          #(hash inserted during unwrap)END_IF
       
       # add transient term which is independent on cartesian or cylindrical coordinates
+      #IF <<transientnavierstokes>>
+      # for now keep option of using comment string to turn off using comment string
          #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
          #(hash inserted during unwrap)IF 1
             #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2

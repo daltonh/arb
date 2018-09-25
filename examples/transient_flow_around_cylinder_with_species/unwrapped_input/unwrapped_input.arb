@@ -713,8 +713,10 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
                #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 2
                #(hash inserted during unwrap)IF 
                #(hash inserted during unwrap)# using implicit velocities and densities is only relevant for steady-state simulations, and transient ones with <<implicitadvection>> on
+               #(hash inserted during unwrap)# having to respect the old <<uniformdensitycomment>> choice for backwards compatibility with user's vof files - just in this file
+               #(hash inserted during unwrap)#   IF <<uniformdensity>>
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 3
-                  #(hash inserted during unwrap)IF 1
+                  #(hash inserted during unwrap)IF  
                   #(hash inserted during unwrap)# steady-state (or implicit advection) and uniform density
                   #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
                   #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
@@ -728,8 +730,10 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
                   #(hash inserted during unwrap)END_IF
                #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 2
                #(hash inserted during unwrap)ELSE
+               # having to respect the old <<uniformdensitycomment>> choice for backwards compatibility with user's vof files - just in this file
+               #   IF <<uniformdensity>>
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 3
-                  #(hash inserted during unwrap)IF 1
+                  #(hash inserted during unwrap)IF 1 
                   # transient and uniform density
                   FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
                   FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
@@ -770,9 +774,12 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
          #FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <allfaces>
          
          # and now add advection momentum transport for just the navier-stokes equations using self-referencing
-         VARIABLE <J_f[l=1]> "<J_f[l=1]>+<J_advection_f[l=1]>"
-         VARIABLE <J_f[l=2]> "<J_f[l=2]>+<J_advection_f[l=2]>"
-         #VARIABLE <J_f[l=3]> "<J_f[l=3]>+<J_advection_f[l=3]>"
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/momentum_flux.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1 # this will be true for non-stokes (=navier-stokes) simulations
+            VARIABLE <J_f[l=1]> "<J_f[l=1]>+<J_advection_f[l=1]>"
+            VARIABLE <J_f[l=2]> "<J_f[l=2]>+<J_advection_f[l=2]>"
+            #VARIABLE <J_f[l=3]> "<J_f[l=3]>+<J_advection_f[l=3]>"
+            #(hash inserted during unwrap)END_IF
          #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "conservation"
          # conservation equations solved over each domain cell (finite volume method)
@@ -857,12 +864,22 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
             #(hash inserted during unwrap)END_IF
          
          # add transient term which is independent on cartesian or cylindrical coordinates
-         VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-         VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-         #VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
-         #VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-         #VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-         ##VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+         #IF <<transientnavierstokes>>
+         # for now keep option of using comment string to turn off using comment string
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 1
+               VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+               VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+               #VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+               #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+               #(hash inserted during unwrap)#VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)END_IF
       #(comment created during unwrap): new block = ../../templates/navier_stokes/outlet_p_set.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "outlet_p_set" # outlet BC
          #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_p_set.arb: sub_block = 0
