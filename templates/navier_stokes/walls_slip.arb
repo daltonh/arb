@@ -1,4 +1,1 @@
-# boundary conditions on nonslip walls
-INCLUDE "noflux" REPLACE "<region>" WITH "<walls>" REPLACE "<equation>" WITH "<walls noflux>"
-INCLUDE "slip" REPLACE "<region>" WITH "<walls>" REPLACE "<equation" WITH "<walls slip"
-INCLUDE "p_extrapolation" REPLACE "<region>" WITH "<walls>" REPLACE "<equation>" WITH "<walls p_extrapolation>"
+INCLUDE "walls_equations" R "<<boundarymethod>>" W "noflux" R "<<boundarytangentmethod>>" W "slip"

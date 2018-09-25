@@ -553,20 +553,27 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
       
          #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 1
          #(hash inserted during unwrap)IF 1
-         # the following copied from navier-stokes p_error
-         # for evaluating the face centred dynamic force there are three options: dxunit, facegrad and adjacentcells
-         # uncomment the comment string corresponding to the one you want
-         # default is dxunit
-         # remember to set all of these strings on entry if changing from the default, with only the requested one uncommented
+         
+         # Note, this string is also used in navier_stokes/p_error, and the setting needs to be consistent, so if this is going to be changed set it globally before calling either file
          
          
-         # differencing type used here must match that in the p_error calc
-         # dxunit method
-         FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
-         # facegrad method
-         #FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad(<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
-         # adjacentcells method
-         #FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[adjacentcells](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 2
+            #(hash inserted during unwrap)IF 1
+            # dxunit method
+            FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 2
+            #(hash inserted during unwrap)ELSE_IF 0
+            #(hash inserted during unwrap)# facegrad method
+            #(hash inserted during unwrap)FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad(<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 2
+            #(hash inserted during unwrap)ELSE_IF 
+            #(hash inserted during unwrap)# facegradadjacentcells method
+            #(hash inserted during unwrap)FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[adjacentcells](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
+            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 2
+            #(hash inserted during unwrap)ELSE
+            #(hash inserted during unwrap)ERROR 'No valid dynamicforcefmethod is chosen in the volume_of_fluid/force template file: string currently set as dxunit'
+            #(hash inserted during unwrap)END_IF
+         
          #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 1
          #(hash inserted during unwrap)ELSE
          #(hash inserted during unwrap)FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>

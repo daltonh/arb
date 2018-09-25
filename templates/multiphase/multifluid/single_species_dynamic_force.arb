@@ -1,0 +1,23 @@
+MARKDOWN
+Here we add contributions to the dynamic force due to the already calculated <p_species> for each disperse phase
+END_MARKDOWN
+
+{{
+  my $return_string = '';
+  for my $l (string_eval('<<dimensions>>','list')) {
+    $return_string .= "VARIABLE <dynamic_force_c_<<species>>[l=$l]> '<dynamic_force_c_<<species>>[l=$l]>-celldivgrad[l=$l](<p_f_<<species>>>)/(<phi_bounded_<<species>>>)'\n";
+#   $return_string .= "VARIABLE <dynamic_force_c_<<species>>[l=$l]> '<dynamic_force_c_<<species>>[l=$l]>-celldivgrad[l=$l](<p_f_<<species>>>)/(<phi_fc_bounded_<<species>>>)'\n";
+  }
+  return $return_string;
+}}
+
+# now deal with dynamic_force_f
+IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
+  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[dxunit](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
+ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegrad'); }}
+  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad(<p_<<species>>>)/(<phi_f_bounded_<<species>>>)"
+ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegradadjacentcells'); }}
+  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[adjacentcells](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
+ELSE
+  ERROR 'No valid dynamicforcefmethod is chosen in the multifluid/single_species_dynamic_force template file: string currently set as <<dynamicforcefmethod>>'
+END_IF

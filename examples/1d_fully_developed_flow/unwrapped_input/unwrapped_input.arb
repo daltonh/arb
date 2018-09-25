@@ -94,9 +94,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          FACE_LOCAL <gamma[l=3,2]> "<gamma[l=2,3]>" ON <allfaces>
       
       # now calculate the double dot product on the faces, then average to the cells before square rooting
-      CELL_DERIVED <gamma_magnitude> "sqrt(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)))" ON <allcells>
+      CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)),<tinyish>))" ON <allcells>
       # the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
-      #CELL_DERIVED <gamma_magnitude> "sqrt(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))+2.d0*(<u[l=0]>/<cellx[l=0]>)**2)" ON <allcells>
+      #CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))+2.d0*(<u[l=0]>/<cellx[l=0]>)**2,<tinyish>))" ON <allcells>
    VARIABLE <gamma_magnitude> output
    FACE_DERIVED <gamma_magnitude_f> "sqrt(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))" ON <allfaces> output
    NONE_CONSTANT <mu_f> "<mu>" # will be overwritten for a carreau fluid

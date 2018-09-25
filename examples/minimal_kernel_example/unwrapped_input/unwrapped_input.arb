@@ -49,6 +49,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "general"
       #(comment created during unwrap): new block = ../../templates/general/element_information.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "element_information"
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)Compiles basic geometrical and index data about the elements in the mesh
+      #(hash inserted during unwrap)END_MARKDOWN
+      
       # includes all element information files from general
          #(comment created during unwrap): new block = ../../templates/general/element_coordinates.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "element_coordinates.arb"
@@ -80,8 +84,29 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          CELL_OUTPUT <icell output> "<icell>" ON <allcells>
          FACE_OUTPUT <jface output> "<jface>" ON <allfaces>
          NODE_OUTPUT <knode output> "<knode>" ON <allnodes>
+         #(comment created during unwrap): new block = ../../templates/general/face_normals.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "face_normals.arb"
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)Here we output the face normals (norm, tang1 and tang2) as vectors
+         #(hash inserted during unwrap)END_MARKDOWN
+         
+         FACE_OUTPUT <facenorm output[l=1]> '<facenorm[l=1]>' ON <allfaces>
+         FACE_OUTPUT <facetang1 output[l=1]> '<facetang1[l=1]>' ON <allfaces>
+         FACE_OUTPUT <facetang2 output[l=1]> '<facetang2[l=1]>' ON <allfaces>
+         FACE_OUTPUT <facenorm output[l=2]> '<facenorm[l=2]>' ON <allfaces>
+         FACE_OUTPUT <facetang1 output[l=2]> '<facetang1[l=2]>' ON <allfaces>
+         FACE_OUTPUT <facetang2 output[l=2]> '<facetang2[l=2]>' ON <allfaces>
+         FACE_OUTPUT <facenorm output[l=3]> '<facenorm[l=3]>' ON <allfaces>
+         FACE_OUTPUT <facetang1 output[l=3]> '<facetang1[l=3]>' ON <allfaces>
+         FACE_OUTPUT <facetang2 output[l=3]> '<facetang2[l=3]>' ON <allfaces>
+         
+         FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <allfaces> output # also used in navier_stokes/p_error.arb
       #(comment created during unwrap): new block = ../../templates/general/kernel_information.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "kernel_information"
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)These parameters characterise the quality of the kernel elements
+      #(hash inserted during unwrap)END_MARKDOWN
+      
       CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <allcells>
       CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <allcells>
       CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <allcells>
@@ -93,6 +118,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
       NODE_OUTPUT <nodedxkernel output> "<nodedxkernel>" ON <allnodes>
       #(comment created during unwrap): new block = ../../templates/general/mesh_quality.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "mesh_quality"
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)Compiles various parameters that describe the quality of the mesh
+      #(hash inserted during unwrap)END_MARKDOWN
+      
       # some metrics on mesh quality
          #(comment created during unwrap): new block = ../../templates/general/cell_aspect_ratio.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "cell_aspect_ratio" # keep < 100 say for structured meshes, or as close to 1 as possible
@@ -105,4 +134,19 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          #NONE_OUTPUT <maximum cell adjacent volume ratio> "cellmax(<cell adjacent volume ratio>,region=<domain>)"
          FACE_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<adjacentfaceicells>)/cellmin(<cellvol>,default=<hugeish>,region=<adjacentfaceicells>)" ON <domainfaces>
          NONE_OUTPUT <maximum cell adjacent volume ratio> "facemax(<cell adjacent volume ratio>,region=<domainfaces>)"
+         #(comment created during unwrap): new block = ../../templates/general/kernel_information.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "kernel_information"
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)These parameters characterise the quality of the kernel elements
+         #(hash inserted during unwrap)END_MARKDOWN
+         
+         CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <allcells>
+         CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <allcells>
+         CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <allcells>
+         CELL_OUTPUT <cell deriv kernel elements output> "cellsum(1.d0,region=<cellkernelregion[l=1]>)" ON <allcells>
+         FACE_OUTPUT <face deriv kernel elements output> "cellsum(1.d0,region=<facekernelregion[l=1]>)" ON <allfaces>
+         NODE_OUTPUT <node deriv kernel elements output> "cellsum(1.d0,region=<nodekernelregion[l=1]>)" ON <allnodes>
+         CELL_OUTPUT <celldxkernel output> "<celldxkernel>" ON <allcells>
+         FACE_OUTPUT <facedxkernel output> "<facedxkernel>" ON <allfaces>
+         NODE_OUTPUT <nodedxkernel output> "<nodedxkernel>" ON <allnodes>
 ##################################################################################

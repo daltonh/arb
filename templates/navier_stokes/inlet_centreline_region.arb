@@ -1,4 +1,9 @@
-# this are the region definitions required to define the single inlet face cell and corresponding inverse inlet region
-# obviously can do replacement on inlet and centreline to create other equivalent regions from this file
-FACE_REGION <inlet centreline> "at(0.d0,0.d0,0.d0)" ON <inlet>
-FACE_REGION <inlet sans centreline> "compound(<inlet>-<inlet centreline>)" ON <inlet>
+IF 1
+  INCLUDE "centreline_region" R "<region" W "<inlet"
+ELSE
+# pre_v0.59
+  # this are the region definitions required to define the single inlet face cell and corresponding inverse inlet region
+  # obviously can do replacement on inlet and centreline to create other equivalent regions from this file
+  FACE_REGION <inlet centreline> "at(0.d0,0.d0,0.d0)" ON <inlet>
+  FACE_REGION <inlet sans centreline> "compound(<inlet>-<inlet centreline>)" ON <inlet>
+END_IF

@@ -1,8 +1,2 @@
-# boundary conditions on outlet - fully developed flow
-INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<outlet>" REPLACE "<equation>" WITH "<outlet fully developed>"
-INCLUDE "noslip" REPLACE "<region>" WITH "<outlet>" REPLACE "<equation" WITH "<outlet no slip"
-
-# now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <outlet sans centreline> and <outlet centreline>
-NONE_EQUATION <outlet centreline flowrate equation> "facesum(<p_f>,region=<outlet centreline>)" # set pressure at centreline to be zero
-NONE_DERIVED <outlet centreline gradp> "facesum(<dynamic_force_f>,region=<outlet centreline>)"
-FACE_EQUATION <outlet flowrate equation> "<dynamic_force_f>-<outlet centreline gradp>" ON <outlet sans centreline> # apply specified pressure over outlet
+# this sets oneface to have zero pressure, and the remaining faces to have a uniform <dynamic_force_f>
+INCLUDE "outlet_equations.arb" R "<<boundarymethod>>" W "onefacepressure" R "<<boundarymethodvariable>>" W "dynamicforce" R "<<boundarytangentmethod>>" W "noslip" R "<<boundarynormalmethod>>" W "zerogradu"

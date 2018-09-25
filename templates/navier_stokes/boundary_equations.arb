@@ -1,0 +1,126 @@
+MARKDOWN
+Equations for a boundary, now generalised to handle ports or walls.  Generally call this using the wrapper template files, inlet_equations, outlet_equations and wall_equations, generally setting the three method variables:
+
+This has a few variables that can be set:
+
+`<<boundarynormalmethod>>` sets some condition normal to the boundary, either a velocity gradient or pressure gradient, or combination
+`<<boundarytangentmethod>>` determines the shear conditions at the boundary
+`<<boundarymethod>>` sets the primary type of boundary condition.  This condition can use a choice of variables determined by `<<boundarymethodvariable>>`.  If a oneface region is required or not, then this can be set via `<<boundaryonecreateface>>`
+
+The defaults specify a fully developed flow through <region> with a set flowrate of <region u> created by varying the uniform <dynamic_force_f> (ie, an inlet).
+END_MARKDOWN
+
+# First equation is a constraint on normal velocity gradient normal to the boundary
+REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradu" # by default grad{u}:nn = 0
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "rhiechow" # a rhie-chow type calculation is used to relate the velocity normal to the boundary and at the boundary to the velocity just inside the domain (<<boundarynormalmethod>>=rhiechow)
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "zerodynamic"
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradp"
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "zeroperror"
+IF {{ return string_test("<<boundarynormalmethod>>","rhiechow"); }}
+  INCLUDE "p_extrapolation_rhie_chow" REPLACE "<equation>" WITH "<region pextrapolation>"
+ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerodynamic"); }}
+  FACE_EQUATION <region pextrapolation> "<dynamic_force_f>" ON <region>
+ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zeroperror"); }}
+  FACE_EQUATION <region pextrapolation> "<p_error>" ON <region>
+ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerogradp"); }}
+  FACE_EQUATION <region pextrapolation> "facegrad(<p>)" ON <region>
+ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerogradu"); }}
+  INCLUDE "u_fully_developed" REPLACE "<equation>" WITH "<region fully developed>"
+ELSE
+  ERROR "boundarynormalmethod not known in boundary_equations.arb: <<boundarynormalmethod>>"
+END_IF
+
+# Second equation(s) (two here for 3D) is a constraint on the tangential velocity component
+REPLACEMENTS D "<<boundarytangentmethod>>" W "noslip"
+#REPLACEMENTS D "<<boundarytangentmethod>>" W "slip"
+IF {{ return string_test("<<boundarytangentmethod>>","slip"); }}
+  INCLUDE "slip" REPLACE "<equation" WITH "<region slip"
+ELSE_IF {{ return string_test("<<boundarytangentmethod>>","noslip"); }}
+  INCLUDE "noslip" REPLACE "<equation" WITH "<region noslip"
+ELSE
+  ERROR "boundarytangentmethod not known in boundary_equations.arb: <<boundarytangentmethod>>"
+END_IF
+
+# Third equation is a constraint on the velocity or pressure value at the boundary
+# the first three all specify uniform conditions across the boundary:
+#REPLACEMENTS D "<<boundarymethod>>" W "pressure" # set pressure to <p_f>=<region p> everywhere along the boundary (ie, uniform specified pressure)
+#REPLACEMENTS D "<<boundarymethod>>" W "velocity" # set velocity to <u_f>=<region u> everywhere along the boundary (ie, uniform specified velocity)
+#REPLACEMENTS D "<<boundarymethod>>" W "noflux" # set velocity to 0. everywhere along the boundary, which is equivalent to <<boundarymethod>>="velocity" with <region u> = 0.d0 (ie, <u_f>=0.d0)
+# all of the remaining methods require a single face within the region to be special cased:
+#REPLACEMENTS D "<<boundarymethod>>" W "nofluxpset" # set uniform velocity to 0. across the entire region, except for <region oneface>, which has p set to zero - used for walls within a simulation that otherwise has not absolute pressure value set due to (eg) no inlet or outlet ports
+# the following two methods set whatever the <<boundarymethodvariable>> is to be uniform across the boundary (actually all sans faces are set to oneface), in addition to the following extra condition (so these use <<boundarymethodvariable>>, defaulting to <dynamic_force_f>)
+REPLACEMENTS D "<<boundarymethod>>" W "flowrate" # set average velocity (flowrate) to <region u> (as well as a uniform <<boundarymethodvariable over the boundary)
+#REPLACEMENTS D "<<boundarymethod>>" W "onefacepressure" # set pressure on oneface to <region p>  (as well as a uniform <<boundarymethodvariable over the boundary) - use on (eg) outlets to anchor pressure, but otherwise allow a uniform (say) dynamic_force across the port which works for (eg) bouyancy problems which have a hydrostatic pressure variation 
+
+IF {{ return string_test("<<boundarymethod>>","pressure"); }}
+
+  FACE_EQUATION <region flowrate equation> "<p_f>-<region p>" ON <region> # specified pressure
+
+ELSE_IF {{ return string_test("<<boundarymethod>>","velocity"); }}
+
+  FACE_EQUATION <region flowrate equation> "<u_f>+<region u>" ON <region> # specified velocity
+
+ELSE_IF {{ return string_test("<<boundarymethod>>","noflux"); }}
+
+  FACE_EQUATION <region flowrate equation> "<u_f>" ON <region> # zero velocity
+
+ELSE_IF  {{ return ( string_test("<<boundarymethod>>","flowrate") || string_test("<<boundarymethod>>","onefacepressure") ||
+  string_test("<<boundarymethod>>","nofluxpset") ); }}
+# all of these boundary methods require the oneface (or centreline) subdomain, so form these first
+
+# now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <region sans oneface> and <region region> (from eg oneface_region template)
+  REPLACEMENTS D "<<boundarycreateoneface>>" W "1" # by default create the single oneface region here
+  IF <<boundarycreateoneface>>
+    INCLUDE "oneface_region"
+  END_IF
+
+  IF {{ return ( string_test("<<boundarymethod>>","nofluxpset") ); }} 
+
+    FACE_EQUATION <region flowrate equation> "<u_f>" ON <region sans oneface> # zero velocity on most of the region
+    FACE_EQUATION <region oneface flowrate equation> "<p_f>" ON <region oneface>
+
+  ELSE
+    IF {{ return string_test("<<boundarymethod>>","flowrate"); }}
+  # for a specified flowrate, set some function of pressure to give the required average velocity (ie, a flowrate)
+  # to do this we need to calculate what the average velocity through the boundary is (positive into the domain here)
+      <<cartesiancomment>>NONE_DERIVED <region u_av_calc> "facesum(-<u_f>*<facearea>,<region>)/facesum(<facearea>,<region>)" # calculate average velocity directed into the domain
+      <<cylindricalcomment>>NONE_DERIVED <region u_av_calc> "facesum(-<u_f>*<facearea>*<<radius_f>>,<region>)/facesum(<facearea>*<<radius_f>>,<region>)" # calculate average velocity directed into the domain
+
+    # this is the single equation that needs to be satisfied to set the average velocity of centreline pressure
+      NONE_EQUATION <region oneface flowrate equation> "<region u_av_calc>-<region u>" # set flowrate through region to give required average velocity
+    ELSE_IF {{ return string_test("<<boundarymethod>>","onefacepressure"); }}
+      FACE_EQUATION <region oneface flowrate equation> "<p_f>-<region p>" ON <region oneface> # set pressure at oneface to <region p>
+    ELSE
+      ERROR "boundarymethod not known in boundary_equations.arb: <<boundarymethod>>"
+    END_IF
+
+  # and to do this we let another variable float (a function of pressure), but maintain this variable as uniform across the boundary to constrain the system
+    REPLACEMENTS D "<<boundarymethodvariable>>" W "dynamicforce"
+  # REPLACEMENTS D "<<boundarymethodvariable>>" W "celldivgrad"
+  # REPLACEMENTS D "<<boundarymethodvariable>>" W "facegrad"
+  # REPLACEMENTS D "<<boundarymethodvariable>>" W "p"
+
+    IF {{ return string_test("<<boundarymethodvariable>>","celldivgrad"); }}
+      <<dim1comment>> CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
+      <<dim2comment>> CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
+      <<dim3comment>> CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
+      NONE_DERIVED <region oneface gradp> "facesum(dot(<celldivgradp[l=:]>,<facenorm[l=:]>),region=<region oneface>)"
+      FACE_EQUATION <region flowrate equation> "dot(<celldivgradp[l=:]>,<facenorm[l=:]>)-<region oneface gradp>" ON <region sans oneface> # apply specified pressure over inlet
+    ELSE_IF {{ return string_test("<<boundarymethodvariable>>","dynamicforce"); }}
+      NONE_DERIVED <region oneface gradp> "facesum(<dynamic_force_f>,region=<region oneface>)"
+      FACE_EQUATION <region flowrate equation> "<dynamic_force_f>-<region oneface gradp>" ON <region sans oneface>
+    ELSE_IF {{ return string_test("<<boundarymethodvariable>>","facegrad"); }}
+      NONE_DERIVED <region oneface gradp> "facesum(facegrad(<p>),region=<region oneface>)"
+      FACE_EQUATION <region flowrate equation> "facegrad(<p>)-<region oneface gradp>" ON <region sans oneface>
+    ELSE_IF {{ return string_test("<<boundarymethodvariable>>","p"); }}
+      NONE_DERIVED <region oneface p> "facesum(<p_f>,region=<region oneface>)"
+      FACE_EQUATION <region flowrate equation> "<p_f>-<region oneface p>" ON <region sans oneface>
+    ELSE
+      ERROR "boundarymethodvariable not known in boundary_equations.arb: <<boundarymethodvariable>>"
+    END_IF
+
+  END_IF
+
+ELSE
+  ERROR "boundarymethod not known in boundary_equations.arb: <<boundarymethod>>"
+END_IF

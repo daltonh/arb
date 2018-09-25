@@ -1,0 +1,23 @@
+# tabulate molecular weights, with units D (=g/mol), for just the base species
+# the molecular weights of combined species are specified via the reaction template files
+NONE_CONSTANT <MW_Ca> [D] 40.078d0
+NONE_CONSTANT <MW_Mg> [D] 24.305d0
+NONE_CONSTANT <MW_Na> [D] 22.9898d0
+# Factors (activated forms not correct)
+NONE_CONSTANT <MW_FII> [D] 72.d3 # from ink's table
+NONE_CONSTANT <MW_FIIa> [D] "<MW_FII>" # think this is true as activation involves one broken bond, but pieces remain held together by disulfide bond
+NONE_CONSTANT <MW_FV> [D] 330.d3 # from ink's table
+NONE_CONSTANT <MW_FVa> [D] "<MW_FV>" # not sure
+NONE_CONSTANT <MW_FVII> [D] 50.d3 # from ink's table
+NONE_CONSTANT <MW_FVIIa> [D] "<MW_FVII>" # think this is true as activation involves one broken bond, but pieces remain held together by disulfide bond
+NONE_CONSTANT <MW_FIX> [D] 55.d3 # from ink's table
+NONE_CONSTANT <MW_FIXa> [D] "<MW_FIX>" # not sure
+NONE_CONSTANT <MW_FX> [D] 59.d3 # from ink's table
+NONE_CONSTANT <MW_FXa> [D] "<MW_FX>" # not sure
+NONE_CONSTANT <MW_FVIII> [D] 285.d3 # from ink's table
+NONE_CONSTANT <MW_FVIIIa> [D] "<MW_FVIII>" # not sure
+NONE_CONSTANT <MW_TF> [D] 44.d3 # from ink's table
+#NONE_CONSTANT <MW_PS> [D] 385.306d0 # Phosphatidylserine from https://pubchem.ncbi.nlm.nih.gov/compound/6323481#section=Top 
+NONE_CONSTANT <MW_PC> [D] 758.075d0 # Phosphatidylcholine from https://pubchem.ncbi.nlm.nih.gov/compound/5287971#section=Top
+NONE_CONSTANT <MW_PS> "<MW_PC>"
+NONE_CONSTANT <MW_PE> "<MW_PC>"

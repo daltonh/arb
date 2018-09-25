@@ -30,3 +30,16 @@ END_IF
 <<dim2comment>><<dim1comment>>FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <allfaces>
 <<dim3comment>><<dim1comment>>FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <allfaces>
 <<dim3comment>><<dim2comment>>FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <allfaces>
+
+IF <<azimuthal>>
+  IF 0
+    VARIABLE <tau[l=<<radialdim>>,<<azimuthaldim>>]> "<tau[l=<<radialdim>>,<<azimuthaldim>>]>+<<mu_f>>*<u_f_vect[l=<<azimuthaldim>>]>/<facex[l=<<radialdim>>]>"
+    VARIABLE <tau[l=<<azimuthaldim>>,<<radialdim>>]> "<tau[l=<<radialdim>>,<<azimuthaldim>>]>"
+  ELSE
+    VARIABLE <tau[l=<<radialdim>>,<<azimuthaldim>>]> "-<<mu_f>>*<facex[l=<<radialdim>>]>*facegrad[l=<<radialdim>>,<<reflect=1>>](<u[l=<<azimuthaldim>>]>/<cellx[l=<<radialdim>>]>)" OUTPUT
+    VARIABLE <tau[l=<<azimuthaldim>>,<<radialdim>>]> "<tau[l=<<radialdim>>,<<azimuthaldim>>]>"  OUTPUT
+  END_IF
+  VARIABLE <tau[l=<<azimuthaldim>>,<<azimuthaldim>>]> "-<<mu_f>>*2.d0*<u_f_vect[l=<<radialdim>>]>/<facex[l=<<radialdim>>]>"
+END_IF
+
+{{ print "DEBUGGING: string =\n".string_debug();}}

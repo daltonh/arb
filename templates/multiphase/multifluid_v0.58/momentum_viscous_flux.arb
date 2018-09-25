@@ -1,0 +1,13 @@
+MARKDOWN
+Flux of momentum over and in the direction of each face, for each species, due to viscous stresses
+END_MARKDOWN
+
+{{
+  my $return_string='';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    for my $l (string_eval('<<dimensions>>','list')) {
+      $return_string .= "FACE_LOCAL <J_viscous_f_$species"."[l=$l]> 'dot(<facenorm[l=:]>,<tau_$species"."[l=:,$l]>)' ON <allfaces>\n";
+    }
+  }
+  return $return_string;
+}}

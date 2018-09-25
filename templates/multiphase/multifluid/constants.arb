@@ -1,0 +1,46 @@
+MARKDOWN
+Here we run through all species setting constants
+END_MARKDOWN
+
+# get boltzmann's constant
+INCLUDE_TEMPLATE "general"
+INCLUDE "physical_constants"
+# set some constants related to the solids
+CONSTANT <T> [K] 298.15 # temperature
+
+# first the constants that are in common with the navier_stokes equations
+{{
+  my $return_string = '';
+  foreach my $species (string_eval("<<multifluid_species_list>>","list")) {
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/constants' R '<mu>' W '<mu_$species>' R '<rho>' W '<rho_$species>' R '<Re>' W '<Re_$species>' R '<u_av>' W '<u_av_$species>'\n";
+  }
+  return $return_string;
+}}
+
+# now particle radius and volume, for each disperse phase
+{{
+  my $return_string = '';
+  foreach my $species (string_eval("<<multifluid_disperse_species_list>>","list")) {
+    $return_string .= "CONSTANT <a_$species> [m] 1.d-6\n";
+    $return_string .= "CONSTANT <V_$species> [m^3] '4.d0*<pi>*<a_$species>^3/3.d0'\n";
+    $return_string .= "CONSTANT <phi_in_$species> '0.1d0'\n";
+  }
+  return $return_string;
+}}
+CONSTANT <p_in> 10.d0
+
+# Also construct some overall variables
+# <u_av> which is the maximum of all phase <u_av>'s, and used to set <dt_initial>
+{{
+  my $return_string = '<u_av_species0>';
+  foreach my $species (string_eval("<<multifluid_disperse_species_list>>","list")) {
+    $return_string = "nonemax($return_string,<u_av_$species>)";
+  }
+  return "CONSTANT <u_av> '$return_string'\n";
+}}
+
+# conventional vertical gravity, defined whether buoyancy is on or off
+# whether this is included as a force is determined by whether buoyancy_dynamic_force is included
+<<dim1comment>>CONSTANT <gravity[l=1]> [m/s^2] 0.d0
+<<dim2comment>>CONSTANT <gravity[l=2]> [m/s^2] -9.81d0
+<<dim3comment>>CONSTANT <gravity[l=3]> [m/s^2] 0.d0

@@ -1,0 +1,32 @@
+MARKDOWN
+Here we add the prefix of <<prefix>> (defaults to /species/_) to every variable name in the list <<replacement_variables>>, using global replacements strings.
+Note that <<replacement_variables>> should be a list of variables, which is space separated, and can be delimited by " or ' if the variables contain spaces, as in:
+```arb
+INCLUDE "add_prefix" R "<<replacement_variables>>" W "<u_f> '<my spacey variable>' <u[l=:]>" R "<<prefix>>" W "myphase_"
+```
+Note also format for variables that contain [*]>, noting that anything past the first [ is ignored in the resulting string replacement.
+Also accepts an <<action>>=cancel option which cancels these replacements, with <<action>>=replace being the default action.
+END_MARKDOWN
+
+{{ print "ADD PREFIX: string_debug on entry:\n".string_debug; }}
+
+{{ string_set("<<action>>","replace","default,noreplace");
+   string_set("<<prefix>>","/species/_","default,noreplace"); }}
+
+{{ print "ADD PREFIX: string_debug after setting defaults:\n".string_debug; }}
+
+REPLACEMENTS D "<<replacement_variables>>" W "" # default the list of replacement variables to an empty string if it isn't set
+
+{{
+# loop through the variables (a space separated variable list) either adding prefix replacement string, or removing this string
+  foreach my $i ( string_eval("<<replacement_variables>>","variablelist") ) {
+    if (string_test("<<action>>","replace")) {
+      string_set($i,string_eval("<<prefix>>"),"prefix,global"); # the prefix option
+    } else {
+      string_delete($i,"prefix,global");
+    }
+  }
+}}
+
+
+{{ print "ADD PREFIX: string_debug after setting replacements:\n".string_debug; }}

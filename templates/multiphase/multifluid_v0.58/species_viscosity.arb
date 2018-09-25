@@ -1,0 +1,11 @@
+MARKDOWN
+Here we setup the viscosity for each species, using the single_species_viscosity template file
+END_MARKDOWN
+
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "INCLUDE 'single_species_viscosity' R '<<species>>' W '$species'\n";
+  }
+  return $return_string;
+}}

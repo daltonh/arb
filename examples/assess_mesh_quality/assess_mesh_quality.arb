@@ -21,7 +21,7 @@ The kernel parameters template looks at the quality of the kernels generated on 
 2. <centralkernel output> (definition: central_kernel = abs(temporary_kernel(jj)%v(1)))  Central_kernel is the contribution from the central cell.  This should be zero ideally.
 3. <kernelsum output> (definition: kernel_sum = sum(abs(temporary_kernel(jj)%v)))  Should be zero?
 END_MARKDOWN
-INCLUDE_TEMPLATE "general/kernel_parameters"
+INCLUDE_TEMPLATE "general/kernel_information"
 
 # now try doing corrections to face centred kernels
 MARKDOWN

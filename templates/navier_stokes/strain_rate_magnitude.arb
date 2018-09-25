@@ -5,6 +5,6 @@
 INCLUDE "total_stress" R "<mu_f>" W "(-1.d0)" R "<udiv_f>/3.d0" W "(0.d0)" R "<tau" W "<gamma"
 
 # now calculate the double dot product on the faces, then average to the cells before square rooting
-<<cartesiancomment>>CELL_DERIVED <gamma_magnitude> "sqrt(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)))" ON <allcells>
+<<cartesiancomment>>CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)),<tinyish>))" ON <allcells>
 # the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
-<<cylindricalcomment>>CELL_DERIVED <gamma_magnitude> "sqrt(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))+2.d0*(<u[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2)" ON <allcells>
+<<cylindricalcomment>>CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))+2.d0*(<u[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2,<tinyish>))" ON <allcells>

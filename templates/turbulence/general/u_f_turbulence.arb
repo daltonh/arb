@@ -5,9 +5,9 @@
 # setting this too low will decrease the viscosity, decrease <u_rf_{vis}> (increase <u_f_{correction}>) and eventually cause the advective term to limit the correction - not bad necessarily, but making convergence slower
 CONSTANT <turb_mu_u_correction_rel> 1.d0
 # based on an average strain rate
-#FACE_CONSTANT <turb_mu_u_correction_f> "<turb_mu_u_correction_rel>*<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_average>/<turb_C_D>)+<mu>" ON <domainfaces> # turbulent viscosity, face centred
+#FACE_CONSTANT <turb_mu_u_correction_f> "<turb_mu_u_correction_rel>*<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_average>/<turb_C_D>)+<mu>" ON <allfaces> # turbulent viscosity, face centred
 # based on the background local strain rate which is calculated using a prandtl viscous length assumption
-FACE_CONSTANT <turb_mu_u_correction_f> "<turb_mu_u_correction_rel>*<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_background>/<turb_C_D>)+<mu>" ON <domainfaces> # turbulent viscosity, face centred
+FACE_CONSTANT <turb_mu_u_correction_f> "<turb_mu_u_correction_rel>*<rho>*<turb_l_prandtl2_f>*sqrt(<turb_2SS_background>/<turb_C_D>)+<mu>" ON <allfaces> # turbulent viscosity, face centred
 
 # finally overwrite the correction expression
-FACE_LOCAL <u_rf_{vis}> "<turb_mu_u_correction_f>/<facedx>^2" ON <domainfaces>
+FACE_LOCAL <u_rf_{vis}> "<turb_mu_u_correction_f>/<facedx>^2"

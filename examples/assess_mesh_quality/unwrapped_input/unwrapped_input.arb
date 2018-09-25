@@ -23,6 +23,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
    #(hash inserted during unwrap)END_MARKDOWN
       #(comment created during unwrap): new block = ../../templates/general/mesh_quality.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/mesh_quality"
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)Compiles various parameters that describe the quality of the mesh
+      #(hash inserted during unwrap)END_MARKDOWN
+      
       # some metrics on mesh quality
          #(comment created during unwrap): new block = ../../templates/general/cell_aspect_ratio.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "cell_aspect_ratio" # keep < 100 say for structured meshes, or as close to 1 as possible
@@ -35,6 +39,21 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          #NONE_OUTPUT <maximum cell adjacent volume ratio> "cellmax(<cell adjacent volume ratio>,region=<domain>)"
          FACE_OUTPUT <cell adjacent volume ratio> "cellmax(<cellvol>,region=<adjacentfaceicells>)/cellmin(<cellvol>,default=<hugeish>,region=<adjacentfaceicells>)" ON <domainfaces>
          NONE_OUTPUT <maximum cell adjacent volume ratio> "facemax(<cell adjacent volume ratio>,region=<domainfaces>)"
+         #(comment created during unwrap): new block = ../../templates/general/kernel_information.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "kernel_information"
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)These parameters characterise the quality of the kernel elements
+         #(hash inserted during unwrap)END_MARKDOWN
+         
+         CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <allcells>
+         CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <allcells>
+         CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <allcells>
+         CELL_OUTPUT <cell deriv kernel elements output> "cellsum(1.d0,region=<cellkernelregion[l=1]>)" ON <allcells>
+         FACE_OUTPUT <face deriv kernel elements output> "cellsum(1.d0,region=<facekernelregion[l=1]>)" ON <allfaces>
+         NODE_OUTPUT <node deriv kernel elements output> "cellsum(1.d0,region=<nodekernelregion[l=1]>)" ON <allnodes>
+         CELL_OUTPUT <celldxkernel output> "<celldxkernel>" ON <allcells>
+         FACE_OUTPUT <facedxkernel output> "<facedxkernel>" ON <allfaces>
+         NODE_OUTPUT <nodedxkernel output> "<nodedxkernel>" ON <allnodes>
    
    #(hash inserted during unwrap)MARKDOWN
    #(hash inserted during unwrap)TODO: look at notes and improve these explanations
@@ -43,8 +62,12 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
    #(hash inserted during unwrap)2. <centralkernel output> (definition: central_kernel = abs(temporary_kernel(jj)%v(1)))  Central_kernel is the contribution from the central cell.  This should be zero ideally.
    #(hash inserted during unwrap)3. <kernelsum output> (definition: kernel_sum = sum(abs(temporary_kernel(jj)%v)))  Should be zero?
    #(hash inserted during unwrap)END_MARKDOWN
-      #(comment created during unwrap): new block = ../../templates/general/kernel_parameters.arb: sub_block = 0
-      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/kernel_parameters"
+      #(comment created during unwrap): new block = ../../templates/general/kernel_information.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/kernel_information"
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)These parameters characterise the quality of the kernel elements
+      #(hash inserted during unwrap)END_MARKDOWN
+      
       CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <allcells>
       CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <allcells>
       CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <allcells>

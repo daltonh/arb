@@ -1,12 +1,1 @@
-# boundary conditions on inlet - fully developed flow
-INCLUDE "u_fully_developed" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation>" WITH "<inlet fully developed>"
-INCLUDE "noslip" REPLACE "<region>" WITH "<inlet>" REPLACE "<equation" WITH "<inlet no slip"
-
-# alternatively, set uniform inlet pressure giving required average velocity
-<<cartesiancomment>>NONE_DERIVED <u_av_calc> "facesum(-<u_f>*<facearea>,<inlet>)/facesum(<facearea>,<inlet>)" # calculate average velocity directed into the domain
-<<cylindricalcomment>>NONE_DERIVED <u_av_calc> "facesum(-<u_f>*<facearea>*<<radius_f>>,<inlet>)/facesum(<facearea>*<<radius_f>>,<inlet>)" # calculate average velocity directed into the domain
-
-# now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <inlet sans centreline> and <inlet centreline>
-NONE_EQUATION <inlet centreline flowrate equation> "<u_av_calc>-<u_av>" # set flowrate through inlet to give required average velocity
-NONE_DERIVED <inlet centreline gradp> "facesum(facegrad(<p>),region=<inlet centreline>)"
-FACE_EQUATION <inlet flowrate equation> "facegrad(<p>)-<inlet centreline gradp>" ON <inlet sans centreline> # apply specified pressure over inlet
+INCLUDE "inlet_equations.arb" R "<<boundarymethod>>" W "flowrate" R "<<boundarymethodvariable>>" W "facegrad" R "<<boundarytangentmethod>>" W "noslip" R "<<boundarynormalmethod>>" W "zerogradu"

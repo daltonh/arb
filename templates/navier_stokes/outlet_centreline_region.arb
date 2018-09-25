@@ -1,2 +1,1 @@
-# this are the region definitions required to define the single outlet face cell and corresponding inverse outlet region
-INCLUDE "inlet_centreline_region" R "<inlet" W "<outlet"
+INCLUDE "centreline_region" R "<region" W "<outlet"
