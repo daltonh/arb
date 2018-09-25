@@ -16,7 +16,7 @@ CONSTANT <c_D_/species/> [m^2/s] 1.d0 # diffusivity of species
 CONSTANT <c_inlet_conc_/species/> [mol/m^3] 1.d0 # inlet concentration of species
 
 CELL_UNKNOWN <c_/species/> [mol/m^3] "0.d0" ON <allcells> magnitude=1.d0 # remember to put in characteristic magnitude later in the file if it isn't 1
-CELL_LOCAL <c_pos_/species/> [mol/m^3] "cellmax(<c_/species/>,0.d0)" # may be needed for reactions
+CELL_LOCAL <c_pos_/species/> [mol/m^3] "cellmax(<c_/species/>,default=0.d0)" # may be needed for reactions
 <<transientcomment>>CELL_TRANSIENT <c_/species/[r=1]> [mol/m^3] "<c_/species/>" "<c_/species/>" ON <allcells> # the previous timestep concentration field
 
 IF <<specieslimitedadvection>>

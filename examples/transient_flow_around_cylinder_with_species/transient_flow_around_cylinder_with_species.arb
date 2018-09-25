@@ -4,14 +4,15 @@
 # arb is released under the GNU GPL.  For full details see the license directory.
 #
 #-------------------------------------------------------------------
-VERSION 0.50 # the version of syntax used in this file
+VERSION 0.59 # the version of syntax used in this file
 
 # the following strings describe the simulation and are passed to the output files
 INFO_TITLE "Transient flow around a cylinder with species transient"
 INFO_DESCRIPTION "Demonstrates transient flow setup as well as transient species transport"
 INFO_DESCRIPTION+ ": large timestep used in this simulation will result in low accuracy, but demonstrate high CFL number ability"
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "29/1/15" # interpreted as the last modification date
+INFO_DATE "29/1/15" # interpreted as the start date
+INFO_DATE+ ", 24/9/18"  # interpreted as the last modification date
 
 #-------------------------------------------------------------------
 # system constants
@@ -34,14 +35,14 @@ INFO_DATE "29/1/15" # interpreted as the last modification date
 # where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
 # where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
 
-FACE_REGION <slip walls> "COMPOUND <boundaries>-<inlet>-<outlet>-<cylinder>"
-FACE_REGION <walls> "COMPOUND <cylinder>"
-NODE_REGION <cylinder nodes> "ASSOCIATED WITH <cylinder>"
-FACE_REGION <inlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <inlet>"
-FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
-FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
-FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
-CELL_REGION <wake monitor> "AT 2.0d0 0.d0 0.d0 PART OF <domain>"
+FACE_REGION <slip walls> "compound(<boundaries>-<inlet>-<outlet>-<cylinder>)"
+FACE_REGION <walls> "compound(<cylinder>)"
+NODE_REGION <cylinder nodes> "associatedwith(<cylinder>)"
+FACE_REGION <inlet centreline> "at(0.d0,0.d0,0.d0)" ON <inlet>
+#FACE_REGION <inlet sans centreline> "COMPOUND <inlet>-<inlet centreline>"
+#FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
+#FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
+CELL_REGION <wake monitor> "at(2.0d0,0.d0,0.d0)" ON <domain>
 
 # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
 # output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
@@ -92,8 +93,16 @@ NONE_CONSTANT <cylinder size> "nodemax(<nodex[l=2]>,region=<cylinder nodes>)-nod
 # use templates from the navier_stokes directory to build up problem
 INCLUDE_TEMPLATE "navier_stokes" # this is the base directory that will be appended to the following files
 INCLUDE "constants" # specify physical and numerical constants
-#INCLUDE "transient_dynamic_setup" # a dynamic timestep to keep the CFL number at a specified level
-INCLUDE "transient_constant_setup" # a constant timestep
+IF 0 # dynamic timestepping
+  IF 0 # implicit timestepping
+    INCLUDE "transient_implicit_setup" # a dynamic timestep to keep the CFL number at a specified level - implicit timestepping
+  ELSE
+    INCLUDE "transient_dynamic_setup" # a dynamic timestep to keep the CFL number at a specified level - explicit timestepping
+  END_IF
+ELSE
+  INCLUDE "transient_constant_setup" # a constant timestep
+END_IF
+#INCLUDE "domain" R "<<ufadvectioncomplex>>" W "1" # equations to be solved within the domain
 INCLUDE "domain" # equations to be solved within the domain
 INCLUDE "outlet_p_set" # outlet BC
 INCLUDE "walls" # nonslip walls BC, used on cylinder
@@ -136,42 +145,46 @@ NONE_OUTPUT <u mag monitor> "cellsum(<u mag>,region=<wake monitor>)"
 INCLUDE "u_f_vector" # output u_f as a vector for visualisation
 INCLUDE "CFL_number" # this calculates the CFL number actually used
 
-#END # include to only do fluids problem
 #-------------------------------------------------------------------
+IF 1
 # also track a concentration field, which eminates from the cylinder surface (Dirichlet boundary condition)
-INCLUDE_TEMPLATE "species_transport"
+  INCLUDE_TEMPLATE "species_transport"
 
 # the following implements non-limited advection of <c>
-# without any change to <c limiter> this results in first order upwinding of <c>, which is stable, produces bounded results, but is not accurate
-#INCLUDE "equations" R "<<speciesloworderadvectioncomment>>" W "" R "<<specieshighorderadvectioncomment>>" W "#"
-#VARIABLE <c limiter> "1.d0" # this will use high order non-limited upwinding, which will cause under and over shoots
+  IF 0
+# without any change to <c limiter_species0> this results in first order upwinding of <c>, which is stable, produces bounded results, but is not accurate
+    INCLUDE "equations" R "<<speciesloworderadvectioncomment>>" W "" R "<<specieshighorderadvectioncomment>>" W "#"
+    VARIABLE <c limiter_species0> "1.d0" # this will use high order non-limited upwinding, which will cause under and over shoots
+  ELSE
 # the following implements high order limited advection of <c>, with limits on the gradient found by looking upwind 2 levels of separation from each cell
-INCLUDE "equations" R "<<limiterupwindseparation>>" W "2" # 2 is the default, anymore is probably overboard, but it does demonstrates how to change this separation
+    INCLUDE "equations" R "<<limiterupwindseparation>>" W "2" # 2 is the default, anymore is probably overboard, but it does demonstrates how to change this separation
 # further, modify the parameters used in the advection limiting routine to be less conservative (less stable, but more accurate by doing less gradient limiting)
-INCLUDE_TEMPLATE "advection_limiters/implicit"
-INCLUDE "extreme_parameters" R "<phi" W "<c" # set higher accuracy but lower stability advection parameters
-VARIABLE <c limiter> output
+    INCLUDE_TEMPLATE "advection_limiters/implicit"
+    INCLUDE "extreme_parameters" R "<phi" W "<c" # set higher accuracy but lower stability advection parameters
+    VARIABLE <c limiter_species0> output
+  END_IF
 
 # overwrite some species boundary conditions etc
-FACE_EQUATION <c walls> "<c>-1.d0" ON <walls> # <walls> is the cylinder surface, which has the set concentration
-FACE_EQUATION <c slip walls> "<c_j_f>" ON <slip walls> # whereas on the <slip walls> we use a zero flux condition
-VARIABLE <c_inlet_conc> 0.d0 # nothing coming in
-VARIABLE <c_D> 1.d-2 # small, nonzero diffusivities are the hardest to compute accurately using these boundary conditions, as mesh resolution in the concentration boundary layer becomes critical
+  FACE_EQUATION <c walls_species0> "<c_species0>-1.d0" ON <walls> # <walls> is the cylinder surface, which has the set concentration
+  FACE_EQUATION <c slip walls_species0> "<c_j_f_species0>" ON <slip walls> # whereas on the <slip walls> we use a zero flux condition
+  CONSTANT <c_inlet_conc_species0> 0.d0 # nothing coming in
+  CONSTANT <c_D_species0> 1.d-2 # small, nonzero diffusivities are the hardest to compute accurately using these boundary conditions, as mesh resolution in the concentration boundary layer becomes critical
 
 # various outlet conditions:
-#FACE_EQUATION <c outlet> "faceif(<u_f>,facegrad[adjacentcells](<c>),<c>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
-FACE_EQUATION <c outlet> "facegrad[adjacentcells](<c>)" ON <outlet> # the most stable type of outlet boundary condition
-#FACE_EQUATION <c outlet> "faceif(<u_f>,facegrad(<c>),<c>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+  #FACE_EQUATION <c outlet equation_species0> "faceif(<u_f>,facegrad[adjacentcells](<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+  FACE_EQUATION <c outlet equation_species0> "facegrad[adjacentcells](<c_species0>)" ON <outlet> # the most stable type of outlet boundary condition
+  #FACE_EQUATION <c outlet equation_species0> "faceif(<u_f>,facegrad(<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
 
 # the following can be used as a destruction term
-#NONE_CONSTANT <c_source_factor> 0.1d0
-#VARIABLE <c_source> "-<c_source_factor>*<c_pos>" # including concentration destruction term now
+  #NONE_CONSTANT <c_source_factor_species0> 0.1d0
+  #VARIABLE <c_source_species0> "-<c_source_factor_species0>*<c_pos_species0>" # including concentration destruction term now
 
-NONE_OUTPUT <c monitor> "cellsum(<c>,region=<wake monitor>)"
+  NONE_OUTPUT <c monitor_species0> "cellsum(<c_species0>,region=<wake monitor>)"
 
+END_IF
 #-------------------------------------------------------------------
 # just for the example problem do a few steps only
-TIMESTEPOUT 2
-#TIMESTEPADDITIONAL 1 # NB, timestepadditional only guarantees than simulation will run an additional number of timesteps, not that it will stop after this number of timesteps
-TIMESTEPMAX 4
+GENERAL_OPTIONS timestepout=2
+#GENERAL_OPTIONS timestepadditional=1 # NB, timestepadditional only guarantees than simulation will run an additional number of timesteps, not that it will stop after this number of timesteps
+GENERAL_OPTIONS timestepmax=4
 #-------------------------------------------------------------------
