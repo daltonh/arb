@@ -21,8 +21,10 @@ INCLUDE "p_error"
 
 # calculate the momentum fluxes as transients
 # TODO: this file will be able to also handle the navier-stokes equations once an explicit <u_f> is saved
-<<navierstokescomment>>ERROR "the template file domain_explicit cannot handle the navier-stokes equations yet"
-<<navierstokescomment>>INCLUDE "advection_flux"
+IF {{ return (!(string_eval('<<stokes>>'))) }}
+  ERROR "the template file domain_explicit cannot handle the navier-stokes equations yet"
+  INCLUDE "advection_flux"
+END_IF
 INCLUDE "momentum_flux" R "<J_f[l" W "<J_f[r=1,l" R "DERIVED" W "TRANSIENT" R "<tau[" W "<tau[r=1,"
 
 # this is an explicit update of the velocity

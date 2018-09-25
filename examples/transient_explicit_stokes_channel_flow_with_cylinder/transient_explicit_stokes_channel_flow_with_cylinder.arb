@@ -4,13 +4,14 @@
 # arb is released under the GNU GPL.  For full details see the license directory.
 #
 #-------------------------------------------------------------------
-VERSION 0.55 # the version of syntax used in this file
+VERSION 0.59 # the version of syntax used in this file
 
 # the following strings describe the simulation and are passed to the output files
 INFO_TITLE "Transient Stokes flow around an offset cylinder within a channel"
 INFO_DESCRIPTION "Here the transient Stokes equations are solved in 2D, using an unstructured mesh.  A uniform pressure is set along the upstream boundary (which is still very close to the cylinder BTW), which is a bit different to the set flowrate condition used in tutorial_3.  The viscous stress terms are treated explicitly, which means less memory is used, but the timestep is limited.  The convergence tolerance is set lower so that matrix inversion is often avoided, but this comes at a cost of transient accuracy."
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "15/1/16" # interpreted as the last modification date
+INFO_DATE "15/1/16"
+INFO_DATE+ ":25/9/18" # interpreted as the last modification date
 
 #-------------------------------------------------------------------
 # system constants
@@ -112,15 +113,14 @@ CONSTANT <u_av> [m/s] 0.2d0 # average inlet velocity
 CONSTANT <c_mu_explicit> 0.25d0 # multiplier for explicit viscous term stability timestep constraint
 
 # also push this tolerance to a higher level to speed things up, if only trying to get a steady-state solution
-NEWTRESTOL 1.d-5
+GENERAL_OPTIONS newtrestol=1.d-5
 INFO "simulations will not be time accurate with a large NEWTRESTOL being set"
 
 # decrease time between outputs
 CONSTANT <CFL_out> 0.1d0 # one way of entering the time between output is based on how many times a cell should be flushed between output, based on the average inlet velocity
 
 # for this example file limit the total number of iterations
-TIMESTEPMAX 10
-TIMESTEPOUT 5
+GENERAL_OPTIONS timestepmax=10,timestepout=5
 
 # calculate drag and lift on object
 NONE_OUTPUT <F_drag> [N] "facesum(<facearea>*dot(<facenorm[l=:]>,<tau[r=1,l=:,1]>),<cylinder>)" # force on object in axial direction
