@@ -2171,7 +2171,7 @@ double precision, intent(out), optional :: error_angle ! this is the maximum dif
 logical, intent(out), optional :: error ! if an error occurred when calculating this geometry
 double precision, dimension(totaldimensions) :: norms, normtriangle, centretriangle, normtrianglelast
 integer :: kk
-double precision :: aa, areatriangle, error_angle_l, aa_sum
+double precision :: aa, areatriangle, error_angle_l, aa_sum, edge_length, edge_length_c
 logical :: error_l, error_normalise
 double precision, parameter :: smallaa = 1.d-30
 logical, parameter :: debug = .false.
@@ -2260,6 +2260,19 @@ if (present(area)) area = aa ! must be aa for divergence of constant to be corre
 if (present(norm)) then
   norm(:,1) = norms/aa ! and finally normalise normal
   norm(:,2) = node(knode(2))%x-node(knode(1))%x ! first tangent, lying in plane of geometry from node 1->2, probably not a good representation for curved faces
+! this is a change in v0.60 to get norm(2) in 2D geometries aligned with the shortest node-to-node vector, rather than the one with the lowest index
+! if all node-to-node vectors are the same then this will default to the old scheme of the first node-to-node vector
+  if (.true.) then
+! loop through nodes finding shortest node-to-node vector, and choose this as the norm(:,2) = tang1 instead
+    edge_length=vector_magnitude(node(knode(2))%x-node(knode(1))%x)
+    do kk = 3, ubound(knode,1)
+      edge_length_c=vector_magnitude(node(knode(kk))%x-node(knode(kk-1))%x)
+      if (edge_length_c<edge_length) then
+        edge_length=edge_length_c
+        norm(:,2) = node(knode(kk))%x-node(knode(kk-1))%x
+      endif
+    enddo
+  endif
   call normalise_vector(vector=norm(:,2),error=error_normalise)
   if (error_normalise) then
     write(31,*) 'ERROR: problem when trying to normalise norm(:,2) in find_2d_geometry'
