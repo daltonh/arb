@@ -388,11 +388,14 @@ ifeq "$(strip $(pardiso))" "present"
   else
 # on linux both intel and gfortran
     ifeq "$(compiler)" "intel"
-      ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-INTEL1301-X86-64.so) )" ""
+#     ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-INTEL1301-X86-64.so) )" ""
+# there doesn't seem to be an intel specific library anymore, so try with the gnu version
+      ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-GNU720-X86-64.so) )" ""
         pardiso = not present
       else
 #       libs += -L$(pardisodir) -lpardiso600-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 -lgfortran -fopenmp
-        libs := -L$(pardisodir) -lpardiso600-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
+#       libs := -L$(pardisodir) -lpardiso600-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
+        libs := -L$(pardisodir) -lpardiso600-GNU720-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
       endif
     else
 # now only the one new version, 7.20
