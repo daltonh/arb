@@ -573,7 +573,14 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
          CELL_CONSTANT <local smoothed celldx> "cellsum[maxseparation=3](<celldxkernel>,region=<domain>)/cellsum[maxseparation=3](1.d0,region=<domain>)" ON <allcells> output
          FACE_CONSTANT <vof_s_D> "(<local smoothed celldx>*<vof_s_interface_width>)**2" ON <allfaces> output
          FACE_DERIVED <vof_s_j> "-<vof_s_D>*facegrad(<vof_s>)" ON <allfaces>
-         CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
+         CELL_EQUATION <vof_s domain> "-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
+            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)VARIABLE <vof_s domain> "<vof_s domain>+celldiv(1.d0*<vof_s_j>)/1.d0"
+            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/implicit_reconstructed_levelset.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE
+            VARIABLE <vof_s domain> "<vof_s domain>+celldiv(<vof_s_j>)"
+            #(hash inserted during unwrap)END_IF
          FACE_EQUATION <vof_s boundary> "2.d0*<vof_phi_interface>-1.d0-<vof_s>" ON <boundaries>
          
          #(hash inserted during unwrap)MARKDOWN
