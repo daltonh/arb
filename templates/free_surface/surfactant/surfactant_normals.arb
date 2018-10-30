@@ -1,0 +1,29 @@
+MARKDOWN
+Create normals that will be used to define the location of the surfactant on the interface, and the normal directions used to advection the surfactant
+END_MARKDOWN
+
+FACE_DERIVED <c_s_phi_f> "faceave(<c_s_phi>)" ON <allfaces>
+IF 1 # calculate the gradients at nodes and then average to cell centres
+  {{ return vector_expand(
+    'NODE_DERIVED <c_s_phigrad_n[l=$l]> "nodefromcellgrad[l=$l](<c_s_phi>)" ON <allnodes> output',
+    'CELL_LOCAL <c_s_phigrad[l=$l]> "cellfromnodeave(<c_s_phigrad_n[l=$l]>)" ON <allcells> output'
+  ); }}
+ELSE # calculate gradients directly at cell centres
+  {{ return vector_expand(
+    'CELL_LOCAL <c_s_phigrad[l=$l]> "celldivgrad[l=$l](<c_s_phi_f>)" ON <allcells>'
+  ); }}
+END_IF
+IF 1 # average from above cell centred values
+  {{ return vector_expand(
+    'FACE_LOCAL <c_s_phigrad_f[l=$l]> "faceave(<c_s_phigrad[l=$l]>)" ON <allfaces>'
+  ); }}
+ELSE # create at faces
+  {{ return vector_expand(
+    'FACE_LOCAL <c_s_phigrad_f[l=$l]> "facegrad[l=$l](<c_s_phi>)" ON <allfaces>'
+  ); }}
+END_IF
+FACE_DERIVED <c_s_phigrad_mag_f> "sqrt(facemax(dot(<c_s_phigrad_f[l=:]>,<c_s_phigrad_f[l=:]>),1.d-10))" ON <allfaces>
+{{ return vector_expand(
+  'FACE_LOCAL <c_s_phigrad_unit_f[l=$l]> "<c_s_phigrad_f[l=$l]>/<c_s_phigrad_mag_f>" ON <allfaces> output'
+); }}
+

@@ -1,0 +1,98 @@
+MARKDOWN
+Here we calculate the surface tension force due to an interface in the presence of a surfactant concentration.
+
+There are various forms of interfacial energy relationships available, chosen by '<<interface_type>>' (defaults to surfactant).
+
+Uses CSS method.
+
+Need to think about masks etc still
+END_MARKDOWN
+
+REPLACEMENTS D '<<interface_type>>' W 'surfactant'
+#REPLACEMENTS D '<<interface_type>>' W 'lipid_monolayer'
+#REPLACEMENTS D '<<interface_type>>' W 'lipid_bilayer'
+#REPLACEMENTS D '<<interface_type>>' W 'none'
+
+
+# surfactant_force.arb
+#-------------------------------------------------------------------
+# marangoni forces based on surfactant transport - which must be called for
+# uses the CSS method
+
+# create surface tension force prior to delta application
+# <c_s> needs to reflect the local surfactant concentration
+# if surfactant transport isn't simulated then <c_s> needs to be defined here
+
+IF {{ return string_test('<<interface_type>>','lipid_bilayer') }}
+# membrane composed of a lipid bilayer, tails of lipids rigidly attached to resist bending
+  CONSTANT <c_s_Lambda_max> 1.d0
+  CONSTANT <c_s_sigma_dash> 1.d2 # dsigma/dLambda at Lambda_max (1.d0 works, 1.d1 is harder to converge but also works, conserves area more)
+  CONSTANT <c_s_bilayer_T> [1] 1.d-1 # half-width of bilayer thickness, nondimensional FINDME
+  CONSTANT <c_s_bilayer_KT_max>  1.d-1 # maximum of kappa*T, beyond which this is limited at this value
+# need curvature, so call curvature template
+  INCLUDE_TEMPLATE "free_surface/volume_of_fluid/curvature" R "<vof_delta_mask[r=1]>" W "<allcells>" R "<vof_delta_mask_f[r=1]>" W "<allfaces>"
+  CELL_LOCAL <c_s_sigma_KT_lambda_multiplier> "1.d0/(1.d0-cellmin(abs(<vof_kappa_c>*<c_s_bilayer_T>),<c_s_bilayer_KT_max>)**2)" ON <allcells> output
+  CELL_DERIVED <c_s_sigma_c_c> "<c_s_sigma_dash>*(<c_s_Lambda_max>-<c_s_Lambda>*<c_s_sigma_KT_lambda_multiplier>)" ON <allcells> output
+# the tanh form will limit the membrane strength at <S>
+  REPLACEMENTS D "<<tanhsigma>>" W "1"
+  IF <<tanhsigma>>
+    CONSTANT <c_s_sigma_m> "<S>" # breakage strength of lipids
+    VARIABLE <c_s_sigma_c_c> "<c_s_sigma_m>*tanh(<c_s_sigma_c_c>/<c_s_sigma_m>)"
+  END_IF
+  FACE_DERIVED <c_s_sigma_f> "faceave[adjacentcells](<c_s_sigma_c_c>)" ON <allfaces> output
+ELSE_IF {{ return string_test('<<interface_type>>','lipid_monolayer') }}
+# membrane composed of a single lipid monolayer
+  CONSTANT <c_s_Lambda_max> 1.d0 # surface concentration of lipids when in equilibrium
+  CONSTANT <c_s_sigma_dash> 1.d0 # dsigma/dLambda at Lambda_max (the higher the number, the higher the elastic modulus of the membrane and the better the area conservation)
+  CELL_DERIVED <c_s_sigma_c_c> "<c_s_sigma_dash>*(<c_s_Lambda_max>-<c_s_Lambda>)" ON <allcells> output
+# the tanh form will limit the membrane strength at <S>
+  REPLACEMENTS D "<<tanhsigma>>" W "1"
+  IF <<tanhsigma>>
+    CONSTANT <c_s_sigma_m> "<S>" # breakage strength of lipids
+    VARIABLE <c_s_sigma_c_c> "<c_s_sigma_m>*tanh(<c_s_sigma_c_c>/<c_s_sigma_m>)"
+  END_IF
+  FACE_DERIVED <c_s_sigma_f> "faceave[adjacentcells](<c_s_sigma_c_c>)" ON <allfaces> output
+ELSE_IF {{ return string_test('<<interface_type>>','surfactant') }}
+# droplet with surfactant
+  CONSTANT <c_s_Lambda_max> 1.d0
+  CONSTANT <c_s_sigma_m_multiplier> 0.5d0
+  CONSTANT <c_s_sigma_m> "<c_s_sigma_m_multiplier>*<S>" # breakage strength of surfactant
+  CONSTANT <c_s_sigma_dash> 1.d0 # dsigma/dLambda at Lambda_max
+  CELL_DERIVED <c_s_sigma_c_c> "<S>-<c_s_sigma_m>*(1.d0-tanh(<c_s_sigma_dash>*(<c_s_Lambda_max>-<c_s_Lambda>)/<c_s_sigma_m>))" ON <allcells> output
+  FACE_DERIVED <c_s_sigma_f> "faceave[adjacentcells](<c_s_sigma_c_c>)" ON <allfaces> output
+ELSE_IF 0
+# this won't work, refers to <vof_phigrad_delta_mag>
+  CONSTANT <del_sigma> 0.2d0
+  CONSTANT <c_s_sigma_min> 0.1d0
+  FACE_DERIVED <c_s_sigma_f> "facemax(1.d0-<del_sigma>*faceave(cellmax(<c_s>,0.d0)/cellmax(<vof_phigrad_delta_mag>,<eps_delta>)),<c_s_sigma_min>)" ON <allfaces> output
+ELSE
+  CONSTANT <c_s_sigma_f> "<S>" # constant surface tension
+END_IF
+
+# define face centred interfacial stress 
+#REPLACEMENTS D '<<c_s_phigrad_unit_f_mask>>' W '<c_s_delta_mask_f[r=1]>'
+REPLACEMENTS D '<<c_s_phigrad_unit_f_mask>>' W '<allfaces>'
+               <<dim1comment>>FACE_LOCAL <c_s_tau_f[l=1,1]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(1.d0-<c_s_phigrad_unit_f[l=1]>*<c_s_phigrad_unit_f[l=1]>)" ON <<c_s_phigrad_unit_f_mask>> output
+               <<dim2comment>>FACE_LOCAL <c_s_tau_f[l=2,2]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(1.d0-<c_s_phigrad_unit_f[l=2]>*<c_s_phigrad_unit_f[l=2]>)" ON <<c_s_phigrad_unit_f_mask>>
+               <<dim3comment>>FACE_LOCAL <c_s_tau_f[l=3,3]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(1.d0-<c_s_phigrad_unit_f[l=3]>*<c_s_phigrad_unit_f[l=3]>)" ON <<c_s_phigrad_unit_f_mask>>
+<<dim1comment>><<dim2comment>>FACE_LOCAL <c_s_tau_f[l=1,2]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(-<c_s_phigrad_unit_f[l=1]>*<c_s_phigrad_unit_f[l=2]>)"     ON <<c_s_phigrad_unit_f_mask>>
+<<dim1comment>><<dim3comment>>FACE_LOCAL <c_s_tau_f[l=1,3]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(-<c_s_phigrad_unit_f[l=1]>*<c_s_phigrad_unit_f[l=3]>)"     ON <<c_s_phigrad_unit_f_mask>>
+<<dim2comment>><<dim3comment>>FACE_LOCAL <c_s_tau_f[l=2,3]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(-<c_s_phigrad_unit_f[l=2]>*<c_s_phigrad_unit_f[l=3]>)"     ON <<c_s_phigrad_unit_f_mask>>
+<<dim2comment>><<dim1comment>>FACE_LOCAL <c_s_tau_f[l=2,1]> "<c_s_tau_f[l=1,2]>"                                     ON <<c_s_phigrad_unit_f_mask>>
+<<dim3comment>><<dim1comment>>FACE_LOCAL <c_s_tau_f[l=3,1]> "<c_s_tau_f[l=1,3]>"                                     ON <<c_s_phigrad_unit_f_mask>>
+<<dim3comment>><<dim2comment>>FACE_LOCAL <c_s_tau_f[l=3,2]> "<c_s_tau_f[l=2,3]>"                                     ON <<c_s_phigrad_unit_f_mask>>
+
+# these reference <vof_F_c[l=:]> and <vof_F_f> but under normal circumstances these would not have been previously defined
+#{{ return vector_expand(
+#  'CELL_DERIVED <vof_F_c[l=$l]> "<vof_F_c[l=$l]>+celldiv(dot(<facenorm[l=:]>,<c_s_tau_f[l=:,$l]>))" ON <allcells> output'
+#); }}
+#FACE_DERIVED <vof_F_f> "<vof_F_f>+faceave[adjacentcells](dot(<vof_F_c[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <allfaces> output
+
+IF {{ return string_test('<<cylindrical>>','1') }}
+  ERROR "surfactant_css_force template file cannot handle cylindrical coordinates yet"
+END_IF
+
+{{ return vector_expand(
+  'CELL_DERIVED <vof_F_c[l=$l]> "celldiv(dot(<facenorm[l=:]>,<c_s_tau_f[l=:,$l]>))" ON <allcells> output'
+); }}
+FACE_DERIVED <vof_F_f> "faceave[adjacentcells](dot(<vof_F_c[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <allfaces> output

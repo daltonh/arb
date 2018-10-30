@@ -1,0 +1,24 @@
+MARKDOWN
+Calculate an interfacial delta function that will be used to define the interfacial area around which surfactant transport (and concentrations) are based.
+
+This file includes the option of off-setting the delta function relative to the location of the real interface (for eg dealing with bilayers), although this hasn't been tested well.  To move this delta function set <<c_s_d>> on entry as the distance that the interface is moved into the <c_s_phi> phase.  
+END_MARKDOWN
+
+# if a delta is required, probably is as the mask is over the whole domain right now
+REPLACEMENTS D '<<calculate_delta>>' W "1"
+IF <<calculate_delta>>
+  REPLACEMENTS D "<<c_s_d>>" W 0 # by default this movement is not applied
+  IF <<c_s_d>>
+    NONE_CONSTANT <c_s_phi_s_D_sqrt> "sqrt(<vof_s_D>)"
+    NONE_CONSTANT <c_s_phi_tol> "<vof_phi_tol>"
+    CELL_LOCAL <c_s_phi_lim> "cellmax(cellmin(<c_s_phi>,1.d0-<c_s_phi_tol>),<c_s_phi_tol>)" ON <allcells>
+    CELL_LOCAL <c_s_z> "cellif(<c_s_phi>-0.5d0,-<c_s_phi_s_D_sqrt>*log(2.d0*(1.d0-<c_s_phi_lim>)),<c_s_phi_s_D_sqrt>*log(2.d0*<c_s_phi_lim>))" ON <allcells> output
+    CELL_LOCAL <c_s_z*> "<c_s_z>-<<c_s_d>>" ON <allcells> output
+    CELL_DERIVED <c_s_phi*> "cellif(<c_s_z*>,1.d0-0.5d0*exp(-<c_s_z*>/<c_s_phi_s_D_sqrt>),0.5d0*exp(<c_s_z*>/<c_s_phi_s_D_sqrt>))" ON <allcells> output,newtstepmax=20
+    INCLUDE "surfactant_normals" R '<c_s_phi>' W '<c_s_phi*>'
+  ELSE
+    INCLUDE "surfactant_normals"
+  END_IF
+  CELL_DERIVED <c_s_delta> "sqrt(cellmax(dot(<c_s_phigrad[l=:]>,<c_s_phigrad[l=:]>),<tinyish>))" ON <allcells>
+END_IF
+
