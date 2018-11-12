@@ -13,12 +13,15 @@ END_MARKDOWN
 
 # now deal with dynamic_force_f
 IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
+# we are now using the bounded phi from the adjacent domain cell when considering the boundaries, which is the relevant physical phi used in the rhiechow boundary condition treatment
 # VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[dxunit](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
   VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[dxunit](<p_<<species>>>)/(<phi_f_bounded_adjacent_nob_<<species>>>)"
 ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegrad'); }}
-  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad(<p_<<species>>>)/(<phi_f_bounded_<<species>>>)"
+# VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad(<p_<<species>>>)/(<phi_f_bounded_<<species>>>)"
+  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad(<p_<<species>>>)/(<phi_f_bounded_adjacent_nob_<<species>>>)"
 ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegradadjacentcells'); }}
-  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[adjacentcells](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
+# VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[adjacentcells](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
+  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[adjacentcells](<p_<<species>>>)/(<phi_f_bounded_adjacent_nob_<<species>>>)"
 ELSE
   ERROR 'No valid dynamicforcefmethod is chosen in the multifluid/single_species_dynamic_force template file: string currently set as <<dynamicforcefmethod>>'
 END_IF
