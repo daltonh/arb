@@ -13,7 +13,8 @@ END_MARKDOWN
 
 # now deal with dynamic_force_f
 IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
-  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[dxunit](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
+# VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[dxunit](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
+  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[dxunit](<p_<<species>>>)/(<phi_f_bounded_adjacent_nob_<<species>>>)"
 ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegrad'); }}
   VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad(<p_<<species>>>)/(<phi_f_bounded_<<species>>>)"
 ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegradadjacentcells'); }}

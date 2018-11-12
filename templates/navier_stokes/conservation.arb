@@ -52,8 +52,8 @@ ELSE
     IF {{ return (!( string_eval('<<azimuthaldim>>') ge 1 && string_eval('<<azimuthaldim>>') le 3)) }}
       ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string <<azimuthaldim>> has not been correctly defined'
     END_IF
-      VARIABLE <momentum[l=<<azimuthaldim>>]> "celldiv(<<radius_top_azi>><J_f[l=<<azimuthaldim>>]>)<<radius_bottom_azi>>+<rho>*<u_f_vect[l=<<radialdim>>]>*<u_f_vect[l=<<azimuthaldim>>]>/<facex[l=<<radialdim>>]>" ON <domain> # momentum component'
-      VARIABLE <momentum[l=<<radialdim>>]> "<momentum[l=<<radialdim>>]>-<rho>*<u_f_vect[l=<<azimuthaldim>>]>**2/<facex[l=<<radialdim>>]>"
+      VARIABLE <momentum[l=<<azimuthaldim>>]> "celldiv(<<radius_top_azi>><J_f[l=<<azimuthaldim>>]>)<<radius_bottom_azi>>+<rho>*<u[l=<<radialdim>>]>*<u[l=<<azimuthaldim>>]>/<cellx[l=<<radialdim>>]>" ON <domain> # momentum component'
+      VARIABLE <momentum[l=<<radialdim>>]> "<momentum[l=<<radialdim>>]>-<rho>*<u[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>"
   END_IF
 END_IF
 
