@@ -3,8 +3,8 @@
 
 module Units
 
-  VERSION = '1.7'
-  DATE = '2018-04-27'
+  VERSION = '1.8'
+  DATE = '2018-07-17'
 
   module_function
 
@@ -145,6 +145,7 @@ module Units
       [1, -1].each do |sign| # construct output units string
         Hash[input.dim.sort].each { |unit, dim| output.units << "#{unit}#{(dim.is_a?(Float) ? sprintf('%g', dim) : dim) unless dim == 1} " if sign*dim > 0 }
       end
+      output.units.strip!
     else
       output.factor, output.dim = convert_SI(output.units)
     end
@@ -203,7 +204,7 @@ module Units
     prefix, unit, exponent = match.captures
     exponent ||= '1'
     exponent = if exponent.include?('.') # decimal exponent (possibly with numerator and denominator; division performed by eval below), stored as rational for greatest precision
-                 (eval exponent).to_r
+                 (eval exponent).rationalize
                elsif exponent.include?('/') # rational exponent
                  exponent.to_r
                else # integer exponent
