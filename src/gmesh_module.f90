@@ -1494,7 +1494,7 @@ if (.not.check) then
   do k = 1, nnodes
     read(fgmsh,*,iostat=error) gnode(k),node(k+ktotal)%x
     if (error /= 0) call error_stop('problem reading nodes in gmsh file '//trim(filename))
-    node(k+ktotal)%x = transform_coordinates(node(k+ktotal)%x)*gmesh(gmesh_number)%input_scale
+    node(k+ktotal)%x = transform_coordinates(node(k+ktotal)%x,gmesh_number)*gmesh(gmesh_number)%input_scale
   end do
   ! now create lookup array
   allocate(gmesh(gmesh_number)%knode_from_gnode(maxval(gnode)))
@@ -1508,7 +1508,7 @@ else
   gnode_max = 0
   do k = 1, nnodes
     read(fgmsh,*,iostat=error) gnode_check,x_check
-    x_check = transform_coordinates(x_check*gmesh(gmesh_number)%input_scale)
+    x_check = transform_coordinates(x_check*gmesh(gmesh_number)%input_scale,gmesh_number)
     if (error /= 0) call error_stop('problem reading nodes in gmsh file '//trim(filename))
     if (distance(x_check,node(gmesh(gmesh_number)%knode_from_gnode(gnode_check))%x) > 1.d-10) call error_stop( &
       "node mismatch between msh files: cell and face msh files must come from the same simulation")
@@ -1522,7 +1522,7 @@ end subroutine read_gmesh_nodes
 
 !-----------------------------------------------------------------
 
-function transform_coordinates(x)
+function transform_coordinates(x,gmesh_number)
 
 ! function to apply some type of transformation to the gmsh-generated coordinates
 
@@ -1530,6 +1530,7 @@ use general_module
 ! both three dimensional arrays, having components in the x/y/z direction
 double precision, dimension(totaldimensions) :: transform_coordinates
 double precision, dimension(totaldimensions), intent(in) :: x
+integer :: gmesh_number ! this is the number of the msh file that is currently being read in, can be used to access mesh name etc etc
 
 transform_coordinates = x ! the default is no transformation (leave this in there)
 
@@ -1537,6 +1538,10 @@ transform_coordinates = x ! the default is no transformation (leave this in ther
 
 !transform_coordinates(1) = 2.d0*transform_coordinates(1) + 2.d0 ! eg, translation and scaling of the x coordinate
 !transform_coordinates = x*1.d-9 ! uniform scaling can now be handled directly by inputscale option (listed on MSH_FILE line)
+
+!if (gmesh_number > 1) then
+!  transform_coordinates = -3.d0*transform_coordinates - 2.d0
+!endif
 
 end function transform_coordinates
 
