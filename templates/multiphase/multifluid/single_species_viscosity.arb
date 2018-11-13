@@ -2,7 +2,8 @@ MARKDOWN
 Here we find <mu_f_species> for each species
 END_MARKDOWN
 
-REPLACEMENTS D "<<viscosity_method>>" W "einstein"
+#REPLACEMENTS D "<<viscosity_method>>" W "einstein"
+REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
 
 IF 1 # split viscosity between phases
   IF {{ return string_test('<<species>>','species0') }}
@@ -22,7 +23,18 @@ IF {{ return string_test('<<viscosity_method>>','thomas')}}
     ERROR "thomas method not done"
 #   CELL_LOCAL <mu_correction_<<species>>> "10.05d0*<phi_bounded_<<species>>>+0.00273d0*exp(16.6d0*<phi_bounded_<<species>>>)/<phi_lim_<<species>>>"
   END_IF
+ELSE_IF {{ return string_test('<<viscosity_method>>','morrisboulay99')}}
+  IF {{ return string_test('<<species>>','species0') }}
+    CELL_DERIVED <mu_c_gradient_<<species>>> [Pa.s] "<mu_c_gradient_<<species>>>" ON <allcells>
+  ELSE
+    NONE_CONSTANT <phi_lim_<<species>>> 0.68d0
+    CELL_DERIVED <phi_bounded_<<species>>_norm> "<phi_bounded_<<species>>>/<phi_lim_<<species>>>"
+    CELL_DERIVED <mu_c_gradient_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0/(1.d0-<phi_bounded_<<species>>_norm>)+0.1d0*(<phi_bounded_<<species>>>/<phi_bounded_<<species>>_norm>**2)/(1.d0-<phi_bounded_<<species>>_norm>)**2)" ON <allcells>
+    #VARIABLE <mu_c_gradient_<<species>>> '<mu_c_gradient_<<species>>>*<mu_species0>'
+#   CELL_LOCAL <mu_correction_<<species>>> "10.05d0*<phi_bounded_<<species>>>+0.00273d0*exp(16.6d0*<phi_bounded_<<species>>>)/<phi_lim_<<species>>>"
+  END_IF
 END_IF
+
 
 CELL_LOCAL <mu_c_<<species>>> "<mu_c_gradient_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
 FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> # used in stress

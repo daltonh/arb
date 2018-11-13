@@ -96,18 +96,22 @@ module Rxntoarb
 
           # Reaction (or syntax error)
           else
+            line_includes_surface_region = line =~ /[^#]*?@s\b/
+            line_includes_volume_region = line =~ /[^#]*?@v\b/
             unless Rxntoarb.options[:none_centred] == :flag
-              raise 'missing surface_region definition for reaction' if surface_region_list == [nil] and line =~ /[^#]*?@s\b/
-              raise 'missing volume_region definition for reaction' if volume_region_list == [nil] and line =~ /[^#]*?@v\b/
+              raise 'missing surface_region definition for reaction' if surface_region_list == [nil] && line_includes_surface_region
+              raise 'missing volume_region definition for reaction' if volume_region_list == [nil] && line_includes_volume_region
             end
             volume_region_list.each do |volume_region|
               surface_region_list.each do |surface_region|
-                @bounding_regions[volume_region] << surface_region if surface_region && volume_region # keep track of surface_regions that bound each volume_region
+                @bounding_regions[volume_region] << surface_region if surface_region && volume_region && line_includes_surface_region && line_includes_volume_region # keep track of surface_regions that bound each volume_region
                 rline = line.dup # dup line as substitutions below need to be done for each surface_region and volume_region
                 rline.gsub!(/@s\b/, "@#{surface_region}") if surface_region
                 rline.gsub!(/@v\b/, "@#{volume_region}") if volume_region
                 read_reaction(rline)
+                break unless line_includes_surface_region
               end
+              break unless line_includes_volume_region
             end
           end
 
