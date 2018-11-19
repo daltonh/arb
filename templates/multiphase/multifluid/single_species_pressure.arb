@@ -2,7 +2,7 @@ MARKDOWN
 Here we find <p_species> for each disperse phase species
 END_MARKDOWN
 
-REPLACEMENTS D "<<shearinduceddiffusion>>" W "1"
+REPLACEMENTS D "<<shearinduceddiffusion>>" W "0"
 REPLACEMENTS D "<<anisotropic>>" W "0"
 REPLACEMENTS D "<<highPeSID>>" W "1" D "<<lowPeSID>>" W "1"
 
