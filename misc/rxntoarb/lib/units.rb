@@ -3,8 +3,8 @@
 
 module Units
 
-  VERSION = '1.8'
-  DATE = '2018-07-17'
+  VERSION = '1.9'
+  DATE = '2018-11-27'
 
   module_function
 
@@ -162,8 +162,7 @@ module Units
 
     # Format numerical value if required
     if options[:sig_figs]
-      digits = input.value[/(\d|\.)*/].tr('.', '') # strip exponent and decimal point if present
-      output.value = "#{sprintf('%#.*g', digits.length-digits.index(/[1-9]/), output.value)}".sub(/\.e/, 'e').sub(/\.\z/, '') # subs here ensure that output.value is a valid Ruby float (stored in a string)
+      output.value = format_sigfigs(output.value, num_sigfigs(input.value))
     elsif options[:format]
       output.value = sprintf(options[:format], output.value)
     end
@@ -176,6 +175,15 @@ module Units
     end
 
     return output.value, output.units.strip
+  end #}}}
+
+  def num_sigfigs(n) #{{{
+    digits = n.split.first[/(\d|\.)*/].tr('.', '') # strip exponent and decimal point if present
+    digits.length-digits.index(/[1-9]/)
+  end #}}}
+
+  def format_sigfigs(n, sf) #{{{
+    sprintf('%#.*g', sf, n).sub(/\.e/, 'e').sub(/\.\z/, '')
   end #}}}
 
   def convert_SI(units) #{{{
@@ -214,6 +222,6 @@ module Units
   end #}}}
 
   private_constant :PREFIXES, :UNIT_LIST, :UNIT_MATCH, :UNITS
-  private_class_method :extract, :convert_SI
+  private_class_method :convert_SI, :extract
 
 end
