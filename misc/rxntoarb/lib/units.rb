@@ -3,7 +3,7 @@
 
 module Units
 
-  VERSION = '1.9'
+  VERSION = '1.10'
   DATE = '2018-11-27'
 
   module_function
@@ -137,7 +137,7 @@ module Units
     input.value, input.units = /\A\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?)?\s*(.*?)\s*\z/.match(input_string).captures
     input.value ||= '1.0'
     options[:double_precision] = true if input.value.downcase.include?('d') # double precision output if double precision input
-    input.value = input.value.tr('DdE', 'e').sub(/\.e/, 'e').sub(/\.\z/, '') # ensure that input.value is a valid Ruby float
+    input.value = floatify(input.value)
     input.factor, input.dim = convert_SI(input.units)
     output.units = output_string.strip
     if output.units.empty? # default to SI units
@@ -160,14 +160,16 @@ module Units
       output.value = input.factor/output.factor*input.value.to_f
     end
 
-    # Format numerical value if required
-    if options[:sig_figs]
-      output.value = format_sigfigs(output.value, num_sigfigs(input.value))
+    # Format numerical value
+    output.value = if options[:sig_figs]
+                     format_sigfigs(output.value, num_sigfigs(input.value))
     elsif options[:format]
-      output.value = sprintf(options[:format], output.value)
+                     sprintf(options[:format], output.value)
+                   else
+                     output.value.to_s
     end
 
-    # Convert to double precision format if required
+    # Convert to double precision if required
     if options[:double_precision]
       output.value.tr!('Ee', 'd') # express converted value as double precision
       output.value << 'd0' unless output.value.include?('d') # add exponent if not present
@@ -177,13 +179,17 @@ module Units
     return output.value, output.units.strip
   end #}}}
 
+  def floatify(n) #{{{
+    n.tr('DdE', 'e').sub(/\.e/, 'e').sub(/\.\z/, '') # make n a valid Ruby float (stored as a string)
+  end #}}}
+
   def num_sigfigs(n) #{{{
     digits = n.split.first[/(\d|\.)*/].tr('.', '') # strip exponent and decimal point if present
     digits.length-digits.index(/[1-9]/)
   end #}}}
 
   def format_sigfigs(n, sf) #{{{
-    sprintf('%#.*g', sf, n).sub(/\.e/, 'e').sub(/\.\z/, '')
+    floatify(sprintf('%#.*g', sf, n))
   end #}}}
 
   def convert_SI(units) #{{{

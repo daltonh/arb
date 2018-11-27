@@ -9,7 +9,7 @@ require 'optparse'
 require_relative '../lib/units'
 
 PROGNAME = 'convert_units'
-VERSION = '1.9'
+VERSION = '1.10'
 DATE = '2018-11-27'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})
@@ -54,6 +54,9 @@ begin
     mw_value, mw_units = Units.convert(options[:MW], '') # convert MW to SI (kg mol-1)
     raise "molecular weight has wrong units (#{mw_units})" unless mw_units == 'kg mol-1'
     value_in, units_in = Units.convert(ARGV[0], '') # convert input to SI, then create new input string for concentration conversions
+    options[:double_precision] = true if "#{mw_value}#{value_in}".include?('d') # double precision output if double precision input
+    mw_value = Units.floatify(mw_value).to_f
+    value_in = Units.floatify(value_in).to_f
     value_in_converted, units_in_converted = if units_in == 'mol m-3'
                                                [value_in*mw_value, 'kg m-3']
     elsif units_in == 'kg m-3'
