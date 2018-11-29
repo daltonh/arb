@@ -1,7 +1,7 @@
 " Vim syntax file for arb finite volume solver
 " Language:     arb
-" Version:      0.58
-" Modified:     2018/03/16
+" Version:      0.60
+" Modified:     2018/11/30
 " URL:          http://people.eng.unimelb.edu.au/daltonh/downloads/arb/
 
 " NOTE match patterns starting with \%(\) are used to prevent following syntax elements from appearing in the omni completion list
@@ -74,9 +74,9 @@ syn keyword arbStatement NODE_CONSTANT_REGION NODE_DERIVED_REGION NODE_EQUATION_
 " Condition options
 syn keyword arbOption bellcondition convergencecondition errorcondition newtsteprewindcondition outputcondition stopcondition timesteprewindcondition
 " General options
-syn keyword arbOption convergencedetailsfile noconvergencedetailsfile ignoreinitialupdatetimes noignoreinitialupdatetimes iterresreltol iterrestol iterstepcheck iterstepmax kerneldetailsfile nokerneldetailsfile linkdetailsfile nolinkdetailsfile meshdetailsfile nomeshdetailsfile newtientrewind nonewtientrewind newtientsimulation nonewtientsimulation newtrestol newtstep newtstepdebugout newtstepmax newtstepmaxiftimesteprewind newtstepmin newtstepout newtsteprewind nonewtsteprewind newtstepstart outputdetailedtimings nooutputdetailedtimings outputstepfile outputtimings nooutputtimings outputtimingsonmeshwrite nooutputtimingsonmeshwrite outputregionupdatetimes nooutputregionupdatetimes outputvariableupdatetimes nooutputvariableupdatetimes regiondetailsfile noregiondetailsfile timestep timestepadditional timestepmax timestepmin timestepout timesteprewind notimesteprewind timestepstart timesteprewindmultiplier transientsimulation notransientsimulation
+syn keyword arbOption convergencedetailsfile noconvergencedetailsfile ignoreinitialupdatetimes noignoreinitialupdatetimes iterresreltol iterrestol iterstepcheck iterstepmax kerneldetailsfile nokerneldetailsfile linkdetailsfile nolinkdetailsfile meshdetailsfile nomeshdetailsfile newtientrewind nonewtientrewind newtientsimulation nonewtientsimulation newtrestol newtstep newtstepdebugout newtstepmax newtstepmaxiftimesteprewind newtstepmin newtstepout newtsteprewind nonewtsteprewind newtstepstart outputdetailedtimings nooutputdetailedtimings outputstepfile outputtimings nooutputtimings outputtimingsonmeshwrite nooutputtimingsonmeshwrite outputregionupdatetimes nooutputregionupdatetimes outputvariableupdatetimes nooutputvariableupdatetimes regiondetailsfile noregiondetailsfile timestep timestepadditional timestepmax timestepmin timestepout timesteprewind notimesteprewind timesteprewindmax timestepstart timesteprewindmultiplier transientsimulation notransientsimulation
 " Kernel options
-syn keyword arbOption automaximumseparation boundarynodeseparations checkminw hyperbolicb hyperbolickernel kernelmethod limitkernelmasktosharednodes maximumseparation maximumcellseparation minimumminw minimumseparation mls none optimisation partialhyperbolickernel polynomialorder polynomialaverageorder polynomialcellorder polynomialnodeorder separationmultipliedtrialkernels shiftboundaryweightcentre shifthyperbolicdistance simple weightseparationmultiplier zerononorientedweights
+syn keyword arbOption automaximumseparation averagestabilitycorrections boundarynodeseparations checkminw gradientstabilitycorrections hyperbolicb hyperbolickernel kernelmethod limitkernelmasktosharednodes maximumseparation maximumcellseparation minimumminw minimumseparation mls none optimisation partialhyperbolickernel polynomialorder polynomialaverageorder polynomialcellorder polynomialnodeorder separationmultipliedtrialkernels shiftboundaryweightcentre shifthyperbolicdistance simple weightseparationmultiplier zerononorientedweights
 syn match arbDeprecated "\<\%(check_minw\|kernel_method\|limit_mask_to_icell\|minimum_minw\|weight_separation_multiplier\)\>"
 syn match arbDeprecated "\<\%(minimum\|maximum\)_\%(boundary\|domain\)_separation\>"
 syn match arbDeprecated "\<polynomial\%(_average\)\?_order\>"
@@ -86,7 +86,7 @@ syn keyword arbOption inputscale inputinversescale outputscale outputinversescal
 " Rewind options
 syn keyword arbOption history lambda lambdamultiplier newtstep
 " Solver options
-syn keyword arbOption backstepping bicg bicgstab checksolutionaccuracy default descent direct doglegdescent flexible hslma28 intelpardiso intelpardisoooc intelpardisosafer iterative lambdalimitfalseroot lambdalimitfalserootfactor lambdamin linearsolver managefunkdvmemory mgmres multigrid none pardiso pardisoiterative singlegrid stickylambda stickylambdaincrease sparse suitesparse weightlargeequationerrors weightlargeequationerrorsfactor
+syn keyword arbOption backstepping bicg bicgstab checksolutionaccuracy default descent direct doglegdescent flexible hslma28 intelpardiso intelpardisoooc intelpardisosafer iterative lambdalimitcautiously lambdalimitcautiouslyfactor lambdalimitfalseroot lambdalimitfalserootfactor lambdamin linearsolver managefunkdvmemory mgmres multigrid none pardiso pardisoiterative singlegrid stickylambda stickylambdaincrease sparse suitesparse weightlargeequationerrors weightlargeequationerrorsfactor
 " Variable options
 syn keyword arbOption clearoptions derivative noderivative dynamicmagnitude nodynamicmagnitude dynamicmagnitudemultiplier elementdata elementnodedata elementnodelimiteddata input noinput magnitude negative nocheck output nooutput positive stepoutput nostepoutput stepoutputnoupdate nostepoutputnoupdate
 syn keyword arbOption  compoundelementdata  compoundelementnodedata  compoundelementnodelimiteddata  compoundinput  nocompoundinput  compoundoutput  nocompoundoutput  compoundstepoutput  nocompoundstepoutput  compoundstepoutputnoupdate  nocompoundstepoutputnoupdate
