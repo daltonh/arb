@@ -1,0 +1,42 @@
+#!/usr/bin/python
+
+import sys
+import os,shutil,tempfile
+
+sep = '#'
+
+#shutil.copy2(sys.argv[1],'temp1.dat')
+#shutil.copy2(sys.argv[2],'temp2.dat')
+
+fileA = sys.argv[1]+'/setup_data/variable_list.arb'
+fileB = sys.argv[2]+'/setup_data/variable_list.arb'
+
+outfile = open('tempA.dat','w')
+infile = open(fileA,'r')
+for line in infile:
+    rest = line.split(sep,1)[0]
+    print >>outfile, rest
+outfile.close()
+
+outfile = open('tempB.dat','w')
+infile = open(fileB,'r')
+for line in infile:
+    rest = line.split(sep,1)[0]
+    print >>outfile, rest
+outfile.close()
+
+os.system("diff tempA.dat tempB.dat")
+    
+# with open('tempA.dat', 'r') as file1:
+#     with open('tempB.dat', 'r') as file2:
+#         diff = set(file1).difference(file2) #CAN USE INTERSECTION HERE FOR COMMON ELEMENTS
+
+# diff.discard('\n')
+
+# with open('diff.txt', 'w') as file_out:
+#     for line in diff:
+#         file_out.write(line)
+
+
+#os.remove('tempA.dat')
+#os.remove('tempB.dat')
