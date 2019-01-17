@@ -3,8 +3,8 @@
 
 module Units
 
-  VERSION = '1.10'
-  DATE = '2018-11-27'
+  VERSION = '1.11'
+  DATE = '2018-12-20'
 
   module_function
 
@@ -41,8 +41,8 @@ module Units
     # base SI units
     Unit.new('ampere', 'A', 'A', 1.0),
     Unit.new('candela', 'cd', 'cd', 1.0),
-    Unit.new('kilogram', 'kg', 'kg', 1.0),
     Unit.new('kelvin', 'K', 'K', 1.0, 0.0),
+    Unit.new('kilogram', 'kg', 'kg', 1.0),
     Unit.new('metre', 'm', 'm', 1.0),
     Unit.new('mole', 'mol', 'mol', 1.0),
     Unit.new('second', 's', 's', 1.0),
@@ -63,9 +63,9 @@ module Units
     Unit.new('ohm', ['ohm', "\u03a9", "\u2126"], 'kg m2 A-2 s-3', 1.0),
     Unit.new('pascal', 'Pa', 'kg m-1 s-2', 1.0),
     Unit.new('radian', 'rad', 'rad', 1.0),
-    Unit.new('steradian', 'sr', 'sr', 1.0),
     Unit.new('siemens', 'S', 'A2 s3 kg-1 m-2', 1.0),
     Unit.new('sievert', 'Sv', 'm2 s-2', 1.0),
+    Unit.new('steradian', 'sr', 'sr', 1.0),
     Unit.new('tesla', 'T', 'kg A-1 s-2', 1.0),
     Unit.new('volt', 'V', 'kg m2 A-1 s-3', 1.0),
     Unit.new('watt', 'W', 'kg m2 s-3', 1.0),
@@ -76,19 +76,19 @@ module Units
     Unit.new('atmosphere (standard)', 'atm', 'kg m-1 s-2', 1.01325e5),
     Unit.new('atmosphere (technical)', 'at', 'kg m-1 s-2', 9.80665e4),
     Unit.new('bar', 'bar', 'kg m-1 s-2', 1e5),
-    Unit.new('day', 'd', 's', 8.64e4), # cd (candela) and yd (yard) ambiguous, but centidays and yoctodays aren't cool
     Unit.new('dalton', 'Da', 'kg mol-1', 1e-3),
+    Unit.new('day', 'd', 's', 8.64e4), # cd (candela) and yd (yard) ambiguous, but centidays and yoctodays aren't cool
+    Unit.new('degree (angle)', ['deg', "\u00b0"], 'rad', Math::PI/180.0),
     Unit.new('electronvolt', 'eV', 'kg m2 s-2', 1.6021766208e-19),
     Unit.new('hour', 'h', 's', 3.6e3),
     Unit.new('litre', ['l', 'L'], 'm3', 1e-3),
     Unit.new('mho', ['mho', "\u2127"], 'A2 s3 kg-1 m-2', 1.0),
     Unit.new('minute', 'min', 's', 60.0),
+    Unit.new('minute (angle)', ["'", "\u2032"], 'rad', Math::PI/1.08e4),
     Unit.new('molar', 'M', 'mol m-3', 1e3),
+    Unit.new('second (angle)', ["''", "\u2033", "\u2032\u2032"], 'rad', Math::PI/6.48e5),
     Unit.new('tonne', 't', 'kg', 1e3), # ft (foot) ambiguous, but femtotonnes aren't cool
     Unit.new('unified atomic mass unit', 'u', 'kg mol-1', 1e-3),
-    Unit.new('degree (angle)', ['deg', "\u00b0"], 'rad', Math::PI/180.0),
-    Unit.new('minute (angle)', ["'", "\u2032"], 'rad', Math::PI/1.08e4),
-    Unit.new('second (angle)', ["''", "\u2033", "\u2032\u2032"], 'rad', Math::PI/6.48e5),
     # others
     Unit.new('acre', 'ac', 'm2', 4.0468564224e3),
     Unit.new('British thermal unit', 'BTU', 'kg m2 s-2', 1055.06),
@@ -111,6 +111,7 @@ module Units
     Unit.new('poise', 'P', 'kg m-1 s-1', 0.1),
     Unit.new('pound (avoirdupois)', 'lb', 'kg', 0.45359237),
     Unit.new('pound-force', 'lbf', 'kg m s-2', 4.4482216152605),
+    Unit.new('pound-mole', 'lb-mol', 'mol', 453.59237),
     Unit.new('pound per square inch', 'psi', 'kg m-1 s-2', 6.894757e3),
     Unit.new('revolution', ['r', 'rev'], 'rad', 2*Math::PI),
     Unit.new('revolution per minute', 'rpm', 'rad s-1', 2*Math::PI/60),
