@@ -1,0 +1,11 @@
+MARKDOWN
+Equivalent of constants for the vof templates, but here setting all constants
+END_MARKDOWN
+
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multiphase_vof_species_list>>','list')) {
+    $return_string .= "INCLUDE 'single_vof_species_setup' R '<<species>>' W '$species'\n";
+  }
+  return $return_string;
+}}

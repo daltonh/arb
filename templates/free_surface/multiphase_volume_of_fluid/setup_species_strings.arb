@@ -64,9 +64,9 @@ GLOBAL_REPLACEMENTS D "<<multiphase_solid_species_max>>" W "0"
 
 # now set the string lists based on the above string_set array
   for $n ( 0 .. $#species_set ) {
-    my $number_list;
-    my $species_list;
-    my $separator="";
+    my $number_list = "";
+    my $species_list = "";
+    my $separator = "";
     foreach my $i ( $species_set[$n]{"start"} .. $species_set[$n]{"end"} ) {
       $number_list .= $separator."$i";
       $species_list .= $separator."species$i";
@@ -74,12 +74,11 @@ GLOBAL_REPLACEMENTS D "<<multiphase_solid_species_max>>" W "0"
     }
     string_set("<<multiphase".$species_set[$n]{"_name"}."_number_list>>",$number_list,"global");
     string_set("<<multiphase".$species_set[$n]{"_name"}."_species_list>>",$species_list,"global");
-#   print "DEBUG: n = $n: setting: "."<<multiphase".$species_set[$n]{"_name"}."_number_list>>\n";
   }
 
 }}
 
-REPLACEMENTS D "<<debug>>" W "0"
+REPLACEMENTS D "<<debug>>" W "1"
 IF <<debug>> # debug
   {{ print string_debug('global') }}
 END_IF

@@ -1,0 +1,13 @@
+MARKDOWN
+Equivalent of nondimensional_constants for the vof templates, but here setting all constants
+
+Have not worked this out for gravity yet
+END_MARKDOWN
+
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multiphase_vof_species_list>>','list')) {
+    $return_string .= "INCLUDE_TEMPLATE 'free_surface/volume_of_fluid/nondimensional_constants' R '<sigma>' W '<sigma_$species>' R '<rho>' W '<rho_$species>' R '<mu>' W '<mu_$species>' R '<S>' W '<S_$species>' R '<Ca>' W '<Ca_$species>' R '<We>' W '<We_$species>'\n";
+  }
+  return $return_string;
+}}

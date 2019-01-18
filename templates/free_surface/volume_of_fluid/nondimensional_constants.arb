@@ -1,6 +1,6 @@
 # use this constants file if solving nondimensionally
 
-INCLUDE "constants"
+INCLUDE_LOCAL "constants"
 
 CONSTANT <S> 1.d+3 # surface tension strength nondimensional number, see harvie 2004
 

@@ -1,0 +1,13 @@
+# physical data
+CONSTANT <sigma> [N/m] 0.072d0 # surface tension coefficient
+
+# now define some nondimensional reference data
+CONSTANT <Ca> "<u_av>*<mu>/<sigma>"
+CONSTANT <We> "<Ca>*<Re>"
+CONSTANT <S> "1.d0/(<We>+<Ca>)"
+
+# conventional vertical gravity, defined whether buoyancy is on or off
+# whether this is included as a force is determined by whether buoyancy_dynamic_force is included
+<<dim1comment>>CONSTANT <gravity[l=1]> [m/s^2] 0.d0
+<<dim2comment>>CONSTANT <gravity[l=2]> [m/s^2] -9.81d0
+<<dim3comment>>CONSTANT <gravity[l=3]> [m/s^2] 0.d0
