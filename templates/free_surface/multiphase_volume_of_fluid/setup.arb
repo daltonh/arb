@@ -10,3 +10,12 @@ END_MARKDOWN
   }
   return $return_string;
 }}
+
+# calculate some continuous phase properties
+{{
+  my $return_string = "CELL_DERIVED <vof_phi_species0> [1] '1.d0' ON <allcells> output\n";
+  for my $species (string_eval('<<multiphase_vof_species_list>>','list')) {
+    $return_string .= "VARIABLE <vof_phi_species0> '<vof_phi_species0>-<vof_phi_$species>'\n";
+  }
+  return $return_string;
+}}
