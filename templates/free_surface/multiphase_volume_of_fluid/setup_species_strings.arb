@@ -1,0 +1,85 @@
+MARKDOWN
+This file is for setting up the string lists for multiphase vof problems.  There are three types of species in multiphase vof:
+
+1. cont (continuous fluid phase, always present, <<multiphase_cont_species_max>> = 1),
+2. vof (disperse vof phase, of which there are <<multiphase_vof_species_max>>), and
+3. solid (solid phase, of which there are <<multiphase_solid_species_max>>)
+
+The phi numbers start at 0 for the continuous phase, and rise from there to the calculated <<multiphase_species_max>>.
+
+You need to set the global replacement variables <<multiphase_vof_species_max>> and <<multiphase_solid_species_max>> to values => 0, prior to calling this routine.
+
+Only works with single domain approach right now, given that solid boundary interactions are best calculated using an energy approach - hypothesis anyway.
+
+The list strings <<multifluid_species_list>>, <<multifluid_number_list>>, <<multifluid_disperse_species_list>>, <<multifluid_disperse_number_list>>, <<multifluid_disperse_species_list>>, <<multifluid_disperse_number_list>> and <<multifluid_species_max>>
+
+Similar to function as setup_species_strings in multiphase/multifluid templates.
+END_MARKDOWN
+
+# the default setup is for normal vof, that is, one disperse phase and no solids
+GLOBAL_REPLACEMENTS D "<<multiphase_vof_species_max>>" W "1"
+GLOBAL_REPLACEMENTS D "<<multiphase_solid_species_max>>" W "0"
+
+{{
+# set a string array (index species_set type, which includes all species as the final index) which will be used to set string lists
+# the work is done in perl, based on the above max strings
+
+  my @species_set;
+
+# cont, continuous phase fluid, always start with this
+  my $n = 0;
+  $species_set[$n]{"type"} = "cont";
+  $species_set[$n]{"_name"} = "_cont";
+  $species_set[$n]{"number"} = 1;
+  $species_set[$n]{"start"} = 0;
+  $species_set[$n]{"end"} = 0;
+  string_set('<<multiphase_cont_species_max>>',1,"global");
+
+# vof, vof disperse phase
+  $n++;
+  $species_set[$n]{"type"} = "vof";
+  $species_set[$n]{"_name"} = "_vof";
+  $species_set[$n]{"number"} = string_eval('<<multiphase_vof_species_max>>');
+  $species_set[$n]{"start"} = $species_set[$n-1]{"end"}+1;
+  $species_set[$n]{"end"} = $species_set[$n-1]{"end"}+$species_set[$n]{"number"};
+
+# solid, solid disperse phase
+  $n++;
+  $species_set[$n]{"type"} = "solid";
+  $species_set[$n]{"_name"} = "_solid";
+  $species_set[$n]{"number"} = string_eval('<<multiphase_solid_species_max>>');
+  $species_set[$n]{"start"} = $species_set[$n-1]{"end"}+1;
+  $species_set[$n]{"end"} = $species_set[$n-1]{"end"}+$species_set[$n]{"number"};
+
+# all, which is just made from a sum of the others
+  $n++;
+  $species_set[$n]{"type"} = "all";
+  $species_set[$n]{"_name"} = "";
+  $species_set[$n]{"number"} = $species_set[$n-1]{"end"}+1;
+  $species_set[$n]{"start"} = 0;
+  $species_set[$n]{"end"} = $species_set[$n-1]{"end"};
+  string_set('<<multiphase_species_max>>',$species_set[$n]{"number"},"global");
+
+# print "DEBUG n = $n\n";
+
+# now set the string lists based on the above string_set array
+  for $n ( 0 .. $#species_set ) {
+    my $number_list;
+    my $species_list;
+    my $separator="";
+    foreach my $i ( $species_set[$n]{"start"} .. $species_set[$n]{"end"} ) {
+      $number_list .= $separator."$i";
+      $species_list .= $separator."species$i";
+      $separator=",";
+    }
+    string_set("<<multiphase".$species_set[$n]{"_name"}."_number_list>>",$number_list,"global");
+    string_set("<<multiphase".$species_set[$n]{"_name"}."_species_list>>",$species_list,"global");
+#   print "DEBUG: n = $n: setting: "."<<multiphase".$species_set[$n]{"_name"}."_number_list>>\n";
+  }
+
+}}
+
+REPLACEMENTS D "<<debug>>" W "0"
+IF <<debug>> # debug
+  {{ print string_debug('global') }}
+END_IF
