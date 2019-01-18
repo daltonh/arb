@@ -1045,7 +1045,7 @@ end function is_point_in_shape
 !-----------------------------------------------------------------
 
 arb_external_operator cellvofphiadjust
-subroutine cellvofphiadjust(thread,m,ilast,jlast,klast,error_string,deriv,msomeloop_phi_r1,m_phif,m_flux,msomeloop_dt)
+subroutine cellvofphiadjust(thread,m,ilast,jlast,klast,error_string,deriv,msomeloop_phi_r1,m_phif,m_flux,msomeloop_dt,msomeloop_phicont_r1)
 
 ! in this subroutine we calculate a phi adjustment which needs to be applied to all outwardly directed vof phi fluxes
 !   to ensure volume conservation
@@ -1056,9 +1056,9 @@ use general_module
 integer :: thread,m,ilast,jlast,klast,deriv
 character(len=1000) :: error_string
 ! specific arguments passed to cellvofd
-integer :: msomeloop_phi_r1,m_phif,m_flux,msomeloop_dt
+integer :: msomeloop_phi_r1,m_phif,m_flux,msomeloop_dt,msomeloop_phicont_r1
 ! local variables
-double precision :: phi_r1, deltaphi, flux, phif, direction, dt, aaflux, aad, aau, aatarget, aa, dd, philimited, phiunlimited
+double precision :: phi_r1, deltaphi, flux, phif, direction, dt, aaflux, aad, aau, aatarget, aa, dd, philimited, phiunlimited, lambda, phicont_r1
 integer :: i, j, jj, n, idirection, k
 logical, parameter :: debug = .false.
 
@@ -1156,14 +1156,23 @@ deltaphi = 0.d0
 aau = aadiv(flux_list(thread)%elements,phif_list(thread)%elements,areadvol_list(thread)%elements,dt,deltaphi, &
   length=flux_list(thread)%length)
 if (debug) write(50,*) 'first calc: aau = ',aau
-if (aau < phi_r1 + aaflux - 1.d0 .or. aau > phi_r1 ) then
+
+! deal with stricter constaint for multiphase vof, requiring the continous phase phi, phicont[r=1]
+lambda = 1.d0
+if (msomeloop_phicont_r1 <= 0) then
+  phicont_r1 = someloop(thread)%funk(msomeloop_phicont_r1)%v
+  if (1.d0-phicont_r1 > 1.d-10) lambda = max(min(phi_r1/(1.d0-phicont_r1),1.d0),0.d0)
+  if (debug) write(50,*) 'first calc: lambda = ',lambda
+end if
+
+if (aau < phi_r1 + lambda*(aaflux - 1.d0) .or. aau > phi_r1 ) then
   if (debug) write(50,*) 'aau out of range'
   if (aau > phi_r1) then
     aatarget = phi_r1
     direction = -1.d0 ! need to decrease phif
     aa = 0.d0 ! constant needed in derivative calculation
   else
-    aatarget = phi_r1 + aaflux - 1.d0
+    aatarget = phi_r1 + lambda*(aaflux - 1.d0)
     direction = 1.d0 ! need to increase phif
     aa = 1.d0
   end if
