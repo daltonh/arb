@@ -3,21 +3,18 @@ This is a single species wrapper file for the vof/setup template, converting sin
 END_MARKDOWN
 
 # this file is subsequently called with the string <<species>>, so replacements are defined on any species specific files in volume_of_fluid/setup
-REPLACEMENTS SUFFIX "<vof_phi>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_phi_initial>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_phi_lim>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_phi_delta>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_phi_delta_local_f>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_phi_delta_f>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_phi_delta_f[r=1]>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_phi_interface>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_phi_rounded>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_phi[r=1]>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_interface_indicator[r=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phigrad_unit[l=1]>" W "_<<species>>" # will do all l components and r indicies
 REPLACEMENTS SUFFIX "<vof_interface_mask[r=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi[r=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_d[r=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_f[r=1]>" W "_<<species>>"
 REPLACEMENTS SUFFIX "<vof_interface_mask_f[r=1]>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_delta_mask[r=1]>" W "_<<species>>"
-REPLACEMENTS SUFFIX "<vof_delta_mask_f[r=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_adjust[r=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_f_adjusted[r=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_equation_domain>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi>" W "_<<species>>"
+
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid/equation"
 
 REPLACEMENTS D "<<debug>>" W "0"
 IF <<debug>> # debug

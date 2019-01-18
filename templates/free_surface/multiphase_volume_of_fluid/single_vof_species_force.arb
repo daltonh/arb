@@ -8,8 +8,11 @@ REPLACEMENTS SUFFIX "<vof_kappa_c>" W "_<<species>>"
 REPLACEMENTS SUFFIX "<vof_phi_delta_f>" W "_<<species>>"
 REPLACEMENTS SUFFIX "<vof_delta_mask[r=1]>" W "_<<species>>"
 REPLACEMENTS SUFFIX "<vof_F_f>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_kappa_f>" W "_<<species>>"
 REPLACEMENTS SUFFIX "<vof_phi_delta>" W "_<<species>>"
 REPLACEMENTS SUFFIX "<vof_interface_mask_f[r=1]>" W "_<<species>>"
+
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid/force"
 
 REPLACEMENTS D "<<debug>>" W "0"
 IF <<debug>> # debug

@@ -1,0 +1,13 @@
+MARKDOWN
+Equivalent of setup for the vof templates, but here performing for all species
+END_MARKDOWN
+
+# vof species
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multiphase_vof_species_list>>','list')) {
+    $return_string .= "NONE_CONSTANT <vof_phi_walls_$species> 0.d0\n"; # default is non-wetting walls for each species
+    $return_string .= "FACE_EQUATION <vof_equation_walls_$species> '<vof_phi_$species>-<vof_phi_walls_$species>' ON <walls>\n";
+  }
+  return $return_string;
+}}
