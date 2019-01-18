@@ -111,7 +111,7 @@ sub string_option {
 # deletes a string
 # on input
 #  $_[0] = string name (can be an list of strings, but in this case options must be set, possibly to the empty string)
-#  $_[$#_] = options, passed to string_search (ie global, noglobal and local, suffix|prefix removes the equivalent stripped variable name, as defined in string_set)
+#  $_[$#_] = options, passed to string_search (ie global, noglobal and local, suffix|prefix removes the equivalent stripped variable name, as defined in string_set, not accessible from legacy string code)
 # on output
 #  $_[0] = unchanged
 sub string_delete {

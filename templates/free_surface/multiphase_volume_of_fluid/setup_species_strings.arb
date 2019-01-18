@@ -78,7 +78,7 @@ GLOBAL_REPLACEMENTS D "<<multiphase_solid_species_max>>" W "0"
 
 }}
 
-REPLACEMENTS D "<<debug>>" W "1"
+REPLACEMENTS D "<<debug>>" W "0"
 IF <<debug>> # debug
   {{ print string_debug('global') }}
 END_IF
