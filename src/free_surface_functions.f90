@@ -1159,7 +1159,7 @@ if (debug) write(50,*) 'first calc: aau = ',aau
 
 ! deal with stricter constaint for multiphase vof, requiring the continous phase phi, phicont[r=1]
 lambda = 1.d0
-if (msomeloop_phicont_r1 <= 0) then
+if (msomeloop_phicont_r1 > 0) then
   phicont_r1 = someloop(thread)%funk(msomeloop_phicont_r1)%v
   if (1.d0-phicont_r1 > 1.d-10) lambda = max(min(phi_r1/(1.d0-phicont_r1),1.d0),0.d0)
   if (debug) write(50,*) 'first calc: lambda = ',lambda
