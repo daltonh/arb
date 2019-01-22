@@ -8,18 +8,33 @@ sep = '#'
 #shutil.copy2(sys.argv[1],'temp1.dat')
 #shutil.copy2(sys.argv[2],'temp2.dat')
 
-fileA = sys.argv[1]+'/setup_data/variable_list.arb'
-fileB = sys.argv[2]+'/setup_data/variable_list.arb'
+fileAvariableList = sys.argv[1]+'/setup_data/variable_list.arb'
+fileBvariableList = sys.argv[2]+'/setup_data/variable_list.arb'
+
+fileAoutput = sys.argv[1]+'/output.scr'
+fileBoutput = sys.argv[2]+'/output.scr'
 
 outfile = open('tempA.dat','w')
-infile = open(fileA,'r')
+
+infile = open (fileAoutput,'r')
+for line in infile:
+    if "read numerical" in line:
+        print >>outfile, line
+
+infile = open(fileAvariableList,'r')
 for line in infile:
     rest = line.split(sep,1)[0]
     print >>outfile, rest
 outfile.close()
 
 outfile = open('tempB.dat','w')
-infile = open(fileB,'r')
+
+infile = open (fileBoutput,'r')
+for line in infile:
+    if "read numerical" in line:
+        print >>outfile, line
+
+infile = open(fileBvariableList,'r')
 for line in infile:
     rest = line.split(sep,1)[0]
     print >>outfile, rest
@@ -38,5 +53,5 @@ os.system("diff tempA.dat tempB.dat")
 #         file_out.write(line)
 
 
-os.remove('tempA.dat')
-os.remove('tempB.dat')
+#os.remove('tempA.dat')
+#os.remove('tempB.dat')
