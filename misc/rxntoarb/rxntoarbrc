@@ -1,5 +1,5 @@
-# rxntoarbrc, v. 2.7 (2018-05-24)
-VERSION 0.58
+# rxntoarbrc, v. 2.8 (2019-01-17)
+VERSION 0.60
 REPLACEMENTS D '<<calculatediffusivities>>' W '0' D '<<specieshighorderadvection>>' W '0' D '<<zeroinitialvolumeconcentrations>>' W '0'
 CONSTANT </c/_0> [/units/] 0.d0 # set boundary concentration to zero (overwrite later if necessary)
 if_rxn(volume){
@@ -30,7 +30,7 @@ if_rxn(volume){
 }
 /CENTRING/_EQUATION </species/@/region/ conservation> "if_rxn(volume){celldiv(<<radius_f>>*<j_f_/species/@/region/>)/<<radius_c>>} - <S_/species/@/region/@/source_region/>" ON </domainof(region)/>
 IF <<transientsimulation>>
-  VARIABLE </species/@/region/ conservation> "</species/@/region/ conservation> + (</c/>-</c/[r=1]>)/<dt[r=1]>"
+  VARIABLE </species/@/region/ conservation> "</species/@/region/ conservation> + (</c/>-</c/[r=1]>)/<dt>"
 END_IF
 if_rxn(volume){
   # set boundary conditions here

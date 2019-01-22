@@ -1,5 +1,5 @@
 # Rxntoarb::Rxn
-# (C) Copyright Christian Biscombe 2016-2018
+# (C) Copyright Christian Biscombe 2016-2019
 
 require 'set'
 require_relative 'reaction'
@@ -71,7 +71,7 @@ module Rxntoarb
             location = $1.downcase
             eval "#{location}_region_list = []"
             $2.scan(/\w+|<[^>]+>/) do |region| # angle brackets optional unless region name contains spaces or special characters
-              if exclude?("@#{region}", :region) # region excluded by include_only or exclude statement
+              if exclude?("@#{region}") # region excluded by include_only or exclude statement
                 warn "INFO: region #{region} excluded due to include_only or exclude statement" if Rxntoarb.options[:debug]
                 next
               end
@@ -145,13 +145,10 @@ module Rxntoarb
       end
     end #}}}
 
-    def exclude?(string, type=:default) #{{{
+    def exclude?(string) #{{{
       return false unless Rxntoarb.options[:keep]
       exclude = false
       Rxntoarb.options[:keep].each do |keep, regexp|
-        if type == :region
-          next unless regexp.source =~ /\A@/ # first character in regexp must be @ to operate on regions
-        end
         if keep == :include_only
           exclude = exclude || string !~ regexp # exclude if string doesn't match regexp
         else
