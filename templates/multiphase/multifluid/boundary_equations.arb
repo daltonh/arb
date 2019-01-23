@@ -44,7 +44,7 @@ REPLACEMENTS D '<<boundarytangentmethod>>' W 'noslip' D '<<boundarymethodvariabl
         $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/boundary_equations' D '<<boundarynormalmethod>>' W 'zerogradu' D '<<boundarymethod>>' W 'pressure'\n";
         $return_string .= "VARIABLE <outlet flowrate equation_$species> 'facegrad[adjacentcells](<phi_$species>)'\n";
       } elsif (string_test('<region','<inlet')) {
-# inlet for disperse phase, set the volume fraction as a uniform value fluid pressure to zero in one cell, and a uniform dynamic_force across the rest
+# inlet for disperse phase, set the volume fraction as a uniform value
         $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/boundary_equations' D '<<boundarynormalmethod>>' W 'zerogradu' D '<<boundarymethod>>' W 'pressure'\n";
         $return_string .= "VARIABLE <inlet flowrate equation_$species> '<phi_f_$species>-<phi_in_$species>'\n";
       } else {
