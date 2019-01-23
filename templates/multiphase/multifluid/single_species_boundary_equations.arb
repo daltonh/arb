@@ -1,0 +1,45 @@
+MARKDOWN
+This just generalises the navier-stokes boundary_equations template to a specific species by adding a <<species>> suffix to all relevant variables
+
+Now also implements replacements to give phi specific boundaries
+
+The <<species>> string needs to be set before this template file is called
+END_MARKDOWN
+
+# the 'SUFFIX' replacement type adds a suffix to the variable name.  It doesn't matter what is contained within the [] in the variable name if there are square braces - ie, <u_f_vect[l=1]> will replace all vector components, and also all r indicies of this variable
+# these are variables from the domain
+REPLACEMENTS SUFFIX '<dynamic_force_f>' W '<<species>>'
+REPLACEMENTS SUFFIX '<u_f_vect[l=1]>' W '<<species>>'
+REPLACEMENTS SUFFIX '<u_f>' W '<<species>>'
+REPLACEMENTS SUFFIX '<ugrad_f[l=1,1]>' W '<<species>>'
+REPLACEMENTS SUFFIX '<p_f>' W '<<species>>'
+REPLACEMENTS SUFFIX '<p_error>' W '<<species>>'
+REPLACEMENTS SUFFIX '<u[l=1]>' W '<<species>>'
+REPLACEMENTS SUFFIX '<u_f_{correction}>' W '<<species>>'
+REPLACEMENTS SUFFIX '<u_f_{correction}[r=1]>' W '<<species>>'
+# these are boundary condition specific variables
+REPLACEMENTS SUFFIX '<region u_av_calc>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region flowrate equation>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region oneface flowrate equation>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region pextrapolation>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region slip1>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region slip2>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region noslip1>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region noslip2>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region fully developed>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region oneface gradp>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region p>' W '<<species>>'
+REPLACEMENTS SUFFIX '<region u>' W '<<species>>'
+
+IF {{ return string_test('<<boundarymethod>>','zerophigrad') }}
+# special case that sets gradient of phi to zero, relevant for outlet boundaries
+  INCLUDE_TEMPLATE 'navier_stokes/boundary_equations' R '<<boundarymethod>>' W 'pressure'
+  VARIABLE <region flowrate equation_<<species>>> "facegrad[adjacentcells](<phi_<<species>>>)"
+ELSE_IF {{ return string_test('<<boundarymethod>>','phi') }}
+# special case that sets a uniform value for phi (equal to <region phi_<<species>>>), relevant for inlet boundaries
+  INCLUDE_TEMPLATE 'navier_stokes/boundary_equations' R '<<boundarymethod>>' W 'pressure'
+  VARIABLE <region flowrate equation_<<species>>> "<phi_f_<<species>>>-<region phi_<<species>>>"
+ELSE
+# now include the navier_stokes boundary_equations template file
+  INCLUDE_TEMPLATE 'navier_stokes/boundary_equations'
+END_IF
