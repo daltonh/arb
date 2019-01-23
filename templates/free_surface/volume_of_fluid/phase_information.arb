@@ -1,0 +1,30 @@
+MARKDOWN
+This file computes some commonly used information about the <<species>> phase in a multiphase vof simulation, or if <<species>> is not set, the disperse phase in a normal simulation
+
+Variable names need to be changed prior to calling this file if names are required to be phase specific
+END_MARKDOWN
+
+REPLACEMENTS D "<<species>>" W "" # all this string does is exclude the continuous phase (<<species>>=species0) from certain calculations within a multiphase vof context
+
+<<cartesiancomment>>NONE_OUTPUT <vof_integrated volume> "cellsum(<vof_phi>*<cellvol>,<domain>)"
+<<cylindricalcomment>>NONE_OUTPUT <vof_integrated volume> "cellsum(<vof_phi>*<<radius_c>>*<cellvol>,<domain>)"
+
+NONE_OUTPUT <vof_centroid[l=1]> "cellsum(<cellvol>*<cellx[l=1]>*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>)"
+NONE_OUTPUT <vof_centroid[l=2]> "cellsum(<cellvol>*<cellx[l=2]>*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>)"
+NONE_OUTPUT <vof_stretch[l=1]> "sqrt(cellsum(<cellvol>*(<cellx[l=1]>-<vof_centroid[l=1]>)^2*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>))"
+NONE_OUTPUT <vof_stretch[l=2]> "sqrt(cellsum(<cellvol>*(<cellx[l=2]>-<vof_centroid[l=2]>)^2*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>))"
+
+NONE_OUTPUT <vof_phi_max domain> "cellmax(<vof_phi>,region=<domain>)"
+NONE_OUTPUT <vof_phi_min domain> "cellmin(<vof_phi>,region=<domain>)"
+NONE_OUTPUT <vof_phi_max allcells> "cellmax(<vof_phi>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_min allcells> "cellmin(<vof_phi>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_outofbounds domain> "nonemax(abs(<vof_phi_max domain>-1.d0),abs(<vof_phi_min domain>))"
+NONE_OUTPUT <vof_phi_outofbounds all cells> "nonemax(abs(<vof_phi_max allcells>-1.d0),abs(<vof_phi_min allcells>))"
+
+# the following won't work with the continuous phase, so test for the species type
+
+IF {{ return (!(string_test('<<species>>','species0'))) }}
+  NONE_OUTPUT <vof_phi change> "sqrt(cellsum((<vof_phi>-<vof_phi_initial>)**2*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>))"
+  NONE_OUTPUT <vof_phi_adjust_max> "cellmax(<vof_phi_adjust[r=1]>,region=<allcells>)"
+  NONE_OUTPUT <vof_phi_adjust_min> "cellmin(<vof_phi_adjust[r=1]>,region=<allcells>)"
+END_IF

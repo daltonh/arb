@@ -24,13 +24,16 @@ FACE_DERIVED <vof_phi_f[r=1]> "faceif(facedelta(<vof_interface_mask_f[r=1]>),fac
 # these files probably need updating as of 030714
 #INCLUDE "facevofphi_linearone_2D_advected_vector_explicit" R "<facevofphi_n[l=" W "<vof_phigrad_unit[r=1,l=" R "<facevofphi_d>" W "<vof_d[r=1]>" R "<facevofphi_phi>" W "<phi[r=1]>" R "<facevofphi_f[r=1]>" W "<vof_phi_f[r=1]>" R "<facevofphi_phi>" W "<vof_phi[r=1]>" R "<facevofphi_phitol>" W "<vof_phi_tol>"
 
+# setup a multiphase vof string that can be used to pass the phicont volume fraction to cellvofphiadjust
+# call with this set if required
+REPLACEMENTS D "<<phicont_for_cellvofphiadjust>>" W ""
 #CELL_DERIVED <vof_phi_adjust[r=1]> "cellvofphiadjust[noderivative](phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>)" ON <allcells> output
 # cellvofphiadjust now supports derivative calculation too for implicit flux (but not phif or phi[r=1])
 # now applying newtstepmax to this variable, as with cylindrical coordinates (at least) it seems to get stuck in backstepping/false root loop occasionally
 # note that once newtstepmax has been applied, there is the possibility of mass errors, so making newtstepmax high (ie, last resort)
 # in practice mass loss practically not observed - actually as <u_f> is no longer dependent on <vof_phi> by the time that this newtstepmax kicks in, not sure if mass loss will occur anyway given that vof_phi_adjust only depends on <u_f>
-<<cartesiancomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>),0.d0)" ON <allcells> newtstepmax=50
-<<cylindricalcomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<<radius_f>>*<u_f>/faceave[lastcell](<<radius_c>>),dt=<dt>),0.d0)" ON <allcells> newtstepmax=50
+<<cartesiancomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>,<<phicont_for_cellvofphiadjust>>),0.d0)" ON <allcells> newtstepmax=50
+<<cylindricalcomment>>CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<<radius_f>>*<u_f>/faceave[lastcell](<<radius_c>>),dt=<dt>,<<phicont_for_cellvofphiadjust>>),0.d0)" ON <allcells> newtstepmax=50
 FACE_LOCAL <vof_phi_f_adjusted[r=1]> "faceif(facedelta(<vof_interface_mask_f[r=1]>),facemax(facemin(<vof_phi_f[r=1]>+faceif(<u_f>,faceave[downcell](<vof_phi_adjust[r=1]>),faceave[upcell](<vof_phi_adjust[r=1]>)),1.d0),0.d0),<vof_phi_f[r=1]>)" ON <allfaces> output
 
 #CELL_TRANSIENT <vof_phi_advected> "<vof[r=1]>-<dt>*celldiv(<vof_phi_f_adjusted[r=1]>*<u_f[r=1]>)" ON <allcells> nooutput

@@ -1278,18 +1278,18 @@ sub legacy_string_code_converter {
 
   if ($debug) { print ::DEBUG "INFO: start of legacy_string_code_converter: global = $global: old_buffer = $old_buffer\n"; }
   my $opened = 0; # if any legacy operations were found
-  my ($search,$replace,$cancel,$default,$substitute);
+  my ($search,$replace,$cancel,$default,$substitute,$suffix,$prefix);
   $search = 1;
   my $buffer = '';
 
   while (nonempty($search) && nonempty($old_buffer)) {
-    ($search,$replace,$cancel,$default,$substitute) = extract_legacy_replacements($old_buffer);
+    ($search,$replace,$cancel,$default,$substitute,$suffix,$prefix) = extract_legacy_replacements($old_buffer);
     if (nonempty($search)) {
       if (!($opened)) { $buffer .= '{{ '; $opened = 1; } else { $buffer .= '; '; }
       if ($cancel) {
         $buffer .= "string_delete(\'$search\') "; # add this cancel operation
       } else {
-        $buffer .= "string_set(\'$search\',\'$replace\',\'"."global" x $global.",default" x $default.",substitute" x $substitute."\') ";
+        $buffer .= "string_set(\'$search\',\'$replace\',\'"."global" x $global.",default" x $default.",substitute" x $substitute.",suffix" x $suffix.",prefix" x $prefix."\') ";
       }
     } else {
       if ($opened) { $buffer .= '}} '; }
@@ -1314,6 +1314,8 @@ sub extract_legacy_replacements {
 # $_[3] = cancel = 0,1, indicates whether the CANCEL "string" was used
 # $_[4] = default = 0,1, indicates whether the DEFAULT "string" was used, which indicates that string replacement is only set if it isn't set already
 # $_[5] = substitute = 0,1, indicates whether the SUBSTITUTE "string" was used, which indicates that string replacement is only set if it is set already
+# $_[6] = suffix = 0,1, indicates whether the SUFFIX "string" was used, which indicates that string replacement is to be added to a variable or region name at the end
+# $_[7] = prefix = 0,1, indicates whether the PREFIX "string" was used, which indicates that string replacement is to be added to a variable or region name at the start
 # if search is empty then no string was found
 
   my $line = $_[0];
@@ -1323,14 +1325,18 @@ sub extract_legacy_replacements {
   my $cancel = 0;
   my $default = 0;
   my $substitute = 0;
+  my $suffix = 0;
+  my $prefix = 0;
 
 # print ::DEBUG "INFO: start of extract_legacy_replacements: line = $line\n";
 
 # if ($line =~ /^((R|REPLACE)|(R\*|REPLACE\*|DEFAULT|D))\s+/i) { # found a replacement - as far as I can remember, *'ed form was never used instead of D|DEFAULT - get rid of it
-  if ($line =~ /^((R|REPLACE)|(DEFAULT|D)|(SUBSTITUTE|S))\s+/i) { # found a replacement
+  if ($line =~ /^((R|REPLACE)|(DEFAULT|D)|(SUBSTITUTE|S)|(SUFFIX)|(PREFIX))\s+/i) { # found a replacement
 #   print ::DEBUG "found a replace statement specified as $1: $'\n";
     if (nonempty($3)) { $default=1; }
     if (nonempty($4)) { $substitute=1; }
+    if (nonempty($5)) { $suffix=1; }
+    if (nonempty($6)) { $prefix=1; }
     $line = $';
 #   print ::DEBUG "line = $line\n";
     ($search,$error) = extract_first($line);
@@ -1356,7 +1362,7 @@ sub extract_legacy_replacements {
 
 # print ::DEBUG "INFO: end of extract_legacy_replacements: line = $line\n";
   $_[0] = $line;
-  return ($search,$replace,$cancel,$default,$substitute);
+  return ($search,$replace,$cancel,$default,$substitute,$suffix,$prefix);
 
 }
 

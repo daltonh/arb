@@ -2998,6 +2998,16 @@ sub mequation_interpolation {
       create_someloop($tmp,"sum","none","<noloop>",$deriv,$otype,$omvar);
       $external_arguments = $external_arguments.',msomeloop_dt='.$m{someloop};
 
+# 5) phicont[r=1], which is the optional continous (species0) volume fraction from the previous timestep, required for multiphase problems
+      ($tmp,$name) = search_operator_contents("phicont[r=1]",$next_contents_number);
+      if (empty($tmp)) {
+        $external_arguments = $external_arguments.',msomeloop_phicont_r1=-1'; # an index of -1 means no phicont[r=1] value is specified, and this is not a multiphase problem
+#       error_stop("phicont[r=1] part for $operator in $otype $variable{$otype}[$omvar]{name} not found:\n  operator_contents = ".Dumper(\%operator_contents));
+      } else {
+        create_someloop($tmp,"sum","cell","<noloop>",$deriv,$otype,$omvar);
+        $external_arguments = $external_arguments.',msomeloop_phicont_r1='.$m{someloop};
+      }
+
       $inbit[$nbits] = $centring.$operator_type."[".$external_arguments."]"; # place dummy function in someloop to trigger someloop updates in sub update_someloop_fortran
       create_someloop($inbit[$nbits],"external","cell","<noloop>",$deriv,$otype,$omvar);
       $variable{"someloop"}[$m{"someloop"}]{"external_subroutine"} = $centring.$operator_type.'('.$external_arguments.')'; # give the fortran subroutine to be called to update someloop(m)

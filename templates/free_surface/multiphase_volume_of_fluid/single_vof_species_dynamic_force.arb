@@ -1,0 +1,15 @@
+MARKDOWN
+This is a single species wrapper file for the vof/setup template, converting single phase vof setup to multiphase setup
+END_MARKDOWN
+
+# this file is subsequently called with the string <<species>>, so replacements are defined on any species specific files in volume_of_fluid/setup
+REPLACEMENTS SUFFIX "<vof_F_c[l=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_F_f>" W "_<<species>>"
+# deal with different sigmas later
+
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid/dynamic_force"
+
+REPLACEMENTS D "<<debug>>" W "0"
+IF <<debug>> # debug
+  {{ print string_debug('local'); }}
+END_IF

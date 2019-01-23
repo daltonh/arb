@@ -1,0 +1,12 @@
+MARKDOWN
+Equivalent of phase_information for the vof templates, but here performing the setup for all species
+END_MARKDOWN
+
+# vof species
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multiphase_species_list>>','list')) {
+    $return_string .= "INCLUDE 'single_vof_species_phase_information' R '<<species>>' W '$species'\n";
+  }
+  return $return_string;
+}}

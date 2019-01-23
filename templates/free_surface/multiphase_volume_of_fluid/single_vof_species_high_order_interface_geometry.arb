@@ -1,0 +1,36 @@
+MARKDOWN
+This is a single species wrapper file for the vof/high_order_interface_geometry template, converting single phase vof setup to multiphase setup
+END_MARKDOWN
+
+# this file is subsequently called with the string <<species>>, so replacements are defined on any species specific files in volume_of_fluid/setup
+# these are relevant to implicit_reconstructed_levelset template
+REPLACEMENTS SUFFIX "<vof_s>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_interface>" W "_<<species>>"
+#REPLACEMENTS SUFFIX "<vof_s_interface_width>" W "_<<species>>"
+#REPLACEMENTS SUFFIX "<vof_s_D>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_s_j>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_s domain>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_s boundary>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_s>" W "_<<species>>"
+# these are relevant to normals template
+REPLACEMENTS SUFFIX "<vof_phigrad_mask[r=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phigrad_mask_n[r=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phigrad_n[l=1]>" W "_<<species>>" # note, for all vector components
+REPLACEMENTS SUFFIX "<vof_phigrad[l=1]>" W "_<<species>>" # note, for all vector components
+REPLACEMENTS SUFFIX "<vof_phigrad_mag^2>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phigrad_mag>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phigrad_unit[l=1]>" W "_<<species>>" # note, for all vector components
+# these are relevant to curvature template
+REPLACEMENTS SUFFIX "<vof_kappa_f>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_kappa_cart_f>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_kappa_cyl_f>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_delta_mask_f[r=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_kappa_c>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_delta_mask[r=1]>" W "_<<species>>"
+
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid/high_order_interface_geometry"
+
+REPLACEMENTS D "<<debug>>" W "0"
+IF <<debug>> # debug
+  {{ print string_debug('local'); }}
+END_IF
