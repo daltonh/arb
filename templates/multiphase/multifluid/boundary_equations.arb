@@ -45,7 +45,7 @@ REPLACEMENTS D '<<boundarymethodvariable>>' W 'p'
         $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W 'zerogradu' D '<<boundarymethod>>' W 'flowrate' R '<region u_<<species>>>' W '<u_av_<<species>>>'\n";
       } else {
 # walls for fluid, set noslip and noflux (zero velocity), and use rhiechow extrapolation
-        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W '<<boundarynormalwallmethod>>' D '<<boundarymethod>>' W 'noflux'\n";
+        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W '".string_eval('<<boundarynormalwallmethod>>')."' D '<<boundarymethod>>' W 'noflux'\n";
       }
     } else {
       if (string_test('<region','<outlet')) {
@@ -56,7 +56,7 @@ REPLACEMENTS D '<<boundarymethodvariable>>' W 'p'
         $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W 'zerogradu' D '<<boundarymethod>>' W 'phi'\n";
       } else {
 # walls for disperse phase, set noslip and noflux (zero velocity), and use zero dynamic extrapolation
-        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W '<<boundarynormalwallmethod>>' D '<<boundarymethod>>' W 'noflux'\n";
+        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W '".string_eval('<<boundarynormalwallmethod>>')."' D '<<boundarymethod>>' W 'noflux'\n";
       }
     }
   }
