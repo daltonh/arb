@@ -2,44 +2,56 @@ MARKDOWN
 Here we find <mu_f_species> for each species
 END_MARKDOWN
 
-REPLACEMENTS D "<<viscosity_method>>" W "einstein"
-#REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99" # needs bug fixing on boundaries...
+#REPLACEMENTS D "<<viscosity_method>>" W "einstein"
+REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
 
-IF 1 # split viscosity between phases
+# as the default, which is einstein, split stress between phases using the simplest possible consistent partitioning
   IF {{ return string_test('<<species>>','species0') }}
     CELL_DERIVED <mu_c_multiplier_<<species>>> [Pa.s] "<mu_species0>" ON <allcells>
   ELSE
     CELL_DERIVED <mu_c_multiplier_<<species>>> [Pa.s] "3.5d0*<mu_species0>" ON <allcells>
   END_IF
-ELSE
-  ERROR "no other viscosity coded up yet"
-END_IF
 
 # different functions specified through these correction factors
-IF {{ return string_test('<<viscosity_method>>','thomas')}}
+IF {{ return string_test('<<viscosity_method>>','einstein')}}
+# einstein has been specified above
+# thomas method not yet coded
+SKIP
+ELSE_IF {{ return string_test('<<viscosity_method>>','thomas')}}
   IF {{ return string_test('<<species>>','species0') }}
     CELL_LOCAL <mu_c_multiplier_<<species>>> "<mu_c_multiplier_<<species>>>"
   ELSE
     ERROR "thomas method not done"
 #   CELL_LOCAL <mu_correction_<<species>>> "10.05d0*<phi_bounded_<<species>>>+0.00273d0*exp(16.6d0*<phi_bounded_<<species>>>)/<phi_lim_<<species>>>"
   END_IF
-ELSE_IF {{ return string_test('<<viscosity_method>>','morrisboulay99')}}
-  IF {{ return string_test('<<species>>','species0') }}
-    CELL_DERIVED <mu_c_multiplier_<<species>>> [Pa.s] "<mu_c_multiplier_<<species>>>" ON <allcells>
-  ELSE
+END_SKIP
+SKIP
+#ELSE_IF {{ return string_test('<<viscosity_method>>','morrisboulay99')}}
+# needs fixing
+  IF {{ return (!string_test('<<species>>','species0')) }}
     NONE_CONSTANT <phi_lim_<<species>>> 0.68d0
     CELL_DERIVED <phi_bounded_<<species>>_norm> "<phi_bounded_<<species>>>/<phi_lim_<<species>>>"
     CELL_DERIVED <mu_c_multiplier_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0/(1.d0-<phi_bounded_<<species>>_norm>)+0.1d0*(<phi_bounded_<<species>>>/<phi_bounded_<<species>>_norm>**2)/(1.d0-<phi_bounded_<<species>>_norm>)**2)" ON <allcells>
-    #VARIABLE <mu_c_multiplier_<<species>>> '<mu_c_multiplier_<<species>>>*<mu_species0>'
-#   CELL_LOCAL <mu_correction_<<species>>> "10.05d0*<phi_bounded_<<species>>>+0.00273d0*exp(16.6d0*<phi_bounded_<<species>>>)/<phi_lim_<<species>>>"
+  END_IF
+END_SKIP
+ELSE
+# methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
+  NONE_CONSTANT <mu_phi_max_allsolids> 0.68d0
+  NONE_CONSTANT <mu_phi_tol> "<phi_tol>"
+  CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output
+  CELL_LOCAL <mu_c_multiplier_<<species>>> [Pa.s] "<mu_c_multiplier_allsolids>" ON <allcells>
+
+  IF {{ return string_test('<<viscosity_method>>','morrisboulay99')}}
+    NONE_CONSTANT <mu_K_s> 0.1d0
+    CELL_DERIVED <mu_c_multiplier_allsolids> [Pa.s] "<mu_species0>*(1.d0+2.5d0/(1.d0-<mu_phi_norm_allsolids>)+<mu_K_s>*<mu_phi_norm_allsolids>/(<mu_phi_max_allsolids>*(1.d0-<mu_phi_norm_allsolids>)**2))" ON <allcells> output
+  ELSE
+    ERROR "in single_species_viscosity: viscosity_method = <<viscosity_method>> not coded yet or unknown"
   END_IF
 END_IF
 
+# now construct viscosity and multiplier for faces
+CELL_LOCAL <mu_c_<<species>>> "<mu_c_multiplier_<<species>>>*<phi_bounded_<<species>>>" ON <allcells> output
+FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> output # used in stress
+FACE_DERIVED <mu_f_multiplier_<<species>>> "faceave[adjacentcells](<mu_c_multiplier_<<species>>>)" ON <allfaces> output # used in rhie-chow
 
-CELL_LOCAL <mu_c_<<species>>> "<mu_c_multiplier_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
-FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> # used in stress
-FACE_DERIVED <mu_f_multiplier_<<species>>> "faceave[adjacentcells](<mu_c_multiplier_<<species>>>)" ON <allfaces> # used in rhie-chow
-
-#Define normal viscosity (Morris & Boulay 1999)
-INCLUDE "mixture_viscosity"  R "<mu_n_l>" W "<mu_species0>" R "<mu" W "<mu_n" R "<<mumixturequemada>>" W "0" R "<<mumixturemb1999>>" W "0" R "<<munormalmb1999>>" W "1" R "phi_total_species" W "phi_species1"
-FACE_DERIVED <mu_n_f> "faceave[harmonic](<mu_n>)" ON <allfaces>
+# moved normal viscosity over to pressure alongside shear induced diffusion, so that this is only calculated if needed

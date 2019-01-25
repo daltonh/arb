@@ -9,8 +9,9 @@ REPLACEMENTS D "<<highPeSID>>" W "1" D "<<lowPeSID>>" W "1"
 # start with linear osmotic pressure, dilute assumption
 NONE_CONSTANT <p_osmotic_multiplier_<<species>>> [Pa] "<k_boltzmann>*<T>/<V_<<species>>>" # this can be atmost a function of <phi_lim_<<species>>>
 IF 1 # Carnahan and Starling
-  CELL_LOCAL <phi_upperbounded_<<species>>> "cellmin(<phi_pos_<<species>>>,1.d0-<phi_tol>)" ON <allcells>
-  CELL_DERIVED <p_osmotic_multiplier_<<species>>> [Pa] "<p_osmotic_multiplier_<<species>>>*(1.d0+<phi_upperbounded_<<species>>>+<phi_upperbounded_<<species>>>^2-<phi_upperbounded_<<species>>>^3)/((1.d0-<phi_upperbounded_<<species>>>)^3)" ON <allcells>
+  NONE_CONSTANT <p_osmotic_phi_tol> "<phi_tol>"
+  CELL_LOCAL <p_osmotic_phi_upperbounded_<<species>>> "cellmin(<phi_pos_<<species>>>,1.d0-<p_osmotic_phi_tol>)" ON <allcells>
+  CELL_DERIVED <p_osmotic_multiplier_<<species>>> [Pa] "<p_osmotic_multiplier_<<species>>>*(1.d0+<p_osmotic_phi_upperbounded_<<species>>>+<p_osmotic_phi_upperbounded_<<species>>>^2-<p_osmotic_phi_upperbounded_<<species>>>^3)/((1.d0-<p_osmotic_phi_upperbounded_<<species>>>)^3)" ON <allcells>
 ELSE
   ERROR "no other osmotic pressure coded up yet"
 END_IF
@@ -22,6 +23,11 @@ FACE_DERIVED <p_f_<<species>>> "faceave(<p_<<species>>>)" ON <allfaces>
 
 #Calculate solid pressure due to shear induced diffusion
 IF <<shearinduceddiffusion>>
+
+  #Define normal viscosity (Morris & Boulay 1999)
+  # moved from single_species_viscosity
+  INCLUDE "mixture_viscosity"  R "<mu_n_l>" W "<mu_species0>" R "<mu" W "<mu_n" R "<<mumixturequemada>>" W "0" R "<<mumixturemb1999>>" W "0" R "<<munormalmb1999>>" W "1" R "phi_total_species" W "phi_species1"
+  FACE_DERIVED <mu_n_f> "faceave[harmonic](<mu_n>)" ON <allfaces>
 
   CELL_DERIVED <Pe_local_<<species>>> "6*pi*<mu_species0>*<gamma_<<species>>_magnitude>*<a_<<species>>>**3/(<k_boltzmann>*<T>)"
 
