@@ -1,0 +1,314 @@
+# arb finite volume solver
+# Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
+#
+# arb is released under the GNU GPL.  For full details see the license directory.
+#
+#-------------------------------------------------------------------
+# file equations.in
+VERSION 0.60
+
+# TODO:
+# debug force perculiarity over top periodic boundary
+# work out is this css or csf?
+# standardise css and csf, and marangoni/surfactant templates
+# deal with cylindrical 2D
+
+
+# the following strings describe the simulation and are passed to the output files
+INFO_TITLE "2D vessicle"
+INFO_DESCRIPTION "2D vessible composed with mass conserved membrane either stopped, rising, in shear, or in gradp"
+INFO_DESCRIPTION+ ": right now 2D cartesian"
+INFO_AUTHOR "Dalton Harvie"
+INFO_DATE "28/10/18" # interpreted as the last modification date
+
+# for uniform properties (rho and mu) include the following line
+#GENERAL_REPLACEMENTS R "<<uniformcomment>>" W "" R "<<nonuniformcomment>>" W "#"
+# or for nonuniform properties (rho and mu) include the following line
+GENERAL_REPLACEMENTS R "<<uniformcomment>>" W "#" R "<<nonuniformcomment>>" W ""
+
+# the default is for normals calculated at nodes, and then averaged to surrounding cells
+# to use normals based on cellgrad directly include the following which alters the behaviour within the normals templates file:
+#GENERAL_REPLACEMENTS R "<<vofnodenormalscomment>>" W "#" R "<<vofcellnormalscomment>>" W ""
+
+# include surfactant transport
+REPLACEMENTS R "<<surfactant>>" W "1"
+
+<<uniformcomment>>INFO_DESCRIPTION+ ": uniform properties (rho and mu)"
+<<nonuniformcomment>>INFO_DESCRIPTION+ ": nonuniform properties (rho and mu)"
+
+#-------------------------------------------------------------------
+# MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
+# output options are: output,centringoutput,meshoutput,centringmeshoutput,nooutput
+# input options are: input,centringinput,meshinput,centringmeshinput,noinput
+# data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
+# vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
+# dat file output options are: dat_output,centringdat_output,meshdat_output,centringmeshdat_output,nodat_output (nodat_output is the default)
+#MSH_FILE "free_surface_quadrant_structured.msh"
+IF 1
+  MSH_FILE "square_structured.msh" nooutput
+ELSE
+# MSH_FILE "restart.msh" input
+#MSH_FILE "restart.239.msh" input
+#MSH_FILE "restart.1.develop.msh" input
+#MSH_FILE "restart.264.msh" input
+  MSH_FILE "output/latest.output.msh" input
+END_IF
+
+#-------------------------------------------------------------------
+# geometry stuff
+
+REPLACEMENTS R <<problem_type>> W "stop"
+#REPLACEMENTS R <<problem_type>> W "rise"
+#REPLACEMENTS R <<problem_type>> W "shear"
+#REPLACEMENTS R <<problem_type>> W "gradp"
+
+IF {{ return string_test('<<problem_type>>','rise'); }}
+  GLUE_FACES <north> <south> # make periodic in the y direction
+ELSE_IF {{ return (string_test('<<problem_type>>','shear') || string_test('<<problem_type>>','gradp')); }}
+  GLUE_FACES <west> <east> # make periodic in the x direction
+END_IF
+FACE_REGION <walls> "all" ON <boundaries>
+
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+#INCLUDE "remove_masks" # include this file to remove the masks, calculating surface variables everywhere
+# commands to form the single mesh regions from the fluid msh file
+INCLUDE "single_region_formation"
+
+#-------------------------------------------------------------------
+# user-defined constants
+
+# setup basic cylindrical general replacements by including the following two lines
+GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
+GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
+
+# bring in default physical and numerical constants
+INCLUDE_TEMPLATE "navier_stokes"
+<<nonuniformcomment>>INCLUDE "nonuniform_properties" # setup the density and viscosity uniform properties strings based on the <<uniformcomment>> string
+INCLUDE "nondimensional_constants"
+
+# v0.50 - now use transient setup files
+# include the following to include a constraint based on the previous number of newtsteps
+#GENERAL_REPLACEMENTS REPLACE "<<newtsteptimestepcomment>>" W "" REPLACE "<<nonnewtsteptimestepcomment>>" W "#"
+INCLUDE "transient_explicit_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
+#INCLUDE "transient_implicit_setup" # a dynamic implicitly calculated timestep to keep the CFL number at a specified level
+#INCLUDE "transient_constant_setup" # a constant timestep
+
+# overwrite some transient specifications
+CONSTANT <t_end> [] 2.d1 # time for simulation to stop
+CONSTANT <dt_initial_multiplier> 1.d-3
+CONSTANT <dt_initial> [] "<dt_initial_multiplier>*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
+CONSTANT <dt_out> [] 1.d-1 # time between output
+
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+INCLUDE "nondimensional_constants"
+# calculate the mac2 cartesian vof velocity errors for reference (http://dx.doi.org/10.1016/j.apm.2005.08.015)
+<<uniformcomment>>INCLUDE "parasitic_mac2_correlation"
+<<nonuniformcomment>>INCLUDE "parasitic_nonuniform_properties_mac2_correlation"
+# for nonuniform properties, define them
+<<nonuniformcomment>>INCLUDE "nondimensional_nonuniform_properties"
+
+# physical data, now for nondimensional uniform properties
+# set these
+#CONSTANT <Re> 1.d+2
+CONSTANT <Re> 1.d+0
+CONSTANT <S> 5.d+0 # surface tension strength nondimensional number, see harvie 2004, applied mathematical modelling (http://dx.doi.org/10.1016/j.apm.2005.08.015)
+# for nonuniform properties, express as a ratio between the disperse phase and the continuous phase (which is used as the properties scale)
+<<nonuniformcomment>>CONSTANT <vof_rho_d_ratio> 0.9d0 # dimensional <rho_d>/<rho_c>, in this case less dense droplet 
+<<nonuniformcomment>>CONSTANT <vof_mu_d_ratio> 1.d+0 # dimensional <mu_d>/<mu_c>
+
+# unknown variables used for flow problems
+CELL_LOCAL <u_analytical[l=1]> "0.d0" ON <allcells>
+CELL_LOCAL <u_analytical[l=2]> "0.d0" ON <allcells>
+FACE_LOCAL <u_f_analytical[l=1]> "0.d0" ON <allfaces>
+FACE_LOCAL <u_f_analytical[l=2]> "0.d0" ON <allfaces>
+IF {{ return string_test('<<problem_type>>','shear'); }}
+  CELL_LOCAL <u_analytical[l=1]> "<cellx[l=2]>-0.5d0" ON <allcells>
+  FACE_LOCAL <u_f_analytical[l=1]> "<facex[l=2]>-0.5d0" ON <allfaces>
+END_IF
+
+CELL_UNKNOWN <p> [] "(2.d0^<<cylindricalflag>>)*<vof_phi>/<We>" ON <allcells> elementdata # pressure
+CELL_UNKNOWN <u[l=1]> [] "<u_analytical[l=1]>" ON <allcells> magnitude=1.d0 # velocity component
+CELL_UNKNOWN <u[l=2]> [] "<u_analytical[l=2]>" ON <allcells> magnitude=1.d0 # velocity component
+
+# overwrite initial velocities
+CELL_TRANSIENT <u[l=1,r=1]> "<u_analytical[l=1]>" "<u[l=1]>" ON <allcells>
+CELL_TRANSIENT <u[l=2,r=1]> "<u_analytical[l=2]>" "<u[l=2]>" ON <allcells>
+
+# vof based CSF
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+INCLUDE "setup"
+
+# define real initial vof
+NONE_CONSTANT <vof_phi_initial_tol> 1.d-4 # accuracy in computing initial shapes (in terms of volume fraction per cell)
+# circle (cylinder/sphere)
+CONSTANT <radius1> 0.25d0
+IF 1
+# ellipse
+  CONSTANT <radius2> 0.35d0
+ELSE
+# circle
+  CONSTANT <radius2> "<radius1>"
+END_IF
+CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius1>,size[l=2]=2.d0*<radius2>,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)" ON <allcells> output,elementdata
+# ellipse
+#CONSTANT <radius_a> 0.9d0
+#CONSTANT <radius_b> 1.1d0
+#CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius_a>,size[l=2]=2.d0*<radius_b>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <allcells> output,elementdata
+CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <allcells>
+
+# calculate the interface curvature using the normal (low order) vof technique
+#INCLUDE "interface_geometry"
+# or, instead by solving a separate level-set-like field to calculate the normals, termed a high order vof technique
+INCLUDE "high_order_interface_geometry"
+
+#-------------------------------------------------------------------
+# chose the form for the surface tension variation which is referenced in the surfactant_cs?_force template
+# the default is to specify a insoluble surfactant type marangoni force
+# an alternative is to specify a lipid-monolayer type marangoni force
+IF <<surfactant>>
+  INCLUDE_TEMPLATE "free_surface/surfactant/surfactant_delta" R "<c_s_phi>" W "<vof_phi_s>"
+  INCLUDE "surfactant_css_force" R "<<interface_type>>" W "surfactant"
+ELSE_IF 0
+  INCLUDE_TEMPLATE "free_surface/surfactant/surfactant_csf_force" # not at all tested
+ELSE # non-marangoni
+  INCLUDE "force" # force done back on the fluid mesh
+END_IF
+
+# calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
+INCLUDE_TEMPLATE "navier_stokes"
+# nonuniform
+<<nonuniformcomment>>INCLUDE "total_stress" R "<mu_f>" W "<vof_mu_harmonic_f>"
+<<nonuniformcomment>>INCLUDE "u_f" R "<rho_f>" W "<vof_rho_f>" R "<mu_f>" W "<vof_mu_f>"
+<<nonuniformcomment>>INCLUDE "advection_flux" R "<rho>" W "<vof_rho_advection_f[r=1]>" R "<<uniformdensitycomment>>" W "" R "<<nonuniformdensitycomment>>" W "#"
+# uniform
+<<uniformcomment>>INCLUDE "total_stress"
+<<uniformcomment>>INCLUDE "u_f"
+<<uniformcomment>>INCLUDE "advection_flux"
+
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+INCLUDE "dynamic_force"
+IF {{ return string_test('<<problem_type>>','rise'); }}
+  VARIABLE <Fr> 1.d-1
+# CELL_LOCAL <vof_rho_diff_c> "<vof_rho_c>-1.d0" ON <allcells> output
+# need to check this - idea is to use relative buoyancy, allowing periodic boundary conditions
+  INCLUDE "buoyancy_dynamic_force" R "<vof_rho_c>" W "<vof_phi_delta>" R "<vof_rho_f>" W "<vof_phi_delta_f>"
+ELSE_IF 0 # include buoyancy
+  VARIABLE <Fr> 1.d-2
+# CELL_LOCAL <vof_rho_diff_c> "<vof_rho_c>-1.d0" ON <allcells> output
+  INCLUDE "buoyancy_dynamic_force" R "<vof_rho_c>" W "(<vof_rho_c>-1.d0)" R "<vof_rho_f>" W "(<vof_rho_f>-1.d0)"
+END_IF
+INCLUDE "equation" # all phi advection done on fluid mesh
+
+#-------------------------------------------------------------------
+# surfactant transport here
+IF <<surfactant>>
+# single membrane
+  INCLUDE_TEMPLATE "free_surface/surfactant/surfactant_transport" R "<c_s_phi>" W "<vof_phi_s>"
+#  NONE_CONSTANT <c_s_Lambda_initial> 0.97d0 # initial surface concentration
+END_IF
+
+INCLUDE_TEMPLATE "navier_stokes"
+INCLUDE "momentum_flux"
+# nonuniform
+<<nonuniformcomment>>INCLUDE "conservation" R "<rho>" W "<vof_rho_c>" R "<rho[r=1]>" W "<vof_rho_c[r=1]>" R "<mu>" W "<vof_mu_c>"
+# uniform
+<<uniformcomment>>INCLUDE "conservation"
+
+# add pressure gradient for gradp problem
+IF {{ return string_test('<<problem_type>>','gradp'); }}
+  NONE_CONSTANT <gradp[l=1]> -1.d1
+  VARIABLE <momentum[l=1]> [1] "<momentum[l=1]>+<gradp[l=1]>"
+END_IF
+
+# fluid boundary conditions on nonslip walls
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+INCLUDE "walls_nonwetting" # NB: BC applied on fluid walls
+INCLUDE_TEMPLATE "navier_stokes"
+INCLUDE "walls_p_set"
+# set wall velocities based on analytical/initial u solution
+FACE_EQUATION <walls noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)-dot(<u_f_analytical[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
+
+#-------------------------------------------------------------------
+NONE_OUTPUT <integrated volume> "cellsum(<vof_phi>*<<radius_c>>*<cellvol>,<domain>)"
+
+NONE_OUTPUT <centroid[l=1]> "cellsum(<cellvol>*<cellx[l=1]>*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>)"
+NONE_OUTPUT <centroid[l=2]> "cellsum(<cellvol>*<cellx[l=2]>*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>)"
+NONE_OUTPUT <stretch[l=1]> "sqrt(cellsum(<cellvol>*(<cellx[l=1]>-<centroid[l=1]>)^2*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>))"
+NONE_OUTPUT <stretch[l=2]> "sqrt(cellsum(<cellvol>*(<cellx[l=2]>-<centroid[l=2]>)^2*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>))"
+
+FACE_OUTPUT <u_f_vector[l=1,r=1]> "<u_f[r=1]>*<facenorm[l=1]>" ON <allfaces>
+FACE_OUTPUT <u_f_vector[l=2,r=1]> "<u_f[r=1]>*<facenorm[l=2]>" ON <allfaces>
+FACE_OUTPUT <u_f_vector[l=1,r=0]> "<u_f[r=0]>*<facenorm[l=1]>" ON <allfaces>
+FACE_OUTPUT <u_f_vector[l=2,r=0]> "<u_f[r=0]>*<facenorm[l=2]>" ON <allfaces>
+
+NONE_OUTPUT <u_f_max> "facemax(abs(<u_f>),region=<allfaces>)"
+NONE_OUTPUT <phi error> "sqrt(cellsum((<vof_phi>-<vof_phi_initial_saved>)**2*<cellvol>,region=<domain>)/cellsum(<cellvol>,region=<domain>))"
+
+NONE_OUTPUT <vof_phi_max domain> "cellmax(<vof_phi>,region=<domain>)"
+NONE_OUTPUT <vof_phi_min domain> "cellmin(<vof_phi>,region=<domain>)"
+NONE_OUTPUT <vof_phi_max all cells> "cellmax(<vof_phi>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_min all cells> "cellmin(<vof_phi>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_adjust_max> "cellmax(<vof_phi_adjust[r=1]>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_adjust_min> "cellmin(<vof_phi_adjust[r=1]>,region=<allcells>)"
+NONE_OUTPUT <vof_phi_error domain> "nonemax(abs(<vof_phi_max domain>-1.d0),abs(<vof_phi_min domain>))"
+NONE_OUTPUT <vof_phi_error all cells> "nonemax(abs(<vof_phi_max all cells>-1.d0),abs(<vof_phi_min all cells>))"
+
+# save maximum and minimum velocities for t > t_save say
+NONE_CONSTANT <t_save> 20.d0
+NONE_LOCAL <u_f_max_local> "facemax(abs(<u_f>),region=<allfaces>)"
+NONE_TRANSIENT <u_f_max_max> "0.d0" "noneif(<t>-<t_save>,nonemax(<u_f_max_local>,<u_f_max_max[r=1]>),<u_f_max_max[r=1]>)" output
+NONE_TRANSIENT <u_f_max_max[r=1]> "" "<u_f_max_max>"
+NONE_TRANSIENT <u_f_max_min> "1.d2" "noneif(<t>-<t_save>,nonemin(<u_f_max_local>,<u_f_max_min[r=1]>),<u_f_max_min[r=1]>)" output
+NONE_TRANSIENT <u_f_max_min[r=1]> "" "<u_f_max_min>"
+
+CELL_OUTPUT <u_perturbation[l=1]> "<u[l=1]>-<u_analytical[l=1]>" ON <allcells>
+CELL_OUTPUT <u_perturbation[l=2]> "<u[l=2]>-<u_analytical[l=2]>" ON <allcells>
+
+NONE_OUTPUT <phi_droplet> "cellsum(<vof_phi>*<cellvol>,region=<domain>)"
+NONE_OUTPUT <u_droplet[l=1]> "cellsum(<u[l=1]>*<vof_phi>*<cellvol>,region=<domain>)/nonemax(<phi_droplet>,<tinyish>)"
+NONE_OUTPUT <u_droplet[l=2]> "cellsum(<u[l=2]>*<vof_phi>*<cellvol>,region=<domain>)/nonemax(<phi_droplet>,<tinyish>)"
+#-------------------------------------------------------------------
+# specify outputs for some variables
+
+VARIABLE <vof_F_c[l=1]> output
+VARIABLE <vof_phi_adjust[r=1]> output
+
+# nonuniform
+<<nonuniformcomment>>VARIABLE <vof_rho_advection_f[r=1]> output
+<<nonuniformcomment>>VARIABLE <vof_rho_c[r=1]> output
+<<nonuniformcomment>>VARIABLE <vof_rho_c[r=0]> output
+<<nonuniformcomment>>VARIABLE <vof_rho_f> output
+<<nonuniformcomment>>VARIABLE <vof_mu_f> output
+
+# by default surface tension curvature changes are turned off after 20 newtsteps (via <vof_phi_interface>), delta function and properties after 30 newtsteps (via <vof_phi_lim> and <vof_phi_f[r=1]>) and <vof_phi_adjust[r=1]> changes after 50
+#VARIABLE <vof_phi_interface> newtstepmax=20
+#VARIABLE <vof_phi_lim> newtstepmax=30
+#VARIABLE <vof_phi_f[r=1]> newtstepmax=30
+#VARIABLE <vof_phi_adjust[r=1]> newtstepmax=50
+
+# to show the interface masks include this file
+#INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+#INCLUDE "output_masks"
+
+# for the high order method only, adjust the interface width
+#VARIABLE <vof_s_interface_width> 1.d0 # default is 1.d0
+
+#CONSTANT <CFL_max> 0.1d0
+#-------------------------------------------------------------------
+# numerical options
+GENERAL_OPTIONS newtstepmax=200,newtstepdebugout=190
+# for test simulation just do a few timesteps
+#GENERAL_OPTIONS timestepout=1
+#GENERAL_OPTIONS timestepmax=100
+#TIMESTEPOUT 10
+#TIMESTEPMAX 100 # just compute the first 5 timesteps for this trial simulation
+#-------------------------------------------------------------------
+#TIMESTEPMAX 0
+IF 0 # debugging of output masks etc
+  VARIABLE <vof_phi[r=1]> output
+  VARIABLE <vof_phigrad_unit[r=1,l=1]> output
+  INCLUDE_TEMPLATE "free_surface/volume_of_fluid/output_masks"
+END_IF
+VARIABLE <t_end> 4.d-1
+VARIABLE <dt_out> 1.d-2
+NONE_CONSTANT <vof_s_D> 1.d-3 # redefine this to be a constant here, rather than a function of mesh refinement
