@@ -1,5 +1,7 @@
 MARKDOWN
 Calculate the momentum advection flux by modifying the navier_stokes template files
+
+Note that if <<implicitadvection>> is set to 1, then this will be carried through to the advection_flux template
 END_MARKDOWN
 
 {{

@@ -14,6 +14,9 @@ IF <<azimuthal>>
   REPLACEMENTS S "<<radius_top_azi>>" W "<<radius_f>>**2*" S "<<radius_bottom_azi>>" W "/<<radius_c>>**2"
 END_IF
 
+# <<implicitadvection>> modifies both the advection of phi and u, making both implicit (ie, using r=0 values rather than r=1 values).  You need implicit advection to be able to push CFL over 1.
+REPLACEMENTS D "<<implicitadvection>>" W "0" # call with this set to 1 to overwrite
+
 # now create conservation equations
 
 # mass conservation (actually, volume conservation)
@@ -24,10 +27,13 @@ END_IF
 # find advection phi
     if (string_eval('<<transientnavierstokes>>')) {
 # transient uses positive phi for advection
-# explicit
-      $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+      if (string_eval('<<implicitadvection>>')) {
 # implicit
-#     $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+      } else {
+# explicit
+        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+      }
     } else {
 # steady-state uses bounded phi for advection
       $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_bounded_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
@@ -45,7 +51,7 @@ END_IF
   return $return_string;
 }}
 
-<<navierstokescomment>>INCLUDE_LOCAL "momentum_advection_flux" # calculate momentum advection flux for all species, only for non-stokes flow
+<<navierstokescomment>>INCLUDE_LOCAL "momentum_advection_flux" # calculate momentum advection flux for all species, only for non-stokes flow, references <<implicitadvection>> = 0 or 1 string
 INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for all species
 
 # momentum conservation
