@@ -668,9 +668,10 @@ new_size_2d = [totaldimensions,2]
 maximum_error_angle = 0.d0
 do j = 1, jtotal
 ! now calculate the rest
-! for 2D faces the norm is based on the normal to the face plane
+! for 2D faces the norm is based on the normal to the face plane, with direction checked so that it points from the downcell to the upcell
   if (face(j)%dimensions == 2) then
-    call find_2d_geometry(knode=face(j)%knode,area=face(j)%area,norm=face(j)%norm,centre=face(j)%x,error_angle=error_angle,error=error)
+    call find_2d_geometry(knode=face(j)%knode,area=face(j)%area,norm=face(j)%norm,centre=face(j)%x,downcellx=cell(face(j)%icell(1))%x, &
+      error_angle=error_angle,error=error)
     if (error) then
       write(*,'(a)') 'WARNING: problem calculating the geometry of a face: see fort.31 for more details'
       write(31,'(a)') 'WARNING: problem calculating the geometry of a face: see fort.31 for more details'

@@ -662,8 +662,7 @@ deallocate(kernel_error)
 ! face kernels
 allocate(kernel_error(1:4))
 nmax = 4
-! temp &&&
-!if (allocated(glue_face)) nmax = 1 ! if there are glued faces present then we don't report errors for any first order components
+if (allocated(glue_face)) nmax = 1 ! if there are glued faces present then we don't report errors for any first order components
 FACE_LOOP: do j = 1, jtotal
   do l = 0, 6
     dx_kernel = 1.d0
@@ -3208,7 +3207,7 @@ integer, dimension(:), allocatable :: separation_index, separation_array
 double precision, dimension(:,:), allocatable :: max_rel_kernel ! maximum kernel value in separation level / maximum kernel value in all separation levels
 integer, dimension(:,:), allocatable :: max_rel_ijk
 character(len=10000) :: formatline
-logical, parameter :: debug = .true.
+logical, parameter :: debug = .false.
 logical :: debug_sparse = .false.
 
 if (debug) debug_sparse = .true.
@@ -3325,24 +3324,22 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
       face(j)%kernel(0)%reflect_multiplier = 1
     end if
 
-! for extra debug output mask at this point
-
-  if (.false.) then
-    write(83,*) 'j = ',j,': face(j)%x = ',face(j)%x
-    write(83,*) 'jglue = ',face(j)%glue_jface,':  face(jglue)%x = ',face(face(j)%glue_jface)%x
-    write(83,*) 'glue_reflect = ',face(j)%glue_reflect
-    write(83,*) 'r(:1:2) = ',face(j)%r(:,1:2)
-    write(83,*) 'r_glue(:1:2) = ',face(face(j)%glue_jface)%r(:,1:2)
-    do ii = 1, ubound(face(j)%r,2)
-      write(83,*) 'ii = ',ii,': face(j)%icell(ii) = ',face(j)%icell(ii),': face(j)%r(:,ii) = ',face(j)%r(:,ii) 
-    end do
-    
-    do ii = 1, ubound(face(j)%kernel(0)%ijk,1)
-      write(83,*) 'ijk = ',face(j)%kernel(0)%ijk(ii),' :ii = ',ii,': facex = ',cell(face(j)%kernel(0)%ijk(ii))%x,': r(:,ii) = ',r(:,ii),': r_calc = ',cell(face(j)%kernel(0)%ijk(ii))%x-face(j)%x,': r_error = ',cell(face(j)%kernel(0)%ijk(ii))%x-face(j)%x-r(:,ii)
-!     r(:,ii) = cell(face(j)%kernel(0)%ijk(ii))%x - face(j)%x
-    end do
-    stop
-  end if
+! for extra debug output
+    if (.false.) then
+      write(83,*) 'j = ',j,': face(j)%x = ',face(j)%x
+      write(83,*) 'jglue = ',face(j)%glue_jface,':  face(jglue)%x = ',face(face(j)%glue_jface)%x
+      write(83,*) 'glue_reflect = ',face(j)%glue_reflect
+      write(83,*) 'r(:1:2) = ',face(j)%r(:,1:2)
+      write(83,*) 'r_glue(:1:2) = ',face(face(j)%glue_jface)%r(:,1:2)
+      do ii = 1, ubound(face(j)%r,2)
+        write(83,*) 'ii = ',ii,': face(j)%icell(ii) = ',face(j)%icell(ii),': face(j)%r(:,ii) = ',face(j)%r(:,ii) 
+      end do
+      do ii = 1, ubound(face(j)%kernel(0)%ijk,1)
+        write(83,*) 'ijk = ',face(j)%kernel(0)%ijk(ii),' :ii = ',ii,': facex = ',cell(face(j)%kernel(0)%ijk(ii))%x,': r(:,ii) = ',r(:,ii),': r_calc = ',cell(face(j)%kernel(0)%ijk(ii))%x-face(j)%x,': r_error = ',cell(face(j)%kernel(0)%ijk(ii))%x-face(j)%x-r(:,ii)
+  !     r(:,ii) = cell(face(j)%kernel(0)%ijk(ii))%x - face(j)%x
+      end do
+      stop
+    end if
 
 ! scale r with dx_kernel
     r = r/face(j)%dx_kernel

@@ -2153,12 +2153,12 @@ end function icell_from_knode_list
 
 !-----------------------------------------------------------------
 
-subroutine find_2d_geometry(knode,area,norm,centre,error_angle,error)
+subroutine find_2d_geometry(knode,area,norm,centre,downcellx,error_angle,error)
 
 ! find geometry info about a 2d convex and flat polygon
 ! convex means that any line drawn from one edge to another intersects only those two edges
 ! flat means that all points lie on the one plane (checked within this routine)
-! norm is a unit normal to the surface ( normalised( (node(2)-node(1)) X (node(3)-node(2)) ) )
+! norm is a unit normal to the surface ( normalised( (node(2)-node(1)) X (node(3)-node(2)) ) ), now (v0.60) with direction chosen to be consistent with upcell/downcell averaging
 ! area and centre are calculated by splitting surface into triangles, each with a vertex on the first node
 ! centre is the centroid, defined for our purposes as the point which is gives the same value
 !  for a function as the average value of that function, assuming a linear dependence on space
@@ -2167,6 +2167,7 @@ integer, dimension(:), intent(in) :: knode ! ordered list of node indices that s
 double precision, intent(out), optional :: area ! area of geometry
 double precision, dimension(totaldimensions), intent(out), optional :: centre ! vectors specifying centre of surface
 double precision, dimension(totaldimensions,totaldimensions), intent(out), optional :: norm ! vectors specifying normal to surface
+double precision, dimension(totaldimensions), intent(in), optional :: downcellx ! vector of downcell centre location, used to determine direction of normal so that it points in correct direction
 double precision, intent(out), optional :: error_angle ! this is the maximum difference between adjacent normals on the geometry if it is curved
 logical, intent(out), optional :: error ! if an error occurred when calculating this geometry
 double precision, dimension(totaldimensions) :: norms, normtriangle, centretriangle, normtrianglelast
@@ -2258,7 +2259,11 @@ if (present(centre)) centre = centre/aa_sum ! slightly more accurate to use aa_s
 if (present(area)) area = aa ! must be aa for divergence of constant to be correct around each cell
 
 if (present(norm)) then
-  norm(:,1) = norms/aa ! and finally normalise normal
+  norm(:,1) = norms/aa ! and finally normalise normal length
+! and chose direction so that it is correctly pointing from the downcell to the upcell
+  if (present(downcellx)) then
+    if (dot_product(norm(:,1),centre-downcellx) < 0.d0) norm(:,1) = -norm(:,1)
+  end if
   norm(:,2) = node(knode(2))%x-node(knode(1))%x ! first tangent, lying in plane of geometry from node 1->2, probably not a good representation for curved faces
 ! this is a change in v0.60 to get norm(2) in 2D geometries aligned with the shortest node-to-node vector, rather than the one with the lowest index
 ! if all node-to-node vectors are the same then this will default to the old scheme of the first node-to-node vector
