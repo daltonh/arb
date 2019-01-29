@@ -1,0 +1,148 @@
+#!/usr/bin/env ruby
+
+# blcalc
+# (C) Copyright Christian Biscombe 2018
+
+require 'optparse'
+
+PROGNAME = 'blcalc'
+VERSION = '1.0'
+DATE = '2018-12-18'
+INFO = <<-INFO.gsub(/^\s+/, '')
+  #{PROGNAME} v. #{VERSION} (#{DATE})
+  Boundary layer (geometric progression) calculator.
+  (C) Copyright Christian Biscombe 2018
+INFO
+
+def error(msg)
+  abort "ERROR: #{msg}"
+end
+
+def hmax(bl)
+  bl[:h]*bl[:p]**(bl[:n]-1)
+end
+
+def hmin(bl)
+  (bl[:p]-1.0)/(bl[:p]**bl[:n]-1.0)
+end
+
+def n(bl)
+  (Math.log(bl[:H]/bl[:h])/Math.log(bl[:p]) + 1.0).round
+end
+
+def p(f, df, p0)
+  # f is the 'geometric' polynomial for which we are seeking the root p > 1
+  # df is the derivative (df/dp)
+  # p0 is the value of p > 1 at which f passes through a minimum (i.e. df(p0) = 0)
+  p = 2.0*p0 - 1.0 # initial estimate from parabolic interpolation (exact for n = 2)
+  begin
+    y = f.call(p)
+    p -= y/df.call(p) # Newton-Raphson
+  end until y.abs < Math.sqrt(Float::EPSILON)
+  p
+end
+
+def p_hmin(bl)
+  p(->(p) { bl[:h]*p**bl[:n] - p + 1.0 - bl[:h] },
+    ->(p) { bl[:n]*bl[:h]*p**(bl[:n]-1) - 1.0 },
+    1.0/(bl[:n]*bl[:h])**(1.0/(bl[:n]-1))
+   )
+end
+
+def p_hmax(bl)
+  p(->(p) { (1.0-bl[:H])*p**bl[:n] - p**(bl[:n]-1) + bl[:H] },
+    ->(p) { bl[:n]*(1.0-bl[:H])*p**(bl[:n]-1) - (bl[:n]-1)*p**(bl[:n]-2) },
+    (bl[:n]-1)/((1.0-bl[:H])*bl[:n])
+   )
+end
+
+# Command-line options
+BANNER = <<-BANNER.gsub(/^\s+/, '')
+  #{INFO}
+  Usage: #{PROGNAME} -H <Float> | -h <Float> | -n <Integer> | -p <Float>
+  Two of -H, -h, -n, and -p must be given. (If more than two are given, last two will be used.)
+  When -n is not given, first parameter is fixed and second parameter is adjusted (slightly) so that calculated value of n is an integer.
+BANNER
+bl = {}
+OPTIONS = OptionParser.new do |opt|
+  opt.banner = BANNER
+  opt.on('-H', '--max_height <H>', Float, 'Height of thickest cell normalised by height of boundary layer') { |hmax| bl.delete(:H); bl[:H] = hmax }
+  opt.on('-h', '--min_height <h>', Float, 'Height of thinnest cell normalised by height of boundary layer') { |hmin| bl.delete(:h); bl[:h] = hmin }
+  opt.on('-n', '--num_layers <n>', Integer, 'Number of cells spanning height of boundary layer') { |n| bl.delete(:n); bl[:n] = n }
+  opt.on('-p', '--progression <p>', Float, "Progression") { |p| bl.delete(:p); bl[:p] = p }
+end
+begin
+  OPTIONS.parse!
+rescue OptionParser::InvalidArgument, OptionParser::InvalidOption, OptionParser::MissingArgument => msg
+  warn OPTIONS
+  abort "ERROR: #{msg}"
+end
+
+# Check that input is within bounds
+abort BANNER if bl.size < 2
+spec = bl.keys.last(2)
+if spec.include?(:H)
+  error 'H <= 0' unless bl[:H].positive?
+  error 'H >= 1' if bl[:H] >= 1.0
+end
+if spec.include?(:h)
+  error 'h <= 0' unless bl[:h].positive?
+  error 'h >= 1' if bl[:h] >= 1.0
+end
+if spec.include?(:p)
+  error 'p <= 0' unless bl[:p].positive?
+  error 'p = 1' if bl[:p] == 1.0
+  if bl[:p] < 1 # internally require p > 1 but respect user's preference for output
+    bl[:p] = 1.0/bl[:p]
+    reciprocal_p = true
+  end
+end
+error 'n <= 1' if spec.include?(:n) && bl[:n] <= 1
+
+case spec.sort
+when [:H, :h]
+  error 'H <= h' if bl[:H] <= bl[:h]
+  bl[:p] = (1.0-bl[:h])/(1.0-bl[:H])
+  bl[:n] = n(bl)
+  if spec.first == :H # keep H fixed and adjust p and h for integer n
+    bl[:p] = p_hmax(bl)
+    bl[:h] = hmin(bl)
+  else # keep h fixed and adjust p and H for integer n
+    bl[:p] = p_hmin(bl)
+    bl[:H] = hmax(bl)
+  end
+when [:H, :n]
+  error 'n*H <= 1' if bl[:n]*bl[:H] <= 1.0
+  bl[:p] = p_hmax(bl)
+  bl[:h] = hmin(bl)
+when [:H, :p]
+  bl[:h] = 1.0 - bl[:p]*(1.0-bl[:H])
+  bl[:n] = n(bl)
+  if spec.first == :H # keep H fixed and adjust p and h for integer n
+    bl[:p] = p_hmax(bl)
+    bl[:h] = hmin(bl)
+  else  # keep p fixed and adjust h and H for integer n
+    bl[:h] = hmin(bl)
+    bl[:H] = hmax(bl)
+  end
+when [:h, :n]
+  error 'n*h >= 1' if bl[:n]*bl[:h] >= 1.0
+  bl[:p] = p_hmin(bl)
+  bl[:H] = hmax(bl)
+when [:h, :p]
+  bl[:H] = 1.0 - (1.0-bl[:h])/bl[:p]
+  bl[:n] = n(bl)
+  if spec.first == :h # keep h fixed and adjust p and H for integer n
+    bl[:p] = p_hmin(bl)
+    bl[:H] = hmax(bl)
+  else # keep p fixed and adjust h and H for integer n
+    bl[:h] = hmin(bl)
+    bl[:H] = hmax(bl)
+  end
+when [:n, :p]
+  bl[:h] = hmin(bl)
+  bl[:H] = hmax(bl)
+end
+
+bl[:p] = 1.0/bl[:p] if reciprocal_p
+bl.sort.each { |k, v| puts "#{k} = #{v}" }
