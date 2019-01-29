@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: impacting_volume_of_fluid_drop_in_halfplane.arb
    #(comment created during unwrap): new block = impacting_volume_of_fluid_drop_in_halfplane.arb: sub_block = 0
@@ -404,7 +404,7 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
       # use this constants file if solving nondimensionally
       
          #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/constants.arb: sub_block = 0
-         #(hash inserted during unwrap)INCLUDE "constants"
+         #(hash inserted during unwrap)INCLUDE_LOCAL "constants"
          # physical data
          CONSTANT <sigma> [N/m] 0.072d0 # surface tension coefficient
          
@@ -851,7 +851,7 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
       #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <fluid all faces>
       
          #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 1
-         #(hash inserted during unwrap)IF 0
+         #(hash inserted during unwrap)IF 0#<<azimuthal>>
             #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
             #(hash inserted during unwrap)IF 0
             #(hash inserted during unwrap)VARIABLE <tau[l=1,0]> "<tau[l=1,0]>+<vof_mu_harmonic_f>*<u_f_vect[l=0]>/<facex[l=1]>"
@@ -1265,13 +1265,16 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
       # these files probably need updating as of 030714
       #INCLUDE "facevofphi_linearone_2D_advected_vector_explicit" R "<facevofphi_n[l=" W "<vof_phigrad_unit[r=1,l=" R "<facevofphi_d>" W "<vof_d[r=1]>" R "<facevofphi_phi>" W "<phi[r=1]>" R "<facevofphi_f[r=1]>" W "<vof_phi_f[r=1]>" R "<facevofphi_phi>" W "<vof_phi[r=1]>" R "<facevofphi_phitol>" W "<vof_phi_tol>"
       
+      # setup a multiphase vof string that can be used to pass the phicont volume fraction to cellvofphiadjust
+      # call with this set if required
+      
       #CELL_DERIVED <vof_phi_adjust[r=1]> "cellvofphiadjust[noderivative](phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>)" ON <allcells> output
       # cellvofphiadjust now supports derivative calculation too for implicit flux (but not phif or phi[r=1])
       # now applying newtstepmax to this variable, as with cylindrical coordinates (at least) it seems to get stuck in backstepping/false root loop occasionally
       # note that once newtstepmax has been applied, there is the possibility of mass errors, so making newtstepmax high (ie, last resort)
       # in practice mass loss practically not observed - actually as <u_f> is no longer dependent on <vof_phi> by the time that this newtstepmax kicks in, not sure if mass loss will occur anyway given that vof_phi_adjust only depends on <u_f>
-      #CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>),0.d0)" ON <fluid all cells> newtstepmax=50
-      CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<facex[l=1]>*<u_f>/faceave[lastcell](<cellx[l=1]>),dt=<dt>),0.d0)" ON <fluid all cells> newtstepmax=50
+      #CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<u_f>,dt=<dt>,),0.d0)" ON <fluid all cells> newtstepmax=50
+      CELL_DERIVED <vof_phi_adjust[r=1]> "cellif(celldelta(<vof_interface_mask[r=1]>),cellvofphiadjust(phi[r=1]=<vof_phi[r=1]>,phif=<vof_phi_f[r=1]>,flux=<facex[l=1]>*<u_f>/faceave[lastcell](<cellx[l=1]>),dt=<dt>,),0.d0)" ON <fluid all cells> newtstepmax=50
       FACE_LOCAL <vof_phi_f_adjusted[r=1]> "faceif(facedelta(<vof_interface_mask_f[r=1]>),facemax(facemin(<vof_phi_f[r=1]>+faceif(<u_f>,faceave[downcell](<vof_phi_adjust[r=1]>),faceave[upcell](<vof_phi_adjust[r=1]>)),1.d0),0.d0),<vof_phi_f[r=1]>)" ON <fluid all faces> output
       
       #CELL_TRANSIENT <vof_phi_advected> "<vof[r=1]>-<dt>*celldiv(<vof_phi_f_adjusted[r=1]>*<u_f[r=1]>)" ON <allcells> nooutput
@@ -1398,8 +1401,8 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
                #(hash inserted during unwrap)IF 
                #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 0 has not been correctly defined'
                #(hash inserted during unwrap)END_IF
-            #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv(<J_f[l=0]>)+<vof_rho_c>*<u_f_vect[l=1]>*<u_f_vect[l=0]>/<facex[l=1]>" ON <fluid domain> # momentum component'
-            #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "<momentum[l=1]>-<vof_rho_c>*<u_f_vect[l=0]>**2/<facex[l=1]>"
+            #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv(<J_f[l=0]>)+<vof_rho_c>*<u[l=1]>*<u[l=0]>/<cellx[l=1]>" ON <fluid domain> # momentum component'
+            #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "<momentum[l=1]>-<vof_rho_c>*<u[l=0]>**2/<cellx[l=1]>"
             #(hash inserted during unwrap)END_IF
          #(hash inserted during unwrap)END_IF
       

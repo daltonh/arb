@@ -4,9 +4,9 @@
 # the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
 EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: oscillating_volume_of_fluid_drop_in_quadrant.arb
-   #(comment created during unwrap): new block = oscillating_volume_of_fluid_drop_in_quadrant.arb: sub_block = 0
-   #(hash inserted during unwrap)INCLUDE_WORKING "oscillating_volume_of_fluid_drop_in_quadrant.arb"
+# the following working directory files found by the arb script: droplet_with_surfactant_stop_rise_shear_gradp_301018.arb
+   #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "droplet_with_surfactant_stop_rise_shear_gradp_301018.arb"
    # arb finite volume solver
    # Copyright 2009,2010 Dalton Harvie (daltonh@unimelb.edu.au)
    #
@@ -14,40 +14,36 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    #
    #-------------------------------------------------------------------
    # file equations.in
-   VERSION 0.55
+   VERSION 0.60
+   
+   # TODO:
+   # debug force perculiarity over top periodic boundary
+   # work out is this css or csf?
+   # standardise css and csf, and marangoni/surfactant templates
+   # deal with cylindrical 2D
+   
    
    # the following strings describe the simulation and are passed to the output files
-   INFO_TITLE "Oscillating vof droplet"
-   INFO_DESCRIPTION "Oscillating 2D droplet calculated using the volume of fluid method in a quadrant"
-   INFO_DESCRIPTION+ ": Stationary droplet can be calculated using this but with circle instead of ellipse as initial phi"
-   INFO_DESCRIPTION+ ": now works for cartesian or cylindrical"
+   INFO_TITLE "2D vessicle"
+   INFO_DESCRIPTION "2D vessible composed with mass conserved membrane either stopped, rising, in shear, or in gradp"
+   INFO_DESCRIPTION+ ": right now 2D cartesian"
    INFO_AUTHOR "Dalton Harvie"
-   INFO_DATE "14/1/16" # interpreted as the last modification date
-   
-   # for a cylindrical droplet
-   #GENERAL_REPLACEMENTS R "<<cylindricalcomment>>" W "" R "<<cartesiancomment>>" W "#"
-   # for a cartesian droplet don't need to change anything from their defaults, just comment out the above, as these two strings are set automatically
+   INFO_DATE "28/10/18" # interpreted as the last modification date
    
    # for uniform properties (rho and mu) include the following line
    #GENERAL_REPLACEMENTS R "<<uniformcomment>>" W "" R "<<nonuniformcomment>>" W "#"
    # or for nonuniform properties (rho and mu) include the following line
    
    
-   # for a single mesh domain (all on the fluid mesh) include the following
-   
-   # for a double mesh domain everything except the curvature calculation (and its dependent smoothed phi and normals) is done on the fluid domain, and the rest on the free surface domain which is coincident and larger
-   #GENERAL_REPLACEMENTS R "<<singledomaincomment>>" W "#" R "<<doubledomaincomment>>" W ""
-   
    # the default is for normals calculated at nodes, and then averaged to surrounding cells
    # to use normals based on cellgrad directly include the following which alters the behaviour within the normals templates file:
    #GENERAL_REPLACEMENTS R "<<vofnodenormalscomment>>" W "#" R "<<vofcellnormalscomment>>" W ""
    
-   INFO_DESCRIPTION+ ": cartesian 2D droplet"
-   #INFO_DESCRIPTION+ ": cylindrical droplet"
+   # include surfactant transport
+   
+   
    #INFO_DESCRIPTION+ ": uniform properties (rho and mu)"
    INFO_DESCRIPTION+ ": nonuniform properties (rho and mu)"
-   INFO_DESCRIPTION+ ": done on a single domain"
-   #INFO_DESCRIPTION+ ": done on a double (fluid + free surface) domain"
    
    #-------------------------------------------------------------------
    # MSH_FILE instructs arb to read or write a gmsh file (location is read location - write location will always be within the output directory)
@@ -56,32 +52,38 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    # data output format options for CELL centred data (which overwrite individual variable options if specified): elementdata,elementnodedata,elementnodelimiteddata
    # vtk file output options are: vtkoutput,centringvtkoutput,meshvtkoutput,centringmeshvtkoutput,novtkoutput (novtkoutput is the default)
    # dat file output options are: dat_output,centringdat_output,meshdat_output,centringmeshdat_output,nodat_output (nodat_output is the default)
-   MSH_FILE "free_surface_quadrant_extruded_structured_fluid.msh" nooutput
-   #MSH_FILE "free_surface_quadrant_extruded_structured_free_surface.msh" nooutput
-   #MSH_FILE "output/latest.output.msh" input
+   #MSH_FILE "free_surface_quadrant_structured.msh"
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 1
+      MSH_FILE "square_structured.msh" nooutput
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)ELSE
+      #(hash inserted during unwrap)# MSH_FILE "restart.msh" input
+      #(hash inserted during unwrap)#MSH_FILE "restart.239.msh" input
+      #(hash inserted during unwrap)#MSH_FILE "restart.1.develop.msh" input
+      #(hash inserted during unwrap)#MSH_FILE "restart.264.msh" input
+      #(hash inserted during unwrap)MSH_FILE "output/latest.output.msh" input
+      #(hash inserted during unwrap)END_IF
    
    #-------------------------------------------------------------------
    # geometry stuff
    
-   GLUE_FACES <fluid west> reflect=1
-   #GLUE_FACES <free surface west> reflect=1
-   #GLUE_FACES <free surface centre west> reflect=1
-   GLUE_FACES <fluid south> reflect=2
-   #GLUE_FACES <free surface south> reflect=2
-   #GLUE_FACES <free surface centre south> reflect=2
    
-   # CELL_REGION/FACE_REGION specified by: <name> "location string" # comments
-   # where location string could be: "AT x1 x2 x3" for a single point closest to these coordinates
-   # where location string could be: "WITHIN BOX x1_min x2_min x3_min x1_max x2_max x3_max" for all elements within a box defined by the minimum and maximum coordinate values
-   # where location string could be: "COMPOUND +<a region>-<another region>" for a + and - compound region list
-   # where location string could be: "BOUNDARY OF <a region>" - boundary faces/cells contained within or surrounding <a region>
-   # where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
-   # where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
-   # where location string could be: "SURROUNDS <a region>" - faces/cells that surround <a region>, irrespective of whether they are boundary or domain elements - right now only works when <a region> is cell centred
+   #REPLACEMENTS R <<problem_type>> W "rise"
+   #REPLACEMENTS R <<problem_type>> W "shear"
+   #REPLACEMENTS R <<problem_type>> W "gradp"
    
-   #-------------------------------------------------------------------
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)GLUE_FACES <north> <south> # make periodic in the y direction
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)ELSE_IF 0
+      #(hash inserted during unwrap)GLUE_FACES <west> <east> # make periodic in the x direction
+      #(hash inserted during unwrap)END_IF
+   FACE_REGION <walls> "all" ON <boundaries>
    
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
+   #INCLUDE "remove_masks" # include this file to remove the masks, calculating surface variables everywhere
    # commands to form the single mesh regions from the fluid msh file
       #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/single_region_formation.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "single_region_formation"
@@ -89,25 +91,12 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       FACE_REGION <walls> "compound(<boundaries>)"
       FACE_REGION <one face> "at(1.d+4,1.d+4,0.d0)" ON <walls>
       FACE_REGION <walls sans one face> "compound(<walls>-<one face>)"
-   # commands to form the double mesh regions from both the fluid and free surface msh files
-   # also do general region name replacements
-   #INCLUDE "double_region_formation"
    
-   # commands to replace all generic regions with fluid msh equivalents
-   #INCLUDE "fluid_replacements"
+   #-------------------------------------------------------------------
+   # user-defined constants
    
    # setup basic cylindrical general replacements by including the following two lines
-   #INCLUDE_TEMPLATE "general/cylindrical_reflect_r1z2"
-      #(comment created during unwrap): new block = ../../templates/general/cartesian_x1y2.arb: sub_block = 0
-      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cartesian_x1y2"
-      #(hash inserted during unwrap)MARKDOWN
-      #(hash inserted during unwrap)sets general replacements for cartesian 2D coordinates in the xy plane
-      #(hash inserted during unwrap)END_MARKDOWN
-      
-      
-      
-   
-   # include this for both cylindrical and cartesian when using a quadrant
+   # comment out any references to the third dimension in any included files
    
    
    # bring in default physical and numerical constants
@@ -230,8 +219,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       CONSTANT <u_av> 1.d0
    
    # v0.50 - now use transient setup files
-      #(comment created during unwrap): new block = ../../templates/navier_stokes/transient_dynamic_setup.arb: sub_block = 0
-      #(hash inserted during unwrap)INCLUDE "transient_dynamic_setup" # a dynamic timestep to keep the CFL number at a specified level
+   # include the following to include a constraint based on the previous number of newtsteps
+   #GENERAL_REPLACEMENTS REPLACE "<<newtsteptimestepcomment>>" W "" REPLACE "<<nonnewtsteptimestepcomment>>" W "#"
+      #(comment created during unwrap): new block = ../../templates/navier_stokes/transient_explicit_setup.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE "transient_explicit_setup" # a dynamic explicitly calculated timestep to keep the CFL number approximately at a specified level
       # use this file to initial a transient Navier-Stokes simulation using explicit dynamic timestepping
          #(comment created during unwrap): new block = ../../templates/navier_stokes/transient_all_setup.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE_LOCAL "transient_all_setup" 
@@ -359,17 +350,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          CELL_TRANSIENT <u[l=2,r=1]> "" "<u[l=2]>" ON <allcells>
          #CELL_TRANSIENT <u[l=3,r=1]> "" "<u[l=3]>" ON <allcells>
          
-   #INCLUDE "transient_implicit_setup" # a dynamic timestep to keep the CFL number at a specified level
+   #INCLUDE "transient_implicit_setup" # a dynamic implicitly calculated timestep to keep the CFL number at a specified level
    #INCLUDE "transient_constant_setup" # a constant timestep
    
    # overwrite some transient specifications
-   CONSTANT <t_end> [] 1.d2 # time for simulation to stop
-   CONSTANT <dt_initial> [] "1.d-4*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
-   CONSTANT <dt_out> [] "<t_end>/50.d0" # time between output
-   
-   # include the following to also include an explicit surface tension based timestep - just a placeholder, not debugged
-   #CONSTANT <dt_surf> "0.5d0*sqrt(0.5d0*<We>*<celldxave>^3/<pi>)"
-   #NONE_TRANSIENT <dt[r=0]> "<dt_initial>" "nonemax(nonemin(nonemin(<dt_increase>,<CFL_max>/nonemax(<CFL[r=1]>,<tiny>))*<dt[r=1]>,<dt_max>),<dt_min>)" stepoutput,input
+   CONSTANT <t_end> [] 2.d1 # time for simulation to stop
+   CONSTANT <dt_initial_multiplier> 1.d-3
+   CONSTANT <dt_initial> [] "<dt_initial_multiplier>*<celldxave>" # initial timestep based on cell dimension, expecting a velocity of magnitude around 1
+   CONSTANT <dt_out> [] 1.d-1 # time between output
    
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
       #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/nondimensional_constants.arb: sub_block = 0
@@ -467,17 +455,32 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    # physical data, now for nondimensional uniform properties
    # set these
    #CONSTANT <Re> 1.d+2
-   CONSTANT <Re> 1.d+2
-   CONSTANT <S> 1.d+1 # surface tension strength nondimensional number, see harvie 2004, applied mathematical modelling (http://dx.doi.org/10.1016/j.apm.2005.08.015)
+   CONSTANT <Re> 1.d+0
+   CONSTANT <S> 5.d+0 # surface tension strength nondimensional number, see harvie 2004, applied mathematical modelling (http://dx.doi.org/10.1016/j.apm.2005.08.015)
    # for nonuniform properties, express as a ratio between the disperse phase and the continuous phase (which is used as the properties scale)
-   CONSTANT <vof_rho_d_ratio> 1.d+1 # dimensional <rho_d>/<rho_c>
-   CONSTANT <vof_mu_d_ratio> 1.d+1 # dimensional <mu_d>/<mu_c>
+   CONSTANT <vof_rho_d_ratio> 0.9d0 # dimensional <rho_d>/<rho_c>, in this case less dense droplet 
+   CONSTANT <vof_mu_d_ratio> 1.d+0 # dimensional <mu_d>/<mu_c>
+   
+   # unknown variables used for flow problems
+   CELL_LOCAL <u_analytical[l=1]> "0.d0" ON <allcells>
+   CELL_LOCAL <u_analytical[l=2]> "0.d0" ON <allcells>
+   FACE_LOCAL <u_f_analytical[l=1]> "0.d0" ON <allfaces>
+   FACE_LOCAL <u_f_analytical[l=2]> "0.d0" ON <allfaces>
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)CELL_LOCAL <u_analytical[l=1]> "<cellx[l=2]>-0.5d0" ON <allcells>
+      #(hash inserted during unwrap)FACE_LOCAL <u_f_analytical[l=1]> "<facex[l=2]>-0.5d0" ON <allfaces>
+      #(hash inserted during unwrap)END_IF
    
    CELL_UNKNOWN <p> [] "(2.d0^0)*<vof_phi>/<We>" ON <allcells> elementdata # pressure
-   CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
-   CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
+   CELL_UNKNOWN <u[l=1]> [] "<u_analytical[l=1]>" ON <allcells> magnitude=1.d0 # velocity component
+   CELL_UNKNOWN <u[l=2]> [] "<u_analytical[l=2]>" ON <allcells> magnitude=1.d0 # velocity component
    
-   # CSF based levelset formulation with reinitialisation
+   # overwrite initial velocities
+   CELL_TRANSIENT <u[l=1,r=1]> "<u_analytical[l=1]>" "<u[l=1]>" ON <allcells>
+   CELL_TRANSIENT <u[l=2,r=1]> "<u_analytical[l=2]>" "<u[l=2]>" ON <allcells>
+   
+   # vof based CSF
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
       #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/setup.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "setup"
@@ -544,18 +547,22 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    # define real initial vof
    NONE_CONSTANT <vof_phi_initial_tol> 1.d-4 # accuracy in computing initial shapes (in terms of volume fraction per cell)
    # circle (cylinder/sphere)
-   CONSTANT <radius1> 1.0d0
-   CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[sphere](size[l=1]=2.d0*<radius1>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <allcells> output,elementdata
+   CONSTANT <radius1> 0.25d0
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 1
+      # ellipse
+      CONSTANT <radius2> 0.35d0
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)ELSE
+      #(hash inserted during unwrap)# circle
+      #(hash inserted during unwrap)CONSTANT <radius2> "<radius1>"
+      #(hash inserted during unwrap)END_IF
+   CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius1>,size[l=2]=2.d0*<radius2>,centre[l=1]=0.5d0,centre[l=2]=0.5d0,phitol=<vof_phi_initial_tol>)" ON <allcells> output,elementdata
    # ellipse
    #CONSTANT <radius_a> 0.9d0
    #CONSTANT <radius_b> 1.1d0
    #CELL_CONSTANT <vof_phi_initial_saved> "cellvofphishape[ellipsoid](size[l=1]=2.d0*<radius_a>,size[l=2]=2.d0*<radius_b>,centre[l=1]=0.d0,centre[l=2]=0.d0,phitol=<vof_phi_initial_tol>)" ON <allcells> output,elementdata
    CELL_LOCAL <vof_phi_initial> "<vof_phi_initial_saved>" ON <allcells>
-   
-   # the following curvature and related cell centred unit normal and smooth phi calculations are done on the free surface mesh
-   #INCLUDE "cancel_fluid_replacements"
-   #INCLUDE "link_double_domain_variables" # NB, has to be done while no region replacements are active, so do it here but as only involves locals could go in other places (start of file eg)
-   #INCLUDE "free_surface_replacements"
    
    # calculate the interface curvature using the normal (low order) vof technique
    #INCLUDE "interface_geometry"
@@ -616,6 +623,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                CELL_DERIVED <vof_phigrad[l=1]> "cellfromnodeave(<vof_phigrad_n[l=1]>)" ON <vof_phigrad_mask[r=1]> output
                NODE_DERIVED <vof_phigrad_n[l=2]> "nodefromcellgrad[l=2](<vof_phi_s>)" ON <vof_phigrad_mask_n[r=1]> output
                CELL_DERIVED <vof_phigrad[l=2]> "cellfromnodeave(<vof_phigrad_n[l=2]>)" ON <vof_phigrad_mask[r=1]> output
+               NODE_DERIVED <vof_phigrad_n[l=3]> "nodefromcellgrad[l=3](<vof_phi_s>)" ON <vof_phigrad_mask_n[r=1]> output
+               CELL_DERIVED <vof_phigrad[l=3]> "cellfromnodeave(<vof_phigrad_n[l=3]>)" ON <vof_phigrad_mask[r=1]> output
                
                #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/normals.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE
@@ -626,6 +635,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             CELL_DERIVED <vof_phigrad_mag> "sqrt(cellmax(<vof_phigrad_mag^2>,1.d-10))" ON <vof_phigrad_mask[r=1]>
             CELL_DERIVED <vof_phigrad_unit[l=1]> "<vof_phigrad[l=1]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]> output
             CELL_DERIVED <vof_phigrad_unit[l=2]> "<vof_phigrad[l=2]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]> output
+            CELL_DERIVED <vof_phigrad_unit[l=3]> "<vof_phigrad[l=3]>/<vof_phigrad_mag>" ON <vof_phigrad_mask[r=1]> output
             
          #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/high_order_interface_geometry.arb: sub_block = 1
          #(hash inserted during unwrap)ELSE
@@ -637,54 +647,205 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # within this file we calculate the curvature
          
          # uses implicit cell centred unit normals
-         FACE_DERIVED <vof_kappa_f> "-(facegrad[l=1,reflect=1](<vof_phigrad_unit[l=1]>)+facegrad[l=2,reflect=2](<vof_phigrad_unit[l=2]>)+facegrad[l=3,](<vof_phigrad_unit[l=3]>))" ON <vof_delta_mask_f[r=1]> output
+         FACE_DERIVED <vof_kappa_f> "-(facegrad[l=1,reflect=1](<vof_phigrad_unit[l=1]>)+facegrad[l=2,](<vof_phigrad_unit[l=2]>)+facegrad[l=3,](<vof_phigrad_unit[l=3]>))" ON <vof_delta_mask_f[r=1]> output
          
-         #FACE_LOCAL <vof_kappa_cart_f> "-(facegrad[l=1,reflect=1](<vof_phigrad_unit[l=1]>)+facegrad[l=2,reflect=2](<vof_phigrad_unit[l=2]>)+facegrad[l=3,](<vof_phigrad_unit[l=3]>))" ON <vof_delta_mask_f[r=1]>
+         #FACE_LOCAL <vof_kappa_cart_f> "-(facegrad[l=1,reflect=1](<vof_phigrad_unit[l=1]>)+facegrad[l=2,](<vof_phigrad_unit[l=2]>)+facegrad[l=3,](<vof_phigrad_unit[l=3]>))" ON <vof_delta_mask_f[r=1]>
          #FACE_LOCAL <vof_kappa_cyl_f> "-faceave[reflect=0](<vof_phigrad_unit[l=0]>)/1.d0" ON <vof_delta_mask_f[r=1]> # won't work on centreline, so instead use twice carteisan curvature there
          #FACE_DERIVED <vof_kappa_f> "faceif(1.d0-1.d-10,<vof_kappa_cart_f>+<vof_kappa_cyl_f>,2.d0*<vof_kappa_cart_f>)" ON <vof_delta_mask_f[r=1]> output
          
          # cell centred curvature is calculated directly from face centred curvature now
          CELL_DERIVED <vof_kappa_c> "<vof_kappa_f>" ON <vof_delta_mask[r=1]> output
    
-   # and now move back to the fluid mesh
-   #INCLUDE "cancel_free_surface_replacements"
-   #INCLUDE "fluid_replacements"
-   
-      #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 0
-      #(hash inserted during unwrap)INCLUDE "force" # force done back on the fluid mesh
-      # within this file we calculate the cell centred surface force and face centred force used in the <u_f> interpolation
-      
-      CELL_DERIVED <vof_F_c[l=1]> "<vof_kappa_c>*celldivgrad[l=1](<vof_phi_delta_f>)" ON <vof_delta_mask[r=1]>
-      CELL_DERIVED <vof_F_c[l=2]> "<vof_kappa_c>*celldivgrad[l=2](<vof_phi_delta_f>)" ON <vof_delta_mask[r=1]>
-      #CELL_DERIVED <vof_F_c[l=3]> "<vof_kappa_c>*celldivgrad[l=3](<vof_phi_delta_f>)" ON <vof_delta_mask[r=1]>
-      
-         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 1
-         #(hash inserted during unwrap)IF 1
+   #-------------------------------------------------------------------
+   # chose the form for the surface tension variation which is referenced in the surfactant_cs?_force template
+   # the default is to specify a insoluble surfactant type marangoni force
+   # an alternative is to specify a lipid-monolayer type marangoni force
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 1
+         #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_delta.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/surfactant/surfactant_delta" 
          
-         # Note, this string is also used in navier_stokes/p_error, and the setting needs to be consistent, so if this is going to be changed set it globally before calling either file
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)Calculate an interfacial delta function that will be used to define the interfacial area around which surfactant transport (and concentrations) are based.
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)This file includes the option of off-setting the delta function relative to the location of the real interface (for eg dealing with bilayers), although this hasn't been tested well.  To move this delta function set <<c_s_d>> on entry as the distance that the interface is moved into the <vof_phi_s> phase.  
+         #(hash inserted during unwrap)END_MARKDOWN
          
+         # if a delta is required, probably is as the mask is over the whole domain right now
          
-            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 2
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_delta.arb: sub_block = 1
             #(hash inserted during unwrap)IF 1
-            # dxunit method
-            FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
-            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 2
-            #(hash inserted during unwrap)ELSE_IF 0
-            #(hash inserted during unwrap)# facegrad method
-            #(hash inserted during unwrap)FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad(<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
-            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 2
-            #(hash inserted during unwrap)ELSE_IF 
-            #(hash inserted during unwrap)# facegradadjacentcells method
-            #(hash inserted during unwrap)FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[adjacentcells](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
-            #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 2
-            #(hash inserted during unwrap)ELSE
-            #(hash inserted during unwrap)ERROR 'No valid dynamicforcefmethod is chosen in the volume_of_fluid/force template file: string currently set as dxunit'
+            # by default this movement is not applied
+               #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_delta.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)NONE_CONSTANT <c_s_phi_s_D_sqrt> "sqrt(<vof_s_D>)"
+               #(hash inserted during unwrap)NONE_CONSTANT <c_s_phi_tol> "<vof_phi_tol>"
+               #(hash inserted during unwrap)CELL_LOCAL <c_s_phi_lim> "cellmax(cellmin(<vof_phi_s>,1.d0-<c_s_phi_tol>),<c_s_phi_tol>)" ON <allcells>
+               #(hash inserted during unwrap)CELL_LOCAL <c_s_z> "cellif(<vof_phi_s>-0.5d0,-<c_s_phi_s_D_sqrt>*log(2.d0*(1.d0-<c_s_phi_lim>)),<c_s_phi_s_D_sqrt>*log(2.d0*<c_s_phi_lim>))" ON <allcells> output
+               #(hash inserted during unwrap)CELL_LOCAL <c_s_z*> "<c_s_z>-0" ON <allcells> output
+               #(hash inserted during unwrap)CELL_DERIVED <c_s_phi*> "cellif(<c_s_z*>,1.d0-0.5d0*exp(-<c_s_z*>/<c_s_phi_s_D_sqrt>),0.5d0*exp(<c_s_z*>/<c_s_phi_s_D_sqrt>))" ON <allcells> output,newtstepmax=20
+               #(hash inserted during unwrap)INCLUDE "surfactant_normals" 
+               #(hash inserted during unwrap)
+               #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_delta.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE
+                  #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_normals.arb: sub_block = 0
+                  #(hash inserted during unwrap)INCLUDE "surfactant_normals"
+                  #(hash inserted during unwrap)MARKDOWN
+                  #(hash inserted during unwrap)Create normals that will be used to define the location of the surfactant on the interface, and the normal directions used to advection the surfactant
+                  #(hash inserted during unwrap)END_MARKDOWN
+                  
+                  FACE_DERIVED <c_s_phi_f> "faceave(<vof_phi_s>)" ON <allfaces>
+                     #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_normals.arb: sub_block = 1
+                     #(hash inserted during unwrap)IF 1 # calculate the gradients at nodes and then average to cell centres
+                     NODE_DERIVED <c_s_phigrad_n[l=1]> "nodefromcellgrad[l=1](<vof_phi_s>)" ON <allnodes> output
+                     CELL_LOCAL <c_s_phigrad[l=1]> "cellfromnodeave(<c_s_phigrad_n[l=1]>)" ON <allcells> output
+                     NODE_DERIVED <c_s_phigrad_n[l=2]> "nodefromcellgrad[l=2](<vof_phi_s>)" ON <allnodes> output
+                     CELL_LOCAL <c_s_phigrad[l=2]> "cellfromnodeave(<c_s_phigrad_n[l=2]>)" ON <allcells> output
+                     NODE_DERIVED <c_s_phigrad_n[l=3]> "nodefromcellgrad[l=3](<vof_phi_s>)" ON <allnodes> output
+                     CELL_LOCAL <c_s_phigrad[l=3]> "cellfromnodeave(<c_s_phigrad_n[l=3]>)" ON <allcells> output
+                     
+                     #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_normals.arb: sub_block = 1
+                     #(hash inserted during unwrap)ELSE # calculate gradients directly at cell centres
+                     #(hash inserted during unwrap)
+                     #(hash inserted during unwrap)END_IF
+                     #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_normals.arb: sub_block = 1
+                     #(hash inserted during unwrap)IF 1 # average from above cell centred values
+                     FACE_LOCAL <c_s_phigrad_f[l=1]> "faceave(<c_s_phigrad[l=1]>)" ON <allfaces>
+                     FACE_LOCAL <c_s_phigrad_f[l=2]> "faceave(<c_s_phigrad[l=2]>)" ON <allfaces>
+                     FACE_LOCAL <c_s_phigrad_f[l=3]> "faceave(<c_s_phigrad[l=3]>)" ON <allfaces>
+                     
+                     #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_normals.arb: sub_block = 1
+                     #(hash inserted during unwrap)ELSE # create at faces
+                     #(hash inserted during unwrap)
+                     #(hash inserted during unwrap)END_IF
+                  FACE_DERIVED <c_s_phigrad_mag_f> "sqrt(facemax(dot(<c_s_phigrad_f[l=:]>,<c_s_phigrad_f[l=:]>),1.d-10))" ON <allfaces>
+                  FACE_LOCAL <c_s_phigrad_unit_f[l=1]> "<c_s_phigrad_f[l=1]>/<c_s_phigrad_mag_f>" ON <allfaces> output
+                  FACE_LOCAL <c_s_phigrad_unit_f[l=2]> "<c_s_phigrad_f[l=2]>/<c_s_phigrad_mag_f>" ON <allfaces> output
+                  FACE_LOCAL <c_s_phigrad_unit_f[l=3]> "<c_s_phigrad_f[l=3]>/<c_s_phigrad_mag_f>" ON <allfaces> output
+                  
+                  
+               #(hash inserted during unwrap)END_IF
+            CELL_DERIVED <c_s_delta> "sqrt(cellmax(dot(<c_s_phigrad[l=:]>,<c_s_phigrad[l=:]>),<tinyish>))" ON <allcells>
             #(hash inserted during unwrap)END_IF
          
-         #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/force.arb: sub_block = 1
-         #(hash inserted during unwrap)ELSE
-         #(hash inserted during unwrap)FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
-         #(hash inserted during unwrap)END_IF
+         #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_css_force.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "surfactant_css_force" 
+         
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)Here we calculate the surface tension force due to an interface in the presence of a surfactant concentration.
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)There are various forms of interfacial energy relationships available, chosen by 'surfactant' (defaults to surfactant).
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)Uses CSS method.
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)Need to think about masks etc still
+         #(hash inserted during unwrap)END_MARKDOWN
+         
+         
+         #REPLACEMENTS D '<<interface_type>>' W 'lipid_monolayer'
+         #REPLACEMENTS D '<<interface_type>>' W 'lipid_bilayer'
+         #REPLACEMENTS D '<<interface_type>>' W 'none'
+         
+         
+         # surfactant_force.arb
+         #-------------------------------------------------------------------
+         # marangoni forces based on surfactant transport - which must be called for
+         # uses the CSS method
+         
+         # create surface tension force prior to delta application
+         # <c_s> needs to reflect the local surfactant concentration
+         # if surfactant transport isn't simulated then <c_s> needs to be defined here
+         
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_css_force.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)# membrane composed of a lipid bilayer, tails of lipids rigidly attached to resist bending
+            #(hash inserted during unwrap)CONSTANT <c_s_Lambda_max> 1.d0
+            #(hash inserted during unwrap)CONSTANT <c_s_sigma_dash> 1.d2 # dsigma/dLambda at Lambda_max (1.d0 works, 1.d1 is harder to converge but also works, conserves area more)
+            #(hash inserted during unwrap)CONSTANT <c_s_bilayer_T> [1] 1.d-1 # half-width of bilayer thickness, nondimensional FINDME
+            #(hash inserted during unwrap)CONSTANT <c_s_bilayer_KT_max>  1.d-1 # maximum of kappa*T, beyond which this is limited at this value
+            #(hash inserted during unwrap)# need curvature, so call curvature template
+            #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid/curvature" 
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)CELL_LOCAL <c_s_sigma_KT_lambda_multiplier> "1.d0/(1.d0-cellmin(abs(<vof_kappa_c>*<c_s_bilayer_T>),<c_s_bilayer_KT_max>)**2)" ON <allcells> output
+            #(hash inserted during unwrap)CELL_DERIVED <c_s_sigma_c_c> "<c_s_sigma_dash>*(<c_s_Lambda_max>-<c_s_Lambda>*<c_s_sigma_KT_lambda_multiplier>)" ON <allcells> output
+            #(hash inserted during unwrap)# the tanh form will limit the membrane strength at <S>
+            #(hash inserted during unwrap)
+               #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_css_force.arb: sub_block = 2
+               #(hash inserted during unwrap)IF <<tanhsigma>>
+               #(hash inserted during unwrap)CONSTANT <c_s_sigma_m> "<S>" # breakage strength of lipids
+               #(hash inserted during unwrap)VARIABLE <c_s_sigma_c_c> "<c_s_sigma_m>*tanh(<c_s_sigma_c_c>/<c_s_sigma_m>)"
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)FACE_DERIVED <c_s_sigma_f> "faceave[adjacentcells](<c_s_sigma_c_c>)" ON <allfaces> output
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_css_force.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE_IF 0
+            #(hash inserted during unwrap)# membrane composed of a single lipid monolayer
+            #(hash inserted during unwrap)CONSTANT <c_s_Lambda_max> 1.d0 # surface concentration of lipids when in equilibrium
+            #(hash inserted during unwrap)CONSTANT <c_s_sigma_dash> 1.d0 # dsigma/dLambda at Lambda_max (the higher the number, the higher the elastic modulus of the membrane and the better the area conservation)
+            #(hash inserted during unwrap)CELL_DERIVED <c_s_sigma_c_c> "<c_s_sigma_dash>*(<c_s_Lambda_max>-<c_s_Lambda>)" ON <allcells> output
+            #(hash inserted during unwrap)# the tanh form will limit the membrane strength at <S>
+            #(hash inserted during unwrap)
+               #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_css_force.arb: sub_block = 2
+               #(hash inserted during unwrap)IF <<tanhsigma>>
+               #(hash inserted during unwrap)CONSTANT <c_s_sigma_m> "<S>" # breakage strength of lipids
+               #(hash inserted during unwrap)VARIABLE <c_s_sigma_c_c> "<c_s_sigma_m>*tanh(<c_s_sigma_c_c>/<c_s_sigma_m>)"
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)FACE_DERIVED <c_s_sigma_f> "faceave[adjacentcells](<c_s_sigma_c_c>)" ON <allfaces> output
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_css_force.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE_IF 1
+            # droplet with surfactant
+            CONSTANT <c_s_Lambda_max> 1.d0
+            CONSTANT <c_s_sigma_m_multiplier> 0.5d0
+            CONSTANT <c_s_sigma_m> "<c_s_sigma_m_multiplier>*<S>" # breakage strength of surfactant
+            CONSTANT <c_s_sigma_dash> 1.d0 # dsigma/dLambda at Lambda_max
+            CELL_DERIVED <c_s_sigma_c_c> "<S>-<c_s_sigma_m>*(1.d0-tanh(<c_s_sigma_dash>*(<c_s_Lambda_max>-<c_s_Lambda>)/<c_s_sigma_m>))" ON <allcells> output
+            FACE_DERIVED <c_s_sigma_f> "faceave[adjacentcells](<c_s_sigma_c_c>)" ON <allfaces> output
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_css_force.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE_IF 0
+            #(hash inserted during unwrap)# this won't work, refers to <vof_phigrad_delta_mag>
+            #(hash inserted during unwrap)CONSTANT <del_sigma> 0.2d0
+            #(hash inserted during unwrap)CONSTANT <c_s_sigma_min> 0.1d0
+            #(hash inserted during unwrap)FACE_DERIVED <c_s_sigma_f> "facemax(1.d0-<del_sigma>*faceave(cellmax(<c_s>,0.d0)/cellmax(<vof_phigrad_delta_mag>,<eps_delta>)),<c_s_sigma_min>)" ON <allfaces> output
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_css_force.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE
+            #(hash inserted during unwrap)CONSTANT <c_s_sigma_f> "<S>" # constant surface tension
+            #(hash inserted during unwrap)END_IF
+         
+         # define face centred interfacial stress 
+         #REPLACEMENTS D '<<c_s_phigrad_unit_f_mask>>' W '<c_s_delta_mask_f[r=1]>'
+         
+         FACE_LOCAL <c_s_tau_f[l=1,1]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(1.d0-<c_s_phigrad_unit_f[l=1]>*<c_s_phigrad_unit_f[l=1]>)" ON <allfaces> output
+         FACE_LOCAL <c_s_tau_f[l=2,2]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(1.d0-<c_s_phigrad_unit_f[l=2]>*<c_s_phigrad_unit_f[l=2]>)" ON <allfaces>
+         #FACE_LOCAL <c_s_tau_f[l=3,3]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(1.d0-<c_s_phigrad_unit_f[l=3]>*<c_s_phigrad_unit_f[l=3]>)" ON <allfaces>
+         FACE_LOCAL <c_s_tau_f[l=1,2]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(-<c_s_phigrad_unit_f[l=1]>*<c_s_phigrad_unit_f[l=2]>)"     ON <allfaces>
+         #FACE_LOCAL <c_s_tau_f[l=1,3]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(-<c_s_phigrad_unit_f[l=1]>*<c_s_phigrad_unit_f[l=3]>)"     ON <allfaces>
+         #FACE_LOCAL <c_s_tau_f[l=2,3]> "<c_s_phigrad_mag_f>*<c_s_sigma_f>*(-<c_s_phigrad_unit_f[l=2]>*<c_s_phigrad_unit_f[l=3]>)"     ON <allfaces>
+         FACE_LOCAL <c_s_tau_f[l=2,1]> "<c_s_tau_f[l=1,2]>"                                     ON <allfaces>
+         #FACE_LOCAL <c_s_tau_f[l=3,1]> "<c_s_tau_f[l=1,3]>"                                     ON <allfaces>
+         #FACE_LOCAL <c_s_tau_f[l=3,2]> "<c_s_tau_f[l=2,3]>"                                     ON <allfaces>
+         
+         # these reference <vof_F_c[l=:]> and <vof_F_f> but under normal circumstances these would not have been previously defined
+         #{{ return vector_expand(
+         #  'CELL_DERIVED <vof_F_c[l=$l]> "<vof_F_c[l=$l]>+celldiv(dot(<facenorm[l=:]>,<c_s_tau_f[l=:,$l]>))" ON <allcells> output'
+         #); }}
+         #FACE_DERIVED <vof_F_f> "<vof_F_f>+faceave[adjacentcells](dot(<vof_F_c[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <allfaces> output
+         
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_css_force.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)ERROR "surfactant_css_force template file cannot handle cylindrical coordinates yet"
+            #(hash inserted during unwrap)END_IF
+         
+         CELL_DERIVED <vof_F_c[l=1]> "celldiv(dot(<facenorm[l=:]>,<c_s_tau_f[l=:,1]>))" ON <allcells> output
+         CELL_DERIVED <vof_F_c[l=2]> "celldiv(dot(<facenorm[l=:]>,<c_s_tau_f[l=:,2]>))" ON <allcells> output
+         CELL_DERIVED <vof_F_c[l=3]> "celldiv(dot(<facenorm[l=:]>,<c_s_tau_f[l=:,3]>))" ON <allcells> output
+         
+         FACE_DERIVED <vof_F_f> "faceave[adjacentcells](dot(<vof_F_c[l=:]>,cellave[lastface](<facenorm[l=:]>)))" ON <allfaces> output
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)ELSE_IF 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/surfactant/surfactant_csf_force" # not at all tested
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)ELSE # non-marangoni
+      #(hash inserted during unwrap)INCLUDE "force" # force done back on the fluid mesh
+      #(hash inserted during unwrap)END_IF
    
    # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes"
@@ -699,13 +860,13 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # used in the total stress and boundary conditions now
          # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
          FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,reflect=1](<u[l=1]>)" ON <allfaces>
-         FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,reflect=2](<u[l=2]>)" ON <allfaces>
+         FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,](<u[l=2]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <allfaces>
          FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,reflect=1](<u[l=1]>)" ON <allfaces>
-         FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,reflect=2](<u[l=2]>)" ON <allfaces>
+         FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,](<u[l=2]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <allfaces>
          #FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,reflect=1](<u[l=1]>)" ON <allfaces>
-         #FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,reflect=2](<u[l=2]>)" ON <allfaces>
+         #FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,](<u[l=2]>)" ON <allfaces>
          #               FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,](<u[l=3]>)" ON <allfaces>
       
       # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
@@ -868,7 +1029,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(comment created during unwrap): new block = ../../templates/navier_stokes/p_error.arb: sub_block = 1
             #(hash inserted during unwrap)IF 0
             #(hash inserted during unwrap)FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[reflect=1,adjacentcells](<dynamic_force_c[l=1]>)"
-            #(hash inserted during unwrap)FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[reflect=2,adjacentcells](<dynamic_force_c[l=2]>)"
+            #(hash inserted during unwrap)FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[,adjacentcells](<dynamic_force_c[l=2]>)"
             #(hash inserted during unwrap)#FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
             #(hash inserted during unwrap)END_IF
          
@@ -931,7 +1092,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)END_IF
       
       FACE_LOCAL <u_f_vect[l=1]> "faceave[reflect=1](<u[l=1]>)"
-      FACE_LOCAL <u_f_vect[l=2]> "faceave[reflect=2](<u[l=2]>)"
+      FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)"
       #FACE_LOCAL <u_f_vect[l=3]> "faceave[](<u[l=3]>)"
       FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <allfaces> # volume (velocity) transport
       
@@ -983,7 +1144,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 3
                #(hash inserted during unwrap)IF 1
                FACE_LOCAL <u_f_vect[l=1,r=1]> "faceave[reflect=1](<u[l=1,r=1]>)"
-               FACE_LOCAL <u_f_vect[l=2,r=1]> "faceave[reflect=2](<u[l=2,r=1]>)"
+               FACE_LOCAL <u_f_vect[l=2,r=1]> "faceave[](<u[l=2,r=1]>)"
                #FACE_LOCAL <u_f_vect[l=3,r=1]> "faceave[](<u[l=3,r=1]>)"
                FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
                # S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
@@ -1081,13 +1242,13 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                #(hash inserted during unwrap)IF  
                #(hash inserted during unwrap)# steady-state (or implicit advection) and uniform density
                #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=1]> "<vof_rho_advection_f[r=1]>*faceave[advection,reflect=1](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-               #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "<vof_rho_advection_f[r=1]>*faceave[advection,reflect=2](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
+               #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "<vof_rho_advection_f[r=1]>*faceave[advection,](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
                #(hash inserted during unwrap)#FACE_LOCAL <J_advection_f[l=3]> "<vof_rho_advection_f[r=1]>*faceave[advection,](<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 3
                #(hash inserted during unwrap)ELSE
                #(hash inserted during unwrap)# steady-state (or implicit advection) and varying density
                #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,reflect=1](<vof_rho_advection_f[r=1]>*<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-               #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,reflect=2](<vof_rho_advection_f[r=1]>*<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
+               #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,](<vof_rho_advection_f[r=1]>*<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
                #(hash inserted during unwrap)#FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<vof_rho_advection_f[r=1]>*<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
                #(hash inserted during unwrap)END_IF
             #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 2
@@ -1098,13 +1259,13 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                #(hash inserted during unwrap)IF 1 
                # transient and uniform density
                FACE_LOCAL <J_advection_f[l=1]> "<vof_rho_advection_f[r=1]>*faceave[advection,reflect=1](<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-               FACE_LOCAL <J_advection_f[l=2]> "<vof_rho_advection_f[r=1]>*faceave[advection,reflect=2](<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
+               FACE_LOCAL <J_advection_f[l=2]> "<vof_rho_advection_f[r=1]>*faceave[advection,](<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
                #FACE_LOCAL <J_advection_f[l=3]> "<vof_rho_advection_f[r=1]>*faceave[advection,](<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 3
                #(hash inserted during unwrap)ELSE
                #(hash inserted during unwrap)# transient and varying density
                #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,reflect=1](<rho[r=1]>*<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-               #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,reflect=2](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
+               #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
                #(hash inserted during unwrap)#FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
                #(hash inserted during unwrap)END_IF
             #(hash inserted during unwrap)END_IF
@@ -1124,6 +1285,20 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       # different types of face discretisations are used when calculating <vof_F_f> in force template file
       VARIABLE <dynamic_force_f> "<dynamic_force_f>+<sigma>*<vof_F_f>"
       
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)VARIABLE <Fr> 1.d-1
+      #(hash inserted during unwrap)# CELL_LOCAL <vof_rho_diff_c> "<vof_rho_c>-1.d0" ON <allcells> output
+      #(hash inserted during unwrap)# need to check this - idea is to use relative buoyancy, allowing periodic boundary conditions
+      #(hash inserted during unwrap)INCLUDE "buoyancy_dynamic_force" 
+      #(hash inserted during unwrap)
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)ELSE_IF 0 # include buoyancy
+      #(hash inserted during unwrap)VARIABLE <Fr> 1.d-2
+      #(hash inserted during unwrap)# CELL_LOCAL <vof_rho_diff_c> "<vof_rho_c>-1.d0" ON <allcells> output
+      #(hash inserted during unwrap)INCLUDE "buoyancy_dynamic_force" 
+      #(hash inserted during unwrap)
+      #(hash inserted during unwrap)END_IF
       #(comment created during unwrap): new block = ../../templates/free_surface/volume_of_fluid/equation.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "equation" # all phi advection done on fluid mesh
       # here we advect <vof> using the implicit <u_f> and explicit <vof_phi[r=1]>
@@ -1173,6 +1348,129 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       #<<cylindricalcomment>>CELL_EQUATION <vof_equation_domain> "(<vof_phi>-<vof_phi[r=1]>)/<dt> + celldiv(<<radius_f>>*<vof_phi_f_adjusted[r=1]>*<u_f>)/<<radius_c>>" ON <domain> nooutput
       CELL_EQUATION <vof_equation_domain> "cellif(celldelta(<vof_interface_mask[r=1]>),(<vof_phi>-<vof_phi[r=1]>)/<dt> + celldiv((<vof_phi_f_adjusted[r=1]>-faceave[lastcell](<vof_phi[r=1]>))*<u_f>),<vof_phi>-<vof_phi[r=1]>)" ON <domain> nooutput
       #CELL_EQUATION <vof_equation_domain> "cellif(celldelta(<vof_interface_mask[r=1]>),(<vof_phi>-<vof_phi[r=1]>)/<dt> + celldiv(1.d0*(<vof_phi_f_adjusted[r=1]>-faceave[lastcell](<vof_phi[r=1]>))*<u_f>)/1.d0,<vof_phi>-<vof_phi[r=1]>)" ON <domain> nooutput
+   
+   #-------------------------------------------------------------------
+   # surfactant transport here
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 1
+      # single membrane
+         #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/surfactant/surfactant_transport" 
+         
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)Calculates the transport of a surfactant species <c_s> around a surface that is defined by a vof function called <vof_phi_s>.  Most likely you would set this phi to the high order vof function, by doing this replacement when calling:
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)INCLUDE "surfactant_transport" 
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)You can also do the following replacements to make the surfactant specific to a (say) speciesn:
+         #(hash inserted during unwrap)R "<c_s" W "<c_s_speciesn"
+         #(hash inserted during unwrap)END_MARKDOWN
+         
+         # set some variables
+         
+         
+         
+         
+         NONE_CONSTANT <c_s_delta_eps> 1.d-10 # a small c_s value used to stop divide by zero errors when calculating <c_s_Lambda>
+         
+         # set initial conditions for <c_s>
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1
+            # saturated initial interface
+            NONE_CONSTANT <c_s_Lambda_initial> 1.d0 # initial surface concentration
+               #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 1 # based on undeformed shape (ie, precisely along the interface)
+               CELL_LOCAL <c_s_initial> "<c_s_Lambda_initial>*<vof_phigrad_mag>" ON <allcells>
+               #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE 
+               #(hash inserted during unwrap)CELL_LOCAL <c_s_initial> "<c_s_Lambda_initial>*<c_s_delta>" ON <allcells>
+               #(hash inserted during unwrap)END_IF
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE
+            #(hash inserted during unwrap)# uniform c_s
+            #(hash inserted during unwrap)NONE_CONSTANT <c_s_initial> 1.d0
+            #(hash inserted during unwrap)END_IF
+         
+         # set the basic unknowns/variables
+         CELL_UNKNOWN <c_s> "<c_s_initial>" ON <allcells> # volume concentration of surfactant
+         CELL_TRANSIENT <c_s[r=1]> "<c_s>" "<c_s>" ON <allcells>
+         CELL_OUTPUT <c_s_Lambda> "<c_s>/cellmax(<c_s_delta>,<c_s_delta_eps>)" ON <allcells> # suface concentration of surfactant, now just an output
+         
+         # restorative flux calculation based on <c_s_delta>
+         
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1
+            # new grad lambda method 2/7/18, v2
+            NONE_CONSTANT <c_s_D_res> 1.d0 # need to make this a function of mesh spacing etc
+            # restoration flux is proportional to c_s*c_s_delta^2*grad(<c_s_Lambda>), but differenced in a <c_s_delta> -> 0 sympathetic way
+            # we need both the gradient and value of <c_s_delta> and <c_s> at faces:
+            # <c_s_delta_f>, <c_s_f>, <c_s_grad_delta_f[l=:]>, <c_s_grad_f[l=:]>
+            FACE_LOCAL <c_s_delta_f> "faceave(<c_s_delta>)" ON <allfaces> output
+            FACE_LOCAL <c_s_f> "faceave(<c_s>)" ON <allfaces> output
+            FACE_LOCAL <c_s_grad_delta_f[l=1]> "facegrad[l=1](<c_s_delta>)" ON <allfaces> output
+            FACE_LOCAL <c_s_grad_f[l=1]> "facegrad[l=1](<c_s>)" ON <allfaces> output
+            FACE_DERIVED <c_s_grad_Lambda*_f[l=1]> "<c_s_delta_f>*<c_s_grad_f[l=1]>-<c_s_f>*<c_s_grad_delta_f[l=1]>" ON <allfaces> output
+            FACE_LOCAL <c_s_grad_delta_f[l=2]> "facegrad[l=2](<c_s_delta>)" ON <allfaces> output
+            FACE_LOCAL <c_s_grad_f[l=2]> "facegrad[l=2](<c_s>)" ON <allfaces> output
+            FACE_DERIVED <c_s_grad_Lambda*_f[l=2]> "<c_s_delta_f>*<c_s_grad_f[l=2]>-<c_s_f>*<c_s_grad_delta_f[l=2]>" ON <allfaces> output
+            FACE_LOCAL <c_s_grad_delta_f[l=3]> "facegrad[l=3](<c_s_delta>)" ON <allfaces> output
+            FACE_LOCAL <c_s_grad_f[l=3]> "facegrad[l=3](<c_s>)" ON <allfaces> output
+            FACE_DERIVED <c_s_grad_Lambda*_f[l=3]> "<c_s_delta_f>*<c_s_grad_f[l=3]>-<c_s_f>*<c_s_grad_delta_f[l=3]>" ON <allfaces> output
+            
+            # normal limited so restoration is only applied in the normal direction and does not impact advection
+            # requires <vof_phigrad_unit_f[l=:]> in addition to <c_s_grad_Lambda*_f[l=:]>
+            
+               #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 1
+               FACE_DERIVED <c_s_u_res_f> "-<c_s_D_res>*dot(<c_s_grad_Lambda*_f[l=:]>,<c_s_phigrad_unit_f[l=:]>)*dot(<c_s_phigrad_unit_f[l=:]>,<facenorm[l=:]>)" on <allfaces>
+                  #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 3
+                  #(hash inserted during unwrap)IF 0 # visualise
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)END_IF
+               #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE # restoration occurs in all directions
+               #(hash inserted during unwrap)FACE_DERIVED <c_s_u_res_f> "-<c_s_D_res>*dot(<c_s_grad_Lambda*_f[l=:]>,<facenorm[l=:]>)" on <allfaces>
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)END_IF
+         
+         # combine fluxes here
+         
+         FACE_LOCAL <c_s_u_f> "<u_f>+<c_s_u_res_f>" ON <allfaces> # velocity
+         FACE_DERIVED <c_s_j_f> "faceave[advection](<c_s>,<c_s_u_f>,0.d0)*<c_s_u_f>" ON <allfaces> # flux
+         CELL_EQUATION <c_s conservation> "(<c_s>-<c_s[r=1]>)/<dt> + celldiv(<c_s_j_f>)" ON <domain> # conservation equation
+         
+         # boundary condition on walls
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1
+            FACE_EQUATION <c_s walls> "facegrad(<c_s>)" ON <walls>
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE
+            #(hash inserted during unwrap)FACE_EQUATION <c_s walls> "<c_s>" ON <walls>
+            #(hash inserted during unwrap)END_IF
+         
+         # cumulative amount of surfactant
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 1
+            NONE_OUTPUT <c_s_total> "cellsum(<c_s>*<cellvol>,region=<allcells>)"
+            NONE_OUTPUT <c_s_area_total> "cellsum(<c_s_delta>*<cellvol>,region=<allcells>)"
+            NONE_OUTPUT <c_s_Lambda_total> "cellsum(<c_s_Lambda>*<cellvol>,region=<allcells>)"
+            NONE_OUTPUT <c_s_Lambda*area_total> "cellsum(<c_s_Lambda>*<c_s_delta>*<cellvol>,region=<allcells>)"
+            #(hash inserted during unwrap)END_IF
+         
+         # show fluxes as face vectors
+            #(comment created during unwrap): new block = ../../templates/free_surface/surfactant/surfactant_transport.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes/u_f_vector" 
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes/u_f_vector" 
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes/u_f_vector"
+            #(hash inserted during unwrap)END_IF
+         
+         #-------------------------------------------------------------------
+      #  NONE_CONSTANT <c_s_Lambda_initial> 0.97d0 # initial surface concentration
+      #(hash inserted during unwrap)END_IF
    
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes"
       #(comment created during unwrap): new block = ../../templates/navier_stokes/momentum_flux.arb: sub_block = 0
@@ -1267,6 +1565,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
          CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
          CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
+         #CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
          
          
          # add on hoop stress term separately for cylindrical coordinates
@@ -1312,6 +1611,13 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          #(hash inserted during unwrap)END_IF
    # uniform
    #INCLUDE "conservation"
+   
+   # add pressure gradient for gradp problem
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)NONE_CONSTANT <gradp[l=1]> -1.d1
+      #(hash inserted during unwrap)VARIABLE <momentum[l=1]> [1] "<momentum[l=1]>+<gradp[l=1]>"
+      #(hash inserted during unwrap)END_IF
    
    # fluid boundary conditions on nonslip walls
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid"
@@ -1522,10 +1828,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)INCLUDE "boundary_equations" 
             #(hash inserted during unwrap)
             #(hash inserted during unwrap)END_IF
+   # set wall velocities based on analytical/initial u solution
+   FACE_EQUATION <walls noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)-dot(<u_f_analytical[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
    
    #-------------------------------------------------------------------
-   NONE_OUTPUT <integrated volume> "cellsum(<vof_phi>*<cellvol>,<domain>)"
-   #NONE_OUTPUT <integrated volume> "cellsum(<vof_phi>*1.d0*<cellvol>,<domain>)"
+   NONE_OUTPUT <integrated volume> "cellsum(<vof_phi>*1.d0*<cellvol>,<domain>)"
    
    NONE_OUTPUT <centroid[l=1]> "cellsum(<cellvol>*<cellx[l=1]>*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>)"
    NONE_OUTPUT <centroid[l=2]> "cellsum(<cellvol>*<cellx[l=2]>*<vof_phi>,region=<domain>)/cellsum(<cellvol>*<vof_phi>,region=<domain>)"
@@ -1557,11 +1864,17 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    NONE_TRANSIENT <u_f_max_min> "1.d2" "noneif(<t>-<t_save>,nonemin(<u_f_max_local>,<u_f_max_min[r=1]>),<u_f_max_min[r=1]>)" output
    NONE_TRANSIENT <u_f_max_min[r=1]> "" "<u_f_max_min>"
    
+   CELL_OUTPUT <u_perturbation[l=1]> "<u[l=1]>-<u_analytical[l=1]>" ON <allcells>
+   CELL_OUTPUT <u_perturbation[l=2]> "<u[l=2]>-<u_analytical[l=2]>" ON <allcells>
+   
+   NONE_OUTPUT <phi_droplet> "cellsum(<vof_phi>*<cellvol>,region=<domain>)"
+   NONE_OUTPUT <u_droplet[l=1]> "cellsum(<u[l=1]>*<vof_phi>*<cellvol>,region=<domain>)/nonemax(<phi_droplet>,<tinyish>)"
+   NONE_OUTPUT <u_droplet[l=2]> "cellsum(<u[l=2]>*<vof_phi>*<cellvol>,region=<domain>)/nonemax(<phi_droplet>,<tinyish>)"
    #-------------------------------------------------------------------
    # specify outputs for some variables
    
    VARIABLE <vof_F_c[l=1]> output
-   #VARIABLE <vof_fs_phigrad_unit[l=1]> output
+   VARIABLE <vof_phi_adjust[r=1]> output
    
    # nonuniform
    VARIABLE <vof_rho_advection_f[r=1]> output
@@ -1582,12 +1895,25 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    
    # for the high order method only, adjust the interface width
    #VARIABLE <vof_s_interface_width> 1.d0 # default is 1.d0
+   
+   #CONSTANT <CFL_max> 0.1d0
    #-------------------------------------------------------------------
    # numerical options
-   NEWTSTEPMAX 100
-   NEWTSTEPDEBUGOUT 90
+   GENERAL_OPTIONS newtstepmax=200,newtstepdebugout=190
    # for test simulation just do a few timesteps
-   TIMESTEPOUT 2
-   TIMESTEPMAX 4 # just compute the first 5 timesteps for this trial simulation
+   #GENERAL_OPTIONS timestepout=1
+   #GENERAL_OPTIONS timestepmax=100
+   #TIMESTEPOUT 10
+   #TIMESTEPMAX 100 # just compute the first 5 timesteps for this trial simulation
    #-------------------------------------------------------------------
+   #TIMESTEPMAX 0
+      #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 0 # debugging of output masks etc
+      #(hash inserted during unwrap)VARIABLE <vof_phi[r=1]> output
+      #(hash inserted during unwrap)VARIABLE <vof_phigrad_unit[r=1,l=1]> output
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "free_surface/volume_of_fluid/output_masks"
+      #(hash inserted during unwrap)END_IF
+   VARIABLE <t_end> 4.d-1
+   VARIABLE <dt_out> 1.d-2
+   NONE_CONSTANT <vof_s_D> 1.d-3 # redefine this to be a constant here, rather than a function of mesh refinement
 ##################################################################################

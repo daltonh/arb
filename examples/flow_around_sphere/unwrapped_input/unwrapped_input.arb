@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: flow_around_sphere.arb
    #(comment created during unwrap): new block = flow_around_sphere.arb: sub_block = 0
@@ -254,7 +254,7 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
          #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <allfaces>
          
             #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 1
-            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)IF 0#<<azimuthal>>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
                #(hash inserted during unwrap)IF 0
                #(hash inserted during unwrap)VARIABLE <tau[l=2,0]> "<tau[l=2,0]>+<mu>*<u_f_vect[l=0]>/<facex[l=2]>"
@@ -732,8 +732,8 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
                   #(hash inserted during unwrap)IF 
                   #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 0 has not been correctly defined'
                   #(hash inserted during unwrap)END_IF
-               #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv(<J_f[l=0]>)+<rho>*<u_f_vect[l=2]>*<u_f_vect[l=0]>/<facex[l=2]>" ON <domain> # momentum component'
-               #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "<momentum[l=2]>-<rho>*<u_f_vect[l=0]>**2/<facex[l=2]>"
+               #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv(<J_f[l=0]>)+<rho>*<u[l=2]>*<u[l=0]>/<cellx[l=2]>" ON <domain> # momentum component'
+               #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "<momentum[l=2]>-<rho>*<u[l=0]>**2/<cellx[l=2]>"
                #(hash inserted during unwrap)END_IF
             #(hash inserted during unwrap)END_IF
          
@@ -1591,7 +1591,7 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
          #FACE_LOCAL <gamma[l=3,2]> "<gamma[l=2,3]>" ON <allfaces>
          
             #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 1
-            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)IF 0#<<azimuthal>>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
                #(hash inserted during unwrap)IF 0
                #(hash inserted during unwrap)VARIABLE <gamma[l=2,0]> "<gamma[l=2,0]>+(-1.d0)*<u_f_vect[l=0]>/<facex[l=2]>"
@@ -1609,6 +1609,15 @@ EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functi
       # now calculate the double dot product on the faces, then average to the cells before square rooting
       #CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)),<tinyish>))" ON <allcells>
       # the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
-      CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))+2.d0*(<u[l=2]>/<cellx[l=2]>)**2,<tinyish>))" ON <allcells>
+      CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=2]>/<cellx[l=2]>)**2),<tinyish>))" ON <allcells>
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/strain_rate_magnitude.arb: sub_block = 1
+         #(hash inserted during unwrap)IF 0
+         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=2]>/<cellx[l=2]>)**2- facegrad[l=2,reflect=2](<u[l=0]>**2/<cellx[l=2]>),<tinyish>))" ON <allfaces> output
+         #(hash inserted during unwrap)CELL_DERIVED <gamma_magnitude> "cellave(<gamma_magnitude_f>)" ON <allcells> output
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)#CELL_DERIVED <gamma_magnitude> "cellave(sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>)))" ON <allcells> output
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)#CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2+ facegrad[l=<<radialdim>>](<u[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>)),<tinyish>))" ON <allcells>
+         #(hash inserted during unwrap)END_IF
    #-------------------------------------------------------------------
 ##################################################################################
