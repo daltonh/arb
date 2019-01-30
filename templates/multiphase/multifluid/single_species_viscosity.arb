@@ -37,7 +37,7 @@ END_SKIP
 
   ELSE
   # methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
-    NONE_CONSTANT <mu_phi_max_allsolids> 0.68d0
+    NONE_CONSTANT <mu_phi_max_allsolids> "<phi_max_allsolids>"
     NONE_CONSTANT <mu_phi_tol> "<phi_tol>"
     CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output
     CELL_LOCAL <mu_c_multiplier_<<species>>> [Pa.s] "<mu_c_multiplier_allsolids>" ON <allcells>

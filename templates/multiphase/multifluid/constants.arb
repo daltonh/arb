@@ -28,6 +28,7 @@ CONSTANT <T> [K] 298.15 # temperature
   return $return_string;
 }}
 CONSTANT <p_initial> 10.d0
+CONSTANT <phi_max_allsolids> 0.68d0 # this can be used for consistency across various solid property functions as the maximum allowable total phi
 
 # Also construct some overall variables
 # <u_av> which is the maximum of all phase <u_av>'s, and used to set <dt_initial>
