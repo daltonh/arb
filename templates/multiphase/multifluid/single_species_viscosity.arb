@@ -5,38 +5,19 @@ END_MARKDOWN
 #REPLACEMENTS D "<<viscosity_method>>" W "einstein"
 REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
 
-# as the default, which is einstein, split stress between phases using the simplest possible consistent partitioning
+# split stress between phases using the simplest possible consistent partitioning
 IF {{ return string_test('<<species>>','species0') }}
+# for the fluid use a multiplier of mu
   CELL_DERIVED <mu_c_multiplier_<<species>>> [Pa.s] "<mu_species0>" ON <allcells>
 ELSE
-  CELL_DERIVED <mu_c_multiplier_<<species>>> [Pa.s] "3.5d0*<mu_species0>" ON <allcells>
+# different functions using this simple partitioning only affect the solid viscosity
 
-# different functions specified through these correction factors
   IF {{ return string_test('<<viscosity_method>>','einstein')}}
-# einstein has been specified above
-
-# thomas method not yet coded
-SKIP
-ELSE_IF {{ return string_test('<<viscosity_method>>','thomas')}}
-  IF {{ return string_test('<<species>>','species0') }}
-    CELL_LOCAL <mu_c_multiplier_<<species>>> "<mu_c_multiplier_<<species>>>"
-  ELSE
-    ERROR "thomas method not done"
-#   CELL_LOCAL <mu_correction_<<species>>> "10.05d0*<phi_bounded_<<species>>>+0.00273d0*exp(16.6d0*<phi_bounded_<<species>>>)/<phi_lim_<<species>>>"
-  END_IF
-END_SKIP
-SKIP
-#ELSE_IF {{ return string_test('<<viscosity_method>>','morrisboulay99')}}
-# needs fixing
-  IF {{ return (!string_test('<<species>>','species0')) }}
-    NONE_CONSTANT <phi_lim_<<species>>> 0.68d0
-    CELL_DERIVED <phi_bounded_<<species>>_norm> "<phi_bounded_<<species>>>/<phi_lim_<<species>>>"
-    CELL_DERIVED <mu_c_multiplier_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0/(1.d0-<phi_bounded_<<species>>_norm>)+0.1d0*(<phi_bounded_<<species>>>/<phi_bounded_<<species>>_norm>**2)/(1.d0-<phi_bounded_<<species>>_norm>)**2)" ON <allcells>
-  END_IF
-END_SKIP
+# simplest einstein relationship
+    CELL_DERIVED <mu_c_multiplier_<<species>>> [Pa.s] "3.5d0*<mu_species0>" ON <allcells>
 
   ELSE
-  # methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
+# methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
     NONE_CONSTANT <mu_phi_max_allsolids> "<phi_max_allsolids>"
     NONE_CONSTANT <mu_phi_tol> "<phi_tol>"
     CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output
@@ -58,3 +39,26 @@ FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allf
 FACE_DERIVED <mu_f_multiplier_<<species>>> "faceave[adjacentcells](<mu_c_multiplier_<<species>>>)" ON <allfaces> output # used in rhie-chow
 
 # moved normal viscosity over to pressure alongside shear induced diffusion, so that this is only calculated if needed
+
+
+
+
+# thomas method not yet coded
+SKIP
+ELSE_IF {{ return string_test('<<viscosity_method>>','thomas')}}
+  IF {{ return string_test('<<species>>','species0') }}
+    CELL_LOCAL <mu_c_multiplier_<<species>>> "<mu_c_multiplier_<<species>>>"
+  ELSE
+    ERROR "thomas method not done"
+#   CELL_LOCAL <mu_correction_<<species>>> "10.05d0*<phi_bounded_<<species>>>+0.00273d0*exp(16.6d0*<phi_bounded_<<species>>>)/<phi_lim_<<species>>>"
+  END_IF
+END_SKIP
+SKIP
+#ELSE_IF {{ return string_test('<<viscosity_method>>','morrisboulay99')}}
+# needs fixing
+  IF {{ return (!string_test('<<species>>','species0')) }}
+    NONE_CONSTANT <phi_lim_<<species>>> 0.68d0
+    CELL_DERIVED <phi_bounded_<<species>>_norm> "<phi_bounded_<<species>>>/<phi_lim_<<species>>>"
+    CELL_DERIVED <mu_c_multiplier_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0/(1.d0-<phi_bounded_<<species>>_norm>)+0.1d0*(<phi_bounded_<<species>>>/<phi_bounded_<<species>>_norm>**2)/(1.d0-<phi_bounded_<<species>>_norm>)**2)" ON <allcells>
+  END_IF
+END_SKIP
