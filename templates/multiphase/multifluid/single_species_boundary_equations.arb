@@ -39,7 +39,7 @@ IF {{ return string_test('<<boundarymethod>>','zerophigrad') }}
 ELSE_IF {{ return string_test('<<boundarymethod>>','phi') }}
 # special case that sets a uniform value for phi (equal to <region phi_<<species>>>), relevant for inlet boundaries
   INCLUDE_TEMPLATE 'navier_stokes/boundary_equations' R '<<boundarymethod>>' W 'pressure'
-  NONE_CONSTANT <region phi_<<species>>> 0.1d0
+  NONE_CONSTANT <region phi_<<species>>> "<phi_initial_<<species>>>"
   VARIABLE <region flowrate equation_<<species>>> "<phi_f_<<species>>>-<region phi_<<species>>>"
 ELSE
 # now include the navier_stokes boundary_equations template file
