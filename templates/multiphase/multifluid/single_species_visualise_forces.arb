@@ -1,5 +1,7 @@
 MARKDOWN
 Make some vectors to visualise the forces for each phase
+
+This probably needs some work, but it looks like the forces are expressed on a species volume specific basis
 END_MARKDOWN
 
 # define cylindrical divergence modifier terms
@@ -55,7 +57,8 @@ REPLACEMENTS D "<<buoyancy>>" W "0"
     $return_string .= "CELL_LOCAL <force_drag_<<species>>[l=$l]> '0.d0' ON <domain>\n";
     push(@force_list,'drag');
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
-      if ($species ne string_eval('<<species>>')) {
+      if ($species ne string_eval('<<species>>') && ($species eq 'species0' || string_eval('<<species>>') eq 'species0')) {
+# for now only include contributions between a disperse phase and the continuous phase
         $return_string .= "CELL_LOCAL <force_drag_<<species>>[l=$l]> '<force_drag_<<species>>[l=$l]>-<beta*j_<<species>>_$species>*(<u_<<species>>[l=$l]>-<u_$species"."[l=$l]>)' ON <domain>\n";
       }
     }

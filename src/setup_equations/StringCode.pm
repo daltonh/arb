@@ -648,5 +648,16 @@ sub string_debug {
 
 }
 #-------------------------------------------------------------------------------
+# TODO - add something like this, but wait for reorder restructuring
+# routine that checks if a variable name has been defined, for now
+# little routine that returns 1 if a string is defined, or 0 otherwise
+#sub variable_examine {
+#
+#  my $name = $_[0];
+#
+#  if ($code_block_found ge 0) { return 1; } else { return 0; };
+#
+#}
+#-------------------------------------------------------------------------------
 
 1;
