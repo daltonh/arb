@@ -2264,6 +2264,7 @@ if (present(norm)) then
   if (present(downcellx)) then
     if (dot_product(norm(:,1),centre-downcellx) < 0.d0) norm(:,1) = -norm(:,1)
   end if
+
   norm(:,2) = node(knode(2))%x-node(knode(1))%x ! first tangent, lying in plane of geometry from node 1->2, probably not a good representation for curved faces
 ! this is a change in v0.60 to get norm(2) in 2D geometries aligned with the shortest node-to-node vector, rather than the one with the lowest index
 ! if all node-to-node vectors are the same then this will default to the old scheme of the first node-to-node vector
