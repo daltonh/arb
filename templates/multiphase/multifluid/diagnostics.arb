@@ -27,8 +27,10 @@ REPLACEMENTS D "<<diagnostics_rhie_chow>>" W "1"
 IF <<diagnostics_rhie_chow>>
   INCLUDE "u_f_vector"
   INCLUDE "u_f_vector" R '<<component>>' W '_{raw}'
-  INCLUDE "u_f_vector" R '<<component>>' W '_{correction}' R '<allfaces>' W '<domainfaces>'
-  INCLUDE "dynamic_force_f_vector" R '<allfaces>' W '<domainfaces>' # depends on wall boundary condition in use
+  INCLUDE "u_f_vector" R '<<component>>' W '_{correction}'
+  INCLUDE "dynamic_force_f_vector"
+# INCLUDE "u_f_vector" R '<<component>>' W '_{correction}' R '<allfaces>' W '<domainfaces>'
+# INCLUDE "dynamic_force_f_vector" R '<allfaces>' W '<domainfaces>' # depends on wall boundary condition in use
 # INCLUDE "dynamic_force_f_vector"
 
 # turn some species specific outputs on
@@ -37,18 +39,18 @@ IF <<diagnostics_rhie_chow>>
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
       $return_string .= "VARIABLE <phiu_f_$species> output\n";
       $return_string .= "VARIABLE <u_f_{raw}_$species> output\n";
-      $return_string .= "VARIABLE <u_f_{correction}_$species> output\n";
-      $return_string .= "VARIABLE <p_error_$species> output\n";
+      $return_string .= "VARIABLE <u_f_{correction}_$species> ON <allfaces> output\n";
+      $return_string .= "VARIABLE <p_error_$species> ON <allfaces> output\n";
       $return_string .= "VARIABLE <phi_f_bounded_$species> output\n";
       $return_string .= "VARIABLE <phi_f_bounded_adjacent_$species> output\n";
       $return_string .= "VARIABLE <phi_bounded_$species> output\n";
       $return_string .= "VARIABLE <phi_f_adv_$species> output\n";
-      $return_string .= "VARIABLE <u_f_{correction}_A_$species> output\n";
-      $return_string .= "VARIABLE <u_f_{correction}_D_$species> output\n";
+      $return_string .= "VARIABLE <u_f_{correction}_A_$species> ON <allfaces> output\n";
+      $return_string .= "VARIABLE <u_f_{correction}_D_$species> ON <allfaces> output\n";
       $return_string .= "VARIABLE <u_f_$species> output\n";
-      $return_string .= "VARIABLE <u_rf_{vis}_$species> output\n";
-      $return_string .= "VARIABLE <u_rf_{adv}_$species> output\n";
-      $return_string .= "VARIABLE <dynamic_force_f_$species> output\n";
+      $return_string .= "VARIABLE <u_rf_{vis}_$species> ON <allfaces> output\n";
+      $return_string .= "VARIABLE <u_rf_{adv}_$species> ON <allfaces> output\n";
+      $return_string .= "VARIABLE <dynamic_force_f_$species> ON <allfaces> output\n";
     }
     return $return_string;
   }}
@@ -57,8 +59,8 @@ IF <<diagnostics_rhie_chow>>
     {{
       my $return_string = '';
       for my $species (string_eval('<<multifluid_species_list>>','list')) {
-        $return_string .= "VARIABLE <u_f_{correction}_$species"."[r=1]> output\n";
-        $return_string .= "VARIABLE <u_rf_{transient}_$species> output\n";
+        $return_string .= "VARIABLE <u_f_{correction}_$species"."[r=1]> ON <allfaces> output\n";
+        $return_string .= "VARIABLE <u_rf_{transient}_$species> ON <allfaces> output\n";
         $return_string .= "VARIABLE <u_$species"."[l=1,r=1]> output\n";
       }
       return $return_string;
