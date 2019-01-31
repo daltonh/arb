@@ -29,11 +29,9 @@ IF <<diagnostics_rhie_chow>>
   INCLUDE "u_f_vector" R '<<component>>' W '_{raw}'
   INCLUDE "u_f_vector" R '<<component>>' W '_{correction}'
   INCLUDE "dynamic_force_f_vector"
-# INCLUDE "u_f_vector" R '<<component>>' W '_{correction}' R '<allfaces>' W '<domainfaces>'
-# INCLUDE "dynamic_force_f_vector" R '<allfaces>' W '<domainfaces>' # depends on wall boundary condition in use
-# INCLUDE "dynamic_force_f_vector"
 
 # turn some species specific outputs on
+# at the same time, expand the region of the velocity correction related variables to be <allfaces> rather than <domainfaces> to enable visualisation
   {{
     my $return_string = '';
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
