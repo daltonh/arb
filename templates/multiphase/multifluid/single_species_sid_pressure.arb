@@ -47,8 +47,22 @@ END_IF
 
 #Calculate shear induced pressure here (Infinite Pe SID, Morris & Boulay J. Rheo. 1999)
   IF <<highPeSID>>
-# simplified relationship
-    CELL_LOCAL <p_sid_multiplier_highPe_allsolids> "<p_sid_c>*<gamma_magnitude_allsolids>*<mu_species0>*<p_osmotic_Z_allsolids>" ON <allcells> output
+    REPLACEMENTS D "<<sidmethod>>" W "2" # trying out different ideas
+    IF {{ return string_test('<<sidmethod>>','1') }}
+# simplified relationship using Z from osmotic pressure, and fluid viscosity
+      CELL_LOCAL <p_sid_multiplier_highPe_allsolids> "<p_sid_c>*<gamma_magnitude_allsolids>*<mu_species0>*<p_osmotic_Z_allsolids>" ON <allcells> output
+    ELSE_IF {{ return string_test('<<sidmethod>>','2') }}
+# alternative using volume averaged and previously calculated shear viscosity, and no Z
+      CELL_LOCAL <mu_c_allsolids> "0.d0" ON <allcells> output
+      {{
+        my $return_string = '';
+        for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+          $return_string .= "VARIABLE <mu_c_allsolids> '<mu_c_allsolids>+<phi_pos_$species>*<mu_c_$species>'\n";
+        }
+        return $return_string;
+      }}
+      CELL_LOCAL <p_sid_multiplier_highPe_<<species>>> "<p_sid_c>*<gamma_magnitude_allsolids>*<mu_c_allsolids>" ON <allcells> output
+    END_IF
 # CELL_LOCAL <p_sid_multiplier_highPe_<<species>>> "<p_sid_c>*<gamma_magnitude_allsolids>*<mu_l>*<p_osmotic_Z_allsolids>" ON <allcells> output
     #CELL_LOCAL <p_sid_multiplier_highPe_<<species>>> "<gamma_<<species>>_magnitude>*<mu_<<species>>_n>" ON <allcells> output
     #CELL_LOCAL <p_sid_multiplier_highPe_<<species>>> "<p_sid_c>*<gamma_magnitude_allsolids>*<mu_c_allsolids>*<p_osmotic_Z_allsolids>" ON <allcells> output
