@@ -43,6 +43,14 @@ REPLACEMENTS D "<<buoyancy>>" W "0"
       $return_string .= "CELL_LOCAL <force_grav_<<species>>[l=$l]> '-<rho_<<species>>>*<gravity[l=$l]>' ON <domain>\n";
       push(@force_list,'grav');
     }
+# body force
+    if (string_eval('<<body_force>>')) {
+      $return_string .= "CELL_LOCAL <force_body_<<species>>[l=$l]> '-<body_force[l=$l]>' ON <domain>\n";
+      push(@force_list,'body');
+    }
+# any extra forces, included in extra_force
+    $return_string .= "CELL_LOCAL <force_extra_<<species>>[l=$l]> '<extra_force_<<species>>[l=$l]>' ON <domain>\n";
+    push(@force_list,'extra');
 # fluid pressure
     $return_string .= "CELL_LOCAL <force_pfluid_<<species>>[l=$l]> '-celldivgrad[l=$l](<p_f_species0>)' ON <domain>\n";
     push(@force_list,'pfluid');
