@@ -2,6 +2,7 @@ MARKDOWN
 Just some summary information about each species present, such as average, minimum and maximum phi and p
 END_MARKDOWN
 
+# TODO: fix notation species order
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {

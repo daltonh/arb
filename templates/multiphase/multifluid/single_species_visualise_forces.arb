@@ -55,12 +55,26 @@ REPLACEMENTS D "<<buoyancy>>" W "0"
     $return_string .= "CELL_LOCAL <force_pfluid_<<species>>[l=$l]> '-celldivgrad[l=$l](<p_f_species0>)' ON <domain>\n";
     push(@force_list,'pfluid');
 # species pressure
-    if (string_test('<<species>>','species0')) {
-      $return_string .= "CELL_LOCAL <force_pspecies_<<species>>[l=$l]> '0.d0' ON <domain>\n";
+    if (0) {
+# output as a single pressure
+      if (string_test('<<species>>','species0')) {
+        $return_string .= "CELL_LOCAL <force_pspecies_<<species>>[l=$l]> '0.d0' ON <domain>\n";
+      } else {
+        $return_string .= "CELL_LOCAL <force_pspecies_<<species>>[l=$l]> '-celldivgrad[l=$l](<p_f_<<species>>>)/<phi_bounded_<<species>>>' ON <domain>\n";
+      }
+      push(@force_list,'pspecies');
     } else {
-      $return_string .= "CELL_LOCAL <force_pspecies_<<species>>[l=$l]> '-celldivgrad[l=$l](<p_f_<<species>>>)/<phi_bounded_<<species>>>' ON <domain>\n";
+# output as separate osmotic and sid components
+      if (string_test('<<species>>','species0')) {
+        $return_string .= "CELL_LOCAL <force_posmotic_<<species>>[l=$l]> '0.d0' ON <domain>\n";
+        $return_string .= "CELL_LOCAL <force_psid_<<species>>[l=$l]> '0.d0' ON <domain>\n";
+      } else {
+        $return_string .= "CELL_LOCAL <force_posmotic_<<species>>[l=$l]> '-celldivgrad[l=$l](<p_osmotic_f_<<species>>>)/<phi_bounded_<<species>>>' ON <domain>\n";
+        $return_string .= "CELL_LOCAL <force_psid_<<species>>[l=$l]> '-celldivgrad[l=$l](<p_sid_f_<<species>>>)/<phi_bounded_<<species>>>' ON <domain>\n";
+      }
+      push(@force_list,'posmotic');
+      push(@force_list,'psid');
     }
-    push(@force_list,'pspecies');
 # drag
     $return_string .= "CELL_LOCAL <force_drag_<<species>>[l=$l]> '0.d0' ON <domain>\n";
     push(@force_list,'drag');

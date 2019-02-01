@@ -1,56 +1,93 @@
+MARKDOWN
+Here we find the sid pressure for a disperse phase species <<species>>
+END_MARKDOWN
+
 REPLACEMENTS D "<<anisotropic>>" W "0"
 REPLACEMENTS D "<<highPeSID>>" W "1" D "<<lowPeSID>>" W "0"
 
 #Calculate solid pressure due to shear induced diffusion
-NONE_CONSTANT <c_sid> "1.d0/9.d0"
-INCLUDE_TEMPLATE "navier_stokes/"
-INCLUDE "strain_rate_magnitude" R "ugrad_" W "ugrad_<<species>>_" R "gamma" W "gamma_<<species>>" R "u_f_vect" W "u_f_vect_<<species>>" R "u[" W "u_<<species>>["
-VARIABLE <gamma_<<species>>_magnitude> output
+NONE_CONSTANT <p_sid_c> "1.d0/9.d0"
 
-INCLUDE_TEMPLATE "multiphase/multifluid"
-  #Define normal viscosity (Morris & Boulay 1999)
-  # moved from single_species_viscosity
-  INCLUDE "mixture_viscosity"  R "<mu_<<species>>_n_l>" W "<mu_species0>" R "<mu" W "<mu_<<species>>_n" R "<<mumixturequemada>>" W "0" R "<<mumixturemb1999>>" W "0" R "<<munormalmb1999>>" W "1" R "phi_total_species" W "phi_<<species>>"
-  FACE_DERIVED <mu_<<species>>_n_f> "faceave[harmonic](<mu_<<species>>_n>)" ON <allfaces>
+# and also the volume-averaged strain rate magnitude across all solid phases
+IF 0
+# calculate gamma for each phase, and then average this to allsolids
+# possibly not ideal as sqrt within volume averaging - probably isn't right for linear combination of two identical species
+  CELL_LOCAL <gamma_magnitude_allsolids> "0.d0" ON <allcells> output
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_$species"."[' R '<gamma_magnitude>' W '<gamma_magnitude_$species>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_$species>' R '<u_f_vect[' W '<u_f_vect_$species"."[' R '<u[' W '<u_$species"."[' R '<ugrad_f[' W '<ugrad_f_$species"."['\n";
+      $return_string .= "VARIABLE <gamma_magnitude_allsolids> '<gamma_magnitude_allsolids>+<phi_pos_$species>*<gamma_magnitude_$species>'\n";
+    }
+    return $return_string;
+  }}
+ELSE
+# volume average solid velocities first, then calculate allsolids gamma from this
+# actually this could be more efficient by creating ugrad_f_allsolids from inidividual species ugrad_f_speciesI ones, but a headache for string replacements
+  {{
+    my $return_string = '';
+    for my $l (string_eval('<<dimensions>>','list')) {
+      $return_string .= "CELL_LOCAL <u_allsolids[l=$l"."]> '0.d0' ON <allcells>\n";
+      for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+        $return_string .= "VARIABLE <u_allsolids[l=$l"."]> '<u_allsolids[l=$l"."]>+<phi_pos_$species>*<u_$species"."[l=$l]>'\n";
+      }
+    }
+    return $return_string;
+  }}
+  INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_allsolids[' R '<gamma_magnitude>' W '<gamma_magnitude_allsolids>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_allsolids>' R '<u_f_vect[' W '<u_f_vect_allsolids[' R '<u[' W '<u_allsolids[' R '<ugrad_f[' W '<ugrad_f_allsolids['
+END_IF
 
-  CELL_DERIVED <Pe_local_<<species>>> "6*pi*<mu_species0>*<gamma_<<species>>_magnitude>*<a_<<species>>>**3/(<k_boltzmann>*<T>)"
+  IF 0 # not needed right now
+    INCLUDE_TEMPLATE "multiphase/multifluid"
+    #Define normal viscosity (Morris & Boulay 1999)
+    # moved from single_species_viscosity
+    INCLUDE "mixture_viscosity"  R "<mu_<<species>>_n_l>" W "<mu_species0>" R "<mu" W "<mu_<<species>>_n" R "<<mumixturequemada>>" W "0" R "<<mumixturemb1999>>" W "0" R "<<munormalmb1999>>" W "1" R "phi_total_species" W "phi_<<species>>"
+    FACE_DERIVED <mu_<<species>>_n_f> "faceave[harmonic](<mu_<<species>>_n>)" ON <allfaces>
+  END_IF
 
 #Calculate shear induced pressure here (Infinite Pe SID, Morris & Boulay J. Rheo. 1999)
   IF <<highPeSID>>
-    #CELL_LOCAL <p_sid_multiplier_<<species>>_highPe> "<gamma_<<species>>_magnitude>*<mu_<<species>>_n>" ON <allcells> output
-    CELL_LOCAL <p_sid_multiplier_<<species>>_highPe> "<c_sid>*<gamma_allphases_magnitude>*<mu_c_allsolids>*<p_osmotic_Z_allsolids>" ON <allcells> output
-    #CELL_LOCAL <p_sid_multiplier_<<species>>_highPe> "<gamma_<<species>>_magnitude>*<mu_c_allsolids>*<p_osmotic_Z_allsolids>" ON <allcells> output
+# simplified relationship
+    CELL_LOCAL <p_sid_multiplier_highPe_allsolids> "<p_sid_c>*<gamma_magnitude_allsolids>*<mu_species0>*<p_osmotic_Z_allsolids>" ON <allcells> output
+# CELL_LOCAL <p_sid_multiplier_highPe_<<species>>> "<p_sid_c>*<gamma_magnitude_allsolids>*<mu_l>*<p_osmotic_Z_allsolids>" ON <allcells> output
+    #CELL_LOCAL <p_sid_multiplier_highPe_<<species>>> "<gamma_<<species>>_magnitude>*<mu_<<species>>_n>" ON <allcells> output
+    #CELL_LOCAL <p_sid_multiplier_highPe_<<species>>> "<p_sid_c>*<gamma_magnitude_allsolids>*<mu_c_allsolids>*<p_osmotic_Z_allsolids>" ON <allcells> output
+    #CELL_LOCAL <p_sid_multiplier_highPe_<<species>>> "<gamma_<<species>>_magnitude>*<mu_c_allsolids>*<p_osmotic_Z_allsolids>" ON <allcells> output
   END_IF
 
   IF <<lowPeSID>>
-      NONE_CONSTANT <A_sid> "0.4d0"
+    CELL_DERIVED <Pe_local_<<species>>> "6*pi*<mu_species0>*<gamma_<<species>>_magnitude>*<a_<<species>>>**3/(<k_boltzmann>*<T>)"
 
-      INCLUDE "mixture_viscosity_concentrated" R "phi_total_species" W "phi_<<species>>" R "<mu" W "<p_lowPeSID_func" R "<mu_l>" W "1.0d0" R "<<variable>>" W "(cellmin(<phi_total_species>,<mu_phi_total_species_cutoff>))" R "<<function>>" W "<<variable>>/(1.-<<variable>>/<mu_phi_total_species_max>)^3" R "<<cutoff_variable>>" W "<mu_phi_total_species_cutoff>" R "<<cutoff_function>>" W "<<cutoff_variable>>/(1.-<<cutoff_variable>>/<mu_phi_total_species_max>)^3"
+    NONE_CONSTANT <A_sid> "0.4d0"
 
-      CELL_LOCAL <p_sid_multiplier_<<species>>_lowPe> "<mu_species0>*<gamma_<<species>>_magnitude>*<A_sid>*<Pe_local_<<species>>>*<p_lowPeSID_func>" output
+    INCLUDE "mixture_viscosity_concentrated" R "phi_total_species" W "phi_<<species>>" R "<mu" W "<p_lowPeSID_func" R "<mu_l>" W "1.0d0" R "<<variable>>" W "(cellmin(<phi_total_species>,<mu_phi_total_species_cutoff>))" R "<<function>>" W "<<variable>>/(1.-<<variable>>/<mu_phi_total_species_max>)^3" R "<<cutoff_variable>>" W "<mu_phi_total_species_cutoff>" R "<<cutoff_function>>" W "<<cutoff_variable>>/(1.-<<cutoff_variable>>/<mu_phi_total_species_max>)^3"
+
+    CELL_LOCAL <p_sid_multiplier_lowPe_<<species>>> "<mu_species0>*<gamma_<<species>>_magnitude>*<A_sid>*<Pe_local_<<species>>>*<p_lowPeSID_func>" output
   END_IF
 
   #Blended SID function (Frank et al. 2003 JFM to account for finite Pe effects)
   CELL_LOCAL <p_sid_multiplier_<<species>>> "0.0d0"  output
   IF <<highPeSID>>
     IF <<lowPeSID>>
-      VARIABLE <p_sid_multiplier_<<species>>> "<p_sid_multiplier_<<species>>_highPe>*<p_sid_multiplier_<<species>>_lowPe>/(<p_sid_multiplier_<<species>>_highPe>+<p_sid_multiplier_<<species>>_lowPe>+<tiny>)"
+      VARIABLE <p_sid_multiplier_<<species>>> "<p_sid_multiplier_highPe_<<species>>>*<p_sid_multiplier_lowPe_<<species>>>/(<p_sid_multiplier_highPe_<<species>>>+<p_sid_multiplier_lowPe_<<species>>>+<tiny>)"
     ELSE
-      VARIABLE <p_sid_multiplier_<<species>>> "<p_sid_multiplier_<<species>>_highPe>"
+#     VARIABLE <p_sid_multiplier_<<species>>> "<p_sid_multiplier_highPe_<<species>>>"
+      VARIABLE <p_sid_multiplier_<<species>>> "<p_sid_multiplier_highPe_allsolids>"
     END_IF
   ELSE_IF <<lowPeSID>>
-    VARIABLE <p_sid_multiplier_<<species>>> "<p_sid_multiplier_<<species>>_lowPe>"
+    VARIABLE <p_sid_multiplier_<<species>>> "<p_sid_multiplier_lowPe_<<species>>>"
   ELSE
     ERROR "Inconsistent specification of shear-induced diffusion in particle_stress.arb"
 
   END_IF
 
-CELL_LOCAL <p_sid_<<species>>> "<p_sid_multiplier_<<species>>>*<phi_<<species>>>" ON <allcells> # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+CELL_LOCAL <p_sid_<<species>>> "<p_sid_multiplier_<<species>>>*<phi_pos_<<species>>>" ON <allcells> # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
 
-
+IF 0 # cell-centred forces now in visualise_forces
   CELL_OUTPUT <M_sid_<<species>>[l=1]> "-celldivgrad[l=1](<p_sid_<<species>>>)" ON <allcells>
   CELL_OUTPUT <M_sid_<<species>>[l=2]> "-celldivgrad[l=2](<p_sid_<<species>>>)" ON <allcells>
   <<dim3comment>> CELL_OUTPUT <M_sid_<<species>>[l=3]> "-celldivgrad[l=3](<p_sid_<<species>>>)" ON <allcells>
   FACE_OUTPUT <M_sid_<<species>>_f[l=1]> "-facegrad[l=1](<p_sid_<<species>>>)" ON <allfaces>
   FACE_OUTPUT <M_sid_<<species>>_f[l=2]> "-facegrad[l=2](<p_sid_<<species>>>)" ON <allfaces>
   <<dim3comment>> FACE_OUTPUT <M_sid_<<species>>_f[l=3]> "-facegrad[l=3](<p_sid_<<species>>>)" ON <allfaces>
+END_IF

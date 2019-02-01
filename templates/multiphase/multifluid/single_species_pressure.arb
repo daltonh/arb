@@ -5,13 +5,16 @@ END_MARKDOWN
 # first add osmotic pressure using separate template
 INCLUDE "single_species_osmotic_pressure"
 CELL_DERIVED <p_<<species>>> "<p_osmotic_<<species>>>"
+FACE_LOCAL <p_osmotic_f_<<species>>> "faceave(<p_osmotic_<<species>>>)" ON <allfaces> # just used in visualise_forces
 
 # next sid pressure too
 REPLACEMENTS D "<<shearinduceddiffusion>>" W "0"
 IF <<shearinduceddiffusion>>
   INCLUDE "single_species_sid_pressure"
   CELL_DERIVED <p_<<species>>> "<p_<<species>>> + <p_sid_<<species>>>"
+  FACE_LOCAL <p_sid_f_<<species>>> "faceave(<p_sid_<<species>>>)" ON <allfaces> # just used in visualise_forces
+ELSE
+  FACE_LOCAL <p_sid_f_<<species>>> "0.d0" ON <allfaces> # just used in visualise_forces
 END_IF
 
-#VARIABLE <p_<<species>>> "1.0d0"
 FACE_DERIVED <p_f_<<species>>> "faceave(<p_<<species>>>)" ON <allfaces>
