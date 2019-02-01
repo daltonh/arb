@@ -88,6 +88,8 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
       }
 # add dynamic forces
       $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>-<dynamic_force_c_$species"."[l=$l]>' ON <domain>\n";
+# add on any extra forces that are not included within the dynamic forces, which need to be on a phase volume fraction specific basis
+      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>-<extra_force_$species"."[l=$l]>'\n";
     }
 # now deal with drag terms
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
