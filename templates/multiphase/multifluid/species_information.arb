@@ -2,23 +2,22 @@ MARKDOWN
 Just some summary information about each species present, such as average, minimum and maximum phi and p
 END_MARKDOWN
 
-# TODO: fix notation species order
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
     for my $l (string_eval('<<dimensions>>','list')) {
-      $return_string .= "NONE_OUTPUT <u_$species"."_average[l=$l]> 'cellsum(<u_$species"."[l=$l]>*<cellvol>,region=<allcells>)/cellsum(<cellvol>,region=<allcells>)'\n";
+      $return_string .= "NONE_OUTPUT <u_average_$species"."[l=$l]> 'cellsum(<u_$species"."[l=$l]>*<cellvol>,region=<allcells>)/cellsum(<cellvol>,region=<allcells>)'\n";
     }
-    $return_string .= "NONE_OUTPUT <phi_$species"."_average> 'cellsum(<phi_$species".">*<cellvol>,region=<allcells>)/cellsum(<cellvol>,region=<allcells>)'\n";
-    $return_string .= "NONE_OUTPUT <p_$species"."_average> 'cellsum(<p_$species".">*<cellvol>,region=<allcells>)/cellsum(<cellvol>,region=<allcells>)'\n";
-    $return_string .= "NONE_OUTPUT <phi_$species"."_domainmin> 'cellmin(<phi_$species".">,region=<domain>)'\n";
-    $return_string .= "NONE_OUTPUT <phi_$species"."_domainmax> 'cellmax(<phi_$species".">,region=<domain>)'\n";
-    $return_string .= "NONE_OUTPUT <phi_$species"."_allcellsmin> 'cellmin(<phi_$species".">,region=<allcells>)'\n";
-    $return_string .= "NONE_OUTPUT <phi_$species"."_allcellsmax> 'cellmax(<phi_$species".">,region=<allcells>)'\n";
-    $return_string .= "NONE_OUTPUT <p_$species"."_domainmin> 'cellmin(<p_$species".">,region=<domain>)'\n";
-    $return_string .= "NONE_OUTPUT <p_$species"."_domainmax> 'cellmax(<p_$species".">,region=<domain>)'\n";
-    $return_string .= "NONE_OUTPUT <p_$species"."_allcellsmin> 'cellmin(<p_$species".">,region=<allcells>)'\n";
-    $return_string .= "NONE_OUTPUT <p_$species"."_allcellsmax> 'cellmax(<p_$species".">,region=<allcells>)'\n";
+    $return_string .= "NONE_OUTPUT <phi_average_$species> 'cellsum(<phi_$species>*<cellvol>,region=<allcells>)/cellsum(<cellvol>,region=<allcells>)'\n";
+    $return_string .= "NONE_OUTPUT <p_average_$species> 'cellsum(<p_$species>*<cellvol>,region=<allcells>)/cellsum(<cellvol>,region=<allcells>)'\n";
+    $return_string .= "NONE_OUTPUT <phi_domainmin_$species> 'cellmin(<phi_$species>,region=<domain>)'\n";
+    $return_string .= "NONE_OUTPUT <phi_domainmax_$species> 'cellmax(<phi_$species>,region=<domain>)'\n";
+    $return_string .= "NONE_OUTPUT <phi_allcellsmin_$species> 'cellmin(<phi_$species>,region=<allcells>)'\n";
+    $return_string .= "NONE_OUTPUT <phi_allcellsmax_$species> 'cellmax(<phi_$species>,region=<allcells>)'\n";
+    $return_string .= "NONE_OUTPUT <p_domainmin_$species> 'cellmin(<p_$species>,region=<domain>)'\n";
+    $return_string .= "NONE_OUTPUT <p_domainmax_$species> 'cellmax(<p_$species>,region=<domain>)'\n";
+    $return_string .= "NONE_OUTPUT <p_allcellsmin_$species> 'cellmin(<p_$species>,region=<allcells>)'\n";
+    $return_string .= "NONE_OUTPUT <p_allcellsmax_$species> 'cellmax(<p_$species>,region=<allcells>)'\n";
   }
   return $return_string;
 }}
