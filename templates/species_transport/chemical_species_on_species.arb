@@ -1,0 +1,5 @@
+MARKDOWN
+Just a hook to the chemical_species_in_species file, but with the specification that the chemical species will be contained on the multifluid species
+END_MARKDOWN
+
+INCLUDE "chemical_species_in_species" R "<<where>>" W "on"

@@ -1,0 +1,16 @@
+MARKDOWN
+This for the transport of chemcial species <<chemical_species>> that is attached to (on) or within (in) a multifluid species <<species>>
+
+Variables in this file end with the suffix <<chemical_species>>_[on|in]_<<species>> with the on/in choice reflecting whether the chemical species is contained on the surface of the (multifluid) species (on), or within its volume (in).
+
+Where the chemical species is to be defined on the species is determined by the <<where>>=volume|surface which should be previously set, but defaults to volume.
+Alternatively, for a surface bound species call with the template chemical_species_on_species
+END_MARKDOWN
+
+# must be called with <<chemical_species>>, <<where>> and <<species>> defined
+IF {{ return (!(string_examine('<<chemical_species>>'))) }} # this is 1 if the string <<chemical_species>> is not defined
+  ERROR "the chemical species string has not been set in chemical_species_on_species template: <<chemical_species>>"
+END_IF
+IF {{ return (!(string_examine('<<species>>'))) }} # this is 1 if the string <<species>> is not defined
+  ERROR "the multifluid species string has not been set in chemical_species_on_species template: <<species>>"
+END_IF
