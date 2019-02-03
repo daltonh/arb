@@ -20,9 +20,10 @@ REPLACEMENTS D "<<where>>" W "in"
 REPLACEMENTS D '/species/' W '<<chemical_species>>_<<where>>_<<species>>'
 
 # for now just use first order upwind advection, until fix advection_limiters to allow <c_ rather than <c replacement
+# FIXME
 REPLACEMENTS D '<<specieslimitedadvection>>' W '0'
 
-REPLACEMENTS D "<c_" W "<c_" # define the scope of this to be outside the if statement
+REPLACEMENTS D "<c_" W "<c_" # define the scope of this to be outside the if statement, but don't do replacements until after specific species have been defined
 
 # volume species surface area of species
 NONE_CONSTANT <A^_<<species>>> "<A_<<species>>>/<V_<<species>>>"
