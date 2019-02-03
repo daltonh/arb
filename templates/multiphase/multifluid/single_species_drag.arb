@@ -7,11 +7,13 @@ IF {{ return string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
 
+REPLACEMENTS D "<<RichardsonZakiDrag>>" W "0"
+
 # calculate kappa*, which only has one value for each combination of species, define with the lower index coming first
-IF 1 # stokes drag
-  CELL_DERIVED <kappa*_species0_<<species>>> "2.d0*<a_<<species>>>^2/9.d0" ON <allcells>
-ELSE
-  ERROR "no other permeabilities coded up yet"
+#Stokes drag
+CELL_DERIVED <kappa*_species0_<<species>>> "2.d0*<a_<<species>>>^2/9.d0" ON <allcells> 
+IF  <<RichardsonZakiDrag>># R-Z, Pe < O(10^8)
+  VARIABLE <kappa*_species0_<<species>>> " <kappa*_species0_<<species>>>*(1.-<phi_<<species>>>)**5.5" ON <allcells>	
 END_IF
 
 #REPLACEMENTS R "bounded" W "pos"
