@@ -17,9 +17,10 @@ IF <<RichardsonZakiDrag>> # R-Z, Pe < O(10^8)
   IF <<RichardsonZakiDragfluidbased>>
 # currently there is only drag between each species and the fluid
 # basing the hindered settling function on the fluid volume fraction will partly capture the drag between solid species at high total solids volume fractions
-    VARIABLE <kappa*_species0_<<species>>> "<kappa*_species0_<<species>>>*(<phi_pos_species0>)**5.5" ON <allcells>	
+# putting in phi_bounded as otherwise we get Nans
+    VARIABLE <kappa*_species0_<<species>>> "<kappa*_species0_<<species>>>*(<phi_bounded_species0>)**5.5" ON <allcells>	
   ELSE
-    VARIABLE <kappa*_species0_<<species>>> "<kappa*_species0_<<species>>>*(1.-<phi_pos_<<species>>>)**5.5" ON <allcells>	
+    VARIABLE <kappa*_species0_<<species>>> "<kappa*_species0_<<species>>>*(1.-<phi_bounded_<<species>>>)**5.5" ON <allcells>	
   END_IF
 END_IF
 
