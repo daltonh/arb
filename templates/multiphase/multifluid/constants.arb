@@ -22,7 +22,8 @@ CONSTANT <T> [K] 298.15 # temperature
   my $return_string = '';
   foreach my $species (string_eval("<<multifluid_disperse_species_list>>","list")) {
     $return_string .= "CONSTANT <a_$species> [m] 1.d-6\n";
-    $return_string .= "CONSTANT <V_$species> [m^3] '4.d0*<pi>*<a_$species>^3/3.d0'\n";
+    $return_string .= "CONSTANT <V_$species> [m^3] '4.d0*<pi>*<a_$species>^3/3.d0'\n"; # volume of a species element, defaulting to equivalent sphere
+    $return_string .= "CONSTANT <A_$species> [m^2] '4.d0*<pi>*<a_$species>^2'\n"; # surface area of a species element, defaulting to equivalent sphere
     $return_string .= "CONSTANT <phi_initial_$species> '0.1d0'\n";
   }
   return $return_string;
