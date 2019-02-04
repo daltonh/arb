@@ -10,6 +10,7 @@ END_IF
 #REPLACEMENTS D "<<drag_method>>" W "dilute" # = stokes
 #REPLACEMENTS D "<<drag_method>>" W "richardsonzaki"
 REPLACEMENTS D "<<drag_method>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
+#REPLACEMENTS D "<<drag_method>>" W "rourkeernstene" # from kim16, referencing Rourke and Ernstene 1930, which is specifically for rbcs
 
 
 # calculate kappa*, which only has one value for each combination of species, define with the lower index coming first
@@ -22,20 +23,33 @@ IF {{ return (!(string_test('<<drag_method>>','dilute'))) }}
 # methods that have a maximum total solids magnitude
 # create a possibly normalised and limited phi for use in the allsolids multiplier
   NONE_CONSTANT <drag_phi_tol> "<phi_tol>"
-  NONE_CONSTANT <drag_phi_packed_richardsonzaki> 0.68d0 # used for scaling the phi used in the hindered settling function, this is the phi that we assume the normal richardsonzaki drag represents packed hard-sphere behaviour
-  NONE_CONSTANT <drag_richardsonzaki_n> 5.5d0 # exponent used in the richardsonzaki hindered settling function
-  IF {{ return string_test('<<drag_method>>','richardsonzaki') }}
+
+  IF {{ return (string_test('<<drag_method>>','richardsonzaki') || string_test('<<drag_method>>','richardsonzakilimited')) }}
+    NONE_CONSTANT <drag_phi_packed_richardsonzaki> 0.68d0 # used for scaling the phi used in the hindered settling function, this is the phi that we assume the normal richardsonzaki drag represents packed hard-sphere behaviour
+    NONE_CONSTANT <drag_richardsonzaki_n> 5.5d0 # exponent used in the richardsonzaki hindered settling function
+    IF {{ return string_test('<<drag_method>>','richardsonzaki') }}
 # for the true richardsonzaki method to recover the non-scaled variable, set the max to 0.68
-    NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>"
-  ELSE_IF {{ return string_test('<<drag_method>>','richardsonzakilimited') }}
-    NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
-  ELSE
-    ERROR "drag_method = <<drag_method>> not known in single_species_drag"
-  END_IF
-  CELL_DERIVED <drag_phi_norm_allsolids> "<drag_phi_packed_richardsonzaki>*cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
+      NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>"
+    ELSE_IF {{ return string_test('<<drag_method>>','richardsonzakilimited') }}
+      NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
+    ELSE
+      ERROR "drag_method = <<drag_method>> not known in single_species_drag"
+    END_IF
+    CELL_DERIVED <drag_phi_norm_allsolids> "<drag_phi_packed_richardsonzaki>*cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
 
 # for now use total solids fraction to calculate hindered settling function
-  VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.d0-<drag_phi_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
+    VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.d0-<drag_phi_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
+
+  ELSE_IF {{ return string_test('<<drag_method>>','rourkeernstene') }}
+# FIXME
+    ERROR "not done yet"
+    NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
+    CELL_DERIVED <drag_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
+    VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.d0-<drag_phi_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
+  ELSE
+# FIXME
+    ERROR "drag_method not known"
+  END_IF
 
 END_IF
 
