@@ -7,9 +7,9 @@ IF {{ return string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
 
-REPLACEMENTS D "<<drag_method>>" W "dilute" # = stokes
+#REPLACEMENTS D "<<drag_method>>" W "dilute" # = stokes
 #REPLACEMENTS D "<<drag_method>>" W "richardsonzaki"
-#REPLACEMENTS D "<<drag_method>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
+REPLACEMENTS D "<<drag_method>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
 
 
 # calculate kappa*, which only has one value for each combination of species, define with the lower index coming first
