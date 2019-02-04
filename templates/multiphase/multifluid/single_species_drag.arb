@@ -7,21 +7,49 @@ IF {{ return string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
 
-REPLACEMENTS D "<<RichardsonZakiDrag>>" W "0"
-REPLACEMENTS D "<<RichardsonZakiDragfluidbased>>" W "0"
+REPLACEMENTS D "<<drag_method>>" W "dilute" # = stokes
+#REPLACEMENTS D "<<drag_method>>" W "richardsonzaki"
+#REPLACEMENTS D "<<drag_method>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
+
 
 # calculate kappa*, which only has one value for each combination of species, define with the lower index coming first
-#Stokes drag
+#Stokes drag = dilute
 CELL_DERIVED <kappa*_species0_<<species>>> "2.d0*<a_<<species>>>^2/9.d0" ON <allcells> 
-IF <<RichardsonZakiDrag>> # R-Z, Pe < O(10^8)
-  IF <<RichardsonZakiDragfluidbased>>
-# currently there is only drag between each species and the fluid
-# basing the hindered settling function on the fluid volume fraction will partly capture the drag between solid species at high total solids volume fractions
-    VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(<phi_pos_species0>)**5.5" ON <allcells>	
+
+IF {{ return (!(string_test('<<drag_method>>','dilute'))) }}
+# if we are here then the drag is not dilute
+
+# methods that have a maximum total solids magnitude
+# create a possibly normalised and limited phi for use in the allsolids multiplier
+  NONE_CONSTANT <drag_phi_tol> "<phi_tol>"
+  NONE_CONSTANT <drag_phi_packed_richardsonzaki> 0.68d0 # used for scaling the phi used in the hindered settling function, this is the phi that we assume the normal richardsonzaki drag represents packed hard-sphere behaviour
+  NONE_CONSTANT <drag_richardsonzaki_n> 5.5d0 # exponent used in the richardsonzaki hindered settling function
+  IF {{ return string_test('<<drag_method>>','richardsonzaki') }}
+# for the true richardsonzaki method to recover the non-scaled variable, set the max to 0.68
+    NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>"
+  ELSE_IF {{ return string_test('<<drag_method>>','richardsonzakilimited') }}
+    NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
   ELSE
-    VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.-<phi_pos_<<species>>>)**5.5" ON <allcells>	
+    ERROR "drag_method = <<drag_method>> not known in single_species_drag"
   END_IF
+  CELL_DERIVED <drag_phi_norm_allsolids> "<drag_phi_packed_richardsonzaki>*cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
+
+# for now use total solids fraction to calculate hindered settling function
+  VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.d0-<drag_phi_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
+
 END_IF
+
+# REPLACEMENTS D "<<dragallsolidsbased>>" W "1"
+
+# IF <<RichardsonZakiDrag>> # R-Z, Pe < O(10^8)
+#   IF <<dragallsolidsbased>>
+# # currently there is only drag between each species and the fluid
+# # basing the hindered settling function on the fluid volume fraction will partly capture the drag between solid species at high total solids volume fractions
+#     VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(<phi_pos_species0>)**5.5" ON <allcells>	
+#   ELSE
+#     VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.-<phi_pos_<<species>>>)**5.5" ON <allcells>	
+#   END_IF
+# END_IF
 
 #REPLACEMENTS R "bounded" W "pos"
 CELL_DERIVED <beta**_species0_<<species>>> "<mu_species0>*<phi_bounded_species0>/<kappa*_species0_<<species>>>" ON <allcells>
