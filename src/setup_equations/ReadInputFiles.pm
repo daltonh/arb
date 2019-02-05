@@ -276,6 +276,8 @@ sub read_input_files {
 # separate buffer into the string code which will lead the new code block, and the remaining buffer which is associated with the old (existing) code block
 #         ( $buffer, $code_blocks[$#code_blocks]{'buffer'} ) = $buffer =~ /(.*\}\})(.*)/;
           parse_solver_code($solver_code); # process, noting that here solver_code is only one line
+### temp
+          if ($solver_code) { error_stop("solver_code should not be zero here?\n"); }
           $solver_code = ''; # and reset solver_code etc
           print ::DEBUG "INFO: after parse_solver_code: solver_code = $solver_code: buffer = $buffer\n";
         }
@@ -1499,6 +1501,45 @@ sub pop_code_block {
 sub perform_string_replacements {
 
   my $string = $_[0];
+
+
+  if (1) { # probably should check that we are not in a skip or markdown zone - although is this already checked? - obviously not - so these replacements will also work in comments - probably not what is intended
+# look for vectors or tensors or relstep variations
+# parse code one line at a time, with comments removed
+    my $new_string = '';
+# this code isn't working!
+    while ($string) {
+      my $string_line;
+      if ($string =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
+        $string_line = $`; # split solver_code at each line break
+        $string = $'; # and remove line break from next
+      } else {
+        $string_line = $string;
+        $string = '';
+      }
+#     my $comments = '';
+# print "before: string_line = $string_line\n";
+#     if ($string_line =~ /#.*$/) { print "found comments\n"; $comments = $&; $string_line = $`; } # remove and save comments
+# print "after: string_line = $string_line: comments = $comments\n";
+
+      if ($string_line =~ /(<(.+?)\[(.*?<<.+?>>.*?)\]>)/ ) { # matches if string has atleast one comment
+#     if ($string_line =~ /(<(.+?)\[\h*(\w)\h*\=\h*((<<.*?>>)|\h*,\h*(<<.*?>>))\h*(|,\h*(\w)\h*\=\h*((<<.*?>>)|\h*,\h*(<<.*?>>)))(.*?)\]>)/ ) {
+#     if ($string_line =~ /(<(.+?)\[.*?(<<(.*?)>>)(.*?)\]>)/ ) {
+#     if ($string_line =~ /(<(.+?)\[.*?(<<(.*?)>>)(.*?)\]>)/ ) {
+        my $before = $`."<".$1."[";
+        my $after = "]>".$';
+        my $guts = $3;
+        print "before = $before: guts = $guts: after = $after\n";
+      }
+
+      $new_string .= $string_line;
+    }
+    $string = $new_string; # add on what was taken off
+  }
+
+# check later that components satisfy parsing rules
+
+# if ($string =~ /(<.+?\[.+?\]>)/ ) { print "found 2:$1\n"; die; }
 
   foreach my $n1 ( reverse( 0 .. $#code_blocks ) ) {
 #   foreach my $n2 ( 0 .. $#{$code_blocks[$n1]{"string_variables"}} ) {
