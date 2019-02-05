@@ -1526,10 +1526,47 @@ sub perform_string_replacements {
 #     if ($string_line =~ /(<(.+?)\[\h*(\w)\h*\=\h*((<<.*?>>)|\h*,\h*(<<.*?>>))\h*(|,\h*(\w)\h*\=\h*((<<.*?>>)|\h*,\h*(<<.*?>>)))(.*?)\]>)/ ) {
 #     if ($string_line =~ /(<(.+?)\[.*?(<<(.*?)>>)(.*?)\]>)/ ) {
 #     if ($string_line =~ /(<(.+?)\[.*?(<<(.*?)>>)(.*?)\]>)/ ) {
-        my $before = $`."<".$1."[";
-        my $after = "]>".$';
+#       my $before = $`."<".$1."[";
+#       my $after = "]>".$';
         my $guts = $3;
-        print "before = $before: guts = $guts: after = $after\n";
+
+        my $l1='';
+        my $l2='';
+        my $r='';
+        if ($guts =~ /(^|\,)\h*l\h*\=\h*((<<.+?>>)|(\d+))\h*((\,\h*((<<.+?>>)|(\d+))\h*)|\,|$)/) {
+#                     1                 23         4        56     78         9
+          if ($3) { $l1 = $3; }
+          if ($8) { $l2 = $8; }
+        }
+        if ($guts =~ /(^|\,)\h*r\h*\=\h*((<<.+?>>)|(\d+))(\,|$)/) {
+          if ($3) { $r = $3; }
+        }
+        print "guts = $guts: l1 = $l1: l2 = $l2: r = $r\n";
+#       die;
+
+
+#         my $action='';
+# #       if ($guts =~ /\h*(((r|l)<rl>\h*\=)|(,)|(<<.+?>>)))/) {
+#         print "before: guts = $guts\n";
+# #       if ($guts =~ /\h*(((r|l)<rl>\h*\=)|(,)|(<<.+?>>))/) {
+#         if ($guts =~ /\h*(((r|l)\h*\=)|(,)|(<<.+?>>)|(\d+))/) {
+#           $guts = $';
+#           print "during: guts = $guts\n";
+#           if ($3) {
+#             $action=$3; # a r or l specifier has been found
+#           elsif ($4) {
+#             if ($action eq "l") { $action = "l2"; }
+#           }
+# #         if ($+{rl}) {
+# #           $action=$+{rl}; # a r or l specifier has been found
+# #         }
+#           die "made it: action = $action\n";
+
+#         }
+
+
+
+#       print "before = $before: guts = $guts: after = $after\n";
       }
 
       $new_string .= $string_line;
