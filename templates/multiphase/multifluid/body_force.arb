@@ -6,6 +6,7 @@ GENERAL_REPLACEMENTS R "<<body_force>>" W "1" # set this flag to be used in sing
 
 # define the body force as a derived, as it is likely that we want to manipulate it during the simulation
 # by default the force is zero
+# need to make this a local, or reorder or something
 {{ return vector_expand(
   'NONE_DERIVED <body_force[l=$l]> "0.d0"'
 ) }}

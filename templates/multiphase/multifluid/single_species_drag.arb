@@ -35,7 +35,7 @@ IF {{ return (!(string_test('<<drag_method>>','dilute'))) }}
     ELSE
       ERROR "drag_method = <<drag_method>> not known in single_species_drag"
     END_IF
-    CELL_DERIVED <drag_phi_norm_allsolids> "<drag_phi_packed_richardsonzaki>*cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
+    CELL_LOCAL <drag_phi_norm_allsolids> "<drag_phi_packed_richardsonzaki>*cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
 
 # for now use total solids fraction to calculate hindered settling function
     VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.d0-<drag_phi_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
@@ -44,11 +44,11 @@ IF {{ return (!(string_test('<<drag_method>>','dilute'))) }}
 # FIXME
     ERROR "not done yet"
     NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
-    CELL_DERIVED <drag_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
+    CELL_LOCAL <drag_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
     VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.d0-<drag_phi_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
   ELSE
 # FIXME
-    ERROR "drag_method not known"
+    ERROR "drag_method = <<drag_method>> not known in single_species_drag"
   END_IF
 
 END_IF
