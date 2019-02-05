@@ -253,6 +253,7 @@ sub read_input_files {
         } else {
           print ::DEBUG "  INFO: opening string code delimiters identified within buffer, performing string replacements on prior string\n";
         }
+        perform_index_replacements($buffer);
         perform_string_replacements($buffer);
         if ($debug) { print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n"; }
         $solver_code .= $buffer; # add the result of the string replacements onto the solver code
@@ -296,13 +297,16 @@ sub read_input_files {
 # limit the buffer to prior to the comment/end of string/line, and then perform string replacements on the buffer
         $buffer = $before;
         if ($debug) { print ::DEBUG "  INFO: solver code identified within buffer, performing string replacements: buffer = $buffer\n"; }
+        perform_index_replacements($buffer);
+        if ($debug) { print ::DEBUG "  INFO: after performing index replacements: buffer = $buffer\n"; }
         perform_string_replacements($buffer);
-        if ($debug) { print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n"; }
+        if ($debug) { print ::DEBUG "  INFO: after performing string replacements: buffer = $buffer\n"; }
         $solver_code .= $buffer.$comments; # add the result of the string replacements onto the solver code
         if ($debug) { print ::DEBUG "  INFO: solver code ready to process: solver_code = $solver_code\n"; }
 # this shouldn't be necessary now, unless string replacements have introduced a line feed
 # outlaw this to avoid language problems in the future
-        if (0) {
+# now allowing this due to indicie replacements
+        if (1) {
           while ($solver_code =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
             my $part_solver_code = $`; # split solver_code at each line break
             $solver_code = $'; # and remove line break from next
@@ -1502,82 +1506,6 @@ sub perform_string_replacements {
 
   my $string = $_[0];
 
-
-  if (1) { # probably should check that we are not in a skip or markdown zone - although is this already checked? - obviously not - so these replacements will also work in comments - probably not what is intended
-# look for vectors or tensors or relstep variations
-# parse code one line at a time, with comments removed
-    my $new_string = '';
-# this code isn't working!
-    while ($string) {
-      my $string_line;
-      if ($string =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
-        $string_line = $`; # split solver_code at each line break
-        $string = $'; # and remove line break from next
-      } else {
-        $string_line = $string;
-        $string = '';
-      }
-#     my $comments = '';
-# print "before: string_line = $string_line\n";
-#     if ($string_line =~ /#.*$/) { print "found comments\n"; $comments = $&; $string_line = $`; } # remove and save comments
-# print "after: string_line = $string_line: comments = $comments\n";
-
-      if ($string_line =~ /(<(.+?)\[(.*?<<.+?>>.*?)\]>)/ ) { # matches if string has atleast one comment
-#     if ($string_line =~ /(<(.+?)\[\h*(\w)\h*\=\h*((<<.*?>>)|\h*,\h*(<<.*?>>))\h*(|,\h*(\w)\h*\=\h*((<<.*?>>)|\h*,\h*(<<.*?>>)))(.*?)\]>)/ ) {
-#     if ($string_line =~ /(<(.+?)\[.*?(<<(.*?)>>)(.*?)\]>)/ ) {
-#     if ($string_line =~ /(<(.+?)\[.*?(<<(.*?)>>)(.*?)\]>)/ ) {
-#       my $before = $`."<".$1."[";
-#       my $after = "]>".$';
-        my $guts = $3;
-
-        my $l1='';
-        my $l2='';
-        my $r='';
-        if ($guts =~ /(^|\,)\h*l\h*\=\h*((<<.+?>>)|(\d+))\h*((\,\h*((<<.+?>>)|(\d+))\h*)|\,|$)/) {
-#                     1                 23         4        56     78         9
-          if ($3) { $l1 = $3; }
-          if ($8) { $l2 = $8; }
-        }
-        if ($guts =~ /(^|\,)\h*r\h*\=\h*((<<.+?>>)|(\d+))(\,|$)/) {
-          if ($3) { $r = $3; }
-        }
-        print "guts = $guts: l1 = $l1: l2 = $l2: r = $r\n";
-#       die;
-
-
-#         my $action='';
-# #       if ($guts =~ /\h*(((r|l)<rl>\h*\=)|(,)|(<<.+?>>)))/) {
-#         print "before: guts = $guts\n";
-# #       if ($guts =~ /\h*(((r|l)<rl>\h*\=)|(,)|(<<.+?>>))/) {
-#         if ($guts =~ /\h*(((r|l)\h*\=)|(,)|(<<.+?>>)|(\d+))/) {
-#           $guts = $';
-#           print "during: guts = $guts\n";
-#           if ($3) {
-#             $action=$3; # a r or l specifier has been found
-#           elsif ($4) {
-#             if ($action eq "l") { $action = "l2"; }
-#           }
-# #         if ($+{rl}) {
-# #           $action=$+{rl}; # a r or l specifier has been found
-# #         }
-#           die "made it: action = $action\n";
-
-#         }
-
-
-
-#       print "before = $before: guts = $guts: after = $after\n";
-      }
-
-      $new_string .= $string_line;
-    }
-    $string = $new_string; # add on what was taken off
-  }
-
-# check later that components satisfy parsing rules
-
-# if ($string =~ /(<.+?\[.+?\]>)/ ) { print "found 2:$1\n"; die; }
-
   foreach my $n1 ( reverse( 0 .. $#code_blocks ) ) {
 #   foreach my $n2 ( 0 .. $#{$code_blocks[$n1]{"string_variables"}} ) {
     foreach my $n2 ( reverse( 0 .. $#{$code_blocks[$n1]{"string_variables"}} ) ) {
@@ -1588,6 +1516,95 @@ sub perform_string_replacements {
   }
 
   $_[0] = $string;
+}
+#-------------------------------------------------------------------------------
+# performs index replacements on the input string, returning the processed string again on output
+# string that is returned may contain line breaks
+sub perform_index_replacements {
+
+  my $string = $_[0];
+
+# look for vectors or tensors or relstep variations
+# parse code one line at a time, with comments removed
+  my $new_string = '';
+  while ($string) {
+    my $string_line;
+    if ($string =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
+      $string_line = $`; # split solver_code at each line break
+      $string = $'; # and remove line break from next
+    } else {
+      $string_line = $string;
+      $string = '';
+    }
+#     my $comments = '';
+# print "before: string_line = $string_line\n";
+#     if ($string_line =~ /#.*$/) { print "found comments\n"; $comments = $&; $string_line = $`; } # remove and save comments
+# print "after: string_line = $string_line: comments = $comments\n";
+
+    my %l=(); # make a hash that contains info about the found strings
+    $l{l1}{string}='';
+    $l{l2}{string}='';
+    $l{r}{string}='';
+    if ($string_line =~ /(<(.+?)\[(.*?<<.+?>>.*?)\]>)/ ) { # matches if string has atleast one comment
+      my $guts = $3;
+      if ($guts =~ /(^|\,)\h*l\h*\=\h*((<<.+?>>)|(\d+))\h*((\,\h*((<<.+?>>)|(\d+))\h*)|\,|$)/) {
+#                     1                 23         4        56     78         9
+        if ($3) { $l{l1}{string} = $3; }
+        if ($8) { $l{l2}{string} = $8; }
+      }
+      if ($guts =~ /(^|\,)\h*r\h*\=\h*((<<.+?>>)|(\d+))(\,|$)/) {
+        if ($3) { $l{r}{string} = $3; }
+      }
+#       print "guts = $guts: l1string = $l{l1}{string}\n";
+    }
+    my $replacements_found=0;
+    if (nonempty($l{l1}{string})) {$l{l1}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{l1}{list}="0"};
+    if (nonempty($l{l2}{string})) {$l{l2}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{l2}{list}="0"};
+    if (nonempty($l{r}{string})) {$l{r}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{r}{list}="0"};
+
+#     if (nonempty($l{l1})) {@{$l{l1}{list}} = string_eval('<<dimensions>>','list');} else {$l{l1}{list}=[ 0 ]};
+#     if (nonempty($l{l2})) {$l{l2}{list} = string_eval('<<dimensions>>','list');} else {$l{l2}{list}=[ 0 ]};
+#     if (nonempty($l{r})) {$l{r}{list} = string_eval('<<dimensions>>','list');} else {$l{r}{list}=[ 0 ]};
+    print "l1list = $l{l1}{list}\n";
+    print "l2list = $l{l2}{list}\n";
+    print "rlist = $l{r}{list}\n";
+
+    if ($replacements_found) {
+
+      print ::DEBUG "INFO: found index replacements\n";
+      $new_string .= "# found variable index replacements to be made: $l{l1}{string} = $l{l1}{list}: $l{l2}{string} = $l{l2}{list}: $l{r}{string} = $l{r}{list}\n";
+# TODO
+# Put more info here, includ
+      my $string_line_saved = $string_line;
+      foreach my $l1 ( string_eval($l{l1}{list},'list') ) {
+        foreach my $l2 ( string_eval($l{l2}{list},'list') ) {
+          foreach my $r ( string_eval($l{r}{list},'list') ) {
+  #         print "l1 = $l1\n";
+  #         if ($l1) { string_set($l{l1}{string},$l1) }
+            $string_line = $string_line_saved;
+  # or, could use code blocks
+  # need to check that array names are unique
+  # effectively these strings are replaced first, so just like a primary code block
+            if ($l1) { $string_line =~ s/$l{l1}{string}/$l1/g; }
+            if ($l2) { $string_line =~ s/$l{l2}{string}/$l2/g; }
+            if ($r) { $string_line =~ s/$l{r}{string}/$r/g; }
+
+  #         perform_string_replacements($string_line);
+            $new_string .= $string_line."\n";
+          }
+        }
+      }
+#   foreach my $template ( @templates ) {
+#     my 
+#     if ($l1) {
+#     }
+
+
+    } else {
+      $new_string .= $string_line;
+    }
+  }
+  $_[0] = $new_string; # change string in place
 }
 #-------------------------------------------------------------------------------
 # this is a little support routine used by find above
