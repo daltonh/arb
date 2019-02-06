@@ -1,7 +1,7 @@
 # this limiter ensures that the effective kernels used to calculate the face centred quantities within each cell are below certain maximums
 # making these numbers smaller will cause the method to become more upwind
-NONE_CONSTANT <phi limiter crosskernel max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
-NONE_CONSTANT <phi limiter centralkernel max> 0.05d0 # the maximum multiplier for the central cell value
-CELL_LOCAL <phi limiter crosskernel> "cellif(<crosskernel>-<phi limiter crosskernel max>,<phi limiter crosskernel max>/<crosskernel>,1.d0)"
-CELL_LOCAL <phi limiter centralkernel> "cellif(<centralkernel>-<phi limiter centralkernel max>,<phi limiter centralkernel max>/<centralkernel>,1.d0)"
-CELL_CONSTANT <phi limiter kernel> "cellmin(<phi limiter crosskernel>,<phi limiter centralkernel>)" ON <allcells>
+NONE_CONSTANT <phi_limiter_crosskernel_max> 0.45d0 # the maximum multiplier for any cell value that is not the central cell
+NONE_CONSTANT <phi_limiter_centralkernel_max> 0.05d0 # the maximum multiplier for the central cell value
+CELL_LOCAL <phi_limiter_crosskernel> "cellif(<crosskernel>-<phi_limiter_crosskernel_max>,<phi_limiter_crosskernel_max>/<crosskernel>,1.d0)"
+CELL_LOCAL <phi_limiter_centralkernel> "cellif(<centralkernel>-<phi_limiter_centralkernel_max>,<phi_limiter_centralkernel_max>/<centralkernel>,1.d0)"
+CELL_CONSTANT <phi_limiter_kernel> "cellmin(<phi_limiter_crosskernel>,<phi_limiter_centralkernel>)" ON <allcells>

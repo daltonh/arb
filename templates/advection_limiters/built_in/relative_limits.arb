@@ -2,5 +2,5 @@
 INCLUDE "upwind_phi"
 
 # here we look at all surrounding cells to find bounds on phi
-CELL_DERIVED <phi upper bound> "cellmax(<phi_c low order>,region=<cellicells>)" ON <domain>
-CELL_DERIVED <phi lower bound> "cellmin(<phi_c low order>,region=<cellicells>)" ON <domain>
+CELL_DERIVED <phi_upper_bound> "cellmax(<phi_c_low_order>,region=<cellicells>)" ON <domain>
+CELL_DERIVED <phi_lower_bound> "cellmin(<phi_c_low_order>,region=<cellicells>)" ON <domain>

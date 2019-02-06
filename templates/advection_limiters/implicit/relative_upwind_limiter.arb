@@ -1,1 +1,20 @@
-relative_transient_limiter.arb
+#--------------------------------------------------------
+# set <phi_upper_bound> and <phi_lower_bound> based on first order upwind results from surrounding cells
+# the upwind in relative_upwind_limits means that the local bounds on <phi> are calculated using cells that are upwind and upwind again from the local cell
+
+# this is the default separation levels to look upwind - as this is a default general replacement, it will be overwritten by any <<upwindseparation>> replacement occuring upstream
+GENERAL_REPLACEMENTS DEFAULT "<<limiterupwindseparation>>" W "2"
+
+# calculate the upwind cell-centred phi which will be used to identify relative limits
+INCLUDE "upwind_phi"
+
+# now using a separation loop that employs the faceseparationflag to look a number of separation levels upwind of the current cell
+CELL_DERIVED <phi_upper_bound> "cellmax[maxseparation=<<limiterupwindseparation>>,faceseparation](<phi_c_low_order>,default=<phi_c_low_order>,region=<allcells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> nooutput
+CELL_DERIVED <phi_lower_bound> "cellmin[maxseparation=<<limiterupwindseparation>>,faceseparation](<phi_c_low_order>,default=<phi_c_low_order>,region=<allcells>,faceseparationflag=-<facefromcelldirection>*<u_f>)" ON <domain> nooutput
+
+#--------------------------------------------------------
+# do all the limiter calcs
+
+INCLUDE "limiter"
+
+#--------------------------------------------------------

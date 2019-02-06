@@ -1,9 +1,9 @@
 #--------------------------------------------------------
-# set <phi upper bound> and <phi lower bound> based on surrounding cells (no upwinding here)
+# set <phi_upper_bound> and <phi_lower_bound> based on surrounding cells (no upwinding here)
 
 # here we look at all surrounding cells to find bounds on phi
-CELL_DERIVED <phi upper bound> "cellmax(<phi_c low order>,region=<cellicells>)" ON <domain> nooutput
-CELL_DERIVED <phi lower bound> "cellmin(<phi_c low order>,region=<cellicells>)" ON <domain> nooutput
+CELL_DERIVED <phi_upper_bound> "cellmax(<phi_c_low_order>,region=<cellicells>)" ON <domain> nooutput
+CELL_DERIVED <phi_lower_bound> "cellmin(<phi_c_low_order>,region=<cellicells>)" ON <domain> nooutput
 
 #--------------------------------------------------------
 # do all the limiter calcs
