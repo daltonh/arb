@@ -44,7 +44,7 @@ CELL_LOCAL <c_pos_/species/> [mol/m^3] "cellmax(<c_/species/>,default=0.d0)" # m
 IF <<specieslimitedadvection>>
   INCLUDE "relative_advection_limiter" # we use the template file limiters here, rather than the generic limiters
   NONE_CONSTANT <c_magnitude_/species/> [mol/m^3] 1.d0
-  FACE_DERIVED <c_f_/species/> [mol/m^3] "faceave[advection](<c_/species/>,<u_f>,<c_limiter_/species/>,gradient[l=1]=<c_limiter grad_/species/[l=1]>,gradient[l=2]=<c_limiter grad_/species/[l=2]>,gradient[l=3]=<c_limiter grad_/species/[l=3]>)" ON <allfaces> # this represents the concentratino of species c1 that crosses each face (ie, cell boundary) by advection (fluid flow)
+  FACE_DERIVED <c_f_/species/> [mol/m^3] "faceave[advection](<c_/species/>,<u_f>,<c_limiter_/species/>,gradient[l=1]=<c_limiter_grad_/species/[l=1]>,gradient[l=2]=<c_limiter_grad_/species/[l=2]>,gradient[l=3]=<c_limiter_grad_/species/[l=3]>)" ON <allfaces> # this represents the concentratino of species c1 that crosses each face (ie, cell boundary) by advection (fluid flow)
 ELSE
 # to use low order (or non-limited high order) advection just include the following afterwards
   NONE_CONSTANT <c_advection_limiter_/species/> 0.d0 # this determines how accurate in time/space the concentration field is.  0=> low accuracy, high stability, bounded, low computational cost: 1=> higher accuracy (assuming that the function is smooth), low stability, greater possibility of over/undershoots (ie, negative values) and slightly higher computational costs.  There are more expensive advection schemes that we can use to give the properties of both if need be.
