@@ -68,7 +68,7 @@ FACE_EQUATION <c_walls_/species/> "<c_j_f_/species/>" ON <walls> # on the walls 
 {{
   my $return_string = '';
   for my $port (string_eval('<<listofports>>','spaceseparatedlist')) {
-    $return_string .= "FACE_EQUATION <c_$port equation_/species/> '<c_j_f_/species/>' ON <$port>\n";
+    $return_string .= "FACE_EQUATION <c_$port"."_equation_/species/> '<c_j_f_/species/>' ON <$port>\n";
     $return_string .= "NONE_OUTPUT <$port"."_area> 'facesum(<facearea>*<<W_f>>,region=<$port>)'\n";
     $return_string .= "NONE_OUTPUT <$port"."_flowrate> 'facesum(<facearea>*<<W_f>>*<u_f>,region=<$port>)'\n";
     $return_string .= "NONE_OUTPUT <c_ave $port"."_/species/> 'facesum(<c_/species/>*<facearea>*<<W_f>>,region=<$port>)/nonemax(<$port"."_area>,<tinyish>)'\n";
@@ -83,8 +83,8 @@ FACE_EQUATION <c_walls_/species/> "<c_j_f_/species/>" ON <walls> # on the walls 
 # here are some ideas re how to change the inlet concentration with time
 #NONE_TRANSIENT <c_inlet_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
 #NONE_TRANSIENT <c_inlet_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
-FACE_EQUATION <c_inlet equation_/species/> "<c_/species/>-<c_inlet_conc_/species/>" ON <inlet>
-FACE_EQUATION <c_outlet equation_/species/> "faceif(<u_f>,facegrad(<c_/species/>),<c_/species/>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+FACE_EQUATION <c_inlet_equation_/species/> "<c_/species/>-<c_inlet_conc_/species/>" ON <inlet>
+FACE_EQUATION <c_outlet_equation_/species/> "faceif(<u_f>,facegrad(<c_/species/>),<c_/species/>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
 
 # report some averaged and extreme variables
 NONE_OUTPUT <c_maximum_/species/> [mol/m^3] "cellmax(<c_/species/>,region=<allcells>)"
