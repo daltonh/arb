@@ -23,12 +23,12 @@ REPLACEMENTS D '<<listofports>>' W 'inlet outlet' # these are all of the ports u
 
 # deal with either non-uniform width, cartesian or cylindrical domain
 REPLACEMENTS D '<<W_f>>' W '1' D '<<W_c>>' W '1' # set the scope for these variables, and give them the default cartesian value, if not already set
-IF {{ return (!(string_test('<<W_f>>','1')) }}
+IF {{ return (!(string_test('<<W_f>>','1'))) }}
   INFO "in species_transport/equations, with W_f = <<W_f>>"
 ELSE_IF <<cylindrical>>
   REPLACEMENTS S '<<W_f>>' W '<<radius_f>>' # SUBSTITUTE used to maintain scope of <<W_f>>
 END_IF
-IF {{ return (!(string_test('<<W_c>>','1')) }}
+IF {{ return (!(string_test('<<W_c>>','1'))) }}
   INFO "in species_transport/equations, with W_c = <<W_c>>"
 ELSE_IF <<cylindrical>>
   REPLACEMENTS S '<<W_c>>' W '<<radius_c>>' # SUBSTITUTE used to maintain scope of <<W_c>>
