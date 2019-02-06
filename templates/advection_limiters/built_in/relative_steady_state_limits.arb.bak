@@ -1,3 +1,0 @@
-# here we look at all surrounding cells to find bounds on phi
-CELL_DERIVED <phi upper bound> "cellmax(<phi>,region=<adjacentcellicells>)" ON <domain>
-CELL_DERIVED <phi lower bound> "cellmin(<phi>,region=<adjacentcellicells>)" ON <domain>
