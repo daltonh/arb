@@ -1606,20 +1606,31 @@ sub perform_index_replacements {
     if (%index) { # will be true if any index strings are found
 
       print ::DEBUG "INFO: found index replacements\n";
-      $new_string .= "# performing index string loops on the following: index list pairs =";
+      $new_string .= "# performing index string loops on the following index list pairs:\n";
       foreach my $key (keys(%index)) {
         if ($index{$key}{type} eq "l") {
           $index{$key}{list} = '<<dimensions>>';
         } elsif ($index{$key}{type} eq "r") {
           $index{$key}{list} = '<<relsteps>>';
         }
-        foreach my $n ( string_eval($index{$key}{list},'list') ) {
-          push(@{$index{$key}{elements}},$n);
-        }
-        print ::DEBUG "  index = $key: type = $index{$key}{type}: list = $index{$key}{list}: elements = @{$index{$key}{elements}}\n";
-        $new_string .= " $key $index{$key}{list} ;";
+        print ::DEBUG "  index = $key: type = $index{$key}{type}: list = $index{$key}{list}\n";
+        $new_string .= "#  $key $index{$key}{list}\n";
       }
-      $new_string .= "\n";
+
+# temp &&&
+#     $new_string .= $string_line;
+
+# now need to loop over all combination of index elements....
+      foreach my $key (keys(%index)) {
+        my $string_line_saved = $string_line; # which is now not a line anymore, but an expanding section of definitions
+        $string_line = '';
+        foreach my $n ( string_eval($index{$key}{list},'list') ) {
+          my $string_line_part = $string_line_saved;
+          $string_line_part =~ s/$key/$n/g;
+          $string_line .= $string_line_part."\n";
+        }
+        $string_line =~ s/\n$//; # and remove trailing newline
+      }
 
       $new_string .= $string_line;
 
