@@ -1536,16 +1536,14 @@ sub perform_index_replacements {
       $string_line = $string;
       $string = '';
     }
-#     my $comments = '';
-# print "before: string_line = $string_line\n";
-#     if ($string_line =~ /#.*$/) { print "found comments\n"; $comments = $&; $string_line = $`; } # remove and save comments
-# print "after: string_line = $string_line: comments = $comments\n";
 
+# objective here is to find the index strings and what indexes they represent
+# do not have to replace here, just identify, and then perform replacements in a nested loop later
     my %l=(); # make a hash that contains info about the found strings
     $l{l1}{string}='';
     $l{l2}{string}='';
     $l{r}{string}='';
-    if ($string_line =~ /(<(.+?)\[(.*?<<.+?>>.*?)\]>)/ ) { # matches if string has atleast one comment
+    if ($string_line =~ /(<(.+?)\[(.*?<<.+?>>.*?)\]>)/ ) { # matches if at least one index string is found in a variable or region name
       my $guts = $3;
       if ($guts =~ /(^|\,)\h*l\h*\=\h*((<<.+?>>)|(\d+))\h*((\,\h*((<<.+?>>)|(\d+))\h*)|\,|$)/) {
 #                     1                 23         4        56     78         9
