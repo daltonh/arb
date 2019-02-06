@@ -2,9 +2,9 @@ MARKDOWN
 Transport equations for a generic species c in a channel that may have nonuniform width, originally developed in the context of doing a4f simulations, but now very general
 
 On entry, replace /species/ by the name of the species that you want to solve (defaulting to species0).
-For limited advection, make sure that you set <c_magnitude_/species/> so that the advection routine works correctly.
+For limited advection, make sure that you set <c_magnitude_/species/> so that the advection routine knows the magnitude of <c_/species/> and so works correctly (not linked to the magnitude for unknowns and equations).
 
-Every variable specific to this species defined in this file starts with <c_, so you can change this to be unique (except higher order advection needs to be fixed to allow this - see warning below).
+Every variable specific to this species defined in this file starts with <c_, so you can change this prefix to be a certain type of variable (eg <c -> <c^).
 
 If the replacement strings <<W_f>> and <<W_c>> are set on entry, they must refer to variables that give the face and cell centred width of the domain for nonuniform width domain simulations.  If not set then internally these strings are set to either 1 and 1 for cartesian coordinates, or <<radius_f>> and <<radius_c>> for cylindrical coordinates, respectively.
 
@@ -14,11 +14,9 @@ END_MARKDOWN
 # default species name, overwrite with another name on entry
 REPLACEMENTS D '/species/' W 'species0'
 
-# default is that high order advection is used unless this string is overwritten by 0, which then becomes unlimited advection with order dependent on <c_advection_limiter_/species/>
+# default is that high order advection is used unless this string is overwritten by 0, which then becomes unlimited advection with order dependent on <c_advection_limiter_/species/>, which is set to 0 by default (ie, becomes first order upwinding)
 REPLACEMENTS D '<<specieslimitedadvection>>' W '1'
-IF <<specieslimitedadvection>>
-  WARNING "species_transport/equations needs to have specieslimitedadvection <phi variable replacement fixed"
-END_IF
+
 REPLACEMENTS D '<<listofports>>' W 'inlet outlet' # these are all of the ports used in the domain, used for boundary conditions and reported variables
 
 # deal with either non-uniform width, cartesian or cylindrical domain
