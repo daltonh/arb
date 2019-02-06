@@ -218,7 +218,7 @@ sub string_split {
   if ($options =~ /(^|,)(commaseparated|)list($|,)/) { $element_delimiter = ","; }
 
   if ($debug) { print ::DEBUG "STRING_SPLIT: entering with: string = $string: options = $options\n"; }
-  while ($string) {
+  while ($string ne '') {
     $string =~ s/^\s*//; # remove leading spaces using greedy match
     if ($debug) { print ::DEBUG "STRING_SPLIT: after space clear, start of loop: string = $string: elements = @elements\n"; }
     if ($string =~ /^(["'])/) {
@@ -581,12 +581,14 @@ sub string_set_transient_simulation {
     string_set("<<transientcomment>>","","global"); # use <<transientsimulation>> instead
     string_set("<<steadystatecomment>>","#","global"); # use <<transientsimulation>> instead
     string_set("<<transientsimulation>>","1","global");
+    string_set("<<relsteps>>","0,1","global"); # default list of relsteps for a transient simulation
     string_set("<<transientflag>>","1","global"); # do not use, this string to be removed in the future
     string_set("<<steadystateflag>>","0","global"); # do not use, this string to be removed in the future
   } else {
     string_set("<<transientcomment>>","#","global"); # use <<transientsimulation>> instead
     string_set("<<steadystatecomment>>","","global"); # use <<transientsimulation>> instead
     string_set("<<transientsimulation>>","0","global");
+    string_set("<<relsteps>>","0","global"); # default list of relsteps for a steady-state simulation
     string_set("<<transientflag>>","0","global"); # do not use, this string to be removed in the future
     string_set("<<steadystateflag>>","1","global"); # do not use, this string to be removed in the future
   }

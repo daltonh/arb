@@ -1524,6 +1524,8 @@ sub perform_index_replacements {
 
   my $string = $_[0];
 
+  print ::DEBUG "INFO: INDEX: performing index replacements on string = $string\n";
+
 # look for vectors or tensors or relstep variations
 # parse code one line at a time, with comments removed
   my $new_string = '';
@@ -1539,26 +1541,60 @@ sub perform_index_replacements {
 
 # objective here is to find the index strings and what indexes they represent
 # do not have to replace here, just identify, and then perform replacements in a nested loop later
-    my %l=(); # make a hash that contains info about the found strings
-    $l{l1}{string}='';
-    $l{l2}{string}='';
-    $l{r}{string}='';
-    if ($string_line =~ /(<(.+?)\[(.*?<<.+?>>.*?)\]>)/ ) { # matches if at least one index string is found in a variable or region name
+    my %index=(); # make a hash that contains info about the found strings, with the key being the found index string
+    my $string_line_search = $string_line; # copy the string line as we will destroy it during the search
+    while ($string_line_search =~ /(<(.+?)\[(.*?<<.+?>>.*?)\]>)/ ) { # matches if at least one index string is found in a variable or region name
       my $guts = $3;
+      my $name = $1;
+      print ::DEBUG "INFO: found at least one index string in: name = $name: in string_line = $string_line\n";
+      $string_line_search = $'; # remove the current search
       if ($guts =~ /(^|\,)\h*l\h*\=\h*((<<.+?>>)|(\d+))\h*((\,\h*((<<.+?>>)|(\d+))\h*)|\,|$)/) {
 #                     1                 23         4        56     78         9
-        if ($3) { $l{l1}{string} = $3; }
-        if ($8) { $l{l2}{string} = $8; }
+        if ($3) {
+          if (defined($index{$3})) {
+            print ::DEBUG "INFO: found a repeating l index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+            if ($index{$3}{type} ne "l") {
+              print ::DEBUG "WARNING: index string type has changed for: index = $3: new type = l: old type =  $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+            }
+          } else {
+            $index{$3}{type} = "l";
+            print ::DEBUG "INFO: found a new l index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+          }
+        }
+        if ($8) {
+          if (defined($index{$8})) {
+            print ::DEBUG "INFO: found a repeating l index string: index = $8: type = $index{$8}{type}: in name = $name: in string_line = $string_line\n";
+            if ($index{$8}{type} ne "l") {
+              print ::DEBUG "WARNING: index string type has changed for: index = $8: new type = l: old type =  $index{$8}{type}: in name = $name: in string_line = $string_line\n";
+            }
+          } else {
+            $index{$8}{type} = "l";
+            print ::DEBUG "INFO: found a new l index string: index = $8: type = $index{$8}{type}: in name = $name: in string_line = $string_line\n";
+          }
+        }
       }
       if ($guts =~ /(^|\,)\h*r\h*\=\h*((<<.+?>>)|(\d+))(\,|$)/) {
-        if ($3) { $l{r}{string} = $3; }
+#                   1                 23         4     5
+        if ($3) {
+          if (defined($index{$3})) {
+            print ::DEBUG "INFO: found a repeating r index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+            if ($index{$3}{type} ne "r") {
+              print ::DEBUG "WARNING: index string type has changed for: index = $3: new type = r: old type =  $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+            }
+          } else {
+            $index{$3}{type} = "r";
+            print ::DEBUG "INFO: found a new r index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+          }
+        }
       }
-#       print "guts = $guts: l1string = $l{l1}{string}\n";
     }
-    my $replacements_found=0;
-    if (nonempty($l{l1}{string})) {$l{l1}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{l1}{list}="0"};
-    if (nonempty($l{l2}{string})) {$l{l2}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{l2}{list}="0"};
-    if (nonempty($l{r}{string})) {$l{r}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{r}{list}="0"};
+
+
+
+
+#   if (nonempty($l{l1}{string})) {$l{l1}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{l1}{list}="0"};
+#   if (nonempty($l{l2}{string})) {$l{l2}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{l2}{list}="0"};
+#   if (nonempty($l{r}{string})) {$l{r}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{r}{list}="0"};
 
 #     if (nonempty($l{l1})) {@{$l{l1}{list}} = string_eval('<<dimensions>>','list');} else {$l{l1}{list}=[ 0 ]};
 #     if (nonempty($l{l2})) {$l{l2}{list} = string_eval('<<dimensions>>','list');} else {$l{l2}{list}=[ 0 ]};
@@ -1567,35 +1603,47 @@ sub perform_index_replacements {
 #   print "l2list = $l{l2}{list}\n";
 #   print "rlist = $l{r}{list}\n";
 
-    if ($replacements_found) {
+    if (%index) { # will be true if any index strings are found
 
       print ::DEBUG "INFO: found index replacements\n";
-      $new_string .= "# found variable index replacements to be made: $l{l1}{string} = $l{l1}{list}: $l{l2}{string} = $l{l2}{list}: $l{r}{string} = $l{r}{list}\n";
-# TODO
-# Put more info here, includ
-      my $string_line_saved = $string_line;
-      foreach my $l1 ( string_eval($l{l1}{list},'list') ) {
-        foreach my $l2 ( string_eval($l{l2}{list},'list') ) {
-          foreach my $r ( string_eval($l{r}{list},'list') ) {
-  #         print "l1 = $l1\n";
-  #         if ($l1) { string_set($l{l1}{string},$l1) }
-            $string_line = $string_line_saved;
-  # or, could use code blocks
-  # need to check that array names are unique
-  # effectively these strings are replaced first, so just like a primary code block
-            if ($l1) { $string_line =~ s/$l{l1}{string}/$l1/g; }
-            if ($l2) { $string_line =~ s/$l{l2}{string}/$l2/g; }
-            if ($r) { $string_line =~ s/$l{r}{string}/$r/g; }
-
-  #         perform_string_replacements($string_line);
-            $new_string .= $string_line."\n";
-          }
+      $new_string .= "# performing index string loops on the following: index list pairs =";
+      foreach my $key (keys(%index)) {
+        if ($index{$key}{type} eq "l") {
+          $index{$key}{list} = '<<dimensions>>';
+        } elsif ($index{$key}{type} eq "r") {
+          $index{$key}{list} = '<<relsteps>>';
         }
+        foreach my $n ( string_eval($index{$key}{list},'list') ) {
+          push(@{$index{$key}{elements}},$n);
+        }
+        print ::DEBUG "  index = $key: type = $index{$key}{type}: list = $index{$key}{list}: elements = @{$index{$key}{elements}}\n";
+        $new_string .= " $key $index{$key}{list} ;";
       }
-#   foreach my $template ( @templates ) {
-#     my 
-#     if ($l1) {
-#     }
+      $new_string .= "\n";
+
+      $new_string .= $string_line;
+
+#     my $string_line_saved
+# # TODO
+# # Put more info here, includ
+#       foreach my $l1 ( string_eval($l{l1}{list},'list') ) {
+#         foreach my $l2 ( string_eval($l{l2}{list},'list') ) {
+#           foreach my $r ( string_eval($l{r}{list},'list') ) {
+#   #         print "l1 = $l1\n";
+#   #         if ($l1) { string_set($l{l1}{string},$l1) }
+#             $string_line = $string_line_saved;
+#   # or, could use code blocks
+#   # need to check that array names are unique
+#   # effectively these strings are replaced first, so just like a primary code block
+#             if ($l1) { $string_line =~ s/$l{l1}{string}/$l1/g; }
+#             if ($l2) { $string_line =~ s/$l{l2}{string}/$l2/g; }
+#             if ($r) { $string_line =~ s/$l{r}{string}/$r/g; }
+
+#   #         perform_string_replacements($string_line);
+#             $new_string .= $string_line."\n";
+#           }
+#         }
+#       }
 
 
     } else {
