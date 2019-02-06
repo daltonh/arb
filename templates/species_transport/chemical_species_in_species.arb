@@ -31,8 +31,7 @@ REPLACEMENTS D "<<where>>" W "in"
 # create an almalgam of the species names to simplify notation
 REPLACEMENTS D '/species/' W '<<chemical_species>>_<<where>>_<<species>>'
 
-# for now just use first order upwind advection, until fix advection_limiters to allow <c_ rather than <c replacement
-# FIXME
+# default to first order upwind advection
 REPLACEMENTS D '<<specieslimitedadvection>>' W '0'
 
 REPLACEMENTS D "<c_" W "<c_" # define the scope of this to be outside the if statement, but don't do replacements until after specific species have been defined by setting the string = replacement

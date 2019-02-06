@@ -1,11 +1,13 @@
 MARKDOWN
 Here we setup an implicit relative limiter for <c_/species>, adding the necessary suffixes to all of the variables used in the limiter calculation
+
+All variables defined from this file onwards start with '<c'
 END_MARKDOWN
 
 INCLUDE_TEMPLATE "advection_limiters/implicit" 
 
 # first do the replacement of <phi
-REPLACEMENTS R '<phi_' W '<c_'
+REPLACEMENTS R '<phi' W '<c'
 
 # now add the species suffix to all variables used on the advection scheme that are specific to each species
 # we do this by first defining the variable list <<replacment_variables>> here, so that the scope of this variable is local to this file

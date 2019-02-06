@@ -3,6 +3,7 @@
 # call using:
 #  ./remove_arb_variable_underscores.pl filename.arb
 # after using this you need to remove the *.bak file, which is just a copy of the original
+# WATCH OUT though, there are some cases where this search/replace can go wayward:  eg R "<phi" W "<foo" becomes R "<phi"_W_"<foo"
 
 use strict;
 use warnings;
