@@ -1565,9 +1565,9 @@ sub perform_index_replacements {
 #     if (nonempty($l{l1})) {@{$l{l1}{list}} = string_eval('<<dimensions>>','list');} else {$l{l1}{list}=[ 0 ]};
 #     if (nonempty($l{l2})) {$l{l2}{list} = string_eval('<<dimensions>>','list');} else {$l{l2}{list}=[ 0 ]};
 #     if (nonempty($l{r})) {$l{r}{list} = string_eval('<<dimensions>>','list');} else {$l{r}{list}=[ 0 ]};
-    print "l1list = $l{l1}{list}\n";
-    print "l2list = $l{l2}{list}\n";
-    print "rlist = $l{r}{list}\n";
+#   print "l1list = $l{l1}{list}\n";
+#   print "l2list = $l{l2}{list}\n";
+#   print "rlist = $l{r}{list}\n";
 
     if ($replacements_found) {
 
