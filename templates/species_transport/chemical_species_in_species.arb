@@ -1,13 +1,25 @@
 MARKDOWN
-This for the transport of chemcial species <<chemical_species>> that is attached to (on) or within (in) a multifluid species <<species>>
+This for the transport of chemcial species <<chemical_species>> that is attached to (on) or within (in) a multifluid species <<species>>.
+Where the chemical species is to be defined on the species is determined by the <<where>>=in|on that can be previously set, but defaults to in.
 
-Variables in this file end with the suffix <<chemical_species>>_[on|in]_<<species>> with the on/in choice reflecting whether the chemical species is contained on the surface of the (multifluid) species (on), or within its volume (in).
+Variables in this file end with the suffix <<chemical_species>>_<<where>>_<<species>>, which is defined as a new local string variable /species/.
 
-Where the chemical species is to be defined on the species is determined by the <<where>>=volume|surface can be previously set, but defaults to volume.
-Alternatively, for a surface bound species call with the template chemical_species_on_species and directly with this template for a volume bound species.
+Instead of setting <<where>>=on for a surface bound species, you can also call with the template chemical_species_on_species which does this setting for you.
+
+Notation:
+1.  Variables without a caret (eg c, mol/m^3) are expressed on a per total volume basis
+2.  Variables with a single caret (eg c^, mol/m^3) are expressed on a species volume specific basis, ie, amount/(volume of species)
+3.  Variables with a double caret (eg c^^, mol/m^2) are expressed on a species surface area specific basis, ie, amount/(surface area of species)
+
+Note that the notation doesn't imply (necessarily) whether the species is on or in.  IE, we can still define a c^ for a surface bound species, but in this instance c^ would represent the equivalent volume specific concentration for the material that is actually bound to the species surface.  Similarly c^^ represents a surface concentration, which for a volume bound species would be an equivalent surface concentration for the physically volume bound chemical species.
+
+Other variables, such as the source terms, are defined similarly, with (eg) <c^_source_/species/> being the species volume specific source which can be set for a volume bound species (<<where>>=in), and <c^^_source_/species/> being a surface area specific one which can be set for a surface bound species (<<where>>=on>).
+
+Note that where the species is held (in|on) determines whether our unknown for the species is volume (c^) or surface (c^^) specific, however for both cases the conservation equation is solved for c (not-specific concentration), ensuring conservation of mass
+All variables to do with this routine start with either <c^_ or <c^^_, depending on <<where>>, except for the variables <c_/species/>, <c^_/species/> and <c^^_/species/>, which are set for both types of <<where>>.
 END_MARKDOWN
 
-# must be called with <<chemical_species>>, <<where>> and <<species>> defined
+# must be called with <<chemical_species>> and <<species>> defined, with <<where>>=in|on defaulting to in (ie, contained within the species volume)
 IF {{ return (!(string_examine('<<chemical_species>>'))) }} # this is 1 if the string <<chemical_species>> is not defined
   ERROR "the chemical species string has not been set in chemical_species_on_species template: <<chemical_species>>"
 END_IF
@@ -16,14 +28,14 @@ IF {{ return (!(string_examine('<<species>>'))) }} # this is 1 if the string <<s
 END_IF
 REPLACEMENTS D "<<where>>" W "in"
 
-# create an almalgim of the species names to simplify notation
+# create an almalgam of the species names to simplify notation
 REPLACEMENTS D '/species/' W '<<chemical_species>>_<<where>>_<<species>>'
 
 # for now just use first order upwind advection, until fix advection_limiters to allow <c_ rather than <c replacement
 # FIXME
 REPLACEMENTS D '<<specieslimitedadvection>>' W '0'
 
-REPLACEMENTS D "<c_" W "<c_" # define the scope of this to be outside the if statement, but don't do replacements until after specific species have been defined
+REPLACEMENTS D "<c_" W "<c_" # define the scope of this to be outside the if statement, but don't do replacements until after specific species have been defined by setting the string = replacement
 
 # volume species surface area of species
 NONE_CONSTANT <A^_<<species>>> "<A_<<species>>>/<V_<<species>>>"
