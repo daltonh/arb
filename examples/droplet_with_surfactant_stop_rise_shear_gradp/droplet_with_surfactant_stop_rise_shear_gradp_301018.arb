@@ -62,10 +62,15 @@ REPLACEMENTS R <<problem_type>> W "stop"
 #REPLACEMENTS R <<problem_type>> W "shear"
 #REPLACEMENTS R <<problem_type>> W "gradp"
 
+# setup cartesian 2D coordinates
+INCLUDE_TEMPLATE "general/cartesian_x1y2"
+
 IF {{ return string_test('<<problem_type>>','rise'); }}
   GLUE_FACES <north> <south> # make periodic in the y direction
+  GENERAL_REPLACEMENTS REPLACE "<<reflect=2>>" WITH "reflect=2"
 ELSE_IF {{ return (string_test('<<problem_type>>','shear') || string_test('<<problem_type>>','gradp')); }}
   GLUE_FACES <west> <east> # make periodic in the x direction
+  GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
 END_IF
 FACE_REGION <walls> "all" ON <boundaries>
 
@@ -76,10 +81,6 @@ INCLUDE "single_region_formation"
 
 #-------------------------------------------------------------------
 # user-defined constants
-
-# setup basic cylindrical general replacements by including the following two lines
-GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" # comment out any references to the third dimension in any included files
-GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1"
 
 # bring in default physical and numerical constants
 INCLUDE_TEMPLATE "navier_stokes"
