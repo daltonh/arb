@@ -142,13 +142,14 @@ sub string_delete {
   
 }
 #-------------------------------------------------------------------------------
-# finds the value of a string
+# finds the value of a string or performs replacements on a line of text (option text)
 # on input
 #  $_[0] = string name
 #  $_[1] = options (optional)
 # possible options:
 #  list = return the string as a list containing the string split at commas (useful for using within foreach loops etc)
-#  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists)
+#  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists, meaning that it the string doesn't exist we just return an empty string)
+#  text = rather than look for an individual string, just perform string replacements on the passed in text.  This will hence perform nested replacements
 # options also passed to string_search so accepts local, global and noglobal
 # on output
 #  $_[0] = unchanged
@@ -159,38 +160,28 @@ sub string_eval {
   my $name = $_[0];
   my $options = ''; if (defined($_[1])) { $options = $_[1]; }; # options is optional
 
-  my ($code_block_found,$string_variable_found) = string_search($name,$options);
+  if ($options =~ /(^|,)(text)($|,)/) {
+    ReadInputFiles::perform_string_replacements($name); # use sub from ReadInputFiles to perform string replacements on entire line
+    return $name;
 
-  if ($code_block_found == -1) {
-    if ($options =~ /(^|,)\s*checkexists\s*(,|$)/) {
-      $options = $`.','.$'; # remove this string from the options
-      syntax_problem("string variable $name not found during string_set: $ReadInputFiles::filelinelocator");
-    }
-    return ''; # return empty string if the variable doesn't exist
-    
   } else {
-    if ($options =~ /(^|,)((commaseparated|spaceseparated|variable|region|)list)($|,)/) {
-      my $option = $2;
-      return string_split($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"},$option);
+    my ($code_block_found,$string_variable_found) = string_search($name,$options);
 
-#     my @string_eval_array=();
-#     my $string_text=$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
-#     print "STRING TEXT: $string_text\n";
-#     while ($string_text) {
-#       print "STRING TEXT IN LOOP: $string_text\n";
-#       $string_text =~ s/^\s*,\s*//g;
-#       my ($string_bit,$error) = extract_first($string_text);
-#       print "A: string_bit = $string_bit: error = $error\n";
-#       if (!($error)) {
-#         push(@string_eval_array,$string_bit);
-#       }
-#     }
-#     print "RETURNED LIST = @string_eval_array\n";
-#     return @string_eval_array;
-
-#     return split(/,/,$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
+    if ($code_block_found == -1) {
+      if ($options =~ /(^|,)\s*checkexists\s*(,|$)/) {
+        $options = $`.','.$'; # remove this string from the options
+        syntax_problem("string variable $name not found during string_set: $ReadInputFiles::filelinelocator");
+      }
+      return ''; # return empty string if the variable doesn't exist
+      
     } else {
-      return $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+      if ($options =~ /(^|,)((commaseparated|spaceseparated|variable|region|)list)($|,)/) {
+        my $option = $2;
+        return string_split($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"},$option);
+
+      } else {
+        return $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+      }
     }
   }
   
@@ -254,13 +245,14 @@ sub string_split {
 #-------------------------------------------------------------------------------
 # tests whether a string variable is equal to a particular test string, returning '1' or ''
 # on input
-#  $_[0] = string variable name
-#  $_[1] = test string
-#  $_[2] = options, which is also passed to string_search so supports global, noglobal and local
+#  $_[0] = string variable name, or line of text (option text)
+#  $_[1] = value of name or text that represents a true result (ie, that is compared against)
+#  $_[2] = options, which is also passed to string_search for notext, so supports global, noglobal and local
+#    option 'text' means that string replacements are performed on first argument, and this is compared against value - handed for (eg) testing true value of nested replacements, whereas notext simply tests on what the string replacement is for the given variable
 # on output
 #  $_[0] = '1' if test string is given and string variable is defined and equal to the value of test string
 #        = '0' otherwise
-# now throws an error if test string is not provided or string is not found
+# now throws an error if test string is not provided or string is not found, unless text option is given
 # see string_examine for checking on existence of strings
 
 sub string_test {
@@ -268,18 +260,24 @@ sub string_test {
   my $name = $_[0];
   my $options = '';
 
-  if (!(defined($_[1]))) { # no test string was passed to routine, so just return whether string is defined
+  if (!(defined($_[1]))) { # no test string was passed to routine, which is a terminal error
     error_stop("no test string has been passed to string_test: name = $name");
   }
+  my $result = $_[1];
   if (defined($_[2])) { $options = $_[2]; }
 
-  my ($code_block_found,$string_variable_found) = string_search($name,$options);
+  if ($options =~ /(^|,|\s)text($|,|\s)/) { # text option is handled by string_eval
+    if (string_eval($name,'text') eq $result) { return 1; } else { return 0; }
+  } else { # otherwise we are looking at checking the value of a single string
+    my ($code_block_found,$string_variable_found) = string_search($name,$options);
 
-  if ($code_block_found == -1) {
-    error_stop("test string has been passed to string_test was not found: name = $name");
+    if ($code_block_found == -1) {
+      error_stop("test string has been passed to string_test was not found: name = $name");
+    }
+    
+    if ($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $result) { return 1; } else { return 0; }
+
   }
-  
-  if ($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $_[1]) { return '1'; } else { return '0'; }
   
 }
 #-------------------------------------------------------------------------------
@@ -650,6 +648,9 @@ sub string_debug {
 
 }
 #-------------------------------------------------------------------------------
+#sub defined {
+
+#}
 # TODO - add something like this, but wait for reorder restructuring
 # routine that checks if a variable name has been defined, for now
 # little routine that returns 1 if a string is defined, or 0 otherwise

@@ -57,7 +57,7 @@ use warnings;
 use Common;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(read_input_files); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(read_input_files perform_string_replacements); # list of subroutines and variables that will by default be made available to calling routine
 
 # define variables common to all of these subs
 our @code_blocks; # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
