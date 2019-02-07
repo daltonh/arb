@@ -19,20 +19,29 @@ IF {{ return (!(string_eval('<<stokes>>'))) }} # this will be true for non-stoke
 #   IF <<uniformdensity>>
     IF {{ return (string_eval('<<uniformdensity>>') || !(string_eval('<<uniformdensitycomment>>'))) }} 
 # steady-state (or implicit advection) and uniform density
-      FACE_LOCAL <J_advection_f[l=<<i>>]> "<rho>*faceave[advection,<<reflect=<<i>>>>](<u[l=<<i>>]>,<u_f>,<<advectionlimiterdim<<i>>>>)*<u_f>" ON <allfaces>
+      FACE_LOCAL <J_advection_f[l=<<i>>]> "<rho>*faceave[advection,<<reflect=<<i>>>>](<u[l=1]>,<u_f>,<<advectionlimiterdim<<i>>>>)*<u_f>" ON <allfaces>
+#     <<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,<<reflect=1>>](<u[l=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+#     <<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,<<reflect=2>>](<u[l=2]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+#     <<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,<<reflect=3>>](<u[l=3]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
     ELSE
 # steady-state (or implicit advection) and varying density
-      FACE_LOCAL <J_advection_f[l=<<i>>]> "faceave[advection,<<reflect=<<i>>>>](<rho>*<u[l=<<i>>]>,<u_f>,<<advectionlimiterdim<<i>>>>)*<u_f>" ON <allfaces>
+      <<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,<<reflect=1>>](<rho>*<u[l=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+      <<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,<<reflect=2>>](<rho>*<u[l=2]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+      <<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,<<reflect=3>>](<rho>*<u[l=3]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
     END_IF
   ELSE
 # having to respect the old <<uniformdensitycomment>> choice for backwards compatibility with user's vof files - just in this file
 #   IF <<uniformdensity>>
     IF {{ return (string_eval('<<uniformdensity>>') || !(string_eval('<<uniformdensitycomment>>'))) }} 
 # transient and uniform density
-      FACE_LOCAL <J_advection_f[l=<<i>>]> "<rho>*faceave[advection,<<reflect=<<i>>>>](<u[l=<<i>>,r=1]>,<u_f>,<<advectionlimiterdim<<i>>>>)*<u_f>" ON <allfaces>
+      <<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,<<reflect=1>>](<u[l=1,r=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+      <<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,<<reflect=2>>](<u[l=2,r=1]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+      <<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,<<reflect=3>>](<u[l=3,r=1]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
     ELSE
 # transient and varying density
-      FACE_LOCAL <J_advection_f[l=<<i>>]> "faceave[advection,<<reflect=<<i>>>>](<rho[r=1]>*<u[l=<<i>>,r=1]>,<u_f>,<<advectionlimiterdim<<i>>>>)*<u_f>" ON <allfaces>
+      <<dim1comment>>FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,<<reflect=1>>](<rho[r=1]>*<u[l=1,r=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+      <<dim2comment>>FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,<<reflect=2>>](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+      <<dim3comment>>FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,<<reflect=3>>](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
     END_IF
   END_IF
 END_IF

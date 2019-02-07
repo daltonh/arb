@@ -101,9 +101,10 @@ ELSE_IF  {{ return ( string_test("<<boundarymethod>>","flowrate") || string_test
   # REPLACEMENTS D "<<boundarymethodvariable>>" W "p"
 
     IF {{ return string_test("<<boundarymethodvariable>>","celldivgrad"); }}
-      <<dim1comment>> CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
-      <<dim2comment>> CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
-      <<dim3comment>> CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
+      CELL_LOCAL <celldivgradp[l=<<i>>]> "celldivgrad[l=<<i>>](<p_f>)"
+#     <<dim1comment>> CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
+#     <<dim2comment>> CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
+#     <<dim3comment>> CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
       NONE_DERIVED <region oneface gradp> "facesum(dot(<celldivgradp[l=:]>,<facenorm[l=:]>),region=<region oneface>)"
       FACE_EQUATION <region flowrate equation> "dot(<celldivgradp[l=:]>,<facenorm[l=:]>)-<region oneface gradp>" ON <region sans oneface> # apply specified pressure over inlet
     ELSE_IF {{ return string_test("<<boundarymethodvariable>>","dynamicforce"); }}

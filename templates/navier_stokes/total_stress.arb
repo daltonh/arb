@@ -4,7 +4,7 @@ INCLUDE "u_gradient_tensor"
 # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
 REPLACEMENTS DEFAULT "<<udivfcomment>>" W "#"
 # calculate the velocity divergence (numerical) on each face
-<<udivfcomment>>FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces>
+<<udivfcomment>>FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces> # any component not in <<dimensions>> will be assigned to an empty vector and simplified out using maxima
 
 # deal with uniform/nonuniform viscosity, allowing for possibility of user setting <mu_f> directly
 # if you want to overwrite <mu_f>, just define it prior to calling this file and your replacement will overwrite the following
@@ -15,21 +15,11 @@ END_IF
 #{{ print "IN template total_stress\n".string_debug; }}
 
 # no both cartesian and cylindrical stresses don't include pressure
-# without the numerical velocity divergence
-<<dim1comment>>FACE_LOCAL <tau[l=1,1]> "-<<mu_f>>*2.d0*<ugrad_f[l=1,1]>" ON <allfaces>
-<<dim2comment>>FACE_LOCAL <tau[l=2,2]> "-<<mu_f>>*2.d0*<ugrad_f[l=2,2]>" ON <allfaces>
-<<dim3comment>>FACE_LOCAL <tau[l=3,3]> "-<<mu_f>>*2.d0*<ugrad_f[l=3,3]>" ON <allfaces>
-# overwrite these if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
+# first define without the numerical velocity divergence
+FACE_LOCAL <tau[l=<<i>>,<<j>>]> "-<<mu_f>>*(<ugrad_f[l=<<i>>,<<j>>]>+<ugrad_f[l=<<j>>,<<i>>]>)" ON <allfaces> # note, maxima will simplify diagonal components
+# overwrite the diagonal elements if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
 # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
-<<udivfcomment>><<dim1comment>>FACE_LOCAL <tau[l=1,1]> "-<<mu_f>>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <allfaces>
-<<udivfcomment>><<dim2comment>>FACE_LOCAL <tau[l=2,2]> "-<<mu_f>>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <allfaces>
-<<udivfcomment>><<dim3comment>>FACE_LOCAL <tau[l=3,3]> "-<<mu_f>>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <allfaces>
-<<dim1comment>><<dim2comment>>FACE_LOCAL <tau[l=1,2]> "-<<mu_f>>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <allfaces>
-<<dim1comment>><<dim3comment>>FACE_LOCAL <tau[l=1,3]> "-<<mu_f>>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <allfaces>
-<<dim2comment>><<dim3comment>>FACE_LOCAL <tau[l=2,3]> "-<<mu_f>>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <allfaces>
-<<dim2comment>><<dim1comment>>FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <allfaces>
-<<dim3comment>><<dim1comment>>FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <allfaces>
-<<dim3comment>><<dim2comment>>FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <allfaces>
+<<udivfcomment>>FACE_LOCAL <tau[l=<<i>>,<<i>>]> "-<<mu_f>>*2.d0*(<ugrad_f[l=<<i>>,<<i>>]>-<udiv_f>/3.d0)" ON <allfaces> # note, previous symmetric components were less efficient
 
 IF 0#<<azimuthal>>
   IF 0
