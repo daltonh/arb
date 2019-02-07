@@ -1,7 +1,7 @@
 # Reconstructed list of the variables in arb format:
 #--------------------------------------------------------------------------------
 # constant variables:
-FACE_CONSTANT <dot_facenorm_facedxunit> [1] "( + (<facenorm[l=1]>)*(<facedxunit[l=1]>) + (<facenorm[l=2]>)*(<facedxunit[l=2]>) + (<facenorm[l=3]>)*(<facedxunit[l=3]>) )" ON <allfaces> # other information: region = <allfaces>: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = ../../templates/general/face_normals.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop/templates/general/face_normals.arb: comments = # also used in navier_stokes/p_error.arb
+FACE_CONSTANT <dot_facenorm_facedxunit> [1] "(  + (<facenorm[l=1]>)*(<facedxunit[l=1]>) + (<facenorm[l=2]>)*(<facedxunit[l=2]>) + (<facenorm[l=3]>)*(<facedxunit[l=3]>) )" ON <allfaces> # other information: region = <allfaces>: deriv = 0: newtstepmax = empty: newtstepmin = empty: filename = ../../templates/general/face_normals.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop/templates/general/face_normals.arb: comments = # also used in navier_stokes/p_error.arb
 #--------------------------------------------------------------------------------
 # transient variables:
 #--------------------------------------------------------------------------------
