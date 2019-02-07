@@ -204,7 +204,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    CONSTANT <gg> 7.d0
    
       #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
-      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)IF 
       #(hash inserted during unwrap)ERROR "IF: should not be here"
       #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
       #(hash inserted during unwrap)ELSE_IF 1
@@ -215,7 +215,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       #(hash inserted during unwrap)END_IF
    
       #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
-      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)IF 
       #(hash inserted during unwrap)ERROR "IF: should not be here"
       #(hash inserted during unwrap)
       #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
