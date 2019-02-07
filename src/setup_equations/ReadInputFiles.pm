@@ -1812,8 +1812,8 @@ sub expand_equation {
           substr($midr, $posr[0]-1, 1, $n1); #replace blank with correct index
           $mid = $mid." + (".$midr.")*(".$midr.")";
         }
-#       $mid = "sqrt(max(( ".$mid." ),0.d0))";
-        $mid = "sqrt( ".$mid." )";
+        $mid = "sqrt(contextmax(( ".$mid." ),<tinyish>))";
+#       $mid = "sqrt( ".$mid." )";
       } elsif (@posr == 2) { # we are calculating the magnitude of a tensor
         foreach my $n1 ( 1 .. 3 ) {
           substr($midr, $posr[1]-1, 1, $n1); #replace blank with correct index
@@ -1822,8 +1822,8 @@ sub expand_equation {
             $mid = $mid." + (".$midr.")*(".$midr.")";
           }
         }
-#       $mid = "sqrt(max(0.5d0*( ".$mid." ),0.d0))";
-        $mid = "sqrt(0.5d0*( ".$mid." ))";
+        $mid = "sqrt(contextmax(0.5d0*( ".$mid." ),<tinyish>))";
+#       $mid = "sqrt(0.5d0*( ".$mid." ))";
       } else {
         error_stop("wrong number of colons in mag in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax: $filelinelocator");
       }
