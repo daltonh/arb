@@ -1520,6 +1520,10 @@ sub perform_string_replacements {
 #-------------------------------------------------------------------------------
 # performs index replacements on the input string, returning the processed string again on output
 # string that is returned may contain line breaks
+# on input:
+# $_[0] = string that may contain indexes to be replaced, and may be more than one line
+# on output:
+# $_[0] = string that is expanded now to possibly multiple lines, with indexes now replaced by integers
 sub perform_index_replacements {
 
   my $string = $_[0];
@@ -1589,20 +1593,6 @@ sub perform_index_replacements {
       }
     }
 
-
-
-
-#   if (nonempty($l{l1}{string})) {$l{l1}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{l1}{list}="0"};
-#   if (nonempty($l{l2}{string})) {$l{l2}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{l2}{list}="0"};
-#   if (nonempty($l{r}{string})) {$l{r}{list}='<<dimensions>>'; $replacements_found=1; } else {$l{r}{list}="0"};
-
-#     if (nonempty($l{l1})) {@{$l{l1}{list}} = string_eval('<<dimensions>>','list');} else {$l{l1}{list}=[ 0 ]};
-#     if (nonempty($l{l2})) {$l{l2}{list} = string_eval('<<dimensions>>','list');} else {$l{l2}{list}=[ 0 ]};
-#     if (nonempty($l{r})) {$l{r}{list} = string_eval('<<dimensions>>','list');} else {$l{r}{list}=[ 0 ]};
-#   print "l1list = $l{l1}{list}\n";
-#   print "l2list = $l{l2}{list}\n";
-#   print "rlist = $l{r}{list}\n";
-
     if (%index) { # will be true if any index strings are found
 
       print ::DEBUG "INFO: found index replacements\n";
@@ -1617,9 +1607,6 @@ sub perform_index_replacements {
         $new_string .= "#  $key $index{$key}{list}\n";
       }
 
-# temp &&&
-#     $new_string .= $string_line;
-
 # now need to loop over all combination of index elements....
       foreach my $key (keys(%index)) {
         my $string_line_saved = $string_line; # which is now not a line anymore, but an expanding section of definitions
@@ -1632,34 +1619,8 @@ sub perform_index_replacements {
         $string_line =~ s/\n$//; # and remove trailing newline
       }
 
-      $new_string .= $string_line;
-
-#     my $string_line_saved
-# # TODO
-# # Put more info here, includ
-#       foreach my $l1 ( string_eval($l{l1}{list},'list') ) {
-#         foreach my $l2 ( string_eval($l{l2}{list},'list') ) {
-#           foreach my $r ( string_eval($l{r}{list},'list') ) {
-#   #         print "l1 = $l1\n";
-#   #         if ($l1) { string_set($l{l1}{string},$l1) }
-#             $string_line = $string_line_saved;
-#   # or, could use code blocks
-#   # need to check that array names are unique
-#   # effectively these strings are replaced first, so just like a primary code block
-#             if ($l1) { $string_line =~ s/$l{l1}{string}/$l1/g; }
-#             if ($l2) { $string_line =~ s/$l{l2}{string}/$l2/g; }
-#             if ($r) { $string_line =~ s/$l{r}{string}/$r/g; }
-
-#   #         perform_string_replacements($string_line);
-#             $new_string .= $string_line."\n";
-#           }
-#         }
-#       }
-
-
-    } else {
-      $new_string .= $string_line;
     }
+    $new_string .= $string_line;
   }
   $_[0] = $new_string; # change string in place
 }
@@ -1760,7 +1721,7 @@ sub expand_equation {
   my $withdots = $raw_equation;
   my $withoutdots = '';
 
-  while ($withdots =~ /(<.*?>)|ddot\(|dot\(/) {
+  while ($withdots =~ /(<.*?>)|ddot\(|dot\(|mag\(/) {
     my $pre = $`;
     my $post = $';
     my $operator = $&;
@@ -1772,14 +1733,18 @@ sub expand_equation {
     print ::DEBUG "pre = $pre: post = $post\n";
 
     my $midl = "";
-    while ( $post =~ /(<.+?>)|(\,)/ ) {
-      $post = $';
-      if ($1) {
-        $midl = $midl.$`.$1;
-      } else {
-        $midl = $midl.$`;
-        last;
+    if ($operator ne 'mag') { # for a magnitude, there is no comma
+      while ( $post =~ /(<.+?>)|(\,)/ ) {
+        $post = $';
+        if ($1) {
+          $midl = $midl.$`.$1;
+        } else {
+          $midl = $midl.$`;
+          last;
+        }
       }
+    } else {
+      print ::DEBUG "left side not processes for mag operator\n";
     }
     print ::DEBUG "left side finalised: midl = $midl: post = $post\n";
         
@@ -1799,14 +1764,16 @@ sub expand_equation {
     print ::DEBUG "right side finalised: midr = $midr: midrnovar = $midrnovar: post = $post\n";
 
     my @posl = ();
+    if ($operator ne 'mag') {
 # this match allows r indices before and after a l index, matching the first colon after the l
-    print ::DEBUG "before looking for first colon: midl = $midl\n";
-    while ($midl =~ /<.+?\[[r=\d\s,]*?l[=\d\s,]*?(:)[,\d\s:]*?[r=\d\s,]*?\]>/) {
-      push (@posl, $+[1]); # $+[1] is the starting position of the first match
-      substr($midl, $+[1]-1, 1, " "); #replace : with blank so that it is not matched
-      print ::DEBUG "midl = $midl: posl = @posl\n";
+      print ::DEBUG "before looking for first colon: midl = $midl\n";
+      while ($midl =~ /<.+?\[[r=\d\s,]*?l[=\d\s,]*?(:)[,\d\s:]*?[r=\d\s,]*?\]>/) {
+        push (@posl, $+[1]); # $+[1] is the starting position of the first match
+        substr($midl, $+[1]-1, 1, " "); #replace : with blank so that it is not matched
+        print ::DEBUG "midl = $midl: posl = @posl\n";
+      }
+      @posl = sort{ $a <=> $b } @posl; # make sure index positions are in order
     }
-    @posl = sort{ $a <=> $b } @posl; # make sure index positions are in order
     my @posr = ();
     print ::DEBUG "before looking for first colon: midr = $midr\n";
     while ($midr =~ /<.+?\[[r=\d\s,]*?l[=\d\s,]*?(:)[,\d\s:]*?[r=\d\s,]*?\]>/) {
@@ -1818,7 +1785,7 @@ sub expand_equation {
     print ::DEBUG "after: midl = $midl: posl = @posl\n";
     print ::DEBUG "after: midr = $midr: posr = @posr\n";
 
-    my $mid = "(";
+    my $mid = "";
     if ($operator eq "dot") {
       if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in dot product in $variable_name equation on the following line: check the variables' [l=:] syntax: $filelinelocator"); } # scalar(@posl) is number of elements of posl array
       foreach my $n1 ( 1 .. 3 ) {
@@ -1826,7 +1793,8 @@ sub expand_equation {
         substr($midr, $posr[0]-1, 1, $n1); #replace blank with correct index
         $mid = $mid." + (".$midl.")*(".$midr.")";
       }
-    } else { # double dot product
+      $mid = "( ".$mid." )";
+    } elsif ($operator eq "ddot") { # double dot product
       if (@posl != 2 || @posr != 2) { error_stop("wrong number of colons in ddot product in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax: $filelinelocator"); } # scalar(@posl) is number of elements of posl array
       foreach my $n1 ( 1 .. 3 ) {
         substr($midl, $posl[0]-1, 1, $n1); #replace blank with correct index
@@ -1837,8 +1805,29 @@ sub expand_equation {
           $mid = $mid." + (".$midl.")*(".$midr.")";
         }
       }
+      $mid = "( ".$mid." )";
+    } else { # mag operator, has no posl
+      if (@posr == 1) { # we are calculating the magnitude of a vector
+        foreach my $n1 ( 1 .. 3 ) {
+          substr($midr, $posr[0]-1, 1, $n1); #replace blank with correct index
+          $mid = $mid." + (".$midr.")*(".$midr.")";
+        }
+#       $mid = "sqrt(max(( ".$mid." ),0.d0))";
+        $mid = "sqrt( ".$mid." )";
+      } elsif (@posr == 2) { # we are calculating the magnitude of a tensor
+        foreach my $n1 ( 1 .. 3 ) {
+          substr($midr, $posr[1]-1, 1, $n1); #replace blank with correct index
+          foreach my $n2 ( 1 .. 3 ) {
+            substr($midr, $posr[0]-1, 1, $n2); #replace blank with correct index
+            $mid = $mid." + (".$midr.")*(".$midr.")";
+          }
+        }
+#       $mid = "sqrt(max(0.5d0*( ".$mid." ),0.d0))";
+        $mid = "sqrt(0.5d0*( ".$mid." ))";
+      } else {
+        error_stop("wrong number of colons in mag in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax: $filelinelocator");
+      }
     }
-    $mid = $mid." )";
         
     print ::DEBUG "mid = $mid\n";
       

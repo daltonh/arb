@@ -3663,11 +3663,9 @@ sub run_maxima_simplify {
       push (@maxima_simplify_results, { "input" => $bit, "used" => 1, "tmp_file_number" => $tmp_file_number } );
 
       open(MAXIMA, ">$maxima_dir/tmp$tmp_file_number.maxima") or error_stop("problem opening temporary maxima file $maxima_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??");
-# TODO: add kronecker delta function here, so that maxima can simplify it
-# define as kronecker(i,j) = max(1-2*abs(x-y),0) - or delta
-# also want eps(i,j,k)
-# infact, redefine heaviside here as heaviside = kronecker(x,0) - wait on...
-# also step function (isn't this heaviside?)
+# adding definitions for kronecker and permutation functions (see BSL, p811) that will work in both the maxima and arb context.  If the indicies are integers at the time maxima is run, these will simplify to integers, allowing considerable simplification of the executable code.
+# leaving heaviside as a fortran function
+      print MAXIMA "kronecker(i,j) := max(1-abs(i-j),0); permutation(i,j,k):= (i-j)*(j-k)*(k-i)/2;";
       print MAXIMA "foo:$bit;";
       print MAXIMA "with_stdout (\"$maxima_dir/tmp$tmp_file_number.simp\", grind(foo));";
       close(MAXIMA);
