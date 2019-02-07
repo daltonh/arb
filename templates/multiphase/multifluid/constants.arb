@@ -43,6 +43,5 @@ CONSTANT <phi_max_allsolids> 0.68d0 # this can be used for consistency across va
 
 # conventional vertical gravity, defined whether buoyancy is on or off
 # whether this is included as a force is determined by whether buoyancy_dynamic_force is included
-<<dim1comment>>CONSTANT <gravity[l=1]> [m/s^2] 0.d0
-<<dim2comment>>CONSTANT <gravity[l=2]> [m/s^2] -9.81d0
-<<dim3comment>>CONSTANT <gravity[l=3]> [m/s^2] 0.d0
+CONSTANT <gravity[l=<<i>>]> [m/s^2] 0.d0
+<<dim2comment>>CONSTANT <gravity[l=2]> -9.81d0
