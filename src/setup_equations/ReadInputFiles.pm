@@ -277,8 +277,8 @@ sub read_input_files {
 # separate buffer into the string code which will lead the new code block, and the remaining buffer which is associated with the old (existing) code block
 #         ( $buffer, $code_blocks[$#code_blocks]{'buffer'} ) = $buffer =~ /(.*\}\})(.*)/;
           parse_solver_code($solver_code); # process, noting that here solver_code is only one line
-### temp
-          if ($solver_code) { error_stop("solver_code should not be zero here?\n"); }
+# this check indicates a problem, but should never happen...
+          if ($solver_code) { error_stop("solver_code should not be zero here - internal error\n"); }
           $solver_code = ''; # and reset solver_code etc
           print ::DEBUG "INFO: after parse_solver_code: solver_code = $solver_code: buffer = $buffer\n";
         }
@@ -296,7 +296,7 @@ sub read_input_files {
 
 # limit the buffer to prior to the comment/end of string/line, and then perform string replacements on the buffer
         $buffer = $before;
-        if ($debug) { print ::DEBUG "  INFO: solver code identified within buffer, performing string replacements: buffer = $buffer\n"; }
+        if ($debug) { print ::DEBUG "  INFO: solver code identified within buffer, performing index and string replacements: buffer = $buffer\n"; }
         perform_index_replacements($buffer);
         if ($debug) { print ::DEBUG "  INFO: after performing index replacements: buffer = $buffer\n"; }
         perform_string_replacements($buffer);
@@ -305,7 +305,7 @@ sub read_input_files {
         if ($debug) { print ::DEBUG "  INFO: solver code ready to process: solver_code = $solver_code\n"; }
 # this shouldn't be necessary now, unless string replacements have introduced a line feed
 # outlaw this to avoid language problems in the future
-# now allowing this due to indicie replacements
+# now allowing this due to index replacements
         if (1) {
           while ($solver_code =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
             my $part_solver_code = $`; # split solver_code at each line break
@@ -1695,7 +1695,7 @@ sub wanted {
 
 #-------------------------------------------------------------------------------
 # takes an arb equation and
-# 1) expands the dot and ddot operators
+# 1) expands the dot and ddot operators, now also mag and cross
 # 2) replaces a reference to itself with the previous equation
 # copies all but the last input arguments and returns new equation
 # last argument is the number of selfreferences that have been made in total by this variable, and is incremented by this routine
@@ -1716,24 +1716,27 @@ sub expand_equation {
   print ::DEBUG "in expand_equation: raw_equation = $raw_equation\n";
 
 # look for any dot and ddot operators and replace with scalar mathematics
+# now also mag and cross (magnitude and cross product)
 # coding cannot handle nested ddot or dot operators
 # move string from $withdots to $withoutdots while doing replacements
   my $withdots = $raw_equation;
   my $withoutdots = '';
 
-  while ($withdots =~ /(<.*?>)|ddot\(|dot\(|mag\(/) {
+  while ($withdots =~ /(<.*?>)|ddot\(|dot\(|mag\(|cross\[\h*l\h*=\h*(\d)\h*\]\(/) {
     my $pre = $`;
     my $post = $';
     my $operator = $&;
+    my $dimension = 0;
 # move over any variable and region names
     if ($1) { $withdots = $post; $withoutdots = $withoutdots.$pre.$operator; next; }
+    if ($2) { $dimension = $2; }
     $operator =~ s/\($//;
     print "INFO: found operator $operator in $raw_equation\n";
     print ::DEBUG "found operator $operator in $withdots that is part of raw_equation = $raw_equation\n";
     print ::DEBUG "pre = $pre: post = $post\n";
 
     my $midl = "";
-    if ($operator ne 'mag') { # for a magnitude, there is no comma
+    if ($operator ne 'mag') { # for a magnitude, there is no comma, for dot, ddot and cross there is
       while ( $post =~ /(<.+?>)|(\,)/ ) {
         $post = $';
         if ($1) {
@@ -1806,15 +1809,15 @@ sub expand_equation {
         }
       }
       $mid = "( ".$mid." )";
-    } else { # mag operator, has no posl
-      if (@posr == 1) { # we are calculating the magnitude of a vector
+    } elsif ($operator eq "mag") { # mag operator, has no posl
+      if (@posr == 1) { # we are calculating the magnitude of a vector, BSL p814
         foreach my $n1 ( 1 .. 3 ) {
           substr($midr, $posr[0]-1, 1, $n1); #replace blank with correct index
           $mid = $mid." + (".$midr.")*(".$midr.")";
         }
         $mid = "sqrt(contextmax(( ".$mid." ),<tinyish>))";
 #       $mid = "sqrt( ".$mid." )";
-      } elsif (@posr == 2) { # we are calculating the magnitude of a tensor
+      } elsif (@posr == 2) { # we are calculating the magnitude of a tensor, BSL eq A.3-11, p817
         foreach my $n1 ( 1 .. 3 ) {
           substr($midr, $posr[1]-1, 1, $n1); #replace blank with correct index
           foreach my $n2 ( 1 .. 3 ) {
@@ -1827,6 +1830,17 @@ sub expand_equation {
       } else {
         error_stop("wrong number of colons in mag in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax: $filelinelocator");
       }
+    } else { # cross product of two vectors (although components of tensors will also work), BSL, A.2-21
+      if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in cross product in $variable_name equation on the following line: check the variables' [l=:] syntax: $filelinelocator"); } # scalar(@posl) is number of elements of posl array
+      if ($dimension < 1 || $dimension > 3) { error_stop("wrong dimension number ($dimension) in cross product in $variable_name equation on the following line: check the variables' [l=:] syntax: $filelinelocator"); }
+      foreach my $nj ( 1 .. 3 ) {
+        foreach my $nk ( 1 .. 3 ) {
+          substr($midl, $posl[0]-1, 1, $nj); #replace blank with correct index
+          substr($midr, $posr[0]-1, 1, $nk); #replace blank with correct index
+          $mid = $mid." + permutation($dimension,$nj,$nk)*(".$midl.")*(".$midr.")";
+        }
+      }
+      $mid = "( ".$mid." )";
     }
         
     print ::DEBUG "mid = $mid\n";
