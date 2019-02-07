@@ -253,6 +253,7 @@ sub read_input_files {
         } else {
           print ::DEBUG "  INFO: opening string code delimiters identified within buffer, performing string replacements on prior string\n";
         }
+        perform_index_replacements($buffer);
         perform_string_replacements($buffer);
         if ($debug) { print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n"; }
         $solver_code .= $buffer; # add the result of the string replacements onto the solver code
@@ -276,6 +277,8 @@ sub read_input_files {
 # separate buffer into the string code which will lead the new code block, and the remaining buffer which is associated with the old (existing) code block
 #         ( $buffer, $code_blocks[$#code_blocks]{'buffer'} ) = $buffer =~ /(.*\}\})(.*)/;
           parse_solver_code($solver_code); # process, noting that here solver_code is only one line
+# this check indicates a problem, but should never happen...
+          if ($solver_code) { error_stop("solver_code should not be zero here - internal error\n"); }
           $solver_code = ''; # and reset solver_code etc
           print ::DEBUG "INFO: after parse_solver_code: solver_code = $solver_code: buffer = $buffer\n";
         }
@@ -293,14 +296,17 @@ sub read_input_files {
 
 # limit the buffer to prior to the comment/end of string/line, and then perform string replacements on the buffer
         $buffer = $before;
-        if ($debug) { print ::DEBUG "  INFO: solver code identified within buffer, performing string replacements: buffer = $buffer\n"; }
+        if ($debug) { print ::DEBUG "  INFO: solver code identified within buffer, performing index and string replacements: buffer = $buffer\n"; }
+        perform_index_replacements($buffer);
+        if ($debug) { print ::DEBUG "  INFO: after performing index replacements: buffer = $buffer\n"; }
         perform_string_replacements($buffer);
-        if ($debug) { print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n"; }
+        if ($debug) { print ::DEBUG "  INFO: after performing string replacements: buffer = $buffer\n"; }
         $solver_code .= $buffer.$comments; # add the result of the string replacements onto the solver code
         if ($debug) { print ::DEBUG "  INFO: solver code ready to process: solver_code = $solver_code\n"; }
 # this shouldn't be necessary now, unless string replacements have introduced a line feed
 # outlaw this to avoid language problems in the future
-        if (0) {
+# now allowing this due to index replacements
+        if (1) {
           while ($solver_code =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
             my $part_solver_code = $`; # split solver_code at each line break
             $solver_code = $'; # and remove line break from next
@@ -1512,6 +1518,113 @@ sub perform_string_replacements {
   $_[0] = $string;
 }
 #-------------------------------------------------------------------------------
+# performs index replacements on the input string, returning the processed string again on output
+# string that is returned may contain line breaks
+# on input:
+# $_[0] = string that may contain indexes to be replaced, and may be more than one line
+# on output:
+# $_[0] = string that is expanded now to possibly multiple lines, with indexes now replaced by integers
+sub perform_index_replacements {
+
+  my $string = $_[0];
+
+  print ::DEBUG "INFO: INDEX: performing index replacements on string = $string\n";
+
+# look for vectors or tensors or relstep variations
+# parse code one line at a time, with comments removed
+  my $new_string = '';
+  while ($string) {
+    my $string_line;
+    if ($string =~ /\n/) { # if the string code results in line breaks, then each line within solver code has to be parsed separately
+      $string_line = $`; # split solver_code at each line break
+      $string = $'; # and remove line break from next
+    } else {
+      $string_line = $string;
+      $string = '';
+    }
+
+# objective here is to find the index strings and what indexes they represent
+# do not have to replace here, just identify, and then perform replacements in a nested loop later
+    my %index=(); # make a hash that contains info about the found strings, with the key being the found index string
+    my $string_line_search = $string_line; # copy the string line as we will destroy it during the search
+    while ($string_line_search =~ /(<(.+?)\[(.*?<<.+?>>.*?)\]>)/ ) { # matches if at least one index string is found in a variable or region name
+      my $guts = $3;
+      my $name = $1;
+      print ::DEBUG "INFO: found at least one index string in: name = $name: in string_line = $string_line\n";
+      $string_line_search = $'; # remove the current search
+      if ($guts =~ /(^|\,)\h*l\h*\=\h*((<<.+?>>)|(\d+))\h*((\,\h*((<<.+?>>)|(\d+))\h*)|\,|$)/) {
+#                     1                 23         4        56     78         9
+        if ($3) {
+          if (defined($index{$3})) {
+            print ::DEBUG "INFO: found a repeating l index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+            if ($index{$3}{type} ne "l") {
+              print ::DEBUG "WARNING: index string type has changed for: index = $3: new type = l: old type =  $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+            }
+          } else {
+            $index{$3}{type} = "l";
+            print ::DEBUG "INFO: found a new l index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+          }
+        }
+        if ($8) {
+          if (defined($index{$8})) {
+            print ::DEBUG "INFO: found a repeating l index string: index = $8: type = $index{$8}{type}: in name = $name: in string_line = $string_line\n";
+            if ($index{$8}{type} ne "l") {
+              print ::DEBUG "WARNING: index string type has changed for: index = $8: new type = l: old type =  $index{$8}{type}: in name = $name: in string_line = $string_line\n";
+            }
+          } else {
+            $index{$8}{type} = "l";
+            print ::DEBUG "INFO: found a new l index string: index = $8: type = $index{$8}{type}: in name = $name: in string_line = $string_line\n";
+          }
+        }
+      }
+      if ($guts =~ /(^|\,)\h*r\h*\=\h*((<<.+?>>)|(\d+))(\,|$)/) {
+#                   1                 23         4     5
+        if ($3) {
+          if (defined($index{$3})) {
+            print ::DEBUG "INFO: found a repeating r index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+            if ($index{$3}{type} ne "r") {
+              print ::DEBUG "WARNING: index string type has changed for: index = $3: new type = r: old type =  $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+            }
+          } else {
+            $index{$3}{type} = "r";
+            print ::DEBUG "INFO: found a new r index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
+          }
+        }
+      }
+    }
+
+    if (%index) { # will be true if any index strings are found
+
+      print ::DEBUG "INFO: found index replacements\n";
+      $new_string .= "# performing index string loops on the following index list pairs:\n";
+      foreach my $key (keys(%index)) {
+        if ($index{$key}{type} eq "l") {
+          $index{$key}{list} = '<<dimensions>>';
+        } elsif ($index{$key}{type} eq "r") {
+          $index{$key}{list} = '<<relsteps>>';
+        }
+        print ::DEBUG "  index = $key: type = $index{$key}{type}: list = $index{$key}{list}\n";
+        $new_string .= "#  $key $index{$key}{list}\n";
+      }
+
+# now need to loop over all combination of index elements....
+      foreach my $key (keys(%index)) {
+        my $string_line_saved = $string_line; # which is now not a line anymore, but an expanding section of definitions
+        $string_line = '';
+        foreach my $n ( string_eval($index{$key}{list},'list') ) {
+          my $string_line_part = $string_line_saved;
+          $string_line_part =~ s/$key/$n/g;
+          $string_line .= $string_line_part."\n";
+        }
+        $string_line =~ s/\n$//; # and remove trailing newline
+      }
+
+    }
+    $new_string .= $string_line;
+  }
+  $_[0] = $new_string; # change string in place
+}
+#-------------------------------------------------------------------------------
 # this is a little support routine used by find above
 sub wanted {
 # calling command: find ({ wanted => sub { wanted($new_file,$found_name,$found_type,$found_depth); }, no_chdir => 1},$templates_dir);
@@ -1582,7 +1695,7 @@ sub wanted {
 
 #-------------------------------------------------------------------------------
 # takes an arb equation and
-# 1) expands the dot and ddot operators
+# 1) expands the dot and ddot operators, now also mag and cross
 # 2) replaces a reference to itself with the previous equation
 # copies all but the last input arguments and returns new equation
 # last argument is the number of selfreferences that have been made in total by this variable, and is incremented by this routine
@@ -1603,31 +1716,38 @@ sub expand_equation {
   print ::DEBUG "in expand_equation: raw_equation = $raw_equation\n";
 
 # look for any dot and ddot operators and replace with scalar mathematics
+# now also mag and cross (magnitude and cross product)
 # coding cannot handle nested ddot or dot operators
 # move string from $withdots to $withoutdots while doing replacements
   my $withdots = $raw_equation;
   my $withoutdots = '';
 
-  while ($withdots =~ /(<.*?>)|ddot\(|dot\(/) {
+  while ($withdots =~ /(<.*?>)|ddot\(|dot\(|mag\(|cross\[\h*l\h*=\h*(\d)\h*\]\(/) {
     my $pre = $`;
     my $post = $';
     my $operator = $&;
+    my $dimension = 0;
 # move over any variable and region names
     if ($1) { $withdots = $post; $withoutdots = $withoutdots.$pre.$operator; next; }
+    if ($2) { $dimension = $2; }
     $operator =~ s/\($//;
     print "INFO: found operator $operator in $raw_equation\n";
     print ::DEBUG "found operator $operator in $withdots that is part of raw_equation = $raw_equation\n";
     print ::DEBUG "pre = $pre: post = $post\n";
 
     my $midl = "";
-    while ( $post =~ /(<.+?>)|(\,)/ ) {
-      $post = $';
-      if ($1) {
-        $midl = $midl.$`.$1;
-      } else {
-        $midl = $midl.$`;
-        last;
+    if ($operator ne 'mag') { # for a magnitude, there is no comma, for dot, ddot and cross there is
+      while ( $post =~ /(<.+?>)|(\,)/ ) {
+        $post = $';
+        if ($1) {
+          $midl = $midl.$`.$1;
+        } else {
+          $midl = $midl.$`;
+          last;
+        }
       }
+    } else {
+      print ::DEBUG "left side not processes for mag operator\n";
     }
     print ::DEBUG "left side finalised: midl = $midl: post = $post\n";
         
@@ -1647,14 +1767,16 @@ sub expand_equation {
     print ::DEBUG "right side finalised: midr = $midr: midrnovar = $midrnovar: post = $post\n";
 
     my @posl = ();
+    if ($operator ne 'mag') {
 # this match allows r indices before and after a l index, matching the first colon after the l
-    print ::DEBUG "before looking for first colon: midl = $midl\n";
-    while ($midl =~ /<.+?\[[r=\d\s,]*?l[=\d\s,]*?(:)[,\d\s:]*?[r=\d\s,]*?\]>/) {
-      push (@posl, $+[1]); # $+[1] is the starting position of the first match
-      substr($midl, $+[1]-1, 1, " "); #replace : with blank so that it is not matched
-      print ::DEBUG "midl = $midl: posl = @posl\n";
+      print ::DEBUG "before looking for first colon: midl = $midl\n";
+      while ($midl =~ /<.+?\[[r=\d\s,]*?l[=\d\s,]*?(:)[,\d\s:]*?[r=\d\s,]*?\]>/) {
+        push (@posl, $+[1]); # $+[1] is the starting position of the first match
+        substr($midl, $+[1]-1, 1, " "); #replace : with blank so that it is not matched
+        print ::DEBUG "midl = $midl: posl = @posl\n";
+      }
+      @posl = sort{ $a <=> $b } @posl; # make sure index positions are in order
     }
-    @posl = sort{ $a <=> $b } @posl; # make sure index positions are in order
     my @posr = ();
     print ::DEBUG "before looking for first colon: midr = $midr\n";
     while ($midr =~ /<.+?\[[r=\d\s,]*?l[=\d\s,]*?(:)[,\d\s:]*?[r=\d\s,]*?\]>/) {
@@ -1666,7 +1788,7 @@ sub expand_equation {
     print ::DEBUG "after: midl = $midl: posl = @posl\n";
     print ::DEBUG "after: midr = $midr: posr = @posr\n";
 
-    my $mid = "(";
+    my $mid = "";
     if ($operator eq "dot") {
       if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in dot product in $variable_name equation on the following line: check the variables' [l=:] syntax: $filelinelocator"); } # scalar(@posl) is number of elements of posl array
       foreach my $n1 ( 1 .. 3 ) {
@@ -1674,7 +1796,8 @@ sub expand_equation {
         substr($midr, $posr[0]-1, 1, $n1); #replace blank with correct index
         $mid = $mid." + (".$midl.")*(".$midr.")";
       }
-    } else { # double dot product
+      $mid = "( ".$mid." )";
+    } elsif ($operator eq "ddot") { # double dot product
       if (@posl != 2 || @posr != 2) { error_stop("wrong number of colons in ddot product in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax: $filelinelocator"); } # scalar(@posl) is number of elements of posl array
       foreach my $n1 ( 1 .. 3 ) {
         substr($midl, $posl[0]-1, 1, $n1); #replace blank with correct index
@@ -1685,8 +1808,40 @@ sub expand_equation {
           $mid = $mid." + (".$midl.")*(".$midr.")";
         }
       }
+      $mid = "( ".$mid." )";
+    } elsif ($operator eq "mag") { # mag operator, has no posl
+      if (@posr == 1) { # we are calculating the magnitude of a vector, BSL p814
+        foreach my $n1 ( 1 .. 3 ) {
+          substr($midr, $posr[0]-1, 1, $n1); #replace blank with correct index
+          $mid = $mid." + (".$midr.")*(".$midr.")";
+        }
+        $mid = "sqrt(contextmax(( ".$mid." ),<tinyish>))";
+#       $mid = "sqrt( ".$mid." )";
+      } elsif (@posr == 2) { # we are calculating the magnitude of a tensor, BSL eq A.3-11, p817
+        foreach my $n1 ( 1 .. 3 ) {
+          substr($midr, $posr[1]-1, 1, $n1); #replace blank with correct index
+          foreach my $n2 ( 1 .. 3 ) {
+            substr($midr, $posr[0]-1, 1, $n2); #replace blank with correct index
+            $mid = $mid." + (".$midr.")*(".$midr.")";
+          }
+        }
+        $mid = "sqrt(contextmax(0.5d0*( ".$mid." ),<tinyish>))";
+#       $mid = "sqrt(0.5d0*( ".$mid." ))";
+      } else {
+        error_stop("wrong number of colons in mag in $variable_name equation on the following line: check the variables' [l=:,:]/[l=:] syntax: $filelinelocator");
+      }
+    } else { # cross product of two vectors (although components of tensors will also work), BSL, A.2-21
+      if (@posl != 1 || @posr != 1) { error_stop("wrong number of colons in cross product in $variable_name equation on the following line: check the variables' [l=:] syntax: $filelinelocator"); } # scalar(@posl) is number of elements of posl array
+      if ($dimension < 1 || $dimension > 3) { error_stop("wrong dimension number ($dimension) in cross product in $variable_name equation on the following line: check the variables' [l=:] syntax: $filelinelocator"); }
+      foreach my $nj ( 1 .. 3 ) {
+        foreach my $nk ( 1 .. 3 ) {
+          substr($midl, $posl[0]-1, 1, $nj); #replace blank with correct index
+          substr($midr, $posr[0]-1, 1, $nk); #replace blank with correct index
+          $mid = $mid." + permutation($dimension,$nj,$nk)*(".$midl.")*(".$midr.")";
+        }
+      }
+      $mid = "( ".$mid." )";
     }
-    $mid = $mid." )";
         
     print ::DEBUG "mid = $mid\n";
       

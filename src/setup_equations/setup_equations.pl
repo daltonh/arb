@@ -1955,19 +1955,28 @@ sub mequation_interpolation {
 
 # while ($_[0] =~ m/(face|cell|none)(tocell|toface|)(div|grad|divgrad|ave|limiter|if|sum|max|min|product|delta|link|newtonupdate|magnitude|vofd|vofphi|vofphishape)(\[(.*?)\]){0,1}\(/i) { #
 # while ($_[0] =~ m/(face|cell|none)(tocell|toface|)(div|grad|divgrad|ave|limiter|if|sum|max|min|product|delta|link|newtonupdate|magnitude|(\w+?))(\[(.*?)\]){0,1}\(/i) { #
-  while ($_[0] =~ m/(cell|face|node|none)(((to|from)(cell|face|node|none))|)(div|grad|divgrad|ave|limiter|if|sum|max|min|product|delta|link|newtonupdate|magnitude|boundangle|(\w+?))(\[([^]]*)\]){0,1}\(/i) { # now options cannot contain a closing brace ], and operator must be followed by a (: Note, a pair of () defines an operator
+  while ($_[0] =~ m/(cell|face|node|none|context)(((to|from)(cell|face|node|none|context))|)(div|grad|divgrad|ave|limiter|if|sum|max|min|product|delta|link|newtonupdate|magnitude|boundangle|(\w+?))(\[([^]]*)\]){0,1}\(/i) { # now options cannot contain a closing brace ], and operator must be followed by a (: Note, a pair of () defines an operator
 #                   1                    234        5                       6                                                                                      7      8  9    
     $operator = $&; # $& holds complete regex match
     $outbit[$nbits] = $`; # $` holds before match
     $_[0] = $'; # $' holds after match
 #   print DEBUG "after function matching: 1 = $1: 2 = $2: 3 = $3: 4 = $4: 5 = $5: 6 = $6: 7 = $7: 8 = $8: 9 = $9\n";
-    $centring = "\L$1"; # centring and (operator) type
+# centring and (operator) type
+    $centring = "\L$1";
+# if context has been specified as the operator centring type, set centring based on contextcentring, and check for problems later
+    if ($centring eq "context") { $centring = $contextcentring; print DEBUG "centring set to contextcentring: $contextcentring\n"; }
     $operator_type = "\L$6";
     if ($7) {$external_operator_type = $7;} else {$external_operator_type = "";}
     if ($8) {$options = $9;} else {$options = "";}
 # just dump to/from centring in variables, and check that they are correct later
     $to_centring = 0; $from_centring = 0;
-    if ($2) { if ($4 eq 'to') { $to_centring = $5; } else { $from_centring = $5; } }
+    if ($2) {
+      if ($4 eq 'to') {
+        $to_centring = $5; if ($to_centring eq "context") { $to_centring=$contextcentring; }
+      } else {
+        $from_centring = $5; if ($from_centring eq "context") { $from_centring=$contextcentring; }
+      }
+    }
 # if this is an external operator need to check that it is defined in a fortran externals file
     if ($external_operator_type) {
       $external_operator_file = -1;
@@ -3663,6 +3672,9 @@ sub run_maxima_simplify {
       push (@maxima_simplify_results, { "input" => $bit, "used" => 1, "tmp_file_number" => $tmp_file_number } );
 
       open(MAXIMA, ">$maxima_dir/tmp$tmp_file_number.maxima") or error_stop("problem opening temporary maxima file $maxima_dir/tmp$tmp_file_number.maxima: something funny is going on: check permissions??");
+# adding definitions for kronecker and permutation functions (see BSL, p811) that will work in both the maxima and arb context.  If the indicies are integers at the time maxima is run, these will simplify to integers, allowing considerable simplification of the executable code.
+# leaving heaviside as a fortran function
+      print MAXIMA "kronecker(i,j) := max(1-abs(i-j),0); permutation(i,j,k):= (i-j)*(j-k)*(k-i)/2;";
       print MAXIMA "foo:$bit;";
       print MAXIMA "with_stdout (\"$maxima_dir/tmp$tmp_file_number.simp\", grind(foo));";
       close(MAXIMA);

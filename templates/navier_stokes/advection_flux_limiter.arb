@@ -9,6 +9,7 @@ GENERAL_REPLACEMENTS R "<<advectionlimiterdim2>>" W "<u_adv_limiter[l=2]>"
 GENERAL_REPLACEMENTS R "<<advectionlimiterdim3>>" W "<u_adv_limiter[l=3]>"
 
 # the following includes whatever limiter is specified in the limiter_components template file, specific to the type of simulation
+# this could be done better now with flags rather than comments
 # steady-state and uniform density
 <<navierstokescomment>><<steadystatenavierstokescomment>><<uniformdensitycomment>>INCLUDE "advection_flux_limiter_components"
 # steady-state and varying density

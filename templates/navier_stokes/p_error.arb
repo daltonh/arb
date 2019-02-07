@@ -20,9 +20,7 @@ GENERAL_REPLACEMENTS D "<<dynamicforcefmethod>>" W "dxunit"
 # calculate <dynamic_force_c_f[l=:]> if requested
 # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
 IF <<dynamicforcecf>>
-  <<dim1comment>>FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[<<reflect=1>>,adjacentcells](<dynamic_force_c[l=1]>)"
-  <<dim2comment>>FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[<<reflect=2>>,adjacentcells](<dynamic_force_c[l=2]>)"
-  <<dim3comment>>FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[<<reflect=3>>,adjacentcells](<dynamic_force_c[l=3]>)"
+  FACE_LOCAL <dynamic_force_c_f[l=<<i>>]> "faceave[<<reflect=<<i>>>>,adjacentcells](<dynamic_force_c[l=<<i>>]>)"
 END_IF
 
 #{{ print "IN p_error.arb\n".string_debug(); }}
