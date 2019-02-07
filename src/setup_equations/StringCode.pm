@@ -40,7 +40,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_examine string_debug string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_examine string_debug string_set_transient_simulation arb_defined); # list of subroutines and variables that will by default be made available to calling routine
 use Common;
 
 #-------------------------------------------------------------------------------
@@ -648,19 +648,55 @@ sub string_debug {
 
 }
 #-------------------------------------------------------------------------------
-#sub defined {
+# subroutine that checks on existence, or provides information about, an arb variable or region name (NB, defined is already a perl routine...)
+# on input:
+# $_[0] = name of variable/region to be checked
+# $_[1] = comma separated list of options
+#   options: more to be included in the future!
+# on output:
+# $_[0] = REGION|VARIABLE|0, depending on whether name is an existing variable, region, or not defined (with no options)
+#
+# NOTE: this does not pick up system variables, and is pretty limited - hacky - waiting until big reorder code restructure to improve this functionality
+sub arb_defined {
 
-#}
-# TODO - add something like this, but wait for reorder restructuring
-# routine that checks if a variable name has been defined, for now
-# little routine that returns 1 if a string is defined, or 0 otherwise
-#sub variable_examine {
-#
-#  my $name = $_[0];
-#
-#  if ($code_block_found ge 0) { return 1; } else { return 0; };
-#
-#}
+  my $name = $_[0];
+  my $options = '';
+  if (defined($_[1])) { $options = $_[1]; }
+  my $exists = 0; # set this to whether name is a region or variable, or doesn't exist
+
+  if (!($options =~ /(^|,|\s)region($|,|\s)/)) {
+# check whether we have a variable from the asread_variables
+    my $variable_name = examine_name($name,"name");
+# see if this name has already been defined, and if so, find position of the variable in the input file
+    my $masread = -1; # variable masread starts at 0 if any variables are defined
+    foreach my $mcheck ( 0 .. $#::asread_variable ) {
+      if ($::asread_variable[$mcheck]{"name"} eq $variable_name) { # variable has been previously defined, and position in file is based on first definition
+        $masread = $mcheck;
+        last;
+      }
+    }
+    if ($masread ne -1) { $exists = 'VARIABLE'; }
+    if (!($exists)) { # also check the variable array for system variables
+      my $masread = -1; # variable masread starts at 0 if any variables are defined
+      foreach my $mcheck ( 0 .. $#{@::variable{"system"}} ) {
+        if ($::variable{"system"}[$mcheck]{"name"} eq $variable_name) { # variable has been previously defined, and position in file is based on first definition
+          $masread = $mcheck;
+          last;
+        }
+      }
+      if ($masread ne -1) { $exists = 'VARIABLE'; }
+    }
+  }
+
+  if ((!($options =~ /(^|,|\s)variable($|,|\s)/)) && !($exists)) {
+# check whether we have a region
+    my $region_name = examine_name($name,"regionname");
+    if (find_region($region_name) ne -1) { $exists = 'REGION'; }
+  }
+
+  return $exists;
+
+}
 #-------------------------------------------------------------------------------
 
 1;

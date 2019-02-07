@@ -57,7 +57,7 @@ use warnings;
 use Common;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(read_input_files perform_string_replacements); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(read_input_files); # list of subroutines and variables that will by default be made available to calling routine
 
 # define variables common to all of these subs
 our @code_blocks; # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
@@ -1501,23 +1501,6 @@ sub pop_code_block {
 }
 
 #-------------------------------------------------------------------------------
-# performs string replacements on the input string, returning the processed string again on output
-sub perform_string_replacements {
-
-  my $string = $_[0];
-
-  foreach my $n1 ( reverse( 0 .. $#code_blocks ) ) {
-#   foreach my $n2 ( 0 .. $#{$code_blocks[$n1]{"string_variables"}} ) {
-    foreach my $n2 ( reverse( 0 .. $#{$code_blocks[$n1]{"string_variables"}} ) ) {
-      if ($code_blocks[$n1]{"string_variables"}[$n2]{"replace"}) {
-        replace_substring($string,$code_blocks[$n1]{"string_variables"}[$n2]{"name"},$code_blocks[$n1]{"string_variables"}[$n2]{"value"});
-      }
-    }
-  }
-
-  $_[0] = $string;
-}
-#-------------------------------------------------------------------------------
 # performs index replacements on the input string, returning the processed string again on output
 # string that is returned may contain line breaks
 # on input:
@@ -2015,6 +1998,23 @@ sub get_raw_buffer {
 
 }
 
+#-------------------------------------------------------------------------------
+# performs string replacements on the input string, returning the processed string again on output
+sub perform_string_replacements {
+
+  my $string = $_[0];
+
+  foreach my $n1 ( reverse( 0 .. $#code_blocks ) ) {
+#   foreach my $n2 ( 0 .. $#{$code_blocks[$n1]{"string_variables"}} ) {
+    foreach my $n2 ( reverse( 0 .. $#{$code_blocks[$n1]{"string_variables"}} ) ) {
+      if ($code_blocks[$n1]{"string_variables"}[$n2]{"replace"}) {
+        replace_substring($string,$code_blocks[$n1]{"string_variables"}[$n2]{"name"},$code_blocks[$n1]{"string_variables"}[$n2]{"value"});
+      }
+    }
+  }
+
+  $_[0] = $string;
+}
 #-------------------------------------------------------------------------------
 
 1;

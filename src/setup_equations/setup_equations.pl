@@ -5694,6 +5694,7 @@ sub create_system_variables {
 #-------------------------------------------------------------------------------
 # finds mvar number for system variable with name $_[0]
 # if not found dies
+# rewrite me!
 
 sub get_system_mvar {
 
