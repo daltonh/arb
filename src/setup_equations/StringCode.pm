@@ -652,11 +652,9 @@ sub string_debug {
 # on input:
 # $_[0] = name of variable/region to be checked
 # $_[1] = comma separated list of options
-#   options: more to be included in the future!
+#   options: more to be included in the future during reorder rewrite, getting rid of asread_variable rubbish
 # on output:
 # $_[0] = REGION|VARIABLE|0, depending on whether name is an existing variable, region, or not defined (with no options)
-#
-# NOTE: this does not pick up system variables, and is pretty limited - hacky - waiting until big reorder code restructure to improve this functionality
 sub arb_defined {
 
   my $name = $_[0];
