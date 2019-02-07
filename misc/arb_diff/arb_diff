@@ -14,12 +14,20 @@ fileBvariableList = sys.argv[2]+'/setup_data/variable_list.arb'
 fileAoutput = sys.argv[1]+'/output.scr'
 fileBoutput = sys.argv[2]+'/output.scr'
 
+# dalton python OMG
+if os.path.isfile(fileAoutput) and os.path.isfile(fileBoutput):
+    includenumerical = 1
+else:
+    includenumerical = 0
+    print ('WARNING: numerical results not included in comparison as output.scr files not available')
+
 outfile = open('tempA.dat','w')
 
-infile = open (fileAoutput,'r')
-for line in infile:
-    if "read numerical" in line:
-        print >>outfile, line
+if includenumerical:
+    infile = open (fileAoutput,'r')
+    for line in infile:
+        if "read numerical" in line:
+            print >>outfile, line
 
 infile = open(fileAvariableList,'r')
 for line in infile:
@@ -29,10 +37,11 @@ outfile.close()
 
 outfile = open('tempB.dat','w')
 
-infile = open (fileBoutput,'r')
-for line in infile:
-    if "read numerical" in line:
-        print >>outfile, line
+if includenumerical:
+    infile = open (fileBoutput,'r')
+    for line in infile:
+        if "read numerical" in line:
+            print >>outfile, line
 
 infile = open(fileBvariableList,'r')
 for line in infile:

@@ -1597,7 +1597,7 @@ sub perform_index_replacements {
 
       print ::DEBUG "INFO: found index replacements\n";
       $new_string .= "# performing index string loops on the following index list pairs:\n";
-      foreach my $key (keys(%index)) {
+      foreach my $key (sort(keys(%index))) {
         if ($index{$key}{type} eq "l") {
           $index{$key}{list} = '<<dimensions>>';
         } elsif ($index{$key}{type} eq "r") {
@@ -1608,7 +1608,7 @@ sub perform_index_replacements {
       }
 
 # now need to loop over all combination of index elements....
-      foreach my $key (keys(%index)) {
+      foreach my $key (sort(keys(%index))) {
         my $string_line_saved = $string_line; # which is now not a line anymore, but an expanding section of definitions
         $string_line = '';
         foreach my $n ( string_eval($index{$key}{list},'list') ) {
