@@ -1,0 +1,276 @@
+#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+# root_input.arb file created by the arb script
+##################################################################################
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+##################################################################################
+# the following working directory files found by the arb script: vector_tensor_algebra.arb
+   #(comment created during unwrap): new block = vector_tensor_algebra.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "vector_tensor_algebra.arb"
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)# Vector and Tensor Algebra in arb
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)Summary: Testing and demonstrating vector, tensor and relstep index replacement notation.  Also demonstrating the 'colon' operators (sounds painful, yes?), dot(), ddot(), mag() and cross[l=:]().
+   #(hash inserted during unwrap)END_MARKDOWN
+   
+   MSH_FILE "surface.msh" # read in a simple 2D mesh to use for demonstration
+      #(comment created during unwrap): new block = ../../templates/general/cartesian_x1y2.arb: sub_block = 0
+      #(hash inserted during unwrap)INCLUDE_TEMPLATE "general/cartesian_x1y2" # setup the <<dimensions>> list for the domain
+      #(hash inserted during unwrap)MARKDOWN
+      #(hash inserted during unwrap)sets general replacements for cartesian 2D coordinates in the xy plane
+      #(hash inserted during unwrap)END_MARKDOWN
+      
+      
+      
+   DEFAULT_OPTIONS output # display all defined variables
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)## Index replacements
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)### Vector and Tensor expansion
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)'Index replacement' describes a technique to define vectors and tensors in arb using a compact notation.  It is complementary to 'string replacement'.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)The basic idea is that any index variable within a variable or region name option box (ie, <varible[ in here ]>) signals that the line of code should be repeated for all possible values of that index variable.  Index variables must be delimited by '<<' and '>>', similar to convention for string replacement variables.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)So the following defines vectors over the region <allcells>:
+   #(hash inserted during unwrap)END_MARKDOWN
+   
+   # performing index string loops on the following index list pairs:
+   #  <<i>> 1,2
+   CELL_CONSTANT <a[l=1]> "1" ON <allcells>
+   CELL_CONSTANT <a[l=2]> "2" ON <allcells>
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)This code results in:
+   #(hash inserted during unwrap)```arb
+   #(hash inserted during unwrap)CELL_CONSTANT <a[l=1]> "1" ON <allcells>
+   #(hash inserted during unwrap)CELL_CONSTANT <a[l=2]> "2" ON <allcells>
+   #(hash inserted during unwrap)```
+   #(hash inserted during unwrap)for this 2D domain.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)Note that
+   #(hash inserted during unwrap)```arb
+   #(hash inserted during unwrap)CELL_CONSTANT <a[l=1]> "<<i>>" ON <allcells>
+   #(hash inserted during unwrap)```
+   #(hash inserted during unwrap)would not trigger the index replacement as the index variable <<i>> does not appear in a variable or region name option box.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)Also, as index strings can appear anywhere, you can also use them in operator `option boxes`, as in
+   #(hash inserted during unwrap)END_MARKDOWN
+   
+   # performing index string loops on the following index list pairs:
+   #  <<my long index variable>> 1,2
+   CELL_CONSTANT <agradient[l=1]> "cellgrad[l=1](<a[l=1]>)"
+   CELL_CONSTANT <agradient[l=2]> "cellgrad[l=2](<a[l=1]>)"
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)Tensors can similarly be defined:
+   #(hash inserted during unwrap)END_MARKDOWN
+   
+   # performing index string loops on the following index list pairs:
+   #  <<l1>> 1,2
+   #  <<l2>> 1,2
+   NONE_CONSTANT <b[l=1,1]> "1*1" 
+   NONE_CONSTANT <b[l=2,1]> "2*1" 
+   NONE_CONSTANT <b[l=1,2]> "1*2" 
+   NONE_CONSTANT <b[l=2,2]> "2*2" # a tensor with 9 components
+   # performing index string loops on the following index list pairs:
+   #  <<l1>> 1,2
+   NONE_CONSTANT <c[l=1,1]> "1" 
+   NONE_CONSTANT <c[l=2,2]> "2" # a diagonal tensor
+   # performing index string loops on the following index list pairs:
+   #  <<l>> 1,2
+   NONE_CONSTANT <I[l=1,1]> "1.d0" 
+   NONE_CONSTANT <I[l=2,2]> "1.d0" # identity matrix
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)For this example the index variable is 'l-type', meaning that it is (first) associated with an 'l' or dimension index within a name, so when this index variable is expanded it takes on all the dimension values listed in the string variable `1,2`.  So this string variable needs to be set either explicitly, or via the general templates setup files, like the `general/cartesian_x1y2` called above in this file.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)You can also redefine this list of dimensions locally if you have the need.  It is a good idea to do this inside a separate code block (or file, which is also a block) so that you don't alter the globally set value.  EG:
+   #(hash inserted during unwrap)END_MARKDOWN
+   
+      #(comment created during unwrap): new block = vector_tensor_algebra.arb: sub_block = 1
+      #(hash inserted during unwrap)BLOCK # house code inside a block to that changes to <<dimensions>> are lost when block is closed and its string variables are forgotten
+      # change the dimensions over which looping is done, for one variable
+      # redefine available dimensions
+      
+      # local dimensions set to = 2,3
+      # are local dimensions set to 1,2?: 0
+      # are local dimensions set to 2,3?: 1
+      # performing index string loops on the following index list pairs:
+      #  <<l>> 2,3
+      CELL_CONSTANT <d[l=2]> 2 ON <allcells> 
+      CELL_CONSTANT <d[l=3]> 3 ON <allcells> # define a vector out of the plane as a numerical constant
+      #(hash inserted during unwrap)END_BLOCK
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)More useful vector algebra can be performed using the `kronecker` delta function, and `permutation` symbol.  A good reference for this notation is Bird, Stewart and Lightfoot, Appendix A of 'Transport Phenomena' (pages for 2nd edition).
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)For example, using the definition reuse feature, whereby a reference to a variable within its own definition either:
+   #(hash inserted during unwrap)1.  equates to 0 if this is the first definition, or
+   #(hash inserted during unwrap)2.  is set to the previous definition of this variable in subsequent definitions,
+   #(hash inserted during unwrap)it is possible to sum over indicies.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)For example, the dot product and cross product of two vectors can be calculated using:
+   #(hash inserted during unwrap)END_MARKDOWN
+   
+   # performing index string loops on the following index list pairs:
+   #  <<i>> 1,2
+   CELL_CONSTANT <v[l=1]> "kronecker(1,1)" 
+   CELL_CONSTANT <v[l=2]> "kronecker(2,1)" # defines a vector in the x direction
+   # performing index string loops on the following index list pairs:
+   #  <<i>> 1,2
+   CELL_CONSTANT <w[l=1]> "2*kronecker(2,1) + <v[l=1]>" 
+   CELL_CONSTANT <w[l=2]> "2*kronecker(2,2) + <v[l=2]>" # adds on a vector in the y direction
+   # performing index string loops on the following index list pairs:
+   #  <<i>> 1,2
+   CELL_CONSTANT <vw dot> "<vw dot> + <v[l=1]>*<w[l=1]>" 
+   CELL_CONSTANT <vw dot> "<vw dot> + <v[l=2]>*<w[l=2]>" # the dot product of both vectors
+      #(comment created during unwrap): new block = vector_tensor_algebra.arb: sub_block = 1
+      #(hash inserted during unwrap)BLOCK
+      # to show all cross product components
+      # performing index string loops on the following index list pairs:
+      #  <<i>> 1,2,3
+      #  <<j>> 1,2,3
+      #  <<k>> 1,2,3
+      CELL_CONSTANT <vw cross[l=1]> "<vw cross[l=1]> + permutation(1,1,1)*<v[l=1]>*<w[l=1]>" 
+      CELL_CONSTANT <vw cross[l=2]> "<vw cross[l=2]> + permutation(2,1,1)*<v[l=1]>*<w[l=1]>" 
+      CELL_CONSTANT <vw cross[l=3]> "<vw cross[l=3]> + permutation(3,1,1)*<v[l=1]>*<w[l=1]>" 
+      CELL_CONSTANT <vw cross[l=1]> "<vw cross[l=1]> + permutation(1,2,1)*<v[l=2]>*<w[l=1]>" 
+      CELL_CONSTANT <vw cross[l=2]> "<vw cross[l=2]> + permutation(2,2,1)*<v[l=2]>*<w[l=1]>" 
+      CELL_CONSTANT <vw cross[l=3]> "<vw cross[l=3]> + permutation(3,2,1)*<v[l=2]>*<w[l=1]>" 
+      CELL_CONSTANT <vw cross[l=1]> "<vw cross[l=1]> + permutation(1,3,1)*<v[l=3]>*<w[l=1]>" 
+      CELL_CONSTANT <vw cross[l=2]> "<vw cross[l=2]> + permutation(2,3,1)*<v[l=3]>*<w[l=1]>" 
+      CELL_CONSTANT <vw cross[l=3]> "<vw cross[l=3]> + permutation(3,3,1)*<v[l=3]>*<w[l=1]>" 
+      CELL_CONSTANT <vw cross[l=1]> "<vw cross[l=1]> + permutation(1,1,2)*<v[l=1]>*<w[l=2]>" 
+      CELL_CONSTANT <vw cross[l=2]> "<vw cross[l=2]> + permutation(2,1,2)*<v[l=1]>*<w[l=2]>" 
+      CELL_CONSTANT <vw cross[l=3]> "<vw cross[l=3]> + permutation(3,1,2)*<v[l=1]>*<w[l=2]>" 
+      CELL_CONSTANT <vw cross[l=1]> "<vw cross[l=1]> + permutation(1,2,2)*<v[l=2]>*<w[l=2]>" 
+      CELL_CONSTANT <vw cross[l=2]> "<vw cross[l=2]> + permutation(2,2,2)*<v[l=2]>*<w[l=2]>" 
+      CELL_CONSTANT <vw cross[l=3]> "<vw cross[l=3]> + permutation(3,2,2)*<v[l=2]>*<w[l=2]>" 
+      CELL_CONSTANT <vw cross[l=1]> "<vw cross[l=1]> + permutation(1,3,2)*<v[l=3]>*<w[l=2]>" 
+      CELL_CONSTANT <vw cross[l=2]> "<vw cross[l=2]> + permutation(2,3,2)*<v[l=3]>*<w[l=2]>" 
+      CELL_CONSTANT <vw cross[l=3]> "<vw cross[l=3]> + permutation(3,3,2)*<v[l=3]>*<w[l=2]>" 
+      CELL_CONSTANT <vw cross[l=1]> "<vw cross[l=1]> + permutation(1,1,3)*<v[l=1]>*<w[l=3]>" 
+      CELL_CONSTANT <vw cross[l=2]> "<vw cross[l=2]> + permutation(2,1,3)*<v[l=1]>*<w[l=3]>" 
+      CELL_CONSTANT <vw cross[l=3]> "<vw cross[l=3]> + permutation(3,1,3)*<v[l=1]>*<w[l=3]>" 
+      CELL_CONSTANT <vw cross[l=1]> "<vw cross[l=1]> + permutation(1,2,3)*<v[l=2]>*<w[l=3]>" 
+      CELL_CONSTANT <vw cross[l=2]> "<vw cross[l=2]> + permutation(2,2,3)*<v[l=2]>*<w[l=3]>" 
+      CELL_CONSTANT <vw cross[l=3]> "<vw cross[l=3]> + permutation(3,2,3)*<v[l=2]>*<w[l=3]>" 
+      CELL_CONSTANT <vw cross[l=1]> "<vw cross[l=1]> + permutation(1,3,3)*<v[l=3]>*<w[l=3]>" 
+      CELL_CONSTANT <vw cross[l=2]> "<vw cross[l=2]> + permutation(2,3,3)*<v[l=3]>*<w[l=3]>" 
+      CELL_CONSTANT <vw cross[l=3]> "<vw cross[l=3]> + permutation(3,3,3)*<v[l=3]>*<w[l=3]>" # the cross product of both vectors, should be in the z direction
+      #(hash inserted during unwrap)END_BLOCK
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)Most vector/tensor algebra can be represented reasonably compactly with this notation (see BSL examples).  Only note that all expressions are stricly for cartesian coordinates, so for other coordinate systems you have to express the algebra in terms of cartesian vector/tensor relationships.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)## Behind the scenes
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)The `unwrapped_input` file shows how the index notation is expanded into the scalar definitions that arb actually uses.  You can easily generate a lot of code.  However behind the scenes, a few things are happening to achieve index replacements, and these have implications:
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)1.  Index replacements are conducted on a statement before any string processing takes place.  This effectively means that index replacements are handed by a local block that lies at the top of the replacements stack (using first in, last out idea).  IE, index replacement strings take precedence over string replacements.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)One implication of this is string variables can contain index replacement variables in their names.  So the following
+   #(hash inserted during unwrap)```arb
+   #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+   #(hash inserted during unwrap)#  <<i>> 1,2
+   #(hash inserted during unwrap)CELL_CONSTANT <a[l=1]> "facegrad[<<reflect1>>](<b>)"
+   #(hash inserted during unwrap)CELL_CONSTANT <a[l=2]> "facegrad[<<reflect2>>](<b>)"
+   #(hash inserted during unwrap)```
+   #(hash inserted during unwrap)will correctly expand the `<<reflect<<i>>>>` replacement string for each of the dimensions considered.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)2.  The `kronecker` and `permutation` functions are defined and handled using maxima functions.  Also, all variable definitions are passed through maxima simplify before the fortran executable code is generated.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)This procedure ensures that the resulting code is efficient.  While the literal expansion of the cross product `<vw cross[l=:]>` (with : implying that this could take all values) contains 3x3x3=27 terms in the above, as the permutation function evaluates as 0 for 21 of these terms, maxima algebra will evaluate this, simplify, and leave only 6 terms to be considered (maxima knows that something x 0 = 0).  However, in this example there is more.  The `[l=3]` components of the vectors `v` and `w` have not been defined in the above (as `1,2` = '1,2' here), and so arb will instead define `<v[l=3]>` and `<w[l=3]>` as 'empty' variables, which are replaced by 0 before maxima simplification.  So that drops out another four terms from the sum, leaving only the two remaining nonzero terms to be evaluated during the fortran execution.  Note that `variable_list.arb` does not show the results of the maxima simplification:  This can be examined by looking at `equations_module.f90` within the build directory to see what code is actually being executed, or by looking at the maxima debugging files within the `setup_data/maxima` directory.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)It is also possible to put arb variables within the `kronecker` and `permutation` functions, but this is generally a bad idea.  arb variables are generally floats, whereas these functions are designed to work on integers.  But a bigger implication is that the simplification of these functions will not occur during the maxima simplification stage, and instead during the fortran execution - I guess that is what was wanted, but it is hard to see how this could not be done more efficiently.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)3.  As index (first) and string (second) replacements are also done on any code returned from an embedded perl section, you can also have replacements within these.  EG
+   #(hash inserted during unwrap)END_MARKDOWN
+   # performing index string loops on the following index list pairs:
+   #  <<i>> 1,2
+   CELL_CONSTANT <perlcreated[l=1]> '1**1'
+   CELL_CONSTANT <perlcreated[l=2]> '2**2'
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)creates a vector.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)### Transient expansion
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)Alongside 'l'-type indicies are 'r'-type indicies, with 'r' standing for relative timestep, or 'relstep'.  If an index appears in a name 'option box' associated with an 'r' index, then this code line is repeated for all probably relative timesteps being used, listed in the string variable `0`.  For a steady-state simulation, `0` = '0', whereas for a transient simulation, `0` = '1,2':  More specifically, `0` defaults to '0', unless a transient simulation is defined (as below).
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)So the following defines a variable at both the `r=0` and `r=1` relative timestep:
+   #(hash inserted during unwrap)END_MARKDOWN
+   
+   GENERAL_OPTIONS transientsimulation, timestepmax=1 # set the simulation to be transient, but limit the maximum number of timesteps
+   # relative timestep index r
+   # performing index string loops on the following index list pairs:
+   #  <<r>> 0,1
+   NONE_TRANSIENT <e[r=0]> "1.d0" 
+   NONE_TRANSIENT <e[r=1]> "1.d0" # will initialise a transient variable for all relsteps in <<relsteps>>
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)This is probably less useful than the vector tensor algebra however.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)## Colon Operators
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)While sounding painful, these operators are actually designed to actually minimise pain.  They are a shortform way of performing the most common vector operations.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)General notes about these operators:
+   #(hash inserted during unwrap)1.  they cannot be nested, that is you can't have a `dot` inside a `ddot`,
+   #(hash inserted during unwrap)2.  they are expanded once index and string replacements have taken place, but before any expressions are simplified by maxima, and
+   #(hash inserted during unwrap)3.  as they are not based on string or index replacements, you cannot put a colon within an operator `option box`.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)### dot and ddot
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)These compute the dot and double dot product of two vectors, or two tensors (or dyadics), respectively.
+   #(hash inserted during unwrap)END_MARKDOWN
+   
+   CELL_CONSTANT <vw colon dot> "dot(<v[l=:]>,<w[l=:]>)" # dot product of v and w
+   CELL_CONSTANT <vwwv colon ddot> "ddot(<v[l=:]>*<w[l=:]>,<w[l=:]>*<v[l=:]>)" # double dot product of dyadic tensor vw and diadic tensor wv
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)### cross
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)Similarly `cross[l=?]` calculates the ?th component of the cross product of two vectors
+   #(hash inserted during unwrap)END_MARKDOWN
+      #(comment created during unwrap): new block = vector_tensor_algebra.arb: sub_block = 1
+      #(hash inserted during unwrap)BLOCK
+      # to show all cross product components
+      # performing index string loops on the following index list pairs:
+      #  <<i>> 1,2,3
+      CELL_CONSTANT <vw colon cross[l=1]> "cross[l=1](<v[l=:]>,<w[l=:]>)" 
+      CELL_CONSTANT <vw colon cross[l=2]> "cross[l=2](<v[l=:]>,<w[l=:]>)" 
+      CELL_CONSTANT <vw colon cross[l=3]> "cross[l=3](<v[l=:]>,<w[l=:]>)" # cross product of vectors v and w
+      #(hash inserted during unwrap)END_BLOCK
+   
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)### mag
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)This calculates the magnitude of a vector if only one colon is found within its arguments, or the magnitude of a tensor if two colons are found within its arguments.
+   #(hash inserted during unwrap)END_MARKDOWN
+   CELL_CONSTANT <vw colon mag> "mag(<v[l=:]>*<w[l=:]>)" # magnitude of the dyadic tensor vw
+   CELL_CONSTANT <v colon mag> "mag(<v[l=:]>)" # magnitude of the vector v
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)Note that:
+   #(hash inserted during unwrap)1.  the magnitude of a tensor is defined as per BSL equation A.3-11 as sqrt(0.5*(T_ij:T_ij)), and
+   #(hash inserted during unwrap)2.  for both the vector and tensor forms, the result is limited by the small variable `<tinyish>` so that the gradient of the sqrt is defined as a finite (but hughish number) as the magnitude goes to zero.
+   #(hash inserted during unwrap)3.  as per other vector/tensor operators, mag returns a tensor magnitude assuming that cartesian coordinates are in use.  So this needs to be modified for (eg) cylindrical coordinates to something like this strain rate magnitude expression from the navier_stokes templates:
+   #(hash inserted during unwrap)```arb
+   #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+   #(hash inserted during unwrap)#  0 1,2
+   #(hash inserted during unwrap)CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=1]>/<cellx[l=1]>)**2),<tinyish>))" ON <allcells> 
+   #(hash inserted during unwrap)CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=2]>/<cellx[l=2]>)**2),<tinyish>))" ON <allcells> # for cylindrical coordinates
+   #(hash inserted during unwrap)```
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)And here is a completely unrelated example of context operator centring:
+   #(hash inserted during unwrap)END_MARKDOWN
+   
+   NONE_CONSTANT <scalar1> "1.d0"
+   NONE_CONSTANT <scalar2> "2.d0"
+   NONE_CONSTANT <scalarmax> "contextmax(<scalar1>,<scalar2>)" # context here evaluates as 'none'
+   
+##################################################################################
