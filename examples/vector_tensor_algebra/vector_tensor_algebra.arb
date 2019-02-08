@@ -1,0 +1,257 @@
+MARKDOWN
+# Vector and Tensor Algebra in arb
+
+Summary: Testing and demonstrating vector, tensor and relstep index replacement notation.  Also demonstrating the 'colon' operators (sounds painful, yes?), dot(), ddot(), mag() and cross[l=:]().
+END_MARKDOWN
+
+MSH_FILE "surface.msh" # read in a simple 2D mesh to use for demonstration
+INCLUDE_TEMPLATE "general/cartesian_x1y2" # setup the <<dimensions>> list for the domain
+DEFAULT_OPTIONS output # display all defined variables
+
+MARKDOWN
+## Index replacements
+
+### Vector and Tensor expansion
+
+'Index replacement' describes a technique to define vectors and tensors in arb using a compact notation.  It is complementary to 'string replacement'.
+
+The basic idea is that any index variable within a variable or region name option box (ie, <varible[ in here ]>) signals that the line of code should be repeated for all possible values of that index variable.  Index variables must be delimited by '<<' and '>>', similar to convention for string replacement variables.
+
+So the following defines vectors over the region <allcells>:
+END_MARKDOWN
+
+CELL_CONSTANT <a[l=<<i>>]> "<<i>>" ON <allcells>
+
+MARKDOWN
+This code results in:
+```arb
+CELL_CONSTANT <a[l=1]> "1" ON <allcells>
+CELL_CONSTANT <a[l=2]> "2" ON <allcells>
+```
+for this 2D domain.
+
+Note that
+```arb
+CELL_CONSTANT <a[l=1]> "<<i>>" ON <allcells>
+```
+would not trigger the index replacement as the index variable <<i>> does not appear in a variable or region name option box.
+
+Also, as index strings can appear anywhere, you can also use them in operator `option boxes`, as in
+END_MARKDOWN
+
+CELL_CONSTANT <agradient[l=<<my long index variable>>]> "cellgrad[l=<<my long index variable>>](<a[l=1]>)"
+
+MARKDOWN
+Tensors can similarly be defined:
+END_MARKDOWN
+
+NONE_CONSTANT <b[l=<<l1>>,<<l2>>]> "<<l1>>*<<l2>>" # a tensor with 9 components
+NONE_CONSTANT <c[l=<<l1>>,<<l1>>]> "<<l1>>" # a diagonal tensor
+NONE_CONSTANT <I[l=<<l>>,<<l>>]> "1.d0" # identity matrix
+
+MARKDOWN
+For this example the index variable is 'l-type', meaning that it is (first) associated with an 'l' or dimension index within a name, so when this index variable is expanded it takes on all the dimension values listed in the string variable `<<dimensions>>`.  So this string variable needs to be set either explicitly, or via the general templates setup files, like the `general/cartesian_x1y2` called above in this file.
+
+You can also redefine this list of dimensions locally if you have the need.  It is a good idea to do this inside a separate code block (or file, which is also a block) so that you don't alter the globally set value.  EG:
+END_MARKDOWN
+
+BLOCK # house code inside a block to that changes to <<dimensions>> are lost when block is closed and its string variables are forgotten
+# change the dimensions over which looping is done, for one variable
+# redefine available dimensions
+  REPLACEMENTS R '<<dimensions>>' W '2,3'
+  {{ return string_eval('# local dimensions set to = <<dimensions>>','text'); }}
+  {{ return "# are local dimensions set to 1,2?: ".string_test('local <<dimensions>>','local 1,2','text'); }}
+  {{ return "# are local dimensions set to 2,3?: ".string_test('local <<dimensions>>','local 2,3','text'); }}
+  CELL_CONSTANT <d[l=<<l>>]> <<l>> ON <allcells> # define a vector out of the plane as a numerical constant
+END_BLOCK
+
+MARKDOWN
+More useful vector algebra can be performed using the `kronecker` delta function, and `permutation` symbol.  A good reference for this notation is Bird, Stewart and Lightfoot, Appendix A of 'Transport Phenomena' (pages for 2nd edition).
+
+For example, using the definition reuse feature, whereby a reference to a variable within its own definition either:
+1.  equates to 0 if this is the first definition, or
+2.  is set to the previous definition of this variable in subsequent definitions,
+it is possible to sum over indicies.
+
+For example, the dot product and cross product of two vectors can be calculated using:
+END_MARKDOWN
+
+CELL_CONSTANT <v[l=<<i>>]> "kronecker(<<i>>,1)" # defines a vector in the x direction
+CELL_CONSTANT <w[l=<<i>>]> "2*kronecker(2,<<i>>) + <v[l=<<i>>]>" # adds on a vector in the y direction
+CELL_CONSTANT <vw dot> "<vw dot> + <v[l=<<i>>]>*<w[l=<<i>>]>" # the dot product of both vectors
+BLOCK
+  REPLACEMENTS R '<<dimensions>>' W '1,2,3' # to show all cross product components
+  CELL_CONSTANT <vw cross[l=<<i>>]> "<vw cross[l=<<i>>]> + permutation(<<i>>,<<j>>,<<k>>)*<v[l=<<j>>]>*<w[l=<<k>>]>" # the cross product of both vectors, should be in the z direction
+END_BLOCK
+
+MARKDOWN
+Most vector/tensor algebra can be represented reasonably compactly with this notation (see BSL examples).  Only note that all expressions are stricly for cartesian coordinates, so for other coordinate systems you have to express the algebra in terms of cartesian vector/tensor relationships.
+
+## Behind the scenes
+
+The `unwrapped_input` file shows how the index notation is expanded into the scalar definitions that arb actually uses.  You can easily generate a lot of code.  However behind the scenes, a few things are happening to achieve index replacements, and these have implications:
+
+1.  Index replacements are conducted on a statement before any string processing takes place.  This effectively means that index replacements are handed by a local block that lies at the top of the replacements stack (using first in, last out idea).  IE, index replacement strings take precedence over string replacements.
+
+One implication of this is string variables can contain index replacement variables in their names.  So the following
+```arb
+CELL_CONSTANT <a[l=<<i>>]> "facegrad[<<reflect<<i>>>>](<b>)"
+```
+will correctly expand the `<<reflect<<i>>>>` replacement string for each of the dimensions considered.
+
+2.  The `kronecker` and `permutation` functions are defined and handled using maxima functions.  Also, all variable definitions are passed through maxima simplify before the fortran executable code is generated.
+
+This procedure ensures that the resulting code is efficient.  While the literal expansion of the cross product `<vw cross[l=:]>` (with : implying that this could take all values) contains 3x3x3=27 terms in the above, as the permutation function evaluates as 0 for 21 of these terms, maxima algebra will evaluate this, simplify, and leave only 6 terms to be considered (maxima knows that something x 0 = 0).  However, in this example there is more.  The `[l=3]` components of the vectors `v` and `w` have not been defined in the above (as `<<dimensions>>` = '1,2' here), and so arb will instead define `<v[l=3]>` and `<w[l=3]>` as 'empty' variables, which are replaced by 0 before maxima simplification.  So that drops out another four terms from the sum, leaving only the two remaining nonzero terms to be evaluated during the fortran execution.  Note that `variable_list.arb` does not show the results of the maxima simplification:  This can be examined by looking at `equations_module.f90` within the build directory to see what code is actually being executed, or by looking at the maxima debugging files within the `setup_data/maxima` directory.
+
+It is also possible to put arb variables within the `kronecker` and `permutation` functions, but this is generally a bad idea.  arb variables are generally floats, whereas these functions are designed to work on integers.  But a bigger implication is that the simplification of these functions will not occur during the maxima simplification stage, and instead during the fortran execution - I guess that is what was wanted, but it is hard to see how this could not be done more efficiently.
+
+3.  As index (first) and string (second) replacements are also done on any code returned from an embedded perl section, you can also have replacements within these.  EG
+END_MARKDOWN
+{{ return "CELL_CONSTANT <perlcreated[l=<<i>>]> '<<i>>**<<i>>'\n" }}
+MARKDOWN
+creates a vector.
+
+### Transient expansion
+
+Alongside 'l'-type indicies are 'r'-type indicies, with 'r' standing for relative timestep, or 'relstep'.  If an index appears in a name 'option box' associated with an 'r' index, then this code line is repeated for all probably relative timesteps being used, listed in the string variable `<<relsteps>>`.  For a steady-state simulation, `<<relsteps>>` = '0', whereas for a transient simulation, `<<relsteps>>` = '1,2':  More specifically, `<<relsteps>>` defaults to '0', unless a transient simulation is defined (as below).
+
+So the following defines a variable at both the `r=0` and `r=1` relative timestep:
+END_MARKDOWN
+
+GENERAL_OPTIONS transientsimulation, timestepmax=1 # set the simulation to be transient, but limit the maximum number of timesteps
+# relative timestep index r
+NONE_TRANSIENT <e[r=<<r>>]> "1.d0" # will initialise a transient variable for all relsteps in <<relsteps>>
+
+MARKDOWN
+This is probably less useful than the vector tensor algebra however.
+
+## Colon Operators
+
+While sounding painful, these operators are actually designed to actually minimise pain.  They are a shortform way of performing the most common vector operations.
+
+General notes about these operators:
+1.  they cannot be nested, that is you can't have a `dot` inside a `ddot`,
+2.  they are expanded once index and string replacements have taken place, but before any expressions are simplified by maxima, and
+3.  as they are not based on string or index replacements, you cannot put a colon within an operator `option box`.
+
+### dot and ddot
+
+These compute the dot and double dot product of two vectors, or two tensors (or dyadics), respectively.
+END_MARKDOWN
+
+CELL_CONSTANT <vw colon dot> "dot(<v[l=:]>,<w[l=:]>)" # dot product of v and w
+CELL_CONSTANT <vwwv colon ddot> "ddot(<v[l=:]>*<w[l=:]>,<w[l=:]>*<v[l=:]>)" # double dot product of dyadic tensor vw and diadic tensor wv
+
+MARKDOWN
+
+### cross
+
+Similarly `cross[l=?]` calculates the ?th component of the cross product of two vectors
+END_MARKDOWN
+BLOCK
+  REPLACEMENTS R '<<dimensions>>' W '1,2,3' # to show all cross product components
+  CELL_CONSTANT <vw colon cross[l=<<i>>]> "cross[l=<<i>>](<v[l=:]>,<w[l=:]>)" # cross product of vectors v and w
+END_BLOCK
+
+MARKDOWN
+
+### mag
+
+This calculates the magnitude of a vector if only one colon is found within its arguments, or the magnitude of a tensor if two colons are found within its arguments.
+END_MARKDOWN
+CELL_CONSTANT <vw colon mag> "mag(<v[l=:]>*<w[l=:]>)" # magnitude of the dyadic tensor vw
+CELL_CONSTANT <v colon mag> "mag(<v[l=:]>)" # magnitude of the vector v
+MARKDOWN
+Note that:
+1.  the magnitude of a tensor is defined as per BSL equation A.3-11 as sqrt(0.5*(T_ij:T_ij)), and
+2.  for both the vector and tensor forms, the result is limited by the small variable `<tinyish>` so that the gradient of the sqrt is defined as a finite (but hughish number) as the magnitude goes to zero.
+3.  as per other vector/tensor operators, mag returns a tensor magnitude assuming that cartesian coordinates are in use.  So this needs to be modified for (eg) cylindrical coordinates to something like this strain rate magnitude expression from the navier_stokes templates:
+```arb
+CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2),<tinyish>))" ON <allcells> # for cylindrical coordinates
+```
+
+And here is a completely unrelated example of context operator centring:
+END_MARKDOWN
+
+NONE_CONSTANT <scalar1> "1.d0"
+NONE_CONSTANT <scalar2> "2.d0"
+NONE_CONSTANT <scalarmax> "contextmax(<scalar1>,<scalar2>)" # context here evaluates as 'none'
+
+END
+
+#NONE_CONSTANT <a[l=<<l>>,r=<<r>>]> "<another variable[l=<<l>>,<<l2>>]>+<and another[l=<<l2>>,<<l3>>]>" ON <region[r=<<r2>>]>
+#NONE_CONSTANT <g> "1.d0"
+
+# insist on string replacements delimiters of << and >>
+
+  #NONE_CONSTANT <ab[l=<<l>>]> "1.d0" should not be found here
+# vectors
+#NONE_CONSTANT <a[l=<<l>>]> "1.d0"  # comments
+#NONE_CONSTANT <a> "<b>+<c>"
+END
+# tensors
+NONE_CONSTANT <b2[l=<<l1>>,<<l2>>]> "kronecker(<<l1>>,<<l2>>)"
+NONE_CONSTANT <b[l=<<l1>>,<<l2>>]> "<<l1>>*<<l2>>*0"
+NONE_CONSTANT <c[l=1,<<l>>]> "1.d0"
+NONE_CONSTANT <d[l=<<n>>,3]> "1.d0"
+
+{{ return "# is <facenorm[l=1]> defined?: ".arb_defined('<facenorm[l=1]>') }}
+{{ return "# is <facenorm[l=1]> a region?: ".arb_defined('<facenorm[l=1]>','region') }}
+{{ return "# is <facenorm[l=1]> a variable?: ".arb_defined('<facenorm[l=1]>','variable') }}
+{{ return "# is <d[l=1,3]> defined?: ".arb_defined('<d[l=1,3]>') }}
+{{ return "# is <d[l=1,3]> a region?: ".arb_defined('<d[l=1,3]>','region') }}
+{{ return "# is <d[l=1,3]> a variable?: ".arb_defined('<d[l=1,3]>','variable') }}
+{{ return "# is <allcells> defined?: ".arb_defined('<allcells>') }}
+{{ return "# is <newvar[r=0]> defined?: ".arb_defined('<newvar[r=0]>') }}
+NONE_CONSTANT <newvar> 1.d0
+{{ return "# is <newvar[r=0]> defined?: ".arb_defined('<newvar[r=0]>') }}
+{{ return "# is <newvar[r=1]> defined?: ".arb_defined('<newvar[r=1]>') }}
+{{ return string_eval('# do replacements on line of text: dimensions = <<dimensions>>','text') }}
+
+IF {{ return (!(arb_defined('<newvar>'))) }}
+  NONE_CONSTANT <newvar> 2.d0
+END_IF
+  
+#GENERAL_OPTIONS nooutputdirtouchfiles
+
+END
+
+NONE_CONSTANT <a[l=<<l>>]> "max(1-2*abs(<<l>>-3),0)"  # comments
+NONE_CONSTANT <a[l=<<l>>,r=<<r>>]> "<a[l=<<l>>,r=<<r>>]>+<b[l=<<l>>,<<l3>>]>*<b[l=<<l3>>,<<l>>]>"
+
+NONE_CONSTANT <h> "<h> + <a[l=<<l>>]>" # should not match?
+
+# change the dimensions over which looping is done, for one variable
+BLOCK
+# redefine available dimensions
+  REPLACEMENTS R '<<dimensions>>' W '2,3'
+  {{ return string_eval('# local dimensions set to = <<dimensions>>','text'); }}
+  {{ return "# are local dimensions set to 2,3?: ".string_test('local <<dimensions>>','local 2,3','text'); }}
+  {{ return "# are local dimensions set to 1,2,3?: ".string_test('local <<dimensions>>','local 1,2,3','text'); }}
+  NONE_CONSTANT <j[l=<<l>>]> <<l>> # define as a numerical constant
+END_BLOCK
+
+# relative timestep index r
+NONE_TRANSIENT <e[r=<<r>>]> "1.d0" # will initialise a transient variable for all relsteps in <<relsteps>>
+
+NONE_CONSTANT <v[l=<<l>>]> "<<l>>"
+NONE_CONSTANT <w[l=<<l>>]> "2*<<l>>"
+NONE_CONSTANT <vw cross[l=<<i>>]> "<vw cross[l=<<i>>]> + permutation(<<i>>,<<j>>,<<k>>)*<v[l=<<j>>]>*<w[l=<<k>>]>"
+NONE_CONSTANT <vw dot> "<vw dot> + <v[l=<<i>>]>*<w[l=<<i>>]>"
+
+# colon operators, which are just fancy string expansions that are expanded before the equations are processed
+NONE_CONSTANT <vw colon mag> "mag(<v[l=:]>*<w[l=:]>)" # magnitude of the dyadic tensor vw
+NONE_CONSTANT <v colon mag> "mag(<v[l=:]>)" # magnitude of the vector v
+
+GENERAL_OPTIONS timestepmax=1
+
+{{ return "NONE_CONSTANT <perlcreated[l=<<i>>]> '<<i>>**<<i>>'\n" }}
+MARKDOWN
+TODO:
+1. kronecker delta functions in maxima
+2. check use of buffers for index_replacements
+3. check on two definitions of index strings??
+4. get <<relsteps>> updated with variable initialisation - nah, this remains a global variable, so that (eg) initialisations of variables can be done with this.  Probably a lot less useful than l indicies
+5. introduce the following notations
+ - cross[l=1](<vector1[l=:]>,<vector2[l=:]>)
+END_MARKDOWN
