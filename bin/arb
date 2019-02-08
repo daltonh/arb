@@ -492,7 +492,7 @@ echo "$file_separator" >>"$root_input_file" ;
 echo "# the following working directory files found by the arb script: ${arbfiles[@]}" >>"$root_input_file" ;
 # at the same time place a copy of the input files in the output directory, clearing out any old ones
 if [ ! -d "$output_dir/input_files" ] ; then mkdir -p "$output_dir/input_files" ; fi ;
-rm "$output_dir/input_files/*" >/dev/null 2>/dev/null ; # quietly remove everything from here
+rm "$output_dir/input_files/"* >/dev/null 2>/dev/null ; # quietly remove everything from here
 for file in "${arbfiles[@]}" ; do
   if [[ $file == *'.in' ]]; then echo "WARNING: the 'in' suffix on arb input files has been depreciated.  For future compatibility replace the suffix on $file with 'arb'."; fi
   echo "INCLUDE_WORKING \"$file\"" >>"$root_input_file" ;
