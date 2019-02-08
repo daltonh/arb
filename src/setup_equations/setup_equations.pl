@@ -3686,8 +3686,11 @@ sub run_maxima_simplify {
           "  error indicates that maxima had problems processing this equation.  All variables that\n".
           "  that appear in this equation should be referred to by their maxima names:  Hence if any\n".
           "  variables appear in the above as their original names (e.g. <my variable>) then\n".
-          "  check their equations as there is some problem with their definition (maybe a typo?).\n".
+          "  check their equations as there is some problem with their definition or use (maybe a typo?).\n".
           "  Also check that any mathematical functions and syntax used in the above are compatible with maxima.\n";
+        while ($bit =~ /<.+?>/g) { # apparently g in this context will match through the string once
+          print "  NOTE: Likely ".$&." is missing a definition (could be mispelt) or is mispelt in $variable{$otype}[$omvar]{name} definition\n";
+        }
         print "  Maxima input lines are contained in the file $maxima_dir/tmp$tmp_file_number.maxima\n";
         print "  Maxima processing output contained in the file $maxima_dir/tmp$tmp_file_number.txt\n";
         print "  Maxima output lines are contained in the file $maxima_dir/tmp$tmp_file_number.simp\n";
