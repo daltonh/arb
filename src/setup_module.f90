@@ -1944,6 +1944,9 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_logical(general_options(n),'ignoreinitialupdatetimes', &
       "ignore how long it takes to update each variable when initialising", &
       ignore_initial_update_times,'general')
+  else if (trim(option_name) == "outputdirtouchfiles" .or. trim(option_name) == "nooutputdirtouchfiles") then
+    call set_option_logical(general_options(n),'outputdirtouchfiles', &
+      "whether to look in output directory for the touch files (rather than the working directory)",output_dir_touch_files,'general')
 
   else
 !   write(*,'(a)') "WARNING: "//trim(option_name)//" is not a (valid) general option that can be set from the input file"

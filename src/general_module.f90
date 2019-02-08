@@ -89,6 +89,7 @@ logical :: mesh_details_file = .false. ! (.false., userable) print out a text fi
 logical :: region_details_file = .false. ! (.false., userable) print out a text file (region_details.txt) with all the region details
 logical :: link_details_file = .false. ! (.false., userable) print out a text file (link_details.txt) with all the link details
 logical :: convergence_details_file = .true. ! (.true., userable) write some convergence debugging data to convergence_details.txt
+logical :: output_dir_touch_files = .true. ! (.true., userable) if true look in output_dir for the touch (stop) files, otherwise if false look in the working directory
 
 !----------------------------------------------------------
 ! set some numerical and mathematical parameters, non-userable
@@ -3438,7 +3439,11 @@ end if
 
 check_stopfile = .false.
 do n = 1, listlength
-  inquire(file=trim(stopfilelist(n)),exist=check_stopfile)
+  if (output_dir_touch_files) then
+    inquire(file=trim(output_dir)//trim(stopfilelist(n)),exist=check_stopfile)
+  else
+    inquire(file=trim(stopfilelist(n)),exist=check_stopfile)
+  end if
   if (check_stopfile) return
 end do
 
