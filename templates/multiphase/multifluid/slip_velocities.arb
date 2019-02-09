@@ -1,5 +1,5 @@
 MARKDOWN
-Here we calculate the slip velocities for each disperse species.  The variable type can be chosen using the string <<variable_type>>, defaulting to OUTPUT.
+Here we calculate the slip velocities for each disperse species.  The variable type can be chosen using the string <<variable_type>>, defaulting to DERIVED
 END_MARKDOWN
 
 #REPLACEMENTS D "<<variable_type>>" W "OUTPUT"

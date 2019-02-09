@@ -1,0 +1,25 @@
+MARKDOWN
+SlipLift Saffman
+Originally coded by Nilanka
+END_MARKDOWN
+
+# calculate strain rate magnitude for the fluid phase
+INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude" R "<gamma[" W "<gamma_species0[" R "<gamma_magnitude>" W "<gamma_magnitude_species0>" R "<gamma_magnitude_f>" W "<gamma_magnitude_f_species0>" R "<u_f_vect[" W "<u_f_vect_species0[" R "<u[" W "<u_species0[" R "<ugrad_f[" W "<ugrad_f_species0["
+
+IF 1 # Saffmans Lift
+  CELL_DERIVED <particle_force_alpha6_allsolids> "(3*6.46/(4*<pi>))*sqrt(<mu_species0>*<rho_species0>/cellmax(<gamma_magnitude_species0>,1.d-20))" ON <domain> output # should be x sqrt(2)?
+  CELL_LOCAL <particle_force_alpha6_<<species>>> "<particle_force_alpha6_allsolids>/<a_<<species>>>" ON <domain>
+ELSE
+  ERROR "no other slip lifts coded up yet"
+END_IF
+
+# calculate the slip velocity for this phase
+INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities"
+
+CELL_DERIVED <particle_force_lift_slip_<<species>>[l=<<i>>]> "<particle_force_alpha6_<<species>>>*dot(<gamma_species0[l=<<i>>,:]>,<u_slip_<<species>>[l=:]>)" ON <domain> output
+
+# finally add these contributions onto extra force
+# a positive contribution to the solid species
+VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_lift_slip_<<species>>[l=<<i>>]>"
+# and an opposite contribution to the fluid species, specific to volume fraction
+VARIABLE <extra_force_species0[l=<<i>>]> "<extra_force_species0[l=<<i>>]> - <particle_force_lift_slip_<<species>>[l=<<i>>]>*<phi_bounded_<<species>>>/<phi_bounded_species0>"
