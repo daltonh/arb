@@ -7,7 +7,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
 # the following working directory files found by the arb script: ddot_test.arb multiply_variables.arb random_test.arb reuse.arb skip_if_test.arb syntax_test.arb
    #(comment created during unwrap): new block = ddot_test.arb: sub_block = 0
    #(hash inserted during unwrap)INCLUDE_WORKING "ddot_test.arb"
-   # this demonstrates how to take a double dot product and how to use a template file to perform a tensor transpose
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)This demonstrates how to take a double dot product and how to use a template file to perform a tensor transpose.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)The functionality in this file is now largely superseded: Now look at the vector_tensor_algebra example.
+   #(hash inserted during unwrap)END_MARKDOWN
    
    NONE_CONSTANT <A[l=1,1]> "11"
    NONE_CONSTANT <A[l=1,2]> "12"

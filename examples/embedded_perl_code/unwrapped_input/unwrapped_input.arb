@@ -4,9 +4,9 @@
 # the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
 EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
-# the following working directory files found by the arb script: string_code_demonstration.arb
-   #(comment created during unwrap): new block = string_code_demonstration.arb: sub_block = 0
-   #(hash inserted during unwrap)INCLUDE_WORKING "string_code_demonstration.arb"
+# the following working directory files found by the arb script: embedded_perl_code.arb
+   #(comment created during unwrap): new block = embedded_perl_code.arb: sub_block = 0
+   #(hash inserted during unwrap)INCLUDE_WORKING "embedded_perl_code.arb"
    INFO_TITLE "This file demonstrates (embedded) perl string code"
    INFO_AUTHOR "Dalton Harvie"
    INFO_DATE "14/2/17"
@@ -46,18 +46,18 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    
    
    # and the new IF operator can operate with string code too
-      #(comment created during unwrap): new block = string_code_demonstration.arb: sub_block = 1
+      #(comment created during unwrap): new block = embedded_perl_code.arb: sub_block = 1
       #(hash inserted during unwrap)IF 1 # here the perl string code is evaluated as the value of <<b>>
       CONSTANT <b> 2.d0
-      #(comment created during unwrap): new block = string_code_demonstration.arb: sub_block = 1
+      #(comment created during unwrap): new block = embedded_perl_code.arb: sub_block = 1
       #(hash inserted during unwrap)ELSE_IF 1.d0 # wheras instead here string variable <<a>> will be replaced by its value
       #(hash inserted during unwrap)CONSTANT <c> 2.d0
-      #(comment created during unwrap): new block = string_code_demonstration.arb: sub_block = 1
+      #(comment created during unwrap): new block = embedded_perl_code.arb: sub_block = 1
       #(hash inserted during unwrap)ELSE
       #(hash inserted during unwrap)CONSTANT <d> 2.d0
       #(hash inserted during unwrap)END_IF
    
-   TIMESTEPMAX 2
+   GENERAL_OPTIONS timestepmax=2
    
    # INCLUDE statements work by including the following string code to the start of the new code block
       #(comment created during unwrap): new block = ../../templates/general/element_indices.arb: sub_block = 0
@@ -88,5 +88,27 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    CONSTANT <tens[l=3,1]> "1 + 3"
    CONSTANT <tens[l=3,2]> "2 + 3"
    CONSTANT <tens[l=3,3]> "3 + 3"
+   
+   
+   NONE_CONSTANT <e[l=1,3]> 1.d0
+   # is <facenorm[l=1]> defined?: VARIABLE
+   # is <facenorm[l=1]> a region?: 0
+   # is <facenorm[l=1]> a variable?: VARIABLE
+   # is <e[l=1,3]> defined?: VARIABLE
+   # is <e[l=1,3]> a region?: 0
+   # is <e[l=1,3]> a variable?: VARIABLE
+   # is <allcells> defined?: REGION
+   # is <newvar[r=0]> defined?: 0
+   NONE_CONSTANT <newvar> 1.d0
+   # is <newvar[r=0]> defined?: VARIABLE
+   # is <newvar[r=1]> defined?: 0
+   # do replacements on line of text: dimensions = <<eimensions>>
+   
+      #(comment created during unwrap): new block = embedded_perl_code.arb: sub_block = 1
+      #(hash inserted during unwrap)IF 
+      #(hash inserted during unwrap)NONE_CONSTANT <newvar> 2.d0
+      #(hash inserted during unwrap)END_IF
+   
+   
    
 ##################################################################################
