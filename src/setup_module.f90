@@ -434,7 +434,7 @@ use general_module
 use gmesh_module
 integer :: i, ii, j, jj, k, kk, ncell, gmesh_number, n, ierror, i2, ii2, kk2, k2, jbase, jglue, l
 type(cell_type) :: default_cell
-double precision, dimension(totaldimensions) :: tangc, normc
+double precision, dimension(totaldimensions) :: tangc, normc, normcomparitor
 double precision :: maximum_error_angle, error_angle ! a parameter that indicates face curvature (in radians) if any curved 2d geometries are found
 integer, dimension(:), allocatable :: separation_index
 character(len=1000) :: formatline, filename
@@ -730,6 +730,32 @@ do j = 1, jtotal
     end if
     call normalise_vector(face(j)%norm(:,2))
     call normalise_vector(face(j)%norm(:,3))
+  end if
+
+! for any glued non-reflection faces make sure that they have the same norms, so that they generate the same kernels
+! we should also check that the face geometries are the same
+  if (face(j)%glue_jface /= 0) then
+    if (face(j)%glue_reflect == 0) then
+      if (j.gt.face(j)%glue_jface) then ! as the loop increases j, this ensures that face(j)%glue_jface has already been calculated
+        if (.false.) then
+! the idea here was to report on basis vectors (norm) that were different between glued faces
+! in practice this is hard to achieve as tang1 could = tang2, or tang1 could = -tang1 etc
+! could instead report upon area differences?
+          do l = 1, 3
+            normcomparitor = face(j)%norm(:,l) + face(face(j)%glue_jface)%norm(:,l)
+            if (vector_magnitude(normcomparitor).gt.1.d-10) then
+              formatline = '(a,i1,2(a,'//trim(indexformat)//'),a,3(g11.3))'
+              write(*,fmt=formatline) &
+                'WARNING: there is a difference between a dimension ',l,' normal/tangent between two glued faces: jface = ',j, &
+                ': glued jface = ',face(j)%glue_jface,': vector difference = ',normcomparitor
+              write(*,*) '  Copying normals between faces to ensure consistency'
+            end if
+          end do
+        end if
+! for large j copy the norm from the glue_jface, reversing the direction
+        face(j)%norm(:,:) = -face(face(j)%glue_jface)%norm(:,:)
+      end if
+    end if
   end if
 
   maximum_faceknodes = max(maximum_faceknodes,allocatable_integer_size(face(j)%knode))

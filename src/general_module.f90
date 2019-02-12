@@ -2172,7 +2172,7 @@ double precision, dimension(totaldimensions), intent(in), optional :: downcellx 
 double precision, intent(out), optional :: error_angle ! this is the maximum difference between adjacent normals on the geometry if it is curved
 logical, intent(out), optional :: error ! if an error occurred when calculating this geometry
 double precision, dimension(totaldimensions) :: norms, normtriangle, centretriangle, normtrianglelast
-integer :: kk
+integer :: kk, kk_next
 double precision :: aa, areatriangle, error_angle_l, aa_sum, edge_length, edge_length_c
 logical :: error_l, error_normalise
 double precision, parameter :: smallaa = 1.d-30
@@ -2260,25 +2260,59 @@ if (present(centre)) centre = centre/aa_sum ! slightly more accurate to use aa_s
 if (present(area)) area = aa ! must be aa for divergence of constant to be correct around each cell
 
 if (present(norm)) then
+  if (debug) then
+    write(31,*) 'About to calculate norms for 3d geometry'
+    write(31,*) 'un-normalised norm(:,1) = ',norm(:,1)
+    write(31,*) 'centre = ',centre
+    write(31,*) 'downcellx = ',downcellx
+  end if
+
   norm(:,1) = norms/aa ! and finally normalise normal length
 ! and chose direction so that it is correctly pointing from the downcell to the upcell
   if (present(downcellx)) then
     if (dot_product(norm(:,1),centre-downcellx) < 0.d0) norm(:,1) = -norm(:,1)
   end if
 
+  if (debug) then
+    write(31,*) 'normalised norm(:,1) = ',norm(:,1)
+  end if
+
   norm(:,2) = node(knode(2))%x-node(knode(1))%x ! first tangent, lying in plane of geometry from node 1->2, probably not a good representation for curved faces
+
+  if (debug) then
+    write(31,*) 'calculating norm(:,2)'
+    write(31,*) 'initial norm(:,2), knode(1) -> knode(2) = ',norm(:,2)
+  end if
+
 ! this is a change in v0.60 to get norm(2) in 2D geometries aligned with the shortest node-to-node vector, rather than the one with the lowest index
 ! if all node-to-node vectors are the same then this will default to the old scheme of the first node-to-node vector
   if (.true.) then
 ! loop through nodes finding shortest node-to-node vector, and choose this as the norm(:,2) = tang1 instead
     edge_length=vector_magnitude(node(knode(2))%x-node(knode(1))%x)
-    do kk = 3, ubound(knode,1)
-      edge_length_c=vector_magnitude(node(knode(kk))%x-node(knode(kk-1))%x)
+    if (debug) then
+      write(31,*) 'selecting node -> node edge with minimum length:'
+      write(31,*) 'edge_length = ',edge_length
+    end if
+    do kk = 2, ubound(knode,1)
+      kk_next = kk + 1
+      if (kk_next > ubound(knode,1)) kk_next = 1 ! final edge is back to first node again
+
+      edge_length_c=vector_magnitude(node(knode(kk_next))%x-node(knode(kk))%x)
+      if (debug) then
+        write(31,*) 'NEXT EDGE: kk = ',kk
+        write(31,*) 'edge_length_c = ',edge_length_c
+        write(31,*) 'edge vector = ',node(knode(kk_next))%x-node(knode(kk))%x
+        write(31,*) 'knode(kk_next) = ',knode(kk_next)
+        write(31,*) 'knode(kk) = ',knode(kk)
+      end if
       if (edge_length_c<edge_length) then
         edge_length=edge_length_c
-        norm(:,2) = node(knode(kk))%x-node(knode(kk-1))%x
+        norm(:,2) = node(knode(kk_next))%x-node(knode(kk))%x
       endif
     enddo
+    if (debug) then
+      write(31,*) 'final norm(:,2), knode(1) -> knode(2) = ',norm(:,2)
+    end if
   endif
   call normalise_vector(vector=norm(:,2),error=error_normalise)
   if (error_normalise) then
