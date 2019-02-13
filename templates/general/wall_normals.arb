@@ -1,0 +1,19 @@
+#Wall normals are calculated in 2D and 3D geo
+
+IF 1
+#Wall normal vector
+  <<dim1comment>> CELL_CONSTANT <wall_normal[l=1]> "-(celltofacelink(<facex[l=1]>,fromregion=<domain>,toregion=<walls>)-<cellx[l=1]>)" ON <domain> output #x-direction
+  <<dim2comment>> CELL_CONSTANT <wall_normal[l=2]> "-(celltofacelink(<facex[l=2]>,fromregion=<domain>,toregion=<walls>)-<cellx[l=2]>)" ON <domain> output #y-direction
+  <<dim3comment>> CELL_CONSTANT <wall_normal[l=3]> "-(celltofacelink(<facex[l=3]>,fromregion=<domain>,toregion=<walls>)-<cellx[l=3]>)" ON <domain> output
+  
+  CELL_CONSTANT <wall_normal_magnitude> "sqrt(cellmax(dot(<wall_normal[l=:]>,<wall_normal[l=:]>),0.d0))" ON <domain> output
+ #Unit wall normals
+  <<dim1comment>> CELL_CONSTANT <wall_normal_unit[l=1]> "<wall_normal[l=1]>/<wall_normal_magnitude>" ON <domain> output
+  <<dim2comment>> CELL_CONSTANT <wall_normal_unit[l=2]> "<wall_normal[l=2]>/<wall_normal_magnitude>" ON <domain> output
+  <<dim3comment>> CELL_CONSTANT <wall_normal_unit[l=3]> "<wall_normal[l=3]>/<wall_normal_magnitude>" ON <domain> output
+
+ELSE
+  #CELL_CONSTANT <normal_unit[l=1]> "-celltofacelink(<facenorm[l=1]>,fromregion=<domain>,toregion=<boundaries>)" ON <domain> output
+  CELL_CONSTANT <normal_unit[l=2]> "-celltofacelink(<facenorm[l=2]>,fromregion=<domain>,toregion=<walls>)" ON <domain> output
+ # CELL_CONSTANT <normal_distance> "dot(<normal_unit[l=:]>,<cellx[l=:]>)" ON <domain>output
+END_IF

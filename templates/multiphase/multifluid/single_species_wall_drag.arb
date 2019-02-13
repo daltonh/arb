@@ -10,7 +10,7 @@ END_IF
 
 
 #Calculate wall normal distance
-INCLUDE_LOCAL "wall_normal_tensor.arb"
+INCLUDE_TEMPLATE "wall_normal_tensor.arb"
 CELL_CONSTANT <wall_normal_magnitude_norm_<<species>>> "cellmin(<a_<<species>>>/<wall_normal_magnitude>,1.0d0)" ON <domain> output
 CELL_CONSTANT <particle_force_alpha1_distance_<<species>>> "(1.d0/(1.d0-((9/16)*(<wall_normal_magnitude_norm_<<species>>>))+((1/8)*(<wall_normal_magnitude_norm_<<species>>>)^3-(45/256)*(<wall_normal_magnitude_norm_<<species>>>)^4))) - 1" ON <domain> output
 
@@ -22,15 +22,6 @@ CELL_DERIVED <particle_force_alpha1_<<species>>> "9.d0/2.d0*<mu_species0>/<a_<<s
 #INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities" R "<<variable_type>>" W "LOCAL" $ local no longer needed
 INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities"
 
-#Tangential wall drag force
-#CELL_DERIVED <drag_force_wall_<<species>>[l=1]> "-<particle_force_alpha1>*dot(<unit_wall_tt[l=1,:]>,<u_slip_<<species>>[l=:]>)" ON <domain> output,componentoutput #Wall drag force acting on the solid phase
-#CELL_DERIVED <drag_force_wall_species0[l=1]> "-<drag_force_wall_<<species>>[l=1]>*<phi_bounded_<<species>>>/<phi_bounded_species0>" ON <domain> output,componentoutput #Wall drag force acting on the fluid phase
-
-{{ return vector_expand(
-# 'CELL_DERIVED <particle_force_wall_drag_<<species>>[l=$l]> "<particle_force_alpha1_<<species>>>*dot(<unit_wall_tt[l=$l,:]>,<u_slip_<<species>>[l=:]>)" ON <domain> output',
-  'CELL_DERIVED <particle_force_wall_drag_<<species>>[l=$l]> "-<particle_force_alpha1_<<species>>>*dot(<unit_wall_tt[l=$l,:]>,<u_slip_<<species>>[l=:]>)" ON <domain> output',
-  'VARIABLE <extra_force_<<species>>[l=$l]> "<extra_force_<<species>>[l=$l]> + <particle_force_wall_drag_<<species>>[l=$l]>"',
-  'CELL_DERIVED <particle_force_wall_drag_species0[l=$l]> "-<particle_force_wall_drag_<<species>>[l=$l]>*<phi_bounded_<<species>>>/<phi_bounded_species0>" ON <domain> output',
-  'VARIABLE <extra_force_species0[l=$l]> "<extra_force_species0[l=$l]> + <particle_force_wall_drag_species0[l=$l]>"'
-) }}
-
+CELL_DERIVED <particle_force_wall_drag_<<species>>[l=<<i>>]> "-<particle_force_alpha1_<<species>>>*dot(<unit_wall_tt[l=<<i>>,:]>,<u_slip_<<species>>[l=:]>)" ON <domain> output
+VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_wall_drag_<<species>>[l=<<i>>]>"
+VARIABLE <extra_force_species0[l=<<i>>]> "<extra_force_species0[l=<<i>>]> - <particle_force_wall_drag_<<species>>[l=<<i>>]>*<phi_bounded_<<species>>>/<phi_bounded_species0>"
