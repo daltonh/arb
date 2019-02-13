@@ -3,8 +3,8 @@ Here we find <mu_f_species> for each species
 END_MARKDOWN
 
 #REPLACEMENTS D "<<viscosity_method>>" W "einstein"
-REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
-#REPLACEMENTS D "<<viscosity_method>>" W "thomas65"
+#REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
+REPLACEMENTS D "<<viscosity_method>>" W "thomas65"
 
 #REPLACEMENTS D "<<stressmethod>>" W "version1" # method, with phi inside viscous stress divergence
 REPLACEMENTS D "<<stressmethod>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
@@ -69,7 +69,7 @@ ELSE
         CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>)+<mu_K_s>*(<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**2)" ON <allcells> output
       ELSE_IF {{ return string_test('<<viscosity_method>>','thomas65')}}
         CELL_DERIVED <mu_phi_bounded_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)" output # here <mu_phi_max_allsolids> is used as a cut-off
-        CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_bounded_allsolids>+10.05d0*(<mu_phi_bounded_allsolids>)**2 + 0.00273d0*exp(16.6d0*<mu_phi_bounded_allsolids>)" ON <allcells> output
+        CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_bounded_allsolids>+10.05d0*(<mu_phi_bounded_allsolids>)**2 + 0.00273d0*exp(16.6d0*<mu_phi_bounded_allsolids>))" ON <allcells> output
       ELSE
         ERROR "in single_species_viscosity: viscosity_method = <<viscosity_method>> not coded yet or unknown"
       END_IF
