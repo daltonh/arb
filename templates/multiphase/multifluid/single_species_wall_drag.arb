@@ -22,6 +22,10 @@ CELL_DERIVED <particle_force_alpha1_<<species>>> "9.d0/2.d0*<mu_species0>/<a_<<s
 #INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities" R "<<variable_type>>" W "LOCAL" $ local no longer needed
 INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities"
 
-CELL_DERIVED <particle_force_wall_drag_<<species>>[l=<<i>>]> "-<particle_force_alpha1_<<species>>>*dot(<unit_wall_tt[l=<<i>>,:]>,<u_slip_<<species>>[l=:]>)" ON <domain> output
+IF 0 # trial based on solid velocity relative to wall velocity - very stable
+  CELL_DERIVED <particle_force_wall_drag_<<species>>[l=<<i>>]> "-<particle_force_alpha1_<<species>>>*dot(<unit_wall_tt[l=<<i>>,:]>,<u_<<species>>[l=:]>)" ON <domain> output
+ELSE
+  CELL_DERIVED <particle_force_wall_drag_<<species>>[l=<<i>>]> "-<particle_force_alpha1_<<species>>>*dot(<unit_wall_tt[l=<<i>>,:]>,<u_slip_<<species>>[l=:]>)" ON <domain> output
+END_IF
 VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_wall_drag_<<species>>[l=<<i>>]>"
 VARIABLE <extra_force_species0[l=<<i>>]> "<extra_force_species0[l=<<i>>]> - <particle_force_wall_drag_<<species>>[l=<<i>>]>*<phi_bounded_<<species>>>/<phi_bounded_species0>"
