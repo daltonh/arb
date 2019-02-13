@@ -19,7 +19,7 @@ IF {{ return string_test('<<dragmethod>>','version1') }}
 ELSE
 
 # include the influence of hindered settling function etc
-  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "<beta*j_<<species>>_species0>*(<a_<<species>>>**2)*<gammarate_species0[l=<<i>>]>/6.d0" ON <domain> output
+  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "<beta^_<<species>>_species0>*(<a_<<species>>>**2)*<gammarate_species0[l=<<i>>]>/6.d0" ON <domain> output
 
 END_IF
 
