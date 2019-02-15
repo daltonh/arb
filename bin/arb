@@ -317,7 +317,7 @@ if [ -n "$previous_output_dir" ] ; then
     previous_output_dir="$working_dir/$previous_output_dir";
   fi;
   previous_build_dir="$previous_output_dir/build";
-elif [ -L "latest_output" ] ; then # check if link to last run output directory is available
+elif [ ! -d "$output_dir" -a -L "latest_output" ] ; then # in the instance that the output directory does not exist, check if link to last run output directory is available
   previous_output_dir="$working_dir/latest_output";
   previous_build_dir="$previous_output_dir/build";
 fi;
