@@ -37,6 +37,7 @@ NONE_CONSTANT <phi_tol> 1.d-6 # this is a minimum phi to consider any phase pres
     $return_string .= "FACE_LOCAL <phi_f_$species> [] 'faceave(<phi_$species>)' ON <allfaces>\n";
     $return_string .= "FACE_LOCAL <phi_f_pos_adjacent_$species> [] 'faceave[adjacentcells](<phi_pos_$species>)' ON <allfaces>\n";
     $return_string .= "FACE_LOCAL <phi_f_bounded_adjacent_$species> [] 'faceave[adjacentcells](<phi_bounded_$species>)' ON <allfaces>\n";
+    $return_string .= "FACE_LOCAL <phi_f_bounded_harmonic_$species> [] 'faceave[harmonic](<phi_bounded_$species>)' ON <allfaces>\n";
     $return_string .= "<<transientnavierstokescomment>> FACE_LOCAL <phi_f_bounded_adjacent_$species"."[r=1]> [] 'faceave[adjacentcells](<phi_bounded_$species"."[r=1]>)' ON <allfaces>\n";
     $return_string .= "FACE_LOCAL <phi_f_bounded_adjacent_nob_$species> [] 'faceif(facedelta(<boundaries>),faceave[downcell](<phi_bounded_$species>),<phi_f_bounded_adjacent_$species>)' ON <allfaces>\n";
     $return_string .= "CELL_LOCAL <phi_fc_bounded_$species> [] 'cellave(<phi_f_bounded_$species>)'\n";

@@ -8,33 +8,53 @@ REPLACEMENTS D "<<slip_lift_method>>" W "saffman"
 #REPLACEMENTS D "<<slip_lift_method>>" W "saffmannew"
 
 REPLACEMENTS D "<<slip_lift_dynamic_force>>" W "1" # apply using the dynamic force, rather than extra force
+REPLACEMENTS D "<<slip_lift_face_based>>" W "1" # calculate at the faces, and then average to the cells
 
 # calculate the slip velocity for this phase for all methods
 INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities"
 
+IF <<cylindrical>>
+  ERROR "single_species_slip_lift not cylindrical compatible"
+END_IF
+
 NONE_CONSTANT <particle_force_slip_lift_multiplier> 1.d0
 
 IF {{ return (string_test('<<slip_lift_method>>','saffman')) }}
-  # calculate strain rate magnitude for the fluid phase
-  INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude" R "<gamma[" W "<gamma_species0[" R "<gamma_magnitude>" W "<gamma_magnitude_species0>" R "<gamma_magnitude_f>" W "<gamma_magnitude_f_species0>" R "<u_f_vect[" W "<u_f_vect_species0[" R "<u[" W "<u_species0[" R "<ugrad_f[" W "<ugrad_f_species0["
 
-  IF 1 # Saffmans Lift
-    CELL_DERIVED <particle_force_alpha6_allsolids> "(3*6.46/(4*<pi>))*sqrt(<mu_species0>*<rho_species0>/cellmax(<gamma_magnitude_species0>,1.d-20))" ON <allcells> output # should be x sqrt(2)?
-    CELL_LOCAL <particle_force_alpha6_<<species>>> "<particle_force_alpha6_allsolids>/<a_<<species>>>" ON <allcells>
-  ELSE
-    ERROR "no other slip lifts coded up yet"
-  END_IF
-
-  CELL_DERIVED <particle_force_lift_slip_<<species>>[l=<<i>>]> "-<particle_force_slip_lift_multiplier>*<particle_force_alpha6_<<species>>>*dot(<gamma_species0[l=<<i>>,:]>,<u_slip_<<species>>[l=:]>)" ON <allcells> output
-
-# calculate force all at faces, normal component
-# required for dynamic force treatment
-  IF <<slip_lift_dynamic_force>>
-    FACE_LOCAL <gamma_f_species0[l=<<i>>,<<j>>]> "<ugrad_f_species0[l=<<i>>,<<j>>]>+<ugrad_f_species0[l=<<j>>,<<i>>]>" ON <allfaces> output
+  IF <<slip_lift_face_based>>
+    FACE_DERIVED <gamma_f_species0[l=<<i>>,<<j>>]> "<ugrad_f_species0[l=<<i>>,<<j>>]>+<ugrad_f_species0[l=<<j>>,<<i>>]>" ON <allfaces> output
+    FACE_DERIVED <gamma_magnitude_f_species0> "mag(<gamma_f_species0[l=:,:]>)" ON <allfaces> output
+    FACE_DERIVED <particle_force_alpha6_f_allsolids> "(3*6.46/(4*<pi>))*sqrt(<mu_species0>*<rho_species0>/facemax(<gamma_magnitude_f_species0>,1.d-20))" ON <allfaces> output
+    FACE_LOCAL <particle_force_alpha6_f_<<species>>> "<particle_force_alpha6_f_allsolids>/<a_<<species>>>" ON <allfaces>
     FACE_LOCAL <u_f_slip_<<species>>[l=<<i>>]> "<u_f_vect_<<species>>[l=<<i>>]>-<u_f_vect_species0[l=<<i>>]>" ON <allfaces> output
-    FACE_DERIVED <particle_force_f_lift_slip_<<species>>> "-<particle_force_slip_lift_multiplier>*<particle_force_alpha6_<<species>>>*ddot(<gamma_f_species0[l=:,:]>,<u_f_slip_<<species>>[l=:]>*<facenorm[l=:]>)" ON <allfaces> output
-    FACE_OUTPUT <particle_force_f_lift_slip_visualise_<<species>>[l=<<i>>]> "<particle_force_f_lift_slip_<<species>>>*<facenorm[l=<<i>>]>" ON <allfaces> output
+    FACE_DERIVED <particle_force_f_lift_slip_vect_<<species>>[l=<<i>>]> "-<particle_force_slip_lift_multiplier>*<particle_force_alpha6_f_<<species>>>*dot(<u_f_slip_<<species>>[l=:]>,<gamma_f_species0[l=:,<<i>>]>)" ON <allfaces> output
+    FACE_DERIVED <particle_force_f_lift_slip_<<species>>> "dot(<particle_force_f_lift_slip_vect_<<species>>[l=:]>,<facenorm[l=:]>)" ON <allfaces> output
+    CELL_DERIVED <particle_force_lift_slip_<<species>>[l=<<i>>]> "<particle_force_f_lift_slip_vect_<<species>>[l=<<i>>]>" ON <allcells> output
+
+  ELSE
+# otherwise calculate at the cell and face centres separately
+    # calculate strain rate magnitude for the fluid phase
+    INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude" R "<gamma[" W "<gamma_species0[" R "<gamma_magnitude>" W "<gamma_magnitude_species0>" R "<gamma_magnitude_f>" W "<gamma_magnitude_f_species0>" R "<u_f_vect[" W "<u_f_vect_species0[" R "<u[" W "<u_species0[" R "<ugrad_f[" W "<ugrad_f_species0["
+
+    IF 1 # Saffmans Lift
+      CELL_DERIVED <particle_force_alpha6_allsolids> "(3*6.46/(4*<pi>))*sqrt(<mu_species0>*<rho_species0>/cellmax(<gamma_magnitude_species0>,1.d-20))" ON <allcells> output # should be x sqrt(2)?
+      CELL_LOCAL <particle_force_alpha6_<<species>>> "<particle_force_alpha6_allsolids>/<a_<<species>>>" ON <allcells>
+    ELSE
+      ERROR "no other slip lifts coded up yet"
+    END_IF
+
+    CELL_DERIVED <particle_force_lift_slip_<<species>>[l=<<i>>]> "-<particle_force_slip_lift_multiplier>*<particle_force_alpha6_<<species>>>*dot(<gamma_species0[l=<<i>>,:]>,<u_slip_<<species>>[l=:]>)" ON <allcells> output
+
+  # calculate force all at faces, normal component
+  # required for dynamic force treatment
+    IF <<slip_lift_dynamic_force>>
+      FACE_LOCAL <gamma_f_species0[l=<<i>>,<<j>>]> "<ugrad_f_species0[l=<<i>>,<<j>>]>+<ugrad_f_species0[l=<<j>>,<<i>>]>" ON <allfaces> output
+      FACE_LOCAL <u_f_slip_<<species>>[l=<<i>>]> "<u_f_vect_<<species>>[l=<<i>>]>-<u_f_vect_species0[l=<<i>>]>" ON <allfaces> output
+      FACE_DERIVED <particle_force_f_lift_slip_<<species>>> "-<particle_force_slip_lift_multiplier>*<particle_force_alpha6_<<species>>>*ddot(<gamma_f_species0[l=:,:]>,<u_f_slip_<<species>>[l=:]>*<facenorm[l=:]>)" ON <allfaces> output
+      FACE_OUTPUT <particle_force_f_lift_slip_visualise_<<species>>[l=<<i>>]> "<particle_force_f_lift_slip_<<species>>>*<facenorm[l=<<i>>]>" ON <allfaces> output
+    END_IF
   END_IF
+
 ELSE
 # these methods are based on the curl of v instead of the strain rate tensor
 

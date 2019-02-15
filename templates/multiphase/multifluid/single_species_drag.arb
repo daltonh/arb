@@ -7,70 +7,130 @@ IF {{ return string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
 
-#REPLACEMENTS D "<<hindered_settling_function>>" W "dilute" # = stokes
+REPLACEMENTS D "<<hindered_settling_function>>" W "dilute" # = stokes
 #REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzaki"
-REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
+#REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
 #REPLACEMENTS D "<<hindered_settling_function>>" W "rourkeernstene" # from kim16, referencing Rourke and Ernstene 1930, which is specifically for rbcs
 
+REPLACEMENTS D "<<drag_beta_face_based>>" W "0"
 
-# calculate kappa*, which only has one value for each combination of species, define with the lower index coming first
-#Stokes drag = dilute
-CELL_DERIVED <kappa*_species0_<<species>>> "2.d0*<a_<<species>>>^2/9.d0" ON <allcells> 
+IF <<drag_beta_face_based>>
 
-IF {{ return (!(string_test('<<hindered_settling_function>>','dilute'))) }}
-# if we are here then the drag is not dilute
+  FACE_DERIVED <kappa*_f_species0_<<species>>> "2.d0*<a_<<species>>>^2/9.d0" ON <allfaces> 
 
-# methods that have a maximum total solids magnitude
-# create a possibly normalised and limited phi for use in the allsolids multiplier
-  NONE_CONSTANT <drag_phi_tol> "<phi_tol>"
+  IF {{ return (!(string_test('<<hindered_settling_function>>','dilute'))) }}
+  # if we are here then the drag is not dilute
 
-  IF {{ return (string_test('<<hindered_settling_function>>','richardsonzaki') || string_test('<<hindered_settling_function>>','richardsonzakilimited')) }}
-    NONE_CONSTANT <drag_phi_packed_richardsonzaki> 0.68d0 # used for scaling the phi used in the hindered settling function, this is the phi that we assume the normal richardsonzaki drag represents packed hard-sphere behaviour
-    NONE_CONSTANT <drag_richardsonzaki_n> 5.5d0 # exponent used in the richardsonzaki hindered settling function
-    IF {{ return string_test('<<hindered_settling_function>>','richardsonzaki') }}
-# for the true richardsonzaki method to recover the non-scaled variable, set the max to 0.68
-      NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>"
-    ELSE_IF {{ return string_test('<<hindered_settling_function>>','richardsonzakilimited') }}
-      NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
+  # methods that have a maximum total solids magnitude
+  # create a possibly normalised and limited phi for use in the allsolids multiplier
+    NONE_CONSTANT <drag_phi_tol> "<phi_tol>"
+
+    IF {{ return (string_test('<<hindered_settling_function>>','richardsonzaki') || string_test('<<hindered_settling_function>>','richardsonzakilimited')) }}
+      NONE_CONSTANT <drag_phi_packed_richardsonzaki> 0.68d0 # used for scaling the phi used in the hindered settling function, this is the phi that we assume the normal richardsonzaki drag represents packed hard-sphere behaviour
+      NONE_CONSTANT <drag_richardsonzaki_n> 5.5d0 # exponent used in the richardsonzaki hindered settling function
+      IF {{ return string_test('<<hindered_settling_function>>','richardsonzaki') }}
+  # for the true richardsonzaki method to recover the non-scaled variable, set the max to 0.68
+        NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>"
+      ELSE_IF {{ return string_test('<<hindered_settling_function>>','richardsonzakilimited') }}
+        NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
+      ELSE
+        ERROR "hindered_settling_function = <<hindered_settling_function>> not known in single_species_drag"
+      END_IF
+      FACE_LOCAL <drag_phi_f_norm_allsolids> "<drag_phi_packed_richardsonzaki>*facemin(1.d0-<phi_f_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allfaces> output
+
+  # for now use total solids fraction to calculate hindered settling function
+      VARIABLE <kappa*_f_species0_<<species>>> "(<kappa*_f_species0_<<species>>>)*(1.d0-<drag_phi_f_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allfaces>	
+
     ELSE
+  # FIXME
       ERROR "hindered_settling_function = <<hindered_settling_function>> not known in single_species_drag"
     END_IF
-    CELL_LOCAL <drag_phi_norm_allsolids> "<drag_phi_packed_richardsonzaki>*cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
 
-# for now use total solids fraction to calculate hindered settling function
-    VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.d0-<drag_phi_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
-
-  ELSE_IF {{ return string_test('<<hindered_settling_function>>','rourkeernstene') }}
-# FIXME
-    ERROR "not done yet"
-    NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
-    CELL_LOCAL <drag_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
-    VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.d0-<drag_phi_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
-  ELSE
-# FIXME
-    ERROR "hindered_settling_function = <<hindered_settling_function>> not known in single_species_drag"
   END_IF
 
-END_IF
+  # default hindered settling function is now as defined in masliyah79 = balls
+  # version1 gives an equivalent hindered settling function which is / phi_0^2
 
-# default hindered settling function is now as defined in masliyah79 = balls
-# version1 gives an equivalent hindered settling function which is / phi_0^2
+  REPLACEMENTS D "<<dragmethod>>" W "version2"
 
-REPLACEMENTS D "<<dragmethod>>" W "version2"
+  FACE_DERIVED <beta^_f_<<species>>_species0> "<mu_species0>/<kappa*_f_species0_<<species>>>" ON <allfaces>
+  IF 1
+    FACE_DERIVED <beta^_f_species0_<<species>>> "<beta^_f_<<species>>_species0>*<phi_f_bounded_<<species>>>/<phi_f_bounded_species0>" ON <allfaces>
+  ELSE
+    FACE_DERIVED <beta^_f_species0_<<species>>> "<beta^_f_<<species>>_species0>*<phi_f_bounded_adjacent_nob_<<species>>>/(<phi_f_bounded_adjacent_nob_species0>)" ON <allfaces>
+  END_IF
 
-IF {{ return (string_test('<<dragmethod>>','version1')) }}
-  CELL_DERIVED <beta**_species0_<<species>>> "<mu_species0>*<phi_bounded_species0>/<kappa*_species0_<<species>>>" ON <allcells>
-  CELL_LOCAL <beta^_<<species>>_species0> "<beta**_species0_<<species>>>*<phi_bounded_species0>" ON <allcells>
-  CELL_LOCAL <beta^_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
+  IF 1 # base on real phi's rather than interpolating 
+    CELL_LOCAL <beta^_<<species>>_species0> "<beta^_f_<<species>>_species0>" ON <allcells>
+    CELL_LOCAL <beta^_species0_<<species>>> "<beta^_<<species>>_species0>*<phi_bounded_<<species>>>/<phi_bounded_species0>" ON <allcells>
+  ELSE # singular matrix problem
+    CELL_LOCAL <beta^_<<species>>_species0> "<beta^_f_<<species>>_species0>" ON <allcells>
+    CELL_LOCAL <beta^_species0_<<species>>> "<beta^_f_species0_<<species>>>" ON <allcells>
+  END_IF
+
+
 ELSE
-  CELL_DERIVED <beta^_<<species>>_species0> "<mu_species0>/<kappa*_species0_<<species>>>" ON <allcells>
-  CELL_DERIVED <beta^_species0_<<species>>> "<beta^_<<species>>_species0>*<phi_bounded_<<species>>>/<phi_bounded_species0>" ON <allcells>
-END_IF
+  # calculate kappa*, which only has one value for each combination of species, define with the lower index coming first
+  #Stokes drag = dilute
+  CELL_DERIVED <kappa*_species0_<<species>>> "2.d0*<a_<<species>>>^2/9.d0" ON <allcells> 
 
-IF 0
-  FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_species0_<<species>>>" ON <allfaces>
-  FACE_LOCAL <beta^_f_<<species>>_species0> "<beta^_<<species>>_species0>" ON <allfaces>
-ELSE
-  FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[adjacentcells](<beta^_species0_<<species>>>)" ON <allfaces>
-  FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[adjacentcells](<beta^_<<species>>_species0>)" ON <allfaces>
+  IF {{ return (!(string_test('<<hindered_settling_function>>','dilute'))) }}
+  # if we are here then the drag is not dilute
+
+  # methods that have a maximum total solids magnitude
+  # create a possibly normalised and limited phi for use in the allsolids multiplier
+    NONE_CONSTANT <drag_phi_tol> "<phi_tol>"
+
+    IF {{ return (string_test('<<hindered_settling_function>>','richardsonzaki') || string_test('<<hindered_settling_function>>','richardsonzakilimited')) }}
+      NONE_CONSTANT <drag_phi_packed_richardsonzaki> 0.68d0 # used for scaling the phi used in the hindered settling function, this is the phi that we assume the normal richardsonzaki drag represents packed hard-sphere behaviour
+      NONE_CONSTANT <drag_richardsonzaki_n> 5.5d0 # exponent used in the richardsonzaki hindered settling function
+      IF {{ return string_test('<<hindered_settling_function>>','richardsonzaki') }}
+  # for the true richardsonzaki method to recover the non-scaled variable, set the max to 0.68
+        NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>"
+      ELSE_IF {{ return string_test('<<hindered_settling_function>>','richardsonzakilimited') }}
+        NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
+      ELSE
+        ERROR "hindered_settling_function = <<hindered_settling_function>> not known in single_species_drag"
+      END_IF
+      CELL_LOCAL <drag_phi_norm_allsolids> "<drag_phi_packed_richardsonzaki>*cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
+
+  # for now use total solids fraction to calculate hindered settling function
+      VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.d0-<drag_phi_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
+
+    ELSE_IF {{ return string_test('<<hindered_settling_function>>','rourkeernstene') }}
+  # FIXME
+      ERROR "not done yet"
+      NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
+      CELL_LOCAL <drag_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
+      VARIABLE <kappa*_species0_<<species>>> "(<kappa*_species0_<<species>>>)*(1.d0-<drag_phi_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
+    ELSE
+  # FIXME
+      ERROR "hindered_settling_function = <<hindered_settling_function>> not known in single_species_drag"
+    END_IF
+
+  END_IF
+
+  # default hindered settling function is now as defined in masliyah79 = balls
+  # version1 gives an equivalent hindered settling function which is / phi_0^2
+
+  REPLACEMENTS D "<<dragmethod>>" W "version2"
+
+  IF {{ return (string_test('<<dragmethod>>','version1')) }}
+    CELL_DERIVED <beta**_species0_<<species>>> "<mu_species0>*<phi_bounded_species0>/<kappa*_species0_<<species>>>" ON <allcells>
+    CELL_LOCAL <beta^_<<species>>_species0> "<beta**_species0_<<species>>>*<phi_bounded_species0>" ON <allcells>
+    CELL_LOCAL <beta^_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
+  ELSE
+    CELL_DERIVED <beta^_<<species>>_species0> "<mu_species0>/<kappa*_species0_<<species>>>" ON <allcells>
+    CELL_DERIVED <beta^_species0_<<species>>> "<beta^_<<species>>_species0>*<phi_bounded_<<species>>>/<phi_bounded_species0>" ON <allcells>
+  END_IF
+
+  IF 0
+  # unstable
+    FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_species0_<<species>>>" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "<beta^_<<species>>_species0>" ON <allfaces>
+  ELSE
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[adjacentcells](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[adjacentcells](<beta^_<<species>>_species0>)" ON <allfaces>
+  END_IF
+
 END_IF
