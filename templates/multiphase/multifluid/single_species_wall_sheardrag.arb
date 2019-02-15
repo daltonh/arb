@@ -16,8 +16,8 @@ ELSE
   ERROR "no other wall shear drag coded up yet"
 END_IF
 
-REPLACEMENTS D "<<wall_sheardrag_approximate>>" W "1"
-REPLACEMENTS D "<<wall_sheardrag_face_based>>" W "1" # calculate at the faces, and then average to the cells
+REPLACEMENTS D "<<wall_sheardrag_approximate>>" W "0"
+REPLACEMENTS D "<<wall_sheardrag_face_based>>" W "0" # calculate at the faces, and then average to the cells
 
 IF <<wall_sheardrag_approximate>>
 # gamma approximated by local solid velocity/distance
@@ -39,7 +39,11 @@ IF <<wall_sheardrag_approximate>>
 #   VARIABLE <dynamic_force_f_species0> "<dynamic_force_f_species0> - <particle_force_f_wall_sheardrag_<<species>>>*<phi_f_bounded_<<species>>>/<phi_f_bounded_species0>"
 
   ELSE
-    CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "-<particle_force_alpha3_<<species>>>*dot(<u_species1[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <domain> output,componentoutput
+    IF 1 # based on fluid phase velocity
+      CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "-<particle_force_alpha3_<<species>>>*dot(<u_species0[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <domain> output,componentoutput
+    ELSE # based on solid phase velocity
+      CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "-<particle_force_alpha3_<<species>>>*dot(<u_species1[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <domain> output,componentoutput
+    END_IF
     VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_wall_sheardrag_<<species>>[l=<<i>>]>"
   END_IF
 ELSE

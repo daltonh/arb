@@ -7,8 +7,8 @@ REPLACEMENTS D "<<slip_lift_method>>" W "saffman"
 #REPLACEMENTS D "<<slip_lift_method>>" W "moraga"
 #REPLACEMENTS D "<<slip_lift_method>>" W "saffmannew"
 
-REPLACEMENTS D "<<slip_lift_dynamic_force>>" W "1" # apply using the dynamic force, rather than extra force
-REPLACEMENTS D "<<slip_lift_face_based>>" W "1" # calculate at the faces, and then average to the cells
+REPLACEMENTS D "<<slip_lift_dynamic_force>>" W "0" # apply using the dynamic force, rather than extra force
+REPLACEMENTS D "<<slip_lift_face_based>>" W "0" # calculate at the faces, and then average to the cells
 
 # calculate the slip velocity for this phase for all methods
 INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities"
