@@ -81,8 +81,12 @@ FACE_EQUATION <c_walls_/species/> "<c_j_f_/species/>" ON <walls> # on the walls 
 # here are some ideas re how to change the inlet concentration with time
 #NONE_TRANSIENT <c_inlet_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
 #NONE_TRANSIENT <c_inlet_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
-FACE_EQUATION <c_inlet_equation_/species/> "<c_/species/>-<c_inlet_conc_/species/>" ON <inlet>
-FACE_EQUATION <c_outlet_equation_/species/> "faceif(<u_f>,facegrad(<c_/species/>),<c_/species/>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+IF {{ return ( string_eval('<<listofports>>') =~ /inlet/ ) }} # if <<listofports>> contains the string inlet
+  FACE_EQUATION <c_inlet_equation_/species/> "<c_/species/>-<c_inlet_conc_/species/>" ON <inlet>
+END_IF
+IF {{ return ( string_eval('<<listofports>>') =~ /outlet/ ) }} # if <<listofports>> contains the string outlet
+  FACE_EQUATION <c_outlet_equation_/species/> "faceif(<u_f>,facegrad(<c_/species/>),<c_/species/>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+END_IF
 
 # report some averaged and extreme variables
 NONE_OUTPUT <c_maximum_/species/> [mol/m^3] "cellmax(<c_/species/>,region=<allcells>)"

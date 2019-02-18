@@ -2,7 +2,7 @@ MARKDOWN
 Here we setup the extra forces acting on each disperse phase species, using the corresponding single_species_* template files.
 END_MARKDOWN
 
-REPLACEMENTS D "<<slip_lift>>" W "1"
+REPLACEMENTS D "<<slip_lift>>" W "0"
 IF <<slip_lift>>
   {{
     my $return_string = '';
