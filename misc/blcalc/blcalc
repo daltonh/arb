@@ -6,8 +6,8 @@
 require 'optparse'
 
 PROGNAME = 'blcalc'
-VERSION = '1.0'
-DATE = '2018-12-18'
+VERSION = '1.1'
+DATE = '2018-02-19'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})
   Boundary layer (geometric progression) calculator.
@@ -35,10 +35,12 @@ def p(f, df, p0)
   # df is the derivative (df/dp)
   # p0 is the value of p > 1 at which f passes through a minimum (i.e. df(p0) = 0)
   p = 2.0*p0 - 1.0 # initial estimate from parabolic interpolation (exact for n = 2)
+  i = 0
   begin
     y = f.call(p)
     p -= y/df.call(p) # Newton-Raphson
-  end until y.abs < Math.sqrt(Float::EPSILON)
+    i += 1
+  end until y.abs < Math.sqrt(Float::EPSILON) || i == 100
   p
 end
 
@@ -117,6 +119,7 @@ when [:H, :n]
   bl[:h] = hmin(bl)
 when [:H, :p]
   bl[:h] = 1.0 - bl[:p]*(1.0-bl[:H])
+  error 'p >= 1/(1-H)' unless bl[:h].positive?
   bl[:n] = n(bl)
   if spec.first == :H # keep H fixed and adjust p and h for integer n
     bl[:p] = p_hmax(bl)
