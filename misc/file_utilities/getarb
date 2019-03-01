@@ -55,10 +55,10 @@ done
 if [ "${directory}" = "" ]; then directory="arb_$branch"; echo "setting output directory based on branch to $directory"; fi;
 
 if [ $transport == "ssh" ] ; then
-  echo "performing: git clone -b $branch git@$server:$user/arb.git $directory";
+  echo "performing: git clone -b $branch git@$server:daltonh/arb.git $directory";
   git clone -b $branch git@$server:$user/arb.git $directory;
 elif [ $transport == "http" ] ; then
-  echo "performing: git clone -b $branch http://$server:$port/$user/arb.git $directory";
+  echo "performing: git clone -b $branch http://$server:$port/daltonh/arb.git $directory";
   git clone -b $branch http://$server:$port/$user/arb.git $directory;
 else
   echo "performing: git clone -b $branch $local_directory $directory";
