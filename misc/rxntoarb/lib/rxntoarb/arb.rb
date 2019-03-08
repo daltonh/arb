@@ -1,5 +1,5 @@
 # Rxntoarb::Arb
-# (C) Copyright Christian Biscombe 2016-2018
+# (C) Copyright Christian Biscombe 2016-2019
 
 require 'set'
 require_relative 'parameter'
@@ -26,7 +26,7 @@ module Rxntoarb
       rxn.reactions.each do |reaction|
         reaction.all_species.each { |species| @sources[[species, Rxntoarb.options[:none_centred] ? nil : species.region]] ||= '0.d0' } # ensure that species has a source term originating in its own region
         # Format kinetic parameters
-        reaction.parameters.each { |par| @constants << "#{par.value =~ /^['"]/ ? "#{reaction.centring}_DERIVED" : 'CONSTANT'} <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka}" } if reaction.parameters
+        reaction.parameters.each { |par| @constants << "#{par.value =~ /^['"]/ ? "#{reaction.centring}_LOCAL" : 'CONSTANT'} <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka && !Rxntoarb.options[:alias_labels]}" } if reaction.parameters
         # Generate rate expressions
         if reaction.type == :reversible || reaction.type == :twostep # reversible must come before irreversible because same code handles two-step reactions
           reaction.label << '_i' if reaction.type == :twostep
@@ -59,9 +59,11 @@ module Rxntoarb
       end
 
       # Perform alias substitution on any kinetic parameters defined as strings
+      unless Rxntoarb.options[:alias_labels]
       par_names = Regexp.union(Parameter::ALIASES.values)
       @constants.each do |constant|
         rxn.aliases.each { |old, new| constant.sub!(/<#{$1}_#{$2}>/, "<#{$1}_#{new}>") << " # alias: #{old} => #{new}" if constant =~ /<(#{par_names})_(#{Regexp.escape(old)})>/ }
+        end
       end
 
       # Store region areas/volumes and define new regions for equations
