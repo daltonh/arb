@@ -52,10 +52,12 @@ IF {{ return (!(string_eval('<<stokes>>'))) }} # only for navier-stokes equation
     REPLACEMENTS D "<<ufvectmagnitudeexplicit>>" W "<<transientnavierstokes>>"
     IF <<ufvectmagnitudeexplicit>>
       FACE_LOCAL <u_f_vect[l=<<i>>,r=1]> "faceave[<<reflect=<<i>>>>](<u[l=<<i>>,r=1]>)"
-      FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
+#     FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
+      FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "mag(<u_f_vect[l=:,r=1]>)" ON <allfaces>
       REPLACEMENTS S "<<ufmagnitude>>" W "<u_f_vect_magnitude[r=1]>" # S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
     ELSE
-      FACE_LOCAL <u_f_vect_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tinyish>))" ON <allfaces>
+#     FACE_LOCAL <u_f_vect_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tinyish>))" ON <allfaces>
+      FACE_LOCAL <u_f_vect_magnitude> "mag(<u_f_vect[l=:]>)" ON <allfaces>
       REPLACEMENTS S "<<ufmagnitude>>" W "<u_f_vect_magnitude>" # S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
     END_IF
   END_IF
