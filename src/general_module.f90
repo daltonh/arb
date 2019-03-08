@@ -3507,9 +3507,19 @@ end if
 
 check_dumpfile = .false.
 do n = 1, listlength
-  inquire(file=trim(dumpfilelist(n)),exist=check_dumpfile)
+  if (output_dir_touch_files) then
+    inquire(file=trim(output_dir)//trim(dumpfilelist(n)),exist=check_dumpfile)
+!   inquire(file=trim(output_dir)//trim(stopfilelist(n)),exist=check_stopfile)
+  else
+    inquire(file=trim(dumpfilelist(n)),exist=check_dumpfile)
+!   inquire(file=trim(stopfilelist(n)),exist=check_stopfile)
+  end if
   if (check_dumpfile) then
-    call unlink(trim(dumpfilelist(n)))
+    if (output_dir_touch_files) then
+      call unlink(trim(output_dir)//trim(dumpfilelist(n)))
+    else
+      call unlink(trim(dumpfilelist(n)))
+    end if
     return
   end if
 end do
