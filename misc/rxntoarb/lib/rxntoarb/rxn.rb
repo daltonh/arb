@@ -147,15 +147,8 @@ module Rxntoarb
 
     def exclude?(string) #{{{
       return false unless Rxntoarb.options[:keep]
-      exclude = false
-      Rxntoarb.options[:keep].each do |keep, regexp|
-        if keep == :include_only
-          exclude = exclude || string !~ regexp # exclude if string doesn't match regexp
-        else
-          exclude = exclude || string =~ regexp # exclude if string matches regexp
-        end
-      end
-      exclude
+      Rxntoarb.options[:keep].each { |keep, regexp| return true if (keep == :include_only && string !~ regexp) || (keep == :exclude && string =~ regexp) }
+      false
     end #}}}
 
   def read_reaction(rline) #{{{

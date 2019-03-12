@@ -1,5 +1,5 @@
 # Rxntoarb::Reaction
-# (C) Copyright Christian Biscombe 2016-2018
+# (C) Copyright Christian Biscombe 2016-2019
 
 require 'set'
 require_relative 'species'
@@ -29,8 +29,10 @@ module Rxntoarb
         raise 'alias specified for indented (child) reaction' if @aka
         raise 'kinetic parameters specified for indented (child) reaction' if parameters
         @parameters = nil
+        @label = "#{rxn.parent_label}_#{$.}" if rxn.aliases.include?(rxn.parent_label) && Rxntoarb.options[:alias_labels]
       else
         raise 'missing kinetic parameters' unless parameters
+        @label = @aka if @aka && Rxntoarb.options[:alias_labels]
         rxn.parent_label = @label.dup
         rxn.check_units = !@species_regions.empty? # skip check when concentration units are unknown
         @parameters = []
@@ -115,9 +117,9 @@ module Rxntoarb
         species = Species.new(term, rxn)
         species_array << species
       end
-      @label << "|" unless @label.empty?
       @all_species += species_array
       @species_regions += species_array.map(&:region).compact
+      @label << "|" unless @label.empty?
       @label << species_array.map(&:tag).join(',')
       species_array
     end #}}}
