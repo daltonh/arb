@@ -78,7 +78,7 @@ if (present(intermediate)) intermediate_local = intermediate
 call update_and_check_outputs ! update any output-only variables
 
 ! now output txt file if a single or zero dimensional problem
-if (.false..or.maximum_dimensions <=1 ) call output_txt ! write txt files containing data
+if (output_txt_file.or.maximum_dimensions <=1 ) call output_txt ! write txt files containing data
 
 do gmesh_number = 0, ubound(gmesh,1)
 
@@ -124,7 +124,7 @@ end do
 debug_dump_local = .false.
 if (present(debug_dump)) debug_dump_local = debug_dump
 
-if (.false..or.debug_dump_local) call write_gmesh(gmesh_number=0,debug_dump=.true.,centring='all', &
+if (output_debug_file.or.debug_dump_local) call write_gmesh(gmesh_number=0,debug_dump=.true.,centring='all', &
   intermediate=.false.)
 
 if (.true.) call output_stat ! write some statistics about the data
@@ -499,16 +499,18 @@ if (present(fileformat)) fileformatl = fileformat
 ! for debug_dump: (debug.|)basename(.cell|.face|.node|.none|).(msh|dat|vtk)
 ! for non-debug_dump: basename(.newt<newtstep>|)(.<timestep>|)(.cell|.face|.node|.none|).(msh|dat|vtk)
 filename = trim(gmesh(gmesh_number)%basename)
-if (debug_dump) filename = 'debug.'//trim(filename)
-if (intermediate.and..not.debug_dump) then
+!if (intermediate.and..not.debug_dump) then
+if (intermediate) then
   formatline = '(a,'//trim(dindexformat(newtstep))//')'
   write(filename,fmt=formatline) trim(filename)//'.newt',newtstep
 end if
-if (transient_simulation.and..not.debug_dump) then
+!if (transient_simulation.and..not.debug_dump) then
+if (transient_simulation) then
   formatline = '(a,'//trim(dindexformat(timestep))//')'
   write(filename,fmt=formatline) trim(filename)//'.',timestep
 end if
 if (centring /= 'all') filename = trim(filename)//'.'//centring
+if (debug_dump) filename = 'debug.'//trim(filename)
 
 filename = trim(filename)//'.'//fileformatl
 

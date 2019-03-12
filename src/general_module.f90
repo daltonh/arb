@@ -83,6 +83,8 @@ logical :: output_timings_on_mesh_write = .false. ! (.false., userable) output t
 logical :: output_detailed_timings = .false. ! (.false., userable) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
 logical :: output_variable_update_times = .true. ! (.true., userable) time how long it takes to update each variable (on average) and report in output.stat
 logical :: output_region_update_times = .true. ! (.true., userable) time how long it takes to update each dynamic region (on average) and report in output.stat
+logical :: output_txt_file = .false. ! (.false., userable) whether to write a txt file out that contains all of the data
+logical :: output_debug_file = .false. ! (.false., userable) whether to write a debug msh file as well as the normal msh files at the same (and every) time
 logical :: ignore_initial_update_times = .true. ! (.true., userable) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
 logical :: kernel_details_file = .false. ! (.false., userable) print out a text file (kernel_details.txt) with all the kernel details
 logical :: mesh_details_file = .false. ! (.false., userable) print out a text file (mesh_details.txt) with all the mesh details
@@ -113,6 +115,8 @@ double precision, parameter :: hugeish = 1.d-2*sqrt(huge(0.d0)) ! something that
 character(len=100), parameter :: indexformat = 'i8' ! formating used for outputting integers throughout program, although now largely superseeding by dynamic format statements
 character(len=100), parameter :: floatformat='g18.10' ! formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places: now seems to be d+8 required
 character(len=100), parameter :: compactformat='g11.4' ! compact formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places
+!character(len=100), parameter :: mediumformat='g12.5' ! medium formating used for outputting double precision variables throughout program, typically in print_cell etc:  w = d+7 here (ie gw.d) as exponent may take three decimal places
+character(len=100), parameter :: mediumformat='g18.11' ! medium formating used for outputting double precision variables throughout program, typically in print_cell etc:  w = d+7 here (ie gw.d) as exponent may take three decimal places
 character(len=100), parameter :: realformat='g15.8' ! formating used for outputting variables truncated as reals throughout program (ie, treal), including variables in the msh files:  as exponent is truncated to two decimal places, w = d+6 here (gw.d)
 character(len=100), parameter :: stringformat='a18' ! formating used for outputting strings (basically variable names) throughout program
 ! reals apparently have about 7 decimal places and width has to be d+7 (ifort)
@@ -1401,16 +1405,16 @@ function print_node(k,compact)
 integer :: k ! knode index
 logical, optional :: compact
 logical :: compact_l
-character(len=1000) :: print_node
+character(len=10000) :: print_node
 integer :: n, error, njface, nicell, nglue_knode, nr, nreflect_multiplier
-character(len=1000) :: formatline
+character(len=10000) :: formatline
 
 compact_l = .false.
 if (present(compact)) compact_l = compact
 
 if (compact_l) then
 
-  formatline = '(a,'//trim(indexformat)//',a,i1,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,'//repeat(',a,'//trim(mediumformat),totaldimensions)//')'
   write(print_node,fmt=formatline,iostat=error) 'k = ',k,'k: type = ',node(k)%type, &
     ': x =',(' ',node(k)%x(n),n=1,totaldimensions)
 
@@ -1424,7 +1428,7 @@ else
   nreflect_multiplier = 0
   if (allocated(node(k)%reflect_multiplier)) nreflect_multiplier = ubound(node(k)%reflect_multiplier,2)
 
-  formatline = '(a,'//trim(indexformat)//',a,i1,a'//repeat(',a,g12.5',totaldimensions)// &
+  formatline = '(a,'//trim(indexformat)//',a,i1,a'//repeat(',a,'//trim(mediumformat),totaldimensions)// &
     ',a'//repeat(',a,'//trim(indexformat),njface)// &
     ',a'//repeat(',a,'//trim(indexformat),nicell)// &
     ',a'//repeat(',a,'//trim(indexformat),nglue_knode)// &
@@ -1465,7 +1469,7 @@ if (present(compact)) compact_l = compact
 
 if (compact_l) then
 
-  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,'//trim(mediumformat),totaldimensions)//')'
   write(print_face,fmt=formatline,iostat=error) 'j = ',j,'j: type = ',face(j)%type, &
     ': dimensions = ',face(j)%dimensions, &
     ': gtype = ',face(j)%gtype, &
@@ -1488,9 +1492,9 @@ else
   if (allocated(face(j)%reflect_multiplier)) nreflect_multiplier = ubound(face(j)%reflect_multiplier,2)
 
   formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//trim(indexformat)// &
-    ',a,i1,2(a'//repeat(',a,g12.5',totaldimensions)// &
-    '),a,g12.5,a,g12.5'// &
-    repeat(',a,i1,a'//repeat(',a,g12.5',totaldimensions),totaldimensions)// &
+    ',a,i1,2(a'//repeat(',a,'//trim(mediumformat),totaldimensions)// &
+    '),a,'//trim(mediumformat)//',a,'//trim(mediumformat)// &
+    repeat(',a,i1,a'//repeat(',a,'//trim(mediumformat),totaldimensions),totaldimensions)// &
     ',a'//repeat(',a,'//trim(indexformat),nknode)// &
     ',a'//repeat(',a,'//trim(indexformat),nicell)// &
     ',a,l1'// &
@@ -1538,7 +1542,7 @@ if (present(compact)) compact_l = compact
 
 if (compact_l) then
 
-  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,'//trim(mediumformat),totaldimensions)//')'
   write(print_cell,fmt=formatline,iostat=error) 'i = ',i,'i: type = ',cell(i)%type, &
     ': dimensions = ',cell(i)%dimensions, &
     ': gtype = ',cell(i)%gtype, &
@@ -1554,8 +1558,8 @@ else
   nreflect_multiplier = 0
   if (allocated(cell(i)%reflect_multiplier)) nreflect_multiplier = ubound(cell(i)%reflect_multiplier,2)
 
-  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a'//repeat(',a,g12.5',totaldimensions)// &
-    ',a,g12.5,a,i1'// &
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a'//repeat(',a,'//trim(mediumformat),totaldimensions)// &
+    ',a,'//trim(mediumformat)//',a,i1'// &
     ',a'//repeat(',a,'//trim(indexformat),nknode)// &
     ',a'//repeat(',a,'//trim(indexformat),njface)// &
     ',a'//repeat(',a,'//trim(indexformat),nicell)// &
@@ -1778,12 +1782,12 @@ end subroutine clear_funk_derivatives
 
 function print_funk(funkl)
 
-character(len=1000) :: print_funk, print_funk_saved
+character(len=10000) :: print_funk, print_funk_saved
 type(funk_type) :: funkl ! local funk variable
 integer :: error, nn
-character(len=1000) :: formatline
+character(len=10000) :: formatline
 
-formatline = '(a,g12.5,a,i2)'
+formatline = '(a,'//trim(mediumformat)//',a,i2)'
 write(print_funk,fmt=formatline,iostat=error) 'v = ',funkl%v,': ndv = ',funkl%ndv
 if (error /= 0) print_funk = print_funk//'ERROR: 1: problem in print_funk: formatline = '//trim(formatline)
 
@@ -1800,7 +1804,7 @@ end if
 
 print_funk_saved = print_funk
 if (allocated(funkl%dv)) then
-  formatline = '(a'//repeat(',a,g12.5',ubound(funkl%dv,1))//')'
+  formatline = '(a'//repeat(',a,'//trim(mediumformat),ubound(funkl%dv,1))//')'
   write(print_funk,fmt=formatline,iostat=error) trim(print_funk_saved)//': dv =',(' ',funkl%dv(nn),nn=1,ubound(funkl%dv,1))
   if (error /= 0) print_funk = trim(print_funk_saved)//'ERROR: 4: problem in print_funk: formatline = '//trim(formatline)
 else
@@ -3305,8 +3309,8 @@ function variable_location_string(m,ns)
 ! little routine to create a formated string describing a variable location
 
 integer :: m, ns, i, j
-character(len=1000) :: variable_location_string
-character(len=1000) :: formatline
+character(len=10000) :: variable_location_string
+character(len=10000) :: formatline
 
 if (var(m)%centring == 'cell') then
   i = region(var(m)%region_number)%ijk(ns)
@@ -3738,7 +3742,7 @@ character(len=*) :: option_name
 character(len=*), optional :: option_type ! ie, general, kernel, solver etc
 character(len=20) :: option_type_l ! 
 integer :: option_variable
-character(len=1000) :: formatline
+character(len=10000) :: formatline
 logical :: error
 
 option_type_l = ''
@@ -3840,7 +3844,7 @@ character(len=*) :: option_name
 character(len=*), optional :: option_type ! ie, general, kernel, solver etc
 character(len=20) :: option_type_l ! 
 double precision :: option_variable
-character(len=1000) :: formatline
+character(len=10000) :: formatline
 logical :: error
 
 option_type_l = ''

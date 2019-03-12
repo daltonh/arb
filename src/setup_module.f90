@@ -1966,6 +1966,12 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
   else if (trim(option_name) == "outputregionupdatetimes" .or. trim(option_name) == "nooutputregionupdatetimes") then
     call set_option_logical(general_options(n),'outputregionupdatetimes', &
       "time how long it takes to update each dynamic region (on average)",output_region_update_times,'general')
+  else if (trim(option_name) == "outputtxtfile" .or. trim(option_name) == "nooutputtxtfile") then
+    call set_option_logical(general_options(n),'outputtxtfile', &
+      "whether to output a txt file containing all of the data",output_txt_file,'general')
+  else if (trim(option_name) == "outputdebugfile" .or. trim(option_name) == "nooutputdebugfile") then
+    call set_option_logical(general_options(n),'outputdebugfile', &
+      "whether to output a debugging msh file at the same as the other msh files are written out",output_debug_file,'general')
   else if (trim(option_name) == "ignoreinitialupdatetimes" .or. trim(option_name) == "noignoreinitialupdatetimes") then
     call set_option_logical(general_options(n),'ignoreinitialupdatetimes', &
       "ignore how long it takes to update each variable when initialising", &
