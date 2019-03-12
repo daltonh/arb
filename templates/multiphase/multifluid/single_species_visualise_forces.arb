@@ -1,16 +1,12 @@
 MARKDOWN
 Make some vectors to visualise the forces for each phase
 
-This probably needs some work, but it looks like the forces are expressed on a species volume specific basis
+These forces are expressed on a per phase volume basis (ie, divided by phi for the phase), and moved to appear on the RHS of the momentum equation.
 END_MARKDOWN
 
-# define cylindrical divergence modifier terms
-REPLACEMENTS R "<<radius_top>>" W "" R "<<radius_bottom>>" W ""
-IF <<cylindrical>>
-  REPLACEMENTS S "<<radius_top>>" W "<<radius_f>>*" S "<<radius_bottom>>" W "/<<radius_c>>"
-END_IF
-
-REPLACEMENTS D "<<buoyancy>>" W "0"
+REPLACEMENTS D "<<stressmethod>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
+REPLACEMENTS D "<<buoyancy>>" W "0" # this will already have been set in buoyancy_dynamic_force as a global replacement
+REPLACEMENTS D "<<body_force>>" W "0" # this will already have been set in body_force as a global replacement if it is relevant
 
 # run through each of the dimensions and forces
 # at the same time assemble a list of the forces
@@ -20,11 +16,17 @@ REPLACEMENTS D "<<buoyancy>>" W "0"
   for my $l (string_eval('<<dimensions>>','list')) {
     @force_list=(); # clear force list
 # viscous
-    $return_string .= "CELL_LOCAL <force_vis_<<species>>[l=$l]> '(-celldiv(<<radius_top>>(<J_viscous_f_<<species>>[l=$l]>))<<radius_bottom>>)/<phi_bounded_<<species>>>' ON <domain>\n";
+    if (string_test('<<stressmethod>>','version1')) {
+# version1 has mu that roughly is proportional to phi
+      $return_string .= "CELL_LOCAL <force_vis_<<species>>[l=$l]> '(-celldiv((<<radius_f>>)*(<J_viscous_f_<<species>>[l=$l]>))/(<<radius_c>>))/<phi_bounded_<<species>>>' ON <domain>\n";
+    } else {
+# version2 has mu that roughly is constant
+      $return_string .= "CELL_LOCAL <force_vis_<<species>>[l=$l]> '(-celldiv((<<radius_f>>)*(<J_viscous_f_<<species>>[l=$l]>))/(<<radius_c>>))' ON <domain>\n";
+    }
     push(@force_list,'vis');
 # advection
     if (string_test('<<navierstokescomment>>','')) {
-      $return_string .= "CELL_LOCAL <force_adv_<<species>>[l=$l]> '(-celldiv(<<radius_top>>(<J_advection_f_<<species>>[l=$l]>))<<radius_bottom>>)/<phi_bounded_<<species>>>' ON <domain>\n";
+      $return_string .= "CELL_LOCAL <force_adv_<<species>>[l=$l]> '(-celldiv((<<radius_f>>)*(<J_advection_f_<<species>>[l=$l]>))/(<<radius_c>>))/<phi_bounded_<<species>>>' ON <domain>\n";
       push(@force_list,'adv');
     }
 # transient
@@ -40,12 +42,12 @@ REPLACEMENTS D "<<buoyancy>>" W "0"
     }
 # buoyancy
     if (string_eval('<<buoyancy>>')) {
-      $return_string .= "CELL_LOCAL <force_grav_<<species>>[l=$l]> '-<rho_<<species>>>*<gravity[l=$l]>' ON <domain>\n";
+      $return_string .= "CELL_LOCAL <force_grav_<<species>>[l=$l]> '<rho_<<species>>>*<gravity[l=$l]>' ON <domain>\n";
       push(@force_list,'grav');
     }
 # body force
     if (string_eval('<<body_force>>')) {
-      $return_string .= "CELL_LOCAL <force_body_<<species>>[l=$l]> '-<body_force[l=$l]>' ON <domain>\n";
+      $return_string .= "CELL_LOCAL <force_body_<<species>>[l=$l]> '<body_force[l=$l]>' ON <domain>\n";
       push(@force_list,'body');
     }
 # any extra forces, included in extra_force

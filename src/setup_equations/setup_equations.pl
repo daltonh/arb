@@ -2406,15 +2406,21 @@ sub mequation_interpolation {
 # #         $inbit[$nbits] = "(faceave[upcell]($inbit[$nbits])*$dxdown+faceave[downcell]($inbit[$nbits])*$dxup)/($dxup+$dxdown)";
 # #         create_someloop($inbit[$nbits],"sum","face","<noloop>",$deriv,$otype,$omvar);
 
-# adjacentdomaincells
+# adjacentdomaincells or adjacentnobcells (nob = no boundary)
 # same as adjacentcells, except on boundaries where it becomes downcell
-#       } elsif ($options && ( $options =~ /(^|\,)\s*adjacentdomaincells\s*(\,|$)/ )) {
+        } elsif ($options && ( $options =~ /(^|\,)\s*adjacent(domain|nob)cells\s*(\,|$)/ )) {
 
 # remove the adjacentdomaincells option so that we can add any remaining options back to averaging operators
-#         $options =~ s/(^|\,)\s*adjacentdomaincells\s*(\,|$)/,/;
-#         
+          $options =~ s/(^|\,)\s*adjacent(domain|nob)cells\s*(\,|$)/,/;
+          
 #         $inbit[$nbits] = "faceif(facedelta(region=<boundaries>),faceave[downcell,$options]($expression),faceave[adjacentcells,$options]($expression))";
-#         die "adjacentdomaincells is broken\n";
+
+# reinitialise $_[0] with the modified adjacentcells operator and run through the interpolation loop again
+          $_[0] = "faceif(facedelta(region=<boundaries>),faceave[downcell,$options]($expression),faceave[adjacentcells,$options]($expression))".$_[0];
+          $inbit[$nbits] = 0;
+          $outbit[$nbits] = 0;
+          print DEBUG "From faceave[adjacentdomaincells] averaging recreating string and interpolating again for $otype $variable{$otype}[$omvar]{name} : resetting to _[0] = $_[0]\n";
+          next;
 
 # average based on adjacent cells only, no weighting
         } elsif ($options && ( $options =~ /(^|\,)\s*adjacentcellsevenweighting\s*(\,|$)/ )) {
