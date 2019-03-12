@@ -1922,7 +1922,7 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_double_precision(general_options(n), &
       "iterresreltol (tolerance that indicates convergence of the iterative proceedure)",iterresreltol,'general')
 
-! output file selection
+! output file selection and options
   else if (trim(option_name) == "outputstepfile") then
 ! this string is checked within output_module.f90
     call set_option_string(general_options(n),"outputstepfile (whether to print output.step file or not)",output_step_file, &
@@ -1947,6 +1947,15 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_logical(general_options(n),'convergencedetailsfile', &
       "write some convergence debugging data to convergence_details.txt", &
       convergence_details_file,'general')
+  else if (trim(option_name) == "outputtxtfile" .or. trim(option_name) == "nooutputtxtfile") then
+    call set_option_logical(general_options(n),'outputtxtfile', &
+      "whether to output a txt file containing all of the data",output_txt_file,'general')
+  else if (trim(option_name) == "outputdebugfile" .or. trim(option_name) == "nooutputdebugfile") then
+    call set_option_logical(general_options(n),'outputdebugfile', &
+      "whether to output a debugging msh file at the same as the other msh files are written out",output_debug_file,'general')
+  else if (trim(option_name) == "outputmshformat") then
+    call set_option_string(general_options(n),"outputmshformat (fortran format string for msh data output)", &
+      outputmshformat,'general')
 
 ! timing of various routines
   else if (trim(option_name) == "outputtimings" .or. trim(option_name) == "nooutputtimings") then
@@ -1966,12 +1975,6 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
   else if (trim(option_name) == "outputregionupdatetimes" .or. trim(option_name) == "nooutputregionupdatetimes") then
     call set_option_logical(general_options(n),'outputregionupdatetimes', &
       "time how long it takes to update each dynamic region (on average)",output_region_update_times,'general')
-  else if (trim(option_name) == "outputtxtfile" .or. trim(option_name) == "nooutputtxtfile") then
-    call set_option_logical(general_options(n),'outputtxtfile', &
-      "whether to output a txt file containing all of the data",output_txt_file,'general')
-  else if (trim(option_name) == "outputdebugfile" .or. trim(option_name) == "nooutputdebugfile") then
-    call set_option_logical(general_options(n),'outputdebugfile', &
-      "whether to output a debugging msh file at the same as the other msh files are written out",output_debug_file,'general')
   else if (trim(option_name) == "ignoreinitialupdatetimes" .or. trim(option_name) == "noignoreinitialupdatetimes") then
     call set_option_logical(general_options(n),'ignoreinitialupdatetimes', &
       "ignore how long it takes to update each variable when initialising", &

@@ -76,7 +76,7 @@ integer :: iterstepcheck = 100 ! (100, userable) how often linear iteration solv
 double precision :: iterrestol = 1.d-11 ! (1.d-11, userable) tolerance that indicates convergence of the linear iteration solver
 double precision :: iterresreltol = 0.d0 ! (0.d0, userable) tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres - actual tolerance uses max(iterrestol,iterresreltol*newtres), so if iterresreltol is set to zero then it is inactive and only iterrestol is used
 
-! the following are default values for various parameters which can be altered here (and not via user input options)
+! the following are default values for various parameters which can be altered via GENERAL_OPTIONS
 character(len=100) :: output_step_file = "default" ! (default, userable) whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
 logical :: output_timings = .true. ! (.true., userable) whether to time processes and output results to screen (see subroutine time_process)
 logical :: output_timings_on_mesh_write = .false. ! (.false., userable) output timings each time a mesh file is written - requires that output_timings be on
@@ -92,6 +92,7 @@ logical :: region_details_file = .false. ! (.false., userable) print out a text 
 logical :: link_details_file = .false. ! (.false., userable) print out a text file (link_details.txt) with all the link details
 logical :: convergence_details_file = .true. ! (.true., userable) write some convergence debugging data to convergence_details.txt
 logical :: output_dir_touch_files = .true. ! (.true., userable) if true look in output_dir for the touch (stop) files, otherwise if false look in the working directory
+character(len=100) :: outputmshformat = 'g18.5' ! ('g18.5', userable) fortran format to use when writing out data in the msh files
 
 !----------------------------------------------------------
 ! set some numerical and mathematical parameters, non-userable
