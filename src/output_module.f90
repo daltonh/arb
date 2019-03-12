@@ -190,8 +190,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'cell'.or.trim(txtoutput) == 'all'))
   formatline = '(a8'//repeat(',a,'//trim(stringformat),totaldimensions+ubound(local_list,1))//')'
   write(foutput,fmt=formatline) '"icell"',(delimiter,cellxname(l),l=1,totaldimensions), &
     (delimiter,'"'//trim(var(local_list(m))%name)//' ['//trim(var(local_list(m))%units)//']"',m=1,ubound(local_list,1))
-  formatline = '('//trim(indexformat)//repeat(',a,'//trim(mediumformat),totaldimensions)// &
-    repeat(',a,'//trim(mediumformat),ubound(local_list,1))//')'
+  formatline = '('//trim(indexformat)//repeat(',a,'//trim(outputtxtformat),totaldimensions)// &
+    repeat(',a,'//trim(outputtxtformat),ubound(local_list,1))//')'
   do i = 1, itotal
     write(foutput,fmt=formatline) i,(delimiter,trunk_dble(cell(i)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=i,noerror=.true., &
@@ -214,8 +214,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'face'.or.trim(txtoutput) == 'all'))
   formatline = '(a8'//repeat(',a,'//trim(stringformat),totaldimensions+ubound(local_list,1))//')'
   write(foutput,fmt=formatline) '"jface"',(delimiter,facexname(l),l=1,totaldimensions), &
     (delimiter,'"'//trim(var(local_list(m))%name)//' ['//trim(var(local_list(m))%units)//']"',m=1,ubound(local_list,1))
-  formatline = '('//trim(indexformat)//repeat(',a,'//trim(mediumformat),totaldimensions)// &
-    repeat(',a,'//trim(mediumformat),ubound(local_list,1))//')'
+  formatline = '('//trim(indexformat)//repeat(',a,'//trim(outputtxtformat),totaldimensions)// &
+    repeat(',a,'//trim(outputtxtformat),ubound(local_list,1))//')'
   do j = 1, jtotal
     write(foutput,fmt=formatline) j,(delimiter,trunk_dble(face(j)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=j,noerror=.true., &
@@ -238,8 +238,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'node'.or.trim(txtoutput) == 'all'))
   formatline = '(a8'//repeat(',a,'//trim(stringformat),totaldimensions+ubound(local_list,1))//')'
   write(foutput,fmt=formatline) '"knode"',(delimiter,nodexname(l),l=1,totaldimensions), &
     (delimiter,'"'//trim(var(local_list(m))%name)//' ['//trim(var(local_list(m))%units)//']"',m=1,ubound(local_list,1))
-  formatline = '('//trim(indexformat)//repeat(',a,'//trim(mediumformat),totaldimensions)// &
-    repeat(',a,'//trim(mediumformat),ubound(local_list,1))//')'
+  formatline = '('//trim(indexformat)//repeat(',a,'//trim(outputtxtformat),totaldimensions)// &
+    repeat(',a,'//trim(outputtxtformat),ubound(local_list,1))//')'
   do k = 1, ktotal
     write(foutput,fmt=formatline) k,(delimiter,trunk_dble(node(k)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=k,noerror=.true., &
@@ -268,7 +268,7 @@ if (list_length > 0.and.(trim(txtoutput) == 'none'.or.trim(txtoutput) == 'all'))
       (delimiter,'"'//trim(var(local_list(m))%name)//' ['//trim(var(local_list(m))%units)//']"',m=1,ubound(local_list,1))
   end if
 
-  formatline = '('//trim(indexformat)//repeat(',a,'//trim(mediumformat),ubound(local_list,1))//')'
+  formatline = '('//trim(indexformat)//repeat(',a,'//trim(outputtxtformat),ubound(local_list,1))//')'
   if (transient_simulation) then
     write(foutput,fmt=formatline) timestep,(delimiter,trunk_dble(var_value(local_list(m),1)),m=1,ubound(local_list,1))
   else
@@ -353,13 +353,13 @@ do ntype = 1, ubound(var_types,1)
         if (var(m)%funk(ns)%v < var(m)%funk(min_loc)%v) min_loc = ns
       end do
     ! new textline formulation
-      formatline = '(a,'//trim(realformat)//',a,'//trim(dindexformat(ijkvar(m,max_loc)))//',a,'//trim(realformat)//',a,'// &
+      formatline = '(a,'//trim(outputstatformat)//',a,'//trim(dindexformat(ijkvar(m,max_loc)))//',a,'//trim(outputstatformat)//',a,'// &
         trim(dindexformat(ijkvar(m,min_loc)))//')'
       write(textline,fmt=formatline) "variable "//trim(var(m)%type)//' '//trim(var(m)%name)//': max = ', &
         trunk_dble(var(m)%funk(max_loc)%v),' at '//trim(var(m)%centring)//' ', &
         ijkvar(m,max_loc),': min = ',trunk_dble(var(m)%funk(min_loc)%v),' at '//trim(var(m)%centring)//' ',ijkvar(m,min_loc)
       if (trim(var(m)%type) == 'equation' .or. trim(var(m)%type) == 'unknown') then
-        formatline = '(a,'//trim(realformat)//')'
+        formatline = '(a,'//trim(outputstatformat)//')'
         write(textline,fmt=formatline) trim(textline)//': magnitude = ',var(m)%magnitude
       end if
     end if
@@ -376,7 +376,7 @@ do ntype = 1, ubound(var_types,1)
 ! relative average update time = [average (per update) update time]/[maximum_update_time] = the average update time for this particular variable dividied by the largest (average) update time across all variables.  This isn't as useful as it looks, as the variable that is used in the normalisation may only be updated once (say, at the beginning) in a simulation.
 
     if (output_variable_update_times) then
-      formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(dindexformat(var(m)%update_number))//',2(a,'//trim(realformat)//'))'
+      formatline = '(a,2(a,'//trim(outputstatformat)//'),a,'//trim(dindexformat(var(m)%update_number))//',2(a,'//trim(outputstatformat)//'))'
       write(textline,fmt=formatline) trim(textline),&
         ': total (cumulative) update time = ',var(m)%update_time,': relative total update time = ', &
         var(m)%update_time/total_update_time, &
@@ -418,7 +418,7 @@ if (include_regions) then
         allocatable_integer_size(region(m)%ijk)
 
       if (output_region_update_times) then
-        formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(dindexformat(region(m)%update_number))//',2(a,'//trim(realformat)//'))'
+        formatline = '(a,2(a,'//trim(outputstatformat)//'),a,'//trim(dindexformat(region(m)%update_number))//',2(a,'//trim(outputstatformat)//'))'
         write(textline,fmt=formatline) trim(textline),&
           ': total (cumulative) update time = ',region(m)%update_time,': relative total update time = ', &
           region(m)%update_time/total_update_time, &
@@ -1048,12 +1048,12 @@ else if (trim(action) == "write") then
 
   if (transient_simulation) then
     repeatformatline = '('//trim(dindexformat(timestep))//',a,'//trim(dindexformat(newtstep))// &
-      repeat(',a,'//trim(realformat),ubound(output_step_variable,1))//')'
+      repeat(',a,'//trim(outputstpformat),ubound(output_step_variable,1))//')'
     write(foutputstep,fmt=repeatformatline) timestep,separator,newtstep, &
       (separator,trunk_dble(var_value(output_step_variable(nvar)%m,output_step_variable(nvar)%ns)), &
       nvar=1,ubound(output_step_variable,1))
   else
-    repeatformatline = '('//trim(dindexformat(newtstep))//repeat(',a,'//trim(realformat),ubound(output_step_variable,1))//')'
+    repeatformatline = '('//trim(dindexformat(newtstep))//repeat(',a,'//trim(outputstpformat),ubound(output_step_variable,1))//')'
     write(foutputstep,fmt=repeatformatline) newtstep, &
       (separator,trunk_dble(var_value(output_step_variable(nvar)%m,output_step_variable(nvar)%ns)), &
       nvar=1,ubound(output_step_variable,1))

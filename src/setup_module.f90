@@ -1954,8 +1954,17 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_logical(general_options(n),'outputdebugfile', &
       "whether to output a debugging msh file at the same as the other msh files are written out",output_debug_file,'general')
   else if (trim(option_name) == "outputmshformat") then
-    call set_option_string(general_options(n),"outputmshformat (fortran format string for msh data output)", &
+    call set_option_string(general_options(n),"outputmshformat (fortran format string for msh file output)", &
       outputmshformat,'general')
+  else if (trim(option_name) == "outputtxtformat") then
+    call set_option_string(general_options(n),"outputtxtformat (fortran format string for txt file output)", &
+      outputtxtformat,'general')
+  else if (trim(option_name) == "outputstatformat") then
+    call set_option_string(general_options(n),"outputstatformat (fortran format string for stat file output)", &
+      outputstatformat,'general')
+  else if (trim(option_name) == "outputstpformat") then
+    call set_option_string(general_options(n),"outputstpformat (fortran format string for stp file output)", &
+      outputstpformat,'general')
 
 ! timing of various routines
   else if (trim(option_name) == "outputtimings" .or. trim(option_name) == "nooutputtimings") then
