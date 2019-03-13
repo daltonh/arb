@@ -13,11 +13,14 @@ module Rxntoarb
     def initialize(file) #{{{
       @constants = []
       @equations = []
+      File.open(file, File.file?(file) ? 'r+' : 'w').close # throws an EACCES error if file is not writable
       @file = file
       @magnitudes = {} # key is species.tag, value is magnitude expression
       @output = []
       @rates = []
       @sources = {} # key is [species, source_region], value is source term
+    rescue Errno::EACCES => msg
+      abort "ERROR: output file #{file} is not writable"
     end #}}}
 
     def write(rxn) #{{{
