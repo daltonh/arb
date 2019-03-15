@@ -2,5 +2,5 @@ MARKDOWN
 This will cause the multifluid equations to revert to version1, which was pre 13/2/19
 END_MARKDOWN
 
-GLOBAL_REPLACMENTS R "<<stressmethod>>" W "version1"
-GLOBAL_REPLACMENTS R "<<dragmethod>>" W "version1"
+GLOBAL_REPLACEMENTS R "<<stressmethod>>" W "version1"
+GLOBAL_REPLACEMENTS R "<<dragmethod>>" W "version1"
