@@ -48,8 +48,8 @@ CELL_LOCAL <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_<<sp
 IF {{ return string_test('<<steric_pressure_method>>','step')}}
 
 # define some constants
-  NONE_CONSTANT <p_steric_gradient_low> [Pa] 1.d-3
-  NONE_CONSTANT <p_steric_gradient_high> [Pa] 1.d+3
+  NONE_CONSTANT <p_steric_gradient_low> [Pa] 1.d+0
+  NONE_CONSTANT <p_steric_gradient_high> [Pa] 1.d+5
   NONE_CONSTANT <p_steric_phi_max_allsolids> "<phi_max_allsolids>"
   NONE_CONSTANT <p_steric_delta_phi_1> 0.05d0
   NONE_CONSTANT <p_steric_delta_phi_2> 0.05d0
@@ -59,12 +59,13 @@ IF {{ return string_test('<<steric_pressure_method>>','step')}}
   NONE_CONSTANT <p_steric_B> "<p_steric_phi_1_max>-<p_steric_delta_phi_2>/2.d0"
 
   CELL_DERIVED <p_steric_phi_allsolids> "1.d0-<phi_pos_species0>" ON <allcells>
+  CELL_LOCAL <p_steric_<<species>>> "0.d0" ON <allcells> output
   IF 1 # add low contribution
-    CELL_LOCAL <p_steric_allsolids> "<p_steric_gradient_low>*<p_steric_phi_allsolids>"
+    CELL_LOCAL <p_steric_<<species>>> "<p_steric_gradient_low>*<phi_<<species>>>"
   END_IF
   IF 1 # add high contribution
-    CELL_LOCAL <p_steric_allsolids> "<p_steric_allsolids>+cellif(<p_steric_phi_allsolids>-<p_steric_phi_2_max>,cellif(<p_steric_phi_allsolids>-<p_steric_phi_1_max>,<p_steric_gradient_high>*(<p_steric_phi_allsolids>-<p_steric_B>),<p_steric_A>*(<p_steric_phi_allsolids>-<p_steric_phi_2_max>)^2),0.d0)"
+    CELL_LOCAL <p_steric_<<species>>> "<p_steric_<<species>>>+cellif(<p_steric_phi_allsolids>-<p_steric_phi_2_max>,(<phi_pos_<<species>>>/<p_steric_phi_allsolids>)*cellif(<p_steric_phi_allsolids>-<p_steric_phi_1_max>,<p_steric_gradient_high>*(<p_steric_phi_allsolids>-<p_steric_B>),<p_steric_A>*(<p_steric_phi_allsolids>-<p_steric_phi_2_max>)^2),0.d0)"
   END_IF
 
-  CELL_LOCAL <p_osmotic_<<species>>> "<p_osmotic_<<species>>>+<p_steric_allsolids>*<phi_<<species>>>"
+  CELL_LOCAL <p_osmotic_<<species>>> "<p_osmotic_<<species>>>+<p_steric_<<species>>>"
 END_IF
