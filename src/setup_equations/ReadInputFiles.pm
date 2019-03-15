@@ -1389,11 +1389,9 @@ sub convert_rxn_to_arb_file {
   
   print "INFO: attempting to create arb file $code_blocks[$rxn_block]{abs_name} from rxn file $code_blocks[$rxn_block]{abs_rxn_name}\n";
   print ::DEBUG "INFO: attempting to create arb file $code_blocks[$rxn_block]{abs_name} from rxn file $code_blocks[$rxn_block]{abs_rxn_name}\n";
-  if (-e $code_blocks[$rxn_block]{"abs_name"}) {
-    unlink($code_blocks[$rxn_block]{"abs_name"}) or error_stop("could not remove existing $code_blocks[$rxn_block]{abs_name} when running attempting to run rxntoarb on $code_blocks[$rxn_block]{abs_rxn_name}");  
-  }
   print "INFO: the following output is from the rxntoarb script:\n";
-  my $systemcall="$::rxntoarb_bin -o $code_blocks[$rxn_block]{abs_name} $code_blocks[$rxn_block]{abs_rxn_name}";
+  my $systemcall = "$::rxntoarb_bin -o $code_blocks[$rxn_block]{abs_name} $code_blocks[$rxn_block]{abs_rxn_name}";
+  $systemcall = $systemcall . " -t $::working_dir/rxntoarbrc" if (-e "$::working_dir/rxntoarbrc");
   (!(system("$systemcall"))) or error_stop("problem running rxntoarb: file = $code_blocks[$rxn_block]{abs_rxn_name}: systemcall = $systemcall");
   print "INFO: rxntoarb script finished: arb file successfully created\n";
   print ::DEBUG "INFO: rxntoarb script finished: arb file successfully created\n";
