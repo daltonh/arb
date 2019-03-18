@@ -104,7 +104,7 @@ ELSE
   IF 0 # arithmetic averaging of beta^'s
     FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_species0_<<species>>>" ON <allfaces>
     FACE_LOCAL <beta^_f_<<species>>_species0> "<beta^_<<species>>_species0>" ON <allfaces>
-  ELSE_IF 1 # adjacentcell averaging of beta^'s
+  ELSE_IF 1 # adjacentcell averaging of beta^'s - seems to be the most stable
     FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[adjacentcells](<beta^_species0_<<species>>>)" ON <allfaces>
     FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[adjacentcells](<beta^_<<species>>_species0>)" ON <allfaces>
   ELSE_IF 0 # adjacentcell averaging of beta^'s, except at boundaries

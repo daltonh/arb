@@ -21,7 +21,7 @@ REPLACEMENTS D '<region' W '<inlet'
 # this is the default for p extrapolation at the wall, which can be set specifically for wall boundaries using
 # eg INCLUDE 'boundary_equations' R '<<boundarynormalwallmethod>>' W 'rhiechow'
 #REPLACEMENTS D '<<boundarynormalwallmethod>>' W 'rhiechow'
-REPLACEMENTS D '<<boundarynormalwallmethod>>' W 'zerodynamic' # current default
+REPLACEMENTS D '<<boundarynormalwallmethod>>' W 'zerodynamic' # current default for multifluid
 
 REPLACEMENTS D '<<boundarytangentmethod>>' W 'noslip'
 
