@@ -58,6 +58,7 @@ use Common;
 use Exporter 'import';
 #our $VERSION = '1.00';
 our @EXPORT  = qw(read_input_files); # list of subroutines and variables that will by default be made available to calling routine
+use StringCode;
 
 # define variables common to all of these subs
 our @code_blocks; # this will become a stack of recursively called arb code blocks (which could correspond to a new input file), starting with the root_input.arb file created by the arb script that contains INPUT_WORKING links to the arb files called by the user from the arb script
@@ -74,8 +75,6 @@ my %default_override_options; # default options prepended to each statement read
 #--------------------------------------------------------------
 # parse all *.arb files - this is called from main
 sub read_input_files {
-
-  use StringCode;
 
 # open unwrapped input file that will be used as a record only, and can be used for subsequent runs
   open(UNWRAPPED_INPUT, ">$::unwrapped_input_file");
@@ -1528,30 +1527,36 @@ sub perform_index_replacements {
 # do not have to replace here, just identify, and then perform replacements in a nested loop later
     my %index=(); # make a hash that contains info about the found strings, with the key being the found index string
     my $string_line_search = $string_line; # copy the string line as we will destroy it during the search
-    while ($string_line_search =~ /(<(.+?)\[(.*?<<.+?>>.*?)\]>)/ ) { # matches if at least one index string is found in a variable or region name
+    while ($string_line_search =~ /(<([^>]+?)\[([^\]]*?<<[^\]]+?>>[^\]]*?)\]>)/ ) { # matches if at least one index string is found in a variable or region name, now being more careful to check that `guts' is contained solely within the one variable/region name
       my $guts = $3;
       my $name = $1;
-      print ::DEBUG "INFO: found at least one index string in: name = $name: in string_line = $string_line\n";
+      print ::DEBUG "INFO: found a potential index string in: name = $name: guts = $guts: string_line_search = $string_line_search: in string_line = $string_line\n";
       $string_line_search = $'; # remove the current search
       if ($guts =~ /(^|\,)\h*l\h*\=\h*((<<.+?>>)|(\d+))\h*((\,\h*((<<.+?>>)|(\d+))\h*)|\,|$)/) {
 #                     1                 23         4        56     78         9
+        print ::DEBUG "INFO: found a potential l or l1 match in guts = $guts: 3 = $3\n";
         if ($3) {
           if (defined($index{$3})) {
             print ::DEBUG "INFO: found a repeating l index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
             if ($index{$3}{type} ne "l") {
               print ::DEBUG "WARNING: index string type has changed for: index = $3: new type = l: old type =  $index{$3}{type}: in name = $name: in string_line = $string_line\n";
             }
+          } elsif ( string_examine($3) ) {
+            print ::DEBUG "INFO: a potential index string matched a string variable, so this is not an index string: string = $3: in name = $name: in string_line = $string_line\n";
           } else {
             $index{$3}{type} = "l";
             print ::DEBUG "INFO: found a new l index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
           }
         }
         if ($8) {
+          print ::DEBUG "INFO: found a potential l2 match in guts = $guts: 8 = $8\n";
           if (defined($index{$8})) {
             print ::DEBUG "INFO: found a repeating l index string: index = $8: type = $index{$8}{type}: in name = $name: in string_line = $string_line\n";
             if ($index{$8}{type} ne "l") {
               print ::DEBUG "WARNING: index string type has changed for: index = $8: new type = l: old type =  $index{$8}{type}: in name = $name: in string_line = $string_line\n";
             }
+          } elsif ( string_examine($8) ) {
+            print ::DEBUG "INFO: a potential index string matched a string variable, so this is not an index string: string = $8: in name = $name: in string_line = $string_line\n";
           } else {
             $index{$8}{type} = "l";
             print ::DEBUG "INFO: found a new l index string: index = $8: type = $index{$8}{type}: in name = $name: in string_line = $string_line\n";
@@ -1560,12 +1565,15 @@ sub perform_index_replacements {
       }
       if ($guts =~ /(^|\,)\h*r\h*\=\h*((<<.+?>>)|(\d+))(\,|$)/) {
 #                   1                 23         4     5
+        print ::DEBUG "INFO: found a potential r match in guts = $guts: 3 = $3\n";
         if ($3) {
           if (defined($index{$3})) {
             print ::DEBUG "INFO: found a repeating r index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
             if ($index{$3}{type} ne "r") {
               print ::DEBUG "WARNING: index string type has changed for: index = $3: new type = r: old type =  $index{$3}{type}: in name = $name: in string_line = $string_line\n";
             }
+          } elsif ( string_examine($3) ) {
+            print ::DEBUG "INFO: a potential index string matched a string variable, so this is not an index string: string = $3: in name = $name: in string_line = $string_line\n";
           } else {
             $index{$3}{type} = "r";
             print ::DEBUG "INFO: found a new r index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";
