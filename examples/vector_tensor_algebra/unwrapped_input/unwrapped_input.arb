@@ -260,10 +260,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    #(hash inserted during unwrap)2.  for both the vector and tensor forms, the result is limited by the small variable `<tinyish>` so that the gradient of the sqrt is defined as a finite (but hughish number) as the magnitude goes to zero.
    #(hash inserted during unwrap)3.  as per other vector/tensor operators, mag returns a tensor magnitude assuming that cartesian coordinates are in use.  So this needs to be modified for (eg) cylindrical coordinates to something like this strain rate magnitude expression from the navier_stokes templates:
    #(hash inserted during unwrap)```arb
-   #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-   #(hash inserted during unwrap)#  0 1,2
-   #(hash inserted during unwrap)CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=1]>/<cellx[l=1]>)**2),<tinyish>))" ON <allcells> 
-   #(hash inserted during unwrap)CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=2]>/<cellx[l=2]>)**2),<tinyish>))" ON <allcells> # for cylindrical coordinates
+   #(hash inserted during unwrap)CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=0]>/<cellx[l=0]>)**2),<tinyish>))" ON <allcells> # for cylindrical coordinates
    #(hash inserted during unwrap)```
    #(hash inserted during unwrap)
    #(hash inserted during unwrap)And here is a completely unrelated example of context operator centring:

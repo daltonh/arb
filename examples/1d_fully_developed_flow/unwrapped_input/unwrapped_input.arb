@@ -105,69 +105,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)IF 0#<<azimuthal>>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
                #(hash inserted during unwrap)IF 0
-               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-               #(hash inserted during unwrap)#  0 1,2,3
-               #(hash inserted during unwrap)#  0 1,2,3
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,1]> "<gamma[l=1,1]>+(-1.d0)*<u_f_vect[l=1]>/<facex[l=1]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,2]> "<gamma[l=1,2]>+(-1.d0)*<u_f_vect[l=2]>/<facex[l=1]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,3]> "<gamma[l=1,3]>+(-1.d0)*<u_f_vect[l=3]>/<facex[l=1]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,1]> "<gamma[l=2,1]>+(-1.d0)*<u_f_vect[l=1]>/<facex[l=2]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,2]> "<gamma[l=2,2]>+(-1.d0)*<u_f_vect[l=2]>/<facex[l=2]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,3]> "<gamma[l=2,3]>+(-1.d0)*<u_f_vect[l=3]>/<facex[l=2]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,1]> "<gamma[l=3,1]>+(-1.d0)*<u_f_vect[l=1]>/<facex[l=3]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,2]> "<gamma[l=3,2]>+(-1.d0)*<u_f_vect[l=2]>/<facex[l=3]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,3]> "<gamma[l=3,3]>+(-1.d0)*<u_f_vect[l=3]>/<facex[l=3]>"
-               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-               #(hash inserted during unwrap)#  0 1,2,3
-               #(hash inserted during unwrap)#  0 1,2,3
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,1]> "<gamma[l=1,1]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,1]> "<gamma[l=1,2]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,1]> "<gamma[l=1,3]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,2]> "<gamma[l=2,1]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,2]> "<gamma[l=2,2]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,2]> "<gamma[l=2,3]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,3]> "<gamma[l=3,1]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,3]> "<gamma[l=3,2]>"
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,3]> "<gamma[l=3,3]>"
+               #(hash inserted during unwrap)VARIABLE <gamma[l=0,0]> "<gamma[l=0,0]>+(-1.d0)*<u_f_vect[l=0]>/<facex[l=0]>"
+               #(hash inserted during unwrap)VARIABLE <gamma[l=0,0]> "<gamma[l=0,0]>"
                #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
                #(hash inserted during unwrap)ELSE
-               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-               #(hash inserted during unwrap)#  0 1,2,3
-               #(hash inserted during unwrap)#  0 1,2,3
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,1]> "-(-1.d0)*<facex[l=1]>*facegrad[l=1,](<u[l=1]>/<cellx[l=1]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,2]> "-(-1.d0)*<facex[l=1]>*facegrad[l=1,](<u[l=2]>/<cellx[l=1]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,3]> "-(-1.d0)*<facex[l=1]>*facegrad[l=1,](<u[l=3]>/<cellx[l=1]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,1]> "-(-1.d0)*<facex[l=2]>*facegrad[l=2,](<u[l=1]>/<cellx[l=2]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,2]> "-(-1.d0)*<facex[l=2]>*facegrad[l=2,](<u[l=2]>/<cellx[l=2]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,3]> "-(-1.d0)*<facex[l=2]>*facegrad[l=2,](<u[l=3]>/<cellx[l=2]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,1]> "-(-1.d0)*<facex[l=3]>*facegrad[l=3,](<u[l=1]>/<cellx[l=3]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,2]> "-(-1.d0)*<facex[l=3]>*facegrad[l=3,](<u[l=2]>/<cellx[l=3]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,3]> "-(-1.d0)*<facex[l=3]>*facegrad[l=3,](<u[l=3]>/<cellx[l=3]>)" OUTPUT
-               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-               #(hash inserted during unwrap)#  0 1,2,3
-               #(hash inserted during unwrap)#  0 1,2,3
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,1]> "<gamma[l=1,1]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,1]> "<gamma[l=1,2]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,1]> "<gamma[l=1,3]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,2]> "<gamma[l=2,1]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,2]> "<gamma[l=2,2]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,2]> "<gamma[l=2,3]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=1,3]> "<gamma[l=3,1]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=2,3]> "<gamma[l=3,2]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <gamma[l=3,3]> "<gamma[l=3,3]>"  OUTPUT
+               #(hash inserted during unwrap)VARIABLE <gamma[l=0,0]> "-(-1.d0)*<facex[l=0]>*facegrad[l=0,](<u[l=0]>/<cellx[l=0]>)" OUTPUT
+               #(hash inserted during unwrap)VARIABLE <gamma[l=0,0]> "<gamma[l=0,0]>"  OUTPUT
                #(hash inserted during unwrap)END_IF
-            #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-            #(hash inserted during unwrap)#  0 1,2,3
-            #(hash inserted during unwrap)#  0 1,2,3
-            #(hash inserted during unwrap)VARIABLE <gamma[l=1,1]> "-(-1.d0)*2.d0*<u_f_vect[l=1]>/<facex[l=1]>"
-            #(hash inserted during unwrap)VARIABLE <gamma[l=2,2]> "-(-1.d0)*2.d0*<u_f_vect[l=1]>/<facex[l=1]>"
-            #(hash inserted during unwrap)VARIABLE <gamma[l=3,3]> "-(-1.d0)*2.d0*<u_f_vect[l=1]>/<facex[l=1]>"
-            #(hash inserted during unwrap)VARIABLE <gamma[l=1,1]> "-(-1.d0)*2.d0*<u_f_vect[l=2]>/<facex[l=2]>"
-            #(hash inserted during unwrap)VARIABLE <gamma[l=2,2]> "-(-1.d0)*2.d0*<u_f_vect[l=2]>/<facex[l=2]>"
-            #(hash inserted during unwrap)VARIABLE <gamma[l=3,3]> "-(-1.d0)*2.d0*<u_f_vect[l=2]>/<facex[l=2]>"
-            #(hash inserted during unwrap)VARIABLE <gamma[l=1,1]> "-(-1.d0)*2.d0*<u_f_vect[l=3]>/<facex[l=3]>"
-            #(hash inserted during unwrap)VARIABLE <gamma[l=2,2]> "-(-1.d0)*2.d0*<u_f_vect[l=3]>/<facex[l=3]>"
-            #(hash inserted during unwrap)VARIABLE <gamma[l=3,3]> "-(-1.d0)*2.d0*<u_f_vect[l=3]>/<facex[l=3]>"
+            #(hash inserted during unwrap)VARIABLE <gamma[l=0,0]> "-(-1.d0)*2.d0*<u_f_vect[l=0]>/<facex[l=0]>"
             #(hash inserted during unwrap)END_IF
          
          
@@ -175,25 +120,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       # now calculate the double dot product on the faces, then average to the cells before square rooting
       CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)),<tinyish>))" ON <allcells>
       # the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
-      # performing index string loops on the following index list pairs:
-      #  0 1,2,3
-      #CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=1]>/<cellx[l=1]>)**2),<tinyish>))" ON <allcells>
-      #CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=2]>/<cellx[l=2]>)**2),<tinyish>))" ON <allcells>
-      #CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=3]>/<cellx[l=3]>)**2),<tinyish>))" ON <allcells>
+      #CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=0]>/<cellx[l=0]>)**2),<tinyish>))" ON <allcells>
          #(comment created during unwrap): new block = ../../templates/navier_stokes/strain_rate_magnitude.arb: sub_block = 1
          #(hash inserted during unwrap)IF 0
-         #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-         #(hash inserted during unwrap)#  0 1,2,3
-         #(hash inserted during unwrap)#  0 1,2,3
-         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=1]>/<cellx[l=1]>)**2- facegrad[l=1,reflect=1](<u[l=1]>**2/<cellx[l=1]>),<tinyish>))" ON <allfaces> output
-         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=1]>/<cellx[l=1]>)**2- facegrad[l=1,reflect=1](<u[l=2]>**2/<cellx[l=1]>),<tinyish>))" ON <allfaces> output
-         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=1]>/<cellx[l=1]>)**2- facegrad[l=1,reflect=1](<u[l=3]>**2/<cellx[l=1]>),<tinyish>))" ON <allfaces> output
-         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=2]>/<cellx[l=2]>)**2- facegrad[l=2,reflect=2](<u[l=1]>**2/<cellx[l=2]>),<tinyish>))" ON <allfaces> output
-         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=2]>/<cellx[l=2]>)**2- facegrad[l=2,reflect=2](<u[l=2]>**2/<cellx[l=2]>),<tinyish>))" ON <allfaces> output
-         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=2]>/<cellx[l=2]>)**2- facegrad[l=2,reflect=2](<u[l=3]>**2/<cellx[l=2]>),<tinyish>))" ON <allfaces> output
-         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=3]>/<cellx[l=3]>)**2- facegrad[l=3,reflect=3](<u[l=1]>**2/<cellx[l=3]>),<tinyish>))" ON <allfaces> output
-         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=3]>/<cellx[l=3]>)**2- facegrad[l=3,reflect=3](<u[l=2]>**2/<cellx[l=3]>),<tinyish>))" ON <allfaces> output
-         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=3]>/<cellx[l=3]>)**2- facegrad[l=3,reflect=3](<u[l=3]>**2/<cellx[l=3]>),<tinyish>))" ON <allfaces> output
+         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=0]>/<cellx[l=0]>)**2- facegrad[l=0,reflect=0](<u[l=0]>**2/<cellx[l=0]>),<tinyish>))" ON <allfaces> output
          #(hash inserted during unwrap)CELL_DERIVED <gamma_magnitude> "cellave(<gamma_magnitude_f>)" ON <allcells> output
          #(hash inserted during unwrap)
          #(hash inserted during unwrap)#CELL_DERIVED <gamma_magnitude> "cellave(sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>)))" ON <allcells> output

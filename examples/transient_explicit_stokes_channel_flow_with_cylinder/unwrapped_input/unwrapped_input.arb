@@ -374,44 +374,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)IF 0#<<azimuthal>>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
                #(hash inserted during unwrap)IF 0
-               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-               #(hash inserted during unwrap)#  0 1,2
-               #(hash inserted during unwrap)#  0 1,2
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=1,1]> "<tau[r=1,l=1,1]>+<mu>*<u_f_vect[l=1]>/<facex[l=1]>"
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=1,2]> "<tau[r=1,l=1,2]>+<mu>*<u_f_vect[l=2]>/<facex[l=1]>"
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=2,1]> "<tau[r=1,l=2,1]>+<mu>*<u_f_vect[l=1]>/<facex[l=2]>"
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=2,2]> "<tau[r=1,l=2,2]>+<mu>*<u_f_vect[l=2]>/<facex[l=2]>"
-               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-               #(hash inserted during unwrap)#  0 1,2
-               #(hash inserted during unwrap)#  0 1,2
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=1,1]> "<tau[r=1,l=1,1]>"
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=2,1]> "<tau[r=1,l=1,2]>"
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=1,2]> "<tau[r=1,l=2,1]>"
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=2,2]> "<tau[r=1,l=2,2]>"
+               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=0,0]> "<tau[r=1,l=0,0]>+<mu>*<u_f_vect[l=0]>/<facex[l=0]>"
+               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=0,0]> "<tau[r=1,l=0,0]>"
                #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
                #(hash inserted during unwrap)ELSE
-               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-               #(hash inserted during unwrap)#  0 1,2
-               #(hash inserted during unwrap)#  0 1,2
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=1,1]> "-<mu>*<facex[l=1]>*facegrad[l=1,](<u[r=1,l=1]>/<cellx[l=1]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=1,2]> "-<mu>*<facex[l=1]>*facegrad[l=1,](<u[r=1,l=2]>/<cellx[l=1]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=2,1]> "-<mu>*<facex[l=2]>*facegrad[l=2,](<u[r=1,l=1]>/<cellx[l=2]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=2,2]> "-<mu>*<facex[l=2]>*facegrad[l=2,](<u[r=1,l=2]>/<cellx[l=2]>)" OUTPUT
-               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-               #(hash inserted during unwrap)#  0 1,2
-               #(hash inserted during unwrap)#  0 1,2
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=1,1]> "<tau[r=1,l=1,1]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=2,1]> "<tau[r=1,l=1,2]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=1,2]> "<tau[r=1,l=2,1]>"  OUTPUT
-               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=2,2]> "<tau[r=1,l=2,2]>"  OUTPUT
+               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=0,0]> "-<mu>*<facex[l=0]>*facegrad[l=0,](<u[r=1,l=0]>/<cellx[l=0]>)" OUTPUT
+               #(hash inserted during unwrap)VARIABLE <tau[r=1,l=0,0]> "<tau[r=1,l=0,0]>"  OUTPUT
                #(hash inserted during unwrap)END_IF
-            #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-            #(hash inserted during unwrap)#  0 1,2
-            #(hash inserted during unwrap)#  0 1,2
-            #(hash inserted during unwrap)VARIABLE <tau[r=1,l=1,1]> "-<mu>*2.d0*<u_f_vect[l=1]>/<facex[l=1]>"
-            #(hash inserted during unwrap)VARIABLE <tau[r=1,l=2,2]> "-<mu>*2.d0*<u_f_vect[l=1]>/<facex[l=1]>"
-            #(hash inserted during unwrap)VARIABLE <tau[r=1,l=1,1]> "-<mu>*2.d0*<u_f_vect[l=2]>/<facex[l=2]>"
-            #(hash inserted during unwrap)VARIABLE <tau[r=1,l=2,2]> "-<mu>*2.d0*<u_f_vect[l=2]>/<facex[l=2]>"
+            #(hash inserted during unwrap)VARIABLE <tau[r=1,l=0,0]> "-<mu>*2.d0*<u_f_vect[l=0]>/<facex[l=0]>"
             #(hash inserted during unwrap)END_IF
          
          
@@ -864,11 +834,13 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                   #(hash inserted during unwrap)#  <<i>> 1,2
                   #(hash inserted during unwrap)FACE_LOCAL <u_f_vect[l=1,r=1]> "faceave[](<u[l=1,r=1]>)"
                   #(hash inserted during unwrap)FACE_LOCAL <u_f_vect[l=2,r=1]> "faceave[](<u[l=2,r=1]>)"
-                  #(hash inserted during unwrap)FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
+                  #(hash inserted during unwrap)#     FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "mag(<u_f_vect[l=:,r=1]>)" ON <allfaces>
                   #(hash inserted during unwrap)# S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 3
                   #(hash inserted during unwrap)ELSE
-                  #(hash inserted during unwrap)FACE_LOCAL <u_f_vect_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tinyish>))" ON <allfaces>
+                  #(hash inserted during unwrap)#     FACE_LOCAL <u_f_vect_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tinyish>))" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_LOCAL <u_f_vect_magnitude> "mag(<u_f_vect[l=:]>)" ON <allfaces>
                   #(hash inserted during unwrap)# S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
                   #(hash inserted during unwrap)END_IF
                #(hash inserted during unwrap)END_IF
@@ -969,10 +941,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                #(hash inserted during unwrap)IF 
                #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation however the string 0 has not been correctly defined'
                #(hash inserted during unwrap)END_IF
-            #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-            #(hash inserted during unwrap)#  0 1,2
-            #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "<momentum[l=1]>+2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)"
-            #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "<momentum[l=2]>+2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)"
+            #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "<momentum[l=0]>+2.d0*<u[l=0]>*<mu>/(<cellx[l=0]>**2)"
             #(hash inserted during unwrap)END_IF
          
          #define momentum eqn for azimuthal component
@@ -983,20 +952,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                #(hash inserted during unwrap)IF 
                #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 0 has not been correctly defined'
                #(hash inserted during unwrap)END_IF
-            #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-            #(hash inserted during unwrap)#  0 1,2
-            #(hash inserted during unwrap)#  0 1,2
-            #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "celldiv((1.d0**2)*<J_f[l=1]>)/(1.d0**2)+<rho>*<u[l=1]>*<u[l=1]>/<cellx[l=1]>" ON <domain> 
-            #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "celldiv((1.d0**2)*<J_f[l=2]>)/(1.d0**2)+<rho>*<u[l=1]>*<u[l=2]>/<cellx[l=1]>" ON <domain> 
-            #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "celldiv((1.d0**2)*<J_f[l=1]>)/(1.d0**2)+<rho>*<u[l=2]>*<u[l=1]>/<cellx[l=2]>" ON <domain> 
-            #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "celldiv((1.d0**2)*<J_f[l=2]>)/(1.d0**2)+<rho>*<u[l=2]>*<u[l=2]>/<cellx[l=2]>" ON <domain> # momentum component'
-            #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
-            #(hash inserted during unwrap)#  0 1,2
-            #(hash inserted during unwrap)#  0 1,2
-            #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "<momentum[l=1]>-<rho>*<u[l=1]>**2/<cellx[l=1]>"
-            #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "<momentum[l=1]>-<rho>*<u[l=2]>**2/<cellx[l=1]>"
-            #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "<momentum[l=2]>-<rho>*<u[l=1]>**2/<cellx[l=2]>"
-            #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "<momentum[l=2]>-<rho>*<u[l=2]>**2/<cellx[l=2]>"
+            #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv((1.d0**2)*<J_f[l=0]>)/(1.d0**2)+<rho>*<u[l=0]>*<u[l=0]>/<cellx[l=0]>" ON <domain> # momentum component'
+            #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "<momentum[l=0]>-<rho>*<u[l=0]>**2/<cellx[l=0]>"
             #(hash inserted during unwrap)END_IF
          
          # add transient term which is independent of cartesian or cylindrical coordinates
