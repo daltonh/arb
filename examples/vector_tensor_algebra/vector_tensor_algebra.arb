@@ -36,7 +36,14 @@ CELL_CONSTANT <a[l=1]> "<<i>>" ON <allcells>
 ```
 would not trigger the index replacement as the index variable <<i>> does not appear in a variable or region name option box.
 
-Also, as index strings can appear anywhere, you can also use them in operator `option boxes`, as in
+Also note that if a potential index variable matches a string variable, then the string variable value takes precedence (ie, the match is not identified as an index variable).  So the following
+```arb
+REPLACEMENT R "<<a single dim>>" W "1"
+CELL_CONSTANT <a[l=<<a single dim>>]> "<b[l=<<a single dim>>]>" ON <allcells>
+```
+would not be repeated for all dimensions as `<<a single dim>>` was already defined as a string variable.
+
+Also, as index strings can appear anywhere, you can also use them in operator `option boxes` (provided that they are also defined within variable/region operator boxes), as in
 END_MARKDOWN
 
 CELL_CONSTANT <agradient[l=<<my long index variable>>]> "cellgrad[l=<<my long index variable>>](<a[l=1]>)"
@@ -127,7 +134,7 @@ This is probably less useful than the vector tensor algebra however.
 
 ## Colon Operators
 
-While sounding painful, these operators are actually designed to actually minimise pain.  They are a shortform way of performing the most common vector operations.
+While sounding painful, these operators are actually designed to reduce pain.  They are a shortform way of performing the most common vector operations.
 
 General notes about these operators:
 1.  they cannot be nested, that is you can't have a `dot` inside a `ddot`,
