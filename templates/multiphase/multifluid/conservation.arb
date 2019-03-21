@@ -4,12 +4,12 @@ END_MARKDOWN
 
 # uses <<radius_f>> and <<radius_c>> which are either r or 1 already, and simplify in the case of 1 using maxima
 
+# both of these strings are now set globally in constants, but can be overwritten with local values here
 # <<implicitadvection>> modifies both the advection of phi and u, making both implicit (ie, using r=0 values rather than r=1 values).  You need implicit advection to be able to push CFL over 1.
-REPLACEMENTS D "<<implicitadvection>>" W "0" # call with this set to 1 to overwrite
+REPLACEMENTS D "<<implicitadvection>>" W "1" # default is now implicit advection
 
 #REPLACEMENTS D "<<stressmethod>>" W "version1" # method, with phi inside viscous stress divergence
 REPLACEMENTS D "<<stressmethod>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
-
 # now create conservation equations
 
 # mass conservation (actually, volume conservation)
@@ -83,11 +83,8 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
 # now deal with drag terms
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
 # now add drag with continuous phase
-# was bug here with centring
-#     $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<beta^_f_$species"."_species0>*(<u_$species"."[l=$l]>-<u_species0[l=$l]>)'\n";
       $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<beta^_$species"."_species0>*(<u_$species"."[l=$l]>-<u_species0[l=$l]>)'\n";
 # and opposite to continuous phase term
-#     $return_string .= "CELL_EQUATION <momentum_species0[l=$l]> '<momentum_species0[l=$l]>+<beta^_f_species0_$species>*(<u_species0[l=$l]>-<u_$species"."[l=$l]>)'\n";
       $return_string .= "CELL_EQUATION <momentum_species0[l=$l]> '<momentum_species0[l=$l]>+<beta^_species0_$species>*(<u_species0[l=$l]>-<u_$species"."[l=$l]>)'\n";
     }
   }
@@ -95,22 +92,18 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
 }}
 
 IF <<cylindrical>>
-  #  ERROR "hoop stress not done in conservation"
-  #END_IF
-  # add on hoop stress term separately for cylindrical coordinates
-  IF <<cylindrical>>
-  # perform a check that <<radialdim>> has been correctly defined
-    IF {{ return (!( string_eval('<<radialdim>>') ge 1 && string_eval('<<radialdim>>') le 3)) }}
-      ERROR 'This is a cylindrical coordinate simulation however the string <<radialdim>> has not been correctly defined'
-    END_IF
-    {{
-      my $return_string='';
-      for my $species (string_eval('<<multifluid_species_list>>','list')) {
-        $return_string .= "VARIABLE <momentum_$species"."[l=<<radialdim>>]> '<momentum_$species"."[l=<<radialdim>>]>+2.d0*<u_$species"."[l=<<radialdim>>]>*<mu_c_$species".">/(<phi_bounded_$species>*<cellx[l=<<radialdim>>]>**2)'\n";
-        }
-      return $return_string;
-    }}
+# add on hoop stress term separately for cylindrical coordinates
+# first perform a check that <<radialdim>> has been correctly defined
+  IF {{ return (!( string_eval('<<radialdim>>') ge 1 && string_eval('<<radialdim>>') le 3)) }}
+    ERROR 'This is a cylindrical coordinate simulation however the string <<radialdim>> has not been correctly defined'
   END_IF
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "VARIABLE <momentum_$species"."[l=<<radialdim>>]> '<momentum_$species"."[l=<<radialdim>>]>+2.d0*<u_$species"."[l=<<radialdim>>]>*<mu_c_$species".">/(<phi_bounded_$species>*<cellx[l=<<radialdim>>]>**2)'\n";
+      }
+    return $return_string;
+  }}
 
   #define momentum eqn for azimuthal component
   IF 0#<<azimuthal>>
@@ -222,4 +215,5 @@ IF <<cylindrical>>
       }
      return $return_string;
     }}
+  END_IF
 END_IF

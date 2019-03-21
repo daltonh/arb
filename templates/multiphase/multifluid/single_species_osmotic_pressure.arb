@@ -9,8 +9,8 @@ END_MARKDOWN
 REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlinglimited" # same as carnahanstarling, but goes to infinity at <p_osmotic_phi_max_allsolids> rather than 1
 
 # we can also include steric hindrance using some type of step function
-#REPLACEMENTS D "<<steric_pressure_method>>" W "none"
-REPLACEMENTS D "<<steric_pressure_method>>" W "step"
+REPLACEMENTS D "<<steric_pressure_method>>" W "none"
+#REPLACEMENTS D "<<steric_pressure_method>>" W "step"
 
 IF {{ return string_test('<<osmotic_pressure_method>>','none')}}
 

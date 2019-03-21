@@ -7,6 +7,12 @@ IF {{ return string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
 
+# this string is now set globally in constants, but can be overwritten with local values here
+REPLACEMENTS D "<<dragmethod>>" W "version2"
+
+# default hindered settling function is now as defined in masliyah79 = balls
+# version1 gives an equivalent hindered settling function which is / phi_0^2
+
 #REPLACEMENTS D "<<hindered_settling_function>>" W "dilute" # = stokes
 #REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzaki"
 REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
@@ -63,10 +69,6 @@ BLOCK # enclose replacements inside a block to isolate them from later expressio
   END_IF
 
 END_BLOCK
-
-# default hindered settling function is now as defined in masliyah79 = balls
-# version1 gives an equivalent hindered settling function which is / phi_0^2
-REPLACEMENTS D "<<dragmethod>>" W "version2"
 
 IF <<drag_beta_face_based>>
 
