@@ -55,7 +55,17 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    #(hash inserted during unwrap)```
    #(hash inserted during unwrap)would not trigger the index replacement as the index variable <<i>> does not appear in a variable or region name option box.
    #(hash inserted during unwrap)
-   #(hash inserted during unwrap)Also, as index strings can appear anywhere, you can also use them in operator `option boxes`, as in
+   #(hash inserted during unwrap)Also note that if a potential index variable matches a string variable, then the string variable value takes precedence (ie, the match is not identified as an index variable).  So the following
+   #(hash inserted during unwrap)```arb
+   #(hash inserted during unwrap)REPLACEMENT R "<<a single dim>>" W "1"
+   #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+   #(hash inserted during unwrap)#  <<a single dim>> 1,2
+   #(hash inserted during unwrap)CELL_CONSTANT <a[l=1]> "<b[l=1]>" ON <allcells>
+   #(hash inserted during unwrap)CELL_CONSTANT <a[l=2]> "<b[l=2]>" ON <allcells>
+   #(hash inserted during unwrap)```
+   #(hash inserted during unwrap)would not be repeated for all dimensions as `<<a single dim>>` was already defined as a string variable.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)Also, as index strings can appear anywhere, you can also use them in operator `option boxes` (provided that they are also defined within variable/region operator boxes), as in
    #(hash inserted during unwrap)END_MARKDOWN
    
    # performing index string loops on the following index list pairs:
@@ -215,7 +225,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    #(hash inserted during unwrap)
    #(hash inserted during unwrap)## Colon Operators
    #(hash inserted during unwrap)
-   #(hash inserted during unwrap)While sounding painful, these operators are actually designed to actually minimise pain.  They are a shortform way of performing the most common vector operations.
+   #(hash inserted during unwrap)While sounding painful, these operators are actually designed to reduce pain.  They are a shortform way of performing the most common vector operations.
    #(hash inserted during unwrap)
    #(hash inserted during unwrap)General notes about these operators:
    #(hash inserted during unwrap)1.  they cannot be nested, that is you can't have a `dot` inside a `ddot`,
