@@ -7,6 +7,7 @@ END_MARKDOWN
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "dilute"
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarling"
 REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlinglimited" # same as carnahanstarling, but goes to infinity at <p_osmotic_phi_max_allsolids> rather than 1
+#REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlingsinglelimited"
 
 # we can also include steric hindrance using some type of step function
 REPLACEMENTS D "<<steric_pressure_method>>" W "none"
@@ -19,6 +20,13 @@ IF {{ return string_test('<<osmotic_pressure_method>>','none')}}
 ELSE_IF {{ return string_test('<<osmotic_pressure_method>>','dilute')}}
 # linear osmotic pressure, dilute assumption, multiplier is location independent
   NONE_CONSTANT <p_osmotic_multiplier_<<species>>> [Pa] "<k_boltzmann>*<T>/<V_<<species>>>"
+
+ELSE_IF {{ return string_test('<<osmotic_pressure_method>>','carnahanstarlingsinglelimited')}}
+  NONE_CONSTANT <p_osmotic_phi_max_<<species>>> "<phi_max_allsolids>"
+  NONE_CONSTANT <p_osmotic_phi_tol> "<phi_tol>"
+  CELL_DERIVED <p_osmotic_phi_norm_<<species>>> "cellmin(<phi_pos_<<species>>>,<p_osmotic_phi_max_<<species>>>-<p_osmotic_phi_tol>)/<p_osmotic_phi_max_<<species>>>" output
+  CELL_DERIVED <p_osmotic_Z_<<species>>> [Pa] "(1.d0+<p_osmotic_phi_norm_<<species>>>+<p_osmotic_phi_norm_<<species>>>^2-<p_osmotic_phi_norm_<<species>>>^3)/((1.d0-<p_osmotic_phi_norm_<<species>>>)^3)" ON <allcells>
+  CELL_LOCAL <p_osmotic_multiplier_<<species>>> [Pa] "<k_boltzmann>*<T>*<p_osmotic_Z_<<species>>>/<V_<<species>>>" ON <allcells>
 
 ELSE
 # methods that have a maximum total solids magnitude, with a multiplier that can be expressed as a function of total solid volume fraction

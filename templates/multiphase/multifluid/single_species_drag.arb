@@ -99,13 +99,29 @@ ELSE
     CELL_LOCAL <beta^_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
   ELSE
     CELL_DERIVED <beta^_<<species>>_species0> "<mu_species0>/<kappa*_species0_<<species>>>" ON <allcells>
-    CELL_DERIVED <beta^_species0_<<species>>> "<beta^_<<species>>_species0>*<phi_bounded_<<species>>>/<phi_bounded_species0>" ON <allcells>
+    IF 1 # bounded phi_<<species>>
+      CELL_DERIVED <beta^_species0_<<species>>> "<beta^_<<species>>_species0>*<phi_bounded_<<species>>>/<phi_bounded_species0>" ON <allcells>
+    ELSE # trial using pos for phi_<<species>>, given that this represents flux from species1 to species0
+      CELL_DERIVED <beta^_species0_<<species>>> "<beta^_<<species>>_species0>*<phi_pos_<<species>>>/<phi_bounded_species0>" ON <allcells>
+    END_IF
   END_IF
 
 # now calculate face centred betas from cell centred
 # there are a whole bunch of alternatives here, but harmonic of beta^ seems to the be only acceptable one
   IF 1 # harmonic averaging of beta^'s - works well for sedimentation
     FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[harmonic](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_<<species>>_species0>)" ON <allfaces>
+  ELSE_IF 0 # harmonic6 averaging of beta^'s, including using pos cutoff for beta^_species0 calc set above
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[limitedharmonic](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_<<species>>_species0>)" ON <allfaces>
+  ELSE_IF 0 # harmonic7 averaging of beta^'s
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[harmonic](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_species0_<<species>>>*<phi_bounded_<<species>>>)*faceave[harmonic](1.d0/<phi_bounded_species0>)" ON <allfaces>
+  ELSE_IF 0 # harmonic8 averaging of beta^'s
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[harmonic](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "<beta^_f_species0_<<species>>>*<phi_f_bounded_harmonic_<<species>>>*faceave[harmonic](1.d0/<phi_bounded_species0>)" ON <allfaces>
+  ELSE_IF 1 # harmonic9 averaging of beta^'s
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[adjacentcells](<beta^_species0_<<species>>>)" ON <allfaces>
     FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_<<species>>_species0>)" ON <allfaces>
   ELSE_IF 0 # harmonic2 - adjacent cell averaging of beta, then dividing by the same average for phi as used in the osmotic pressure - checkerboarding in sedimentation problem
     CELL_LOCAL <beta_<<species>>_species0> "<mu_species0>*<phi_bounded_<<species>>>/<kappa*_species0_<<species>>>" ON <allcells>
@@ -117,6 +133,20 @@ ELSE
     CELL_LOCAL <beta_species0_<<species>>> "<beta_<<species>>_species0>" ON <allcells>
     FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[harmonic](<beta_species0_<<species>>>)/<phi_f_bounded_adjacent_species0>" ON <allfaces>
     FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta_<<species>>_species0>)/<phi_f_bounded_adjacent_<<species>>>" ON <allfaces>
+  ELSE_IF 1 # harmonic4 - average beta^_<<species>>, which should be fairly uniform, and then create beta^_species0 using local phis which are harmonically averaged, but chosing the species0 one so that the total volume fraction is 1 still
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_<<species>>_species0>)" ON <allfaces>
+    {{
+      my $return_string='';
+      for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+        $return_string .= "FACE_LOCAL <phi_f_bounded_harmonic_allsolids> '<phi_f_bounded_harmonic_allsolids>+<phi_f_bounded_harmonic_$species>' ON <allfaces>\n";
+      }
+      return $return_string;
+    }}
+    VARIABLE <phi_f_bounded_harmonic_allsolids> output
+    FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_f_<<species>>_species0>*<phi_f_bounded_harmonic_<<species>>>/(1.d0-<phi_f_bounded_harmonic_allsolids>)" ON <allfaces>
+  ELSE_IF 0 # harmonic5 - should be roughly equivalent to harmonic1, but in practice, doesn't seem to be??
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_<<species>>_species0>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_f_<<species>>_species0>*faceave[harmonic](<phi_bounded_<<species>>>/<phi_bounded_species0>)" ON <allfaces>
   ELSE_IF 0 # arithmetic averaging of beta^'s
     FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_species0_<<species>>>" ON <allfaces>
     FACE_LOCAL <beta^_f_<<species>>_species0> "<beta^_<<species>>_species0>" ON <allfaces>
@@ -130,5 +160,8 @@ ELSE
     FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[adjacentcells](<beta^_<<species>>_species0>)" ON <allfaces>
     FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_f_<<species>>_species0>*<phi_f_bounded_adjacent_<<species>>>/<phi_f_bounded_adjacent_species0>" ON <allfaces>
   END_IF
+
+  VARIABLE <beta^_f_<<species>>_species0> output
+  VARIABLE <beta^_f_species0_<<species>>> output
 
 END_IF
