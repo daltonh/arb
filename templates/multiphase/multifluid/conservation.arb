@@ -22,10 +22,12 @@ REPLACEMENTS D "<<stressmethod>>" W "version2" # as per jackson98 and zhang97, h
 # transient uses positive phi for advection
       if (string_eval('<<implicitadvection>>')) {
 # implicit
-        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+#       $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_bounded_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
       } else {
 # explicit
-        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+#       $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_bounded_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
       }
     } else {
 # steady-state uses bounded phi for advection

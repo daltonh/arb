@@ -62,6 +62,7 @@ ELSE
 # weighted by phi for disperse species
         $return_string .= "CELL_LOCAL <celldivgrad_p_dphi_$species"."[l=<<i>>]> 'celldivgrad[l=<<i>>](<p_$species>)/<phi_bounded_$species>' ON <allcells> output\n";
         $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+<phi_f_bounded_harmonic_$species>*faceave[adjacentcells](dot(<celldivgrad_p_dphi_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <<domainfaces>> output\n";
+#       $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+<phi_f_bounded_adjacent_$species>*faceave[adjacentcells](dot(<celldivgrad_p_dphi_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <<domainfaces>> output\n";
       }
     }
     return $return_string;
@@ -105,6 +106,9 @@ FACE_TRANSIENT <u_f_{correction}_mixture[r=1]> "0.d0" "<u_f_{correction}_mixture
     $return_string .= "FACE_DERIVED <u_f_phidbeta^_$species> 'faceave[adjacentcells](<phi_bounded_species0>/<beta^_$species"."_species0>)' ON <<domainfaces>>\n";
     $return_string .= "FACE_DERIVED <phiu_f_slip_{correction}_$species> '<u_f_DeltaA_$species>*<u_f_phidbeta^_$species>' ON <<domainfaces>>\n";
     $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>/<phi_f_bounded_harmonic_$species>' ON <<domainfaces>>\n";
+#   $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>/<phi_f_bounded_adjacent_$species>' ON <<domainfaces>>\n";
+# trialling smaller correction velocity
+#   $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>' ON <<domainfaces>>\n";
   }
   return $return_string;
 }}
@@ -114,6 +118,8 @@ FACE_DERIVED <u_f_{correction}_species0> "<u_f_{correction}_mixture>" ON <<domai
 {{
   my $return_string='';
   for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+# smaller correction velocity
+#   $return_string .= "VARIABLE <u_f_{correction}_species0> '(<u_f_{correction}_species0>)-<phi_f_bounded_harmonic_$species>*<u_f_slip_{correction}_$species>'\n";
     $return_string .= "VARIABLE <u_f_{correction}_species0> '(<u_f_{correction}_species0>)-<phiu_f_slip_{correction}_$species>'\n";
     $return_string .= "FACE_DERIVED <u_f_{correction}_$species> '(<u_f_{correction}_species0>)+<u_f_slip_{correction}_$species>' ON <<domainfaces>>\n";
   }
