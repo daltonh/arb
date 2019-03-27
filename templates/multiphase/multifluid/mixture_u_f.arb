@@ -22,7 +22,7 @@ END_IF
   return $return_string;
 }}
 
-IF 0
+IF 1
   # find total pressure and DeltaA based on total pressure
   CELL_LOCAL <p_total> "<p_species0>" ON <allcells>
   {{
@@ -82,7 +82,7 @@ FACE_DERIVED <u_f_alpha_mixture> '0.d0' ON <<domainfaces>> output
 FACE_DERIVED <u_f_alpha_{transient}_mixture> '0.d0' ON <<domainfaces>> output
 {{
   my $return_string='';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
     $return_string .= "VARIABLE <u_f_alpha_mixture> '<u_f_alpha_mixture>+<phi_f_bounded_$species>*<u_rf_{vis}_$species>'\n";
     if (string_eval('<<transientnavierstokes>>')) {
       $return_string .= "VARIABLE <u_f_alpha_mixture> '<u_f_alpha_mixture>+<phi_f_bounded_$species>*<u_rf_{transient}_$species>'\n";
@@ -99,32 +99,83 @@ FACE_DERIVED <u_f_alpha_{transient}_mixture> '0.d0' ON <<domainfaces>> output
 FACE_DERIVED <u_f_{correction}_mixture> "(<C_{Rhie-Chow}>*<u_f_DeltaA_total>+<u_f_alpha_{transient}_mixture>*<u_f_{correction}_mixture[r=1]>)/<u_f_alpha_mixture>" ON <<domainfaces>> output
 FACE_TRANSIENT <u_f_{correction}_mixture[r=1]> "0.d0" "<u_f_{correction}_mixture>" ON <<domainfaces>>
 
-# calculate the slip correction velocities (slip relative to fluid velocities) for the disperse phases
-{{
-  my $return_string='';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-    $return_string .= "FACE_DERIVED <u_f_phidbeta^_$species> 'faceave[adjacentcells](<phi_bounded_species0>/<beta^_$species"."_species0>)' ON <<domainfaces>>\n";
-    $return_string .= "FACE_DERIVED <phiu_f_slip_{correction}_$species> '<u_f_DeltaA_$species>*<u_f_phidbeta^_$species>' ON <<domainfaces>>\n";
-    $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>/<phi_f_bounded_harmonic_$species>' ON <<domainfaces>>\n";
-#   $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>/<phi_f_bounded_adjacent_$species>' ON <<domainfaces>>\n";
-# trialling smaller correction velocity
-#   $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>' ON <<domainfaces>>\n";
-  }
-  return $return_string;
-}}
+IF 0
+  # calculate the slip correction velocities (slip relative to fluid velocities) for the disperse phases
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "FACE_DERIVED <u_f_phidbeta^_$species> 'faceave[adjacentcells](<phi_bounded_species0>/<beta^_$species"."_species0>)' ON <<domainfaces>>\n";
+      $return_string .= "FACE_DERIVED <phiu_f_slip_{correction}_$species> '<u_f_DeltaA_$species>*<u_f_phidbeta^_$species>' ON <<domainfaces>>\n";
+      $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>/<phi_f_bounded_harmonic_$species>' ON <<domainfaces>>\n";
+  #   $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>/<phi_f_bounded_adjacent_$species>' ON <<domainfaces>>\n";
+  # trialling smaller correction velocity
+  #   $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>' ON <<domainfaces>>\n";
+    }
+    return $return_string;
+  }}
 
-# calculate the fluid and disperse phase correction velocities
-FACE_DERIVED <u_f_{correction}_species0> "<u_f_{correction}_mixture>" ON <<domainfaces>>
-{{
-  my $return_string='';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-# smaller correction velocity
-#   $return_string .= "VARIABLE <u_f_{correction}_species0> '(<u_f_{correction}_species0>)-<phi_f_bounded_harmonic_$species>*<u_f_slip_{correction}_$species>'\n";
-    $return_string .= "VARIABLE <u_f_{correction}_species0> '(<u_f_{correction}_species0>)-<phiu_f_slip_{correction}_$species>'\n";
-    $return_string .= "FACE_DERIVED <u_f_{correction}_$species> '(<u_f_{correction}_species0>)+<u_f_slip_{correction}_$species>' ON <<domainfaces>>\n";
-  }
-  return $return_string;
-}}
+  # calculate the fluid and disperse phase correction velocities
+  FACE_DERIVED <u_f_{correction}_species0> "<u_f_{correction}_mixture>" ON <<domainfaces>>
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+  # smaller correction velocity
+  #   $return_string .= "VARIABLE <u_f_{correction}_species0> '(<u_f_{correction}_species0>)-<phi_f_bounded_harmonic_$species>*<u_f_slip_{correction}_$species>'\n";
+      $return_string .= "VARIABLE <u_f_{correction}_species0> '(<u_f_{correction}_species0>)-<phiu_f_slip_{correction}_$species>'\n";
+      $return_string .= "FACE_DERIVED <u_f_{correction}_$species> '(<u_f_{correction}_species0>)+<u_f_slip_{correction}_$species>' ON <<domainfaces>>\n";
+    }
+    return $return_string;
+  }}
+
+ELSE
+# trying to apply phi*u correction
+# # firstly all phases get mixture correction
+# {{
+#   my $return_string='';
+#   for my $species (string_eval('<<multifluid_species_list>>','list')) {
+#     $return_string .= "FACE_DERIVED <u_f_$species> '<u_f_{raw}_$species>+faceif(facedelta(<domainfaces>),<u_f_{correction}_mixture>,0.d0)' ON <allfaces>\n";
+#   }
+#   return $return_string;
+# }}
+
+# now to calculate the individual phase phiu corrections which are added separately
+# disperse phase slip phiu corrections
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "FACE_DERIVED <u_f_phidbeta^_$species> 'faceave[adjacentcells](<phi_bounded_species0>/<beta^_$species"."_species0>)' ON <<domainfaces>>\n";
+      $return_string .= "FACE_DERIVED <phiu_f_slip_{correction}_$species> '<u_f_DeltaA_$species>*<u_f_phidbeta^_$species>' ON <<domainfaces>>\n";
+    }
+    return $return_string;
+  }}
+# fluid phase phiu correction
+  FACE_DERIVED <phiu_f_{correction}_species0> '0.d0' ON <<domainfaces>>
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <phiu_f_{correction}_species0> '<phiu_f_{correction}_species0>+<phiu_f_slip_{correction}_$species>'\n";
+    }
+    return $return_string;
+  }}
+  VARIABLE <phiu_f_{correction}_species0> '-<phi_f_bounded_species0>*(<phiu_f_{correction}_species0>)'
+# disperse phase phiu corrections
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "FACE_DERIVED <phiu_f_{correction}_$species> '<phiu_f_slip_{correction}_$species>+<phi_f_bounded_harmonic_$species>*<phiu_f_{correction}_species0>/<phi_f_bounded_species0>' ON <<domainfaces>>\n";
+    }
+    return $return_string;
+  }}
+
+# define the mixture correction velocities for all phases to also be applied to u_f
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "FACE_DERIVED <u_f_{correction}_$species> '<u_f_{correction}_mixture>' ON <<domainfaces>>\n";
+    }
+    return $return_string;
+  }}
+END_IF
 
 # redefine final velocity for all species
 {{
@@ -135,7 +186,6 @@ FACE_DERIVED <u_f_{correction}_species0> "<u_f_{correction}_mixture>" ON <<domai
   return $return_string;
 }}
 
-
 IF <<debug>>
   INCLUDE "u_f_vector"
   INCLUDE "u_f_vector" R '<<component>>' W '_{raw}'
@@ -144,8 +194,11 @@ IF <<debug>>
   {{
     my $return_string='';
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-      $return_string .= "FACE_OUTPUT <u_f_slip_{correction}_visualise_$species"."[l=<<i>>]> '<u_f_slip_{correction}_$species>*<facenorm[l=<<i>>]>' ON <<domainfaces>>\n";
+#     $return_string .= "FACE_OUTPUT <u_f_slip_{correction}_visualise_$species"."[l=<<i>>]> '<u_f_slip_{correction}_$species>*<facenorm[l=<<i>>]>' ON <<domainfaces>>\n";
       $return_string .= "FACE_OUTPUT <phiu_f_slip_{correction}_visualise_$species"."[l=<<i>>]> '<phiu_f_slip_{correction}_$species>*<facenorm[l=<<i>>]>' ON <<domainfaces>>\n";
+    }
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "FACE_OUTPUT <phiu_f_{correction}_visualise_$species"."[l=<<i>>]> '<phiu_f_{correction}_$species>*<facenorm[l=<<i>>]>' ON <<domainfaces>>\n";
     }
     return $return_string;
   }}
