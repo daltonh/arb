@@ -5,8 +5,12 @@ In this version we applied a correction to all velocity components based on a mi
 END_MARKDOWN
 
 # use this to debug
-# produces a correction velocity sum equation
-REPLACEMENTS D '<<debug>>' W '0'
+REPLACEMENTS D '<<debug>>' W '1'
+REPLACEMENTS R '<<domainfaces>>' W '<domainfaces>'
+
+IF <<debug>>
+  OVERRIDE_OPTIONS output
+END_IF
 
 # cancel the previous correction velocities so that they can be calculated in the correct order
 {{
@@ -18,35 +22,63 @@ REPLACEMENTS D '<<debug>>' W '0'
   return $return_string;
 }}
 
-# find total pressure and DeltaA based on total pressure
-CELL_LOCAL <p_total> "<p_species0>" ON <allcells>
-{{
-  my $return_string='';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-    $return_string .= "VARIABLE <p_total> '<p_total>+<p_$species>'\n";
-  }
-  return $return_string;
-}}
+IF 0
+  # find total pressure and DeltaA based on total pressure
+  CELL_LOCAL <p_total> "<p_species0>" ON <allcells>
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <p_total> '<p_total>+<p_$species>'\n";
+    }
+    return $return_string;
+  }}
 
-# TODO: wrap both of these in a template, called with <<species>> = total and then <<species>> = $species
-FACE_DERIVED <p_f_total> "<p_total>" ON <allfaces>
-CELL_LOCAL <celldivgrad_p_total[l=<<i>>]> "celldivgrad[l=<<i>>](<p_f_total>)" ON <allcells>
-FACE_DERIVED <u_f_DeltaA_total> "-facegrad[adjacentcells](<p_total>)+faceave[adjacentcells](dot(<celldivgrad_p_total[l=:]>,cellave[lastface](<facedxunit[l=:]>)))" ON <allfaces>
+  # TODO: wrap both of these in a template, called with <<species>> = total and then <<species>> = $species
+  FACE_DERIVED <p_f_total> "<p_total>" ON <allfaces> output
+  CELL_LOCAL <celldivgrad_p_total[l=<<i>>]> "celldivgrad[l=<<i>>](<p_f_total>)" ON <allcells> output
+  FACE_DERIVED <u_f_DeltaA_total> "-facegrad[adjacentcells](<p_total>)+faceave[adjacentcells](dot(<celldivgrad_p_total[l=:]>,cellave[lastface](<facedxunit[l=:]>)))" ON <allfaces> output
 
-# now find DeltaA (slip) for each disperse species
-{{
-  my $return_string='';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-    $return_string .= "FACE_DERIVED <p_f_$species> '<p_$species>' ON <allfaces>\n";
-    $return_string .= "CELL_LOCAL <celldivgrad_p_$species"."[l=<<i>>]> 'celldivgrad[l=<<i>>](<p_$species>)' ON <allcells>\n";
-    $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+faceave[adjacentcells](dot(<celldivgrad_p_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <allfaces>\n";
-  }
-  return $return_string;
-}}
+  # now find DeltaA (slip) for each disperse species
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "FACE_DERIVED <p_f_$species> '<p_$species>' ON <allfaces> output\n";
+      $return_string .= "CELL_LOCAL <celldivgrad_p_$species"."[l=<<i>>]> 'celldivgrad[l=<<i>>](<p_$species>)' ON <allcells> output\n";
+      $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+faceave[adjacentcells](dot(<celldivgrad_p_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <<domainfaces>> output\n";
+    }
+    return $return_string;
+  }}
+ELSE
+# now find DeltaA (slip) for each species
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "FACE_DERIVED <p_f_$species> '<p_$species>' ON <allfaces> output\n";
+      if ($species == 'species0') {
+# no weighting by phi for species0
+        $return_string .= "CELL_LOCAL <celldivgrad_p_$species"."[l=<<i>>]> 'celldivgrad[l=<<i>>](<p_$species>)' ON <allcells> output\n";
+        $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+faceave[adjacentcells](dot(<celldivgrad_p_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <<domainfaces>> output\n";
+      } else {
+# weighted by phi for disperse species
+        $return_string .= "CELL_LOCAL <celldivgrad_p_dphi_$species"."[l=<<i>>]> 'celldivgrad[l=<<i>>](<p_$species>)/<phi_bounded_$species>' ON <allcells> output\n";
+        $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+<phi_f_bounded_harmonic_$species>*faceave[adjacentcells](dot(<celldivgrad_p_dphi_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <<domainfaces>> output\n";
+      }
+    }
+    return $return_string;
+  }}
+  FACE_DERIVED <u_f_DeltaA_total> "0.d0" ON <<domainfaces>>
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "VARIABLE <u_f_DeltaA_total> '(<u_f_DeltaA_total>)+<u_f_DeltaA_$species>'\n";
+    }
+    return $return_string;
+  }}
+END_IF
 
 # calculate alpha and alpha_{transient} mixture coefficients
-FACE_DERIVED <u_f_alpha_mixture> '0.d0' ON <allfaces>
-FACE_DERIVED <u_f_alpha_{transient}_mixture> '0.d0' ON <allfaces>
+FACE_DERIVED <u_f_alpha_mixture> '0.d0' ON <<domainfaces>> output
+FACE_DERIVED <u_f_alpha_{transient}_mixture> '0.d0' ON <<domainfaces>> output
 {{
   my $return_string='';
   for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
@@ -63,26 +95,27 @@ FACE_DERIVED <u_f_alpha_{transient}_mixture> '0.d0' ON <allfaces>
 }}
 
 # calculate mixture correction velocity
-FACE_DERIVED <u_f_{correction}_mixture> "(<C_{Rhie-Chow}>*<u_f_DeltaA_total>+<u_f_alpha_{transient}_mixture>*<u_f_{correction}_mixture[r=1]>)/<u_f_alpha_mixture>" ON <allfaces>
+FACE_DERIVED <u_f_{correction}_mixture> "(<C_{Rhie-Chow}>*<u_f_DeltaA_total>+<u_f_alpha_{transient}_mixture>*<u_f_{correction}_mixture[r=1]>)/<u_f_alpha_mixture>" ON <<domainfaces>> output
+FACE_TRANSIENT <u_f_{correction}_mixture[r=1]> "0.d0" "<u_f_{correction}_mixture>" ON <<domainfaces>>
 
 # calculate the slip correction velocities (slip relative to fluid velocities) for the disperse phases
 {{
   my $return_string='';
   for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-    $return_string .= "FACE_DERIVED <u_f_phidbeta^_$species> 'faceave[adjacentcells](<phi_bounded_species0>/<beta^_$species"."_species0>)' ON <allfaces>\n";
-    $return_string .= "FACE_DERIVED <phiu_f_slip_{correction}_$species> '<u_f_DeltaA_$species>*<u_f_phidbeta^_$species>' ON <allfaces>\n";
-    $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>/<phi_f_bounded_harmonic_$species>' ON <allfaces>\n";
+    $return_string .= "FACE_DERIVED <u_f_phidbeta^_$species> 'faceave[adjacentcells](<phi_bounded_species0>/<beta^_$species"."_species0>)' ON <<domainfaces>>\n";
+    $return_string .= "FACE_DERIVED <phiu_f_slip_{correction}_$species> '<u_f_DeltaA_$species>*<u_f_phidbeta^_$species>' ON <<domainfaces>>\n";
+    $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>/<phi_f_bounded_harmonic_$species>' ON <<domainfaces>>\n";
   }
   return $return_string;
 }}
 
 # calculate the fluid and disperse phase correction velocities
-FACE_DERIVED <u_f_{correction}_species0> "<u_f_{correction}_mixture>" ON <allfaces>
+FACE_DERIVED <u_f_{correction}_species0> "<u_f_{correction}_mixture>" ON <<domainfaces>>
 {{
   my $return_string='';
   for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
     $return_string .= "VARIABLE <u_f_{correction}_species0> '(<u_f_{correction}_species0>)-<phiu_f_slip_{correction}_$species>'\n";
-    $return_string .= "FACE_DERIVED <u_f_{correction}_$species> '(<u_f_{correction}_species0>)+<u_f_slip_{correction}_$species>' ON <allfaces>\n";
+    $return_string .= "FACE_DERIVED <u_f_{correction}_$species> '(<u_f_{correction}_species0>)+<u_f_slip_{correction}_$species>' ON <<domainfaces>>\n";
   }
   return $return_string;
 }}
@@ -98,17 +131,53 @@ FACE_DERIVED <u_f_{correction}_species0> "<u_f_{correction}_mixture>" ON <allfac
 
 
 IF <<debug>>
-  FACE_OUTPUT <u_f_{correction}_equation_<<species>>> "<u_rf_{transient}_<<species>>>*(<u_f_{correction}_<<species>>>-<u_f_{correction}_<<species>>[r=1]>)" ON <domainfaces>
-  <<navierstokescomment>>VARIABLE <u_f_{correction}_equation_<<species>>> "<u_f_{correction}_equation_<<species>>>+<u_rf_{adv}_<<species>>>*<u_f_{correction}_<<species>>>"
-  VARIABLE <u_f_{correction}_equation_<<species>>> "<u_f_{correction}_equation_<<species>>>+<u_rf_{vis}_<<species>>>*<u_f_{correction}_<<species>>>"
+  INCLUDE "u_f_vector"
+  INCLUDE "u_f_vector" R '<<component>>' W '_{raw}'
+  INCLUDE "u_f_vector" R '<<component>>' W '_{correction}' R '<allfaces>' W '<<domainfaces>>'
+
   {{
     my $return_string='';
-    for my $j (string_eval('<<multifluid_species_list>>','list')) {
-      if (string_test('<<species>>',$j)) { next; }
-      $return_string .= "VARIABLE <u_f_{correction}_equation_<<species>>> '<u_f_{correction}_equation_<<species>>>+<beta^_f_<<species>>_$j>*(<u_f_{correction}_<<species>>>-<u_f_{correction}_$j>)'\n";
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "FACE_OUTPUT <u_f_slip_{correction}_visualise_$species"."[l=<<i>>]> '<u_f_slip_{correction}_$species>*<facenorm[l=<<i>>]>' ON <<domainfaces>>\n";
+      $return_string .= "FACE_OUTPUT <phiu_f_slip_{correction}_visualise_$species"."[l=<<i>>]> '<phiu_f_slip_{correction}_$species>*<facenorm[l=<<i>>]>' ON <<domainfaces>>\n";
     }
     return $return_string;
   }}
-  VARIABLE <u_f_{correction}_equation_<<species>>> "<u_f_{correction}_equation_<<species>>>+<C_{Rhie-Chow}>*<p_error_<<species>>>"
+  FACE_OUTPUT <u_f_{correction}_visualise_mixture[l=<<i>>]> '<u_f_{correction}_mixture>*<facenorm[l=<<i>>]>' ON <<domainfaces>>
+
+# turn some species specific outputs on
+# at the same time, expand the region of the velocity correction related variables to be <<domainfaces>> rather than <domainfaces> to enable visualisation
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "VARIABLE <phiu_f_$species> output\n";
+      $return_string .= "VARIABLE <u_f_{raw}_$species> output\n";
+      $return_string .= "VARIABLE <u_f_{correction}_$species> ON <<domainfaces>> output\n";
+      $return_string .= "VARIABLE <phi_f_bounded_$species> output\n";
+      $return_string .= "VARIABLE <phi_f_bounded_adjacent_$species> output\n";
+      $return_string .= "VARIABLE <phi_bounded_$species> output\n";
+      $return_string .= "VARIABLE <phi_f_adv_$species> output\n";
+      $return_string .= "VARIABLE <u_f_$species> output\n";
+      $return_string .= "VARIABLE <u_rf_{vis}_$species> ON <<domainfaces>> output\n";
+      $return_string .= "VARIABLE <u_rf_{adv}_$species> ON <<domainfaces>> output\n";
+      $return_string .= "VARIABLE <dynamic_force_f_$species> ON <<domainfaces>> output\n";
+    }
+    return $return_string;
+  }}
+
+  IF <<transientnavierstokes>>
+    {{
+      my $return_string = '';
+      for my $species (string_eval('<<multifluid_species_list>>','list')) {
+        $return_string .= "VARIABLE <u_f_{correction}_$species"."[r=1]> ON <<domainfaces>> output\n";
+        $return_string .= "VARIABLE <u_rf_{transient}_$species> ON <<domainfaces>> output\n";
+        $return_string .= "VARIABLE <u_$species"."[l=1,r=1]> output\n";
+      }
+      return $return_string;
+    }}
+  END_IF
 END_IF
 
+IF <<debug>>
+  OVERRIDE_OPTIONS
+END_IF
