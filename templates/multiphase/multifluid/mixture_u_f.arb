@@ -35,6 +35,8 @@ IF 1 # chose to calculate this regardless of whether it is used or not - for out
 END_IF
 
 IF 0
+
+ELSE_IF 0
   # find total pressure and DeltaA based on total pressure
   # TODO: wrap both of these in a template, called with <<species>> = total and then <<species>> = $species
   FACE_DERIVED <p_f_total> "<p_total>" ON <allfaces> output
