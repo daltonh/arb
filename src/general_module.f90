@@ -101,7 +101,7 @@ character(len=100) :: outputstpformat = 'g15.8' ! ('g15.8', userable) fortran fo
 ! set some numerical and mathematical parameters, non-userable
 
 ! code version details
-real, parameter :: version = 0.60 ! current version
+real, parameter :: version = 0.61 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "roaming romesh"
 
