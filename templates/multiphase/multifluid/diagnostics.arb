@@ -23,7 +23,7 @@ IF <<diagnostics_forces>>
   INCLUDE "visualise_forces"
 END_IF
 
-REPLACEMENTS D "<<diagnostics_rhie_chow>>" W "1"
+REPLACEMENTS D "<<diagnostics_rhie_chow>>" W "0"
 IF <<diagnostics_rhie_chow>>
   INCLUDE "u_f_vector"
   INCLUDE "u_f_vector" R '<<component>>' W '_{raw}'

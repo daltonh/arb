@@ -22,10 +22,12 @@ REPLACEMENTS D "<<stressmethod>>" W "version2" # as per jackson98 and zhang97, h
 # transient uses positive phi for advection
       if (string_eval('<<implicitadvection>>')) {
 # implicit
-        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+#       $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_bounded_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
       } else {
 # explicit
-        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+#       $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_bounded_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
       }
     } else {
 # steady-state uses bounded phi for advection
@@ -34,6 +36,10 @@ REPLACEMENTS D "<<stressmethod>>" W "version2" # as per jackson98 and zhang97, h
 
 # compile into flux
     $return_string .= "FACE_LOCAL <phiu_f_$species> '<phi_f_adv_$species>*<u_f_$species>' ON <allfaces>\n";
+# add phiu correction now if using the phiuf correction method
+    if (string_eval('<<phiufcorrection>>')) {
+      $return_string .= "VARIABLE <phiu_f_$species> '(<phiu_f_$species>)+faceif(facedelta(<domainfaces>),<phiu_f_{correction}_$species>,0.d0)'\n";
+    }
 
 # continuity equation for each phase
     $return_string .= "CELL_EQUATION <continuity_$species> 'celldiv(<<radius_f>>*<phiu_f_$species>)*<<radius_c>>' ON <domain>\n";

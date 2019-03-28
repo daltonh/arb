@@ -58,15 +58,6 @@ END_MARKDOWN
   return $return_string;
 }}
 
-IF 1 # species aware fancier method, with species0 having to be done first
-  {{
-    my $return_string = '';
-    for my $species (string_eval('<<multifluid_species_list>>','list')) {
-      $return_string .= "INCLUDE_LOCAL 'single_species_u_f' R '<<species>>' W '$species'\n";
-    }
-    return $return_string;
-  }}
-END_IF
 
 # add on osmotic pressure contribution to dynamic force for the disperse species
 {{
@@ -76,3 +67,19 @@ END_IF
   }
   return $return_string;
 }}
+REPLACEMENTS D '<<mixtureuf>>' W '1'
+
+IF <<mixtureuf>>
+
+  INCLUDE "mixture_u_f"
+
+ELSE # species aware fancier method, with species0 having to be done first
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_u_f' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+
+END_IF

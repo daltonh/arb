@@ -1,4 +1,7 @@
-# total stress tensor
+MARKDOWN
+Calculate the total viscous stress tensor
+END_MARKDOWN
+
 INCLUDE "u_gradient_tensor"
 
 # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template

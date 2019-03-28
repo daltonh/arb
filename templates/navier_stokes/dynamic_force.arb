@@ -1,14 +1,91 @@
 MARKDOWN
-dynamic force is the pressure force that could cause fluid movement
-it is added directly to the momentum equations, and used in calculating p_error used in the face velocity interpolation
-dynamic force now has the physically correct sign!
+Dynamic force is the sum of forces, including the pressure force, that could cause fluid movement
+It is added directly to the momentum equations, and used in calculating <dynamic_force_f_{correction}> used in the face velocity interpolation
 The pressure gradient is calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
 
-<dynamic_force_f> is calculated at the same time as <p_error>, within p_error.arb, which this file is called from
+A Rhie-Chow-type velocity interpolation is applied to the face flux velocities, and this requires the difference between the facecentred dynamic force (<dynamic_force_f>) and the averaged component of the cell centred dynamic force (<dynamic_force_c[l=:]>), <dynamic_force_f_{correction}>
 
-Other dynamic_force templates (eg, vof, electrokinetics) increment <dynamic_force_c[l=:]> set in this file, as well as <dynamic_force_f>
+Other dynamic_force templates (eg, vof, electrokinetics) increment both <dynamic_force_c[l=:]> and <dynamic_force_f>, but use the locations specified in this file
+
+#History
+Most of the contents of this file used to be called p_error, with <p_error> = -<dynamic_force_f_{correction}>.  This was changed as <p_error> can include non-pressure effects, and because the sign difference was confusing.  <dynamic_force_f_{correction}> drives <u_f_{correction}>, which is easier to understand/debug.
+
+Dynamic force now has the physically correct sign!
 END_MARKDOWN
+
+#---------------------------------
+# first calculate the cell centred dynamic force (previously contained in a separate file called dynamic_force)
 
 #FACE_DERIVED <p_f> "faceave(<p>)" ON <allfaces>
 INCLUDE "p_f"
 CELL_DERIVED <dynamic_force_c[l=<<i>>]> "-celldivgrad[l=<<i>>](<p_f>)" ON <allcells>
+
+#--------------------------------
+# now calculate the face centred <dynamic_force_f> and <dynamic_force_f_{correction}>
+
+# seems that using <dynamic_force_c_f[l=:]> usually consumes more memory and takes more time to compute, so remove it by default by including the following
+# in the far off future if nobody complains <dynamic_force_c_f[l=:]> may just disappear into the night
+# to bring back <dynamic_force_c_f[l=:]> set this string to 1 to turn this back on
+GENERAL_REPLACEMENTS D "<<dynamicforcecf>>" W "0"
+
+# for evaluating the face centred dynamic force there are three options: dxunit, facegrad and facegradadjacentcells
+# right now the default is dxunit, which works well, but implies that u_f_{correction} is not aligned with facenorm (noting that only the component of the correction is applied)
+# facegrad works but is not as effective in damping checkerboarding
+# facegradadjacentcells also works but the implications re directions aren't as clear as the above two options
+GENERAL_REPLACEMENTS D "<<dynamicforcefmethod>>" W "dxunit"
+#GENERAL_REPLACEMENTS D "<<dynamicforcefmethod>>" W "facegrad"
+#GENERAL_REPLACEMENTS D "<<dynamicforcefmethod>>" W "facegradadjacentcells"
+
+# calculate <dynamic_force_c_f[l=:]> if requested
+# interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
+IF <<dynamicforcecf>>
+  FACE_LOCAL <dynamic_force_c_f[l=<<i>>]> "faceave[<<reflect=<<i>>>>,adjacentcells](<dynamic_force_c[l=<<i>>]>)"
+END_IF
+
+#{{ print "IN p_error.arb\n".string_debug(); }}
+
+IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
+# dxunit method
+  FACE_LOCAL <dynamic_force_f> "-facegrad[dxunit](<p>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
+  FACE_CONSTANT <dot_facenorm_facedxunit> "dot(<facenorm[l=:]>,<facedxunit[l=:]>)" ON <allfaces> # now defined on <allfaces> to allow use as a BC
+# dxunit + dynamicforcecf
+  IF <<dynamicforcecf>>
+    FACE_DERIVED <dynamic_force_f_{correction}> "(<dynamic_force_f>-dot(<dynamic_force_c_f[l=:]>,<facedxunit[l=:]>))*<dot_facenorm_facedxunit>" ON <domainfaces>
+  ELSE
+# dxunit - dynamicforcecf
+# lastface is required when averaging the normal when we have periodic gluing, as we require the normal to be orientated relative to the original face, rather than its glued counterpart - this is now the default when cycling through the region adjacentfaceicells, which is used by faceave[adjacentcells]
+# for reflect gluing, <dynamic_force_f_{correction}> is zero anyway
+#   FACE_DERIVED <dynamic_force_f_{correction}> "faceif(<facereflectnorm>,(<dynamic_force_f>-faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+# need to fix code for adjacentdomaincells for this line to work                             
+#   FACE_DERIVED <dynamic_force_f_{correction}> "faceif(<facereflectnorm>,(<dynamic_force_f>-faceave[adjacentdomaincells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+# workaround, explicit code                                                                  
+    FACE_DERIVED <dynamic_force_f_{correction}> "faceif(<facereflectnorm>,(<dynamic_force_f>-faceif(facedelta(region=<boundaries>),faceave[downcell](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>))),faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facedxunit[l=:]>)))))*<dot_facenorm_facedxunit>,0.d0)" ON <domainfaces>
+  END_IF
+
+ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegrad'); }}
+
+# facegrad method
+  FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <allfaces>
+  IF <<dynamicforcecf>>
+# facegrad + dynamicforcecf
+    FACE_DERIVED <dynamic_force_f_{correction}> "<dynamic_force_f>-dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domainfaces>
+  ELSE
+# facegrad - dynamicforcecf
+    FACE_DERIVED <dynamic_force_f_{correction}> "faceif(<facereflectnorm>,<dynamic_force_f>-faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+  END_IF
+
+ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegradadjacentcells'); }}
+# adjacentcells method
+  FACE_LOCAL <dynamic_force_f> "-facegrad[adjacentcells](<p>)" ON <allfaces>
+  IF <<dynamicforcecf>>
+# facegradadjacentcells + dynamicforcecf
+    FACE_DERIVED <dynamic_force_f_{correction}> "<dynamic_force_f>-dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>)" ON <domainfaces>
+  ELSE
+# facegradadjacentcells - dynamicforcecf
+#   FACE_DERIVED <dynamic_force_f_{correction}> "faceif(<facereflectnorm>,<dynamic_force_f>-faceave[adjacentcells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+    FACE_DERIVED <dynamic_force_f_{correction}> "faceif(<facereflectnorm>,<dynamic_force_f>-faceave[adjacentdomaincells](dot(<dynamic_force_c[l=:]>,cellave[lastface](<facenorm[l=:]>))),0.d0)" ON <domainfaces>
+  END_IF
+
+ELSE
+  ERROR 'No valid dynamicforcefmethod is chosen in the navier_stokes/p_error template file: string currently set as <<dynamicforcefmethod>>'
+END_IF
