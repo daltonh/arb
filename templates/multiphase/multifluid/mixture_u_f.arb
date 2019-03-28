@@ -56,23 +56,37 @@ ELSE
   {{
     my $return_string='';
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
-      if (0) { # try limiting p_f to between adjacent values
+      if (0) { # try limiting p_f to between adjacent values - no stability improvement really
         $return_string .= "FACE_DERIVED <p_f_arith_$species> '<p_$species>' ON <allfaces> output\n";
         $return_string .= "FACE_DERIVED <p_f_max_$species> 'cellmax(<p_$species>,region=<adjacentfaceicells>)' ON <allfaces> output\n";
         $return_string .= "FACE_DERIVED <p_f_min_$species> 'cellmin(<p_$species>,region=<adjacentfaceicells>)' ON <allfaces> output\n";
         $return_string .= "FACE_DERIVED <p_f_$species> 'faceif(<p_f_arith_$species>-<p_f_max_$species>,<p_f_max_$species>,faceif(<p_f_min_$species>-<p_f_arith_$species>,<p_f_min_$species>,<p_f_arith_$species>))' ON <allfaces> output\n";
-      } else {
+      } elsif (0) { # fluid pressure normally, but base solid pressures on phi_f
+        if ($species eq 'species0') {
+          $return_string .= "FACE_DERIVED <p_f_$species> '<p_$species>' ON <allfaces> output\n";
+        } else {
+          if (1) {
+# use averaged multiplier
+            $return_string .= "FACE_DERIVED <p_f_$species> '<phi_f_bounded_$species>*<p_osmotic_multiplier_$species>' ON <allfaces> output\n";
+          } else {
+# calculate csllimited directly
+            $return_string .= "FACE_DERIVED <p_osmotic_phi_f_norm_$species> 'facemin(<phi_f_pos_$species>,<p_osmotic_phi_max_$species>-<p_osmotic_phi_tol>)/<p_osmotic_phi_max_$species>' ON <allfaces> output\n";
+            $return_string .= "FACE_DERIVED <p_osmotic_Z_f_$species> [Pa] '(1.d0+<p_osmotic_phi_f_norm_$species>+<p_osmotic_phi_f_norm_$species>^2-<p_osmotic_phi_f_norm_$species>^3)/((1.d0-<p_osmotic_phi_f_norm_$species>)^3)' ON <allfaces>\n";
+            $return_string .= "FACE_DERIVED <p_f_$species> [Pa] '<phi_f_$species>*<k_boltzmann>*<T>*<p_osmotic_Z_f_$species>/<V_$species>' ON <allfaces> output\n";
+          }
+        }
+      } else { # standard way
         $return_string .= "FACE_DERIVED <p_f_$species> '<p_$species>' ON <allfaces> output\n";
       }
-      if ($species == 'species0') {
+      if ($species eq 'species0' || 1) { # change this to 1 to always use no phi weighting
 # no weighting by phi for species0
         $return_string .= "CELL_LOCAL <celldivgrad_p_$species"."[l=<<i>>]> 'celldivgrad[l=<<i>>](<p_$species>)' ON <allcells> output\n";
         $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+faceave[adjacentcells](dot(<celldivgrad_p_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <<domainfaces>> output\n";
       } else {
 # weighted by phi for disperse species
         $return_string .= "CELL_LOCAL <celldivgrad_p_dphi_$species"."[l=<<i>>]> 'celldivgrad[l=<<i>>](<p_$species>)/<phi_bounded_$species>' ON <allcells> output\n";
-        $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+<phi_f_bounded_harmonic_$species>*faceave[adjacentcells](dot(<celldivgrad_p_dphi_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <<domainfaces>> output\n";
-#       $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+<phi_f_bounded_adjacent_$species>*faceave[adjacentcells](dot(<celldivgrad_p_dphi_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <<domainfaces>> output\n";
+#       $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+<phi_f_bounded_harmonic_$species>*faceave[adjacentcells](dot(<celldivgrad_p_dphi_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <<domainfaces>> output\n";
+        $return_string .= "FACE_DERIVED <u_f_DeltaA_$species> '-facegrad[adjacentcells](<p_$species>)+<phi_f_bounded_adjacent_$species>*faceave[adjacentcells](dot(<celldivgrad_p_dphi_$species"."[l=:]>,cellave[lastface](<facedxunit[l=:]>)))' ON <<domainfaces>> output\n";
       }
     }
     return $return_string;
@@ -116,8 +130,12 @@ IF {{ return (!(string_eval('<<phiufcorrection>>'))) }}
   {{
     my $return_string='';
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-      $return_string .= "FACE_DERIVED <u_f_phidbeta^_$species> 'faceave[adjacentcells](<phi_bounded_species0>/<beta^_$species"."_species0>)' ON <<domainfaces>>\n";
-      $return_string .= "FACE_DERIVED <phiu_f_slip_{correction}_$species> '<u_f_DeltaA_$species>*<u_f_phidbeta^_$species>' ON <<domainfaces>>\n";
+#     $return_string .= "FACE_DERIVED <u_f_phidbeta^_$species> 'faceave[adjacentcells](<phi_bounded_species0>/<beta^_$species"."_species0>)' ON <<domainfaces>>\n";
+#     $return_string .= "FACE_DERIVED <u_f_phidbeta^_$species> 'faceave[harmonic](<phi_bounded_species0>/<beta^_$species"."_species0>)' ON <<domainfaces>>\n";
+#     $return_string .= "FACE_DERIVED <phiu_f_slip_{correction}_$species> '<u_f_DeltaA_$species>*<u_f_phidbeta^_$species>' ON <<domainfaces>>\n";
+#     $return_string .= "FACE_DERIVED <u_f_phidbeta^_r_$species> 'faceave[adjacent](<beta^_$species"."_species0>/<phi_bounded_species0>)' ON <<domainfaces>>\n";
+      $return_string .= "FACE_DERIVED <u_f_phidbeta^_r_$species> 'faceave[harmonic](<beta^_$species"."_species0>/<phi_bounded_species0>)' ON <<domainfaces>>\n";
+      $return_string .= "FACE_DERIVED <phiu_f_slip_{correction}_$species> '<u_f_DeltaA_$species>/<u_f_phidbeta^_r_$species>' ON <<domainfaces>>\n";
       $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>/<phi_f_bounded_harmonic_$species>' ON <<domainfaces>>\n";
 #     $return_string .= "FACE_DERIVED <u_f_slip_{correction}_$species> '<phiu_f_slip_{correction}_$species>/<phi_f_bounded_adjacent_$species>' ON <<domainfaces>>\n";
   # trialling smaller correction velocity

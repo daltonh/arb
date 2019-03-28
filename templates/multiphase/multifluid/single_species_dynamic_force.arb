@@ -13,8 +13,8 @@ END_MARKDOWN
 
 # trying different phi variables for the osmotic pressure term
 REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_harmonic_<<species>>>"
-#REPLACEMENTS R "<<dynamic_force_f_phi_variable>" W "<phi_f_bounded_adjacent_nob_<<species>>>" # version1, unstable in presence of large phi gradients
-#REPLACEMENTS R "<<dynamic_force_f_phi_variable>" W "<phi_f_bounded_adjacent_<<species>>>"
+#REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_nob_<<species>>>" # version1, unstable in presence of large phi gradients
+#REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_<<species>>>"
 
 
 # now deal with dynamic_force_f
