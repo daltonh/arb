@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/codes/arb/testsuite/arb_master/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/codes/arb/testsuite/arb_master/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: channel_flow_with_reflect.arb
    #(comment created during unwrap): new block = channel_flow_with_reflect.arb: sub_block = 0
@@ -226,6 +226,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          FACE_LOCAL <tau[l=2,2]> "-<mu>*(<ugrad_f[l=2,2]>+<ugrad_f[l=2,2]>)" ON <allfaces> # note, maxima will simplify diagonal components
          # overwrite the diagonal elements if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
          # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
+<<<<<<< HEAD
          # performing index string loops on the following index list pairs:
          #  <<i>> 1,2
          #FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <allfaces> 
@@ -233,6 +234,20 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          
             #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 1
             #(hash inserted during unwrap)IF 0#<<azimuthal>>
+=======
+         #FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <allfaces>
+         #FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <allfaces>
+         ##FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <allfaces>
+         FACE_LOCAL <tau[l=1,2]> "-<mu>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <allfaces>
+         #FACE_LOCAL <tau[l=1,3]> "-<mu>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <allfaces>
+         #FACE_LOCAL <tau[l=2,3]> "-<mu>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <allfaces>
+         FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <allfaces>
+         #FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <allfaces>
+         #FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <allfaces>
+         
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+>>>>>>> 19218660de9fafeee31290930bc1b9b206fb4893
                #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
                #(hash inserted during unwrap)IF 0
                #(hash inserted during unwrap)VARIABLE <tau[l=2,0]> "<tau[l=2,0]>+<mu>*<u_f_vect[l=0]>/<facex[l=2]>"
@@ -685,12 +700,23 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          
          #define momentum eqn for azimuthal component
             #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
+<<<<<<< HEAD
             #(hash inserted during unwrap)IF 0
             #(hash inserted during unwrap)# perform a check that <<azimuthaldim>> has been correctly defined
+=======
+            #(hash inserted during unwrap)ELSE
+            # compact way, with hoop stress calculated more efficiently
+            
+            # define cylindrical divergence modifier terms
+            
+            
+            
+>>>>>>> 19218660de9fafeee31290930bc1b9b206fb4893
                #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
                #(hash inserted during unwrap)IF 
                #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 0 has not been correctly defined'
                #(hash inserted during unwrap)END_IF
+<<<<<<< HEAD
             #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv((<facex[l=2]>**2)*<J_f[l=0]>)/(<cellx[l=2]>**2)+<rho>*<u[l=2]>*<u[l=0]>/<cellx[l=2]>" ON <domain> # momentum component'
             #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "<momentum[l=2]>-<rho>*<u[l=0]>**2/<cellx[l=2]>"
             #(hash inserted during unwrap)END_IF
@@ -698,6 +724,20 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          # add transient term which is independent of cartesian or cylindrical coordinates
             #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
             #(hash inserted during unwrap)IF 0
+=======
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)END_IF
+            
+            # now create equations
+            CELL_EQUATION <continuity> "celldiv(<facex[l=2]>*<u_f>)/<cellx[l=2]>" ON <domain> # continuity
+            CELL_EQUATION <momentum[l=1]> "celldiv(<facex[l=2]>*<J_f[l=1]>)/<cellx[l=2]>-<dynamic_force_c[l=1]>" ON <domain> # momentum component
+            CELL_EQUATION <momentum[l=2]> "celldiv(<facex[l=2]>*<J_f[l=2]>)/<cellx[l=2]>-<dynamic_force_c[l=2]>" ON <domain> # momentum component
+            
+            
+            # add on hoop stress term separately for cylindrical coordinates
+>>>>>>> 19218660de9fafeee31290930bc1b9b206fb4893
                #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
                #(hash inserted during unwrap)IF 1
                #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
@@ -710,6 +750,18 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                #(hash inserted during unwrap)#  <<i>> 1,2
                #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
                #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+               #(hash inserted during unwrap)END_IF
+            
+            #define momentum eqn for azimuthal component
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)# perform a check that <<azimuthaldim>> has been correctly defined
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 3
+                  #(hash inserted during unwrap)IF 
+                  #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 0 has not been correctly defined'
+                  #(hash inserted during unwrap)END_IF
+               #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv(<J_f[l=0]>)+<rho>*<u_f_vect[l=2]>*<u_f_vect[l=0]>/<facex[l=2]>" ON <domain> # momentum component'
+               #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "<momentum[l=2]>-<rho>*<u_f_vect[l=0]>**2/<facex[l=2]>"
                #(hash inserted during unwrap)END_IF
             #(hash inserted during unwrap)END_IF
       #(comment created during unwrap): new block = ../../templates/navier_stokes/outlet_p_set.arb: sub_block = 0
