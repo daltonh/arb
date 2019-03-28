@@ -2,15 +2,15 @@ MARKDOWN
 This is the multiphase equivalent of the navier_stokes/transient_all_setup, using that file as a template
 END_MARKDOWN
 
-# early definition of strings from navier-stokes file
-GLOBAL_REPLACEMENTS DEFAULT "<<implicittimestepcomment>>" W "#" DEFAULT "<<explicittimestepcomment>>" W ""
-GLOBAL_REPLACEMENTS DEFAULT "<<newtsteptimestepcomment>>" W "" DEFAULT "<<nonnewtsteptimestepcomment>>" W "#"
+# early definition of strings that are used here, and also in called navier-stokes transient_all_setup file
+REPLACEMENTS D "<<implicittimestep>>" W "0"
+REPLACEMENTS D "<<newtsteptimestep>>" W "1"
 
 # now deal with CFL number calculation
 IF 1
 # species specific method
 
-  IF {{ return (string_test('<<dynamictimestepcomment>>','')) }}
+  IF <<dynamictimestep>>
 
 # first save species-specific u_fs
     {{
@@ -22,7 +22,7 @@ IF 1
     }}
 
 # now deal with CFL numbers, treating implicit and explicit timestepping differently
-    IF {{ return (string_test('<<implicittimestepcomment>>','')) }}
+    IF <<implicittimestep>>
 # implicit timestepping
 # have to call CFL_number with correct species replacements, and also form mixture <CFL local/dt> for use in timestepping
       {{

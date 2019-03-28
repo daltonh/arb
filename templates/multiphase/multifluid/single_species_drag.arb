@@ -7,32 +7,161 @@ IF {{ return string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
 
-# calculate kappa*, which only has one value for each combination of species, define with the lower index coming first
-IF 1 # stokes drag
-  CELL_DERIVED <kappa*_species0_<<species>>> "2.d0*<a_<<species>>>^2/9.d0" ON <allcells>
-ELSE
-  ERROR "no other permeabilities coded up yet"
-END_IF
+# this string is now set globally in constants, but can be overwritten with local values here
+REPLACEMENTS D "<<dragmethod>>" W "version2"
 
-#REPLACEMENTS R "bounded" W "pos"
-CELL_DERIVED <beta**_species0_<<species>>> "<mu_species0>*<phi_bounded_species0>/<kappa*_species0_<<species>>>" ON <allcells>
-CELL_LOCAL <beta**_<<species>>_species0> "<beta**_species0_<<species>>>" ON <allcells>
-CELL_DERIVED <beta*i_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_species0>" ON <allcells>
-CELL_LOCAL <beta*j_<<species>>_species0> "<beta*i_species0_<<species>>>" ON <allcells>
-CELL_DERIVED <beta*j_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
-CELL_LOCAL <beta*i_<<species>>_species0> "<beta*j_species0_<<species>>>" ON <allcells>
-CELL_DERIVED <beta_species0_<<species>>> "<beta*i_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
-CELL_LOCAL <beta_<<species>>_species0> "<beta_species0_<<species>>>" ON <allcells>
+# default hindered settling function is now as defined in masliyah79 = balls
+# version1 gives an equivalent hindered settling function which is / phi_0^2
 
-IF 0
-  FACE_DERIVED <beta*i_f_<<species>>_species0> "faceave(<beta*i_<<species>>_species0>)" ON <allfaces>
-  FACE_LOCAL <beta*j_f_species0_<<species>>> "<beta*i_f_<<species>>_species0>" ON <allfaces>
-  FACE_DERIVED <beta*i_f_species0_<<species>>> "faceave(<beta*i_species0_<<species>>>)" ON <allfaces>
-  FACE_LOCAL <beta*j_f_<<species>>_species0> "<beta*i_f_species0_<<species>>>" ON <allfaces>
+#REPLACEMENTS D "<<hindered_settling_function>>" W "dilute" # = stokes
+#REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzaki"
+REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
+#REPLACEMENTS D "<<hindered_settling_function>>" W "rourkeernstene" # from kim16, referencing Rourke and Ernstene 1930, which is specifically for rbcs
+
+REPLACEMENTS D "<<drag_beta_face_based>>" W "0" # calculate beta^ at the faces, and then average to the cells.  Otherwise (default), calculate at the cells and then average to the faces
+
+BLOCK # enclose replacements inside a block to isolate them from later expressions
+
+# setup replacements so that code only has to be written once, but can be used for face or cell centred calculation
+  REPLACEMENTS R "CELL" W "CELL" R "cell" W "cell" R "<<_f>>" W "" # these are the default replacements to be used if beta is to be calculated at cells first
+  IF <<drag_beta_face_based>>
+    REPLACEMENTS S "CELL" W "FACE" S "cell" W "face" R "<<_f>>" W "_f" # use these replacements if variables are going to be face based
+  END_IF
+
+  # calculate kappa*, which only has one value for each combination of species, define with the lower index coming first
+  #Stokes drag = dilute
+  CELL_DERIVED <kappa*<<_f>>_species0_<<species>>> "2.d0*<a_<<species>>>^2/9.d0" ON <allcells> 
+
+  IF {{ return (!(string_test('<<hindered_settling_function>>','dilute'))) }}
+  # if we are here then the drag is not dilute
+
+  # methods that have a maximum total solids magnitude
+  # create a possibly normalised and limited phi for use in the allsolids multiplier
+    NONE_CONSTANT <drag_phi_tol> "<phi_tol>"
+
+    IF {{ return (string_test('<<hindered_settling_function>>','richardsonzaki') || string_test('<<hindered_settling_function>>','richardsonzakilimited')) }}
+      NONE_CONSTANT <drag_phi_packed_richardsonzaki> 0.68d0 # used for scaling the phi used in the hindered settling function, this is the phi that we assume the normal richardsonzaki drag represents packed hard-sphere behaviour
+      NONE_CONSTANT <drag_richardsonzaki_n> 5.5d0 # exponent used in the richardsonzaki hindered settling function
+      IF {{ return string_test('<<hindered_settling_function>>','richardsonzaki') }}
+  # for the true richardsonzaki method to recover the non-scaled variable, set the max to 0.68
+        NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>"
+      ELSE_IF {{ return string_test('<<hindered_settling_function>>','richardsonzakilimited') }}
+        NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
+      ELSE
+        ERROR "hindered_settling_function = <<hindered_settling_function>> not known in single_species_drag"
+      END_IF
+      CELL_LOCAL <drag_phi<<_f>>_norm_allsolids> "<drag_phi_packed_richardsonzaki>*cellmin(1.d0-<phi<<_f>>_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
+
+  # for now use total solids fraction to calculate hindered settling function
+      VARIABLE <kappa*<<_f>>_species0_<<species>>> "(<kappa*<<_f>>_species0_<<species>>>)*(1.d0-<drag_phi<<_f>>_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
+
+    ELSE_IF {{ return string_test('<<hindered_settling_function>>','rourkeernstene') }}
+  # FIXME
+      ERROR "not done yet"
+      NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
+      CELL_LOCAL <drag_phi<<_f>>_norm_allsolids> "cellmin(1.d0-<phi<<_f>>_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
+      VARIABLE <kappa*<<_f>>_species0_<<species>>> "(<kappa*<<_f>>_species0_<<species>>>)*(1.d0-<drag_phi<<_f>>_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
+    ELSE
+  # FIXME
+      ERROR "hindered_settling_function = <<hindered_settling_function>> not known in single_species_drag"
+    END_IF
+
+  END_IF
+
+END_BLOCK
+
+IF <<drag_beta_face_based>>
+
+  IF {{ return (!(string_test('<<dragmethod>>','version2'))) }}
+    ERROR "face based drag has to be version2 only, in single_species_drag"
+  END_IF
+
+  FACE_DERIVED <beta^_f_<<species>>_species0> "<mu_species0>/<kappa*_f_species0_<<species>>>" ON <allfaces>
+  IF 1
+    FACE_DERIVED <beta^_f_species0_<<species>>> "<beta^_f_<<species>>_species0>*<phi_f_bounded_<<species>>>/<phi_f_bounded_species0>" ON <allfaces>
+  ELSE
+    FACE_DERIVED <beta^_f_species0_<<species>>> "<beta^_f_<<species>>_species0>*<phi_f_bounded_adjacent_nob_<<species>>>/(<phi_f_bounded_adjacent_nob_species0>)" ON <allfaces>
+  END_IF
+
+  IF 1 # base on real phi's rather than interpolating 
+    CELL_LOCAL <beta^_<<species>>_species0> "<beta^_f_<<species>>_species0>" ON <allcells>
+    CELL_LOCAL <beta^_species0_<<species>>> "<beta^_<<species>>_species0>*<phi_bounded_<<species>>>/<phi_bounded_species0>" ON <allcells>
+  ELSE # singular matrix problem
+    CELL_LOCAL <beta^_<<species>>_species0> "<beta^_f_<<species>>_species0>" ON <allcells>
+    CELL_LOCAL <beta^_species0_<<species>>> "<beta^_f_species0_<<species>>>" ON <allcells>
+  END_IF
+
 ELSE
-  FACE_DERIVED <beta*i_f_<<species>>_species0> "faceave[adjacentcells](<beta*i_<<species>>_species0>)" ON <allfaces>
-  FACE_LOCAL <beta*j_f_species0_<<species>>> "<beta*i_f_<<species>>_species0>" ON <allfaces>
-  FACE_DERIVED <beta*i_f_species0_<<species>>> "faceave[adjacentcells](<beta*i_species0_<<species>>>)" ON <allfaces>
-  FACE_LOCAL <beta*j_f_<<species>>_species0> "<beta*i_f_species0_<<species>>>" ON <allfaces>
+
+  IF {{ return (string_test('<<dragmethod>>','version1')) }}
+    CELL_DERIVED <beta**_species0_<<species>>> "<mu_species0>*<phi_bounded_species0>/<kappa*_species0_<<species>>>" ON <allcells>
+    CELL_LOCAL <beta^_<<species>>_species0> "<beta**_species0_<<species>>>*<phi_bounded_species0>" ON <allcells>
+    CELL_LOCAL <beta^_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
+  ELSE
+    CELL_DERIVED <beta^_<<species>>_species0> "<mu_species0>/<kappa*_species0_<<species>>>" ON <allcells>
+    IF 1 # bounded phi_<<species>>
+      CELL_DERIVED <beta^_species0_<<species>>> "<beta^_<<species>>_species0>*<phi_bounded_<<species>>>/<phi_bounded_species0>" ON <allcells>
+    ELSE # trial using pos for phi_<<species>>, given that this represents flux from species1 to species0
+      CELL_DERIVED <beta^_species0_<<species>>> "<beta^_<<species>>_species0>*<phi_pos_<<species>>>/<phi_bounded_species0>" ON <allcells>
+    END_IF
+  END_IF
+
+# now calculate face centred betas from cell centred
+# there are a whole bunch of alternatives here, but harmonic of beta^ seems to the be only acceptable one
+  IF 1 # harmonic averaging of beta^'s - works well for sedimentation
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[harmonic](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_<<species>>_species0>)" ON <allfaces>
+  ELSE_IF 0 # harmonic6 averaging of beta^'s, including using pos cutoff for beta^_species0 calc set above
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[limitedharmonic](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_<<species>>_species0>)" ON <allfaces>
+  ELSE_IF 0 # harmonic7 averaging of beta^'s
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[harmonic](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_species0_<<species>>>*<phi_bounded_<<species>>>)*faceave[harmonic](1.d0/<phi_bounded_species0>)" ON <allfaces>
+  ELSE_IF 0 # harmonic8 averaging of beta^'s
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[harmonic](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "<beta^_f_species0_<<species>>>*<phi_f_bounded_harmonic_<<species>>>*faceave[harmonic](1.d0/<phi_bounded_species0>)" ON <allfaces>
+  ELSE_IF 1 # harmonic9 averaging of beta^'s
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[adjacentcells](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_<<species>>_species0>)" ON <allfaces>
+  ELSE_IF 0 # harmonic2 - adjacent cell averaging of beta, then dividing by the same average for phi as used in the osmotic pressure - checkerboarding in sedimentation problem
+    CELL_LOCAL <beta_<<species>>_species0> "<mu_species0>*<phi_bounded_<<species>>>/<kappa*_species0_<<species>>>" ON <allcells>
+    CELL_LOCAL <beta_species0_<<species>>> "<beta_<<species>>_species0>" ON <allcells>
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[adjacent](<beta_species0_<<species>>>)/<phi_f_bounded_harmonic_species0>" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[adjacent](<beta_<<species>>_species0>)/<phi_f_bounded_harmonic_<<species>>>" ON <allfaces>
+  ELSE_IF 0 # harmonic3 - harmonic cell averaging of beta, then dividing by the bounded adjacent average for phi - checkerboarding in sedimentation problem
+    CELL_LOCAL <beta_<<species>>_species0> "<mu_species0>*<phi_bounded_<<species>>>/<kappa*_species0_<<species>>>" ON <allcells>
+    CELL_LOCAL <beta_species0_<<species>>> "<beta_<<species>>_species0>" ON <allcells>
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[harmonic](<beta_species0_<<species>>>)/<phi_f_bounded_adjacent_species0>" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta_<<species>>_species0>)/<phi_f_bounded_adjacent_<<species>>>" ON <allfaces>
+  ELSE_IF 1 # harmonic4 - average beta^_<<species>>, which should be fairly uniform, and then create beta^_species0 using local phis which are harmonically averaged, but chosing the species0 one so that the total volume fraction is 1 still
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_<<species>>_species0>)" ON <allfaces>
+    {{
+      my $return_string='';
+      for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+        $return_string .= "FACE_LOCAL <phi_f_bounded_harmonic_allsolids> '<phi_f_bounded_harmonic_allsolids>+<phi_f_bounded_harmonic_$species>' ON <allfaces>\n";
+      }
+      return $return_string;
+    }}
+    VARIABLE <phi_f_bounded_harmonic_allsolids> output
+    FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_f_<<species>>_species0>*<phi_f_bounded_harmonic_<<species>>>/(1.d0-<phi_f_bounded_harmonic_allsolids>)" ON <allfaces>
+  ELSE_IF 0 # harmonic5 - should be roughly equivalent to harmonic1, but in practice, doesn't seem to be??
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[harmonic](<beta^_<<species>>_species0>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_f_<<species>>_species0>*faceave[harmonic](<phi_bounded_<<species>>>/<phi_bounded_species0>)" ON <allfaces>
+  ELSE_IF 0 # arithmetic averaging of beta^'s
+    FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_species0_<<species>>>" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "<beta^_<<species>>_species0>" ON <allfaces>
+  ELSE_IF 0 # adjacentcell averaging of beta^'s - seems to be the most stable
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[adjacentcells](<beta^_species0_<<species>>>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[adjacentcells](<beta^_<<species>>_species0>)" ON <allfaces>
+  ELSE_IF 0 # adjacentcell averaging of beta^'s, except at boundaries
+    FACE_LOCAL <beta^_f_species0_<<species>>> "faceave[adjacentdomaincells](<beta^_species0_<<species>>>)" ON <allfaces> output
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[adjacentdomaincells](<beta^_<<species>>_species0>)" ON <allfaces> output
+  ELSE # average beta^_<<species>>, which should be fairly uniform, and then create beta^_species0 using local phis - think that this might be causing problems
+    FACE_LOCAL <beta^_f_<<species>>_species0> "faceave[adjacentcells](<beta^_<<species>>_species0>)" ON <allfaces>
+    FACE_LOCAL <beta^_f_species0_<<species>>> "<beta^_f_<<species>>_species0>*<phi_f_bounded_adjacent_<<species>>>/<phi_f_bounded_adjacent_species0>" ON <allfaces>
+  END_IF
+
+  VARIABLE <beta^_f_<<species>>_species0> output
+  VARIABLE <beta^_f_species0_<<species>>> output
+
 END_IF
-#OVERRIDE_OPTIONS

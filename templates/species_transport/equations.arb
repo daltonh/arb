@@ -1,1 +1,96 @@
-INCLUDE "equations_nonuniform_width" R "<W_f>" W "1.d0" R "<W_c>" W "1.d0"
+MARKDOWN
+Transport equations for a generic species c in a channel that may have nonuniform width, originally developed in the context of doing a4f simulations, but now very general
+
+On entry, replace /species/ by the name of the species that you want to solve (defaulting to species0).
+For limited advection, make sure that you set <c_magnitude_/species/> so that the advection routine knows the magnitude of <c_/species/> and so works correctly (not linked to the magnitude for unknowns and equations).
+
+Every variable specific to this species defined in this file starts with <c_, so you can change this prefix to be a certain type of variable (eg <c -> <c^).
+
+If the replacement strings <<W_f>> and <<W_c>> are set on entry, they must refer to variables that give the face and cell centred width of the domain for nonuniform width domain simulations.  If not set then internally these strings are set to either 1 and 1 for cartesian coordinates, or <<radius_f>> and <<radius_c>> for cylindrical coordinates, respectively.
+
+Also you can specify the <<listofports>> variable, which is a space separated list of surrounding region names that you want boundary condition equations for, with the names not delimited by <> - EG: <<listofports>> = "inlet outlet walls"
+END_MARKDOWN
+
+# default species name, overwrite with another name on entry
+REPLACEMENTS D '/species/' W 'species0'
+
+# default is that high order advection is used unless this string is overwritten by 0, which then becomes unlimited advection with order dependent on <c_advection_limiter_/species/>, which is set to 0 by default (ie, becomes first order upwinding)
+REPLACEMENTS D '<<specieslimitedadvection>>' W '1'
+
+REPLACEMENTS D '<<listofports>>' W 'inlet outlet' # these are all of the ports used in the domain, used for boundary conditions and reported variables
+
+# deal with either non-uniform width, cartesian or cylindrical domain
+REPLACEMENTS D '<<W_f>>' W '1' D '<<W_c>>' W '1' # set the scope for these variables, and give them the default cartesian value, if not already set
+IF {{ return (!(string_test('<<W_f>>','1'))) }}
+  INFO "in species_transport/equations, with W_f = <<W_f>>"
+ELSE_IF <<cylindrical>>
+  REPLACEMENTS S '<<W_f>>' W '<<radius_f>>' # SUBSTITUTE used to maintain scope of <<W_f>>
+END_IF
+IF {{ return (!(string_test('<<W_c>>','1'))) }}
+  INFO "in species_transport/equations, with W_c = <<W_c>>"
+ELSE_IF <<cylindrical>>
+  REPLACEMENTS S '<<W_c>>' W '<<radius_c>>' # SUBSTITUTE used to maintain scope of <<W_c>>
+END_IF
+
+CONSTANT <c_D_/species/> [m^2/s] 1.d0 # diffusivity of species
+CONSTANT <c_inlet_conc_/species/> [mol/m^3] 1.d0 # inlet concentration of species
+
+CELL_UNKNOWN <c_/species/> [mol/m^3] "0.d0" ON <allcells> magnitude=1.d0 # remember to put in characteristic magnitude later in the file if it isn't 1
+CELL_LOCAL <c_pos_/species/> [mol/m^3] "cellmax(<c_/species/>,default=0.d0)" # may be needed for reactions
+<<transientcomment>>CELL_TRANSIENT <c_/species/[r=1]> [mol/m^3] "<c_/species/>" "<c_/species/>" ON <allcells> # the previous timestep concentration field
+
+IF <<specieslimitedadvection>>
+  INCLUDE "relative_advection_limiter" # we use the template file limiters here, rather than the generic limiters
+  NONE_CONSTANT <c_magnitude_/species/> [mol/m^3] 1.d0
+  FACE_DERIVED <c_f_/species/> [mol/m^3] "faceave[advection](<c_/species/>,<u_f>,<c_limiter_/species/>,gradient[l=1]=<c_limiter_grad_/species/[l=1]>,gradient[l=2]=<c_limiter_grad_/species/[l=2]>,gradient[l=3]=<c_limiter_grad_/species/[l=3]>)" ON <allfaces> # this represents the concentratino of species c1 that crosses each face (ie, cell boundary) by advection (fluid flow)
+ELSE
+# to use low order (or non-limited high order) advection just include the following afterwards
+  NONE_CONSTANT <c_advection_limiter_/species/> 0.d0 # this determines how accurate in time/space the concentration field is.  0=> low accuracy, high stability, bounded, low computational cost: 1=> higher accuracy (assuming that the function is smooth), low stability, greater possibility of over/undershoots (ie, negative values) and slightly higher computational costs.  There are more expensive advection schemes that we can use to give the properties of both if need be.
+  FACE_DERIVED <c_f_/species/> [mol/m^3] "faceave[advection](<c_/species/>,<u_f>,<c_advection_limiter_/species/>)" ON <allfaces> # this represents the concentratino of species c1 that crosses each face (ie, cell boundary) by advection (fluid flow)
+END_IF
+
+FACE_DERIVED <c_j_f_/species/> [mol/(m^2.s)] "<c_f_/species/>*<u_f>-<c_D_/species/>*facegrad(<c_/species/>)" ON <allfaces> # this is the flux of species over each cell face, composed of an advection and diffusion component
+CELL_DERIVED <c_source_/species/> [mol/(m^3.s)] "0.d0" ON <domain> # this is a source term in the equation, that represents the amount of species that is being generated in each cell (mol/m^3.s).  If reactions are occurring, overwrite this stoichiometry adjusted reaction rates for each reaction that this species is involved in.
+
+# implicit timestepping right now
+# this is the advection/diffusion transport equation being solved
+<<steadystatecomment>>CELL_EQUATION <c_equation_/species/> [mol/(m^3.s)] "celldiv(<<W_f>>*<c_j_f_/species/>)/<<W_c>> - <c_source_/species/>" ON <domain>
+<<transientcomment>>CELL_EQUATION <c_equation_/species/> [mol/(m^3.s)] "(<c_/species/>-<c_/species/[r=1]>)/<dt> + celldiv(<<W_f>>*<c_j_f_/species/>)/<<W_c>> - <c_source_/species/>" ON <domain>
+
+# boundary conditions now
+# walls
+FACE_EQUATION <c_walls_/species/> "<c_j_f_/species/>" ON <walls> # on the walls we set the flux of species c1 into the wall equal to zero
+
+# ports
+# first setup equations for all of the ports being no-flow, and then overwrite specific ones either here or later
+{{
+  my $return_string = '';
+  for my $port (string_eval('<<listofports>>','spaceseparatedlist')) {
+    $return_string .= "FACE_EQUATION <c_$port"."_equation_/species/> '<c_j_f_/species/>' ON <$port>\n";
+    $return_string .= "NONE_OUTPUT <$port"."_area> 'facesum(<facearea>*<<W_f>>,region=<$port>)'\n";
+    $return_string .= "NONE_OUTPUT <$port"."_flowrate> 'facesum(<facearea>*<<W_f>>*<u_f>,region=<$port>)'\n";
+    $return_string .= "NONE_OUTPUT <c_ave $port"."_/species/> 'facesum(<c_/species/>*<facearea>*<<W_f>>,region=<$port>)/nonemax(<$port"."_area>,<tinyish>)'\n";
+    $return_string .= "NONE_OUTPUT <c_flux $port"."_/species/> 'facesum(<c_/species/>*<facearea>*<<W_f>>*<u_f>,region=<$port>)'\n";
+    $return_string .= "NONE_OUTPUT <c_bulk ave $port"."_/species/> '<c_flux $port"."_/species/>/nonemax(<$port"."_flowrate>,<tinyish>)'\n";
+  }
+  return $return_string;
+}}
+
+# overwrite the equations used for the inlet and outlet ports
+# other additional ports will generally need their own equations given after this file is called
+# here are some ideas re how to change the inlet concentration with time
+#NONE_TRANSIENT <c_inlet_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
+#NONE_TRANSIENT <c_inlet_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
+IF {{ return ( string_eval('<<listofports>>') =~ /inlet/ ) }} # if <<listofports>> contains the string inlet
+  FACE_EQUATION <c_inlet_equation_/species/> "<c_/species/>-<c_inlet_conc_/species/>" ON <inlet>
+END_IF
+IF {{ return ( string_eval('<<listofports>>') =~ /outlet/ ) }} # if <<listofports>> contains the string outlet
+  FACE_EQUATION <c_outlet_equation_/species/> "faceif(<u_f>,facegrad(<c_/species/>),<c_/species/>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+END_IF
+
+# report some averaged and extreme variables
+NONE_OUTPUT <c_maximum_/species/> [mol/m^3] "cellmax(<c_/species/>,region=<allcells>)"
+NONE_OUTPUT <c_minimum_/species/> [mol/m^3] "cellmin(<c_/species/>,region=<allcells>)"
+NONE_OUTPUT <c_total_/species/> [mol] "cellsum(<c_/species/>*<cellvol>*<<W_c>>,region=<domain>)"
+NONE_CONSTANT <total vol> [m^3] "cellsum(<cellvol>*<<W_c>>,region=<domain>)" output
+NONE_OUTPUT <c_average_/species/> [mol/m^3] "<c_total_/species/>/<total vol>"

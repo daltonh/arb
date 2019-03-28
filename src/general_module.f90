@@ -76,25 +76,32 @@ integer :: iterstepcheck = 100 ! (100, userable) how often linear iteration solv
 double precision :: iterrestol = 1.d-11 ! (1.d-11, userable) tolerance that indicates convergence of the linear iteration solver
 double precision :: iterresreltol = 0.d0 ! (0.d0, userable) tolerance that indicates convergence of the linear iteration solver, relative to the starting newtres - actual tolerance uses max(iterrestol,iterresreltol*newtres), so if iterresreltol is set to zero then it is inactive and only iterrestol is used
 
-! the following are default values for various parameters which can be altered here (and not via user input options)
+! the following are default values for various parameters which can be altered via GENERAL_OPTIONS
 character(len=100) :: output_step_file = "default" ! (default, userable) whether to print output.step file or not: default|on, newtstep, timestep, output, final, off
 logical :: output_timings = .true. ! (.true., userable) whether to time processes and output results to screen (see subroutine time_process)
 logical :: output_timings_on_mesh_write = .false. ! (.false., userable) output timings each time a mesh file is written - requires that output_timings be on
 logical :: output_detailed_timings = .false. ! (.false., userable) whether to give outputs for each routine (rather than just totals) - requires that output_timings be on
 logical :: output_variable_update_times = .true. ! (.true., userable) time how long it takes to update each variable (on average) and report in output.stat
 logical :: output_region_update_times = .true. ! (.true., userable) time how long it takes to update each dynamic region (on average) and report in output.stat
+logical :: output_txt_file = .false. ! (.false., userable) whether to write a txt file out that contains all of the data
+logical :: output_debug_file = .false. ! (.false., userable) whether to write a debug msh file as well as the normal msh files at the same (and every) time
 logical :: ignore_initial_update_times = .true. ! (.true., userable) ignore how long it takes to update each variable when initialising (ie, for initial_transients and initial_newtients)
 logical :: kernel_details_file = .false. ! (.false., userable) print out a text file (kernel_details.txt) with all the kernel details
 logical :: mesh_details_file = .false. ! (.false., userable) print out a text file (mesh_details.txt) with all the mesh details
 logical :: region_details_file = .false. ! (.false., userable) print out a text file (region_details.txt) with all the region details
 logical :: link_details_file = .false. ! (.false., userable) print out a text file (link_details.txt) with all the link details
 logical :: convergence_details_file = .true. ! (.true., userable) write some convergence debugging data to convergence_details.txt
+logical :: output_dir_touch_files = .true. ! (.true., userable) if true look in output_dir for the touch (stop) files, otherwise if false look in the working directory
+character(len=100) :: outputmshformat = 'g15.8' ! ('g15.8', userable) fortran format to use when writing out data in the msh (or vtk or dat) files - g15.8 will work for gmsh
+character(len=100) :: outputtxtformat = 'g12.5' ! ('g12.5', userable) fortran format to use when writing out txt files, and also the mesh details and kernel details files
+character(len=100) :: outputstatformat = 'g15.8' ! ('g15.8', userable) fortran format to use when writing out stat file
+character(len=100) :: outputstpformat = 'g15.8' ! ('g15.8', userable) fortran format to use when writing out stp file
 
 !----------------------------------------------------------
 ! set some numerical and mathematical parameters, non-userable
 
 ! code version details
-real, parameter :: version = 0.59 ! current version
+real, parameter :: version = 0.60 ! current version
 real, parameter :: minimum_version = 0.40 ! minimum version fortran_input.arb file that will still work with this version
 character(len=100), parameter :: versionname = "roaming romesh"
 
@@ -110,9 +117,8 @@ double precision, parameter :: pi = 4.d0*atan(1.d0)
 double precision, parameter :: tinyish = 1.d2*sqrt(tiny(0.d0)) ! something that is a bit bigger than tiny(0.d0)
 double precision, parameter :: hugeish = 1.d-2*sqrt(huge(0.d0)) ! something that is a bit smaller than huge(0.d0)
 character(len=100), parameter :: indexformat = 'i8' ! formating used for outputting integers throughout program, although now largely superseeding by dynamic format statements
-character(len=100), parameter :: floatformat='g18.10' ! formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places: now seems to be d+8 required
+character(len=100), parameter :: floatformat='g18.10' ! default formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places: now seems to be d+8 required
 character(len=100), parameter :: compactformat='g11.4' ! compact formating used for outputting double precision variables throughout program:  w = d+7 here (ie gw.d) as exponent may take three decimal places
-character(len=100), parameter :: realformat='g15.8' ! formating used for outputting variables truncated as reals throughout program (ie, treal), including variables in the msh files:  as exponent is truncated to two decimal places, w = d+6 here (gw.d)
 character(len=100), parameter :: stringformat='a18' ! formating used for outputting strings (basically variable names) throughout program
 ! reals apparently have about 7 decimal places and width has to be d+7 (ifort)
 integer, parameter :: fwarn = 11, fdetail = 12, foutput = 13, fgmsh = 14, finput = 15, fconverge = 16, foutputstep = 17 ! various file handles
@@ -1400,16 +1406,16 @@ function print_node(k,compact)
 integer :: k ! knode index
 logical, optional :: compact
 logical :: compact_l
-character(len=1000) :: print_node
+character(len=10000) :: print_node
 integer :: n, error, njface, nicell, nglue_knode, nr, nreflect_multiplier
-character(len=1000) :: formatline
+character(len=10000) :: formatline
 
 compact_l = .false.
 if (present(compact)) compact_l = compact
 
 if (compact_l) then
 
-  formatline = '(a,'//trim(indexformat)//',a,i1,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,'//repeat(',a,'//trim(outputtxtformat),totaldimensions)//')'
   write(print_node,fmt=formatline,iostat=error) 'k = ',k,'k: type = ',node(k)%type, &
     ': x =',(' ',node(k)%x(n),n=1,totaldimensions)
 
@@ -1423,7 +1429,7 @@ else
   nreflect_multiplier = 0
   if (allocated(node(k)%reflect_multiplier)) nreflect_multiplier = ubound(node(k)%reflect_multiplier,2)
 
-  formatline = '(a,'//trim(indexformat)//',a,i1,a'//repeat(',a,g12.5',totaldimensions)// &
+  formatline = '(a,'//trim(indexformat)//',a,i1,a'//repeat(',a,'//trim(outputtxtformat),totaldimensions)// &
     ',a'//repeat(',a,'//trim(indexformat),njface)// &
     ',a'//repeat(',a,'//trim(indexformat),nicell)// &
     ',a'//repeat(',a,'//trim(indexformat),nglue_knode)// &
@@ -1464,7 +1470,7 @@ if (present(compact)) compact_l = compact
 
 if (compact_l) then
 
-  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,'//trim(outputtxtformat),totaldimensions)//')'
   write(print_face,fmt=formatline,iostat=error) 'j = ',j,'j: type = ',face(j)%type, &
     ': dimensions = ',face(j)%dimensions, &
     ': gtype = ',face(j)%gtype, &
@@ -1487,9 +1493,9 @@ else
   if (allocated(face(j)%reflect_multiplier)) nreflect_multiplier = ubound(face(j)%reflect_multiplier,2)
 
   formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//trim(indexformat)// &
-    ',a,i1,2(a'//repeat(',a,g12.5',totaldimensions)// &
-    '),a,g12.5,a,g12.5'// &
-    repeat(',a,i1,a'//repeat(',a,g12.5',totaldimensions),totaldimensions)// &
+    ',a,i1,2(a'//repeat(',a,'//trim(outputtxtformat),totaldimensions)// &
+    '),a,'//trim(outputtxtformat)//',a,'//trim(outputtxtformat)// &
+    repeat(',a,i1,a'//repeat(',a,'//trim(outputtxtformat),totaldimensions),totaldimensions)// &
     ',a'//repeat(',a,'//trim(indexformat),nknode)// &
     ',a'//repeat(',a,'//trim(indexformat),nicell)// &
     ',a,l1'// &
@@ -1537,7 +1543,7 @@ if (present(compact)) compact_l = compact
 
 if (compact_l) then
 
-  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,g12.5',totaldimensions)//')'
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a,'//repeat(',a,'//trim(outputtxtformat),totaldimensions)//')'
   write(print_cell,fmt=formatline,iostat=error) 'i = ',i,'i: type = ',cell(i)%type, &
     ': dimensions = ',cell(i)%dimensions, &
     ': gtype = ',cell(i)%gtype, &
@@ -1553,8 +1559,8 @@ else
   nreflect_multiplier = 0
   if (allocated(cell(i)%reflect_multiplier)) nreflect_multiplier = ubound(cell(i)%reflect_multiplier,2)
 
-  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a'//repeat(',a,g12.5',totaldimensions)// &
-    ',a,g12.5,a,i1'// &
+  formatline = '(a,'//trim(indexformat)//',a,i1,a,i1,a,i2,a'//repeat(',a,'//trim(outputtxtformat),totaldimensions)// &
+    ',a,'//trim(outputtxtformat)//',a,i1'// &
     ',a'//repeat(',a,'//trim(indexformat),nknode)// &
     ',a'//repeat(',a,'//trim(indexformat),njface)// &
     ',a'//repeat(',a,'//trim(indexformat),nicell)// &
@@ -1777,12 +1783,12 @@ end subroutine clear_funk_derivatives
 
 function print_funk(funkl)
 
-character(len=1000) :: print_funk, print_funk_saved
+character(len=10000) :: print_funk, print_funk_saved
 type(funk_type) :: funkl ! local funk variable
 integer :: error, nn
-character(len=1000) :: formatline
+character(len=10000) :: formatline
 
-formatline = '(a,g12.5,a,i2)'
+formatline = '(a,'//trim(outputtxtformat)//',a,i2)'
 write(print_funk,fmt=formatline,iostat=error) 'v = ',funkl%v,': ndv = ',funkl%ndv
 if (error /= 0) print_funk = print_funk//'ERROR: 1: problem in print_funk: formatline = '//trim(formatline)
 
@@ -1799,7 +1805,7 @@ end if
 
 print_funk_saved = print_funk
 if (allocated(funkl%dv)) then
-  formatline = '(a'//repeat(',a,g12.5',ubound(funkl%dv,1))//')'
+  formatline = '(a'//repeat(',a,'//trim(outputtxtformat),ubound(funkl%dv,1))//')'
   write(print_funk,fmt=formatline,iostat=error) trim(print_funk_saved)//': dv =',(' ',funkl%dv(nn),nn=1,ubound(funkl%dv,1))
   if (error /= 0) print_funk = trim(print_funk_saved)//'ERROR: 4: problem in print_funk: formatline = '//trim(formatline)
 else
@@ -2153,12 +2159,12 @@ end function icell_from_knode_list
 
 !-----------------------------------------------------------------
 
-subroutine find_2d_geometry(knode,area,norm,centre,error_angle,error)
+subroutine find_2d_geometry(knode,area,norm,centre,downcellx,error_angle,error)
 
 ! find geometry info about a 2d convex and flat polygon
 ! convex means that any line drawn from one edge to another intersects only those two edges
 ! flat means that all points lie on the one plane (checked within this routine)
-! norm is a unit normal to the surface ( normalised( (node(2)-node(1)) X (node(3)-node(2)) ) )
+! norm is a unit normal to the surface ( normalised( (node(2)-node(1)) X (node(3)-node(2)) ) ), now (v0.60) with direction chosen to be consistent with upcell/downcell averaging
 ! area and centre are calculated by splitting surface into triangles, each with a vertex on the first node
 ! centre is the centroid, defined for our purposes as the point which is gives the same value
 !  for a function as the average value of that function, assuming a linear dependence on space
@@ -2167,11 +2173,12 @@ integer, dimension(:), intent(in) :: knode ! ordered list of node indices that s
 double precision, intent(out), optional :: area ! area of geometry
 double precision, dimension(totaldimensions), intent(out), optional :: centre ! vectors specifying centre of surface
 double precision, dimension(totaldimensions,totaldimensions), intent(out), optional :: norm ! vectors specifying normal to surface
+double precision, dimension(totaldimensions), intent(in), optional :: downcellx ! vector of downcell centre location, used to determine direction of normal so that it points in correct direction
 double precision, intent(out), optional :: error_angle ! this is the maximum difference between adjacent normals on the geometry if it is curved
 logical, intent(out), optional :: error ! if an error occurred when calculating this geometry
 double precision, dimension(totaldimensions) :: norms, normtriangle, centretriangle, normtrianglelast
-integer :: kk
-double precision :: aa, areatriangle, error_angle_l, aa_sum
+integer :: kk, kk_next
+double precision :: aa, areatriangle, error_angle_l, aa_sum, edge_length, edge_length_c
 logical :: error_l, error_normalise
 double precision, parameter :: smallaa = 1.d-30
 logical, parameter :: debug = .false.
@@ -2258,8 +2265,60 @@ if (present(centre)) centre = centre/aa_sum ! slightly more accurate to use aa_s
 if (present(area)) area = aa ! must be aa for divergence of constant to be correct around each cell
 
 if (present(norm)) then
-  norm(:,1) = norms/aa ! and finally normalise normal
+  if (debug) then
+    write(31,*) 'About to calculate norms for 3d geometry'
+    write(31,*) 'un-normalised norm(:,1) = ',norm(:,1)
+    write(31,*) 'centre = ',centre
+    write(31,*) 'downcellx = ',downcellx
+  end if
+
+  norm(:,1) = norms/aa ! and finally normalise normal length
+! and chose direction so that it is correctly pointing from the downcell to the upcell
+  if (present(downcellx)) then
+    if (dot_product(norm(:,1),centre-downcellx) < 0.d0) norm(:,1) = -norm(:,1)
+  end if
+
+  if (debug) then
+    write(31,*) 'normalised norm(:,1) = ',norm(:,1)
+  end if
+
   norm(:,2) = node(knode(2))%x-node(knode(1))%x ! first tangent, lying in plane of geometry from node 1->2, probably not a good representation for curved faces
+
+  if (debug) then
+    write(31,*) 'calculating norm(:,2)'
+    write(31,*) 'initial norm(:,2), knode(1) -> knode(2) = ',norm(:,2)
+  end if
+
+! this is a change in v0.60 to get norm(2) in 2D geometries aligned with the shortest node-to-node vector, rather than the one with the lowest index
+! if all node-to-node vectors are the same then this will default to the old scheme of the first node-to-node vector
+  if (.true.) then
+! loop through nodes finding shortest node-to-node vector, and choose this as the norm(:,2) = tang1 instead
+    edge_length=vector_magnitude(node(knode(2))%x-node(knode(1))%x)
+    if (debug) then
+      write(31,*) 'selecting node -> node edge with minimum length:'
+      write(31,*) 'edge_length = ',edge_length
+    end if
+    do kk = 2, ubound(knode,1)
+      kk_next = kk + 1
+      if (kk_next > ubound(knode,1)) kk_next = 1 ! final edge is back to first node again
+
+      edge_length_c=vector_magnitude(node(knode(kk_next))%x-node(knode(kk))%x)
+      if (debug) then
+        write(31,*) 'NEXT EDGE: kk = ',kk
+        write(31,*) 'edge_length_c = ',edge_length_c
+        write(31,*) 'edge vector = ',node(knode(kk_next))%x-node(knode(kk))%x
+        write(31,*) 'knode(kk_next) = ',knode(kk_next)
+        write(31,*) 'knode(kk) = ',knode(kk)
+      end if
+      if (edge_length_c<edge_length) then
+        edge_length=edge_length_c
+        norm(:,2) = node(knode(kk_next))%x-node(knode(kk))%x
+      endif
+    enddo
+    if (debug) then
+      write(31,*) 'final norm(:,2), knode(1) -> knode(2) = ',norm(:,2)
+    end if
+  endif
   call normalise_vector(vector=norm(:,2),error=error_normalise)
   if (error_normalise) then
     write(31,*) 'ERROR: problem when trying to normalise norm(:,2) in find_2d_geometry'
@@ -3251,8 +3310,8 @@ function variable_location_string(m,ns)
 ! little routine to create a formated string describing a variable location
 
 integer :: m, ns, i, j
-character(len=1000) :: variable_location_string
-character(len=1000) :: formatline
+character(len=10000) :: variable_location_string
+character(len=10000) :: formatline
 
 if (var(m)%centring == 'cell') then
   i = region(var(m)%region_number)%ijk(ns)
@@ -3419,7 +3478,11 @@ end if
 
 check_stopfile = .false.
 do n = 1, listlength
-  inquire(file=trim(stopfilelist(n)),exist=check_stopfile)
+  if (output_dir_touch_files) then
+    inquire(file=trim(output_dir)//trim(stopfilelist(n)),exist=check_stopfile)
+  else
+    inquire(file=trim(stopfilelist(n)),exist=check_stopfile)
+  end if
   if (check_stopfile) return
 end do
 
@@ -3449,9 +3512,19 @@ end if
 
 check_dumpfile = .false.
 do n = 1, listlength
-  inquire(file=trim(dumpfilelist(n)),exist=check_dumpfile)
+  if (output_dir_touch_files) then
+    inquire(file=trim(output_dir)//trim(dumpfilelist(n)),exist=check_dumpfile)
+!   inquire(file=trim(output_dir)//trim(stopfilelist(n)),exist=check_stopfile)
+  else
+    inquire(file=trim(dumpfilelist(n)),exist=check_dumpfile)
+!   inquire(file=trim(stopfilelist(n)),exist=check_stopfile)
+  end if
   if (check_dumpfile) then
-    call unlink(trim(dumpfilelist(n)))
+    if (output_dir_touch_files) then
+      call unlink(trim(output_dir)//trim(dumpfilelist(n)))
+    else
+      call unlink(trim(dumpfilelist(n)))
+    end if
     return
   end if
 end do
@@ -3670,7 +3743,7 @@ character(len=*) :: option_name
 character(len=*), optional :: option_type ! ie, general, kernel, solver etc
 character(len=20) :: option_type_l ! 
 integer :: option_variable
-character(len=1000) :: formatline
+character(len=10000) :: formatline
 logical :: error
 
 option_type_l = ''
@@ -3772,7 +3845,7 @@ character(len=*) :: option_name
 character(len=*), optional :: option_type ! ie, general, kernel, solver etc
 character(len=20) :: option_type_l ! 
 double precision :: option_variable
-character(len=1000) :: formatline
+character(len=10000) :: formatline
 logical :: error
 
 option_type_l = ''

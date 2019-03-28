@@ -1,0 +1,94 @@
+MARKDOWN
+Calculates the transport of a surfactant species <c_s> around a surface that is defined by a vof function called <c_s_phi>.  Most likely you would set this phi to the high order vof function, by doing this replacement when calling:
+
+INCLUDE "surfactant_transport" R "<c_s_phi>" W "<vof_phi_s>"
+
+You can also do the following replacements to make the surfactant specific to a (say) speciesn:
+R "<c_s" W "<c_s_speciesn"
+END_MARKDOWN
+
+# set some variables
+REPLACEMENTS R '<<debug>>' W '0'
+REPLACEMENTS R '<<visualise>>' W '0'
+REPLACEMENTS R '<<statistics>>' W '1'
+
+NONE_CONSTANT <c_s_delta_eps> 1.d-10 # a small c_s value used to stop divide by zero errors when calculating <c_s_Lambda>
+
+# set initial conditions for <c_s>
+IF 1
+# saturated initial interface
+  NONE_CONSTANT <c_s_Lambda_initial> 1.d0 # initial surface concentration
+  IF 1 # based on undeformed shape (ie, precisely along the interface)
+    CELL_LOCAL <c_s_initial> "<c_s_Lambda_initial>*<vof_phigrad_mag>" ON <allcells>
+  ELSE 
+    CELL_LOCAL <c_s_initial> "<c_s_Lambda_initial>*<c_s_delta>" ON <allcells>
+  END_IF
+ELSE
+# uniform c_s
+  NONE_CONSTANT <c_s_initial> 1.d0
+END_IF
+
+# set the basic unknowns/variables
+CELL_UNKNOWN <c_s> "<c_s_initial>" ON <allcells> # volume concentration of surfactant
+CELL_TRANSIENT <c_s[r=1]> "<c_s>" "<c_s>" ON <allcells>
+CELL_OUTPUT <c_s_Lambda> "<c_s>/cellmax(<c_s_delta>,<c_s_delta_eps>)" ON <allcells> # suface concentration of surfactant, now just an output
+
+# restorative flux calculation based on <c_s_delta>
+REPLACEMENTS D "<<restorative_flux>>" W "1"
+IF <<restorative_flux>>
+# new grad lambda method 2/7/18, v2
+  NONE_CONSTANT <c_s_D_res> 1.d0 # need to make this a function of mesh spacing etc
+# restoration flux is proportional to c_s*c_s_delta^2*grad(<c_s_Lambda>), but differenced in a <c_s_delta> -> 0 sympathetic way
+# we need both the gradient and value of <c_s_delta> and <c_s> at faces:
+# <c_s_delta_f>, <c_s_f>, <c_s_grad_delta_f[l=:]>, <c_s_grad_f[l=:]>
+  FACE_LOCAL <c_s_delta_f> "faceave(<c_s_delta>)" ON <allfaces> output
+  FACE_LOCAL <c_s_f> "faceave(<c_s>)" ON <allfaces> output
+  {{ return vector_expand(
+    'FACE_LOCAL <c_s_grad_delta_f[l=$l]> "facegrad[l=$l](<c_s_delta>)" ON <allfaces> output',
+    'FACE_LOCAL <c_s_grad_f[l=$l]> "facegrad[l=$l](<c_s>)" ON <allfaces> output',
+    'FACE_DERIVED <c_s_grad_Lambda*_f[l=$l]> "<c_s_delta_f>*<c_s_grad_f[l=$l]>-<c_s_f>*<c_s_grad_delta_f[l=$l]>" ON <allfaces> output'
+    ); }}
+# normal limited so restoration is only applied in the normal direction and does not impact advection
+# requires <vof_phigrad_unit_f[l=:]> in addition to <c_s_grad_Lambda*_f[l=:]>
+  REPLACEMENTS D "<<normal_restorative_flux>>" W "1"
+  IF <<normal_restorative_flux>>
+    FACE_DERIVED <c_s_u_res_f> "-<c_s_D_res>*dot(<c_s_grad_Lambda*_f[l=:]>,<c_s_phigrad_unit_f[l=:]>)*dot(<c_s_phigrad_unit_f[l=:]>,<facenorm[l=:]>)" on <allfaces>
+    IF <<visualise>> # visualise
+      {{ return vector_expand(
+        'FACE_OUTPUT <c_s_u_res[l=$l]> "-<c_s_D_res>*dot(<c_s_grad_Lambda*_f[l=:]>,<c_s_phigrad_unit_f[l=:]>)*<c_s_phigrad_unit_f[l=$l]>" ON <allfaces>'
+        ); }}
+    END_IF
+  ELSE # restoration occurs in all directions
+    FACE_DERIVED <c_s_u_res_f> "-<c_s_D_res>*dot(<c_s_grad_Lambda*_f[l=:]>,<facenorm[l=:]>)" on <allfaces>
+  END_IF
+END_IF
+
+# combine fluxes here
+
+FACE_LOCAL <c_s_u_f> "<u_f>+<c_s_u_res_f>" ON <allfaces> # velocity
+FACE_DERIVED <c_s_j_f> "faceave[advection](<c_s>,<c_s_u_f>,0.d0)*<c_s_u_f>" ON <allfaces> # flux
+CELL_EQUATION <c_s conservation> "(<c_s>-<c_s[r=1]>)/<dt> + celldiv(<c_s_j_f>)" ON <domain> # conservation equation
+
+# boundary condition on walls
+IF 1
+  FACE_EQUATION <c_s walls> "facegrad(<c_s>)" ON <walls>
+ELSE
+  FACE_EQUATION <c_s walls> "<c_s>" ON <walls>
+END_IF
+
+# cumulative amount of surfactant
+IF <<statistics>>
+  NONE_OUTPUT <c_s_total> "cellsum(<c_s>*<cellvol>,region=<allcells>)"
+  NONE_OUTPUT <c_s_area_total> "cellsum(<c_s_delta>*<cellvol>,region=<allcells>)"
+  NONE_OUTPUT <c_s_Lambda_total> "cellsum(<c_s_Lambda>*<cellvol>,region=<allcells>)"
+  NONE_OUTPUT <c_s_Lambda*area_total> "cellsum(<c_s_Lambda>*<c_s_delta>*<cellvol>,region=<allcells>)"
+END_IF
+
+# show fluxes as face vectors
+IF <<debug>>
+  INCLUDE_TEMPLATE "navier_stokes/u_f_vector" R "<u_f" W "<c_s_u_res_f"
+  INCLUDE_TEMPLATE "navier_stokes/u_f_vector" R "<u_f" W "<c_s_u_f"
+  INCLUDE_TEMPLATE "navier_stokes/u_f_vector"
+END_IF
+
+#-------------------------------------------------------------------

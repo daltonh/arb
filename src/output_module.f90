@@ -78,7 +78,7 @@ if (present(intermediate)) intermediate_local = intermediate
 call update_and_check_outputs ! update any output-only variables
 
 ! now output txt file if a single or zero dimensional problem
-if (.false..or.maximum_dimensions <=1 ) call output_txt ! write txt files containing data
+if (output_txt_file.or.maximum_dimensions <=1 ) call output_txt ! write txt files containing data
 
 do gmesh_number = 0, ubound(gmesh,1)
 
@@ -124,7 +124,7 @@ end do
 debug_dump_local = .false.
 if (present(debug_dump)) debug_dump_local = debug_dump
 
-if (.false..or.debug_dump_local) call write_gmesh(gmesh_number=0,debug_dump=.true.,centring='all', &
+if (output_debug_file.or.debug_dump_local) call write_gmesh(gmesh_number=0,debug_dump=.true.,centring='all', &
   intermediate=.false.)
 
 if (.true.) call output_stat ! write some statistics about the data
@@ -148,7 +148,7 @@ integer :: error, i, j, k, l, m, list_length
 integer, dimension(:), allocatable :: local_list
 character(len=1000) :: filename
 character(len=100) :: cellxname(3), facexname(3), nodexname(3)
-character(len=1000) :: formatline
+character(len=10000) :: formatline
 character(len=1) :: delimiter=' '
 logical :: therel
 character(len=100) :: txtoutput = 'cell' ! what to output: cell|face|none|all
@@ -190,8 +190,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'cell'.or.trim(txtoutput) == 'all'))
   formatline = '(a8'//repeat(',a,'//trim(stringformat),totaldimensions+ubound(local_list,1))//')'
   write(foutput,fmt=formatline) '"icell"',(delimiter,cellxname(l),l=1,totaldimensions), &
     (delimiter,'"'//trim(var(local_list(m))%name)//' ['//trim(var(local_list(m))%units)//']"',m=1,ubound(local_list,1))
-  formatline = '('//trim(indexformat)//repeat(',a,'//trim(realformat),totaldimensions)// &
-    repeat(',a,'//trim(realformat),ubound(local_list,1))//')'
+  formatline = '('//trim(indexformat)//repeat(',a,'//trim(outputtxtformat),totaldimensions)// &
+    repeat(',a,'//trim(outputtxtformat),ubound(local_list,1))//')'
   do i = 1, itotal
     write(foutput,fmt=formatline) i,(delimiter,trunk_dble(cell(i)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=i,noerror=.true., &
@@ -214,8 +214,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'face'.or.trim(txtoutput) == 'all'))
   formatline = '(a8'//repeat(',a,'//trim(stringformat),totaldimensions+ubound(local_list,1))//')'
   write(foutput,fmt=formatline) '"jface"',(delimiter,facexname(l),l=1,totaldimensions), &
     (delimiter,'"'//trim(var(local_list(m))%name)//' ['//trim(var(local_list(m))%units)//']"',m=1,ubound(local_list,1))
-  formatline = '('//trim(indexformat)//repeat(',a,'//trim(realformat),totaldimensions)// &
-    repeat(',a,'//trim(realformat),ubound(local_list,1))//')'
+  formatline = '('//trim(indexformat)//repeat(',a,'//trim(outputtxtformat),totaldimensions)// &
+    repeat(',a,'//trim(outputtxtformat),ubound(local_list,1))//')'
   do j = 1, jtotal
     write(foutput,fmt=formatline) j,(delimiter,trunk_dble(face(j)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=j,noerror=.true., &
@@ -238,8 +238,8 @@ if (list_length > 0.and.(trim(txtoutput) == 'node'.or.trim(txtoutput) == 'all'))
   formatline = '(a8'//repeat(',a,'//trim(stringformat),totaldimensions+ubound(local_list,1))//')'
   write(foutput,fmt=formatline) '"knode"',(delimiter,nodexname(l),l=1,totaldimensions), &
     (delimiter,'"'//trim(var(local_list(m))%name)//' ['//trim(var(local_list(m))%units)//']"',m=1,ubound(local_list,1))
-  formatline = '('//trim(indexformat)//repeat(',a,'//trim(realformat),totaldimensions)// &
-    repeat(',a,'//trim(realformat),ubound(local_list,1))//')'
+  formatline = '('//trim(indexformat)//repeat(',a,'//trim(outputtxtformat),totaldimensions)// &
+    repeat(',a,'//trim(outputtxtformat),ubound(local_list,1))//')'
   do k = 1, ktotal
     write(foutput,fmt=formatline) k,(delimiter,trunk_dble(node(k)%x(l)),l=1,totaldimensions), &
       (delimiter,trunk_dble(var_value(local_list(m),nsvar(m=local_list(m),ijk=k,noerror=.true., &
@@ -268,7 +268,7 @@ if (list_length > 0.and.(trim(txtoutput) == 'none'.or.trim(txtoutput) == 'all'))
       (delimiter,'"'//trim(var(local_list(m))%name)//' ['//trim(var(local_list(m))%units)//']"',m=1,ubound(local_list,1))
   end if
 
-  formatline = '('//trim(indexformat)//repeat(',a,'//trim(realformat),ubound(local_list,1))//')'
+  formatline = '('//trim(indexformat)//repeat(',a,'//trim(outputtxtformat),ubound(local_list,1))//')'
   if (transient_simulation) then
     write(foutput,fmt=formatline) timestep,(delimiter,trunk_dble(var_value(local_list(m),1)),m=1,ubound(local_list,1))
   else
@@ -353,13 +353,13 @@ do ntype = 1, ubound(var_types,1)
         if (var(m)%funk(ns)%v < var(m)%funk(min_loc)%v) min_loc = ns
       end do
     ! new textline formulation
-      formatline = '(a,'//trim(realformat)//',a,'//trim(dindexformat(ijkvar(m,max_loc)))//',a,'//trim(realformat)//',a,'// &
+      formatline = '(a,'//trim(outputstatformat)//',a,'//trim(dindexformat(ijkvar(m,max_loc)))//',a,'//trim(outputstatformat)//',a,'// &
         trim(dindexformat(ijkvar(m,min_loc)))//')'
       write(textline,fmt=formatline) "variable "//trim(var(m)%type)//' '//trim(var(m)%name)//': max = ', &
         trunk_dble(var(m)%funk(max_loc)%v),' at '//trim(var(m)%centring)//' ', &
         ijkvar(m,max_loc),': min = ',trunk_dble(var(m)%funk(min_loc)%v),' at '//trim(var(m)%centring)//' ',ijkvar(m,min_loc)
       if (trim(var(m)%type) == 'equation' .or. trim(var(m)%type) == 'unknown') then
-        formatline = '(a,'//trim(realformat)//')'
+        formatline = '(a,'//trim(outputstatformat)//')'
         write(textline,fmt=formatline) trim(textline)//': magnitude = ',var(m)%magnitude
       end if
     end if
@@ -376,7 +376,7 @@ do ntype = 1, ubound(var_types,1)
 ! relative average update time = [average (per update) update time]/[maximum_update_time] = the average update time for this particular variable dividied by the largest (average) update time across all variables.  This isn't as useful as it looks, as the variable that is used in the normalisation may only be updated once (say, at the beginning) in a simulation.
 
     if (output_variable_update_times) then
-      formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(dindexformat(var(m)%update_number))//',2(a,'//trim(realformat)//'))'
+      formatline = '(a,2(a,'//trim(outputstatformat)//'),a,'//trim(dindexformat(var(m)%update_number))//',2(a,'//trim(outputstatformat)//'))'
       write(textline,fmt=formatline) trim(textline),&
         ': total (cumulative) update time = ',var(m)%update_time,': relative total update time = ', &
         var(m)%update_time/total_update_time, &
@@ -418,7 +418,7 @@ if (include_regions) then
         allocatable_integer_size(region(m)%ijk)
 
       if (output_region_update_times) then
-        formatline = '(a,2(a,'//trim(realformat)//'),a,'//trim(dindexformat(region(m)%update_number))//',2(a,'//trim(realformat)//'))'
+        formatline = '(a,2(a,'//trim(outputstatformat)//'),a,'//trim(dindexformat(region(m)%update_number))//',2(a,'//trim(outputstatformat)//'))'
         write(textline,fmt=formatline) trim(textline),&
           ': total (cumulative) update time = ',region(m)%update_time,': relative total update time = ', &
           region(m)%update_time/total_update_time, &
@@ -499,16 +499,18 @@ if (present(fileformat)) fileformatl = fileformat
 ! for debug_dump: (debug.|)basename(.cell|.face|.node|.none|).(msh|dat|vtk)
 ! for non-debug_dump: basename(.newt<newtstep>|)(.<timestep>|)(.cell|.face|.node|.none|).(msh|dat|vtk)
 filename = trim(gmesh(gmesh_number)%basename)
-if (debug_dump) filename = 'debug.'//trim(filename)
-if (intermediate.and..not.debug_dump) then
+!if (intermediate.and..not.debug_dump) then
+if (intermediate) then
   formatline = '(a,'//trim(dindexformat(newtstep))//')'
   write(filename,fmt=formatline) trim(filename)//'.newt',newtstep
 end if
-if (transient_simulation.and..not.debug_dump) then
+!if (transient_simulation.and..not.debug_dump) then
+if (transient_simulation) then
   formatline = '(a,'//trim(dindexformat(timestep))//')'
   write(filename,fmt=formatline) trim(filename)//'.',timestep
 end if
 if (centring /= 'all') filename = trim(filename)//'.'//centring
+if (debug_dump) filename = 'debug.'//trim(filename)
 
 filename = trim(filename)//'.'//fileformatl
 
@@ -590,7 +592,7 @@ if (fileformatl == 'msh') then ! other file formats only support compound variab
 
       call write_data_description_msh('component',m,'Data',step,1,1)
 
-      formatline = '('//trim(indexformat)//',a,'//trim(realformat)//')'
+      formatline = '('//trim(indexformat)//',a,'//trim(outputmshformat)//')'
       write(foutput,fmt=formatline) 1,' ',trunk_dble(var_value(m,1))
       write(foutput,'(a)') '$EndData'
       if (debug) write(91,*) 'component data (none): m = ',m,': var = ',trim(var(m)%name)
@@ -644,7 +646,7 @@ if (fileformatl == 'msh') then ! other file formats only support compound variab
           end if
           if (debug) write(91,*) 'component elementdata: gelement = ',gelement,': centring = ',var(m)%centring, &
             ': ijk = ',ijk,': ns = ',ns,': m = ',m,': var = ',trim(var(m)%name)
-          formatline = '('//trim(indexformat)//',a,'//trim(realformat)//')'
+          formatline = '('//trim(indexformat)//',a,'//trim(outputmshformat)//')'
           write(foutput,fmt=formatline) gelement,' ',trunk_dble(var_value(m,ns))
         end do
         write(foutput,'(a)') '$EndElementData'
@@ -674,7 +676,7 @@ if (fileformatl == 'msh') then ! other file formats only support compound variab
           if (debug) write(91,*) 'component elementnodedata: gelement = ',gelement,': centring = ',var(m)%centring, &
             ': i = ',i,': ns = ',ns,': m = ',m,': var = ',trim(var(m)%name),': cellgrad = ',cellgradl(:,1)
           nnodes = gtype_list(cell(i)%gtype)%nnodes
-          formatline = '('//trim(indexformat)//',a,i3'//repeat(',a,'//trim(realformat),nnodes)//')'
+          formatline = '('//trim(indexformat)//',a,i3'//repeat(',a,'//trim(outputmshformat),nnodes)//')'
           write(foutput,fmt=formatline) gelement,' ',nnodes, &
             (' ',trunk_dble(var_value(m,ns)+dot_product(cellgradl(:,1),node(cell(i)%knode(kk))%x-cell(i)%x)),kk=1,nnodes)
         end do
@@ -719,7 +721,7 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
         cellvaluel(n) = var_value(m,1)
       end if
     end do
-    formatline = '('//trim(indexformat)//repeat(',a,'//trim(realformat),nrank)//')'
+    formatline = '('//trim(indexformat)//repeat(',a,'//trim(outputmshformat),nrank)//')'
     write(foutput,fmt=formatline) 1,(' ',trunk_dble(cellvaluel(n)),n=1,nrank)
     deallocate(cellvaluel)
     write(foutput,'(a)') '$EndData'
@@ -794,7 +796,7 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
               cellvaluel(n) = var_value(m,ns)
             end if
           end do
-          formatline = '('//trim(indexformat)//repeat(',a,'//trim(realformat),nrank)//')'
+          formatline = '('//trim(indexformat)//repeat(',a,'//trim(outputmshformat),nrank)//')'
           write(foutput,fmt=formatline) gelement,(' ',trunk_dble(cellvaluel(n)),n=1,nrank)
 !------------------
         else if (fileformatl == 'vtk') then
@@ -813,7 +815,7 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
               end do
             end if
           end if
-          formatline = '('//trim(realformat)//repeat(',a,'//trim(realformat),nrank-1)//')'
+          formatline = '('//trim(outputmshformat)//repeat(',a,'//trim(outputmshformat),nrank-1)//')'
           write(foutput,fmt=formatline) trunk_dble(cellvaluel(1)),(' ',trunk_dble(cellvaluel(n)),n=2,nrank)
 !------------------
         end if
@@ -859,7 +861,7 @@ do mc = 1, ubound(compound,1) ! loop through all compound variables
           end if
         end do
         nnodes = gtype_list(cell(i)%gtype)%nnodes
-        formatline = '('//trim(indexformat)//',a,i3'//repeat(',a,'//trim(realformat),nnodes*nrank)//')'
+        formatline = '('//trim(indexformat)//',a,i3'//repeat(',a,'//trim(outputmshformat),nnodes*nrank)//')'
         write(foutput,fmt=formatline) gelement,' ',nnodes, &
           (( ' ', trunk_dble(cellvaluel(n) + dot_product(cellgradl(:,n),node(cell(i)%knode(kk))%x-cell(i)%x )), &
           n=1,nrank),kk=1,nnodes)
@@ -1046,12 +1048,12 @@ else if (trim(action) == "write") then
 
   if (transient_simulation) then
     repeatformatline = '('//trim(dindexformat(timestep))//',a,'//trim(dindexformat(newtstep))// &
-      repeat(',a,'//trim(realformat),ubound(output_step_variable,1))//')'
+      repeat(',a,'//trim(outputstpformat),ubound(output_step_variable,1))//')'
     write(foutputstep,fmt=repeatformatline) timestep,separator,newtstep, &
       (separator,trunk_dble(var_value(output_step_variable(nvar)%m,output_step_variable(nvar)%ns)), &
       nvar=1,ubound(output_step_variable,1))
   else
-    repeatformatline = '('//trim(dindexformat(newtstep))//repeat(',a,'//trim(realformat),ubound(output_step_variable,1))//')'
+    repeatformatline = '('//trim(dindexformat(newtstep))//repeat(',a,'//trim(outputstpformat),ubound(output_step_variable,1))//')'
     write(foutputstep,fmt=repeatformatline) newtstep, &
       (separator,trunk_dble(var_value(output_step_variable(nvar)%m,output_step_variable(nvar)%ns)), &
       nvar=1,ubound(output_step_variable,1))
@@ -1159,7 +1161,7 @@ if (centring /= 'none') then ! mesh data not required for none centred file
   if (gmesh(gmesh_number)%ngnodes > 0) then
     formatline = '(a/'//trim(indexformat)//')'
     write(foutput,fmt=formatline) '$Nodes',gmesh(gmesh_number)%ngnodes
-    formatline = '('//trim(indexformat)//',3(a,'//trim(realformat)//'))'
+    formatline = '('//trim(indexformat)//',3(a,'//trim(outputmshformat)//'))'
     do gnode = 1, ubound(gmesh(gmesh_number)%knode_from_gnode,1)
       k = gmesh(gmesh_number)%knode_from_gnode(gnode)
 !     if (k /= 0) write(foutput,fmt=formatline) gnode,' ',node(k)%x(1),' ',node(k)%x(2),' ',node(k)%x(3)
@@ -1314,7 +1316,7 @@ if (centring /= 'none') then ! mesh data not required for none centred file
   if (gmesh(gmesh_number)%ngnodes > 0) then
     formatline = '(/a,'//trim(indexformat)//',a)'
     write(foutput,fmt=formatline) 'POINTS ',gmesh(gmesh_number)%ngnodes,' double'
-    formatline = '('//trim(realformat)//',2(a,'//trim(realformat)//'))'
+    formatline = '('//trim(outputmshformat)//',2(a,'//trim(outputmshformat)//'))'
     do gnode = 1, ubound(gmesh(gmesh_number)%knode_from_gnode,1)
       k = gmesh(gmesh_number)%knode_from_gnode(gnode)
       if (k /= 0) write(foutput,fmt=formatline) trunk_dble(node(k)%x(1)*gmesh(gmesh_number)%output_scale), &
@@ -1528,7 +1530,7 @@ write(foutput,fmt=formatline) 'ZONE T = "'//trim(zonename)//'", DATAPACKING = BL
 ! NB: regions are not used in dat format
 
 ! list nodes (irrespective of centring)
-formatline = '('//trim(realformat)//')'
+formatline = '('//trim(outputmshformat)//')'
 do l = 1, totaldimensions
   do gnode = 1, ubound(gmesh(gmesh_number)%knode_from_gnode,1)
     k = gmesh(gmesh_number)%knode_from_gnode(gnode)
@@ -1557,7 +1559,7 @@ do mm = 1, ubound(var_output_list,1)
 ! even if this variable doesn't have a value in this face/cell element, dat still requires a value output
       if (ns /= 0) cellvaluel = var_value(m,ns)
     end if
-    formatline = '('//trim(realformat)//')'
+    formatline = '('//trim(outputmshformat)//')'
     write(foutput,fmt=formatline) trunk_dble(cellvaluel)
   end do
 end do

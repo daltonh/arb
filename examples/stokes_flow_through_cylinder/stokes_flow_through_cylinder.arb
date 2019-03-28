@@ -4,13 +4,14 @@
 # arb is released under the GNU GPL.  For full details see the license directory.
 #
 #-------------------------------------------------------------------
-VERSION 0.55 # the version of syntax used in this file
+VERSION 0.59 # the version of syntax used in this file
 
 # the following strings describe the simulation and are passed to the output files
 INFO_TITLE "Steady state Stokes flow through three dimensional cylinder"
-INFO_DESCRIPTION "Unstructured mesh, v0.55 template files"
+INFO_DESCRIPTION "Unstructured mesh"
 INFO_AUTHOR "Dalton Harvie"
-INFO_DATE "20/1/16" # interpreted as the last modification date
+INFO_DATE "20/1/16"
+INFO_DATE+ ":25/9/18" # interpreted as the last modification date
 
 #-------------------------------------------------------------------
 # system constants
@@ -80,10 +81,10 @@ INCLUDE "stokes"
 
 INCLUDE "constants" # specify physical and numerical constants
 INCLUDE "domain"
-INCLUDE "outlet_p_set" # outlet BC
-INCLUDE "inlet_centreline_region" R "inlet" W "outlet" # create inlet centreline region and sans centreline region
-INCLUDE "walls" # nonslip walls BC
-INCLUDE "inlet_centreline_region" # create inlet centreline region and sans centreline region
+INCLUDE "outlet_p_set" # outlet BC, uniform pressure across outlet
+#INCLUDE "outlet_u_fully_developed" # outlet BC, uniform <dynamic_force_f> across outlet, but with one face setting p = 0
+#INCLUDE "walls" R "<<boundarynormalmethod>>" W "zerodynamic" # nonslip walls BC, setting <dynamic_force_f> = 0 on boundaries to extrapolate pressure
+INCLUDE "walls" # nonslip walls BC, setting pressure on boundaries using a type of rhiechow interpolation
 INCLUDE "inlet_u_fully_developed"
 
 # explicitly set variable magnitudes using numerical constants
@@ -95,9 +96,13 @@ VARIABLE <u[l=3]> magnitude=<u_av>
 CONSTANT <mu> [Pa.s] 1.d-3 # viscosity
 CONSTANT <u_av> [m/s] 1.0d0 # average inlet velocity
 
-# calculating an analytical solution
+# calculating an analytical solution and resulting error
 CELL_CONSTANT <r> "sqrt(<cellx[l=1]>^2+<cellx[l=2]>^2)" output
 CELL_CONSTANT <u_analytical[l=3]> "(1.d0-<r>^2)*2.d0*<u_av>" output
+CELL_OUTPUT <u_error[l=1]> "<u[l=1]>-<u_analytical[l=1]>"
+CELL_OUTPUT <u_error[l=2]> "<u[l=2]>-<u_analytical[l=2]>"
+CELL_OUTPUT <u_error[l=3]> "<u[l=3]>-<u_analytical[l=3]>"
+CELL_OUTPUT <u_error_mag> "sqrt(cellmax(dot(<u_error[l=:]>,<u_error[l=:]>),default=<tinyish>))"
 
 # and setting the initial guess
 VARIABLE <u[l=1]> "0.d0"

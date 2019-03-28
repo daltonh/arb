@@ -9,8 +9,8 @@ require 'optparse'
 require_relative '../lib/units'
 
 PROGNAME = 'convert_units'
-VERSION = '1.7'
-DATE = '2018-04-27'
+VERSION = '1.10'
+DATE = '2018-11-27'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})
   Performs unit conversions.
@@ -31,6 +31,7 @@ OPTIONS = OptionParser.new do |opt|
   opt.on('-d', '--double-precision', "Use d for exponents (only alters output; doesn't affect numerical precision)") { options[:double_precision] = true }
   opt.on('-f', '--format <format>', 'Format string for numerical output (default %g)') { |f| options[:format] = f }
   opt.on('-l', '--list', 'List all recognised units and their abbreviations') { Units.list; exit if ARGV.empty? }
+  opt.on('-M', '--mol-wt <mol_wt>', 'Set molecular weight to be used for concentration conversions') { |mw| options[:MW] = mw }
   opt.on('-s', '--sig-figs', 'Output with same number of significant figures as input (overrides -f)') { options[:sig_figs] = true }
   opt.on('-t', '--tdiff', 'Interpret input temperature as temperature difference rather than reference to an absolute temperature') { options[:tdiff] = true }
   opt.on('-v', '--version', 'Print version information') { puts INFO; exit if ARGV.empty? }
@@ -47,9 +48,23 @@ if ARGV.empty?
   abort "ERROR: no input"
 end
 
-# Do unit conversion
 begin
-  value_out, units_out = Units.convert(ARGV[0], ARGV[1].to_s, options)
+  input = ARGV[0]
+  if options[:MW] # (possibly) converting between mass and molar concentrations
+    mw_value, mw_units = Units.convert(options[:MW], '') # convert MW to SI (kg mol-1)
+    raise "molecular weight has wrong units (#{mw_units})" unless mw_units == 'kg mol-1'
+    value_in, units_in = Units.convert(ARGV[0], '') # convert input to SI, then create new input string for concentration conversions
+    options[:double_precision] = true if "#{mw_value}#{value_in}".include?('d') # double precision output if double precision input
+    mw_value = Units.floatify(mw_value).to_f
+    value_in = Units.floatify(value_in).to_f
+    value_in_converted, units_in_converted = if units_in == 'mol m-3'
+                                               [value_in*mw_value, 'kg m-3']
+    elsif units_in == 'kg m-3'
+                                               [value_in/mw_value, 'mol m-3']
+    end
+    input = "#{options[:sig_figs] ? Units.format_sigfigs(value_in_converted, [Units.num_sigfigs(input), Units.num_sigfigs(options[:MW])].min) : value_in_converted} #{units_in_converted}" if units_in == 'mol m-3' || units_in == 'kg m-3'
+  end
+  value_out, units_out = Units.convert(input, ARGV[1].to_s, options) # do unit conversion
 rescue => msg
   abort "ERROR: #{msg}"
 end

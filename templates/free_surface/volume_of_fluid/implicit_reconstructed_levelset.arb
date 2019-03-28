@@ -5,7 +5,12 @@ CONSTANT <vof_s_interface_width> 1.d0 # this controls the thickness of the inter
 CELL_CONSTANT <local smoothed celldx> "cellsum[maxseparation=3](<celldxkernel>,region=<domain>)/cellsum[maxseparation=3](1.d0,region=<domain>)" ON <allcells> output
 FACE_CONSTANT <vof_s_D> "(<local smoothed celldx>*<vof_s_interface_width>)**2" ON <allfaces> output
 FACE_DERIVED <vof_s_j> "-<vof_s_D>*facegrad(<vof_s>)" ON <allfaces>
-CELL_EQUATION <vof_s domain> "celldiv(<vof_s_j>)-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
+CELL_EQUATION <vof_s domain> "-(2.d0*<vof_phi_interface>-1.d0-<vof_s>)" ON <domain>
+IF <<cylindrical>>
+  VARIABLE <vof_s domain> "<vof_s domain>+celldiv(<<radius_f>>*<vof_s_j>)/<<radius_c>>"
+ELSE
+  VARIABLE <vof_s domain> "<vof_s domain>+celldiv(<vof_s_j>)"
+END_IF
 FACE_EQUATION <vof_s boundary> "2.d0*<vof_phi_interface>-1.d0-<vof_s>" ON <boundaries>
 
 MARKDOWN

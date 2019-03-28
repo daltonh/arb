@@ -1,4 +1,4 @@
-#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
 # the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90
@@ -7,7 +7,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
 # the following working directory files found by the arb script: ddot_test.arb multiply_variables.arb random_test.arb reuse.arb skip_if_test.arb syntax_test.arb
    #(comment created during unwrap): new block = ddot_test.arb: sub_block = 0
    #(hash inserted during unwrap)INCLUDE_WORKING "ddot_test.arb"
-   # this demonstrates how to take a double dot product and how to use a template file to perform a tensor transpose
+   #(hash inserted during unwrap)MARKDOWN
+   #(hash inserted during unwrap)This demonstrates how to take a double dot product and how to use a template file to perform a tensor transpose.
+   #(hash inserted during unwrap)
+   #(hash inserted during unwrap)The functionality in this file is now largely superseded: Now look at the vector_tensor_algebra example.
+   #(hash inserted during unwrap)END_MARKDOWN
    
    NONE_CONSTANT <A[l=1,1]> "11"
    NONE_CONSTANT <A[l=1,2]> "12"
@@ -204,7 +208,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
    CONSTANT <gg> 7.d0
    
       #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
-      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)IF 
       #(hash inserted during unwrap)ERROR "IF: should not be here"
       #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
       #(hash inserted during unwrap)ELSE_IF 1
@@ -215,7 +219,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
       #(hash inserted during unwrap)END_IF
    
       #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1
-      #(hash inserted during unwrap)IF 0
+      #(hash inserted during unwrap)IF 
       #(hash inserted during unwrap)ERROR "IF: should not be here"
       #(hash inserted during unwrap)
       #(comment created during unwrap): new block = skip_if_test.arb: sub_block = 1

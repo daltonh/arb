@@ -1,0 +1,59 @@
+MARKDOWN
+Here we setup the extra forces acting on each disperse phase species, using the corresponding single_species_* template files.
+END_MARKDOWN
+
+REPLACEMENTS D "<<slip_lift>>" W "0"
+IF <<slip_lift>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_slip_lift' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
+REPLACEMENTS D "<<faxen>>" W "0"
+IF <<faxen>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_faxen' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
+REPLACEMENTS D "<<wall_lift>>" W "0"
+IF <<wall_lift>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_wall_lift' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
+REPLACEMENTS D "<<wall_drag>>" W "0"
+IF <<wall_drag>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_wall_drag' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
+REPLACEMENTS D "<<wall_sheardrag>>" W "0"
+IF <<wall_sheardrag>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_wall_sheardrag' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+

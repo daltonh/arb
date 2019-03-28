@@ -8,13 +8,14 @@ END_MARKDOWN
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
     for my $l (string_eval('<<dimensions>>','list')) {
       $return_string .= "CELL_UNKNOWN <u_$species"."[l=$l]> [] '0.d0' ON <allcells> magnitude=<u_av_$species>\n";
+      $return_string .= "CELL_LOCAL <extra_force_$species"."[l=$l]> '0.d0' ON <domain>\n"; # this is a hook into the conservation equations to allow additional forces to be included - force needs to be expressed on a volume fraction specific basis (ie, divided by phi)
     }
     if ($species eq "species0") {
-      $return_string .= "CELL_UNKNOWN <p_$species> [] '<p_in>' ON <allcells>\n";
+      $return_string .= "CELL_UNKNOWN <p_$species> [] '<p_initial>' ON <allcells>\n";
     } else {
 # now only define disperse phase species as a derived later
 #     $return_string .= "CELL_LOCAL <p_$species> [] '0.d0' ON <allcells>\n";
-      $return_string .= "CELL_UNKNOWN <phi_$species> [] '<phi_in_$species>' ON <allcells> magnitude=1.d0\n";
+      $return_string .= "CELL_UNKNOWN <phi_$species> [] '<phi_initial_$species>' ON <allcells> magnitude=1.d0\n";
       $phif .= "-<phi_$species>";
     }
   }
@@ -28,15 +29,17 @@ NONE_CONSTANT <phi_tol> 1.d-6 # this is a minimum phi to consider any phase pres
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
     $return_string .= "CELL_LOCAL <phi_bounded_$species> [] 'cellmax(cellmin(<phi_$species>,1.d0-<phi_tol>),<phi_tol>)'\n";
-    $return_string .= "CELL_LOCAL <phi_bounded_$species"."[r=1]> [] 'cellmax(cellmin(<phi_$species"."[r=1]>,1.d0-<phi_tol>),<phi_tol>)'\n";
+    $return_string .= "<<transientnavierstokescomment>> CELL_LOCAL <phi_bounded_$species"."[r=1]> [] 'cellmax(cellmin(<phi_$species"."[r=1]>,1.d0-<phi_tol>),<phi_tol>)'\n";
     $return_string .= "CELL_LOCAL <phi_pos_$species> [] 'cellmax(cellmin(<phi_$species>,1.d0),0.d0)'\n";
-    $return_string .= "CELL_LOCAL <phi_pos_$species"."[r=1]> [] 'cellmax(cellmin(<phi_$species"."[r=1]>,1.d0),0.d0)'\n";
+    $return_string .= "<<transientnavierstokescomment>> CELL_LOCAL <phi_pos_$species"."[r=1]> [] 'cellmax(cellmin(<phi_$species"."[r=1]>,1.d0),0.d0)'\n";
     $return_string .= "FACE_DERIVED <phi_f_pos_$species> [] 'faceave(<phi_pos_$species>)' ON <allfaces>\n";
     $return_string .= "FACE_LOCAL <phi_f_bounded_$species> [] 'faceave(<phi_bounded_$species>)' ON <allfaces>\n";
     $return_string .= "FACE_LOCAL <phi_f_$species> [] 'faceave(<phi_$species>)' ON <allfaces>\n";
     $return_string .= "FACE_LOCAL <phi_f_pos_adjacent_$species> [] 'faceave[adjacentcells](<phi_pos_$species>)' ON <allfaces>\n";
     $return_string .= "FACE_LOCAL <phi_f_bounded_adjacent_$species> [] 'faceave[adjacentcells](<phi_bounded_$species>)' ON <allfaces>\n";
-    $return_string .= "FACE_LOCAL <phi_f_bounded_adjacent_$species"."[r=1]> [] 'faceave[adjacentcells](<phi_bounded_$species"."[r=1]>)' ON <allfaces>\n";
+    $return_string .= "FACE_LOCAL <phi_f_bounded_harmonic_$species> [] 'faceave[harmonic](<phi_bounded_$species>)' ON <allfaces>\n";
+    $return_string .= "<<transientnavierstokescomment>> FACE_LOCAL <phi_f_bounded_adjacent_$species"."[r=1]> [] 'faceave[adjacentcells](<phi_bounded_$species"."[r=1]>)' ON <allfaces>\n";
+    $return_string .= "FACE_LOCAL <phi_f_bounded_adjacent_nob_$species> [] 'faceif(facedelta(<boundaries>),faceave[downcell](<phi_bounded_$species>),<phi_f_bounded_adjacent_$species>)' ON <allfaces>\n";
     $return_string .= "CELL_LOCAL <phi_fc_bounded_$species> [] 'cellave(<phi_f_bounded_$species>)'\n";
   }
   return $return_string;

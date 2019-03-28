@@ -434,7 +434,7 @@ use general_module
 use gmesh_module
 integer :: i, ii, j, jj, k, kk, ncell, gmesh_number, n, ierror, i2, ii2, kk2, k2, jbase, jglue, l
 type(cell_type) :: default_cell
-double precision, dimension(totaldimensions) :: tangc, normc
+double precision, dimension(totaldimensions) :: tangc, normc, normcomparitor
 double precision :: maximum_error_angle, error_angle ! a parameter that indicates face curvature (in radians) if any curved 2d geometries are found
 integer, dimension(:), allocatable :: separation_index
 character(len=1000) :: formatline, filename
@@ -668,8 +668,10 @@ new_size_2d = [totaldimensions,2]
 maximum_error_angle = 0.d0
 do j = 1, jtotal
 ! now calculate the rest
+! for 2D faces the norm is based on the normal to the face plane, with direction checked so that it points from the downcell to the upcell
   if (face(j)%dimensions == 2) then
-    call find_2d_geometry(knode=face(j)%knode,area=face(j)%area,norm=face(j)%norm,centre=face(j)%x,error_angle=error_angle,error=error)
+    call find_2d_geometry(knode=face(j)%knode,area=face(j)%area,norm=face(j)%norm,centre=face(j)%x,downcellx=cell(face(j)%icell(1))%x, &
+      error_angle=error_angle,error=error)
     if (error) then
       write(*,'(a)') 'WARNING: problem calculating the geometry of a face: see fort.31 for more details'
       write(31,'(a)') 'WARNING: problem calculating the geometry of a face: see fort.31 for more details'
@@ -678,6 +680,7 @@ do j = 1, jtotal
     end if
     maximum_error_angle = max(error_angle,maximum_error_angle)
   else if (face(j)%dimensions == 1) then
+! for 1D faces the norm is normal to the face, and in the same plane formed by the downcell and the two face nodes
     face(j)%area = distance( node(face(j)%knode(1))%x , node(face(j)%knode(2))%x )
     face(j)%x = ( node(face(j)%knode(1))%x + node(face(j)%knode(2))%x )/2.d0
     tangc = face(j)%x - cell(face(j)%icell(1))%x ! NB icell(1) is neither a glued cell or a boundary cell, hence this one-sided definition
@@ -691,18 +694,24 @@ do j = 1, jtotal
   else if (face(j)%dimensions == 0) then
     face(j)%area = 1.d0
     face(j)%x = node(face(j)%knode(1))%x
+! for 0D faces the norm is based on the adjacent cell locations
 ! previously facenorm was based on the vector to the downcell
 !   face(j)%norm(:,1) = face(j)%x - cell(face(j)%icell(1))%x ! NB icell(1) is neither a glued cell or a boundary cell, hence this one-sided definition
 ! now we set the orientation based on both cells that surround the point, including periodic and reflect glued boundaries
     if (face(j)%glue_jface /= 0) then
       if (face(j)%glue_reflect /= 0) then
 ! a glued reflect face has a normal in the direction of the reflection
+! use the negative of the glue_reflect'th component of the normal to the downcell
+! note that reflected faces must lie along coordinate directions
         face(j)%norm(:,1) = 0
         face(j)%norm(face(j)%glue_reflect,1) = face(j)%x(face(j)%glue_reflect) - cell(face(j)%icell(1))%x(face(j)%glue_reflect)
       else
 ! a periodic glued face has a normal based on both adjacent cells, noting that glued cell has a normal facing towards the glued face too
         jglue = face(j)%glue_jface
-        face(j)%norm(:,1) = cell(face(jglue)%icell(1))%x - face(jglue)%x + face(j)%x - cell(face(j)%icell(1))%x
+! this is broken as not all faces (including jglue) have had their face(j)%x defined yet
+!       face(j)%norm(:,1) = cell(face(jglue)%icell(1))%x - face(jglue)%x + face(j)%x - cell(face(j)%icell(1))%x
+! instead use node%x that has already been defined, from glued face, as per the face%x calculation for 0D faces, fixed v0.60
+        face(j)%norm(:,1) = cell(face(jglue)%icell(1))%x - node(face(jglue)%knode(1))%x + face(j)%x - cell(face(j)%icell(1))%x
       end if
     else
 ! under normal circumstances normal points from downcell to upcell
@@ -722,6 +731,41 @@ do j = 1, jtotal
     call normalise_vector(face(j)%norm(:,2))
     call normalise_vector(face(j)%norm(:,3))
   end if
+
+! for any glued non-reflection faces make sure that they have the same norms, so that they generate the same kernels
+! we should also check that the face geometries are the same
+  if (face(j)%glue_jface /= 0) then
+    if (face(j)%glue_reflect == 0) then
+      if (j.gt.face(j)%glue_jface) then ! as the loop increases j, this ensures that face(j)%glue_jface has already been calculated
+        if (.false.) then
+! the idea here was to report on basis vectors (norm) that were different between glued faces
+! in practice this is hard to achieve as tang1 could = tang2, or tang1 could = -tang1 etc
+! could instead report upon area differences?
+          do l = 1, 3
+            normcomparitor = face(j)%norm(:,l) + face(face(j)%glue_jface)%norm(:,l)
+            if (vector_magnitude(normcomparitor).gt.1.d-10) then
+              formatline = '(a,i1,2(a,'//trim(indexformat)//'),a,3(g11.3))'
+              write(*,fmt=formatline) &
+                'WARNING: there is a difference between a dimension ',l,' normal/tangent between two glued faces: jface = ',j, &
+                ': glued jface = ',face(j)%glue_jface,': vector difference = ',normcomparitor
+              write(*,*) '  Copying normals between faces to ensure consistency'
+            end if
+          end do
+        end if
+! for large j copy the norm from the glue_jface, reversing the direction
+        face(j)%norm(:,:) = -face(face(j)%glue_jface)%norm(:,:)
+      end if
+    end if
+  end if
+
+  maximum_faceknodes = max(maximum_faceknodes,allocatable_integer_size(face(j)%knode))
+end do
+if (maximum_error_angle > 1.d-20) write(*,'(a,g11.3,a)') &
+  'WARNING: at least one two dimensional face is curved, with a maximum error angle of ', &
+  maximum_error_angle*180.d0/pi,' degrees'
+
+! have to restart the loop to calculate the r vectors, as for glued faces we need to access face%x for any face
+do j = 1, jtotal
 ! calculate some adjacent face vectors/distances, possibly taking into account any glued faces
 ! now these are stored in r, which will be increased in size, and then possibly decreased again after the kernels have been constructed
   call resize_double_precision_2d_array(array=face(j)%r,new_size=new_size_2d,keep_data=.false.,default_value=0.d0)
@@ -730,6 +774,16 @@ do j = 1, jtotal
 !   face(j)%r(:,2) = cell(face(j)%icell(2))%x - face(jglue)%x ! if the face is glued, then the upcell vector becomes the downcell vector from the glued face
     face(j)%r(:,2) = cell(face(jglue)%icell(1))%x - face(jglue)%x ! if the face is glued, then the upcell vector becomes the downcell vector from the glued face
     if (face(j)%glue_reflect /= 0) face(j)%r(face(j)%glue_reflect,2) = -face(j)%r(face(j)%glue_reflect,2) ! if the face is reflected, need to change the upcell dx accordingly
+
+! temp &&&
+! if (j == 44) then
+!   write(84,*) 'j = ',j,': face(j)%r(:,2)',face(j)%r(:,2),': jglue = ',jglue,': face(j)%glue_reflect = ',face(j)%glue_reflect
+!   write(84,*) 'cell(face(jglue)%icell(1))%x = ',cell(face(jglue)%icell(1))%x 
+!   write(84,*) 'cell(face(j)%icell(2))%x = ',cell(face(j)%icell(2))%x 
+!   write(84,*) 'face(jglue)%x = ',face(jglue)%x
+!   write(84,*) 'face(j)%x = ',face(j)%x
+! end if
+
   else
     face(j)%r(:,2) = cell(face(j)%icell(2))%x - face(j)%x ! vector from face centre to adjacent upcell
   end if
@@ -737,12 +791,12 @@ do j = 1, jtotal
   face(j)%dx = distance( face(j)%r(:,2) , face(j)%r(:,1) ) ! distance between adjacent cell centres
   face(j)%dx_unit = (face(j)%r(:,2) - face(j)%r(:,1))/face(j)%dx ! unit normal in direction of adjacent cell centres
 
-  maximum_faceknodes = max(maximum_faceknodes,allocatable_integer_size(face(j)%knode))
+! temp &&&
+! if (j == 44) then
+!   write(84,*) 'j = ',j,': face(j)%r(:,1)',face(j)%r(:,1),': face(j)%r(:,2)',face(j)%r(:,2)
+! end if
 end do
 
-if (maximum_error_angle > 1.d-20) write(*,'(a,g11.3,a)') &
-  'WARNING: at least one two dimensional face is curved, with a maximum error angle of ', &
-  maximum_error_angle*180.d0/pi,' degrees'
 !-------------------------------------
 ! run through faces increasing icell, and at the same time, calculating face%r and face%reflect_multiplier
 ! this list includes all cells that share a common node with the face, included in the specific order of:
@@ -1868,7 +1922,7 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_double_precision(general_options(n), &
       "iterresreltol (tolerance that indicates convergence of the iterative proceedure)",iterresreltol,'general')
 
-! output file selection
+! output file selection and options
   else if (trim(option_name) == "outputstepfile") then
 ! this string is checked within output_module.f90
     call set_option_string(general_options(n),"outputstepfile (whether to print output.step file or not)",output_step_file, &
@@ -1893,6 +1947,24 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_logical(general_options(n),'convergencedetailsfile', &
       "write some convergence debugging data to convergence_details.txt", &
       convergence_details_file,'general')
+  else if (trim(option_name) == "outputtxtfile" .or. trim(option_name) == "nooutputtxtfile") then
+    call set_option_logical(general_options(n),'outputtxtfile', &
+      "whether to output a txt file containing all of the data",output_txt_file,'general')
+  else if (trim(option_name) == "outputdebugfile" .or. trim(option_name) == "nooutputdebugfile") then
+    call set_option_logical(general_options(n),'outputdebugfile', &
+      "whether to output a debugging msh file at the same as the other msh files are written out",output_debug_file,'general')
+  else if (trim(option_name) == "outputmshformat") then
+    call set_option_string(general_options(n),"outputmshformat (fortran format string for msh file output)", &
+      outputmshformat,'general')
+  else if (trim(option_name) == "outputtxtformat") then
+    call set_option_string(general_options(n),"outputtxtformat (fortran format string for txt file output)", &
+      outputtxtformat,'general')
+  else if (trim(option_name) == "outputstatformat") then
+    call set_option_string(general_options(n),"outputstatformat (fortran format string for stat file output)", &
+      outputstatformat,'general')
+  else if (trim(option_name) == "outputstpformat") then
+    call set_option_string(general_options(n),"outputstpformat (fortran format string for stp file output)", &
+      outputstpformat,'general')
 
 ! timing of various routines
   else if (trim(option_name) == "outputtimings" .or. trim(option_name) == "nooutputtimings") then
@@ -1916,6 +1988,9 @@ do n = 1, allocatable_character_size(general_options) ! precedence is now as rea
     call set_option_logical(general_options(n),'ignoreinitialupdatetimes', &
       "ignore how long it takes to update each variable when initialising", &
       ignore_initial_update_times,'general')
+  else if (trim(option_name) == "outputdirtouchfiles" .or. trim(option_name) == "nooutputdirtouchfiles") then
+    call set_option_logical(general_options(n),'outputdirtouchfiles', &
+      "whether to look in output directory for the touch files (rather than the working directory)",output_dir_touch_files,'general')
 
   else
 !   write(*,'(a)') "WARNING: "//trim(option_name)//" is not a (valid) general option that can be set from the input file"

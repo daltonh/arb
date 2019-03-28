@@ -1,0 +1,30 @@
+MARKDOWN
+#Faxen Drag Equation Template
+END_MARKDOWN
+
+# Calculating the laplacian of velocity = divergence of strain rate tensor
+CELL_DERIVED <gammarate_species0[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<ugrad_f_species0[l=:,<<i>>]>))" ON <domain> output
+
+REPLACEMENTS D "<<dragmethod>>" W "version2"
+
+IF {{ return string_test('<<dragmethod>>','version1') }}
+  IF 0 #Mctigue
+    CELL_DERIVED <particle_force_alpha4> "7/2*<mu_species0>" ON <domain> output
+  ELSE #Zhang and Prosperiti (Dalton)
+    CELL_DERIVED <particle_force_alpha4> "3/4*<mu_species0>" ON <domain> output
+  END_IF
+
+  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "-<particle_force_alpha4>*<gammarate_species0[l=<<i>>]>" ON <domain> output # right sign??
+
+ELSE
+
+# include the influence of hindered settling function etc
+  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "<beta^_<<species>>_species0>*(<a_<<species>>>**2)*<gammarate_species0[l=<<i>>]>/6.d0" ON <domain> output
+
+END_IF
+
+# finally add these contributions onto extra force
+# a positive contribution to the solid species
+VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_faxen_<<species>>[l=<<i>>]>"
+# and an opposite contribution to the fluid species, specific to volume fraction
+VARIABLE <extra_force_species0[l=<<i>>]> "<extra_force_species0[l=<<i>>]> - <particle_force_faxen_<<species>>[l=<<i>>]>*<phi_bounded_<<species>>>/<phi_bounded_species0>"

@@ -2,12 +2,14 @@ MARKDOWN
 Conservation equations for both mass and momentum
 END_MARKDOWN
 
-# define cylindrical divergence modifier terms
-REPLACEMENTS R "<<radius_top>>" W "" R "<<radius_bottom>>" W ""
-IF <<cylindrical>>
-  REPLACEMENTS S "<<radius_top>>" W "<<radius_f>>*" S "<<radius_bottom>>" W "/<<radius_c>>"
-END_IF
+# uses <<radius_f>> and <<radius_c>> which are either r or 1 already, and simplify in the case of 1 using maxima
 
+# both of these strings are now set globally in constants, but can be overwritten with local values here
+# <<implicitadvection>> modifies both the advection of phi and u, making both implicit (ie, using r=0 values rather than r=1 values).  You need implicit advection to be able to push CFL over 1.
+REPLACEMENTS D "<<implicitadvection>>" W "1" # default is now implicit advection
+
+#REPLACEMENTS D "<<stressmethod>>" W "version1" # method, with phi inside viscous stress divergence
+REPLACEMENTS D "<<stressmethod>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
 # now create conservation equations
 
 # mass conservation (actually, volume conservation)
@@ -16,20 +18,25 @@ END_IF
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
 
 # find advection phi
-    if (string_test('<<transientnavierstokescomment>>','')) {
-# explicit
-      $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+    if (string_eval('<<transientnavierstokes>>')) {
+# transient uses positive phi for advection
+      if (string_eval('<<implicitadvection>>')) {
 # implicit
-#     $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+      } else {
+# explicit
+        $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species"."[r=1]>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+      }
     } else {
-      $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_pos_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
+# steady-state uses bounded phi for advection
+      $return_string .= "FACE_DERIVED <phi_f_adv_$species> 'faceave[advection](<phi_bounded_$species>,<u_f_$species>,<adv_limiter>)' ON <allfaces>\n";
     }
 
 # compile into flux
     $return_string .= "FACE_LOCAL <phiu_f_$species> '<phi_f_adv_$species>*<u_f_$species>' ON <allfaces>\n";
 
 # continuity equation for each phase
-    $return_string .= "CELL_EQUATION <continuity_$species> 'celldiv(<<radius_top>><phiu_f_$species>)<<radius_bottom>>' ON <domain>\n";
+    $return_string .= "CELL_EQUATION <continuity_$species> 'celldiv(<<radius_f>>*<phiu_f_$species>)*<<radius_c>>' ON <domain>\n";
     if (string_test('<<transientnavierstokescomment>>','')) {
       $return_string .= "CELL_EQUATION <continuity_$species> '(<phi_$species>-<phi_$species"."[r=1]>)/<dt>+<continuity_$species>' ON <domain>\n";
     }
@@ -37,7 +44,7 @@ END_IF
   return $return_string;
 }}
 
-<<navierstokescomment>>INCLUDE_LOCAL "momentum_advection_flux" # calculate momentum advection flux for all species, only for non-stokes flow
+<<navierstokescomment>>INCLUDE_LOCAL "momentum_advection_flux" # calculate momentum advection flux for all species, only for non-stokes flow, references <<implicitadvection>> = 0 or 1 string
 INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for all species
 
 # momentum conservation
@@ -45,58 +52,168 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
   my $return_string='';
   for my $l (string_eval('<<dimensions>>','list')) {
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
-# first add viscous stress flux (within divergence here)
-      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<J_viscous_f_$species"."[l=$l]>' ON <domain>\n";
-# and add advection flux
+# initialise equation, region, etc
+# first put in the advection and viscous terms which will be inside the divergence, but still now phase specific (using lastcell)
+      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '0.d0' ON <domain>\n";
+# add advection flux, noting that equation is now from the start phase specific
       if (string_test('<<navierstokescomment>>','')) {
-        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_advection_f_$species"."[l=$l]>'\n";
+        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_advection_f_$species"."[l=$l]>/(faceave[lastcell](<phi_bounded_$species>))'\n";
+      }
+      if (string_test('<<stressmethod>>','version1')) {
+# add viscous stress flux if the <<specificviscousstress>> is false, using lastcell averaging to bring phi into divergence
+        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_viscous_f_$species"."[l=$l]>/(faceave[lastcell](<phi_bounded_$species>))'\n";
+      } else {
+# add viscous stress flux
+        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_viscous_f_$species"."[l=$l]>'\n";
       }
 # now take divergence of both terms
-      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> 'celldiv(<<radius_top>>(<momentum_$species"."[l=$l]>))<<radius_bottom>>'\n";
-      if (1) {
-# newer method, where phi is removed from transient term
-# now divide these viscous and advection terms through by phi_bounded
-        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '((<momentum_$species"."[l=$l]>)/<phi_bounded_$species>)'\n";
+      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> 'celldiv(<<radius_f>>*(<momentum_$species"."[l=$l]>))/<<radius_c>>'\n";
+
 # and transient derivative based on phi_bounded, cancelling out from first term
-        if (string_test('<<transientnavierstokescomment>>','')) {
+      if (string_test('<<transientnavierstokescomment>>','')) {
 # choice of using bounded or pos previous phi
 #         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<rho_$species>*(<u_$species"."[l=$l]>-<phi_bounded_$species"."[r=1]>*<u_$species"."[l=$l,r=1]>/<phi_bounded_$species".">)/<dt>'\n";
-          $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<rho_$species>*(<u_$species"."[l=$l]>-<phi_pos_$species"."[r=1]>*<u_$species"."[l=$l,r=1]>/<phi_bounded_$species".">)/<dt>'\n";
-        }
-      } else {
-# original method, where transient term is first assembled, and then divided by <phi_bounded_speciesi>
-# and transient derivative based on phi_pos
-        if (string_test('<<transientnavierstokescomment>>','')) {
-          $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<rho_$species>*(<phi_pos_$species>*<u_$species"."[l=$l]>-<phi_pos_$species"."[r=1]>*<u_$species"."[l=$l,r=1]>)/<dt>'\n";
-        }
-# now divide these transient, viscous and advection terms through by phi_b
-        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '((<momentum_$species"."[l=$l]>)/<phi_bounded_$species>)'\n";
+        $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<rho_$species>*(<u_$species"."[l=$l]>-<phi_pos_$species"."[r=1]>*<u_$species"."[l=$l,r=1]>/<phi_bounded_$species".">)/<dt>'\n";
       }
 # add dynamic forces
       $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>-<dynamic_force_c_$species"."[l=$l]>' ON <domain>\n";
+# add on any extra forces that are not included within the dynamic forces, which need to be on a phase volume fraction specific basis
+      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>-<extra_force_$species"."[l=$l]>'\n";
     }
 # now deal with drag terms
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
 # now add drag with continuous phase
-# was bug here with centring
-#     $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<beta*j_f_$species"."_species0>*(<u_$species"."[l=$l]>-<u_species0[l=$l]>)'\n";
-      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<beta*j_$species"."_species0>*(<u_$species"."[l=$l]>-<u_species0[l=$l]>)'\n";
+      $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<beta^_$species"."_species0>*(<u_$species"."[l=$l]>-<u_species0[l=$l]>)'\n";
 # and opposite to continuous phase term
-#     $return_string .= "CELL_EQUATION <momentum_species0[l=$l]> '<momentum_species0[l=$l]>+<beta*j_f_species0_$species>*(<u_species0[l=$l]>-<u_$species"."[l=$l]>)'\n";
-      $return_string .= "CELL_EQUATION <momentum_species0[l=$l]> '<momentum_species0[l=$l]>+<beta*j_species0_$species>*(<u_species0[l=$l]>-<u_$species"."[l=$l]>)'\n";
+      $return_string .= "CELL_EQUATION <momentum_species0[l=$l]> '<momentum_species0[l=$l]>+<beta^_species0_$species>*(<u_species0[l=$l]>-<u_$species"."[l=$l]>)'\n";
     }
   }
   return $return_string;
 }}
 
 IF <<cylindrical>>
-  ERROR "hoop stress not done in conservation"
+# add on hoop stress term separately for cylindrical coordinates
+# first perform a check that <<radialdim>> has been correctly defined
+  IF {{ return (!( string_eval('<<radialdim>>') ge 1 && string_eval('<<radialdim>>') le 3)) }}
+    ERROR 'This is a cylindrical coordinate simulation however the string <<radialdim>> has not been correctly defined'
+  END_IF
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "VARIABLE <momentum_$species"."[l=<<radialdim>>]> '<momentum_$species"."[l=<<radialdim>>]>+2.d0*<u_$species"."[l=<<radialdim>>]>*<mu_c_$species".">/(<phi_bounded_$species>*<cellx[l=<<radialdim>>]>**2)'\n";
+      }
+    return $return_string;
+  }}
+
+  #define momentum eqn for azimuthal component
+  IF 0#<<azimuthal>>
+  # perform a check that <<azimuthaldim>> has been correctly defined
+    IF {{ return (!( string_eval('<<azimuthaldim>>') ge 1 && string_eval('<<azimuthaldim>>') le 3)) }}
+      ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string <<azimuthaldim>> has not been correctly defined'
+    END_IF
+  # define constant azimuthal velocity divergence modifier terms
+    REPLACEMENTS S "<<radius_top_azi>>" W "<<radius_f>>**2*" S "<<radius_bottom_azi>>" W "/<<radius_c>>**2"
+    {{
+      my $return_string='';
+      for my $species (string_eval('<<multifluid_species_list>>','list')) {
+        #      $return_string .= "VARIABLE <momentum_$species"."[l=<<azimuthaldim>>]> '(celldiv(<<radius_top_azi>>(<J_viscous_f_$species"."[l=<<azimuthaldim>>]>+<J_advection_f_$species"."[l=<<azimuthaldim>>]>))<<radius_bottom_azi>>+<rho_$species".">*<u_f_vect_$species"."[l=<<radialdim>>]>*<u_f_vect_$species"."[l=<<azimuthaldim>>]>/<facex[l=<<radialdim>>]>)'\n";
+        #      $return_string .= "VARIABLE <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>/<phi_bounded_$species>'\n";
+        #      $return_string .= "VARIABLE <momentum_$species"."[l=<<radialdim>>]> '<momentum_$species"."[l=<<radialdim>>]>-<rho_$species".">*<u_f_vect_$species"."[l=<<azimuthaldim>>]>**2/(<phi_bounded_$species>*<facex[l=<<radialdim>>]>)'\n";
+          $return_string .= "VARIABLE <momentum_$species"."[l=<<azimuthaldim>>]> '(celldiv(<<radius_top_azi>>(<J_viscous_f_$species"."[l=<<azimuthaldim>>]>+<J_advection_f_$species"."[l=<<azimuthaldim>>]>))<<radius_bottom_azi>>+<rho_$species".">*<u_$species"."[l=<<radialdim>>]>*<u_$species"."[l=<<azimuthaldim>>]>/<cellx[l=<<radialdim>>]>)'\n";
+          $return_string .= "VARIABLE <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>/<phi_bounded_$species>'\n";
+          $return_string .= "VARIABLE <momentum_$species"."[l=<<radialdim>>]> '<momentum_$species"."[l=<<radialdim>>]>-<rho_$species".">*<u_$species"."[l=<<azimuthaldim>>]>**2/(<phi_bounded_$species>*<cellx[l=<<radialdim>>]>)'\n";
+        }
+       return $return_string;
+      }}
+
+  #VARIABLE <momentum[l=<<azimuthaldim>>]> "celldiv(<<radius_top_azi>><J_f[l=<<azimuthaldim>>]>)<<radius_bottom_azi>>+<rho>*<u_f_vect[l=<<radialdim>>]>*<u_f_vect[l=<<azimuthaldim>>]>/<facex[l=<<radialdim>>]>" ON <domain> # momentum component'
+  #VARIABLE <momentum_$species"."[l=<<azimuthaldim>>]> 'celldiv(<<radius_top_azi>>(<J_viscous_f_$species"."[l=<<azimuthaldim>>]>+<J_advection_f_$species"."[l=<<azimuthaldim>>]>))<<radius_bottom_azi>>+<rho_$species".">*<u_f_vect_$species"."[l=<<radialdim>>]>*<u_f_vect_$species"."[l=<<azimuthaldim>>]>/<facex[l=<<radialdim>>]>'\n
+  #      VARIABLE <momentum[l=<<radialdim>>]> "<momentum[l=<<radialdim>>]>-<rho>*<u_f_vect[l=<<azimuthaldim>>]>**2/<facex[l=<<radialdim>>]>"
+  #VARIABLE <momentum_$species"."[l=<<radialdim>>]> '<momentum_$species"."[l=<<radialdim>>]>-<rho_$species".">*<u_f_vect_$species"."[l=<<azimuthaldim>>]>**2/<facex[l=<<radialdim>>]>'\n
+  END_IF
+
+  IF <<azimuthal>>
+  # momentum conservation
+  # perform a check that <<azimuthaldim>> has been correctly defined
+    IF {{ return (!( string_eval('<<azimuthaldim>>') ge 1 && string_eval('<<azimuthaldim>>') le 3)) }}
+      ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string <<azimuthaldim>> has not been correctly defined'
+    END_IF
+  # define constant azimuthal velocity divergence modifier terms
+    REPLACEMENTS S "<<radius_top_azi>>" W "<<radius_f>>**2*" S "<<radius_bottom_azi>>" W "/<<radius_c>>**2"
+  {{
+    my $return_string='';
+      for my $species (string_eval('<<multifluid_species_list>>','list')) {
+  # first add viscous stress flux (within divergence here)
+        $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<J_viscous_f_$species"."[l=<<azimuthaldim>>]>' ON <domain>\n";
+  # and add advection flux
+        if (string_test('<<navierstokescomment>>','')) {
+          $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>+<J_advection_f_$species"."[l=<<azimuthaldim>>]>'\n";
+        }
+  # now take divergence of both terms
+        $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> 'celldiv(<<radius_top_azi>>(<momentum_$species"."[l=<<azimuthaldim>>]>))<<radius_bottom_azi>>'\n";
+
+
+        if (1) {
+
+  #        # now deal with centrifugal force term
+  #        $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>+<rho_$species".">*<u_$species"."[l=<<radialdim>>]>*<u_$species"."[l=<<azimuthaldim>>]>/<cellx[l=<<radialdim>>]>'\n";
+
+  # newer method, where phi is removed from transient term
+  # now divide these viscous and advection terms through by phi_bounded
+          $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '((<momentum_$species"."[l=<<azimuthaldim>>]>)/<phi_bounded_$species>)'\n";
+
+          # now deal with centrifugal force term
+          $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>+<rho_$species".">*<u_$species"."[l=<<radialdim>>]>*<u_$species"."[l=<<azimuthaldim>>]>/<cellx[l=<<radialdim>>]>'\n";
+
+  # and transient derivative based on phi_bounded, cancelling out from first term
+          if (string_test('<<transientnavierstokescomment>>','')) {
+  # choice of using bounded or pos previous phi
+  #         $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>+<rho_$species>*(<u_$species"."[l=<<azimuthaldim>>]>-<phi_bounded_$species"."[r=1]>*<u_$species"."[l=<<azimuthaldim>>,r=1]>/<phi_bounded_$species".">)/<dt>'\n";
+            $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>+<rho_$species>*(<u_$species"."[l=<<azimuthaldim>>]>-<phi_pos_$species"."[r=1]>*<u_$species"."[l=<<azimuthaldim>>,r=1]>/<phi_bounded_$species".">)/<dt>'\n";
+          }
+        } else {
+  # original method, where transient term is first assembled, and then divided by <phi_bounded_speciesi>
+  # and transient derivative based on phi_pos
+          if (string_test('<<transientnavierstokescomment>>','')) {
+            $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>+<rho_$species>*(<phi_pos_$species>*<u_$species"."[l=<<azimuthaldim>>]>-<phi_pos_$species"."[r=1]>*<u_$species"."[l=<<azimuthaldim>>,r=1]>)/<dt>'\n";
+          }
+  # now divide these transient, viscous and advection terms through by phi_b
+          $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '((<momentum_$species"."[l=<<azimuthaldim>>]>)/<phi_bounded_$species>)'\n";
+        }
+  # add dynamic forces
+        $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>-<dynamic_force_c_$species"."[l=<<azimuthaldim>>]>' ON <domain>\n";
+      }
+  # now deal with drag terms
+      for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+  # now add drag with continuous phase
+  # was bug here with centring
+  #     $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>+<beta^_f_$species"."_species0>*(<u_$species"."[l=<<azimuthaldim>>]>-<u_species0[l=<<azimuthaldim>>]>)'\n";
+        $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>+<beta^_$species"."_species0>*(<u_$species"."[l=<<azimuthaldim>>]>-<u_species0[l=<<azimuthaldim>>]>)'\n";
+  # and opposite to continuous phase term
+  #     $return_string .= "CELL_EQUATION <momentum_species0[l=<<azimuthaldim>>]> '<momentum_species0[l=<<azimuthaldim>>]>+<beta^_f_species0_$species>*(<u_species0[l=<<azimuthaldim>>]>-<u_$species"."[l=<<azimuthaldim>>]>)'\n";
+        $return_string .= "CELL_EQUATION <momentum_species0[l=<<azimuthaldim>>]> '<momentum_species0[l=<<azimuthaldim>>]>+<beta^_species0_$species>*(<u_species0[l=<<azimuthaldim>>]>-<u_$species"."[l=<<azimuthaldim>>]>)'\n";
+      }
+
+
+
+
+    return $return_string;
+  }}
+
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      #      $return_string .= "VARIABLE <momentum_$species"."[l=<<azimuthaldim>>]> '(celldiv(<<radius_top_azi>>(<J_viscous_f_$species"."[l=<<azimuthaldim>>]>+<J_advection_f_$species"."[l=<<azimuthaldim>>]>))<<radius_bottom_azi>>+<rho_$species".">*<u_f_vect_$species"."[l=<<radialdim>>]>*<u_f_vect_$species"."[l=<<azimuthaldim>>]>/<facex[l=<<radialdim>>]>)'\n";
+      #      $return_string .= "VARIABLE <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>/<phi_bounded_$species>'\n";
+      #      $return_string .= "VARIABLE <momentum_$species"."[l=<<radialdim>>]> '<momentum_$species"."[l=<<radialdim>>]>-<rho_$species".">*<u_f_vect_$species"."[l=<<azimuthaldim>>]>**2/(<phi_bounded_$species>*<facex[l=<<radialdim>>]>)'\n";
+        #$return_string .= "VARIABLE <momentum_$species"."[l=<<azimuthaldim>>]> '(celldiv(<<radius_top_azi>>(<J_viscous_f_$species"."[l=<<azimuthaldim>>]>+<J_advection_f_$species"."[l=<<azimuthaldim>>]>))<<radius_bottom_azi>>+<rho_$species".">*<u_$species"."[l=<<radialdim>>]>*<u_$species"."[l=<<azimuthaldim>>]>/<cellx[l=<<radialdim>>]>)'\n";
+        #$return_string .= "VARIABLE <momentum_$species"."[l=<<azimuthaldim>>]> '<momentum_$species"."[l=<<azimuthaldim>>]>/<phi_bounded_$species>'\n";
+
+  #Centrifugal force term
+  #      $return_string .= "VARIABLE <momentum_$species"."[l=<<radialdim>>]> '<momentum_$species"."[l=<<radialdim>>]>-<rho_$species".">*<u_$species"."[l=<<azimuthaldim>>]>**2/(<phi_bounded_$species>*<cellx[l=<<radialdim>>]>)'\n";
+         $return_string .= "VARIABLE <momentum_$species"."[l=<<radialdim>>]> '<momentum_$species"."[l=<<radialdim>>]>-<rho_$species".">*<u_$species"."[l=<<azimuthaldim>>]>**2/(<cellx[l=<<radialdim>>]>)'\n";
+      }
+     return $return_string;
+    }}
+  END_IF
 END_IF
-# # add on hoop stress term separately for cylindrical coordinates
-# IF <<cylindrical>>
-# # perform a check that <<radialdim>> has been correctly defined
-#   IF {{ return (!( string_eval('<<radialdim>>') ge 1 && string_eval('<<radialdim>>') le 3)) }}
-#     ERROR 'This is a cylindrical coordinate simulation however the string <<radialdim>> has not been correctly defined'
-#   END_IF
-#   VARIABLE <momentum[l=<<radialdim>>]> "<momentum[l=<<radialdim>>]>+2.d0*<u[l=<<radialdim>>]>*<mu>/(<cellx[l=<<radialdim>>]>**2)"
-# END_IF

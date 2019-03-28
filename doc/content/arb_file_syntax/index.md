@@ -347,14 +347,14 @@ Embedded perl code is more powerful in setting and manipulating string variables
 
 Embedded perl code is delimited by {{ and }}.  The basic syntax rules of embedded code are:
 
-*  string replacements are not performed on embedded code
+*  string replacements are not performed on embedded code, but they are performed on whatever is returned from the embedded code
 *  embedded code can be placed anywhere within the solver code, except in
      -  comments (where it is just a comment)
      -  solver code string statements (eg, `'REPLACE '<<a>>' WITH '1'`)
 *  there is no limitation to the characters used within embedded code, EXCEPT for }}, which even when enclosed within a string will terminate the embedded code
 *  needs to be valid perl
 
-Embedded perl code is interpreted directly by perl, evaluated using the 'eval' (string) function (<http://perldoc.perl.org/functions/eval.html>).  For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) [StringCode.pm] module of [setup_equations.pl], and whatever is returned from that eval (think subroutine) is substituted into the solver code in place of the embedded code.  So the following embedded code
+Embedded perl code is interpreted directly by perl, evaluated using the 'eval' (string) function (<http://perldoc.perl.org/functions/eval.html>).  For all intents and purposes, whatever is enclosed within {{ and }} is run as a perl subroutine, within the (scope of the) [StringCode.pm] module of [setup_equations.pl], and whatever is returned from that eval (think subroutine) is first subject to string and index replacements, and then substituted into the solver code in place of the embedded code.  So the following embedded code
 ```arb
 {{ return "TRANSIENT_SIMULATION" }}
 ```
@@ -448,9 +448,59 @@ A `default` option passed to string_set means 'only set this variable if it is n
 }}
 ```
 
+
+There are some handy routines available to help with controlling code flows.  `string_test` compares the value of a string variable against a result (see ref: string_test variables in [StringCode.pm]), as in
+```arb
+REPLACEMENTS R "<<function>>" W "1"
+IF {{ return (string_test('<<function>>','1')) }}
+  # do something here if <<function>> = 1
+ELSE_IF {{ return (!(string_test('<<function>>','0'))) }}
+  # do something here if <<function>> /= 0
+END_IF
+```
+Normally `string_test` simply compares the value of a single replacement variable against the desired result, however if replacement variables have a nested structure, the `text` option may be more useful.  With the `text` option whatever is passed to `string_eval` is regarded as a line of text that has all of the string replacement variables applied to it, as in
+```arb
+REPLACEMENTS R "_species" W "_mouse" # this replacement is above the species one, so is done after the species one during replacements (stack behaviour = last in, first out)
+REPLACEMENTS R "<a>" W "<a_species>" # adds a suffix to variable <a>, causing <a> to become <a_species>
+{{
+  print (string_test('<a>','<a_species>')); # prints true (1)
+  print (string_test('<a>','<a_mouse>')); # prints false (0)
+  print (string_test('<a>','<a_species>','text')); # prints false (0) as <a> will be evaluated as <a_mouse>
+  print (string_test('<a>','<a_mouse>','text')); # prints true (1)
+  print (string_test('We would all like <a>','<a_mouse>','text')); # prints We would all like <a_mouse>
+}}
+```
+Similar to `string_test`, `string_eval` (see ref: string_eval variables in [StringCode.pm]) evaluates the value of a string (or line of text, with `text` option), while `string_examine` returns whether the string has been defined or not (see ref: string_examine variables in [StringCode.pm]):
+```arb
+{{ print "The value of <<a string>> is currently ".string_eval('<<a string>>')."\n"; }}
+{{ return string_eval('# do replacements on line of text: dimensions = <<dimensions>>','text') }}
+{{ if (string_examine('<<a string>>')) { print "<<a string>> has been defined\n"; } }}
+```
+By default `string_test` and `string_eval` cause an error if the passed string variable is not defined. 
+
+Also available is the `arb_defined` routine that reports whether a variable or region has already been defined.  This is useful for performing a definition depending on whether a definition action has occurred previously.
+```arb
+{{ return "# is <facenorm[l=1]> defined?: ".arb_defined('<facenorm[l=1]>') }} # prints VARIABLE
+{{ return "# is <facenorm[l=1]> a region?: ".arb_defined('<facenorm[l=1]>','region') }} # prints 0
+{{ return "# is <facenorm[l=1]> a variable?: ".arb_defined('<facenorm[l=1]>','variable') }} prints VARIABLE
+NONE_CONSTANT <d[l=1,3]> "1.d0"
+{{ return "# is <d[l=1,3]> defined?: ".arb_defined('<d[l=1,3]>') }} # prints VARIABLE
+{{ return "# is <d[l=1,3]> a region?: ".arb_defined('<d[l=1,3]>','region') }} # prints 0
+{{ return "# is <d[l=1,3]> a variable?: ".arb_defined('<d[l=1,3]>','variable') }} # prints VARIABLE
+{{ return "# is <allcells> defined?: ".arb_defined('<allcells>') }} # prints REGION
+{{ return "# is <newvar[r=0]> defined?: ".arb_defined('<newvar[r=0]>') }} # prints 0
+NONE_CONSTANT <newvar> 1.d0
+{{ return "# is <newvar[r=0]> defined?: ".arb_defined('<newvar[r=0]>') }} # prints VARIABLE
+{{ return "# is <newvar[r=1]> defined?: ".arb_defined('<newvar[r=1]>') }} # prints 0
+IF {{ return arb_defined('<newvar>') }}
+  VARIABLE <newvar> 2.d0 # only alter value of <newvar> if it has already been defined
+END_IF
+```
+Note that the value reported by `arb_defined` represents the value at the point in the file in which it is written - that is, it is evaluated as the file is being parsed.  This is also true of all the perl string subroutines.
+  
 ###Embedded code purpose
 
-Embedded perl code allows more flexibility in coding arb, but is (probably) for more advanced uses.  For example looping is possible using embedded code;
+Embedded perl code allows more flexibility in coding arb, but is (probably) for more advanced uses.  The most useful application is probably controlling code flow, using the complementary `IF` syntax and perl's conditional rules.  Also, looping is possible using embedded code, allowing flexibility in defining possibly multiple and repeating statements;  For example:
 ```arb
 {{
   my $code = '';
@@ -466,14 +516,14 @@ CONSTANT <a0> 0.d0
 CONSTANT <a1> 1.d0
 CONSTANT <a2> 2.d0
 ```
-A typical use is to create a variable definition for a vector, as in 
+A possible use (largely superseded with index replacements, unless very complex) is to create a variable definition for a vector, as in 
 ```arb
 # this demonstrates expanding a vector using native perl
 {{ my $code; foreach my $l ( string_eval('<<dimensions>>','list') ) { $code .=
   "CELL_DERIVED <phi_normal_c[l=$l]> 'celldivgrad[l=$l](<phi_f>)' ON <allcells>\n";
 }; return $code; }}
 ```
-There are also functions to automate the loop process for expanding vector and tensor expressions, also based on the dimension range defined in the global string variable `<<dimensions>>`:
+There are also functions to automate the loop process for expanding vector and tensor expressions, also based on the dimension range defined in the global string variable `<<dimensions>>` (again, look instead at index replacements now):
 ```arb
 # this expands two expressions to become vectors, replacing $l instances
 {{ return vector_expand(
@@ -489,9 +539,9 @@ For the above the expressions need to be single quoted.  By default `<<dimension
 ```arb
 {{ string_set('<<dimensions>>','1,3','global'); }} # for a 2D simulation in the xz plane
 ```
-Note that template files are available to set commonly used coordinate systems.
+Note that template files are available to set commonly used coordinate systems in `templates/general`.  Embedded code is used extensively (for example) in the multiphase template files, where it is helpful to be able to loop over multiple versions of variables, specific to a number of species.
 
-With some perl hackery there's lots that can be done if required using embedded code - eg, arrays and hashes stored within the string variables (but you'll have to learn some perl!).  Variables defined within [setup_equations.pl] can also be accessed within the string code, as can generic perl subroutines.
+Variables defined within [setup_equations.pl] can also be accessed within the string code, as can generic perl subroutines.
 ```arb
 {{
   print "$::transient_simulation\n"; # is a variable defined in main of setup_equations.pl which indicates whether this is a transient simulation or not
@@ -500,5 +550,7 @@ With some perl hackery there's lots that can be done if required using embedded 
   }
 }}
 ```
+
+With some perl hackery there's lots that can be done if required using embedded code - eg, arrays and hashes stored within the string variables (but you'll have to learn some perl, or create a timemachine to transport you back to a time when perl was the bees-knees and you would already have known it!).  
 
 

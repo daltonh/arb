@@ -1,4 +1,8 @@
-# this demonstrates how to take a double dot product and how to use a template file to perform a tensor transpose
+MARKDOWN
+This demonstrates how to take a double dot product and how to use a template file to perform a tensor transpose.
+
+The functionality in this file is now largely superseded: Now look at the vector_tensor_algebra example.
+END_MARKDOWN
 
 NONE_CONSTANT <A[l=1,1]> "11"
 NONE_CONSTANT <A[l=1,2]> "12"

@@ -2,9 +2,10 @@
 # it is assumed that this will be called from advection_flux_limiter with the appropriate string replacements acting on '<u[l'
 
 # the following is a standard relative limiter
-<<dim1comment>>CELL_DERIVED <u_adv_limiter[l=1]> [1] "celllimiter[lower](<u[l=1]>,cellmin(<u[l=1]>,,<cellicells>),celllimiter[upper](<u[l=1]>,cellmax(<u[l=1]>,,<cellicells>)))" ON <allcells>
-<<dim2comment>>CELL_DERIVED <u_adv_limiter[l=2]> [1] "celllimiter[lower](<u[l=2]>,cellmin(<u[l=2]>,,<cellicells>),celllimiter[upper](<u[l=2]>,cellmax(<u[l=2]>,,<cellicells>)))" ON <allcells>
-<<dim3comment>>CELL_DERIVED <u_adv_limiter[l=3]> [1] "celllimiter[lower](<u[l=3]>,cellmin(<u[l=3]>,,<cellicells>),celllimiter[upper](<u[l=3]>,cellmax(<u[l=3]>,,<cellicells>)))" ON <allcells>
+CELL_DERIVED <u_adv_limiter[l=<<i>>]> [1] "celllimiter[lower](<u[l=<<i>>]>,cellmin(<u[l=<<i>>]>,,<cellicells>),celllimiter[upper](<u[l=<<i>>]>,cellmax(<u[l=<<i>>]>,,<cellicells>)))" ON <allcells>
+#<<dim1comment>>CELL_DERIVED <u_adv_limiter[l=1]> [1] "celllimiter[lower](<u[l=1]>,cellmin(<u[l=1]>,,<cellicells>),celllimiter[upper](<u[l=1]>,cellmax(<u[l=1]>,,<cellicells>)))" ON <allcells>
+#<<dim2comment>>CELL_DERIVED <u_adv_limiter[l=2]> [1] "celllimiter[lower](<u[l=2]>,cellmin(<u[l=2]>,,<cellicells>),celllimiter[upper](<u[l=2]>,cellmax(<u[l=2]>,,<cellicells>)))" ON <allcells>
+#<<dim3comment>>CELL_DERIVED <u_adv_limiter[l=3]> [1] "celllimiter[lower](<u[l=3]>,cellmin(<u[l=3]>,,<cellicells>),celllimiter[upper](<u[l=3]>,cellmax(<u[l=3]>,,<cellicells>)))" ON <allcells>
 
 
 # the following is some old code that was used for the fancier templates limiters

@@ -1,4 +1,4 @@
-#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
 # the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90
@@ -52,20 +52,23 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             # a tensor of face centred gradients that respects any reflections
             # used in the total stress and boundary conditions now
             # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
+            # performing index string loops on the following index list pairs:
+            #  <<i>> 1,2,3
+            #  <<j>> 1,2,3
             FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,](<u[l=1]>)" ON <allfaces>
-            FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,](<u[l=2]>)" ON <allfaces>
-            FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,](<u[l=1]>)" ON <allfaces>
-            FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,](<u[l=2]>)" ON <allfaces>
-            FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,](<u[l=1]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,](<u[l=2]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,](<u[l=2]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,](<u[l=2]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,](<u[l=3]>)" ON <allfaces>
          
          # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
          
          # calculate the velocity divergence (numerical) on each face
-         #FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces>
+         #FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces> # any component not in <<dimensions>> will be assigned to an empty vector and simplified out using maxima
          
          # deal with uniform/nonuniform viscosity, allowing for possibility of user setting <mu_f> directly
          # if you want to overwrite <mu_f>, just define it prior to calling this file and your replacement will overwrite the following
@@ -77,26 +80,56 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          #{{ print "IN template total_stress\n".string_debug; }}
          
          # no both cartesian and cylindrical stresses don't include pressure
-         # without the numerical velocity divergence
-         FACE_LOCAL <gamma[l=1,1]> "-(-1.d0)*2.d0*<ugrad_f[l=1,1]>" ON <allfaces>
-         FACE_LOCAL <gamma[l=2,2]> "-(-1.d0)*2.d0*<ugrad_f[l=2,2]>" ON <allfaces>
-         FACE_LOCAL <gamma[l=3,3]> "-(-1.d0)*2.d0*<ugrad_f[l=3,3]>" ON <allfaces>
-         # overwrite these if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
+         # first define without the numerical velocity divergence
+         # performing index string loops on the following index list pairs:
+         #  <<i>> 1,2,3
+         #  <<j>> 1,2,3
+         FACE_LOCAL <gamma[l=1,1]> "-(-1.d0)*(<ugrad_f[l=1,1]>+<ugrad_f[l=1,1]>)" ON <allfaces> 
+         FACE_LOCAL <gamma[l=2,1]> "-(-1.d0)*(<ugrad_f[l=2,1]>+<ugrad_f[l=1,2]>)" ON <allfaces> 
+         FACE_LOCAL <gamma[l=3,1]> "-(-1.d0)*(<ugrad_f[l=3,1]>+<ugrad_f[l=1,3]>)" ON <allfaces> 
+         FACE_LOCAL <gamma[l=1,2]> "-(-1.d0)*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <allfaces> 
+         FACE_LOCAL <gamma[l=2,2]> "-(-1.d0)*(<ugrad_f[l=2,2]>+<ugrad_f[l=2,2]>)" ON <allfaces> 
+         FACE_LOCAL <gamma[l=3,2]> "-(-1.d0)*(<ugrad_f[l=3,2]>+<ugrad_f[l=2,3]>)" ON <allfaces> 
+         FACE_LOCAL <gamma[l=1,3]> "-(-1.d0)*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <allfaces> 
+         FACE_LOCAL <gamma[l=2,3]> "-(-1.d0)*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <allfaces> 
+         FACE_LOCAL <gamma[l=3,3]> "-(-1.d0)*(<ugrad_f[l=3,3]>+<ugrad_f[l=3,3]>)" ON <allfaces> # note, maxima will simplify diagonal components
+         # overwrite the diagonal elements if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
          # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
-         #FACE_LOCAL <gamma[l=1,1]> "-(-1.d0)*2.d0*(<ugrad_f[l=1,1]>-(0.d0))" ON <allfaces>
-         #FACE_LOCAL <gamma[l=2,2]> "-(-1.d0)*2.d0*(<ugrad_f[l=2,2]>-(0.d0))" ON <allfaces>
-         #FACE_LOCAL <gamma[l=3,3]> "-(-1.d0)*2.d0*(<ugrad_f[l=3,3]>-(0.d0))" ON <allfaces>
-         FACE_LOCAL <gamma[l=1,2]> "-(-1.d0)*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <allfaces>
-         FACE_LOCAL <gamma[l=1,3]> "-(-1.d0)*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <allfaces>
-         FACE_LOCAL <gamma[l=2,3]> "-(-1.d0)*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <allfaces>
-         FACE_LOCAL <gamma[l=2,1]> "<gamma[l=1,2]>" ON <allfaces>
-         FACE_LOCAL <gamma[l=3,1]> "<gamma[l=1,3]>" ON <allfaces>
-         FACE_LOCAL <gamma[l=3,2]> "<gamma[l=2,3]>" ON <allfaces>
+         # performing index string loops on the following index list pairs:
+         #  <<i>> 1,2,3
+         #FACE_LOCAL <gamma[l=1,1]> "-(-1.d0)*2.d0*(<ugrad_f[l=1,1]>-(0.d0))" ON <allfaces> 
+         #FACE_LOCAL <gamma[l=2,2]> "-(-1.d0)*2.d0*(<ugrad_f[l=2,2]>-(0.d0))" ON <allfaces> 
+         #FACE_LOCAL <gamma[l=3,3]> "-(-1.d0)*2.d0*(<ugrad_f[l=3,3]>-(0.d0))" ON <allfaces> # note, previous symmetric components were less efficient
+         
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0#<<azimuthal>>
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)VARIABLE <gamma[l=0,0]> "<gamma[l=0,0]>+(-1.d0)*<u_f_vect[l=0]>/<facex[l=0]>"
+               #(hash inserted during unwrap)VARIABLE <gamma[l=0,0]> "<gamma[l=0,0]>"
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)VARIABLE <gamma[l=0,0]> "-(-1.d0)*<facex[l=0]>*facegrad[l=0,](<u[l=0]>/<cellx[l=0]>)" OUTPUT
+               #(hash inserted during unwrap)VARIABLE <gamma[l=0,0]> "<gamma[l=0,0]>"  OUTPUT
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)VARIABLE <gamma[l=0,0]> "-(-1.d0)*2.d0*<u_f_vect[l=0]>/<facex[l=0]>"
+            #(hash inserted during unwrap)END_IF
+         
+         
       
       # now calculate the double dot product on the faces, then average to the cells before square rooting
       CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)),<tinyish>))" ON <allcells>
       # the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
-      #CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))+2.d0*(<u[l=0]>/<cellx[l=0]>)**2,<tinyish>))" ON <allcells>
+      #CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=0]>/<cellx[l=0]>)**2),<tinyish>))" ON <allcells>
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/strain_rate_magnitude.arb: sub_block = 1
+         #(hash inserted during unwrap)IF 0
+         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=0]>/<cellx[l=0]>)**2- facegrad[l=0,reflect=0](<u[l=0]>**2/<cellx[l=0]>),<tinyish>))" ON <allfaces> output
+         #(hash inserted during unwrap)CELL_DERIVED <gamma_magnitude> "cellave(<gamma_magnitude_f>)" ON <allcells> output
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)#CELL_DERIVED <gamma_magnitude> "cellave(sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>)))" ON <allcells> output
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)#CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2+ facegrad[l=<<radialdim>>](<u[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>)),<tinyish>))" ON <allcells>
+         #(hash inserted during unwrap)END_IF
    VARIABLE <gamma_magnitude> output
    FACE_DERIVED <gamma_magnitude_f> "sqrt(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>))" ON <allfaces> output
    NONE_CONSTANT <mu_f> "<mu>" # will be overwritten for a carreau fluid

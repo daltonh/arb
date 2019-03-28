@@ -7,8 +7,8 @@ VERSION 0.42
 # geometry
 
 FACE_REGION <walls> "COMPOUND <boundaries>-<inlet>-<outlet>"
-CELL_REGION <inlet cells>  "BOUNDARY OF <inlet>"
-CELL_REGION <outlet cells> "BOUNDARY OF <outlet>"
+CELL_REGION <inlet_cells>  "BOUNDARY OF <inlet>"
+CELL_REGION <outlet_cells> "BOUNDARY OF <outlet>"
 
 MSH_FILE "surface.msh"
 #MSH_FILE "2d_box_meshes/coarse/surface.msh"
@@ -34,25 +34,25 @@ MSH_FILE "output/output.msh" elementdata
 CELL_CONSTANT <u[l=1]> "1.d0" output,elementdata
 CELL_CONSTANT <u[l=2]> "1.d0" nooutput
 FACE_CONSTANT <u_f> "dot(<u[l=:]>,<facenorm[l=:]>)"
-#CELL_UNKNOWN <foo> "<foo theory>*(-100.d0)-50.d0" elementdata,magnitude=1.d0
+#CELL_UNKNOWN <foo> "<foo_theory>*(-100.d0)-50.d0" elementdata,magnitude=1.d0
 CELL_UNKNOWN <foo> "1.d+0" elementdata
-#CELL_DERIVED <foo zero> "<foo>" ON <domain> positive
-#CELL_DERIVED <foo one> "1.d0-<foo>" ON <domain> positive
+#CELL_DERIVED <foo_zero> "<foo>" ON <domain> positive
+#CELL_DERIVED <foo_one> "1.d0-<foo>" ON <domain> positive
 
 #CELL_CONSTANT <x_phi> "<cellx[l=1]>-<cellx[l=2]>"
-#CELL_CONSTANT <foo theory> "cellif(<x_phi>,cellif(<x_phi>-0.5d0,2.d0-2.d0*<x_phi>,2.d0*<x_phi>),0.d0)"
+#CELL_CONSTANT <foo_theory> "cellif(<x_phi>,cellif(<x_phi>-0.5d0,2.d0-2.d0*<x_phi>,2.d0*<x_phi>),0.d0)"
 
 #CELL_CONSTANT <x_phi> "<cellx[l=1]>-<cellx[l=2]>+0.25d0"
-#CELL_CONSTANT <foo theory> "cellif(<x_phi>,cellif(<x_phi>-0.5d0,1.d0,2.d0*<x_phi>),0.d0)"
+#CELL_CONSTANT <foo_theory> "cellif(<x_phi>,cellif(<x_phi>-0.5d0,1.d0,2.d0*<x_phi>),0.d0)"
 
 #CELL_CONSTANT <x_phi> "<cellx[l=1]>-<cellx[l=2]>"
-#CELL_CONSTANT <foo theory> "cellmax(cellif(<x_phi>,1.d0-4.d0*<x_phi>,1.d0+4.d0*<x_phi>),0.d0)"
+#CELL_CONSTANT <foo_theory> "cellmax(cellif(<x_phi>,1.d0-4.d0*<x_phi>,1.d0+4.d0*<x_phi>),0.d0)"
 
 #CELL_CONSTANT <x_phi> "<cellx[l=1]>-<cellx[l=2]>"
-#CELL_CONSTANT <foo theory> "cellmin(cellmax(cellif(<x_phi>,2.d0-8.d0*<x_phi>,2.d0+8.d0*<x_phi>),0.d0),1.d0)"
+#CELL_CONSTANT <foo_theory> "cellmin(cellmax(cellif(<x_phi>,2.d0-8.d0*<x_phi>,2.d0+8.d0*<x_phi>),0.d0),1.d0)"
 
 CELL_CONSTANT <x_phi> "<cellx[l=1]>-<cellx[l=2]>"
-CELL_CONSTANT <foo theory> "cellif(abs(<x_phi>)-0.25d0,0.d0,1.d0)"
+CELL_CONSTANT <foo_theory> "cellif(abs(<x_phi>)-0.25d0,0.d0,1.d0)"
 
 #--------------------------------------------------------
 # different limiter options
@@ -66,45 +66,45 @@ INCLUDE_TEMPLATE "advection_limiters/implicit"
 INCLUDE "absolute_limiter" R "<phi" W "<foo"
 
 # in addition, to remove upper bound
-#NONE_CONSTANT <foo upper bound> "<huge>"
-#NONE_CONSTANT <foo upper bound> 0.5d0
+#NONE_CONSTANT <foo_upper_bound> "<huge>"
+#NONE_CONSTANT <foo_upper_bound> 0.5d0
 # in addition, to remove lower bound
-#NONE_CONSTANT <foo lower bound> "-<huge>"
+#NONE_CONSTANT <foo_lower_bound> "-<huge>"
 
 #--------------------
 # relative limiter
 
-#INCLUDE "relative_surrounding_limiter" R "<phi" W "<foo" # local limits on phi are based on low order phi values that are adjacent to the cell
-#INCLUDE "relative_transient_limiter" R "<phi" W "<foo" R "<<limiterupwindseparation>>" W "3" # local limits are based on cells that are atmost 3 cells upwind of the local cell (2 is the default without string replacements)
+#INCLUDE "relative_surrounding_limiter" R "<phi"_W_"<foo"_#_local_limits_on_phi_are_based_on_low_order_phi_values_that_are_adjacent_to_the_cell
+#INCLUDE "relative_transient_limiter" R "<phi"_W_"<foo"_R_"<<limiterupwindseparation>>" W "3" # local limits are based on cells that are atmost 3 cells upwind of the local cell (2 is the default without string replacements)
 
-#CELL_DERIVED <foo_c low order> output
-#CELL_DERIVED <foo upper bound> output
-#CELL_DERIVED <foo lower bound> output
+#CELL_DERIVED <foo_c_low_order> output
+#CELL_DERIVED <foo_upper_bound> output
+#CELL_DERIVED <foo_lower_bound> output
 #--------------------
 
-#CELL_DERIVED <foo limiter> "1.d0"
+#CELL_DERIVED <foo_limiter> "1.d0"
 #NEWTRESTOL 1.d-20
 
 # check whether limits were huge or not:  If so don't include that limiter in the min
-#CELL_LOCAL <foo limiter domain> "cellmin(cellif(0.1d0*<huge>-<foo upper bound>,<foo limiter upper>,1.d0),cellif(0.1d0*<huge>+<foo lower bound>,<foo limiter lower>,1.d0))" ON <domain>
-#CELL_LOCAL <foo limiter domain> "cellif(<foo>-(<foo lower bound>+<foo upper bound>)/2.d0,<foo limiter upper>,<foo limiter lower>)" ON <domain>
-#CELL_LOCAL <foo limiter domain> "<foo limiter new>"
-#CELL_LOCAL <foo limiter domain> "cellmin(<foo limiter upper>,<foo limiter lower>)"
-#CELL_DERIVED <foo limiter> "cellif(celldelta(<domain>),<foo limiter domain>,0.d0)" ON <allcells>
+#CELL_LOCAL <foo_limiter_domain> "cellmin(cellif(0.1d0*<huge>-<foo_upper_bound>,<foo_limiter_upper>,1.d0),cellif(0.1d0*<huge>+<foo_lower_bound>,<foo_limiter_lower>,1.d0))" ON <domain>
+#CELL_LOCAL <foo_limiter_domain> "cellif(<foo>-(<foo_lower_bound>+<foo_upper_bound>)/2.d0,<foo_limiter_upper>,<foo_limiter_lower>)" ON <domain>
+#CELL_LOCAL <foo_limiter_domain> "<foo_limiter_new>"
+#CELL_LOCAL <foo_limiter_domain> "cellmin(<foo_limiter_upper>,<foo_limiter_lower>)"
+#CELL_DERIVED <foo_limiter> "cellif(celldelta(<domain>),<foo_limiter_domain>,0.d0)" ON <allcells>
 
 # set some outputs
-CELL_CONSTANT <foo limiter kernel> output
-#CELL_DERIVED <foo limiter> output
+CELL_CONSTANT <foo_limiter_kernel> output
+#CELL_DERIVED <foo_limiter> output
 #--------------------------------------------------------
 # modifications
 
-#NONE_CONSTANT <foo max crosskernel> 0.25d0 # if a crosskernel is larger than this, use a limit within the cell to reduce it to this size
-#CELL_DERIVED <foo limiter> "cellif(celldelta(<domain>),(1.d0-cos(<foo limiter domain>*<pi>))/2.d0,0.d0)" ON <allcells>
+#NONE_CONSTANT <foo_max_crosskernel> 0.25d0 # if a crosskernel is larger than this, use a limit within the cell to reduce it to this size
+#CELL_DERIVED <foo_limiter> "cellif(celldelta(<domain>),(1.d0-cos(<foo_limiter_domain>*<pi>))/2.d0,0.d0)" ON <allcells>
 
-#CELL_CONSTANT <foo limiter crosskernel> "cellmin(0.95d0/cellmax(<kernelsum>,<tinyish>),1.d0)" ON <allcells> output
-#NONE_CONSTANT <foo max kernelsum> 0.9d0
-#NONE_CONSTANT <foo eps> "<foo magnitude>*1.d-8" # a small phi value, used to calculate the smallest reliable <phi delta>
-#CELL_OUTPUT <foo bound marker> "cellif(<foo>-(<foo lower bound>+<foo upper bound>)/2.d0,1.d0,-1.d0)" ON <domain>
+#CELL_CONSTANT <foo_limiter_crosskernel> "cellmin(0.95d0/cellmax(<kernelsum>,<tinyish>),1.d0)" ON <allcells> output
+#NONE_CONSTANT <foo_max_kernelsum> 0.9d0
+#NONE_CONSTANT <foo_eps> "<foo_magnitude>*1.d-8" # a small phi value, used to calculate the smallest reliable <phi_delta>
+#CELL_OUTPUT <foo_bound_marker> "cellif(<foo>-(<foo_lower_bound>+<foo_upper_bound>)/2.d0,1.d0,-1.d0)" ON <domain>
 
 #--------------------------------------------------------
 # now the equations to solve
@@ -114,47 +114,47 @@ CELL_CONSTANT <foo limiter kernel> output
 # high order upwind
 #FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,1.d0)" output
 # high order upwind but using the kernelsum limiter
-#FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,<foo limiter crosskernel>,gradient[l=1]=<foo limiter grad[l=1]>,gradient[l=2]=<foo limiter grad[l=2]>)" output
+#FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,<foo_limiter_crosskernel>,gradient[l=1]=<foo_limiter_grad[l=1]>,gradient[l=2]=<foo_limiter_grad[l=2]>)" output
 # calculate the limited advection value of <foo> using one of the include statements above
-FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,<foo limiter>,gradient[l=1]=<foo limiter grad[l=1]>,gradient[l=2]=<foo limiter grad[l=2]>)" output
+FACE_DERIVED <foo_f> "faceave[advection](<foo>,<u_f>,<foo_limiter>,gradient[l=1]=<foo_limiter_grad[l=1]>,gradient[l=2]=<foo_limiter_grad[l=2]>)" output
 
 # advection equations to solve
-FACE_EQUATION <foo inlet> "<foo>-<foo theory>" ON <inlet> output
-#CELL_EQUATION <foo inlet> "<foo>-<foo theory>" ON <inlet cells> output
-#FACE_EQUATION <foo outlet> "<foo>-<foo theory>" ON <outlet> output
-#FACE_EQUATION <foo outlet> "dot(<u[l=:]>,faceave[downcell](<dphidx[l=:]>))" ON <outlet> output # this is correct, but can result in under/overshoots because outlet value is extrapolated using a linear function
-FACE_EQUATION <foo outlet> "<foo>-faceave[downcell](<foo>)" ON <outlet> output # upwinding of phi value on boundary
-#CELL_EQUATION <foo outlet> "<foo>-cellave(faceave[downcell](<foo>))" ON <outlet cells> output # upwinding of phi value on boundary
-CELL_EQUATION <foo advection> "celldiv(<foo_f>*<u_f>)" ON <domain> output
+FACE_EQUATION <foo_inlet> "<foo>-<foo_theory>" ON <inlet> output
+#CELL_EQUATION <foo_inlet> "<foo>-<foo_theory>" ON <inlet_cells> output
+#FACE_EQUATION <foo_outlet> "<foo>-<foo_theory>" ON <outlet> output
+#FACE_EQUATION <foo_outlet> "dot(<u[l=:]>,faceave[downcell](<dphidx[l=:]>))" ON <outlet> output # this is correct, but can result in under/overshoots because outlet value is extrapolated using a linear function
+FACE_EQUATION <foo_outlet> "<foo>-faceave[downcell](<foo>)" ON <outlet> output # upwinding of phi value on boundary
+#CELL_EQUATION <foo_outlet> "<foo>-cellave(faceave[downcell](<foo>))" ON <outlet_cells> output # upwinding of phi value on boundary
+CELL_EQUATION <foo_advection> "celldiv(<foo_f>*<u_f>)" ON <domain> output
 
-CELL_OUTPUT <foo error> "<foo>-<foo theory>"
-NONE_OUTPUT <foo error rms ave> "sqrt(cellsum(<foo error>^2*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>))"
-NONE_OUTPUT <foo max> "cellmax(<foo>,,<domain>)"
-NONE_OUTPUT <foo min> "cellmin(<foo>,,<domain>)"
-NONE_OUTPUT <foo error max> "cellmax(abs(<foo error>),,<domain>)"
+CELL_OUTPUT <foo_error> "<foo>-<foo_theory>"
+NONE_OUTPUT <foo_error_rms_ave> "sqrt(cellsum(<foo_error>^2*<cellvol>,<domain>)/cellsum(<cellvol>,<domain>))"
+NONE_OUTPUT <foo_max> "cellmax(<foo>,,<domain>)"
+NONE_OUTPUT <foo_min> "cellmin(<foo>,,<domain>)"
+NONE_OUTPUT <foo_error_max> "cellmax(abs(<foo_error>),,<domain>)"
 
 #--------------------------------------------------------
 # debugging info follows
 
-CELL_OUTPUT <icell output> "<icell>"
-FACE_OUTPUT <jface output> "<jface>"
-FACE_OUTPUT <facenorm output[l=1]> "<facenorm[l=1]>"
-FACE_OUTPUT <facenorm output[l=2]> "<facenorm[l=2]>"
-FACE_OUTPUT <u_f vect[l=1]> "<facenorm[l=1]>*<u_f>"
-FACE_OUTPUT <u_f vect[l=2]> "<facenorm[l=2]>*<u_f>"
+CELL_OUTPUT <icell_output> "<icell>"
+FACE_OUTPUT <jface_output> "<jface>"
+FACE_OUTPUT <facenorm_output[l=1]> "<facenorm[l=1]>"
+FACE_OUTPUT <facenorm_output[l=2]> "<facenorm[l=2]>"
+FACE_OUTPUT <u_f_vect[l=1]> "<facenorm[l=1]>*<u_f>"
+FACE_OUTPUT <u_f_vect[l=2]> "<facenorm[l=2]>*<u_f>"
 
-CELL_LOCAL <local equation> "cellif(celldelta(<domain>),<foo advection>,0.d0)+cellif(celldelta(<inlet cells>),<foo inlet>,0.d0)+cellif(celldelta(<outlet cells>),<foo outlet>,0.d0)" ON <allcells> output
-CELL_OUTPUT <crosskernel output> "<crosskernel>" ON <domain>
-CELL_OUTPUT <centralkernel output> "<centralkernel>" ON <domain>
-CELL_OUTPUT <kernelsum output> "<kernelsum>" ON <domain>
+CELL_LOCAL <local_equation> "cellif(celldelta(<domain>),<foo_advection>,0.d0)+cellif(celldelta(<inlet_cells>),<foo_inlet>,0.d0)+cellif(celldelta(<outlet_cells>),<foo_outlet>,0.d0)" ON <allcells> output
+CELL_OUTPUT <crosskernel_output> "<crosskernel>" ON <domain>
+CELL_OUTPUT <centralkernel_output> "<centralkernel>" ON <domain>
+CELL_OUTPUT <kernelsum_output> "<kernelsum>" ON <domain>
 
-NONE_OUTPUT <norm 1>  "cellsum(abs(<local equation>),<allcells>)/cellsum(1.d0,<allcells>)"
-NONE_OUTPUT <norm 2> "(cellsum(abs(<local equation>)^2,<allcells>)/cellsum(1.d0,<allcells>))^(1/2)"
-NONE_OUTPUT <norm 4> "(cellsum(abs(<local equation>)^4,<allcells>)/cellsum(1.d0,<allcells>))^(1/4)"
-NONE_OUTPUT <norm 8> "(cellsum(abs(<local equation>)^8,<allcells>)/cellsum(1.d0,<allcells>))^(1/8)"
-NONE_OUTPUT <norm infty> "cellmax(abs(<local equation>),region=<allcells>)"
+NONE_OUTPUT <norm_1>  "cellsum(abs(<local_equation>),<allcells>)/cellsum(1.d0,<allcells>)"
+NONE_OUTPUT <norm_2> "(cellsum(abs(<local_equation>)^2,<allcells>)/cellsum(1.d0,<allcells>))^(1/2)"
+NONE_OUTPUT <norm_4> "(cellsum(abs(<local_equation>)^4,<allcells>)/cellsum(1.d0,<allcells>))^(1/4)"
+NONE_OUTPUT <norm_8> "(cellsum(abs(<local_equation>)^8,<allcells>)/cellsum(1.d0,<allcells>))^(1/8)"
+NONE_OUTPUT <norm_infty> "cellmax(abs(<local_equation>),region=<allcells>)"
 
-CELL_OUTPUT <foo newtonupdate> "cellnewtonupdate(variable=<foo>)" ON <allcells>
+CELL_OUTPUT <foo_newtonupdate> "cellnewtonupdate(variable=<foo>)" ON <allcells>
 
 END
 #--------------------------------------------------------

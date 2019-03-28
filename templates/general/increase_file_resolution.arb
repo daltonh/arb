@@ -1,0 +1,12 @@
+MARKDOWN
+These are the types of format specifiers for the various output files things that you can set
+END_MARKDOWN
+
+# increase resolution used within the msh file to pretty-much double-precision
+GENERAL_OPTIONS outputmshformat='g26.18'
+# increase in the other files: output.stat, output_step.csv, output.txt + mesh_details.txt + kernel_details.txt
+IF 0
+  GENERAL_OPTIONS outputmshformat='g26.18',outputstatformat='g23.15',outputstpformat='g20.12',outputtxtformat='g26.18'
+
+  GENERAL_OPTIONS meshdetailsfile=.true.,kerneldetailsfile=.true.,outputtxtfile=.true.,outputdebugfile=.true.
+END_IF

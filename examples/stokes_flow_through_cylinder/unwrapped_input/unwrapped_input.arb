@@ -1,4 +1,4 @@
-#(comment created during unwrap): new block = resources/test_suite_results/intel/output/build/root_input.arb: sub_block = 0
+#(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
 # the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90
@@ -13,13 +13,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
    # arb is released under the GNU GPL.  For full details see the license directory.
    #
    #-------------------------------------------------------------------
-   VERSION 0.55 # the version of syntax used in this file
+   VERSION 0.59 # the version of syntax used in this file
    
    # the following strings describe the simulation and are passed to the output files
    INFO_TITLE "Steady state Stokes flow through three dimensional cylinder"
-   INFO_DESCRIPTION "Unstructured mesh, v0.55 template files"
+   INFO_DESCRIPTION "Unstructured mesh"
    INFO_AUTHOR "Dalton Harvie"
-   INFO_DATE "20/1/16" # interpreted as the last modification date
+   INFO_DATE "20/1/16"
+   INFO_DATE+ ":25/9/18" # interpreted as the last modification date
    
    #-------------------------------------------------------------------
    # system constants
@@ -108,19 +109,15 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
          #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
          #(hash inserted during unwrap)
-         #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
+         #(hash inserted during unwrap)Some of these use both comment and flag type variables, which requires three things to be set for each option.  The comment type variables will eventually be phased out, but are still required for many of the template files.
          #(hash inserted during unwrap)END_MARKDOWN
          
+         # the following strings require a flag variable and two comment variables to be set
          
          
          # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
          
          
-         
-         # previously pressure extrapolation on any walls was accomplished by setting <dynamic_force_f> to zero.  Other options are rhiechow and zeroperror
-         
-         #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zeroperror"
-         #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "rhiechow"
       
       # use the following to setup a transient simulation
       #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
@@ -138,8 +135,6 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
       # use the following to specify nonuniform density
       #GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W "" R "<<uniformdensity>>" W "0"
       
-      # use the following to implement rhie-chow type pressure interpolation on the walls and at fully-developed ports (default is off)
-      #GENERAL_REPLACEMENTS R "<<pextrapolationrhiechow>>" W "1"
       #-------------
       
       # numerical data
@@ -180,8 +175,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          #(comment created during unwrap): new block = ../../templates/navier_stokes/unknowns.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "unknowns" # no .arb suffix is required
          # unknown variables used for flow problems
-         CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
-         CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
+         # performing index string loops on the following index list pairs:
+         #  <<i>> 1,2,3
+         CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <allcells> magnitude=1.d0 
+         CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <allcells> magnitude=1.d0 
          CELL_UNKNOWN <u[l=3]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
          CELL_UNKNOWN <p> [] "1.d0" ON <allcells> # pressure
          #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 0
@@ -192,20 +189,23 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             # a tensor of face centred gradients that respects any reflections
             # used in the total stress and boundary conditions now
             # as per conventional tensor notation, the first index is the derivative direction, and the second is the velocity direction
+            # performing index string loops on the following index list pairs:
+            #  <<i>> 1,2,3
+            #  <<j>> 1,2,3
             FACE_DERIVED <ugrad_f[l=1,1]> "facegrad[l=1,](<u[l=1]>)" ON <allfaces>
-            FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,](<u[l=2]>)" ON <allfaces>
-            FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=2,1]> "facegrad[l=2,](<u[l=1]>)" ON <allfaces>
-            FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,](<u[l=2]>)" ON <allfaces>
-            FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=3,1]> "facegrad[l=3,](<u[l=1]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=1,2]> "facegrad[l=1,](<u[l=2]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=2,2]> "facegrad[l=2,](<u[l=2]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=3,2]> "facegrad[l=3,](<u[l=2]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=1,3]> "facegrad[l=1,](<u[l=3]>)" ON <allfaces>
+            FACE_DERIVED <ugrad_f[l=2,3]> "facegrad[l=2,](<u[l=3]>)" ON <allfaces>
             FACE_DERIVED <ugrad_f[l=3,3]> "facegrad[l=3,](<u[l=3]>)" ON <allfaces>
          
          # if the numerical velocity divergence is to be included in the stress calculation replace this string with an empty character prior to calling this template
          
          # calculate the velocity divergence (numerical) on each face
-         #FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces>
+         #FACE_DERIVED <udiv_f> "<ugrad_f[l=1,1]>+<ugrad_f[l=2,2]>+<ugrad_f[l=3,3]>" ON <allfaces> # any component not in <<dimensions>> will be assigned to an empty vector and simplified out using maxima
          
          # deal with uniform/nonuniform viscosity, allowing for possibility of user setting <mu_f> directly
          # if you want to overwrite <mu_f>, just define it prior to calling this file and your replacement will overwrite the following
@@ -217,21 +217,42 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          #{{ print "IN template total_stress\n".string_debug; }}
          
          # no both cartesian and cylindrical stresses don't include pressure
-         # without the numerical velocity divergence
-         FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*<ugrad_f[l=1,1]>" ON <allfaces>
-         FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*<ugrad_f[l=2,2]>" ON <allfaces>
-         FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*<ugrad_f[l=3,3]>" ON <allfaces>
-         # overwrite these if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
+         # first define without the numerical velocity divergence
+         # performing index string loops on the following index list pairs:
+         #  <<i>> 1,2,3
+         #  <<j>> 1,2,3
+         FACE_LOCAL <tau[l=1,1]> "-<mu>*(<ugrad_f[l=1,1]>+<ugrad_f[l=1,1]>)" ON <allfaces> 
+         FACE_LOCAL <tau[l=2,1]> "-<mu>*(<ugrad_f[l=2,1]>+<ugrad_f[l=1,2]>)" ON <allfaces> 
+         FACE_LOCAL <tau[l=3,1]> "-<mu>*(<ugrad_f[l=3,1]>+<ugrad_f[l=1,3]>)" ON <allfaces> 
+         FACE_LOCAL <tau[l=1,2]> "-<mu>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <allfaces> 
+         FACE_LOCAL <tau[l=2,2]> "-<mu>*(<ugrad_f[l=2,2]>+<ugrad_f[l=2,2]>)" ON <allfaces> 
+         FACE_LOCAL <tau[l=3,2]> "-<mu>*(<ugrad_f[l=3,2]>+<ugrad_f[l=2,3]>)" ON <allfaces> 
+         FACE_LOCAL <tau[l=1,3]> "-<mu>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <allfaces> 
+         FACE_LOCAL <tau[l=2,3]> "-<mu>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <allfaces> 
+         FACE_LOCAL <tau[l=3,3]> "-<mu>*(<ugrad_f[l=3,3]>+<ugrad_f[l=3,3]>)" ON <allfaces> # note, maxima will simplify diagonal components
+         # overwrite the diagonal elements if the numerical velocity divergence is to be included, see <<udivfcomment>> string replacement above
          # Note: "<udiv_f>/3.d0" is specifically replaced in strain_rate_magnitude template
-         #FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <allfaces>
-         #FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <allfaces>
-         #FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <allfaces>
-         FACE_LOCAL <tau[l=1,2]> "-<mu>*(<ugrad_f[l=1,2]>+<ugrad_f[l=2,1]>)" ON <allfaces>
-         FACE_LOCAL <tau[l=1,3]> "-<mu>*(<ugrad_f[l=1,3]>+<ugrad_f[l=3,1]>)" ON <allfaces>
-         FACE_LOCAL <tau[l=2,3]> "-<mu>*(<ugrad_f[l=2,3]>+<ugrad_f[l=3,2]>)" ON <allfaces>
-         FACE_LOCAL <tau[l=2,1]> "<tau[l=1,2]>" ON <allfaces>
-         FACE_LOCAL <tau[l=3,1]> "<tau[l=1,3]>" ON <allfaces>
-         FACE_LOCAL <tau[l=3,2]> "<tau[l=2,3]>" ON <allfaces>
+         # performing index string loops on the following index list pairs:
+         #  <<i>> 1,2,3
+         #FACE_LOCAL <tau[l=1,1]> "-<mu>*2.d0*(<ugrad_f[l=1,1]>-<udiv_f>/3.d0)" ON <allfaces> 
+         #FACE_LOCAL <tau[l=2,2]> "-<mu>*2.d0*(<ugrad_f[l=2,2]>-<udiv_f>/3.d0)" ON <allfaces> 
+         #FACE_LOCAL <tau[l=3,3]> "-<mu>*2.d0*(<ugrad_f[l=3,3]>-<udiv_f>/3.d0)" ON <allfaces> # note, previous symmetric components were less efficient
+         
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0#<<azimuthal>>
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "<tau[l=0,0]>+<mu>*<u_f_vect[l=0]>/<facex[l=0]>"
+               #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "<tau[l=0,0]>"
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "-<mu>*<facex[l=0]>*facegrad[l=0,](<u[l=0]>/<cellx[l=0]>)" OUTPUT
+               #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "<tau[l=0,0]>"  OUTPUT
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "-<mu>*2.d0*<u_f_vect[l=0]>/<facex[l=0]>"
+            #(hash inserted during unwrap)END_IF
+         
+         
          #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "u_f"
          # interpolate the cell centred velocity to the faces and find the velocity (flux) normal to the face (<u_f>), using a rhie-chow spirited interpolation technique on the domain faces
@@ -243,19 +264,15 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
             #(hash inserted during unwrap)
-            #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
+            #(hash inserted during unwrap)Some of these use both comment and flag type variables, which requires three things to be set for each option.  The comment type variables will eventually be phased out, but are still required for many of the template files.
             #(hash inserted during unwrap)END_MARKDOWN
             
+            # the following strings require a flag variable and two comment variables to be set
             
             
             # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
-            
-            # previously pressure extrapolation on any walls was accomplished by setting <dynamic_force_f> to zero.  Other options are rhiechow and zeroperror
-            
-            #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zeroperror"
-            #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "rhiechow"
          
          # start by calculating the difference between the local face centred (dynamic) pressure gradient and average of cell centred (dynamic) pressure gradients in the face direction
          # `dynamic' pressure here means the pressure that is able to cause fluid flow, ie, possibly accounting for hydrostatic pressure variations (for example)
@@ -327,6 +344,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                            #(hash inserted during unwrap)END_IF
                         #(hash inserted during unwrap)END_IF
                      #(hash inserted during unwrap)END_IF
+               # performing index string loops on the following index list pairs:
+               #  <<i>> 1,2,3
                CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <allcells>
                CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <allcells>
                CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <allcells>
@@ -348,6 +367,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             # interpolation to face centres (for velocity correction) could be done using normal, adjacentcells or adjacentcellsevenweighting, but they're all about the same so choose the computationally simplest
                #(comment created during unwrap): new block = ../../templates/navier_stokes/p_error.arb: sub_block = 1
                #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+               #(hash inserted during unwrap)#  <<i>> 1,2,3
                #(hash inserted during unwrap)FACE_LOCAL <dynamic_force_c_f[l=1]> "faceave[,adjacentcells](<dynamic_force_c[l=1]>)"
                #(hash inserted during unwrap)FACE_LOCAL <dynamic_force_c_f[l=2]> "faceave[,adjacentcells](<dynamic_force_c[l=2]>)"
                #(hash inserted during unwrap)FACE_LOCAL <dynamic_force_c_f[l=3]> "faceave[,adjacentcells](<dynamic_force_c[l=3]>)"
@@ -377,7 +398,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   #(hash inserted during unwrap)END_IF
                
                #(comment created during unwrap): new block = ../../templates/navier_stokes/p_error.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF 0
+               #(hash inserted during unwrap)ELSE_IF 
                #(hash inserted during unwrap)
                #(hash inserted during unwrap)# facegrad method
                #(hash inserted during unwrap)FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <allfaces>
@@ -411,6 +432,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                #(hash inserted during unwrap)ERROR 'No valid dynamicforcefmethod is chosen in the navier_stokes/p_error template file: string currently set as dxunit'
                #(hash inserted during unwrap)END_IF
          
+         # performing index string loops on the following index list pairs:
+         #  <<i>> 1,2,3
          FACE_LOCAL <u_f_vect[l=1]> "faceave[](<u[l=1]>)"
          FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)"
          FACE_LOCAL <u_f_vect[l=3]> "faceave[](<u[l=3]>)"
@@ -419,7 +442,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          # this file now does both steady-state and transient using transient comments string replacements, which are set in constants.arb
          
          # save old correction velocity for transient calculations
-         #FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <domainfaces>
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <domainfaces>
+            #(hash inserted during unwrap)END_IF
          
          # assemble <u_f_{correction}>, taking advantage of variable reuse so that only one expression is formed for <u_f_{correction}> (to maximise code efficiency and maxima expression simplifications)
          
@@ -436,47 +462,52 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          FACE_LOCAL <u_rf_{vis}> "<mu>/<facedx>^2" ON <allfaces> # incase pextrapolationrhiechow is on, define these locals on allfaces (makes no difference to efficiency as they are locals anyway)
          FACE_DERIVED <u_f_{correction}> "<u_rf_{vis}>" ON <domainfaces>
          
-         # advective contribution can be either simple or more complex (set by <<ufadvectioncomplexcomment>>)
-         # the default behaviour is to use the simple advective contribution
-         
-         # include the following line in your input file prior to loading this template file to access the more complex contribution
-         #GENERAL_REPLACEMENTS R <<ufadvectioncomplexcomment>> W ""
-         
          # first define this local replacement string in the same scope of the definition statements below (ie, outside scope of if block)
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
             #(hash inserted during unwrap)IF 1  # this evaluates as true (1) if replacement string '<rho_f>' isn't defined, AND <<uniformviscosity>> is on (1)
             # if we are here then we apply the uniform density substitution
             #(hash inserted during unwrap)END_IF
          
+         #############################################
          # advection term
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
-            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)IF  # only for navier-stokes equations
+            #(hash inserted during unwrap)#--------------
             #(hash inserted during unwrap)# use this option to base the adv component on the total velocity magnitude, rather than the component over each face
-            #(hash inserted during unwrap)
             #(hash inserted during unwrap)# the old way (pre v0.59) was to use <u_f_{raw}> which is the flux across the face when calculating the advective rhie-chow term
             #(hash inserted during unwrap)# the new way (v0.59 and onwards) is based on the total velocity magnitude, so overwrite the string <<ufmagnitude>> with <u_f_vect_magnitude> which is the total magnitude of <u_f_vect[l=:]>
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)#--------------
             #(hash inserted during unwrap)# initialise variable using the old way, within the applicable block
                #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 2
                #(hash inserted during unwrap)IF <<ufadvectionmag>> # ie, the new way
                #(hash inserted during unwrap)# for a transient simulation the previous velocity magnitude is used, consistent with that used in the momentum advection
-               #(hash inserted during unwrap)# (although this can be overwritten by setting <<ufvectmagnitudetransient>> = 0 directly)
+               #(hash inserted during unwrap)# (although this can be overwritten by setting <<ufvectmagnitudeexplicit>> = 0 directly)
                #(hash inserted during unwrap)
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 3
-                  #(hash inserted during unwrap)IF <<ufvectmagnitudetransient>>
+                  #(hash inserted during unwrap)IF <<ufvectmagnitudeexplicit>>
+                  #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+                  #(hash inserted during unwrap)#  <<i>> 1,2,3
                   #(hash inserted during unwrap)FACE_LOCAL <u_f_vect[l=1,r=1]> "faceave[](<u[l=1,r=1]>)"
                   #(hash inserted during unwrap)FACE_LOCAL <u_f_vect[l=2,r=1]> "faceave[](<u[l=2,r=1]>)"
                   #(hash inserted during unwrap)FACE_LOCAL <u_f_vect[l=3,r=1]> "faceave[](<u[l=3,r=1]>)"
-                  #(hash inserted during unwrap)FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
+                  #(hash inserted during unwrap)#     FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "mag(<u_f_vect[l=:,r=1]>)" ON <allfaces>
                   #(hash inserted during unwrap)# S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 3
                   #(hash inserted during unwrap)ELSE
-                  #(hash inserted during unwrap)FACE_LOCAL <u_f_vect_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tinyish>))" ON <allfaces>
+                  #(hash inserted during unwrap)#     FACE_LOCAL <u_f_vect_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tinyish>))" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_LOCAL <u_f_vect_magnitude> "mag(<u_f_vect[l=:]>)" ON <allfaces>
                   #(hash inserted during unwrap)# S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
                   #(hash inserted during unwrap)END_IF
                #(hash inserted during unwrap)END_IF
             #(hash inserted during unwrap)# now calculate <u_rf_{adv}>
+            #(hash inserted during unwrap)#-------------
+            #(hash inserted during unwrap)# advective contribution can be either simple or more complex (set by <<ufadvectioncomplex>>)
+            #(hash inserted during unwrap)# the default behaviour is to use the simple advective contribution
+            #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 2
-               #(hash inserted during unwrap)IF 
+               #(hash inserted during unwrap)IF <<ufadvectioncomplex>>
                #(hash inserted during unwrap)# more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
                #(hash inserted during unwrap)FACE_LOCAL <eps_p> "facemax(abs(<p_error>),<tinyish>)" ON <allfaces>
                #(hash inserted during unwrap)FACE_LOCAL <u_rf_{adv}> "<eps_p>/(-<<ufmagnitude>>+sqrt(<<ufmagnitude>>^2+<eps_p>*<facedx>/<rho>))" ON <allfaces>
@@ -485,68 +516,100 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                #(hash inserted during unwrap)# simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
                #(hash inserted during unwrap)FACE_LOCAL <u_rf_{adv}> "2.d0*<rho>*<<ufmagnitude>>/<facedx>" ON <allfaces>
                #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)# ---------
+            #(hash inserted during unwrap)# finally add on advection contribution
             #(hash inserted during unwrap)FACE_DERIVED <u_f_{correction}> "<u_f_{correction}>+<u_rf_{adv}>"
             #(hash inserted during unwrap)END_IF
          
-         # for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
-         #FACE_LOCAL <u_rf_{transient}> "<rho>/<dt>" ON <allfaces>
-         #FACE_DERIVED <u_f_{correction}> "(-<C_{Rhie-Chow}>*<p_error>+<u_rf_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_{correction}>+<u_rf_{transient}>)"
-         # for steady-state just take reciprocal and add pressure contribution
-         FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<p_error>/(<u_f_{correction}>)"
+         #############################################
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)# for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
+            #(hash inserted during unwrap)FACE_LOCAL <u_rf_{transient}> "<rho>/<dt>" ON <allfaces>
+            #(hash inserted during unwrap)FACE_DERIVED <u_f_{correction}> "(-<C_{Rhie-Chow}>*<p_error>+<u_rf_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_{correction}>+<u_rf_{transient}>)"
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
+            #(hash inserted during unwrap)ELSE
+            # for steady-state just take reciprocal and add pressure contribution
+            FACE_DERIVED <u_f_{correction}> "-<C_{Rhie-Chow}>*<p_error>/(<u_f_{correction}>)"
+            #(hash inserted during unwrap)END_IF
+         #############################################
          
          # final face velocity
          FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domainfaces>),<u_f_{correction}>,0.d0)" ON <allfaces> # volume (velocity) transport
          
          # this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
          # save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
-         # if <<implicittimestepcomment>> hasn't already been set then set it here (to off) - for on will have already required dynamic timestepping to be on
+         # this string will already have been set to 1 (as a general replacement) in transient_all_setup if this option is relevant
+         # this is the default behaviour when using implicit dynamic timestepping
          
-         ##NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
-         ##NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
+            #(hash inserted during unwrap)NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
+            #(hash inserted during unwrap)END_IF
          #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "advection_flux" # even though this is called for the stokes equations, no terms will be created
          # flux of momentum over and in the direction of each face due to advection
          # which one is chosen depends on the comment strings
          # all require navierstokes equations to be current
          
-         # check default strings are set
-            #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
-            #(hash inserted during unwrap)INCLUDE "default_string_replacements"
-            #(hash inserted during unwrap)MARKDOWN
-            #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-            #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 1
+            #(hash inserted during unwrap)IF  # this will be true for non-stokes (=navier-stokes) simulations
             #(hash inserted during unwrap)
-            #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
-            #(hash inserted during unwrap)END_MARKDOWN
-            
-            
-            
-            # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
-            
-            
-            
-            # previously pressure extrapolation on any walls was accomplished by setting <dynamic_force_f> to zero.  Other options are rhiechow and zeroperror
-            
-            #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zeroperror"
-            #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "rhiechow"
-         
-         
-         # steady-state and uniform density
-         #FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         #FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         #FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,](<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         # steady-state and varying density
-         ##FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,](<rho>*<u[l=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         ##FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,](<rho>*<u[l=2]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         ##FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho>*<u[l=3]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         # transient and uniform density
-         ##FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         ##FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         ##FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,](<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         # transient and varying density
-         ###FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,](<rho[r=1]>*<u[l=1,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         ###FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
-         ###FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<adv_limiter>)*<u_f>" ON <allfaces>
+            #(hash inserted during unwrap)# check default strings are set
+            #(hash inserted during unwrap)INCLUDE "default_string_replacements"
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)# setting <<implicitadvection>> = 1 causes momentum advection to be calculated using implicit velocities and densities, instead of explicit variables, which is relevant for transient simulations only
+            #(hash inserted during unwrap)# note, if you are setting this here, you may also like to make the velocity used in the calculation of <u_rf_{adv}> within u_f.arb implicit too, although it is not theoretically necessary (and will probably increase computational expense and decrease stability)
+            #(hash inserted during unwrap)# to do this set REPLACEMENTS R "<<ufvectmagnitudeexplicit>>" W "0" when calling u_f, or anywhere before calling that file
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 
+               #(hash inserted during unwrap)# using implicit velocities and densities is only relevant for steady-state simulations, and transient ones with <<implicitadvection>> on
+               #(hash inserted during unwrap)# having to respect the old <<uniformdensitycomment>> choice for backwards compatibility with user's vof files - just in this file
+               #(hash inserted during unwrap)#   IF <<uniformdensity>>
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 3
+                  #(hash inserted during unwrap)IF  
+                  #(hash inserted during unwrap)# steady-state (or implicit advection) and uniform density
+                  #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+                  #(hash inserted during unwrap)#  <<i>> 1,2,3
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,](<u[l=3]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 3
+                  #(hash inserted during unwrap)ELSE
+                  #(hash inserted during unwrap)# steady-state (or implicit advection) and varying density
+                  #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+                  #(hash inserted during unwrap)#  <<i>> 1,2,3
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,](<rho>*<u[l=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,](<rho>*<u[l=2]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho>*<u[l=3]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
+                  #(hash inserted during unwrap)END_IF
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)# having to respect the old <<uniformdensitycomment>> choice for backwards compatibility with user's vof files - just in this file
+               #(hash inserted during unwrap)#   IF <<uniformdensity>>
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 3
+                  #(hash inserted during unwrap)IF  
+                  #(hash inserted during unwrap)# transient and uniform density
+                  #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+                  #(hash inserted during unwrap)#  <<i>> 1,2,3
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=1]> "<rho>*faceave[advection,](<u[l=1,r=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "<rho>*faceave[advection,](<u[l=2,r=1]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=3]> "<rho>*faceave[advection,](<u[l=3,r=1]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/advection_flux.arb: sub_block = 3
+                  #(hash inserted during unwrap)ELSE
+                  #(hash inserted during unwrap)# transient and varying density
+                  #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+                  #(hash inserted during unwrap)#  <<i>> 1,2,3
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=1]> "faceave[advection,](<rho[r=1]>*<u[l=1,r=1]>,<u_f>,<<advectionlimiterdim1>>)*<u_f>" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=2]> "faceave[advection,](<rho[r=1]>*<u[l=2,r=1]>,<u_f>,<<advectionlimiterdim2>>)*<u_f>" ON <allfaces>
+                  #(hash inserted during unwrap)FACE_LOCAL <J_advection_f[l=3]> "faceave[advection,](<rho[r=1]>*<u[l=3,r=1]>,<u_f>,<<advectionlimiterdim3>>)*<u_f>" ON <allfaces>
+                  #(hash inserted during unwrap)END_IF
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)END_IF
          #(comment created during unwrap): new block = ../../templates/navier_stokes/momentum_flux.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "momentum_flux"
          # flux of momentum over and in the direction of each face
@@ -558,29 +621,32 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
             #(hash inserted during unwrap)
-            #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
+            #(hash inserted during unwrap)Some of these use both comment and flag type variables, which requires three things to be set for each option.  The comment type variables will eventually be phased out, but are still required for many of the template files.
             #(hash inserted during unwrap)END_MARKDOWN
             
+            # the following strings require a flag variable and two comment variables to be set
             
             
             # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
-            
-            # previously pressure extrapolation on any walls was accomplished by setting <dynamic_force_f> to zero.  Other options are rhiechow and zeroperror
-            
-            #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zeroperror"
-            #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "rhiechow"
          
          # start by placing in viscous momentum transport, applicable to both the stokes and navier-stokes equations
+         # performing index string loops on the following index list pairs:
+         #  <<i>> 1,2,3
          FACE_DERIVED <J_f[l=1]> "dot(<facenorm[l=:]>,<tau[l=:,1]>)" ON <allfaces>
          FACE_DERIVED <J_f[l=2]> "dot(<facenorm[l=:]>,<tau[l=:,2]>)" ON <allfaces>
          FACE_DERIVED <J_f[l=3]> "dot(<facenorm[l=:]>,<tau[l=:,3]>)" ON <allfaces>
          
          # and now add advection momentum transport for just the navier-stokes equations using self-referencing
-         #VARIABLE <J_f[l=1]> "<J_f[l=1]>+<J_advection_f[l=1]>"
-         #VARIABLE <J_f[l=2]> "<J_f[l=2]>+<J_advection_f[l=2]>"
-         #VARIABLE <J_f[l=3]> "<J_f[l=3]>+<J_advection_f[l=3]>"
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/momentum_flux.arb: sub_block = 1
+            #(hash inserted during unwrap)IF  # this will be true for non-stokes (=navier-stokes) simulations
+            #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+            #(hash inserted during unwrap)#  <<i>> 1,2,3
+            #(hash inserted during unwrap)VARIABLE <J_f[l=1]> "<J_f[l=1]>+<J_advection_f[l=1]>"
+            #(hash inserted during unwrap)VARIABLE <J_f[l=2]> "<J_f[l=2]>+<J_advection_f[l=2]>"
+            #(hash inserted during unwrap)VARIABLE <J_f[l=3]> "<J_f[l=3]>+<J_advection_f[l=3]>"
+            #(hash inserted during unwrap)END_IF
          #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "conservation"
          # conservation equations solved over each domain cell (finite volume method)
@@ -592,75 +658,68 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
             #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
             #(hash inserted during unwrap)
-            #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
+            #(hash inserted during unwrap)Some of these use both comment and flag type variables, which requires three things to be set for each option.  The comment type variables will eventually be phased out, but are still required for many of the template files.
             #(hash inserted during unwrap)END_MARKDOWN
             
+            # the following strings require a flag variable and two comment variables to be set
             
             
             # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
-            
-            # previously pressure extrapolation on any walls was accomplished by setting <dynamic_force_f> to zero.  Other options are rhiechow and zeroperror
-            
-            #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zeroperror"
-            #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "rhiechow"
          
+         # now create equations
+         CELL_EQUATION <continuity> "celldiv(1.d0*<u_f>)/1.d0" ON <domain> # continuity
+         # performing index string loops on the following index list pairs:
+         #  <<i>> 1,2,3
+         CELL_EQUATION <momentum[l=1]> "celldiv(1.d0*<J_f[l=1]>)/1.d0-<dynamic_force_c[l=1]>" ON <domain> 
+         CELL_EQUATION <momentum[l=2]> "celldiv(1.d0*<J_f[l=2]>)/1.d0-<dynamic_force_c[l=2]>" ON <domain> 
+         CELL_EQUATION <momentum[l=3]> "celldiv(1.d0*<J_f[l=3]>)/1.d0-<dynamic_force_c[l=3]>" ON <domain> # momentum component'
+         
+         # add on hoop stress term separately for cylindrical coordinates
             #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
             #(hash inserted during unwrap)IF 0
-            #(hash inserted during unwrap)# old way
-            #(hash inserted during unwrap)# cartesian specific
-            #(hash inserted during unwrap)CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
-            #(hash inserted during unwrap)CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
-            #(hash inserted during unwrap)CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
-            #(hash inserted during unwrap)CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
-            #(hash inserted during unwrap)
-            #(hash inserted during unwrap)# cylindrical specific
-            #(hash inserted during unwrap)#CELL_EQUATION <continuity> "celldiv(1.d0*<u_f>)/1.d0" ON <domain> # continuity
-            #(hash inserted during unwrap)# these also include the hoop stress terms when <<radiusdim?flag>> is appropriately set
-            #(hash inserted during unwrap)#CELL_EQUATION <momentum[l=1]> "celldiv(1.d0*<J_f[l=1]>)/1.d0-<dynamic_force_c[l=1]>+0*2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)" ON <domain> # momentum component
-            #(hash inserted during unwrap)#CELL_EQUATION <momentum[l=2]> "celldiv(1.d0*<J_f[l=2]>)/1.d0-<dynamic_force_c[l=2]>+0*2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)" ON <domain> # momentum component
-            #(hash inserted during unwrap)#CELL_EQUATION <momentum[l=3]> "celldiv(1.d0*<J_f[l=3]>)/1.d0-<dynamic_force_c[l=3]>+0*2.d0*<u[l=3]>*<mu>/(<cellx[l=3]>**2)" ON <domain> # momentum component
-            #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
-            #(hash inserted during unwrap)ELSE
-            # compact way, with hoop stress calculated more efficiently
-            
-            # define cylindrical divergence modifier terms
-            
+            #(hash inserted during unwrap)# perform a check that <<radialdim>> has been correctly defined
                #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
-               #(hash inserted during unwrap)IF 0
-               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)IF 
+               #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation however the string 0 has not been correctly defined'
                #(hash inserted during unwrap)END_IF
-            
-            # now create equations
-            CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
-            
-            CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
-            CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
-            CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
-            
-            
-            # add on hoop stress term separately for cylindrical coordinates
-               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
-               #(hash inserted during unwrap)IF 0
-               #(hash inserted during unwrap)# perform a check that <<radialdim>> has been correctly defined
-                  #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 3
-                  #(hash inserted during unwrap)IF 
-                  #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation however the string 0 has not been correctly defined'
-                  #(hash inserted during unwrap)END_IF
-               #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "<momentum[l=0]>+2.d0*<u[l=0]>*<mu>/(<cellx[l=0]>**2)"
-               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "<momentum[l=0]>+2.d0*<u[l=0]>*<mu>/(<cellx[l=0]>**2)"
             #(hash inserted during unwrap)END_IF
          
-         # add transient term which is independent on cartesian or cylindrical coordinates
-         #VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-         #VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-         #VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
-         ##VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-         ##VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-         ##VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+         #define momentum eqn for azimuthal component
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)# perform a check that <<azimuthaldim>> has been correctly defined
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 
+               #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 0 has not been correctly defined'
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv((1.d0**2)*<J_f[l=0]>)/(1.d0**2)+<rho>*<u[l=0]>*<u[l=0]>/<cellx[l=0]>" ON <domain> # momentum component'
+            #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "<momentum[l=0]>-<rho>*<u[l=0]>**2/<cellx[l=0]>"
+            #(hash inserted during unwrap)END_IF
+         
+         # add transient term which is independent of cartesian or cylindrical coordinates
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 0
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)IF 1
+               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+               #(hash inserted during unwrap)#  <<i>> 1,2,3
+               #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+               #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+               #(hash inserted during unwrap)VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+               #(hash inserted during unwrap)#  <<i>> 1,2,3
+               #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
+               #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
+               #(hash inserted during unwrap)VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+               #(hash inserted during unwrap)END_IF
+            #(hash inserted during unwrap)END_IF
       #(comment created during unwrap): new block = ../../templates/navier_stokes/outlet_p_set.arb: sub_block = 0
-      #(hash inserted during unwrap)INCLUDE "outlet_p_set" # outlet BC
+      #(hash inserted during unwrap)INCLUDE "outlet_p_set" # outlet BC, uniform pressure across outlet
          #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_p_set.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "inlet_p_set" 
          
@@ -693,17 +752,17 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradp"
                #REPLACEMENTS D "<<boundarynormalmethod>>" W "zeroperror"
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-                  #(hash inserted during unwrap)IF 0
+                  #(hash inserted during unwrap)IF 
                   #(hash inserted during unwrap)INCLUDE "p_extrapolation_rhie_chow" 
                   #(hash inserted during unwrap)
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-                  #(hash inserted during unwrap)ELSE_IF 0
+                  #(hash inserted during unwrap)ELSE_IF 
                   #(hash inserted during unwrap)FACE_EQUATION <outlet pextrapolation> "<dynamic_force_f>" ON <outlet>
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-                  #(hash inserted during unwrap)ELSE_IF 0
+                  #(hash inserted during unwrap)ELSE_IF 
                   #(hash inserted during unwrap)FACE_EQUATION <outlet pextrapolation> "<p_error>" ON <outlet>
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-                  #(hash inserted during unwrap)ELSE_IF 0
+                  #(hash inserted during unwrap)ELSE_IF 
                   #(hash inserted during unwrap)FACE_EQUATION <outlet pextrapolation> "facegrad(<p>)" ON <outlet>
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                   #(hash inserted during unwrap)ELSE_IF 1
@@ -725,7 +784,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                
                #REPLACEMENTS D "<<boundarytangentmethod>>" W "slip"
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-                  #(hash inserted during unwrap)IF 0
+                  #(hash inserted during unwrap)IF 
                   #(hash inserted during unwrap)INCLUDE "slip" 
                   #(hash inserted during unwrap)
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
@@ -733,8 +792,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                      #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
                      #(hash inserted during unwrap)INCLUDE "noslip" 
                      
-                     FACE_EQUATION <outlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to the face
-                     FACE_EQUATION <outlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <outlet> # no component tangential to the face in the second tangential direction
+                     FACE_EQUATION <outlet noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <outlet> # no component tangential to the face
+                     FACE_EQUATION <outlet noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <outlet> # no component tangential to the face in the second tangential direction
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                   #(hash inserted during unwrap)ELSE
                   #(hash inserted during unwrap)ERROR "boundarytangentmethod not known in boundary_equations.arb: noslip"
@@ -757,7 +816,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   FACE_EQUATION <outlet flowrate equation> "<p_f>-0.d0" ON <outlet> # specified pressure
                   
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-                  #(hash inserted during unwrap)ELSE_IF 0
+                  #(hash inserted during unwrap)ELSE_IF 
                   #(hash inserted during unwrap)
                   #(hash inserted during unwrap)FACE_EQUATION <outlet flowrate equation> "<u_f>+<u_av>" ON <outlet> # specified velocity
                   #(hash inserted during unwrap)
@@ -810,9 +869,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                      #(hash inserted during unwrap)
                         #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 3
                         #(hash inserted during unwrap)IF 
+                        #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+                        #(hash inserted during unwrap)#  <<i>> 1,2,3
                         #(hash inserted during unwrap)CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
                         #(hash inserted during unwrap)CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
                         #(hash inserted during unwrap)CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
+                        #(hash inserted during unwrap)#     <<dim1comment>> CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
+                        #(hash inserted during unwrap)#     <<dim2comment>> CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
+                        #(hash inserted during unwrap)#     <<dim3comment>> CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
                         #(hash inserted during unwrap)NONE_DERIVED <outlet centreline gradp> "facesum(dot(<celldivgradp[l=:]>,<facenorm[l=:]>),region=<outlet centreline>)"
                         #(hash inserted during unwrap)FACE_EQUATION <outlet flowrate equation> "dot(<celldivgradp[l=:]>,<facenorm[l=:]>)-<outlet centreline gradp>" ON <outlet sans centreline> # apply specified pressure over inlet
                         #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 3
@@ -838,61 +902,25 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   #(hash inserted during unwrap)ELSE
                   #(hash inserted during unwrap)ERROR "boundarymethod not known in boundary_equations.arb: pressure"
                   #(hash inserted during unwrap)END_IF
-      #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_centreline_region.arb: sub_block = 0
-      #(hash inserted during unwrap)INCLUDE "inlet_centreline_region" 
-      # create inlet centreline region and sans centreline region
-         #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_centreline_region.arb: sub_block = 1
-         #(hash inserted during unwrap)IF 1
-            #(comment created during unwrap): new block = ../../templates/navier_stokes/centreline_region.arb: sub_block = 0
-            #(hash inserted during unwrap)INCLUDE "centreline_region" 
-            
-               #(comment created during unwrap): new block = ../../templates/navier_stokes/oneface_region.arb: sub_block = 0
-               #(hash inserted during unwrap)INCLUDE "oneface_region" 
-               
-               #(hash inserted during unwrap)MARKDOWN
-               #(hash inserted during unwrap)Here we define two subregions of <outlet>, one being a single face (<outlet centreline>) and the remainder as <outlet sand centreline>, mainly for the use in setting inidividual equations on boundaries
-               #(hash inserted during unwrap)
-               #(hash inserted during unwrap)Call with a replacement to '<outlet' to specify where it is applied, as in '<outlet', '<outlet' or '<wall'.  Also can call with 'centreline' replaced by 'centreline' for outlet and outlet ports.
-               #(hash inserted during unwrap)END_MARKDOWN
-               
-               FACE_REGION <outlet centreline> "at(0.d0,0.d0,0.d0)" ON <outlet> # default single cell is chosen closest to the origin
-               FACE_REGION <outlet sans centreline> "compound(<outlet>-<outlet centreline>)" ON <outlet>
-         #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_centreline_region.arb: sub_block = 1
-         #(hash inserted during unwrap)ELSE
-         #(hash inserted during unwrap)# pre_v0.59
-         #(hash inserted during unwrap)# this are the region definitions required to define the single inlet face cell and corresponding inverse inlet region
-         #(hash inserted during unwrap)# obviously can do replacement on inlet and centreline to create other equivalent regions from this file
-         #(hash inserted during unwrap)FACE_REGION <outlet centreline> "at(0.d0,0.d0,0.d0)" ON <outlet>
-         #(hash inserted during unwrap)FACE_REGION <outlet sans centreline> "compound(<outlet>-<outlet centreline>)" ON <outlet>
-         #(hash inserted during unwrap)END_IF
+   #INCLUDE "outlet_u_fully_developed" # outlet BC, uniform <dynamic_force_f> across outlet, but with one face setting p = 0
+   #INCLUDE "walls" R "<<boundarynormalmethod>>" W "zerodynamic" # nonslip walls BC, setting <dynamic_force_f> = 0 on boundaries to extrapolate pressure
       #(comment created during unwrap): new block = ../../templates/navier_stokes/walls.arb: sub_block = 0
-      #(hash inserted during unwrap)INCLUDE "walls" # nonslip walls BC
+      #(hash inserted during unwrap)INCLUDE "walls" # nonslip walls BC, setting pressure on boundaries using a type of rhiechow interpolation
          #(comment created during unwrap): new block = ../../templates/navier_stokes/walls_equations.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "walls_equations" 
          
          #(hash inserted during unwrap)MARKDOWN
-         #(hash inserted during unwrap)Sets basic names etc for a wall, but does not specify methods (except for using zerodynamic)
+         #(hash inserted during unwrap)Sets basic names etc for a wall, and only specifies the boundary normal method
+         #(hash inserted during unwrap)
+         #(hash inserted during unwrap)Use the template "walls" instead of calling this directly
          #(hash inserted during unwrap)END_MARKDOWN
-         # set <<boundarynormalmethod>> value to be equatl to <<pextrapolation>>, which is set in default replacement file
-            #(comment created during unwrap): new block = ../../templates/navier_stokes/default_string_replacements.arb: sub_block = 0
-            #(hash inserted during unwrap)INCLUDE "default_string_replacements"
-            #(hash inserted during unwrap)MARKDOWN
-            #(hash inserted during unwrap)These strings are the defaults used by the navier-stokes templates files if not explicitly set by the user
-            #(hash inserted during unwrap)They specify a steady-state solution to the navier-stokes equations, with uniform viscosity and density
-            #(hash inserted during unwrap)
-            #(hash inserted during unwrap)Some of these use both comment and flag type variables, requires three things to be set for each option
-            #(hash inserted during unwrap)END_MARKDOWN
-            
-            
-            
-            # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
-            
-            
-            
-            # previously pressure extrapolation on any walls was accomplished by setting <dynamic_force_f> to zero.  Other options are rhiechow and zeroperror
-            
-            #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "zeroperror"
-            #GENERAL_REPLACEMENTS D "<<pextrapolation>>" W "rhiechow"
+         
+         # use rhiechow
+         # in v0.59 changed to default on 24/9/18 due to much better velocity and pressure distribution along slip walls in transient_flow_around_cylinder_with_species
+         
+         
+         # use zerodynamic
+         #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerodynamic"
          
             #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "boundary_equations" 
@@ -902,7 +930,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             #(hash inserted during unwrap)
             #(hash inserted during unwrap)This has a few variables that can be set:
             #(hash inserted during unwrap)
-            #(hash inserted during unwrap)`zerodynamic` sets some condition normal to the boundary, either a velocity gradient or pressure gradient, or combination
+            #(hash inserted during unwrap)`rhiechow` sets some condition normal to the boundary, either a velocity gradient or pressure gradient, or combination
             #(hash inserted during unwrap)`noslip` determines the shear conditions at the boundary
             #(hash inserted during unwrap)`noflux` sets the primary type of boundary condition.  This condition can use a choice of variables determined by `<<boundarymethodvariable>>`.  If a oneface region is required or not, then this can be set via `<<boundaryonecreateface>>`
             #(hash inserted during unwrap)
@@ -916,14 +944,28 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradp"
             #REPLACEMENTS D "<<boundarynormalmethod>>" W "zeroperror"
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)IF 0
-               #(hash inserted during unwrap)INCLUDE "p_extrapolation_rhie_chow" 
-               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)IF 1
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation_rhie_chow.arb: sub_block = 0
+                  #(hash inserted during unwrap)INCLUDE "p_extrapolation_rhie_chow" 
+                  
+                  #(hash inserted during unwrap)MARKDOWN
+                  #(hash inserted during unwrap)Here we link the pressure gradient (contained within <dynamic_force_f>) to the boundary velocity using the previously calculated rhie-chow interpolation terms.  In effect, adds a link between the pressure and velocity on the boundary.
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)Note that the <u_f_{correction}> term is based on <p_error>, which for boundary cells equates to the difference between <dynamic_force_f> and <dynamic_force_c> (component) evaluated in the downcell, as celldiv applied in a boundary cell automatically takes its value from the adjacent domain cell.
+                  #(hash inserted during unwrap)END_MARKDOWN
+                  
+                  # first need to make sure that the relevant rhie-chow variables are defined on the boundaries
+                  VARIABLE <p_error> ON <allfaces> output
+                  VARIABLE <u_f_{correction}> ON <allfaces>
+                  #VARIABLE <u_f_{correction}[r=1]> ON <allfaces>
+                  
+                  # this needs to be fixed up possibly so that direction is consistent with dxunit?
+                  FACE_EQUATION <walls pextrapolation> "<u_f>-faceave[downcell](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<u_f_{correction}>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF 1
-               FACE_EQUATION <walls pextrapolation> "<dynamic_force_f>" ON <walls>
+               #(hash inserted during unwrap)ELSE_IF 
+               #(hash inserted during unwrap)FACE_EQUATION <walls pextrapolation> "<dynamic_force_f>" ON <walls>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF 0
+               #(hash inserted during unwrap)ELSE_IF 
                #(hash inserted during unwrap)FACE_EQUATION <walls pextrapolation> "<p_error>" ON <walls>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE_IF 
@@ -934,14 +976,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE
-               #(hash inserted during unwrap)ERROR "boundarynormalmethod not known in boundary_equations.arb: zerodynamic"
+               #(hash inserted during unwrap)ERROR "boundarynormalmethod not known in boundary_equations.arb: rhiechow"
                #(hash inserted during unwrap)END_IF
             
             # Second equation(s) (two here for 3D) is a constraint on the tangential velocity component
             
             #REPLACEMENTS D "<<boundarytangentmethod>>" W "slip"
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)IF 
                #(hash inserted during unwrap)INCLUDE "slip" 
                #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
@@ -949,8 +991,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
                   #(hash inserted during unwrap)INCLUDE "noslip" 
                   
-                  FACE_EQUATION <walls no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
-                  FACE_EQUATION <walls no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
+                  FACE_EQUATION <walls noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <walls> # no component tangential to the face
+                  FACE_EQUATION <walls noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <walls> # no component tangential to the face in the second tangential direction
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE
                #(hash inserted during unwrap)ERROR "boundarytangentmethod not known in boundary_equations.arb: noslip"
@@ -968,12 +1010,12 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             #REPLACEMENTS D "<<boundarymethod>>" W "onefacepressure" # set pressure on oneface to <region p>  (as well as a uniform <<boundarymethodvariable over the boundary) - use on (eg) outlets to anchor pressure, but otherwise allow a uniform (say) dynamic_force across the port which works for (eg) bouyancy problems which have a hydrostatic pressure variation 
             
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)IF 
                #(hash inserted during unwrap)
                #(hash inserted during unwrap)FACE_EQUATION <walls flowrate equation> "<p_f>-<walls p>" ON <walls> # specified pressure
                #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF 0
+               #(hash inserted during unwrap)ELSE_IF 
                #(hash inserted during unwrap)
                #(hash inserted during unwrap)FACE_EQUATION <walls flowrate equation> "<u_f>+<walls u>" ON <walls> # specified velocity
                #(hash inserted during unwrap)
@@ -983,7 +1025,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                FACE_EQUATION <walls flowrate equation> "<u_f>" ON <walls> # zero velocity
                
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF  0
+               #(hash inserted during unwrap)ELSE_IF  
                #(hash inserted during unwrap)# all of these boundary methods require the oneface (or centreline) subdomain, so form these first
                #(hash inserted during unwrap)
                #(hash inserted during unwrap)# now reference pressure gradient at centreline directly, removing one unknown and equation, but requiring <region sans oneface> and <region region> (from eg oneface_region template)
@@ -1026,9 +1068,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   #(hash inserted during unwrap)
                      #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 3
                      #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+                     #(hash inserted during unwrap)#  <<i>> 1,2,3
                      #(hash inserted during unwrap)CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
                      #(hash inserted during unwrap)CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
                      #(hash inserted during unwrap)CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
+                     #(hash inserted during unwrap)#     <<dim1comment>> CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
+                     #(hash inserted during unwrap)#     <<dim2comment>> CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
+                     #(hash inserted during unwrap)#     <<dim3comment>> CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
                      #(hash inserted during unwrap)NONE_DERIVED <walls oneface gradp> "facesum(dot(<celldivgradp[l=:]>,<facenorm[l=:]>),region=<walls oneface>)"
                      #(hash inserted during unwrap)FACE_EQUATION <walls flowrate equation> "dot(<celldivgradp[l=:]>,<facenorm[l=:]>)-<walls oneface gradp>" ON <walls sans oneface> # apply specified pressure over inlet
                      #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 3
@@ -1054,32 +1101,6 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                #(hash inserted during unwrap)ELSE
                #(hash inserted during unwrap)ERROR "boundarymethod not known in boundary_equations.arb: noflux"
                #(hash inserted during unwrap)END_IF
-      #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_centreline_region.arb: sub_block = 0
-      #(hash inserted during unwrap)INCLUDE "inlet_centreline_region" # create inlet centreline region and sans centreline region
-         #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_centreline_region.arb: sub_block = 1
-         #(hash inserted during unwrap)IF 1
-            #(comment created during unwrap): new block = ../../templates/navier_stokes/centreline_region.arb: sub_block = 0
-            #(hash inserted during unwrap)INCLUDE "centreline_region" 
-            
-               #(comment created during unwrap): new block = ../../templates/navier_stokes/oneface_region.arb: sub_block = 0
-               #(hash inserted during unwrap)INCLUDE "oneface_region" 
-               
-               #(hash inserted during unwrap)MARKDOWN
-               #(hash inserted during unwrap)Here we define two subregions of <inlet>, one being a single face (<inlet centreline>) and the remainder as <inlet sand centreline>, mainly for the use in setting inidividual equations on boundaries
-               #(hash inserted during unwrap)
-               #(hash inserted during unwrap)Call with a replacement to '<inlet' to specify where it is applied, as in '<inlet', '<outlet' or '<wall'.  Also can call with 'centreline' replaced by 'centreline' for inlet and outlet ports.
-               #(hash inserted during unwrap)END_MARKDOWN
-               
-               FACE_REGION <inlet centreline> "at(0.d0,0.d0,0.d0)" ON <inlet> # default single cell is chosen closest to the origin
-               FACE_REGION <inlet sans centreline> "compound(<inlet>-<inlet centreline>)" ON <inlet>
-         #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_centreline_region.arb: sub_block = 1
-         #(hash inserted during unwrap)ELSE
-         #(hash inserted during unwrap)# pre_v0.59
-         #(hash inserted during unwrap)# this are the region definitions required to define the single inlet face cell and corresponding inverse inlet region
-         #(hash inserted during unwrap)# obviously can do replacement on inlet and centreline to create other equivalent regions from this file
-         #(hash inserted during unwrap)FACE_REGION <inlet centreline> "at(0.d0,0.d0,0.d0)" ON <inlet>
-         #(hash inserted during unwrap)FACE_REGION <inlet sans centreline> "compound(<inlet>-<inlet centreline>)" ON <inlet>
-         #(hash inserted during unwrap)END_IF
       #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_u_fully_developed.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "inlet_u_fully_developed"
          #(comment created during unwrap): new block = ../../templates/navier_stokes/inlet_equations.arb: sub_block = 0
@@ -1110,17 +1131,17 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradp"
             #REPLACEMENTS D "<<boundarynormalmethod>>" W "zeroperror"
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)IF 
                #(hash inserted during unwrap)INCLUDE "p_extrapolation_rhie_chow" 
                #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF 0
+               #(hash inserted during unwrap)ELSE_IF 
                #(hash inserted during unwrap)FACE_EQUATION <inlet pextrapolation> "<dynamic_force_f>" ON <inlet>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF 0
+               #(hash inserted during unwrap)ELSE_IF 
                #(hash inserted during unwrap)FACE_EQUATION <inlet pextrapolation> "<p_error>" ON <inlet>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF 0
+               #(hash inserted during unwrap)ELSE_IF 
                #(hash inserted during unwrap)FACE_EQUATION <inlet pextrapolation> "facegrad(<p>)" ON <inlet>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE_IF 1
@@ -1142,7 +1163,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             
             #REPLACEMENTS D "<<boundarytangentmethod>>" W "slip"
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)IF 
                #(hash inserted during unwrap)INCLUDE "slip" 
                #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
@@ -1150,8 +1171,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   #(comment created during unwrap): new block = ../../templates/navier_stokes/noslip.arb: sub_block = 0
                   #(hash inserted during unwrap)INCLUDE "noslip" 
                   
-                  FACE_EQUATION <inlet no slip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <inlet> # no component tangential to the face
-                  FACE_EQUATION <inlet no slip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <inlet> # no component tangential to the face in the second tangential direction
+                  FACE_EQUATION <inlet noslip1> "dot(<u_f_vect[l=:]>,<facetang1[l=:]>)" ON <inlet> # no component tangential to the face
+                  FACE_EQUATION <inlet noslip2> "dot(<u_f_vect[l=:]>,<facetang2[l=:]>)" ON <inlet> # no component tangential to the face in the second tangential direction
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE
                #(hash inserted during unwrap)ERROR "boundarytangentmethod not known in boundary_equations.arb: noslip"
@@ -1169,17 +1190,17 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
             #REPLACEMENTS D "<<boundarymethod>>" W "onefacepressure" # set pressure on oneface to <region p>  (as well as a uniform <<boundarymethodvariable over the boundary) - use on (eg) outlets to anchor pressure, but otherwise allow a uniform (say) dynamic_force across the port which works for (eg) bouyancy problems which have a hydrostatic pressure variation 
             
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)IF 
                #(hash inserted during unwrap)
                #(hash inserted during unwrap)FACE_EQUATION <inlet flowrate equation> "<p_f>-<p_in>" ON <inlet> # specified pressure
                #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF 0
+               #(hash inserted during unwrap)ELSE_IF 
                #(hash inserted during unwrap)
                #(hash inserted during unwrap)FACE_EQUATION <inlet flowrate equation> "<u_f>+<u_av>" ON <inlet> # specified velocity
                #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF 0
+               #(hash inserted during unwrap)ELSE_IF 
                #(hash inserted during unwrap)
                #(hash inserted during unwrap)FACE_EQUATION <inlet flowrate equation> "<u_f>" ON <inlet> # zero velocity
                #(hash inserted during unwrap)
@@ -1221,7 +1242,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                      # this is the single equation that needs to be satisfied to set the average velocity of centreline pressure
                      NONE_EQUATION <inlet centreline flowrate equation> "<inlet u_av_calc>-<u_av>" # set flowrate through region to give required average velocity
                      #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 3
-                     #(hash inserted during unwrap)ELSE_IF 0
+                     #(hash inserted during unwrap)ELSE_IF 
                      #(hash inserted during unwrap)FACE_EQUATION <inlet centreline flowrate equation> "<p_f>-<p_in>" ON <inlet centreline> # set pressure at oneface to <region p>
                      #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 3
                      #(hash inserted during unwrap)ELSE
@@ -1235,10 +1256,15 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                   # REPLACEMENTS D "<<boundarymethodvariable>>" W "p"
                   
                      #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 3
-                     #(hash inserted during unwrap)IF 0
+                     #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+                     #(hash inserted during unwrap)#  <<i>> 1,2,3
                      #(hash inserted during unwrap)CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
                      #(hash inserted during unwrap)CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
                      #(hash inserted during unwrap)CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
+                     #(hash inserted during unwrap)#     <<dim1comment>> CELL_LOCAL <celldivgradp[l=1]> "celldivgrad[l=1](<p_f>)"
+                     #(hash inserted during unwrap)#     <<dim2comment>> CELL_LOCAL <celldivgradp[l=2]> "celldivgrad[l=2](<p_f>)"
+                     #(hash inserted during unwrap)#     <<dim3comment>> CELL_LOCAL <celldivgradp[l=3]> "celldivgrad[l=3](<p_f>)"
                      #(hash inserted during unwrap)NONE_DERIVED <inlet centreline gradp> "facesum(dot(<celldivgradp[l=:]>,<facenorm[l=:]>),region=<inlet centreline>)"
                      #(hash inserted during unwrap)FACE_EQUATION <inlet flowrate equation> "dot(<celldivgradp[l=:]>,<facenorm[l=:]>)-<inlet centreline gradp>" ON <inlet sans centreline> # apply specified pressure over inlet
                      #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 3
@@ -1246,7 +1272,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
                      NONE_DERIVED <inlet centreline gradp> "facesum(<dynamic_force_f>,region=<inlet centreline>)"
                      FACE_EQUATION <inlet flowrate equation> "<dynamic_force_f>-<inlet centreline gradp>" ON <inlet sans centreline>
                      #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 3
-                     #(hash inserted during unwrap)ELSE_IF 0
+                     #(hash inserted during unwrap)ELSE_IF 
                      #(hash inserted during unwrap)NONE_DERIVED <inlet centreline gradp> "facesum(facegrad(<p>),region=<inlet centreline>)"
                      #(hash inserted during unwrap)FACE_EQUATION <inlet flowrate equation> "facegrad(<p>)-<inlet centreline gradp>" ON <inlet sans centreline>
                      #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 3
@@ -1274,9 +1300,13 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
    CONSTANT <mu> [Pa.s] 1.d-3 # viscosity
    CONSTANT <u_av> [m/s] 1.0d0 # average inlet velocity
    
-   # calculating an analytical solution
+   # calculating an analytical solution and resulting error
    CELL_CONSTANT <r> "sqrt(<cellx[l=1]>^2+<cellx[l=2]>^2)" output
    CELL_CONSTANT <u_analytical[l=3]> "(1.d0-<r>^2)*2.d0*<u_av>" output
+   CELL_OUTPUT <u_error[l=1]> "<u[l=1]>-<u_analytical[l=1]>"
+   CELL_OUTPUT <u_error[l=2]> "<u[l=2]>-<u_analytical[l=2]>"
+   CELL_OUTPUT <u_error[l=3]> "<u[l=3]>-<u_analytical[l=3]>"
+   CELL_OUTPUT <u_error_mag> "sqrt(cellmax(dot(<u_error[l=:]>,<u_error[l=:]>),default=<tinyish>))"
    
    # and setting the initial guess
    VARIABLE <u[l=1]> "0.d0"

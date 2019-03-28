@@ -1,2 +1,2 @@
 # call this file before constants to specify the stokes equations
-GENERAL_REPLACEMENTS R "<<stokescomment>>" W "" R "<<navierstokescomment>>" W "#"
+GENERAL_REPLACEMENTS R "<<stokes>>" W "1" R "<<stokescomment>>" W "" R "<<navierstokescomment>>" W "#"

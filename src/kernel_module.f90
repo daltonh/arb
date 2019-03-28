@@ -3270,6 +3270,7 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
 
 ! temp &&&& for debugging single kernels
   do j = 1, jtotal
+! do j = 44, 44
 ! do j = 1, 100 
 ! do j = 415, 415
 
@@ -3321,6 +3322,23 @@ if (trim(kernel_method) == 'mls' .or. trim(kernel_method) == 'optimisation') the
       end do
       allocate(face(j)%kernel(0)%reflect_multiplier(totaldimensions,ubound(face(j)%kernel(0)%ijk,1)))
       face(j)%kernel(0)%reflect_multiplier = 1
+    end if
+
+! for extra debug output
+    if (.false.) then
+      write(83,*) 'j = ',j,': face(j)%x = ',face(j)%x
+      write(83,*) 'jglue = ',face(j)%glue_jface,':  face(jglue)%x = ',face(face(j)%glue_jface)%x
+      write(83,*) 'glue_reflect = ',face(j)%glue_reflect
+      write(83,*) 'r(:1:2) = ',face(j)%r(:,1:2)
+      write(83,*) 'r_glue(:1:2) = ',face(face(j)%glue_jface)%r(:,1:2)
+      do ii = 1, ubound(face(j)%r,2)
+        write(83,*) 'ii = ',ii,': face(j)%icell(ii) = ',face(j)%icell(ii),': face(j)%r(:,ii) = ',face(j)%r(:,ii) 
+      end do
+      do ii = 1, ubound(face(j)%kernel(0)%ijk,1)
+        write(83,*) 'ijk = ',face(j)%kernel(0)%ijk(ii),' :ii = ',ii,': facex = ',cell(face(j)%kernel(0)%ijk(ii))%x,': r(:,ii) = ',r(:,ii),': r_calc = ',cell(face(j)%kernel(0)%ijk(ii))%x-face(j)%x,': r_error = ',cell(face(j)%kernel(0)%ijk(ii))%x-face(j)%x-r(:,ii)
+  !     r(:,ii) = cell(face(j)%kernel(0)%ijk(ii))%x - face(j)%x
+      end do
+      stop
     end if
 
 ! scale r with dx_kernel

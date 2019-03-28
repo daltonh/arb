@@ -40,7 +40,7 @@ use strict;
 use warnings;
 use Exporter 'import';
 #our $VERSION = '1.00';
-our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_examine string_debug string_set_transient_simulation); # list of subroutines and variables that will by default be made available to calling routine
+our @EXPORT  = qw(parse_string_code string_setup string_set string_delete string_option string_eval string_examine string_debug string_set_transient_simulation arb_defined); # list of subroutines and variables that will by default be made available to calling routine
 use Common;
 
 #-------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ sub string_option {
   } else {
 
     while (nonempty($options)) {
-      if ($options =~ /^\s*(((no|)replace)|)\s*(,|$)/) {
+      if ($options =~ /^\s*(((no|)replace)|)\s*(,|$)/i) {
         $options = $';
         if (nonempty($2)) {
           if (empty($3)) {
@@ -111,7 +111,7 @@ sub string_option {
 # deletes a string
 # on input
 #  $_[0] = string name (can be an list of strings, but in this case options must be set, possibly to the empty string)
-#  $_[$#_] = options, passed to string_search (ie global, noglobal and local, suffix|prefix removes the equivalent stripped variable name, as defined in string_set)
+#  $_[$#_] = options, passed to string_search (ie global, noglobal and local, suffix|prefix removes the equivalent stripped variable name, as defined in string_set, not accessible from legacy string code)
 # on output
 #  $_[0] = unchanged
 sub string_delete {
@@ -123,7 +123,7 @@ sub string_delete {
   foreach my $name ( reverse( @names ) ) {
 
 # change strings if we are requesting either a prefix or suffix
-    if ($options =~ /(^|,|\s)prefix|suffix($|,|\s)/) {
+    if ($options =~ /(^|,|\s)prefix|suffix($|,|\s)/i) {
       if ($name =~ /^(<.*\[).*\]>$/) {
         $name = $1;
       } elsif ($name =~ /^(<.*>)$/) {
@@ -142,13 +142,15 @@ sub string_delete {
   
 }
 #-------------------------------------------------------------------------------
-# finds the value of a string
+# finds the value of a string or performs replacements on a line of text (option text)
+# ref: string_eval
 # on input
 #  $_[0] = string name
 #  $_[1] = options (optional)
 # possible options:
 #  list = return the string as a list containing the string split at commas (useful for using within foreach loops etc)
-#  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists)
+#  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists, meaning that it the string doesn't exist we just return an empty string)
+#  text = rather than look for an individual string, just perform string replacements on the passed in text.  This will hence perform nested replacements
 # options also passed to string_search so accepts local, global and noglobal
 # on output
 #  $_[0] = unchanged
@@ -159,38 +161,28 @@ sub string_eval {
   my $name = $_[0];
   my $options = ''; if (defined($_[1])) { $options = $_[1]; }; # options is optional
 
-  my ($code_block_found,$string_variable_found) = string_search($name,$options);
+  if ($options =~ /(^|,)(text)($|,)/i) {
+    ReadInputFiles::perform_string_replacements($name); # use sub from ReadInputFiles to perform string replacements on entire line
+    return $name;
 
-  if ($code_block_found == -1) {
-    if ($options =~ /(^|,)\s*checkexists\s*(,|$)/) {
-      $options = $`.','.$'; # remove this string from the options
-      syntax_problem("string variable $name not found during string_set: $ReadInputFiles::filelinelocator");
-    }
-    return ''; # return empty string if the variable doesn't exist
-    
   } else {
-    if ($options =~ /(^|,)((commaseparated|spaceseparated|variable|region|)list)($|,)/) {
-      my $option = $2;
-      return string_split($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"},$option);
+    my ($code_block_found,$string_variable_found) = string_search($name,$options);
 
-#     my @string_eval_array=();
-#     my $string_text=$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
-#     print "STRING TEXT: $string_text\n";
-#     while ($string_text) {
-#       print "STRING TEXT IN LOOP: $string_text\n";
-#       $string_text =~ s/^\s*,\s*//g;
-#       my ($string_bit,$error) = extract_first($string_text);
-#       print "A: string_bit = $string_bit: error = $error\n";
-#       if (!($error)) {
-#         push(@string_eval_array,$string_bit);
-#       }
-#     }
-#     print "RETURNED LIST = @string_eval_array\n";
-#     return @string_eval_array;
-
-#     return split(/,/,$ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"});
+    if ($code_block_found == -1) {
+      if ($options =~ /(^|,)\s*checkexists\s*(,|$)/i) {
+        $options = $`.','.$'; # remove this string from the options
+        syntax_problem("string variable $name not found during string_set: $ReadInputFiles::filelinelocator");
+      }
+      return ''; # return empty string if the variable doesn't exist
+      
     } else {
-      return $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+      if ($options =~ /(^|,)((commaseparated|spaceseparated|variable|region|)list)($|,)/i) {
+        my $option = $2;
+        return string_split($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"},$option);
+
+      } else {
+        return $ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"};
+      }
     }
   }
   
@@ -215,10 +207,10 @@ sub string_split {
   if (defined($_[1])) { $options = $_[1]; }
   my @elements = (); # this is what will be passed out
   my $element_delimiter=" "; # default element delimiter is a space
-  if ($options =~ /(^|,)(commaseparated|)list($|,)/) { $element_delimiter = ","; }
+  if ($options =~ /(^|,)(commaseparated|)list($|,)/i) { $element_delimiter = ","; }
 
   if ($debug) { print ::DEBUG "STRING_SPLIT: entering with: string = $string: options = $options\n"; }
-  while ($string) {
+  while ($string ne '') {
     $string =~ s/^\s*//; # remove leading spaces using greedy match
     if ($debug) { print ::DEBUG "STRING_SPLIT: after space clear, start of loop: string = $string: elements = @elements\n"; }
     if ($string =~ /^(["'])/) {
@@ -229,7 +221,7 @@ sub string_split {
       } else {
         error_stop("problem with delimiting of string_split $ostring: $ReadInputFiles::filelinelocator");
       }
-    } elsif ($options =~ /(^|,)(variable|region)list($|,)/) {
+    } elsif ($options =~ /(^|,)(variable|region)list($|,)/i) {
       if ($string =~ /^(<.*?>)\s*($element_delimiter|$)/) {
         $string = $';
         push(@elements,$1);
@@ -253,14 +245,16 @@ sub string_split {
 }
 #-------------------------------------------------------------------------------
 # tests whether a string variable is equal to a particular test string, returning '1' or ''
+# ref: string_test
 # on input
-#  $_[0] = string variable name
-#  $_[1] = test string
-#  $_[2] = options, which is also passed to string_search so supports global, noglobal and local
+#  $_[0] = string variable name, or line of text (option text)
+#  $_[1] = value of name or text that represents a true result (ie, that is compared against)
+#  $_[2] = options, which is also passed to string_search for notext, so supports global, noglobal and local
+#    option 'text' means that string replacements are performed on first argument, and this is compared against value - handed for (eg) testing true value of nested replacements, whereas notext simply tests on what the string replacement is for the given variable
 # on output
 #  $_[0] = '1' if test string is given and string variable is defined and equal to the value of test string
 #        = '0' otherwise
-# now throws an error if test string is not provided or string is not found
+# now throws an error if test string is not provided or string is not found, unless text option is given
 # see string_examine for checking on existence of strings
 
 sub string_test {
@@ -268,18 +262,24 @@ sub string_test {
   my $name = $_[0];
   my $options = '';
 
-  if (!(defined($_[1]))) { # no test string was passed to routine, so just return whether string is defined
+  if (!(defined($_[1]))) { # no test string was passed to routine, which is a terminal error
     error_stop("no test string has been passed to string_test: name = $name");
   }
+  my $result = $_[1];
   if (defined($_[2])) { $options = $_[2]; }
 
-  my ($code_block_found,$string_variable_found) = string_search($name,$options);
+  if ($options =~ /(^|,|\s)text($|,|\s)/i) { # text option is handled by string_eval
+    if (string_eval($name,'text') eq $result) { return 1; } else { return 0; }
+  } else { # otherwise we are looking at checking the value of a single string
+    my ($code_block_found,$string_variable_found) = string_search($name,$options);
 
-  if ($code_block_found == -1) {
-    error_stop("test string has been passed to string_test was not found: name = $name");
+    if ($code_block_found == -1) {
+      error_stop("test string has been passed to string_test was not found: name = $name");
+    }
+    
+    if ($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $result) { return 1; } else { return 0; }
+
   }
-  
-  if ($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"} eq $_[1]) { return '1'; } else { return '0'; }
   
 }
 #-------------------------------------------------------------------------------
@@ -375,7 +375,7 @@ sub string_set {
 # check validity of options
   my $options_save = $options;
   while (nonempty($options)) {
-    if ($options =~ /^\s*((no|)replace|default|global|substitute|suffix|prefix|)\s*(,|$)/) { # note trailing | to match just the delimiter
+    if ($options =~ /^\s*((no|)replace|default|global|substitute|suffix|prefix|)\s*(,|$)/i) { # note trailing | to match just the delimiter
       $options = $';
     } else {
       syntax_problem("unknown string within string_set options of $options: $ReadInputFiles::filelinelocator");
@@ -384,10 +384,10 @@ sub string_set {
   $options = $options_save;
 
 # sanity check on requested options
-  if ($options =~ /(^|,|\s)substitute($|,|\s)/) {
-    if ($options =~ /(^|,|\s)default($|,|\s)/) {
+  if ($options =~ /(^|,|\s)substitute($|,|\s)/i) {
+    if ($options =~ /(^|,|\s)default($|,|\s)/i) {
       error_stop('both default and substitute options requested for string variable $name_value_pairs[0]');
-    } elsif ($options =~ /(^|,|\s)global($|,|\s)/) {
+    } elsif ($options =~ /(^|,|\s)global($|,|\s)/i) {
       error_stop('both global and substitute options requested for string variable $name_value_pairs[0]');
     }
   }
@@ -399,8 +399,8 @@ sub string_set {
     print ::DEBUG "INFO: in string_set, dealing with: name = $name_value_pairs[0]: value = $name_value_pairs[1]\n";
 
 # change strings if we are requesting either a prefix or suffix
-    if ($options =~ /(^|,|\s)prefix|suffix($|,|\s)/) {
-      if ($options =~ /(^|,|\s)prefix($|,|\s)/) {
+    if ($options =~ /(^|,|\s)prefix|suffix($|,|\s)/i) {
+      if ($options =~ /(^|,|\s)prefix($|,|\s)/i) {
         if ($name_value_pairs[0] =~ /^(<(.*\[)).*\]>$/) {
           $name_value_pairs[0] = $1;
           $name_value_pairs[1] = "<".$name_value_pairs[1].$2;
@@ -426,7 +426,7 @@ sub string_set {
     }
 
 # first deal with default option
-    if ($options =~ /(^|,|\s)default($|,|\s)/) { # if string is found and default option is on, we are done
+    if ($options =~ /(^|,|\s)default($|,|\s)/i) { # if string is found and default option is on, we are done
       my ($code_block_found,$string_variable_found) = string_search($name_value_pairs[0]);
       print ::DEBUG "INFO: in string_set, with default option: code_block_found = $code_block_found: string_variable_found = $string_variable_found\n";
       if ($code_block_found >= 0) {
@@ -442,9 +442,9 @@ sub string_set {
 # 2. if it doesn't exist in that block(s), find the next available indicies in the global or local block and set it
 
     my ($code_block_set,$string_variable_set) = (-1,-1); # define scope of variables
-    if ($options =~ /(^|,|\s)global($|,|\s)/) {
+    if ($options =~ /(^|,|\s)global($|,|\s)/i) {
       ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0],'global'); # for global only look in global block
-    } elsif ($options =~ /(^|,|\s)substitute($|,|\s)/) {
+    } elsif ($options =~ /(^|,|\s)substitute($|,|\s)/i) {
       ($code_block_set,$string_variable_set) = string_search($name_value_pairs[0]); # with the substitute option, we look anywhere for string
       if ($code_block_set == -1) { # not finding the string here is an error as it indicates that the user does not know at what block the string was to be set - too dangerous for now
         error_stop("substitute option given for string replacement $name_value_pairs[0] but the string has not been previously set")
@@ -455,7 +455,7 @@ sub string_set {
     print ::DEBUG "INFO: in string_set, after string search: code_block_set = $code_block_set: string_variable_set = $string_variable_set: options = $options\n";
     if ($code_block_set == -1) { # string was not found, so set to next available indicies
       print ::DEBUG "INFO: in string_set, string $name_value_pairs[0] not found: creating new string\n";
-      if ($options =~ /(^|,|\s)global($|,|\s)/) {
+      if ($options =~ /(^|,|\s)global($|,|\s)/i) {
         $code_block_set = 0; # for global string
       } else {
         $code_block_set = $#ReadInputFiles::code_blocks; # otherwise use current block
@@ -470,7 +470,7 @@ sub string_set {
 
 # also set replace variable
     $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 1; # default value
-    if ($options =~ /(^|,|\s)(no|)replace($|,|\s)/) {
+    if ($options =~ /(^|,|\s)(no|)replace($|,|\s)/i) {
       if (nonempty($2)) {
         $ReadInputFiles::code_blocks[$code_block_set]{"string_variables"}[$string_variable_set]{"replace"} = 0;
       }
@@ -546,11 +546,11 @@ sub string_search {
   my ($code_block_lower,$code_block_upper) = (0,$#ReadInputFiles::code_blocks);
   my $options = '';
   if (defined($_[1])) { $options = $_[1]; }
-  if ($options =~ /(^|,)\s*global\s*($|,)/) {
+  if ($options =~ /(^|,)\s*global\s*($|,)/i) {
     $code_block_upper = 0;
-  } elsif ($options =~ /(^|,)\s*local\s*($|,)/) {
+  } elsif ($options =~ /(^|,)\s*local\s*($|,)/i) {
     $code_block_lower = $#ReadInputFiles::code_blocks;
-  } elsif ($options =~ /(^|,)\s*nolocal\s*($|,)/) {
+  } elsif ($options =~ /(^|,)\s*nolocal\s*($|,)/i) {
     $code_block_lower = 1;
   }
     
@@ -581,12 +581,14 @@ sub string_set_transient_simulation {
     string_set("<<transientcomment>>","","global"); # use <<transientsimulation>> instead
     string_set("<<steadystatecomment>>","#","global"); # use <<transientsimulation>> instead
     string_set("<<transientsimulation>>","1","global");
+    string_set("<<relsteps>>","0,1","global"); # default list of relsteps for a transient simulation
     string_set("<<transientflag>>","1","global"); # do not use, this string to be removed in the future
     string_set("<<steadystateflag>>","0","global"); # do not use, this string to be removed in the future
   } else {
     string_set("<<transientcomment>>","#","global"); # use <<transientsimulation>> instead
     string_set("<<steadystatecomment>>","","global"); # use <<transientsimulation>> instead
     string_set("<<transientsimulation>>","0","global");
+    string_set("<<relsteps>>","0","global"); # default list of relsteps for a steady-state simulation
     string_set("<<transientflag>>","0","global"); # do not use, this string to be removed in the future
     string_set("<<steadystateflag>>","1","global"); # do not use, this string to be removed in the future
   }
@@ -595,6 +597,7 @@ sub string_set_transient_simulation {
 
 #-------------------------------------------------------------------------------
 # little routine that returns 1 if a string is defined, or 0 otherwise
+# ref: string_examine
 # second argument is list of options, taken straight from string_search:
 # global = only returns 1 if string is found and is a global
 # noglobal = only returns 1 if string is found and is not a global
@@ -627,11 +630,11 @@ sub string_debug {
   $debug_output .= "Called with: options = $options\n";
 
   my ($code_block_lower,$code_block_upper) = (0,$#ReadInputFiles::code_blocks);
-  if ($options =~ /(^|,)\s*global\s*($|,)/) {
+  if ($options =~ /(^|,)\s*global\s*($|,)/i) {
     $code_block_upper = 0;
-  } elsif ($options =~ /(^|,)\s*local\s*($|,)/) {
+  } elsif ($options =~ /(^|,)\s*local\s*($|,)/i) {
     $code_block_lower = $#ReadInputFiles::code_blocks;
-  } elsif ($options =~ /(^|,)\s*nolocal\s*($|,)/) {
+  } elsif ($options =~ /(^|,)\s*nolocal\s*($|,)/i) {
     $code_block_lower = 1;
   }
     
@@ -645,6 +648,55 @@ sub string_debug {
   }
 
   return $debug_output;
+
+}
+#-------------------------------------------------------------------------------
+# subroutine that checks on existence, or provides information about, an arb variable or region name (NB, defined is already a perl routine...)
+# on input:
+# $_[0] = name of variable/region to be checked
+# $_[1] = comma separated list of options
+#   options: more to be included in the future during reorder rewrite, getting rid of asread_variable rubbish
+# on output:
+# $_[0] = REGION|VARIABLE|0, depending on whether name is an existing variable, region, or not defined (with no options)
+sub arb_defined {
+
+  my $name = $_[0];
+  my $options = '';
+  if (defined($_[1])) { $options = $_[1]; }
+  my $exists = 0; # set this to whether name is a region or variable, or doesn't exist
+
+  if (!($options =~ /(^|,|\s)region($|,|\s)/i)) {
+# check whether we have a variable from the asread_variables
+    my $variable_name = examine_name($name,"name");
+# see if this name has already been defined, and if so, find position of the variable in the input file
+    my $masread = -1; # variable masread starts at 0 if any variables are defined
+    foreach my $mcheck ( 0 .. $#::asread_variable ) {
+      if ($::asread_variable[$mcheck]{"name"} eq $variable_name) { # variable has been previously defined, and position in file is based on first definition
+        $masread = $mcheck;
+        last;
+      }
+    }
+    if ($masread ne -1) { $exists = 'VARIABLE'; }
+    if (!($exists)) { # also check the variable array for system variables
+      my $masread = -1; # variable masread starts at 0 if any variables are defined
+#     foreach my $mcheck ( 0 .. $#{@::variable{"system"}} ) { # interpreter advises against this
+      foreach my $mcheck ( 0 .. $#{$::variable{"system"}} ) {
+        if ($::variable{"system"}[$mcheck]{"name"} eq $variable_name) { # variable has been previously defined, and position in file is based on first definition
+          $masread = $mcheck;
+          last;
+        }
+      }
+      if ($masread ne -1) { $exists = 'VARIABLE'; }
+    }
+  }
+
+  if ((!($options =~ /(^|,|\s)variable($|,|\s)/i)) && !($exists)) {
+# check whether we have a region
+    my $region_name = examine_name($name,"regionname");
+    if (find_region($region_name) ne -1) { $exists = 'REGION'; }
+  }
+
+  return $exists;
 
 }
 #-------------------------------------------------------------------------------

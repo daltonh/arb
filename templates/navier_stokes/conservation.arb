@@ -3,64 +3,34 @@
 # check default strings are set
 INCLUDE "default_string_replacements"
 
-IF 0
-# old way
-  # cartesian specific
-  <<cartesiancomment>>CELL_EQUATION <continuity> "celldiv(<u_f>)" ON <domain> # continuity
-  <<cartesiancomment>><<dim1comment>>CELL_EQUATION <momentum[l=1]> "celldiv(<J_f[l=1]>)-<dynamic_force_c[l=1]>" ON <domain> # momentum component
-  <<cartesiancomment>><<dim2comment>>CELL_EQUATION <momentum[l=2]> "celldiv(<J_f[l=2]>)-<dynamic_force_c[l=2]>" ON <domain> # momentum component
-  <<cartesiancomment>><<dim3comment>>CELL_EQUATION <momentum[l=3]> "celldiv(<J_f[l=3]>)-<dynamic_force_c[l=3]>" ON <domain> # momentum component
-
-  # cylindrical specific
-  <<cylindricalcomment>>CELL_EQUATION <continuity> "celldiv(<<radius_f>>*<u_f>)/<<radius_c>>" ON <domain> # continuity
-  # these also include the hoop stress terms when <<radiusdim?flag>> is appropriately set
-  <<cylindricalcomment>><<dim1comment>>CELL_EQUATION <momentum[l=1]> "celldiv(<<radius_f>>*<J_f[l=1]>)/<<radius_c>>-<dynamic_force_c[l=1]>+<<radiusdim1flag>>*2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)" ON <domain> # momentum component
-  <<cylindricalcomment>><<dim2comment>>CELL_EQUATION <momentum[l=2]> "celldiv(<<radius_f>>*<J_f[l=2]>)/<<radius_c>>-<dynamic_force_c[l=2]>+<<radiusdim2flag>>*2.d0*<u[l=2]>*<mu>/(<cellx[l=2]>**2)" ON <domain> # momentum component
-  <<cylindricalcomment>><<dim3comment>>CELL_EQUATION <momentum[l=3]> "celldiv(<<radius_f>>*<J_f[l=3]>)/<<radius_c>>-<dynamic_force_c[l=3]>+<<radiusdim3flag>>*2.d0*<u[l=3]>*<mu>/(<cellx[l=3]>**2)" ON <domain> # momentum component
-ELSE
-# compact way, with hoop stress calculated more efficiently
-
-# define cylindrical divergence modifier terms
-  REPLACEMENTS R "<<radius_top>>" W "" R "<<radius_bottom>>" W ""
-  REPLACEMENTS R "<<radius_top_azi>>" W "" R "<<radius_bottom_azi>>" W ""
-
-  IF <<cylindrical>>
-    REPLACEMENTS S "<<radius_top>>" W "<<radius_f>>*" S "<<radius_bottom>>" W "/<<radius_c>>"
-  END_IF
-  IF <<azimuthal>>
-    REPLACEMENTS S "<<radius_top_azi>>" W "<<radius_f>>**2*" S "<<radius_bottom_azi>>" W "/<<radius_c>>**2"
-  END_IF
-
 # now create equations
-  CELL_EQUATION <continuity> "celldiv(<<radius_top>><u_f>)<<radius_bottom>>" ON <domain> # continuity
-  {{ return vector_expand(
-    '<<dim$lcomment>>CELL_EQUATION <momentum[l=$l]> "celldiv(<<radius_top>><J_f[l=$l]>)<<radius_bottom>>-<dynamic_force_c[l=$l]>" ON <domain> # momentum component'
-    ) }}
+CELL_EQUATION <continuity> "celldiv(<<radius_f>>*<u_f>)/<<radius_c>>" ON <domain> # continuity
+CELL_EQUATION <momentum[l=<<i>>]> "celldiv(<<radius_f>>*<J_f[l=<<i>>]>)/<<radius_c>>-<dynamic_force_c[l=<<i>>]>" ON <domain> # momentum component'
 
 # add on hoop stress term separately for cylindrical coordinates
-  IF <<cylindrical>>
+IF <<cylindrical>>
 # perform a check that <<radialdim>> has been correctly defined
-    IF {{ return (!( string_eval('<<radialdim>>') ge 1 && string_eval('<<radialdim>>') le 3)) }}
-      ERROR 'This is a cylindrical coordinate simulation however the string <<radialdim>> has not been correctly defined'
-    END_IF
-    VARIABLE <momentum[l=<<radialdim>>]> "<momentum[l=<<radialdim>>]>+2.d0*<u[l=<<radialdim>>]>*<mu>/(<cellx[l=<<radialdim>>]>**2)"
+  IF {{ return (!( string_eval('<<radialdim>>') ge 1 && string_eval('<<radialdim>>') le 3)) }}
+    ERROR 'This is a cylindrical coordinate simulation however the string <<radialdim>> has not been correctly defined'
   END_IF
-
-#define momentum eqn for azimuthal component
-  IF <<azimuthal>>
-# perform a check that <<azimuthaldim>> has been correctly defined
-    IF {{ return (!( string_eval('<<azimuthaldim>>') ge 1 && string_eval('<<azimuthaldim>>') le 3)) }}
-      ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string <<azimuthaldim>> has not been correctly defined'
-    END_IF
-      VARIABLE <momentum[l=<<azimuthaldim>>]> "celldiv(<<radius_top_azi>><J_f[l=<<azimuthaldim>>]>)<<radius_bottom_azi>>+<rho>*<u_f_vect[l=<<radialdim>>]>*<u_f_vect[l=<<azimuthaldim>>]>/<facex[l=<<radialdim>>]>" ON <domain> # momentum component'
-      VARIABLE <momentum[l=<<radialdim>>]> "<momentum[l=<<radialdim>>]>-<rho>*<u_f_vect[l=<<azimuthaldim>>]>**2/<facex[l=<<radialdim>>]>"
-  END_IF
+  VARIABLE <momentum[l=<<radialdim>>]> "<momentum[l=<<radialdim>>]>+2.d0*<u[l=<<radialdim>>]>*<mu>/(<cellx[l=<<radialdim>>]>**2)"
 END_IF
 
-# add transient term which is independent on cartesian or cylindrical coordinates
-<<transientnavierstokescomment>><<uniformdensitycomment>><<dim1comment>>VARIABLE <momentum[l=1]> "<rho>*(<u[l=1]>-<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-<<transientnavierstokescomment>><<uniformdensitycomment>><<dim2comment>>VARIABLE <momentum[l=2]> "<rho>*(<u[l=2]>-<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-<<transientnavierstokescomment>><<uniformdensitycomment>><<dim3comment>>VARIABLE <momentum[l=3]> "<rho>*(<u[l=3]>-<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
-<<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim1comment>>VARIABLE <momentum[l=1]> "(<rho>*<u[l=1]>-<rho[r=1]>*<u[l=1,r=1]>)/<dt>+<momentum[l=1]>"
-<<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim2comment>>VARIABLE <momentum[l=2]> "(<rho>*<u[l=2]>-<rho[r=1]>*<u[l=2,r=1]>)/<dt>+<momentum[l=2]>"
-<<transientnavierstokescomment>><<nonuniformdensitycomment>><<dim3comment>>VARIABLE <momentum[l=3]> "(<rho>*<u[l=3]>-<rho[r=1]>*<u[l=3,r=1]>)/<dt>+<momentum[l=3]>"
+#define momentum eqn for azimuthal component
+IF <<azimuthal>>
+# perform a check that <<azimuthaldim>> has been correctly defined
+  IF {{ return (!( string_eval('<<azimuthaldim>>') ge 1 && string_eval('<<azimuthaldim>>') le 3)) }}
+    ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string <<azimuthaldim>> has not been correctly defined'
+  END_IF
+  VARIABLE <momentum[l=<<azimuthaldim>>]> "celldiv((<<radius_f>>**2)*<J_f[l=<<azimuthaldim>>]>)/(<<radius_c>>**2)+<rho>*<u[l=<<radialdim>>]>*<u[l=<<azimuthaldim>>]>/<cellx[l=<<radialdim>>]>" ON <domain> # momentum component'
+  VARIABLE <momentum[l=<<radialdim>>]> "<momentum[l=<<radialdim>>]>-<rho>*<u[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>"
+END_IF
+
+# add transient term which is independent of cartesian or cylindrical coordinates
+IF <<transientnavierstokes>>
+  IF <<uniformdensity>>
+    VARIABLE <momentum[l=<<i>>]> "<rho>*(<u[l=<<i>>]>-<u[l=<<i>>,r=1]>)/<dt>+<momentum[l=<<i>>]>"
+  ELSE
+    VARIABLE <momentum[l=<<i>>]> "(<rho>*<u[l=<<i>>]>-<rho[r=1]>*<u[l=<<i>>,r=1]>)/<dt>+<momentum[l=<<i>>]>"
+  END_IF
+END_IF

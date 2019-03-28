@@ -1,5 +1,5 @@
 # Rxntoarb::Rxn
-# (C) Copyright Christian Biscombe 2016-2018
+# (C) Copyright Christian Biscombe 2016-2019
 
 require 'set'
 require_relative 'reaction'
@@ -71,7 +71,7 @@ module Rxntoarb
             location = $1.downcase
             eval "#{location}_region_list = []"
             $2.scan(/\w+|<[^>]+>/) do |region| # angle brackets optional unless region name contains spaces or special characters
-              if exclude?("@#{region}", :region) # region excluded by include_only or exclude statement
+              if exclude?("@#{region}") # region excluded by include_only or exclude statement
                 warn "INFO: region #{region} excluded due to include_only or exclude statement" if Rxntoarb.options[:debug]
                 next
               end
@@ -96,18 +96,22 @@ module Rxntoarb
 
           # Reaction (or syntax error)
           else
+            line_includes_surface_region = line =~ /[^#]*?@s\b/
+            line_includes_volume_region = line =~ /[^#]*?@v\b/
             unless Rxntoarb.options[:none_centred] == :flag
-              raise 'missing surface_region definition for reaction' if surface_region_list == [nil] and line =~ /[^#]*?@s\b/
-              raise 'missing volume_region definition for reaction' if volume_region_list == [nil] and line =~ /[^#]*?@v\b/
+              raise 'missing surface_region definition for reaction' if surface_region_list == [nil] && line_includes_surface_region
+              raise 'missing volume_region definition for reaction' if volume_region_list == [nil] && line_includes_volume_region
             end
             volume_region_list.each do |volume_region|
               surface_region_list.each do |surface_region|
-                @bounding_regions[volume_region] << surface_region if surface_region && volume_region # keep track of surface_regions that bound each volume_region
+                @bounding_regions[volume_region] << surface_region if surface_region && volume_region && line_includes_surface_region && line_includes_volume_region # keep track of surface_regions that bound each volume_region
                 rline = line.dup # dup line as substitutions below need to be done for each surface_region and volume_region
                 rline.gsub!(/@s\b/, "@#{surface_region}") if surface_region
                 rline.gsub!(/@v\b/, "@#{volume_region}") if volume_region
                 read_reaction(rline)
+                break unless line_includes_surface_region
               end
+              break unless line_includes_volume_region
             end
           end
 
@@ -141,20 +145,10 @@ module Rxntoarb
       end
     end #}}}
 
-    def exclude?(string, type=:default) #{{{
+    def exclude?(string) #{{{
       return false unless Rxntoarb.options[:keep]
-      exclude = false
-      Rxntoarb.options[:keep].each do |keep, regexp|
-        if type == :region
-          next unless regexp.source =~ /\A@/ # first character in regexp must be @ to operate on regions
-        end
-        if keep == :include_only
-          exclude = exclude || string !~ regexp # exclude if string doesn't match regexp
-        else
-          exclude = exclude || string =~ regexp # exclude if string matches regexp
-        end
-      end
-      exclude
+      Rxntoarb.options[:keep].each { |keep, regexp| return true if (keep == :include_only && string !~ regexp) || (keep == :exclude && string =~ regexp) }
+      false
     end #}}}
 
   def read_reaction(rline) #{{{

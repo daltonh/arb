@@ -1,0 +1,34 @@
+MARKDOWN
+Include the body force in each of the equations, acting similarly to a (negative) uniform pressure gradient
+END_MARKDOWN
+
+GLOBAL_REPLACEMENTS R "<<body_force>>" W "1" # set this flag to be used in single_species_visualise_forces
+
+# define the body force as a derived, as it is likely that we want to manipulate it during the simulation
+# by default the force is zero
+# need to make this a local, or reorder or something
+{{ return vector_expand(
+  'NONE_DERIVED <body_force[l=$l]> "0.d0"'
+) }}
+
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+
+# add to cell centred force
+    for my $l (string_eval('<<dimensions>>','list')) {
+      $return_string .= "VARIABLE <dynamic_force_c_$species"."[l=$l]> '<dynamic_force_c_$species"."[l=$l]>+<body_force[l=$l]>'\n";
+    }
+
+# add to face centred force, depending on 
+    if (string_test('<<dynamicforcefmethod>>','dxunit')) {
+      $return_string .= "VARIABLE <dynamic_force_f_$species> '<dynamic_force_f_$species>+dot(<body_force[l=:]>,<facedxunit[l=:]>)'\n"
+    } elsif (string_test('<<dynamicforcefmethod>>','facegrad') || string_test('<<dynamicforcefmethod>>','facegradadjacentcells')) {
+      $return_string .= "VARIABLE <dynamic_force_f_$species> '<dynamic_force_f_$species>+dot(<body_force[l=:]>,<facenorm[l=:]>)'\n"
+    } else {
+      $return_string .= "ERROR 'problem with <<dynamicforcefmethod>> in multifluid/body_force template file\n";
+    }
+
+  }
+  return $return_string;
+}}

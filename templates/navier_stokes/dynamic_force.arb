@@ -11,6 +11,4 @@ END_MARKDOWN
 
 #FACE_DERIVED <p_f> "faceave(<p>)" ON <allfaces>
 INCLUDE "p_f"
-<<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "-celldivgrad[l=1](<p_f>)" ON <allcells>
-<<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-celldivgrad[l=2](<p_f>)" ON <allcells>
-<<dim3comment>>CELL_DERIVED <dynamic_force_c[l=3]> "-celldivgrad[l=3](<p_f>)" ON <allcells>
+CELL_DERIVED <dynamic_force_c[l=<<i>>]> "-celldivgrad[l=<<i>>](<p_f>)" ON <allcells>

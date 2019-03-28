@@ -1,5 +1,7 @@
 MARKDOWN
 Here we setup an implicit relative limiter for <c_/species>, adding the necessary suffixes to all of the variables used in the limiter calculation
+
+All variables defined from this file onwards start with '<c'
 END_MARKDOWN
 
 INCLUDE_TEMPLATE "advection_limiters/implicit" 

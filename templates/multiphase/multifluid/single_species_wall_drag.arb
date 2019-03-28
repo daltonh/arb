@@ -1,0 +1,31 @@
+#Slip based based wall drag - excluding the Stokes drag for unbounded flows
+
+MARKDOWN
+Here we find <alpha1_<<species>> and <alpha1_species0 for combinations of species in which one of them is the continuous phase (species0)
+END_MARKDOWN
+
+IF {{ return string_test('<<species>>','species0') }}
+  ERROR "single_species_wall_drag can only be called with disperse phase species: was called with species = <<species>>"
+END_IF
+
+
+#Calculate wall normal distance
+INCLUDE_TEMPLATE "wall_normal_tensor.arb"
+CELL_CONSTANT <wall_normal_magnitude_norm_<<species>>> "cellmin(<a_<<species>>>/<wall_normal_magnitude>,1.0d0)" ON <domain> output
+CELL_CONSTANT <particle_force_alpha1_distance_<<species>>> "(1.d0/(1.d0-((9/16)*(<wall_normal_magnitude_norm_<<species>>>))+((1/8)*(<wall_normal_magnitude_norm_<<species>>>)^3-(45/256)*(<wall_normal_magnitude_norm_<<species>>>)^4))) - 1" ON <domain> output
+
+#Wall drag coefficient
+CELL_DERIVED <particle_force_alpha1_<<species>>> "9.d0/2.d0*<mu_species0>/<a_<<species>>>^2*<particle_force_alpha1_distance_<<species>>>" ON <domain> output
+# create a vector from <particle_force_alpha1_distance> 
+
+# calculate the slip velocity for this phase
+#INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities" R "<<variable_type>>" W "LOCAL" $ local no longer needed
+INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities"
+
+IF 0 # trial based on solid velocity relative to wall velocity - very stable
+  CELL_DERIVED <particle_force_wall_drag_<<species>>[l=<<i>>]> "-<particle_force_alpha1_<<species>>>*dot(<unit_wall_tt[l=<<i>>,:]>,<u_<<species>>[l=:]>)" ON <domain> output
+ELSE
+  CELL_DERIVED <particle_force_wall_drag_<<species>>[l=<<i>>]> "-<particle_force_alpha1_<<species>>>*dot(<unit_wall_tt[l=<<i>>,:]>,<u_slip_<<species>>[l=:]>)" ON <domain> output
+END_IF
+VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_wall_drag_<<species>>[l=<<i>>]>"
+VARIABLE <extra_force_species0[l=<<i>>]> "<extra_force_species0[l=<<i>>]> - <particle_force_wall_drag_<<species>>[l=<<i>>]>*<phi_bounded_<<species>>>/<phi_bounded_species0>"

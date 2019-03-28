@@ -186,7 +186,7 @@ ifeq "$(strip $(intel_mkl))" "present"
       ifeq "$(omp)" "on"
 # the following have been tested with versions 12.1.2, 13.0.1, 14.0.0
 # osX, static linking, 32bit integers (lp64), omp + blas95 and lapack95 interfaces
-        libs := $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_intel_thread.a $(mklroot_local)/lib/libmkl_core.a -openmp -lpthread -lm
+        libs := $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_intel_thread.a $(mklroot_local)/lib/libmkl_core.a -fopenmp -lpthread -lm
       else
 # osX, static linking, 32bit integers (lp64), sequential + blas95 and lapack95 interfaces
         libs := $(mklroot_local)/lib/libmkl_blas95_lp64.a  $(mklroot_local)/lib/libmkl_lapack95_lp64.a $(mklroot_local)/lib/libmkl_intel_lp64.a $(mklroot_local)/lib/libmkl_sequential.a $(mklroot_local)/lib/libmkl_core.a -lpthread -lm
@@ -207,7 +207,7 @@ ifeq "$(strip $(intel_mkl))" "present"
       ifeq "$(mach_type)" "intel64"
         ifeq "$(omp)" "on"
 # linux intel64, static linking, 32bit integers (lp64), omp, working with 12.1.2
-          libs := $(mklroot_local)/lib/intel64/libmkl_blas95_lp64.a  $(mklroot_local)/lib/intel64/libmkl_lapack95_lp64.a  -Wl,--start-group  $(mklroot_local)/lib/intel64/libmkl_intel_lp64.a $(mklroot_local)/lib/intel64/libmkl_intel_thread.a $(mklroot_local)/lib/intel64/libmkl_core.a -Wl,--end-group -openmp -lpthread -lm
+          libs := $(mklroot_local)/lib/intel64/libmkl_blas95_lp64.a  $(mklroot_local)/lib/intel64/libmkl_lapack95_lp64.a  -Wl,--start-group  $(mklroot_local)/lib/intel64/libmkl_intel_lp64.a $(mklroot_local)/lib/intel64/libmkl_intel_thread.a $(mklroot_local)/lib/intel64/libmkl_core.a -Wl,--end-group -fopenmp -lpthread -lm
         else
 # linux intel64, static linking, 32bit integers (lp64), sequential, working with 12.1.2
           libs := $(mklroot_local)/lib/intel64/libmkl_blas95_lp64.a  $(mklroot_local)/lib/intel64/libmkl_lapack95_lp64.a  -Wl,--start-group  $(mklroot_local)/lib/intel64/libmkl_intel_lp64.a $(mklroot_local)/lib/intel64/libmkl_core.a $(mklroot_local)/lib/intel64/libmkl_sequential.a -Wl,--end-group -lpthread -lm
@@ -218,7 +218,7 @@ ifeq "$(strip $(intel_mkl))" "present"
       else
         ifeq "$(omp)" "on"
 # linux ia32, static linking, 32bit integers (lp64), omp, working with 12.1.2
-          libs := $(mklroot_local)/lib/ia32/libmkl_blas95.a  $(mklroot_local)/lib/ia32/libmkl_lapack95.a  -Wl,--start-group  $(mklroot_local)/lib/ia32/libmkl_intel.a $(mklroot_local)/lib/ia32/libmkl_intel_thread.a $(mklroot_local)/lib/ia32/libmkl_core.a -Wl,--end-group -openmp -lpthread -lm 
+          libs := $(mklroot_local)/lib/ia32/libmkl_blas95.a  $(mklroot_local)/lib/ia32/libmkl_lapack95.a  -Wl,--start-group  $(mklroot_local)/lib/ia32/libmkl_intel.a $(mklroot_local)/lib/ia32/libmkl_intel_thread.a $(mklroot_local)/lib/ia32/libmkl_core.a -Wl,--end-group -fopenmp -lpthread -lm 
         else
 # linux ia32, static linking, 32bit integers (lp64), sequential, working with 12.1.2
           libs := $(mklroot_local)/lib/ia32/libmkl_blas95.a  $(mklroot_local)/lib/ia32/libmkl_lapack95.a  -Wl,--start-group  $(mklroot_local)/lib/ia32/libmkl_intel.a $(mklroot_local)/lib/ia32/libmkl_sequential.a $(mklroot_local)/lib/ia32/libmkl_core.a -Wl,--end-group -lpthread -lm
@@ -321,10 +321,10 @@ else
 	cflagsnoomp := $(cflags)
 	cdebugnoomp := $(cdebug)
   ifeq "$(omp)" "on"
-    cflags += -openmp
-    cdebug += -openmp
-    lflags += -openmp
-    ldebug += -openmp
+    cflags += -fopenmp
+    cdebug += -fopenmp
+    lflags += -fopenmp
+    ldebug += -fopenmp
   endif
 # the noomp flags are only used when intel version 13 compiler is being used - it strangely throws up an internal error when compiling kernel_module.f90 under both linux and osx
 # seems to be OK in version 14, as tested on osx
@@ -388,11 +388,14 @@ ifeq "$(strip $(pardiso))" "present"
   else
 # on linux both intel and gfortran
     ifeq "$(compiler)" "intel"
-      ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-INTEL1301-X86-64.so) )" ""
+#     ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-INTEL1301-X86-64.so) )" ""
+# there doesn't seem to be an intel specific library anymore, so try with the gnu version
+      ifeq "$(and $(wildcard $(pardisolicencedir)/pardiso.lic), $(wildcard $(pardisodir)/libpardiso600-GNU720-X86-64.so) )" ""
         pardiso = not present
       else
 #       libs += -L$(pardisodir) -lpardiso600-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 -lgfortran -fopenmp
-        libs := -L$(pardisodir) -lpardiso600-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
+#       libs := -L$(pardisodir) -lpardiso600-INTEL1301-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
+        libs := -L$(pardisodir) -lpardiso600-GNU720-X86-64 -L/opt/intel/mkl/lib/intel64 $(oldlibs) -fopenmp
       endif
     else
 # now only the one new version, 7.20

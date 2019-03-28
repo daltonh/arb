@@ -2,4 +2,4 @@
 # used when setting suffixes etc
 # note that a 'SUBSTITUTE' replacement is used, requiring that this variable be in the scope of one of the calling blocks (files)
 # this is processed as a variablelist, which is space delimited, but does not actually require the quotes
-REPLACEMENTS S "<<replacement_variables>>" W '"<phi>" "<phi upper bound>" "<phi lower bound>" "<phi_f low order>" "<phi_c low order>" "<phi delta>" "<phi magnitude>" "<phi eps>" "<phi deltac>" "<phi diff>" "<phi diff bounded>" "<phi betar>" "<phi limiter domain>" "<phi limiter>" "<phi limiter grad[l=:]>"'
+REPLACEMENTS S "<<replacement_variables>>" W '"<phi>" "<phi_upper_bound>" "<phi_lower_bound>" "<phi_f_low_order>" "<phi_c_low_order>" "<phi_delta>" "<phi_magnitude>" "<phi_eps>" "<phi_deltac>" "<phi_diff>" "<phi_diff_bounded>" "<phi_betar>" "<phi_limiter_domain>" "<phi_limiter>" "<phi_limiter_grad[l=:]>"'

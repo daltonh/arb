@@ -1,0 +1,79 @@
+MARKDOWN
+Here we find the osmotic pressure for a disperse phase species <<species>>
+END_MARKDOWN
+
+# this specifies the type of osmotic pressure function
+#REPLACEMENTS D "<<osmotic_pressure_method>>" W "none"
+#REPLACEMENTS D "<<osmotic_pressure_method>>" W "dilute"
+#REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarling"
+REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlinglimited" # same as carnahanstarling, but goes to infinity at <p_osmotic_phi_max_allsolids> rather than 1
+#REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlingsinglelimited"
+
+# we can also include steric hindrance using some type of step function
+REPLACEMENTS D "<<steric_pressure_method>>" W "none"
+#REPLACEMENTS D "<<steric_pressure_method>>" W "step"
+
+IF {{ return string_test('<<osmotic_pressure_method>>','none')}}
+
+  NONE_CONSTANT <p_osmotic_multiplier_<<species>>> [Pa] "0.d0"
+
+ELSE_IF {{ return string_test('<<osmotic_pressure_method>>','dilute')}}
+# linear osmotic pressure, dilute assumption, multiplier is location independent
+  NONE_CONSTANT <p_osmotic_multiplier_<<species>>> [Pa] "<k_boltzmann>*<T>/<V_<<species>>>"
+
+ELSE_IF {{ return string_test('<<osmotic_pressure_method>>','carnahanstarlingsinglelimited')}}
+  NONE_CONSTANT <p_osmotic_phi_max_<<species>>> "<phi_max_allsolids>"
+  NONE_CONSTANT <p_osmotic_phi_tol> "<phi_tol>"
+  CELL_DERIVED <p_osmotic_phi_norm_<<species>>> "cellmin(<phi_pos_<<species>>>,<p_osmotic_phi_max_<<species>>>-<p_osmotic_phi_tol>)/<p_osmotic_phi_max_<<species>>>" output
+  CELL_DERIVED <p_osmotic_Z_<<species>>> [Pa] "(1.d0+<p_osmotic_phi_norm_<<species>>>+<p_osmotic_phi_norm_<<species>>>^2-<p_osmotic_phi_norm_<<species>>>^3)/((1.d0-<p_osmotic_phi_norm_<<species>>>)^3)" ON <allcells>
+  CELL_LOCAL <p_osmotic_multiplier_<<species>>> [Pa] "<k_boltzmann>*<T>*<p_osmotic_Z_<<species>>>/<V_<<species>>>" ON <allcells>
+
+ELSE
+# methods that have a maximum total solids magnitude, with a multiplier that can be expressed as a function of total solid volume fraction
+# create a possibly normalised and limited phi for use in the allsolids multiplier
+  NONE_CONSTANT <p_osmotic_phi_max_allsolids> "<phi_max_allsolids>"
+  NONE_CONSTANT <p_osmotic_phi_tol> "<phi_tol>"
+  CELL_DERIVED <p_osmotic_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<p_osmotic_phi_max_allsolids>-<p_osmotic_phi_tol>)/<p_osmotic_phi_max_allsolids>" output
+
+  IF {{ return string_test('<<osmotic_pressure_method>>','carnahanstarling') }}
+# for the true carnahanstarling method the osmotic pressure approaches infinity at phi=1
+    NONE_CONSTANT <p_osmotic_phi_max_allsolids> 1.d0
+  END_IF
+
+  IF {{ return (string_test('<<osmotic_pressure_method>>','carnahanstarling') || string_test('<<osmotic_pressure_method>>','carnahanstarlinglimited')) }}
+    CELL_DERIVED <p_osmotic_Z_allsolids> [Pa] "(1.d0+<p_osmotic_phi_norm_allsolids>+<p_osmotic_phi_norm_allsolids>^2-<p_osmotic_phi_norm_allsolids>^3)/((1.d0-<p_osmotic_phi_norm_allsolids>)^3)" ON <allcells>
+
+  ELSE
+    ERROR "in single_species_osmotic_pressure: osmotic_pressure_method = <<osmotic_pressure_method>> not coded yet or unknown"
+  END_IF
+
+  CELL_LOCAL <p_osmotic_multiplier_<<species>>> [Pa] "<k_boltzmann>*<T>*<p_osmotic_Z_allsolids>/<V_<<species>>>" ON <allcells>
+
+END_IF
+
+CELL_LOCAL <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_<<species>>>" ON <allcells> # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+
+IF {{ return string_test('<<steric_pressure_method>>','step')}}
+
+# define some constants
+  NONE_CONSTANT <p_steric_gradient_low> [Pa] 1.d+0
+  NONE_CONSTANT <p_steric_gradient_high> [Pa] 1.d+5
+  NONE_CONSTANT <p_steric_phi_max_allsolids> "<phi_max_allsolids>"
+  NONE_CONSTANT <p_steric_delta_phi_1> 0.05d0
+  NONE_CONSTANT <p_steric_delta_phi_2> 0.05d0
+  NONE_CONSTANT <p_steric_A> "<p_steric_gradient_high>/(2.d0*<p_steric_delta_phi_2>)"
+  NONE_CONSTANT <p_steric_phi_1_max> "<p_steric_phi_max_allsolids>-<p_steric_delta_phi_1>"
+  NONE_CONSTANT <p_steric_phi_2_max> "<p_steric_phi_1_max>-<p_steric_delta_phi_2>"
+  NONE_CONSTANT <p_steric_B> "<p_steric_phi_1_max>-<p_steric_delta_phi_2>/2.d0"
+
+  CELL_DERIVED <p_steric_phi_allsolids> "1.d0-<phi_pos_species0>" ON <allcells>
+  CELL_LOCAL <p_steric_<<species>>> "0.d0" ON <allcells> output
+  IF 1 # add low contribution
+    CELL_LOCAL <p_steric_<<species>>> "<p_steric_gradient_low>*<phi_<<species>>>"
+  END_IF
+  IF 1 # add high contribution
+    CELL_LOCAL <p_steric_<<species>>> "<p_steric_<<species>>>+cellif(<p_steric_phi_allsolids>-<p_steric_phi_2_max>,(<phi_pos_<<species>>>/<p_steric_phi_allsolids>)*cellif(<p_steric_phi_allsolids>-<p_steric_phi_1_max>,<p_steric_gradient_high>*(<p_steric_phi_allsolids>-<p_steric_B>),<p_steric_A>*(<p_steric_phi_allsolids>-<p_steric_phi_2_max>)^2),0.d0)"
+  END_IF
+
+  CELL_LOCAL <p_osmotic_<<species>>> "<p_osmotic_<<species>>>+<p_steric_<<species>>>"
+END_IF

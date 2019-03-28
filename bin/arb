@@ -311,10 +311,14 @@ elif [[ $output_dir != /* ]] ; then
   output_dir="$working_dir/$output_dir";
 fi;
 # the previous_output_dir and previous_build_dir are only set if needed
+# -n means that string is defined
 if [ -n "$previous_output_dir" ] ; then
   if [[ $previous_output_dir != /* ]] ; then
     previous_output_dir="$working_dir/$previous_output_dir";
   fi;
+  previous_build_dir="$previous_output_dir/build";
+elif [ ! -d "$output_dir" -a -L "latest_output" ] ; then # in the instance that the output directory does not exist, check if link to last run output directory is available
+  previous_output_dir="$working_dir/latest_output";
   previous_build_dir="$previous_output_dir/build";
 fi;
 
@@ -351,6 +355,10 @@ output_files_to_delete=(
   'debug*.msh'
   '*_warnings.txt'
   '*_details.txt'
+  'kill'
+  'stop*'
+  'halt'
+  'dump*'
 ); # relative to output directory
 working_files_to_delete=(
   'fort.*'
@@ -384,7 +392,7 @@ export KMP_STACKSIZE
 #---------------------------
 # ready output directory and structure for writing
 
-# create it if it doesn't already exist
+# create it if it doesn't already exist, and add link to it to signify that it is the lastest output dir
 if [ ! -d "$output_dir" ] ; then mkdir -p "$output_dir" ; fi ;
 # cp new .gitignore in the output directory if it isn't there already
 if [ ! -e "$output_dir/.gitignore" ] ; then cp -p "$misc_dir/git/gitignore_empty_directory" "$output_dir/.gitignore" >/dev/null 2>/dev/null  ; fi ;
@@ -442,6 +450,9 @@ if [ -n "$previous_output_dir" -a $ocontinue -eq 1 ] ; then # -n means that stri
   )
 fi;
 
+# we are finished with previous_output_dir now, so update the latest_output link to the new directory
+rm 'latest_output' ; ln -s "$output_dir" "latest_output" ;
+
 #---------------------------
 # now that output directory is ready for writing redirect stdout and stderr to output.scr
 if [ $oquiet -eq 1 ] ; then
@@ -486,10 +497,14 @@ for file in "${externals[@]}" ; do
 done
 echo "$file_separator" >>"$root_input_file" ;
 echo "# the following working directory files found by the arb script: ${arbfiles[@]}" >>"$root_input_file" ;
+# at the same time place a copy of the input files in the output directory, clearing out any old ones
+if [ ! -d "$output_dir/input_files" ] ; then mkdir -p "$output_dir/input_files" ; fi ;
+rm "$output_dir/input_files/"* >/dev/null 2>/dev/null ; # quietly remove everything from here
 for file in "${arbfiles[@]}" ; do
   if [[ $file == *'.in' ]]; then echo "WARNING: the 'in' suffix on arb input files has been depreciated.  For future compatibility replace the suffix on $file with 'arb'."; fi
   echo "INCLUDE_WORKING \"$file\"" >>"$root_input_file" ;
   echo "$file_separator" >>"$root_input_file" ;
+  cp "$file" "$output_dir/input_files";
 done
 echo "INFO: the file $root_input_file has been created" ;
 

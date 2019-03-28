@@ -3,9 +3,9 @@
 # manual address (root=rootvar) will be /Users/daltonh/arb/manual/local/html
 
 # config
-arb_manual_local_dir="/Users/daltonh/arb/manual/local"; # on roo, directory that will store manual
+arb_manual_local_dir="/Users/daltonh/arb/manual/local"; # on wallaby, directory that will store manual
 
-html_local_dir="$arb_manual_local_dir/html"; # on roo
+html_local_dir="$arb_manual_local_dir/html"; # on wallaby
 
 echo "INFO: updating local html directory";
 arb_doc --html-dir "$html_local_dir" --root "$html_local_dir"

@@ -35,7 +35,11 @@ INFO_DATE+ ", 24/9/18"  # interpreted as the last modification date
 # where location string could be: "DOMAIN OF <a region>" - domain faces/cells contained within <a region>
 # where location string could be: "ASSOCIATED WITH <a region>" - faces/cells both contained within and surrounding <a region>
 
+<<<<<<< HEAD
 FACE_REGION <slip walls> "compound(<boundaries>-<inlet>-<outlet>-<cylinder>)"
+=======
+FACE_REGION <slip_walls> "compound(<boundaries>-<inlet>-<outlet>-<cylinder>)"
+>>>>>>> develop
 FACE_REGION <walls> "compound(<cylinder>)"
 NODE_REGION <cylinder nodes> "associatedwith(<cylinder>)"
 FACE_REGION <inlet centreline> "at(0.d0,0.d0,0.d0)" ON <inlet>
@@ -106,7 +110,7 @@ END_IF
 INCLUDE "domain" # equations to be solved within the domain
 INCLUDE "outlet_p_set" # outlet BC
 INCLUDE "walls" # nonslip walls BC, used on cylinder
-INCLUDE "walls_slip" R "<walls" W "<slip walls" # nonslip walls BC, do string replacement that will cover both equation and region names
+INCLUDE "walls_slip" R "<walls" W "<slip_walls" # nonslip walls BC, do string replacement that will cover both equation and region names
 INCLUDE "inlet_u_set" # plug flow inlet velocity profile - for inertial problems setting velocity profile directly is more stable than using fully_developed templates
 
 # overwrite the default properties with the following
@@ -154,32 +158,55 @@ IF 1
   IF 0
 # without any change to <c limiter_species0> this results in first order upwinding of <c>, which is stable, produces bounded results, but is not accurate
     INCLUDE "equations" R "<<speciesloworderadvectioncomment>>" W "" R "<<specieshighorderadvectioncomment>>" W "#"
+<<<<<<< HEAD
     VARIABLE <c limiter_species0> "1.d0" # this will use high order non-limited upwinding, which will cause under and over shoots
+=======
+    VARIABLE <c_limiter_species0> "1.d0" # this will use high order non-limited upwinding, which will cause under and over shoots
+>>>>>>> develop
   ELSE
 # the following implements high order limited advection of <c>, with limits on the gradient found by looking upwind 2 levels of separation from each cell
     INCLUDE "equations" R "<<limiterupwindseparation>>" W "2" # 2 is the default, anymore is probably overboard, but it does demonstrates how to change this separation
 # further, modify the parameters used in the advection limiting routine to be less conservative (less stable, but more accurate by doing less gradient limiting)
     INCLUDE_TEMPLATE "advection_limiters/implicit"
     INCLUDE "extreme_parameters" R "<phi" W "<c" # set higher accuracy but lower stability advection parameters
+<<<<<<< HEAD
     VARIABLE <c limiter_species0> output
   END_IF
 
 # overwrite some species boundary conditions etc
   FACE_EQUATION <c walls_species0> "<c_species0>-1.d0" ON <walls> # <walls> is the cylinder surface, which has the set concentration
   FACE_EQUATION <c slip walls_species0> "<c_j_f_species0>" ON <slip walls> # whereas on the <slip walls> we use a zero flux condition
+=======
+    VARIABLE <c_limiter_species0> output
+  END_IF
+
+# overwrite some species boundary conditions etc
+  FACE_EQUATION <c_walls_species0> "<c_species0>-1.d0" ON <walls> # <walls> is the cylinder surface, which has the set concentration
+  FACE_EQUATION <c_slip_walls_species0> "<c_j_f_species0>" ON <slip_walls> # whereas on the <slip_walls> we use a zero flux condition
+>>>>>>> develop
   CONSTANT <c_inlet_conc_species0> 0.d0 # nothing coming in
   CONSTANT <c_D_species0> 1.d-2 # small, nonzero diffusivities are the hardest to compute accurately using these boundary conditions, as mesh resolution in the concentration boundary layer becomes critical
 
 # various outlet conditions:
+<<<<<<< HEAD
   #FACE_EQUATION <c outlet equation_species0> "faceif(<u_f>,facegrad[adjacentcells](<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
   FACE_EQUATION <c outlet equation_species0> "facegrad[adjacentcells](<c_species0>)" ON <outlet> # the most stable type of outlet boundary condition
   #FACE_EQUATION <c outlet equation_species0> "faceif(<u_f>,facegrad(<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+=======
+  #FACE_EQUATION <c_outlet_equation_species0> "faceif(<u_f>,facegrad[adjacentcells](<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+  FACE_EQUATION <c_outlet_equation_species0> "facegrad[adjacentcells](<c_species0>)" ON <outlet> # the most stable type of outlet boundary condition
+  #FACE_EQUATION <c_outlet_equation_species0> "faceif(<u_f>,facegrad(<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
+>>>>>>> develop
 
 # the following can be used as a destruction term
   #NONE_CONSTANT <c_source_factor_species0> 0.1d0
   #VARIABLE <c_source_species0> "-<c_source_factor_species0>*<c_pos_species0>" # including concentration destruction term now
 
+<<<<<<< HEAD
   NONE_OUTPUT <c monitor_species0> "cellsum(<c_species0>,region=<wake monitor>)"
+=======
+  NONE_OUTPUT <c_monitor_species0> "cellsum(<c_species0>,region=<wake monitor>)"
+>>>>>>> develop
 
 END_IF
 #-------------------------------------------------------------------

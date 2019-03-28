@@ -1,7 +1,14 @@
 MARKDOWN
-Sets basic names etc for a wall, but does not specify methods (except for using <<pextrapolation>>)
+Sets basic names etc for a wall, and only specifies the boundary normal method
+
+Use the template "walls" instead of calling this directly
 END_MARKDOWN
-# set <<boundarynormalmethod>> value to be equatl to <<pextrapolation>>, which is set in default replacement file
-INCLUDE "default_string_replacements"
-{{ string_set("<<boundarynormalmethod>>",string_eval("<<pextrapolation>>")); }}
-INCLUDE "boundary_equations" R "<region" W "<walls"
+
+# use rhiechow
+# in v0.59 changed to default on 24/9/18 due to much better velocity and pressure distribution along slip walls in transient_flow_around_cylinder_with_species
+REPLACEMENTS D "<<boundarynormalmethod>>" W "rhiechow"
+
+# use zerodynamic
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "zerodynamic"
+
+INCLUDE "boundary_equations" D "<region" W "<walls"

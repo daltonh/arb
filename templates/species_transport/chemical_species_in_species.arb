@@ -1,0 +1,82 @@
+MARKDOWN
+This for the transport of chemcial species <<chemical_species>> that is attached to (on) or within (in) a multifluid species <<species>>.
+Where the chemical species is to be defined on the species is determined by the <<where>>=in|on that can be previously set, but defaults to in.
+
+Variables in this file end with the suffix <<chemical_species>>_<<where>>_<<species>>, which is defined as a new local string variable /species/.
+
+Instead of setting <<where>>=on for a surface bound species, you can also call with the template chemical_species_on_species which does this setting for you.
+
+Notation:
+1.  Variables without a caret (eg c, mol/m^3) are expressed on a per total volume basis
+2.  Variables with a single caret (eg c^, mol/m^3) are expressed on a species volume specific basis, ie, amount/(volume of species)
+3.  Variables with a double caret (eg c^^, mol/m^2) are expressed on a species surface area specific basis, ie, amount/(surface area of species)
+
+Note that the notation doesn't imply (necessarily) whether the species is on or in.  IE, we can still define a c^ for a surface bound species, but in this instance c^ would represent the equivalent volume specific concentration for the material that is actually bound to the species surface.  Similarly c^^ represents a surface concentration, which for a volume bound species would be an equivalent surface concentration for the physically volume bound chemical species.
+
+Other variables, such as the source terms, are defined similarly, with (eg) <c^_source_/species/> being the species volume specific source which can be set for a volume bound species (<<where>>=in), and <c^^_source_/species/> being a surface area specific one which can be set for a surface bound species (<<where>>=on>).
+
+Note that where the species is held (in|on) determines whether our unknown for the species is volume (c^) or surface (c^^) specific, however for both cases the conservation equation is solved for c (not-specific concentration), ensuring conservation of mass
+All variables to do with this routine start with either <c^_ or <c^^_, depending on <<where>>, except for the variables <c_/species/>, <c^_/species/> and <c^^_/species/>, which are set for both types of <<where>>.
+END_MARKDOWN
+
+# must be called with <<chemical_species>> and <<species>> defined, with <<where>>=in|on defaulting to in (ie, contained within the species volume)
+IF {{ return (!(string_examine('<<chemical_species>>'))) }} # this is 1 if the string <<chemical_species>> is not defined
+  ERROR "the chemical species string has not been set in chemical_species_on_species template: <<chemical_species>>"
+END_IF
+IF {{ return (!(string_examine('<<species>>'))) }} # this is 1 if the string <<species>> is not defined
+  ERROR "the multifluid species string has not been set in chemical_species_on_species template: <<species>>"
+END_IF
+REPLACEMENTS D "<<where>>" W "in"
+
+# create an almalgam of the species names to simplify notation
+REPLACEMENTS D '/species/' W '<<chemical_species>>_<<where>>_<<species>>'
+
+# default to first order upwind advection
+REPLACEMENTS D '<<specieslimitedadvection>>' W '0'
+
+REPLACEMENTS D "<c_" W "<c_" # define the scope of this to be outside the if statement, but don't do replacements until after specific species have been defined by setting the string = replacement
+
+# volume species surface area of species
+NONE_CONSTANT <A^_<<species>>> "<A_<<species>>>/<V_<<species>>>"
+
+CELL_LOCAL <c_pos_/species/> "cellmax(<c_/species/>,0.d0)" ON <allcells> output
+
+IF {{ return (string_test('<<where>>','on')) }}
+# on the surface
+# define the equivalent volume bound concentration (whether using it or not)
+  CELL_LOCAL <c^_/species/> "<c^^_/species/>*<A^_<<species>>>" ON <allcells> output
+# define the equivalent total concentration (whether using it or not)
+  CELL_LOCAL <c_/species/> "<c^_/species/>*<phi_bounded_<<species>>>" ON <allcells> output
+# include the transport equations, solving for the surface specific concentration unknown <c^^_chemical_species_on_species>
+  REPLACEMENTS S "<c_" W "<c^^_" # from now on all variables are surface or volume specific
+  INCLUDE "equations" R "<u_f>" W "<phiu_f_<<species>>>"
+
+ELSE
+# in the volume
+# define the equivalent total concentration (whether using it or not)
+  CELL_LOCAL <c_/species/> "<c^_/species/>*<phi_bounded_<<species>>>" ON <allcells> output
+# define the equivalent surface bound concentration (whether using it or not)
+  CELL_LOCAL <c^^_/species/> "<c^_/species/>/<A^_<<species>>>" ON <allcells> output
+# include the transport equations, solving for the volume specific concentration unknown <c^_chemical_species_in_species>
+  REPLACEMENTS S "<c_" W "<c^_"
+  INCLUDE "equations" R "<u_f>" W "<phiu_f_<<species>>>"
+
+END_IF
+
+#{{ print string_debug(); }}
+
+# reform the flux and equations to be specific, noting that at this stage <c_ is being replaced
+IF 1
+# particle version, with diffusion using the diffusivity of the particle species <<species>>
+  NONE_CONSTANT <D_<<species>>> [m^2/s] "<k_boltzmann>*<T>/(6.d0*<pi>*<mu_species0>*<a_<<species>>>)" # based on stokes drag
+  NONE_CONSTANT <c_D_/species/> "<D_<<species>>>"
+# FACE_DERIVED <c_j_f_/species/> "<c_f_/species/>*<phiu_f_<<species>>>-<c_D_/species/>*facegrad(<phi_pos_<<species>>>*<c_/species/>)" ON <allfaces> # this is the flux of species over each cell face, composed of an advection and diffusion component
+  FACE_DERIVED <c_j_f_/species/> "<c_f_/species/>*<phiu_f_<<species>>>-<c_D_/species/>*<phi_f_bounded_<<species>>>*facegrad(<c_/species/>)" ON <allfaces> # this is the flux of species over each cell face, composed of an advection and diffusion component
+ELSE
+# TODO: checkout how this works with fluid species - probably just a change to the diffusivity
+# fluid version
+  FACE_DERIVED <c_j_f_/species/> "<c_f_/species/>*<phiu_f_<<species>>>-<c_D_/species/>*<phi_f_bounded_<<species>>>*facegrad(<c_/species/>)" ON <allfaces> # this is the flux of species over each cell face, composed of an advection and diffusion component
+END_IF
+# and reform the equation to solve
+CELL_EQUATION <c_equation_/species/> "(<c_/species/>-<c_/species/[r=1]>*<phi_pos_<<species>>[r=1]>/<phi_bounded_<<species>>>)/<dt> + celldiv(<c_j_f_/species/>)/<phi_bounded_<<species>>> - <c_source_/species/>"
+

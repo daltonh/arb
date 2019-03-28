@@ -1,0 +1,27 @@
+MARKDOWN
+Wall lift - Cherukat and Mclaughlin for non rotating - 0 slip - linear shear flows
+END_MARKDOWN
+
+# for this force we need the wall normals
+INCLUDE "wall_normals"
+# and also the strain rate magnitude for the fluid phase
+INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude" R "<gamma[" W "<gamma_species0[" R "<gamma_magnitude>" W "<gamma_magnitude_species0>" R "<gamma_magnitude_f>" W "<gamma_magnitude_f_species0>" R "<u_f_vect[" W "<u_f_vect_species0[" R "<u[" W "<u_species0[" R "<ugrad_f[" W "<ugrad_f_species0["
+
+IF 1 # Cherukat Wall lift
+   CELL_CONSTANT <wall_normal_magnitude_norm_<<species>>> "cellmin(<a_<<species>>>/<wall_normal_magnitude>,1.0d0)" ON <domain>
+   CELL_CONSTANT <particle_force_alpha5_distance_<<species>>> "(2.0069+1.0575*<wall_normal_magnitude_norm_<<species>>>-2.4007*<wall_normal_magnitude_norm_<<species>>>^2+1.3174*<wall_normal_magnitude_norm_<<species>>>^3)" ON <domain> output
+   #CELL_DERIVED <Re_shear> "<a_<<species>>>^2*<gamma_magnitude_species0>/(<mu_species0>/<rho_species0>)" ON <domain> output #shear based Re number
+   #wall lift coefficient
+   CELL_DERIVED <particle_force_alpha5_<<species>>> "3.d0/(4.d0*<pi>)*<rho_species0>*<a_<<species>>>*<particle_force_alpha5_distance_<<species>>>" ON <domain> output
+ELSE
+  ERROR "no other wall lift coded up yet"
+END_IF
+
+#Normal wall lift force acting only on solid <<species>>
+#CELL_DERIVED <lift_wall_species0>[l=2]> "-<particle_force_alpha5_species0_<<species>>>*<gamma_magnitude_species0>^2*<wall_normal_unit[l=2]>*<phi_bounded_<<species>>>/<phi_bounded_species0>" ON <domain> output
+#CELL_DERIVED <particle_force_wall_<<species>>[l=2]> "<particle_force_alpha5>*<gamma_magnitude_species0>^2*<wall_normal_unit[l=2]>" ON <domain> output
+
+{{ return vector_expand(
+  'CELL_DERIVED <particle_force_wall_<<species>>[l=$l]> "<particle_force_alpha5_<<species>>>*<gamma_magnitude_species0>^2*<wall_normal_unit[l=$l]>" ON <domain> output',
+  'VARIABLE <extra_force_<<species>>[l=$l]> "<extra_force_<<species>>[l=$l]> + <particle_force_wall_<<species>>[l=$l]>"'
+) }}

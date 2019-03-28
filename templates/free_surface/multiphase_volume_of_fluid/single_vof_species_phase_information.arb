@@ -1,0 +1,27 @@
+MARKDOWN
+This is a single species wrapper file for the vof/setup template, converting single phase vof setup to multiphase setup
+END_MARKDOWN
+
+# this file is subsequently called with the string <<species>>, so replacements are defined on any species specific files in volume_of_fluid/setup
+REPLACEMENTS SUFFIX "<vof_phi>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_initial>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_integrated volume>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_centroid[l=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_stretch[l=1]>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_max domain>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_min domain>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_max allcells>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_min allcells>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_outofbounds domain>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_outofbounds all cells>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi change>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_adjust_max>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_adjust_min>" W "_<<species>>"
+REPLACEMENTS SUFFIX "<vof_phi_adjust[r=1]>" W "_<<species>>"
+
+INCLUDE_TEMPLATE "free_surface/volume_of_fluid/phase_information"
+
+REPLACEMENTS D "<<debug>>" W "0"
+IF <<debug>> # debug
+  {{ print string_debug('local'); }}
+END_IF

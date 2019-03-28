@@ -1,5 +1,5 @@
 # Rxntoarb
-# (C) Copyright Christian Biscombe 2016-2018
+# (C) Copyright Christian Biscombe 2016-2019
 
 require 'optparse'
 require_relative 'arb'
@@ -8,12 +8,12 @@ require_relative 'rxn'
 module Rxntoarb
 
   PROGNAME = 'rxntoarb'
-  VERSION = '2.18'
-  DATE = '2018-05-09'
+  VERSION = '2.23'
+  DATE = '2019-03-13'
   INFO = <<-INFO.gsub(/^\s+/, '') # prefer squiggly heredoc <<~ in Ruby 2.3+
     #{PROGNAME} v. #{VERSION} (#{DATE})
     Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
-    (C) Copyright Christian Biscombe 2016-2018
+    (C) Copyright Christian Biscombe 2016-2019
   INFO
 
   TEMPLATE_NAME = "#{PROGNAME}rc" # rxntoarbrc by default
@@ -28,6 +28,7 @@ module Rxntoarb
     opt.banner = "#{INFO}\nUsage: #{PROGNAME} [options] <list of input files>, where options may be:"
     opt.on('-d', '--debug', 'Print debugging output') { self.options[:debug] = true }
     opt.on('-i', '--interactive', 'Prompt before overwriting existing output file') { self.options[:interactive] = true }
+    opt.on('-l', '--alias-labels', 'Use aliases as reaction labels') { self.options[:alias_labels] = true }
     opt.on('-n', '--none-centred', 'Activate ODE mode: generate ODEs (no spatial dependence) rather than PDEs') { self.options[:none_centred] = :flag }
     opt.on('-o', '--outfile <output_file>', 'Write output to output_file (option ignored if multiple input files)') { |outfile| self.options[:outfile] = outfile }
   # opt.on('-s', '--sbml <sbml_output_file>', String, 'Write SBML file') { |sbmlfile| require 'libSBML'; self.options[:sbmlfile] = sbmlfile } # TODO in version 3
@@ -50,6 +51,7 @@ module Rxntoarb
 
     ARGV.each do |infile|
       abort "ERROR: input file #{infile} does not exist (or isn't a regular file)" unless File.file?(infile)
+      abort "ERROR: input file #{infile} is not readable" unless File.readable?(infile)
       warn "WARNING: input file #{infile} has unexpected extension. Is it a valid input file?" unless File.extname(infile) == '.rxn'
       begin
         rxn = Rxn.new(infile)
@@ -80,6 +82,7 @@ module Rxntoarb
   def optparse(argv) #{{{
     OPTIONS.parse!(argv)
     abort "ERROR: template file #{self.options[:template_file]} does not exist (or isn't a regular file)" unless File.file?(self.options[:template_file])
+    abort "ERROR: template file #{self.options[:template_file]} is not readable" unless File.readable?(self.options[:template_file])
     self.options[:template] = File.read(self.options[:template_file]) # store contents of template_file as a string
   rescue OptionParser::InvalidOption, OptionParser::MissingArgument => msg
     warn OPTIONS

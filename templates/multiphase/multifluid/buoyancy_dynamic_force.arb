@@ -2,7 +2,7 @@ MARKDOWN
 Include the weight body force in each of the equations, similar to the vof template
 END_MARKDOWN
 
-GENERAL_REPLACEMENTS R "<<buoyancy>>" W "1" # set this flag to be used in single_species_visualise_forces
+GLOBAL_REPLACEMENTS R "<<buoyancy>>" W "1" # set this flag to be used in single_species_visualise_forces
 
 {{
   my $return_string = '';
