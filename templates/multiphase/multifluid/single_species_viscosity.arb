@@ -56,7 +56,7 @@ ELSE
 
     IF {{ return string_test('<<viscosity_method>>','einstein')}}
   # simplest einstein relationship
-      CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+<phi_bounded_<<species>>>)" ON <allcells>
+      CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<phi_bounded_<<species>>>)" ON <allcells>
 
     ELSE
   # methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
