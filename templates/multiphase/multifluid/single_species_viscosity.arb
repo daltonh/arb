@@ -54,10 +54,12 @@ ELSE
   IF {{ return string_test('<<species>>','species0') }}
 # define the fluid stress, which is in version2 a mixture stress
 
-    IF {{ return string_test('<<viscosity_method>>','einstein')}}
-  # simplest einstein relationship
-      CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+<phi_bounded_<<species>>>)" ON <allcells>
-
+    IF {{ return string_test('<<viscosity_method>>','einsteinsingle')}}
+# simplest einstein relationship, for a single phase
+      CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<phi_bounded_<<species>>>)" ON <allcells>
+    ELSE_IF {{ return string_test('<<viscosity_method>>','einstein')}}
+# for more than one solid use fluid phi to calculate total
+      CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_species0>))" ON <allcells>
     ELSE
   # methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
       NONE_CONSTANT <mu_phi_max_allsolids> "<phi_max_allsolids>"
@@ -89,6 +91,7 @@ ELSE
   END_IF
 
   # now construct viscosity and multiplier for faces
+# note that for version2 the multiplier is actually just the viscosity - bad notation!
   FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> output # used in stress
   FACE_LOCAL <mu_f_multiplier_<<species>>> "<mu_f_<<species>>>" ON <allfaces> # used in rhie-chow
 
