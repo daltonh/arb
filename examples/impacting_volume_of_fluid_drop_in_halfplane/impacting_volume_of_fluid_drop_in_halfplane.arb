@@ -104,6 +104,8 @@ INCLUDE "nondimensional_constants"
 # for nonuniform properties, define them
 <<nonuniformcomment>>INCLUDE "nondimensional_nonuniform_properties"
 
+INCLUDE_TEMPLATE "navier_stokes/unknowns"
+
 # physical data, now for nondimensional uniform properties
 # set these
 #CONSTANT <Re> 1.d+2

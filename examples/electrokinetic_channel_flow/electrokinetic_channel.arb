@@ -119,7 +119,7 @@ FACE_LOCAL <tau[l=1,1]> output
 CELL_UNKNOWN <u[l=1]> "0.d0"
 CELL_UNKNOWN <u[l=2]> "0.d0"
 CELL_UNKNOWN <p> "0.d0"
-FACE_DERIVED <p_error> output
+FACE_DERIVED <dynamic_force_f_{correction}> output
 #CONSTANT <adv_limiter> 0.d0
 
 #-------------------------------------------------------------------

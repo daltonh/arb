@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: charged_particle.arb
    #(comment created during unwrap): new block = charged_particle.arb: sub_block = 0
@@ -156,7 +156,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
       #(hash inserted during unwrap)INCLUDE "binary_ion_combinations"
       # these are relationships that involve combinations of ion properties
       # here they are specific to a binary system of <ion+ n> and <ion- n>, so need overwriting for more complex systems
-      # include this early on, before p_error inclusion
+      # include this early on, before dynamic_force inclusion
       
       # include positive ion concentrations
          #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_concentrations.arb: sub_block = 0
@@ -165,7 +165,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          # these are some derived concentrations
          
          CELL_LOCAL <ion+ n pos> "cellmax(<ion+ n>,0.d0)"
-         FACE_DERIVED <ion+ n_hf> "faceave[harmonicweighted](<ion+ n pos>)" ON <allfaces> # face centred concentrations used in pressure correction (p_error) and in nernst-planck ion transport
+         FACE_DERIVED <ion+ n_hf> "faceave[harmonicweighted](<ion+ n pos>)" ON <allfaces> # face centred concentrations used in pressure correction and in nernst-planck ion transport
          #FACE_DERIVED <ion n_hf> "faceave[harmonic](<ion n pos>)" ON <allfaces>
       # include negative ion concentrations
          #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_concentrations.arb: sub_block = 0
@@ -174,7 +174,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          # these are some derived concentrations
          
          CELL_LOCAL <ion- n pos> "cellmax(<ion- n>,0.d0)"
-         FACE_DERIVED <ion- n_hf> "faceave[harmonicweighted](<ion- n pos>)" ON <allfaces> # face centred concentrations used in pressure correction (p_error) and in nernst-planck ion transport
+         FACE_DERIVED <ion- n_hf> "faceave[harmonicweighted](<ion- n pos>)" ON <allfaces> # face centred concentrations used in pressure correction and in nernst-planck ion transport
          #FACE_DERIVED <ion n_hf> "faceave[harmonic](<ion n pos>)" ON <allfaces>
       
       # also define the following locals
@@ -187,7 +187,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
       #CELL_OUTPUT <rho_e error> "<rho_e>-<rho_e pos>" ON <allcells>
       
       # this face-averaged potential is needed early on in the derived calculations (for dynamic_force_c) so include it here
-      FACE_DERIVED <U_f> "faceave(<U>)" ON <allfaces> # this is needed in <dynamic_force_c> which will be calculated in p_error_dxunit
+      FACE_DERIVED <U_f> "faceave(<U>)" ON <allfaces> # this is needed in <dynamic_force_c>
    
    # now ion transport and potential equation
    #(hash inserted during unwrap)INCLUDE_TEMPLATE "electrokinetics"

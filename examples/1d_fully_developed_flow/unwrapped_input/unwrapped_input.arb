@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: 1d_fully_developed_flow.arb
    #(comment created during unwrap): new block = 1d_fully_developed_flow.arb: sub_block = 0
@@ -46,7 +46,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_funct
          #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "total_stress" 
          
-         # total stress tensor
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)Calculate the total viscous stress tensor
+         #(hash inserted during unwrap)END_MARKDOWN
+         
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_gradient_tensor.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "u_gradient_tensor"
             # a tensor of face centred gradients that respects any reflections

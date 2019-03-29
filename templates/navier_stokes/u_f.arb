@@ -13,6 +13,8 @@ IF {{ return (!(arb_defined('<dynamic_force_f_{correction}>'))) }} # only calcul
 END_IF
 
 # <u_f_vect[l=:]> is now defined in unknowns.arb
+# when arb_defined(<u_f_vect[l=:]>) accepts vectors, place a condition around this statement, but in the meantime just repeat this statement to ensure <u_f_vect[l=:]> is defined for legacy problems
+FACE_LOCAL <u_f_vect[l=<<i>>]> "faceave[<<reflect=<<i>>>>](<u[l=<<i>>]>)" ON <allfaces> # velocity vector interpolated to faces
 FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <allfaces> # volume (velocity) transport over the face, only by arithmetic interpolation
 
 # save old correction velocity for transient calculations
