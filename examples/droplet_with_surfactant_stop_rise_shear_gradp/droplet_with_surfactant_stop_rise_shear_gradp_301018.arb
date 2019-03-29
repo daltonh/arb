@@ -179,10 +179,12 @@ END_IF
 INCLUDE_TEMPLATE "navier_stokes"
 # nonuniform
 <<nonuniformcomment>>INCLUDE "total_stress" R "<mu_f>" W "<vof_mu_harmonic_f>"
+<<nonuniformcomment>>INCLUDE "dynamic_force"
 <<nonuniformcomment>>INCLUDE "u_f" R "<rho_f>" W "<vof_rho_f>" R "<mu_f>" W "<vof_mu_f>"
 <<nonuniformcomment>>INCLUDE "advection_flux" R "<rho>" W "<vof_rho_advection_f[r=1]>" R "<<uniformdensitycomment>>" W "" R "<<nonuniformdensitycomment>>" W "#"
 # uniform
 <<uniformcomment>>INCLUDE "total_stress"
+<<uniformcomment>>INCLUDE "dynamic_force"
 <<uniformcomment>>INCLUDE "u_f"
 <<uniformcomment>>INCLUDE "advection_flux"
 

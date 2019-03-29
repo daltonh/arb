@@ -160,6 +160,7 @@ INCLUDE "force" R "<allcells>" W "<level set all cells>" R "<allfaces>" W "<leve
 # calculate <u_f> using rhie-chow type interpolation, including a contribution from the surface tension force term
 INCLUDE_TEMPLATE "navier_stokes"
 INCLUDE "total_stress" R "<allfaces>" W "<fluid all faces>"
+INCLUDE "dynamic_force" R "<allcells>" W "<fluid all cells>" R "<domainfaces>" W "<fluid domain faces>" R "<allfaces>" W "<fluid all faces>" R "<boundaries>" W "<fluid boundaries>"
 INCLUDE "u_f" R "<allcells>" W "<fluid all cells>" R "<domainfaces>" W "<fluid domain faces>" R "<allfaces>" W "<fluid all faces>" R "<boundaries>" W "<fluid boundaries>"
 INCLUDE "advection_flux" R "<allfaces>" W "<fluid all faces>"
 INCLUDE "momentum_flux" R "<allfaces>" W "<fluid all faces>"

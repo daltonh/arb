@@ -159,12 +159,14 @@ INCLUDE "force" # force done back on the fluid mesh
 INCLUDE_TEMPLATE "navier_stokes"
 # nonuniform
 <<nonuniformcomment>>INCLUDE "total_stress" R "<mu_f>" W "<vof_mu_harmonic_f>"
+<<nonuniformcomment>>INCLUDE "dynamic_force"
 <<nonuniformcomment>>INCLUDE "u_f" R "<rho_f>" W "<vof_rho_f>" R "<mu_f>" W "<vof_mu_f>"
 #<<nonuniformcomment>>INCLUDE "advection_flux" R "<rho>" W "<vof_rho_advection_f[r=1]>" R "<<uniformdensitycomment>>" W "" R "<<nonuniformdensitycomment>>" W "#"
 # with changes to template files in v0.59, set <<uniformdensity>> string here rather than depreciated comment strings
 <<nonuniformcomment>>INCLUDE "advection_flux" R "<rho>" W "<vof_rho_advection_f[r=1]>" R "<<uniformdensity>>" W "1"
 # uniform
 <<uniformcomment>>INCLUDE "total_stress"
+<<uniformcomment>>INCLUDE "dynamic_force"
 <<uniformcomment>>INCLUDE "u_f"
 <<uniformcomment>>INCLUDE "advection_flux"
 
