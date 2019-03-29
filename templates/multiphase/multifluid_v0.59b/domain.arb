@@ -1,6 +1,0 @@
-INCLUDE_LOCAL "unknowns" # no .arb suffix is required
-INCLUDE_LOCAL "total_stress"
-INCLUDE_LOCAL "u_f"
-INCLUDE_LOCAL "advection_flux" # even though this is called for the stokes equations, no terms will be created
-INCLUDE_LOCAL "momentum_flux"
-INCLUDE_LOCAL "conservation"

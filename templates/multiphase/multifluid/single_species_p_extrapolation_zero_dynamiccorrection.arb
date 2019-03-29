@@ -1,0 +1,5 @@
+MARKDOWN
+Similar to the navier-stokes file, p_extrapolation_zero_dynamiccorrection, but here for multiphase <<species>>
+END_MARKDOWN
+
+FACE_EQUATION <equation> "<dynamic_force_f_{correction}_<<species>>>" ON <region>

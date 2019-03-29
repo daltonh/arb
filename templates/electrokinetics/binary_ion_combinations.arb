@@ -1,6 +1,6 @@
 # these are relationships that involve combinations of ion properties
 # here they are specific to a binary system of <ion+ n> and <ion- n>, so need overwriting for more complex systems
-# include this early on, before p_error inclusion
+# include this early on, before dynamic_force inclusion
 
 # include positive ion concentrations
 INCLUDE "ion_concentrations" REPLACE "<ion" WITH "<ion+"
@@ -17,4 +17,4 @@ CELL_LOCAL <n_0^2 signed> "cellmin(<ion+ n>,<ion- n>)*abs(cellmax(<ion+ n>,<ion-
 #CELL_OUTPUT <rho_e error> "<rho_e>-<rho_e pos>" ON <allcells>
 
 # this face-averaged potential is needed early on in the derived calculations (for dynamic_force_c) so include it here
-FACE_DERIVED <U_f> "faceave(<U>)" ON <allfaces> # this is needed in <dynamic_force_c> which will be calculated in p_error_dxunit
+FACE_DERIVED <U_f> "faceave(<U>)" ON <allfaces> # this is needed in <dynamic_force_c>

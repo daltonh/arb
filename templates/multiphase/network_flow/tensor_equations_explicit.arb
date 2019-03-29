@@ -127,8 +127,6 @@ VARIABLE <continuity> "cellif(celldelta(<fluid_mask>),celldiv(<phi_f>*<u_f>),0.d
 <<dim3comment>>VARIABLE <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>-<pressure_gradient[l=3]>"
 VARIABLE <dynamic_force_f> "<dynamic_force_f>-dot(<facedxunit[l=:]>,<pressure_gradient[l=:]>)"
 
-#INCLUDE "p_error_remove_dynamic_force_c_f" # try this to reduce memory
-
 #--------------------
 # boundary conditions for non-periodic or pressure anchoring for periodic domains
 

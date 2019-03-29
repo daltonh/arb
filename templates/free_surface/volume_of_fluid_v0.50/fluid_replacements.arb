@@ -1,7 +1,0 @@
-# replace the general regions with the fluid msh equivalents
-GENERAL_REPLACEMENTS R "<allcells>" W "<fluid all cells>"
-GENERAL_REPLACEMENTS R "<domain>" W "<fluid domain>"
-GENERAL_REPLACEMENTS R "<boundarycells>" W "<fluid boundary cells>"
-GENERAL_REPLACEMENTS R "<allfaces>" W "<fluid all faces>"
-GENERAL_REPLACEMENTS R "<domainfaces>" W "<fluid domain faces>"
-GENERAL_REPLACEMENTS R "<boundaries>" W "<fluid boundaries>"

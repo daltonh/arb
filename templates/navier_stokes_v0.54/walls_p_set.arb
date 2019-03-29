@@ -1,6 +1,0 @@
-# same as walls, but we have one face which is used to set pressure
-# uses the two extra face regions which are contained within <walls>, <walls sans one face> and <one face>
-INCLUDE "p_extrapolation" R "<region>" W "<walls>" R "<equation>" W "<p_walls>"
-INCLUDE "noflux" R "<region>" W "<walls sans one face>" R "<equation>" W "<noflux_walls>"
-INCLUDE "noslip" R "<region>" W "<walls>" R "<equation>" W "<noslip_walls>"
-FACE_EQUATION <one face p set> "<p>" ON <one face>

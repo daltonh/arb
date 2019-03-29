@@ -8,8 +8,8 @@ END_MARKDOWN
 <<dim2comment>>VARIABLE <dynamic_force_c[l=2]> "<dynamic_force_c[l=2]>-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=2](<U_f>)"
 <<dim3comment>>VARIABLE <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>-<BK^2/Re^2>*<rho_e pos>*celldivgrad[l=3](<U_f>)"
 
-# method of incrementing <dynamic_force_f> needs to be consistent with the method chosen in navier_stokes/p_error
-# use the strings set in navier_stokes/p_error to define this method
+# method of incrementing <dynamic_force_f> needs to be consistent with the method chosen in navier_stokes/dynamic_force
+# use the strings set in navier_stokes/dynamic_force to define this method
 
 IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
 # dxunit method

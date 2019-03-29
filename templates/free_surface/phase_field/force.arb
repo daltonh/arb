@@ -4,5 +4,5 @@
 <<dim2comment>>CELL_LOCAL <pf_F_c[l=2]> "<pf_kappa_c>*celldivgrad[l=2](<pf_phi>)/2.d0" ON <allcells>
 <<dim3comment>>CELL_LOCAL <pf_F_c[l=3]> "<pf_kappa_c>*celldivgrad[l=3](<pf_phi>)/2.d0" ON <allcells>
 
-# differencing type used here must match that in the p_error calc
+# differencing type used here must match that in the dynamic_force calc
 FACE_LOCAL <pf_F_f> "<pf_kappa_f>*facegrad[dxunit](<pf_phi>)/2.d0" ON <allfaces>

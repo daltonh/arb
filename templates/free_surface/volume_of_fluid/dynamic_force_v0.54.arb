@@ -1,4 +1,4 @@
-# standard lines to overwrite dynamic_force_c and dynamic_force_f from navier_stokes p_error_facegrad file to include surface tension force in p_error calculation
+# standard lines to overwrite dynamic_force_c and dynamic_force_f from navier_stokes dynamic_force_facegrad file to include surface tension force in dynamic_force calculation
 
 <<dim1comment>>CELL_DERIVED <dynamic_force_c[l=1]> "-(celldivgrad[l=1](<p_f>)-<sigma>*<vof_F_c[l=1]>)" ON <allcells>
 <<dim2comment>>CELL_DERIVED <dynamic_force_c[l=2]> "-(celldivgrad[l=2](<p_f>)-<sigma>*<vof_F_c[l=2]>)" ON <allcells>

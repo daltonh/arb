@@ -1,6 +1,0 @@
-# a Rhie-Chow-type velocity interpolation is applied to the face flux velocities
-# pressure gradient calculated via a divergence (consistent with momentum conservation) (on boundary cells values from the adjacent domain cells will be used)
-
-INCLUDE "dynamic_force" # cell centred dynamic force
-FACE_LOCAL <dynamic_force_f> "-facegrad(<p>)" ON <allfaces>
-FACE_DERIVED <p_error> "-(<dynamic_force_f> - dot(<dynamic_force_c_f[l=:]>,<facenorm[l=:]>))" ON <domainfaces>

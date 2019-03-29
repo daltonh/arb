@@ -1,3 +1,0 @@
-# use this for constant density problems
-
-INCLUDE "conservation_incompressible_transient_varying_rho.arb" R "<rho[r=1]>" W "<rho>"

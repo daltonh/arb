@@ -1,5 +1,0 @@
-MARKDOWN
-Similar to the navier-stokes file, p_extrapolation_zero_dynamic, but here for multiphase <<species>>
-END_MARKDOWN
-
-FACE_EQUATION <equation> "<dynamic_force_f_<<species>>>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero

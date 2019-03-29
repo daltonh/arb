@@ -4,5 +4,5 @@
 <<dim2comment>>CELL_LOCAL <vof_F_c[l=2]> "<vof_kappa_c>*celldivgrad[l=2](<vof_phi_lim>)" ON <allcells>
 <<dim3comment>>CELL_LOCAL <vof_F_c[l=3]> "<vof_kappa_c>*celldivgrad[l=3](<vof_phi_lim>)" ON <allcells>
 
-# differencing type used here must match that in the p_error calc
+# differencing type used here must match that in the dynamic_force calc
 FACE_LOCAL <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_lim>)" ON <allfaces>

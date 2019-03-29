@@ -1,5 +1,0 @@
-MARKDOWN
-Similar to the navier-stokes file, p_extrapolation_zero_perror, but here for multiphase <<species>>
-END_MARKDOWN
-
-FACE_EQUATION <equation> "<p_error_<<species>>>" ON <region>

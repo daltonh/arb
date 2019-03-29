@@ -18,6 +18,6 @@ CELL_DERIVED <ls_lsgrad_to_phigrad> "sqrt(<ls_celldivgrad_phi_mag2>/cellmax(<ls_
 <<dim2comment>>CELL_LOCAL <ls_F_c[l=2]> "<ls_kappa_c>*<ls_celldivgrad_ls[l=2]>*<ls_lsgrad_to_phigrad>" ON <allcells>
 <<dim3comment>>CELL_LOCAL <ls_F_c[l=3]> "<ls_kappa_c>*<ls_celldivgrad_ls[l=3]>*<ls_lsgrad_to_phigrad>" ON <allcells>
 
-# differencing type used here must match that in the p_error calc
+# differencing type used here must match that in the dynamic_force calc
 FACE_LOCAL <ls_F_f> "<ls_kappa_f>*facegrad[dxunit](<ls_phi>)" ON <domainfaces>
 #FACE_LOCAL <ls_F_f> "<ls_kappa_f>*facegrad[dxunit](<ls>)*faceave[adjacentcells](<ls_lsgrad_to_phigrad>)" ON <domainfaces>

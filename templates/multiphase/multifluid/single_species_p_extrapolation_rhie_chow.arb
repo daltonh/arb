@@ -3,7 +3,7 @@ Similar to the navier-stokes file, p_extrapolation_rhie_chow, but here for multi
 END_MARKDOWN
 
 # first need to make sure that the relevant rhie-chow variables are defined on the boundaries
-VARIABLE <p_error_<<species>>> ON <allfaces> output
+VARIABLE <dynamic_force_f_{correction}_<<species>>> ON <allfaces> output
 VARIABLE <u_f_{correction}_<<species>>> ON <allfaces>
 <<transientnavierstokescomment>>VARIABLE <u_f_{correction}_<<species>>[r=1]> ON <allfaces>
 

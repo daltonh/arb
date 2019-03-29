@@ -1,3 +1,0 @@
-FACE_LOCAL <facevofphi_d_max_12> "facemax(<facevofphi_d_1>,<facevofphi_d_2>)"
-FACE_LOCAL <facevofphi_d_min_12> "facemin(<facevofphi_d_1>,<facevofphi_d_2>)"
-FACE_DERIVED <facevofphi_f_12> "facemax(0.d0,facemin(1.d0,(<facevofphi_d_max_12>-<facevofphi_d_c>)/facemax(<facevofphi_d_max_12>-<facevofphi_d_min_12>,1.d-10)))" ON <allfaces> output

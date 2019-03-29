@@ -1,4 +1,0 @@
-# three boundary conditions needed on a centreline in 2D
-INCLUDE "noflux" R "<equation>" W "<noflux centreline>" R "<region>" W "<centreline>"
-INCLUDE "slip" R "<equation" W "<slip centreline" R "<region>" W "<centreline>"
-FACE_EQUATION <p centreline> "facegrad(<p>)" ON <centreline>

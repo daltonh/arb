@@ -1,2 +1,0 @@
-# for now this just cancels the general variable property replacements done in constants.arb
-GENERAL_REPLACEMENTS CANCEL "<mu_f>" CANCEL "<rho_f>"

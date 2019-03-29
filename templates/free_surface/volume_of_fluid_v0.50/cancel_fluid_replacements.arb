@@ -1,7 +1,0 @@
-# cancel the fluid region replacements
-GENERAL_REPLACEMENTS CANCEL "<allcells>"
-GENERAL_REPLACEMENTS CANCEL "<domain>"
-GENERAL_REPLACEMENTS CANCEL "<boundarycells>"
-GENERAL_REPLACEMENTS CANCEL "<allfaces>"
-GENERAL_REPLACEMENTS CANCEL "<domainfaces>"
-GENERAL_REPLACEMENTS CANCEL "<boundaries>"

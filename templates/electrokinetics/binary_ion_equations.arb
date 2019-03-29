@@ -1,5 +1,5 @@
 # equations required for the transport of a binary univalent electrolyte
-# include statements for binary combinations should be included earlier before p_error calculation (binary_ion_combinations)
+# include statements for binary combinations should be included earlier before dynamic_force calculation (binary_ion_combinations)
 
 # include positive ion transport equations
 INCLUDE "ion_equations" REPLACE "<ion" WITH "<ion+"

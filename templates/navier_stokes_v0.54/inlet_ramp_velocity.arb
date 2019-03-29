@@ -1,4 +1,0 @@
-# ramp up velocity over a few timesteps
-# include this file after conventional inlet_u... file
-NONE_CONSTANT <ramp timesteps> 10.d0
-NONE_EQUATION <inlet centreline flowrate equation> "<u_av_calc>-nonemin(<timestep>/<ramp timesteps>,1.d0)*<u_av>" # set flowrate through inlet to give required average velocity
