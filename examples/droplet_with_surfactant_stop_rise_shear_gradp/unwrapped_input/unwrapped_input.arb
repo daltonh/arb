@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
-EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_master/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: droplet_with_surfactant_stop_rise_shear_gradp_301018.arb
    #(comment created during unwrap): new block = droplet_with_surfactant_stop_rise_shear_gradp_301018.arb: sub_block = 0
@@ -155,22 +155,6 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             # note, both of these now require the three strings to be set - this is awkward, so instead can set these using the nonuniform_viscosity and nonuniform_density files templates
             
             
-         
-         # use the following to setup a transient simulation
-         #GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
-         
-         # could set the transient status based on what type of arb simulation it is, but inadvisable really as there are many instances when only a partial-transient simulation is desired
-         #<<transientcomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "" R "<<steadystatenavierstokescomment>>" W "#" R "<<transientnavierstokes>>" W "1"
-         #<<steadystatecomment>>GENERAL_REPLACEMENTS R "<<transientnavierstokescomment>>" W "#" R "<<steadystatenavierstokescomment>>" W "" R "<<transientnavierstokes>>" W "0"
-         
-         # use the following to specify the stokes equations
-         #GENERAL_REPLACEMENTS R "<<stokescomment>>" W "" R "<<navierstokescomment>>" W "#" R "<<stokes>>" W "1"
-         
-         # use the following to specify nonuniform viscosity
-         #GENERAL_REPLACEMENTS R "<<uniformviscositycomment>>" W "#" R "<<nonuniformviscositycomment>>" W "" R "<<uniformviscosity>>" W "0"
-         
-         # use the following to specify nonuniform density
-         #GENERAL_REPLACEMENTS R "<<uniformdensitycomment>>" W "#" R "<<nonuniformdensitycomment>>" W "" R "<<uniformdensity>>" W "0"
          
          #-------------
          
