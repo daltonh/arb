@@ -67,7 +67,7 @@ END_MARKDOWN
   return $return_string;
 }}
 
-REPLACEMENTS D '<<mixtureuf>>' W '0'
+GLOBAL_REPLACEMENTS D '<<ufmethod>>' W '0'
 
 IF <<mixtureuf>>
 
