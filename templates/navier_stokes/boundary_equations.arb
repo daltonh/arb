@@ -15,13 +15,13 @@ REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradu" # by default grad{u}:nn 
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "rhiechow" # a rhie-chow type calculation is used to relate the velocity normal to the boundary and at the boundary to the velocity just inside the domain (<<boundarynormalmethod>>=rhiechow)
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerodynamic"
 #REPLACEMENTS D "<<boundarynormalmethod>>" W "zerogradp"
-#REPLACEMENTS D "<<boundarynormalmethod>>" W "zeroperror"
+#REPLACEMENTS D "<<boundarynormalmethod>>" W "zerodynamiccorrection"
 IF {{ return string_test("<<boundarynormalmethod>>","rhiechow"); }}
   INCLUDE "p_extrapolation_rhie_chow" REPLACE "<equation>" WITH "<region pextrapolation>"
 ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerodynamic"); }}
   FACE_EQUATION <region pextrapolation> "<dynamic_force_f>" ON <region>
-ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zeroperror"); }}
-  FACE_EQUATION <region pextrapolation> "<p_error>" ON <region>
+ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerodynamiccorrection"); }}
+  FACE_EQUATION <region pextrapolation> "<dynamic_force_f_{correction}>" ON <region>
 ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerogradp"); }}
   FACE_EQUATION <region pextrapolation> "facegrad(<p>)" ON <region>
 ELSE_IF {{ return string_test("<<boundarynormalmethod>>","zerogradu"); }}

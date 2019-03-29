@@ -1,0 +1,63 @@
+MARKDOWN
+Here we calculate the <u_f_alpha coefficients that each represent the relationship between change in velocity and change in dynamic force, based on an order-of-magnitude analysis of the momentum equations
+There are potentially three coefficients, being transient, adv (advection) and vis (viscous)
+IE, for navier-stokes:
+<u_f_alpha_{transient}>*(<u_f_{correction}>-<u_f_{correction}[r=1]>) + <u_f_alpha_{adv}>*<u_f_{correction}> + <u_f_alpha_{vis}>*<u_f_{correction}> = <C_{Rhie-Chow}>*<dynamic_force_f_{correction}>
+END_MARKDOWN
+
+# all equation variants here have viscous contribution, so add this first
+# same piece of code as in total_stress to deal with <mu_f> replacement - really clunky, for backwards compatibility
+REPLACEMENTS R "<<mu_f>>" W "<mu_f>" # first define this local replacement string in the same scope of the definition statements below (ie, outside scope of if block)
+IF {{ return ( !(string_examine('<mu_f>')) && string_eval('<<uniformviscosity>>') ) }}  # this evaluates as true (1) if replacement string '<mu_f>' isn't defined, AND <<uniformviscosity>> is on (1)
+  REPLACEMENTS S "<<mu_f>>" W "<mu>" # if we are here then we apply the uniform viscosity substitution
+END_IF
+FACE_LOCAL <u_f_alpha_{vis}> "<<mu_f>>/<facedx>^2" ON <allfaces> # incase pextrapolationrhiechow is on, define these locals on allfaces (makes no difference to efficiency as they are locals anyway)
+
+REPLACEMENTS R "<<rho_f>>" W "<rho_f>" # first define this local replacement string in the same scope of the definition statements below (ie, outside scope of if block)
+IF {{ return ( !(string_examine('<rho_f>')) && string_eval('<<uniformdensity>>') ) }}  # this evaluates as true (1) if replacement string '<rho_f>' isn't defined, AND <<uniformviscosity>> is on (1)
+  REPLACEMENTS S "<<rho_f>>" W "<rho>" # if we are here then we apply the uniform density substitution
+END_IF
+
+# advection term
+IF {{ return (!(string_eval('<<stokes>>'))) }} # only for navier-stokes equations
+#--------------
+# use this option to base the adv component on the total velocity magnitude, rather than the component over each face
+# the old way (pre v0.59) was to use <u_f_{raw}> which is the flux across the face when calculating the advective rhie-chow term
+# the new way (v0.59 and onwards) is based on the total velocity magnitude, so overwrite the string <<ufmagnitude>> with <u_f_vect_magnitude> which is the total magnitude of <u_f_vect[l=:]>
+  REPLACEMENTS D "<<ufadvectionmag>>" W "1"
+#--------------
+  REPLACEMENTS R "<<ufmagnitude>>" W "abs(<u_f_{raw}>)" # initialise variable using the old way, within the applicable block
+  IF <<ufadvectionmag>> # ie, the new way
+# for a transient simulation the previous velocity magnitude is used, consistent with that used in the momentum advection
+# (although this can be overwritten by setting <<ufvectmagnitudeexplicit>> = 0 directly)
+    REPLACEMENTS D "<<ufvectmagnitudeexplicit>>" W "<<transientnavierstokes>>"
+    IF <<ufvectmagnitudeexplicit>>
+      FACE_LOCAL <u_f_vect[l=<<i>>,r=1]> "faceave[<<reflect=<<i>>>>](<u[l=<<i>>,r=1]>)"
+#     FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "sqrt(facemax(dot(<u_f_vect[l=:,r=1]>,<u_f_vect[l=:,r=1]>),<tinyish>))" ON <allfaces>
+      FACE_TRANSIENT <u_f_vect_magnitude[r=1]> "" "mag(<u_f_vect[l=:,r=1]>)" ON <allfaces>
+      REPLACEMENTS S "<<ufmagnitude>>" W "<u_f_vect_magnitude[r=1]>" # S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
+    ELSE
+#     FACE_LOCAL <u_f_vect_magnitude> "sqrt(facemax(dot(<u_f_vect[l=:]>,<u_f_vect[l=:]>),<tinyish>))" ON <allfaces>
+      FACE_LOCAL <u_f_vect_magnitude> "mag(<u_f_vect[l=:]>)" ON <allfaces>
+      REPLACEMENTS S "<<ufmagnitude>>" W "<u_f_vect_magnitude>" # S or SUBSTITUTE will redefine variable but in old context, ie, outside of IF block
+    END_IF
+  END_IF
+# now calculate <u_f_alpha_{adv}>
+#-------------
+# advective contribution can be either simple or more complex (set by <<ufadvectioncomplex>>)
+# the default behaviour is to use the simple advective contribution
+  REPLACEMENTS D <<ufadvectioncomplex>> W "0"
+  IF <<ufadvectioncomplex>>
+# more complex variant, which does not assume generally small correction velocities (and under steady-state conditions is equivalent to what was used pre v0.55) but is more expensive to compute, for what seems like little practical gain.  There is some evidence that the more complex variant can allow steady-state sims to converge more as Re increases, but very very marginal.
+    FACE_LOCAL <dynamic_force_f_{correction}_magnitude> "facemax(abs(<dynamic_force_f_{correction}>),<tinyish>)" ON <allfaces>
+    FACE_LOCAL <u_f_alpha_{adv}> "<dynamic_force_f_{correction}_magnitude>/(-<<ufmagnitude>>+sqrt(<<ufmagnitude>>^2+<dynamic_force_f_{correction}_magnitude>*<facedx>/<<rho_f>>))" ON <allfaces>
+  ELSE
+# simple advective contribution (which really assumes that locally |<u_f_{raw}>| >> |<u_f_{correction}>|
+    FACE_LOCAL <u_f_alpha_{adv}> "2.d0*<<rho_f>>*<<ufmagnitude>>/<facedx>" ON <allfaces>
+  END_IF
+# ---------
+END_IF
+
+IF <<transientnavierstokes>>
+  FACE_LOCAL <u_f_alpha_{transient}> "<<rho_f>>/<dt>" ON <allfaces>
+END_IF

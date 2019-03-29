@@ -9,7 +9,7 @@ IF {{ return (!(string_eval('<<stokes>>'))) }} # this will be true for non-stoke
   REPLACEMENTS D "<<advectionlimiterdim1>>" W "<adv_limiter>" D "<<advectionlimiterdim2>>" W "<adv_limiter>" D "<<advectionlimiterdim3>>" W "<adv_limiter>"
 
 # setting <<implicitadvection>> = 1 causes momentum advection to be calculated using implicit velocities and densities, instead of explicit variables, which is relevant for transient simulations only
-# note, if you are setting this here, you may also like to make the velocity used in the calculation of <u_rf_{adv}> within u_f.arb implicit too, although it is not theoretically necessary (and will probably increase computational expense and decrease stability)
+# note, if you are setting this here, you may also like to make the velocity used in the calculation of <u_f_alpha_{adv}> within u_f.arb implicit too, although it is not theoretically necessary (and will probably increase computational expense and decrease stability)
 # to do this set REPLACEMENTS R "<<ufvectmagnitudeexplicit>>" W "0" when calling u_f, or anywhere before calling that file
   REPLACEMENTS D "<<implicitadvection>>" W "0"
 

@@ -1,0 +1,9 @@
+# this section just re-works the implicit timestepping equation to allow a newtstepmax to be applied to <dt_target>
+# save a derived copy of <dt_target> after <u_f> has been calculated so that we can apply newtstepmax to it
+# this string will already have been set to 1 (as a general replacement) in transient_all_setup if this option is relevant
+# this is the default behaviour when using implicit dynamic timestepping
+REPLACEMENTS D "<<implicittimestepnewtstep>>" W "0"
+IF <<implicittimestepnewtstep>>
+  NONE_DERIVED <dt_target_derived> "<dt_target>" newtstepmax=10
+  NONE_EQUATION <dt implicit equation> "<dt>-<dt_target_derived>"
+END_IF

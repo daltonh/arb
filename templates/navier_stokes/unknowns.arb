@@ -1,3 +1,4 @@
 # unknown variables used for flow problems
 CELL_UNKNOWN <u[l=<<i>>]> [] "0.d0" ON <allcells> magnitude=1.d0 # velocity component
+FACE_LOCAL <u_f_vect[l=<<i>>]> "faceave[<<reflect=<<i>>>>](<u[l=<<i>>]>)" # velocity vector interpolated to faces
 CELL_UNKNOWN <p> [] "1.d0" ON <allcells> # pressure

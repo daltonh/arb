@@ -16,8 +16,8 @@ INCLUDE "total_stress" R "<u[l" W "<u[r=1,l" R "DERIVED" W "TRANSIENT" R "<ugrad
 # the last fancy replacement targets setting just the initial values of the velocity gradient to zero - actually not necessary or a good idea if initial velocity field is nonzero
 #INCLUDE "total_stress" R "<u[l" W "<u[r=1,l" R "DERIVED" W "TRANSIENT" R "<ugrad_f[l" W "<ugrad_f[r=1,l" R "<tau[" W "<tau[r=1," R ']> "facegrad' W ']> "0.d0" "facegrad'
 
-# calculate p_error and dynamic_forces
-INCLUDE "p_error"
+# calculate dynamic_forces
+INCLUDE "dynamic_force"
 
 # calculate the momentum fluxes as transients
 # TODO: this file will be able to also handle the navier-stokes equations once an explicit <u_f> is saved
@@ -50,7 +50,7 @@ INCLUDE "u_f"
 # FACE_LOCAL <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <allfaces> # volume (velocity) transport
 
 # # note that as <dt> is limited by the explicit timestep constraint anyway, this condition also ensures that the correction velocity scales with the viscous term
-# FACE_LOCAL <u_f_{correction}> "-<C_{Rhie-Chow}>*<dt>*<p_error>/<rho>" ON <domainfaces>
+# FACE_LOCAL <u_f_{correction}> "<C_{Rhie-Chow}>*<dt>*<dynamic_force_f_{correction}>/<rho>" ON <domainfaces>
 # CONSTANT <C_{Rhie-Chow}> 5.d0 # increase this for the explicit method from 1.d0
 # # final face velocity
 # FACE_DERIVED <u_f> "<u_f_{raw}>+faceif(facedelta(<domainfaces>),<u_f_{correction}>,0.d0)" ON <allfaces> # volume (velocity) transport

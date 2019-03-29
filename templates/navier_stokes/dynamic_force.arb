@@ -42,7 +42,7 @@ IF <<dynamicforcecf>>
   FACE_LOCAL <dynamic_force_c_f[l=<<i>>]> "faceave[<<reflect=<<i>>>>,adjacentcells](<dynamic_force_c[l=<<i>>]>)"
 END_IF
 
-#{{ print "IN p_error.arb\n".string_debug(); }}
+#{{ print "IN dynamic_force.arb\n".string_debug(); }}
 
 IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
 # dxunit method
@@ -87,5 +87,5 @@ ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegradadjacentcells')
   END_IF
 
 ELSE
-  ERROR 'No valid dynamicforcefmethod is chosen in the navier_stokes/p_error template file: string currently set as <<dynamicforcefmethod>>'
+  ERROR 'No valid dynamicforcefmethod is chosen in the navier_stokes/dynamic_force template file: string currently set as <<dynamicforcefmethod>>'
 END_IF
