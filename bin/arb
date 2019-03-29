@@ -306,8 +306,12 @@ done ;
 # and make sure that they are absolute path names
 # note, existence of these directories tested later
 if [ -z "$output_dir" ] ; then # -z means empty
-  output_dir="$working_dir/output";
-elif [[ $output_dir != /* ]] ; then
+  output_dir="output";
+fi;
+# store the original output_dir string for link creation later, as it will probably be relative to the working directory
+original_output_dir="$output_dir";
+# and make output_dir an absolute filename, if it isn't already
+if [[ $output_dir != /* ]] ; then
   output_dir="$working_dir/$output_dir";
 fi;
 # the previous_output_dir and previous_build_dir are only set if needed
@@ -451,7 +455,8 @@ if [ -n "$previous_output_dir" -a $ocontinue -eq 1 ] ; then # -n means that stri
 fi;
 
 # we are finished with previous_output_dir now, so update the latest_output link to the new directory
-rm 'latest_output' ; ln -s "$output_dir" "latest_output" ;
+rm latest_output >/dev/null 2>/dev/null ; # remove the old link quietly
+ln -s "$original_output_dir" "latest_output" ; # create the new link using the original output directory name, which is probably relative to the working directory
 
 #---------------------------
 # now that output directory is ready for writing redirect stdout and stderr to output.scr
