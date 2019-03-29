@@ -58,7 +58,6 @@ END_MARKDOWN
   return $return_string;
 }}
 
-
 # add on osmotic pressure contribution to dynamic force for the disperse species
 {{
   my $return_string = '';
@@ -67,7 +66,8 @@ END_MARKDOWN
   }
   return $return_string;
 }}
-REPLACEMENTS D '<<mixtureuf>>' W '1'
+
+REPLACEMENTS D '<<mixtureuf>>' W '0'
 
 IF <<mixtureuf>>
 
