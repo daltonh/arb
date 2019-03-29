@@ -2,18 +2,18 @@
 
 # by default we use node centred normals to calculate these, but there is the alternative based on straight cellgrad of cell centred data
 # set these string globally so that they can be picked up by output_masks
-GENERAL_REPLACEMENTS D "<<vofnormalmethod>>" W "node"
-#GENERAL_REPLACEMENTS D "<<vofnormalmethod>>" W "cell"
+GENERAL_REPLACEMENTS D "<<vof_normal_method>>" W "node"
+#GENERAL_REPLACEMENTS D "<<vof_normal_method>>" W "cell"
 
 # first calculate masks for the normals, if required
 IF {{ return string_test('<<vofmaskcomment>>','') }}
   CELL_TRANSIENT_REGION <vof_phigrad_mask[r=1]> "" "expand[maxseparation=<<maxfacegradseparation>>,faceseparation](<vof_delta_mask[r=1]>)" ON <allcells>
-  IF {{ return string_test('<<vofnormalmethod>>','node'); }} 
+  IF {{ return string_test('<<vof_normal_method>>','node'); }} 
     NODE_TRANSIENT_REGION <vof_phigrad_mask_n[r=1]> "" "associatedwith(<vof_phigrad_mask[r=1]>)" ON <allnodes>
   END_IF
 END_IF
 
-IF {{ return string_test('<<vofnormalmethod>>','node'); }} 
+IF {{ return string_test('<<vof_normal_method>>','node'); }} 
   {{ return vector_expand(
     'NODE_DERIVED <vof_phigrad_n[l=$l]> "nodefromcellgrad[l=$l](<vof_phi_smoothed>)" ON <vof_phigrad_mask_n[r=1]> output',
     'CELL_DERIVED <vof_phigrad[l=$l]> "cellfromnodeave(<vof_phigrad_n[l=$l]>)" ON <vof_phigrad_mask[r=1]> output'

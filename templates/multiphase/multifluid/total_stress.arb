@@ -2,10 +2,10 @@ MARKDOWN
 Here we setup the viscous stresses for each phase, including the velocity gradients, using the navier_stokes template file
 END_MARKDOWN
 
-#REPLACEMENTS D "<<stressmethod>>" W "version1" # the gamma used in each phase is specific to that phase
-REPLACEMENTS D "<<stressmethod>>" W "version2" # the gamma used in each phase is a function of all velocities
+#REPLACEMENTS D "<<stress_method>>" W "version1" # the gamma used in each phase is specific to that phase
+REPLACEMENTS D "<<stress_method>>" W "version2" # the gamma used in each phase is a function of all velocities
 
-IF {{ return string_test('<<stressmethod>>','version1') }}
+IF {{ return string_test('<<stress_method>>','version1') }}
   {{
     my $return_string = '';
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
@@ -38,7 +38,7 @@ ELSE
 # and the solid phases stresses
 # here equal to the fluid stress which is based on mixture averaged velocities and a mixture viscosity, version2 = jackson98
 # note, only species0 viscosity used
-  IF {{ return (string_test('<<stressmethod>>','version2') || string_test('<<stressmethod>>','jackson98')) }}
+  IF {{ return (string_test('<<stress_method>>','version2') || string_test('<<stress_method>>','jackson98')) }}
     {{ my $return_string = '';
       for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
         $return_string .= "FACE_DERIVED <tau_$species"."[l=<<i>>,<<j>>]> '<tau_species0[l=<<i>>,<<j>>]>' ON <allfaces>\n";

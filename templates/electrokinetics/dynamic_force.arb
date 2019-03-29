@@ -11,15 +11,15 @@ END_MARKDOWN
 # method of incrementing <dynamic_force_f> needs to be consistent with the method chosen in navier_stokes/dynamic_force
 # use the strings set in navier_stokes/dynamic_force to define this method
 
-IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
+IF {{ return string_test('<<dynamic_force_f_method>>','dxunit'); }}
 # dxunit method
   VARIABLE <dynamic_force_f> "<dynamic_force_f>-<BK^2/Re^2>*<rho_e_hf>*facegrad[dxunit](<U>)"
-ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegrad'); }}
+ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegrad'); }}
 # facegrad method
   VARIABLE <dynamic_force_f> "<dynamic_force_f>-<BK^2/Re^2>*<rho_e_hf>*facegrad(<U>)" ON <allfaces>
-ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegradadjacentcells'); }}
+ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegradadjacentcells'); }}
 # facegradadjacentcells method
   VARIABLE <dynamic_force_f> "<dynamic_force_f>-<BK^2/Re^2>*<rho_e_hf>*facegrad[adjacentcells](<U>)"
 ELSE
-  ERROR 'No valid dynamicforcefmethod is chosen in the electrokinetics/dynamic_force template file: string currently set as <<dynamicforcefmethod>>'
+  ERROR 'No valid dynamicforcefmethod is chosen in the electrokinetics/dynamic_force template file: string currently set as <<dynamic_force_f_method>>'
 END_IF

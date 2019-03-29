@@ -8,8 +8,8 @@ END_MARKDOWN
 # <<implicitadvection>> modifies both the advection of phi and u, making both implicit (ie, using r=0 values rather than r=1 values).  You need implicit advection to be able to push CFL over 1.
 REPLACEMENTS D "<<implicitadvection>>" W "1" # default is now implicit advection
 
-#REPLACEMENTS D "<<stressmethod>>" W "version1" # method, with phi inside viscous stress divergence
-REPLACEMENTS D "<<stressmethod>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
+#REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
+REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
 # now create conservation equations
 
 # mass conservation (actually, volume conservation)
@@ -65,7 +65,7 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
       if (string_test('<<navierstokescomment>>','')) {
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_advection_f_$species"."[l=$l]>/(faceave[lastcell](<phi_bounded_$species>))'\n";
       }
-      if (string_test('<<stressmethod>>','version1')) {
+      if (string_test('<<stress_method>>','version1')) {
 # add viscous stress flux if the <<specificviscousstress>> is false, using lastcell averaging to bring phi into divergence
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_viscous_f_$species"."[l=$l]>/(faceave[lastcell](<phi_bounded_$species>))'\n";
       } else {

@@ -32,13 +32,13 @@ REPLACEMENTS SUFFIX '<region oneface p>' W '_<<species>>'
 REPLACEMENTS SUFFIX '<region p>' W '_<<species>>'
 REPLACEMENTS SUFFIX '<region u>' W '_<<species>>'
 
-IF {{ return string_test('<<boundarymethod>>','zerophigrad') }}
+IF {{ return string_test('<<boundary_method>>','zerophigrad') }}
 # special case that sets gradient of phi to zero, relevant for outlet boundaries
-  INCLUDE_TEMPLATE 'navier_stokes/boundary_equations' R '<<boundarymethod>>' W 'pressure'
+  INCLUDE_TEMPLATE 'navier_stokes/boundary_equations' R '<<boundary_method>>' W 'pressure'
   VARIABLE <region flowrate equation_<<species>>> "facegrad[adjacentcells](<phi_<<species>>>)"
-ELSE_IF {{ return string_test('<<boundarymethod>>','phi') }}
+ELSE_IF {{ return string_test('<<boundary_method>>','phi') }}
 # special case that sets a uniform value for phi (equal to <region phi_<<species>>>), relevant for inlet boundaries
-  INCLUDE_TEMPLATE 'navier_stokes/boundary_equations' R '<<boundarymethod>>' W 'pressure'
+  INCLUDE_TEMPLATE 'navier_stokes/boundary_equations' R '<<boundary_method>>' W 'pressure'
   NONE_CONSTANT <region phi_<<species>>> "<phi_initial_<<species>>>"
   VARIABLE <region flowrate equation_<<species>>> "<phi_f_<<species>>>-<region phi_<<species>>>"
 ELSE

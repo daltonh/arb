@@ -8,6 +8,11 @@ date: 15/2/18
 
 This section details changes to the arb syntax that have occurred for each version update.
 
+## v0.61
+
+* string variable names that end in 'method>>' have now been standardised to have underscores between words.  So `<<boundarymethod>>` becomes `<<boundary_method>>`, etc.  As well as the boundary method variables, notable is `<<dynamicforcefmethod>>` which becomes `<<dynamic_force_f_method>>`, so watch for this change in input files
+* choice of rhie-chow velocity interpolation for multifluid, chosen using `<<u_f_method>>`
+
 ## v0.60
 
 * Vector, tensor and relstep index replacements have now been implemented, including the `kronecker` and `permutation` functions, as in

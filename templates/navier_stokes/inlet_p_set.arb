@@ -1,2 +1,2 @@
 # also will need <p_in> to be defined
-INCLUDE "inlet_equations.arb" D "<<boundarymethod>>" W "pressure" D "<<boundarytangentmethod>>" W "noslip" D "<<boundarynormalmethod>>" W "zerogradu"
+INCLUDE "inlet_equations.arb" D "<<boundary_method>>" W "pressure" D "<<boundary_tangent_method>>" W "noslip" D "<<boundary_normal_method>>" W "zerogradu"

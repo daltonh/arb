@@ -9,7 +9,7 @@ GENERAL_REPLACEMENTS D "<<singledomaincomment>>" W "" D "<<doubledomaincomment>>
 <<vofmaskcomment>>FACE_OUTPUT <vof_delta_mask_f_output[r=1]> "1.d0" ON <vof_delta_mask_f[r=1]>
 
 <<singledomaincomment>><<vofmaskcomment>>CELL_OUTPUT <vof_phigrad_mask_output[r=1]> "1.d0" ON <vof_phigrad_mask[r=1]>
-IF {{ return string_test('<<vofnormalmethod>>','node'); }} 
+IF {{ return string_test('<<vof_normal_method>>','node'); }} 
   <<singledomaincomment>><<vofmaskcomment>>NODE_OUTPUT <vof_phigrad_mask_n_output[r=1]> "1.d0" ON <vof_phigrad_mask_n[r=1]>
   <<doubledomaincomment>><<vofmaskcomment>>NODE_OUTPUT <vof_fs_phigrad_mask_n_output[r=1]> "1.d0" ON <vof_fs_phigrad_mask_n[r=1]>
 END_IF

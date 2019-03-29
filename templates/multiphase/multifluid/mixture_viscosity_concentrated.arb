@@ -1,1 +1,6 @@
-../mixture/mixture_viscosity_concentrated.arb
+NONE_CONSTANT <mu_phi_total_species_cutoff> 0.67d0
+NONE_CONSTANT <mu_phi_total_species_max> 0.68d0
+CELL_DERIVED <mu_nd_low> "<<function>>" ON <allcells>
+NONE_CONSTANT <mu_nd_cutoff> "<<cutoff_function>>" output
+NONE_CONSTANT <mu_nd_grad> "diff(<<cutoff_function>>,<<cutoff_variable>>)"
+CELL_DERIVED <mu> "<mu_l>*cellif(<phi_total_species>,cellif(<phi_total_species>-<mu_phi_total_species_cutoff>,<mu_nd_cutoff>+<mu_nd_grad>*(<phi_total_species>-<mu_phi_total_species_cutoff>),<mu_nd_low>),1.d0)" output

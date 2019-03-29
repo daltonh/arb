@@ -7,19 +7,19 @@
 IF 1
 
 # Note, this string is also used in navier_stokes/p_error, and the setting needs to be consistent, so if this is going to be changed set it globally before calling either file
-  GENERAL_REPLACEMENTS D "<<dynamicforcefmethod>>" W "dxunit"
+  GENERAL_REPLACEMENTS D "<<dynamic_force_f_method>>" W "dxunit"
 
-  IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
+  IF {{ return string_test('<<dynamic_force_f_method>>','dxunit'); }}
   # dxunit method
     FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[dxunit](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
-  ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegrad'); }}
+  ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegrad'); }}
   # facegrad method
     FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad(<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
-  ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegradadjacentcells'); }}
+  ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegradadjacentcells'); }}
   # facegradadjacentcells method
     FACE_DERIVED <vof_F_f> "<vof_kappa_f>*facegrad[adjacentcells](<vof_phi_delta>)" ON <vof_interface_mask_f[r=1]>
   ELSE
-    ERROR 'No valid dynamicforcefmethod is chosen in the volume_of_fluid/force template file: string currently set as <<dynamicforcefmethod>>'
+    ERROR 'No valid dynamic_force_f_method is chosen in the volume_of_fluid/force template file: string currently set as <<dynamic_force_f_method>>'
   END_IF
 
 ELSE

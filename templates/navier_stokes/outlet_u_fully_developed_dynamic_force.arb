@@ -1,2 +1,2 @@
 # this sets oneface to have zero pressure, and the remaining faces to have a uniform <dynamic_force_f>
-INCLUDE "outlet_equations.arb" D "<<boundarymethod>>" W "onefacepressure" D "<<boundarymethodvariable>>" W "dynamicforce" D "<<boundarytangentmethod>>" W "noslip" D "<<boundarynormalmethod>>" W "zerogradu"
+INCLUDE "outlet_equations.arb" D "<<boundary_method>>" W "onefacepressure" D "<<boundary_method_variable>>" W "dynamicforce" D "<<boundary_tangent_method>>" W "noslip" D "<<boundary_normal_method>>" W "zerogradu"

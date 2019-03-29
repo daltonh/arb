@@ -5,9 +5,9 @@ END_MARKDOWN
 # Calculating the laplacian of velocity = divergence of strain rate tensor
 CELL_DERIVED <gammarate_species0[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<ugrad_f_species0[l=:,<<i>>]>))" ON <domain> output
 
-REPLACEMENTS D "<<dragmethod>>" W "version2"
+REPLACEMENTS D "<<drag_method>>" W "version2"
 
-IF {{ return string_test('<<dragmethod>>','version1') }}
+IF {{ return string_test('<<drag_method>>','version1') }}
   IF 0 #Mctigue
     CELL_DERIVED <particle_force_alpha4> "7/2*<mu_species0>" ON <domain> output
   ELSE #Zhang and Prosperiti (Dalton)

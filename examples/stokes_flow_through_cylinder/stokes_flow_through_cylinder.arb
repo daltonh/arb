@@ -83,7 +83,7 @@ INCLUDE "constants" # specify physical and numerical constants
 INCLUDE "domain"
 INCLUDE "outlet_p_set" # outlet BC, uniform pressure across outlet
 #INCLUDE "outlet_u_fully_developed" # outlet BC, uniform <dynamic_force_f> across outlet, but with one face setting p = 0
-#INCLUDE "walls" R "<<boundarynormalmethod>>" W "zerodynamic" # nonslip walls BC, setting <dynamic_force_f> = 0 on boundaries to extrapolate pressure
+#INCLUDE "walls" R "<<boundary_normal_method>>" W "zerodynamic" # nonslip walls BC, setting <dynamic_force_f> = 0 on boundaries to extrapolate pressure
 INCLUDE "walls" # nonslip walls BC, setting pressure on boundaries using a type of rhiechow interpolation
 INCLUDE "inlet_u_fully_developed"
 

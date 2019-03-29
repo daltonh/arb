@@ -3,6 +3,6 @@ This file sets a flag within u_f to reproduce the u_f algorithm used in v0.58.
 Actually, all it does is use <u_f_{raw}> to define <u_f_alpha_{adv}>, rather than the newer idea of the magnitude of this variable
 END_MARKDOWN
 
-#INCLUDE "u_f" R "<<dynamicforcefmethod>>" W "dxunit" R "<<ufvectmagnitudetransient>>" W "0"
+#INCLUDE "u_f" R "<<dynamic_force_f_method>>" W "dxunit" R "<<ufvectmagnitudetransient>>" W "0"
 #INCLUDE "u_f" R "<<ufvectmagnitudetransient>>" W "0"
 INCLUDE "u_f" R "<<ufadvectionmag>>" W "0"

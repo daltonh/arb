@@ -4,7 +4,7 @@ Make some vectors to visualise the forces for each phase
 These forces are expressed on a per phase volume basis (ie, divided by phi for the phase), and moved to appear on the RHS of the momentum equation.
 END_MARKDOWN
 
-REPLACEMENTS D "<<stressmethod>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
+REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
 REPLACEMENTS D "<<buoyancy>>" W "0" # this will already have been set in buoyancy_dynamic_force as a global replacement
 REPLACEMENTS D "<<body_force>>" W "0" # this will already have been set in body_force as a global replacement if it is relevant
 
@@ -16,7 +16,7 @@ REPLACEMENTS D "<<body_force>>" W "0" # this will already have been set in body_
   for my $l (string_eval('<<dimensions>>','list')) {
     @force_list=(); # clear force list
 # viscous
-    if (string_test('<<stressmethod>>','version1')) {
+    if (string_test('<<stress_method>>','version1')) {
 # version1 has mu that roughly is proportional to phi
       $return_string .= "CELL_LOCAL <force_vis_<<species>>[l=$l]> '(-celldiv((<<radius_f>>)*(<J_viscous_f_<<species>>[l=$l]>))/(<<radius_c>>))/<phi_bounded_<<species>>>' ON <domain>\n";
     } else {

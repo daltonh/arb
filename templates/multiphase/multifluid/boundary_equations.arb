@@ -16,17 +16,17 @@ REPLACEMENTS D '<region' W '<inlet'
 # set the default boundary condition methods here for methods that do not change for the boundary type of species being considered
 # otherwise specify the methods individually when calling the navier-stokes boundary_equations template below
 # individual methods can be specified when calling this file to overwrite any of these default (D) methods
-# eg INCLUDE 'boundary_equations' R '<<boundarymethodvariable>>' W 'dynamicforce'
+# eg INCLUDE 'boundary_equations' R '<<boundary_method_variable>>' W 'dynamicforce'
 
 # this is the default for p extrapolation at the wall, which can be set specifically for wall boundaries using
-# eg INCLUDE 'boundary_equations' R '<<boundarynormalwallmethod>>' W 'rhiechow'
-#REPLACEMENTS D '<<boundarynormalwallmethod>>' W 'rhiechow'
-REPLACEMENTS D '<<boundarynormalwallmethod>>' W 'zerodynamic' # current default for multifluid
+# eg INCLUDE 'boundary_equations' R '<<boundary_normal_wall_method>>' W 'rhiechow'
+#REPLACEMENTS D '<<boundary_normal_wall_method>>' W 'rhiechow'
+REPLACEMENTS D '<<boundary_normal_wall_method>>' W 'zerodynamic' # current default for multifluid
 
-REPLACEMENTS D '<<boundarytangentmethod>>' W 'noslip'
+REPLACEMENTS D '<<boundary_tangent_method>>' W 'noslip'
 
-#REPLACEMENTS D '<<boundarymethodvariable>>' W 'dynamicforce'
-REPLACEMENTS D '<<boundarymethodvariable>>' W 'p'
+#REPLACEMENTS D '<<boundary_method_variable>>' W 'dynamicforce'
+REPLACEMENTS D '<<boundary_method_variable>>' W 'p'
 
 # problem is these will break if phi_f_adv is zero as u_f on the boundary is no longer in an equation?
 {{
@@ -38,25 +38,25 @@ REPLACEMENTS D '<<boundarymethodvariable>>' W 'p'
 
     if ($species eq 'species0') {
       if (string_test('<region','<outlet')) {
-# outlet for fluid, set the fluid pressure to zero in one cell, and a uniform <<boundarymethodvariable>> across the rest
-        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W 'zerogradu' D '<<boundarymethod>>' W 'onefacepressure' R '<region p_<<species>>>' W '0'\n";
+# outlet for fluid, set the fluid pressure to zero in one cell, and a uniform <<boundary_method_variable>> across the rest
+        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundary_normal_method>>' W 'zerogradu' D '<<boundary_method>>' W 'onefacepressure' R '<region p_<<species>>>' W '0'\n";
       } elsif (string_test('<region','<inlet')) {
-# inlet for fluid, set the flowrate <region u_<<species>>> to equal <u_av_<<species>>> using the spare one cell equation, and a uniform <<boundarymethodvariable>> across the rest
-        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W 'zerogradu' D '<<boundarymethod>>' W 'flowrate' R '<region u_<<species>>>' W '<u_av_<<species>>>'\n";
+# inlet for fluid, set the flowrate <region u_<<species>>> to equal <u_av_<<species>>> using the spare one cell equation, and a uniform <<boundary_method_variable>> across the rest
+        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundary_normal_method>>' W 'zerogradu' D '<<boundary_method>>' W 'flowrate' R '<region u_<<species>>>' W '<u_av_<<species>>>'\n";
       } else {
 # walls for fluid, set noslip and noflux (zero velocity), and use rhiechow extrapolation
-        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W '".string_eval('<<boundarynormalwallmethod>>')."' D '<<boundarymethod>>' W 'noflux'\n";
+        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundary_normal_method>>' W '".string_eval('<<boundary_normal_wall_method>>')."' D '<<boundary_method>>' W 'noflux'\n";
       }
     } else {
       if (string_test('<region','<outlet')) {
 # outlet for disperse phase, set the gradient normal to the port to be zero, overwriting the existing <outlet flowrate equation>
-        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W 'zerogradu' D '<<boundarymethod>>' W 'zerophigrad'\n";
+        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundary_normal_method>>' W 'zerogradu' D '<<boundary_method>>' W 'zerophigrad'\n";
       } elsif (string_test('<region','<inlet')) {
 # inlet for disperse phase, set the volume fraction as a uniform value to <region phi_<<species>>>
-        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W 'zerogradu' D '<<boundarymethod>>' W 'phi'\n";
+        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundary_normal_method>>' W 'zerogradu' D '<<boundary_method>>' W 'phi'\n";
       } else {
 # walls for disperse phase, set noslip and noflux (zero velocity), and use zero dynamic extrapolation
-        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundarynormalmethod>>' W '".string_eval('<<boundarynormalwallmethod>>')."' D '<<boundarymethod>>' W 'noflux'\n";
+        $return_string .= "INCLUDE 'single_species_boundary_equations' D '<<boundary_normal_method>>' W '".string_eval('<<boundary_normal_wall_method>>')."' D '<<boundary_method>>' W 'noflux'\n";
       }
     }
   }

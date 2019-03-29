@@ -6,9 +6,9 @@ END_MARKDOWN
 
 # use rhiechow
 # in v0.59 changed to default on 24/9/18 due to much better velocity and pressure distribution along slip walls in transient_flow_around_cylinder_with_species
-REPLACEMENTS D "<<boundarynormalmethod>>" W "rhiechow"
+REPLACEMENTS D "<<boundary_normal_method>>" W "rhiechow"
 
 # use zerodynamic
-#REPLACEMENTS D "<<boundarynormalmethod>>" W "zerodynamic"
+#REPLACEMENTS D "<<boundary_normal_method>>" W "zerodynamic"
 
 INCLUDE "boundary_equations" D "<region" W "<walls"

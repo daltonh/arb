@@ -1,1 +1,25 @@
-../mixture/mixture_viscosity.arb
+MARKDOWN
+This file calculates the mixture viscosity, <mu> from the total total_species volume fraction <phi_total_species>
+END_MARKDOWN
+
+# all variables defined here start with <mu_
+
+# set default viscosity calculation method to quemada - overwrite string on input to select other method
+REPLACEMENTS D "<<mumixtureliquid>>" W "0" D "<<mumixturedilute>>" W "0" D "<<mumixturequemada>>" W "1" D "<<mumixturemb1999>>" R"0" D <<munormalmb1999>> W "0"
+
+
+IF <<mumixtureliquid>>
+# constant viscosity equal to liquid viscosity
+  CELL_DERIVED <mu> "<mu_l>"
+ELSE_IF <<mumixturedilute>>
+# dilute regime viscosity
+  CELL_DERIVED <mu> "<mu_l>*(1.d0 + 2.5d0*<phi_total_species>)"
+ELSE_IF <<mumixturequemada>>
+  INCLUDE "mixture_viscosity_concentrated" R "<<variable>>" W "(cellmin(<phi_total_species>,<mu_phi_total_species_cutoff>))" R "<<function>>" W "1.d0/(1.d0-(<<variable>>/<mu_phi_total_species_max>))^2" R "<<cutoff_variable>>" W "<mu_phi_total_species_cutoff>" R "<<cutoff_function>>" W "1.d0/(1.d0-(<<cutoff_variable>>/<mu_phi_total_species_max>))^2"
+ELSE_IF <<mumixturemb1999>>
+  INCLUDE "mixture_viscosity_concentrated" R "<<variable>>" W "(cellmin(<phi_total_species>,<mu_phi_total_species_cutoff>))" R "<<function>>" W "1.d0 + 2.5d0*<mu_phi_total_species_max>*<<variable>>*(1.d0-(<<variable>>/<mu_phi_total_species_max>))^-1 + 0.1d0*(<<variable>>/<mu_phi_total_species_max>)^2*(1.d0-(<<variable>>/<mu_phi_total_species_max>))^-2" R "<<cutoff_variable>>" W "<mu_phi_total_species_cutoff>" R "<<cutoff_function>>" W "1.d0 + 2.5d0*<mu_phi_total_species_max>*<<cutoff_variable>>*(1.d0-(<<cutoff_variable>>/<mu_phi_total_species_max>))^-1 + 0.1d0*(<<cutoff_variable>>/<mu_phi_total_species_max>)^2*(1.d0-(<<cutoff_variable>>/<mu_phi_total_species_max>))^-2"
+ELSE_IF <<munormalmb1999>>
+  INCLUDE "mixture_viscosity_concentrated" R "<<variable>>" W "(cellmin(<phi_total_species>,<mu_phi_total_species_cutoff>))" R "<<function>>" W "0.75d0*(<<variable>>/<mu_phi_total_species_max>)^2*(1.d0-(<<variable>>/<mu_phi_total_species_max>))^-2" R "<<cutoff_variable>>" W "<mu_phi_total_species_cutoff>" R "<<cutoff_function>>" W "0.75d0*(<<cutoff_variable>>/<mu_phi_total_species_max>)^2*(1.d0-(<<cutoff_variable>>/<mu_phi_total_species_max>))^-2"
+ELSE
+  ERROR "mixture viscosity type not known in mixture_viscosity template"
+END_IF

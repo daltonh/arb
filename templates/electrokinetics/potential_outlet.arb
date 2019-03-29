@@ -1,1 +1,14 @@
-potential_outlet_facegrad.arb
+# these equations need <outlet>, <outlet centreline> and <outlet sans centreline> to be defined, by (eg)
+#FACE_REGION <outlet centreline> "AT 0.d0 0.d0 0.d0 PART OF <outlet>"
+#FACE_REGION <outlet sans centreline> "COMPOUND <outlet>-<outlet centreline>"
+
+# set uniform potential gradient over outlet to the gradient that exists in the centreline
+NONE_DERIVED <outlet centreline gradU> "facesum(facegrad(<U>),region=<outlet centreline>)" # find the potential gradient near the centreline as a variable with no centring
+FACE_EQUATION <outlet potential equation> "facegrad(<U>)-<outlet centreline gradU>" ON <outlet sans centreline>
+
+# and set the average potential at the outlet to zero
+#NONE_DERIVED <outlet average U> "facesum(<U>*<facearea>,<outlet>)/facesum(<facearea>,<outlet>)" # find the average potential over the whole outlet
+#NONE_EQUATION <outlet centreline potential equation> "<outlet average U>" # and set this to zero
+
+# or set potential at centreline to zero
+NONE_EQUATION <outlet centreline potential equation> "facesum(<U>,region=<outlet centreline>)" # use this none centred form so that if this equation has to be overwritten, the overwritten equation can be none centred (eg, specify total current)

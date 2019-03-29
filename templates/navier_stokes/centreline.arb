@@ -1,1 +1,2 @@
-centreline_equations.arb
+# three boundary conditions needed on a centreline in 2D
+INCLUDE "boundary_equations" R "<region" W "<centreline" R "<<boundary_method>>" W "noflux" R "<<boundary_tangent_method>>" W "slip" R "<<boundary_normal_method>>" W "zerogradp"

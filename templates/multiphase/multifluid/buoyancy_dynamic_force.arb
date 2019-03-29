@@ -14,12 +14,12 @@ GLOBAL_REPLACEMENTS R "<<buoyancy>>" W "1" # set this flag to be used in single_
     }
 
 # add buoyancy to face centred force, depending on 
-    if (string_test('<<dynamicforcefmethod>>','dxunit')) {
+    if (string_test('<<dynamic_force_f_method>>','dxunit')) {
       $return_string .= "VARIABLE <dynamic_force_f_$species> '<dynamic_force_f_$species>+dot(<gravity[l=:]>,<facedxunit[l=:]>)*<rho_$species>'\n"
-    } elsif (string_test('<<dynamicforcefmethod>>','facegrad') || string_test('<<dynamicforcefmethod>>','facegradadjacentcells')) {
+    } elsif (string_test('<<dynamic_force_f_method>>','facegrad') || string_test('<<dynamic_force_f_method>>','facegradadjacentcells')) {
       $return_string .= "VARIABLE <dynamic_force_f_$species> '<dynamic_force_f_$species>+dot(<gravity[l=:]>,<facenorm[l=:]>)*<rho_$species>'\n"
     } else {
-      $return_string .= "ERROR 'problem with <<dynamicforcefmethod>> in multifluid/buoyancy_dynamic_force template file\n";
+      $return_string .= "ERROR 'problem with <<dynamic_force_f_method>> in multifluid/buoyancy_dynamic_force template file\n";
     }
 
   }

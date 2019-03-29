@@ -9,15 +9,15 @@
 <<dim2comment>>VARIABLE <dynamic_force_c[l=2]> "<dynamic_force_c[l=2]>+<gravity[l=2]>*<vof_rho_c>"
 <<dim3comment>>VARIABLE <dynamic_force_c[l=3]> "<dynamic_force_c[l=3]>+<gravity[l=3]>*<vof_rho_c>"
 
-IF {{ return string_test('<<dynamicforcefmethod>>','dxunit'); }}
+IF {{ return string_test('<<dynamic_force_f_method>>','dxunit'); }}
 # dxunit method
   VARIABLE <dynamic_force_f> "<dynamic_force_f>+dot(<gravity[l=:]>,<facedxunit[l=:]>)*<vof_rho_f>"
-ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegrad'); }}
+ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegrad'); }}
 # facegrad method
   VARIABLE <dynamic_force_f> "<dynamic_force_f>+dot(<gravity[l=:]>,<facenorm[l=:]>)*<vof_rho_f>"
-ELSE_IF {{ return string_test('<<dynamicforcefmethod>>','facegradadjacentcells'); }}
+ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegradadjacentcells'); }}
 # facegradadjacentcells method
   VARIABLE <dynamic_force_f> "<dynamic_force_f>+dot(<gravity[l=:]>,<facenorm[l=:]>)*<vof_rho_f>"
 ELSE
-  ERROR 'No valid dynamicforcefmethod is chosen in the volume_of_fluid/buoyancy_dynamic_force template file: string currently set as <<dynamicforcefmethod>>'
+  ERROR 'No valid dynamic_force_f_method is chosen in the volume_of_fluid/buoyancy_dynamic_force template file: string currently set as <<dynamic_force_f_method>>'
 END_IF

@@ -1,1 +1,2 @@
-transient_explicit_setup.arb
+# use this file to initial a transient Navier-Stokes simulation using explicit dynamic timestepping
+INCLUDE_LOCAL "transient_all_setup" D "<<dynamictimestep>>" W "1" R "<<implicittimestep>>" W "0"

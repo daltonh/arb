@@ -7,11 +7,11 @@ REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
 #REPLACEMENTS D "<<viscosity_method>>" W "thomas65
 REPLACEMENTS D "<<viscosity_method>>" W "kriegerdougherty"
 
-#REPLACEMENTS D "<<stressmethod>>" W "version1" # method, with phi inside viscous stress divergence
-REPLACEMENTS D "<<stressmethod>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
+#REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
+REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
 # in this file jackson98 = version2, zhang97 = balls
 
-IF {{ return string_test('<<stressmethod>>','version1') }}
+IF {{ return string_test('<<stress_method>>','version1') }}
 # split stress between phases using the simplest possible consistent partitioning
 # here mu is not species specific, so is roughly proportional (or more) to phi
 # the multiplier used in the u_f_{correction} calculation is the viscosity/phi, which has a conventional viscosity magnitude as phi -> 0
@@ -90,7 +90,7 @@ ELSE
 
   ELSE
 # for these methods use the same viscosity across phases
-    IF {{ return string_test('<<stressmethod>>','zhang97') }}
+    IF {{ return string_test('<<stress_method>>','zhang97') }}
 # only fluid viscosity applied to solid phases, zhang97 = balls
       CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>" ON <allcells> output
     ELSE

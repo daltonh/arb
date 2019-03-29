@@ -1,1 +1,9 @@
-high_order_interface_geometry.arb
+# these are the standard includes necessary to calculate the surface curvature, using a higher-order reconstructed level-set type formulation, which does not require 
+
+INCLUDE "implicit_reconstructed_levelset"
+IF 1
+  INCLUDE "normals" R "<vof_phi_smoothed>" W "<vof_phi_s>" # base interface forces on function that has similar properties to phi, rather than on s
+ELSE
+  INCLUDE "normals" R "<vof_phi_smoothed>" W "<vof_s>"
+END_IF
+INCLUDE "curvature"

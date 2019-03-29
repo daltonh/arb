@@ -8,7 +8,7 @@ IF {{ return string_test('<<species>>','species0') }}
 END_IF
 
 # this string is now set globally in constants, but can be overwritten with local values here
-REPLACEMENTS D "<<dragmethod>>" W "version2"
+REPLACEMENTS D "<<drag_method>>" W "version2"
 
 # default hindered settling function is now as defined in masliyah79 = balls
 # version1 gives an equivalent hindered settling function which is / phi_0^2
@@ -72,7 +72,7 @@ END_BLOCK
 
 IF <<drag_beta_face_based>>
 
-  IF {{ return (!(string_test('<<dragmethod>>','version2'))) }}
+  IF {{ return (!(string_test('<<drag_method>>','version2'))) }}
     ERROR "face based drag has to be version2 only, in single_species_drag"
   END_IF
 
@@ -93,7 +93,7 @@ IF <<drag_beta_face_based>>
 
 ELSE
 
-  IF {{ return (string_test('<<dragmethod>>','version1')) }}
+  IF {{ return (string_test('<<drag_method>>','version1')) }}
     CELL_DERIVED <beta**_species0_<<species>>> "<mu_species0>*<phi_bounded_species0>/<kappa*_species0_<<species>>>" ON <allcells>
     CELL_LOCAL <beta^_<<species>>_species0> "<beta**_species0_<<species>>>*<phi_bounded_species0>" ON <allcells>
     CELL_LOCAL <beta^_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>

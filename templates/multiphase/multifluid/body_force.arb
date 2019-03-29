@@ -21,12 +21,12 @@ GLOBAL_REPLACEMENTS R "<<body_force>>" W "1" # set this flag to be used in singl
     }
 
 # add to face centred force, depending on 
-    if (string_test('<<dynamicforcefmethod>>','dxunit')) {
+    if (string_test('<<dynamic_force_f_method>>','dxunit')) {
       $return_string .= "VARIABLE <dynamic_force_f_$species> '<dynamic_force_f_$species>+dot(<body_force[l=:]>,<facedxunit[l=:]>)'\n"
-    } elsif (string_test('<<dynamicforcefmethod>>','facegrad') || string_test('<<dynamicforcefmethod>>','facegradadjacentcells')) {
+    } elsif (string_test('<<dynamic_force_f_method>>','facegrad') || string_test('<<dynamic_force_f_method>>','facegradadjacentcells')) {
       $return_string .= "VARIABLE <dynamic_force_f_$species> '<dynamic_force_f_$species>+dot(<body_force[l=:]>,<facenorm[l=:]>)'\n"
     } else {
-      $return_string .= "ERROR 'problem with <<dynamicforcefmethod>> in multifluid/body_force template file\n";
+      $return_string .= "ERROR 'problem with <<dynamic_force_f_method>> in multifluid/body_force template file\n";
     }
 
   }
