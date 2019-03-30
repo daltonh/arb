@@ -25,10 +25,17 @@ END_IF
 
 REPLACEMENTS D "<<diagnostics_rhie_chow>>" W "0"
 IF <<diagnostics_rhie_chow>>
-  INCLUDE "u_f_vector"
-  INCLUDE "u_f_vector" R '<<component>>' W '_{raw}'
-  INCLUDE "u_f_vector" R '<<component>>' W '_{correction}'
-  INCLUDE "dynamic_force_f_vector"
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "FACE_OUTPUT <u_f_visualise_$species[l=<<i>>]> '<u_f_$species>*<facenorm[l=<<i>>]>' ON <allfaces>\n";
+      $return_string .= "FACE_OUTPUT <u_f_{raw}_visualise_$species[l=<<i>>]> '<u_f_{raw}_$species>*<facenorm[l=<<i>>]>' ON <allfaces>\n";
+      $return_string .= "FACE_OUTPUT <u_f_{correction}_visualise_$species[l=<<i>>]> '<u_f_{correction}_$species>*<facenorm[l=<<i>>]>' ON <allfaces>\n";
+      $return_string .= "FACE_OUTPUT <dynamic_force_f_visualise_$species[l=<<i>>]> '<dynamic_force_f_$species>*<facenorm[l=<<i>>]>' ON <allfaces>\n";
+      $return_string .= "FACE_OUTPUT <dynamic_force_f_{correction}_visualise_$species[l=<<i>>]> '<dynamic_force_f_{correction}_$species>*<facenorm[l=<<i>>]>' ON <correctionfaces>\n";
+    }
+    return $return_string;
+  }}
 
 # turn some species specific outputs on
 # at the same time, expand the region of the velocity correction related variables to be <allfaces> rather than <domainfaces> to enable visualisation
