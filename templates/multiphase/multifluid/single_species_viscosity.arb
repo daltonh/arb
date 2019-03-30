@@ -7,6 +7,8 @@ REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
 #REPLACEMENTS D "<<viscosity_method>>" W "thomas65
 REPLACEMENTS D "<<viscosity_method>>" W "kriegerdougherty"
 
+INCLUDE "default_replacement_strings"
+
 #REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
 REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
 # in this file jackson98 = version2, zhang97 = balls

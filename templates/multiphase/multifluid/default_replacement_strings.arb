@@ -1,0 +1,18 @@
+MARKDOWN
+Set some default equation settings via replacement strings for the multifluid problem
+END_MARKDOWN
+
+# <<implicitadvection>> modifies both the advection of phi and u, making both implicit (ie, using r=0 values rather than r=1 values).  You need implicit advection to be able to push CFL over 1.
+GLOBAL_REPLACEMENTS D "<<implicitadvection>>" W "1" # default is now implicit advection
+
+#GLOBAL_REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
+GLOBAL_REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
+
+# default hindered settling function is now as defined in masliyah79 = balls
+# version1 gives an equivalent hindered settling function which is / phi_0^2
+GLOBAL_REPLACEMENTS D "<<drag_method>>" W "version2"
+
+# method used for rhie-chow u_f interpolation
+#GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+

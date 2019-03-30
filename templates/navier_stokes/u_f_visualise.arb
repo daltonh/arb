@@ -1,0 +1,4 @@
+# idea here is to just output the face centred advection flux as a vector
+# call with R "<u_f" W "<my_f_component" to change variable being acted upon
+# with index notation this is so compact now that it is probably not worth calling this file for general visualisation purposes anymore
+FACE_OUTPUT <u_f_visualise[l=<<i>>]> "<u_f>*<facenorm[l=<<i>>]>" ON <allfaces>

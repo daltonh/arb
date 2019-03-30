@@ -4,10 +4,8 @@ Here we link the pressure gradient (contained within <dynamic_force_f>) to the b
 Note that the <u_f_{correction}> term is based on <dynamic_force_f_{correction}>, which for boundary cells equates to the difference between <dynamic_force_f> and <dynamic_force_c> (component) evaluated in the downcell, as celldiv applied in a boundary cell automatically takes its value from the adjacent domain cell.
 END_MARKDOWN
 
-# first need to make sure that the relevant rhie-chow variables are defined on the boundaries
-VARIABLE <dynamic_force_f_{correction}> ON <allfaces> output
-VARIABLE <u_f_{correction}> ON <allfaces>
-<<transientnavierstokescomment>>VARIABLE <u_f_{correction}[r=1]> ON <allfaces>
+# alter the region <correctionfaces> so that it includes the boundaries
+FACE_REGION <correctionfaces> "all" ON <allfaces>
 
 # this needs to be fixed up possibly so that direction is consistent with dxunit?
 FACE_EQUATION <equation> "<u_f>-faceave[downcell](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<u_f_{correction}>" ON <region> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero

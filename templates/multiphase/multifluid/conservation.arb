@@ -4,6 +4,8 @@ END_MARKDOWN
 
 # uses <<radius_f>> and <<radius_c>> which are either r or 1 already, and simplify in the case of 1 using maxima
 
+INCLUDE "default_replacement_strings"
+
 # both of these strings are now set globally in constants, but can be overwritten with local values here
 # <<implicitadvection>> modifies both the advection of phi and u, making both implicit (ie, using r=0 values rather than r=1 values).  You need implicit advection to be able to push CFL over 1.
 REPLACEMENTS D "<<implicitadvection>>" W "1" # default is now implicit advection

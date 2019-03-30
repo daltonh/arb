@@ -1,0 +1,38 @@
+MARKDOWN
+Here we calculate the dynamic forces, including <dynamic_force_c[l=:]>, <dynamic_force_f> and <dynamic_force_f_{correction}>
+
+Note that <dynamic_force_f_{correction}> has different interpretations depending on <<u_f_method>>
+END_MARKDOWN
+
+# ensure that <<u_f_method>> has been set
+INCLUDE "default_replacement_strings"
+
+# the region <correctionfaces> should be defined if it isn't already
+IF {{ return (!(arb_defined('<correctionfaces>'))) }} # only calculate the dynamic_force correction if it isn't already defined
+  FACE_REGION <correctionfaces> "all" ON <domainfaces>
+END_IF
+
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+
+# first use the navier_stokes dynamic_force template to create the variables
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/dynamic_force' ".
+      "SUFFIX '<dynamic_force_f_{correction}>' W '_$species' ".
+      "SUFFIX '<dynamic_force_c_f[l=1]>' W '_$species' ".
+      "SUFFIX '<dynamic_force_c[l=1]>' W '_$species' ".
+      "SUFFIX '<dynamic_force_f>' W '_$species' ".
+      "SUFFIX '<p>' W '_species0' ".
+      "SUFFIX '<p_f_gradient_limiter>' W '_species0' ".
+      "SUFFIX '<p_f>' W '_species0'\n";
+
+# add on contributions due to disperse phase species pressures, possibly osmotic in nature so not multiplied by phi
+    $return_string .= "INCLUDE_LOCAL 'single_species_dynamic_force' R '<<species>>' W '$species'\n";
+
+  }
+  return $return_string;
+}}
+
+#IF {{ return
+
+# TODO: change definition of dynamic_force_f_{correction} for mixture u_f_method

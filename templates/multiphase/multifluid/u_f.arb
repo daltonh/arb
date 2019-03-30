@@ -2,6 +2,27 @@ MARKDOWN
 Here we setup the face flux velocity u_f for each phase, using the navier_stokes template file
 END_MARKDOWN
 
+# ensure that <<u_f_method>> has been set
+INCLUDE "default_replacement_strings"
+
+IF {{ return (!(arb_defined(string_eval('<dynamic_force_f_{correction}_species0>','text')))) }} # only calculate the dynamic_force correction if it isn't already defined
+  INCLUDE "dynamic_force"
+END_IF
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # do the whole u_f thing, including defining the dynamic pressures, etc
 {{
   my $return_string = '';
@@ -58,18 +79,7 @@ END_MARKDOWN
   return $return_string;
 }}
 
-# add on osmotic pressure contribution to dynamic force for the disperse species
-{{
-  my $return_string = '';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-    $return_string .= "INCLUDE_LOCAL 'single_species_dynamic_force' R '<<species>>' W '$species'\n";
-  }
-  return $return_string;
-}}
-
-GLOBAL_REPLACEMENTS D '<<ufmethod>>' W '0'
-
-IF <<mixtureuf>>
+IF <<u_f_method>>
 
   INCLUDE "mixture_u_f"
 

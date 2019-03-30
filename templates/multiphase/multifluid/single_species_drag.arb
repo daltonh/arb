@@ -7,6 +7,8 @@ IF {{ return string_test('<<species>>','species0') }}
   ERROR "single_species_drag can only be called with disperse phase species: was called with species = <<species>>"
 END_IF
 
+INCLUDE "default_replacement_strings"
+
 # this string is now set globally in constants, but can be overwritten with local values here
 REPLACEMENTS D "<<drag_method>>" W "version2"
 
