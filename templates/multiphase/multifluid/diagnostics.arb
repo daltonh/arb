@@ -1,8 +1,33 @@
 MARKDOWN
 Turn on outputs and create variables suitable for debugging multifluid simulations
+
+By default this file doesn't do any diagnostics, however you can use the diagnostics level to specify standard types, using 'none', 'some' or 'all'.  Alternative you can call with individual diagnostics on by setting the string
 END_MARKDOWN
 
+REPLACEMENTS D "<<diagnostics_basic>>" W "0"
 REPLACEMENTS D "<<diagnostics_elements>>" W "0"
+REPLACEMENTS D "<<diagnostics_forces>>" W "0"
+REPLACEMENTS D "<<diagnostics_rhie_chow>>" W "0"
+REPLACEMENTS D "<<diagnostics_species_information>>" W "0"
+REPLACEMENTS D "<<diagnostics_unknown_changes>>" W "0"
+REPLACEMENTS D "<<diagnostics_total_pressure>>" W "0"
+
+REPLACEMENTS D "<<diagnostics_level>>" W "none"
+IF {{ return (string_test('<<diagnostics_level>>','some')) }}
+  REPLACEMENTS S "<<diagnostics_basic>>" W "0"
+  REPLACEMENTS S "<<diagnostics_forces>>" W "1"
+  REPLACEMENTS S "<<diagnostics_total_pressure>>" W "1"
+  REPLACEMENTS S "<<diagnostics_species_information>>" W "1"
+ELSE_IF {{ return (string_test('<<diagnostics_level>>','all')) }}
+  REPLACEMENTS S "<<diagnostics_basic>>" W "1"
+  REPLACEMENTS S "<<diagnostics_elements>>" W "1"
+  REPLACEMENTS S "<<diagnostics_forces>>" W "1"
+  REPLACEMENTS S "<<diagnostics_rhie_chow>>" W "1"
+  REPLACEMENTS S "<<diagnostics_species_information>>" W "1"
+  REPLACEMENTS S "<<diagnostics_unknown_changes>>" W "1"
+  REPLACEMENTS S "<<diagnostics_total_pressure>>" W "1"
+END_IF
+
 IF <<diagnostics_elements>>
   INCLUDE_TEMPLATE "general/element_information"
 END_IF
@@ -10,29 +35,29 @@ END_IF
 # set path to template directory where all following includes will be found
 INCLUDE_TEMPLATE "multiphase/multifluid"
 
-# some output variables/diagnostics
-VARIABLE <u_f_vect_species0[l=<<i>>]> output
-VARIABLE <u_f_vect_species1[l=<<i>>]> output
-VARIABLE <phi_species0[r=1]> output
-VARIABLE <phi_species1[r=1]> output
+IF <<diagnostics_basic>>
+  # some output variables/diagnostics
+  VARIABLE <u_f_vect_species0[l=<<i>>]> output
+  VARIABLE <u_f_vect_species1[l=<<i>>]> output
+  VARIABLE <phi_species0[r=1]> output
+  VARIABLE <phi_species1[r=1]> output
 
-INCLUDE "slip_velocities" # output slip velocities
+  INCLUDE "slip_velocities" # output slip velocities
+END_IF
 
-REPLACEMENTS D "<<diagnostics_forces>>" W "1"
 IF <<diagnostics_forces>>
   INCLUDE "visualise_forces"
 END_IF
 
-REPLACEMENTS D "<<diagnostics_rhie_chow>>" W "0"
 IF <<diagnostics_rhie_chow>>
   {{
     my $return_string = '';
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
-      $return_string .= "FACE_OUTPUT <u_f_visualise_$species[l=<<i>>]> '<u_f_$species>*<facenorm[l=<<i>>]>' ON <allfaces>\n";
-      $return_string .= "FACE_OUTPUT <u_f_{raw}_visualise_$species[l=<<i>>]> '<u_f_{raw}_$species>*<facenorm[l=<<i>>]>' ON <allfaces>\n";
-      $return_string .= "FACE_OUTPUT <u_f_{correction}_visualise_$species[l=<<i>>]> '<u_f_{correction}_$species>*<facenorm[l=<<i>>]>' ON <correctionfaces>\n";
-      $return_string .= "FACE_OUTPUT <dynamic_force_f_visualise_$species[l=<<i>>]> '<dynamic_force_f_$species>*<facenorm[l=<<i>>]>' ON <allfaces>\n";
-      $return_string .= "FACE_OUTPUT <dynamic_force_f_{correction}_visualise_$species[l=<<i>>]> '<dynamic_force_f_{correction}_$species>*<facenorm[l=<<i>>]>' ON <correctionfaces>\n";
+      $return_string .= "FACE_OUTPUT <u_f_visualise_$species"."[l=<<i>>]> '<u_f_$species>*<facenorm[l=<<i>>]>' ON <allfaces>\n";
+      $return_string .= "FACE_OUTPUT <u_f_{raw}_visualise_$species"."[l=<<i>>]> '<u_f_{raw}_$species>*<facenorm[l=<<i>>]>' ON <allfaces>\n";
+      $return_string .= "FACE_OUTPUT <u_f_{correction}_visualise_$species"."[l=<<i>>]> '<u_f_{correction}_$species>*<facenorm[l=<<i>>]>' ON <correctionfaces>\n";
+      $return_string .= "FACE_OUTPUT <dynamic_force_f_visualise_$species"."[l=<<i>>]> '<dynamic_force_f_$species>*<facenorm[l=<<i>>]>' ON <allfaces>\n";
+      $return_string .= "FACE_OUTPUT <dynamic_force_f_{correction}_visualise_$species"."[l=<<i>>]> '<dynamic_force_f_{correction}_$species>*<facenorm[l=<<i>>]>' ON <correctionfaces>\n";
     }
     return $return_string;
   }}
@@ -49,8 +74,8 @@ IF <<diagnostics_rhie_chow>>
       $return_string .= "VARIABLE <phi_f_bounded_adjacent_$species> output\n";
       $return_string .= "VARIABLE <phi_bounded_$species> output\n";
       $return_string .= "VARIABLE <phi_f_adv_$species> output\n";
-      $return_string .= "VARIABLE <u_f_{correction}_A_$species> output\n";
-      $return_string .= "VARIABLE <u_f_{correction}_D_$species> output\n";
+#     $return_string .= "VARIABLE <u_f_{correction}_A_$species> output\n";
+#     $return_string .= "VARIABLE <u_f_{correction}_D_$species> output\n";
       $return_string .= "VARIABLE <u_f_$species> output\n";
       $return_string .= "VARIABLE <u_f_alpha_{vis}_$species> output\n";
       $return_string .= "VARIABLE <u_f_alpha_{adv}_$species> output\n";
@@ -71,16 +96,27 @@ IF <<diagnostics_rhie_chow>>
       return $return_string;
     }}
   END_IF
+
+# mixture specific diagnostics
+  IF {{ return string_test('<<u_f_method>>','mixture') }}
+    {{
+      my $return_string='';
+      for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+        $return_string .= "FACE_OUTPUT <phiu_f_slip_{correction}_visualise_$species"."[l=<<i>>]> '<phiu_f_slip_{correction}_$species>*<facenorm[l=<<i>>]>' ON <correctionfaces>\n";
+      }
+      return $return_string;
+    }}
+    FACE_OUTPUT <u_f_{correction}_visualise_mixture[l=<<i>>]> '<u_f_{correction}_mixture>*<facenorm[l=<<i>>]>' ON <correctionfaces>
+  END_IF
+
 END_IF
 
 # some output variables
-REPLACEMENTS D "<<diagnostics_species_information>>" W "1"
 IF <<diagnostics_species_information>>
   INCLUDE "species_information"
 END_IF
 
 # rate of change of unknowns
-REPLACEMENTS D "<<diagnostics_unknown_changes>>" W "0"
 IF <<diagnostics_unknown_changes>>
   {{
     my $return_string = '';
@@ -93,4 +129,17 @@ IF <<diagnostics_unknown_changes>>
     return $return_string;
   }}
 END_IF
+
+# find total pressure for output purposes
+IF <<diagnostics_total_pressure>>
+  CELL_LOCAL <p_total> "<p_species0>" ON <allcells>
+  {{
+    my $return_string='';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <p_total> '<p_total>+<p_$species>'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
 ####################################################
