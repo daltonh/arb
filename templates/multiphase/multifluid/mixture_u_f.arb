@@ -6,7 +6,7 @@ END_MARKDOWN
 
 #--------------------------
 # use this to debug
-REPLACEMENTS D '<<debug>>' W '1'
+REPLACEMENTS D '<<debug>>' W '0'
 
 IF <<debug>>
   OVERRIDE_OPTIONS output

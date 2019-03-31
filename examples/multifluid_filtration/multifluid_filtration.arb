@@ -1,0 +1,188 @@
+INFO_TITLE "Multifluid filtration example"
+INFO_DATE "21/3/19"
+INFO_DESCRIPTION "Simulation of flow through a 2D cartesian channel with a membrane along one side, here accomplished using multi-fluid equations with one solid species (ie, a two-fluid model)"
+
+REPLACEMENTS R "<<membrane>>" W "1" # ue this string to set whether a membrane is present or not
+
+#INCLUDE_TEMPLATE "kernel_presets"
+#INCLUDE "kernel_1st_order_compact"
+
+MSH_FILE "filtration_channel_coarse.msh" input # hopelessly unresolved coarse mesh
+#MSH_FILE "filtration_channel_short.msh" input
+
+IF <<membrane>> # don't rely on the <walls> definition in the msh file
+  FACE_REGION <walls> "compound(<boundaries>-<inlet>-<outlet>-<membrane>)"
+ELSE
+  FACE_REGION <walls> "compound(<boundaries>-<inlet>-<outlet>)"
+END_IF
+
+GLUE_FACES <centreline> reflect=2
+
+#GENERAL_REPLACEMENTS R "<<dynamic_force_f_method>>" W "facegrad"
+#GENERAL_REPLACEMENTS R "<<dynamic_force_f_method>>" W "dxunit"
+
+INCLUDE_TEMPLATE "general/cartesian_x1y2"
+
+#GLOBAL_REPLACEMENTS R "<<multifluid_species_max>>" W "2" # this is the maximum species number, which is equivalent to the number of disperse phases
+GLOBAL_REPLACEMENTS R "<<multifluid_species_max>>" W "1" # this is the maximum species number, which is equivalent to the number of disperse phases
+INCLUDE_TEMPLATE "multiphase/multifluid/setup_species_strings"
+  
+# method used for rhie-chow u_f interpolation
+GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+#GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+
+#REPLACEMENTS R "<<shearinduceddiffusion>>" W "0"
+
+#{{ print "string_debug = ".string_debug."\n"; }}
+
+#INCLUDE_TEMPLATE "navier_stokes/stokes"
+INCLUDE_TEMPLATE "multiphase/multifluid"
+INCLUDE "constants"
+#INCLUDE "transient_constant_setup"
+INCLUDE "transient_dynamic_setup"
+INCLUDE "unknowns" # define unknowns and various derivatives, including the various phi functions
+INCLUDE "species_viscosity" # calculate all species viscosities
+INCLUDE "total_stress" # formulate stress tensors for all phases
+IF 0
+  INCLUDE "species_pressure" R "<<osmotic_pressure_method>>" W "dilute" # calculate all disperse phase pressures
+ELSE
+  INCLUDE "species_pressure" # calculate all disperse phase pressures
+END_IF
+IF 0
+  INCLUDE "species_drag" R "<<hindered_settling_function>>" W "dilute" # calculate all continuous to disperse phase drag functions
+ELSE
+  INCLUDE "species_drag" # calculate all continuous to disperse phase drag functions
+END_IF
+INCLUDE "u_f" # setup the dynamic forces, p_error and u_f for all phases
+#INCLUDE "buoyancy_dynamic_force" # add a buoyancy component onto the dynamic forces
+INCLUDE "conservation" # both mass and momentum conservation equations solved
+INCLUDE "walls" # walls BC
+INCLUDE "inlet" # inlet BC
+INCLUDE "outlet" # outlet BC
+
+IF <<membrane>>
+# rewrite inlet BCs so that we actually set the flow through the outlet
+# NONE_LOCAL <outlet u_av_calc_species0> [1] "facesum(<u_f_species0>*<facearea>,region=<outlet>)/facesum(<facearea>,region=<outlet>)"
+# NONE_DERIVED <inlet u_av_calc_species0> CANCEL
+# NONE_EQUATION <inlet oneface flowrate equation_species0> [1] "<outlet u_av_calc_species0>-<u_av_species0>" # other information: region = empty: deriv = 1: newtstepmax = empty: newtstepmin = empty: filename = ../../../development/current/templates/navier_stokes/boundary_equations.arb: absfilename = /Users/daltonh/codes/arb/development/current/templates/navier_stokes/boundary_equations.arb: comments = # set flowrate through region to give required average velocity
+  NONE_CONSTANT <trans_membrane_pressure> [Pa] 1.d5 # trans membrane pressure, which sets the gauge pressure at the outlet
+# NONE_CONSTANT <trans_membrane_pressure> [Pa] 1.d4 # trans membrane pressure, which sets the gauge pressure at the outlet
+# NONE_CONSTANT <trans_membrane_pressure> [Pa] 1.d3 # trans membrane pressure, which sets the gauge pressure at the outlet
+  IF 0
+# ramp up TMP with time
+    NONE_CONSTANT <trans_membrane_pressure_ramp_time> [s] 1.0d0 #
+    NONE_TRANSIENT <trans_membrane_pressure_variation> "<trans_membrane_pressure>*nonemin(<t>/<trans_membrane_pressure_ramp_time>,1.d0)" stepoutput
+  ELSE
+# no ramp
+    NONE_TRANSIENT <trans_membrane_pressure_variation> "<trans_membrane_pressure>" stepoutput
+  END_IF
+  NONE_CONSTANT <membrane_resistance> [1/m] 4.77d12 # resistance of membrane
+# NONE_CONSTANT <membrane_resistance> [1/m] 4.77d32 # resistance of membrane
+# make an artifically lower resistance to up the flux
+# NONE_CONSTANT <membrane_resistance> [1/m] 4.77d9 # resistance of membrane
+# INCLUDE "boundary_equations" R '<walls' W '<membrane' R '<region' W '<walls' # walls BC
+  INCLUDE "walls" R '<walls' W '<membrane'
+# FACE_EQUATION <membrane flowrate equation_species0> "<u_f_species0>-(<p_f_species0>+<trans_membrane_pressure>)/(<mu_species0>*<membrane_resistance>)"
+  FACE_EQUATION <membrane flowrate equation_species0> "<u_f_species0>-(<p_f_species0>+<trans_membrane_pressure_variation>)/(<mu_species0>*<membrane_resistance>)"
+  FACE_OUTPUT <membrane_flux_vect[l=<<i>>]> "<u_f_species0>*<facenorm[l=<<i>>]>" ON <membrane>
+END_IF
+
+IF 0
+  INCLUDE "diagnostics"
+ELSE_IF 0
+  INCLUDE "visualise_forces" # included in diagnostics, so if diagnostics is on, not required
+END_IF
+
+
+#NONE_UNKNOWN <p_in> "100.d0"
+#NONE_DERIVED <u_av_calc_species0> "facesum(-<u_f_species0>*<facearea>,region=<inlet>)/facesum(<facearea>,region=<inlet>)"
+#NONE_EQUATION <u_av_equation> "<u_av_species0>-<u_av_calc_species0>"
+#<<transientnavierstokescomment>>VARIABLE <dt_initial> 1.d-5
+VARIABLE <u_av_species0> [m/s] 1.d-2
+VARIABLE <u_av_species1> [m/s] "<u_av_species0>"
+VARIABLE <mu_species0> [Pa.s] 1.d-3
+# Re = u*rho*inletscale/mu
+# Re = 1.d-1*1.d3*1.d-1/1.d-3 = 1.d+4 -> too high
+# Re = 1.d-2*1.d3*1.d-1/1.d-3 = 1.d+3 -> too high
+# Re = 1.d-2*1.d3*1.d-2/1.d-3 = 1.d+2 -> good - steady?
+# Re = 1.d-1*1.d3*1.d-2/1.d-3 = 1.d+3 -> maybe transient?
+
+VARIABLE <inlet phi_species1> 0.1d0
+VARIABLE <rho_species0> 1.d3
+VARIABLE <rho_species1> 1.d3
+VARIABLE <a_species1> 1.d-7
+IF {{ return string_test('<<multifluid_species_max>>','2'); }}
+  VARIABLE <rho_species2> 1400.d0
+  VARIABLE <inlet phi_species2> 0.15d0
+  VARIABLE <a_species2> 1.d-5
+END_IF
+
+VARIABLE <CFL_initial> 1.d-1
+VARIABLE <CFL_max> 0.5d5
+#VARIABLE <CFL_max> 1.0d0
+VARIABLE <adv_limiter> 0.d0
+VARIABLE <phi_tol> 1.d-3
+#VARIABLE <dt_out> 1.d-3
+#VARIABLE <dt_out> 1.d-5
+VARIABLE <dt_out> 1.d-1
+VARIABLE <t_end> 1.d+1
+#VARIABLE <dt_initial> 
+#GENERAL_OPTIONS timestepout=1
+#GENERAL_OPTIONS timestepout=5
+#GENERAL_OPTIONS timestepmax=5
+#GENERAL_OPTIONS newtstepout=1,newtstepmax=2
+#GENERAL_OPTIONS newtstepmax=40
+
+VARIABLE <u_species0[l=1]> "<u_av_species0>" magnitude=<u_av_species0>
+VARIABLE <u_species1[l=1]> "<u_av_species1>" magnitude=<u_av_species1>
+
+#SOLVER_OPTIONS lambdalimitcautiously=.true.
+#KERNEL_OPTIONS averagestabilitycorrections=.true.
+#KERNEL_OPTIONS gradientstabilitycorrections=.true.
+#INCLUDE_TEMPLATE "general/element_information"
+
+# some output variables
+INCLUDE "species_information"
+
+# rate of change of unknowns
+IF 0
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      for my $l (string_eval('<<dimensions>>','list')) {
+        $return_string .= "CELL_OUTPUT <dudt_$species"."[l=$l]> '(<u_$species"."[l=$l]>-<u_$species"."[l=$l,r=1]>)/<dt>' ON <allcells>\n";
+      }
+      $return_string .= "CELL_OUTPUT <dphidt_$species> '(<phi_$species>-<phi_$species"."[r=1]>)/<dt>' ON <allcells>\n";
+    }
+    return $return_string;
+  }}
+END_IF
+####################################################
+
+IF 1
+  GENERAL_OPTIONS timesteprewind=3,newtstepmaxiftimesteprewind=10,timesteprewindmax=6
+  VARIABLE <dt> timesteprewindmultiplier=0.5d0
+  NONE_CONDITION <newtsteprewind> "1.d0-<newtstepconverged>" timesteprewindcondition
+END_IF
+#GENERAL_OPTIONS notimesteprewind
+GENERAL_OPTIONS newtstepmax=15
+#GENERAL_OPTIONS newtstepout=1
+
+####################################################
+
+#SOLVER_OPTIONS linearsolver=suitesparse
+#GENERAL_OPTIONS timestepmax=1
+#GENERAL_OPTIONS timestepout=1
+#NONE_CONSTANT <C_{Rhie-Chow}> 1.d-3
+VARIABLE <u_f_vect_species0[l=1]> output
+VARIABLE <u_f_vect_species1[l=1]> output
+VARIABLE <phi_species0[r=1]> output
+VARIABLE <phi_species1[r=1]> output
+#GENERAL_OPTIONS timestepadditional=1
+
+# this combination of options prints out whatever data is contained in the file after setup has occurred
+#GENERAL_OPTIONS timestepstart=0
+#GENERAL_OPTIONS timestepmax=0
+
+#GENERAL_OPTIONS newtstepmax=15,newtstepout=1
+GENERAL_OPTIONS timestepmax=4,timestepout=2

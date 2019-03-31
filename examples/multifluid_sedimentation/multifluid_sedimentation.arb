@@ -1,0 +1,155 @@
+INFO_TITLE "Sedimentation example"
+INFO_DATE "28/02/19"
+
+#OVERRIDE_EQUATION_OPTIONS staticmagnitude
+#OVERRIDE_UNKNOWN_OPTIONS staticmagnitude
+
+#INCLUDE_TEMPLATE "kernel_presets"
+#INCLUDE "kernel_1st_order_compact"
+
+#MSH_FILE "mesh20.msh" input
+MSH_FILE "mesh100.msh" input
+#MSH_FILE "mesh1000.msh" input
+
+FACE_REGION <walls> "compound(<boundaries>-<inlet>-<outlet>)"
+
+#REPLACEMENTS R "<<stress_method>>" W "version1"
+GLUE_FACES <inlet> <outlet>
+
+INCLUDE_TEMPLATE "general/cartesian_x1y2"
+GLOBAL_REPLACEMENTS R "<<multifluid_species_max>>" W "1" # this is the maximum species number, which is equivalent to the number of disperse phases
+INCLUDE_TEMPLATE "multiphase/multifluid/setup_species_strings"
+
+# method used for rhie-chow u_f interpolation
+GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+#GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+
+#INCLUDE_TEMPLATE "navier_stokes/stokes"
+INCLUDE_TEMPLATE "multiphase/multifluid"
+INCLUDE "constants"
+#INCLUDE "transient_constant_setup"
+INCLUDE "transient_dynamic_setup"
+INCLUDE "unknowns" # define unknowns and various derivatives, including the various phi functions
+INCLUDE "species_viscosity" # calculate all species viscosities
+INCLUDE "total_stress" # formulate stress tensors for all phases
+IF 0
+  INCLUDE "species_pressure" R "<<osmotic_pressure_method>>" W "dilute"
+ELSE
+  INCLUDE "species_pressure" R "<<shearinduceddiffusion>>" W "0"# calculate all disperse phase pressures
+END_IF
+IF 0
+  INCLUDE "species_drag" R "<<hindered_settling_function>>" W "dilute" # calculate all continuous to disperse phase drag functions
+ELSE
+  INCLUDE "species_drag" # calculate all continuous to disperse phase drag functions
+END_IF
+INCLUDE "u_f" # setup the dynamic forces, p_error and u_f for all phases
+INCLUDE "buoyancy_dynamic_force" # add a buoyancy component onto the dynamic forces
+INCLUDE "conservation" #R "<<transientnavierstokescomment>>" W "#"# both mass and momentum conservation equations solved
+
+# template based wall boundary conditions, setting pressure, and using rhiechow rather than zerodynamicforce normal method
+IF 1
+# rhie chow
+  REPLACEMENTS D '<<boundary_normal_wall_method>>' W 'rhiechow'
+  INCLUDE "walls" # walls BC
+  # to set the pressure on the walls, overwrite the walls boundary condition for the fluid only 
+  INCLUDE 'single_species_boundary_equations' R '<region' W '<walls' R '<<species>>' W 'species0' R '<<boundary_normal_method>>' W 'rhiechow' R '<<boundary_method>>' W 'nofluxpset'
+ELSE
+# zero dynamic force
+  REPLACEMENTS D '<<boundary_normal_wall_method>>' W 'zerodynamic'
+  INCLUDE "walls" # walls BC
+  # to set the pressure on the walls, overwrite the walls boundary condition for the fluid only 
+  INCLUDE 'single_species_boundary_equations' R '<region' W '<walls' R '<<species>>' W 'species0' R '<<boundary_normal_method>>' W 'zerodynamic' R '<<boundary_method>>' W 'nofluxpset'
+END_IF
+
+NONE_CONSTANT <gravity[l=1]> [m/s^2] 0.0d0
+NONE_CONSTANT <gravity[l=2]> [m/s^2] -9.8d0
+
+NONE_CONSTANT <inlet phi_species1> 1.0d-4
+VARIABLE <phi_species1> "<inlet phi_species1>" # initial condition on phi1
+
+NONE_CONSTANT <mu_species0> [Pa.s] 1.d-3
+NONE_CONSTANT <a_species1> 220d-9
+NONE_CONSTANT <rho_species0> 1.04d3
+NONE_CONSTANT <rho_species1> 1.19d3
+
+NONE_CONSTANT <u_stokes_species1> "2.d0*(<rho_species1>-<rho_species0>)*mag(<gravity[l=:]>)*<a_species1>^2/(9.d0*<mu_species0>)"
+NONE_CONSTANT <u_magnitude_species1> "<u_magnitude_multiplier>*<u_stokes_species1>" # don't worry about phi aspect of calc
+NONE_CONSTANT <u_magnitude_species0> "<u_magnitude_species1>"
+
+NONE_CONSTANT <u_magnitude_multiplier> 1.d1
+
+# set <u_av for each species, which is used to calculate <dt_initial> from <CFL_initial>, as well as phase <Re numbers
+NONE_CONSTANT <u_av_species0> [m/s] "<u_magnitude_species0>" # these are used to set velocity magnitudes - are they?
+NONE_CONSTANT <u_av_species1> [m/s] "<u_magnitude_species1>" # these are used to set velocity magnitudes
+
+VARIABLE <u_species0[l=<<i>>]> magnitude=<u_magnitude_species0>
+VARIABLE <u_species1[l=<<i>>]> magnitude=<u_magnitude_species1>
+
+IF {{ return (string_eval('<<multifluid_species_max>>') ge 2) }}
+  NONE_CONSTANT <inlet phi_species2> 0.145d0
+  VARIABLE <phi_species2> "<inlet phi_species2>"
+  NONE_CONSTANT <a_species2> 90d-9
+  NONE_CONSTANT <rho_species2> 2.14d3
+  NONE_CONSTANT <u_stokes_species2> "2.d0*(<rho_species2>-<rho_species0>)*mag(<gravity[l=:]>)*<a_species2>^2/(9.d0*<mu_species0>)"
+  NONE_CONSTANT <u_magnitude_species2> "<u_magnitude_multiplier>*<u_stokes_species2>"
+  NONE_CONSTANT <u_magnitude_species0> "nonemax(<u_magnitude_species1>,<u_magnitude_species2>)"
+  NONE_CONSTANT <u_av_species2> [m/s] "<u_magnitude_species2>"
+  VARIABLE <u_species2[l=<<i>>]> magnitude=<u_magnitude_species2>
+END_IF
+
+NONE_CONSTANT <p_magnitude_species0> "mag(<domain_length[l=:]>)*<rho_species0>*mag(<gravity[l=:]>)"
+VARIABLE <p_species0> magnitude=<p_magnitude_species0>
+
+VARIABLE <CFL_initial> 1.d-1
+IF {{ return (string_examine('<<implicitadvection>>') && string_test('<<implicitadvection>>','1')) }} # tests that the string both exists and is set to 1
+# VARIABLE <CFL_max> 1.d+8 # crazy high, to approach a steady-state
+  VARIABLE <CFL_max> 1.d+4 # crazy high, to approach a steady-state
+  VARIABLE <dt_max> 1.d+5 # make this non-limiting
+  GENERAL_OPTIONS timestepout=10,timestepmax=2000
+END_IF
+#NONE_CONSTANT <dt_initial> [1] 1.0d-5
+NONE_CONSTANT <t_end> [1] 1.0d8
+NONE_CONSTANT <dt_out> [1] 2.0d2
+NONE_CONSTANT <phi_tol> [1] 1d-7
+
+# timesteprewind
+IF <<transient>>
+  IF 0
+    GENERAL_OPTIONS timesteprewind=2,newtstepmaxiftimesteprewind=10,timesteprewindmax=4
+    VARIABLE <dt> timesteprewindmultiplier=0.5d0
+    NONE_CONDITION <newtsteprewind> "1.d0-<newtstepconverged>" timesteprewindcondition
+    IF 1
+      GENERAL_OPTIONS timesteprewind=0 # turn off without recompiling
+    END_IF
+  END_IF
+  GENERAL_OPTIONS timestepadditional=1
+END_IF
+
+INCLUDE "slip_velocities"
+IF 0 # include heaps of (too much?) debugging information in the output
+  IF 1
+    INCLUDE "diagnostics"
+  ELSE
+# include element information
+    INCLUDE "diagnostics" R "<<diagnostics_elements>>" W "1"
+    GENERAL_OPTIONS kerneldetailsfile,meshdetailsfile
+  END_IF
+END_IF
+IF 0
+  INCLUDE "visualise_forces"
+END_IF
+IF 1
+  INCLUDE "species_information"
+END_IF
+
+#SOLVER_OPTIONS lambdalimitfalseroot=.false. # for really coarse meshes (ie, 20 elements) discretisation velocity errors dominate the physical velocities, and then we have problems with the variable magnitude estimates
+#GENERAL_OPTIONS timestepmax=1
+
+#GENERAL_OPTIONS newtstepmax=5,newtstepout=1,timestepout=1,timestepmax=10
+#SOLVER_OPTIONS backstepping=.false.
+#VARIABLE <phi_tol> 1.d-3
+VARIABLE <phi_species1> magnitude=<inlet phi_species1>
+#SOLVER_OPTIONS linearsolver=suitesparse
+
+# for example problem
+GENERAL_OPTIONS timestepmax=4,timestepout=2
