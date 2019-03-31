@@ -37,6 +37,21 @@ END_IF
   return $return_string;
 }}
 
-#IF {{ return
-
-# TODO: change definition of dynamic_force_f_{correction} for mixture u_f_method
+IF {{ return string_test('<<u_f_method>>','mixture') }}
+# for the mixture method, <dynamic_force_f_{correction}> is based solely on the phase pressures, without other body forces etc
+# calculate these here overwriting those calculated above, using navier_stokes templates but with dummy dynamic_force_c and dynamic_force_f variables
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/dynamic_force' ".
+        "SUFFIX '<dynamic_force_f_{correction}>' W '_$species' ".
+        "R '<dynamic_force_c_f[' W '<dynamic_force_corcalc_c_f_$species"."[' ".
+        "R '<dynamic_force_c[' W '<dynamic_force_corcalc_c_$species"."[' ".
+        "R '<dynamic_force_f>' W '<dynamic_force_corcalc_f_$species>' ".
+        "SUFFIX '<p>' W '_species0' ".
+        "SUFFIX '<p_f_gradient_limiter>' W '_species0' ".
+        "SUFFIX '<p_f>' W '_species0'\n";
+    }
+    return $return_string;
+  }}
+END_IF

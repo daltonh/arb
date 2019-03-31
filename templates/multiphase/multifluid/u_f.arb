@@ -47,6 +47,7 @@ END_IF
 
 # now calculate the correction velocity 
 IF {{ return string_test('<<u_f_method>>','mixture') }}
+# when using the mixture method, the dynamic_force_correction
   INCLUDE "mixture_u_f"
 ELSE_IF {{ return string_test('<<u_f_method>>','species') }}
 # species aware fancier method, with species0 having to be done first
