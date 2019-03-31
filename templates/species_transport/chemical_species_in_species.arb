@@ -78,5 +78,7 @@ ELSE
   FACE_DERIVED <c_j_f_/species/> "<c_f_/species/>*<phiu_f_<<species>>>-<c_D_/species/>*<phi_f_bounded_<<species>>>*facegrad(<c_/species/>)" ON <allfaces> # this is the flux of species over each cell face, composed of an advection and diffusion component
 END_IF
 # and reform the equation to solve
-CELL_EQUATION <c_equation_/species/> "(<c_/species/>-<c_/species/[r=1]>*<phi_pos_<<species>>[r=1]>/<phi_bounded_<<species>>>)/<dt> + celldiv(<c_j_f_/species/>)/<phi_bounded_<<species>>> - <c_source_/species/>"
+#CELL_EQUATION <c_equation_/species/> "(<c_/species/>-<c_/species/[r=1]>*<phi_pos_<<species>>[r=1]>/<phi_bounded_<<species>>>)/<dt> + celldiv(<c_j_f_/species/>)/<phi_bounded_<<species>>> - <c_source_/species/>"
+# temp trying bounded for old volume fraction, to try to keep values non-zero and sensible, but suspect also need limiter on advection term
+CELL_EQUATION <c_equation_/species/> "(<c_/species/>-<c_/species/[r=1]>*<phi_bounded_<<species>>[r=1]>/<phi_bounded_<<species>>>)/<dt> + celldiv(<c_j_f_/species/>)/<phi_bounded_<<species>>> - <c_source_/species/>"
 
