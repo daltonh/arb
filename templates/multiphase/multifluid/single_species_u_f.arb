@@ -1,97 +1,48 @@
 MARKDOWN
-Here we create a better estimate of the correction velocity, using ingredients however from the navier_stokes u_f file, done with replacements
+Here we calculate the correction velocity, using the `species` algorithm
 END_MARKDOWN
 
 # use this to debug
 # produces a correction velocity sum equation
 REPLACEMENTS D '<<debug>>' W '0'
 
-# first compile the local summary variables, A and D
+# first compile the local summary variable, A
 # add bits in sections
-# as these are locals, keep the region as <allfaces> from the outset, noting that unless rhiechow extrapolation is employed somewhere on the boundaries, these will not be evaluated on the boundary faces
-FACE_LOCAL <u_f_{correction}_A_<<species>>> '<C_{Rhie-Chow}>*<dynamic_force_f_{correction}_<<species>>>' ON <allfaces>
-FACE_LOCAL <u_f_{correction}_D_<<species>>> '<u_f_alpha_{vis}_<<species>>>' ON <allfaces>
-<<navierstokescomment>>FACE_LOCAL <u_f_{correction}_D_<<species>>> '<u_f_{correction}_D_<<species>>>+<u_f_alpha_{adv}_<<species>>>'
+FACE_LOCAL <u_f_{correction}_A_<<species>>> '<C_{Rhie-Chow}>*<dynamic_force_f_{correction}_<<species>>>' ON <correctionfaces>
 <<transientnavierstokescomment>>FACE_LOCAL <u_f_{correction}_A_<<species>>> '<u_f_{correction}_A_<<species>>>+<u_f_alpha_{transient}_<<species>>>*<u_f_{correction}_<<species>>[r=1]>'
-<<transientnavierstokescomment>>FACE_LOCAL <u_f_{correction}_D_<<species>>> '<u_f_{correction}_D_<<species>>>+<u_f_alpha_{transient}_<<species>>>'
 
-# this was the previous method that suffers from a round-off error
-# now the D variable doesn't include the beta contribution
-REPLACEMENTS D '<<roundofferrorway>>' W '0'
-
-IF <<roundofferrorway>> # add on drag contribution
-# for old round-off way
-  {{
-    my $return_string='';
-    if (string_test('<<species>>','species0')) {
-      for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-        $return_string .= "VARIABLE <u_f_{correction}_D_<<species>>> '<u_f_{correction}_D_<<species>>>+<beta^_<<species>>_$species>'\n";
-      }
-    } else {
-      $return_string .= "VARIABLE <u_f_{correction}_D_<<species>>> '<u_f_{correction}_D_<<species>>>+<beta^_<<species>>_species0>'\n";
-    }
-    return $return_string;
-  }}
-END_IF
-  
-#{{ print "DEBUG: in single_species_u_f:\n"; print string_debug(); }}
-
-# now cancel the previous correction velocities so that they can be calculated in the correct order
-VARIABLE <u_f_{correction}_<<species>>> CANCEL # need to reposition these variables later in the file
-VARIABLE <u_f_<<species>>> CANCEL
-
-IF <<roundofferrorway>>
-# old way that suffers from round-off error
-  {{
-    my $return_string='';
-    if (string_test('<<species>>','species0')) {
-      my $top = "<u_f_{correction}_A_species0>";
-      my $bottom = "<u_f_{correction}_D_species0>";
-      for my $i (string_eval('<<multifluid_disperse_species_list>>','list')) {
-        $top .= "+<beta^_f_species0_$i>*<u_f_{correction}_A_$i>/<u_f_{correction}_D_$i>";
-        $bottom .= "-<beta^_f_species0_$i>*<beta^_f_$i"."_species0>/<u_f_{correction}_D_$i>";
-      }
-      $return_string .= "FACE_DERIVED <u_f_{correction}_species0> '($top)/($bottom)' ON <domainfaces>\n";
-    } else {
-      $return_string .= "FACE_DERIVED <u_f_{correction}_<<species>>> '(<u_f_{correction}_A_<<species>>>+<beta^_f_<<species>>_species0>*<u_f_{correction}_species0>)/<u_f_{correction}_D_<<species>>>' ON <domainfaces>\n";
-    }
-    return $return_string;
-  }}
-ELSE_IF 1
-# new method, valid for many solid phases
+IF 1
+# species method, valid for many solid phases, but with no drag between solid phases
 # species0 u_f is calculated first, and then the other solid phase u_f's are calculated from this
   {{
     my $return_string='';
     if (string_test('<<species>>','species0')) {
       my $top = "<u_f_{correction}_A_species0>";
-      my $bottom = "<u_f_{correction}_D_species0>";
+      my $bottom = "<u_f_alpha_species0>";
       for my $i (string_eval('<<multifluid_disperse_species_list>>','list')) {
-        $top .= "+<beta^_f_species0_$i>*<u_f_{correction}_A_$i>/(<u_f_{correction}_D_$i>+<beta^_f_$i"."_species0>)";
-        $bottom .= "+<beta^_f_species0_$i>*<u_f_{correction}_D_$i>/(<u_f_{correction}_D_$i>+<beta^_f_$i"."_species0>)";
+        $top .= "+<beta^_f_species0_$i>*<u_f_{correction}_A_$i>/(<u_f_alpha_$i>+<beta^_f_$i"."_species0>)";
+        $bottom .= "+<beta^_f_species0_$i>*<u_f_alpha_$i>/(<u_f_alpha_$i>+<beta^_f_$i"."_species0>)";
       }
-      $return_string .= "FACE_DERIVED <u_f_{correction}_species0> '($top)/($bottom)' ON <domainfaces>\n";
+      $return_string .= "FACE_DERIVED <u_f_{correction}_species0> '($top)/($bottom)' ON <correctionfaces>\n";
     } else {
-      $return_string .= "FACE_DERIVED <u_f_{correction}_<<species>>> '(<u_f_{correction}_A_<<species>>>+<beta^_f_<<species>>_species0>*<u_f_{correction}_species0>)/(<u_f_{correction}_D_<<species>>>+<beta^_f_<<species>>_species0>)' ON <domainfaces>\n";
+      $return_string .= "FACE_DERIVED <u_f_{correction}_<<species>>> '(<u_f_{correction}_A_<<species>>>+<beta^_f_<<species>>_species0>*<u_f_{correction}_species0>)/(<u_f_alpha_<<species>>>+<beta^_f_<<species>>_species0>)' ON <correctionfaces>\n";
     }
     return $return_string;
   }}
 ELSE
-# new method, but only valid for a single solid phase - should be no reason to use this over the above more general method
+# test method, valid for a single solid phase only - should be no reason to use this over the above more general method above
 # both species0 and species1 u_f's are calculated independently
 # WARNING: this doesn't work for more than one disperse phase
-  FACE_LOCAL <u_f_{correction}_determinant> "<u_f_{correction}_D_species0>*<u_f_{correction}_D_species1>+<u_f_{correction}_D_species0>*<beta^_f_species1_species0>+<u_f_{correction}_D_species1>*<beta^_f_species0_species1>" ON <allfaces>
+  FACE_LOCAL <u_f_{correction}_determinant> "<u_f_alpha_species0>*<u_f_alpha_species1>+<u_f_alpha_species0>*<beta^_f_species1_species0>+<u_f_alpha_species1>*<beta^_f_species0_species1>" ON <correctionfaces>
   IF {{ return string_test('<<species>>','species0') }}
-    FACE_DERIVED <u_f_{correction}_<<species>>> "(<u_f_{correction}_A_species0>*<u_f_{correction}_D_species1>+<u_f_{correction}_A_species0>*<beta^_f_species1_species0>+<u_f_{correction}_A_species1>*<beta^_f_species0_species1>)/<u_f_{correction}_determinant>" ON <domainfaces>
+    FACE_DERIVED <u_f_{correction}_<<species>>> "(<u_f_{correction}_A_species0>*<u_f_alpha_species1>+<u_f_{correction}_A_species0>*<beta^_f_species1_species0>+<u_f_{correction}_A_species1>*<beta^_f_species0_species1>)/<u_f_{correction}_determinant>" ON <correctionfaces>
   ELSE
-    FACE_DERIVED <u_f_{correction}_<<species>>> "(<u_f_{correction}_A_species1>*<u_f_{correction}_D_species0>+<u_f_{correction}_A_species0>*<beta^_f_species1_species0>+<u_f_{correction}_A_species1>*<beta^_f_species0_species1>)/<u_f_{correction}_determinant>" ON <domainfaces>
+    FACE_DERIVED <u_f_{correction}_<<species>>> "(<u_f_{correction}_A_species1>*<u_f_alpha_species0>+<u_f_{correction}_A_species0>*<beta^_f_species1_species0>+<u_f_{correction}_A_species1>*<beta^_f_species0_species1>)/<u_f_{correction}_determinant>" ON <correctionfaces>
   END_IF
 END_IF
 
-# redefine final velocity
-FACE_DERIVED <u_f_<<species>>> "<u_f_{raw}_<<species>>>+faceif(facedelta(<domainfaces>),<u_f_{correction}_<<species>>>,0.d0)" ON <allfaces>
-
 IF <<debug>>
-  FACE_OUTPUT <u_f_{correction}_equation_<<species>>> "<u_f_alpha_{transient}_<<species>>>*(<u_f_{correction}_<<species>>>-<u_f_{correction}_<<species>>[r=1]>)" ON <domainfaces>
+  FACE_OUTPUT <u_f_{correction}_equation_<<species>>> "<u_f_alpha_{transient}_<<species>>>*(<u_f_{correction}_<<species>>>-<u_f_{correction}_<<species>>[r=1]>)" ON <correctionfaces>
   <<navierstokescomment>>VARIABLE <u_f_{correction}_equation_<<species>>> "<u_f_{correction}_equation_<<species>>>+<u_f_alpha_{adv}_<<species>>>*<u_f_{correction}_<<species>>>"
   VARIABLE <u_f_{correction}_equation_<<species>>> "<u_f_{correction}_equation_<<species>>>+<u_f_alpha_{vis}_<<species>>>*<u_f_{correction}_<<species>>>"
   {{

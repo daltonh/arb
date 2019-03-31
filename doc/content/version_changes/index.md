@@ -11,7 +11,9 @@ This section details changes to the arb syntax that have occurred for each versi
 ## v0.61
 
 * string variable names that end in 'method>>' have now been standardised to have underscores between words.  So `<<boundarymethod>>` becomes `<<boundary_method>>`, etc.  As well as the boundary method variables, notable is `<<dynamicforcefmethod>>` which becomes `<<dynamic_force_f_method>>`, so watch for this change in input files
-* choice of rhie-chow velocity interpolation for multifluid, chosen using `<<u_f_method>>`
+* choice of rhie-chow velocity interpolation for multifluid, chosen using `<<u_f_method>>` as either `species` (which was the pre v0.61 way) or `mixture` which is the new default way
+* standard settings for multifluid are now done in `default_replacement_strings` template file.
+* `<<boundary_normal_wall_method>>` variables now set in both multifluid and navier_stokes as easy way to set pressure extrapolation at walls
 
 ## v0.60
 

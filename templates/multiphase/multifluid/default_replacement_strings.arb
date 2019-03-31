@@ -13,6 +13,6 @@ GLOBAL_REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zh
 GLOBAL_REPLACEMENTS D "<<drag_method>>" W "version2"
 
 # method used for rhie-chow u_f interpolation
-#GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
-GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+#GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
 

@@ -19,11 +19,6 @@ END_IF
 FACE_LOCAL <u_f_vect[l=<<i>>]> "faceave[<<reflect=<<i>>>>](<u[l=<<i>>]>)" ON <allfaces> # velocity vector interpolated to faces
 FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <allfaces> # volume (velocity) transport over the face, only by arithmetic interpolation
 
-# save old correction velocity for transient calculations
-IF <<transientnavierstokes>>
-  FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <correctionfaces>
-END_IF
-
 # calculate all of the alpha coefficients used in the correction velocity calculation
 INCLUDE "u_f_coefficients"
 
@@ -31,6 +26,8 @@ INCLUDE "u_f_coefficients"
 # now take the reciprocal, to form the correction velocity, with added terms for the transient method
 # transient
 IF <<transientnavierstokes>>
+# save old correction velocity for transient calculations
+  FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <correctionfaces>
 # for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
   FACE_DERIVED <u_f_{correction}> "(<C_{Rhie-Chow}>*<dynamic_force_f_{correction}>+<u_f_alpha_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_alpha>)" ON <correctionfaces>
 ELSE

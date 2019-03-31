@@ -1,89 +1,56 @@
 MARKDOWN
-Here we setup the face flux velocity u_f for each phase, using the navier_stokes template file
+Here we setup the face flux velocity u_f for each phase, basically following the same ideas as the navier-stokes file
 END_MARKDOWN
 
 # ensure that <<u_f_method>> has been set
-INCLUDE "default_replacement_strings"
+INCLUDE_LOCAL "default_replacement_strings"
 
 IF {{ return (!(arb_defined(string_eval('<dynamic_force_f_{correction}_species0>','text')))) }} # only calculate the dynamic_force correction if it isn't already defined
   INCLUDE "dynamic_force"
 END_IF
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# do the whole u_f thing, including defining the dynamic pressures, etc
+# run through all species, calculating the {raw} interpolated velocity u_f_{raw}, and then calculating all of the alpha coefficients
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
-# now use suffix notation, and include <u_f_vect_magnitude[r=1]>
-    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/u_f' ".
+    $return_string .= "FACE_DERIVED <u_f_{raw}_$species> 'dot(<u_f_vect_$species"."[l=:]>,<facenorm[l=:]>)' ON <allfaces>\n"; # volume (velocity) transport over the face, only by arithmetic interpolation
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/u_f_coefficients' ".
       "SUFFIX '<u[l=1]>' W '_$species' ".
-      "SUFFIX '<ugrad_f[l=1]>' W '_$species' ".
       "SUFFIX '<u_f_vect[l=1]>' W '_$species' ".
       "SUFFIX '<mu_f>' W '_$species' ".
+      "R '<mu_f>' W '<mu_f_correction_$species>' ".
       "SUFFIX '<u_f_alpha_{vis}>' W '_$species' ".
       "SUFFIX '<u_f_alpha_{transient}>' W '_$species' ".
       "SUFFIX '<u_f_alpha_{adv}>' W '_$species' ".
+      "SUFFIX '<u_f_alpha>' W '_$species' ".
       "SUFFIX '<u_f_{raw}>' W '_$species' ".
       "SUFFIX '<u_f_{raw}_magnitude>' W '_$species' ".
-      "SUFFIX '<u_f_{correction}>' W '_$species' ".
-      "SUFFIX '<u_f_{correction}[r=1]>' W '_$species' ".
-      "SUFFIX '<u_f>' W '_$species' ".
       "SUFFIX '<u_f_vect_magnitude>' W '_$species' ".
       "SUFFIX '<u_f_vect_magnitude[r=1]>' W '_$species' ".
       "R '<rho_f>' W '<rho_$species>' ".
-      "SUFFIX '<eps_p>' W '_$species' ".
-      "SUFFIX '<dynamic_force_f_{correction}>' W '_$species' ".
-      "SUFFIX '<dynamic_force_c_f[l=1]>' W '_$species' ".
-      "SUFFIX '<dynamic_force_c[l=1]>' W '_$species' ".
-      "SUFFIX '<dynamic_force_f>' W '_$species' ".
-      "SUFFIX '<p>' W '_species0' ".
-      "SUFFIX '<p_f>' W '_species0'\n";
-#   $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/u_f' ".
-#     "R '<u[' W '<u_$species"."[' ".
-#     "R '<ugrad_f[' W '<ugrad_f_$species"."[' ".
-#     "R '<u_f_vect[' W '<u_f_vect_$species"."[' ".
-#     "R '<mu_f>' W '<mu_f_$species>' ".
-#     "R '<u_f_alpha_{vis}>' W '<u_f_alpha_{vis}_$species>' ".
-#     "R '<u_f_alpha_{transient}>' W '<u_f_alpha_{transient}_$species>' ".
-#     "R '<u_f_alpha_{adv}>' W '<u_f_alpha_{adv}_$species>' ".
-#     "R '<u_f_{raw}>' W '<u_f_{raw}_$species>' ".
-#     "R '<u_f_{raw}_magnitude>' W '<u_f_{raw}_magnitude_$species>' ".
-#     "R '<u_f_{correction}>' W '<u_f_{correction}_$species>' ".
-#     "R '<u_f_{correction}[r=1]>' W '<u_f_{correction}_$species"."[r=1]>' ".
-#     "R '<u_f>' W '<u_f_$species>' ".
-#     "R '<rho_f>' W '<rho_$species>' ".
-#     "R '<eps_p>' W '<eps_p_$species>' ".
-#     "R '<dynamic_force_f_{correction}>' W '<dynamic_force_f_{correction}_$species>' ".
-#     "R '<dynamic_force_c_f[' W '<dynamic_force_c_f_$species"."[' ".
-#     "R '<dynamic_force_c[' W '<dynamic_force_c_$species"."[' ".
-#     "R '<dynamic_force_f>' W '<dynamic_force_f_$species>' ".
-#     "R '<p>' W '<p_species0>' ".
-#     "R '<p_f>' W '<p_f_species0>'\n";
-# redefine the viscosity u_f_alpha, recognising that the correction is in terms of phiu, rather than u
-#   $return_string .= "VARIABLE <u_f_alpha_{vis}_$species> '<mu_f_$species>/(<facedx>^2*<phi_f_lim_$species>)'\n";
-    $return_string .= "VARIABLE <u_f_alpha_{vis}_$species> '<mu_f_multiplier_$species>/(<facedx>^2)'\n";
+      "SUFFIX '<dynamic_force_f_{correction}_magnitude>' W '_$species' ".
+      "SUFFIX '<dynamic_force_f_{correction}>' W '_$species'\n";
   }
   return $return_string;
 }}
 
-IF <<u_f_method>>
+# save old correction velocity for transient calculations
+IF <<transientnavierstokes>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "FACE_TRANSIENT <u_f_{correction}_$species"."[r=1]> '0.d0' '<u_f_{correction}_$species>' ON <correctionfaces>\n";
+    }
+    return $return_string;
+  }}
+END_IF
 
+# now calculate the correction velocity 
+IF {{ return string_test('<<u_f_method>>','mixture') }}
+# when using the mixture method, the dynamic_force_correction
   INCLUDE "mixture_u_f"
-
-ELSE # species aware fancier method, with species0 having to be done first
+ELSE_IF {{ return string_test('<<u_f_method>>','species') }}
+# species aware fancier method, with species0 having to be done first
   {{
     my $return_string = '';
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
@@ -91,5 +58,18 @@ ELSE # species aware fancier method, with species0 having to be done first
     }
     return $return_string;
   }}
-
+ELSE
+  ERROR "u_f_method not set in u_f.arb in multifluid string = <<u_f_method>>"
 END_IF
+
+# final face velocity is made from raw and correction components
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "FACE_DERIVED <u_f_$species> '<u_f_{raw}_$species>+faceif(facedelta(<domainfaces>),<u_f_{correction}_$species>,0.d0)' ON <allfaces>\n"; # volume (velocity) transport
+  }
+  return $return_string;
+}}
+
+# this oddball file is required for implicit timestepping after u_f is calculated
+INCLUDE_TEMPLATE "navier_stokes/transient_save_dt"
