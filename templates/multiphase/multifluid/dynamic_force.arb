@@ -12,11 +12,10 @@ IF {{ return (!(arb_defined('<correctionfaces>'))) }} # only calculate the dynam
   FACE_REGION <correctionfaces> "all" ON <domainfaces>
 END_IF
 
+# first use the navier_stokes dynamic_force template to create the variables
 {{
   my $return_string = '';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-
-# first use the navier_stokes dynamic_force template to create the variables
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
     $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/dynamic_force' ".
       "SUFFIX '<dynamic_force_f_{correction}>' W '_$species' ".
       "SUFFIX '<dynamic_force_c_f[l=1]>' W '_$species' ".
@@ -25,10 +24,15 @@ END_IF
       "SUFFIX '<p>' W '_species0' ".
       "SUFFIX '<p_f_gradient_limiter>' W '_species0' ".
       "SUFFIX '<p_f>' W '_species0'\n";
+  }
+  return $return_string;
+}}
 
 # add on contributions due to disperse phase species pressures, possibly osmotic in nature so not multiplied by phi
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
     $return_string .= "INCLUDE_LOCAL 'single_species_dynamic_force' R '<<species>>' W '$species'\n";
-
   }
   return $return_string;
 }}

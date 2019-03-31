@@ -52,10 +52,10 @@ IF {{ return string_test('<<stress_method>>','version1') }}
 
   END_IF
 
-  # now construct viscosity and multiplier for faces
+  # now construct viscosity and correction viscosity (multiplier) for faces (which tends to a finite value at phi->0 - ie, a non-specific viscosity)
   CELL_LOCAL <mu_c_<<species>>> "<mu_c_multiplier_<<species>>>*<phi_bounded_<<species>>>" ON <allcells> output
   FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> output # used in stress
-  FACE_DERIVED <mu_f_multiplier_<<species>>> "faceave[adjacentcells](<mu_c_multiplier_<<species>>>)" ON <allfaces> output # used in rhie-chow
+  FACE_DERIVED <mu_f_correction_<<species>>> "faceave[adjacentcells](<mu_c_multiplier_<<species>>>)" ON <allfaces> output # used in rhie-chow
 
 ELSE
 # in version2 the viscous stress divergence is phase specific, so the viscosity for each phase is roughly a constant as phi -> 0
@@ -103,9 +103,9 @@ ELSE
 
   END_IF
 
-  # now construct viscosity and multiplier for faces
-# note that for version2 the multiplier is actually just the viscosity - bad notation!
+# now construct viscosity on faces for use in stress tensor, as well as viscosity for use in u_f rhiechow interpolation (correction)
+# note that for version2 the multiplier is actually just the viscosity - bad notation! - changed to correction viscosity
   FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> output # used in stress
-  FACE_LOCAL <mu_f_multiplier_<<species>>> "<mu_f_<<species>>>" ON <allfaces> # used in rhie-chow
+  FACE_LOCAL <mu_f_correction_<<species>>> "<mu_f_<<species>>>" ON <allfaces> # used in rhie-chow
 
 END_IF
