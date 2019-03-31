@@ -6,9 +6,10 @@ END_MARKDOWN
 
 # use rhiechow
 # in v0.59 changed to default on 24/9/18 due to much better velocity and pressure distribution along slip walls in transient_flow_around_cylinder_with_species
-REPLACEMENTS D "<<boundary_normal_method>>" W "rhiechow"
+#REPLACEMENTS D "<<boundary_normal_method>>" W "rhiechow"
 
 # use zerodynamic
-#REPLACEMENTS D "<<boundary_normal_method>>" W "zerodynamic"
+REPLACEMENTS D "<<boundary_normal_method>>" W "zerodynamic"
+# in v0.61 (31/3/19) changed back to zerodynamic for the default BC, based on slight better convergence under gun-compiler for turbulent_channel_containing_cylinder_2d
 
 INCLUDE "boundary_equations" D "<region" W "<walls"
