@@ -12,4 +12,11 @@ END_MARKDOWN
 REPLACEMENTS D "<<boundary_normal_method>>" W "zerodynamic"
 # in v0.61 (31/3/19) changed back to zerodynamic for the default BC, based on slight better convergence under gun-compiler for turbulent_channel_containing_cylinder_2d
 
+# overwrite the default with the value of this string, allowing an easy mechanism to chose
+IF {{ return (string_examine('<<boundary_normal_wall_method>>')) }}
+# use substitute to replace the value of <<boundary_normal_method>> while leaving its scope unchanged
+  {{ string_set('<<boundary_normal_method>>',string_eval('<<boundary_normal_wall_method>>'),'substitute') }}
+END_IF
+  
+
 INCLUDE "boundary_equations" D "<region" W "<walls"
