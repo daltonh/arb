@@ -1,8 +1,8 @@
 # Reconstructed list of the regions in arb format:
 #--------------------------------------------------------------------------------
 # setup regions:
-CELL_SETUP_REGION <awful name ddot( () []> "compound(+<domain>-<allcells>+<domain>)" ON <allcells> # other information: user = 1: dynamic = 0: parent = <allcells>: rindex = empty: fortran = 10: part_of_fortran = 1: parent_fortran = 1: last_variable_masread = 42: newtstepmax = empty: newtstepmin = empty: filename = syntax_test.arb: absfilename = /Users/daltonh/codes/arb/testsuite/arb_develop/examples/language_features/syntax_test.arb: comments = empty
-CELL_SETUP_REGION <another awful [ =,] name> "compound(+<domain>-<allcells>+<domain>)" ON <allcells> # other information: user = 1: dynamic = 0: parent = <allcells>: rindex = empty: fortran = 11: part_of_fortran = 1: parent_fortran = 1: last_variable_masread = 42: newtstepmax = empty: newtstepmin = empty: filename = syntax_test.arb: absfilename = /Users/daltonh/codes/arb/testsuite/arb_develop/examples/language_features/syntax_test.arb: comments = empty
+CELL_SETUP_REGION <awful name ddot( () []> "compound(+<domain>-<allcells>+<domain>)" ON <allcells> # other information: user = 1: dynamic = 0: parent = <allcells>: rindex = empty: fortran = 10: part_of_fortran = 1: parent_fortran = 1: last_variable_masread = 42: newtstepmax = empty: newtstepmin = empty: filename = syntax_test.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop/examples/language_features/syntax_test.arb: comments = empty
+CELL_SETUP_REGION <another awful [ =,] name> "compound(+<domain>-<allcells>+<domain>)" ON <allcells> # other information: user = 1: dynamic = 0: parent = <allcells>: rindex = empty: fortran = 11: part_of_fortran = 1: parent_fortran = 1: last_variable_masread = 42: newtstepmax = empty: newtstepmin = empty: filename = syntax_test.arb: absfilename = /home/daltonh/fortran/arb/testsuite/arb_develop/examples/language_features/syntax_test.arb: comments = empty
 #--------------------------------------------------------------------------------
 # gmsh regions:
 #--------------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functions.f90
-EXTERNALS "/Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: transient_explicit_stokes_channel_flow_with_cylinder.arb
    #(comment created during unwrap): new block = transient_explicit_stokes_channel_flow_with_cylinder.arb: sub_block = 0
@@ -643,12 +643,6 @@ EXTERNALS "/Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_funct
          FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)" ON <allfaces> # velocity vector interpolated to faces
          FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <allfaces> # volume (velocity) transport over the face, only by arithmetic interpolation
          
-         # save old correction velocity for transient calculations
-            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
-            #(hash inserted during unwrap)IF 1
-            FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <correctionfaces>
-            #(hash inserted during unwrap)END_IF
-         
          # calculate all of the alpha coefficients used in the correction velocity calculation
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f_coefficients.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "u_f_coefficients"
@@ -743,6 +737,8 @@ EXTERNALS "/Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_funct
          # transient
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
             #(hash inserted during unwrap)IF 1
+            # save old correction velocity for transient calculations
+            FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <correctionfaces>
             # for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
             FACE_DERIVED <u_f_{correction}> "(<C_{Rhie-Chow}>*<dynamic_force_f_{correction}>+<u_f_alpha_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_alpha>)" ON <correctionfaces>
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1

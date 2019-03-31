@@ -1,8 +1,8 @@
 #(comment created during unwrap): new block = resources/test_suite_results/gnu/output/build/root_input.arb: sub_block = 0
 # root_input.arb file created by the arb script
 ##################################################################################
-# the following external fortran files were found by the arb script and are available for inclusion: /Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functions.f90
-EXTERNALS "/Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_functions.f90"
+# the following external fortran files were found by the arb script and are available for inclusion: /home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90
+EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_functions.f90"
 ##################################################################################
 # the following working directory files found by the arb script: steady_state_channel_flow_with_cylinder.arb
    #(comment created during unwrap): new block = steady_state_channel_flow_with_cylinder.arb: sub_block = 0
@@ -439,12 +439,6 @@ EXTERNALS "/Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_funct
          FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)" ON <allfaces> # velocity vector interpolated to faces
          FACE_DERIVED <u_f_{raw}> "dot(<u_f_vect[l=:]>,<facenorm[l=:]>)" ON <allfaces> # volume (velocity) transport over the face, only by arithmetic interpolation
          
-         # save old correction velocity for transient calculations
-            #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
-            #(hash inserted during unwrap)IF 0
-            #(hash inserted during unwrap)FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <correctionfaces>
-            #(hash inserted during unwrap)END_IF
-         
          # calculate all of the alpha coefficients used in the correction velocity calculation
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f_coefficients.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "u_f_coefficients"
@@ -539,6 +533,8 @@ EXTERNALS "/Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_funct
          # transient
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
             #(hash inserted during unwrap)IF 0
+            #(hash inserted during unwrap)# save old correction velocity for transient calculations
+            #(hash inserted during unwrap)FACE_TRANSIENT <u_f_{correction}[r=1]> "0.d0" "<u_f_{correction}>" ON <correctionfaces>
             #(hash inserted during unwrap)# for transient, add transient component to demoninator, take reciprocal, and add top transient and pressure contributions
             #(hash inserted during unwrap)FACE_DERIVED <u_f_{correction}> "(<C_{Rhie-Chow}>*<dynamic_force_f_{correction}>+<u_f_alpha_{transient}>*<u_f_{correction}[r=1]>)/(<u_f_alpha>)" ON <correctionfaces>
             #(comment created during unwrap): new block = ../../templates/navier_stokes/u_f.arb: sub_block = 1
@@ -935,10 +931,19 @@ EXTERNALS "/Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_funct
          
          # use rhiechow
          # in v0.59 changed to default on 24/9/18 due to much better velocity and pressure distribution along slip walls in transient_flow_around_cylinder_with_species
-         
+         #REPLACEMENTS D "<<boundary_normal_method>>" W "rhiechow"
          
          # use zerodynamic
-         #REPLACEMENTS D "<<boundary_normal_method>>" W "zerodynamic"
+         
+         # in v0.61 (31/3/19) changed back to zerodynamic for the default BC, based on slight better convergence under gun-compiler for turbulent_channel_containing_cylinder_2d
+         
+         # overwrite the default with the value of this string, allowing an easy mechanism to chose
+            #(comment created during unwrap): new block = ../../templates/navier_stokes/walls_equations.arb: sub_block = 1
+            #(hash inserted during unwrap)IF 
+            #(hash inserted during unwrap)# use substitute to replace the value of <<boundary_normal_method>> while leaving its scope unchanged
+            #(hash inserted during unwrap)
+            #(hash inserted during unwrap)END_IF
+         
          
             #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "boundary_equations" 
@@ -948,7 +953,7 @@ EXTERNALS "/Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_funct
             #(hash inserted during unwrap)
             #(hash inserted during unwrap)This has a few variables that can be set:
             #(hash inserted during unwrap)
-            #(hash inserted during unwrap)`rhiechow` sets some condition normal to the boundary, either a velocity gradient or pressure gradient, or combination
+            #(hash inserted during unwrap)`zerodynamic` sets some condition normal to the boundary, either a velocity gradient or pressure gradient, or combination
             #(hash inserted during unwrap)`noslip` determines the shear conditions at the boundary
             #(hash inserted during unwrap)`noflux` sets the primary type of boundary condition.  This condition can use a choice of variables determined by `<<boundary_method_variable>>`.  If a oneface region is required or not, then this can be set via `<<boundaryonecreateface>>`
             #(hash inserted during unwrap)
@@ -962,24 +967,12 @@ EXTERNALS "/Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_funct
             #REPLACEMENTS D "<<boundary_normal_method>>" W "zerogradp"
             #REPLACEMENTS D "<<boundary_normal_method>>" W "zerodynamiccorrection"
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)IF 1
-                  #(comment created during unwrap): new block = ../../templates/navier_stokes/p_extrapolation_rhie_chow.arb: sub_block = 0
-                  #(hash inserted during unwrap)INCLUDE "p_extrapolation_rhie_chow" 
-                  
-                  #(hash inserted during unwrap)MARKDOWN
-                  #(hash inserted during unwrap)Here we link the pressure gradient (contained within <dynamic_force_f>) to the boundary velocity using the previously calculated rhie-chow interpolation terms.  In effect, adds a link between the pressure and velocity on the boundary.
-                  #(hash inserted during unwrap)
-                  #(hash inserted during unwrap)Note that the <u_f_{correction}> term is based on <dynamic_force_f_{correction}>, which for boundary cells equates to the difference between <dynamic_force_f> and <dynamic_force_c> (component) evaluated in the downcell, as celldiv applied in a boundary cell automatically takes its value from the adjacent domain cell.
-                  #(hash inserted during unwrap)END_MARKDOWN
-                  
-                  # alter the region <correctionfaces> so that it includes the boundaries
-                  FACE_REGION <correctionfaces> "all" ON <allfaces>
-                  
-                  # this needs to be fixed up possibly so that direction is consistent with dxunit?
-                  FACE_EQUATION <walls pextrapolation> "<u_f>-faceave[downcell](dot(<u[l=:]>,cellave[lastface](<facenorm[l=:]>)))-<u_f_{correction}>" ON <walls> # pressure gradient next to wall set so that dynamic pressure gradient inext to wall is zero
+               #(hash inserted during unwrap)IF 
+               #(hash inserted during unwrap)INCLUDE "p_extrapolation_rhie_chow" 
+               #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE_IF 
-               #(hash inserted during unwrap)FACE_EQUATION <walls pextrapolation> "<dynamic_force_f>" ON <walls>
+               #(hash inserted during unwrap)ELSE_IF 1
+               FACE_EQUATION <walls pextrapolation> "<dynamic_force_f>" ON <walls>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE_IF 
                #(hash inserted during unwrap)FACE_EQUATION <walls pextrapolation> "<dynamic_force_f_{correction}>" ON <walls>
@@ -992,7 +985,7 @@ EXTERNALS "/Users/daltonh/codes/arb/testsuite/arb_develop/src/free_surface_funct
                #(hash inserted during unwrap)
                #(comment created during unwrap): new block = ../../templates/navier_stokes/boundary_equations.arb: sub_block = 1
                #(hash inserted during unwrap)ELSE
-               #(hash inserted during unwrap)ERROR "boundarynormalmethod not known in boundary_equations.arb: rhiechow"
+               #(hash inserted during unwrap)ERROR "boundarynormalmethod not known in boundary_equations.arb: zerodynamic"
                #(hash inserted during unwrap)END_IF
             
             # Second equation(s) (two here for 3D) is a constraint on the tangential velocity component
