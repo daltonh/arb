@@ -5,7 +5,7 @@ END_MARKDOWN
 #REPLACEMENTS D "<<viscosity_method>>" W "einstein"
 REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
 #REPLACEMENTS D "<<viscosity_method>>" W "thomas65
-REPLACEMENTS D "<<viscosity_method>>" W "kriegerdougherty"
+#REPLACEMENTS D "<<viscosity_method>>" W "kriegerdougherty"
 
 INCLUDE "default_replacement_strings"
 

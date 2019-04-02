@@ -8,6 +8,7 @@ END_MARKDOWN
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarling"
 REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlinglimited" # same as carnahanstarling, but goes to infinity at <p_osmotic_phi_max_allsolids> rather than 1
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlingsinglelimited"
+#REPLACEMENTS D "<<osmotic_pressure_method>>" W "osmoticsidcombined" # method that uses a combined approach to osmotic and sid, and needs to also be set in osmotic pressure
 
 # we can also include steric hindrance using some type of step function
 REPLACEMENTS D "<<steric_pressure_method>>" W "none"
@@ -27,6 +28,34 @@ ELSE_IF {{ return string_test('<<osmotic_pressure_method>>','carnahanstarlingsin
   CELL_DERIVED <p_osmotic_phi_norm_<<species>>> "cellmin(<phi_pos_<<species>>>,<p_osmotic_phi_max_<<species>>>-<p_osmotic_phi_tol>)/<p_osmotic_phi_max_<<species>>>" output
   CELL_DERIVED <p_osmotic_Z_<<species>>> [Pa] "(1.d0+<p_osmotic_phi_norm_<<species>>>+<p_osmotic_phi_norm_<<species>>>^2-<p_osmotic_phi_norm_<<species>>>^3)/((1.d0-<p_osmotic_phi_norm_<<species>>>)^3)" ON <allcells>
   CELL_LOCAL <p_osmotic_multiplier_<<species>>> [Pa] "<k_boltzmann>*<T>*<p_osmotic_Z_<<species>>>/<V_<<species>>>" ON <allcells>
+
+ELSE_IF {{ return string_test('<<osmotic_pressure_method>>','osmoticsidcombined')}}
+# combined approach to osmotic and sid
+# total solid phi from fluid phi
+  CELL_LOCAL <p_osmotic_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+  CELL_LOCAL <p_osmotic_phi_pos_allsolids> "1.d0-<phi_pos_species0>" ON <allcells>
+# average some quantities over the solid phases
+  CELL_DERIVED <p_osmotic_V_allsolids> "0.d0" ON <allcells> # average particle volume
+  CELL_DERIVED <p_osmotic_phi_max_allsolids> "0.d0" ON <allcells> # average maximum solid volume fraction for local mixture
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <p_osmotic_V_allsolids> '<p_osmotic_V_allsolids>+(<phi_pos_$species>*<V_$species>)'\n";
+      $return_string .= "VARIABLE <p_osmotic_phi_max_allsolids> '<p_osmotic_phi_max_allsolids>+(<phi_pos_$species>*<p_osmotic_phi_max_$species>)'\n";
+      if (!(arb_defined('<p_osmotic_phi_max_'.$species.'>'))) {
+        $return_string .= "NONE_CONSTANT <p_osmotic_phi_max_$species> '<phi_max_allsolids>'\n";
+      }
+    }
+    return $return_string;
+  }}
+  VARIABLE <p_osmotic_V_allsolids> "<p_osmotic_V_allsolids>/<p_osmotic_phi_bounded_allsolids>"
+  VARIABLE <p_osmotic_phi_max_allsolids> "<p_osmotic_phi_max_allsolids>/<p_osmotic_phi_bounded_allsolids>"
+# and from these, the CSL (compressibility) Z function for the average solids
+  NONE_CONSTANT <p_osmotic_csl_phi_max> 0.68d0 # roughly hard sphere packing, a phi value that is assumed to represent maximum packing
+  CELL_DERIVED <p_osmotic_phi_norm_allsolids> "cellmin(<p_osmotic_phi_pos_allsolids>*<p_osmotic_csl_phi_max>/<p_osmotic_phi_max_allsolids>,1.d0-<phi_tol>)" output
+  CELL_DERIVED <p_osmotic_Z_allsolids> [Pa] "(1.d0+<p_osmotic_phi_norm_allsolids>+<p_osmotic_phi_norm_allsolids>^2-<p_osmotic_phi_norm_allsolids>^3)/((1.d0-<p_osmotic_phi_norm_allsolids>)^3)" ON <allcells>
+# and then the phi multiplier
+  CELL_LOCAL <p_osmotic_multiplier_<<species>>> [Pa] "<k_boltzmann>*<T>*<p_osmotic_Z_allsolids>/<p_osmotic_V_allsolids>" ON <allcells>
 
 ELSE
 # methods that have a maximum total solids magnitude, with a multiplier that can be expressed as a function of total solid volume fraction
