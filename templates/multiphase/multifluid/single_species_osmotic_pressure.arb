@@ -52,10 +52,11 @@ ELSE_IF {{ return string_test('<<osmotic_pressure_method>>','osmoticsidcombined'
   VARIABLE <p_osmotic_phi_max_allsolids> "<p_osmotic_phi_max_allsolids>/<p_osmotic_phi_bounded_allsolids>"
 # and from these, the CSL (compressibility) Z function for the average solids
   NONE_CONSTANT <p_osmotic_csl_phi_max> 0.68d0 # roughly hard sphere packing, a phi value that is assumed to represent maximum packing
-  CELL_DERIVED <p_osmotic_phi_norm_allsolids> "cellmin(<p_osmotic_phi_pos_allsolids>*<p_osmotic_csl_phi_max>/<p_osmotic_phi_max_allsolids>,1.d0-<phi_tol>)" output
+  CELL_DERIVED <p_osmotic_phi_norm_allsolids> "cellmin(<p_osmotic_phi_pos_allsolids>*<p_osmotic_csl_phi_max>/<p_osmotic_phi_max_allsolids>,1.d0-<phi_tol>)"
   CELL_DERIVED <p_osmotic_Z_allsolids> [Pa] "(1.d0+<p_osmotic_phi_norm_allsolids>+<p_osmotic_phi_norm_allsolids>^2-<p_osmotic_phi_norm_allsolids>^3)/((1.d0-<p_osmotic_phi_norm_allsolids>)^3)" ON <allcells>
 # and then the phi multiplier
-  CELL_LOCAL <p_osmotic_multiplier_<<species>>> [Pa] "<k_boltzmann>*<T>*<p_osmotic_Z_allsolids>/<p_osmotic_V_allsolids>" ON <allcells>
+  NONE_CONSTANT <p_osmotic_adjuster> 1.d0 # multiplier applied to brownian motion
+  CELL_LOCAL <p_osmotic_multiplier_<<species>>> [Pa] "<p_osmotic_adjuster>*<k_boltzmann>*<T>*<p_osmotic_Z_allsolids>/<p_osmotic_V_allsolids>" ON <allcells> output
 
 ELSE
 # methods that have a maximum total solids magnitude, with a multiplier that can be expressed as a function of total solid volume fraction
@@ -80,7 +81,7 @@ ELSE
 
 END_IF
 
-CELL_LOCAL <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_<<species>>>" ON <allcells> # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+CELL_LOCAL <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
 
 IF {{ return string_test('<<steric_pressure_method>>','step')}}
 
