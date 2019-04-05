@@ -8,8 +8,12 @@ import csv
 from os.path import splitext, basename
 from re import search
 
-directory = sys.argv[1]
-    
+try:
+    directory = sys.argv[1]
+except:
+    print 'ERROR: you need to provide an output directory path'
+    sys.exit(1)  # abort
+
 try:
     if os.path.exists(directory):
         file = open(directory+'output_step.csv', 'r')
