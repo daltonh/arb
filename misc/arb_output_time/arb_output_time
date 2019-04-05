@@ -21,7 +21,7 @@ try:
         print ('ERROR: directory "{}" does not exist'.format(directory))
         sys.exit()
 except IOError:
-    print('ERROR: output.scr file does not exist')
+    print('ERROR: output_step.csv does not exist')
     sys.exit()
             
 fileList = glob.glob(directory+"/output.*.msh")
