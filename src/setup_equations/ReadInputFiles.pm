@@ -254,6 +254,7 @@ sub read_input_files {
         }
         perform_index_replacements($buffer);
         perform_string_replacements($buffer);
+        perform_index_replacements($buffer); # one last time incase string replacements have produced more index replacements
         if ($debug) { print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n"; }
         $solver_code .= $buffer; # add the result of the string replacements onto the solver code
         $buffer = $match.$after; # and save the remainder as the buffer
@@ -300,6 +301,8 @@ sub read_input_files {
         if ($debug) { print ::DEBUG "  INFO: after performing index replacements: buffer = $buffer\n"; }
         perform_string_replacements($buffer);
         if ($debug) { print ::DEBUG "  INFO: after performing string replacements: buffer = $buffer\n"; }
+        perform_index_replacements($buffer);
+        if ($debug) { print ::DEBUG "  INFO: after performing index replacements again: buffer = $buffer\n"; }
         $solver_code .= $buffer.$comments; # add the result of the string replacements onto the solver code
         if ($debug) { print ::DEBUG "  INFO: solver code ready to process: solver_code = $solver_code\n"; }
 # this shouldn't be necessary now, unless string replacements have introduced a line feed
@@ -1610,6 +1613,7 @@ sub perform_index_replacements {
 
     }
     $new_string .= $string_line;
+    if ($string) { $new_string .= "\n"; } # add linebreak to string as more lines will be added
   }
   $_[0] = $new_string; # change string in place
 }
