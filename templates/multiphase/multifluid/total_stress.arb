@@ -2,10 +2,11 @@ MARKDOWN
 Here we setup the viscous stresses for each phase, including the velocity gradients, using the navier_stokes template file
 END_MARKDOWN
 
-#REPLACEMENTS D "<<stress_method>>" W "version1" # the gamma used in each phase is specific to that phase
+#REPLACEMENTS D "<<stress_method>>" W "version1" # the gamma used in each phase is specific to that phase, but stress is not specific to phase (see conservation template)
 REPLACEMENTS D "<<stress_method>>" W "version2" # the gamma used in each phase is a function of all velocities
+#REPLACEMENTS D "<<stress_method>>" W "version3" # the gamma used in each phase is specific to that phase, but stress is specific to phase (see conservation template)
 
-IF {{ return string_test('<<stress_method>>','version1') }}
+IF {{ return (string_test('<<stress_method>>','version1') || string_test('<<stress_method>>','version3')) }}
   {{
     my $return_string = '';
     for my $species (string_eval('<<multifluid_species_list>>','list')) {

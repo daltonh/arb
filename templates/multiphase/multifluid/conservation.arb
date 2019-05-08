@@ -12,6 +12,7 @@ REPLACEMENTS D "<<implicitadvection>>" W "1" # default is now implicit advection
 
 #REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
 REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
+#REPLACEMENTS D "<<stress_method>>" W "version3" # same as version2 in terms of this template, different for viscosity calculation
 # now create conservation equations
 
 # mass conservation (actually, volume conservation)
@@ -70,7 +71,7 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
       if (string_test('<<stress_method>>','version1')) {
 # add viscous stress flux if the <<specificviscousstress>> is false, using lastcell averaging to bring phi into divergence
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_viscous_f_$species"."[l=$l]>/(faceave[lastcell](<phi_bounded_$species>))'\n";
-      } else {
+      } else { # <<stress_method>> = version2 and version3
 # add viscous stress flux
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_viscous_f_$species"."[l=$l]>'\n";
       }

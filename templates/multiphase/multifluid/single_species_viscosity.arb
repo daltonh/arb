@@ -58,47 +58,73 @@ IF {{ return string_test('<<stress_method>>','version1') }}
   FACE_DERIVED <mu_f_correction_<<species>>> "faceave[adjacentcells](<mu_c_multiplier_<<species>>>)" ON <allfaces> output # used in rhie-chow
 
 ELSE
+
+  IF {{ return string_test('<<stress_method>>','version3') }}
+
+# no viscosity_methods yet
+
+    IF {{ return string_test('<<species>>','species0') }}
+  # einstein relationship applied to continuous phase, based on total solids present
+      CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_<<species>>>))" ON <allcells>
+    ELSE
+  # each solution phase made from einstein viscosity, plus collision contributions from each solid phase (including itself)
+      NONE_CONSTANT <mu^_collision_coefficient2> [1] 6.d0 # 2nd order in phi coefficient for mixture viscosity
+      NONE_CONSTANT <mu^_collision> [Pa.s] "<mu_species0>*<mu^_collision_coefficient2>" # default collision viscosity between two phases which can be overwritten for particular combinations
+      CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_c_species0>" ON <allcells> # note, einstein relationship based on total solid volume fraction
+  # now add collisional contributions, noting that viscosity has been divided by phi_i under stress method 2 and 3
+      {{ my $return_string = '';
+        for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+          $return_string .= "NONE_CONSTANT <mu^_collision_<<species>>_$species> '<mu^_collision>'\n";
+          $return_string .= "VARIABLE <mu_c_<<species>>> '(<mu_c_<<species>>>)+(<mu^_collision_<<species>>_$species>*<phi_bounded_$species>)'\n";
+        }
+        return $return_string;
+      }}
+
 # in version2 the viscous stress divergence is phase specific, so the viscosity for each phase is roughly a constant as phi -> 0
 # the multiplier used in the u_f_{correction} calculation is equal to the viscosity
 
-  IF {{ return string_test('<<species>>','species0') }}
-# define the fluid stress, which is in version2 a mixture stress
+  ELSE # version2 methods
 
-    IF {{ return string_test('<<viscosity_method>>','einsteinsingle')}}
-# simplest einstein relationship, for a single phase
-      CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<phi_bounded_<<species>>>)" ON <allcells>
-    ELSE_IF {{ return string_test('<<viscosity_method>>','einstein')}}
-# for more than one solid use fluid phi to calculate total
-      CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_species0>))" ON <allcells>
-    ELSE
-  # methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
-      NONE_CONSTANT <mu_phi_max_allsolids> "<phi_max_allsolids>"
-      NONE_CONSTANT <mu_phi_tol> "<phi_tol>"
+    IF {{ return string_test('<<species>>','species0') }}
+  # define the fluid stress, which is in version2 a mixture stress
 
-      IF {{ return string_test('<<viscosity_method>>','morrisboulay99')}}
-        NONE_CONSTANT <mu_K_s> 0.1d0
-        CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
-        CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>)+<mu_K_s>*(<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**2)" ON <allcells> output
-      ELSE_IF {{ return string_test('<<viscosity_method>>','kriegerdougherty')}}
-        CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
-        CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*((<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**(2.5d0*<mu_phi_max_allsolids>))" ON <allcells> output
-      ELSE_IF {{ return string_test('<<viscosity_method>>','thomas65')}}
-        CELL_DERIVED <mu_phi_bounded_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)" output # here <mu_phi_max_allsolids> is used as a cut-off
-        CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_bounded_allsolids>+10.05d0*(<mu_phi_bounded_allsolids>)**2 + 0.00273d0*exp(16.6d0*<mu_phi_bounded_allsolids>))" ON <allcells> output
+      IF {{ return string_test('<<viscosity_method>>','einsteinsingle')}}
+  # simplest einstein relationship, for a single phase
+        CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<phi_bounded_<<species>>>)" ON <allcells>
+      ELSE_IF {{ return string_test('<<viscosity_method>>','einstein')}}
+  # for more than one solid use fluid phi to calculate total
+        CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_species0>))" ON <allcells>
       ELSE
-        ERROR "in single_species_viscosity: viscosity_method = <<viscosity_method>> not coded yet or unknown"
-      END_IF
-    END_IF
+    # methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
+        NONE_CONSTANT <mu_phi_max_allsolids> "<phi_max_allsolids>"
+        NONE_CONSTANT <mu_phi_tol> "<phi_tol>"
 
-  ELSE
-# for these methods use the same viscosity across phases
-    IF {{ return string_test('<<stress_method>>','zhang97') }}
-# only fluid viscosity applied to solid phases, zhang97 = balls
-      CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>" ON <allcells> output
+        IF {{ return string_test('<<viscosity_method>>','morrisboulay99')}}
+          NONE_CONSTANT <mu_K_s> 0.1d0
+          CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
+          CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>)+<mu_K_s>*(<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**2)" ON <allcells> output
+        ELSE_IF {{ return string_test('<<viscosity_method>>','kriegerdougherty')}}
+          CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
+          CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*((<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**(2.5d0*<mu_phi_max_allsolids>))" ON <allcells> output
+        ELSE_IF {{ return string_test('<<viscosity_method>>','thomas65')}}
+          CELL_DERIVED <mu_phi_bounded_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)" output # here <mu_phi_max_allsolids> is used as a cut-off
+          CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_bounded_allsolids>+10.05d0*(<mu_phi_bounded_allsolids>)**2 + 0.00273d0*exp(16.6d0*<mu_phi_bounded_allsolids>))" ON <allcells> output
+        ELSE
+          ERROR "in single_species_viscosity: viscosity_method = <<viscosity_method>> not coded yet or unknown"
+        END_IF
+      END_IF
+
     ELSE
-# mixture viscosity applied to all phases, version2 = jackson98
-      CELL_LOCAL <mu_c_<<species>>> [Pa.s] "<mu_c_species0>" ON <allcells> output
-# could also do drew76, no viscosity applied to solid phases...
+  # for these methods use the same viscosity across phases
+      IF {{ return string_test('<<stress_method>>','zhang97') }}
+  # only fluid viscosity applied to solid phases, zhang97 = balls
+        CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>" ON <allcells> output
+      ELSE
+  # mixture viscosity applied to all phases, version2 = jackson98
+        CELL_LOCAL <mu_c_<<species>>> [Pa.s] "<mu_c_species0>" ON <allcells> output
+  # could also do drew76, no viscosity applied to solid phases...
+      END_IF
+
     END_IF
 
   END_IF
