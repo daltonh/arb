@@ -1,17 +1,17 @@
 #!/usr/bin/env ruby
 
 # blcalc
-# (C) Copyright Christian Biscombe 2018
+# (C) Copyright Christian Biscombe 2018-2019
 
 require 'optparse'
 
 PROGNAME = 'blcalc'
-VERSION = '1.1'
-DATE = '2018-02-19'
+VERSION = '1.2'
+DATE = '2019-05-01'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})
   Boundary layer (geometric progression) calculator.
-  (C) Copyright Christian Biscombe 2018
+  (C) Copyright Christian Biscombe 2018-2019
 INFO
 
 def error(msg)
@@ -81,18 +81,18 @@ rescue OptionParser::InvalidArgument, OptionParser::InvalidOption, OptionParser:
 end
 
 # Check that input is within bounds
-abort BANNER if bl.size < 2
+abort "#{OPTIONS}" if bl.size < 2
 spec = bl.keys.last(2)
 if spec.include?(:H)
-  error 'H <= 0' unless bl[:H].positive?
+  error 'H <= 0' unless bl[:H] > 0.0
   error 'H >= 1' if bl[:H] >= 1.0
 end
 if spec.include?(:h)
-  error 'h <= 0' unless bl[:h].positive?
+  error 'h <= 0' unless bl[:h] > 0.0
   error 'h >= 1' if bl[:h] >= 1.0
 end
 if spec.include?(:p)
-  error 'p <= 0' unless bl[:p].positive?
+  error 'p <= 0' unless bl[:p] > 0.0
   error 'p = 1' if bl[:p] == 1.0
   if bl[:p] < 1 # internally require p > 1 but respect user's preference for output
     bl[:p] = 1.0/bl[:p]
@@ -119,7 +119,7 @@ when [:H, :n]
   bl[:h] = hmin(bl)
 when [:H, :p]
   bl[:h] = 1.0 - bl[:p]*(1.0-bl[:H])
-  error 'p >= 1/(1-H)' unless bl[:h].positive?
+  error 'p >= 1/(1-H)' unless bl[:h] > 0.0
   bl[:n] = n(bl)
   if spec.first == :H # keep H fixed and adjust p and h for integer n
     bl[:p] = p_hmax(bl)

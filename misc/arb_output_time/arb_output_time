@@ -1,0 +1,61 @@
+#!/usr/bin/python
+
+import sys, os, glob
+import numpy as np
+import csv
+#import pandas as pd
+
+from os.path import splitext, basename
+from re import search
+
+try:
+    directory = sys.argv[1]
+except:
+    print 'ERROR: you need to provide an output directory path'
+    sys.exit(1)  # abort
+
+try:
+    if os.path.exists(directory):
+        file = open(directory+'output_step.csv', 'r')
+    else:
+        print ('ERROR: directory "{}" does not exist'.format(directory))
+        sys.exit()
+except IOError:
+    print('ERROR: output_step.csv does not exist')
+    sys.exit()
+            
+fileList = glob.glob(directory+"/output.*.msh")
+
+if fileList:
+    output_list = []
+    for outputFile in fileList:
+        base = basename(splitext(outputFile)[0])
+        base = basename(splitext(base)[1])
+        value = base[1:]
+
+        output_list.append(np.int(value))
+        #output_list.append(value)
+else:
+    print ('ERROR: No transient output msh files present'.format(directory))
+
+reader = csv.DictReader(filter(lambda row: row[0]!='#', file))
+
+time_list = []
+next(reader)
+for row in reader:
+    time_list.append([np.int(row['<timestep>']), np.float(row['<t>'])])
+
+#print np.shape(time_list)
+#print np.shape(time_list)
+#print np.shape(output_list)
+
+final_list = []
+
+for output in output_list:
+    for time in time_list:
+        if output == time[0]:
+            final_list.append(time)
+
+final_list = sorted(final_list)
+
+np.savetxt(directory+'/output_times.dat',final_list, fmt='%i\t%f')
