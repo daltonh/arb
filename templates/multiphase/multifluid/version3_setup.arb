@@ -1,0 +1,15 @@
+MARKDOWN
+This will cause the multifluid equations to revert to version3, as of about 9/5/19
+END_MARKDOWN
+
+GLOBAL_REPLACEMENTS R "<<stress_method>>" W "version3"
+GLOBAL_REPLACEMENTS R "<<drag_method>>" W "version2"
+
+GLOBAL_REPLACEMENTS R "<<hindered_settling_function>>" W "richardsonzakilimited"
+GLOBAL_REPLACEMENTS R "<<viscosity_method>>" W "morrisboulay99" # not used yet for version3 stress_method
+GLOBAL_REPLACEMENTS R "<<anisotropic>>" W "0" # not used
+GLOBAL_REPLACEMENTS R "<<highPeSID>>" W "1" D "<<lowPeSID>>" W "0" # not used
+GLOBAL_REPLACEMENTS R "<<sid_pressure_method>>" W "specific"
+GLOBAL_REPLACEMENTS R "<<osmotic_pressure_method>>" W "dilute"
+GLOBAL_REPLACEMENTS R "<<steric_pressure_method>>" W "none"
+GLOBAL_REPLACEMENTS R "<<chemical_potential_method>>" W "none"

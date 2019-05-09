@@ -17,7 +17,7 @@ IF {{ return string_test('<<sid_pressure_method>>','specific')}}
 
   NONE_CONSTANT <p_sid_multiplier_<<species>>> 1.d0
 
-  CELL_DERIVED <p^_sid_<<species>>> "<p_sid_multiplier_<<species>>>*<gamma_magnitude_f_<<species>>>*<mu_f_<<species>>>" ON <allcells> output
+  CELL_DERIVED <p^_sid_<<species>>> "<p_sid_multiplier_<<species>>>*<gamma_magnitude_<<species>>>*<mu_c_<<species>>>" ON <allcells> output
 
 # add on contribution to species pressure
   VARIABLE <p^_<<species>>> "<p^_<<species>>>+(<p^_sid_<<species>>>)"

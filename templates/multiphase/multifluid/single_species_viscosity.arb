@@ -61,7 +61,7 @@ ELSE # version2 or version3 methods, ie, phase specific
 
   IF {{ return string_test('<<stress_method>>','version3') }}
 
-# no viscosity_methods yet
+# no alternative viscosity_methods yet
 
     IF {{ return string_test('<<species>>','species0') }}
   # einstein relationship applied to continuous phase, based on total solids present
