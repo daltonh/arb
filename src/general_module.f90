@@ -3734,6 +3734,60 @@ end function extract_option_name
 
 !-----------------------------------------------------------------
 
+function extract_option_name_boxless(option,error)
+
+! function to extract option_name_boxless from full option listing
+
+character(len=*) :: option ! will have length 100
+character(len=len(option)) :: extract_option_name_boxless
+logical :: error
+integer :: cut
+
+error = .false.
+extract_option_name_boxless = extract_option_name(option,error)
+cut=scan(extract_option_name_boxless,'[') ! look for the equals sign
+if (cut >= 1) then
+  extract_option_name_boxless = trim(extract_option_name_boxless(1:cut-1))
+end if
+
+end function extract_option_name_boxless
+
+!-----------------------------------------------------------------
+
+function extract_option_name_lindicies(option,error)
+
+! function to extract option_name_lindicies from full option listing
+
+character(len=*) :: option ! will have length 100
+character(len=len(option)) :: option_tmp
+integer, dimension(2) :: extract_option_name_lindicies
+logical :: error
+integer :: cut, ierr
+
+extract_option_name_lindicies = 0
+error = .false.
+option_tmp = extract_option_name(option,error)
+cut=scan(option_tmp,'[') ! look for the equals sign
+if (cut >= 1) then
+  option_tmp = trim(option_tmp(cut+1:len(option_tmp)))
+  cut=scan(option_tmp,'l') ! look for the l that is within the box material
+  if (cut >= 1) then
+    option_tmp = trim(option_tmp(cut+1:len(option_tmp))) ! cut the string at the l
+    read(option_tmp,'(i1)',iostat=ierr) extract_option_name_lindicies(1)
+    if (ierr == 0) then
+      option_tmp = trim(option_tmp(2:len(option)))
+      if (option_tmp(1:1).eq.",") then
+        option_tmp = trim(option_tmp(2:len(option)))
+        read(option_tmp,'(i1)',iostat=ierr) extract_option_name_lindicies(2)
+      end if
+    end if
+  end if
+end if
+
+end function extract_option_name_lindicies
+
+!-----------------------------------------------------------------
+
 subroutine set_option_integer(option,option_name,option_variable,option_type)
 
 ! subroutine that sets the option_variable whose name is option_name to the integer in the option string
@@ -3948,6 +4002,33 @@ else
 end if
 
 end function extract_option_logical
+
+!-----------------------------------------------------------------
+
+subroutine update_mesh_scale(scale_matrix,lindicies,scale_factor,error)
+
+double precision, dimension(totaldimensions,totaldimensions) :: scale_matrix
+integer, dimension(2) :: lindicies
+double precision :: scale_factor
+integer :: n
+logical :: error
+
+error = .false.
+if (maxval(lindicies) > totaldimensions) then
+  error = .true.
+else
+  if (lindicies(1) < 1) then
+    do n = 1, totaldimensions
+      scale_matrix(n,n) = scale_factor
+    end do
+  else if (lindicies(2) < 1) then
+    scale_matrix(lindicies(1),lindicies(1)) = scale_factor
+  else
+    scale_matrix(lindicies(1),lindicies(2)) = scale_factor
+  end if
+end if
+
+end subroutine update_mesh_scale
 
 !-----------------------------------------------------------------
 

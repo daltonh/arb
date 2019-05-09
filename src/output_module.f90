@@ -1165,7 +1165,12 @@ if (centring /= 'none') then ! mesh data not required for none centred file
     do gnode = 1, ubound(gmesh(gmesh_number)%knode_from_gnode,1)
       k = gmesh(gmesh_number)%knode_from_gnode(gnode)
 !     if (k /= 0) write(foutput,fmt=formatline) gnode,' ',node(k)%x(1),' ',node(k)%x(2),' ',node(k)%x(3)
-      if (k /= 0) write(foutput,fmt=formatline) gnode,(' ',trunk_dble(node(k)%x(l)*gmesh(gmesh_number)%output_scale), &
+! temp &&&&
+  write(*,*) 'gmesh(gmesh_number)%output_scale = ',gmesh(gmesh_number)%output_scale
+  write(*,*) 'gmesh(gmesh_number)%output_scale(1,:) = ',gmesh(gmesh_number)%output_scale(1,:)
+  write(*,*) 'node(k)%x = ',node(k)%x 
+  exit
+      if (k /= 0) write(foutput,fmt=formatline) gnode,(' ',trunk_dble(dot_product(gmesh(gmesh_number)%output_scale(l,:),node(k)%x)), &
         l=1,totaldimensions)
     end do
     write(foutput,'(a)') '$EndNodes'
@@ -1319,8 +1324,8 @@ if (centring /= 'none') then ! mesh data not required for none centred file
     formatline = '('//trim(outputmshformat)//',2(a,'//trim(outputmshformat)//'))'
     do gnode = 1, ubound(gmesh(gmesh_number)%knode_from_gnode,1)
       k = gmesh(gmesh_number)%knode_from_gnode(gnode)
-      if (k /= 0) write(foutput,fmt=formatline) trunk_dble(node(k)%x(1)*gmesh(gmesh_number)%output_scale), &
-        (' ',trunk_dble(node(k)%x(l)*gmesh(gmesh_number)%output_scale),l=2,totaldimensions)
+      if (k /= 0) write(foutput,fmt=formatline) trunk_dble(dot_product(gmesh(gmesh_number)%output_scale(1,:),node(k)%x)), &
+        (' ',trunk_dble(dot_product(gmesh(gmesh_number)%output_scale(l,:),node(k)%x)),l=2,totaldimensions)
     end do
   end if
 
@@ -1534,7 +1539,7 @@ formatline = '('//trim(outputmshformat)//')'
 do l = 1, totaldimensions
   do gnode = 1, ubound(gmesh(gmesh_number)%knode_from_gnode,1)
     k = gmesh(gmesh_number)%knode_from_gnode(gnode)
-    if (k /= 0) write(foutput,fmt=formatline) trunk_dble(node(k)%x(l)*gmesh(gmesh_number)%output_scale)
+    if (k /= 0) write(foutput,fmt=formatline) trunk_dble(dot_product(gmesh(gmesh_number)%output_scale(l,:),node(k)%x))
   end do
 end do
 

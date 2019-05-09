@@ -168,6 +168,8 @@ character(len=4000) :: name
 character(len=1000) :: keyword, formatline, options, filename
 character(len=1000), dimension(2) :: glue_region
 character(len=100) :: option_name
+integer, dimension(2) :: lindicies
+double precision :: scale_factor
 real :: versiontmp
 logical :: error, empty
 logical, parameter :: debug = .false.
@@ -234,17 +236,40 @@ fileloop: do
     end if
 ! find the input and output_scale variables
     do n = 1, allocatable_character_size(gmesh(gmesh_number)%options)
-      option_name = extract_option_name(gmesh(gmesh_number)%options(n),error)
+      option_name = extract_option_name_boxless(gmesh(gmesh_number)%options(n),error)
       if (.not.error.and.(trim(option_name) == "inputscale".or.trim(option_name) == "inputinversescale")) then
-        gmesh(gmesh_number)%input_scale = extract_option_double_precision(gmesh(gmesh_number)%options(n),error)
+        lindicies = extract_option_name_lindicies(gmesh(gmesh_number)%options(n),error)
+        if (error) call error_stop("could not determine inputscale indicies from the msh file option "// &
+          trim(gmesh(gmesh_number)%options(n)))
+  write(*,*) 'lindicies = ',lindicies
+  write(*,*) 'error = ',error
+  write(*,*) 'option_name = ',option_name
+  write(*,*) 'options = ',options
+  write(*,*) 'gmesh(gmesh_number)%options(n) = ',gmesh(gmesh_number)%options(n)
+        scale_factor = extract_option_double_precision(gmesh(gmesh_number)%options(n),error)
+  write(*,*) 'scale_factor = ',scale_factor
         if (error) call error_stop("could not determine inputscale from the msh file option "// &
           trim(gmesh(gmesh_number)%options(n)))
-        if (trim(option_name) == "inputinversescale") gmesh(gmesh_number)%input_scale = 1.d0/gmesh(gmesh_number)%input_scale
+        call update_mesh_scale(gmesh(gmesh_number)%input_scale,lindicies,scale_factor,error)
+  write(*,*) 'gmesh(gmesh_number)%input_scale = ',gmesh(gmesh_number)%input_scale
+        if (error) call error_stop("could not determine inputscale matrix from the msh file option "// &
+          trim(gmesh(gmesh_number)%options(n)))
+! TODO: inputinversescale as a matrix
+!       if (trim(option_name) == "inputinversescale") gmesh(gmesh_number)%input_scale = 1.d0/gmesh(gmesh_number)%input_scale
       else if (.not.error.and.(trim(option_name) == "outputscale".or.trim(option_name) == "outputinversescale")) then
-        gmesh(gmesh_number)%output_scale = extract_option_double_precision(gmesh(gmesh_number)%options(n),error)
+        lindicies = extract_option_name_lindicies(gmesh(gmesh_number)%options(n),error)
+        if (error) call error_stop("could not determine inputscale indicies from the msh file option "// &
+          trim(gmesh(gmesh_number)%options(n)))
+        scale_factor = extract_option_double_precision(gmesh(gmesh_number)%options(n),error)
+        if (error) call error_stop("could not determine inputscale from the msh file option "// &
+          trim(gmesh(gmesh_number)%options(n)))
+        call update_mesh_scale(gmesh(gmesh_number)%output_scale,lindicies,scale_factor,error)
+        if (error) call error_stop("could not determine inputscale matrix from the msh file option "// &
+          trim(gmesh(gmesh_number)%options(n)))
+!       gmesh(gmesh_number)%output_scale = extract_option_name_lindicies(gmesh(gmesh_number)%options(n),error)*extract_option_double_precision(gmesh(gmesh_number)%options(n),error)
         if (error) call error_stop("could not determine outputscale from the msh file option "// &
           trim(gmesh(gmesh_number)%options(n)))
-        if (trim(option_name) == "outputinversescale") gmesh(gmesh_number)%output_scale = 1.d0/gmesh(gmesh_number)%output_scale
+!       if (trim(option_name) == "outputinversescale") gmesh(gmesh_number)%output_scale = 1.d0/gmesh(gmesh_number)%output_scale
       end if
     end do
     formatline = '(a,'//trim(dindexformat(gmesh_number))//',a)'

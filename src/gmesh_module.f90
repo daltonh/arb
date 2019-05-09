@@ -39,6 +39,8 @@ module gmesh_module
 ! all mesh input and output is done within the context of these gmeshes
 ! this module contains routines that setup and read in these gmeshes
 
+use general_module ! need this to define totaldimensions
+
 ! statements specifying different data types and parameters
 implicit none
 
@@ -96,7 +98,7 @@ type gmesh_type
   type(gelement_type), dimension(:), allocatable :: gelement ! list of gelements
   integer :: ngregions ! number of gregions
   type(gregion_type), dimension(:), allocatable :: gregion ! mapping from gregion number to arb region number, dimension gregion_max
-  double precision :: input_scale=1.d0, output_scale=1.d0 ! scale factors used when reading in and writing out the mesh (nodes)
+  double precision, dimension(totaldimensions,totaldimensions) :: input_scale, output_scale ! scale factors used when reading in and writing out the mesh (nodes)
 end type gmesh_type
 
 ! gmsh meshes
@@ -681,6 +683,13 @@ else
 end if
 call push_character_array(array=gmesh(gmesh_number_local)%options,new_element='novtkoutput') ! no vtk output by default for all gmeshes
 call push_character_array(array=gmesh(gmesh_number_local)%options,new_element='nodatoutput') ! no dat output by default for all gmeshes
+! initialise input and output scale matricies
+gmesh(gmesh_number_local)%input_scale = 0.d0
+gmesh(gmesh_number_local)%output_scale = 0.d0
+do n = 1, totaldimensions
+  gmesh(gmesh_number_local)%input_scale(n,n) = 1.d0
+  gmesh(gmesh_number_local)%output_scale(n,n) = 1.d0
+end do
 if (present(gmesh_number)) gmesh_number = gmesh_number_local ! return gmesh_number if requested
 
 end subroutine push_gmesh
@@ -1494,7 +1503,7 @@ if (.not.check) then
   do k = 1, nnodes
     read(fgmsh,*,iostat=error) gnode(k),node(k+ktotal)%x
     if (error /= 0) call error_stop('problem reading nodes in gmsh file '//trim(filename))
-    node(k+ktotal)%x = transform_coordinates(node(k+ktotal)%x,gmesh_number)*gmesh(gmesh_number)%input_scale
+    node(k+ktotal)%x = transform_coordinates(node(k+ktotal)%x,gmesh_number)
   end do
   ! now create lookup array
   allocate(gmesh(gmesh_number)%knode_from_gnode(maxval(gnode)))
@@ -1508,7 +1517,7 @@ else
   gnode_max = 0
   do k = 1, nnodes
     read(fgmsh,*,iostat=error) gnode_check,x_check
-    x_check = transform_coordinates(x_check*gmesh(gmesh_number)%input_scale,gmesh_number)
+    x_check = transform_coordinates(x_check,gmesh_number)
     if (error /= 0) call error_stop('problem reading nodes in gmsh file '//trim(filename))
     if (distance(x_check,node(gmesh(gmesh_number)%knode_from_gnode(gnode_check))%x) > 1.d-10) call error_stop( &
       "node mismatch between msh files: cell and face msh files must come from the same simulation")
@@ -1532,7 +1541,7 @@ double precision, dimension(totaldimensions) :: transform_coordinates
 double precision, dimension(totaldimensions), intent(in) :: x
 integer :: gmesh_number ! this is the number of the msh file that is currently being read in, can be used to access mesh name etc etc
 
-transform_coordinates = x ! the default is no transformation (leave this in there)
+transform_coordinates = matmul(gmesh(gmesh_number)%input_scale,x) ! the default is no transformation (leave this in there)
 
 ! apply any transformations below this
 
