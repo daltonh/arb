@@ -4,9 +4,9 @@ END_MARKDOWN
 
 # this specifies the type of osmotic pressure function
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "none"
-REPLACEMENTS D "<<osmotic_pressure_method>>" W "dilute"
+#REPLACEMENTS D "<<osmotic_pressure_method>>" W "dilute"
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarling"
-#REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlinglimited" # same as carnahanstarling, but goes to infinity at <p_osmotic_phi_max_allsolids> rather than 1
+REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlinglimited" # same as carnahanstarling, but goes to infinity at <p_osmotic_phi_max_allsolids> rather than 1
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlingsinglelimited"
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "osmoticsidcombined" # method that uses a combined approach to osmotic and sid, and needs to also be set in osmotic pressure
 

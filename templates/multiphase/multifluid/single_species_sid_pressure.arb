@@ -4,9 +4,9 @@ END_MARKDOWN
 
 REPLACEMENTS D "<<anisotropic>>" W "0"
 REPLACEMENTS D "<<highPeSID>>" W "1" D "<<lowPeSID>>" W "0"
-#REPLACEMENTS D "<<sid_pressure_method>>" W "PeSID" # default method
+REPLACEMENTS D "<<sid_pressure_method>>" W "PeSID" # default method
 #REPLACEMENTS D "<<sid_pressure_method>>" W "osmoticsidcombined" # method that uses a combined approach to osmotic and sid, and needs to also be set in osmotic pressure
-REPLACEMENTS D "<<sid_pressure_method>>" W "specific" # new ideas, 8/5/19
+#REPLACEMENTS D "<<sid_pressure_method>>" W "specific" # new ideas, 8/5/19
 
 IF {{ return string_test('<<sid_pressure_method>>','specific')}}
 # these methods produce a <p^_<<species>>> pressure
