@@ -57,7 +57,7 @@ IF {{ return string_test('<<stress_method>>','version1') }}
   FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> output # used in stress
   FACE_DERIVED <mu_f_correction_<<species>>> "faceave[adjacentcells](<mu_c_multiplier_<<species>>>)" ON <allfaces> output # used in rhie-chow
 
-ELSE
+ELSE # version2 or version3 methods, ie, phase specific
 
   IF {{ return string_test('<<stress_method>>','version3') }}
 

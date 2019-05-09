@@ -1,20 +1,28 @@
 MARKDOWN
-Here we find <p_species> for each disperse phase species <<species>>
+Here we find <p_species> and <p^_species> for each disperse phase species <<species>>
 END_MARKDOWN
 
-# first add osmotic pressure using separate template
-INCLUDE "single_species_osmotic_pressure"
-CELL_DERIVED <p_<<species>>> "<p_osmotic_<<species>>>"
-FACE_LOCAL <p_osmotic_f_<<species>>> "faceave(<p_osmotic_<<species>>>)" ON <allfaces> # just used in visualise_forces
+# first define the two types of pressures as locals, and then add specific contributions to these as deriveds as needed
+CELL_LOCAL <p_<<species>>> "0.d0" ON <allcells> # this appears as a divergence in the full momentum equation
+CELL_LOCAL <p^_<<species>>> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
 
-# next sid pressure too
-REPLACEMENTS D "<<shearinduceddiffusion>>" W "0"
-IF <<shearinduceddiffusion>>
-  INCLUDE "single_species_sid_pressure"
-  CELL_DERIVED <p_<<species>>> "<p_<<species>>> + <p_sid_<<species>>>"
-  FACE_LOCAL <p_sid_f_<<species>>> "faceave(<p_sid_<<species>>>)" ON <allfaces> # just used in visualise_forces
-ELSE
-  FACE_LOCAL <p_sid_f_<<species>>> "0.d0" ON <allfaces> # just used in visualise_forces
+# osmotic pressure, adding to <p_<<species>>>
+REPLACEMENTS D "<<osmotic_pressure>>" W "1"
+IF <<osmotic_pressure>>
+  INCLUDE "single_species_osmotic_pressure"
+#  VARIABLE <p_<<species>>> "<p_<<species>>>+<p_osmotic_<<species>>>"
 END_IF
 
-FACE_DERIVED <p_f_<<species>>> "faceave(<p_<<species>>>)" ON <allfaces>
+# chemical potential, adding to <p^_<<species>>>
+REPLACEMENTS D "<<chemical_potential>>" W "0"
+IF <<chemical_potential>>
+  INCLUDE "single_species_chemical_potential"
+END_IF
+
+# sid pressure, either adding to <p_<<species>>> or <p^_<<species>>> depending on the method
+REPLACEMENTS D "<<shear_induced_diffusion>>" W "1"
+IF <<shear_induced_diffusion>>
+  INCLUDE "single_species_sid_pressure"
+END_IF
+
+# note that face values for both pressure types are calculated when calculating the dynamic forces

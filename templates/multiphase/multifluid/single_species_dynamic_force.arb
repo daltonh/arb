@@ -1,33 +1,22 @@
 MARKDOWN
-Here we add contributions to the dynamic force due to the already calculated <p_species> for each disperse phase
+Here we add contributions to the dynamic force due to the already calculated <p_species> and <p^_species> for each disperse phase
 END_MARKDOWN
 
-{{
-  my $return_string = '';
-  for my $l (string_eval('<<dimensions>>','list')) {
-    $return_string .= "VARIABLE <dynamic_force_c_<<species>>[l=$l]> '<dynamic_force_c_<<species>>[l=$l]>-celldivgrad[l=$l](<p_f_<<species>>>)/(<phi_bounded_<<species>>>)'\n";
-#   $return_string .= "VARIABLE <dynamic_force_c_<<species>>[l=$l]> '<dynamic_force_c_<<species>>[l=$l]>-celldivgrad[l=$l](<p_f_<<species>>>)/(<phi_fc_bounded_<<species>>>)'\n";
-  }
-  return $return_string;
-}}
+VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/(<phi_bounded_<<species>>>)-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
 
 # trying different phi variables for the osmotic pressure term
 REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_harmonic_<<species>>>"
 #REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_nob_<<species>>>" # version1, unstable in presence of large phi gradients
 #REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_<<species>>>"
 
-
 # now deal with dynamic_force_f
+REPLACEMENTS D "<<facegrad_method>>" W "" # define scope of averaging variable, and default which is for 
 IF {{ return string_test('<<dynamic_force_f_method>>','dxunit'); }}
-# we are now using the bounded phi from the adjacent domain cell when considering the boundaries, which is the relevant physical phi used in the rhiechow boundary condition treatment
-# VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[dxunit](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
-  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[dxunit](<p_<<species>>>)/(<<dynamic_force_f_phi_variable>>)"
+  REPLACEMENTS S "<<facegrad_method>>" W "dxunit"
 ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegrad'); }}
-# VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad(<p_<<species>>>)/(<phi_f_bounded_<<species>>>)"
-  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad(<p_<<species>>>)/(<<dynamic_force_f_phi_variable>>)"
+  REPLACEMENTS S "<<facegrad_method>>" W ""
 ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegradadjacentcells'); }}
-# VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[adjacentcells](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
-  VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[adjacentcells](<p_<<species>>>)/(<<dynamic_force_f_phi_variable>>)"
-ELSE
-  ERROR 'No valid dynamicforcefmethod is chosen in the multifluid/single_species_dynamic_force template file: string currently set as <<dynamic_force_f_method>>'
+  REPLACEMENTS S "<<facegrad_method>>" W "adjacentcells"
 END_IF
+
+VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[<<facegrad_method>>](<p_<<species>>>)/(<<dynamic_force_f_phi_variable>>)-facegrad[<<facegrad_method>>](<p^_<<species>>>)"

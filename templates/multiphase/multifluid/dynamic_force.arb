@@ -12,7 +12,23 @@ IF {{ return (!(arb_defined('<correctionfaces>'))) }} # only calculate the dynam
   FACE_REGION <correctionfaces> "all" ON <domainfaces>
 END_IF
 
-# first use the navier_stokes dynamic_force template to create the variables
+# face average both species pressures (phase specific <p^_species> and non-phase specific <p_species>)
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
+      "R '<p>' W '<p_$species>' ".
+      "R '<p_f_gradient_limiter>' W '<p_f_gradient_limiter_$species>' ".
+      "R '<p_f>' W '<p_f_$species>'\n";
+    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
+      "R '<p>' W '<p^_$species>' ".
+      "R '<p_f_gradient_limiter>' W '<p^_f_gradient_limiter_$species>' ".
+      "R '<p_f>' W '<p^_f_$species>'\n";
+  }
+  return $return_string;
+}}
+
+# use the navier_stokes dynamic_force template to create the dynamic force variables, including the fluid phase pressure term (only) which is common to all phases
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
@@ -28,7 +44,7 @@ END_IF
   return $return_string;
 }}
 
-# add on contributions due to disperse phase species pressures, possibly osmotic in nature so not multiplied by phi
+# add on contributions due to disperse phase species pressures, including possible phase specific (<p^_species>) and non-phase specific (<p_species>) contributions
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
@@ -38,6 +54,7 @@ END_IF
 }}
 
 IF {{ return string_test('<<u_f_method>>','mixture') }}
+  WARNING 'mixture u_f_method has not been adapted to <p^_species> specific pressures yet'
 # for the mixture method, <dynamic_force_f_{correction}> is based solely on the phase pressures, without other body forces etc
 # calculate these here overwriting those calculated above, using navier_stokes templates but with dummy dynamic_force_c and dynamic_force_f variables
 # note that this does not touch <dynamic_force_c[l=:]> or <dynamic_force_f>, which are used in the momentum equations and boundary conditions, respectively

@@ -4,15 +4,11 @@ END_MARKDOWN
 
 # this specifies the type of osmotic pressure function
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "none"
-#REPLACEMENTS D "<<osmotic_pressure_method>>" W "dilute"
+REPLACEMENTS D "<<osmotic_pressure_method>>" W "dilute"
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarling"
-REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlinglimited" # same as carnahanstarling, but goes to infinity at <p_osmotic_phi_max_allsolids> rather than 1
+#REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlinglimited" # same as carnahanstarling, but goes to infinity at <p_osmotic_phi_max_allsolids> rather than 1
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlingsinglelimited"
 #REPLACEMENTS D "<<osmotic_pressure_method>>" W "osmoticsidcombined" # method that uses a combined approach to osmotic and sid, and needs to also be set in osmotic pressure
-
-# we can also include steric hindrance using some type of step function
-REPLACEMENTS D "<<steric_pressure_method>>" W "none"
-#REPLACEMENTS D "<<steric_pressure_method>>" W "step"
 
 IF {{ return string_test('<<osmotic_pressure_method>>','none')}}
 
@@ -81,7 +77,12 @@ ELSE
 
 END_IF
 
-CELL_LOCAL <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+CELL_DERIVED <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+
+# we can also include steric hindrance using some type of step function
+# don't use this!
+REPLACEMENTS D "<<steric_pressure_method>>" W "none"
+#REPLACEMENTS D "<<steric_pressure_method>>" W "step"
 
 IF {{ return string_test('<<steric_pressure_method>>','step')}}
 
@@ -105,5 +106,8 @@ IF {{ return string_test('<<steric_pressure_method>>','step')}}
     CELL_LOCAL <p_steric_<<species>>> "<p_steric_<<species>>>+cellif(<p_steric_phi_allsolids>-<p_steric_phi_2_max>,(<phi_pos_<<species>>>/<p_steric_phi_allsolids>)*cellif(<p_steric_phi_allsolids>-<p_steric_phi_1_max>,<p_steric_gradient_high>*(<p_steric_phi_allsolids>-<p_steric_B>),<p_steric_A>*(<p_steric_phi_allsolids>-<p_steric_phi_2_max>)^2),0.d0)"
   END_IF
 
-  CELL_LOCAL <p_osmotic_<<species>>> "<p_osmotic_<<species>>>+<p_steric_<<species>>>"
+  VARIABLE <p_osmotic_<<species>>> "<p_osmotic_<<species>>>+<p_steric_<<species>>>"
 END_IF
+
+# add on contribution to species pressure
+VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_osmotic_<<species>>>)"
