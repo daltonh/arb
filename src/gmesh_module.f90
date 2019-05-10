@@ -684,13 +684,15 @@ else
 end if
 call push_character_array(array=gmesh(gmesh_number_local)%options,new_element='novtkoutput') ! no vtk output by default for all gmeshes
 call push_character_array(array=gmesh(gmesh_number_local)%options,new_element='nodatoutput') ! no dat output by default for all gmeshes
-! initialise input and output scale matricies
+! initialise input and output scale matricies, and also translate ones
 gmesh(gmesh_number_local)%input_scale = 0.d0
 gmesh(gmesh_number_local)%output_scale = 0.d0
 do n = 1, totaldimensions
   gmesh(gmesh_number_local)%input_scale(n,n) = 1.d0
   gmesh(gmesh_number_local)%output_scale(n,n) = 1.d0
 end do
+gmesh(gmesh_number_local)%input_translate = 0.d0
+gmesh(gmesh_number_local)%output_translate = 0.d0
 if (present(gmesh_number)) gmesh_number = gmesh_number_local ! return gmesh_number if requested
 
 end subroutine push_gmesh
@@ -1542,7 +1544,7 @@ double precision, dimension(totaldimensions) :: transform_coordinates
 double precision, dimension(totaldimensions), intent(in) :: x
 integer :: gmesh_number ! this is the number of the msh file that is currently being read in, can be used to access mesh name etc etc
 
-transform_coordinates = matmul(gmesh(gmesh_number)%input_scale,x) ! the default is no transformation (leave this in there)
+transform_coordinates = matmul(gmesh(gmesh_number)%input_scale,x)+gmesh(gmesh_number)%input_translate ! the default is to use the input_scale and input_translate options, although this behaviour can be overwritten here
 
 ! apply any transformations below this
 
