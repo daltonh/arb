@@ -3685,13 +3685,18 @@ subroutine extract_options(textline,options)
 ! NB: perl sub extract_option in Common.pm will handble variable names in options, but this fortran
 !  routine won't, consistent with the idea that any options passed to the fortran do not contain
 !  variable names or arbitrary strings
+! note that comments have already been removed
 character(len=*) :: textline
 character(len=100), dimension(:), allocatable :: options ! option characters always have a length of 100 througout code
 character(len=100) :: option
-integer :: cut
+integer :: cut, cutnext
 
 do
-  cut=scan(textline,',')
+  write(*,*) 'about to cut options at comma: textline = ',trim(textline)
+! cut=scan_closest_delimited(textline,',','["''')
+! cut=scan_closest_delimited(textline,',',"['")
+  cut=scan_closest_delimited(textline,',',"['""")
+  write(*,*) 'found comma at cut = ',cut
   if (cut == 1) then
     textline = trim(adjustl(textline(2:len(textline))))
   else if (cut > 1) then
@@ -3709,10 +3714,133 @@ end subroutine extract_options
 
 !-----------------------------------------------------------------
 
-function extract_option_name(option,error)
+function scan_closest_delimited(string,characters,delimiters)
+
+! scan through a string finding the first character out of the given characters, but ignoring any substrings delimited by any of the delimiters
+
+character(len=*), intent(in) :: string ! string to search through
+character(len=*), intent(in) :: characters ! list (string) of characters to search for, just as a concatenated list
+character(len=*), intent(in) :: delimiters ! list (string) of potential opening delimiters, just as a concatenated list (closing delimiters are chosen appropriately)
+integer :: scan_closest_delimited
+integer :: cut_last, cut_delimiter, cut_character
+character(len=1) :: closing_delimiter
+
+cut_last = 0 ! position that we are up to searching through in string
+
+do
+! see if string contains any of the characters, delimited or not
+  cut_character = scan_closest(string(cut_last+1:),characters)
+! action depends on these scans
+  if (cut_character < 1) then
+! no characters are found in remaining string - exit with 0
+    scan_closest_delimited = 0
+    exit
+  else
+    cut_delimiter = scan_closest(string(cut_last+1:),delimiters)
+  write(*,*) 'in scan_closest_delimited: cut_character = ',cut_character,': cut_delimiter = ',cut_delimiter
+  write(*,*) 'delimiters = |',delimiters,'|'
+    if (cut_delimiter < 1.or.cut_delimiter > cut_character) then
+! we have found the string, and it is not delimited, because either:
+!  a) no more delimiters are found, or
+!  b) the delimiters occur after the character
+      scan_closest_delimited = cut_last+cut_character
+      exit
+    else
+! here a delimiter occurs before the character, so move search past delimited string
+      closing_delimiter = string(cut_last+cut_delimiter:cut_last+cut_delimiter)
+! for braces etc change closing delimiter to match opening one
+      if (closing_delimiter.eq."[") then
+        closing_delimiter = "]"
+      else if (closing_delimiter.eq."(") then
+        closing_delimiter = ")"
+      else if (closing_delimiter.eq."<") then
+        closing_delimiter = ">"
+      else if (closing_delimiter.eq."{") then
+        closing_delimiter = "}"
+      end if
+      write(*,*) 'looking for closing_delimiter = ',closing_delimiter
+      write(*,*) 'in string = ',trim(string(cut_last+1:))
+      cut_last = cut_last+cut_delimiter ! this is the start of the delimited string
+      cut_delimiter = scan(string(cut_last+1:),closing_delimiter)
+      if (cut_delimiter < 1) call error_stop("could not find the closing delimiter "//closing_delimiter// &
+        " in the following string: "//trim(string))
+! we have found the closing delimiter, so
+      cut_last = cut_last+cut_delimiter
+    end if
+  end if
+end do
+
+end function scan_closest_delimited
+
+!-----------------------------------------------------------------
+
+function scan_closest(string,characters,back)
+
+! same as the fortran routine scan, except that it looks for the closest single character match out of the characters within characters
+
+character(len=*), intent(in) :: string
+character(len=*), intent(in) :: characters
+character(len=1) :: single_character
+integer :: scan_closest
+integer :: scan_single, n
+logical, optional, intent(in) :: back
+logical :: back_l
+back_l = .false.
+if (present(back)) back_l = back
+
+scan_closest = 0
+write(*,*) 'in scan_closest: characters = ',characters
+do n = 1, len(characters)
+  single_character = characters(n:n)
+  write(*,*) 'in scan_closest: n = ',n,': characters(n:n) = ',characters(n:n)
+  write(*,*) 'single_character = |',single_character,'|'
+  scan_single = scan(string,single_character,back_l)
+  if (scan_single > 0) then
+    if (scan_closest > 0) then
+      scan_closest = min(scan_single,scan_closest)
+    else
+      scan_closest = scan_single
+    end if
+  end if
+end do
+
+end function scan_closest
+
+!-----------------------------------------------------------------
+
+function extract_option_name_full(option,error)
 
 ! function to extract option_name from full option listing
 ! note, the options should already be left justified from the extract_options subroutine
+! here the option box is included with the name
+
+character(len=*) :: option ! will have length 100
+character(len=len(option)) :: extract_option_name_full
+logical :: error
+integer :: cut
+
+error = .false.
+extract_option_name_full = ''
+write(*,*) 'about to calc cut'
+cut=scan_closest_delimited(option,'=','["''') ! look for the equals sign, ignoring delimited strings
+write(*,*) 'found cut = ',cut
+
+if (cut == 1) then
+  write(*,'(a)') "ERROR: no option name specified in the following string: "//trim(option)
+  error = .true.
+else if (cut < 1) then
+  extract_option_name_full = option
+else
+  extract_option_name_full = trim(option(1:cut-1))
+end if
+
+end function extract_option_name_full
+
+!-----------------------------------------------------------------
+
+function extract_option_name(option,error)
+
+! function to extract option_name from full option listing, here with any option_boxes removed
 
 character(len=*) :: option ! will have length 100
 character(len=len(option)) :: extract_option_name
@@ -3720,71 +3848,85 @@ logical :: error
 integer :: cut
 
 error = .false.
-extract_option_name = ''
-cut=scan(option,'=') ! look for the equals sign
-if (cut < 1) cut=scan(option,' ') ! if the equals sign is not present (indicated by zero cut) then scan instead for first space
-
-if (cut <= 1) then
-  error = .true.
-else
-  extract_option_name = trim(option(1:cut-1))
+write(*,*) 'about to extract full name'
+extract_option_name = extract_option_name_full(option,error)
+write(*,*) 'found full name = ',extract_option_name
+cut=scan(extract_option_name,'[') ! look for the opening box delimiter
+if (cut >= 1) then
+  extract_option_name = trim(extract_option_name(1:cut-1))
 end if
 
 end function extract_option_name
 
 !-----------------------------------------------------------------
 
-function extract_option_name_boxless(option,error)
+function extract_option_box(option,error)
 
-! function to extract option_name_boxless from full option listing
+! function to extract option_name from full option listing, here with any option_boxes removed
 
 character(len=*) :: option ! will have length 100
-character(len=len(option)) :: extract_option_name_boxless
+character(len=len(option)) :: option_name_full
+character(len=len(option)) :: extract_option_box
 logical :: error
-integer :: cut
+integer :: cut, cut_delimiter
 
 error = .false.
-extract_option_name_boxless = extract_option_name(option,error)
-cut=scan(extract_option_name_boxless,'[') ! look for the equals sign
-if (cut >= 1) then
-  extract_option_name_boxless = trim(extract_option_name_boxless(1:cut-1))
+extract_option_box = ''
+write(*,*) 'in extract_option_box, about to get full name'
+option_name_full = extract_option_name_full(option,error)
+write(*,*) 'in extract_option_box: option_name_full = ',trim(option_name_full)
+if (.not.error) then
+  cut=scan(option_name_full,'[') ! look for the opening box delimiter
+  if (cut >= 1) then
+    cut_delimiter=scan(option_name_full(cut+1:),']') ! look for the closing box delimiter
+    if (cut_delimiter < 1) then
+      write(*,'(a)') "ERROR: could not find the closing box delimiter ] in the following string: "//trim(option)
+      error = .true.
+      return
+    end if
+    extract_option_box = trim(option_name_full(cut:cut+cut_delimiter))
+  end if
 end if
 
-end function extract_option_name_boxless
+end function extract_option_box
 
 !-----------------------------------------------------------------
 
-function extract_option_name_lindicies(option,error)
+function extract_option_lindicies(option,error)
 
-! function to extract option_name_lindicies from full option listing
+! function to extract option_lindicies from full option listing
 
 character(len=*) :: option ! will have length 100
 character(len=len(option)) :: option_tmp
-integer, dimension(2) :: extract_option_name_lindicies
+integer, dimension(2) :: extract_option_lindicies
 logical :: error
 integer :: cut, ierr
 
-extract_option_name_lindicies = 0
+extract_option_lindicies = 0
 error = .false.
-option_tmp = extract_option_name(option,error)
-cut=scan(option_tmp,'[') ! look for the equals sign
-if (cut >= 1) then
-  option_tmp = trim(option_tmp(cut+1:len(option_tmp)))
+write(*,*) 'before'
+option_tmp = extract_option_box(option,error)
+write(*,*) 'after option_tmp = ',option_tmp
+if (trim(option_tmp).ne.''.and..not.error) then
   cut=scan(option_tmp,'l') ! look for the l that is within the box material
   if (cut >= 1) then
-    option_tmp = trim(option_tmp(cut+1:len(option_tmp))) ! cut the string at the l
-    read(option_tmp,'(i1)',iostat=ierr) extract_option_name_lindicies(1)
-    if (ierr == 0) then
-      option_tmp = trim(option_tmp(2:len(option)))
-      if (option_tmp(1:1).eq.",") then
-        option_tmp = trim(option_tmp(2:len(option)))
-        read(option_tmp,'(i1)',iostat=ierr) extract_option_name_lindicies(2)
+    option_tmp = trim(adjustl(option_tmp(cut+1:))) ! cut the string at the l and remove leading space
+    if (option_tmp(1:1).eq."=") then ! actually, if not so, then the l isn't a part of a lindicies statement
+      option_tmp = trim(adjustl(option_tmp(2:))) ! this removes a single leading character, then any trailing space
+      write(*,*) 'after removing l and = from lindicies: option_tmp = ',option_tmp
+      read(option_tmp,'(i1)',iostat=ierr) extract_option_lindicies(1)
+      if (ierr == 0) then
+        option_tmp = trim(adjustl(option_tmp(2:))) ! remove digit
+        if (option_tmp(1:1).eq.",") then
+          option_tmp = trim(adjustl(option_tmp(2:))) ! remove comma
+          read(option_tmp,'(i1)',iostat=ierr) extract_option_lindicies(2) ! finally read second index
+        end if
       end if
     end if
   end if
 end if
 
-end function extract_option_name_lindicies
+end function extract_option_lindicies
 
 !-----------------------------------------------------------------
 
@@ -3825,7 +3967,7 @@ integer :: cut, ierror
 
 error = .false.
 extract_option_integer = 0
-cut=scan(option,'=') ! look for the equals sign
+cut=scan_closest_delimited(option,'=','[') ! look for the equals sign
 
 if (cut < 1) then
   error = .true.
@@ -3873,7 +4015,7 @@ integer :: cut, ierror
 
 error = .false.
 extract_option_string = ''
-cut=scan(option,'=') ! look for the equals sign
+cut=scan_closest_delimited(option,'=','[') ! look for the equals sign
 
 if (cut < 1) then
   error = .true.
@@ -3927,7 +4069,7 @@ integer :: cut, ierror
 
 error = .false.
 extract_option_double_precision = 0.d0
-cut=scan(option,'=') ! look for the equals sign
+cut=scan_closest_delimited(option,'=','[') ! look for the equals sign
 
 if (cut < 1) then
   error = .true.
@@ -3992,7 +4134,7 @@ integer :: cut, ierror
 
 error = .false.
 extract_option_logical = .false.
-cut=scan(option,'=') ! look for the equals sign
+cut=scan_closest_delimited(option,'=','[') ! look for the equals sign
 
 if (cut < 1) then
   error = .true.
