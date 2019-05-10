@@ -99,6 +99,7 @@ type gmesh_type
   integer :: ngregions ! number of gregions
   type(gregion_type), dimension(:), allocatable :: gregion ! mapping from gregion number to arb region number, dimension gregion_max
   double precision, dimension(totaldimensions,totaldimensions) :: input_scale, output_scale ! scale factors used when reading in and writing out the mesh (nodes)
+  double precision, dimension(totaldimensions) :: input_translate, output_translate ! translate vectors to use when when reading in and writing out the mesh (nodes)
 end type gmesh_type
 
 ! gmsh meshes

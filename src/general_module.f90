@@ -3692,11 +3692,9 @@ character(len=100) :: option
 integer :: cut, cutnext
 
 do
-  write(*,*) 'about to cut options at comma: textline = ',trim(textline)
-! cut=scan_closest_delimited(textline,',','["''')
-! cut=scan_closest_delimited(textline,',',"['")
-  cut=scan_closest_delimited(textline,',',"['""")
-  write(*,*) 'found comma at cut = ',cut
+! write(*,*) 'about to cut options at comma: textline = ',trim(textline)
+  cut=scan_closest_delimited(textline,',',"['""") ! the repeated "" becomes a single " when interpreted
+! write(*,*) 'found comma at cut = ',cut
   if (cut == 1) then
     textline = trim(adjustl(textline(2:len(textline))))
   else if (cut > 1) then
@@ -3737,8 +3735,8 @@ do
     exit
   else
     cut_delimiter = scan_closest(string(cut_last+1:),delimiters)
-  write(*,*) 'in scan_closest_delimited: cut_character = ',cut_character,': cut_delimiter = ',cut_delimiter
-  write(*,*) 'delimiters = |',delimiters,'|'
+!   write(*,*) 'in scan_closest_delimited: cut_character = ',cut_character,': cut_delimiter = ',cut_delimiter
+!   write(*,*) 'delimiters = |',delimiters,'|'
     if (cut_delimiter < 1.or.cut_delimiter > cut_character) then
 ! we have found the string, and it is not delimited, because either:
 !  a) no more delimiters are found, or
@@ -3758,8 +3756,8 @@ do
       else if (closing_delimiter.eq."{") then
         closing_delimiter = "}"
       end if
-      write(*,*) 'looking for closing_delimiter = ',closing_delimiter
-      write(*,*) 'in string = ',trim(string(cut_last+1:))
+!     write(*,*) 'looking for closing_delimiter = ',closing_delimiter
+!     write(*,*) 'in string = ',trim(string(cut_last+1:))
       cut_last = cut_last+cut_delimiter ! this is the start of the delimited string
       cut_delimiter = scan(string(cut_last+1:),closing_delimiter)
       if (cut_delimiter < 1) call error_stop("could not find the closing delimiter "//closing_delimiter// &
@@ -3780,7 +3778,7 @@ function scan_closest(string,characters,back)
 
 character(len=*), intent(in) :: string
 character(len=*), intent(in) :: characters
-character(len=1) :: single_character
+!character(len=1) :: single_character
 integer :: scan_closest
 integer :: scan_single, n
 logical, optional, intent(in) :: back
@@ -3789,12 +3787,13 @@ back_l = .false.
 if (present(back)) back_l = back
 
 scan_closest = 0
-write(*,*) 'in scan_closest: characters = ',characters
+!write(*,*) 'in scan_closest: characters = ',characters
 do n = 1, len(characters)
-  single_character = characters(n:n)
-  write(*,*) 'in scan_closest: n = ',n,': characters(n:n) = ',characters(n:n)
-  write(*,*) 'single_character = |',single_character,'|'
-  scan_single = scan(string,single_character,back_l)
+! single_character = characters(n:n)
+! write(*,*) 'in scan_closest: n = ',n,': characters(n:n) = ',characters(n:n)
+! write(*,*) 'single_character = |',single_character,'|'
+! scan_single = scan(string,single_character,back_l)
+  scan_single = scan(string,characters(n:n),back_l)
   if (scan_single > 0) then
     if (scan_closest > 0) then
       scan_closest = min(scan_single,scan_closest)
@@ -3821,9 +3820,9 @@ integer :: cut
 
 error = .false.
 extract_option_name_full = ''
-write(*,*) 'about to calc cut'
+!write(*,*) 'about to calc cut'
 cut=scan_closest_delimited(option,'=','["''') ! look for the equals sign, ignoring delimited strings
-write(*,*) 'found cut = ',cut
+!write(*,*) 'found cut = ',cut
 
 if (cut == 1) then
   write(*,'(a)') "ERROR: no option name specified in the following string: "//trim(option)
@@ -3848,9 +3847,9 @@ logical :: error
 integer :: cut
 
 error = .false.
-write(*,*) 'about to extract full name'
+!write(*,*) 'about to extract full name'
 extract_option_name = extract_option_name_full(option,error)
-write(*,*) 'found full name = ',extract_option_name
+!write(*,*) 'found full name = ',extract_option_name
 cut=scan(extract_option_name,'[') ! look for the opening box delimiter
 if (cut >= 1) then
   extract_option_name = trim(extract_option_name(1:cut-1))
@@ -3872,9 +3871,9 @@ integer :: cut, cut_delimiter
 
 error = .false.
 extract_option_box = ''
-write(*,*) 'in extract_option_box, about to get full name'
+!write(*,*) 'in extract_option_box, about to get full name'
 option_name_full = extract_option_name_full(option,error)
-write(*,*) 'in extract_option_box: option_name_full = ',trim(option_name_full)
+!write(*,*) 'in extract_option_box: option_name_full = ',trim(option_name_full)
 if (.not.error) then
   cut=scan(option_name_full,'[') ! look for the opening box delimiter
   if (cut >= 1) then
@@ -3904,16 +3903,16 @@ integer :: cut, ierr
 
 extract_option_lindicies = 0
 error = .false.
-write(*,*) 'before'
+!write(*,*) 'before'
 option_tmp = extract_option_box(option,error)
-write(*,*) 'after option_tmp = ',option_tmp
+!write(*,*) 'after option_tmp = ',option_tmp
 if (trim(option_tmp).ne.''.and..not.error) then
   cut=scan(option_tmp,'l') ! look for the l that is within the box material
   if (cut >= 1) then
     option_tmp = trim(adjustl(option_tmp(cut+1:))) ! cut the string at the l and remove leading space
     if (option_tmp(1:1).eq."=") then ! actually, if not so, then the l isn't a part of a lindicies statement
       option_tmp = trim(adjustl(option_tmp(2:))) ! this removes a single leading character, then any trailing space
-      write(*,*) 'after removing l and = from lindicies: option_tmp = ',option_tmp
+!     write(*,*) 'after removing l and = from lindicies: option_tmp = ',option_tmp
       read(option_tmp,'(i1)',iostat=ierr) extract_option_lindicies(1)
       if (ierr == 0) then
         option_tmp = trim(adjustl(option_tmp(2:))) ! remove digit
@@ -4171,6 +4170,33 @@ else
 end if
 
 end subroutine update_mesh_scale
+
+!-----------------------------------------------------------------
+
+subroutine update_mesh_translate(translate_vector,lindicies,scale_factor,error)
+
+double precision, dimension(totaldimensions) :: translate_vector
+integer, dimension(2) :: lindicies
+double precision :: scale_factor ! here a translation actually
+integer :: n
+logical :: error
+
+error = .false.
+if (maxval(lindicies) > totaldimensions) then
+  error = .true.
+else
+  if (lindicies(1) < 1) then
+    do n = 1, totaldimensions
+      translate_vector(n) = scale_factor
+    end do
+  else if (lindicies(2) < 1) then
+    translate_vector(lindicies(1)) = scale_factor
+  else
+    error = .true. ! there should not be a second index for a translation vector
+  end if
+end if
+
+end subroutine update_mesh_translate
 
 !-----------------------------------------------------------------
 

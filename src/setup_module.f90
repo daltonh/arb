@@ -162,7 +162,7 @@ subroutine read_input_file
 
 use general_module
 use gmesh_module
-integer :: ierror, n, m, gmesh_number, array_size
+integer :: ierror, n, m, gmesh_number, array_size, i, j
 character(len=5000) :: textline, otextline
 character(len=4000) :: name
 character(len=1000) :: keyword, formatline, options, filename
@@ -171,7 +171,7 @@ character(len=100) :: option_name
 integer, dimension(2) :: lindicies
 double precision :: scale_factor
 real :: versiontmp
-logical :: error, empty
+logical :: error, empty, scaling
 logical, parameter :: debug = .false.
                   
 if (debug) write(*,'(80(1h+)/a)') 'subroutine read_input_file'
@@ -222,12 +222,12 @@ fileloop: do
 ! mesh info
 
   if (trim(keyword) == 'MSH_FILE') then
+    scaling = .false. ! just a flag to determine whether we need to output information about scalings
 ! extract gmsh filename, either delimited by or not
     filename = extract_next_string(textline,error,empty=empty,delimiter="'"" ")
     if (error.or.empty) call error_stop('problem reading in name of gmsh mesh file from line '//otextline) ! if there is space at first character or string is empty, then filename not found
     call push_gmesh(filename,gmesh_number)
 ! extract any options and add to the end of the options array
-    write(*,*) 'here, about to extract options'
     call extract_options(textline,gmesh(gmesh_number)%options)
 ! assemble a list of the gmesh options
     if (allocated(gmesh(gmesh_number)%options)) then
@@ -237,49 +237,69 @@ fileloop: do
     end if
 ! find the input and output_scale variables
     do n = 1, allocatable_character_size(gmesh(gmesh_number)%options)
-    write(*,*) 'here, about to extract option_name: gmesh(gmesh_number)%options(n) = ',gmesh(gmesh_number)%options(n)
       option_name = extract_option_name(gmesh(gmesh_number)%options(n),error)
       if (.not.error.and.(trim(option_name) == "inputscale".or.trim(option_name) == "inputinversescale")) then
-    write(*,*) 'here, about to find option_box'
-!       write(*,*) 'option_box = ',extract_option_box(gmesh(gmesh_number)%options(n),error)
+        scaling = .true.
         lindicies = extract_option_lindicies(gmesh(gmesh_number)%options(n),error)
         if (error) call error_stop("could not determine inputscale indicies from the msh file option "// &
           trim(gmesh(gmesh_number)%options(n)))
-  write(*,*) 'lindicies = ',lindicies
-  write(*,*) 'error = ',error
-  write(*,*) 'option_name = ',option_name
-  write(*,*) 'options = ',options
-  write(*,*) 'gmesh(gmesh_number)%options(n) = ',gmesh(gmesh_number)%options(n)
         scale_factor = extract_option_double_precision(gmesh(gmesh_number)%options(n),error)
-  write(*,*) 'scale_factor = ',scale_factor
         if (error) call error_stop("could not determine inputscale from the msh file option "// &
           trim(gmesh(gmesh_number)%options(n)))
+        if (trim(option_name) == "inputinversescale") scale_factor = 1.d0/scale_factor
         call update_mesh_scale(gmesh(gmesh_number)%input_scale,lindicies,scale_factor,error)
-  write(*,*) 'gmesh(gmesh_number)%input_scale = ',gmesh(gmesh_number)%input_scale
         if (error) call error_stop("could not determine inputscale matrix from the msh file option "// &
           trim(gmesh(gmesh_number)%options(n)))
-! TODO: inputinversescale as a matrix
-!       if (trim(option_name) == "inputinversescale") gmesh(gmesh_number)%input_scale = 1.d0/gmesh(gmesh_number)%input_scale
-      else if (.not.error.and.(trim(option_name) == "outputscale".or.trim(option_name) == "outputinversescale")) then
+      else if (.not.error.and.(trim(option_name) == "inputtranslate")) then
+        scaling = .true.
         lindicies = extract_option_lindicies(gmesh(gmesh_number)%options(n),error)
-        if (error) call error_stop("could not determine inputscale indicies from the msh file option "// &
+        if (error) call error_stop("could not determine inputtranslate indicies from the msh file option "// &
           trim(gmesh(gmesh_number)%options(n)))
         scale_factor = extract_option_double_precision(gmesh(gmesh_number)%options(n),error)
-        if (error) call error_stop("could not determine inputscale from the msh file option "// &
+        if (error) call error_stop("could not determine inputtranslate from the msh file option "// &
           trim(gmesh(gmesh_number)%options(n)))
-        call update_mesh_scale(gmesh(gmesh_number)%output_scale,lindicies,scale_factor,error)
-        if (error) call error_stop("could not determine inputscale matrix from the msh file option "// &
+        call update_mesh_translate(gmesh(gmesh_number)%input_translate,lindicies,scale_factor,error)
+        if (error) call error_stop("could not determine inputtranslate vector from the msh file option "// &
           trim(gmesh(gmesh_number)%options(n)))
-!       gmesh(gmesh_number)%output_scale = extract_option_lindicies(gmesh(gmesh_number)%options(n),error)*extract_option_double_precision(gmesh(gmesh_number)%options(n),error)
+      else if (.not.error.and.(trim(option_name) == "outputscale".or.trim(option_name) == "outputinversescale")) then
+        scaling = .true.
+        lindicies = extract_option_lindicies(gmesh(gmesh_number)%options(n),error)
+        if (error) call error_stop("could not determine outputscale indicies from the msh file option "// &
+          trim(gmesh(gmesh_number)%options(n)))
+        scale_factor = extract_option_double_precision(gmesh(gmesh_number)%options(n),error)
         if (error) call error_stop("could not determine outputscale from the msh file option "// &
           trim(gmesh(gmesh_number)%options(n)))
-!       if (trim(option_name) == "outputinversescale") gmesh(gmesh_number)%output_scale = 1.d0/gmesh(gmesh_number)%output_scale
+        if (trim(option_name) == "outputinversescale") scale_factor = 1.d0/scale_factor
+        call update_mesh_scale(gmesh(gmesh_number)%output_scale,lindicies,scale_factor,error)
+        if (error) call error_stop("could not determine outputscale matrix from the msh file option "// &
+          trim(gmesh(gmesh_number)%options(n)))
+      else if (.not.error.and.(trim(option_name) == "outputtranslate")) then
+        scaling = .true.
+        lindicies = extract_option_lindicies(gmesh(gmesh_number)%options(n),error)
+        if (error) call error_stop("could not determine outputtranslate indicies from the msh file option "// &
+          trim(gmesh(gmesh_number)%options(n)))
+        scale_factor = extract_option_double_precision(gmesh(gmesh_number)%options(n),error)
+        if (error) call error_stop("could not determine outputtranslate from the msh file option "// &
+          trim(gmesh(gmesh_number)%options(n)))
+        call update_mesh_translate(gmesh(gmesh_number)%output_translate,lindicies,scale_factor,error)
+        if (error) call error_stop("could not determine outputtranslate vector from the msh file option "// &
+          trim(gmesh(gmesh_number)%options(n)))
       end if
     end do
     formatline = '(a,'//trim(dindexformat(gmesh_number))//',a)'
     write(*,fmt=formatline) 'INFO: gmesh created from arb input file: gmesh_number = ',gmesh_number,': basename = '// &
       trim(gmesh(gmesh_number)%basename)//': dirname (read location) = '//trim(gmesh(gmesh_number)%dirname)// &
       ': current (right prioritised) user-set options ='//trim(options)
+    if (scaling) then
+      write(*,'(a)') 'INFO: the following scalings and translations are being used for this gmesh '// &
+        trim(gmesh(gmesh_number)%basename)//':'
+      write(*,'(a7,1x,a5,26x,5x,a10,15x,a7,1x,a5,26x,5x,a10)') 'input:','scale','translate','output:','scale','translate'
+      do i = 1, 3
+        write(*,'(7x,2(g10.3,1x),g10.3,5x,g10.3,15x,7x,2(g10.3,1x),g10.3,5x,g10.3)') (gmesh(gmesh_number)%input_scale(i,j),j=1,3), &
+          gmesh(gmesh_number)%input_translate(i),(gmesh(gmesh_number)%output_scale(i,j),j=1,3), &
+          gmesh(gmesh_number)%output_translate(i)
+      end do
+    end if
   end if
 
 !---------------
