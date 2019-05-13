@@ -16,8 +16,8 @@ REPLACEMENTS D "<<drag_method>>" W "version2"
 # version1 gives an equivalent hindered settling function which is / phi_0^2
 
 #REPLACEMENTS D "<<hindered_settling_function>>" W "dilute" # = stokes
-#REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzaki"
-REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
+REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzaki"
+#REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
 #REPLACEMENTS D "<<hindered_settling_function>>" W "rourkeernstene" # from kim16, referencing Rourke and Ernstene 1930, which is specifically for rbcs
 
 REPLACEMENTS D "<<drag_beta_face_based>>" W "0" # calculate beta^ at the faces, and then average to the cells.  Otherwise (default), calculate at the cells and then average to the faces

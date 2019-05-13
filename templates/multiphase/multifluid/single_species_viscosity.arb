@@ -42,7 +42,7 @@ IF {{ return string_test('<<stress_method>>','version1') }}
       	NONE_CONSTANT <mu_phi_max_allsolids> "<phi_max_allsolids>"
         NONE_CONSTANT <mu_phi_tol> "<phi_tol>"
         CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
-	NONE_CONSTANT <n> "-2.5d0*<mu_phi_max_allsolids>"
+      	NONE_CONSTANT <n> "-2.5d0*<mu_phi_max_allsolids>"
         CELL_DERIVED <mu_c_multiplier_<<species>>> [Pa.s] "<mu_species0>*((1.d0-(1.d0-<mu_phi_norm_allsolids>)**<n>)/(<mu_phi_max_allsolids>*<mu_phi_norm_allsolids>*(1.d0-<mu_phi_norm_allsolids>)**<n>) + 1.d0)" ON <allcells> output
 
       ELSE
@@ -79,6 +79,7 @@ ELSE # version2 or version3 methods, ie, phase specific
         }
         return $return_string;
       }}
+    END_IF
 
 # in version2 the viscous stress divergence is phase specific, so the viscosity for each phase is roughly a constant as phi -> 0
 # the multiplier used in the u_f_{correction} calculation is equal to the viscosity
