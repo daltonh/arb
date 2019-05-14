@@ -5,7 +5,7 @@ END_MARKDOWN
 VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/(<phi_bounded_<<species>>>)-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
 
 # trying different phi variables for the osmotic pressure term
-REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_harmonic_<<species>>>"
+REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_harmonic_<<species>>>" R "<<dynamic_force_f_phi_variable_species0>>" W "<phi_f_bounded_harmonic_species0>"
 #REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_nob_<<species>>>" # version1, unstable in presence of large phi gradients
 #REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_<<species>>>"
 
@@ -20,3 +20,16 @@ ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegradadjacentcell
 END_IF
 
 VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[<<facegrad_method>>](<p_<<species>>>)/(<<dynamic_force_f_phi_variable>>)-facegrad[<<facegrad_method>>](<p^_<<species>>>)"
+
+IF {{ return (arb_defined(string_eval('<p^_<<species>>_species0>','text'))) }}
+  IF {{ return (!(arb_defined(string_eval('<p^_f_<<species>>_species0>','text')))) }}
+    ERROR "<p^_f_<<species>>_species0> should be defined"
+  END_IF
+# reaction force
+#  VARIABLE <dynamic_force_c_species0[l=<<i>>]> '<dynamic_force_c_species0[l=<<i>>]>+<phi_bounded_<<species>>>*celldivgrad[l=<<i>>](<p^_f_<<species>>_species0>)/(<phi_bounded_species0>)'
+#  VARIABLE <dynamic_force_f_species0> "<dynamic_force_f_species0>+<<dynamic_force_f_phi_variable>>*facegrad[<<facegrad_method>>](<p^_<<species>>_species0>)/(<<dynamic_force_f_phi_variable_species0>>)"
+# additional force on fluid
+  VARIABLE <dynamic_force_c_species0[l=<<i>>]> '<dynamic_force_c_species0[l=<<i>>]>-<phi_bounded_<<species>>>*celldivgrad[l=<<i>>](<p^_f_<<species>>_species0>)/(<phi_bounded_species0>)'
+  VARIABLE <dynamic_force_f_species0> "<dynamic_force_f_species0>-<<dynamic_force_f_phi_variable>>*facegrad[<<facegrad_method>>](<p^_<<species>>_species0>)/(<<dynamic_force_f_phi_variable_species0>>)"
+END_IF
+

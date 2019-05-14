@@ -31,6 +31,12 @@ IF {{ return string_test('<<sid_pressure_method>>','specific')}}
 # add on contribution to species pressure
   VARIABLE <p^_<<species>>> "<p^_<<species>>>+(<p^_sid_<<species>>>)"
 
+# and add to the fluid equivalent for later subtraction
+  REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also subtract this force from the fluid phase
+  IF <<shear_induced_diffusion_on_fluid>>
+    VARIABLE <p^_<<species>>_species0> "<p^_<<species>>_species0>+(<p^_sid_<<species>>>)"
+  END_IF
+
 ELSE
 
   #Calculate solid pressure due to shear induced diffusion

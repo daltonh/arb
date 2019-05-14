@@ -6,6 +6,12 @@ END_MARKDOWN
 CELL_LOCAL <p_<<species>>> "0.d0" ON <allcells> # this appears as a divergence in the full momentum equation
 CELL_LOCAL <p^_<<species>>> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
 
+REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also subtract this force from the fluid phase
+# if including sid on the fluid phase too (the reaction force), then will need to calculate a p^ for each disperse and fluid species combinations
+IF <<shear_induced_diffusion_on_fluid>>
+  CELL_LOCAL <p^_<<species>>_species0> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
+END_IF
+
 # osmotic pressure, adding to <p_<<species>>>
 REPLACEMENTS D "<<osmotic_pressure>>" W "1"
 IF <<osmotic_pressure>>

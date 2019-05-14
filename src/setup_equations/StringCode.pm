@@ -678,9 +678,9 @@ sub arb_defined {
     }
     if ($masread ne -1) { $exists = 'VARIABLE'; }
     if (!($exists)) { # also check the variable array for system variables
-      my $masread = -1; # variable masread starts at 0 if any variables are defined
+      my $masread = -1;
 #     foreach my $mcheck ( 0 .. $#{@::variable{"system"}} ) { # interpreter advises against this
-      foreach my $mcheck ( 0 .. $#{$::variable{"system"}} ) {
+      foreach my $mcheck ( 1 .. $#{$::variable{"system"}} ) { # variable array starts from 1
         if ($::variable{"system"}[$mcheck]{"name"} eq $variable_name) { # variable has been previously defined, and position in file is based on first definition
           $masread = $mcheck;
           last;
