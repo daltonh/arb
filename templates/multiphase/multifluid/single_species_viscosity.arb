@@ -87,6 +87,7 @@ ELSE # version2 or version3 methods, ie, phase specific
 # polynomial method
 # here based on taylor expansion of kriegerdougherty using various phi_max's, and then removing the dilute component
 # set polynomial order to be used (needs to be consistent with coefficients below)
+# actually for high phi should be increasing this order above 6...
         REPLACEMENTS R "<<polynomial_max_order>>" W "6"
         IF 0
 # from maxima with phi_max = 0.603:

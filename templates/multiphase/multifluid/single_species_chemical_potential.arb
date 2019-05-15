@@ -1,0 +1,55 @@
+MARKDOWN
+Here we find the specific pressure for a disperse phase species <<species>> that represents the excess chemical potential
+All of these methods increment <p^_<<species>>> for just the disperse phases
+END_MARKDOWN
+
+REPLACEMENTS D "<<chemical_potential_method>>" W "csl" # Carnihan and Starling
+#REPLACEMENTS D "<<chemical_potential_method>>" W "bmcsl" # BMCSL
+
+# all methods need the total solids volume fraction
+CELL_DERIVED <p^_excess_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+
+IF {{ return string_test('<<chemical_potential_method>>','csl')}}
+
+#Carnihan Starling excess chemical potential for a mono dispersed suspension species1:
+
+  CELL_DERIVED <p^_excess_mixture> "<k_boltzmann>*<T>*<p^_excess_phi_bounded_allsolids>*(8.d0-9.d0*<p^_excess_phi_bounded_allsolids>+3.d0*<p^_excess_phi_bounded_allsolids>^2)/(1.d0-<p^_excess_phi_bounded_allsolids>)^3" ON <allcells>
+  CELL_LOCAL <p^_excess_<<species>>> "<p^_excess_mixture>/<V_<<species>>>" ON <allcells>
+
+ELSE_IF {{ return string_test('<<chemical_potential_method>>','bmcsl')}}
+
+#Carnihan Starling excess chemical potentials, generalised for a suspension of many species
+
+# calculate particles diameters for each species
+  {{ my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "NONE_CONSTANT <d_$species> '2.d0*<a_$species>'\n";
+    }
+    return $return_string;
+  }}
+
+# now the xi moments
+  {{ my $return_string = '';
+    for my $n ( 0 .. 3 ) {
+      $return_string .= "CELL_DERIVED <p^_excess_xi$n> '0.d0' ON <allcells>\n";
+      for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+        $return_string .= "VARIABLE <p^_excess_xi$n> '<p^_excess_xi$n>+(<phi_pos_$species>*(<d_$species>^".scalar($n-3)."))'\n";
+      }
+    }
+    return $return_string;
+  }}
+
+# CELL_DERIVED <p^_excess_xi0> "<phi_species1>*((<d_species1>)^(-3))+<phi_species2>*((<delta_species2>)^(-3))" ON <allcells>
+# CELL_DERIVED <p^_excess_xi1> "<phi_species1>*((<d_species1>)^(-2))+<phi_species2>*((<delta_species2>)^(-2))" ON <allcells>
+# CELL_DERIVED <p^_excess_xi2> "<phi_species1>*((<d_species1>)^(-1))+<phi_species2>*((<delta_species2>)^(-1))" ON <allcells>
+# CELL_DERIVED <p^_excess_xi3> "<phi_species1>*((<d_species1>)^(0))+<phi_species2>*((<delta_species2>)^(0))" ON <allcells>
+
+  CELL_DERIVED <p^_excess_<<species>>> [1] "(<k_boltzmann>*<T>/<V_<<species>>>)*(-(1.d0+(2.d0*<p^_excess_xi2>^3*<d_<<species>>>^3)/<p^_excess_phi_bounded_allsolids>^3-(3.d0*<p^_excess_xi2>^2*<d_<<species>>>^2)/<p^_excess_phi_bounded_allsolids>^2)*log(<phi_bounded_species0>)+(3.d0*<p^_excess_xi2>*<d_<<species>>>+3.d0*<p^_excess_xi1>*<d_<<species>>>^2+<p^_excess_xi0>*<d_<<species>>>^3)/(<phi_bounded_species0>)+(3.d0*<p^_excess_xi2>^2*<d_<<species>>>^2)/(<p^_excess_phi_bounded_allsolids>*(<phi_bounded_species0>)^2)+(3.d0*<p^_excess_xi1>*<p^_excess_xi2>*<d_<<species>>>^3)/(<phi_bounded_species0>)^2-(<p^_excess_xi2>^3*<d_<<species>>>^3)*(<p^_excess_phi_bounded_allsolids>^2-5.d0*<p^_excess_phi_bounded_allsolids>+2.d0)/(<p^_excess_phi_bounded_allsolids>^2*(<phi_bounded_species0>)^3))" ON <allcells>
+
+END_IF
+
+# turn on output
+VARIABLE <p^_excess_<<species>>> output
+
+# now add contribution onto specific species pressure
+VARIABLE <p^_<<species>>> "<p^_<<species>>>+(<p^_excess_<<species>>>)"
