@@ -73,39 +73,69 @@ ELSE # version2 or version3 methods, ie, phase specific
 # each solution phase made from einstein viscosity, plus collision contributions from each solid phase (including itself)
 # the single phase is the same as for the fluid phase
       CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_c_species0>" ON <allcells> # note, einstein relationship based on total solid volume fraction
+
 # now add on collisional contributions, with a term for each possible pair of species interactions
+# for now we base each pair interaction solely on a mixture interaction viscosity
+
 # chose method
 # quadratic method, minus the einstein dilute equation leaves a single quadratic coefficient, independent of particle radius
       IF {{ return string_test('<<viscosity_method>>','quadratic')}}
         NONE_CONSTANT <mu^_collision_coefficient2> [1] 6.d0 # 2nd order in phi coefficient for mixture viscosity
         NONE_CONSTANT <mu^_collision_mixture> [Pa.s] "<mu_species0>*<mu^_collision_coefficient2>" # default collision viscosity between two phases which can be overwritten for particular combinations
-# calculate collisional viscosity contribution, expressed on a phase specific basis for both phases (ie, mu_collisional => mu^*phi1*phi2)
+
+      ELSE_IF {{ return string_test('<<viscosity_method>>','polynomial')}}
+# polynomial method
+# here based on taylor expansion of kriegerdougherty using various phi_max's, and then removing the dilute component
+# set polynomial order to be used (needs to be consistent with coefficients below)
+        REPLACEMENTS R "<<polynomial_max_order>>" W "6"
+        IF 0
+# from maxima with phi_max = 0.603:
+# 592.5530492518616*phi^10+340.0518569582417*phi^9+194.1058561885225*phi^8+110.0636673821255*phi^7+
+# 61.88195005260762*phi^6+34.40474764353966*phi^5+18.83437388021282*phi^4+10.07842702142503*phi^3+
+# 5.197968490878939*phi^2+2.5*phi+1.0
+          NONE_CONSTANT <mu^_collision_coefficient2> [1] 5.197968490878939d0
+          NONE_CONSTANT <mu^_collision_coefficient3> [1] 10.07842702142503d0
+          NONE_CONSTANT <mu^_collision_coefficient4> [1] 18.83437388021282d0
+          NONE_CONSTANT <mu^_collision_coefficient5> [1] 34.40474764353966d0
+          NONE_CONSTANT <mu^_collision_coefficient6> [1] 61.88195005260762d0
+        ELSE
+# from maxima with phi_max = 0.68:
+# 276.2964187022961*phi^10+175.5902473995901*phi^9+110.7847746479888*phi^8+69.2723188603516*phi^7+
+# 42.82288802276281*phi^6+26.07722136311526*phi^5+15.55483379554244*phi^4+9.001946366782008*phi^3+
+# 4.963235294117647*phi^2+2.5*phi+1.0
+          NONE_CONSTANT <mu^_collision_coefficient2> [1] 4.963235294117647d0
+          NONE_CONSTANT <mu^_collision_coefficient3> [1] 9.001946366782008d0
+          NONE_CONSTANT <mu^_collision_coefficient4> [1] 15.55483379554244d0
+          NONE_CONSTANT <mu^_collision_coefficient5> [1] 26.07722136311526d0
+          NONE_CONSTANT <mu^_collision_coefficient6> [1] 42.82288802276281d0
+        END_IF
+        CELL_DERIVED <mu_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+        CELL_DERIVED <mu^_collision_mixture> "0.d0" ON <allcells>
         {{ my $return_string = '';
-          for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-            $return_string .= "NONE_CONSTANT <mu^_collision_<<species>>_$species> '<mu^_collision_mixture>'\n";
+          for my $n ( 2 .. string_eval('<<polynomial_max_order>>') ) {
+            $return_string .= "VARIABLE <mu^_collision_mixture> '<mu^_collision_mixture>+(<mu^_collision_coefficient".$n.">*<mu_phi_bounded_allsolids>**(".scalar($n-2)."))'\n";
           }
           return $return_string;
         }}
+        VARIABLE <mu^_collision_mixture> "(<mu^_collision_mixture>)*<mu_species0>"
+
       ELSE_IF {{ return string_test('<<viscosity_method>>','kriegerdougherty')}}
-# kriegerdougherty
+# kriegerdougherty direct
         CELL_DERIVED <mu_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
         CELL_LOCAL <mu_phi_max_allsolids> "0.603d0" ON <allcells> # this could be changed to be a function of local phi
         CELL_DERIVED <mu^_collision_mixture> "<mu_species0>*((1.d0-<mu_phi_bounded_allsolids>/<mu_phi_max_allsolids>)**(-2.5d0*<mu_phi_max_allsolids>)-(1.d0+2.5d0*<mu_phi_bounded_allsolids>))/(<mu_phi_bounded_allsolids>**2)" ON <allcells>
-# calculate collisional viscosity contribution, expressed on a phase specific basis for both phases (ie, mu_collisional => mu^*phi1*phi2)
-        {{ my $return_string = '';
-          for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-            $return_string .= "CELL_DERIVED <mu^_collision_<<species>>_$species> '<mu^_collision_mixture>' ON <allcells>\n";
-          }
-          return $return_string;
-        }}
 
       ELSE_IF {{ return string_test('<<viscosity_method>>','morrisboulay99')}}
-# morrisboulay99, except for the dilute contribution which is not quite the same
+# morrisboulay99, except for the dilute contribution which is not quite the same but has been removed
         CELL_DERIVED <mu_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
         CELL_LOCAL <mu_phi_max_allsolids> "0.68d0" ON <allcells> # this could be changed to be a function of local phi
         NONE_CONSTANT <mu_K_s> 0.1d0 # multiplier in single_species_sid_pressure needs to be set correspondingly
         CELL_DERIVED <mu^_collision_mixture> "<mu_species0>*<mu_K_s>/((<mu_phi_max_allsolids>*(1.d0-<mu_phi_bounded_allsolids>/<mu_phi_max_allsolids>))**2)" ON <allcells>
 
+      ELSE
+        ERROR "viscosity_method = <<viscosity_method>> not known for stress_method = version3"
+      END_IF
+
 # calculate collisional viscosity contribution, expressed on a phase specific basis for both phases (ie, mu_collisional => mu^*phi1*phi2)
         {{ my $return_string = '';
           for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
@@ -114,9 +144,6 @@ ELSE # version2 or version3 methods, ie, phase specific
           return $return_string;
         }}
 
-      ELSE
-        ERROR "viscosity_method = <<viscosity_method>> not known for stress_method = version3"
-      END_IF
 # now add collisional contributions, noting that viscosity has been divided by phi_i under stress method 2 and 3
       {{ my $return_string = '';
         for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
