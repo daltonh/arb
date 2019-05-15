@@ -7,7 +7,7 @@ REPLACEMENTS D "<<chemical_potential_method>>" W "csl" # Carnihan and Starling
 #REPLACEMENTS D "<<chemical_potential_method>>" W "bmcsl" # BMCSL
 
 # all methods need the total solids volume fraction
-CELL_DERIVED <p^_excess_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+CELL_LOCAL <p^_excess_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells> nooutput
 
 IF {{ return string_test('<<chemical_potential_method>>','csl')}}
 
@@ -31,7 +31,7 @@ ELSE_IF {{ return string_test('<<chemical_potential_method>>','bmcsl')}}
 # now the xi moments
   {{ my $return_string = '';
     for my $n ( 0 .. 3 ) {
-      $return_string .= "CELL_DERIVED <p^_excess_xi$n> '0.d0' ON <allcells>\n";
+      $return_string .= "CELL_DERIVED <p^_excess_xi$n> '0.d0' ON <allcells> nooutput\n";
       for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
         $return_string .= "VARIABLE <p^_excess_xi$n> '<p^_excess_xi$n>+(<phi_pos_$species>*(<d_$species>^".scalar($n-3)."))'\n";
       }
