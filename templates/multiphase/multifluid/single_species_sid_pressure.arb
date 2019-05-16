@@ -36,7 +36,7 @@ IF {{ return string_test('<<sid_pressure_method>>','specific')}}
 # and add to the fluid equivalent for later subtraction
   REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also subtract this force from the fluid phase
   IF <<shear_induced_diffusion_on_fluid>>
-    NONE_CONSTANT <p_sid_relative_multiplier_species0> 1.5d0 # this makes the force on the fluid a multiple of the forces on the disperse phases
+    NONE_CONSTANT <p_sid_relative_multiplier_species0> 1.d0 # this makes the force on the fluid a multiple of the forces on the disperse phases
     VARIABLE <p^_<<species>>_species0> "<p^_<<species>>_species0>+(<p_sid_relative_multiplier_species0>*<p^_sid_<<species>>>)"
   END_IF
 
