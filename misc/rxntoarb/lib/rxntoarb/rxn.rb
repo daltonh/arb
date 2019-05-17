@@ -124,7 +124,7 @@ module Rxntoarb
       error(msg)
     end #}}}
 
-    def error(msg, type=:ERROR) #{{{
+    def error(msg, type = :ERROR) #{{{
       warn "#{type} in #{@file} at line #{$.}: #{msg}"
       if type == :ERROR
         warn msg.backtrace if Rxntoarb.options[:debug]
@@ -151,26 +151,26 @@ module Rxntoarb
       false
     end #}}}
 
-  def read_reaction(rline) #{{{
-    excluded = exclude?(rline)
-    reaction = Reaction.new(rline, self, excluded)
-    if excluded # reaction excluded by include_only or exclude statement
-      @parent_parameters = reaction.parameters if reaction.parameters # save parameters from parent reaction in case parent is excluded but child is included
-      warn 'INFO: reaction excluded due to include_only or exclude statement' if Rxntoarb.options[:debug]
-      throw :next_line
-    end
-    @reactions << reaction
-    reaction.all_species.each do |species|
-      @species << species
-      @volume_species[species.region] << species if species.free? # add species to volume_species hash so we know that a source term is required on all surface_regions that bound this volume_region
-    end
-    if @parent_parameters && reaction.indented # apply parent parameters to first included child if parent reaction has been excluded
-      reaction.parameters = @parent_parameters
-      @parent_parameters = nil
-    end
-    @parameters += reaction.parameters if reaction.parameters
-    @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka
-  end #}}}
+    def read_reaction(rline) #{{{
+      excluded = exclude?(rline)
+      reaction = Reaction.new(rline, self, excluded)
+      if excluded # reaction excluded by include_only or exclude statement
+        @parent_parameters = reaction.parameters if reaction.parameters # save parameters from parent reaction in case parent is excluded but child is included
+        warn 'INFO: reaction excluded due to include_only or exclude statement' if Rxntoarb.options[:debug]
+        throw :next_line
+      end
+      @reactions << reaction
+      reaction.all_species.each do |species|
+        @species << species
+        @volume_species[species.region] << species if species.free? # add species to volume_species hash so we know that a source term is required on all surface_regions that bound this volume_region
+      end
+      if @parent_parameters && reaction.indented # apply parent parameters to first included child if parent reaction has been excluded
+        reaction.parameters = @parent_parameters
+        @parent_parameters = nil
+      end
+      @parameters += reaction.parameters if reaction.parameters
+      @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka
+    end #}}}
 
   end
 
