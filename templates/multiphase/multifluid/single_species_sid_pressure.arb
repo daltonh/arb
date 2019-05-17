@@ -17,8 +17,6 @@ IF {{ return string_test('<<sid_pressure_method>>','specific')}}
 
 # NONE_CONSTANT <p_sid_multiplier> 7.5d0 # based on morris99 having K_s = 0.1 and K_n = 0.75, sp K_n/K_s = 7.5
 # NONE_CONSTANT <p_sid_multiplier> 1.d0
-# NONE_CONSTANT <p_sid_multiplier> 1.d-1
-# NONE_CONSTANT <p_sid_multiplier> 0.075d0
   NONE_CONSTANT <p_sid_multiplier> 0.12d0
   NONE_CONSTANT <p_sid_multiplier_<<species>>> "<p_sid_multiplier>"
   CELL_DERIVED <p^_sid_<<species>>> "0.d0" ON <allcells> output

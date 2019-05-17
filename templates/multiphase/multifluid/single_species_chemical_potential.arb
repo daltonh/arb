@@ -5,18 +5,30 @@ END_MARKDOWN
 
 REPLACEMENTS D "<<chemical_potential_method>>" W "csl" # Carnihan and Starling
 #REPLACEMENTS D "<<chemical_potential_method>>" W "bmcsl" # BMCSL
+#REPLACEMENTS D "<<chemical_potential_method>>" W "csllimited" # Carnihan and Starling
+#REPLACEMENTS D "<<chemical_potential_method>>" W "bmcsllimited" # BMCSL
 
-# all methods need the total solids volume fraction
-CELL_LOCAL <p^_excess_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells> nooutput
+# deal with possibility of limited methods by using a replacement variable in the below non-limited expressions
+# note that for the non-limited cases, maxima will simplify out the /1 factor
+# does not change the number density, just the equivalent Z factor - needs more thought
+REPLACEMENTS R "<<p^_excess_phi_maximum>>" W "1.d0" # default to non-limited
+# however for the limited methods we reduce this maximum
+IF {{ return (string_test('<<chemical_potential_method>>','csllimited') || string_test('<<chemical_potential_method>>','bmcsllimited'))}}
+  NONE_CONSTANT <p^_excess_phi_max_allsolids> "<phi_max_allsolids>"
+  REPLACEMENTS S "<<p^_excess_phi_maximum>>" W "<p^_excess_phi_max_allsolids>" # change this string, but leave its scope the same (S=SUBSTITUTE)
+END_IF
 
-IF {{ return string_test('<<chemical_potential_method>>','csl')}}
+# all methods need the total solids volume fraction, but deal with limiting
+CELL_LOCAL <p^_excess_phi_bounded_allsolids> "(1.d0-<phi_bounded_species0>)/<<p^_excess_phi_maximum>>" ON <allcells> nooutput
+
+IF {{ return (string_test('<<chemical_potential_method>>','csl') || string_test('<<chemical_potential_method>>','csllimited'))}}
 
 #Carnihan Starling excess chemical potential for a mono dispersed suspension species1:
 
   CELL_DERIVED <p^_excess_mixture> "<k_boltzmann>*<T>*<p^_excess_phi_bounded_allsolids>*(8.d0-9.d0*<p^_excess_phi_bounded_allsolids>+3.d0*<p^_excess_phi_bounded_allsolids>^2)/(1.d0-<p^_excess_phi_bounded_allsolids>)^3" ON <allcells>
   CELL_LOCAL <p^_excess_<<species>>> "<p^_excess_mixture>/<V_<<species>>>" ON <allcells>
 
-ELSE_IF {{ return string_test('<<chemical_potential_method>>','bmcsl')}}
+ELSE_IF {{ return (string_test('<<chemical_potential_method>>','bmcsl') || string_test('<<chemical_potential_method>>','bmcsllimited'))}}
 
 #Carnihan Starling excess chemical potentials, generalised for a suspension of many species
 
@@ -29,11 +41,12 @@ ELSE_IF {{ return string_test('<<chemical_potential_method>>','bmcsl')}}
   }}
 
 # now the xi moments
+# need to normalise the phis for limited methods
   {{ my $return_string = '';
     for my $n ( 0 .. 3 ) {
       $return_string .= "CELL_DERIVED <p^_excess_xi$n> '0.d0' ON <allcells> nooutput\n";
       for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-        $return_string .= "VARIABLE <p^_excess_xi$n> '<p^_excess_xi$n>+(<phi_pos_$species>*(<d_$species>^".scalar($n-3)."))'\n";
+        $return_string .= "VARIABLE <p^_excess_xi$n> '<p^_excess_xi$n>+(<phi_pos_$species>*(<d_$species>^".scalar($n-3).")/<<p^_excess_phi_maximum>>)'\n";
       }
     }
     return $return_string;
@@ -44,7 +57,11 @@ ELSE_IF {{ return string_test('<<chemical_potential_method>>','bmcsl')}}
 # CELL_DERIVED <p^_excess_xi2> "<phi_species1>*((<d_species1>)^(-1))+<phi_species2>*((<delta_species2>)^(-1))" ON <allcells>
 # CELL_DERIVED <p^_excess_xi3> "<phi_species1>*((<d_species1>)^(0))+<phi_species2>*((<delta_species2>)^(0))" ON <allcells>
 
-  CELL_DERIVED <p^_excess_<<species>>> [1] "(<k_boltzmann>*<T>/<V_<<species>>>)*(-(1.d0+(2.d0*<p^_excess_xi2>^3*<d_<<species>>>^3)/<p^_excess_phi_bounded_allsolids>^3-(3.d0*<p^_excess_xi2>^2*<d_<<species>>>^2)/<p^_excess_phi_bounded_allsolids>^2)*log(<phi_bounded_species0>)+(3.d0*<p^_excess_xi2>*<d_<<species>>>+3.d0*<p^_excess_xi1>*<d_<<species>>>^2+<p^_excess_xi0>*<d_<<species>>>^3)/(<phi_bounded_species0>)+(3.d0*<p^_excess_xi2>^2*<d_<<species>>>^2)/(<p^_excess_phi_bounded_allsolids>*(<phi_bounded_species0>)^2)+(3.d0*<p^_excess_xi1>*<p^_excess_xi2>*<d_<<species>>>^3)/(<phi_bounded_species0>)^2-(<p^_excess_xi2>^3*<d_<<species>>>^3)*(<p^_excess_phi_bounded_allsolids>^2-5.d0*<p^_excess_phi_bounded_allsolids>+2.d0)/(<p^_excess_phi_bounded_allsolids>^2*(<phi_bounded_species0>)^3))" ON <allcells>
+# expression for nonlimited references <phi_bounded_species0> = 1.d0 - <phi_bounded_allsolids>
+# CELL_DERIVED <p^_excess_<<species>>> [1] "(<k_boltzmann>*<T>/<V_<<species>>>)*(-(1.d0+(2.d0*<p^_excess_xi2>^3*<d_<<species>>>^3)/<p^_excess_phi_bounded_allsolids>^3-(3.d0*<p^_excess_xi2>^2*<d_<<species>>>^2)/<p^_excess_phi_bounded_allsolids>^2)*log(<phi_bounded_species0>)+(3.d0*<p^_excess_xi2>*<d_<<species>>>+3.d0*<p^_excess_xi1>*<d_<<species>>>^2+<p^_excess_xi0>*<d_<<species>>>^3)/(<phi_bounded_species0>)+(3.d0*<p^_excess_xi2>^2*<d_<<species>>>^2)/(<p^_excess_phi_bounded_allsolids>*(<phi_bounded_species0>)^2)+(3.d0*<p^_excess_xi1>*<p^_excess_xi2>*<d_<<species>>>^3)/(<phi_bounded_species0>)^2-(<p^_excess_xi2>^3*<d_<<species>>>^3)*(<p^_excess_phi_bounded_allsolids>^2-5.d0*<p^_excess_phi_bounded_allsolids>+2.d0)/(<p^_excess_phi_bounded_allsolids>^2*(<phi_bounded_species0>)^3))" ON <allcells>
+
+# for the limited case we have to rewrite this without reference to <phi_bounded_species0>
+  CELL_DERIVED <p^_excess_<<species>>> [1] "(<k_boltzmann>*<T>/<V_<<species>>>)*(-(1.d0+(2.d0*<p^_excess_xi2>^3*<d_<<species>>>^3)/<p^_excess_phi_bounded_allsolids>^3-(3.d0*<p^_excess_xi2>^2*<d_<<species>>>^2)/<p^_excess_phi_bounded_allsolids>^2)*log(1.d0-<p^_excess_phi_bounded_allsolids>)+(3.d0*<p^_excess_xi2>*<d_<<species>>>+3.d0*<p^_excess_xi1>*<d_<<species>>>^2+<p^_excess_xi0>*<d_<<species>>>^3)/(1.d0-<p^_excess_phi_bounded_allsolids>)+(3.d0*<p^_excess_xi2>^2*<d_<<species>>>^2)/(<p^_excess_phi_bounded_allsolids>*(1.d0-<p^_excess_phi_bounded_allsolids>)^2)+(3.d0*<p^_excess_xi1>*<p^_excess_xi2>*<d_<<species>>>^3)/(1.d0-<p^_excess_phi_bounded_allsolids>)^2-(<p^_excess_xi2>^3*<d_<<species>>>^3)*(<p^_excess_phi_bounded_allsolids>^2-5.d0*<p^_excess_phi_bounded_allsolids>+2.d0)/(<p^_excess_phi_bounded_allsolids>^2*(1.d0-<p^_excess_phi_bounded_allsolids>)^3))" ON <allcells>
 
 END_IF
 
