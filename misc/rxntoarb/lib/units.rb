@@ -1,12 +1,5 @@
 # Units module
 # (C) Copyright Christian Biscombe 2017-2019
-# TODO allow combinations of units (with same dimensions) on input, e.g. '5 d 7 h 6 min' (and also allow colon-separated times, e.g. '01:12:34:56') or '6 ft 6 in'
-# TODO allow combinations of units on output, specified as 'ft & in', e.g.
-# TODO accept 'time' as an output unit to give '5 d 7 h 6 min', with any of dhms that are zero not showing up; accept 'dtime' (digital time?) or similar to give '05:07:06:00'
-# TODO accept 'angle' as an output unit to give degree-minute-second form
-# TODO accept input in arb format
-# TODO allow molecular weights to be calculated from chemical formulas (hash of elements and molecular weights needed - possibly in separate module)
-# TODO new option to print molecular weight given a chemical formula. default output units of g mol-1 can be changed if desired
 
 module Units
 
