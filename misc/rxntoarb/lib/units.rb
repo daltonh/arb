@@ -1,10 +1,17 @@
 # Units module
-# (C) Copyright Christian Biscombe 2017-2018
+# (C) Copyright Christian Biscombe 2017-2019
+# TODO allow combinations of units (with same dimensions) on input, e.g. '5 d 7 h 6 min' (and also allow colon-separated times, e.g. '01:12:34:56') or '6 ft 6 in'
+# TODO allow combinations of units on output, specified as 'ft & in', e.g.
+# TODO accept 'time' as an output unit to give '5 d 7 h 6 min', with any of dhms that are zero not showing up; accept 'dtime' (digital time?) or similar to give '05:07:06:00'
+# TODO accept 'angle' as an output unit to give degree-minute-second form
+# TODO accept input in arb format
+# TODO allow molecular weights to be calculated from chemical formulas (hash of elements and molecular weights needed - possibly in separate module)
+# TODO new option to print molecular weight given a chemical formula. default output units of g mol-1 can be changed if desired
 
 module Units
 
-  VERSION = '1.11'
-  DATE = '2018-12-20'
+  VERSION = '1.12'
+  DATE = '2019-05-20'
 
   module_function
 
@@ -76,10 +83,10 @@ module Units
     Unit.new('atmosphere (standard)', 'atm', 'kg m-1 s-2', 1.01325e5),
     Unit.new('atmosphere (technical)', 'at', 'kg m-1 s-2', 9.80665e4),
     Unit.new('bar', 'bar', 'kg m-1 s-2', 1e5),
-    Unit.new('dalton', 'Da', 'kg mol-1', 1e-3),
+    Unit.new('dalton', 'Da', 'kg mol-1', 1.66053906660e-27*6.02214076e23), # formerly 1 g mol-1 exactly; not so following 2019 redefinition of the SI
     Unit.new('day', 'd', 's', 8.64e4), # cd (candela) and yd (yard) ambiguous, but centidays and yoctodays aren't cool
     Unit.new('degree (angle)', ['deg', "\u00b0"], 'rad', Math::PI/180.0),
-    Unit.new('electronvolt', 'eV', 'kg m2 s-2', 1.6021766208e-19),
+    Unit.new('electronvolt', 'eV', 'kg m2 s-2', 1.602176634e-19),
     Unit.new('hour', 'h', 's', 3.6e3),
     Unit.new('litre', ['l', 'L'], 'm3', 1e-3),
     Unit.new('mho', ['mho', "\u2127"], 'A2 s3 kg-1 m-2', 1.0),
@@ -97,7 +104,7 @@ module Units
     Unit.new('degree Rankine', ['degR', "\u00b0R"], 'K', 5.0/9.0, 0.0), # special case - could refer to absolute temperature or (with -t flag) temperature difference
     Unit.new('dyne', 'dyn', 'kg m s-2', 1e-5),
     Unit.new('erg', 'erg', 'kg m2 s-2', 1e-7),
-    Unit.new('faraday', 'faraday', 'A s', 9.648533289e4),
+    Unit.new('faraday', 'faraday', 'A s', 9.64853321233100184e4),
     Unit.new('foot', 'ft', 'm', 0.3048),
     Unit.new('gallon (UK)', 'gal_UK', 'm3', 4.54609e-3),
     Unit.new('gallon (US)', 'gal_US', 'm3', 3.785411784e-3),
