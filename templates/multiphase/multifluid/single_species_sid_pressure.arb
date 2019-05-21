@@ -17,12 +17,12 @@ IF {{ return string_test('<<sid_pressure_method>>','specific')}}
 
 # NONE_CONSTANT <p_sid_multiplier> 7.5d0 # based on morris99 having K_s = 0.1 and K_n = 0.75, sp K_n/K_s = 7.5
 # NONE_CONSTANT <p_sid_multiplier> 1.d0
-  NONE_CONSTANT <p_sid_multiplier> 1.d-1
+  NONE_CONSTANT <p_sid_multiplier> 0.12d0
   NONE_CONSTANT <p_sid_multiplier_<<species>>> "<p_sid_multiplier>"
   CELL_DERIVED <p^_sid_<<species>>> "0.d0" ON <allcells> output
   {{ my $return_string = '';
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-      $return_string .= "VARIABLE <p^_sid_<<species>>> '(<p^_sid_<<species>>>)+(<mu^_collision_<<species>>_$species>*<phi_bounded_$species>)'\n";
+      $return_string .= "VARIABLE <p^_sid_<<species>>> '(<p^_sid_<<species>>>)+(<mu^_collision_<<species>>_$species>*<phi_pos_$species>)'\n";
     }
     return $return_string;
   }}
@@ -34,7 +34,8 @@ IF {{ return string_test('<<sid_pressure_method>>','specific')}}
 # and add to the fluid equivalent for later subtraction
   REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also subtract this force from the fluid phase
   IF <<shear_induced_diffusion_on_fluid>>
-    VARIABLE <p^_<<species>>_species0> "<p^_<<species>>_species0>+(<p^_sid_<<species>>>)"
+    NONE_CONSTANT <p_sid_relative_multiplier_species0> 1.d0 # this makes the force on the fluid a multiple of the forces on the disperse phases
+    VARIABLE <p^_<<species>>_species0> "<p^_<<species>>_species0>+(<p_sid_relative_multiplier_species0>*<p^_sid_<<species>>>)"
   END_IF
 
 ELSE
