@@ -95,7 +95,7 @@ module Rxntoarb
         units << "#{rxn.par_units['k']} #{(@type == :twostep ? @intermediates : @reactants).map(&:units_power).join(' ')}" # units of reaction rate
       end
       if @type == :MichaelisMenten
-        rxn.error("units of reactant concentration (#{@reactants.first.units}) inconsistent with units of KM (#{rxn.par_units['KM']})", type=:WARNING) unless @reactants.first.units == rxn.par_units['KM']
+        rxn.error("units of reactant concentration (#{@reactants.first.units}) inconsistent with units of KM (#{rxn.par_units['KM']})", :WARNING) unless @reactants.first.units == rxn.par_units['KM']
         units << "#{rxn.par_units['kcat']} #{@enzyme.first.units}" # units of reaction rate
       end
       units.map! { |unit| Units.convert(unit, '').last }.uniq! # units array will be left with only one element if units are consistent

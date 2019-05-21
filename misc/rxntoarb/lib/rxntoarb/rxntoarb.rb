@@ -8,8 +8,8 @@ require_relative 'rxn'
 module Rxntoarb
 
   PROGNAME = 'rxntoarb'
-  VERSION = '2.23'
-  DATE = '2019-03-13'
+  VERSION = '2.24'
+  DATE = '2019-05-21'
   INFO = <<-INFO.gsub(/^\s+/, '') # prefer squiggly heredoc <<~ in Ruby 2.3+
     #{PROGNAME} v. #{VERSION} (#{DATE})
     Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
@@ -81,9 +81,10 @@ module Rxntoarb
 
   def optparse(argv) #{{{
     OPTIONS.parse!(argv)
-    abort "ERROR: template file #{self.options[:template_file]} does not exist (or isn't a regular file)" unless File.file?(self.options[:template_file])
-    abort "ERROR: template file #{self.options[:template_file]} is not readable" unless File.readable?(self.options[:template_file])
-    self.options[:template] = File.read(self.options[:template_file]) # store contents of template_file as a string
+    template = self.options[:template_file]
+    abort "ERROR: template file #{template} does not exist (or isn't a regular file)" unless File.file?(template)
+    abort "ERROR: template file #{template} is not readable" unless File.readable?(template)
+    self.options[:template] = File.read(template) # store contents of template_file as a string
   rescue OptionParser::InvalidOption, OptionParser::MissingArgument => msg
     warn OPTIONS
     abort "ERROR: #{msg}"

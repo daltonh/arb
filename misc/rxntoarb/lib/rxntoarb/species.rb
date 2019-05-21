@@ -1,5 +1,5 @@
 # Rxntoarb::Species
-# (C) Copyright Christian Biscombe 2016-2018
+# (C) Copyright Christian Biscombe 2016-2019
 
 module Rxntoarb
 
@@ -36,17 +36,14 @@ module Rxntoarb
       @conc = "#{@bound ? 's' : 'c'}_#{@tag}" # using 's' for surface concentrations and 'c' for volume (or none_centred) concentrations
 
       # Calculate molecular weight as sum of MWs of components
-      components = @name.tr('()[]', '').split(':')
-      if @free
-        mw = ''
-        components.each do |component|
-          coeff, species = component.match(/(\d+)?(.*)/).captures
-          mw << "+#{"#{coeff}*" if coeff}<MW_#{species}>"
-        end
-        @mw = "(#{mw})"
-      else
-        @mw = nil
-      end
+      @mw = if @free
+              mw = ''
+              @name.tr('()[]', '').split(':').each do |component|
+                coeff, species = component.match(/(\d+)?(.*)/).captures
+                mw << "+#{"#{coeff}*" if coeff}<MW_#{species}>"
+              end
+              "(#{mw})"
+            end
 
       @centring, @location, @units, @units_power = if Rxntoarb.options[:none_centred]
                                                      ['NONE', :none] + (rxn.volume_regions.empty? && !rxn.surface_regions.empty? ? ["mol m-2", "mol#{@coeff} m-#{@coeff*2}"] : ["mol m-3", "mol#{@coeff} m-#{@coeff*3}"])
