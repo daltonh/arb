@@ -164,8 +164,8 @@ module Rxntoarb
         @species << species
         @volume_species[species.region] << species if species.free? # add species to volume_species hash so we know that a source term is required on all surface_regions that bound this volume_region
       end
-      if @parent_parameters && reaction.indented # apply parent parameters to first included child if parent reaction has been excluded
-        reaction.parameters = @parent_parameters
+      if @parent_parameters
+        reaction.parameters = @parent_parameters if reaction.indented # apply parent parameters to first included child if parent reaction has been excluded
         @parent_parameters = nil
       end
       @parameters += reaction.parameters if reaction.parameters
