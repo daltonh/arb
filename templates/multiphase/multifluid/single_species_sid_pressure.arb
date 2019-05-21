@@ -22,7 +22,7 @@ IF {{ return string_test('<<sid_pressure_method>>','specific')}}
   CELL_DERIVED <p^_sid_<<species>>> "0.d0" ON <allcells> output
   {{ my $return_string = '';
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-      $return_string .= "VARIABLE <p^_sid_<<species>>> '(<p^_sid_<<species>>>)+(<mu^_collision_<<species>>_$species>*<phi_bounded_$species>)'\n";
+      $return_string .= "VARIABLE <p^_sid_<<species>>> '(<p^_sid_<<species>>>)+(<mu^_collision_<<species>>_$species>*<phi_pos_$species>)'\n";
     }
     return $return_string;
   }}
