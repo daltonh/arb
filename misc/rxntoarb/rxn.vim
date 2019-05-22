@@ -1,6 +1,6 @@
 " Language:     rxn
-" Version:      2.18+
-" Modified:     2018/05/09
+" Version:      2.25+
+" Modified:     2019/05/22
 " Maintainer:   Christian Biscombe
 
 " For version 5.x: Clear all syntax items
@@ -24,7 +24,7 @@ syn match rxnOperator "\%(\s\+\zs+\ze\s\+\|->\|<=>\|[*.]\ze[A-z\(\)\[\]]\|;\)"
 syn region rxnEnzyme matchgroup=rxnOperator start="{" end="}->" transparent
 syn region rxnMetaspecies matchgroup=rxnOperator start="\[" end="\]" transparent
 syn match rxnCoeff "\<\d\+"
-syn match rxnParameter "\%(k\|ka\|kf\|kon\|kd\|kr\|koff\|KM\|Km\|kcat\)\s*=\s*" nextgroup=rxnUnit
+syn match rxnParameter "\%(k\|ka\|kf\|kon\|kd\|kr\|koff\|KM\|Km\|kcat\)\*\?\s*=\s*" nextgroup=rxnUnit
 syn match rxnUnit "[A-z0-9. ^*+-]*" contained
 syn region rxnUnit start="'" end="'" contained
 syn region rxnUnit start='"' end='"' contained
