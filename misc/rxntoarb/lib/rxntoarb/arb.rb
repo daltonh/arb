@@ -11,7 +11,7 @@ module Rxntoarb
     attr_accessor :constants, :equations, :file, :magnitudes, :output, :rates, :sources
 
     def initialize(file) #{{{
-      @constants = []
+      @constants = Set.new
       @equations = []
       File.open(file, File.file?(file) ? 'r+' : 'w').close # throws an EACCES error if file is not writable
       @file = file
@@ -152,7 +152,7 @@ module Rxntoarb
 
       # Format output
       format_output(rxn.header << "# Generated from #{rxn.file} by #{PROGNAME} v. #{VERSION}, #{Time.now.strftime('%F %T')}")
-      format_output(@constants, {name: 'Constants and regions'})
+      format_output(@constants.to_a, {name: 'Constants and regions'})
       format_output(@rates, {name: 'Reaction rates', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
       format_output(@sources.values, {name: 'Source terms', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
       format_output(@equations, {name: 'Equations'})

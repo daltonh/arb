@@ -55,8 +55,12 @@ module Rxntoarb
         @label = "#{rxn.parent_label}_#{$.}" if rxn.aliases.include?(rxn.parent_label) && Rxntoarb.options[:alias_labels]
       else
         raise 'missing kinetic parameters' unless parameters
-        @label = "#{@aka}#{"@#{@volume_region}" if @volume_region && rxn.current_volume_regions.size > 1}#{"@#{@surface_region}" if @surface_region && rxn.current_surface_regions.size > 1}" if @aka && Rxntoarb.options[:alias_labels]
+        if @aka && Rxntoarb.options[:alias_labels]
+          @label = "#{@aka}#{"@#{@volume_region}" if @volume_region && rxn.current_volume_regions.size > 1}#{"@#{@surface_region}" if @surface_region && rxn.current_surface_regions.size > 1}"
+          rxn.parent_label = @aka
+        else
         rxn.parent_label = @label.dup
+        end
         rxn.check_units = [@surface_region, @volume_region].any? # skip check when concentration units are unknown
         @parameters = []
         parameters.scan(/(\S+)\s*=\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?|'[^']*'|"[^"]*")\s*(.*?)?(?:,|$)/) do |name, value, units|
