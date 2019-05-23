@@ -8,7 +8,7 @@ module Rxntoarb
 
   class Reaction
 
-    attr_reader :aka, :all_species, :centring, :comment, :enzyme, :indented, :intermediates, :parent_label, :products, :rate_units, :reactants, :region, :species_regions, :type
+    attr_reader :aka, :all_species, :centring, :comment, :enzyme, :indented, :intermediates, :parent_label, :products, :rate_units, :reactants, :region, :surface_region, :type, :volume_region
     attr_accessor :label, :parameters
 
     def initialize(reaction, rxn, excluded) #{{{
@@ -17,36 +17,15 @@ module Rxntoarb
       @indented, @aka, reactants, intermediates, enzyme, arrow, products, parameters, @comment = match.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
 
       @all_species = Set.new
-      @species_regions = Set.new
       @label = ''
       @reactants = extract_species(reactants, rxn)
       raise 'no reactants in reaction' unless @reactants
       @intermediates = extract_species(intermediates, rxn)
       @enzyme = extract_species(enzyme, rxn)
       @products = extract_species(products, rxn)
-
-      if @indented
-        raise 'alias specified for indented (child) reaction' if @aka
-        raise 'kinetic parameters specified for indented (child) reaction' if parameters
-        @parameters = nil
-        @label = "#{rxn.parent_label}_#{$.}" if rxn.aliases.include?(rxn.parent_label) && Rxntoarb.options[:alias_labels]
-      else
-        raise 'missing kinetic parameters' unless parameters
-        @label = @aka if @aka && Rxntoarb.options[:alias_labels]
-        rxn.parent_label = @label.dup
-        rxn.check_units = !@species_regions.empty? # skip check when concentration units are unknown
-        @parameters = []
-        parameters.scan(/(\S+)\s*=\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?|'[^']*'|"[^"]*")\s*(.*?)?(?:,|$)/) do |name, value, units|
-          parameter = Parameter.new(name, value, units)
-          @parameters << parameter
-          rxn.par_units[parameter.name] = parameter.units # save units for consistency checking
-          rxn.check_units = false unless parameter.units # skip check if parameter is defined in terms of a previously defined parameter (i.e. it's a string)
-        end
-      end
-      return if excluded
-      @parent_label = rxn.parent_label.dup # for indented reactions (children), parent_label is the label of the previous non-indented reaction (parent)
-      raise "duplicate label #{@label}. Most likely there is a duplicate reaction" if rxn.labels.include?(@label)
-      rxn.labels << @label
+      all_regions = @all_species.map(&:region).compact
+      @surface_region = (all_regions - rxn.volume_regions.to_a).first
+      @volume_region = (all_regions - rxn.surface_regions.to_a).first
 
       @type = if @intermediates
                 :twostep
@@ -63,11 +42,34 @@ module Rxntoarb
 
       @centring, @region, @rate_units = if Rxntoarb.options[:none_centred] # centring and region relate to the region on which the reaction is occurring
                                           [:NONE, nil, nil]
-                                        elsif rxn.surface_regions - @species_regions != rxn.surface_regions # reaction is occurring on surface
-                                          [:FACE, (@species_regions - rxn.volume_regions).first, 'mol m-2 s-1']
+                                        elsif @surface_region # reaction is occurring on surface
+                                          [:FACE, @surface_region, 'mol m-2 s-1']
                                         else  # reaction is occurring in volume
-                                          [:CELL, @species_regions.first, 'mol m-3 s-1']
+                                          [:CELL, @volume_region, 'mol m-3 s-1']
                                         end
+
+      if @indented
+        raise 'alias specified for indented (child) reaction' if @aka
+        raise 'kinetic parameters specified for indented (child) reaction' if parameters
+        @parameters = nil
+        @label = "#{rxn.parent_label}_#{$.}" if rxn.aliases.include?(rxn.parent_label) && Rxntoarb.options[:alias_labels]
+      else
+        raise 'missing kinetic parameters' unless parameters
+        @label = "#{@aka}#{"@#{@volume_region}" if @volume_region && rxn.current_volume_regions.size > 1}#{"@#{@surface_region}" if @surface_region && rxn.current_surface_regions.size > 1}" if @aka && Rxntoarb.options[:alias_labels]
+        rxn.parent_label = @label.dup
+        rxn.check_units = [@surface_region, @volume_region].any? # skip check when concentration units are unknown
+        @parameters = []
+        parameters.scan(/(\S+)\s*=\s*([-+]?\d+\.?\d*(?:[DdEe][-+]?\d+)?|'[^']*'|"[^"]*")\s*(.*?)?(?:,|$)/) do |name, value, units|
+          parameter = Parameter.new(name, value, units)
+          @parameters << parameter
+          rxn.par_units[parameter.name] = parameter.units # save units for consistency checking
+          rxn.check_units = false unless parameter.units # skip check if parameter is defined in terms of a previously defined parameter (i.e. it's a string)
+        end
+      end
+      return if excluded
+      @parent_label = rxn.parent_label.dup # for indented reactions (children), parent_label is the label of the previous non-indented reaction (parent)
+      raise "duplicate label #{@label}. Most likely there is a duplicate reaction" if rxn.labels.include?(@label)
+      rxn.labels << @label
 
       if @parameters
         # Check that all required kinetic parameters are present
@@ -118,7 +120,6 @@ module Rxntoarb
         species_array << species
       end
       @all_species += species_array
-      @species_regions += species_array.map(&:region).compact
       @label << "|" unless @label.empty?
       @label << species_array.map(&:tag).join(',')
       species_array
