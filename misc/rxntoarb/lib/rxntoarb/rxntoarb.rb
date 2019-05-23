@@ -8,8 +8,8 @@ require_relative 'rxn'
 module Rxntoarb
 
   PROGNAME = 'rxntoarb'
-  VERSION = '2.24'
-  DATE = '2019-05-21'
+  VERSION = '2.26'
+  DATE = '2019-05-23'
   INFO = <<-INFO.gsub(/^\s+/, '') # prefer squiggly heredoc <<~ in Ruby 2.3+
     #{PROGNAME} v. #{VERSION} (#{DATE})
     Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
@@ -31,7 +31,7 @@ module Rxntoarb
     opt.on('-l', '--alias-labels', 'Use aliases as reaction labels') { self.options[:alias_labels] = true }
     opt.on('-n', '--none-centred', 'Activate ODE mode: generate ODEs (no spatial dependence) rather than PDEs') { self.options[:none_centred] = :flag }
     opt.on('-o', '--outfile <output_file>', 'Write output to output_file (option ignored if multiple input files)') { |outfile| self.options[:outfile] = outfile }
-  # opt.on('-s', '--sbml <sbml_output_file>', String, 'Write SBML file') { |sbmlfile| require 'libSBML'; self.options[:sbmlfile] = sbmlfile } # TODO in version 3
+    opt.on('-s', '--strict', 'Regard warnings as errors') { self.options[:strict] = true }
     opt.on('-t', '--template <template_file>', 'Read arb equation format from template_file') { |template_file| self.options[:template_file] = template_file }
     opt.on('-v', '--version', 'Print version information') { puts INFO; exit if ARGV.empty? }
   end

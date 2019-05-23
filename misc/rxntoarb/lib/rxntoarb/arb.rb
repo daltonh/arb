@@ -11,7 +11,7 @@ module Rxntoarb
     attr_accessor :constants, :equations, :file, :magnitudes, :output, :rates, :sources
 
     def initialize(file) #{{{
-      @constants = []
+      @constants = Set.new
       @equations = []
       File.open(file, File.file?(file) ? 'r+' : 'w').close # throws an EACCES error if file is not writable
       @file = file
@@ -29,7 +29,7 @@ module Rxntoarb
       rxn.reactions.each do |reaction|
         reaction.all_species.each { |species| @sources[[species, Rxntoarb.options[:none_centred] ? nil : species.region]] ||= '0.d0' } # ensure that species has a source term originating in its own region
         # Format kinetic parameters
-        reaction.parameters.each { |par| @constants << "#{par.value =~ /^['"]/ ? "#{reaction.centring}_LOCAL" : 'CONSTANT'} <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka && !Rxntoarb.options[:alias_labels]}" } if reaction.parameters
+        reaction.parameters.each { |par| @constants << "#{"#{reaction.centring}_" if par.type == :LOCAL}#{par.type} <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}#{" # alias: #{reaction.aka} => #{rxn.aliases[reaction.aka]}" if reaction.aka && !Rxntoarb.options[:alias_labels]}" } if reaction.parameters
         # Generate rate expressions
         if reaction.type == :reversible || reaction.type == :twostep # reversible must come before irreversible because same code handles two-step reactions
           reaction.label << '_i' if reaction.type == :twostep
@@ -152,7 +152,7 @@ module Rxntoarb
 
       # Format output
       format_output(rxn.header << "# Generated from #{rxn.file} by #{PROGNAME} v. #{VERSION}, #{Time.now.strftime('%F %T')}")
-      format_output(@constants, {name: 'Constants and regions'})
+      format_output(@constants.to_a, {name: 'Constants and regions'})
       format_output(@rates, {name: 'Reaction rates', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
       format_output(@sources.values, {name: 'Source terms', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
       format_output(@equations, {name: 'Equations'})
