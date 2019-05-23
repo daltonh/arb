@@ -52,7 +52,7 @@ module Rxntoarb
         raise 'alias specified for indented (child) reaction' if @aka
         raise 'kinetic parameters specified for indented (child) reaction' if parameters
         @parameters = nil
-        @label = "#{rxn.parent_label}_#{$.}" if rxn.aliases.include?(rxn.parent_label) && Rxntoarb.options[:alias_labels]
+        @label = "#{rxn.parent_label}_#{rxn.reactions.map(&:indented).reverse.index(nil) + 1}" if rxn.aliases.include?(rxn.parent_label) && Rxntoarb.options[:alias_labels]
       else
         raise 'missing kinetic parameters' unless parameters
         if @aka && Rxntoarb.options[:alias_labels]
