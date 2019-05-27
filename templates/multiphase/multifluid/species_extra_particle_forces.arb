@@ -57,3 +57,57 @@ IF <<wall_sheardrag>>
   }}
 END_IF
 
+REPLACEMENTS D "<<wall_lift_deformable>>" W "0"
+IF <<wall_lift_deformable>> 
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_wall_lift_deformable' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
+REPLACEMENTS D "<<wall_lift_bounded>>" W "0"
+IF <<wall_lift_bounded>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_sheargrad_lift' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
+REPLACEMENTS D "<<shear_gradient_lift>>" W "0"
+IF <<shear_gradient_lift>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_wall_lift_hl' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
+REPLACEMENTS D "<<asmolov_wall_lift>>" W "0"
+IF <<asmolov_wall_lift>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_asmolov_wall_lift' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
+REPLACEMENTS D "<<vc_wall_lift>>" W "0"
+IF <<vc_wall_lift>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_vc_wall_lift' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF

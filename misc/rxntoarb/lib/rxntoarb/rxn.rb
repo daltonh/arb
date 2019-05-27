@@ -8,12 +8,14 @@ module Rxntoarb
 
   class Rxn
 
-    attr_accessor :aliases, :bounding_regions, :check_units, :file, :header, :initial_species, :labels, :parameters, :par_units, :parent_label, :parent_parameters, :reactions, :species, :surface_regions, :volume_regions, :volume_species
+    attr_accessor :aliases, :bounding_regions, :check_units, :current_surface_regions, :current_volume_regions, :file, :header, :initial_species, :labels, :parameters, :par_units, :parent_label, :parent_parameters, :reactions, :species, :surface_regions, :volume_regions, :volume_species
 
     def initialize(file) #{{{
       @aliases = {}
       @bounding_regions = Hash.new(Set.new) # key is volume_region, value is array of all surface_regions that bound that volume_region
       @check_units = nil
+      @current_surface_regions = Set.new([nil])
+      @current_volume_regions = Set.new([nil])
       @file = file
       @header = []
       @initial_species = Set.new # elements are species.tags
@@ -31,8 +33,6 @@ module Rxntoarb
     end #}}}
 
     def parse #{{{
-      surface_region_list = Set.new([nil])
-      volume_region_list = Set.new([nil])
       warn "#{'*'*200}\nINFO: parsing input file #{@file}" if Rxntoarb.options[:debug]
       File.foreach(@file) do |line|
         catch :next_line do
@@ -69,14 +69,14 @@ module Rxntoarb
           when /^\s*(surface|volume)_regions?\s+([^#]+)/i
             Rxntoarb.options[:none_centred] = false unless Rxntoarb.options[:none_centred] == :flag # not none_centred unless -n flag given on command line
             location = $1.downcase
-            eval "#{location}_region_list = []"
+            eval "@current_#{location}_regions = []"
             $2.scan(/\w+|<[^>]+>/) do |region| # angle brackets optional unless region name contains spaces or special characters
               if exclude?("@#{region}") # region excluded by include_only or exclude statement
                 warn "INFO: region #{region} excluded due to include_only or exclude statement" if Rxntoarb.options[:debug]
                 next
               end
               region = Rxntoarb.debracket(region)
-              eval "#{location}_region_list << region"
+              eval "@current_#{location}_regions << region"
               eval "@#{location}_regions << region"
             end
 
@@ -99,11 +99,11 @@ module Rxntoarb
             line_includes_surface_region = line =~ /[^#]*?@s\b/
             line_includes_volume_region = line =~ /[^#]*?@v\b/
             unless Rxntoarb.options[:none_centred] == :flag
-              raise 'missing surface_region definition for reaction' if surface_region_list == [nil] && line_includes_surface_region
-              raise 'missing volume_region definition for reaction' if volume_region_list == [nil] && line_includes_volume_region
+              raise 'missing surface_region definition for reaction' if @current_surface_regions == [nil] && line_includes_surface_region
+              raise 'missing volume_region definition for reaction' if @current_volume_regions == [nil] && line_includes_volume_region
             end
-            volume_region_list.each do |volume_region|
-              surface_region_list.each do |surface_region|
+            @current_volume_regions.each do |volume_region|
+              @current_surface_regions.each do |surface_region|
                 @bounding_regions[volume_region] << surface_region if surface_region && volume_region && line_includes_surface_region && line_includes_volume_region # keep track of surface_regions that bound each volume_region
                 rline = line.dup # dup line as substitutions below need to be done for each surface_region and volume_region
                 rline.gsub!(/@s\b/, "@#{surface_region}") if surface_region
@@ -125,6 +125,7 @@ module Rxntoarb
     end #}}}
 
     def error(msg, type = :ERROR) #{{{
+      type = :ERROR if Rxntoarb.options[:strict]
       warn "#{type} in #{@file} at line #{$.}: #{msg}"
       if type == :ERROR
         warn msg.backtrace if Rxntoarb.options[:debug]
