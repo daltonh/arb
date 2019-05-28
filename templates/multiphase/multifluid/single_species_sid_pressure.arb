@@ -38,6 +38,36 @@ IF {{ return string_test('<<sid_pressure_method>>','specific')}}
     VARIABLE <p^_<<species>>_species0> "<p^_<<species>>_species0>+(<p_sid_relative_multiplier_species0>*<p^_sid_<<species>>>)"
   END_IF
 
+ELSE_IF {{ return string_test('<<sid_pressure_method>>','crazyspecific')}}
+# these methods produce a <p^_<<species>>> pressure
+# currently based on shear viscosity
+# crazyspecific is same as specific, except is diveded through by sqrt(Re_p) = sqrt(gamma*a^2*rho/mu)
+# using harmonic average of the two particle a's
+
+# calculate the strain rate based only on this phase
+  INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_<<species>>[' R '<gamma_magnitude>' W '<gamma_magnitude_<<species>>>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_<<species>>>' R '<u_f_vect[' W '<u_f_vect_<<species>>[' R '<u[' W '<u_<<species>>[' R '<ugrad_f[' W '<ugrad_f_<<species>>['
+
+  NONE_CONSTANT <p_sid_multiplier> 0.12d-2
+  NONE_CONSTANT <p_sid_multiplier_<<species>>> "<p_sid_multiplier>"
+  CELL_DERIVED <p^_sid_<<species>>> "0.d0" ON <allcells> output
+  {{ my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <p^_sid_<<species>>> '(<p^_sid_<<species>>>)+(<mu^_collision_<<species>>_$species>*<phi_pos_$species>/sqrt(<a_<<species>>>*<a_$species>))'\n";
+    }
+    return $return_string;
+  }}
+  VARIABLE <p^_sid_<<species>>> "<p_sid_multiplier_<<species>>>*sqrt(cellmax(<gamma_magnitude_<<species>>>*<mu_species0>/<rho_species0>,default=<tinyish>))*(<p^_sid_<<species>>>)"
+
+# add on contribution to species pressure
+  VARIABLE <p^_<<species>>> "<p^_<<species>>>+(<p^_sid_<<species>>>)"
+
+# and add to the fluid equivalent for later subtraction
+  REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also subtract this force from the fluid phase
+  IF <<shear_induced_diffusion_on_fluid>>
+    NONE_CONSTANT <p_sid_relative_multiplier_species0> 1.d0 # this makes the force on the fluid a multiple of the forces on the disperse phases
+    VARIABLE <p^_<<species>>_species0> "<p^_<<species>>_species0>+(<p_sid_relative_multiplier_species0>*<p^_sid_<<species>>>)"
+  END_IF
+
 ELSE
 
   #Calculate solid pressure due to shear induced diffusion
