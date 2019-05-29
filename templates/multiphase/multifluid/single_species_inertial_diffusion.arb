@@ -79,6 +79,7 @@ ELSE
   }}
 
   NONE_CONSTANT <p_inertial_multiplier> 1.d0
+  NONE_CONSTANT <p_inertial_species0_multiplier> "<p_inertial_multiplier>"
 
 # now assemble the inertial contributions that act on both the disperse phase <<species>> and the fluid
   CELL_DERIVED <p_inertial_<<species>>> "0.d0" ON <allcells> output
@@ -86,7 +87,7 @@ ELSE
   {{ my $return_string = '';
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
       $return_string .= "VARIABLE <p_inertial_<<species>>> '(<p_inertial_<<species>>>)+(<p_inertial_multiplier>*<phi_pos_$species>*<phi_pos_<<species>>>*<a_$species>*<a_<<species>>>*<rho_<<species>>>*<gamma_magnitude_$species>*<gamma_magnitude_<<species>>>)'\n";
-      $return_string .= "VARIABLE <p_inertial_<<species>>_species0> '(<p_inertial_<<species>>>)+(<p_inertial_multiplier>*<phi_pos_$species>*<phi_pos_<<species>>>*<a_$species>*<a_<<species>>>*<rho_species0>*(<gamma_magnitude_species0>^2))'\n";
+      $return_string .= "VARIABLE <p_inertial_<<species>>_species0> '(<p_inertial_<<species>>_species0>)+(<p_inertial_species0_multiplier>*<phi_pos_$species>*<phi_pos_<<species>>>*<a_$species>*<a_<<species>>>*<rho_species0>*(<gamma_magnitude_species0>^2))'\n";
     }
     return $return_string;
   }}
