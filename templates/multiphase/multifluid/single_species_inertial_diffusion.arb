@@ -3,10 +3,11 @@ Here we find a pressure that represents momentum diffusion due to inertia
 All of these methods increment <p_<<species>>_species0> for just the disperse-fluid phase combination, which is applied to the fluid phase
 END_MARKDOWN
 
-REPLACEMENTS D "<<inertial_diffusion_method>>" W "all"
+#REPLACEMENTS D "<<inertial_diffusion_method>>" W "all"
 #REPLACEMENTS D "<<inertial_diffusion_method>>" W "gammaslip" # strain + slip
 #REPLACEMENTS D "<<inertial_diffusion_method>>" W "slipslip" # slip
 #REPLACEMENTS D "<<inertial_diffusion_method>>" W "gammagamma" # strain
+REPLACEMENTS D "<<inertial_diffusion_method>>" W "nonspecific" # method based on perturbation velocities in momentum advection term
 
 # deal with possibility of limited methods by using a replacement variable in the below non-limited expressions
 # note that for the non-limited cases, maxima will simplify out the /1 factor
@@ -21,42 +22,77 @@ REPLACEMENTS D "<<inertial_diffusion_method>>" W "all"
 # all methods need the total solids volume fraction, but deal with limiting
 #CELL_LOCAL <p_inertial_phi_bounded_allsolids> "(1.d0-<phi_bounded_species0>)/<<p_inertial_phi_maximum>>" ON <allcells> nooutput
 
-# all methods require slip velocities, and magnitude of this
-INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities"
-CELL_DERIVED <u_slip_magnitude_<<species>>> "mag(<u_slip_<<species>>[l=:]>)" ON <allcells>
+IF {{ return (!(string_test('<<inertial_diffusion_method>>','nonspecific')))}}
+# these methods are all very experimental
 
-# assemble common factors, and then multiply brackets
+  # all methods require slip velocities, and magnitude of this
+  INCLUDE_TEMPLATE "multiphase/multifluid/slip_velocities"
+  CELL_DERIVED <u_slip_magnitude_<<species>>> "mag(<u_slip_<<species>>[l=:]>)" ON <allcells>
 
-# deal with strain rate + slip component, known as 'gammaslip'
-NONE_CONSTANT <p_inertial_gammaslip_multiplier> 1.d0
-IF {{ return (string_test('<<inertial_diffusion_method>>','gammaslip') || string_test('<<inertial_diffusion_method>>','all'))}}
-# calculate the strain rate for the fluid phase
-  INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_species0[' R '<gamma_magnitude>' W '<gamma_magnitude_species0>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_species0>' R '<u_f_vect[' W '<u_f_vect_species0[' R '<u[' W '<u_species0[' R '<ugrad_f[' W '<ugrad_f_species0['
-  CELL_DERIVED <p_inertial_<<species>>> "<p_inertial_<<species>>>+(<p_inertial_gammaslip_multiplier>*<a_<<species>>>*<gamma_magnitude_species0>*<u_slip_magnitude_<<species>>>)"
-END_IF
+  # assemble common factors, and then multiply brackets
 
-# deal with slip velocity component, known as 'slipslip'
-NONE_CONSTANT <p_inertial_slipslip_multiplier> 1.d0
-IF {{ return (string_test('<<inertial_diffusion_method>>','slipslip') || string_test('<<inertial_diffusion_method>>','all'))}}
-  CELL_DERIVED <p_inertial_<<species>>> "<p_inertial_<<species>>>+(<p_inertial_slipslip_multiplier>*<u_slip_magnitude_<<species>>>^2)"
-END_IF
+  # deal with strain rate + slip component, known as 'gammaslip'
+  NONE_CONSTANT <p_inertial_gammaslip_multiplier> 1.d0
+  IF {{ return (string_test('<<inertial_diffusion_method>>','gammaslip') || string_test('<<inertial_diffusion_method>>','all'))}}
+  # calculate the strain rate for the fluid phase
+    INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_species0[' R '<gamma_magnitude>' W '<gamma_magnitude_species0>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_species0>' R '<u_f_vect[' W '<u_f_vect_species0[' R '<u[' W '<u_species0[' R '<ugrad_f[' W '<ugrad_f_species0['
+    CELL_DERIVED <p_inertial_<<species>>> "<p_inertial_<<species>>>+(<p_inertial_gammaslip_multiplier>*<a_<<species>>>*<gamma_magnitude_species0>*<u_slip_magnitude_<<species>>>)"
+  END_IF
 
-# deal with strain velocity component, known as 'gammagamma'
-NONE_CONSTANT <p_inertial_gammagamma_multiplier> 1.d0
-IF {{ return (string_test('<<inertial_diffusion_method>>','gammagamma') || string_test('<<inertial_diffusion_method>>','all'))}}
-# calculate the strain rate for the fluid phase
-  INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_species0[' R '<gamma_magnitude>' W '<gamma_magnitude_species0>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_species0>' R '<u_f_vect[' W '<u_f_vect_species0[' R '<u[' W '<u_species0[' R '<ugrad_f[' W '<ugrad_f_species0['
-  CELL_DERIVED <p_inertial_<<species>>> "<p_inertial_<<species>>>+(<p_inertial_gammagamma_multiplier>*(<a_<<species>>>*<gamma_magnitude_species0>)^2)"
-END_IF
+  # deal with slip velocity component, known as 'slipslip'
+  NONE_CONSTANT <p_inertial_slipslip_multiplier> 1.d0
+  IF {{ return (string_test('<<inertial_diffusion_method>>','slipslip') || string_test('<<inertial_diffusion_method>>','all'))}}
+    CELL_DERIVED <p_inertial_<<species>>> "<p_inertial_<<species>>>+(<p_inertial_slipslip_multiplier>*<u_slip_magnitude_<<species>>>^2)"
+  END_IF
 
-# now multiply by common variables
-VARIABLE <p_inertial_<<species>>> "<phi_pos_<<species>>>*<rho_species0>*(<p_inertial_<<species>>>)"
+  # deal with strain velocity component, known as 'gammagamma'
+  NONE_CONSTANT <p_inertial_gammagamma_multiplier> 1.d0
+  IF {{ return (string_test('<<inertial_diffusion_method>>','gammagamma') || string_test('<<inertial_diffusion_method>>','all'))}}
+  # calculate the strain rate for the fluid phase
+    INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_species0[' R '<gamma_magnitude>' W '<gamma_magnitude_species0>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_species0>' R '<u_f_vect[' W '<u_f_vect_species0[' R '<u[' W '<u_species0[' R '<ugrad_f[' W '<ugrad_f_species0['
+    CELL_DERIVED <p_inertial_<<species>>> "<p_inertial_<<species>>>+(<p_inertial_gammagamma_multiplier>*(<a_<<species>>>*<gamma_magnitude_species0>)^2)"
+  END_IF
 
-# set region
-CELL_DERIVED <p_inertial_<<species>>> ON <allcells>
-
-# turn on output
-VARIABLE <p_inertial_<<species>>> output
+  # now multiply by common variables
+  VARIABLE <p_inertial_<<species>>> "<phi_pos_<<species>>>*<rho_species0>*(<p_inertial_<<species>>>)"
 
 # now add contribution onto fluid pressure that is associated with this species
-VARIABLE <p_<<species>>_species0> "<p_<<species>>_species0>+(<p_inertial_<<species>>>)"
+  VARIABLE <p_<<species>>_species0> "<p_<<species>>_species0>+(<p_inertial_<<species>>>)"
+
+# set region
+  CELL_DERIVED <p_inertial_<<species>>> ON <allcells>
+
+# turn on output
+  VARIABLE <p_inertial_<<species>>> output
+
+ELSE
+# nonspecific method
+
+# need to calculate strain rate for all of the disperse phase species as well as the fluid
+  INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_species0[' R '<gamma_magnitude>' W '<gamma_magnitude_species0>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_species0>' R '<u_f_vect[' W '<u_f_vect_species0[' R '<u[' W '<u_species0[' R '<ugrad_f[' W '<ugrad_f_species0['
+  
+  {{ my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_$species"."[' R '<gamma_magnitude>' W '<gamma_magnitude_$species".">' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_$species".">' R '<u_f_vect[' W '<u_f_vect_$species"."[' R '<u[' W '<u_$species"."[' R '<ugrad_f[' W '<ugrad_f_$species"."['\n";
+    }
+    return $return_string;
+  }}
+
+  NONE_CONSTANT <p_inertial_multiplier> 1.d0
+
+# now assemble the inertial contributions that act on both the disperse phase <<species>> and the fluid
+  CELL_DERIVED <p_inertial_<<species>>> "0.d0" ON <allcells> output
+  CELL_DERIVED <p_inertial_<<species>>_species0> "0.d0" ON <allcells> output
+  {{ my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <p_inertial_<<species>>> '(<p_inertial_<<species>>>)+(<p_inertial_multiplier>*<phi_pos_$species>*<phi_pos_<<species>>>*<a_$species>*<a_<<species>>>*<rho_<<species>>>*<gamma_magnitude_$species>*<gamma_magnitude_<<species>>>)'\n";
+      $return_string .= "VARIABLE <p_inertial_<<species>>_species0> '(<p_inertial_<<species>>>)+(<p_inertial_multiplier>*<phi_pos_$species>*<phi_pos_<<species>>>*<a_$species>*<a_<<species>>>*<rho_species0>*(<gamma_magnitude_species0>^2))'\n";
+    }
+    return $return_string;
+  }}
+
+# now place the inertial contributions back on the nonspecific phase pressures
+  VARIABLE <p_<<species>>_species0> "<p_<<species>>_species0>+(<p_inertial_<<species>>_species0>)"
+  VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_inertial_<<species>>>)"
+
+END_IF
