@@ -33,3 +33,11 @@ IF {{ return (arb_defined(string_eval('<p^_<<species>>_species0>','text'))) }}
   VARIABLE <dynamic_force_f_species0> "<dynamic_force_f_species0>-<<dynamic_force_f_phi_variable>>*facegrad[<<facegrad_method>>](<p^_<<species>>_species0>)/(<<dynamic_force_f_phi_variable_species0>>)"
 END_IF
 
+IF {{ return (arb_defined(string_eval('<p_<<species>>_species0>','text'))) }}
+  IF {{ return (!(arb_defined(string_eval('<p_f_<<species>>_species0>','text')))) }}
+    ERROR "<p_f_<<species>>_species0> should be defined"
+  END_IF
+  VARIABLE <dynamic_force_c_species0[l=<<i>>]> '<dynamic_force_c_species0[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>_species0>)/(<phi_bounded_species0>)'
+  VARIABLE <dynamic_force_f_species0> "<dynamic_force_f_species0>-facegrad[<<facegrad_method>>](<p_<<species>>_species0>)/(<<dynamic_force_f_phi_variable_species0>>)"
+END_IF
+

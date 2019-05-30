@@ -24,14 +24,21 @@ END_IF
       "R '<p>' W '<p^_$species>' ".
       "R '<p_f_gradient_limiter>' W '<p^_f_gradient_limiter_$species>' ".
       "R '<p_f>' W '<p^_f_$species>'\n";
-    my $string_name = '<p^_'.$species.'_species0>';
+#   my $string_name = '<p^_'.$species.'_species0>';
 # print "CHECK: string_eval = ",string_eval($string_name,'text'),"\n";
 # print "CHECK: arb_defined = ",arb_defined(string_eval($string_name,'text')),"\n";
-    if (arb_defined(string_eval($string_name,'text'))) {
+#   if (arb_defined(string_eval($string_name,'text'))) {
+    if (arb_defined(string_eval('<p^_'.$species.'_species0>','text'))) {
       $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
         "R '<p>' W '<p^_$species"."_species0>' ".
         "R '<p_f_gradient_limiter>' W '<p^_f_gradient_limiter_$species"."_species0>' ".
         "R '<p_f>' W '<p^_f_$species"."_species0>'\n";
+    }
+    if (arb_defined(string_eval('<p_'.$species.'_species0>','text'))) {
+      $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
+        "R '<p>' W '<p_$species"."_species0>' ".
+        "R '<p_f_gradient_limiter>' W '<p_f_gradient_limiter_$species"."_species0>' ".
+        "R '<p_f>' W '<p_f_$species"."_species0>'\n";
     }
   }
   return $return_string;
