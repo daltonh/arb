@@ -3,7 +3,7 @@ Wall lift - Cherukat and Mclaughlin for non rotating - 0 slip - linear shear flo
 END_MARKDOWN
 
 # for this force we need the wall normals
-INCLUDE "wall_normals"
+INCLUDE_TEMPLATE  "wall_normals"
 # and also the strain rate magnitude for the fluid phase
 INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude" R "<gamma[" W "<gamma_species0[" R "<gamma_magnitude>" W "<gamma_magnitude_species0>" R "<gamma_magnitude_f>" W "<gamma_magnitude_f_species0>" R "<u_f_vect[" W "<u_f_vect_species0[" R "<u[" W "<u_species0[" R "<ugrad_f[" W "<ugrad_f_species0["
 
