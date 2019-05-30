@@ -7,6 +7,7 @@ REPLACEMENTS D "<<highPeSID>>" W "1" D "<<lowPeSID>>" W "0"
 REPLACEMENTS D "<<sid_pressure_method>>" W "PeSID" # default method
 #REPLACEMENTS D "<<sid_pressure_method>>" W "osmoticsidcombined" # method that uses a combined approach to osmotic and sid, and needs to also be set in osmotic pressure
 #REPLACEMENTS D "<<sid_pressure_method>>" W "specific" # new ideas, 8/5/19
+#REPLACEMENTS D "<<sid_pressure_method>>" W "nonspecific" # 29/5/19
 
 IF {{ return string_test('<<sid_pressure_method>>','specific')}}
 # these methods produce a <p^_<<species>>> pressure
@@ -36,6 +37,36 @@ IF {{ return string_test('<<sid_pressure_method>>','specific')}}
   IF <<shear_induced_diffusion_on_fluid>>
     NONE_CONSTANT <p_sid_relative_multiplier_species0> 1.d0 # this makes the force on the fluid a multiple of the forces on the disperse phases
     VARIABLE <p^_<<species>>_species0> "<p^_<<species>>_species0>+(<p_sid_relative_multiplier_species0>*<p^_sid_<<species>>>)"
+  END_IF
+
+ELSE_IF {{ return string_test('<<sid_pressure_method>>','nonspecific')}}
+# these methods produce a <p_<<species>>> non-specific pressure
+# currently based on shear viscosity
+
+# calculate the strain rate based only on this phase
+  INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_<<species>>[' R '<gamma_magnitude>' W '<gamma_magnitude_<<species>>>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_<<species>>>' R '<u_f_vect[' W '<u_f_vect_<<species>>[' R '<u[' W '<u_<<species>>[' R '<ugrad_f[' W '<ugrad_f_<<species>>['
+
+# NONE_CONSTANT <p_sid_multiplier> 7.5d0 # based on morris99 having K_s = 0.1 and K_n = 0.75, sp K_n/K_s = 7.5
+# NONE_CONSTANT <p_sid_multiplier> 1.d0
+  NONE_CONSTANT <p_sid_multiplier> 0.12d0
+  NONE_CONSTANT <p_sid_multiplier_<<species>>> "<p_sid_multiplier>"
+  CELL_DERIVED <p_sid_<<species>>> "0.d0" ON <allcells> output
+  {{ my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <p_sid_<<species>>> '(<p_sid_<<species>>>)+(<mu^_collision_<<species>>_$species>*<phi_pos_$species>)'\n";
+    }
+    return $return_string;
+  }}
+  VARIABLE <p_sid_<<species>>> "<p_sid_multiplier_<<species>>>*<gamma_magnitude_<<species>>>*<phi_pos_<<species>>>*(<p_sid_<<species>>>)"
+
+# add on contribution to species pressure
+  VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_sid_<<species>>>)"
+
+# and add to the fluid equivalent for later subtraction
+  REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also subtract this force from the fluid phase
+  IF <<shear_induced_diffusion_on_fluid>>
+    NONE_CONSTANT <p_sid_relative_multiplier_species0> 1.d0 # this makes the force on the fluid a multiple of the forces on the disperse phases
+    VARIABLE <p_<<species>>_species0> "<p_<<species>>_species0>+(<p_sid_relative_multiplier_species0>*<p_sid_<<species>>>)"
   END_IF
 
 ELSE_IF {{ return string_test('<<sid_pressure_method>>','crazyspecific')}}

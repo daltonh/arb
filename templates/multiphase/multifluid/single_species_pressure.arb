@@ -10,6 +10,7 @@ REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also ad
 # if including sid on the fluid phase too, then will need to calculate a p^ for each disperse and fluid species combinations
 IF <<shear_induced_diffusion_on_fluid>>
   CELL_LOCAL <p^_<<species>>_species0> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
+  CELL_LOCAL <p_<<species>>_species0> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
 END_IF
 
 REPLACEMENTS D "<<inertial_diffusion>>" W "0" # inertial diffusion requires an extra fluid and dispersed phase pressure to be calculated
