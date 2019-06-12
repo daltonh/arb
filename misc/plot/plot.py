@@ -1373,7 +1373,7 @@ if __name__ == "__main__":
         else:
             if args.batcher:
                 local_data_file='batch_data.csv'
-            elif args.process:
+            elif args.process_logging:
                 local_data_file='output_process_log.csv'
             else:
                 local_data_file='output_step.csv'
