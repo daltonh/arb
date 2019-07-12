@@ -12,7 +12,7 @@ module Rxntoarb
     attr_accessor :label, :parameters
 
     def initialize(reaction, rxn, excluded) #{{{
-      match = /^(\s+)?(?:(.+?):\s+)?(.+?)(?:<=>(.+?)->|{(.+?)}->|(<=>|->))([^;#]+)?(?:;\s*)?([^#\n]+)?(#.*)?$/.match(reaction)
+      match = /^(\s+)?(?:(.+?):\s+)?(.+?)(?:<=>(.+?)->|{(.+?)}->|(<=>|->|=>))([^;#]+)?(?:;\s*)?([^#\n]+)?(#.*)?$/.match(reaction)
       raise 'syntax error or unrecognised reaction type' unless match
       @indented, @aka, reactants, intermediates, enzyme, arrow, products, parameters, @comment = match.captures # parse reaction information into strings; reactants is the only one that is necessarily non-nil
 
@@ -20,6 +20,11 @@ module Rxntoarb
       @label = ''
       @reactants = extract_species(reactants, rxn)
       raise 'no reactants in reaction' unless @reactants
+      if arrow == '=>' # shorthand for a twostep reaction in which the only intermediate is a complex formed from all reactants
+        reactants_regions = @reactants.map(&:region).compact
+        reactants_surface_region = (reactants_regions - rxn.volume_regions.to_a).first
+        intermediates = "#{@reactants.map(&:name).sort.join(':')}@#{reactants_surface_region ? reactants_surface_region : reactants_regions.first}"
+      end
       @intermediates = extract_species(intermediates, rxn)
       @enzyme = extract_species(enzyme, rxn)
       @products = extract_species(products, rxn)
