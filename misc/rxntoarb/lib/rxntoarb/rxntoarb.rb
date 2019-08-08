@@ -8,17 +8,19 @@ require_relative 'rxn'
 module Rxntoarb
 
   PROGNAME = 'rxntoarb'
-  VERSION = '2.27'
-  DATE = '2019-07-12'
+  VERSION = '2.28'
+  DATE = '2019-08-07'
   INFO = <<-INFO.gsub(/^\s+/, '') # prefer squiggly heredoc <<~ in Ruby 2.3+
     #{PROGNAME} v. #{VERSION} (#{DATE})
     Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.
     (C) Copyright Christian Biscombe 2016-2019
   INFO
 
+  __DIR__ = "#{File.dirname(File.realpath(__FILE__))}" # prefer __dir__ in Ruby 2.0+
   TEMPLATE_NAME = "#{PROGNAME}rc" # rxntoarbrc by default
   TEMPLATE_LOCAL = "#{Dir.pwd}/#{TEMPLATE_NAME}"
-  TEMPLATE_GLOBAL = "#{File.dirname(File.realpath(__FILE__))}/../../#{TEMPLATE_NAME}" # prefer __dir__ in Ruby 2.0+
+  TEMPLATE_GLOBAL = File.expand_path("#{__DIR__}/../../#{TEMPLATE_NAME}")
+  MANUAL = File.expand_path("#{__DIR__}/../../doc/#{PROGNAME}.pdf")
 
   class << self
     attr_accessor :options
@@ -29,6 +31,7 @@ module Rxntoarb
     opt.on('-d', '--debug', 'Print debugging output') { self.options[:debug] = true }
     opt.on('-i', '--interactive', 'Prompt before overwriting existing output file') { self.options[:interactive] = true }
     opt.on('-l', '--alias-labels', 'Use aliases as reaction labels') { self.options[:alias_labels] = true }
+    opt.on('-m', '--manual', 'Open full PDF manual') { Rxntoarb.open_manual; exit if ARGV.empty? }
     opt.on('-n', '--none-centred', 'Activate ODE mode: generate ODEs (no spatial dependence) rather than PDEs') { self.options[:none_centred] = :flag }
     opt.on('-o', '--outfile <output_file>', 'Write output to output_file (option ignored if multiple input files)') { |outfile| self.options[:outfile] = outfile }
     opt.on('-s', '--strict', 'Regard warnings as errors') { self.options[:strict] = true }
@@ -91,6 +94,14 @@ module Rxntoarb
   ensure
     rxntoarb = self
     print_debug(:'rxntoarb.options'){}
+  end #}}}
+
+  def open_manual #{{{
+    unless File.readable?(MANUAL)
+      warn "WARNING: manual not found!"
+      return
+    end
+    system("#{RUBY_PLATFORM =~ /darwin/ ? 'open' : 'xdg-open'} #{MANUAL}") or puts MANUAL
   end #}}}
 
   def print_debug(*vars, &b) #{{{
