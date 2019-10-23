@@ -1,0 +1,23 @@
+# here we setup a phase that isn't moving, initially for the purposes of using the chemical_species_within_species templates for a fluid flowing through a stationary domain
+# both u and phi may be non-uniform, but need to be steady
+
+REPLACEMENTS D "<<species>>" W "species0"
+
+CELL_CONSTANT <u_<<species>>[l=<<i>>]> "0.d0" ON <allcells> output
+FACE_CONSTANT <u_f_<<species>>> "dot(<u_<<species>>[l=:]>,<facenorm[l=:]>)" ON <allfaces> # flux within fluid over each face
+CELL_CONSTANT <phi_<<species>>> "0.5d0" ON <allcells> output
+CELL_LOCAL <phi_bounded_<<species>>> "cellmax(<phi_<<species>>>,default=<phi_tol>)" ON <allcells>
+CELL_LOCAL <phi_bounded_<<species>>[r=1]> "<phi_bounded_<<species>>>" ON <allcells>
+FACE_LOCAL <phi_f_bounded_<<species>>> "faceave(<phi_bounded_<<species>>>)" ON <allfaces>
+CELL_LOCAL <phi_pos_<<species>>> "cellmax(<phi_<<species>>>,default=0.d0)" ON <allcells>
+CELL_LOCAL <phi_pos_<<species>>[r=1]> "<phi_pos_<<species>>>" ON <allcells>
+FACE_LOCAL <phi_f_pos_<<species>>> "faceave(<phi_pos_<<species>>>)" ON <allfaces>
+FACE_DERIVED <phi_f_adv_<<species>>> "faceave[advection](<phi_bounded_<<species>>>,<u_f_<<species>>>,<adv_limiter>)" ON <allfaces>
+# compile into flux
+FACE_LOCAL <phiu_f_<<species>>> "<phi_f_adv_<<species>>>*<u_f_<<species>>>" ON <allfaces>
+
+CONSTANT <a_<<species>>> [m] 1.d-6 # default is 1 micron
+# need to calculate the volume specific area of the aggregates, which is based on this volume and area
+CONSTANT <V_<<species>>> [m^3] "4.d0*<pi>*<a_<<species>>>^3/3.d0"
+CONSTANT <A_<<species>>> [m^2] "4.d0*<pi>*<a_<<species>>>^2"
+#CONSTANT <A^_<<species>>> [1/m] "<A_<<species>>>/<V_<<species>>>" # this calculation is based on a solid phase, which isn't correct

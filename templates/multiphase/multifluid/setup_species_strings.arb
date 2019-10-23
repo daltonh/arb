@@ -4,7 +4,12 @@ END_MARKDOWN
 
 # this is the maximum species number, which is equivalent to the number of disperse phases
 # if not set, defaults to a global value of 1, ie, the two_fluid model
-GLOBAL_REPLACEMENTS D "<<multifluid_species_max>>" W "1"
+REPLACEMENTS D "<<multifluid_species_max>>" W "1"
+
+# first convert this string to a global default, if it isn't already
+{{
+  string_set("<<multifluid_species_max>>",string_eval("<<multifluid_species_max>>"),"global");
+}}
 
 {{
 # first the full list of species
@@ -27,5 +32,8 @@ GLOBAL_REPLACEMENTS D "<<multifluid_species_max>>" W "1"
      }
      string_set("<<multifluid_disperse_number_list>>",$number_list,"global");
      string_set("<<multifluid_disperse_species_list>>",$species_list,"global");
+  } else {
+     string_set("<<multifluid_disperse_number_list>>","","global");
+     string_set("<<multifluid_disperse_species_list>>","","global");
   }
 }}

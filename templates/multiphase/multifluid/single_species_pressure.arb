@@ -3,7 +3,7 @@ Here we find <p_species> and <p^_species> for each disperse phase species <<spec
 END_MARKDOWN
 
 # first define the two types of pressures as locals, and then add specific contributions to these as deriveds as needed
-CELL_LOCAL <p_<<species>>> "0.d0" ON <allcells> # this appears as a divergence in the full momentum equation
+CELL_LOCAL <p_<<species>>> "0.d0" ON <allcells> # for the fluid, this is the fluid pressure applied to all phases, while for the disperse phases this appears as a divergence in the full momentum equation
 CELL_LOCAL <p^_<<species>>> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
 
 REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also add this force from the fluid phase

@@ -10,9 +10,8 @@ REPLACEMENTS D "<<newtsteptimestep>>" W "1"
 IF 1
 # species specific method
 
-  IF <<dynamictimestep>>
-
 # first save species-specific u_fs
+# not sure if this is required for constant timestepping
     {{
       my $return_string = "";
       foreach my $species (string_eval('<<multifluid_species_list>>','list')) {
@@ -20,6 +19,8 @@ IF 1
       }
       return $return_string;
     }}
+
+  IF <<dynamictimestep>>
 
 # now deal with CFL numbers, treating implicit and explicit timestepping differently
     IF <<implicittimestep>>
@@ -68,6 +69,10 @@ IF 1
         return $return_string;
       }}
     END_IF
+  ELSE
+# constant timestepping
+    INCLUDE_TEMPLATE "navier_stokes/transient_all_setup"
+    VARIABLE <u_f[r=1]> CANCEL
   END_IF
 
 ELSE

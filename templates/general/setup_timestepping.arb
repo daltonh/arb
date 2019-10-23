@@ -1,0 +1,11 @@
+# for now this file just sets up basic constant timestepping
+GENERAL_OPTIONS transientsimulation
+NONE_TRANSIENT <t> [1] "0.d0" "<t[r=1]>+<dt[r=0]>"
+NONE_TRANSIENT <t[r=1]> [1] "<t>-<dt[r=0]>" "<t>"
+NONE_OUTPUT <t_out> [1] "<t>"
+NONE_CONDITION <output test> [1] "<t>-<t_out>-<dt_out>+<dt>*1.d-10" outputcondition
+NONE_CONDITION <stop test> [1] "<t>-<t_end>" stopcondition
+NONE_CONSTANT <t_end> [s] 1.d0
+NONE_CONSTANT <dt_initial> [s] "<t_end>/1.d1"
+NONE_CONSTANT <dt_out> [s] "<dt_initial>"
+NONE_CONSTANT <dt> [1] "<dt_initial>"
