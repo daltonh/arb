@@ -1,6 +1,6 @@
 " Language:     rxn
-" Version:      2.25+
-" Modified:     2019/05/22
+" Version:      2.27 and later
+" Modified:     2019/07/12
 " Maintainer:   Christian Biscombe
 
 " For version 5.x: Clear all syntax items
@@ -20,7 +20,7 @@ syn match rxnRegion "@\%(\w\+\|<[^>]*>\)"
 syn keyword rxnStatement initial_species options surface_region[s] volume_region[s]
 syn keyword rxnStatement exclude include_only substitute nextgroup=rxnRegexp skipwhite
 syn region rxnRegexp start="/" end="/\%(i\C\)\?" skip="\\/" contained oneline
-syn match rxnOperator "\%(\s\+\zs+\ze\s\+\|->\|<=>\|[*.]\ze[A-z\(\)\[\]]\|;\)"
+syn match rxnOperator "\%(\s\+\zs+\ze\s\+\|->\|=>\|<=>\|[*.]\ze[A-z\(\)\[\]]\|;\)"
 syn region rxnEnzyme matchgroup=rxnOperator start="{" end="}->" transparent
 syn region rxnMetaspecies matchgroup=rxnOperator start="\[" end="\]" transparent
 syn match rxnCoeff "\<\d\+"

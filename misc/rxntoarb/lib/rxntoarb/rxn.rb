@@ -63,7 +63,7 @@ module Rxntoarb
           # Include/exclude lines based on string/regexp match. Maximum of one include and one exclude statement allowed
           when /^\s*(include_only|exclude)\s+(\S+|\/.*?(?<!\\)\/i?)/i
             Rxntoarb.options[:keep] ||= {}
-            Rxntoarb.options[:keep][$1.to_sym] = regexpify($2)
+            (Rxntoarb.options[:keep][$1.to_sym] ||= []) << regexpify($2)
 
           # Define surface or volume regions
           when /^\s*(surface|volume)_regions?\s+([^#]+)/i
@@ -148,13 +148,22 @@ module Rxntoarb
 
     def exclude?(string) #{{{
       return false unless Rxntoarb.options[:keep]
-      Rxntoarb.options[:keep].each { |keep, regexp| return true if (keep == :include_only && string !~ regexp) || (keep == :exclude && string =~ regexp) }
-      false
+      exclude = false
+      Rxntoarb.options[:keep].each do |keep, regexps|
+        exclude = case keep
+                  when :include_only
+                    regexps.map { |regexp| string !~ regexp }.any?
+                  else # :exclude
+                    regexps.map { |regexp| string =~ regexp }.any?
+                  end || exclude
+      end
+      exclude
     end #}}}
 
     def read_reaction(rline) #{{{
       excluded = exclude?(rline)
       reaction = Reaction.new(rline, self, excluded)
+      @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka
       if excluded # reaction excluded by include_only or exclude statement
         @parent_parameters = reaction.parameters if reaction.parameters # save parameters from parent reaction in case parent is excluded but child is included
         warn 'INFO: reaction excluded due to include_only or exclude statement' if Rxntoarb.options[:debug]
@@ -170,7 +179,6 @@ module Rxntoarb
         @parent_parameters = nil
       end
       @parameters += reaction.parameters if reaction.parameters
-      @aliases[reaction.aka] ||= reaction.parent_label if reaction.aka
     end #}}}
 
   end
