@@ -1620,6 +1620,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       #CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)),<tinyish>))" ON <allcells>
       # the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
       CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=2]>/<cellx[l=2]>)**2),<tinyish>))" ON <allcells>
+      
          #(comment created during unwrap): new block = ../../templates/navier_stokes/strain_rate_magnitude.arb: sub_block = 1
          #(hash inserted during unwrap)IF 0
          #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=2]>/<cellx[l=2]>)**2- facegrad[l=2,reflect=2](<u[l=0]>**2/<cellx[l=2]>),<tinyish>))" ON <allfaces> output
@@ -1628,6 +1629,12 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          #(hash inserted during unwrap)#CELL_DERIVED <gamma_magnitude> "cellave(sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>)))" ON <allcells> output
          #(hash inserted during unwrap)
          #(hash inserted during unwrap)#CELL_DERIVED <gamma_magnitude> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*(<u[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2+ facegrad[l=<<radialdim>>](<u[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>)),<tinyish>))" ON <allcells>
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/strain_rate_magnitude.arb: sub_block = 1
+         #(hash inserted during unwrap)ELSE_IF 1
+         FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>)+2.d0*faceave(<u[l=2]>/<cellx[l=2]>)**2,<tinyish>))" ON <allfaces> output
+         #(comment created during unwrap): new block = ../../templates/navier_stokes/strain_rate_magnitude.arb: sub_block = 1
+         #(hash inserted during unwrap)ELSE
+         #(hash inserted during unwrap)FACE_DERIVED <gamma_magnitude_f> "sqrt(facemax(0.5d0*ddot(<gamma[l=:,:]>,<gamma[l=:,:]>),<tinyish>))" ON <allfaces> output
          #(hash inserted during unwrap)END_IF
    #-------------------------------------------------------------------
 ##################################################################################
