@@ -2,22 +2,42 @@ MARKDOWN
 Here we find <mu_f_species> for each species
 END_MARKDOWN
 
-#REPLACEMENTS D "<<viscosity_method>>" W "einstein"
-REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
-#REPLACEMENTS D "<<viscosity_method>>" W "thomas65
-#REPLACEMENTS D "<<viscosity_method>>" W "quadratic" # for <<stress_method>> = version3
-#REPLACEMENTS D "<<viscosity_method>>" W "kriegerdougherty"
 
 INCLUDE "default_replacement_strings"
 
-#REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
-REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
 # in this file jackson98 = version2, zhang97 = balls
 
-IF {{ return string_test('<<stress_method>>','version1') }}
+IF {{ return string_test('<<stress_method>>','version4') }}
+# version4, based on mixture velocities, with call-out to single_species_viscosity_version4 template
+
+  IF {{ return string_test('<<species>>','species0') }}
+# this should be the viscosity increase within the fluid (same as each solid too) due to the presence of the particles, but without particle particle interactions
+# einstein relationship applied to continuous phase, based on total solids present
+    CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_<<species>>>))" ON <allcells>
+    FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> output # used in stress
+# note that the correction viscosity is actually viscosity divided by volume fraction
+    FACE_LOCAL <mu_f_correction_<<species>>> "<mu_f_<<species>>>/(<phi_bounded_<<species>>>)" ON <allfaces> # used in rhie-chow
+  ELSE
+    INCLUDE_LOCAL "single_species_viscosity_version4" # calculate <mu^_col_c_<<species>>, <mu^_sid1_c_<<species>> and <mu^_sid2_c_<<species>>, using <<viscosity_method>>
+    FACE_DERIVED <mu^_col_f_<<species>>> "faceave[harmonic](<mu^_col_c_<<species>>>)" ON <allfaces> output # used in stress
+    FACE_DERIVED <mu^_sid1_f_<<species>>> "faceave[harmonic](<mu^_sid1_c_<<species>>>)" ON <allfaces> output # used in stress
+    FACE_DERIVED <mu^_sid2_f_<<species>>> "faceave[harmonic](<mu^_sid2_c_<<species>>>)" ON <allfaces> output # used in stress
+# note that the correction viscosity is actually viscosity divided by volume fraction
+# so multiply a sum of the mu^ viscosities by mu_0 and phi_s
+    FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*(<mu^_col_f_<<species>>>+<mu^_sid1_f_<<species>>>+<mu^_sid2_f_<<species>>>)*(1.d0-<phi_f_bounded_species0>)" ON <allfaces> # used in rhie-chow
+  END_IF
+
+ELSE_IF {{ return string_test('<<stress_method>>','version1') }}
 # split stress between phases using the simplest possible consistent partitioning
 # here mu is not species specific, so is roughly proportional (or more) to phi
 # the multiplier used in the u_f_{correction} calculation is the viscosity/phi, which has a conventional viscosity magnitude as phi -> 0
+
+# viscosity methods for version1
+  #REPLACEMENTS D "<<viscosity_method>>" W "einstein"
+  REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
+  #REPLACEMENTS D "<<viscosity_method>>" W "thomas65
+  #REPLACEMENTS D "<<viscosity_method>>" W "quadratic" # for <<stress_method>> = version3
+  #REPLACEMENTS D "<<viscosity_method>>" W "kriegerdougherty"
 
   IF {{ return string_test('<<species>>','species0') }}
   # for the fluid use a multiplier of mu
@@ -59,6 +79,13 @@ IF {{ return string_test('<<stress_method>>','version1') }}
   FACE_DERIVED <mu_f_correction_<<species>>> "faceave[adjacentcells](<mu_c_multiplier_<<species>>>)" ON <allfaces> output # used in rhie-chow
 
 ELSE # version2 or version3 methods, ie, phase specific
+
+# viscosity methods for versions 2 and 3
+  #REPLACEMENTS D "<<viscosity_method>>" W "einstein"
+  REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99"
+  #REPLACEMENTS D "<<viscosity_method>>" W "thomas65
+  #REPLACEMENTS D "<<viscosity_method>>" W "quadratic" # for <<stress_method>> = version3
+  #REPLACEMENTS D "<<viscosity_method>>" W "kriegerdougherty"
 
   IF {{ return string_test('<<stress_method>>','version3') }}
 

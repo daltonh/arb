@@ -1,0 +1,39 @@
+MARKDOWN
+Calculation of version4 equations viscosities:
+Calculate cell centred <mu^_col_c_<<species>>, <mu^_sid1_c_<<species>> and <mu^_sid2_c_<<species>>, using <<viscosity_method>>
+
+Only for disperse phases, not checked
+END_MARKDOWN
+
+# viscosity method for collision tensors
+REPLACEMENTS D "<<viscosity_method>>" W "daltonhold"
+
+# base these viscosities on the total solids concentration for now
+# in the future need to take accound of size fractions
+CELL_DERIVED <phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+
+# loop through all other solid phases, calculating variables for each combination
+#{{ my $return_string = '';
+#  for my $species2 (string_eval('<<multifluid_disperse_species_list>>','list')) {
+## calculate phase combination volume fraction
+#    $return_string .= "CELL_LOCAL <phi_bounded_<<species>>_$species> 'sqrt(<phi_bounded_<<species>>>*<phi_bounded_$species0>)' ON <allcells>\n";
+#  }
+#  return $return_string;
+#}}
+
+IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
+
+# calculate functions
+
+# r_infty
+# constants
+  CONSTANT <r_infty_b> 2.d0 # based of r_infty function
+  CONSTANT <r_infty_c1> 0.08 # characteristic volume fraction of lower spike function
+  CONSTANT <r_infty_c2> 0.5 # characteristic volume fraction of upper spike function
+  CONSTANT <r_infty_n1> 1.2 # exponent of lower spike function
+  CONSTANT <r_infty_n2> 1.0 # exponent of upper spike function
+  CONSTANT <r_infty_phi_max_allsolids> "<phi_max_allsolids>"
+
+  CELL_DERIVED <r_infty> "<r_infty_b>+(<r_infty_c1>/<phi_bounded_allsolids>)^(<r_infty_n1>)+(<r_infty_c2>/(<r_infty_phi_max_allsolids>-<phi_bounded_allsolids>))^(<r_infty_n2>)" ON <allcells>
+
+

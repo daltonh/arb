@@ -7,6 +7,7 @@ REPLACEMENTS D "<<stress_method>>" W "version2" # the gamma used in each phase i
 #REPLACEMENTS D "<<stress_method>>" W "version3" # the gamma used in each phase is specific to that phase, but stress is specific to phase (see conservation template)
 
 IF {{ return (string_test('<<stress_method>>','version1') || string_test('<<stress_method>>','version3')) }}
+# version1 and version3 - these are based on phase velocities
   {{
     my $return_string = '';
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
@@ -19,8 +20,8 @@ IF {{ return (string_test('<<stress_method>>','version1') || string_test('<<stre
     return $return_string;
   }}
 ELSE
-# version2
-# first assemble mixture averaged velocity
+# version2 and version4 - these are based on mixture velocities
+# assemble mixture averaged velocity
 # calculate velocity gradients for all species at the same time - time about variable type
   {{
     my $return_string = '';
