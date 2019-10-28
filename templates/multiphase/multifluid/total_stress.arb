@@ -1,10 +1,15 @@
 MARKDOWN
-Here we setup the viscous stresses for each phase, including the velocity gradients, using the navier_stokes template file
+Here we setup the viscous stresses for each phase, including the velocity gradients, possibly using the navier_stokes template file
+
+Choices of stress_method:
+* version1 = the gamma used in each phase is specific to that phase, but stress is not specific to phase (see conservation template)
+* version2 = the gamma used in each phase is based on mixture velocities
+* version3 = the gamma used in each phase is specific to that phase, but stress is specific to phase (see conservation template)
+* version4 = the gamma used in each phase is based on mixture velocities, but the solid viscosities are independent of the species combinations
+* version4_species = the gamma used in each phase is based on mixture velocities, with the solid viscosities specific to each solid species combinations
 END_MARKDOWN
 
-#REPLACEMENTS D "<<stress_method>>" W "version1" # the gamma used in each phase is specific to that phase, but stress is not specific to phase (see conservation template)
-REPLACEMENTS D "<<stress_method>>" W "version2" # the gamma used in each phase is a function of all velocities
-#REPLACEMENTS D "<<stress_method>>" W "version3" # the gamma used in each phase is specific to that phase, but stress is specific to phase (see conservation template)
+INCLUDE "default_replacement_strings"
 
 IF {{ return (string_test('<<stress_method>>','version1') || string_test('<<stress_method>>','version3')) }}
 # version1 and version3 - these are based on phase velocities
@@ -20,7 +25,7 @@ IF {{ return (string_test('<<stress_method>>','version1') || string_test('<<stre
     return $return_string;
   }}
 ELSE
-# version2 and version4 - these are based on mixture velocities
+# version2, version4 and version4_species - these are all based on mixture velocities
 # assemble mixture averaged velocity
 # calculate velocity gradients for all species at the same time - time about variable type
   {{
@@ -35,12 +40,34 @@ ELSE
   
 # calculate the fluid species0 viscous stress, which for all methods is now based on the mixture (volume) averaged velocity and mixture viscosity (and hence mixture stress)
   FACE_LOCAL <ugrad_f_mixture[l=<<i>>,<<j>>]> "facegrad[l=<<i>>,<<reflect=<<j>>>>](<u_mixture[l=<<j>>]>)" ON <allfaces>
-  FACE_DERIVED <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*(<ugrad_f_mixture[l=<<i>>,<<j>>]>+<ugrad_f_mixture[l=<<j>>,<<i>>]>)" ON <allfaces> # note, maxima will simplify diagonal components
+  FACE_LOCAL <gamma_f_mixture[l=<<i>>,<<j>>]> "(<ugrad_f_mixture[l=<<i>>,<<j>>]>+<ugrad_f_mixture[l=<<j>>,<<i>>]>)" ON <allfaces>
+  FACE_DERIVED <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_mixture[l=<<i>>,<<j>>]>" ON <allfaces> # note, maxima will simplify diagonal components
 
 # and the solid phases stresses
+  IF {{ return (string_test('<<stress_method>>','version4') || string_test('<<stress_method>>','version4_species')) }}
+
+# calculate the magnitude of the strain rate, on the faces
+    IF <<azimuthal>>
+       FACE_DERIVED <gamma_f_mixture_mag> "sqrt(facemax(0.5d0*ddot(<gamma_f_mixture[l=:,:]>,<gamma_f_mixture[l=:,:]>)+2.d0*faceave(<u_mixture[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u_mixture[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>))" ON <allfaces> output
+    ELSE_IF <<cylindrical>>
+       FACE_DERIVED <gamma_f_mixture_mag> "sqrt(facemax(0.5d0*ddot(<gamma_f_mixture[l=:,:]>,<gamma_f_mixture[l=:,:]>)+2.d0*faceave(<u_mixture[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2,<tinyish>))" ON <allfaces> output
+    ELSE
+       FACE_DERIVED <gamma_f_mixture_mag> "sqrt(facemax(0.5d0*ddot(<gamma_f_mixture[l=:,:]>,<gamma_f_mixture[l=:,:]>),<tinyish>))" ON <allfaces> output
+    END_IF
+
+    IF {{ return (string_test('<<stress_method>>','version4')) }}
+
+# UP TO HERE:
+      FACE_DERIVED <tau^^_mixture[l=<<i>>,<<j>>]> "<mu_species0>*(-<mu_col_f_mixture>*<gamma_f_mixture[l=<<i>>,<<j>>]>+)" ON <allfaces> # note, maxima will simplify diagonal components
+  
+
+    ELSE
+      ERROR "total_stress cannot handle stress_method = version4_species yet"
+    END_IF
+
+  ELSE_IF {{ return (string_test('<<stress_method>>','version2') || string_test('<<stress_method>>','jackson98')) }}
 # here equal to the fluid stress which is based on mixture averaged velocities and a mixture viscosity, version2 = jackson98
 # note, only species0 viscosity used
-  IF {{ return (string_test('<<stress_method>>','version2') || string_test('<<stress_method>>','jackson98')) }}
     {{ my $return_string = '';
       for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
         $return_string .= "FACE_DERIVED <tau_$species"."[l=<<i>>,<<j>>]> '<tau_species0[l=<<i>>,<<j>>]>' ON <allfaces>\n";

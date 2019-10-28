@@ -1,16 +1,70 @@
 MARKDOWN
-Calculation of version4 equations viscosities:
-Calculate cell centred <mu^_col_c_<<species>>, <mu^_sid1_c_<<species>> and <mu^_sid2_c_<<species>>, using <<viscosity_method>>
+Calculation of version4 cell centred viscosities.
 
-Only for disperse phases, not checked
+If stress_method = version4, then these viscosities are the same for all species, and we set <mu^_col_c_mixture>, <mu^_sid1_c_mixture> and <mu^_sid2_c_mixture>, using <<viscosity_method>>
+
+Not done yet - If stress_method = version4_species, then these viscosities are specific to every possible combination of solid species, and we set  <mu^_col_c_speciesi_speciesj>, <mu^_sid1_c_speciesi_speciesj> and <mu^_sid2_c_speciesi_speciesj>, using <<viscosity_method>>
 END_MARKDOWN
+
+IF {{ return string_test('<<stress_method>>','version4_species')}}
+  ERROR "single_species_viscosity_version4 cannot handle stress_method = version4_species yet"
+END_IF
 
 # viscosity method for collision tensors
 REPLACEMENTS D "<<viscosity_method>>" W "daltonhold"
 
 # base these viscosities on the total solids concentration for now
 # in the future need to take accound of size fractions
-CELL_DERIVED <phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+CELL_DERIVED <mu_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+
+IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
+
+# calculate functions that are first all functions of allsolids volume fraction (for now)
+
+# r_infty from phi
+# constants
+  CONSTANT <mu_r_infty_b> 2.d0 # based of mu_r_infty function
+  CONSTANT <mu_r_infty_c1> 0.08 # characteristic volume fraction of lower spike function
+  CONSTANT <mu_r_infty_c2> 0.5 # characteristic volume fraction of upper spike function
+  CONSTANT <mu_r_infty_n1> 1.2 # exponent of lower spike function
+  CONSTANT <mu_r_infty_n2> 1.0 # exponent of upper spike function
+  CONSTANT <mu_r_infty_phi_max_allsolids> "<phi_max_allsolids>"
+# function
+  CELL_DERIVED <mu_r_infty> "<mu_r_infty_b>+(<mu_r_infty_c1>/<mu_phi_bounded_allsolids>)^(<mu_r_infty_n1>)+(<mu_r_infty_c2>/(<mu_r_infty_phi_max_allsolids>-<mu_phi_bounded_allsolids>))^(<mu_r_infty_n2>)" ON <allcells> output
+  CELL_LOCAL <mu_r_infty_minus2> "<mu_r_infty>-2.d0" ON <allcells> output
+
+# f_bar from phi
+# constants
+  CONSTANT <mu_f_bar_c> 3.647d0
+  CONSTANT <mu_f_bar_n> 3.d0
+  CONSTANT <mu_f_bar_multiplier> 1.d0 # hook to increase anisotropy of structure
+# function
+  CELL_DERIVED <mu_f_bar> "<mu_f_bar_multiplier>*<mu_f_bar_c>*(<mu_phi_bounded_allsolids>/<mu_r_infty_phi_max_allsolids>)^<mu_f_bar_n>" ON <allcells> output
+
+# B^_1 from r_infty
+# constants
+  CONSTANT <mu_B^_1_b> 2.3456652d0
+  CONSTANT <mu_B^_1_c> 1.2265859d0
+  CONSTANT <mu_B^_1_d> 3.8539574d0
+# function
+  CELL_DERIVED <mu_B^_1> "<mu_B^_1_b>*<mu_r_infty_minus2>+<mu_B^_1_c>*<mu_r_infty_minus2>^2+<mu_B^_1_d>*<mu_r_infty_minus2>^0.37d0" ON <allcells> output
+
+# B^_2 from r_infty
+# constants
+  CONSTANT <mu_B^_2_a> 14.41944809
+# function
+  CELL_DERIVED <mu_B^_2> "0.5d0*<mu_B^_2_a>/(<mu_r_infty_minus2>^0.356d0)" ON <allcells> output
+
+# finally assemble viscosity functions from B^_1, B^_2 and f_bar
+  CELL_DERIVED <mu^_col_c_mixture> "<mu_B^_1>+<mu_B^_2>" ON <allcells> output
+  CELL_DERIVED <mu^_sid1_c_mixture> "(4.d0*<mu_B^_1>/7.d0+2.d0*<mu_B^_2>/5.d0)*<mu_f_bar>" ON <allcells> output
+  CELL_DERIVED <mu^_sid2_c_mixture> "(2.d0*<mu_B^_1>/7.d0)*<mu_f_bar>" ON <allcells> output
+
+ELSE
+  ERROR "viscosity_method = <<viscosity_method>> not done yet in single_species_viscosity_version4 template"
+END_IF
+
+######################################
 
 # loop through all other solid phases, calculating variables for each combination
 #{{ my $return_string = '';
@@ -20,20 +74,4 @@ CELL_DERIVED <phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
 #  }
 #  return $return_string;
 #}}
-
-IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
-
-# calculate functions
-
-# r_infty
-# constants
-  CONSTANT <r_infty_b> 2.d0 # based of r_infty function
-  CONSTANT <r_infty_c1> 0.08 # characteristic volume fraction of lower spike function
-  CONSTANT <r_infty_c2> 0.5 # characteristic volume fraction of upper spike function
-  CONSTANT <r_infty_n1> 1.2 # exponent of lower spike function
-  CONSTANT <r_infty_n2> 1.0 # exponent of upper spike function
-  CONSTANT <r_infty_phi_max_allsolids> "<phi_max_allsolids>"
-
-  CELL_DERIVED <r_infty> "<r_infty_b>+(<r_infty_c1>/<phi_bounded_allsolids>)^(<r_infty_n1>)+(<r_infty_c2>/(<r_infty_phi_max_allsolids>-<phi_bounded_allsolids>))^(<r_infty_n2>)" ON <allcells>
-
 
