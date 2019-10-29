@@ -3,9 +3,9 @@ Here we find the specific pressure for a disperse phase species <<species>> that
 All of these methods increment <p^_<<species>>> for just the disperse phases
 END_MARKDOWN
 
-REPLACEMENTS D "<<chemical_potential_method>>" W "csl" # Carnihan and Starling
+REPLACEMENTS D "<<chemical_potential_method>>" W "carnahanstarling" # Carnihan and Starling
 #REPLACEMENTS D "<<chemical_potential_method>>" W "bmcsl" # BMCSL
-#REPLACEMENTS D "<<chemical_potential_method>>" W "csllimited" # Carnihan and Starling
+#REPLACEMENTS D "<<chemical_potential_method>>" W "carnahanstarlinglimited" # Carnihan and Starling
 #REPLACEMENTS D "<<chemical_potential_method>>" W "bmcsllimited" # BMCSL
 
 # deal with possibility of limited methods by using a replacement variable in the below non-limited expressions
@@ -13,7 +13,7 @@ REPLACEMENTS D "<<chemical_potential_method>>" W "csl" # Carnihan and Starling
 # does not change the number density, just the equivalent Z factor - needs more thought
 REPLACEMENTS R "<<p^_excess_phi_maximum>>" W "1.d0" # default to non-limited
 # however for the limited methods we reduce this maximum
-IF {{ return (string_test('<<chemical_potential_method>>','csllimited') || string_test('<<chemical_potential_method>>','bmcsllimited'))}}
+IF {{ return (string_test('<<chemical_potential_method>>','carnahanstarlinglimited') || string_test('<<chemical_potential_method>>','bmcsllimited'))}}
   NONE_CONSTANT <p^_excess_phi_max_allsolids> "<phi_max_allsolids>"
   REPLACEMENTS S "<<p^_excess_phi_maximum>>" W "<p^_excess_phi_max_allsolids>" # change this string, but leave its scope the same (S=SUBSTITUTE)
 END_IF
@@ -21,7 +21,7 @@ END_IF
 # all methods need the total solids volume fraction, but deal with limiting
 CELL_LOCAL <p^_excess_phi_bounded_allsolids> "(1.d0-<phi_bounded_species0>)/<<p^_excess_phi_maximum>>" ON <allcells> nooutput
 
-IF {{ return (string_test('<<chemical_potential_method>>','csl') || string_test('<<chemical_potential_method>>','csllimited'))}}
+IF {{ return (string_test('<<chemical_potential_method>>','carnahanstarling') || string_test('<<chemical_potential_method>>','carnahanstarlinglimited'))}}
 
 #Carnihan Starling excess chemical potential for a mono dispersed suspension species1:
 

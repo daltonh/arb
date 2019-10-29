@@ -8,11 +8,7 @@ GLOBAL_REPLACEMENTS R "<<hindered_settling_function>>" W "richardsonzaki"
 GLOBAL_REPLACEMENTS R "<<stress_method>>" W "version4"
 GLOBAL_REPLACEMENTS R "<<viscosity_method>>" W "daltonhold"
 
-# haven't done the rest
-GLOBAL_REPLACEMENTS R "<<sid_pressure_method>>" W "specific"
-GLOBAL_REPLACEMENTS R "<<anisotropic>>" W "0" # not used
-GLOBAL_REPLACEMENTS R "<<highPeSID>>" W "1" D "<<lowPeSID>>" W "0" # not used
-
+# set default osmotic pressure terms, but do not turn them on here
 GLOBAL_REPLACEMENTS R "<<osmotic_pressure_method>>" W "dilute"
+GLOBAL_REPLACEMENTS R "<<chemical_potential_method>>" W "carnahanstarling"
 GLOBAL_REPLACEMENTS R "<<steric_pressure_method>>" W "none"
-GLOBAL_REPLACEMENTS R "<<chemical_potential_method>>" W "none"

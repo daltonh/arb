@@ -47,8 +47,8 @@ ELSE_IF {{ return string_test('<<osmotic_pressure_method>>','osmoticsidcombined'
   VARIABLE <p_osmotic_V_allsolids> "<p_osmotic_V_allsolids>/<p_osmotic_phi_bounded_allsolids>"
   VARIABLE <p_osmotic_phi_max_allsolids> "<p_osmotic_phi_max_allsolids>/<p_osmotic_phi_bounded_allsolids>"
 # and from these, the CSL (compressibility) Z function for the average solids
-  NONE_CONSTANT <p_osmotic_csl_phi_max> 0.68d0 # roughly hard sphere packing, a phi value that is assumed to represent maximum packing
-  CELL_DERIVED <p_osmotic_phi_norm_allsolids> "cellmin(<p_osmotic_phi_pos_allsolids>*<p_osmotic_csl_phi_max>/<p_osmotic_phi_max_allsolids>,1.d0-<phi_tol>)"
+  NONE_CONSTANT <p_osmotic_cs_phi_max> 0.68d0 # roughly hard sphere packing, a phi value that is assumed to represent maximum packing
+  CELL_DERIVED <p_osmotic_phi_norm_allsolids> "cellmin(<p_osmotic_phi_pos_allsolids>*<p_osmotic_cs_phi_max>/<p_osmotic_phi_max_allsolids>,1.d0-<phi_tol>)"
   CELL_DERIVED <p_osmotic_Z_allsolids> [Pa] "(1.d0+<p_osmotic_phi_norm_allsolids>+<p_osmotic_phi_norm_allsolids>^2-<p_osmotic_phi_norm_allsolids>^3)/((1.d0-<p_osmotic_phi_norm_allsolids>)^3)" ON <allcells>
 # and then the phi multiplier
   NONE_CONSTANT <p_osmotic_adjuster> 1.d0 # multiplier applied to brownian motion
