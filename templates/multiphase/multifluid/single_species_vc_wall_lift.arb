@@ -7,7 +7,7 @@ INCLUDE_TEMPLATE "wall_normals"
 # and also the strain rate magnitude for the fluid phase
 INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude" R "<gamma[" W "<gamma_species0[" R "<gamma_magnitude>" W "<gamma_magnitude_species0>" R "<gamma_magnitude_f>" W "<gamma_magnitude_f_species0>" R "<u_f_vect[" W "<u_f_vect_species0[" R "<u[" W "<u_species0[" R "<ugrad_f[" W "<ugrad_f_species0["
 
-CELL_DERIVED <particle_force_vc_lift_multiplier> "1.d0" ON <allcells> output
+CELL_CONSTANT <particle_force_vc_lift_multiplier> "1.d0" ON <allcells> output
 
 IF 1 # Cherukat Wall lift
    CELL_CONSTANT <s2> "<wall_normal_magnitude>/<domain height>" ON <allcells> output
@@ -20,9 +20,10 @@ ELSE
   ERROR "no other wall lift coded up yet"
 END_IF
 
-#vc shear gradient  lift force acting on solid
+#vc shear gradient  lift force acting on solid - based on u_maxi
+#u_max=2*<u_av_species0> for cylindrical or squre duct else 3/2*<u_av_species0>
 {{ return vector_expand(
-'CELL_DERIVED <particle_force_vc_lift_<<species>>[l=2]> "<particle_force_vc_<<species>>>*(3/2*<u_av_species0>)**2*<wall_normal_unit[l=2]>" ON <allcells> output',
+'CELL_DERIVED <particle_force_vc_lift_<<species>>[l=2]> "<particle_force_vc_<<species>>>*(2*<u_av_species0>)**2*<wall_normal_unit[l=2]>" ON <allcells> output',
 'VARIABLE <extra_force_<<species>>[l=2]> "<extra_force_<<species>>[l=2]> + <particle_force_vc_lift_<<species>>[l=2]>"'
 )}}
 
