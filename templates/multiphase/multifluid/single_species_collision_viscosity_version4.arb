@@ -36,7 +36,9 @@ IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
 # f_bar from phi
 # constants
   CONSTANT <mu^_f_bar_c> 3.647d0
-  CONSTANT <mu^_f_bar_n> 3.d0
+# CONSTANT <mu^_f_bar_n> 3.d0
+  CONSTANT <mu^_f_bar_n> 2.d0
+# CONSTANT <mu^_f_bar_n> 1.5d0
   CONSTANT <mu^_f_bar_multiplier> 1.d0 # hook to increase anisotropy of structure
 # function
   CELL_DERIVED <mu^_f_bar> "<mu^_f_bar_multiplier>*<mu^_f_bar_c>*(<mu^_phi_bounded_allsolids>/<mu^_r_infty_phi_max_allsolids>)^<mu^_f_bar_n>" ON <allcells> output

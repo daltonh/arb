@@ -8,10 +8,10 @@ INCLUDE "default_replacement_strings"
 
 # both of these strings are now set globally in constants, but can be overwritten with local values here
 # <<implicitadvection>> modifies both the advection of phi and u, making both implicit (ie, using r=0 values rather than r=1 values).  You need implicit advection to be able to push CFL over 1.
-REPLACEMENTS D "<<implicitadvection>>" W "1" # default is now implicit advection
+#REPLACEMENTS D "<<implicitadvection>>" W "1" # default is now implicit advection
 
 #REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
-REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
+#REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
 #REPLACEMENTS D "<<stress_method>>" W "version3" # same as version2 in terms of this template, different for viscosity calculation
 # now create conservation equations
 
@@ -68,11 +68,11 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
       if (string_test('<<navierstokescomment>>','')) {
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_advection_f_$species"."[l=$l]>/(faceave[lastcell](<phi_bounded_$species>))'\n";
       }
-      if (string_test('<<stress_method>>','version1')) {
-# add viscous stress flux if the <<specificviscousstress>> is false, using lastcell averaging to bring phi into divergence
+      if ( string_test('<<stress_method>>','version1') || string_test('<<stress_method>>','version4') || string_test('<<stress_method>>','version4_species') ) {
+# add viscous stress flux, using lastcell averaging to bring phi from outside the divergence (mathematically) into the divergence
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_viscous_f_$species"."[l=$l]>/(faceave[lastcell](<phi_bounded_$species>))'\n";
       } else { # <<stress_method>> = version2 and version3
-# add viscous stress flux
+# add viscous stress flux inside the divergence
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=$l]> '<momentum_$species"."[l=$l]>+<J_viscous_f_$species"."[l=$l]>'\n";
       }
 # now take divergence of both terms
