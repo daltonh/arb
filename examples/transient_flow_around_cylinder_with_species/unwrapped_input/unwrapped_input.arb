@@ -1746,7 +1746,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             CONSTANT <c_inlet_conc_species0> [mol/m^3] 1.d0 # inlet concentration of species
             
             CELL_UNKNOWN <c_species0> [mol/m^3] "0.d0" ON <allcells> magnitude=1.d0 # remember to put in characteristic magnitude later in the file if it isn't 1
-            CELL_LOCAL <c_pos_species0> [mol/m^3] "cellmax(<c_species0>,default=0.d0)" # may be needed for reactions
+            CELL_LOCAL <c_pos_species0> [mol/m^3] "cellmax(<c_species0>,default=0.d0)" ON <allcells> # may be needed for reactions
             CELL_TRANSIENT <c_species0[r=1]> [mol/m^3] "<c_species0>" "<c_species0>" ON <allcells> # the previous timestep concentration field
             
                #(comment created during unwrap): new block = ../../templates/species_transport/equations.arb: sub_block = 1

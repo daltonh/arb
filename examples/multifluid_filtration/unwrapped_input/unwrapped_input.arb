@@ -53,6 +53,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       # if not set, defaults to a global value of 1, ie, the two_fluid model
       
       
+      # first convert this string to a global default, if it isn't already
+      
+      
       
       
       
@@ -90,8 +93,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          
          
          # method used for rhie-chow u_f interpolation
-         
-         #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+         #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+         # default behaviour for v0.60
          
       
       # get boltzmann's constant
@@ -283,13 +286,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)IF 1
             # species specific method
             
+            # first save species-specific u_fs
+            # not sure if this is required for constant timestepping
+            FACE_TRANSIENT <u_f_species0[r=1]> '0.d0' '<u_f_species0>' ON <allfaces>
+            FACE_TRANSIENT <u_f_species1[r=1]> '0.d0' '<u_f_species1>' ON <allfaces>
+            
+            
                #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/transient_all_setup.arb: sub_block = 2
                #(hash inserted during unwrap)IF 1
-               
-               # first save species-specific u_fs
-               FACE_TRANSIENT <u_f_species0[r=1]> '0.d0' '<u_f_species0>' ON <allfaces>
-               FACE_TRANSIENT <u_f_species1[r=1]> '0.d0' '<u_f_species1>' ON <allfaces>
-               
                
                # now deal with CFL numbers, treating implicit and explicit timestepping differently
                   #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/transient_all_setup.arb: sub_block = 3
@@ -464,6 +468,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                   VARIABLE <CFL[r=1]> 'nonemax(<CFL_species1[r=1]>,default=<CFL[r=1]>)'
                   
                   #(hash inserted during unwrap)END_IF
+               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/transient_all_setup.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE
+               #(hash inserted during unwrap)# constant timestepping
+               #(hash inserted during unwrap)INCLUDE_TEMPLATE "navier_stokes/transient_all_setup"
+               #(hash inserted during unwrap)VARIABLE <u_f[r=1]> CANCEL
                #(hash inserted during unwrap)END_IF
             
             #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/transient_all_setup.arb: sub_block = 1
@@ -527,10 +536,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       
       # also define some derivatives of phi here
       NONE_CONSTANT <phi_tol> 1.d-6 # this is a minimum phi to consider any phase present, contributing to <phi_bounded_speciesN>
-      CELL_LOCAL <phi_bounded_species0> [] 'cellmax(cellmin(<phi_species0>,1.d0-<phi_tol>),<phi_tol>)'
-      CELL_LOCAL <phi_bounded_species0[r=1]> [] 'cellmax(cellmin(<phi_species0[r=1]>,1.d0-<phi_tol>),<phi_tol>)'
-      CELL_LOCAL <phi_pos_species0> [] 'cellmax(cellmin(<phi_species0>,1.d0),0.d0)'
-      CELL_LOCAL <phi_pos_species0[r=1]> [] 'cellmax(cellmin(<phi_species0[r=1]>,1.d0),0.d0)'
+      CELL_LOCAL <phi_bounded_species0> [] 'cellmax(cellmin(<phi_species0>,1.d0-<phi_tol>),<phi_tol>)' ON <allcells>
+      CELL_LOCAL <phi_bounded_species0[r=1]> [] 'cellmax(cellmin(<phi_species0[r=1]>,1.d0-<phi_tol>),<phi_tol>)' ON <allcells>
+      CELL_LOCAL <phi_pos_species0> [] 'cellmax(cellmin(<phi_species0>,1.d0),0.d0)' ON <allcells>
+      CELL_LOCAL <phi_pos_species0[r=1]> [] 'cellmax(cellmin(<phi_species0[r=1]>,1.d0),0.d0)' ON <allcells>
       FACE_DERIVED <phi_f_pos_species0> [] 'faceave(<phi_pos_species0>)' ON <allfaces>
       FACE_LOCAL <phi_f_bounded_species0> [] 'faceave(<phi_bounded_species0>)' ON <allfaces>
       FACE_LOCAL <phi_f_species0> [] 'faceave(<phi_species0>)' ON <allfaces>
@@ -539,11 +548,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       FACE_LOCAL <phi_f_bounded_harmonic_species0> [] 'faceave[harmonic](<phi_bounded_species0>)' ON <allfaces>
       FACE_LOCAL <phi_f_bounded_adjacent_species0[r=1]> [] 'faceave[adjacentcells](<phi_bounded_species0[r=1]>)' ON <allfaces>
       FACE_LOCAL <phi_f_bounded_adjacent_nob_species0> [] 'faceif(facedelta(<boundaries>),faceave[downcell](<phi_bounded_species0>),<phi_f_bounded_adjacent_species0>)' ON <allfaces>
-      CELL_LOCAL <phi_fc_bounded_species0> [] 'cellave(<phi_f_bounded_species0>)'
-      CELL_LOCAL <phi_bounded_species1> [] 'cellmax(cellmin(<phi_species1>,1.d0-<phi_tol>),<phi_tol>)'
-      CELL_LOCAL <phi_bounded_species1[r=1]> [] 'cellmax(cellmin(<phi_species1[r=1]>,1.d0-<phi_tol>),<phi_tol>)'
-      CELL_LOCAL <phi_pos_species1> [] 'cellmax(cellmin(<phi_species1>,1.d0),0.d0)'
-      CELL_LOCAL <phi_pos_species1[r=1]> [] 'cellmax(cellmin(<phi_species1[r=1]>,1.d0),0.d0)'
+      CELL_LOCAL <phi_fc_bounded_species0> [] 'cellave(<phi_f_bounded_species0>)' ON <allcells>
+      CELL_LOCAL <phi_bounded_species1> [] 'cellmax(cellmin(<phi_species1>,1.d0-<phi_tol>),<phi_tol>)' ON <allcells>
+      CELL_LOCAL <phi_bounded_species1[r=1]> [] 'cellmax(cellmin(<phi_species1[r=1]>,1.d0-<phi_tol>),<phi_tol>)' ON <allcells>
+      CELL_LOCAL <phi_pos_species1> [] 'cellmax(cellmin(<phi_species1>,1.d0),0.d0)' ON <allcells>
+      CELL_LOCAL <phi_pos_species1[r=1]> [] 'cellmax(cellmin(<phi_species1[r=1]>,1.d0),0.d0)' ON <allcells>
       FACE_DERIVED <phi_f_pos_species1> [] 'faceave(<phi_pos_species1>)' ON <allfaces>
       FACE_LOCAL <phi_f_bounded_species1> [] 'faceave(<phi_bounded_species1>)' ON <allfaces>
       FACE_LOCAL <phi_f_species1> [] 'faceave(<phi_species1>)' ON <allfaces>
@@ -552,7 +561,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       FACE_LOCAL <phi_f_bounded_harmonic_species1> [] 'faceave[harmonic](<phi_bounded_species1>)' ON <allfaces>
       FACE_LOCAL <phi_f_bounded_adjacent_species1[r=1]> [] 'faceave[adjacentcells](<phi_bounded_species1[r=1]>)' ON <allfaces>
       FACE_LOCAL <phi_f_bounded_adjacent_nob_species1> [] 'faceif(facedelta(<boundaries>),faceave[downcell](<phi_bounded_species1>),<phi_f_bounded_adjacent_species1>)' ON <allfaces>
-      CELL_LOCAL <phi_fc_bounded_species1> [] 'cellave(<phi_f_bounded_species1>)'
+      CELL_LOCAL <phi_fc_bounded_species1> [] 'cellave(<phi_f_bounded_species1>)' ON <allcells>
       
       #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/species_viscosity.arb: sub_block = 0
       #(hash inserted during unwrap)INCLUDE "species_viscosity" # calculate all species viscosities
@@ -570,7 +579,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          #REPLACEMENTS D "<<viscosity_method>>" W "einstein"
          
          #REPLACEMENTS D "<<viscosity_method>>" W "thomas65
-         
+         #REPLACEMENTS D "<<viscosity_method>>" W "quadratic" # for <<stress_method>> = version3
+         #REPLACEMENTS D "<<viscosity_method>>" W "kriegerdougherty"
          
             #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/default_replacement_strings.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_replacement_strings"
@@ -589,8 +599,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             
             
             # method used for rhie-chow u_f interpolation
-            
-            #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+            #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+            # default behaviour for v0.60
             
          
          #REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
@@ -650,61 +660,156 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)FACE_DERIVED <mu_f_correction_species0> "faceave[adjacentcells](<mu_c_multiplier_species0>)" ON <allfaces> output # used in rhie-chow
             #(hash inserted during unwrap)
             #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 1
-            #(hash inserted during unwrap)ELSE
-            # in version2 the viscous stress divergence is phase specific, so the viscosity for each phase is roughly a constant as phi -> 0
-            # the multiplier used in the u_f_{correction} calculation is equal to the viscosity
+            #(hash inserted during unwrap)ELSE # version2 or version3 methods, ie, phase specific
             
                #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 2
-               #(hash inserted during unwrap)IF 1
-               # define the fluid stress, which is in version2 a mixture stress
-               
+               #(hash inserted during unwrap)IF 
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)# no alternative viscosity_methods yet
+               #(hash inserted during unwrap)
                   #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
                   #(hash inserted during unwrap)IF 
-                  #(hash inserted during unwrap)# simplest einstein relationship, for a single phase
-                  #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<phi_bounded_species0>)" ON <allcells>
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
-                  #(hash inserted during unwrap)ELSE_IF 
-                  #(hash inserted during unwrap)# for more than one solid use fluid phi to calculate total
+                  #(hash inserted during unwrap)# this should be the viscosity increase within the fluid (same as each solid too) due to the presence of the particles, but without particle particle interactions
+                  #(hash inserted during unwrap)# einstein relationship applied to continuous phase, based on total solids present
                   #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_species0>))" ON <allcells>
                   #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
                   #(hash inserted during unwrap)ELSE
-                  # methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
-                  NONE_CONSTANT <mu_phi_max_allsolids> "<phi_max_allsolids>"
-                  NONE_CONSTANT <mu_phi_tol> "<phi_tol>"
-                  
+                  #(hash inserted during unwrap)# for each phase the viscosity is made from a single phase (dilute) component and an interaction (collisional) component
+                  #(hash inserted during unwrap)# each solution phase made from einstein viscosity, plus collision contributions from each solid phase (including itself)
+                  #(hash inserted during unwrap)# the single phase is the same as for the fluid phase
+                  #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_c_species0>" ON <allcells> # note, einstein relationship based on total solid volume fraction
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)# now add on collisional contributions, with a term for each possible pair of species interactions
+                  #(hash inserted during unwrap)# for now we base each pair interaction solely on a mixture interaction viscosity
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)# chose method
+                  #(hash inserted during unwrap)# quadratic method, minus the einstein dilute equation leaves a single quadratic coefficient, independent of particle radius
                      #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
-                     #(hash inserted during unwrap)IF 1
-                     NONE_CONSTANT <mu_K_s> 0.1d0
-                     CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
-                     CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>)+<mu_K_s>*(<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**2)" ON <allcells> output
+                     #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient2> [1] 6.d0 # 2nd order in phi coefficient for mixture viscosity
+                     #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_mixture> [Pa.s] "<mu_species0>*<mu^_collision_coefficient2>" # default collision viscosity between two phases which can be overwritten for particular combinations
+                     #(hash inserted during unwrap)
                      #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
                      #(hash inserted during unwrap)ELSE_IF 
-                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
-                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>*((<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**(2.5d0*<mu_phi_max_allsolids>))" ON <allcells> output
+                     #(hash inserted during unwrap)# polynomial method
+                     #(hash inserted during unwrap)# here based on taylor expansion of kriegerdougherty using various phi_max's, and then removing the dilute component
+                     #(hash inserted during unwrap)# set polynomial order to be used (needs to be consistent with coefficients below)
+                     #(hash inserted during unwrap)# actually for high phi should be increasing this order above 6...
+                     #(hash inserted during unwrap)
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)IF 0
+                        #(hash inserted during unwrap)# from maxima with phi_max = 0.603:
+                        #(hash inserted during unwrap)# 592.5530492518616*phi^10+340.0518569582417*phi^9+194.1058561885225*phi^8+110.0636673821255*phi^7+
+                        #(hash inserted during unwrap)# 61.88195005260762*phi^6+34.40474764353966*phi^5+18.83437388021282*phi^4+10.07842702142503*phi^3+
+                        #(hash inserted during unwrap)# 5.197968490878939*phi^2+2.5*phi+1.0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient2> [1] 5.197968490878939d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient3> [1] 10.07842702142503d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient4> [1] 18.83437388021282d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient5> [1] 34.40474764353966d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient6> [1] 61.88195005260762d0
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)ELSE
+                        #(hash inserted during unwrap)# from maxima with phi_max = 0.68:
+                        #(hash inserted during unwrap)# 276.2964187022961*phi^10+175.5902473995901*phi^9+110.7847746479888*phi^8+69.2723188603516*phi^7+
+                        #(hash inserted during unwrap)# 42.82288802276281*phi^6+26.07722136311526*phi^5+15.55483379554244*phi^4+9.001946366782008*phi^3+
+                        #(hash inserted during unwrap)# 4.963235294117647*phi^2+2.5*phi+1.0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient2> [1] 4.963235294117647d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient3> [1] 9.001946366782008d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient4> [1] 15.55483379554244d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient5> [1] 26.07722136311526d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient6> [1] 42.82288802276281d0
+                        #(hash inserted during unwrap)END_IF
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+                     #(hash inserted during unwrap)CELL_DERIVED <mu^_collision_mixture> "0.d0" ON <allcells>
+                     #(hash inserted during unwrap)
+                     #(hash inserted during unwrap)VARIABLE <mu^_collision_mixture> "(<mu^_collision_mixture>)*<mu_species0>"
+                     #(hash inserted during unwrap)
                      #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
                      #(hash inserted during unwrap)ELSE_IF 
-                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_bounded_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)" output # here <mu_phi_max_allsolids> is used as a cut-off
-                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_bounded_allsolids>+10.05d0*(<mu_phi_bounded_allsolids>)**2 + 0.00273d0*exp(16.6d0*<mu_phi_bounded_allsolids>))" ON <allcells> output
+                     #(hash inserted during unwrap)# kriegerdougherty direct
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+                     #(hash inserted during unwrap)CELL_LOCAL <mu_phi_max_allsolids> "0.603d0" ON <allcells> # this could be changed to be a function of local phi
+                     #(hash inserted during unwrap)CELL_DERIVED <mu^_collision_mixture> "<mu_species0>*((1.d0-<mu_phi_bounded_allsolids>/<mu_phi_max_allsolids>)**(-2.5d0*<mu_phi_max_allsolids>)-(1.d0+2.5d0*<mu_phi_bounded_allsolids>))/(<mu_phi_bounded_allsolids>**2)" ON <allcells>
+                     #(hash inserted during unwrap)
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)ELSE_IF 
+                     #(hash inserted during unwrap)# morrisboulay99, except for the dilute contribution which is not quite the same but has been removed
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+                     #(hash inserted during unwrap)CELL_LOCAL <mu_phi_max_allsolids> "0.68d0" ON <allcells> # this could be changed to be a function of local phi
+                     #(hash inserted during unwrap)NONE_CONSTANT <mu_K_s> 0.1d0 # multiplier in single_species_sid_pressure needs to be set correspondingly
+                     #(hash inserted during unwrap)CELL_DERIVED <mu^_collision_mixture> "<mu_species0>*<mu_K_s>/((<mu_phi_max_allsolids>*(1.d0-<mu_phi_bounded_allsolids>/<mu_phi_max_allsolids>))**2)" ON <allcells>
+                     #(hash inserted during unwrap)
                      #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
                      #(hash inserted during unwrap)ELSE
-                     #(hash inserted during unwrap)ERROR "in single_species_viscosity: viscosity_method = morrisboulay99 not coded yet or unknown"
+                     #(hash inserted during unwrap)ERROR "viscosity_method = morrisboulay99 not known for stress_method = version3"
                      #(hash inserted during unwrap)END_IF
-                  #(hash inserted during unwrap)END_IF
-               
-               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 2
-               #(hash inserted during unwrap)ELSE
-               #(hash inserted during unwrap)# for these methods use the same viscosity across phases
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
-                  #(hash inserted during unwrap)IF 
-                  #(hash inserted during unwrap)# only fluid viscosity applied to solid phases, zhang97 = balls
-                  #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>" ON <allcells> output
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
-                  #(hash inserted during unwrap)ELSE
-                  #(hash inserted during unwrap)# mixture viscosity applied to all phases, version2 = jackson98
-                  #(hash inserted during unwrap)CELL_LOCAL <mu_c_species0> [Pa.s] "<mu_c_species0>" ON <allcells> output
-                  #(hash inserted during unwrap)# could also do drew76, no viscosity applied to solid phases...
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)# calculate collisional viscosity contribution, expressed on a phase specific basis for both phases (ie, mu_collisional => mu^*phi1*phi2)
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)# now add collisional contributions, noting that viscosity has been divided by phi_i under stress method 2 and 3
+                  #(hash inserted during unwrap)
                   #(hash inserted during unwrap)END_IF
                #(hash inserted during unwrap)
+               #(hash inserted during unwrap)# in version2 the viscous stress divergence is phase specific, so the viscosity for each phase is roughly a constant as phi -> 0
+               #(hash inserted during unwrap)# the multiplier used in the u_f_{correction} calculation is equal to the viscosity
+               #(hash inserted during unwrap)
+               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE # version2 methods
+               
+                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
+                  #(hash inserted during unwrap)IF 1
+                  # define the fluid stress, which is in version2 a mixture stress
+                  
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)# simplest einstein relationship, for a single phase
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<phi_bounded_species0>)" ON <allcells>
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)ELSE_IF 
+                     #(hash inserted during unwrap)# for more than one solid use fluid phi to calculate total
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_species0>))" ON <allcells>
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)ELSE
+                     # methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
+                     NONE_CONSTANT <mu_phi_max_allsolids> "<phi_max_allsolids>"
+                     NONE_CONSTANT <mu_phi_tol> "<phi_tol>"
+                     
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)IF 1
+                        NONE_CONSTANT <mu_K_s> 0.1d0
+                        CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
+                        CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>)+<mu_K_s>*(<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**2)" ON <allcells> output
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)ELSE_IF 
+                        #(hash inserted during unwrap)CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
+                        #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>*((<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**(2.5d0*<mu_phi_max_allsolids>))" ON <allcells> output
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)ELSE_IF 
+                        #(hash inserted during unwrap)CELL_DERIVED <mu_phi_bounded_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)" output # here <mu_phi_max_allsolids> is used as a cut-off
+                        #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_bounded_allsolids>+10.05d0*(<mu_phi_bounded_allsolids>)**2 + 0.00273d0*exp(16.6d0*<mu_phi_bounded_allsolids>))" ON <allcells> output
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)ELSE
+                        #(hash inserted during unwrap)ERROR "in single_species_viscosity: viscosity_method = morrisboulay99 not coded yet or unknown"
+                        #(hash inserted during unwrap)END_IF
+                     #(hash inserted during unwrap)END_IF
+                  
+                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
+                  #(hash inserted during unwrap)ELSE
+                  #(hash inserted during unwrap)# for these methods use the same viscosity across phases
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)# only fluid viscosity applied to solid phases, zhang97 = balls
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species0> [Pa.s] "<mu_species0>" ON <allcells> output
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)ELSE
+                     #(hash inserted during unwrap)# mixture viscosity applied to all phases, version2 = jackson98
+                     #(hash inserted during unwrap)CELL_LOCAL <mu_c_species0> [Pa.s] "<mu_c_species0>" ON <allcells> output
+                     #(hash inserted during unwrap)# could also do drew76, no viscosity applied to solid phases...
+                     #(hash inserted during unwrap)END_IF
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)END_IF
+               
                #(hash inserted during unwrap)END_IF
             
             # now construct viscosity on faces for use in stress tensor, as well as viscosity for use in u_f rhiechow interpolation (correction)
@@ -723,7 +828,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          #REPLACEMENTS D "<<viscosity_method>>" W "einstein"
          
          #REPLACEMENTS D "<<viscosity_method>>" W "thomas65
-         
+         #REPLACEMENTS D "<<viscosity_method>>" W "quadratic" # for <<stress_method>> = version3
+         #REPLACEMENTS D "<<viscosity_method>>" W "kriegerdougherty"
          
             #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/default_replacement_strings.arb: sub_block = 0
             #(hash inserted during unwrap)INCLUDE "default_replacement_strings"
@@ -742,8 +848,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             
             
             # method used for rhie-chow u_f interpolation
-            
-            #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+            #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+            # default behaviour for v0.60
             
          
          #REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
@@ -803,59 +909,154 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)FACE_DERIVED <mu_f_correction_species1> "faceave[adjacentcells](<mu_c_multiplier_species1>)" ON <allfaces> output # used in rhie-chow
             #(hash inserted during unwrap)
             #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 1
-            #(hash inserted during unwrap)ELSE
-            # in version2 the viscous stress divergence is phase specific, so the viscosity for each phase is roughly a constant as phi -> 0
-            # the multiplier used in the u_f_{correction} calculation is equal to the viscosity
+            #(hash inserted during unwrap)ELSE # version2 or version3 methods, ie, phase specific
             
                #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 2
                #(hash inserted during unwrap)IF 
-               #(hash inserted during unwrap)# define the fluid stress, which is in version2 a mixture stress
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)# no alternative viscosity_methods yet
                #(hash inserted during unwrap)
                   #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
                   #(hash inserted during unwrap)IF 
-                  #(hash inserted during unwrap)# simplest einstein relationship, for a single phase
-                  #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<phi_bounded_species1>)" ON <allcells>
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
-                  #(hash inserted during unwrap)ELSE_IF 
-                  #(hash inserted during unwrap)# for more than one solid use fluid phi to calculate total
-                  #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_species0>))" ON <allcells>
+                  #(hash inserted during unwrap)# this should be the viscosity increase within the fluid (same as each solid too) due to the presence of the particles, but without particle particle interactions
+                  #(hash inserted during unwrap)# einstein relationship applied to continuous phase, based on total solids present
+                  #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_species1>))" ON <allcells>
                   #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
                   #(hash inserted during unwrap)ELSE
-                  #(hash inserted during unwrap)# methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
-                  #(hash inserted during unwrap)NONE_CONSTANT <mu_phi_max_allsolids> "<phi_max_allsolids>"
-                  #(hash inserted during unwrap)NONE_CONSTANT <mu_phi_tol> "<phi_tol>"
+                  #(hash inserted during unwrap)# for each phase the viscosity is made from a single phase (dilute) component and an interaction (collisional) component
+                  #(hash inserted during unwrap)# each solution phase made from einstein viscosity, plus collision contributions from each solid phase (including itself)
+                  #(hash inserted during unwrap)# the single phase is the same as for the fluid phase
+                  #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_c_species0>" ON <allcells> # note, einstein relationship based on total solid volume fraction
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)# now add on collisional contributions, with a term for each possible pair of species interactions
+                  #(hash inserted during unwrap)# for now we base each pair interaction solely on a mixture interaction viscosity
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)# chose method
+                  #(hash inserted during unwrap)# quadratic method, minus the einstein dilute equation leaves a single quadratic coefficient, independent of particle radius
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient2> [1] 6.d0 # 2nd order in phi coefficient for mixture viscosity
+                     #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_mixture> [Pa.s] "<mu_species0>*<mu^_collision_coefficient2>" # default collision viscosity between two phases which can be overwritten for particular combinations
+                     #(hash inserted during unwrap)
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)ELSE_IF 
+                     #(hash inserted during unwrap)# polynomial method
+                     #(hash inserted during unwrap)# here based on taylor expansion of kriegerdougherty using various phi_max's, and then removing the dilute component
+                     #(hash inserted during unwrap)# set polynomial order to be used (needs to be consistent with coefficients below)
+                     #(hash inserted during unwrap)# actually for high phi should be increasing this order above 6...
+                     #(hash inserted during unwrap)
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)IF 0
+                        #(hash inserted during unwrap)# from maxima with phi_max = 0.603:
+                        #(hash inserted during unwrap)# 592.5530492518616*phi^10+340.0518569582417*phi^9+194.1058561885225*phi^8+110.0636673821255*phi^7+
+                        #(hash inserted during unwrap)# 61.88195005260762*phi^6+34.40474764353966*phi^5+18.83437388021282*phi^4+10.07842702142503*phi^3+
+                        #(hash inserted during unwrap)# 5.197968490878939*phi^2+2.5*phi+1.0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient2> [1] 5.197968490878939d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient3> [1] 10.07842702142503d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient4> [1] 18.83437388021282d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient5> [1] 34.40474764353966d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient6> [1] 61.88195005260762d0
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)ELSE
+                        #(hash inserted during unwrap)# from maxima with phi_max = 0.68:
+                        #(hash inserted during unwrap)# 276.2964187022961*phi^10+175.5902473995901*phi^9+110.7847746479888*phi^8+69.2723188603516*phi^7+
+                        #(hash inserted during unwrap)# 42.82288802276281*phi^6+26.07722136311526*phi^5+15.55483379554244*phi^4+9.001946366782008*phi^3+
+                        #(hash inserted during unwrap)# 4.963235294117647*phi^2+2.5*phi+1.0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient2> [1] 4.963235294117647d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient3> [1] 9.001946366782008d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient4> [1] 15.55483379554244d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient5> [1] 26.07722136311526d0
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu^_collision_coefficient6> [1] 42.82288802276281d0
+                        #(hash inserted during unwrap)END_IF
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+                     #(hash inserted during unwrap)CELL_DERIVED <mu^_collision_mixture> "0.d0" ON <allcells>
+                     #(hash inserted during unwrap)
+                     #(hash inserted during unwrap)VARIABLE <mu^_collision_mixture> "(<mu^_collision_mixture>)*<mu_species0>"
+                     #(hash inserted during unwrap)
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)ELSE_IF 
+                     #(hash inserted during unwrap)# kriegerdougherty direct
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+                     #(hash inserted during unwrap)CELL_LOCAL <mu_phi_max_allsolids> "0.603d0" ON <allcells> # this could be changed to be a function of local phi
+                     #(hash inserted during unwrap)CELL_DERIVED <mu^_collision_mixture> "<mu_species0>*((1.d0-<mu_phi_bounded_allsolids>/<mu_phi_max_allsolids>)**(-2.5d0*<mu_phi_max_allsolids>)-(1.d0+2.5d0*<mu_phi_bounded_allsolids>))/(<mu_phi_bounded_allsolids>**2)" ON <allcells>
+                     #(hash inserted during unwrap)
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)ELSE_IF 
+                     #(hash inserted during unwrap)# morrisboulay99, except for the dilute contribution which is not quite the same but has been removed
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+                     #(hash inserted during unwrap)CELL_LOCAL <mu_phi_max_allsolids> "0.68d0" ON <allcells> # this could be changed to be a function of local phi
+                     #(hash inserted during unwrap)NONE_CONSTANT <mu_K_s> 0.1d0 # multiplier in single_species_sid_pressure needs to be set correspondingly
+                     #(hash inserted during unwrap)CELL_DERIVED <mu^_collision_mixture> "<mu_species0>*<mu_K_s>/((<mu_phi_max_allsolids>*(1.d0-<mu_phi_bounded_allsolids>/<mu_phi_max_allsolids>))**2)" ON <allcells>
+                     #(hash inserted during unwrap)
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)ELSE
+                     #(hash inserted during unwrap)ERROR "viscosity_method = morrisboulay99 not known for stress_method = version3"
+                     #(hash inserted during unwrap)END_IF
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)# calculate collisional viscosity contribution, expressed on a phase specific basis for both phases (ie, mu_collisional => mu^*phi1*phi2)
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)# now add collisional contributions, noting that viscosity has been divided by phi_i under stress method 2 and 3
+                  #(hash inserted during unwrap)
+                  #(hash inserted during unwrap)END_IF
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)# in version2 the viscous stress divergence is phase specific, so the viscosity for each phase is roughly a constant as phi -> 0
+               #(hash inserted during unwrap)# the multiplier used in the u_f_{correction} calculation is equal to the viscosity
+               #(hash inserted during unwrap)
+               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 2
+               #(hash inserted during unwrap)ELSE # version2 methods
+               
+                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
+                  #(hash inserted during unwrap)IF 
+                  #(hash inserted during unwrap)# define the fluid stress, which is in version2 a mixture stress
                   #(hash inserted during unwrap)
                      #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
                      #(hash inserted during unwrap)IF 
-                     #(hash inserted during unwrap)NONE_CONSTANT <mu_K_s> 0.1d0
-                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
-                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>)+<mu_K_s>*(<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**2)" ON <allcells> output
+                     #(hash inserted during unwrap)# simplest einstein relationship, for a single phase
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<phi_bounded_species1>)" ON <allcells>
                      #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
                      #(hash inserted during unwrap)ELSE_IF 
-                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
-                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*((<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**(2.5d0*<mu_phi_max_allsolids>))" ON <allcells> output
-                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
-                     #(hash inserted during unwrap)ELSE_IF 
-                     #(hash inserted during unwrap)CELL_DERIVED <mu_phi_bounded_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)" output # here <mu_phi_max_allsolids> is used as a cut-off
-                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_bounded_allsolids>+10.05d0*(<mu_phi_bounded_allsolids>)**2 + 0.00273d0*exp(16.6d0*<mu_phi_bounded_allsolids>))" ON <allcells> output
+                     #(hash inserted during unwrap)# for more than one solid use fluid phi to calculate total
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_species0>))" ON <allcells>
                      #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
                      #(hash inserted during unwrap)ELSE
-                     #(hash inserted during unwrap)ERROR "in single_species_viscosity: viscosity_method = morrisboulay99 not coded yet or unknown"
+                     #(hash inserted during unwrap)# methods that have a maximum total solids magnitude, and can be expressed as a function of total solid volume fraction
+                     #(hash inserted during unwrap)NONE_CONSTANT <mu_phi_max_allsolids> "<phi_max_allsolids>"
+                     #(hash inserted during unwrap)NONE_CONSTANT <mu_phi_tol> "<phi_tol>"
+                     #(hash inserted during unwrap)
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)IF 
+                        #(hash inserted during unwrap)NONE_CONSTANT <mu_K_s> 0.1d0
+                        #(hash inserted during unwrap)CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
+                        #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>)+<mu_K_s>*(<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**2)" ON <allcells> output
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)ELSE_IF 
+                        #(hash inserted during unwrap)CELL_DERIVED <mu_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)/<mu_phi_max_allsolids>" output # here <mu_phi_max_allsolids> is used to scale across the range
+                        #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*((<mu_phi_norm_allsolids>/(1.d0-<mu_phi_norm_allsolids>))**(2.5d0*<mu_phi_max_allsolids>))" ON <allcells> output
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)ELSE_IF 
+                        #(hash inserted during unwrap)CELL_DERIVED <mu_phi_bounded_allsolids> "cellmin(1.d0-<phi_pos_species0>,<mu_phi_max_allsolids>-<mu_phi_tol>)" output # here <mu_phi_max_allsolids> is used as a cut-off
+                        #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>*(1.d0+2.5d0*<mu_phi_bounded_allsolids>+10.05d0*(<mu_phi_bounded_allsolids>)**2 + 0.00273d0*exp(16.6d0*<mu_phi_bounded_allsolids>))" ON <allcells> output
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 5
+                        #(hash inserted during unwrap)ELSE
+                        #(hash inserted during unwrap)ERROR "in single_species_viscosity: viscosity_method = morrisboulay99 not coded yet or unknown"
+                        #(hash inserted during unwrap)END_IF
                      #(hash inserted during unwrap)END_IF
-                  #(hash inserted during unwrap)END_IF
-               #(hash inserted during unwrap)
-               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 2
-               #(hash inserted during unwrap)ELSE
-               # for these methods use the same viscosity across phases
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
-                  #(hash inserted during unwrap)IF 
-                  #(hash inserted during unwrap)# only fluid viscosity applied to solid phases, zhang97 = balls
-                  #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>" ON <allcells> output
+                  #(hash inserted during unwrap)
                   #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 3
                   #(hash inserted during unwrap)ELSE
-                  # mixture viscosity applied to all phases, version2 = jackson98
-                  CELL_LOCAL <mu_c_species1> [Pa.s] "<mu_c_species0>" ON <allcells> output
-                  # could also do drew76, no viscosity applied to solid phases...
+                  # for these methods use the same viscosity across phases
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)# only fluid viscosity applied to solid phases, zhang97 = balls
+                     #(hash inserted during unwrap)CELL_DERIVED <mu_c_species1> [Pa.s] "<mu_species0>" ON <allcells> output
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_viscosity.arb: sub_block = 4
+                     #(hash inserted during unwrap)ELSE
+                     # mixture viscosity applied to all phases, version2 = jackson98
+                     CELL_LOCAL <mu_c_species1> [Pa.s] "<mu_c_species0>" ON <allcells> output
+                     # could also do drew76, no viscosity applied to solid phases...
+                     #(hash inserted during unwrap)END_IF
+                  
                   #(hash inserted during unwrap)END_IF
                
                #(hash inserted during unwrap)END_IF
@@ -873,8 +1074,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       #(hash inserted during unwrap)Here we setup the viscous stresses for each phase, including the velocity gradients, using the navier_stokes template file
       #(hash inserted during unwrap)END_MARKDOWN
       
-      #REPLACEMENTS D "<<stress_method>>" W "version1" # the gamma used in each phase is specific to that phase
+      #REPLACEMENTS D "<<stress_method>>" W "version1" # the gamma used in each phase is specific to that phase, but stress is not specific to phase (see conservation template)
       # the gamma used in each phase is a function of all velocities
+      #REPLACEMENTS D "<<stress_method>>" W "version3" # the gamma used in each phase is specific to that phase, but stress is specific to phase (see conservation template)
       
          #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/total_stress.arb: sub_block = 1
          #(hash inserted during unwrap)IF 
@@ -963,117 +1165,171 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)INCLUDE_LOCAL 'single_species_pressure' 
             
             #(hash inserted during unwrap)MARKDOWN
-            #(hash inserted during unwrap)Here we find <p_species> for each disperse phase species species1
+            #(hash inserted during unwrap)Here we find <p_species> and <p^_species> for each disperse phase species species1
             #(hash inserted during unwrap)END_MARKDOWN
             
-            # first add osmotic pressure using separate template
-               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 0
-               #(hash inserted during unwrap)INCLUDE "single_species_osmotic_pressure"
-               #(hash inserted during unwrap)MARKDOWN
-               #(hash inserted during unwrap)Here we find the osmotic pressure for a disperse phase species species1
-               #(hash inserted during unwrap)END_MARKDOWN
-               
-               # this specifies the type of osmotic pressure function
-               #REPLACEMENTS D "<<osmotic_pressure_method>>" W "none"
-               #REPLACEMENTS D "<<osmotic_pressure_method>>" W "dilute"
-               #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarling"
-               # same as carnahanstarling, but goes to infinity at <p_osmotic_phi_max_allsolids> rather than 1
-               #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlingsinglelimited"
-               
-               # we can also include steric hindrance using some type of step function
-               
-               #REPLACEMENTS D "<<steric_pressure_method>>" W "step"
-               
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
-                  #(hash inserted during unwrap)IF 
-                  #(hash inserted during unwrap)
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_multiplier_species1> [Pa] "0.d0"
-                  #(hash inserted during unwrap)
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
-                  #(hash inserted during unwrap)ELSE_IF 
-                  #(hash inserted during unwrap)# linear osmotic pressure, dilute assumption, multiplier is location independent
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_multiplier_species1> [Pa] "<k_boltzmann>*<T>/<V_species1>"
-                  #(hash inserted during unwrap)
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
-                  #(hash inserted during unwrap)ELSE_IF 
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_phi_max_species1> "<phi_max_allsolids>"
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_phi_tol> "<phi_tol>"
-                  #(hash inserted during unwrap)CELL_DERIVED <p_osmotic_phi_norm_species1> "cellmin(<phi_pos_species1>,<p_osmotic_phi_max_species1>-<p_osmotic_phi_tol>)/<p_osmotic_phi_max_species1>" output
-                  #(hash inserted during unwrap)CELL_DERIVED <p_osmotic_Z_species1> [Pa] "(1.d0+<p_osmotic_phi_norm_species1>+<p_osmotic_phi_norm_species1>^2-<p_osmotic_phi_norm_species1>^3)/((1.d0-<p_osmotic_phi_norm_species1>)^3)" ON <allcells>
-                  #(hash inserted during unwrap)CELL_LOCAL <p_osmotic_multiplier_species1> [Pa] "<k_boltzmann>*<T>*<p_osmotic_Z_species1>/<V_species1>" ON <allcells>
-                  #(hash inserted during unwrap)
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
-                  #(hash inserted during unwrap)ELSE
-                  # methods that have a maximum total solids magnitude, with a multiplier that can be expressed as a function of total solid volume fraction
-                  # create a possibly normalised and limited phi for use in the allsolids multiplier
-                  NONE_CONSTANT <p_osmotic_phi_max_allsolids> "<phi_max_allsolids>"
-                  NONE_CONSTANT <p_osmotic_phi_tol> "<phi_tol>"
-                  CELL_DERIVED <p_osmotic_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<p_osmotic_phi_max_allsolids>-<p_osmotic_phi_tol>)/<p_osmotic_phi_max_allsolids>" output
-                  
-                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 2
-                     #(hash inserted during unwrap)IF 
-                     #(hash inserted during unwrap)# for the true carnahanstarling method the osmotic pressure approaches infinity at phi=1
-                     #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_phi_max_allsolids> 1.d0
-                     #(hash inserted during unwrap)END_IF
-                  
-                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 2
-                     #(hash inserted during unwrap)IF 1
-                     CELL_DERIVED <p_osmotic_Z_allsolids> [Pa] "(1.d0+<p_osmotic_phi_norm_allsolids>+<p_osmotic_phi_norm_allsolids>^2-<p_osmotic_phi_norm_allsolids>^3)/((1.d0-<p_osmotic_phi_norm_allsolids>)^3)" ON <allcells>
-                     
-                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 2
-                     #(hash inserted during unwrap)ELSE
-                     #(hash inserted during unwrap)ERROR "in single_species_osmotic_pressure: osmotic_pressure_method = carnahanstarlinglimited not coded yet or unknown"
-                     #(hash inserted during unwrap)END_IF
-                  
-                  CELL_LOCAL <p_osmotic_multiplier_species1> [Pa] "<k_boltzmann>*<T>*<p_osmotic_Z_allsolids>/<V_species1>" ON <allcells>
-                  
-                  #(hash inserted during unwrap)END_IF
-               
-               CELL_LOCAL <p_osmotic_species1> "<p_osmotic_multiplier_species1>*<phi_species1>" ON <allcells> # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
-               
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
-                  #(hash inserted during unwrap)IF 
-                  #(hash inserted during unwrap)
-                  #(hash inserted during unwrap)# define some constants
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_steric_gradient_low> [Pa] 1.d+0
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_steric_gradient_high> [Pa] 1.d+5
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_steric_phi_max_allsolids> "<phi_max_allsolids>"
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_steric_delta_phi_1> 0.05d0
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_steric_delta_phi_2> 0.05d0
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_steric_A> "<p_steric_gradient_high>/(2.d0*<p_steric_delta_phi_2>)"
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_steric_phi_1_max> "<p_steric_phi_max_allsolids>-<p_steric_delta_phi_1>"
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_steric_phi_2_max> "<p_steric_phi_1_max>-<p_steric_delta_phi_2>"
-                  #(hash inserted during unwrap)NONE_CONSTANT <p_steric_B> "<p_steric_phi_1_max>-<p_steric_delta_phi_2>/2.d0"
-                  #(hash inserted during unwrap)
-                  #(hash inserted during unwrap)CELL_DERIVED <p_steric_phi_allsolids> "1.d0-<phi_pos_species0>" ON <allcells>
-                  #(hash inserted during unwrap)CELL_LOCAL <p_steric_species1> "0.d0" ON <allcells> output
-                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 2
-                     #(hash inserted during unwrap)IF 1 # add low contribution
-                     #(hash inserted during unwrap)CELL_LOCAL <p_steric_species1> "<p_steric_gradient_low>*<phi_species1>"
-                     #(hash inserted during unwrap)END_IF
-                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 2
-                     #(hash inserted during unwrap)IF 1 # add high contribution
-                     #(hash inserted during unwrap)CELL_LOCAL <p_steric_species1> "<p_steric_species1>+cellif(<p_steric_phi_allsolids>-<p_steric_phi_2_max>,(<phi_pos_species1>/<p_steric_phi_allsolids>)*cellif(<p_steric_phi_allsolids>-<p_steric_phi_1_max>,<p_steric_gradient_high>*(<p_steric_phi_allsolids>-<p_steric_B>),<p_steric_A>*(<p_steric_phi_allsolids>-<p_steric_phi_2_max>)^2),0.d0)"
-                     #(hash inserted during unwrap)END_IF
-                  #(hash inserted during unwrap)
-                  #(hash inserted during unwrap)CELL_LOCAL <p_osmotic_species1> "<p_osmotic_species1>+<p_steric_species1>"
-                  #(hash inserted during unwrap)END_IF
-            CELL_DERIVED <p_species1> "<p_osmotic_species1>"
-            FACE_LOCAL <p_osmotic_f_species1> "faceave(<p_osmotic_species1>)" ON <allfaces> # just used in visualise_forces
+            # first define the two types of pressures as locals, and then add specific contributions to these as deriveds as needed
+            CELL_LOCAL <p_species1> "0.d0" ON <allcells> # for the fluid, this is the fluid pressure applied to all phases, while for the disperse phases this appears as a divergence in the full momentum equation
+            CELL_LOCAL <p^_species1> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
             
-            # next sid pressure too
+            # whether to also add this force from the fluid phase
+            # if including sid on the fluid phase too, then will need to calculate a p^ for each disperse and fluid species combinations
+               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_pressure.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)CELL_LOCAL <p^_species1_species0> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
+               #(hash inserted during unwrap)CELL_LOCAL <p_species1_species0> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
+               #(hash inserted during unwrap)END_IF
+            
+            # inertial diffusion requires an extra fluid and dispersed phase pressure to be calculated
+               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_pressure.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)CELL_LOCAL <p_species1_species0> "0.d0" ON <allcells>
+               #(hash inserted during unwrap)END_IF
+            
+            # osmotic pressure, adding to <p_<<species>>>
+            
+               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_pressure.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 1
+                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 0
+                  #(hash inserted during unwrap)INCLUDE "single_species_osmotic_pressure"
+                  #(hash inserted during unwrap)MARKDOWN
+                  #(hash inserted during unwrap)Here we find the osmotic pressure for a disperse phase species species1
+                  #(hash inserted during unwrap)END_MARKDOWN
+                  
+                  # this specifies the type of osmotic pressure function
+                  #REPLACEMENTS D "<<osmotic_pressure_method>>" W "none"
+                  #REPLACEMENTS D "<<osmotic_pressure_method>>" W "dilute"
+                  #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarling"
+                  # same as carnahanstarling, but goes to infinity at <p_osmotic_phi_max_allsolids> rather than 1
+                  #REPLACEMENTS D "<<osmotic_pressure_method>>" W "carnahanstarlingsinglelimited"
+                  #REPLACEMENTS D "<<osmotic_pressure_method>>" W "osmoticsidcombined" # method that uses a combined approach to osmotic and sid, and needs to also be set in osmotic pressure
+                  
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
+                     #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_multiplier_species1> [Pa] "0.d0"
+                     #(hash inserted during unwrap)
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
+                     #(hash inserted during unwrap)ELSE_IF 
+                     #(hash inserted during unwrap)# linear osmotic pressure, dilute assumption, multiplier is location independent
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_multiplier_species1> [Pa] "<k_boltzmann>*<T>/<V_species1>"
+                     #(hash inserted during unwrap)
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
+                     #(hash inserted during unwrap)ELSE_IF 
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_phi_max_species1> "<phi_max_allsolids>"
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_phi_tol> "<phi_tol>"
+                     #(hash inserted during unwrap)CELL_DERIVED <p_osmotic_phi_norm_species1> "cellmin(<phi_pos_species1>,<p_osmotic_phi_max_species1>-<p_osmotic_phi_tol>)/<p_osmotic_phi_max_species1>" output
+                     #(hash inserted during unwrap)CELL_DERIVED <p_osmotic_Z_species1> [Pa] "(1.d0+<p_osmotic_phi_norm_species1>+<p_osmotic_phi_norm_species1>^2-<p_osmotic_phi_norm_species1>^3)/((1.d0-<p_osmotic_phi_norm_species1>)^3)" ON <allcells>
+                     #(hash inserted during unwrap)CELL_LOCAL <p_osmotic_multiplier_species1> [Pa] "<k_boltzmann>*<T>*<p_osmotic_Z_species1>/<V_species1>" ON <allcells>
+                     #(hash inserted during unwrap)
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
+                     #(hash inserted during unwrap)ELSE_IF 
+                     #(hash inserted during unwrap)# combined approach to osmotic and sid
+                     #(hash inserted during unwrap)# total solid phi from fluid phi
+                     #(hash inserted during unwrap)CELL_LOCAL <p_osmotic_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+                     #(hash inserted during unwrap)CELL_LOCAL <p_osmotic_phi_pos_allsolids> "1.d0-<phi_pos_species0>" ON <allcells>
+                     #(hash inserted during unwrap)# average some quantities over the solid phases
+                     #(hash inserted during unwrap)CELL_DERIVED <p_osmotic_V_allsolids> "0.d0" ON <allcells> # average particle volume
+                     #(hash inserted during unwrap)CELL_DERIVED <p_osmotic_phi_max_allsolids> "0.d0" ON <allcells> # average maximum solid volume fraction for local mixture
+                     #(hash inserted during unwrap)
+                     #(hash inserted during unwrap)VARIABLE <p_osmotic_V_allsolids> "<p_osmotic_V_allsolids>/<p_osmotic_phi_bounded_allsolids>"
+                     #(hash inserted during unwrap)VARIABLE <p_osmotic_phi_max_allsolids> "<p_osmotic_phi_max_allsolids>/<p_osmotic_phi_bounded_allsolids>"
+                     #(hash inserted during unwrap)# and from these, the CSL (compressibility) Z function for the average solids
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_csl_phi_max> 0.68d0 # roughly hard sphere packing, a phi value that is assumed to represent maximum packing
+                     #(hash inserted during unwrap)CELL_DERIVED <p_osmotic_phi_norm_allsolids> "cellmin(<p_osmotic_phi_pos_allsolids>*<p_osmotic_csl_phi_max>/<p_osmotic_phi_max_allsolids>,1.d0-<phi_tol>)"
+                     #(hash inserted during unwrap)CELL_DERIVED <p_osmotic_Z_allsolids> [Pa] "(1.d0+<p_osmotic_phi_norm_allsolids>+<p_osmotic_phi_norm_allsolids>^2-<p_osmotic_phi_norm_allsolids>^3)/((1.d0-<p_osmotic_phi_norm_allsolids>)^3)" ON <allcells>
+                     #(hash inserted during unwrap)# and then the phi multiplier
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_adjuster> 1.d0 # multiplier applied to brownian motion
+                     #(hash inserted during unwrap)CELL_LOCAL <p_osmotic_multiplier_species1> [Pa] "<p_osmotic_adjuster>*<k_boltzmann>*<T>*<p_osmotic_Z_allsolids>/<p_osmotic_V_allsolids>" ON <allcells> output
+                     #(hash inserted during unwrap)
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
+                     #(hash inserted during unwrap)ELSE
+                     # methods that have a maximum total solids magnitude, with a multiplier that can be expressed as a function of total solid volume fraction
+                     # create a possibly normalised and limited phi for use in the allsolids multiplier
+                     NONE_CONSTANT <p_osmotic_phi_max_allsolids> "<phi_max_allsolids>"
+                     NONE_CONSTANT <p_osmotic_phi_tol> "<phi_tol>"
+                     CELL_DERIVED <p_osmotic_phi_norm_allsolids> "cellmin(1.d0-<phi_pos_species0>,<p_osmotic_phi_max_allsolids>-<p_osmotic_phi_tol>)/<p_osmotic_phi_max_allsolids>" output
+                     
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 2
+                        #(hash inserted during unwrap)IF 
+                        #(hash inserted during unwrap)# for the true carnahanstarling method the osmotic pressure approaches infinity at phi=1
+                        #(hash inserted during unwrap)NONE_CONSTANT <p_osmotic_phi_max_allsolids> 1.d0
+                        #(hash inserted during unwrap)END_IF
+                     
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 2
+                        #(hash inserted during unwrap)IF 1
+                        CELL_DERIVED <p_osmotic_Z_allsolids> [Pa] "(1.d0+<p_osmotic_phi_norm_allsolids>+<p_osmotic_phi_norm_allsolids>^2-<p_osmotic_phi_norm_allsolids>^3)/((1.d0-<p_osmotic_phi_norm_allsolids>)^3)" ON <allcells>
+                        
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 2
+                        #(hash inserted during unwrap)ELSE
+                        #(hash inserted during unwrap)ERROR "in single_species_osmotic_pressure: osmotic_pressure_method = carnahanstarlinglimited not coded yet or unknown"
+                        #(hash inserted during unwrap)END_IF
+                     
+                     CELL_LOCAL <p_osmotic_multiplier_species1> [Pa] "<k_boltzmann>*<T>*<p_osmotic_Z_allsolids>/<V_species1>" ON <allcells>
+                     
+                     #(hash inserted during unwrap)END_IF
+                  
+                  CELL_DERIVED <p_osmotic_species1> "<p_osmotic_multiplier_species1>*<phi_species1>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+                  
+                  # we can also include steric hindrance using some type of step function
+                  # don't use this!
+                  
+                  #REPLACEMENTS D "<<steric_pressure_method>>" W "step"
+                  
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 1
+                     #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)
+                     #(hash inserted during unwrap)# define some constants
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_steric_gradient_low> [Pa] 1.d+0
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_steric_gradient_high> [Pa] 1.d+5
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_steric_phi_max_allsolids> "<phi_max_allsolids>"
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_steric_delta_phi_1> 0.05d0
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_steric_delta_phi_2> 0.05d0
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_steric_A> "<p_steric_gradient_high>/(2.d0*<p_steric_delta_phi_2>)"
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_steric_phi_1_max> "<p_steric_phi_max_allsolids>-<p_steric_delta_phi_1>"
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_steric_phi_2_max> "<p_steric_phi_1_max>-<p_steric_delta_phi_2>"
+                     #(hash inserted during unwrap)NONE_CONSTANT <p_steric_B> "<p_steric_phi_1_max>-<p_steric_delta_phi_2>/2.d0"
+                     #(hash inserted during unwrap)
+                     #(hash inserted during unwrap)CELL_DERIVED <p_steric_phi_allsolids> "1.d0-<phi_pos_species0>" ON <allcells>
+                     #(hash inserted during unwrap)CELL_LOCAL <p_steric_species1> "0.d0" ON <allcells> output
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 2
+                        #(hash inserted during unwrap)IF 1 # add low contribution
+                        #(hash inserted during unwrap)CELL_LOCAL <p_steric_species1> "<p_steric_gradient_low>*<phi_species1>"
+                        #(hash inserted during unwrap)END_IF
+                        #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_osmotic_pressure.arb: sub_block = 2
+                        #(hash inserted during unwrap)IF 1 # add high contribution
+                        #(hash inserted during unwrap)CELL_LOCAL <p_steric_species1> "<p_steric_species1>+cellif(<p_steric_phi_allsolids>-<p_steric_phi_2_max>,(<phi_pos_species1>/<p_steric_phi_allsolids>)*cellif(<p_steric_phi_allsolids>-<p_steric_phi_1_max>,<p_steric_gradient_high>*(<p_steric_phi_allsolids>-<p_steric_B>),<p_steric_A>*(<p_steric_phi_allsolids>-<p_steric_phi_2_max>)^2),0.d0)"
+                        #(hash inserted during unwrap)END_IF
+                     #(hash inserted during unwrap)
+                     #(hash inserted during unwrap)VARIABLE <p_osmotic_species1> "<p_osmotic_species1>+<p_steric_species1>"
+                     #(hash inserted during unwrap)END_IF
+                  
+                  # add on contribution to species pressure
+                  VARIABLE <p_species1> "<p_species1>+(<p_osmotic_species1>)"
+               #  VARIABLE <p_<<species>>> "<p_<<species>>>+<p_osmotic_<<species>>>"
+               #(hash inserted during unwrap)END_IF
+            
+            # chemical potential, adding to <p^_<<species>>>
+            
+               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_pressure.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)INCLUDE "single_species_chemical_potential"
+               #(hash inserted during unwrap)END_IF
+            
+            # sid pressure, either adding to <p_<<species>>> or <p^_<<species>>> depending on the method
             
                #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_pressure.arb: sub_block = 1
                #(hash inserted during unwrap)IF 0
                #(hash inserted during unwrap)INCLUDE "single_species_sid_pressure"
-               #(hash inserted during unwrap)CELL_DERIVED <p_species1> "<p_species1> + <p_sid_species1>"
-               #(hash inserted during unwrap)FACE_LOCAL <p_sid_f_species1> "faceave(<p_sid_species1>)" ON <allfaces> # just used in visualise_forces
-               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_pressure.arb: sub_block = 1
-               #(hash inserted during unwrap)ELSE
-               FACE_LOCAL <p_sid_f_species1> "0.d0" ON <allfaces> # just used in visualise_forces
                #(hash inserted during unwrap)END_IF
             
-            FACE_DERIVED <p_f_species1> "faceave(<p_species1>)" ON <allfaces>
+            # inertial diffusion, caused by perturbations to the fluid velocity field
+               #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_pressure.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 0
+               #(hash inserted during unwrap)INCLUDE "single_species_inertial_diffusion"
+               #(hash inserted during unwrap)END_IF
+            
+            # note that face values for both pressure types are calculated when calculating the dynamic forces
          
       #(hash inserted during unwrap)END_IF
       #(comment created during unwrap): new block = multifluid_filtration.arb: sub_block = 1
@@ -1118,8 +1374,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                
                
                # method used for rhie-chow u_f interpolation
-               
-               #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+               #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+               # default behaviour for v0.60
                
             
             # this string is now set globally in constants, but can be overwritten with local values here
@@ -1129,8 +1385,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             # version1 gives an equivalent hindered settling function which is / phi_0^2
             
             #REPLACEMENTS D "<<hindered_settling_function>>" W "dilute" # = stokes
-            #REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzaki"
-            # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
+            
+            #REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
             #REPLACEMENTS D "<<hindered_settling_function>>" W "rourkeernstene" # from kim16, referencing Rourke and Ernstene 1930, which is specifically for rbcs
             
             # calculate beta^ at the faces, and then average to the cells.  Otherwise (default), calculate at the cells and then average to the faces
@@ -1162,15 +1418,15 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                      NONE_CONSTANT <drag_phi_packed_richardsonzaki> 0.68d0 # used for scaling the phi used in the hindered settling function, this is the phi that we assume the normal richardsonzaki drag represents packed hard-sphere behaviour
                      NONE_CONSTANT <drag_richardsonzaki_n> 5.5d0 # exponent used in the richardsonzaki hindered settling function
                         #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_drag.arb: sub_block = 4
-                        #(hash inserted during unwrap)IF 
-                        #(hash inserted during unwrap)# for the true richardsonzaki method to recover the non-scaled variable, set the max to 0.68
-                        #(hash inserted during unwrap)NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>"
+                        #(hash inserted during unwrap)IF 1
+                        # for the true richardsonzaki method to recover the non-scaled variable, set the max to 0.68
+                        NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>"
                         #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_drag.arb: sub_block = 4
-                        #(hash inserted during unwrap)ELSE_IF 1
-                        NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
+                        #(hash inserted during unwrap)ELSE_IF 
+                        #(hash inserted during unwrap)NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
                         #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_drag.arb: sub_block = 4
                         #(hash inserted during unwrap)ELSE
-                        #(hash inserted during unwrap)ERROR "hindered_settling_function = richardsonzakilimited not known in single_species_drag"
+                        #(hash inserted during unwrap)ERROR "hindered_settling_function = richardsonzaki not known in single_species_drag"
                         #(hash inserted during unwrap)END_IF
                      CELL_LOCAL <drag_phi_norm_allsolids> "<drag_phi_packed_richardsonzaki>*cellmin(1.d0-<phi_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
                      
@@ -1187,7 +1443,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                      #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_drag.arb: sub_block = 3
                      #(hash inserted during unwrap)ELSE
                      #(hash inserted during unwrap)# FIXME
-                     #(hash inserted during unwrap)ERROR "hindered_settling_function = richardsonzakilimited not known in single_species_drag"
+                     #(hash inserted during unwrap)ERROR "hindered_settling_function = richardsonzaki not known in single_species_drag"
                      #(hash inserted during unwrap)END_IF
                   
                   #(hash inserted during unwrap)END_IF
@@ -1333,8 +1589,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          
          
          # method used for rhie-chow u_f interpolation
-         
-         #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+         #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+         # default behaviour for v0.60
          
       
          #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/u_f.arb: sub_block = 1
@@ -1365,8 +1621,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                
                
                # method used for rhie-chow u_f interpolation
-               
-               #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+               #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+               # default behaviour for v0.60
                
             
             # the region <correctionfaces> should be defined if it isn't already
@@ -1375,7 +1631,108 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                FACE_REGION <correctionfaces> "all" ON <domainfaces>
                #(hash inserted during unwrap)END_IF
             
-            # first use the navier_stokes dynamic_force template to create the variables
+            # face average both species pressures (phase specific <p^_species> and non-phase specific <p_species>)
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 0
+               #(hash inserted during unwrap)INCLUDE_TEMPLATE 'navier_stokes/p_f' 
+               
+               #(hash inserted during unwrap)MARKDOWN
+               #(hash inserted during unwrap)Here we average the cell centred pressure <p_species1> to the faces producing <p_f_species1>.  The standard method is to use arithmetic averaging, as in
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)```arb
+               #(hash inserted during unwrap)FACE_DERIVED <p_f_species1> "faceave(<p_species1>)" ON <allfaces>
+               #(hash inserted during unwrap)```
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)Low order averaging adjacentcell averaging uses a distance weighted average of the adjacent cell values.  Select this by setting
+               #(hash inserted during unwrap)```arb
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)```
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)High order adjacentcell averaging is as per low order adjacentcell averaging, except that the gradient within each cell is used to get a better estimate of the pressure on each side of the interface.  The amount of gradient used is set by `<p_f_grad_limiter>` which should be between 0.d0 (low order) and 1.d0 after the file is included.  To use this high order averaging set
+               #(hash inserted during unwrap)```arb
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)NONE_CONSTANT <p_f_gradient_limiter_species1> 1.d0 # keep this between 0.d0 and 1.d0
+               #(hash inserted during unwrap)```
+               #(hash inserted during unwrap)END_MARKDOWN
+               
+               # this is the default pressure interpolation
+               FACE_DERIVED <p_f_species1> "faceave(<p_species1>)" ON <allfaces>
+               
+               # the following are based on averaging from the adjacentcells only, but possibly using high order averaging
+               
+               
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 1
+                  #(hash inserted during unwrap)IF 0
+                  #(hash inserted during unwrap)VARIABLE <p_f_species1> "faceave[adjacentcells](<p_species1>)" output
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 1
+                  #(hash inserted during unwrap)ELSE_IF 0
+                  #(hash inserted during unwrap)NONE_CONSTANT <p_f_gradient_limiter_species1> 1.d0 # ranging from 1.d0 (highest order) to 0.d0 which will give same as <<pfadjacentcells>> above
+                     #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 2
+                     #(hash inserted during unwrap)IF 1
+                     #(hash inserted during unwrap)VARIABLE <p_f_species1> "faceave[adjacentcells](cellave[lastface](faceave[advection](<p_species1>,<facefromcelldirection>,<p_f_gradient_limiter_species1>)))" output
+                     #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 2
+                     #(hash inserted during unwrap)ELSE_IF 0
+                     #(hash inserted during unwrap)VARIABLE <p_f_species1> "faceave[adjacentcellsevenweighting](cellave[lastface](faceave[advection](<p_species1>,<facefromcelldirection>,<p_f_gradient_limiter_species1>)))" output
+                     #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 2
+                     #(hash inserted during unwrap)ELSE
+                     #(hash inserted during unwrap)VARIABLE <p_f_species1> "0.5d0*(faceave[advection](<p_species1>,1.d0,<p_f_gradient_limiter_species1>)+faceave[advection](<p_species1>,-1.d0,<p_f_gradient_limiter_species1>))" output
+                        #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 3
+                        #(hash inserted during unwrap)IF 1
+                        #(hash inserted during unwrap)VARIABLE <p_f_species1> "faceif(facedelta(<boundaries>),<p_species1>,<p_f_species1>)" # special case boundary face pressure value to be equal to boundary cell value.  Without this the boundary pressure will be equally weighted.
+                        #(hash inserted during unwrap)END_IF
+                     #(hash inserted during unwrap)END_IF
+                  #(hash inserted during unwrap)END_IF
+               #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 0
+               #(hash inserted during unwrap)INCLUDE_TEMPLATE 'navier_stokes/p_f' 
+               
+               #(hash inserted during unwrap)MARKDOWN
+               #(hash inserted during unwrap)Here we average the cell centred pressure <p^_species1> to the faces producing <p^_f_species1>.  The standard method is to use arithmetic averaging, as in
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)```arb
+               #(hash inserted during unwrap)FACE_DERIVED <p^_f_species1> "faceave(<p^_species1>)" ON <allfaces>
+               #(hash inserted during unwrap)```
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)Low order averaging adjacentcell averaging uses a distance weighted average of the adjacent cell values.  Select this by setting
+               #(hash inserted during unwrap)```arb
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)```
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)High order adjacentcell averaging is as per low order adjacentcell averaging, except that the gradient within each cell is used to get a better estimate of the pressure on each side of the interface.  The amount of gradient used is set by `<p_f_grad_limiter>` which should be between 0.d0 (low order) and 1.d0 after the file is included.  To use this high order averaging set
+               #(hash inserted during unwrap)```arb
+               #(hash inserted during unwrap)
+               #(hash inserted during unwrap)NONE_CONSTANT <p^_f_gradient_limiter_species1> 1.d0 # keep this between 0.d0 and 1.d0
+               #(hash inserted during unwrap)```
+               #(hash inserted during unwrap)END_MARKDOWN
+               
+               # this is the default pressure interpolation
+               FACE_DERIVED <p^_f_species1> "faceave(<p^_species1>)" ON <allfaces>
+               
+               # the following are based on averaging from the adjacentcells only, but possibly using high order averaging
+               
+               
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 1
+                  #(hash inserted during unwrap)IF 0
+                  #(hash inserted during unwrap)VARIABLE <p^_f_species1> "faceave[adjacentcells](<p^_species1>)" output
+                  #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 1
+                  #(hash inserted during unwrap)ELSE_IF 0
+                  #(hash inserted during unwrap)NONE_CONSTANT <p^_f_gradient_limiter_species1> 1.d0 # ranging from 1.d0 (highest order) to 0.d0 which will give same as <<pfadjacentcells>> above
+                     #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 2
+                     #(hash inserted during unwrap)IF 1
+                     #(hash inserted during unwrap)VARIABLE <p^_f_species1> "faceave[adjacentcells](cellave[lastface](faceave[advection](<p^_species1>,<facefromcelldirection>,<p^_f_gradient_limiter_species1>)))" output
+                     #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 2
+                     #(hash inserted during unwrap)ELSE_IF 0
+                     #(hash inserted during unwrap)VARIABLE <p^_f_species1> "faceave[adjacentcellsevenweighting](cellave[lastface](faceave[advection](<p^_species1>,<facefromcelldirection>,<p^_f_gradient_limiter_species1>)))" output
+                     #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 2
+                     #(hash inserted during unwrap)ELSE
+                     #(hash inserted during unwrap)VARIABLE <p^_f_species1> "0.5d0*(faceave[advection](<p^_species1>,1.d0,<p^_f_gradient_limiter_species1>)+faceave[advection](<p^_species1>,-1.d0,<p^_f_gradient_limiter_species1>))" output
+                        #(comment created during unwrap): new block = ../../templates/navier_stokes/p_f.arb: sub_block = 3
+                        #(hash inserted during unwrap)IF 1
+                        #(hash inserted during unwrap)VARIABLE <p^_f_species1> "faceif(facedelta(<boundaries>),<p^_species1>,<p^_f_species1>)" # special case boundary face pressure value to be equal to boundary cell value.  Without this the boundary pressure will be equally weighted.
+                        #(hash inserted during unwrap)END_IF
+                     #(hash inserted during unwrap)END_IF
+                  #(hash inserted during unwrap)END_IF
+            
+            
+            # use the navier_stokes dynamic_force template to create the dynamic force variables, including the fluid phase pressure term (only) which is common to all phases
                #(comment created during unwrap): new block = ../../templates/navier_stokes/dynamic_force.arb: sub_block = 0
                #(hash inserted during unwrap)INCLUDE_TEMPLATE 'navier_stokes/dynamic_force' 
                
@@ -1708,46 +2065,74 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                   #(hash inserted during unwrap)END_IF
             
             
-            # add on contributions due to disperse phase species pressures, possibly osmotic in nature so not multiplied by phi
+            # add on contributions due to disperse phase species pressures, including possible phase specific (<p^_species>) and non-phase specific (<p_species>) contributions
                #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_dynamic_force.arb: sub_block = 0
                #(hash inserted during unwrap)INCLUDE_LOCAL 'single_species_dynamic_force' 
                
                #(hash inserted during unwrap)MARKDOWN
-               #(hash inserted during unwrap)Here we add contributions to the dynamic force due to the already calculated <p_species> for each disperse phase
+               #(hash inserted during unwrap)Here we add contributions to the dynamic force due to the already calculated <p_species> and <p^_species> for each disperse phase
                #(hash inserted during unwrap)END_MARKDOWN
                
-               VARIABLE <dynamic_force_c_species1[l=1]> '<dynamic_force_c_species1[l=1]>-celldivgrad[l=1](<p_f_species1>)/(<phi_bounded_species1>)'
-               VARIABLE <dynamic_force_c_species1[l=2]> '<dynamic_force_c_species1[l=2]>-celldivgrad[l=2](<p_f_species1>)/(<phi_bounded_species1>)'
-               
+               # performing index string loops on the following index list pairs:
+               #  <<i>> <<dimensions>>
+               VARIABLE <dynamic_force_c_species1[l=1]> '<dynamic_force_c_species1[l=1]>-celldivgrad[l=1](<p_f_species1>)/(<phi_bounded_species1>)-celldivgrad[l=1](<p^_f_species1>)'
+               VARIABLE <dynamic_force_c_species1[l=2]> '<dynamic_force_c_species1[l=2]>-celldivgrad[l=2](<p_f_species1>)/(<phi_bounded_species1>)-celldivgrad[l=2](<p^_f_species1>)'
                
                # trying different phi variables for the osmotic pressure term
                
                #REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_nob_<<species>>>" # version1, unstable in presence of large phi gradients
                #REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_<<species>>>"
                
-               
                # now deal with dynamic_force_f
+               # define scope of averaging variable, and default which is for 
                   #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_dynamic_force.arb: sub_block = 1
                   #(hash inserted during unwrap)IF 1
-                  # we are now using the bounded phi from the adjacent domain cell when considering the boundaries, which is the relevant physical phi used in the rhiechow boundary condition treatment
-                  # VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[dxunit](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
-                  VARIABLE <dynamic_force_f_species1> "<dynamic_force_f_species1>-facegrad[dxunit](<p_species1>)/(<phi_f_bounded_harmonic_species1>)"
+                  
                   #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_dynamic_force.arb: sub_block = 1
                   #(hash inserted during unwrap)ELSE_IF 
-                  #(hash inserted during unwrap)# VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad(<p_<<species>>>)/(<phi_f_bounded_<<species>>>)"
-                  #(hash inserted during unwrap)VARIABLE <dynamic_force_f_species1> "<dynamic_force_f_species1>-facegrad(<p_species1>)/(<phi_f_bounded_harmonic_species1>)"
+                  #(hash inserted during unwrap)
                   #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_dynamic_force.arb: sub_block = 1
                   #(hash inserted during unwrap)ELSE_IF 
-                  #(hash inserted during unwrap)# VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[adjacentcells](<p_<<species>>>)/(<phi_f_bounded_adjacent_<<species>>>)"
-                  #(hash inserted during unwrap)VARIABLE <dynamic_force_f_species1> "<dynamic_force_f_species1>-facegrad[adjacentcells](<p_species1>)/(<phi_f_bounded_harmonic_species1>)"
-                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_dynamic_force.arb: sub_block = 1
-                  #(hash inserted during unwrap)ELSE
-                  #(hash inserted during unwrap)ERROR 'No valid dynamicforcefmethod is chosen in the multifluid/single_species_dynamic_force template file: string currently set as dxunit'
+                  #(hash inserted during unwrap)
                   #(hash inserted during unwrap)END_IF
+               
+               VARIABLE <dynamic_force_f_species1> "<dynamic_force_f_species1>-facegrad[dxunit](<p_species1>)/(<phi_f_bounded_harmonic_species1>)-facegrad[dxunit](<p^_species1>)"
+               
+                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_dynamic_force.arb: sub_block = 1
+                  #(hash inserted during unwrap)IF 
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_dynamic_force.arb: sub_block = 2
+                     #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)ERROR "<p^_f_species1_species0> should be defined"
+                     #(hash inserted during unwrap)END_IF
+                  #(hash inserted during unwrap)# reaction force
+                  #(hash inserted during unwrap)#  VARIABLE <dynamic_force_c_species0[l=<<i>>]> '<dynamic_force_c_species0[l=<<i>>]>+<phi_bounded_<<species>>>*celldivgrad[l=<<i>>](<p^_f_<<species>>_species0>)/(<phi_bounded_species0>)'
+                  #(hash inserted during unwrap)#  VARIABLE <dynamic_force_f_species0> "<dynamic_force_f_species0>+<<dynamic_force_f_phi_variable>>*facegrad[<<facegrad_method>>](<p^_<<species>>_species0>)/(<<dynamic_force_f_phi_variable_species0>>)"
+                  #(hash inserted during unwrap)# additional force on fluid
+                  #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+                  #(hash inserted during unwrap)#  <<i>> 1,2
+                  #(hash inserted during unwrap)VARIABLE <dynamic_force_c_species0[l=1]> '<dynamic_force_c_species0[l=1]>-<phi_bounded_species1>*celldivgrad[l=1](<p^_f_species1_species0>)/(<phi_bounded_species0>)'
+                  #(hash inserted during unwrap)VARIABLE <dynamic_force_c_species0[l=2]> '<dynamic_force_c_species0[l=2]>-<phi_bounded_species1>*celldivgrad[l=2](<p^_f_species1_species0>)/(<phi_bounded_species0>)'
+                  #(hash inserted during unwrap)VARIABLE <dynamic_force_f_species0> "<dynamic_force_f_species0>-<phi_f_bounded_harmonic_species1>*facegrad[dxunit](<p^_species1_species0>)/(<phi_f_bounded_harmonic_species0>)"
+                  #(hash inserted during unwrap)END_IF
+               
+                  #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_dynamic_force.arb: sub_block = 1
+                  #(hash inserted during unwrap)IF 
+                     #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/single_species_dynamic_force.arb: sub_block = 2
+                     #(hash inserted during unwrap)IF 
+                     #(hash inserted during unwrap)ERROR "<p_f_species1_species0> should be defined"
+                     #(hash inserted during unwrap)END_IF
+                  #(hash inserted during unwrap)# performing index string loops on the following index list pairs:
+                  #(hash inserted during unwrap)#  <<i>> 1,2
+                  #(hash inserted during unwrap)VARIABLE <dynamic_force_c_species0[l=1]> '<dynamic_force_c_species0[l=1]>-celldivgrad[l=1](<p_f_species1_species0>)/(<phi_bounded_species0>)'
+                  #(hash inserted during unwrap)VARIABLE <dynamic_force_c_species0[l=2]> '<dynamic_force_c_species0[l=2]>-celldivgrad[l=2](<p_f_species1_species0>)/(<phi_bounded_species0>)'
+                  #(hash inserted during unwrap)VARIABLE <dynamic_force_f_species0> "<dynamic_force_f_species0>-facegrad[dxunit](<p_species1_species0>)/(<phi_f_bounded_harmonic_species0>)"
+                  #(hash inserted during unwrap)END_IF
+               
             
             
                #(comment created during unwrap): new block = ../../templates/multiphase/multifluid/dynamic_force.arb: sub_block = 1
                #(hash inserted during unwrap)IF 1
+               WARNING 'mixture u_f_method has not been adapted to <p^_species> specific pressures yet'
                # for the mixture method, <dynamic_force_f_{correction}> is based solely on the phase pressures, without other body forces etc
                # calculate these here overwriting those calculated above, using navier_stokes templates but with dummy dynamic_force_c and dynamic_force_f variables
                # note that this does not touch <dynamic_force_c[l=:]> or <dynamic_force_f>, which are used in the momentum equations and boundary conditions, respectively
@@ -2398,8 +2783,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          
          
          # method used for rhie-chow u_f interpolation
-         
-         #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
+         #GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+         # default behaviour for v0.60
          
       
       # both of these strings are now set globally in constants, but can be overwritten with local values here
@@ -2408,16 +2793,17 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       
       #REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
       # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
+      #REPLACEMENTS D "<<stress_method>>" W "version3" # same as version2 in terms of this template, different for viscosity calculation
       # now create conservation equations
       
       # mass conservation (actually, volume conservation)
       FACE_DERIVED <phi_f_adv_species0> 'faceave[advection](<phi_bounded_species0>,<u_f_species0>,<adv_limiter>)' ON <allfaces>
       FACE_LOCAL <phiu_f_species0> '<phi_f_adv_species0>*<u_f_species0>' ON <allfaces>
-      CELL_EQUATION <continuity_species0> 'celldiv(1.d0*<phiu_f_species0>)*1.d0' ON <domain>
+      CELL_EQUATION <continuity_species0> 'celldiv(1.d0*<phiu_f_species0>)/1.d0' ON <domain>
       CELL_EQUATION <continuity_species0> '(<phi_species0>-<phi_species0[r=1]>)/<dt>+<continuity_species0>' ON <domain>
       FACE_DERIVED <phi_f_adv_species1> 'faceave[advection](<phi_bounded_species1>,<u_f_species1>,<adv_limiter>)' ON <allfaces>
       FACE_LOCAL <phiu_f_species1> '<phi_f_adv_species1>*<u_f_species1>' ON <allfaces>
-      CELL_EQUATION <continuity_species1> 'celldiv(1.d0*<phiu_f_species1>)*1.d0' ON <domain>
+      CELL_EQUATION <continuity_species1> 'celldiv(1.d0*<phiu_f_species1>)/1.d0' ON <domain>
       CELL_EQUATION <continuity_species1> '(<phi_species1>-<phi_species1[r=1]>)/<dt>+<continuity_species1>' ON <domain>
       
       
