@@ -12,3 +12,7 @@ GLOBAL_REPLACEMENTS R "<<viscosity_method>>" W "joe301019"
 GLOBAL_REPLACEMENTS R "<<osmotic_pressure_method>>" W "dilute"
 GLOBAL_REPLACEMENTS R "<<chemical_potential_method>>" W "carnahanstarling"
 GLOBAL_REPLACEMENTS R "<<steric_pressure_method>>" W "none"
+
+
+GLOBAL_REPLACEMENTS R "<<faxen>>" W "1"
+GLOBAL_REPLACEMENTS R "<<faxen_method>>" W "version3"
