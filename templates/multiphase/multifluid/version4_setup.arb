@@ -13,6 +13,8 @@ GLOBAL_REPLACEMENTS R "<<osmotic_pressure_method>>" W "dilute"
 GLOBAL_REPLACEMENTS R "<<chemical_potential_method>>" W "carnahanstarling"
 GLOBAL_REPLACEMENTS R "<<steric_pressure_method>>" W "none"
 
-
-GLOBAL_REPLACEMENTS R "<<faxen>>" W "1"
+# set type of faxen force to be used, but must include species_extra_particle_forces to actually include this force (and only include it once!)
+# note every time this template file is included, the faxen force will be applied
+#GLOBAL_REPLACEMENTS R "<<faxen>>" W "1"
+# no, instead up to the user when to include this force to prevent accidental double counting
 GLOBAL_REPLACEMENTS R "<<faxen_method>>" W "version3"

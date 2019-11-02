@@ -102,4 +102,7 @@ ELSE
 # and an opposite contribution to the fluid species, specific to volume fraction
   VARIABLE <extra_force_species0[l=<<i>>]> "<extra_force_species0[l=<<i>>]> - <particle_force_lift_slip_<<species>>[l=<<i>>]>*<phi_bounded_<<species>>>/<phi_bounded_species0>"
 
+# output on force
+  VARIABLE <particle_force_lift_slip_<<species>>[l=<<i>>]> output
+
 END_IF
