@@ -6,7 +6,7 @@ GLOBAL_REPLACEMENTS R "<<drag_method>>" W "version2" # drag method hasn't change
 GLOBAL_REPLACEMENTS R "<<hindered_settling_function>>" W "richardsonzaki"
 
 GLOBAL_REPLACEMENTS R "<<stress_method>>" W "version4"
-GLOBAL_REPLACEMENTS R "<<viscosity_method>>" W "joe301019"
+#GLOBAL_REPLACEMENTS R "<<viscosity_method>>" W "joe301019" # allow this to be set in viscosity file
 
 # set default osmotic pressure terms, but do not turn them on here
 GLOBAL_REPLACEMENTS R "<<osmotic_pressure_method>>" W "dilute"
