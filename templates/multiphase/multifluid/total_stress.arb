@@ -27,7 +27,7 @@ IF {{ return (string_test('<<stress_method>>','version1') || string_test('<<stre
 ELSE
 # version2, version4 and version4_species - these are all based on mixture velocities
 # assemble mixture averaged velocity
-# calculate velocity gradients for all species at the same time - time about variable type
+# calculate velocity gradients for all species at the same time - time about variable type - used (eg) in boundary conditions etc
   {{
     my $return_string = '';
     $return_string .= "CELL_DERIVED <u_mixture[l=<<i>>]> '0.d0' ON <allcells>\n";
@@ -40,7 +40,7 @@ ELSE
   
 # calculate the fluid species0 viscous stress, which for all methods is now based on the mixture (volume) averaged velocity and mixture viscosity (and hence mixture stress)
   FACE_LOCAL <ugrad_f_mixture[l=<<i>>,<<j>>]> "facegrad[l=<<i>>,<<reflect=<<j>>>>](<u_mixture[l=<<j>>]>)" ON <allfaces>
-  FACE_LOCAL <gamma_f_mixture[l=<<i>>,<<j>>]> "(<ugrad_f_mixture[l=<<i>>,<<j>>]>+<ugrad_f_mixture[l=<<j>>,<<i>>]>)" ON <allfaces>
+  FACE_DERIVED <gamma_f_mixture[l=<<i>>,<<j>>]> "(<ugrad_f_mixture[l=<<i>>,<<j>>]>+<ugrad_f_mixture[l=<<j>>,<<i>>]>)" ON <allfaces>
   FACE_DERIVED <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_mixture[l=<<i>>,<<j>>]>" ON <allfaces> # note, maxima will simplify diagonal components
 
 # and the solid phases stresses

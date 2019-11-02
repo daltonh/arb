@@ -9,6 +9,8 @@ INCLUDE "default_replacement_strings"
 IF {{ return ( string_test('<<stress_method>>','version4') || string_test('<<stress_method>>','version4_species') ) }}
 # version4, based on mixture velocities, with call-out to single_species_collision_viscosity_version4 template
 
+# you can pass a <<viscosity_method>> through this file to single_species_collision_viscosity_version4
+
   IF {{ return string_test('<<species>>','species0') }}
 # this should be the viscosity increase within the fluid (same as each solid too) due to the presence of the particles, but without particle particle interactions
 # einstein relationship applied to continuous phase, based on total solids present
