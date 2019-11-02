@@ -22,8 +22,14 @@ END_IF
 
 #vc shear gradient  lift force acting on solid - based on u_maxi
 #u_max=2*<u_av_species0> for cylindrical or squre duct else 3/2*<u_av_species0>
+
+
+CELL_DERIVED <particle_force_vc_lift_<<species>>[l=2]> "<particle_force_vc_<<species>>>*(2*<u_av_species0>)**2*<wall_normal_unit[l=2]>" ON <allcells> output
+VARIABLE <extra_force_<<species>>[l=2]> "<extra_force_<<species>>[l=2]> + <particle_force_vc_lift_<<species>>[l=2]>"
+
+MARKDOWN
 {{ return vector_expand(
 'CELL_DERIVED <particle_force_vc_lift_<<species>>[l=2]> "<particle_force_vc_<<species>>>*(2*<u_av_species0>)**2*<wall_normal_unit[l=2]>" ON <allcells> output',
 'VARIABLE <extra_force_<<species>>[l=2]> "<extra_force_<<species>>[l=2]> + <particle_force_vc_lift_<<species>>[l=2]>"'
 )}}
-
+END_MARKDOWN
