@@ -158,7 +158,7 @@ ELSE_IF {{ return string_test('<<viscosity_method>>','joe301019')}}
   CELL_DERIVED <mu^_sid1_c_mixture> "(4.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0)*<mu^_f_bar>" ON <allcells> output
   CELL_DERIVED <mu^_sid2_c_mixture> "(2.d0*<mu^_B^_1>/7.d0)*<mu^_f_bar>" ON <allcells> output
 
-ELSE_IF {{ return string_test('<<viscosity_method>>','joe301019')}}
+ELSE_IF {{ return string_test('<<viscosity_method>>','joe021119')}}
 
 # calculate functions that are first all functions of allsolids volume fraction (for now)
 
