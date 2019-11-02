@@ -111,3 +111,14 @@ IF <<vc_wall_lift>>
     return $return_string;
   }}
 END_IF
+
+REPLACEMENTS D "<<shear_gradient_unbounded_lift>>" W "0"
+IF <<shear_gradient_unbounded_lift>>
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "INCLUDE_LOCAL 'single_species_sheargrad_unbounded_lift' R '<<species>>' W '$species'\n";
+    }
+    return $return_string;
+  }}
+END_IF
