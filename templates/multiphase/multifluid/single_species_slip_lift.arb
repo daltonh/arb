@@ -66,22 +66,24 @@ ELSE
   BLOCK # place this code in a block as it involves 3D vectors always, because of curl
   # not sure if this is working - not validated
     REPLACEMENTS R '<<dimensions>>' W '1,2,3'
-    FACE_LOCAL <omega_f_fluid[l=<<i>>]> "<omega_f_fluid[l=<<i>>]> + permutation(<<i>>,<<j>>,<<k>>)*<ugrad_f_fluid[l=<<j>>,<<k>>]>" ON <allfaces> output # omega = nabla cross u_fluid = curl of u_fluid
-    CELL_LOCAL <omega_fluid[l=<<i>>]> "<omega_f_fluid[l=<<i>>]>" ON <allcells> output
-    CELL_LOCAL <omega_mag> "mag(<omega_fluid[l=:]>)" ON <allcells> output
-    CELL_OUTPUT <particle_force_Re_p_<<species>>> "<rho_fluid>*mag(<u_slip_<<species>>[l=:]>)*2.d0*<a_<<species>>>/<mu_fluid>" ON <allcells>
-    CELL_DERIVED <particle_force_Re_omega_<<species>>> "<rho_fluid>*<omega_mag>*(2.d0*<a_<<species>>>)**2/<mu_fluid>" ON <allcells>
+    FACE_DERIVED <omega_f_mixture[l=<<i>>]> "<omega_f_mixture[l=<<i>>]> + permutation(<<i>>,<<j>>,<<k>>)*<ugrad_f_mixture[l=<<j>>,<<k>>]>" ON <allfaces> output # omega = nabla cross u_species0 = curl of u_species0
+    CELL_DERIVED <omega_mixture[l=<<i>>]> "<omega_f_mixture[l=<<i>>]>" ON <allcells> output
+    CELL_LOCAL <omega_mag> "mag(<omega_mixture[l=:]>)" ON <allcells> output
+    CELL_OUTPUT <particle_force_Re_p_<<species>>> "<rho_species0>*mag(<u_slip_<<species>>[l=:]>)*2.d0*<a_<<species>>>/<mu_species0>" ON <allcells>
+    CELL_DERIVED <particle_force_Re_omega_<<species>>> "<rho_species0>*<omega_mag>*(2.d0*<a_<<species>>>)**2/<mu_species0>" ON <allcells>
     CELL_OUTPUT <particle_force_phi_<<species>>> "<particle_force_Re_p_<<species>>>*<particle_force_Re_omega_<<species>>>" ON <allcells> 
     
     IF {{ return (string_test('<<slip_lift_method>>','moraga')) }}
       NONE_CONSTANT <particle_force_lift_coefficient_<<species>>> 0.0767 # for low Re_p*Re_omega
     ELSE_IF {{ return (string_test('<<slip_lift_method>>','saffmannew')) }}
       CELL_LOCAL <particle_force_lift_coefficient_<<species>>> "3.d0*6.46/(2.d0*<pi>*sqrt(<particle_force_Re_omega_<<species>>>))" ON <allcells> # saffman 
+    ELSE_IF {{ return (string_test('<<slip_lift_method>>','inviscid')) }}
+      NONE_CONSTANT <particle_force_lift_coefficient_<<species>>> -0.5d0 # inviscid analysis gives lift in opposite direction
     ELSE
       ERROR "slip_lift_method = <<slip_lift_method>> not known in single_species_slip_lift template"
     END_IF
 
-    CELL_DERIVED <particle_force_lift_slip_<<species>>[l=<<i>>]> "-<particle_force_slip_lift_multiplier>*<particle_force_lift_coefficient_<<species>>>*<rho_<<species>>>*cross[l=<<i>>](<u_slip_<<species>>[l=:]>,<omega_f_fluid[l=:]>)" ON <domain> output
+    CELL_DERIVED <particle_force_lift_slip_<<species>>[l=<<i>>]> "-<particle_force_slip_lift_multiplier>*<particle_force_lift_coefficient_<<species>>>*<rho_<<species>>>*cross[l=<<i>>](<u_slip_<<species>>[l=:]>,<omega_mixture[l=:]>)" ON <domain> output
   END_BLOCK
 
 END_IF

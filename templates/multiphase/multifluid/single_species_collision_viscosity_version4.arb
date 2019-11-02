@@ -11,7 +11,8 @@ END_MARKDOWN
 # INCLUDE "species_viscosity" R "<<viscosity_method>>" W "<my_choice>"
 #
 #REPLACEMENTS D "<<viscosity_method>>" W "daltonhold" # initial very rough fitting
-REPLACEMENTS D "<<viscosity_method>>" W "joe301019" # joe's fitting from 30/10/19, good for at least intermediate phi
+#REPLACEMENTS D "<<viscosity_method>>" W "joe301019" # joe's fitting from 30/10/19, good for at least intermediate phi
+REPLACEMENTS D "<<viscosity_method>>" W "joe021119" # joe's fitting from 2/10/19, based on mu_sid, partitioned by dalton into musid1 and musid2
 
 IF {{ return string_test('<<stress_method>>','version4_species')}}
   ERROR "single_species_collision_viscosity_version4 cannot handle stress_method = version4_species yet"
@@ -60,97 +61,6 @@ IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
   CONSTANT <mu^_B^_2_a> 14.41944809
 # function
   CELL_DERIVED <mu^_B^_2> "0.5d0*<mu^_B^_2_a>/(<mu^_r_infty_minus2>^0.356d0)" ON <allcells> output
-
-# finally assemble viscosity functions from B^_1, B^_2 and f_bar
-  CELL_DERIVED <mu^_col_c_mixture> "<mu^_B^_1>+<mu^_B^_2>" ON <allcells> output
-  CELL_DERIVED <mu^_sid1_c_mixture> "(4.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0)*<mu^_f_bar>" ON <allcells> output
-  CELL_DERIVED <mu^_sid2_c_mixture> "(2.d0*<mu^_B^_1>/7.d0)*<mu^_f_bar>" ON <allcells> output
-
-ELSE_IF {{ return string_test('<<viscosity_method>>','berryold')}}
-
-# calculate functions that are first all functions of allsolids volume fraction (for now)
-
-# r_infty from phi
-# constants
-  CONSTANT <mu^_r_infty_b> -0.2d0 # based of mu_r_infty function
-  CONSTANT <mu^_r_infty_c1> 0.2 # characteristic volume fraction of lower spike function
-  CONSTANT <mu^_r_infty_c2> 0.75 # characteristic volume fraction of upper spike function
-  CONSTANT <mu^_r_infty_n1> 0.333d0 # exponent of lower spike function
-  CONSTANT <mu^_r_infty_n2> 1.0 # exponent of upper spike function
-  CONSTANT <mu^_r_infty_phi_max_allsolids> "<phi_max_allsolids>"
-# function
-  CELL_DERIVED <mu^_r_infty> "<mu^_r_infty_b>+(<mu^_r_infty_c1>/<mu^_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+(<mu^_r_infty_c2>/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>))^(<mu^_r_infty_n2>)" ON <allcells> output
-  CELL_LOCAL <mu^_r_infty_minus2> "<mu^_r_infty>-2.d0" ON <allcells> output
-
-# f_bar from phi
-# constants
-  CONSTANT <mu^_f_bar_low_p1> -1.885d4 
-  CONSTANT <mu^_f_bar_low_p2> -376d0
-  CONSTANT <mu^_f_bar_low_p3> 2658d0
-  CONSTANT <mu^_f_bar_low_p4> 2393d0
-  CONSTANT <mu^_f_bar_low_p5> -56.52d0
-  CONSTANT <mu^_f_bar_low_q1> 8070d0
-  CONSTANT <mu^_f_bar_low_q2> -5158d0
-  CONSTANT <mu^_f_bar_low_q3> -1814d0
-  CONSTANT <mu^_f_bar_low_q4> 1417d0
-  CONSTANT <mu^_f_bar_al> 15.d0
-  CONSTANT <mu^_f_bar_x0> 0.35d0
-
-#weighting function
-CELL_DERIVED <mu^_f_bar_weighting> "1.d0/(1.d0+exp(-<mu^_f_bar_al>*(<mu^_r_infty>-<mu^_f_bar_x0>)))" ON <allcells> 
-
-#low phi f_bar fit
-CELL_DERIVED <mu^_f_bar_low> "(<mu^_f_bar_low_p1>*<mu^_phi_bounded_allsolids>**4.d0+<mu^_f_bar_low_p2>*<mu^_phi_bounded_allsolids>**3.d0+<mu^_f_bar_low_p3>*<mu^_phi_bounded_allsolids>**2.d0+<mu^_f_bar_low_p4>*<mu^_phi_bounded_allsolids>+<mu^_f_bar_low_p5>)/(<mu^_phi_bounded_allsolids>**4.d0+<mu^_f_bar_low_q1>*<mu^_phi_bounded_allsolids>**3.d0+<mu^_f_bar_low_q2>*<mu^_phi_bounded_allsolids>**2.d0+<mu^_f_bar_low_q3>*<mu^_phi_bounded_allsolids>+<mu^_f_bar_low_q4>)" ON <allcells> 
-
-#high phi f_bar fit
-CELL_DERIVED <mu^_f_bar_high> "(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)**-2/(6.d0*<mu^_B^_1_high>/7.d0+2.d0*<mu^_B^_2_high>/5.d0)" ON <allcells> 
-
-# function
-  CELL_DERIVED <mu^_f_bar> "(1.d0-<mu^_f_bar_weighting>)*<mu^_f_bar_low> + <mu^_f_bar_weighting>*<mu^_f_bar_high>" ON <allcells> output
-
-# B^_1 from r_infty
-# constants
-  CONSTANT <mu^_B^_1_low_c1> 3.988d0
-  CONSTANT <mu^_B^_1_low_c2> 3.382d0
-  CONSTANT <mu^_B^_1_low_n1> 0.2461d0
-  CONSTANT <mu^_B^_1_low_n2> 1.532d0
-  CONSTANT <mu^_B^_1_high_c1> 1.125d0
-  CONSTANT <mu^_B^_1_al> 4.d0
-  CONSTANT <mu^_B^_1_x0> "log(6.43)"
-
-#weighting function
-CELL_DERIVED <mu^_B^_1_weighting> "1.d0/(1.d0+exp(-<mu^_B^_1_al>*(log(<mu^_r_infty_minus2>)-<mu^_B^_1_x0>)))" ON <allcells> 
-
-#low r_infty B^_1 fit
-CELL_DERIVED <mu^_B^_1_low> "<mu^_B^_1_low_c1>*<mu^_r_infty_minus2>**<mu^_B^_1_low_n1>+<mu^_B^_1_low_c2>*<mu^_r_infty_minus2>**<mu^_B^_1_low_n2>" ON <allcells> 
-
-#high r_infty B^_1 fit
-CELL_DERIVED <mu^_B^_1_high> "<mu^_B^_1_high_c1>*<mu^_r_infty>**2.d0" ON <allcells> 
-
-# function
-  CELL_DERIVED <mu^_B^_1> "(1.d0-<mu^_B^_1_weighting>)*<mu^_B^_1_low> + <mu^_B^_1_weighting>*<mu^_B^_1_high>" ON <allcells> output
-
-# B^_2 from r_infty
-# constants
-  CONSTANT <mu^_B^_2_low_c1> 3.445d0
-  CONSTANT <mu^_B^_2_low_c2> 0.9501d0
-  CONSTANT <mu^_B^_2_low_n1> 0.2045d0
-  CONSTANT <mu^_B^_2_low_n2> 1.361d0
-  CONSTANT <mu^_B^_2_high_c1> 5.999d0
-  CONSTANT <mu^_B^_2_high_c2> 2.054d0
-  CONSTANT <mu^_B^_2_al> 4.d0
-  CONSTANT <mu^_B^_2_x0> "log(1.48)"
-#weighting function
-CELL_DERIVED <mu^_B^_2_weighting> "1.d0/(1.d0+exp(-<mu^_B^_2_al>*(log(<mu^_r_infty_minus2>)-<mu^_B^_2_x0>)))" ON <allcells> 
-
-#low r_infty B^_2 fit
-CELL_DERIVED <mu^_B^_2_low> "<mu^_B^_2_low_c1>*<mu^_r_infty_minus2>**<mu^_B^_2_low_n1>+<mu^_B^_2_low_c2>*<mu^_r_infty_minus2>**<mu^_B^_2_low_n2>" ON <allcells> 
-
-#high r_infty B^_2 fit
-CELL_DERIVED <mu^_B^_2_high> "<mu^_B^_2_high_c1>*log(<mu^_r_infty>)-<mu^_B^_2_high_c2>" ON <allcells> 
-
-# function
-  CELL_DERIVED <mu^_B^_2> "(1.d0-<mu^_B^_2_weighting>)*<mu^_B^_2_low> + <mu^_B^_2_weighting>*<mu^_B^_2_high>" ON <allcells> output
 
 # finally assemble viscosity functions from B^_1, B^_2 and f_bar
   CELL_DERIVED <mu^_col_c_mixture> "<mu^_B^_1>+<mu^_B^_2>" ON <allcells> output
@@ -248,6 +158,68 @@ ELSE_IF {{ return string_test('<<viscosity_method>>','joe301019')}}
   CELL_DERIVED <mu^_sid1_c_mixture> "(4.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0)*<mu^_f_bar>" ON <allcells> output
   CELL_DERIVED <mu^_sid2_c_mixture> "(2.d0*<mu^_B^_1>/7.d0)*<mu^_f_bar>" ON <allcells> output
 
+ELSE_IF {{ return string_test('<<viscosity_method>>','joe021119')}}
+
+# calculate functions that are first all functions of allsolids volume fraction (for now)
+
+# r_infty from phi
+# constants
+  CONSTANT <mu^_r_infty_b> -0.2d0 # based of mu_r_infty function
+  CONSTANT <mu^_r_infty_c1> 0.2 # characteristic volume fraction of lower spike function
+  CONSTANT <mu^_r_infty_c2> 0.75 # characteristic volume fraction of upper spike function
+  CONSTANT <mu^_r_infty_n1> 0.333d0 # exponent of lower spike function
+  CONSTANT <mu^_r_infty_n2> 1.0 # exponent of upper spike function
+  CONSTANT <mu^_r_infty_phi_max_allsolids> "<phi_max_allsolids>"
+# function
+  CELL_DERIVED <mu^_r_infty> "<mu^_r_infty_b>+(<mu^_r_infty_c1>/<mu^_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+(<mu^_r_infty_c2>/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>))^(<mu^_r_infty_n2>)" ON <allcells> output
+  CELL_LOCAL <mu^_r_infty_minus2> "<mu^_r_infty>-2.d0" ON <allcells> output
+
+# B^_1 from r_infty
+# constants
+  CONSTANT <mu^_B^_1_low_c1> 3.988d0
+  CONSTANT <mu^_B^_1_low_c2> 3.382d0
+  CONSTANT <mu^_B^_1_low_n1> 0.2461d0
+  CONSTANT <mu^_B^_1_low_n2> 1.532d0
+  CONSTANT <mu^_B^_1_high_c1> 1.125d0
+  CONSTANT <mu^_B^_1_al> 4.d0
+  CONSTANT <mu^_B^_1_x0> "log(6.43)"
+
+#weighting function
+  CELL_DERIVED <mu^_B^_1_weighting> "1.d0/(1.d0+exp(-<mu^_B^_1_al>*(log(<mu^_r_infty_minus2>)-<mu^_B^_1_x0>)))" ON <allcells> 
+
+#low r_infty B^_1 fit
+  CELL_DERIVED <mu^_B^_1_low> "<mu^_B^_1_low_c1>*<mu^_r_infty_minus2>**<mu^_B^_1_low_n1>+<mu^_B^_1_low_c2>*<mu^_r_infty_minus2>**<mu^_B^_1_low_n2>" ON <allcells> 
+
+#high r_infty B^_1 fit
+  CELL_DERIVED <mu^_B^_1_high> "<mu^_B^_1_high_c1>*<mu^_r_infty>**2.d0" ON <allcells> 
+
+# function
+  CELL_DERIVED <mu^_B^_1> "(1.d0-<mu^_B^_1_weighting>)*<mu^_B^_1_low> + <mu^_B^_1_weighting>*<mu^_B^_1_high>" ON <allcells> output
+
+# B^_2 from r_infty
+# constants
+  CONSTANT <mu^_B^_2_low_c1> 3.445d0
+  CONSTANT <mu^_B^_2_low_c2> 0.9501d0
+  CONSTANT <mu^_B^_2_low_n1> 0.2045d0
+  CONSTANT <mu^_B^_2_low_n2> 1.361d0
+  CONSTANT <mu^_B^_2_high_c1> 5.999d0
+  CONSTANT <mu^_B^_2_high_c2> 2.054d0
+  CONSTANT <mu^_B^_2_al> 4.d0
+  CONSTANT <mu^_B^_2_x0> "log(1.48)"
+#weighting function
+  CELL_DERIVED <mu^_B^_2_weighting> "1.d0/(1.d0+exp(-<mu^_B^_2_al>*(log(<mu^_r_infty_minus2>)-<mu^_B^_2_x0>)))" ON <allcells> 
+
+#low r_infty B^_2 fit
+  CELL_DERIVED <mu^_B^_2_low> "<mu^_B^_2_low_c1>*<mu^_r_infty_minus2>**<mu^_B^_2_low_n1>+<mu^_B^_2_low_c2>*<mu^_r_infty_minus2>**<mu^_B^_2_low_n2>" ON <allcells> 
+
+#high r_infty B^_2 fit
+  CELL_DERIVED <mu^_B^_2_high> "<mu^_B^_2_high_c1>*log(<mu^_r_infty>)-<mu^_B^_2_high_c2>" ON <allcells> 
+
+# function
+  CELL_DERIVED <mu^_B^_2> "(1.d0-<mu^_B^_2_weighting>)*<mu^_B^_2_low> + <mu^_B^_2_weighting>*<mu^_B^_2_high>" ON <allcells> output
+
+# finally assemble viscosity functions from B^_1, B^_2 and f_bar
+  CELL_DERIVED <mu^_col_c_mixture> "<mu^_B^_1>+<mu^_B^_2>" ON <allcells> output
 # Now trying mu_sid fit directly, but this will not work in anything but channel flow with mu^_sid1 and mu^sid2 not correctly defined
 
 # mu_sid from phi
@@ -271,23 +243,30 @@ ELSE_IF {{ return string_test('<<viscosity_method>>','joe301019')}}
   CONSTANT <mu^_sid_Kc> 0.1d0
 
 #weighting functions
-CELL_DERIVED <mu^_sid_low_weighting> "1.d0/(1.d0+exp(-<mu^_sid_low_al>*(<mu^_phi_bounded_allsolids>-<mu^_sid_low_x0>)))" ON <allcells> 
-CELL_DERIVED <mu^_sid_high_weighting> "1.d0/(1.d0+exp(-<mu^_sid_high_al>*(<mu^_phi_bounded_allsolids>-<mu^_sid_high_x0>)))" ON <allcells> 
+  CELL_DERIVED <mu^_sid_low_weighting> "1.d0/(1.d0+exp(-<mu^_sid_low_al>*(<mu^_phi_bounded_allsolids>-<mu^_sid_low_x0>)))" ON <allcells> 
+  CELL_DERIVED <mu^_sid_high_weighting> "1.d0/(1.d0+exp(-<mu^_sid_high_al>*(<mu^_phi_bounded_allsolids>-<mu^_sid_high_x0>)))" ON <allcells> 
 
 #low phi mu_sid fit
-CELL_DERIVED <mu^_sid_low> "(6.d0*<mu^_sid_Kc>/21.d0)*((4.5d0*<mu^_phi_bounded_allsolids>-1.d0)+(1.d0-<mu^_phi_bounded_allsolids>)**4.5)/(<mu^_phi_bounded_allsolids>**2*(1-<mu^_phi_bounded_allsolids>)**4.5)" ON <allcells>
+  CELL_DERIVED <mu^_sid_low> "(6.d0*<mu^_sid_Kc>/21.d0)*((4.5d0*<mu^_phi_bounded_allsolids>-1.d0)+(1.d0-<mu^_phi_bounded_allsolids>)**4.5)/(<mu^_phi_bounded_allsolids>**2*(1-<mu^_phi_bounded_allsolids>)**4.5)" ON <allcells>
 
 #moderate phi mu_sid fit
-CELL_DERIVED <mu^_sid_phillips> "<mu^_sid_phillips_c1>*exp(<mu^_sid_phillips_c2>*<mu^_phi_bounded_allsolids>)+<mu^_sid_phillips_c3>*exp(<mu^_sid_phillips_c4>*<mu^_phi_bounded_allsolids>)" ON <allcells>
+  CELL_DERIVED <mu^_sid_phillips> "<mu^_sid_phillips_c1>*exp(<mu^_sid_phillips_c2>*<mu^_phi_bounded_allsolids>)+<mu^_sid_phillips_c3>*exp(<mu^_sid_phillips_c4>*<mu^_phi_bounded_allsolids>)" ON <allcells>
 
 #high phi mu_sid fit
-CELL_DERIVED <mu^_sid_high> "(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)**-2" ON <allcells> 
+  CELL_DERIVED <mu^_sid_high> "(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)**-2" ON <allcells> 
 
 # function
   CELL_DERIVED <mu^_sid_c_mixture> "(1.d0-<mu^_sid_low_weighting>)*<mu^_sid_low> + <mu^_sid_low_weighting>*(1.d0-<mu^_sid_high_weighting>)*<mu^_sid_phillips> +<mu^_sid_high_weighting>*<mu^_sid_high>" ON <allcells> output
 
-  CELL_DERIVED <mu^_sid1_c_mixture> "0.5d0*<mu^_sid_c_mixture>" ON <allcells> output
-  CELL_DERIVED <mu^_sid2_c_mixture> "<mu^_sid1_c_mixture>" ON <allcells> output
+# partition using B coefficients
+  CELL_DERIVED <mu^_sid1_c_mixture> "<mu^_sid_c_mixture>*(4.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0)/cellmax((6.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0),<tinyish>)" ON <allcells> output
+  CELL_DERIVED <mu^_sid2_c_mixture> "<mu^_sid_c_mixture>*(2.d0*<mu^_B^_1>/7.d0)/cellmax((6.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0),<tinyish>)" ON <allcells> output
+
+# backcalculate f_bar
+  CELL_DERIVED <mu^_f_bar> "<mu^_sid_c_mixture>/cellmax((6.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0),<tinyish>)" ON <allcells> output
+
+# CELL_DERIVED <mu^_sid1_c_mixture> "0.5d0*<mu^_sid_c_mixture>" ON <allcells> output
+# CELL_DERIVED <mu^_sid2_c_mixture> "<mu^_sid1_c_mixture>" ON <allcells> output
 
 ELSE
   ERROR "viscosity_method = <<viscosity_method>> not done yet in single_species_viscosity_version4 template"
