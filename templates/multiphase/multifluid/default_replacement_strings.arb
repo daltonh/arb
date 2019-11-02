@@ -9,13 +9,13 @@ GLOBAL_REPLACEMENTS D "<<implicitadvection>>" W "1" # default is now implicit ad
 
 #GLOBAL_REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
 #GLOBAL_REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
-GLOBAL_REPLACEMENTS D "<<stress_method>>" W "version4" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
+GLOBAL_REPLACEMENTS D "<<stress_method>>" W "version4"
 
 # default hindered settling function is now as defined in masliyah79 = balls
 # version1 gives an equivalent hindered settling function which is / phi_0^2
 GLOBAL_REPLACEMENTS D "<<drag_method>>" W "version2" # this hasn't changed for a while
 
 # method used for rhie-chow u_f interpolation
-#GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' 
+#GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'mixture' # this requires modification now
 GLOBAL_REPLACEMENTS D '<<u_f_method>>' W 'species' # default behaviour for v0.60
 
