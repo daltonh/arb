@@ -106,8 +106,10 @@ ELSE_IF {{ return string_test('<<viscosity_method>>','joe301019')}}
 #high phi f_bar fit
   CELL_DERIVED <mu^_f_bar_high> "(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)**-2/(6.d0*<mu^_B^_1_high>/7.d0+2.d0*<mu^_B^_2_high>/5.d0)" ON <allcells> 
 
+  CONSTANT <mu^_f_bar_multiplier> 1.d0 # hook to increase anisotropy of structure
+
 # function
-  CELL_DERIVED <mu^_f_bar> "(1.d0-<mu^_f_bar_weighting>)*<mu^_f_bar_low> + <mu^_f_bar_weighting>*<mu^_f_bar_high>" ON <allcells> output
+  CELL_DERIVED <mu^_f_bar> "<mu^_f_bar_multiplier>*((1.d0-<mu^_f_bar_weighting>)*<mu^_f_bar_low> + <mu^_f_bar_weighting>*<mu^_f_bar_high>)" ON <allcells> output
 
 # B^_1 from r_infty
 # constants
@@ -255,8 +257,10 @@ ELSE_IF {{ return string_test('<<viscosity_method>>','joe021119')}}
 #high phi mu_sid fit
   CELL_DERIVED <mu^_sid_high> "(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)**-2" ON <allcells> 
 
+  CONSTANT <mu^_sid_multiplier> 1.d0 # hook to increase anisotropy of structure
+
 # function
-  CELL_DERIVED <mu^_sid_c_mixture> "(1.d0-<mu^_sid_low_weighting>)*<mu^_sid_low> + <mu^_sid_low_weighting>*(1.d0-<mu^_sid_high_weighting>)*<mu^_sid_phillips> +<mu^_sid_high_weighting>*<mu^_sid_high>" ON <allcells> output
+  CELL_DERIVED <mu^_sid_c_mixture> "<mu^_sid_multiplier>*((1.d0-<mu^_sid_low_weighting>)*<mu^_sid_low> + <mu^_sid_low_weighting>*(1.d0-<mu^_sid_high_weighting>)*<mu^_sid_phillips> +<mu^_sid_high_weighting>*<mu^_sid_high>)" ON <allcells> output
 
 # partition using B coefficients
   CELL_DERIVED <mu^_sid1_c_mixture> "<mu^_sid_c_mixture>*(4.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0)/cellmax((6.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0),<tinyish>)" ON <allcells> output

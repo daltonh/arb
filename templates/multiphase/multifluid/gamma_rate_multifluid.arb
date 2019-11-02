@@ -1,11 +1,19 @@
 MARKDOWN
-Calculating the laplacian of gamma tensor - Rate of gamma - For fluid
+Calculating the laplacian of gamma tensor - Rate of gamma - For <<species>>, which could be mixture
+Things have been renamed to be consistent with faxen etc, and by default use mixture velocities
 END_MARKDOWN
 
+REPLACEMENTS D "<<species_gammarate>>" W "mixture"
 
-<<dim1comment>>CELL_DERIVED <gammarate_species0[l=1]> "celldiv(dot(<facenorm[l=:]>,<gamma_species0[l=:,1]>))" ON <domain> output
-<<dim1comment>>CELL_DERIVED <gammarate_species0[l=1]> "celldiv(dot(<facenorm[l=:]>,<gamma_species0[l=:,1]>))" ON <domain> output
-<<dim3comment>>CELL_DERIVED <gammarate_species0[l=3]> "celldiv(dot(<facenorm[l=:]>,<gamma_species0[l=:,3]>))" ON <domain> output
+CELL_DERIVED <laplacian_<<species_gammarate>>[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<gamma_f_<<species_gammarate>>[l=:,<<i>>]>))" ON <domain> output
+#CELL_DERIVED <gammarate_<<species>>[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<gamma_f_<<mixture>>[l=:,<<i>>]>))" ON <domain> output
+
+CELL_DERIVED <laplacian_magnitude_<<species_gammarate>>> "sqrt(cellmax(dot(<laplacian_<<species_gammarate>>[l=:]>,<laplacian_<<species_gammarate>>[l=:]>),<tinyish>))" ON <domain> output
+
+#<<dim1comment>>CELL_DERIVED <gammarate_species0[l=1]> "celldiv(dot(<facenorm[l=:]>,<gamma_species0[l=:,1]>))" ON <domain> output
+## bug
+#<<dim1comment>>CELL_DERIVED <gammarate_species0[l=1]> "celldiv(dot(<facenorm[l=:]>,<gamma_species0[l=:,1]>))" ON <domain> output
+#<<dim3comment>>CELL_DERIVED <gammarate_species0[l=3]> "celldiv(dot(<facenorm[l=:]>,<gamma_species0[l=:,3]>))" ON <domain> output
 
 #<<dim1comment>>CELL_DERIVED <gammarate_<<species>>[l=1]> "celldiv(dot(<facenorm[l=:]>,<gamma_<<species>>[l=:,1]>))" ON <domain> output
 #<<dim2comment>>CELL_DERIVED <gammarate_<<species>>[l=2]> "celldiv(dot(<facenorm[l=:]>,<gamma_<<species>>[l=:,2]>))" ON <domain> output
@@ -15,6 +23,6 @@ END_MARKDOWN
 #CELL_DERIVED <gammarate_magnitude_species0> "sqrt(cellmax(cellave(dot(<gammarate_species0[l=:]>,<gammarate_species0[l=:]>)),<tinyish>))" ON <domain> output
 #CELL_DERIVED <gammarate_magnitude_<<species>>> "sqrt(cellmax(cellave(dot(<gammarate_<<species>>[l=:]>,<gammarate_<<species>>[l=:]>)),<tinyish>))" ON <domain> output
 
-CELL_DERIVED <gammarate_magnitude_species0> "sqrt(cellmax(dot(<gammarate_species0[l=:]>,<gammarate_species0[l=:]>),<tinyish>))" ON <domain> output
+#CELL_DERIVED <gammarate_magnitude_species0> "sqrt(cellmax(dot(<gammarate_species0[l=:]>,<gammarate_species0[l=:]>),<tinyish>))" ON <domain> output
 #CELL_DERIVED <gammarate_magnitude_<<species>>> "sqrt(cellmax(dot(<gammarate_<<species>>[l=:]>,<gammarate_<<species>>[l=:]>),<tinyish>))" ON <domain> output
 
