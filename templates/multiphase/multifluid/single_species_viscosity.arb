@@ -15,20 +15,40 @@ IF {{ return ( string_test('<<stress_method>>','version4') || string_test('<<str
 # this should be the viscosity increase within the fluid (same as each solid too) due to the presence of the particles, but without particle particle interactions
 # einstein relationship applied to continuous phase, based on total solids present
     CELL_DERIVED <mu_c_<<species>>> [Pa.s] "<mu_species0>*(1.d0+2.5d0*(1.d0-<phi_bounded_<<species>>>))" ON <allcells>
-    FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> output # used in stress
+    IF 0
+      FACE_DERIVED <mu_f_<<species>>> "faceave[adjacentcellsevenweighting](<mu_c_<<species>>>)" ON <allfaces> output # used in stress
+    ELSE_IF 0
+      FACE_DERIVED <mu_f_<<species>>> "faceif(facedelta(<boundaries>),faceave[downcell](<mu_c_<<species>>>),faceave[harmonic](<mu_c_<<species>>>))" ON <allfaces> output # used in stress
+    ELSE
+      FACE_DERIVED <mu_f_<<species>>> "faceave[harmonic](<mu_c_<<species>>>)" ON <allfaces> output # used in stress
+    END_IF
 # note that the correction viscosity is actually viscosity divided by volume fraction
     FACE_LOCAL <mu_f_correction_<<species>>> "<mu_f_<<species>>>/(<phi_bounded_<<species>>>)" ON <allfaces> # used in rhie-chow
   ELSE_IF {{ return string_test('<<stress_method>>','version4')}}
     INCLUDE_LOCAL "single_species_collision_viscosity_version4" # calculate <mu^_col_c_mixture>, <mu^_sid1_c_mixture> and <mu^_sid2_c_mixture>, using <<viscosity_method>>
-    FACE_DERIVED <mu^_col_f_mixture> "faceave[harmonic](<mu^_col_c_mixture>)" ON <allfaces> output # used in stress
-    FACE_DERIVED <mu^_sid1_f_mixture> "faceave[harmonic](<mu^_sid1_c_mixture>)" ON <allfaces> output # used in stress
-    FACE_DERIVED <mu^_sid2_f_mixture> "faceave[harmonic](<mu^_sid2_c_mixture>)" ON <allfaces> output # used in stress
+# hack to check whether boundary viscosity is causing the problem
+    IF 0
+      FACE_DERIVED <mu^_col_f_mixture>  "faceave[adjacentcellsevenweighting](<mu^_col_c_mixture>)" ON <allfaces> output # used in stress
+      FACE_DERIVED <mu^_sid1_f_mixture> "faceave[adjacentcellsevenweighting](<mu^_sid1_c_mixture>)" ON <allfaces> output # used in stress
+      FACE_DERIVED <mu^_sid2_f_mixture> "faceave[adjacentcellsevenweighting](<mu^_sid2_c_mixture>)" ON <allfaces> output # used in stress
+    ELSE_IF 0
+      FACE_DERIVED <mu^_col_f_mixture> "faceif(facedelta(<boundaries>),faceave[downcell](<mu^_col_c_mixture>),faceave[harmonic](<mu^_col_c_mixture>))" ON <allfaces> output # used in stress
+      FACE_DERIVED <mu^_sid1_f_mixture> "faceif(facedelta(<boundaries>),faceave[downcell](<mu^_sid1_c_mixture>),faceave[harmonic](<mu^_sid1_c_mixture>))" ON <allfaces> output # used in stress
+      FACE_DERIVED <mu^_sid2_f_mixture> "faceif(facedelta(<boundaries>),faceave[downcell](<mu^_sid2_c_mixture>),faceave[harmonic](<mu^_sid2_c_mixture>))" ON <allfaces> output # used in stress
+    ELSE
+      FACE_DERIVED <mu^_col_f_mixture> "faceave[harmonic](<mu^_col_c_mixture>)" ON <allfaces> output # used in stress
+      FACE_DERIVED <mu^_sid1_f_mixture> "faceave[harmonic](<mu^_sid1_c_mixture>)" ON <allfaces> output # used in stress
+      FACE_DERIVED <mu^_sid2_f_mixture> "faceave[harmonic](<mu^_sid2_c_mixture>)" ON <allfaces> output # used in stress
+    END_IF
 # note that the correction viscosity is actually viscosity divided by volume fraction
 # so multiply a sum of the mu^ viscosities by mu_0 and phi_s
     FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*(<mu^_col_f_mixture>+<mu^_sid1_f_mixture>+<mu^_sid2_f_mixture>)*(1.d0-<phi_f_bounded_species0>)" ON <allfaces> # used in rhie-chow
   ELSE
     ERROR "single_species_viscosity cannot handle stress_method = version4_species yet"
   END_IF
+
+# hack to check if varying <mu_f_correction_<<species>>> is causing problems
+# FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>" ON <allfaces> # used in rhie-chow
 
 ELSE_IF {{ return string_test('<<stress_method>>','version1') }}
 # split stress between phases using the simplest possible consistent partitioning
