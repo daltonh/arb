@@ -104,7 +104,8 @@ ELSE_IF {{ return string_test('<<viscosity_method>>','joe301019')}}
   CELL_DERIVED <mu^_f_bar_low> "(<mu^_f_bar_low_p1>*<mu^_phi_bounded_allsolids>**4.d0+<mu^_f_bar_low_p2>*<mu^_phi_bounded_allsolids>**3.d0+<mu^_f_bar_low_p3>*<mu^_phi_bounded_allsolids>**2.d0+<mu^_f_bar_low_p4>*<mu^_phi_bounded_allsolids>+<mu^_f_bar_low_p5>)/(<mu^_phi_bounded_allsolids>**4.d0+<mu^_f_bar_low_q1>*<mu^_phi_bounded_allsolids>**3.d0+<mu^_f_bar_low_q2>*<mu^_phi_bounded_allsolids>**2.d0+<mu^_f_bar_low_q3>*<mu^_phi_bounded_allsolids>+<mu^_f_bar_low_q4>)" ON <allcells> 
 
 #high phi f_bar fit
-  CELL_DERIVED <mu^_f_bar_high> "(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)**-2/(6.d0*<mu^_B^_1_high>/7.d0+2.d0*<mu^_B^_2_high>/5.d0)" ON <allcells> 
+# CELL_DERIVED <mu^_f_bar_high> "(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)**-2/(6.d0*<mu^_B^_1_high>/7.d0+2.d0*<mu^_B^_2_high>/5.d0)" ON <allcells> 
+  CELL_DERIVED <mu^_f_bar_high> "(cellmax((<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>),<phi_tol>)**-2/(6.d0*<mu^_B^_1_high>/7.d0+2.d0*<mu^_B^_2_high>/5.d0)" ON <allcells> 
 
   CONSTANT <mu^_f_bar_multiplier> 1.d0 # hook to increase anisotropy of structure
 
