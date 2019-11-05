@@ -18,7 +18,14 @@ IF {{ return (string_test('<<stress_method>>','version4')) }}
 
 ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
 
-  ERROR "single_species_sid_pressure cannot handle stress_method = version4_species yet"
+  NONE_CONSTANT <p_sid_multiplier> 1.d0
+  CELL_LOCAL <p^^_c_<<species>>> "<p^^_f_<<species>>>" ON <allcells> output # average trace of stress tensor to cell centres
+  CELL_DERIVED <p_sid_<<species>>> "<p_sid_multiplier>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*<p^^_c_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+
+# finally add on contribution to species pressure
+  VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_sid_<<species>>>)" output
+
+# ERROR "single_species_sid_pressure cannot handle stress_method = version4_species yet"
 
 ELSE
 #---------------------------------

@@ -29,14 +29,17 @@ ELSE_IF {{ return string_test('<<faxen_method>>','version2') }}
 
 ELSE_IF {{ return string_test('<<faxen_method>>','version3') }} # this is for version4 equations
 
-  IF {{ return (!( string_test("<<stress_method>>","version4") || string_test("<<stress_method>>","version4_species"))) }}
+  IF {{ return ( string_test("<<stress_method>>","version4") ) }}
+    CELL_DERIVED <laplacian_mixture[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<gamma_f_mixture[l=:,<<i>>]>))" ON <domain> output
+  # include the influence of hindered settling function etc
+    CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "(7.d0/4.d0)*<mu_species0>*<laplacian_mixture[l=<<i>>]>" ON <domain> output
+  ELSE_IF {{ return ( string_test("<<stress_method>>","version4_species") ) }}
+    CELL_DERIVED <laplacian_species0[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<gamma_f_species0[l=:,<<i>>]>))" ON <domain> output
+  # include the influence of hindered settling function etc
+    CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "(7.d0/4.d0)*<mu_species0>*<laplacian_species0[l=<<i>>]>" ON <domain> output
+  ELSE
     ERROR "must be using stress_method = version4 for faxen_method = version3 in single_species_faxen template"
   END_IF
-
-  CELL_DERIVED <laplacian_mixture[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<gamma_f_mixture[l=:,<<i>>]>))" ON <domain> output
-
-# include the influence of hindered settling function etc
-  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "(7.d0/4.d0)*<mu_species0>*<laplacian_mixture[l=<<i>>]>" ON <domain> output
 
 END_IF
 

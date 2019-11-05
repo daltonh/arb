@@ -24,7 +24,8 @@ IF {{ return ( string_test('<<stress_method>>','version4') || string_test('<<str
     END_IF
 # note that the correction viscosity is actually viscosity divided by volume fraction
     FACE_LOCAL <mu_f_correction_<<species>>> "<mu_f_<<species>>>/(<phi_bounded_<<species>>>)" ON <allfaces> # used in rhie-chow
-  ELSE_IF {{ return string_test('<<stress_method>>','version4')}}
+# ELSE_IF {{ return string_test('<<stress_method>>','version4') }}
+  ELSE
     INCLUDE_LOCAL "single_species_collision_viscosity_version4" # calculate <mu^_col_c_mixture>, <mu^_sid1_c_mixture> and <mu^_sid2_c_mixture>, using <<viscosity_method>>
 # hack to check whether boundary viscosity is causing the problem
     IF 0
@@ -43,8 +44,8 @@ IF {{ return ( string_test('<<stress_method>>','version4') || string_test('<<str
 # note that the correction viscosity is actually viscosity divided by volume fraction
 # so multiply a sum of the mu^ viscosities by mu_0 and phi_s
     FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*(<mu^_col_f_mixture>+<mu^_sid1_f_mixture>+<mu^_sid2_f_mixture>)*(1.d0-<phi_f_bounded_species0>)" ON <allfaces> # used in rhie-chow
-  ELSE
-    ERROR "single_species_viscosity cannot handle stress_method = version4_species yet"
+# ELSE
+#   ERROR "single_species_viscosity cannot handle stress_method = version4_species yet"
   END_IF
 
 # hack to check if varying <mu_f_correction_<<species>>> is causing problems

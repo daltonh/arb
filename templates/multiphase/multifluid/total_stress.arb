@@ -6,7 +6,7 @@ Choices of stress_method:
 * version2 = the gamma used in each phase is based on mixture velocities
 * version3 = the gamma used in each phase is specific to that phase, but stress is specific to phase (see conservation template)
 * version4 = the gamma used in each phase is based on mixture velocities, but the solid viscosities are independent of the species combinations
-* version4_species = the gamma used in each phase is based on mixture velocities, with the solid viscosities specific to each solid species combinations
+* version4_species = the gamma used in each phase is based on species velocities
 END_MARKDOWN
 
 INCLUDE "default_replacement_strings"
@@ -41,7 +41,11 @@ ELSE
 # calculate the fluid species0 viscous stress, which for all methods is now based on the mixture (volume) averaged velocity and mixture viscosity (and hence mixture stress)
   FACE_LOCAL <ugrad_f_mixture[l=<<i>>,<<j>>]> "facegrad[l=<<i>>,<<reflect=<<j>>>>](<u_mixture[l=<<j>>]>)" ON <allfaces>
   FACE_DERIVED <gamma_f_mixture[l=<<i>>,<<j>>]> "(<ugrad_f_mixture[l=<<i>>,<<j>>]>+<ugrad_f_mixture[l=<<j>>,<<i>>]>)" ON <allfaces>
-  FACE_DERIVED <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_mixture[l=<<i>>,<<j>>]>" ON <allfaces> # note, maxima will simplify diagonal components
+  IF {{ return (string_test('<<stress_method>>','version4')) }}
+    FACE_DERIVED <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_mixture[l=<<i>>,<<j>>]>" ON <allfaces> # note, maxima will simplify diagonal components
+  ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
+    FACE_DERIVED <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_species0[l=<<i>>,<<j>>]>" ON <allfaces> # note, maxima will simplify diagonal components
+  END_IF
 
 # and the solid phases stresses
   IF {{ return (string_test('<<stress_method>>','version4') || string_test('<<stress_method>>','version4_species')) }}
@@ -81,7 +85,47 @@ ELSE
 #     FACE_DERIVED <tau_<<species>>[l=<<i>>,<<j>>]> "<phi_f_bounded_harmonic_<<species>>>*(1.d0-<phi_f_bounded_harmonic_species0>)*(<tau^^_mixture[l=<<i>>,<<j>>]>-<p^^_f_mixture>*kronecker(<<i>>,<<j>>))" ON <allfaces> output
 
     ELSE
-      ERROR "total_stress cannot handle stress_method = version4_species yet"
+# stress_method = version4_species
+# here all the strain rates are based on species velocities
+
+      {{ my $return_string = '';
+        for my $species (string_eval('<<multifluid_species_list>>','list')) {
+
+          $return_string .= "FACE_DERIVED <gamma_f_$species"."[l=<<i>>,<<j>>]> '(<ugrad_f_$species"."[l=<<i>>,<<j>>]>+<ugrad_f_$species"."[l=<<j>>,<<i>>]>)' ON <allfaces>\n";
+          if (string_eval('<<azimuthal>>')) {
+            $return_string .= "FACE_DERIVED <gamma_f_$species"."_mag> 'sqrt(facemax(0.5d0*ddot(<gamma_f_$species"."[l=:,:]>,<gamma_f_$species"."[l=:,:]>)+2.d0*faceave(<u_$species"."[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u_$species"."[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>))' ON <allfaces> output\n";
+          } elsif (string_eval('<<cylindrical>>')) {
+            $return_string .= "FACE_DERIVED <gamma_f_$species"."_mag> 'sqrt(facemax(0.5d0*ddot(<gamma_f_$species"."[l=:,:]>,<gamma_f_$species"."[l=:,:]>)+2.d0*faceave(<u_$species"."[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2,<tinyish>))' ON <allfaces> output\n";
+          } else {
+            $return_string .= "FACE_DERIVED <gamma_f_$species"."_mag> 'sqrt(facemax(0.5d0*ddot(<gamma_f_$species"."[l=:,:]>,<gamma_f_$species"."[l=:,:]>),<tinyish>))' ON <allfaces> output\n";
+          }
+        }
+
+        for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+
+          $return_string .= "FACE_DERIVED <tau^^_$species"."[l=<<i>>,<<j>>]> '<mu_species0>*( -<mu^_col_f_mixture>*<gamma_f_$species"."[l=<<i>>,<<j>>]> + <mu^_sid1_f_mixture>*dot(<gamma_f_$species"."[l=<<i>>,:]>,<gamma_f_$species"."[l=:,<<j>>]>)/facemax(<gamma_f_$species"."_mag>,<tinyish>) + <mu^_sid2_f_mixture>*<gamma_f_$species"."_mag>*kronecker(<<i>>,<<j>>) )' ON <allfaces> output\n";
+          $return_string .= "FACE_DERIVED <p^^_f_$species> '0.d0' ON <allfaces> output\n";
+
+# # calculate trace of stress tensor, accounting for the number of dimensions we are using
+# # this variable will be used in the sid pressure calculation within single_species_sid_pressure
+          my $ndim = 0;
+          for my $ldim (string_eval('<<dimensions>>','list')) {
+            $return_string .= "VARIABLE <p^^_f_$species> '<p^^_f_$species>+<tau^^_$species"."[l=$ldim,$ldim]>'\n";
+            $ndim = $ndim+1;
+          }
+          $return_string .= "VARIABLE <p^^_f_$species> '(<p^^_f_$species>)/$ndim'\n";
+
+# # finally calculate the phase stress
+# # right now volume fraction based on bounded_harmonic - needs testing
+          $return_string .= "FACE_DERIVED <tau_$species"."[l=<<i>>,<<j>>]> '<phi_f_bounded_harmonic_$species>*(1.d0-<phi_f_bounded_harmonic_species0>)*(<tau^^_$species"."[l=<<i>>,<<j>>]>-<p^^_f_$species>*kronecker(<<i>>,<<j>>))' ON <allfaces>\n";
+
+        }
+        return $return_string;
+      }}
+#     FACE_DERIVED <tau_<<species>>[l=<<i>>,<<j>>]> "<phi_f_bounded_harmonic_<<species>>>*(1.d0-<phi_f_bounded_harmonic_species0>)*(<tau^^_mixture[l=<<i>>,<<j>>]>-<p^^_f_mixture>*kronecker(<<i>>,<<j>>))" ON <allfaces> output
+
+#   ELSE
+#     ERROR "total_stress cannot handle stress_method = version4_species yet"
     END_IF
 
   ELSE_IF {{ return (string_test('<<stress_method>>','version2') || string_test('<<stress_method>>','jackson98')) }}

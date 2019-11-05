@@ -14,9 +14,9 @@ END_MARKDOWN
 #REPLACEMENTS D "<<viscosity_method>>" W "joe301019" # joe's fitting from 30/10/19, good for at least intermediate phi
 REPLACEMENTS D "<<viscosity_method>>" W "joe021119" # joe's fitting from 2/10/19, based on mu_sid, partitioned by dalton into musid1 and musid2
 
-IF {{ return string_test('<<stress_method>>','version4_species')}}
-  ERROR "single_species_collision_viscosity_version4 cannot handle stress_method = version4_species yet"
-END_IF
+#IF {{ return string_test('<<stress_method>>','version4_species')}}
+#  ERROR "single_species_collision_viscosity_version4 cannot handle stress_method = version4_species yet"
+#END_IF
 
 # base these viscosities on the total solids concentration for now
 # in the future need to take accound of size fractions
