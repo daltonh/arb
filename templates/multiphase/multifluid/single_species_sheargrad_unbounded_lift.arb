@@ -11,7 +11,8 @@ IF 1
   INCLUDE_TEMPLATE "gamma_rate_multifluid"
 
 #Coefficient - reworked to be a constant
-  CONSTANT <sheargrad_unbounded_coefficient_<<species>>> "5.362*3.d0/(4.d0*<pi>)*((<rho_species0>*<mu_species0>)**0.5d0*<a_<<species>>>)"
+  CONSTANT <sheargrad_unbounded_multiplier> 1.d0
+  CONSTANT <sheargrad_unbounded_coefficient_<<species>>> "<sheargrad_unbounded_multiplier>*5.362*3.d0/(4.d0*<pi>)*((<rho_species0>*<mu_species0>)**0.5d0*<a_<<species>>>)"
 
 #Shear gradient lift force acting on solid, in terms of mixture properties
 # calculate strain rates at cell centres
