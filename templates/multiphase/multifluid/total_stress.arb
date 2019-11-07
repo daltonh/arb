@@ -109,7 +109,6 @@ ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
       $return_string .= "FACE_DERIVED <tau+_$species"."[l=<<i>>,<<j>>]> '<mu_species0>*( -<mu_col_f_$species>*<gamma_f_$species"."[l=<<i>>,<<j>>]> + <mu_sid1_f_$species>*<gamma_ipn_f_$species"."[l=<<i>>,<<j>>]> + <mu_sid2_f_$species>*<gamma_magnitude_f_$species>*kronecker(<<i>>,<<j>>) )' ON <allfaces> output\n";
 
       $return_string .= "FACE_DERIVED <p+_f_$species> '0.d0' ON <allfaces> output\n";
-
 # calculate trace of stress tensor, accounting for the number of dimensions we are using
 # this variable will be used in the sid pressure calculation within single_species_sid_pressure - not anymore
       my $ndim = 0;

@@ -4,6 +4,9 @@ Here we calculate the dynamic forces, including <dynamic_force_c[l=:]>, <dynamic
 Note that <dynamic_force_f_{correction}> has different interpretations depending on <<u_f_method>>
 END_MARKDOWN
 
+# try high order but adjacentcell averaging
+REPLACEMENTS D "<<pfadjacentcells>>" W "1" D "<<pfadjacentcellshighorder>>" W "1"
+
 # ensure that <<u_f_method>> has been set
 INCLUDE "default_replacement_strings"
 
