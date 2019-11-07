@@ -20,7 +20,7 @@ END_IF
   my $return_string = '';
   for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
     $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
-      "R '<<pfadjacentcells>>' W '1' ". # use low order adjacentcell averaging for this
+      "R '<<pfadjacentcells>>' W '1' ". # use low order adjacentcell averaging just for this right now
       "R '<p>' W '<p_$species>' ".
       "R '<p_f_gradient_limiter>' W '<p_f_gradient_limiter_$species>' ".
       "R '<p_f>' W '<p_f_$species>'\n";
