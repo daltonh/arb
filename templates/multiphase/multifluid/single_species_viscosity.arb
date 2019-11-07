@@ -32,18 +32,25 @@ IF {{ return ( string_test('<<stress_method>>','version4') || string_test('<<str
       FACE_DERIVED <mu^_col_f_mixture>  "faceave[adjacentcellsevenweighting](<mu^_col_c_mixture>)" ON <allfaces> output # used in stress
       FACE_DERIVED <mu^_sid1_f_mixture> "faceave[adjacentcellsevenweighting](<mu^_sid1_c_mixture>)" ON <allfaces> output # used in stress
       FACE_DERIVED <mu^_sid2_f_mixture> "faceave[adjacentcellsevenweighting](<mu^_sid2_c_mixture>)" ON <allfaces> output # used in stress
+# note that the correction viscosity is actually viscosity divided by volume fraction
+# so multiply a sum of the mu^ viscosities by mu_0 and phi_s
+      FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*(<mu^_col_f_mixture>+<mu^_sid1_f_mixture>+<mu^_sid2_f_mixture>)*(1.d0-<phi_f_bounded_species0>)" ON <allfaces> # used in rhie-chow
     ELSE_IF 0
       FACE_DERIVED <mu^_col_f_mixture> "faceif(facedelta(<boundaries>),faceave[downcell](<mu^_col_c_mixture>),faceave[harmonic](<mu^_col_c_mixture>))" ON <allfaces> output # used in stress
       FACE_DERIVED <mu^_sid1_f_mixture> "faceif(facedelta(<boundaries>),faceave[downcell](<mu^_sid1_c_mixture>),faceave[harmonic](<mu^_sid1_c_mixture>))" ON <allfaces> output # used in stress
       FACE_DERIVED <mu^_sid2_f_mixture> "faceif(facedelta(<boundaries>),faceave[downcell](<mu^_sid2_c_mixture>),faceave[harmonic](<mu^_sid2_c_mixture>))" ON <allfaces> output # used in stress
-    ELSE
+      FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*(<mu^_col_f_mixture>+<mu^_sid1_f_mixture>+<mu^_sid2_f_mixture>)*(1.d0-<phi_f_bounded_species0>)" ON <allfaces> # used in rhie-chow
+    ELSE_IF 0
       FACE_DERIVED <mu^_col_f_mixture> "faceave[harmonic](<mu^_col_c_mixture>)" ON <allfaces> output # used in stress
       FACE_DERIVED <mu^_sid1_f_mixture> "faceave[harmonic](<mu^_sid1_c_mixture>)" ON <allfaces> output # used in stress
       FACE_DERIVED <mu^_sid2_f_mixture> "faceave[harmonic](<mu^_sid2_c_mixture>)" ON <allfaces> output # used in stress
+      FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*(<mu^_col_f_mixture>+<mu^_sid1_f_mixture>+<mu^_sid2_f_mixture>)*(1.d0-<phi_f_bounded_species0>)" ON <allfaces> # used in rhie-chow
+    ELSE
+      FACE_DERIVED <mu_col_f_<<species>>> "faceave[harmonic](<mu^_col_c_mixture>*<phi_bounded_<<species>>>*(1.d0-<phi_bounded_species0>))" ON <allfaces> output # used in stress
+      FACE_DERIVED <mu_sid1_f_<<species>>> "faceave[harmonic](<mu^_sid1_c_mixture>*<phi_bounded_<<species>>>*(1.d0-<phi_bounded_species0>))" ON <allfaces> output # used in stress
+      FACE_DERIVED <mu_sid2_f_<<species>>> "faceave[harmonic](<mu^_sid2_c_mixture>*<phi_bounded_<<species>>>*(1.d0-<phi_bounded_species0>))" ON <allfaces> output # used in stress
+      FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*(<mu_col_f_<<species>>>+<mu_sid1_f_<<species>>>+<mu_sid2_f_<<species>>>)/<phi_f_bounded_<<species>>>" ON <allfaces> # used in rhie-chow
     END_IF
-# note that the correction viscosity is actually viscosity divided by volume fraction
-# so multiply a sum of the mu^ viscosities by mu_0 and phi_s
-    FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*(<mu^_col_f_mixture>+<mu^_sid1_f_mixture>+<mu^_sid2_f_mixture>)*(1.d0-<phi_f_bounded_species0>)" ON <allfaces> # used in rhie-chow
 # ELSE
 #   ERROR "single_species_viscosity cannot handle stress_method = version4_species yet"
   END_IF

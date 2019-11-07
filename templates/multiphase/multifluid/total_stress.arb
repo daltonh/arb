@@ -64,7 +64,8 @@ ELSE_IF {{ return (string_test('<<stress_method>>','version4')) }}
   }}
 
 #----------------------
-ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
+#ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
+ELSE_IF 0 # trying new method below
 # stress_method = version4_species
 # here all the strain rates are based on species velocities, and the viscosities on species viscosities
 
@@ -88,6 +89,39 @@ ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
 # finally calculate the phase stress
 # right now volume fraction based on bounded_harmonic - needs testing
       $return_string .= "FACE_DERIVED <tau_$species"."[l=<<i>>,<<j>>]> '<phi_f_bounded_harmonic_$species>*(1.d0-<phi_f_bounded_harmonic_species0>)*(<tau^^_$species"."[l=<<i>>,<<j>>]>-<p^^_f_$species>*kronecker(<<i>>,<<j>>))' ON <allfaces>\n";
+
+    }
+    return $return_string;
+  }}
+
+#----------------------
+ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
+# stress_method = version4_species
+# here all the strain rates are based on species velocities, and the viscosities on species viscosities
+
+  FACE_DERIVED <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_species0[l=<<i>>,<<j>>]>" ON <allfaces> # note, maxima will simplify diagonal components
+  {{ my $return_string = '';
+
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+# inner product of gamma, normalised by gamma_mag = inner product normalised = ipn
+      $return_string .= "FACE_DERIVED <gamma_ipn_f_$species"."[l=<<i>>,<<j>>]> 'dot(<gamma_f_$species"."[l=<<i>>,:]>,<gamma_f_$species"."[l=:,<<j>>]>)/<gamma_magnitude_f_$species>' ON <allfaces> output\n";
+# this is the same as tau, but includes the isotropic part that will be removed and applied as p_sid
+      $return_string .= "FACE_DERIVED <tau+_$species"."[l=<<i>>,<<j>>]> '<mu_species0>*( -<mu_col_f_$species>*<gamma_f_$species"."[l=<<i>>,<<j>>]> + <mu_sid1_f_$species>*<gamma_ipn_f_$species"."[l=<<i>>,<<j>>]> + <mu_sid2_f_$species>*<gamma_magnitude_f_$species>*kronecker(<<i>>,<<j>>) )' ON <allfaces> output\n";
+
+      $return_string .= "FACE_DERIVED <p+_f_$species> '0.d0' ON <allfaces> output\n";
+
+# calculate trace of stress tensor, accounting for the number of dimensions we are using
+# this variable will be used in the sid pressure calculation within single_species_sid_pressure - not anymore
+      my $ndim = 0;
+      for my $ldim (string_eval('<<dimensions>>','list')) {
+        $return_string .= "VARIABLE <p+_f_$species> '<p+_f_$species>+<tau+_$species"."[l=$ldim,$ldim]>'\n";
+        $ndim = $ndim+1;
+      }
+      $return_string .= "VARIABLE <p+_f_$species> '(<p+_f_$species>)/$ndim'\n";
+
+# finally calculate the phase stress
+# right now volume fraction based on bounded_harmonic - needs testing
+      $return_string .= "FACE_DERIVED <tau_$species"."[l=<<i>>,<<i>>]> '<tau+_$species"."[l=<<i>>,<<i>>]>-<p+_f_$species>' ON <allfaces>\n";
 
     }
     return $return_string;
