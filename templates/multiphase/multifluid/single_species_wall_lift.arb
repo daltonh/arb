@@ -15,7 +15,7 @@ IF {{ return (string_test('<<wall_lift_method>>','cherukat')) }}  # Cherukat Wal
   CELL_CONSTANT <wall_normal_magnitude_norm_<<species>>> "cellmin(<a_<<species>>>/<wall_normal_magnitude>,1.0d0)" ON <domain>
   CELL_CONSTANT <wall_lift_C_L1_<<species>>> "(2.0069+1.0575*<wall_normal_magnitude_norm_<<species>>>-2.4007*<wall_normal_magnitude_norm_<<species>>>^2+1.3174*<wall_normal_magnitude_norm_<<species>>>^3)" ON <domain> output
   #wall lift coefficient
-  CELL_DERIVED <wall_lift_alpha5_<<species>>> "<wall_lift_multiplier>*3.d0/(4.d0*<pi>)*<rho_species0>*<a_<<species>>>*<wall_lift_C_L1_<<species>>>" ON <domain> output
+  CELL_DERIVED <wall_lift_alpha5_<<species>>> "<wall_lift_multiplier>*3.d0/(4.d0*<pi>)*<rho_species0>*<a_<<species>>>*<wall_lift_C_L1_<<species>>>" ON <domain>
 ELSE_IF {{ return (string_test('<<wall_lift_method>>','nilanka061119') || string_test('<<wall_lift_method>>','nilanka061119inner')) }}  # Cherukat Wall lift
   CONSTANT <wall_lift_multiplier> 1.d0
 

@@ -15,7 +15,7 @@ INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "species0"
 CONSTANT <sheargrad_unbounded_multiplier> 1.d0
 CONSTANT <sheargrad_unbounded_coefficient_<<species>>> "<sheargrad_unbounded_multiplier>*5.362*3.d0/(4.d0*<pi>)*((<rho_species0>*<mu_species0>)**0.5d0*<a_<<species>>>)"
 
-CELL_DERIVED <sheargrad_unbounded_lift_vector[l=<<i>>]> "dot(<gamma_species0[l=:,<<i>>]>,<laplacian_species0[l=:]>)/(sqrt(cellmax(<gamma_magnitude_species0>,<tinyish>)))" ON <domain>
+CELL_DERIVED <sheargrad_unbounded_lift_vector[l=<<i>>]> "dot(<gamma_species0[l=:,<<i>>]>,<laplacian_species0[l=:]>)/(sqrt(cellmax(<gamma_magnitude_species0>,<tinyish>)))" ON <domain> nooutput
 
 CELL_DERIVED <particle_force_sheargrad_unbounded_lift_<<species>>[l=<<i>>]> "<sheargrad_unbounded_coefficient_<<species>>>*<sheargrad_unbounded_lift_vector[l=<<i>>]>" ON <domain> output
 
