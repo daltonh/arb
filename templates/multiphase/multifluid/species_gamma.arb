@@ -10,7 +10,7 @@ END_MARKDOWN
 # for stress_methods 2 and 4
 REPLACEMENTS R '<<species_type>>' W 'LOCAL'
 REPLACEMENTS R '<<mixture_type>>' W 'DERIVED'
-IF {{ return (string_test('<<stress_method>>','version1') || string_test('<<stress_method>>','version3')) || string_test('<<stress_method>>','version4_species')) }}
+IF {{ return (string_test('<<stress_method>>','version1') || string_test('<<stress_method>>','version3') || string_test('<<stress_method>>','version4_species')) }}
 # otherwise gamma related variables for each species are derived (stored), and the mixture ones are locals
 # for stress_methods 1, 3 and 4_species
   REPLACEMENTS S '<<species_type>>' W 'DERIVED' # NB, S means substitute variable in place

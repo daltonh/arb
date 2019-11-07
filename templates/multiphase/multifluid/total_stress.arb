@@ -73,7 +73,7 @@ ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
 
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
 
-      $return_string .= "FACE_DERIVED <tau^^_$species"."[l=<<i>>,<<j>>]> '<mu_species0>*( -<mu^_col_f_mixture>*<gamma_f_$species"."[l=<<i>>,<<j>>]> + <mu^_sid1_f_mixture>*dot(<gamma_f_$species"."[l=<<i>>,:]>,<gamma_f_$species"."[l=:,<<j>>]>)/facemax(<gamma_manitude_f_$species>,<tinyish>) + <mu^_sid2_f_mixture>*<gamma_magnitude_f_$species>*kronecker(<<i>>,<<j>>) )' ON <allfaces> output\n";
+      $return_string .= "FACE_DERIVED <tau^^_$species"."[l=<<i>>,<<j>>]> '<mu_species0>*( -<mu^_col_f_mixture>*<gamma_f_$species"."[l=<<i>>,<<j>>]> + <mu^_sid1_f_mixture>*dot(<gamma_f_$species"."[l=<<i>>,:]>,<gamma_f_$species"."[l=:,<<j>>]>)/facemax(<gamma_magnitude_f_$species>,<tinyish>) + <mu^_sid2_f_mixture>*<gamma_magnitude_f_$species>*kronecker(<<i>>,<<j>>) )' ON <allfaces> output\n";
       $return_string .= "FACE_DERIVED <p^^_f_$species> '0.d0' ON <allfaces> output\n";
 
 # calculate trace of stress tensor, accounting for the number of dimensions we are using

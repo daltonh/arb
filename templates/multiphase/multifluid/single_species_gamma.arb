@@ -44,18 +44,18 @@ CELL_LOCAL <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_f_<<species>>[l=<<i>>,<<j>
 # magnitude of the strain rate, on the faces (checked consistency with BSL, p241, where gamma is the sum of the velocity gradient + transpose)
 IF <<azimuthal>>
   FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*faceave(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u_<<species>>[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>))" ON <allfaces> output
-  CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells> output
+  CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
 ELSE_IF <<cylindrical>>
   FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*faceave(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2,<tinyish>))" ON <allfaces> output
   IF 1
 # the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
     CELL_LOCAL <gamma_magnitude_<<species>>> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2),<tinyish>))" ON <allcells>
   ELSE
-    CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells> output
+    CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
   END_IF
 ELSE
 # FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>),<tinyish>))" ON <allfaces> output
 # or use inbuilt function which >0 always, and is entirely equivalent to the above for a tensor
   FACE_DERIVED <gamma_magnitude_f_<<species>>> "mag(<gamma_f_<<species>>[l=:,:]>)" ON <allfaces> output
-  CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells> output
+  CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
 END_IF
