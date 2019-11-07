@@ -1,0 +1,10 @@
+MARKDOWN
+Calculating the laplacian of gamma tensor - Rate of gamma - For <<species>>, which could be mixture
+Things have been renamed to be consistent with faxen etc, and by default use mixture velocities
+END_MARKDOWN
+
+REPLACEMENTS D "<<species>>" W "mixture"
+
+CELL_DERIVED <laplacian_<<species>>[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<gamma_f_<<species>>[l=:,<<i>>]>))" ON <domain> output
+
+CELL_DERIVED <laplacian_magnitude_<<species>>> "sqrt(cellmax(dot(<laplacian_<<species>>[l=:]>,<laplacian_<<species>>[l=:]>),<tinyish>))" ON <domain> output

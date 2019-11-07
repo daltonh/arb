@@ -1,45 +1,31 @@
 MARKDOWN
-#Faxen Drag Equation Template
+Faxen additional Drag/stress
 END_MARKDOWN
 
 REPLACEMENTS D "<<faxen_method>>" W "version2"
-#IF {{ return ( string_test("<<stress_method>>","version4") || string_test("<<stress_method>>","version4_species")) }} # for these methods switch to faxen method version3
-#  REPLACEMENTS S "<<faxen_method>>" W "version3"
-#END_IF
+
+# all methods now use the laplacian of the fluid velocity field
+INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "species0"
 
 IF {{ return string_test('<<faxen_method>>','version1') }}
 
-# Calculating the laplacian of velocity = divergence of strain rate tensor
-  CELL_DERIVED <laplacian_species0[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<ugrad_f_species0[l=:,<<i>>]>))" ON <domain> output
-
   IF 0 #Mctigue
-    CELL_DERIVED <particle_force_alpha4> "7/2*<mu_species0>" ON <domain> output
+    CELL_DERIVED <particle_force_alpha4> "7/2*<mu_species0>" ON <domain>
   ELSE #Zhang and Prosperiti (Dalton)
-    CELL_DERIVED <particle_force_alpha4> "3/4*<mu_species0>" ON <domain> output
+    CELL_DERIVED <particle_force_alpha4> "3/4*<mu_species0>" ON <domain>
   END_IF
 
-  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "-<particle_force_alpha4>*<laplacian_species0[l=<<i>>]>" ON <domain> output # right sign??
+# CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "-<particle_force_alpha4>*<laplacian_species0[l=<<i>>]>" ON <domain> output # right sign??
+  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "<particle_force_alpha4>*<laplacian_species0[l=<<i>>]>" ON <domain> output # right sign??
 
 ELSE_IF {{ return string_test('<<faxen_method>>','version2') }}
-
-  CELL_DERIVED <laplacian_species0[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<ugrad_f_species0[l=:,<<i>>]>))" ON <domain> output
-
 # include the influence of hindered settling function etc
+
   CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "<beta^_<<species>>_species0>*(<a_<<species>>>**2)*<laplacian_species0[l=<<i>>]>/6.d0" ON <domain> output
 
 ELSE_IF {{ return string_test('<<faxen_method>>','version3') }} # this is for version4 equations
 
-  IF {{ return ( string_test("<<stress_method>>","version4") ) }}
-    CELL_DERIVED <laplacian_mixture[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<gamma_f_mixture[l=:,<<i>>]>))" ON <domain> output
-  # include the influence of hindered settling function etc
-    CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "(7.d0/4.d0)*<mu_species0>*<laplacian_mixture[l=<<i>>]>" ON <domain> output
-  ELSE_IF {{ return ( string_test("<<stress_method>>","version4_species") ) }}
-    CELL_DERIVED <laplacian_species0[l=<<i>>]> "celldiv(dot(<facenorm[l=:]>,<gamma_f_species0[l=:,<<i>>]>))" ON <domain> output
-  # include the influence of hindered settling function etc
-    CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "(7.d0/4.d0)*<mu_species0>*<laplacian_species0[l=<<i>>]>" ON <domain> output
-  ELSE
-    ERROR "must be using stress_method = version4 for faxen_method = version3 in single_species_faxen template"
-  END_IF
+  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "(7.d0/4.d0)*<mu_species0>*<laplacian_species0[l=<<i>>]>" ON <domain> output
 
 END_IF
 

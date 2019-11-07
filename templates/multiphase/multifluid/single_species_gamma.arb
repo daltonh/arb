@@ -5,6 +5,7 @@ For each of <<species>>, the following are defined
 <u_<<species>>[l=:]> - CELL_DERIVED, only for mixture and allsolids
 <ugrad_f_<<species>>[l=:,:]> - FACE_DERIVED
 <gamma_f_<<species>>[l=:,:]> - FACE_DERIVED
+<gamma_<<species>>[l=:,:]> - CELL_LOCAL
 <gamma_magnitude_f_<<species>>> - FACE_DERIVED
 <gamma_magnitude_<<species>>> - CELL_LOCAL
 
@@ -37,6 +38,9 @@ FACE_DERIVED <ugrad_f_<<species>>[l=<<i>>,<<j>>]> "facegrad[l=<<i>>,<<reflect=<<
 # symmetric strain rate
 FACE_DERIVED <gamma_f_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_f_<<species>>[l=<<i>>,<<j>>]>+<ugrad_f_<<species>>[l=<<j>>,<<i>>]>)" ON <allfaces>
 
+# cell centred same
+CELL_LOCAL <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_f_<<species>>[l=<<i>>,<<j>>]>" ON <allcells>
+
 # magnitude of the strain rate, on the faces (checked consistency with BSL, p241, where gamma is the sum of the velocity gradient + transpose)
 IF <<azimuthal>>
   FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*faceave(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u_<<species>>[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>))" ON <allfaces> output
@@ -50,6 +54,8 @@ ELSE_IF <<cylindrical>>
     CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells> output
   END_IF
 ELSE
-  FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>),<tinyish>))" ON <allfaces> output
+# FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>),<tinyish>))" ON <allfaces> output
+# or use inbuilt function which >0 always, and is entirely equivalent to the above for a tensor
+  FACE_DERIVED <gamma_magnitude_f_<<species>>> "mag(<gamma_f_<<species>>[l=:,:]>)" ON <allfaces> output
   CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells> output
 END_IF
