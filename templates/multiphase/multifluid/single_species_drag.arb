@@ -10,13 +10,13 @@ END_IF
 INCLUDE "default_replacement_strings"
 
 # this string is now set globally in constants, but can be overwritten with local values here
-REPLACEMENTS D "<<drag_method>>" W "version2"
+REPLACEMENTS D "<<drag_method>>" W "version2" # only use this
 
 # default hindered settling function is now as defined in masliyah79 = balls
-# version1 gives an equivalent hindered settling function which is / phi_0^2
 
 #REPLACEMENTS D "<<hindered_settling_function>>" W "dilute" # = stokes
 REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzaki"
+#REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzaki54" # n = 4.5, and maximum volume fraction = 1
 #REPLACEMENTS D "<<hindered_settling_function>>" W "richardsonzakilimited" # same as richardsonzaki, but phi is scaled so that behaviour at <drag_phi_max_allsolids> matches that of the standard richardsonzaki at phi = 0.68
 #REPLACEMENTS D "<<hindered_settling_function>>" W "rourkeernstene" # from kim16, referencing Rourke and Ernstene 1930, which is specifically for rbcs
 
@@ -41,12 +41,20 @@ BLOCK # enclose replacements inside a block to isolate them from later expressio
   # create a possibly normalised and limited phi for use in the allsolids multiplier
     NONE_CONSTANT <drag_phi_tol> "<phi_tol>"
 
-    IF {{ return (string_test('<<hindered_settling_function>>','richardsonzaki') || string_test('<<hindered_settling_function>>','richardsonzakilimited')) }}
+    IF {{ return (string_test('<<hindered_settling_function>>','richardsonzaki') || string_test('<<hindered_settling_function>>','richardsonzaki54') || string_test('<<hindered_settling_function>>','richardsonzakilimited')) }}
+# note, the following is not used directly 
       NONE_CONSTANT <drag_phi_packed_richardsonzaki> 0.68d0 # used for scaling the phi used in the hindered settling function, this is the phi that we assume the normal richardsonzaki drag represents packed hard-sphere behaviour
       NONE_CONSTANT <drag_richardsonzaki_n> 5.5d0 # exponent used in the richardsonzaki hindered settling function
-      IF {{ return string_test('<<hindered_settling_function>>','richardsonzaki') }}
+# now set <drag_phi_max_allsolids>, which represents an effective maximum volume fraction, to be compared against <drag_phi_packed_richardsonzaki>
+# setting these equal results in no scaling to the RZ hindered settling function
+      IF {{ return string_test('<<hindered_settling_function>>','richardsonzaki54') }}
   # for the true richardsonzaki method to recover the non-scaled variable, set the max to 0.68
-        NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>"
+        NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>" # this means no scaling
+# TODO: implement Re dependent expression, as per RZ
+        NONE_CONSTANT <drag_richardsonzaki_n> 4.5d0 # exponent used in the richardsonzaki hindered settling function, as for low Re in original paper
+      ELSE_IF {{ return string_test('<<hindered_settling_function>>','richardsonzaki') }}
+  # for the true richardsonzaki method to recover the non-scaled variable, set the max to 0.68
+        NONE_CONSTANT <drag_phi_max_allsolids> "<drag_phi_packed_richardsonzaki>" # this means no scaling
       ELSE_IF {{ return string_test('<<hindered_settling_function>>','richardsonzakilimited') }}
         NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
       ELSE
@@ -54,8 +62,10 @@ BLOCK # enclose replacements inside a block to isolate them from later expressio
       END_IF
       CELL_LOCAL <drag_phi<<_f>>_norm_allsolids> "<drag_phi_packed_richardsonzaki>*cellmin(1.d0-<phi<<_f>>_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
 
-  # for now use total solids fraction to calculate hindered settling function
-      VARIABLE <kappa*<<_f>>_species0_<<species>>> "(<kappa*<<_f>>_species0_<<species>>>)*(1.d0-<drag_phi<<_f>>_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
+  # for now use total solids fraction to calculate hindered DRAG function, which is used to multiply kappa*
+# NB, (hindered drag function) = (hindered settling function)/phi_f^2
+# note that the implementation means that if phi is normalised, it is normalised in terms of a hindered settling function
+      VARIABLE <kappa*<<_f>>_species0_<<species>>> "(<kappa*<<_f>>_species0_<<species>>>)*(1.d0-<drag_phi<<_f>>_norm_allsolids>)**<drag_richardsonzaki_n>/((contextmax(<phi<<_f>>_pos_species0>,<phi_tol>))^2)" ON <allcells>	
 
     ELSE_IF {{ return string_test('<<hindered_settling_function>>','rourkeernstene') }}
   # FIXME
@@ -96,6 +106,7 @@ IF <<drag_beta_face_based>>
 ELSE
 
   IF {{ return (string_test('<<drag_method>>','version1')) }}
+# version1 gives an equivalent hindered settling function which is / phi_0^2
     CELL_DERIVED <beta**_species0_<<species>>> "<mu_species0>*<phi_bounded_species0>/<kappa*_species0_<<species>>>" ON <allcells>
     CELL_LOCAL <beta^_<<species>>_species0> "<beta**_species0_<<species>>>*<phi_bounded_species0>" ON <allcells>
     CELL_LOCAL <beta^_species0_<<species>>> "<beta**_species0_<<species>>>*<phi_bounded_<<species>>>" ON <allcells>
