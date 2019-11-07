@@ -5,7 +5,7 @@ Note that <dynamic_force_f_{correction}> has different interpretations depending
 END_MARKDOWN
 
 # try high order but adjacentcell averaging
-REPLACEMENTS D "<<pfadjacentcells>>" W "0" D "<<pfadjacentcellshighorder>>" W "1"
+REPLACEMENTS D "<<pfadjacentcells>>" W "0" D "<<pfadjacentcellshighorder>>" W "0"
 
 # ensure that <<u_f_method>> has been set
 INCLUDE "default_replacement_strings"
@@ -20,6 +20,7 @@ END_IF
   my $return_string = '';
   for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
     $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
+      "R '<<pfadjacentcells>>' W '1' ". # use low order adjacentcell averaging for this
       "R '<p>' W '<p_$species>' ".
       "R '<p_f_gradient_limiter>' W '<p_f_gradient_limiter_$species>' ".
       "R '<p_f>' W '<p_f_$species>'\n";
