@@ -12,6 +12,7 @@ For each of <<species>>, the following are defined
 Now option to remove isotropic part of strain rate tensor, meaning that gamma is deviatoric, determined by <<deviatoric_gamma>>
 END_MARKDOWN
 
+# given that all of the stress closure models tend to assume this on the microscopic scale, should be best to present to them a deviatoric gamma on the macroscopic scale
 REPLACEMENTS D "<<deviatoric_gamma>>" W "1"
 
 # if this is for the 'mixture' or 'allsolids' species, then appropriate velocities have to be defined first
