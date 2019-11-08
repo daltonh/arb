@@ -9,7 +9,10 @@ For each of <<species>>, the following are defined
 <gamma_magnitude_f_<<species>>> - FACE_DERIVED
 <gamma_magnitude_<<species>>> - CELL_LOCAL
 
+Now option to remove isotropic part of strain rate tensor, meaning that gamma is deviatoric, determined by <<deviatoric_gamma>>
 END_MARKDOWN
+
+REPLACEMENTS D "<<deviatoric_gamma>>" W "0"
 
 # if this is for the 'mixture' or 'allsolids' species, then appropriate velocities have to be defined first
 IF {{ return (string_test('<<species>>','mixture')) }}
@@ -37,6 +40,23 @@ FACE_DERIVED <ugrad_f_<<species>>[l=<<i>>,<<j>>]> "facegrad[l=<<i>>,<<reflect=<<
 
 # symmetric strain rate
 FACE_DERIVED <gamma_f_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_f_<<species>>[l=<<i>>,<<j>>]>+<ugrad_f_<<species>>[l=<<j>>,<<i>>]>)" ON <allfaces>
+
+IF <<deviatoric_gamma>>
+# calculate the spherical part of gamma, which is the trace divided by the number of dimensions
+  FACE_LOCAL <gamma_spherical_f_<<species>>> "0.d0" ON <allfaces> 
+  {{ 
+    my $return_string = '';
+    my $ndim = 0;
+    for my $ldim (string_eval('<<dimensions>>','list')) {
+      $return_string .= "VARIABLE <gamma_spherical_f_<<species>>> '<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=$ldim,$ldim]>'\n";
+      $ndim = $ndim+1;
+    }
+    $return_string .= "VARIABLE <gamma_spherical_f_<<species>>> '(<gamma_spherical_f_<<species>>>)/$ndim'\n";
+    return $return_string;
+  }}
+# remove the spherical part from gamma to leave a deviatoric tensor
+  VARIABLE <gamma_f_<<species>>[l=<<i>>,<<i>>]> "<gamma_f_<<species>>[l=<<i>>,<<i>>]>-<gamma_spherical_f_<<species>>>"
+END_IF
 
 # cell centred same
 CELL_LOCAL <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_f_<<species>>[l=<<i>>,<<j>>]>" ON <allcells>
