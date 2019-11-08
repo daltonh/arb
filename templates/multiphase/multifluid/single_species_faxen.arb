@@ -4,8 +4,11 @@ END_MARKDOWN
 
 REPLACEMENTS D "<<faxen_method>>" W "version2"
 
-# all methods now use the laplacian of the fluid velocity field
-INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "species0"
+#REPLACEMENTS D "<<velocity_species>>" W "species0" # previously, but concerned about stability
+REPLACEMENTS D "<<velocity_species>>" W "<<species>>" # now based on own phase species, which should be stable
+
+# all methods now use the laplacian of the fluid velocity field - not anymore!
+INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "<<velocity_species>>"
 
 IF {{ return string_test('<<faxen_method>>','version1') }}
 
@@ -15,17 +18,17 @@ IF {{ return string_test('<<faxen_method>>','version1') }}
     CELL_DERIVED <particle_force_alpha4> "3/4*<mu_species0>" ON <domain>
   END_IF
 
-# CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "-<particle_force_alpha4>*<laplacian_species0[l=<<i>>]>" ON <domain> output # right sign??
-  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "<particle_force_alpha4>*<laplacian_species0[l=<<i>>]>" ON <domain> output # right sign??
+# CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "-<particle_force_alpha4>*<laplacian_<<velocity_species>>[l=<<i>>]>" ON <domain> output # right sign??
+  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "<particle_force_alpha4>*<laplacian_<<velocity_species>>[l=<<i>>]>" ON <domain> output # right sign??
 
 ELSE_IF {{ return string_test('<<faxen_method>>','version2') }}
 # include the influence of hindered settling function etc
 
-  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "<beta^_<<species>>_species0>*(<a_<<species>>>**2)*<laplacian_species0[l=<<i>>]>/6.d0" ON <domain> output
+  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "<beta^_<<species>>_species0>*(<a_<<species>>>**2)*<laplacian_<<velocity_species>>[l=<<i>>]>/6.d0" ON <domain> output
 
 ELSE_IF {{ return string_test('<<faxen_method>>','version3') }} # this is for version4 equations
 
-  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "(7.d0/4.d0)*<mu_species0>*<laplacian_species0[l=<<i>>]>" ON <domain> output
+  CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "(7.d0/4.d0)*<mu_species0>*<laplacian_<<velocity_species>>[l=<<i>>]>" ON <domain> output
 
 END_IF
 
@@ -33,7 +36,9 @@ END_IF
 # a positive contribution to the solid species
 VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_faxen_<<species>>[l=<<i>>]>"
 # and an opposite contribution to the fluid species, specific to volume fraction
-VARIABLE <extra_force_species0[l=<<i>>]> "<extra_force_species0[l=<<i>>]> - <particle_force_faxen_<<species>>[l=<<i>>]>*<phi_bounded_<<species>>>/<phi_bounded_species0>"
+#VARIABLE <extra_force_species0[l=<<i>>]> "<extra_force_species0[l=<<i>>]> - <particle_force_faxen_<<species>>[l=<<i>>]>*<phi_bounded_<<species>>>/<phi_bounded_species0>"
+# as solid species goes to zero, so should effect on fluid
+VARIABLE <extra_force_species0[l=<<i>>]> "<extra_force_species0[l=<<i>>]> - <particle_force_faxen_<<species>>[l=<<i>>]>*<phi_pos_<<species>>>/<phi_bounded_species0>"
 
 # output on force
 VARIABLE <particle_force_faxen_<<species>>[l=<<i>>]> output

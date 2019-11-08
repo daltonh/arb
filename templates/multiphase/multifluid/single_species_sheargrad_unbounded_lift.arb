@@ -9,13 +9,15 @@ INCLUDE_TEMPLATE "wall_normal_tensor.arb"
 
 # now calculate the laplacian of a velocity field, probably the fluid velocity makes most sense
 # note that <<species>> already has a value in this block, but u_laplacian requires a different value, so must be set when calling
-INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "species0"
+REPLACEMENTS D "<<velocity_species>>" W "<<species>>" # now based on own phase species, which should be stable
+#INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "species0"
+INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "<<velocity_species>>"
 
 #Coefficient - reworked to be a constant
 CONSTANT <sheargrad_unbounded_multiplier> 1.d0
 CONSTANT <sheargrad_unbounded_coefficient_<<species>>> "<sheargrad_unbounded_multiplier>*5.362*3.d0/(4.d0*<pi>)*((<rho_species0>*<mu_species0>)**0.5d0*<a_<<species>>>)"
 
-CELL_DERIVED <sheargrad_unbounded_lift_vector[l=<<i>>]> "dot(<gamma_species0[l=:,<<i>>]>,<laplacian_species0[l=:]>)/(sqrt(cellmax(<gamma_magnitude_species0>,<tinyish>)))" ON <domain> nooutput
+CELL_DERIVED <sheargrad_unbounded_lift_vector[l=<<i>>]> "dot(<gamma_<<velocity_species>>[l=:,<<i>>]>,<laplacian_<<velocity_species>>[l=:]>)/(sqrt(cellmax(<gamma_magnitude_<<velocity_species>>>,<tinyish>)))" ON <domain> nooutput
 
 CELL_DERIVED <particle_force_sheargrad_unbounded_lift_<<species>>[l=<<i>>]> "<sheargrad_unbounded_coefficient_<<species>>>*<sheargrad_unbounded_lift_vector[l=<<i>>]>" ON <domain> output
 
