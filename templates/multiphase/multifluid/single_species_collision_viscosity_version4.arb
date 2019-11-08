@@ -12,7 +12,8 @@ END_MARKDOWN
 #
 #REPLACEMENTS D "<<viscosity_method>>" W "daltonhold" # initial very rough fitting
 #REPLACEMENTS D "<<viscosity_method>>" W "joe301019" # joe's fitting from 30/10/19, good for at least intermediate phi
-REPLACEMENTS D "<<viscosity_method>>" W "joe021119" # joe's fitting from 2/10/19, based on mu_sid, partitioned by dalton into musid1 and musid2
+#REPLACEMENTS D "<<viscosity_method>>" W "joe021119" # joe's fitting from 2/10/19, based on mu_sid, partitioned by dalton into musid1 and musid2
+REPLACEMENTS D "<<viscosity_method>>" W "joe081119" # joe's fitting from 8/10/19
 
 #IF {{ return string_test('<<stress_method>>','version4_species')}}
 #  ERROR "single_species_collision_viscosity_version4 cannot handle stress_method = version4_species yet"

@@ -48,7 +48,8 @@ END_IF
   return $return_string;
 }}
 
-REPLACEMENTS D "<<p_f_hack>>" W "0"
+# TODO: code up <p_f_<<species>>> separately in each pressure subroutine
+REPLACEMENTS D "<<p_f_hack>>" W "1"
 IF <<p_f_hack>> # trialling using isotropic part from faces directly, which requires that osmotic pressure be defined
 {{
   my $return_string = '';

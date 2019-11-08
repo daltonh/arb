@@ -44,7 +44,9 @@ BLOCK # enclose replacements inside a block to isolate them from later expressio
     IF {{ return (string_test('<<hindered_settling_function>>','richardsonzaki') || string_test('<<hindered_settling_function>>','richardsonzaki54') || string_test('<<hindered_settling_function>>','richardsonzakilimited')) }}
 # note, the following is not used directly 
       NONE_CONSTANT <drag_phi_packed_richardsonzaki> 0.68d0 # used for scaling the phi used in the hindered settling function, this is the phi that we assume the normal richardsonzaki drag represents packed hard-sphere behaviour
-      NONE_CONSTANT <drag_richardsonzaki_n> 5.5d0 # exponent used in the richardsonzaki hindered settling function
+# n 5.5 for high Pe, but 4.5 for low Pe
+# changed from 5.5 -> 4.5 at samish time that realised this n is not the RZ n, but the masliyah79 n - code changed so that this is now the RZ n
+      NONE_CONSTANT <drag_richardsonzaki_n> 4.5d0 # exponent used in the richardsonzaki hindered settling function
 # now set <drag_phi_max_allsolids>, which represents an effective maximum volume fraction, to be compared against <drag_phi_packed_richardsonzaki>
 # setting these equal results in no scaling to the RZ hindered settling function
       IF {{ return string_test('<<hindered_settling_function>>','richardsonzaki54') }}
@@ -70,9 +72,6 @@ BLOCK # enclose replacements inside a block to isolate them from later expressio
     ELSE_IF {{ return string_test('<<hindered_settling_function>>','rourkeernstene') }}
   # FIXME
       ERROR "not done yet"
-      NONE_CONSTANT <drag_phi_max_allsolids> "<phi_max_allsolids>"
-      CELL_LOCAL <drag_phi<<_f>>_norm_allsolids> "cellmin(1.d0-<phi<<_f>>_pos_species0>,<drag_phi_max_allsolids>-<drag_phi_tol>)/<drag_phi_max_allsolids>" ON <allcells> output
-      VARIABLE <kappa*<<_f>>_species0_<<species>>> "(<kappa*<<_f>>_species0_<<species>>>)*(1.d0-<drag_phi<<_f>>_norm_allsolids>)**<drag_richardsonzaki_n>" ON <allcells>	
     ELSE
   # FIXME
       ERROR "hindered_settling_function = <<hindered_settling_function>> not known in single_species_drag"
