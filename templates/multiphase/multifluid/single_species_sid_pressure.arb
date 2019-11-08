@@ -19,6 +19,39 @@ IF {{ return (string_test('<<stress_method>>','version4')) }}
 ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
 
   NONE_CONSTANT <p_sid_multiplier> 1.d0
+  IF 0 # simplest
+    CELL_LOCAL <p+_c_<<species>>> "<p+_f_<<species>>>" ON <allcells> output # average trace of stress tensor to cell centres
+  ELSE
+# calculate cell centred traces of gamma and gamma_ipn
+    {{ my $return_string = '';
+      $return_string .= "FACE_DERIVED <gamma_ntr_f_<<species>>> '0.d0' ON <allfaces> output\n";
+      $return_string .= "FACE_DERIVED <gamma_ipn_ntr_f_<<species>>> '0.d0' ON <allfaces> output\n";
+# calculate trace of stress tensor, accounting for the number of dimensions we are using
+# this variable will be used in the sid pressure calculation within single_species_sid_pressure - not anymore
+      my $ndim = 0;
+      for my $ldim (string_eval('<<dimensions>>','list')) {
+        $return_string .= "VARIABLE <gamma_ntr_f_<<species>>> '<gamma_ntr_f_<<species>>>+<gamma_f_<<species>>"."[l=$ldim,$ldim]>'\n";
+        $return_string .= "VARIABLE <gamma_ipn_ntr_f_<<species>>> '<gamma_ipn_ntr_f_<<species>>>+<gamma_ipn_f_<<species>>"."[l=$ldim,$ldim]>'\n";
+        $ndim = $ndim+1;
+      }
+      $return_string .= "VARIABLE <gamma_ntr_f_<<species>>> '(<gamma_ntr_f_<<species>>>)/$ndim'\n";
+      $return_string .= "VARIABLE <gamma_ipn_ntr_f_<<species>>> '(<gamma_ipn_ntr_f_<<species>>>)/$ndim'\n";
+      return $return_string;
+    }}
+# face centred gamma variables are averaged implicitly
+    CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*(-<mu^_col_c_mixture>*<gamma_ntr_f_<<species>>>+<mu^_sid1_c_mixture>*<gamma_ipn_ntr_f_<<species>>>+<mu^_sid2_c_mixture>*<gamma_magnitude_f_<<species>>>)" ON <allcells> output # average trace of stress tensor to cell centres
+  END_IF
+  CELL_DERIVED <p_sid_<<species>>> "<p_sid_multiplier>*<p+_c_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+
+# finally add on contribution to species pressure
+  VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_sid_<<species>>>)" output
+
+# ERROR "single_species_sid_pressure cannot handle stress_method = version4_species yet"
+
+#ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
+ELSE_IF 0
+
+  NONE_CONSTANT <p_sid_multiplier> 1.d0
   CELL_LOCAL <p^^_c_<<species>>> "<p^^_f_<<species>>>" ON <allcells> output # average trace of stress tensor to cell centres
   CELL_DERIVED <p_sid_<<species>>> "<p_sid_multiplier>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*<p^^_c_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
 
@@ -41,9 +74,6 @@ ELSE
   IF {{ return string_test('<<sid_pressure_method>>','specific')}}
   # these methods produce a <p^_<<species>>> pressure
   # currently based on shear viscosity
-
-  # calculate the strain rate based only on this phase
-    INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_<<species>>[' R '<gamma_magnitude>' W '<gamma_magnitude_<<species>>>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_<<species>>>' R '<u_f_vect[' W '<u_f_vect_<<species>>[' R '<u[' W '<u_<<species>>[' R '<ugrad_f[' W '<ugrad_f_<<species>>['
 
   # NONE_CONSTANT <p_sid_multiplier> 7.5d0 # based on morris99 having K_s = 0.1 and K_n = 0.75, sp K_n/K_s = 7.5
   # NONE_CONSTANT <p_sid_multiplier> 1.d0
@@ -71,9 +101,6 @@ ELSE
   ELSE_IF {{ return string_test('<<sid_pressure_method>>','nonspecific')}}
   # these methods produce a <p_<<species>>> non-specific pressure
   # currently based on shear viscosity
-
-  # calculate the strain rate based only on this phase
-    INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_<<species>>[' R '<gamma_magnitude>' W '<gamma_magnitude_<<species>>>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_<<species>>>' R '<u_f_vect[' W '<u_f_vect_<<species>>[' R '<u[' W '<u_<<species>>[' R '<ugrad_f[' W '<ugrad_f_<<species>>['
 
   # NONE_CONSTANT <p_sid_multiplier> 7.5d0 # based on morris99 having K_s = 0.1 and K_n = 0.75, sp K_n/K_s = 7.5
   # NONE_CONSTANT <p_sid_multiplier> 1.d0
@@ -104,9 +131,6 @@ ELSE
   # crazyspecific is same as specific, except is diveded through by sqrt(Re_p) = sqrt(gamma*a^2*rho/mu)
   # using harmonic average of the two particle a's
 
-  # calculate the strain rate based only on this phase
-    INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_<<species>>[' R '<gamma_magnitude>' W '<gamma_magnitude_<<species>>>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_<<species>>>' R '<u_f_vect[' W '<u_f_vect_<<species>>[' R '<u[' W '<u_<<species>>[' R '<ugrad_f[' W '<ugrad_f_<<species>>['
-
     NONE_CONSTANT <p_sid_multiplier> 0.12d-2
     NONE_CONSTANT <p_sid_multiplier_<<species>>> "<p_sid_multiplier>"
     CELL_DERIVED <p^_sid_<<species>>> "0.d0" ON <allcells> output
@@ -133,33 +157,7 @@ ELSE
     #Calculate solid pressure due to shear induced diffusion
 
     # and also the volume-averaged strain rate magnitude across all solid phases
-    IF 0
-    # calculate gamma for each phase, and then average this to allsolids
-    # possibly not ideal as sqrt within volume averaging - probably isn't right for linear combination of two identical species
-      CELL_LOCAL <gamma_magnitude_allsolids> "0.d0" ON <allcells> output
-      {{
-        my $return_string = '';
-        for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-          $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_$species"."[' R '<gamma_magnitude>' W '<gamma_magnitude_$species>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_$species>' R '<u_f_vect[' W '<u_f_vect_$species"."[' R '<u[' W '<u_$species"."[' R '<ugrad_f[' W '<ugrad_f_$species"."['\n";
-          $return_string .= "VARIABLE <gamma_magnitude_allsolids> '<gamma_magnitude_allsolids>+<phi_pos_$species>*<gamma_magnitude_$species>'\n";
-        }
-        return $return_string;
-      }}
-    ELSE
-    # volume average solid velocities first, then calculate allsolids gamma from this
-    # actually this could be more efficient by creating ugrad_f_allsolids from inidividual species ugrad_f_speciesI ones, but a headache for string replacements
-      {{
-        my $return_string = '';
-        $return_string .= "CELL_LOCAL <u_allsolids[l=<<i>>]> '0.d0' ON <allcells>\n";
-        for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-          $return_string .= "VARIABLE <u_allsolids[l=<<i>>]> '<u_allsolids[l=<<i>>]>+<phi_pos_$species>*<u_$species"."[l=<<i>>]>'\n";
-        }
-    # and then normalise again by total solid volume fraction
-        $return_string .= "VARIABLE <u_allsolids[l=<<i>>]> '<u_allsolids[l=<<i>>]>/(1.d0-<phi_bounded_species0>)'\n";
-        return $return_string;
-      }}
-      INCLUDE_TEMPLATE 'navier_stokes/strain_rate_magnitude' R '<gamma[' W '<gamma_allsolids[' R '<gamma_magnitude>' W '<gamma_magnitude_allsolids>' R '<gamma_magnitude_f>' W '<gamma_magnitude_f_allsolids>' R '<u_f_vect[' W '<u_f_vect_allsolids[' R '<u[' W '<u_allsolids[' R '<ugrad_f[' W '<ugrad_f_allsolids['
-    END_IF
+    INCLUDE "single_species_gamma" R "<<species>>" W "allsolids" # will calculate velocities too
 
     IF 0 # not needed right now
       INCLUDE_TEMPLATE "multiphase/multifluid"
@@ -168,7 +166,6 @@ ELSE
       INCLUDE "mixture_viscosity"  R "<mu_<<species>>_n_l>" W "<mu_species0>" R "<mu" W "<mu_<<species>>_n" R "<<mumixturequemada>>" W "0" R "<<mumixturemb1999>>" W "0" R "<<munormalmb1999>>" W "1" R "phi_total_species" W "phi_<<species>>"
       FACE_DERIVED <mu_<<species>>_n_f> "faceave[harmonic](<mu_<<species>>_n>)" ON <allfaces>
     END_IF
-
 
     IF {{ return string_test('<<sid_pressure_method>>','none')}}
       CELL_LOCAL <p_sid_multiplier_<<species>>> "0.d0"

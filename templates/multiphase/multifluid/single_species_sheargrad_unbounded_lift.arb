@@ -1,48 +1,49 @@
-#shear gradient unbounded lift - From Asmolov 1999
+MARKDOWN
+shear gradient unbounded lift - From Asmolov 1999
 
-IF 1
-# rehashed this to a) be based on mixture velocities that are already calculated, b) on domain only (where extra forces are required), c) more efficient, d) using vector/tensor string notation
+Based on fluid velocities
+END_MARKDOWN
 
 # Calculate wall normals
-  INCLUDE_TEMPLATE "wall_normal_tensor.arb"
+INCLUDE_TEMPLATE "wall_normal_tensor.arb"
 
-#Divergence of strain rate tensor - Shear rate gradient tensor
-# required stress_method = version4 being based on mixture velocities
-  INCLUDE_TEMPLATE "gamma_rate_multifluid"
+# now calculate the laplacian of a velocity field, probably the fluid velocity makes most sense
+# note that <<species>> already has a value in this block, but u_laplacian requires a different value, so must be set when calling
+REPLACEMENTS D "<<velocity_species>>" W "<<species>>" # now based on own phase species, which should be stable
+#INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "species0"
+INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "<<velocity_species>>"
 
 #Coefficient - reworked to be a constant
-  CONSTANT <sheargrad_unbounded_multiplier> 1.d0
-  CONSTANT <sheargrad_unbounded_coefficient_<<species>>> "<sheargrad_unbounded_multiplier>*5.362*3.d0/(4.d0*<pi>)*((<rho_species0>*<mu_species0>)**0.5d0*<a_<<species>>>)"
+CONSTANT <sheargrad_unbounded_multiplier> 1.d0
+CONSTANT <sheargrad_unbounded_coefficient_<<species>>> "<sheargrad_unbounded_multiplier>*5.362*3.d0/(4.d0*<pi>)*((<rho_species0>*<mu_species0>)**0.5d0*<a_<<species>>>)"
 
-#Shear gradient lift force acting on solid, in terms of mixture properties
-# calculate strain rates at cell centres
-  CELL_LOCAL <gamma_mixture[l=<<i>>,<<j>>]> "<gamma_f_mixture[l=<<i>>,<<j>>]>" ON <allcells>
-  CELL_DERIVED <gamma_mixture_mag> "sqrt(cellmax(0.5d0*ddot(<gamma_mixture[l=:,:]>,<gamma_mixture[l=:,:]>),<tinyish>))" ON <allcells>
+CELL_DERIVED <sheargrad_unbounded_lift_vector[l=<<i>>]> "dot(<gamma_<<velocity_species>>[l=:,<<i>>]>,<laplacian_<<velocity_species>>[l=:]>)/(sqrt(cellmax(<gamma_magnitude_<<velocity_species>>>,<tinyish>)))" ON <domain> nooutput
 
-  CELL_DERIVED <particle_force_sheargrad_unbounded_lift_mixture[l=<<i>>]> "dot(<gamma_mixture[l=:,<<i>>]>,<laplacian_mixture[l=:]>)/(sqrt(cellmax(<gamma_mixture_mag>,<tinyish>)))" ON <domain> output
+CELL_DERIVED <particle_force_sheargrad_unbounded_lift_<<species>>[l=<<i>>]> "<sheargrad_unbounded_coefficient_<<species>>>*<sheargrad_unbounded_lift_vector[l=<<i>>]>" ON <domain> output
 
-  CELL_DERIVED <particle_force_sheargrad_unbounded_lift_<<species>>[l=<<i>>]> "<sheargrad_unbounded_coefficient_<<species>>>*<particle_force_sheargrad_unbounded_lift_mixture[l=<<i>>]>" ON <domain> output
-
-  VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_sheargrad_unbounded_lift_<<species>>[l=<<i>>]>"
-
-ELSE
-  # Calculate wall normals
-  INCLUDE_TEMPLATE "wall_normal_tensor.arb" R "<domain>" W "<allcells>"
-
-  # Include strain rate magnitude for the fluid phase
-  INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude" R "<gamma[" W "<gamma_species0[" R "<gamma_magnitude>" W "<gamma_magnitude_species0>" R "<gamma_magnitude_f>" W "<gamma_magnitude_f_species0>" R "<u_f_vect[" W "<u_f_vect_species0[" R "<u[" W "<u_species0[" R "<ugrad_f[" W "<ugrad_f_species0["
-
-  #Divergence of strain rate tensor - Shear rate gradient tensor
-  INCLUDE_TEMPLATE "gamma_rate_multifluid" R "<domain>" W "<allcells>" R "<<species>>" W "species0"
-
-  #Coeffciet
-  CELL_DERIVED <sheargrad_unbounded_<<species>>> "5.362*3.d0/(4.d0*<pi>)*(<rho_species0>**0.5d0*<mu_species0>**0.5d0*<a_<<species>>>)*(1/<gamma_magnitude_species0>**0.5d0)" ON <allcells> output
+VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_sheargrad_unbounded_lift_<<species>>[l=<<i>>]>"
 
 
-  #Shear gradient lift force acting on solid
-  {{ return vector_expand(
-   'CELL_DERIVED <particle_force_sheargrad_unbounded_lift_<<species>>[l=$l]> "<sheargrad_unbounded_<<species>>>*dot(<gamma_species0[l=:,$l]>,<laplacian_species0[l=:]>)" ON <allcells> output',
-  'VARIABLE <extra_force_<<species>>[l=$l]> "<extra_force_<<species>>[l=$l]> + <particle_force_sheargrad_unbounded_lift_<<species>>[l=$l]>"'
-  )}}
+# older code
 
-END_IF
+# rehashed this to a) be based on mixture velocities that are already calculated, b) on domain only (where extra forces are required), c) more efficient, d) using vector/tensor string notation
+
+# # Calculate wall normals
+# INCLUDE_TEMPLATE "wall_normal_tensor.arb" R "<domain>" W "<allcells>"
+
+# # Include strain rate magnitude for the fluid phase
+# INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude" R "<gamma[" W "<gamma_species0[" R "<gamma_magnitude>" W "<gamma_magnitude_species0>" R "<gamma_magnitude_f>" W "<gamma_magnitude_f_species0>" R "<u_f_vect[" W "<u_f_vect_species0[" R "<u[" W "<u_species0[" R "<ugrad_f[" W "<ugrad_f_species0["
+
+# #Divergence of strain rate tensor - Shear rate gradient tensor
+# INCLUDE_TEMPLATE "gamma_rate_multifluid" R "<domain>" W "<allcells>" R "<<species>>" W "species0"
+
+# #Coeffciet
+# CELL_DERIVED <sheargrad_unbounded_<<species>>> "5.362*3.d0/(4.d0*<pi>)*(<rho_species0>**0.5d0*<mu_species0>**0.5d0*<a_<<species>>>)*(1/<gamma_magnitude_species0>**0.5d0)" ON <allcells> output
+
+
+# #Shear gradient lift force acting on solid
+# {{ return vector_expand(
+#  'CELL_DERIVED <particle_force_sheargrad_unbounded_lift_<<species>>[l=$l]> "<sheargrad_unbounded_<<species>>>*dot(<gamma_species0[l=:,$l]>,<laplacian_species0[l=:]>)" ON <allcells> output',
+# 'VARIABLE <extra_force_<<species>>[l=$l]> "<extra_force_<<species>>[l=$l]> + <particle_force_sheargrad_unbounded_lift_<<species>>[l=$l]>"'
+# )}}
+

@@ -4,6 +4,9 @@ Here we calculate the dynamic forces, including <dynamic_force_c[l=:]>, <dynamic
 Note that <dynamic_force_f_{correction}> has different interpretations depending on <<u_f_method>>
 END_MARKDOWN
 
+# try high order but adjacentcell averaging
+REPLACEMENTS D "<<pfadjacentcells>>" W "0" D "<<pfadjacentcellshighorder>>" W "0"
+
 # ensure that <<u_f_method>> has been set
 INCLUDE "default_replacement_strings"
 
@@ -17,6 +20,7 @@ END_IF
   my $return_string = '';
   for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
     $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
+#     "R '<<pfadjacentcells>>' W '1' ". # use low order adjacentcell averaging just for this right now
       "R '<p>' W '<p_$species>' ".
       "R '<p_f_gradient_limiter>' W '<p_f_gradient_limiter_$species>' ".
       "R '<p_f>' W '<p_f_$species>'\n";
@@ -43,6 +47,17 @@ END_IF
   }
   return $return_string;
 }}
+
+REPLACEMENTS D "<<p_f_hack>>" W "0"
+IF <<p_f_hack>> # trialling using isotropic part from faces directly, which requires that osmotic pressure be defined
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+    $return_string .= "VARIABLE <p_f_$species> '<p+_f_$species>+faceave(<p_osmotic_$species>)'\n";
+  }
+  return $return_string;
+}}
+END_IF
 
 # use the navier_stokes dynamic_force template to create the dynamic force variables, including the fluid phase pressure term (only) which is common to all phases
 {{

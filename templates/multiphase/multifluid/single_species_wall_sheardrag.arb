@@ -2,16 +2,13 @@
 
 INCLUDE_TEMPLATE "general/wall_normal_tensor.arb" R "<domain>" W "<allcells>"
 
-#Get stress tensor
-INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude" R "<gamma[" W "<gamma_species0[" R "<gamma_magnitude>" W "<gamma_magnitude_species0>" R "<gamma_magnitude_f>" W "<gamma_magnitude_f_species0>" R "<u_f_vect[" W "<u_f_vect_species0[" R "<u[" W "<u_species0[" R "<ugrad_f[" W "<ugrad_f_species0["
-
 NONE_CONSTANT <particle_force_wall_sheardrag_multiplier> 1.d0
 
 IF 1 #Magneduet Wall Shear Drag
   CELL_CONSTANT <wall_normal_magnitude_norm_<<species>>> "cellmin(<a_<<species>>>/<wall_normal_magnitude>,1.0d0)" ON <allcells> output
-  CELL_CONSTANT <particle_force_alpha3_distance_<<species>>> "((5/16)*<a_<<species>>>*(<wall_normal_magnitude_norm_<<species>>>)^2*(1+(9/16)*(<wall_normal_magnitude_norm_<<species>>>)))" ON <allcells> output
+  CELL_CONSTANT <wall_sheardrag_alpha3_distance_<<species>>> "((5/16)*<a_<<species>>>*(<wall_normal_magnitude_norm_<<species>>>)^2*(1+(9/16)*(<wall_normal_magnitude_norm_<<species>>>)))" ON <allcells> output
   #Coeffcients
-  CELL_DERIVED <particle_force_alpha3_<<species>>> "<particle_force_wall_sheardrag_multiplier>*9.d0/(2.d0*<a_<<species>>>^2)*<mu_species0>*<particle_force_alpha3_distance_<<species>>>" ON <allcells> output
+  CELL_DERIVED <wall_sheardrag_alpha3_<<species>>> "<particle_force_wall_sheardrag_multiplier>*9.d0/(2.d0*<a_<<species>>>^2)*<mu_species0>*<wall_sheardrag_alpha3_distance_<<species>>>" ON <allcells> output
 ELSE
   ERROR "no other wall shear drag coded up yet"
 END_IF
@@ -22,42 +19,33 @@ REPLACEMENTS D "<<wall_sheardrag_face_based>>" W "0" # calculate at the faces, a
 IF <<wall_sheardrag_approximate>>
 # gamma approximated by local solid velocity/distance
   IF <<wall_sheardrag_face_based>>
-    FACE_DERIVED <particle_force_alpha3_f_<<species>>> "<particle_force_alpha3_<<species>>>" ON <allfaces>
+    FACE_DERIVED <wall_sheardrag_alpha3_f_<<species>>> "<wall_sheardrag_alpha3_<<species>>>" ON <allfaces>
 # could do better with averaging wall functions to faces as constants
     IF 1 # based on fluid phase velocity
-      FACE_DERIVED <particle_force_f_wall_sheardrag_vect_<<species>>[l=<<i>>]> "-<particle_force_alpha3_f_<<species>>>*dot(<u_f_vect_species0[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <allfaces> output
+      FACE_DERIVED <wall_sheardrag_f_vect_<<species>>[l=<<i>>]> "-<wall_sheardrag_alpha3_f_<<species>>>*dot(<u_f_vect_species0[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <allfaces>
     ELSE # based on solid phase velocity
-      FACE_DERIVED <particle_force_f_wall_sheardrag_vect_<<species>>[l=<<i>>]> "-<particle_force_alpha3_f_<<species>>>*dot(<u_f_vect_species1[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <allfaces> output
+      FACE_DERIVED <wall_sheardrag_f_vect_<<species>>[l=<<i>>]> "-<wall_sheardrag_alpha3_f_<<species>>>*dot(<u_f_vect_species1[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <allfaces>
     END_IF
-    FACE_DERIVED <particle_force_f_wall_sheardrag_<<species>>> "dot(<particle_force_f_wall_sheardrag_vect_<<species>>[l=:]>,<facenorm[l=:]>)" ON <allfaces> output
-    CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "<particle_force_f_wall_sheardrag_vect_<<species>>[l=<<i>>]>" ON <allcells> output
+    FACE_DERIVED <wall_sheardrag_f_<<species>>> "dot(<wall_sheardrag_f_vect_<<species>>[l=:]>,<facenorm[l=:]>)" ON <allfaces>
+    CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "<wall_sheardrag_f_vect_<<species>>[l=<<i>>]>" ON <allcells> output
 
 # now add various contributions onto the dynamic force
     VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> "<dynamic_force_c_<<species>>[l=<<i>>]> + <particle_force_wall_sheardrag_<<species>>[l=<<i>>]>"
 #   VARIABLE <dynamic_force_c_species0[l=<<i>>]> "<dynamic_force_c_species0[l=<<i>>]> - <particle_force_wall_sheardrag_<<species>>[l=<<i>>]>*<phi_bounded_<<species>>>/<phi_bounded_species0>"
-    VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>> + <particle_force_f_wall_sheardrag_<<species>>>"
-#   VARIABLE <dynamic_force_f_species0> "<dynamic_force_f_species0> - <particle_force_f_wall_sheardrag_<<species>>>*<phi_f_bounded_<<species>>>/<phi_f_bounded_species0>"
+    VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>> + <wall_sheardrag_f_<<species>>>"
+#   VARIABLE <dynamic_force_f_species0> "<dynamic_force_f_species0> - <wall_sheardrag_f_<<species>>>*<phi_f_bounded_<<species>>>/<phi_f_bounded_species0>"
 
   ELSE
     IF 1 # based on fluid phase velocity
-      CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "-<particle_force_alpha3_<<species>>>*dot(<u_species0[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <domain> output,componentoutput
+      CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "-<wall_sheardrag_alpha3_<<species>>>*dot(<u_species0[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <domain> output
     ELSE # based on solid phase velocity
-      CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "-<particle_force_alpha3_<<species>>>*dot(<u_species1[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <domain> output,componentoutput
+      CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "-<wall_sheardrag_alpha3_<<species>>>*dot(<u_species1[l=:]>,<unit_wall_tt[l=:,<<i>>]>)/<wall_normal_magnitude>" ON <domain> output
     END_IF
     VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_wall_sheardrag_<<species>>[l=<<i>>]>"
   END_IF
 ELSE
 # gamma calculated locally, and based on fluid
-  CELL_DERIVED <particle_force_normal_sheargradient_species0[l=<<i>>]> "dot(<wall_normal_unit[l=:]>,<gamma_species0[l=:,<<i>>]>)" ON <domain> output,componentoutput
-  CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "-<particle_force_alpha3_<<species>>>*dot(<particle_force_normal_sheargradient_species0[l=:]>,<unit_wall_tt[l=:,<<i>>]>)" ON <domain> output,componentoutput
+  CELL_DERIVED <wall_sheardrag_normal_sheargradient_species0[l=<<i>>]> "dot(<wall_normal_unit[l=:]>,<gamma_species0[l=:,<<i>>]>)" ON <domain>
+  CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=<<i>>]> "-<wall_sheardrag_alpha3_<<species>>>*dot(<wall_sheardrag_normal_sheargradient_species0[l=:]>,<unit_wall_tt[l=:,<<i>>]>)" ON <domain> output
   VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_wall_sheardrag_<<species>>[l=<<i>>]>"
 END_IF
-
-#{{ return vector_expand(
-#  'CELL_DERIVED <particle_force_normal_sheargradient_species0[l=$l]> "dot(<wall_normal_unit[l=:]>,<gamma_species0[l=:,$l]>)" ON <domain> output,componentoutput',
-#  'CELL_DERIVED <particle_force_wall_sheardrag_<<species>>[l=$l]> "-<particle_force_alpha3_<<species>>>*dot(<particle_force_normal_sheargradient_species0[l=:]>,<unit_wall_tt[l=:,$l]>)" ON <domain> output,componentoutput',
-#  'VARIABLE <extra_force_<<species>>[l=$l]> "<extra_force_<<species>>[l=$l]> + <particle_force_wall_sheardrag_<<species>>[l=$l]>"'
-#) }}
-#shear base drag (acting only on solid species)
-#CELL_DERIVED <drag_force_wallshear_species0[l=1]> "<particle_force_alpha3_species0>*<phi_bounded_<<species>>>/<phi_bounded_species0>*dot(<unit_wall_tt[l=1,:]>,<normal_sheargradient_species0[l=:]>)" ON <domain> output,componentoutput
-#CELL_DERIVED <drag_force_wallshear_<<species>>[l=1]> "-<particle_force_alpha3_<<species>>>*dot(<unit_wall_tt[l=1,:]>,<normal_sheargradient_species0[l=:]>)" ON <domain> output,componentoutput

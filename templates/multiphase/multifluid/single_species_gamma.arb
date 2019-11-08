@@ -1,0 +1,82 @@
+MARKDOWN
+Calculate gamma and related properties for a multifluid <<species>> = speciesN, mixture or allsolids.
+
+For each of <<species>>, the following are defined
+<u_<<species>>[l=:]> - CELL_DERIVED, only for mixture and allsolids
+<ugrad_f_<<species>>[l=:,:]> - FACE_DERIVED
+<gamma_f_<<species>>[l=:,:]> - FACE_DERIVED
+<gamma_<<species>>[l=:,:]> - CELL_LOCAL
+<gamma_magnitude_f_<<species>>> - FACE_DERIVED
+<gamma_magnitude_<<species>>> - CELL_LOCAL
+
+Now option to remove isotropic part of strain rate tensor, meaning that gamma is deviatoric, determined by <<deviatoric_gamma>>
+END_MARKDOWN
+
+# given that all of the stress closure models tend to assume this on the microscopic scale, should be best to present to them a deviatoric gamma on the macroscopic scale
+REPLACEMENTS D "<<deviatoric_gamma>>" W "1"
+
+# if this is for the 'mixture' or 'allsolids' species, then appropriate velocities have to be defined first
+IF {{ return (string_test('<<species>>','mixture')) }}
+  {{
+    my $return_string = '';
+    $return_string .= "CELL_DERIVED <u_mixture[l=<<i>>]> '0.d0' ON <allcells>\n";
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "VARIABLE <u_mixture[l=<<i>>]> '<u_mixture[l=<<i>>]>+<phi_pos_$species>*<u_$species"."[l=<<i>>]>'\n";
+    }
+    return $return_string;
+  }}
+ELSE_IF {{ return (string_test('<<species>>','allsolids')) }}
+  {{
+    my $return_string = '';
+    $return_string .= "CELL_DERIVED <u_allsolids[l=<<i>>]> '0.d0' ON <allcells>\n";
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <u_allsolids[l=<<i>>]> '<u_allsolids[l=<<i>>]>+<phi_pos_$species>*<u_$species"."[l=<<i>>]>'\n";
+    }
+    return $return_string;
+  }}
+END_IF
+
+# velocity gradient
+FACE_DERIVED <ugrad_f_<<species>>[l=<<i>>,<<j>>]> "facegrad[l=<<i>>,<<reflect=<<j>>>>](<u_<<species>>[l=<<j>>]>)" ON <allfaces>
+
+# symmetric strain rate
+FACE_DERIVED <gamma_f_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_f_<<species>>[l=<<i>>,<<j>>]>+<ugrad_f_<<species>>[l=<<j>>,<<i>>]>)" ON <allfaces>
+
+IF <<deviatoric_gamma>>
+# calculate the spherical part of gamma, which is the trace divided by the number of dimensions
+  FACE_LOCAL <gamma_spherical_f_<<species>>> "0.d0" ON <allfaces> 
+  {{ 
+    my $return_string = '';
+    my $ndim = 0;
+    for my $ldim (string_eval('<<dimensions>>','list')) {
+      $return_string .= "VARIABLE <gamma_spherical_f_<<species>>> '<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=$ldim,$ldim]>'\n";
+      $ndim = $ndim+1;
+    }
+    $return_string .= "VARIABLE <gamma_spherical_f_<<species>>> '(<gamma_spherical_f_<<species>>>)/$ndim'\n";
+    return $return_string;
+  }}
+# remove the spherical part from gamma to leave a deviatoric tensor
+  VARIABLE <gamma_f_<<species>>[l=<<i>>,<<i>>]> "<gamma_f_<<species>>[l=<<i>>,<<i>>]>-<gamma_spherical_f_<<species>>>"
+END_IF
+
+# cell centred same
+CELL_LOCAL <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_f_<<species>>[l=<<i>>,<<j>>]>" ON <allcells>
+
+# magnitude of the strain rate, on the faces (checked consistency with BSL, p241, where gamma is the sum of the velocity gradient + transpose)
+IF <<azimuthal>>
+  FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*faceave(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u_<<species>>[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>))" ON <allfaces> output
+  CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
+ELSE_IF <<cylindrical>>
+  FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*faceave(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2,<tinyish>))" ON <allfaces> output
+  IF 1
+# the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
+    CELL_LOCAL <gamma_magnitude_<<species>>> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2),<tinyish>))" ON <allcells>
+  ELSE
+    CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
+  END_IF
+ELSE
+# FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>),<tinyish>))" ON <allfaces> output
+# or use inbuilt function which >0 always, and is entirely equivalent to the above for a tensor
+  FACE_DERIVED <gamma_magnitude_f_<<species>>> "mag(<gamma_f_<<species>>[l=:,:]>)" ON <allfaces> output
+  CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
+END_IF

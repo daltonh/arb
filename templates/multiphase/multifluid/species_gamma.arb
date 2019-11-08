@@ -1,0 +1,30 @@
+MARKDOWN
+Calculate the symmetric strain rate for each species, including the mixture.
+
+Whether variables are DERIVED or LOCALs (ie, whether evaluated and stored at each iteration, or just available as locals) depends on the <<stress_method>> type, which should be defined
+
+Does not refer to navier_stokes templates anymore.
+END_MARKDOWN
+
+# by default the gamma related variables for each species are locals, and the important mixture ones are stored
+# for stress_methods 2 and 4
+REPLACEMENTS R '<<species_type>>' W 'LOCAL'
+REPLACEMENTS R '<<mixture_type>>' W 'DERIVED'
+IF {{ return (string_test('<<stress_method>>','version1') || string_test('<<stress_method>>','version3') || string_test('<<stress_method>>','version4_species')) }}
+# otherwise gamma related variables for each species are derived (stored), and the mixture ones are locals
+# for stress_methods 1, 3 and 4_species
+  REPLACEMENTS S '<<species_type>>' W 'DERIVED' # NB, S means substitute variable in place
+  REPLACEMENTS S '<<mixture_type>>' W 'LOCAL'
+END_IF
+
+# calculate for each species
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "INCLUDE 'single_species_gamma' R '<<species>>' W '$species' R 'DERIVED' W '<<species_type>>'\n";
+  }
+  return $return_string;
+}}
+
+# now for mixture, after defining mixture velocity
+INCLUDE 'single_species_gamma' R '<<species>>' W 'mixture' R 'DERIVED' W '<<mixture_type>>'

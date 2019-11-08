@@ -2,30 +2,29 @@ MARKDOWN
 Wall lift - Cherukat and Mclaughlin for non rotating - 0 slip - linear shear flows
 END_MARKDOWN
 
-# for this force we need the wall normals
-INCLUDE_TEMPLATE  "wall_normals"
-# and also the strain rate magnitude for the fluid phase
-INCLUDE_TEMPLATE "navier_stokes/strain_rate_magnitude" R "<gamma[" W "<gamma_species0[" R "<gamma_magnitude>" W "<gamma_magnitude_species0>" R "<gamma_magnitude_f>" W "<gamma_magnitude_f_species0>" R "<u_f_vect[" W "<u_f_vect_species0[" R "<u[" W "<u_species0[" R "<ugrad_f[" W "<ugrad_f_species0["
+REPLACEMENTS D "<<velocity_species>>" W "<<species>>" # now based on own phase species, which should be stable
 
 REPLACEMENTS D "<<wall_lift_method>>" W "cherukat"
 #REPLACEMENTS D "<<wall_lift_method>>" W "nilanka061119" # seems to be a problem with this, probably bug in formulae
 #REPLACEMENTS D "<<wall_lift_method>>" W "nilanka061119inner"
+
+# for this force we need the wall normals
+INCLUDE_TEMPLATE  "wall_normals"
 
 #IF 1 # Cherukat Wall lift
 IF {{ return (string_test('<<wall_lift_method>>','cherukat')) }}  # Cherukat Wall lift
   CONSTANT <wall_lift_multiplier> 1.d0
   CELL_CONSTANT <wall_normal_magnitude_norm_<<species>>> "cellmin(<a_<<species>>>/<wall_normal_magnitude>,1.0d0)" ON <domain>
   CELL_CONSTANT <wall_lift_C_L1_<<species>>> "(2.0069+1.0575*<wall_normal_magnitude_norm_<<species>>>-2.4007*<wall_normal_magnitude_norm_<<species>>>^2+1.3174*<wall_normal_magnitude_norm_<<species>>>^3)" ON <domain> output
-  #CELL_DERIVED <Re_shear> "<a_<<species>>>^2*<gamma_magnitude_species0>/(<mu_species0>/<rho_species0>)" ON <domain> output #shear based Re number
   #wall lift coefficient
-  CELL_DERIVED <particle_force_alpha5_<<species>>> "<wall_lift_multiplier>*3.d0/(4.d0*<pi>)*<rho_species0>*<a_<<species>>>*<wall_lift_C_L1_<<species>>>" ON <domain> output
+  CELL_DERIVED <wall_lift_alpha5_<<species>>> "<wall_lift_multiplier>*3.d0/(4.d0*<pi>)*<rho_species0>*<a_<<species>>>*<wall_lift_C_L1_<<species>>>" ON <domain>
 ELSE_IF {{ return (string_test('<<wall_lift_method>>','nilanka061119') || string_test('<<wall_lift_method>>','nilanka061119inner')) }}  # Cherukat Wall lift
   CONSTANT <wall_lift_multiplier> 1.d0
 
 # 1/l* = a/l
   CELL_CONSTANT <wall_lift_a/l_<<species>>> "cellmin(<a_<<species>>>/<wall_normal_magnitude>,1.0d0)" ON <domain> output
 # L_G
-  CELL_LOCAL <wall_lift_L_G> "sqrt(cellmax(<mu_species0>/(<rho_species0>*<gamma_magnitude_species0>),<tinyish>))" ON <domain> output
+  CELL_LOCAL <wall_lift_L_G> "sqrt(cellmax(<mu_species0>/(<rho_species0>*<gamma_magnitude_<<velocity_species>>>),<tinyish>))" ON <domain> output
 # l*/L*_G = 1/(1/l*)*(a/L_G) = l/L_G
   CELL_DERIVED <wall_lift_l/L_G> "<wall_normal_magnitude>/cellmax(<wall_lift_L_G>,<tinyish>)" ON <domain> output
 
@@ -40,24 +39,26 @@ ELSE_IF {{ return (string_test('<<wall_lift_method>>','nilanka061119') || string
   CONSTANT <wall_lift_lambda9> -2.4007d0
   CONSTANT <wall_lift_lambda10> 1.3174d0
 
-  CELL_DERIVED <wall_lift_Re_gamma_<<species>>> "<rho_species0>*<gamma_magnitude_species0>*<a_<<species>>>^2/<mu_species0>" ON <domain> output
+  CELL_DERIVED <wall_lift_Re_gamma_<<species>>> "<rho_species0>*<gamma_magnitude_<<velocity_species>>>*<a_<<species>>>^2/<mu_species0>" ON <domain> output
   CELL_DERIVED <wall_lift_C_inner_<<species>>> "<wall_lift_lambda8>*<wall_lift_a/l_<<species>>>-<wall_lift_lambda9>*<wall_lift_a/l_<<species>>>^2-<wall_lift_lambda10>*<wall_lift_a/l_<<species>>>^3" ON <domain> output
 # calculate these regardless of inner approximation or not, for information at least
   CELL_DERIVED <wall_lift_f1_<<species>>> "<wall_lift_lambda1>*exp(<wall_lift_lambda2>*<wall_lift_Re_gamma_<<species>>>)-<wall_lift_lambda3>*exp(<wall_lift_lambda4>*<wall_lift_Re_gamma_<<species>>>)" ON <domain> output
   CELL_DERIVED <wall_lift_f2_<<species>>> "1.d0+sqrt(cellmax(<wall_lift_Re_gamma_<<species>>>,<tinyish>))" ON <domain> output
   CELL_DERIVED <wall_lift_C_outer_<<species>>> "<wall_lift_lambda5>*exp(<wall_lift_lambda6>*<wall_lift_l/L_G>^2-<wall_lift_lambda7>*<wall_lift_l/L_G>)" ON <domain> output
+# this is the C_L1 coefficient
   IF {{ return (string_test('<<wall_lift_method>>','nilanka061119')) }}
-  # this is the C_L1 coefficient
+# here the full form, but with bug somehow in outer
     CELL_DERIVED <wall_lift_C_L1_<<species>>> "<wall_lift_f1_<<species>>>*<wall_lift_C_outer_<<species>>>+<wall_lift_f2_<<species>>>*<wall_lift_C_inner_<<species>>>" ON <domain> output
   ELSE
+# here the inner part only
     CELL_DERIVED <wall_lift_C_L1_<<species>>> "<wall_lift_C_inner_<<species>>>" ON <domain> output
   END_IF
 
   #wall lift coefficient
-  CELL_DERIVED <particle_force_alpha5_<<species>>> "<wall_lift_multiplier>*3.d0/(4.d0*<pi>)*<rho_species0>*<a_<<species>>>*<wall_lift_C_L1_<<species>>>" ON <domain> output
+  CELL_DERIVED <wall_lift_alpha5_<<species>>> "<wall_lift_multiplier>*3.d0/(4.d0*<pi>)*<rho_species0>*<a_<<species>>>*<wall_lift_C_L1_<<species>>>" ON <domain>
 ELSE
   ERROR "no other wall lift coded up yet"
 END_IF
 
-CELL_DERIVED <particle_force_wall_lift_<<species>>[l=<<i>>]> "<particle_force_alpha5_<<species>>>*<gamma_magnitude_species0>^2*<wall_normal_unit[l=<<i>>]>" ON <domain> output
+CELL_DERIVED <particle_force_wall_lift_<<species>>[l=<<i>>]> "<wall_lift_alpha5_<<species>>>*<gamma_magnitude_<<velocity_species>>>^2*<wall_normal_unit[l=<<i>>]>" ON <domain> output
 VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_wall_lift_<<species>>[l=<<i>>]>"
