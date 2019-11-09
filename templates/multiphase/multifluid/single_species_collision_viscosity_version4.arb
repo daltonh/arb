@@ -13,7 +13,8 @@ END_MARKDOWN
 #REPLACEMENTS D "<<viscosity_method>>" W "daltonhold" # initial very rough fitting
 #REPLACEMENTS D "<<viscosity_method>>" W "joe301019" # joe's fitting from 30/10/19, good for at least intermediate phi
 #REPLACEMENTS D "<<viscosity_method>>" W "joe021119" # joe's fitting from 2/10/19, based on mu_sid, partitioned by dalton into musid1 and musid2
-REPLACEMENTS D "<<viscosity_method>>" W "joe081119" # joe's fitting from 8/10/19
+#REPLACEMENTS D "<<viscosity_method>>" W "joe081119" # joe's fitting from 8/10/19
+REPLACEMENTS D "<<viscosity_method>>" W "joe081119quadraticcol" # joe's fitting from 8/10/19, but mu^_col based on quadratic
 
 #IF {{ return string_test('<<stress_method>>','version4_species')}}
 #  ERROR "single_species_collision_viscosity_version4 cannot handle stress_method = version4_species yet"
@@ -22,6 +23,10 @@ REPLACEMENTS D "<<viscosity_method>>" W "joe081119" # joe's fitting from 8/10/19
 # base these viscosities on the total solids concentration for now
 # in the future need to take accound of size fractions
 CELL_DERIVED <mu^_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+#IF 0 # attempt to limit lower bounds over which phi varies - did not work
+#  CONSTANT <mu^_phi_lower_limit> 1.d-2
+#  CELL_DERIVED <mu^_col_phi_bounded_allsolids> "cellmax(<mu^_phi_bounded_allsolids>,<mu^_phi_lower_limit>)" ON <allcells>
+#END_IF
 
 IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
 
@@ -282,7 +287,8 @@ ELSE_IF {{ return string_test('<<viscosity_method>>','joe021119')}}
 # CELL_DERIVED <mu^_sid1_c_mixture> "0.5d0*<mu^_sid_c_mixture>" ON <allcells> output
 # CELL_DERIVED <mu^_sid2_c_mixture> "<mu^_sid1_c_mixture>" ON <allcells> output
 
-ELSE_IF {{ return string_test('<<viscosity_method>>','joe081119')}}
+ELSE_IF {{ return ( string_test('<<viscosity_method>>','joe081119') || string_test('<<viscosity_method>>','joe081119quadraticcol') ) }}
+
 # Calculated new mu_sid based on Kc = 0.1, Kn = 1.1, <drag_richardsonzaki_n> = 4.5 
 # Note: all other functions are the same
 # calculate functions that are first all functions of allsolids volume fraction (for now)
@@ -298,6 +304,7 @@ ELSE_IF {{ return string_test('<<viscosity_method>>','joe081119')}}
 # function
   CONSTANT <mu^_r_infty_minus2_min> 1.d-8 
   CELL_DERIVED <mu^_r_infty> "cellmax(<mu^_r_infty_b>+(<mu^_r_infty_c1>/<mu^_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+(<mu^_r_infty_c2>/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>))^(<mu^_r_infty_n2>),2.d0+<mu^_r_infty_minus2_min>)" ON <allcells> output
+# CELL_DERIVED <mu^_r_infty> "cellmax(<mu^_r_infty_b>+(<mu^_r_infty_c1>/<mu^_col_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+(<mu^_r_infty_c2>/(<mu^_r_infty_phi_max_allsolids>-<mu^_col_phi_bounded_allsolids>))^(<mu^_r_infty_n2>),2.d0+<mu^_r_infty_minus2_min>)" ON <allcells> output
   CELL_LOCAL <mu^_r_infty_minus2> "<mu^_r_infty>-2.d0" ON <allcells> output
 
 # B^_1 from r_infty
@@ -352,6 +359,13 @@ ELSE_IF {{ return string_test('<<viscosity_method>>','joe081119')}}
 
 # finally assemble viscosity functions from B^_1, B^_2 and f_bar
   CELL_DERIVED <mu^_col_c_mixture> "<mu^_B^_1>+<mu^_B^_2>" ON <allcells> output
+
+  IF {{ return string_test('<<viscosity_method>>','joe081119quadraticcol') }}
+# for quadraticcol version overwrite mu^_col with a normalised quadratic form
+# note that mu^_sid1/2 split is still determined by B1/B2
+    CONSTANT <mu^_col_quadratic> 5.0d0
+    VARIABLE <mu^_col_c_mixture> "<mu^_col_quadratic>/(1.d0-<phi_pos_species1>/<phi_max_allsolids>)^2"
+  END_IF
 # Now trying mu_sid fit directly, but this will not work in anything but channel flow with mu^_sid1 and mu^sid2 not correctly defined
 
 # mu_sid from phi
