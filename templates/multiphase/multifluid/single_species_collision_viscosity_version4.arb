@@ -49,8 +49,9 @@ IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
 # constants
   CONSTANT <mu^_f_bar_c> 3.647d0
 # CONSTANT <mu^_f_bar_n> 3.d0 # default pre 31/10/19
-  CONSTANT <mu^_f_bar_n> 2.d0 # current default - the default value for this has moved around
+# CONSTANT <mu^_f_bar_n> 2.d0 # current default - the default value for this has moved around
 # CONSTANT <mu^_f_bar_n> 1.5d0
+  CONSTANT <mu^_f_bar_n> 0.9d0 # low phi 0.008
   CONSTANT <mu^_f_bar_multiplier> 1.d0 # hook to increase anisotropy of structure
 # function
   CELL_DERIVED <mu^_f_bar> "<mu^_f_bar_multiplier>*<mu^_f_bar_c>*(<mu^_phi_bounded_allsolids>/<mu^_r_infty_phi_max_allsolids>)^<mu^_f_bar_n>" ON <allcells> output
@@ -60,14 +61,17 @@ IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
   CONSTANT <mu^_B^_1_b> 2.3456652d0
   CONSTANT <mu^_B^_1_c> 1.2265859d0
   CONSTANT <mu^_B^_1_d> 3.8539574d0
+  CONSTANT <mu^_B^_1_n> 0.37d0
 # function
-  CELL_DERIVED <mu^_B^_1> "<mu^_B^_1_b>*<mu^_r_infty_minus2>+<mu^_B^_1_c>*<mu^_r_infty_minus2>^2+<mu^_B^_1_d>*<mu^_r_infty_minus2>^0.37d0" ON <allcells> output
+  CELL_DERIVED <mu^_B^_1> "<mu^_B^_1_b>*<mu^_r_infty_minus2>+<mu^_B^_1_c>*<mu^_r_infty_minus2>^2+<mu^_B^_1_d>*<mu^_r_infty_minus2>^<mu^_B^_1_n>" ON <allcells> output
 
 # B^_2 from r_infty
 # constants
   CONSTANT <mu^_B^_2_a> 14.41944809
+  CONSTANT <mu^_B^_2_n> 0.356d0
 # function
-  CELL_DERIVED <mu^_B^_2> "0.5d0*<mu^_B^_2_a>/(<mu^_r_infty_minus2>^0.356d0)" ON <allcells> output
+# CELL_DERIVED <mu^_B^_2> "0.5d0*<mu^_B^_2_a>/(<mu^_r_infty_minus2>^0.356d0)" ON <allcells> output # BUG in equation!
+  CELL_DERIVED <mu^_B^_2> "0.5d0*<mu^_B^_2_a>*(<mu^_r_infty_minus2>^<mu^_B^_2_n>)" ON <allcells> output
 
 # finally assemble viscosity functions from B^_1, B^_2 and f_bar
   CELL_DERIVED <mu^_col_c_mixture> "<mu^_B^_1>+<mu^_B^_2>" ON <allcells> output
