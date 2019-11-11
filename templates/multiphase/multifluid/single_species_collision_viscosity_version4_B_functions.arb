@@ -1,0 +1,86 @@
+MARKDOWN
+For the collision stress tensor, calculate the B^_1 and B^_2 coefficients based on a radius
+
+Requires: <mu^_r_infty_minus2>
+Produces: <mu^_B^_1> and <mu^_B^_2>
+
+Can do a replacement on <mu^_B^_ to make these functions unique
+END_MARKDOWN
+
+REPLACEMENTS D "<<viscosity_B_method>>" W "joe021119"
+#REPLACEMENTS D "<<viscosity_B_method>>" W "daltonhold"
+
+IF {{ return string_test('<<viscosity_B_method>>','joe021119') }}
+# joe021119 method
+
+# B^_1 from r_infty
+# constants
+  CONSTANT <mu^_B^_1_low_c1> 3.988d0
+  CONSTANT <mu^_B^_1_low_c2> 3.382d0
+  CONSTANT <mu^_B^_1_low_n1> 0.2461d0
+  CONSTANT <mu^_B^_1_low_n2> 1.532d0
+  CONSTANT <mu^_B^_1_high_c1> 1.125d0
+  CONSTANT <mu^_B^_1_al> 4.d0
+# CONSTANT <mu^_B^_1_x0> "log(6.43)"
+  CONSTANT <mu^_B^_1_exp_x0> "6.43d0"
+
+#weighting function
+# CELL_DERIVED <mu^_B^_1_weighting> "1.d0/(1.d0+exp(-<mu^_B^_1_al>*(log(<mu^_r_infty_minus2>)-<mu^_B^_1_x0>)))" ON <allcells> 
+# equivalent function nan issue
+  CELL_DERIVED <mu^_B^_1_weighting> "<mu^_r_infty_minus2>^<mu^_B^_1_al>/(<mu^_r_infty_minus2>^<mu^_B^_1_al>+<mu^_B^_1_exp_x0>^<mu^_B^_1_al>)" ON <allcells> 
+
+#low r_infty B^_1 fit
+  CELL_DERIVED <mu^_B^_1_low> "<mu^_B^_1_low_c1>*<mu^_r_infty_minus2>**<mu^_B^_1_low_n1>+<mu^_B^_1_low_c2>*<mu^_r_infty_minus2>**<mu^_B^_1_low_n2>" ON <allcells> 
+
+#high r_infty B^_1 fit
+  CELL_DERIVED <mu^_B^_1_high> "<mu^_B^_1_high_c1>*(<mu^_r_infty_minus2>+2.d0)**2.d0" ON <allcells> 
+
+# function
+  CELL_DERIVED <mu^_B^_1> "(1.d0-<mu^_B^_1_weighting>)*<mu^_B^_1_low> + <mu^_B^_1_weighting>*<mu^_B^_1_high>" ON <allcells> output
+
+# B^_2 from r_infty
+# constants
+  CONSTANT <mu^_B^_2_low_c1> 3.445d0
+  CONSTANT <mu^_B^_2_low_c2> 0.9501d0
+  CONSTANT <mu^_B^_2_low_n1> 0.2045d0
+  CONSTANT <mu^_B^_2_low_n2> 1.361d0
+  CONSTANT <mu^_B^_2_high_c1> 5.999d0
+  CONSTANT <mu^_B^_2_high_c2> 2.054d0
+  CONSTANT <mu^_B^_2_al> 4.d0
+# CONSTANT <mu^_B^_2_x0> "log(1.48)"
+  CONSTANT <mu^_B^_2_exp_x0> "1.48d0"
+#weighting function
+# CELL_DERIVED <mu^_B^_2_weighting> "1.d0/(1.d0+exp(-<mu^_B^_2_al>*(log(<mu^_r_infty_minus2>)-<mu^_B^_2_x0>)))" ON <allcells> 
+# equivalent function nan issue
+  CELL_DERIVED <mu^_B^_2_weighting> "<mu^_r_infty_minus2>^<mu^_B^_2_al>/(<mu^_r_infty_minus2>^<mu^_B^_2_al>+<mu^_B^_2_exp_x0>^<mu^_B^_2_al>)" ON <allcells> 
+
+#low r_infty B^_2 fit
+  CELL_DERIVED <mu^_B^_2_low> "<mu^_B^_2_low_c1>*<mu^_r_infty_minus2>**<mu^_B^_2_low_n1>+<mu^_B^_2_low_c2>*<mu^_r_infty_minus2>**<mu^_B^_2_low_n2>" ON <allcells> 
+
+#high r_infty B^_2 fit
+  CELL_DERIVED <mu^_B^_2_high> "<mu^_B^_2_high_c1>*log(<mu^_r_infty_minus2>+2.d0)-<mu^_B^_2_high_c2>" ON <allcells> 
+
+# function
+  CELL_DERIVED <mu^_B^_2> "(1.d0-<mu^_B^_2_weighting>)*<mu^_B^_2_low> + <mu^_B^_2_weighting>*<mu^_B^_2_high>" ON <allcells> output
+
+ELSE
+# daltonhold method
+
+# B^_1 from r_infty
+# constants
+  CONSTANT <mu^_B^_1_b> 2.3456652d0
+  CONSTANT <mu^_B^_1_c> 1.2265859d0
+  CONSTANT <mu^_B^_1_d> 3.8539574d0
+  CONSTANT <mu^_B^_1_n> 0.37d0
+# function
+  CELL_DERIVED <mu^_B^_1> "<mu^_B^_1_b>*<mu^_r_infty_minus2>+<mu^_B^_1_c>*<mu^_r_infty_minus2>^2+<mu^_B^_1_d>*<mu^_r_infty_minus2>^<mu^_B^_1_n>" ON <allcells> output
+
+# B^_2 from r_infty
+# constants
+  CONSTANT <mu^_B^_2_a> 14.41944809
+  CONSTANT <mu^_B^_2_n> 0.356d0
+# function
+# CELL_DERIVED <mu^_B^_2> "0.5d0*<mu^_B^_2_a>/(<mu^_r_infty_minus2>^0.356d0)" ON <allcells> output # BUG in equation!
+  CELL_DERIVED <mu^_B^_2> "0.5d0*<mu^_B^_2_a>*(<mu^_r_infty_minus2>^<mu^_B^_2_n>)" ON <allcells> output
+
+END_IF
