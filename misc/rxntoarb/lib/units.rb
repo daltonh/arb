@@ -3,7 +3,7 @@
 
 module Units
 
-  VERSION = '1.13' # 1.13 added Ba, Gal, pdl, St
+  VERSION = '1.13'
   DATE = '2019-09-12'
 
   module_function
