@@ -3,8 +3,8 @@
 
 module Units
 
-  VERSION = '1.12'
-  DATE = '2019-05-20'
+  VERSION = '1.13' # 1.13 added Ba, Gal, pdl, St
+  DATE = '2019-09-12'
 
   module_function
 
@@ -91,6 +91,7 @@ module Units
     Unit.new('unified atomic mass unit', 'u', 'kg mol-1', 1e-3),
     # others
     Unit.new('acre', 'ac', 'm2', 4.0468564224e3),
+    Unit.new('barye', 'Ba', 'kg m-1 s-2', 0.1),
     Unit.new('British thermal unit', 'BTU', 'kg m2 s-2', 1055.06),
     Unit.new('calorie (thermochemical)', 'cal', 'kg m2 s-2', 4.184),
     Unit.new('degree Fahrenheit', ['degF', "\u2109", "\u00b0F"], 'K', 5.0/9.0, 459.67), # special case - could refer to absolute temperature or (with -t flag) temperature difference
@@ -99,6 +100,7 @@ module Units
     Unit.new('erg', 'erg', 'kg m2 s-2', 1e-7),
     Unit.new('faraday', 'faraday', 'A s', 9.64853321233100184e4),
     Unit.new('foot', 'ft', 'm', 0.3048),
+    Unit.new('gal', 'Gal', 'm s-2', 1e-2),
     Unit.new('gallon (UK)', 'gal_UK', 'm3', 4.54609e-3),
     Unit.new('gallon (US)', 'gal_US', 'm3', 3.785411784e-3),
     Unit.new('gauss', 'G', 'kg A-1 s-2', 1e-4),
@@ -110,11 +112,13 @@ module Units
     Unit.new('ounce (avoirdupois)', 'oz', 'kg', 28.349523125e-3),
     Unit.new('poise', 'P', 'kg m-1 s-1', 0.1),
     Unit.new('pound (avoirdupois)', 'lb', 'kg', 0.45359237),
+    Unit.new('poundal', 'pdl', 'kg m s-2', 0.138254954376),
     Unit.new('pound-force', 'lbf', 'kg m s-2', 4.4482216152605),
     Unit.new('pound-mole', 'lb-mol', 'mol', 453.59237),
     Unit.new('pound per square inch', 'psi', 'kg m-1 s-2', 6.894757e3),
     Unit.new('revolution', ['r', 'rev'], 'rad', 2*Math::PI),
     Unit.new('revolution per minute', 'rpm', 'rad s-1', 2*Math::PI/60),
+    Unit.new('stokes', 'St', 'm2 s-1', 1e-4),
     Unit.new('torr', 'Torr', 'kg m-1 s-2', 1.01325e5/7.6e2),
     Unit.new('yard', 'yd', 'm', 0.9144),
   ].sort_by { |unit| unit.name.downcase } #}}}
