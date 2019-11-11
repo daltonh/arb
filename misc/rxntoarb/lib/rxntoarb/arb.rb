@@ -34,12 +34,12 @@ module Rxntoarb
         if reaction.type == :reversible || reaction.type == :twostep # reversible must come before irreversible because same code handles two-step reactions
           reaction.label << '_i' if reaction.type == :twostep
           @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<ka_#{reaction.parent_label}>"
-          reaction.reactants.each { |reactant| @rates.last << "*#{reactant.conc_powers}" if reactant.conc_powers }
+          reaction.reactants.each { |reactant| @rates.last << "*#{reactant.conc_powers}" }
           @rates.last << "-<kd_#{reaction.parent_label}>"
           if reaction.type == :twostep
-            reaction.intermediates.each { |intermediate| @rates.last << "*#{intermediate.conc_powers}" if intermediate.conc_powers }
+            reaction.intermediates.each { |intermediate| @rates.last << "*#{intermediate.conc_powers}" }
           else
-            reaction.products.each { |product| @rates.last << "*#{product.conc_powers}" if product.conc_powers }
+            reaction.products.each { |product| @rates.last << "*#{product.conc_powers}" }
           end
           create_sources(reaction)
         end
@@ -47,9 +47,9 @@ module Rxntoarb
           reaction.label << 'i' if reaction.type == :twostep
           @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<k_#{reaction.parent_label}>"
           if reaction.type == :twostep
-            reaction.intermediates.each { |intermediate| @rates.last << "*#{intermediate.conc_powers}" if intermediate.conc_powers }
+            reaction.intermediates.each { |intermediate| @rates.last << "*#{intermediate.conc_powers}" }
           else
-            reaction.reactants.each { |reactant| @rates.last << "*#{reactant.conc_powers}" if reactant.conc_powers }
+            reaction.reactants.each { |reactant| @rates.last << "*#{reactant.conc_powers}" }
           end
           create_sources(reaction)
         end
