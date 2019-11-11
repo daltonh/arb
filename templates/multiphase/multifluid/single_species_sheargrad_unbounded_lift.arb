@@ -21,8 +21,10 @@ CELL_DERIVED <sheargrad_unbounded_lift_vector[l=<<i>>]> "dot(<gamma_<<velocity_s
 
 CELL_DERIVED <particle_force_sheargrad_unbounded_lift_<<species>>[l=<<i>>]> "<sheargrad_unbounded_coefficient_<<species>>>*<sheargrad_unbounded_lift_vector[l=<<i>>]>" ON <domain> output
 
-VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_sheargrad_unbounded_lift_<<species>>[l=<<i>>]>"
+# this could be the sigma used in the asmolov paper, but needs checking
+CELL_OUTPUT <sheargrad_unbounded_lift_sigma> "mag(<laplacian_<<velocity_species>>[l=:]>)*sqrt(<mu_species0>/<rho_species0>)/((cellmax(<gamma_magnitude_<<velocity_species>>>,<tinyish>))^1.5d0)" ON <domain>
 
+VARIABLE <extra_force_<<species>>[l=<<i>>]> "<extra_force_<<species>>[l=<<i>>]> + <particle_force_sheargrad_unbounded_lift_<<species>>[l=<<i>>]>"
 
 # older code
 

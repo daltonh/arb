@@ -14,7 +14,8 @@ END_MARKDOWN
 #REPLACEMENTS D "<<viscosity_method>>" W "joe301019" # joe's fitting from 30/10/19, good for at least intermediate phi
 #REPLACEMENTS D "<<viscosity_method>>" W "joe021119" # joe's fitting from 2/10/19, based on mu_sid, partitioned by dalton into musid1 and musid2
 #REPLACEMENTS D "<<viscosity_method>>" W "joe081119" # joe's fitting from 8/10/19
-REPLACEMENTS D "<<viscosity_method>>" W "joe081119quadraticcol" # joe's fitting from 8/10/19, but mu^_col based on quadratic
+#REPLACEMENTS D "<<viscosity_method>>" W "joe081119quadraticcol" # joe's fitting from 8/10/19, but mu^_col based on quadratic
+REPLACEMENTS D "<<viscosity_method>>" W "daltonh101119" # initial rough fitting, but now using r_f function to calculate low phi mu_sids
 
 #IF {{ return string_test('<<stress_method>>','version4_species')}}
 #  ERROR "single_species_collision_viscosity_version4 cannot handle stress_method = version4_species yet"
@@ -28,7 +29,7 @@ CELL_DERIVED <mu^_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allce
 #  CELL_DERIVED <mu^_col_phi_bounded_allsolids> "cellmax(<mu^_phi_bounded_allsolids>,<mu^_phi_lower_limit>)" ON <allcells>
 #END_IF
 
-IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
+IF {{ return (string_test('<<viscosity_method>>','daltonhold') || string_test('<<viscosity_method>>','daltonh101119')) }}
 
 # calculate functions that are first all functions of allsolids volume fraction (for now)
 
@@ -36,25 +37,16 @@ IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
 # constants
   CONSTANT <mu^_r_infty_b> 2.d0 # based of mu_r_infty function
   CONSTANT <mu^_r_infty_c1> 0.08 # characteristic volume fraction of lower spike function
-  CONSTANT <mu^_r_infty_c2> 0.5 # characteristic volume fraction of upper spike function
   CONSTANT <mu^_r_infty_n1> 1.2 # exponent of lower spike function
-  CONSTANT <mu^_r_infty_n2> 1.0 # exponent of upper spike function
+# CONSTANT <mu^_r_infty_c2> 0.5 # characteristic volume fraction of upper spike function
+# CONSTANT <mu^_r_infty_n2> 1.0 # exponent of upper spike function
+# CONSTANT <mu^_r_infty_c2> 0.2 # characteristic volume fraction of upper spike function
+  CONSTANT <mu^_r_infty_c2> 0. # characteristic volume fraction of upper spike function
+  CONSTANT <mu^_r_infty_n2> 2.0 # exponent of upper spike function
   CONSTANT <mu^_r_infty_phi_max_allsolids> "<phi_max_allsolids>"
 # function
-  CONSTANT <mu^_r_infty_minus2_min> 1.d-8 
-  CELL_DERIVED <mu^_r_infty> "cellmax(<mu^_r_infty_b>+(<mu^_r_infty_c1>/<mu^_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+(<mu^_r_infty_c2>/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>))^(<mu^_r_infty_n2>),2.d0+<mu^_r_infty_minus2_min>)" ON <allcells> output
+  CELL_DERIVED <mu^_r_infty> "cellmax(<mu^_r_infty_b>+(<mu^_r_infty_c1>/<mu^_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+(<mu^_r_infty_c2>/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>))^(<mu^_r_infty_n2>),2.d0)" ON <allcells> output
   CELL_LOCAL <mu^_r_infty_minus2> "<mu^_r_infty>-2.d0" ON <allcells> output
-
-# f_bar from phi
-# constants
-  CONSTANT <mu^_f_bar_c> 3.647d0
-# CONSTANT <mu^_f_bar_n> 3.d0 # default pre 31/10/19
-# CONSTANT <mu^_f_bar_n> 2.d0 # current default - the default value for this has moved around
-# CONSTANT <mu^_f_bar_n> 1.5d0
-  CONSTANT <mu^_f_bar_n> 0.9d0 # low phi 0.008
-  CONSTANT <mu^_f_bar_multiplier> 1.d0 # hook to increase anisotropy of structure
-# function
-  CELL_DERIVED <mu^_f_bar> "<mu^_f_bar_multiplier>*<mu^_f_bar_c>*(<mu^_phi_bounded_allsolids>/<mu^_r_infty_phi_max_allsolids>)^<mu^_f_bar_n>" ON <allcells> output
 
 # B^_1 from r_infty
 # constants
@@ -73,10 +65,59 @@ IF {{ return string_test('<<viscosity_method>>','daltonhold')}}
 # CELL_DERIVED <mu^_B^_2> "0.5d0*<mu^_B^_2_a>/(<mu^_r_infty_minus2>^0.356d0)" ON <allcells> output # BUG in equation!
   CELL_DERIVED <mu^_B^_2> "0.5d0*<mu^_B^_2_a>*(<mu^_r_infty_minus2>^<mu^_B^_2_n>)" ON <allcells> output
 
-# finally assemble viscosity functions from B^_1, B^_2 and f_bar
+# assemble shear collision viscosity functions from B^_1 and B^_2
   CELL_DERIVED <mu^_col_c_mixture> "<mu^_B^_1>+<mu^_B^_2>" ON <allcells> output
-  CELL_DERIVED <mu^_sid1_c_mixture> "(4.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0)*<mu^_f_bar>" ON <allcells> output
-  CELL_DERIVED <mu^_sid2_c_mixture> "(2.d0*<mu^_B^_1>/7.d0)*<mu^_f_bar>" ON <allcells> output
+
+  IF {{ return string_test('<<viscosity_method>>','daltonhold') }}
+# f_bar from phi
+  # constants
+    CONSTANT <mu^_f_bar_c> 3.647d0
+  # CONSTANT <mu^_f_bar_n> 3.d0 # default pre 31/10/19
+  # CONSTANT <mu^_f_bar_n> 2.d0 # current default - the default value for this has moved around
+  # CONSTANT <mu^_f_bar_n> 1.5d0
+    CONSTANT <mu^_f_bar_n> 0.9d0 # low phi 0.008
+    CONSTANT <mu^_f_bar_multiplier> 1.d0 # hook to increase anisotropy of structure
+  # function
+    CELL_DERIVED <mu^_f_bar> "<mu^_f_bar_multiplier>*<mu^_f_bar_c>*(<mu^_phi_bounded_allsolids>/<mu^_r_infty_phi_max_allsolids>)^<mu^_f_bar_n>" ON <allcells> output
+
+# and sid functions from fbar
+    CELL_DERIVED <mu^_sid1_c_mixture> "(4.d0*<mu^_B^_1>/7.d0+2.d0*<mu^_B^_2>/5.d0)*<mu^_f_bar>" ON <allcells> output
+    CELL_DERIVED <mu^_sid2_c_mixture> "(2.d0*<mu^_B^_1>/7.d0)*<mu^_f_bar>" ON <allcells> output
+  ELSE
+# daltonh101119
+
+# define a r_f function which is like r_infty, but does not have low hump at low phi
+# r_f from phi
+# constants, most based on r_infty for consistency
+#   CONSTANT <mu^_r_f_b> 2.1d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+#   CONSTANT <mu^_r_f_b> 1.5d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+#   CONSTANT <mu^_r_f_b> 1.8d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+ #  CONSTANT <mu^_r_f_b> 1.65d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+# new constants
+#   CONSTANT <mu^_r_f_b> 2.25d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+#   CONSTANT <mu^_r_f_b> 2.10d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+#   CONSTANT <mu^_r_f_b> 2.0d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+#   CONSTANT <mu^_r_f_b> 1.9d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+#   CONSTANT <mu^_r_f_b> 1.85d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+ #  CONSTANT <mu^_r_f_b> 2.20d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+#   CONSTANT <mu^_r_f_b> 2.01d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+#   CONSTANT <mu^_r_f_b> 2.00001d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+#   CONSTANT <mu^_r_f_b> 2.0001d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+#   CONSTANT <mu^_r_f_b> 2.00632d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+    CONSTANT <mu^_r_f_b> 2.02299d0 # the base r for r_f, which is the radius of influence of the anisotropic component
+# function
+    CELL_DERIVED <mu^_r_f> "cellmax(<mu^_r_f_b>+(<mu^_r_infty_c2>/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>))^(<mu^_r_infty_n2>),2.d0)" ON <allcells> output
+    CELL_LOCAL <mu^_r_f_minus2> "<mu^_r_f>-2.d0" ON <allcells> output
+
+# now calculate integrals using r_f
+    CELL_DERIVED <mu^_B^_f_1> "<mu^_B^_1_b>*<mu^_r_f_minus2>+<mu^_B^_1_c>*<mu^_r_f_minus2>^2+<mu^_B^_1_d>*<mu^_r_f_minus2>^<mu^_B^_1_n>" ON <allcells> output
+    CELL_DERIVED <mu^_B^_f_2> "0.5d0*<mu^_B^_2_a>*(<mu^_r_f_minus2>^<mu^_B^_2_n>)" ON <allcells> output
+
+# and sid viscosities from this and f_bar at max
+    CONSTANT <mu^_f_bar_c> 3.65d0
+    CELL_DERIVED <mu^_sid1_c_mixture> "(4.d0*<mu^_B^_f_1>/7.d0+2.d0*<mu^_B^_f_2>/5.d0)*<mu^_f_bar_c>" ON <allcells> output
+    CELL_DERIVED <mu^_sid2_c_mixture> "(2.d0*<mu^_B^_f_1>/7.d0)*<mu^_f_bar_c>" ON <allcells> output
+  END_IF
 
 ELSE_IF {{ return string_test('<<viscosity_method>>','joe301019')}}
 
