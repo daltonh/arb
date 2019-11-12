@@ -19,6 +19,8 @@ REPLACEMENTS D '<<specieslimitedadvection>>' W '1'
 
 REPLACEMENTS D '<<listofboundaryregions>>' W 'inlet,outlet,walls' # these are all of the boundaryregions used in the domain, used for boundary conditions and reported variables
 
+REPLACEMENTS D '<<zeroinitialconcentrations>>' W '1' # by default domain contains no chemical species, but turning this off will use inlet concentrations within domain
+
 # deal with either non-uniform width, cartesian or cylindrical domain
 REPLACEMENTS D '<<W_f>>' W '1' D '<<W_c>>' W '1' # set the scope for these variables, and give them the default cartesian value, if not already set
 IF {{ return (!(string_test('<<W_f>>','1'))) }}
@@ -35,7 +37,10 @@ END_IF
 CONSTANT <c_D_/species/> [m^2/s] 1.d0 # diffusivity of species
 CONSTANT <c_inlet_conc_/species/> [mol/m^3] 1.d0 # inlet concentration of species
 
-CELL_UNKNOWN <c_/species/> [mol/m^3] "0.d0" ON <allcells> magnitude=1.d0 # remember to put in characteristic magnitude later in the file if it isn't 1
+CELL_UNKNOWN <c_/species/> [mol/m^3] "<c_inlet_conc_/species/>" ON <allcells> magnitude=1.d0 # remember to put in characteristic magnitude later in the file if it isn't 1
+IF <<zeroinitialconcentrations>>
+  VARIABLE <c_/species/> "0.d0"
+END_IF
 CELL_LOCAL <c_pos_/species/> [mol/m^3] "cellmax(<c_/species/>,default=0.d0)" ON <allcells> # may be needed for reactions
 <<transientcomment>>CELL_TRANSIENT <c_/species/[r=1]> [mol/m^3] "<c_/species/>" "<c_/species/>" ON <allcells> # the previous timestep concentration field
 

@@ -15,7 +15,7 @@ Note that the notation doesn't imply (necessarily) whether the species is on or 
 
 Other variables, such as the source terms, are defined similarly, with (eg) <c^_source_/species/> being the species volume specific source which can be set for a volume bound species (<<where>>=in), and <c^^_source_/species/> being a surface area specific one which can be set for a surface bound species (<<where>>=on>).
 
-Note that where the species is held (in|on) determines whether our unknown for the species is volume (c^) or surface (c^^) specific, however for both cases the conservation equation is solved for c (not-specific concentration), ensuring conservation of mass
+Note that where the species is held (in|on) determines whether our unknown for the species is volume (c^) or surface (c^^) specific, however for both cases the conservation equation is solved for c (not-specific concentration - NO, don't think so), ensuring conservation of mass - TODO, check how this plays with multifluid conservation equation
 All variables to do with this routine start with either <c^_ or <c^^_, depending on <<where>>, except for the variables <c_/species/>, <c^_/species/> and <c^^_/species/>, which are set for both types of <<where>>.
 END_MARKDOWN
 
@@ -46,7 +46,7 @@ IF {{ return (string_test('<<where>>','on')) }}
 # define the equivalent volume bound concentration (whether using it or not)
   CELL_LOCAL <c^_/species/> "<c^^_/species/>*<A^_<<species>>>" ON <allcells> output
 # define the equivalent total concentration (whether using it or not)
-  CELL_LOCAL <c_/species/> "<c^_/species/>*<phi_bounded_<<species>>>" ON <allcells> output
+  CELL_LOCAL <c_/species/> "<c^_/species/>*<phi_pos_<<species>>>" ON <allcells> output
 # include the transport equations, solving for the surface specific concentration unknown <c^^_chemical_species_on_species>
   REPLACEMENTS S "<c_" W "<c^^_" # from now on all variables are surface or volume specific
   INCLUDE "equations" R "<u_f>" W "<phiu_f_<<species>>>"
@@ -54,7 +54,7 @@ IF {{ return (string_test('<<where>>','on')) }}
 ELSE
 # in the volume
 # define the equivalent total concentration (whether using it or not)
-  CELL_LOCAL <c_/species/> "<c^_/species/>*<phi_bounded_<<species>>>" ON <allcells> output
+  CELL_LOCAL <c_/species/> "<c^_/species/>*<phi_pos_<<species>>>" ON <allcells> output
 # define the equivalent surface bound concentration (whether using it or not)
   CELL_LOCAL <c^^_/species/> "<c^_/species/>/<A^_<<species>>>" ON <allcells> output
 # include the transport equations, solving for the volume specific concentration unknown <c^_chemical_species_in_species>
@@ -66,15 +66,15 @@ END_IF
 #{{ print string_debug(); }}
 
 # reform the flux and equations to be specific, noting that at this stage <c_ is being replaced
-IF 1
+IF {{ (string_test('<<species>>','species0')) }}
+# TODO: checkout how this works with fluid species - probably just a change to the diffusivity
+# fluid version
+  FACE_DERIVED <c_j_f_/species/> "<c_f_/species/>*<phiu_f_<<species>>>-<c_D_/species/>*<phi_f_bounded_<<species>>>*facegrad(<c_/species/>)" ON <allfaces> # this is the flux of species over each cell face, composed of an advection and diffusion component
+ELSE
 # particle version, with diffusion using the diffusivity of the particle species <<species>>
   NONE_CONSTANT <D_<<species>>> [m^2/s] "<k_boltzmann>*<T>/(6.d0*<pi>*<mu_species0>*<a_<<species>>>)" # based on stokes drag
   NONE_CONSTANT <c_D_/species/> "<D_<<species>>>"
 # FACE_DERIVED <c_j_f_/species/> "<c_f_/species/>*<phiu_f_<<species>>>-<c_D_/species/>*facegrad(<phi_pos_<<species>>>*<c_/species/>)" ON <allfaces> # this is the flux of species over each cell face, composed of an advection and diffusion component
-  FACE_DERIVED <c_j_f_/species/> "<c_f_/species/>*<phiu_f_<<species>>>-<c_D_/species/>*<phi_f_bounded_<<species>>>*facegrad(<c_/species/>)" ON <allfaces> # this is the flux of species over each cell face, composed of an advection and diffusion component
-ELSE
-# TODO: checkout how this works with fluid species - probably just a change to the diffusivity
-# fluid version
   FACE_DERIVED <c_j_f_/species/> "<c_f_/species/>*<phiu_f_<<species>>>-<c_D_/species/>*<phi_f_bounded_<<species>>>*facegrad(<c_/species/>)" ON <allfaces> # this is the flux of species over each cell face, composed of an advection and diffusion component
 END_IF
 # and reform the equation to solve
