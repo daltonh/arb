@@ -8,7 +8,7 @@ Every variable specific to this species defined in this file starts with <c_, so
 
 If the replacement strings <<W_f>> and <<W_c>> are set on entry, they must refer to variables that give the face and cell centred width of the domain for nonuniform width domain simulations.  If not set then internally these strings are set to either 1 and 1 for cartesian coordinates, or <<radius_f>> and <<radius_c>> for cylindrical coordinates, respectively.
 
-Also you can specify the <<listofports>> variable, which is a space separated list of surrounding region names that you want boundary condition equations for, with the names not delimited by <> - EG: <<listofports>> = "inlet outlet walls"
+Also you can specify the <<listofboundaryregions>> variable, which is a space separated list of surrounding region names that you want boundary condition equations for, with the names not delimited by <> - EG: <<listofboundaryregions>> = "inlet outlet walls"
 END_MARKDOWN
 
 # default species name, overwrite with another name on entry
@@ -17,7 +17,7 @@ REPLACEMENTS D '/species/' W 'species0'
 # default is that high order advection is used unless this string is overwritten by 0, which then becomes unlimited advection with order dependent on <c_advection_limiter_/species/>, which is set to 0 by default (ie, becomes first order upwinding)
 REPLACEMENTS D '<<specieslimitedadvection>>' W '1'
 
-REPLACEMENTS D '<<listofports>>' W 'inlet outlet' # these are all of the ports used in the domain, used for boundary conditions and reported variables
+REPLACEMENTS D '<<listofboundaryregions>>' W 'inlet,outlet,walls' # these are all of the boundaryregions used in the domain, used for boundary conditions and reported variables
 
 # deal with either non-uniform width, cartesian or cylindrical domain
 REPLACEMENTS D '<<W_f>>' W '1' D '<<W_c>>' W '1' # set the scope for these variables, and give them the default cartesian value, if not already set
@@ -57,15 +57,22 @@ CELL_DERIVED <c_source_/species/> [mol/(m^3.s)] "0.d0" ON <domain> # this is a s
 <<steadystatecomment>>CELL_EQUATION <c_equation_/species/> [mol/(m^3.s)] "celldiv(<<W_f>>*<c_j_f_/species/>)/<<W_c>> - <c_source_/species/>" ON <domain>
 <<transientcomment>>CELL_EQUATION <c_equation_/species/> [mol/(m^3.s)] "(<c_/species/>-<c_/species/[r=1]>)/<dt> + celldiv(<<W_f>>*<c_j_f_/species/>)/<<W_c>> - <c_source_/species/>" ON <domain>
 
-# boundary conditions now
-# walls
-FACE_EQUATION <c_walls_/species/> "<c_j_f_/species/>" ON <walls> # on the walls we set the flux of species c1 into the wall equal to zero
-
-# ports
-# first setup equations for all of the ports being no-flow, and then overwrite specific ones either here or later
+# boundaryregions
+# loop through all of the given boundaryregions, specifying equations, and producing some output variables too
+# other additional boundaryregions will generally need their own equations given after this file is called
+# here are some ideas re how to change the inlet concentration with time
+#NONE_TRANSIENT <c_inlet_equation_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
+#NONE_TRANSIENT <c_inlet_equation_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
 {{
   my $return_string = '';
-  for my $port (string_eval('<<listofports>>','spaceseparatedlist')) {
+  for my $port (string_eval('<<listofboundaryregions>>','list')) { # this is now a comma separated list, but individual items can be quoted
+    if ( $port eq 'inlet' ) {
+      $return_string .= "FACE_EQUATION <c_$port"."_equation_/species/> '<c_/species/>-<c_inlet_conc_/species/>' ON <$port>\n";
+    } elsif ( $port eq 'outlet' ) {
+      $return_string .= "FACE_EQUATION <c_$port"."_equation_/species/> 'faceif(<u_f>,facegrad(<c_/species/>),<c_/species/>)' ON <$port>\n";
+    } else {
+      $return_string .= "FACE_EQUATION <c_$port"."_equation_/species/> '<c_j_f_/species/>' ON <$port>\n";
+    }
     $return_string .= "FACE_EQUATION <c_$port"."_equation_/species/> '<c_j_f_/species/>' ON <$port>\n";
     $return_string .= "NONE_OUTPUT <$port"."_area> 'facesum(<facearea>*<<W_f>>,region=<$port>)'\n";
     $return_string .= "NONE_OUTPUT <$port"."_flowrate> 'facesum(<facearea>*<<W_f>>*<u_f>,region=<$port>)'\n";
@@ -75,18 +82,6 @@ FACE_EQUATION <c_walls_/species/> "<c_j_f_/species/>" ON <walls> # on the walls 
   }
   return $return_string;
 }}
-
-# overwrite the equations used for the inlet and outlet ports
-# other additional ports will generally need their own equations given after this file is called
-# here are some ideas re how to change the inlet concentration with time
-#NONE_TRANSIENT <c_inlet_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
-#NONE_TRANSIENT <c_inlet_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
-IF {{ return ( string_eval('<<listofports>>') =~ /inlet/ ) }} # if <<listofports>> contains the string inlet
-  FACE_EQUATION <c_inlet_equation_/species/> "<c_/species/>-<c_inlet_conc_/species/>" ON <inlet>
-END_IF
-IF {{ return ( string_eval('<<listofports>>') =~ /outlet/ ) }} # if <<listofports>> contains the string outlet
-  FACE_EQUATION <c_outlet_equation_/species/> "faceif(<u_f>,facegrad(<c_/species/>),<c_/species/>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
-END_IF
 
 # report some averaged and extreme variables
 NONE_OUTPUT <c_maximum_/species/> [mol/m^3] "cellmax(<c_/species/>,region=<allcells>)"
