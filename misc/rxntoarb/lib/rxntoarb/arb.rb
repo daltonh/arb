@@ -155,9 +155,9 @@ module Rxntoarb
       format_output(rxn.header << "# Generated from #{rxn.file} by #{PROGNAME} v. #{VERSION}, #{Time.now.strftime('%F %T')}")
       format_output(@constants, {name: 'Constants and regions'})
       format_output(@rates, {name: 'Reaction rates', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
-      format_output(@sources.values.map(&:values).flatten.sort_by { |s| s[/<[^>]*>/] }, {name: 'Source terms', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
-      format_output(@equations.sort, {name: 'Equations'})
-      format_output(@magnitudes.values.sort_by { |s| s[/<[cs]_([^>]*)>/, 1] }, {name: 'Magnitudes'})
+      format_output(@sources.values.map(&:values).flatten.sort_by { |s| s[/<[^>]*>/].downcase }, {name: 'Source terms', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
+      format_output(@equations.sort_by { |s| s.first.downcase }, {name: 'Equations'})
+      format_output(@magnitudes.values.sort_by { |s| s[/<[cs]_([^>]*)>/, 1].downcase }, {name: 'Magnitudes'})
       File.write(@file, @output.join("\n"))
       warn "INFO: output written to #{@file}" if Rxntoarb.options[:debug]
 

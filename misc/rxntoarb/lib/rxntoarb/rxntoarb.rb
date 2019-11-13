@@ -9,7 +9,7 @@ module Rxntoarb
 
   PROGNAME = 'rxntoarb'
   VERSION = '2.30'
-  DATE = '2019-11-11'
+  DATE = '2019-11-13'
   INFO = <<-INFO.gsub(/^\s+/, '') # prefer squiggly heredoc <<~ in Ruby 2.3+
     #{PROGNAME} v. #{VERSION} (#{DATE})
     Converts a human-readable system of chemical reactions into a set of equations for use with arb finite volume solver.

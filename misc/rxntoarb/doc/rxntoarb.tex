@@ -1,0 +1,1389 @@
+%<<< Preamble
+%<<< Document setup
+\RequirePackage{fix-cm}
+\documentclass[fontsize=12pt,
+               captions=abovetable,
+               numbers=noenddot,
+              ]{scrartcl}
+% Serif fonts for headings etc. with KOMA-Script
+\setkomafont{sectioning}{\normalfont\bfseries}
+\setkomafont{descriptionlabel}{\usekomafont{sectioning}}
+\setcapindent{0em}
+\addtokomafont{caption}{\small}
+\let\tablesize=\small
+\setkomafont{captionlabel}{\bfseries}
+\renewcommand*{\captionformat}{~}
+
+% Change footnote style (\textparindent courtesy http://tex.stackexchange.com/questions/96721/footnote-indent-equal-to-text-parindent)
+\deffootnote[\textparindent]{0pt}{\textparindent}{\textsuperscript{\thefootnotemark}\hspace{0.25em}}
+\newlength{\textparindent}
+\AtBeginDocument{\setlength{\textparindent}{\parindent}}
+
+% Copy-and-pasteable/searchable special characters in PDF
+%\usepackage{cmap}
+\input{glyphtounicode} % latest version (as of 11/12/14, glyphtounicode 2.95, lcdf-typetools 2.104) at http://www.lcdf.org/type/
+\input{glyphtounicode-cmr}
+\pdfglyphtounicode{f_f}{0066 0066}
+\pdfglyphtounicode{f_i}{0066 0069}
+\pdfglyphtounicode{f_l}{0066 006C}
+\pdfglyphtounicode{f_f_i}{0066 0066 0069}
+\pdfglyphtounicode{f_f_l}{0066 0066 006C}
+\pdfgentounicode=1
+
+% PDF options
+\pdfminorversion=5
+\pdfcompresslevel=9
+\pdfobjcompresslevel=3
+
+% Provide patching and conditional commands; incompatible with caption package
+\usepackage{etoolbox} 
+
+%>>>
+%<<< Packages
+%<<< Maths
+
+% Use subordinate environments aligned or gathered for several equations spread over multiple lines with a single equation number (split is better for one equation spread over multiple lines)
+
+% AMS maths packages
+\usepackage{amsmath}
+\makeatletter
+\renewcommand{\eqref}[1]{\hyperref[#1]{\textup{\tagform@{\ref{#1}}}}}
+\makeatother
+\allowdisplaybreaks[1]
+\addtolength{\jot}{6pt} % increase space between successive equations in gather, split etc.
+%\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amstext}
+%\usepackage{mathrsfs}
+\usepackage[scr]{rsfso} % less slanted variant of rsfs
+% Bold variables
+\usepackage{bm}
+% Alternate (Euler) calligraphic font \eucal
+\DeclareMathAlphabet{\eucal}{U}{eus}{m}{n} % from eucal.sty
+\SetMathAlphabet{\eucal}{bold}{U}{eus}{b}{n} % from eucal.sty
+%\usepackage{stmaryrd} % provides double brackets (llbracket and rrbracket)
+
+% Arbitrary delimiters and individually \labelled cases (prefer empheq with split to cases environment due to spacing issues)
+%\usepackage{biscombe_empheq} % modified from empheq.sty to fix spacing
+% Useful for aligning splits within empheq, courtesy http://math.arizona.edu/~aprl/publications/mathclap/
+% alignat=2 easier if multiple equation numbers are desired
+\def\mathrlap{\mathpalette\mathrlapi}
+\def\mathrlapi#1#2{\rlap{$\mathsurround=0pt#1{#2}$}}
+
+% Prefix equation number with chapter, section, etc.
+%\numberwithin{equation}{chapter}
+
+% Context-sensitive maths formatting (e.g. bold maths in headings)
+% Code taken from maybemath package, modified (by addition of {} around #1) so that accents work correctly
+\makeatletter
+\def\@boldname{b}%
+\def\@boldexname{bx}%
+\DeclareRobustCommand{\maybebm}[1]{\ensuremath{%
+  \ifx\f@series\@boldname%
+    {{\bm{{#1}}}}%
+  \else\ifx\f@series\@boldexname%
+    {{\bm{{#1}}}}%
+  \else%
+    {{#1}}%
+  \fi\fi%
+}}
+\makeatother
+
+%>>>
+%<<< General
+
+% Language and hyphenation patterns
+\usepackage[UKenglish]{babel}
+\renewcommand\dateUKenglish{\def\today{\number\day~\ifcase \month \or January\or February\or March\or April\or May\or June\or July\or August\or September\or October\or November\or December\fi\space\number\year}}
+\dateUKenglish
+%\frenchbsetup{AutoSpacePunctuation=false} % prevent automatic addition of space before punctuation marks in French
+
+% Widow and orphan control
+\clubpenalty=10000
+\widowpenalty=10000
+% Bad page breaks are likely if displaywidowpenalty is set too high
+%\displaywidowpenalty=10000
+% \looseness command might be useful here: see http://www.tex.ac.uk/cgi-bin/texfaq2html?label=widows
+% \enlargethispage{\baselineskip} for one extra line; \enlargethispage{-\baselineskip} for one fewer line. Must be applied to both pages of a two-page spread. There is also a starred form, see http://tex.stackexchange.com/questions/32112/squeeze-some-more-lines-on-the-current-page
+% NOTE Examples of 'underfull vboxes' in Hart's Rules: pp. 98, 114, 163, 168, 201, 255, 257. Most of these occur before headings, but p. 257 is an exception. Some spreads are also a line short (on both pages) to achieve better breaks; examples pp. 305, 309.
+% http://tex.stackexchange.com/questions/72782/keep-text-together-with-minipage-leave-space-at-end-of-previous-page might also be handy
+% Hart's Rules, p. 40: 'Traditionally, printers ensured that the last line of a paragraph did not consist of a single syllable, or numerals alone, or a word of fewer than five characters. This rule is no longer followed strictly, but others ... are still usually observed. The last line of a paragraph should not fall at the top of a new page or column: this is known as a widow. An orphan---the first line of a paragraph that falls at the bottom of a page or column---is undesirable, though it is now tolerated in most bookwork. ... The last line on a recto page should not end with a hyphen, and traditionally should not end with a colon that introduces displayed matter on the following page, although this standard is generally not adhered to today. Columns, lists, etc. should ideally not be split; if they are split the break should be in as unobtrusive a place as possible. ... If absolutely necessary to avoid awkward page breaks, facing pages may be made a line short or long.'
+
+\usepackage{accsupp}
+\newcommand{\accsupp}[3][plain]{\BeginAccSupp{method=#1,ActualText=#2}#3\EndAccSupp{}}
+
+%>>>
+%<<< Bibliography
+
+% * Use 'tex makebst' to create custom BST files
+
+% Numerical citations
+%\usepackage[numbers,sort&compress]{natbib}
+%\bibliographystyle{biscombe}
+% Prevent line-breaks between author name and reference number with \citet
+%\makeatletter
+%  \def\NAT@spacechar{~}
+%\makeatother
+
+% Author-year citations
+%\usepackage{biscombe_natbib}
+%\setcitestyle{aysep={},yysep={,}} % modifications for in-text citations
+%\bibliographystyle{biscombe-ad}
+%\bibliographystyle{biscombe_thesis}
+
+% New citeeg reference style
+%\newcommand{\citeeg}[1]{\citep[{see, \eg[],}][]{#1}}
+
+% Hyperlink year only in author-date citations, courtesy http://tex.stackexchange.com/questions/23227/how-to-hyperlink-only-the-year-part-when-using-natbib-and-hyperref
+%\makeatletter
+%\patchcmd{\NAT@citex}{\@citea\NAT@hyper@{\NAT@nmfmt{\NAT@nm}\hyper@natlinkbreak{\NAT@aysep\NAT@spacechar}{\@citeb\@extra@b@citeb}\NAT@date}}{\@citea\NAT@nmfmt{\NAT@nm}\NAT@aysep\NAT@spacechar\NAT@hyper@{\NAT@date}}{}{}
+%\patchcmd{\NAT@citex}{\@citea\NAT@hyper@{\NAT@nmfmt{\NAT@nm}\hyper@natlinkbreak{\NAT@spacechar\NAT@@open\if*#1*\else#1\NAT@spacechar\fi}{\@citeb\@extra@b@citeb}\NAT@date}}{\@citea\NAT@nmfmt{\NAT@nm}\NAT@spacechar\NAT@@open\if*#1*\else#1\NAT@spacechar\fi\NAT@hyper@{\NAT@date}}{}{}
+%% Don't hyperlink with \citeauthor, modified from http://tex.stackexchange.com/questions/67423/how-to-force-hyperref-to-reference-only-cite-and-not-citeauthor-or-citeyear
+%\pretocmd{\NAT@citex}{\@ifnum{\NAT@ctype=\@ne}{\let\NAT@hyper@\relax}{}}{}{} % change '=@ne' to '>@z' to also avoid hyperlinking with \citeyear
+%\makeatother
+
+% Combine multiple references into a single citation (requires modified BST file)
+%\usepackage{mciteplus}
+
+% Full citations in text (repeated in reference list)
+% Requires work-around for compatibility with hyperref - see p. 18 of hyperref README
+%\usepackage{bibentry}
+
+% Rename references section (substitute \bibname for \refname for report and book classes)
+%\addto{\captionsUKenglish}{\renewcommand{\bibname}{References}}  % with babel
+%\renewcommand{\refname}{References}                             % without babel
+
+%>>>
+%<<< Lists
+
+% Provide extra enumerate/itemize/description environments
+%\usepackage{mdwlist}
+% Options for customising lists
+\usepackage{enumitem}
+\setdescription{leftmargin=\parindent}
+
+% Change default labelling of list elements
+%\renewcommand{\labelenumi}{(\roman{enumi})}
+
+%>>>
+%<<< Floats
+
+% * To centre a figure that's wider than \textwidth (from http://texblog.net/latex-archive/layout/centering-figure-table/):
+%     \begin{figure}
+%     \noindent\makebox[\textwidth]{%
+%     \includegraphics[]{}}
+%     \end{figure}
+% * To centre a table that's wider than \textwidth, use same approach but put tabular environment inside the box. 
+% * See also http://tex.stackexchange.com/questions/39435/how-can-i-center-a-too-wide-table
+% * May be useful: http://tex.stackexchange.com/questions/73548/switching-color-and-grayscale-mode-for-includegraphics
+
+\usepackage{graphicx}
+\usepackage{color}
+\definecolor{darkblue}{rgb}{0.0,0.0,0.55}
+
+% Float placement modifications 
+%\makeatletter
+%  \def\fps@figure{htbp}
+%\makeatother
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.70}
+\renewcommand{\textfraction}{0.15}
+\renewcommand{\floatpagefraction}{0.66}
+\renewcommand{\dbltopfraction}{0.66}
+\renewcommand{\dblfloatpagefraction}{0.66}
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{4}
+\setcounter{totalnumber}{10}
+\setcounter{dbltopnumber}{4}
+%\usepackage{flafter} % require floats to appear after first mention in text
+
+% Allow subfigures within figures
+% Apparently buggy with hyperref; consider newer subcaption package instead (but this requires 'caption' package)
+% See http://tex.stackexchange.com/questions/13625/subcaption-vs-subfig-best-package-for-referencing-a-subfigure
+%\usepackage[caption=false]{subfig}
+
+% Caption formatting
+%\addto\captionsUKenglish{\renewcommand{\figurename}{Fig.}}   % with babel (omit stuff outside braces without babel)
+%\usepackage{caption}
+%\captionsetup{font=small,labelfont=bf,labelsep=period}
+%\captionsetup[subfloat]{labelfont=default}
+
+% Correct spacing between cells
+\usepackage{cellspace}
+\setlength\cellspacetoplimit{4pt}
+\setlength\cellspacebottomlimit{4pt}
+%\addparagraphcolumntypes{X} % required for tabularx
+% Align numbers in tables at decimal points
+%\usepackage{dcolumn}
+% Footnotes with tables
+\usepackage{threeparttable}
+%\let\TPTtagStyle=\emph
+% Nicer tables
+\usepackage{booktabs}
+% Use tabularx environment for equal-width columns - loaded AFTER hyperref and cellspace
+% Allow tables to split over pages
+%\usepackage{supertabular}
+
+% Multicolumn
+\usepackage{multirow}
+\let\mcol=\multicolumn
+\let\mrow=\multirow
+
+% No page numbers on blank pages (use KOMA-Script options instead)
+%\usepackage{emptypage}
+
+% Apply different page styles to full-page floats
+\usepackage{floatpag}
+\floatpagestyle{empty}
+\rotfloatpagestyle{empty}
+
+% Fix some stuff about floats in double column
+%\usepackage{fix2col}
+
+% Rotated floats
+% Hart's Rules, p. 301: 'Illustrations that have to be set landscape should always be placed with the head of the illustration turned to the left, whether on a recto or verso page.'
+%\usepackage[figuresright]{rotating}
+\usepackage[pdftex]{lscape} % prefer to rotating because this rotates the page in PDF. pdflscape is an equivalent alternative
+\usepackage{afterpage} % must be loaded after etoolbox; required to stop landscape breaking pages prematurely.
+
+% Double-page spreads (use begin\end{(left)fullpage} inside begin\end{figure}[p])
+\usepackage{dpfloat} % doesn't work for landscape floats; instead see http://tex.stackexchange.com/questions/55653/placing-figure-on-an-even-odd-page but omit all \clearpage (stops 'lost float' errors)
+% Hook into dpfloat functionality to allow multiple left-page floats; seems to work better than \afterpage solution above
+\makeatletter
+\newenvironment{leftpagefloat}{\bgroup}{\egroup\global\@LPtrue}
+\makeatother
+\usepackage{zref-savepos} % allows facing figures to be aligned with each other rather than centred on page, see http://tex.stackexchange.com/questions/75008/center-and-yet-align-figures-on-opposite-pages
+
+% Put floats at end of document
+%\usepackage{endfloat}
+% Alternative
+%\usepackage[printfigures,figmark]{figcaps}
+
+%>>>
+%<<< Code listings
+\usepackage{listings}
+\usepackage{scrhack} % disable warnings created by listings package
+\definecolor{statement}{rgb}{0.70980392,0.5372549,0.0}
+\definecolor{string}{rgb}{0.8627451,0.19607843,0.18431373}
+\definecolor{special}{rgb}{0.82745098,0.21176471,0.50980392}
+\definecolor{comment}{rgb}{0.14901961,0.54509804,0.82352941}
+\definecolor{type}{rgb}{0.52156863,0.6,0.0}
+\definecolor{function}{rgb}{0.16470588,0.63137255,0.59607843}
+\definecolor{subs}{rgb}{0.42352941,0.44313725,0.76862745}
+\definecolor{template}{rgb}{0.79607843,0.29411765,0.08627451}
+\definecolor{text}{rgb}{0.39607843,0.48235294,0.51372549}
+\definecolor{background}{rgb}{0.99215686,0.96470588,0.89019608}
+\definecolor{border}{rgb}{0.0,0.16862745,0.21176471}
+\lstdefinelanguage{rxn}{morekeywords=[1]{exclude,include_only,initial_species,options,surface_region,surface_regions,substitute,volume_region,volume_regions},
+                        otherkeywords={+,->,<=>,\{,\},[,],;}, % * removed to prevent matching in regexps
+                        morestring=[d]{"},
+                        morecomment=[l]{\#}, % comment
+                        morecomment=[f][\color{subs}]{!}, % header
+                        moredelim=[s][\color{special}]{/}{/}, % regexp
+                        moredelim=[is][\color{statement}]{\\}{\\}, % statements not covered above; delimiters invisible
+                        moredelim=[is][\color{type}]{|}{|}, % aliases; delimiters invisible
+                        moredelim=[is][\color{special}]{\\@}{\\@}, % region names; delimiters invisible
+                        moredelim=[is][\color{function}]{\\<}{\\>}, % kinetic parameters; delimiters invisible
+                        moredelim=[is][\color{string}]{'}{'}, % number and units; delimiters invisible
+}
+\lstset{language=rxn,
+        columns=fullflexible,
+        keepspaces=true,
+        numbers=left,
+        numberstyle=\tiny\sffamily\color{border}\accsupp{},
+        numberblanklines=false,
+        showstringspaces=false,
+        mathescape=true,
+        frame=single,
+        backgroundcolor=\color{background},
+        rulecolor=\color{border},
+        basicstyle=\footnotesize\ttfamily\color{text},
+        keywordstyle=\color{statement},
+        stringstyle=\color{string},
+        commentstyle=\color{comment},
+}
+%% new algorithm environment
+%\DeclareNewTOC[float,type=algorithm,name=Algorithm,counterwithin=chapter]{loa}
+%\setuptoc{loa}{chapteratlist}
+%%\hypcapredef{algorithm} % put after hypcap package
+
+%>>>
+%%<<< Nomenclature
+%
+%\usepackage[intoc,noprefix]{biscombe_nomencl}
+%\setlength{\nomlabelwidth}{2cm} % separation between symbols and definitions
+%\makenomenclature
+%
+%% Use [ax], [gx], [sx], [ux], and [zx] as sort-keys to distinguish between Latin, Greek, superscript, subscript, and other x
+%% For Greek x, use Latin equivalent except for: gamma-c, zeta-f, eta-g, theta-h, xi-o, omicron-p, pi-q, phi-v, chi-x, omega-z
+%\renewcommand{\nomgroup}[1]{%
+%  \ifstrequal{#1}{A}{\item[\rule{0pt}{24pt}\textbf{Latin}]}{%
+%  \ifstrequal{#1}{G}{\item[\rule{0pt}{24pt}\textbf{Greek}]}{%
+%  \ifstrequal{#1}{S}{\item[\rule{0pt}{24pt}\textbf{Superscripts}]}{%
+%  \ifstrequal{#1}{U}{\item[\rule{0pt}{24pt}\textbf{Subscripts}]}{}}}}}
+%
+%% Improved nomenclature command including page reference and optional units. Starred variant omits page reference.
+%% #1 is label and sort-key
+%% #2 is symbol
+%% #3 is definition
+%% #4 (optional) is units
+%\makeatletter
+%\newif\ifnomen@star
+%\newcommand{\nomen}{\@ifstar{\nomen@startrue\nomen@i*}{\nomen@starfalse\nomen@i*}}
+%\def\nomen@i*#1#2#3{\@ifnextchar[{\nomen@ii*{#1}{#2}{#3,\ }}{\nomen@ii*{#1}{#2}{#3}[{}]}}
+%\def\nomen@ii*#1#2#3[#4]{%
+%  \ifnomen@star%
+%    \nomenclature[#1]{#2}{#3\sci{}[#4]}%
+%  \else%
+%    \phantomsection\label{nomen:#1}\nomenclature[#1]{#2}{#3\sci{}[#4]\ (p.~\pageref{nomen:#1})}%
+%  \fi%
+%}
+%\makeatother
+%
+%%>>>
+%<<< Miscellaneous
+
+% Warn about split footnotes
+% Increasing \interfootnotelinepenalty (default 100) may help
+\usepackage{fnbreak}
+
+% Check auxiliary files for changes between LaTeX runs
+\usepackage[mainaux]{rerunfilecheck}
+
+% Show \label names 
+%\usepackage[notcite]{showkeys}
+
+% Highlight TODOs
+%\usepackage{todonotes}
+
+% Check for unreferenced floats and labelled equations
+%\usepackage{refcheck}
+
+% Put version number in footer
+%\usepackage{prelim2e}
+
+% Show more context for error messages
+%\setcounter{errorcontextlines}{999}
+% Trace in log file
+%\usepackage[logonly]{trace}
+%\traceon
+
+% List packages in use and their versions
+%\listfiles
+
+% Enable hyphenation checking with findhyph
+%\tracingparagraphs=1
+
+% Mark overfull hboxes in output
+\overfullrule=1000pt
+
+% Show margins on page
+%\usepackage[pass,showframe]{geometry}
+% patch for landscape pages, modified from http://tex.stackexchange.com/questions/115908/geometry-showframe-landscape
+\makeatletter
+\newcommand*{\gmshow@textheight}{\textheight}
+\apptocmd{\landscape}{\renewcommand*{\gmshow@textheight}{\hsize}}{}{}
+\patchcmd{\Gm@vrule}{\textheight}{\gmshow@textheight}{}{}
+\makeatother
+% Older alternative (in acroread, enable 'Show art, trim, & bleed boxes' under Edit > Preferences > Page Display)
+%\pdfpageattr{/ArtBox[75.591 128.31496 500.788 771.733]/TrimBox[94.488189 128.31496 519.685 771.733]}
+
+% Latexdiff commands
+%\RequirePackage[normalem]{ulem}
+%\RequirePackage{xcolor}\definecolor{DIFadd}{rgb}{0,1,0}\definecolor{DIFdel}{rgb}{1,0,0}
+%\providecommand{\DIFadd}[1]{{\protect\textcolor{DIFadd}{\texorpdfstring{\uwave{#1}}{#1}}}}
+%\providecommand{\DIFdel}[1]{{\protect\textcolor{DIFdel}{\texorpdfstring{\sout{#1}}{#1}}}}
+%\providecommand{\DIFaddbegin}{}
+%\providecommand{\DIFaddend}{}
+%\providecommand{\DIFdelbegin}{}
+%\providecommand{\DIFdelend}{}
+%\providecommand{\DIFaddFL}[1]{\DIFadd{#1}}
+%\providecommand{\DIFdelFL}[1]{\DIFdel{#1}}
+%\providecommand{\DIFaddbeginFL}{}
+%\providecommand{\DIFaddendFL}{}
+%\providecommand{\DIFdelbeginFL}{}
+%\providecommand{\DIFdelendFL}{}
+
+%>>>
+%<<< Accents and special characters
+
+% Use Latin Modern fonts for accented characters (only) - allows search and copy & paste in PDF
+% Thanks to http://www.forkosh.com/pstex/latexcommands.htm
+% For some reason, footnotes still use the original accent definitions unless \lmr is used explicitly
+\usepackage[TS1,T1,OT1]{fontenc}
+%\usepackage{lmodern}
+\DeclareRobustCommand{\lmr}[2][T1]{{\fontencoding{#1}\fontfamily{lmr}\selectfont#2}}
+
+\renewcommand{\copyright}{\lmr[TS1]{\textcopyright}}
+\newcommand{\registered}{\lmr[TS1]{\textregistered}}
+\newcommand{\trademark}{\lmr[TS1]{\texttrademark}}
+
+%>>>
+%<<< PDF Setup
+
+% Line spacing
+%\usepackage{setspace}
+%\onehalfspacing
+%\recalctypearea
+
+% No extra space at sentence ends
+\AtBeginDocument{\frenchspacing}
+
+% Micro-typographical enhancements
+\usepackage[babel]{microtype}
+
+% Load hyperref last, with few exceptions: http://tex.stackexchange.com/questions/1863/which-packages-should-be-loaded-after-hyperref-instead-of-before
+\usepackage[pdftex,
+            colorlinks=true,
+            allcolors=darkblue,
+            pdftitle={rxntoarb v. 2.30 and later},
+            pdfauthor={Christian Biscombe},
+            pdfsubject={},
+            pdfkeywords={},
+            pdflang={en},
+            pdfborder={0 0 0},              % remove border from links
+            bookmarks,
+            bookmarksnumbered,
+            bookmarksdepth=3,
+            raiselinks,
+            breaklinks,
+            linktocpage,                    % hyperlink page numbers in TOC instead of section names
+            pdfstartpage=1,
+            pdfstartview={XYZ 0 841.89 1},  % 100% zoom
+            pdfpagelayout=OneColumn         % single page continuous
+           ]{hyperref}
+% anchor hyperlinks to top of floats
+\usepackage[all]{hypcap}
+%\hypcapredef{algorithm}
+
+% Use tabularx environment for equal-width columns
+% Must be loaded after hyperref or else hyperlinks to footnotes are disabled
+% Is tabulary better?
+%\usepackage{tabularx}
+%\newcolumntype{C}{>{\centering\arraybackslash}X}
+%\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+%\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+
+% hyperlink footnotes back to reference in text - requires newer version of LaTeX
+%\usepackage{footnotebackref}
+
+%>>>
+%<<< New commands
+%<<< Abbreviations
+
+% Latin abbreviations
+% Use empty optional argument when punctuation mark follows
+\newcommand{\eg}[1][\ ]{e.g.#1}
+\newcommand{\ie}[1][\ ]{i.e.#1}
+% Use empty optional argument when punctuation mark follows or at end of sentence
+\newcommand{\etal}[1][.\ ]{et~al#1}
+\newcommand{\etc}[1][.\ ]{etc#1}
+
+% Correct spacing around ellipses in text
+% Hart's Rules, p. 75: 'An ellipsis at the end of an incomplete sentence is not followed by a fourth full point. ... A comma immediately before or after an ellipsis can generally be suppressed, unless it is helpful to the sense. If the sentence before an ellipsis ends with a full point [or other sentence-ending punctuation mark] it is Oxford practice to retain the point before the ellipsis, closed up with the preceding text.'
+\newcommand{\ellipsis}{~.~.~.\ }
+
+%>>>
+%<<< Hyperlinks for references 
+\newcommand{\App}[1]{\hyperref[a:#1]{\mbox{Appendix~\ref{a:#1}}}}
+\newcommand{\app}[1]{\hyperref[a:#1]{\mbox{Appendix~\ref{a:#1}}}}
+\newcommand{\Apps}[1]{\hyperref[a:#1]{\mbox{Appendices~\ref{a:#1}}}}
+\newcommand{\apps}[1]{\hyperref[a:#1]{\mbox{Appendices~\ref{a:#1}}}}
+\newcommand{\Eq}[1]{\hyperref[#1]{Eq.~\eqref{#1}}}
+\newcommand{\eq}[1]{\hyperref[#1]{Eq.~\eqref{#1}}}
+\newcommand{\Eqs}[1]{\hyperref[#1]{Eqs~\eqref{#1}}}
+\newcommand{\eqs}[1]{\hyperref[#1]{Eqs~\eqref{#1}}}
+%<<< \DeclareRobustCommand{\Fig}[1]{\hyperref[fig:#1]{Fig.~\ref{fig:#1}(#2)}}
+\usepackage{xspace}
+\makeatletter
+\DeclareRobustCommand{\Fig}[1]{\@ifnextchar[{\Fig@i{#1}}{\Fig@i{#1}[]}}
+\def\Fig@i#1[#2]{\hyperref[f:#1]{Fig.~\ref{f:#1}#2}\xspace}
+%>>>
+%<<< \DeclareRobustCommand{\fig}[1]{\hyperref[fig:#1]{Fig.~\ref{fig:#1}(#2)}}
+\DeclareRobustCommand{\fig}[1]{\@ifnextchar[{\fig@i{#1}}{\fig@i{#1}[]}}
+\def\fig@i#1[#2]{\hyperref[f:#1]{Fig.~\ref{f:#1}#2}\xspace}
+%>>>
+%<<< \DeclareRobustCommand{\Figs}[1]{\hyperref[fig:#1]{Figs.~\ref{fig:#1}(#2)}}
+\DeclareRobustCommand{\Figs}[1]{\@ifnextchar[{\Figs@i{#1}}{\Figs@i{#1}[]}}
+\def\Figs@i#1[#2]{\hyperref[f:#1]{Figs~\ref{f:#1}#2}\xspace}
+%>>>
+%<<< \DeclareRobustCommand{\figs}[1]{\hyperref[fig:#1]{Figs.~\ref{fig:#1}(#2)}}
+\DeclareRobustCommand{\figs}[1]{\@ifnextchar[{\figs@i{#1}}{\figs@i{#1}[]}}
+\def\figs@i#1[#2]{\hyperref[f:#1]{Figs~\ref{f:#1}#2}\xspace}
+\makeatother
+%>>>
+\newcommand{\listing}[1]{\hyperref[l:#1]{Listing~\ref{l:#1}}}
+\newcommand{\Sect}[1]{\hyperref[s:#1]{\S~\ref{s:#1}}}
+\newcommand{\sect}[1]{\hyperref[s:#1]{\S~\ref{s:#1}}}
+\newcommand{\Sects}[1]{\hyperref[s:#1]{\S\S~\ref{s:#1}}}
+\newcommand{\sects}[1]{\hyperref[s:#1]{\S\S~\ref{s:#1}}}
+\newcommand{\Tab}[1]{\hyperref[t:#1]{Table~\ref{t:#1}}}
+\newcommand{\tab}[1]{\hyperref[t:#1]{Table~\ref{t:#1}}}
+\newcommand{\Tabs}[1]{\hyperref[t:#1]{Tables~\ref{t:#1}}}
+\newcommand{\tabs}[1]{\hyperref[t:#1]{Tables~\ref{t:#1}}}
+
+%>>>
+% <<< Maths
+%<<< General
+
+% Use displaystyle for all equations unless explicitly specified otherwise
+%\everymath{\displaystyle}
+% \dfrac analogue for sums
+\newcommand{\dsum}{\displaystyle\sum}
+
+% Euler's number
+\DeclareMathOperator{\e}{e}
+
+% Logarithms - use optional argument to specify base
+\let\originallog\log
+\renewcommand{\log}[1][\e]{\originallog_{#1}}
+
+% Modulus function (spacing can be inconsistent with |)
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+
+% Signum function
+\DeclareMathOperator{\sgn}{sgn}
+
+% Create a hyphen for use in maths mode (mathrm{-} produces minus sign)
+\mathchardef\mhyphen="2D
+
+% Fix spacing around \left and \right
+\let\originalleft\left
+\let\originalright\right
+\renewcommand{\left}{\mathopen{}\mathclose\bgroup\originalleft}
+\renewcommand{\right}{\aftergroup\egroup\originalright}
+
+% Fix arrows for 12pt font (courtesy http://tex.stackexchange.com/questions/4684/longrightarrow-doesnt-look-good-in-12pt, http://www.tug.org/applications/fontinst/mail/tex-fonts/1993/msg00005.html)
+\DeclareFontFamily{OT1}{cmrx}{}
+\DeclareFontShape{OT1}{cmrx}{m}{n}{<->cmr10}{}
+\renewcommand{\Longrightarrow}{\mathrel{\mbox{\fontfamily{cmrx}\fontencoding{OT1}\selectfont=}}\joinrel\Rightarrow}
+
+% 'Evaluated at' command
+\newcommand{\eval}[2]{\left.#1\right\rvert_{#2}}
+
+% Maths accents
+% Wider hat and tilde accents, see http://tex.stackexchange.com/questions/20473/how-can-i-manually-choose-the-size-of-a-wide-accent-math-mode
+%   these look nice but significantly increase compile time. they can also overlap dividing line in fractions.
+%\renewcommand{\bar}[3]{\mkern#1\overline{\mkern-#1#3\mkern-#2}\mkern#2} % modified from http://tex.stackexchange.com/questions/22100/the-bar-and-overline-commands
+% Automated alternative thanks to http://tex.stackexchange.com/questions/16337/can-i-get-a-widebar-without-using-the-mathabx-package
+% \sqrt doesn't always allow for width of the bar, requiring manual adjustments
+%<<< \newcommand{\bar}[1]{\bar{#1}}
+\makeatletter
+\newcommand*\if@single[3]{%
+  \setbox0\hbox{${\mathaccent"0362{#1}}^H$}%
+  \setbox2\hbox{${\mathaccent"0362{\kern0pt#1}}^H$}%
+  \ifdim\ht0=\ht2 #3\else #2\fi
+  }
+%The bar will be moved to the right by a half of \macc@kerna, which is computed by amsmath:
+\newcommand*\rel@kern[1]{\kern#1\dimexpr\macc@kerna}
+%If there's a superscript following the bar, then no negative kern may follow the bar; an additional {} makes sure that the superscript is high enough in this case:
+\DeclareRobustCommand\bar[1]{\@ifnextchar^{{\wide@bar{#1}{0}}}{\wide@bar{#1}{1}}}
+%Use a separate algorithm for single symbols:
+\newcommand*\wide@bar[2]{\if@single{#1}{\wide@bar@{#1}{#2}{1}}{\wide@bar@{#1}{#2}{2}}}
+\newcommand*\wide@bar@[3]{%
+  \begingroup
+  \def\mathaccent##1##2{%
+    %If there's more than a single symbol, use the first character instead (see below):
+    \if#32 \let\macc@nucleus\first@char \fi
+    %Determine the italic correction:
+    \setbox\z@\hbox{$\macc@style{\macc@nucleus}_{}$}%
+    \setbox\tw@\hbox{$\macc@style{\macc@nucleus}{}_{}$}%
+    \dimen@\wd\tw@
+    \advance\dimen@-\wd\z@
+    %Now \dimen@ is the italic correction of the symbol.
+    \divide\dimen@ 3
+    \@tempdima\wd\tw@
+    \advance\@tempdima-\scriptspace
+    %Now \@tempdima is the width of the symbol.
+    \divide\@tempdima 10
+    \advance\dimen@-\@tempdima
+    %Now \dimen@ = (italic correction / 3) - (Breite / 10)
+    \ifdim\dimen@>\z@ \dimen@0pt\fi
+    %The bar will be shortened in the case \dimen@<0 !
+    \rel@kern{0.6}\kern-\dimen@
+    \if#31
+      \overline{\rel@kern{-0.6}\kern\dimen@\macc@nucleus\rel@kern{0.4}\kern\dimen@}%
+      \advance\dimen@0.4\dimexpr\macc@kerna
+      %Place the combined final kern (-\dimen@) if it is >0 or if a superscript follows:
+      \let\final@kern#2%
+      \ifdim\dimen@<\z@ \let\final@kern1\fi
+      \if\final@kern1 \kern-\dimen@\fi
+    \else
+      \overline{\rel@kern{-0.6}\kern\dimen@#1}%
+    \fi
+  }%
+  \macc@depth\@ne
+  \let\math@bgroup\@empty \let\math@egroup\macc@set@skewchar
+  \mathsurround\z@ \frozen@everymath{\mathgroup\macc@group\relax}%
+  \macc@set@skewchar\relax
+  \let\mathaccentV\macc@nested@a
+  %The following initialises \macc@kerna and calls \mathaccent:
+  \if#31
+    \macc@nested@a\relax111{#1}%
+  \else
+    %If the argument consists of more than one symbol, and if the first token is a letter, use that letter for the computations:
+    \def\gobble@till@marker##1\endmarker{}%
+    \futurelet\first@char\gobble@till@marker#1\endmarker
+    \ifcat\noexpand\first@char A\else
+      \def\first@char{}%
+    \fi
+    \macc@nested@a\relax111{\first@char}%
+  \fi
+  \endgroup
+}
+\makeatother
+%>>>
+
+%>>>
+%<<< Changes for Greek letters
+
+% Allow font switching for Greek letters and default to italics for uppercase Greek (use \mathrm to switch)
+%\usepackage{fixmath}
+
+% Redefine epsilon and kappa
+\renewcommand{\epsilon}{\varepsilon}
+%\renewcommand{\kappa}{\varkappa}
+
+% Roman lowercase greek and calligraphic uppercase Greek alphabets
+%\DeclareMathAlphabet{\greekrm}{LGR}{cmr}{m}{n}
+%\DeclareRobustCommand{\greekrm}[1]{{\fontencoding{LGR}\fontfamily{cmr}\selectfont\text{#1}}} % alternative definition if not enough maths fonts
+%\DeclareMathAlphabet{\greekcal}{LGR}{mak}{m}{cal} % compatible with \mathcal
+
+% Roman lowercase pi
+%\let\itpi=\pi % retain an italic version
+%\renewcommand{\pi}{\greekrm{p}}
+%\DeclareSymbolFont{lmmath}{T1}{LatinModernMath}{m}{n} % font metrics created using otftotfm. See man page for details.
+%\DeclareMicrotypeAlias{LatinModernMath}{lmr}
+%\DeclareMathSymbol{\pi}{\mathord}{lmmath}{"1D}
+
+% Golden ratio
+%\newcommand{\gr}{\greekrm{f}}
+
+%>>>
+%<<< Scientific notation and units
+
+% Command \sci for scientific notation in text or maths mode with optional units (modified from http://stud3.tuwien.ac.at/~e9825610/LaTeXmath.html).
+% Prefer tildes when entering spaces between units because this works inside other environments (e.g. caption), but literal spaces (which work elsewhere) do not.
+% Examples:
+% \sci{1.1e-10}[m~s^{-1}] produces  1.1*10^{-10} m s^{-1} with correct spacing for units
+% \sci{1e-10}[m~s^{-1}]   produces  10^{-10} m s^{-1}
+% \sci{}[m~s^{-1}]        produces  m s^{-1} (only units printed if no number)
+
+\let\unitsep=\,     % Space between units
+\let\numunitsep=\;  % Space between number and unit(s)
+\makeatletter
+\def\sci#1{\ifmmode \let\@shiftmath=\relax \else \let\@shiftmath=$\fi
+\@shiftmath \uppercase{\def\@sciarg{#1}}%
+\expandafter\@scinum\@sciarg E\@noexp\@end \futurelet\@nextchar\@sciunit}
+\def\@scinum#1E#2\@end{\def\@tmpa{#1}\def\@tmpb{\ifx-#1\else#1\fi}\def\@tmpc{1} \ifx\@tmpa\@empty \let\numunitsep=\relax \else \@scimant#1\@end \fi%
+\ifx\@noexp#2 \else \@sciexp#2\fi}
+\def\@scimant#1{\ifx#1\@end \let\@next=\relax \else
+\if,#1\mathord,\else #1\fi \let\@next=\@scimant \fi \@next}
+\def\@sciexp#1E\@noexp{\if\@tmpb\@tmpc \else \times 1\fi 0^{#1}}
+\def\@sciunit{\if[\@nextchar
+\def\@next[##1]{\numunitsep\mathrm{##1}\endgroup\@shiftmath}%
+\begingroup\@unitspace \else \let\@next=\@shiftmath \fi \@next}
+{\catcode`\ =\active\gdef\@unitspace{\catcode`\ =\active\let =\unitsep\let~=\unitsep}}
+\makeatother
+
+% Provide units and miscellaneous symbols
+%\usepackage{textcomp}
+%\usepackage{gensymb}
+% Use Latin Modern instead of cm-super
+\DeclareRobustCommand{\celsius}{\text{\lmr[TS1]{\textcelsius}}}
+\DeclareRobustCommand{\degrees}{\text{\lmr[TS1]{\textdegree}}}
+\DeclareRobustCommand{\micro}{\text{\lmr[TS1]{\textmu}}}
+\DeclareRobustCommand{\molar}{\accsupp{M}{\textsc{m}}}
+\DeclareRobustCommand{\ohm}{\ensuremath{\mathrm{\Omega}}}
+
+%>>>
+%<<< Scalars, vectors, and tensors
+
+% Scalar command \scal{}[] produces scalar #1 with optional roman subscript #2
+% Scalar command \scal{}() produces scalar #1 with optional italic subscript #3
+% <<< \DeclareRobustCommand{\scal}[3]{{#1}_{\mathrm{#2}#3}}
+\makeatletter
+\DeclareRobustCommand{\scal}[1]{\@ifnextchar[{\scal@i{#1}}{\scal@i{#1}[]}}
+\def\scal@i#1[#2]{\@ifnextchar({\scal@ii{#1}[#2]}{\scal@ii{#1}[#2]()}}
+\def\scal@ii#1[#2](#3){{#1}_{\mathrm{#2}#3}}
+\makeatother
+% >>>
+
+% Vector command \vect{}[] produces vector #1 with optional roman subscript #2
+% Vector command \vect{}() produces vector #1 with optional italic subscript #3
+% <<< \DeclareRobustCommand{\vect}[3]{\bm{#1}_{\mathrm{#2}#3}}
+\makeatletter
+\DeclareRobustCommand{\vect}[1]{\@ifnextchar[{\vect@i{#1}}{\vect@i{#1}[]}}
+\def\vect@i#1[#2]{\@ifnextchar({\vect@ii{#1}[#2]}{\vect@ii{#1}[#2]()}}
+\def\vect@ii#1[#2](#3){\bm{#1}_{\mathrm{#2}#3}}
+\makeatother
+% >>>
+
+% Tensor command \tens{}[] produces tensor #1 with optional roman subscript #2
+% Tensor command \tens{}() produces tensor #1 with optional italic subscript #3
+% <<< \DeclareRobustCommand{\tens}[3]{\mathsf{#1}_{\mathrm{#2}#3}}
+\DeclareMathAlphabet{\mathsf}{OML}{cmbrm}{m}{it} % use for components of tensors
+\SetMathAlphabet{\mathsf}{bold}{OML}{cmbrm}{b}{it}
+\makeatletter
+\DeclareRobustCommand{\tens}[1]{\@ifnextchar[{\tens@i{#1}}{\tens@i{#1}[]}}
+\def\tens@i#1[#2]{\@ifnextchar({\tens@ii{#1}[#2]}{\tens@ii{#1}[#2]()}}
+\def\tens@ii#1[#2](#3){\bm{\mathsf{#1}}_{\mathrm{#2}#3}}
+\makeatother
+% >>>
+
+% Vector operators
+\newcommand{\grad}{\vect{\nabla}\mspace{-2mu}}
+\newcommand{\divg}{\vect{\nabla}\!\cdot}
+\newcommand{\curl}{\vect{\nabla}\!\cross}
+\newcommand{\lapl}{\vect{\nabla}^2}
+\DeclareMathOperator{\dbldot}{:}
+
+% Matrices
+%\newcommand{\matrx}[1]{\bm{\mathrm{#1}}}
+\newcommand{\matrx}[1]{\bm{#1}}
+
+%>>>
+%<<< Derivatives, partial derivatives, and integrals
+
+% Roman \partial from Latin Modern Math font
+%\DeclareMathSymbol{\partial}{\mathord}{lmmath}{"1A}
+
+% Derivatives, partial derivatives, and material derivative
+% Prefix with t for in-line forms
+% <<< \newcommand{\dd}[3]{\frac{\mathrm{d}^{#3}#1}{\mathrm{d}{#2}^{#3}}}
+\makeatletter
+\newcommand{\dd}[2][]{\@ifnextchar[{\dd@ii[#1]{#2}}{\dd@ii[#1]{#2}[]}}
+\def\dd@ii[#1]#2[#3]{\frac{\mathrm{d}^{#3}#1}{\mathrm{d}{#2}^{#3}}}
+\makeatother
+
+\makeatletter
+\newcommand{\tdd}[2][]{\@ifnextchar[{\tdd@ii[#1]{#2}}{\tdd@ii[#1]{#2}[]}}
+\def\tdd@ii[#1]#2[#3]{\mathrm{d}^{#3}#1 / \mathrm{d}{#2}^{#3}}
+\makeatother
+
+% >>>
+% <<< \newcommand{\pdd}[3]{\frac{\partial^{#3}#1}{\partial{#2}^{#3}}}
+\makeatletter
+\newcommand{\pdd}[2][]{\@ifnextchar[{\pdd@ii[#1]{#2}}{\pdd@ii[#1]{#2}[]}}
+\def\pdd@ii[#1]#2[#3]{\frac{\partial^{#3}#1}{\partial{#2}^{#3}}}
+\makeatother
+
+\makeatletter
+\newcommand{\tpdd}[2][]{\@ifnextchar[{\tpdd@ii[#1]{#2}}{\tpdd@ii[#1]{#2}[]}}
+\def\tpdd@ii[#1]#2[#3]{\partial^{#3}#1 / \partial{#2}^{#3}}
+\makeatother
+
+% >>>
+% <<< \newcommand{\DD}[3]{\frac{\mathrm{D}^{#3}#1}{\mathrm{D}{#2}^{#3}}}
+\makeatletter
+\newcommand{\DD}[2][]{\@ifnextchar[{DDd@ii[#1]{#2}}{\DD@ii[#1]{#2}[]}}
+\def\DD@ii[#1]#2[#3]{\frac{\mathrm{D}^{#3}#1}{\mathrm{D}{#2}^{#3}}}
+\makeatother
+
+\makeatletter
+\newcommand{\tDD}[2][]{\@ifnextchar[{\tDD@ii[#1]{#2}}{\tDD@ii[#1]{#2}[]}}
+\def\tDD@ii[#1]#2[#3]{\mathrm{D}^{#3}#1 / \mathrm{D}{#2}^{#3}}
+\makeatother
+
+% >>>
+
+% Roman d with extra spacing for integrals
+% NB \d originally produced a double-dotted under-accent
+\renewcommand{\d}{\mathop{}\!\mathrm{d}}
+
+%>>>
+%<<< Miscellaneous variables
+
+% Diffusivity
+\newcommand{\D}{\mathscr{D}}
+
+% Dimensionless parameters 
+% \Re originally made R for real numbers
+\newcommand{\Pe}{\mathit{Pe}}
+\renewcommand{\Re}{\mathit{Re}}
+\newcommand{\Sc}{\mathit{Sc}}
+
+%>>>
+%>>>
+%<<< Chemistry
+%<<< General
+
+% Extensible reaction arrows (based on chemarr)
+% Versions of \xrightleftharpoons provided by packages (e.g. chemarr, mathtools) have the same issue as \Longrightarrow in 12pt font, so fix that here
+% Unlike \xrightleftharpoons, here both arguments are optional and first argument is set above the arrow
+%<<< \newcommand{\equil[2]}{\xrightleftharpoons[#1][#2]}
+\DeclareFontFamily{OML}{cmmix}{}
+\DeclareFontShape{OML}{cmmix}{m}{it}{<->cmmi10}{}
+\DeclareSymbolFont{cmmix}{OML}{cmmix}{m}{it}
+\DeclareMathSymbol{\xleftharpoondown}{\mathrel}{cmmix}{"29}
+\DeclareMathSymbol{\xrightharpoonup}{\mathrel}{cmmix}{"2A}
+\makeatletter
+\def\xleftharpoondownfill@{\arrowfill@\xleftharpoondown\relbar\relbar}
+\def\xrightharpoonupfill@{\arrowfill@\relbar\relbar\xrightharpoonup}
+\newcommand{\equil}[1][]{%
+  \@ifnextchar[{\equil@i[{#1}]}{\equil@i[{#1}][{}]}%
+}
+\def\equil@i[#1][#2]{%
+  \ensuremath{%
+    \mathrel{%
+      \settoheight{\dimen@}{\raise 2pt\hbox{$\xrightharpoonup$}}%
+      \setlength{\dimen@}{-\dimen@}%
+      \edef\CA@temp{\the\dimen@}%
+      \settoheight\dimen@{$\rightleftharpoons$}%
+      \addtolength{\dimen@}{\CA@temp}%
+      \raisebox{\dimen@}{%
+        \rlap{%
+          \raisebox{2pt}{%
+            $%
+            \ext@arrow 0359\xrightharpoonupfill@{\hphantom{#2}}{#1}%
+            $%
+          }%
+        }%
+        \hbox{%
+          $%
+          \ext@arrow 3095\xleftharpoondownfill@{#2}{\hphantom{#1}}%
+          $%
+        }%
+      }%
+    }%
+  }%
+}
+\makeatother
+%>>>
+
+% Command \chem{}[] produces chemical formulas in text or maths mode.
+% All numbers in first (mandatory) argument are typeset as subscripts. Spaces may be used in input for clarity; these are ignored on output.
+% Use optional second argument for valencies of ions.
+% Based on code from http://tex.stackexchange.com/questions/101604/parsing-strings-containing-diacritical-marks-macros and http://tex.stackexchange.com/questions/7180/testing-for-number
+%<<< \newcommand{\chem[2]}{\chem{#1}[#2]}
+\makeatletter
+\newtoks\chem@toks
+\newbool{chemnum} % requires etoolbox
+\DeclareRobustCommand{\chem}[1]{\@ifnextchar[{\chem@i{#1}}{\chem@i{#1}[]}}
+\def\chem@i#1[#2]{\ensuremath{{\chem@toks{}\chemparse@i#1\chemparse@stop}^{#2}}}
+\def\chemparse@stop{\chemparse@stop}
+\def\chemparse@stop@i\chemparse@stop{\chemformat}
+\def\chemparse@i{\futurelet\nexttok\chemparse@ii}
+\def\chemparse@ii{%
+  \ifx\nexttok\chemparse@stop
+    \let\next@action\chemparse@stop@i
+  \else
+    \let\next@action\chemtesttok
+  \fi
+  \next@action
+}
+\def\chemadd@tok#1{\chem@toks\expandafter{\the\chem@toks#1}}
+\def\chemtesttok#1{%
+  \if!\ifnum9<1#1!\fi%
+    \ifbool{chemnum}{\chemadd@tok{#1}}{\chemformat\chem@toks{}\chemadd@tok{#1}}%
+    \booltrue{chemnum}%
+  \else
+    \ifbool{chemnum}{\chemformat\chem@toks{}\chemadd@tok{#1}}{\chemadd@tok{#1}}%
+    \boolfalse{chemnum}%
+  \fi%
+  \chemparse@i%
+}
+\def\chemformat{\ifbool{chemnum}{_{\the\chem@toks}}{\text{\the\chem@toks}}}
+\makeatother
+%>>>
+
+% Acid-base chemistry
+% IUPAC (and others): 'The operator p shall be printed in Roman type.'
+% 'There already exists international agreement that pH should be written and printed on line in roman type.'
+\newcommand{\pH}{\ensuremath{\mathrm{pH}}}
+\newcommand{\pKa}{\ensuremath{\mathrm{p}\scal{K}[a]}}
+
+%>>>
+%<<< Blood
+
+% macros to typeset factor names, e.g. \Factor{10} produces 'FX', \Factor{10a} produces 'FXa'. \factor does the same but without the prefix.
+% based on http://tex.stackexchange.com/questions/79573/split-a-string-with-hyphens-into-separate-words/79578#79578 and http://tex.stackexchange.com/questions/23487/how-can-i-get-roman-numerals-in-text/23491#23491
+\makeatletter
+\newcommand{\Factor}[1]{\@Factor[#1a]}
+\def\@Factor[#1a#2]{\text{F\uppercase\expandafter{\romannumeral#1\relax}#2}}
+\newcommand{\factor}[1]{\@factor[#1a]}
+\def\@factor[#1a#2]{\text{\uppercase\expandafter{\romannumeral#1\relax}#2}}
+\makeatother
+
+% shortcuts for enzyme complexes
+\newcommand{\enz}[1]{\text{\ifstrequal{#1}{tf7a}{TF--\factor{7a}}{%
+                           \ifstrequal{#1}{8a9a}{\factor{8a}--\factor{9a}}{%
+                           \ifstrequal{#1}{5a10a}{\factor{5a}--\factor{10a}}{}}}}}
+
+% kinetic parameters
+\newcommand{\ka}[1][]{\scal{k}[a#1]}
+\newcommand{\kd}[1][]{\scal{k}[d#1]}
+\newcommand{\kcat}[1][]{\scal{k}[cat#1]}
+\newcommand{\KM}[1][]{\scal{K}[M#1]}
+
+%>>>
+%>>>
+%>>>
+%>>>
+\newcommand{\rxntoarb}{\texttt{\textbf{rxntoarb}}}
+\newcommand{\convertunits}{\texttt{\textbf{convert\_units}}}
+\newcommand{\syntax}[2]{\textcolor{#1}{\texttt{#2}}}
+\newcommand{\lnum}[1]{line~\ref{line:#1}}
+\newcommand{\lnums}[2]{lines~\ref{line:#1}--\ref{line:#2}}
+%>>>
+
+\begin{document}
+\title{\rxntoarb}
+\subtitle{v. 2.30 and later}
+\author{Christian Biscombe}
+\date{\large\today}
+\maketitle
+
+\rxntoarb{} (pronounced reaction-to-arb) converts a human-readable system of chemical reactions into a format suitable for use with \emph{arb} finite volume solver. Reading from one or more input files (with the preferred extension .rxn), \rxntoarb{} automatically creates
+\begin{itemize}
+\item rate constant definitions (performing unit conversions where necessary),
+\item reaction rate expressions,
+\item source terms,
+\item transport equations for each chemical species (easily customisable by means of a template file),
+\item magnitude estimates.
+\end{itemize}
+Other features include easy switching between ODE and PDE output and the ability to include or exclude reactions based on regular expression matches.
+
+\rxntoarb{} offers several benefits:
+\begin{itemize}
+\item the reaction network is represented using intuitive syntax that is easier and faster to read and write,
+\item reactions may be easily added or removed without the user having to keep track of the effects of these changes on source terms,
+\item the potential for error is greatly reduced by eliminating the need for manual unit conversions and manual entry of reaction rates and source terms.
+\end{itemize}
+
+\rxntoarb{} requires Ruby~1.9.3 or later. The current version of the template file (see~\sect{fstruct}) is designed for \emph{arb}~0.60. (Older versions of the template file are available going back to \emph{arb}~0.56.)
+
+\clearpage
+\tableofcontents
+\clearpage
+
+%<<< Invocation and command-line options
+\section{Invocation and command-line options \label{s:invoc}}
+
+\rxntoarb{} is invoked as follows:
+%
+%<<< Eq: invocation
+\begin{equation*}
+\rxntoarb{} \texttt{ [options\_list] <rxn\_file\_list>},
+\end{equation*}
+%>>>
+%
+where \texttt{rxn\_file\_list} specifies the path to at least one .rxn file and the optional \texttt{options\_list} may include any of the following:
+\begin{description}
+\item[\texttt{-d|--debug}] Write copious debugging output to STDERR. (Intended mainly as a developer option.)
+\item[\texttt{-i|--interactive}] Prompt for confirmation before overwriting an existing .arb output file.
+\item[\texttt{-l|--alias-labels}] Use reaction aliases (\sect{aliases}) instead of internal reaction labelling scheme.
+\item[\texttt{-m|--manual}] Open this manual with the default PDF viewer. Failing that, print path to this manual.
+\item[\texttt{-n|--none-centred}] Activate ODE mode: generate ODEs (no spatial dependence) rather than PDEs. \rxntoarb{} operates in PDE mode by default.
+\item[\texttt{-o|--outfile <output\_file>}] Use \texttt{output\_file} as the .arb output file. This option is ignored if \texttt{rxn\_file\_list} contains more than one .rxn file.
+\item[\texttt{-s|--strict}] Regard warnings as errors.
+\item[\texttt{-t|--template <template\_file>}] Use \texttt{template\_file} as the template file.
+\item[\texttt{-v|--version}] Print version information.
+\end{description}
+
+As of \emph{arb}~0.58, \rxntoarb{} is invoked automatically by \emph{arb} if an \texttt{INCLUDE} statement (or similar) in an \emph{arb} input file references a file with the .rxn extension. This mechanism ensures that the .arb output file generated by \rxntoarb{} is always up-to-date with the .rxn file. To enable options to be passed to \rxntoarb{} via this mechanism, any of the above command-line options may also be set within the .rxn file itself (see \sect{options}).
+
+%>>>
+\clearpage
+%<<< File structure
+\section{File structure \label{s:fstruct}}
+
+Using \rxntoarb{} with \emph{arb} involves the use of four files.
+
+\subsection{.rxn file}
+
+.rxn files are input files read by \rxntoarb. They contain a list of chemical reactions together with kinetic data. The syntax used in .rxn files is defined in \sect{rxn}. An example .rxn file, reproduced in \listing{example}, may be found under \texttt{examples\slash{}reactions.rxn} in the \rxntoarb{} root directory. Vim syntax highlighting for .rxn files is provided by the file \texttt{rxn.vim} included in the \rxntoarb{} root directory (type \texttt{:help usr\_06} in Vim for instructions on how to set this up).
+
+\subsection{Template file (\texttt{rxntoarbrc})}
+
+Template files store \emph{arb} code that needs to be included for each chemical species defined in a .rxn file. The extended (non-\emph{arb}) syntax used in template files is defined in \sect{templates}. \rxntoarb{} uses the following hierarchy to determine the path of the template file:
+\begin{enumerate}
+\item If \rxntoarb{} is invoked with the \texttt{-t} flag, the specified template file is used.
+\item If a file with the name \texttt{rxntoarbrc} exists within the working directory from which \rxntoarb{} is called, it is used as the template file.
+\item The default \texttt{rxntoarbrc} located in the \rxntoarb{} root directory is used otherwise.
+\end{enumerate}
+The default \texttt{rxntoarbrc} should provide an adequate starting point in most cases. However, the user may wish to alter the (simulation-specific) boundary conditions listed beneath the comment `\texttt{\# set boundary conditions here}' or to define new per-species \texttt{OUTPUT} variables. In this case, the default template should be copied to the working directory and modified there.
+
+\subsection{.arb output file}
+
+The output of \rxntoarb{} is an .arb output file, which contains \emph{arb} code metaprogrammed from the contents of the .rxn file. The .arb output file will have the same basename as the .rxn file unless overridden by the \texttt{-o} flag.
+
+\subsection{Main .arb file \label{s:main}}
+
+The .arb output file generated by \rxntoarb{} contains \emph{arb} code describing chemical species and the reactions occurring between them, but it is not sufficient to run a complete \emph{arb} simulation. Additional code related to mesh setup, solver options, equations governing fluid flow, time-stepping, \etc should be included in a separate .arb file, referred to as the main .arb file. It is this main .arb file (and not the .arb output file) that should be run through \emph{arb}.
+
+The main .arb file needs to have the following characteristics:
+\begin{itemize}
+\item An \texttt{INCLUDE} statement (or similar) for the .rxn file must be present. (Alternatively the .arb output file may be included directly, but including the .rxn file is generally preferable.)
+\item Any variables used in the template file but not created by \rxntoarb{} must be defined.
+\item Replacements for any flags (strings delimited by double angle brackets \texttt{<<>>}) used in the template file should be defined. The default \texttt{rxntoarbrc} contains the following flags:
+  \begin{itemize}
+    \item \texttt{<<specieshighorderadvection>>}: whether to use high-order advection for chemical species; should be either \texttt{1} (true) or \texttt{0} (false; default). If false, low-order advection will be used.
+    \item \texttt{<<zeroinitialvolumeconcentrations>>}: whether to set species concentrations to zero initially in volume regions; should be either \texttt{1} (true) or~\texttt{0} (false; default). If false, species concentrations will be set equal to their boundary values (see below) throughout volume regions.
+    \item \texttt{<<calculatediffusivities>>}: whether species diffusivities should be calculated using a correlation based on molecular weight; should be either \texttt{1} (true) or~\texttt{0} (false; default). If true, molecular weights must be defined for all volume species (see below). If false, diffusivities must be defined for all volume species (see below).
+  \end{itemize}
+\item Species-specific physical parameters, currently only molecular weights or diffusivities, should be defined as \texttt{CONSTANT}s. Molecular weight variable names must follow the convention \texttt{<MW\_speciesname>}. Diffusivity variable names must follow the convention \texttt{<D\_speciesname>}. Molecular weights of complexes (two or more species bound to each other) need not be defined: they will be calculated automatically as the sum of the molecular weights of the components.
+\item Boundary concentrations of all species present initially should be defined as \texttt{CONSTANT}s \emph{after} the .arb output file is included (because this file sets the boundary concentrations of all species to zero by default). For surface species, the boundary concentration corresponds to the initial concentration of that species. For volume species, the boundary concentration will generally be the concentration of that species on the boundary where it enters the volume. Boundary concentration variable names must follow the convention \texttt{<c\_speciesname@region\_0>} for species located in volume regions and \texttt{<s\_speciesname@region\_0>} for species located on surface regions.
+\end{itemize}
+An example main .arb file may be found under \texttt{examples\slash{}main.arb} in the \rxntoarb{} root directory.
+
+%<<< thrombin_generation_JC_model.rxn
+\begin{lstlisting}[float=p,caption={An example .rxn file (examples\slash{}thrombin\_generation\_JC\_model.rxn)},label={l:example}]
+! Coagulation biochemistry from Jordan & Chaikof (2011), Biophys. J. 101: 276-286. $\label{line:1}$
+! Reactions below are named such that (e.g.) S2.6 is Reaction 6 in Table S2. $\label{line:2}$
+! Christian Biscombe, 2019-05-23 $\label{line:3}$
+
+options -l -n $\label{line:5}$
+initial_species [II, V, VII, VIIa, VIII, IX, X, PC, AT, TFPI, MCA]\@@domain\@ $\label{line:6}$
+initial_species TF\@@TF_patch\@, TM\@@TM_patch\@ $\label{line:7}$
+exclude /@TM_patch|\bA?PC\b/ # suppress reactions involving TM $\label{line:8}$
+
+# Fluid-phase reactions $\label{line:10}$
+volume_region domain $\label{line:11}$
+|S2.6:|  VIII\@@v\@ {IIa\@@v\@}-> VIIIa\@@v\@; \<kcat=\>'0.9 s-1', \<KM=\>'0.20 uM' $\label{line:12}$
+|S2.8:|  V\@@v\@ {IIa\@@v\@}-> Va\@@v\@; \<kcat=\>'0.23 s-1', \<KM=\>'0.072 uM' $\label{line:13}$
+|S2.9:|  VII\@@v\@ {Xa\@@v\@}-> VIIa\@@v\@; \<kcat=\>'5.0 s-1', \<KM=\>'1.2 uM' $\label{line:14}$
+|S2.11:| VII\@@v\@ {IIa\@@v\@}-> VIIa\@@v\@; \<kcat=\>'0.061 s-1', \<KM=\>'2.7 uM' $\label{line:15}$
+|S3.5:|  IIa\@@v\@ + AT\@@v\@ -> AT:IIa\@@v\@; \<k=\>'6.8e-3 uM-1 s-1' $\label{line:16}$
+|S3.6:|  IXa\@@v\@ + AT\@@v\@ -> AT:IXa\@@v\@; \<k=\>'2.6e-3 uM-1 s-1' $\label{line:17}$
+         Xa\@@v\@ + AT\@@v\@ -> AT:Xa\@@v\@ $\label{line:18}$
+|S3.7:|  Xa\@@v\@ + TFPI\@@v\@ <=> TFPI:Xa\@@v\@; \<ka=\>'16 uM-1 s-1', \<kd=\>'3.3e-4 s-1' $\label{line:19}$
+
+# Reactions on TF and TM patches $\label{line:21}$
+  # Problems with units in S2.4, S2.10, S3.2, S3.4. $\label{line:22}$
+  # Source terms for S2.4 and S2.10 must be manually relocated to TF and TM patches. $\label{line:23}$
+surface_regions TF_patch, TM_patch $\label{line:24}$
+|S2.2:|  II\@@v\@ {Va:Xa\@@s\@}-> IIa\@@v\@; \<kcat=\>'33 s-1', \<KM=\>'0.21 uM' $\label{line:25}$
+|S2.4:|  Va\@@v\@ {APC\@@v\@}-> Va*\@@v\@; \<kcat=\>'0.58 s-1', \<KM=\>'0.025 uM' $\label{line:26}$
+         VIIIa\@@v\@ {APC\@@v\@}-> VIIIa*\@@v\@ $\label{line:27}$
+|S2.7:|  X\@@v\@ {VIIIa:IXa\@@s\@}-> Xa\@@v\@; \<kcat=\>'20 s-1', \<KM=\>'0.16 uM' $\label{line:28}$
+|S2.10:| V\@@v\@ {Xa\@@v\@}-> Va\@@v\@; \<kcat=\>'0.046 s-1', \<KM=\>'0.01 uM' $\label{line:29}$
+|S3.2:|  Va\@@v\@ + Xa\@@v\@ <=> Va:Xa\@@s\@; \<ka=\>'100 uM-1 s-1', \<kd=\>'0.01 s-1' $\label{line:30}$
+|S3.4:|  VIIIa\@@v\@ + IXa\@@v\@ <=> VIIIa:IXa\@@s\@; \<ka=\>'100 uM-1 s-1', \<kd=\>'0.01 s-1' $\label{line:31}$
+
+# Reactions on TF patch only $\label{line:33}$
+surface_region TF_patch $\label{line:34}$
+|S2.1:|  X\@@v\@ {TF:VIIa\@@s\@}-> Xa\@@v\@; \<kcat=\>'1.2 s-1', \<KM=\>'0.45 uM' $\label{line:35}$
+|S2.5:|  IX\@@v\@ {TF:VIIa\@@s\@}-> IXa\@@v\@; \<kcat=\>'0.34 s-1', \<KM=\>'0.17 uM' $\label{line:36}$
+|S3.1:|  VIIa\@@v\@ + TF\@@s\@ <=> TF:VIIa\@@s\@; \<ka=\>'100 uM-1 s-1', \<kd=\>'0.06 s-1' $\label{line:37}$
+|S3.8:|  TF:VIIa\@@s\@ + TFPI:Xa\@@v\@ <=> TF:VIIa:TFPI:Xa\@@s\@; \<ka=\>'10 uM-1 s-1', \<kd=\>'1.1e-3 s-1' $\label{line:38}$
+
+# Reactions on TM patch only $\label{line:40}$
+surface_region TM_patch $\label{line:41}$
+|S2.3:|  PC\@@v\@ {TM:IIa\@@s\@}-> APC\@@v\@; \<kcat=\>'5.58 s-1', \<KM=\>'0.7 uM' $\label{line:42}$
+|S3.3:|  IIa\@@v\@ + TM\@@s\@ <=> TM:IIa\@@s\@; \<ka=\>'100 uM-1 s-1', \<kd=\>'0.01 s-1' $\label{line:43}$
+\end{lstlisting}
+
+%>>>
+
+%>>>
+%<<< .rxn file syntax
+\section{.rxn file syntax \label{s:rxn}}
+
+%<<< options statement
+\subsection{\syntax{statement}{options} statement \label{s:options}}
+
+The options listed in \sect{invoc} may also be set within a .rxn file using an \syntax{statement}{options} statement, which (if used) should appear near the top of the file. The syntax for setting options exactly mirrors the command-line invocation. For example, \lnum{5} in \listing{example} changes the internal reaction labelling scheme (for convenience) and activates ODE mode. Note that options set using an \syntax{statement}{options} statement take precedence over options set on the command line.
+
+%>>>
+%<<< Comments
+\subsection{Comments}
+
+Comments begin with the \syntax{comment}{\#} character and continue until the end of the line. Comments may appear anywhere in the .rxn file. Full-line comments (\eg \lnum{10}) are ignored by \rxntoarb{}. Comments that appear after the parameter list of a reaction will be carried over into the .arb output file, where they appear after the \texttt{CONSTANT} expressions that define the relevant kinetic parameters.
+
+%>>>
+%<<< Headers
+\subsection{Headers}
+
+Lines beginning with a bang (\syntax{subs}{!}) are called headers (\eg \lnums{1}{3}). Headers are a special type of comment designed primarily to store metadata about the reaction network (title, author, date, description \etc[.]). As the name suggests, it is intended that headers appear only at the top of the .rxn file. Headers will be collected together as comments at the top of the .arb output file. A line showing the date and time at which the .arb output file was generated and the version of \rxntoarb{} used will be appended to the header automatically.
+
+%>>>
+%<<< Species and region names
+\subsection{Species and region names \label{s:names}}
+
+Chemical species have the general form \texttt{speciesname}\syntax{special}{@region}. The \texttt{speciesname} describes the chemical identity of the species; the \syntax{special}{@region} specifies the arb region on\slash{}in which that species is present. (Note that \syntax{special}{@} is not part of the region name, but rather acts to separate the species and region names.) Chemical species are declared by including them in a reaction (see \sect{reactions}).
+
+Species and region names may not contain any of the characters \texttt{<>'"\#\&} or the character sequences \texttt{\char`\{\char`\{} or \texttt{\char`\}\char`\}} (restrictions inherited from \emph{arb}). \rxntoarb{} also requires that species and region names not contain any of the characters \texttt{,}\syntax{statement}{;}\syntax{special}{@} or any of the substitution sequences or extended syntax used in template files (see \sect{templates}). Colons (\texttt{:}) within species names are intended to separate the components of a complex (\eg \texttt{AT:IIa} in \lnum{16} is a complex of \texttt{AT} and \texttt{IIa}), but this interpretation only comes into play in calculating the molecular weight of complexes. The use of \emph{arb}-style angle bracket delimiters (\texttt{<>}) is necessary for species names only if they begin with digits (which would otherwise be interpreted as a stoichiometric coefficient), and necessary for region names only if they contain characters other than letters, digits, and underscores.
+
+Two lazy region identifiers, \syntax{special}{@s} and \syntax{special}{@v}, are predefined (see \sect{lazy}). These identifiers interact with \syntax{statement}{surface\_region} and \syntax{statement}{volume\_region} statements. As such, \texttt{s} and \texttt{v} should not be used as user-defined region names.
+
+When \rxntoarb{} is called with the \texttt{-n} flag, ODE mode is activated. In this mode, all species and reactions are assumed to have no spatial dependence and hence region names effectively become part of the species name.
+
+It is permissible to omit \syntax{special}{@region} identifiers throughout the .rxn file under two circumstances:
+\begin{itemize}
+\item No \syntax{statement}{surface\_region} or \syntax{statement}{volume\_region} statements appear. In this case all species and reactions will be assumed to have no spatial dependence, \ie ODE mode will be assumed.
+\item Exactly one surface or volume region is specified by either a \syntax{statement}{surface\_region} or \syntax{statement}{volume\_region} statement. In this case all species and reactions will be assumed to be located on\slash{}in that region.
+\end{itemize}
+
+%>>>
+%<<< surface_region and volume_region statements
+\subsection{\syntax{statement}{surface\_region} and \syntax{statement}{volume\_region} statements \label{s:region_statements}}
+
+The \syntax{statement}{surface\_region} and \syntax{statement}{volume\_region} keywords (both optionally plural) are used to specify \emph{arb} regions on\slash{}in which chemical species are present and reactions occur. The keywords should be followed by a comma-separated list of region names (conforming to the naming rules stipulated in \sect{names}). If \rxntoarb{} is called without the \texttt{-n} flag (PDE mode), surface regions will be assumed to be two-dimensional and volume regions will be assumed to be three-dimensional. If \rxntoarb{} is called with the \texttt{-n} flag (ODE mode), then the dimensionality of regions is ignored.
+
+\syntax{statement}{surface\_region} and \syntax{statement}{volume\_region} statements apply to all reactions subsequently defined in the .rxn file, unless and until overridden by another \syntax{statement}{surface\_region} or \syntax{statement}{volume\_region} statement. 
+
+\subsubsection{Lazy region identifiers \syntax{special}{@s} and \syntax{special}{@v} \label{s:lazy}}
+
+The lazy region identifiers \syntax{special}{@s} and \syntax{special}{@v} are shorthand references to the surface and volume regions specified by the previous \syntax{statement}{surface\_region} and \syntax{statement}{volume\_region} statements. For example, the \syntax{statement}{surface\_regions} statement in \lnum{24} specifies two surface regions, \texttt{TF\_patch} and \texttt{TM\_patch}. References to \syntax{special}{@s} in \lnums{25}{31} will therefore be interpreted by \rxntoarb{} as references to both \texttt{TF\_patch} and \texttt{TM\_patch}, whilst references to \syntax{special}{@v} will be interpreted as references to the volume region \texttt{domain} specified by the \syntax{statement}{volume\_region} statement in \lnum{11}. In \lnum{34}, the new \syntax{statement}{surface\_region} statement overrides the previous one so that references to \syntax{special}{@s} in \lnums{35}{38} will be interpreted as references to \texttt{TF\_patch} only.
+
+%>>>
+%<<< Reactions
+\subsection{Reactions \label{s:reactions}}
+
+Four types of reactions are recognised, as described below. Reactions may be entered in any order in the .rxn file, subject to the condition that the lazy region identifiers \syntax{special}{@s} and \syntax{special}{@v} will take their value(s) from the previous \syntax{statement}{surface\_region} and \syntax{statement}{volume\_region} statements. With the exception of Michaelis--Menten reactions (whose kinetics are governed by the \href{https://en.wikipedia.org/wiki/Michaelis\%E2\%80\%93Menten_kinetics}{Michaelis--Menten equation}), all reaction rates are assumed to be described by \href{https://en.wikipedia.org/wiki/Law_of_mass_action}{mass action kinetics}.
+
+%<<< Irreversible reactions
+\subsubsection{Irreversible reactions}
+
+Irreversible reactions take the form 
+%
+%<<< Eq: irreversible
+\begin{equation*}
+\texttt{reactant\_list} \syntax{statement}{ -> } \texttt{product\_list}.
+\end{equation*}
+%>>>
+%
+\texttt{reactant\_list} consists of one or more species, separated by spaces and the character~\syntax{statement}{+} (the spaces are mandatory so that \texttt{+} can also be used in species names, \eg for ions). Stoichiometric coefficients (if any) should immediately precede the species name, optionally separated from it by a space or the \syntax{statement}{.} or \syntax{statement}{*} characters. Non-integer stoichiometric coefficients are not supported. product\_list is similar except that it may be empty, in which case the products of the reaction are discarded (not tracked in the \emph{arb} simulation). For readability, spaces around the reaction arrow \syntax{statement}{->} are recommended (but not mandatory). The kinetic parameter \syntax{function}{k} describing the rate of the reaction must either be specified or inherited (see \sect{parameters}). Examples of irreversible reactions are shown in \lnums{16}{18}.
+
+%>>>
+%<<< Reversible reactions
+\subsubsection{Reversible reactions}
+
+Reversible reactions take the form
+%
+%<<< Eq: reversible
+\begin{equation*}
+\texttt{reactant\_list} \syntax{statement}{ <=> } \texttt{product\_list}.
+\end{equation*}
+%>>>
+%
+\texttt{product\_list} must not be empty for a reversible reaction. The kinetic parameters \syntax{function}{ka} and \syntax{function}{kd} describing the rates of the forward and reverse reactions must either be specified or inherited (see \sect{parameters}). Examples of reversible reactions are shown in \lnums{30}{31}.
+
+%>>>
+%<<< Two-step reactions
+\subsubsection{Two-step reactions}
+
+Two-step reactions consist of a reversible reaction followed by an irreversible reaction:
+%
+%<<< Eq: twostep
+\begin{equation*}
+\texttt{reactant\_list} \syntax{statement}{ <=> } \texttt{intermediate\_list} \syntax{statement}{ -> } \texttt{product\_list}.
+\end{equation*}
+%>>>
+%
+\texttt{intermediate\_list} must not be empty but \texttt{product\_list} may be empty (which implies that the products are not tracked in the \emph{arb} simulation). A shorthand syntax is available for the case in which the only intermediate is a complex formed from all of the reactants (this intermediate will be named automatically based on the reactant names):
+%
+%<<< Eq: twostep_short
+\begin{equation*}
+\texttt{reactant\_list} \syntax{statement}{ => } \texttt{product\_list}.
+\end{equation*}
+%>>>
+%
+In both full and shorthand forms, the kinetic parameters \syntax{function}{ka}, \syntax{function}{kd}, and \syntax{function}{k} describing the rates of the forward and reverse reactions in the first step and the irreversible reaction in the second step must either be specified or inherited (see \sect{parameters}).
+
+%>>>
+%<<< Michaelis--Menten reactions
+\subsubsection{Michaelis--Menten reactions}
+
+Michaelis-Menten reactions take the form
+%
+%<<< Eq: MM
+\begin{equation*}
+\texttt{substrate} \syntax{statement}{ \char`\{}\texttt{enzyme}\syntax{statement}{\char`\}-> } \texttt{product\_list}.
+\end{equation*}
+%>>>
+%
+Exactly one \texttt{substrate} and one \texttt{enzyme} must be specified. \texttt{product\_list} may be empty (which implies that the products are not tracked in the \emph{arb} simulation). The Michaelis--Menten parameters \syntax{function}{KM} and \syntax{function}{kcat} must either be specified or inherited (see \sect{parameters}). Examples of Michaelis--Menten reactions are shown in \lnums{12}{15}.
+
+%>>>
+%>>>
+%<<< Kinetic parameters
+\subsection{Kinetic parameters \label{s:parameters}}
+
+Kinetic parameters are entered as a comma-separated list on the same line as the reaction they describe, separated from the reaction itself by a semicolon (\syntax{statement}{;}). Kinetic parameters may be entered in any order. The following parameter names are recognised:
+\begin{itemize}
+\item \syntax{function}{k},
+\item \syntax{function}{ka} (synonyms \syntax{function}{kf} and \syntax{function}{kon}),
+\item \syntax{function}{kd} (synonyms \syntax{function}{kr} and \syntax{function}{koff}),
+\item \syntax{function}{KM} (synonym \syntax{function}{Km}),
+\item \syntax{function}{kcat}.
+\end{itemize}
+These names may optionally be followed by a \syntax{function}{*} character, which causes the following numerical value to be output as an expression (enclosed in quotes) rather than a numerical constant (\emph{arb} handles expressions and numerical constants differently, which can be important for redefinitions).
+
+Kinetic parameter values may be entered in two forms. In the first form (used throughout the example .rxn file), a numerical value together with appropriate physical units are specified. The numerical value and each individual unit should be separated by spaces. SI prefixes immediately precede the unit name. Exponents on units should immediately follow the unit name, optionally preceded by the \syntax{string}{\^} character. More information on unit entry is given in the accompanying documentation for the \convertunits{} program, which provides a command-line interface to the \texttt{Units} module that accompanies \rxntoarb. Where necessary, \rxntoarb{} performs unit conversions so that parameter values in the .arb output file are expressed in SI base units. Unit consistency checking is also performed with warning messages issued if reaction rates have inconsistent or unexpected units. (Such warnings are produced by \lnums{30}{31}.)
+
+Alternatively, kinetic parameter values may be specified as strings, delimited by either single or double quotes. Strings may contain arbitrary \emph{arb} code. This feature is useful in conjunction with aliases (see \sect{aliases}) or for expressing one kinetic parameter in terms of others. The downside is that unit consistency checking is not possible.
+
+\subsubsection{Inheritance}
+
+Sometimes the same kinetic parameters will apply to a group of closely related reactions. Kinetic parameters from one `parent' reaction can be assigned to any number of `child' reactions by placing the children directly below the parent and indenting them by at least one space. An example of inheritance is shown in \lnums{17}{18}: the reaction in \lnum{18} inherits the kinetic parameters from \lnum{17}. The advantage of inheritance is that kinetic parameters for the group of reactions need only be entered in one place.
+
+%>>>
+%<<< Aliases
+\subsection{Aliases \label{s:aliases}}
+Any non-indented reaction may optionally be preceded by an alias, which runs from the beginning of the line until a colon (\syntax{type}{:}) followed by a (mandatory) space is encountered. Aliases serve two purposes. Firstly, they may be used to provide descriptive names for reactions. If \rxntoarb{} is invoked with the \texttt{-l} flag (as the example .rxn file is), these names will be used throughout the .arb output file in place of the automatic labels (derived from species names) otherwise generated by \rxntoarb. Secondly, aliases provide a convenient way to refer to kinetic parameters defined elsewhere in the .rxn file. For example, \lnums{17}{18} in \listing{example} could alternatively be written
+%
+\begin{lstlisting}[firstnumber=17]
+|S3.6:|  IXa\@@v\@ + AT\@@v\@ -> AT:IXa\@@v\@; \<k=\>'2.6e-3 uM-1 s-1' $\label{line:17_new}$
+Xa\@@v\@ + AT\@@v\@ -> AT:Xa\@@v\@; \<k=\>"<k_S3.6>" $\label{line:18_new}$
+\end{lstlisting}
+%
+\noindent{}In this case, the value of \syntax{function}{k} specified in \lnum{17_new} (alias \syntax{type}{S3.6}) will also be assigned to the reaction in \lnum{18_new}.
+
+%>>>
+%<<< initial_species statement
+\subsection{\syntax{statement}{initial\_species} statement}
+
+An \syntax{statement}{initial\_species} statement is used to declare which species are present initially in the \emph{arb} simulation. This information is used by \rxntoarb{} to estimate the magnitudes of the concentrations of all species based on the concentrations of the precursor species from which they are derived. 
+
+The \syntax{statement}{initial\_species} keyword should be followed by a comma-separated list of species together with their associated regions, as shown in \lnum{7}. If multiple species on\slash{}in the same region are present initially, the array notation shown in \lnum{6} may be used. Any species appearing in an \syntax{statement}{initial\_species} statement but otherwise not appearing in the .rxn file will be ignored. 
+
+See \sect{main} for details on how boundary concentrations must be specified in the main .arb file.
+
+%>>>
+%<<< Metaspecies
+\subsection{Metaspecies \label{s:metaspecies}}
+
+A `metaspecies' is a group of entities that behaves like a single entity in a reaction. For instance, when coagulation factors X and~Xa bind to phospholipid membranes composed of phosphatidylcholine and phosphatidylserine (70:30 mixture), they occupy 106 and 52 phospholipid head groups, respectively.\footnote{Hathcock et al. (2005), \emph{\href{http://dx.doi.org/10.1021/bi050338b}{Biochemistry}} 44: 8187.} These binding reactions should \emph{not} be written as
+%
+\begingroup
+\let\thelstnumber\relax
+\begin{lstlisting}
+X\@@v\@ + '106'PL\@@s\@ <=> X\@@s\@; \<ka=\>..., \<kd=\>... # INCORRECT!
+Xa\@@v\@ + '52'PL\@@s\@ <=> Xa\@@s\@; \<ka=\>..., \<kd=\>... # INCORRECT!
+\end{lstlisting}
+\endgroup
+%
+\noindent{}because under mass action kinetics, the rates of the reactions as written above would be proportional to the concentration of \texttt{PL}\syntax{special}{@s} raised to the power of 106 and 52, respectively, which is not what is wanted. Instead, binding sites should be entered using the following square bracket notation to represent a metaspecies:
+%
+\begingroup
+\let\thelstnumber\relax
+\begin{lstlisting}
+X\@@v\@ + ['106'PL\@@s\@] <=> X\@@s\@; \<ka=\>..., \<kd=\>...
+Xa\@@v\@ + ['52'PL\@@s\@] <=> Xa\@@s\@; \<ka=\>..., \<kd=\>...
+\end{lstlisting}
+\endgroup
+%
+\noindent{}\rxntoarb{} interprets the metaspecies as single entities so that the rates of these reactions are proportional to the concentrations of the respective binding sites (equal to the concentration of \texttt{PL}\syntax{special}{@s} divided by 106 and 52, respectively). The source term for \texttt{PL}\syntax{special}{@s} is handled sensibly too.
+
+As metaspecies behave like any other chemical species, they may be preceded by a stoichiometric coefficient if necessary (\eg \texttt{\syntax{string}{2}\syntax{statement}{[}\syntax{string}{106}PL\syntax{special}{@s}\syntax{statement}{]}}).
+
+%>>>
+%<<< include_only and exclude statements
+\subsection{\syntax{statement}{include\_only} and \syntax{statement}{exclude} statements}
+
+\syntax{statement}{include\_only} and \syntax{statement}{exclude} are used to selectively include or exclude regions or reactions in the .arb output file. Both keywords must be followed either by (i)~a whitespace-free text string for simple text matching or (ii)~a valid Ruby regular expression for more complex matches. (Regular expressions are useful for specifying alternate match patterns, forcing the statement to respect word boundaries, or preventing end-of-line comments from being scanned. The Regexp option \syntax{special}{i}, which enables case-insensitive matching, is the only Regexp option recognised by \rxntoarb.) For the statement to operate on a region, the region name must be preceded by the \syntax{special}{@} character. For example, the \syntax{statement}{exclude} statement at \lnum{8} excludes all reactions occurring on the \texttt{TM\_patch} region as well as all fluid-phase reactions involving the species \texttt{PC} and \texttt{APC}.
+
+\syntax{statement}{include\_only} and \syntax{statement}{exclude} statements apply to all subsequent lines in the .rxn file. Multiple \syntax{statement}{include\_only} or \syntax{statement}{exclude} statements may be given, in which case reactions will be tested against all inclusion\slash{}exclusion criteria.\footnote{Before version~2.29, multiple \syntax{statement}{include\_only} or \syntax{statement}{exclude} statements were not permitted.} End-of-line comments are scanned by default, effectively enabling the user to define their own keywords to select\slash{}deselect subsets of reactions. To prevent end-of-line comments from being scanned, use a regular expression beginning with \texttt{\^{}[\^{}\#]*}.
+
+%>>>
+%<<< substitute statement
+\subsection{\syntax{statement}{substitute} statement}
+
+A \syntax{statement}{substitute} statement\footnote{The \syntax{statement}{substitute} statement extends and replaces the \syntax{statement}{let} statement that appeared in versions~2.7--2.17.} performs code replacements. It is particularly useful when metaspecies appear in more than one reaction (although its use is not limited to this application). Carrying on the example from \sect{metaspecies}, suppose it is decided that factors~X and~Xa should both bind to 79 phospholipid head groups (79 is the average of 106 and 52). To avoid repeating the constant 79 in multiple locations, a pointer \texttt{S}\syntax{special}{@s} to the binding site metaspecies is defined via a \syntax{statement}{substitute} statement as follows:
+%
+\begingroup
+\let\thelstnumber\relax
+\begin{lstlisting}
+substitute /\bS@s\b/ ['79'PL\@@s\@]
+X\@@v\@ + S\@@s\@ <=> X\@@s\@; \<ka=\>..., \<kd=\>...
+Xa\@@v\@ + S\@@s\@ <=> Xa\@@s\@; \<ka=\>..., \<kd=\>...
+\end{lstlisting}
+\endgroup
+%
+\noindent{}When the above code is parsed, all instances of \texttt{S}\syntax{special}{@s} below the \syntax{statement}{substitute} statement will be replaced internally by \texttt{\syntax{statement}{[}\syntax{string}{79}PL\syntax{special}{@s}\syntax{statement}{]}}. (Including \syntax{special}{\char`\\b} in the regular expression ensures that only complete matches are replaced; other species that happen to contain \texttt{S}\syntax{special}{@s}---\eg[]~\texttt{PS}\syntax{special}{@s}---will not be affected.) 
+
+In general, the \syntax{statement}{substitute} keyword takes two space-separated arguments. The first argument must either be (i)~a whitespace-free text string for simple text matching or (ii)~a valid Ruby regular expression for more complex matches. (The Regexp option \syntax{special}{i}, which enables case-insensitive matching, is the only Regexp option recognised by \rxntoarb.) The second argument is taken to be any text following the first argument (excluding end-of-line comments starting with the \syntax{comment}{\#} character). All subsequent instances of text matching the first argument will be replaced with the second argument.
+
+In principle, \syntax{statement}{substitute} statements could be used to override any aspect of the syntax described in this manual. Judiciousness is strongly advised.
+
+%>>>
+
+%>>>
+%<<< Template file syntax
+\section{Template file syntax \label{s:templates}}
+
+\rxntoarb{} template files (called \texttt{rxntoarbrc} by default) store \emph{arb} code that needs to be included for each species. A range of substitutions are performed on the original template file to generate unique code for each species. Template files contain extended (non-\emph{arb}) syntax that is handled by \rxntoarb{} as detailed below.
+
+%<<< Substitution sequences
+\subsection{Substitution sequences}
+
+\rxntoarb{} performs substitutions on the following character sequences (all delimited by forward slashes), which must therefore not appear in any species or region names:
+\begin{itemize}
+\item \syntax{subs}{/c/} (concentration of the species),
+\item \syntax{subs}{/species/} (species name),
+\item \syntax{subs}{/region/} (region name),
+\item \syntax{subs}{/source\_region/} (region name),
+\item \syntax{subs}{/CENTRING/} (\texttt{NONE|FACE|CELL} depending on species location),
+\item \syntax{subs}{/centring/} (\texttt{none|face|cell} depending on species location),
+\item \syntax{subs}{/units/} (\texttt{''|mol m-2|mol m-3} depending on species location),
+\item \syntax{subs}{/MW/} (molecular weight of the species),
+\item \syntax{subs}{/associatedfaces(region)/} (region consisting of faces \texttt{associatedwith} the region),
+\item \syntax{subs}{/associatedcells(region)/} (region consisting of cells \texttt{associatedwith} the region),
+\item \syntax{subs}{/domainof(region)/} (region consisting of cells in \texttt{domainof} the region).
+\end{itemize}
+Additionally, all \emph{arb} statements of the form \texttt{ON <region>} are deleted in ODE mode.
+
+%>>>
+%<<< if_rxn statement
+\subsection{\syntax{template}{if\_rxn} statement}
+
+\syntax{template}{if\_rxn} statements are used to conditionally include \emph{arb} code depending on whether a species is located on a surface, in a volume, or has no location (ODE mode). \syntax{template}{if\_rxn} statements take the form
+%
+%<<< Eq: if_rxn
+\begin{equation*}
+\syntax{template}{if\_rxn}\texttt{(location=region\_list)\char`\{if\_clause\char`\}\char`\{else\_clause\char`\}}.
+\end{equation*}
+%>>>
+%
+The term in parentheses determines the scope of the \syntax{template}{if\_rxn} statement. \texttt{location} must be one of \texttt{none}, \texttt{surface}, or \texttt{volume}. The optional \texttt{region\_list} limits the scope of the \syntax{template}{if\_rxn} statement to only the named regions, and should be a comma-separated list of region names (\emph{arb}-style angle bracket delimiters are optional). The code contained in the mandatory \texttt{if\_clause} is retained for all species defined within the scope of the \syntax{template}{if\_rxn} statement and deleted otherwise. The code contained in the optional \texttt{else\_clause} is retained for all species outside the scope of the \syntax{template}{if\_rxn} statement and deleted otherwise. Both \texttt{if\_clause} and \texttt{else\_clause} may span multiple lines. Nested brace pairs within clauses are allowed but nested \syntax{template}{if\_rxn} statements are not permitted.
+
+%>>>
+%<<< each blocks
+\subsection{\syntax{template}{each} blocks}
+
+\syntax{template}{each} blocks are used to apply a particular boundary condition to multiple surface regions bounding a volume region, and hence must reside within \syntax{template}{if\_rxn}\texttt{(volume)} statements. \syntax{template}{each} blocks take the Ruby-inspired form
+%
+%<<< Eq: each
+\begin{equation*}
+\texttt{[region\_list].\syntax{template}{each} \char`\{\ |loopvar| expression \char`\}}.
+\end{equation*}
+%>>>
+%
+The mandatory \texttt{region\_list}, which specifies the volume-region-bounding surface regions for which the \texttt{expression} in the block will be retained, should be a comma-separated list of region names (\emph{arb}-style angle bracket delimiters are optional). Each of these region names (stripped of angle brackets, if any) will be passed to the block, where they are accessed through the (user-named) variable \texttt{|loopvar|} (vertical bars mandatory). In \texttt{region\_list}, the shorthand \texttt{*} may be used to represent all volume-region-bounding surface regions on which reactions are occurring.
+
+\syntax{template}{each} blocks may span multiple lines. Nested brace pairs within \syntax{template}{each} blocks are allowed but nested \syntax{template}{each} blocks are not permitted.
+
+%>>>
+
+%>>>
+%%<<< Future development ideas
+%\section{Future development ideas}
+%
+%No guarantees, just some ideas! Contact the author if there is a capability you think \rxntoarb{} should have.
+%\begin{itemize}
+%\item Support (two-way) conversion between .rxn format and \href{http://sbml.org/Basic_Introduction_to_SBML}{SBML} and\slash{}or \href{https://www.cellml.org/}{CellML}. As of 25 October 2017:
+%  \begin{itemize}
+%  \item It is very difficult to translate certain features of .rxn syntax into SBML (\eg string parameters, aliases, metaspecies).
+%  \item Converting from SBML to .rxn is also tricky because of the relatively unconstrained format of KineticLaw objects.
+%  \item Installing the Ruby bindings for libSBML involves hacking with the (broken) libSBML makefile.
+%  \end{itemize}
+%  For these reasons, support for SBML is unlikely in the near future unless a real need arises.
+%\item Allow subsets of reactions to occur at different `runlevels', \eg to simulate sequential reaction steps. Would be handy if pre-equilibration steps could be run through \emph{arb} automatically. (Currently this can be achieved by making use of \syntax{statement}{include\_only} and writing a wrapper script.)
+%\item \LaTeX{} output of reactions. (Could defer to \href{http://copasi.org/Support/Features/}{COPASI} or \href{http://www.ra.cs.uni-tuebingen.de/software/SBML2LaTeX/}{SBML2LaTeX} if SBML support implemented.)
+%\item Graphical output of reaction network diagrams. (Could defer to \href{http://copasi.org/Support/Features/}{COPASI} or \href{http://www.cytoscape.org/}{Cytoscape} if SBML support implemented.)
+%\end{itemize}
+%
+%%>>>
+%<<< Copyright and licence
+\section{Copyright and licence}
+
+\rxntoarb{} source code and documentation \copyright{} 2016--2019 Christian Biscombe.
+
+\rxntoarb{} is contributed to \emph{arb} finite volume solver (in which copyright is held by Dalton Harvie) under the same licence terms as that project. At the time of writing, \emph{arb} is released under the terms of the GNU General
+Public License (version 3) as published by the Free Software Foundation.
+
+%>>>
+
+\end{document}

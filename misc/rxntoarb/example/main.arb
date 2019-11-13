@@ -1,19 +1,26 @@
-# Include mesh file here
-# Do fluid flow bits here
-# Define timestep etc. here
+INFO_TITLE        "Example main.arb file"
+INFO_DESCRIPTION  "Thrombin generation by the tissue factor pathway in a homogeneous system (ODEs)"
+INFO_AUTHOR       "Christian Biscombe"
+INFO_DATE         "2019-11-13"
 
-# 
-# 
-# 
+VERSION 0.61
 
-# Molecular weights in kDa (used to calculate diffusivities). Region names not used here.
+# Basic transient simulation with constant time-step
+GENERAL_OPTIONS transientsimulation
+CONSTANT <dt> [s] 1.d0
+NONE_TRANSIENT <dt[r=1]> "<dt>" "<dt>"
+NONE_TRANSIENT <t[r=0]> "0.d0" "<t[r=1]>+<dt[r=0]>" noinput,output # time
+NONE_TRANSIENT <t[r=1]> "<t>-<dt[r=0]>" "<t>" noinput # time at last step
+NONE_CONDITION <stop time> "<t>+0.5d0*<dt>-1800.d0" stopcondition # stop after 30 min
+
+# Molecular weights (used to calculate diffusivities if requested)
 CONSTANT <MW_II>    [kDa]  72.0d0
 CONSTANT <MW_IIa>   [kDa]  36.7d0
 CONSTANT <MW_V>     [kDa] 330.0d0
 CONSTANT <MW_Va>    [kDa] 168.0d0
 CONSTANT <MW_VII>   [kDa]  50.0d0
 CONSTANT <MW_VIIa>  [kDa]  50.0d0
-CONSTANT <MW_VIII>  [kDa] 286.0d0 # incorrect value of 170 used in ref.
+CONSTANT <MW_VIII>  [kDa] 170.0d0
 CONSTANT <MW_VIIIa> [kDa] 166.0d0
 CONSTANT <MW_IX>    [kDa]  55.0d0
 CONSTANT <MW_IXa>   [kDa]  45.0d0
@@ -21,12 +28,16 @@ CONSTANT <MW_X>     [kDa]  58.9d0
 CONSTANT <MW_Xa>    [kDa]  46.0d0
 CONSTANT <MW_PC>    [kDa]  62.0d0
 CONSTANT <MW_APC>   [kDa]  56.2d0
-CONSTANT <MW_ATIII> [kDa]  58.0d0
+CONSTANT <MW_AT>    [kDa]  58.0d0
 CONSTANT <MW_TFPI>  [kDa]  34.0d0
+# Temperature and viscosity also needed for diffusivity calculation
+CONSTANT <T> [K] 310.15 # temperature
+CONSTANT <mu> [Pa s] 1.2d-3 # plasma viscosity (Kesmarky et al. 2008)
 
-INCLUDE_LOCAL "reactions.arb" R "<<specieshighorderadvection>>" W "0" R "<<zeroinitialvolumeconcentrations>>" W "1" R <<calculatediffusivities>> W "1"
+# Include reactions
+INCLUDE_WORKING 'reactions.rxn'
 
-# Initial concentrations must be specified AFTER reactions.arb inclusion. Species with zero initial concentration do not need to be listed here.
+# Set initial/boundary concentrations
 CONSTANT <c_II@domain_0>    [mol m-3] 1400.0d-6
 CONSTANT <c_V@domain_0>     [mol m-3]   20.0d-6
 CONSTANT <c_VII@domain_0>   [mol m-3]   10.0d-6
@@ -35,7 +46,6 @@ CONSTANT <c_VIII@domain_0>  [mol m-3]    0.7d-6
 CONSTANT <c_IX@domain_0>    [mol m-3]   90.0d-6
 CONSTANT <c_X@domain_0>     [mol m-3]  170.0d-6
 CONSTANT <c_PC@domain_0>    [mol m-3]   60.0d-6
-CONSTANT <c_ATIII@domain_0> [mol m-3] 3400.0d-6 # 2400.d-6 used in ref.
+CONSTANT <c_AT@domain_0>    [mol m-3] 2400.0d-6
 CONSTANT <c_TFPI@domain_0>  [mol m-3]    2.5d-6 
-CONSTANT <s_TF@TF_patch_0> [mol m-2]    1.d-11
-CONSTANT <s_TM@TM_patch_0> [mol m-2] 1000.d-11
+CONSTANT <s_TF@TF_patch_0>  [mol m-2]    1.0d-6
