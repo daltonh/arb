@@ -18,7 +18,7 @@ module Rxntoarb
       @magnitudes = {} # key is species.tag, value is magnitude expression
       @output = []
       @rates = []
-      @sources = {} # key is [species, source_region], value is source term
+      @sources = Hash.new { |h,k| h[k] = {} } # key is species.tag, value is hash { source_region => source term }
     rescue Errno::EACCES => msg
       abort "ERROR: output file #{file} is not writable"
     end #}}}
@@ -27,19 +27,19 @@ module Rxntoarb
 
       # Process reactions
       rxn.reactions.each do |reaction|
-        reaction.all_species.each { |species| @sources[[species, Rxntoarb.options[:none_centred] ? nil : species.region]] ||= '0.d0' } # ensure that species has a source term originating in its own region
+        reaction.all_species.each { |species| @sources[species][Rxntoarb.options[:none_centred] ? nil : species.region] ||= '0.d0' } # ensure that species has a source term originating in its own region
         # Format kinetic parameters
         reaction.parameters.each { |par| @constants << "#{"#{reaction.centring}_" if par.type == :LOCAL}#{par.type} <#{par.name}_#{reaction.parent_label}>#{" [#{par.units}]" if par.units} #{par.value} #{reaction.comment}" } if reaction.parameters
         # Generate rate expressions
         if reaction.type == :reversible || reaction.type == :twostep # reversible must come before irreversible because same code handles two-step reactions
           reaction.label << '_i' if reaction.type == :twostep
           @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<ka_#{reaction.parent_label}>"
-          reaction.reactants.each { |reactant| @rates.last << conc_powers(reactant) }
+          reaction.reactants.each { |reactant| @rates.last << "*#{reactant.conc_powers}" }
           @rates.last << "-<kd_#{reaction.parent_label}>"
           if reaction.type == :twostep
-            reaction.intermediates.each { |intermediate| @rates.last << conc_powers(intermediate) }
+            reaction.intermediates.each { |intermediate| @rates.last << "*#{intermediate.conc_powers}" }
           else
-            reaction.products.each { |product| @rates.last << conc_powers(product) }
+            reaction.products.each { |product| @rates.last << "*#{product.conc_powers}" }
           end
           create_sources(reaction)
         end
@@ -47,9 +47,9 @@ module Rxntoarb
           reaction.label << 'i' if reaction.type == :twostep
           @rates << "#{reaction.centring}_DERIVED <R_#{reaction.label}> \"<k_#{reaction.parent_label}>"
           if reaction.type == :twostep
-            reaction.intermediates.each { |intermediate| @rates.last << conc_powers(intermediate) }
+            reaction.intermediates.each { |intermediate| @rates.last << "*#{intermediate.conc_powers}" }
           else
-            reaction.reactants.each { |reactant| @rates.last << conc_powers(reactant) }
+            reaction.reactants.each { |reactant| @rates.last << "*#{reactant.conc_powers}" }
           end
           create_sources(reaction)
         end
@@ -78,15 +78,21 @@ module Rxntoarb
           @constants << "CELL_REGION <associatedcells(#{region})> \"associatedwith(<#{region}>)\""
           @constants << "CELL_REGION <domainof(#{region})> \"domainof(<#{region}>)\""
           rxn.bounding_regions[region].each do |bounding_region|
-            rxn.volume_species[region].each { |species| @sources[[species, bounding_region]] ||= "0.d0" } # ensure that each species within volume_region has a source term on each bounding surface_region
+            rxn.volume_species[region].each { |species| @sources[species][bounding_region] ||= "0.d0" } # ensure that each species within volume_region has a source term on each bounding surface_region
           end
         end
       end
 
       # Format source terms and generate equations based on template file
       warn 'INFO: creating equations' if Rxntoarb.options[:debug]
-      @sources.each do |key, source|
-        species, source_region = key
+      @sources.each do |species, source|
+        if rxn.initial_species.include?(species.tag) && source.values.all? { |s| s == '0.d0' } # species present initially isn't produced or consumed in any reactions (i.e. enzyme only)
+          @constants << "CONSTANT <#{species.conc}> \"<#{species.conc}_0>\""
+          @constants << "CONSTANT <#{species.conc}_pos> \"<#{species.conc}_0>\""
+          @sources.delete(species)
+          next
+        end
+        source.each do |source_region, source_term|
         source_centring = if Rxntoarb.options[:none_centred] # source_centring is the centring of the source_region in which the reaction is occurring
                             :NONE
                           elsif rxn.surface_regions.include?(source_region)
@@ -94,14 +100,9 @@ module Rxntoarb
                           else
                             :CELL
                           end
-        if Rxntoarb.options[:none_centred] && rxn.initial_species.include?(species.tag) && source == '0.d0' # species present initially isn't produced or consumed in any reactions (i.e. enzyme only)
-          @constants << "CONSTANT <#{species.conc}> \"<#{species.conc}_0>\""
-          @constants << "CONSTANT <#{species.conc}_pos> \"<#{species.conc}_0>\""
-          @sources[key] = ''
-          next
-        end
-        @sources[key] = "#{source_centring}_#{source == '0.d0' ? 'CONSTANT' : 'DERIVED'} <S_#{species.tag}#{"@#{source_region}" unless Rxntoarb.options[:none_centred]}> \"#{source}\"#{" ON <#{source_region}>" unless Rxntoarb.options[:none_centred]}"
+          @sources[species][source_region] = "#{source_centring}_#{source_term == '0.d0' ? 'CONSTANT' : 'DERIVED'} <S_#{species.tag}#{"@#{source_region}" unless Rxntoarb.options[:none_centred]}> \"#{source_term}\"#{" ON <#{source_region}>" unless Rxntoarb.options[:none_centred]}"
         create_equations(species, source_region, rxn) if species.region == source_region || Rxntoarb.options[:none_centred] # only do equations once for each species
+      end
       end
       warn "INFO: equation creation complete" if Rxntoarb.options[:debug]
 
@@ -154,9 +155,9 @@ module Rxntoarb
       format_output(rxn.header << "# Generated from #{rxn.file} by #{PROGNAME} v. #{VERSION}, #{Time.now.strftime('%F %T')}")
       format_output(@constants, {name: 'Constants and regions'})
       format_output(@rates, {name: 'Reaction rates', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
-      format_output(@sources.values, {name: 'Source terms', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
-      format_output(@equations, {name: 'Equations'})
-      format_output(@magnitudes.values, {name: 'Magnitudes'})
+      format_output(@sources.values.map(&:values).flatten.sort_by { |s| s[/<[^>]*>/].downcase }, {name: 'Source terms', pre: 'DEFAULT_OPTIONS output', post: 'DEFAULT_OPTIONS'})
+      format_output(@equations.sort_by { |s| s.first.downcase }, {name: 'Equations'})
+      format_output(@magnitudes.values.sort_by { |s| s[/<[cs]_([^>]*)>/, 1].downcase }, {name: 'Magnitudes'})
       File.write(@file, @output.join("\n"))
       warn "INFO: output written to #{@file}" if Rxntoarb.options[:debug]
 
@@ -167,10 +168,6 @@ module Rxntoarb
     end #}}}
 
     private
-
-    def conc_powers(species) #{{{
-      "*<#{species.conc}_pos>#{"**#{species.coeff}" if species.coeff > 1}#{"/#{species.meta_coeff}.d0" if species.meta_coeff > 1}"
-    end #}}}
 
     def create_sources(reaction) #{{{
       if reaction.type == :twostep
@@ -186,9 +183,8 @@ module Rxntoarb
       [reactants, products].compact.each do |species_array|
         source_sign = species_array == reactants ? '-' : '+'
         species_array.each do |species|
-          key = [species, reaction.region]
-          @sources[key] = '' if @sources[key] == '0.d0'
-          (@sources[key] ||= '') << "#{source_sign}#{"#{species.rate_coeff}.d0*" if species.rate_coeff > 1}<R_#{reaction.label}>" # add rate to source term for this species
+          @sources[species][reaction.region] = '' if @sources[species][reaction.region] == '0.d0'
+          (@sources[species][reaction.region] ||= '') << "#{source_sign}#{"#{species.rate_coeff}.d0*" if species.rate_coeff > 1}<R_#{reaction.label}>" # add rate to source term for this species
         end
       end
       @rates.last << "\"#{" ON <#{reaction.region}>" if reaction.region}" # finalise rate expression

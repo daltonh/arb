@@ -1,16 +1,16 @@
 #!/usr/bin/env ruby
 
 # convert_units
-# (C) Copyright Christian Biscombe 2017-2018
+# (C) Copyright Christian Biscombe 2017-2019
 
-abort "ERROR: Ruby 1.9.3 or newer required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9.3'
+abort "ERROR: Ruby 1.9.3 or later required (Ruby #{RUBY_VERSION} installed)" if RUBY_VERSION < '1.9.3'
 
 require 'optparse'
 require_relative '../lib/units'
 
 PROGNAME = 'convert_units'
 VERSION = '1.10'
-DATE = '2018-11-27'
+DATE = '2019-09-17'
 INFO = <<-INFO.gsub(/^\s+/, '')
   #{PROGNAME} v. #{VERSION} (#{DATE})
   Performs unit conversions.

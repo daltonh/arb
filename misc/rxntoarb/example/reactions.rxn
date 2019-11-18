@@ -1,39 +1,43 @@
-! Blood plasma coagulation biochemistry
-! Ref: Jordan and Chaikof (2011), Biophys. J. 101: 276-286
-! File created by Christian Biscombe, 2017-08-19
+! Coagulation biochemistry from Jordan & Chaikof (2011), Biophys. J. 101: 276-286.
+! Reactions below are named such that (e.g.) S2.6 is Reaction 6 in Table S2.
+! Christian Biscombe, 2019-05-23
+
+options -l -n
+initial_species [II, V, VII, VIIa, VIII, IX, X, PC, AT, TFPI, MCA]@domain
+initial_species TF@TF_patch, TM@TM_patch
+exclude /@TM_patch|\bA?PC\b/ # suppress reactions involving TM
 
 # Fluid-phase reactions
 volume_region domain
-VIII@v {IIa@v}-> VIIIa@v; kcat=0.9 s-1, KM=0.20 uM
-V@v {IIa@v}-> Va@v; kcat=0.23 s-1, KM=0.072 uM
-VII@v {Xa@v}-> VIIa@v; kcat=15.2 s-1, KM=1.2 uM # CB corrected erroneous kcat in ref.
-VII@v {IIa@v}-> VIIa@v; kcat=0.061 s-1, KM=2.7 uM
-IIa@v + ATIII@v -> ; k=6.8d-3 uM-1 s-1
-IXa@v + ATIII@v -> ; k=9.9d-6 uM-1 s-1 # CB corrected erroneous k in ref.
-Xa@v + ATIII@v -> ; k=2.6d-3 uM-1 s-1 # reaction mistakenly omitted in ref.
-Xa@v + TFPI@v <=> TFPI:Xa@v; ka=16 uM-1 s-1, kd=3.3d-4 s-1
-Va@v {APC@v}-> ; kcat=0.58 s-1, KM=0.025 uM
-  VIIIa@v {APC@v}->
-V@v {Xa@v}-> Va@v; kcat=0.046 s-1, KM=0.01 uM
+S2.6:  VIII@v {IIa@v}-> VIIIa@v; kcat=0.9 s-1, KM=0.20 uM
+S2.8:  V@v {IIa@v}-> Va@v; kcat=0.23 s-1, KM=0.072 uM
+S2.9:  VII@v {Xa@v}-> VIIa@v; kcat=5.0 s-1, KM=1.2 uM
+S2.11: VII@v {IIa@v}-> VIIa@v; kcat=0.061 s-1, KM=2.7 uM
+S3.5:  IIa@v + AT@v -> AT:IIa@v; k=6.8e-3 uM-1 s-1
+S3.6:  IXa@v + AT@v -> AT:IXa@v; k=2.6e-3 uM-1 s-1
+         Xa@v + AT@v -> AT:Xa@v
+S3.7:  Xa@v + TFPI@v <=> TFPI:Xa@v; ka=16 uM-1 s-1, kd=3.3e-4 s-1
 
-# Reactions occurring on both TF patch and TM patch
+# Reactions on TF and TM patches
+# Problems with units in S2.4, S2.10, S3.2, S3.4.
+# Source terms for S2.4 and S2.10 must be manually relocated to TF and TM patches.
 surface_regions TF_patch, TM_patch
-II@v {Va:Xa@s}-> IIa@v; kcat=33 s-1, KM=0.21 uM
-X@v {VIIIa:IXa@s}-> Xa@v; kcat=20 s-1, KM=0.16 uM
-Va@v + Xa@v <=> Va:Xa@s; ka=100 uM-1 s-1, kd=0.01 s-1 # units inconsistent!
-VIIIa@v + IXa@v <=> VIIIa:IXa@s; ka=100 uM-1 s-1, kd=0.01 s-1 # units inconsistent!
+S2.2:  II@v {Va:Xa@s}-> IIa@v; kcat=33 s-1, KM=0.21 uM
+S2.4:  Va@v {APC@v}-> Va*@v; kcat=0.58 s-1, KM=0.025 uM
+         VIIIa@v {APC@v}-> VIIIa*@v
+S2.7:  X@v {VIIIa:IXa@s}-> Xa@v; kcat=20 s-1, KM=0.16 uM
+S2.10: V@v {Xa@v}-> Va@v; kcat=0.046 s-1, KM=0.01 uM
+S3.2:  Va@v + Xa@v <=> Va:Xa@s; ka=100 uM-1 s-1, kd=0.01 s-1
+S3.4:  VIIIa@v + IXa@v <=> VIIIa:IXa@s; ka=100 uM-1 s-1, kd=0.01 s-1
 
-# Reactions occurring on TF patch only
+# Reactions on TF patch only
 surface_region TF_patch
-X@v {TF:VIIa@s}-> Xa@v; kcat=1.2 s-1, KM=0.45 uM
-IX@v {TF:VIIa@s}-> IXa@v; kcat=0.34 s-1, KM=0.17 uM
-VIIa@v + TF@s <=> TF:VIIa@s; ka=100 uM-1 s-1, kd=0.06 s-1
-TF:VIIa@s + TFPI:Xa@v <=> TF:VIIa:TFPI:Xa@s; ka=10 uM-1 s-1, kd=1.1d-3 s-1
+S2.1:  X@v {TF:VIIa@s}-> Xa@v; kcat=1.2 s-1, KM=0.45 uM
+S2.5:  IX@v {TF:VIIa@s}-> IXa@v; kcat=0.34 s-1, KM=0.17 uM
+S3.1:  VIIa@v + TF@s <=> TF:VIIa@s; ka=100 uM-1 s-1, kd=0.06 s-1
+S3.8:  TF:VIIa@s + TFPI:Xa@v <=> TF:VIIa:TFPI:Xa@s; ka=10 uM-1 s-1, kd=1.1e-3 s-1
 
-# Reactions occurring on TM patch only
+# Reactions on TM patch only
 surface_region TM_patch
-PC@v {IIa:TM@s}-> APC@v; kcat=5.58 s-1, KM=0.7 uM
-IIa@v + TM@s <=> IIa:TM@s; ka=100 uM-1 s-1, kd=0.01 s-1
-
-initial_species [II, V, VII, VIIa, VIII, IX, X, PC, ATIII, TFPI]@domain
-initial_species TF@TF_patch, TM@TM_patch
+S2.3:  PC@v {TM:IIa@s}-> APC@v; kcat=5.58 s-1, KM=0.7 uM
+S3.3:  IIa@v + TM@s <=> TM:IIa@s; ka=100 uM-1 s-1, kd=0.01 s-1

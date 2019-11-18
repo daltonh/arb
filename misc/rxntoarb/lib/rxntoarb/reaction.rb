@@ -122,7 +122,7 @@ module Rxntoarb
     private
 
     def extract_species(string, rxn) #{{{
-      return nil if string.nil? || string =~ /\A\s*\z/
+      return nil if string.nil? || string.strip.empty?
       species_array = []
       string.split(/\s+\+\s+/).each do |term| # spaces around + required so that + can be used in species names (e.g. ions)
         species = Species.new(term, rxn)
