@@ -113,6 +113,7 @@ INCLUDE_LOCAL "momentum_viscous_flux" # calculate momentum advection flux for al
 }}
 
 IF <<cylindrical>>
+#IF 0
 # add on hoop stress term separately for cylindrical coordinates
 # first perform a check that <<radialdim>> has been correctly defined
   IF {{ return (!( string_eval('<<radialdim>>') ge 1 && string_eval('<<radialdim>>') le 3)) }}
@@ -161,8 +162,8 @@ IF <<cylindrical>>
     END_IF
   # define constant azimuthal velocity divergence modifier terms
     REPLACEMENTS S "<<radius_top_azi>>" W "<<radius_f>>**2*" S "<<radius_bottom_azi>>" W "/<<radius_c>>**2"
-  {{
-    my $return_string='';
+    {{
+      my $return_string='';
       for my $species (string_eval('<<multifluid_species_list>>','list')) {
   # first add viscous stress flux (within divergence here)
         $return_string .= "CELL_EQUATION <momentum_$species"."[l=<<azimuthaldim>>]> '<J_viscous_f_$species"."[l=<<azimuthaldim>>]>' ON <domain>\n";
@@ -218,10 +219,10 @@ IF <<cylindrical>>
 
 
 
-    return $return_string;
-  }}
+      return $return_string;
+    }}
 
-  {{
+    {{
     my $return_string='';
     for my $species (string_eval('<<multifluid_species_list>>','list')) {
       #      $return_string .= "VARIABLE <momentum_$species"."[l=<<azimuthaldim>>]> '(celldiv(<<radius_top_azi>>(<J_viscous_f_$species"."[l=<<azimuthaldim>>]>+<J_advection_f_$species"."[l=<<azimuthaldim>>]>))<<radius_bottom_azi>>+<rho_$species".">*<u_f_vect_$species"."[l=<<radialdim>>]>*<u_f_vect_$species"."[l=<<azimuthaldim>>]>/<facex[l=<<radialdim>>]>)'\n";

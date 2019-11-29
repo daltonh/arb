@@ -1568,7 +1568,7 @@ sub perform_index_replacements {
       }
       if ($guts =~ /(^|\,)\h*r\h*\=\h*((<<.+?>>)|(\d+))(\,|$)/) {
 #                   1                 23         4     5
-        print ::DEBUG "INFO: found a potential r match in guts = $guts: 3 = $3\n";
+        print ::DEBUG "INFO: found a potential r match in guts = $guts: 2 = $2\n";
         if ($3) {
           if (defined($index{$3})) {
             print ::DEBUG "INFO: found a repeating r index string: index = $3: type = $index{$3}{type}: in name = $name: in string_line = $string_line\n";

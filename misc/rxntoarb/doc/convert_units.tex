@@ -1,0 +1,1056 @@
+%<<< Preamble
+%<<< Document setup
+\RequirePackage{fix-cm}
+\documentclass[fontsize=12pt,
+               appendixprefix=true,
+               captions=abovetable,
+               numbers=noenddot,
+              ]{scrartcl}
+% Serif fonts for headings etc. with KOMA-Script
+\setkomafont{sectioning}{\normalfont\bfseries}
+\setkomafont{descriptionlabel}{\usekomafont{sectioning}}
+\setcapindent{0em}
+\addtokomafont{caption}{\small}
+\let\tablesize=\small
+\setkomafont{captionlabel}{\bfseries}
+\renewcommand*{\captionformat}{~}
+
+% Change footnote style (\textparindent courtesy http://tex.stackexchange.com/questions/96721/footnote-indent-equal-to-text-parindent)
+\deffootnote[\textparindent]{0pt}{\textparindent}{\textsuperscript{\thefootnotemark}\hspace{0.25em}}
+\newlength{\textparindent}
+\AtBeginDocument{\setlength{\textparindent}{\parindent}}
+
+% Copy-and-pasteable/searchable special characters in PDF
+%\usepackage{cmap}
+\input{glyphtounicode} % latest version (as of 11/12/14, glyphtounicode 2.95, lcdf-typetools 2.104) at http://www.lcdf.org/type/
+\input{glyphtounicode-cmr}
+\pdfglyphtounicode{f_f}{0066 0066}
+\pdfglyphtounicode{f_i}{0066 0069}
+\pdfglyphtounicode{f_l}{0066 006C}
+\pdfglyphtounicode{f_f_i}{0066 0066 0069}
+\pdfglyphtounicode{f_f_l}{0066 0066 006C}
+\pdfgentounicode=1
+
+% PDF options
+\pdfminorversion=5
+\pdfcompresslevel=9
+\pdfobjcompresslevel=3
+
+% Provide patching and conditional commands; incompatible with caption package
+\usepackage{etoolbox} 
+
+%>>>
+%<<< Packages
+%<<< Maths
+
+% Use subordinate environments aligned or gathered for several equations spread over multiple lines with a single equation number (split is better for one equation spread over multiple lines)
+
+% AMS maths packages
+\usepackage{amsmath}
+\makeatletter
+\renewcommand{\eqref}[1]{\hyperref[#1]{\textup{\tagform@{\ref{#1}}}}}
+\makeatother
+\allowdisplaybreaks[1]
+\addtolength{\jot}{6pt} % increase space between successive equations in gather, split etc.
+%\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amstext}
+%\usepackage{mathrsfs}
+\usepackage[scr]{rsfso} % less slanted variant of rsfs
+% Bold variables
+\usepackage{bm}
+% Alternate (Euler) calligraphic font \eucal
+\DeclareMathAlphabet{\eucal}{U}{eus}{m}{n} % from eucal.sty
+\SetMathAlphabet{\eucal}{bold}{U}{eus}{b}{n} % from eucal.sty
+%\usepackage{stmaryrd} % provides double brackets (llbracket and rrbracket)
+
+% Arbitrary delimiters and individually \labelled cases (prefer empheq with split to cases environment due to spacing issues)
+%\usepackage{biscombe_empheq} % modified from empheq.sty to fix spacing
+% Useful for aligning splits within empheq, courtesy http://math.arizona.edu/~aprl/publications/mathclap/
+% alignat=2 easier if multiple equation numbers are desired
+\def\mathrlap{\mathpalette\mathrlapi}
+\def\mathrlapi#1#2{\rlap{$\mathsurround=0pt#1{#2}$}}
+
+% Prefix equation number with chapter, section, etc.
+%\numberwithin{equation}{chapter}
+
+% Context-sensitive maths formatting (e.g. bold maths in headings)
+% Code taken from maybemath package, modified (by addition of {} around #1) so that accents work correctly
+\makeatletter
+\def\@boldname{b}%
+\def\@boldexname{bx}%
+\DeclareRobustCommand{\maybebm}[1]{\ensuremath{%
+  \ifx\f@series\@boldname%
+    {{\bm{{#1}}}}%
+  \else\ifx\f@series\@boldexname%
+    {{\bm{{#1}}}}%
+  \else%
+    {{#1}}%
+  \fi\fi%
+}}
+\makeatother
+
+%>>>
+%<<< General
+
+% Language and hyphenation patterns
+\usepackage[UKenglish]{babel}
+\renewcommand\dateUKenglish{\def\today{\number\day~\ifcase \month \or January\or February\or March\or April\or May\or June\or July\or August\or September\or October\or November\or December\fi\space\number\year}}
+\dateUKenglish
+%\frenchbsetup{AutoSpacePunctuation=false} % prevent automatic addition of space before punctuation marks in French
+
+% Widow and orphan control
+\clubpenalty=10000
+\widowpenalty=10000
+% Bad page breaks are likely if displaywidowpenalty is set too high
+%\displaywidowpenalty=10000
+% \looseness command might be useful here: see http://www.tex.ac.uk/cgi-bin/texfaq2html?label=widows
+% \enlargethispage{\baselineskip} for one extra line; \enlargethispage{-\baselineskip} for one fewer line. Must be applied to both pages of a two-page spread. There is also a starred form, see http://tex.stackexchange.com/questions/32112/squeeze-some-more-lines-on-the-current-page
+% NOTE Examples of 'underfull vboxes' in Hart's Rules: pp. 98, 114, 163, 168, 201, 255, 257. Most of these occur before headings, but p. 257 is an exception. Some spreads are also a line short (on both pages) to achieve better breaks; examples pp. 305, 309.
+% http://tex.stackexchange.com/questions/72782/keep-text-together-with-minipage-leave-space-at-end-of-previous-page might also be handy
+% Hart's Rules, p. 40: 'Traditionally, printers ensured that the last line of a paragraph did not consist of a single syllable, or numerals alone, or a word of fewer than five characters. This rule is no longer followed strictly, but others ... are still usually observed. The last line of a paragraph should not fall at the top of a new page or column: this is known as a widow. An orphan---the first line of a paragraph that falls at the bottom of a page or column---is undesirable, though it is now tolerated in most bookwork. ... The last line on a recto page should not end with a hyphen, and traditionally should not end with a colon that introduces displayed matter on the following page, although this standard is generally not adhered to today. Columns, lists, etc. should ideally not be split; if they are split the break should be in as unobtrusive a place as possible. ... If absolutely necessary to avoid awkward page breaks, facing pages may be made a line short or long.'
+
+\usepackage{accsupp}
+\newcommand{\accsupp}[3][plain]{\BeginAccSupp{method=#1,ActualText=#2}#3\EndAccSupp{}}
+
+%>>>
+%<<< Bibliography
+
+% * Use 'tex makebst' to create custom BST files
+
+% Numerical citations
+%\usepackage[numbers,sort&compress]{natbib}
+%\bibliographystyle{biscombe}
+% Prevent line-breaks between author name and reference number with \citet
+%\makeatletter
+%  \def\NAT@spacechar{~}
+%\makeatother
+
+% Author-year citations
+%\usepackage{biscombe_natbib}
+%\setcitestyle{aysep={},yysep={,}} % modifications for in-text citations
+%\bibliographystyle{biscombe-ad}
+%\bibliographystyle{biscombe_thesis}
+
+% New citeeg reference style
+%\newcommand{\citeeg}[1]{\citep[{see, \eg[],}][]{#1}}
+
+% Hyperlink year only in author-date citations, courtesy http://tex.stackexchange.com/questions/23227/how-to-hyperlink-only-the-year-part-when-using-natbib-and-hyperref
+%\makeatletter
+%\patchcmd{\NAT@citex}{\@citea\NAT@hyper@{\NAT@nmfmt{\NAT@nm}\hyper@natlinkbreak{\NAT@aysep\NAT@spacechar}{\@citeb\@extra@b@citeb}\NAT@date}}{\@citea\NAT@nmfmt{\NAT@nm}\NAT@aysep\NAT@spacechar\NAT@hyper@{\NAT@date}}{}{}
+%\patchcmd{\NAT@citex}{\@citea\NAT@hyper@{\NAT@nmfmt{\NAT@nm}\hyper@natlinkbreak{\NAT@spacechar\NAT@@open\if*#1*\else#1\NAT@spacechar\fi}{\@citeb\@extra@b@citeb}\NAT@date}}{\@citea\NAT@nmfmt{\NAT@nm}\NAT@spacechar\NAT@@open\if*#1*\else#1\NAT@spacechar\fi\NAT@hyper@{\NAT@date}}{}{}
+%% Don't hyperlink with \citeauthor, modified from http://tex.stackexchange.com/questions/67423/how-to-force-hyperref-to-reference-only-cite-and-not-citeauthor-or-citeyear
+%\pretocmd{\NAT@citex}{\@ifnum{\NAT@ctype=\@ne}{\let\NAT@hyper@\relax}{}}{}{} % change '=@ne' to '>@z' to also avoid hyperlinking with \citeyear
+%\makeatother
+
+% Combine multiple references into a single citation (requires modified BST file)
+%\usepackage{mciteplus}
+
+% Full citations in text (repeated in reference list)
+% Requires work-around for compatibility with hyperref - see p. 18 of hyperref README
+%\usepackage{bibentry}
+
+% Rename references section (substitute \bibname for \refname for report and book classes)
+%\addto{\captionsUKenglish}{\renewcommand{\bibname}{References}}  % with babel
+%\renewcommand{\refname}{References}                             % without babel
+
+%>>>
+%<<< Lists
+
+% Provide extra enumerate/itemize/description environments
+%\usepackage{mdwlist}
+% Options for customising lists
+\usepackage{enumitem}
+\setdescription{leftmargin=\parindent}
+
+% Change default labelling of list elements
+%\renewcommand{\labelenumi}{(\roman{enumi})}
+
+%>>>
+%<<< Floats
+
+% * To centre a figure that's wider than \textwidth (from http://texblog.net/latex-archive/layout/centering-figure-table/):
+%     \begin{figure}
+%     \noindent\makebox[\textwidth]{%
+%     \includegraphics[]{}}
+%     \end{figure}
+% * To centre a table that's wider than \textwidth, use same approach but put tabular environment inside the box. 
+% * See also http://tex.stackexchange.com/questions/39435/how-can-i-center-a-too-wide-table
+% * May be useful: http://tex.stackexchange.com/questions/73548/switching-color-and-grayscale-mode-for-includegraphics
+
+\usepackage{graphicx}
+\usepackage{color}
+\definecolor{darkblue}{rgb}{0.0,0.0,0.55}
+
+% Float placement modifications 
+%\makeatletter
+%  \def\fps@figure{htbp}
+%\makeatother
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.70}
+\renewcommand{\textfraction}{0.15}
+\renewcommand{\floatpagefraction}{0.66}
+\renewcommand{\dbltopfraction}{0.66}
+\renewcommand{\dblfloatpagefraction}{0.66}
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{4}
+\setcounter{totalnumber}{10}
+\setcounter{dbltopnumber}{4}
+%\usepackage{flafter} % require floats to appear after first mention in text
+
+% Allow subfigures within figures
+% Apparently buggy with hyperref; consider newer subcaption package instead (but this requires 'caption' package)
+% See http://tex.stackexchange.com/questions/13625/subcaption-vs-subfig-best-package-for-referencing-a-subfigure
+%\usepackage[caption=false]{subfig}
+
+% Caption formatting
+%\addto\captionsUKenglish{\renewcommand{\figurename}{Fig.}}   % with babel (omit stuff outside braces without babel)
+%\usepackage{caption}
+%\captionsetup{font=small,labelfont=bf,labelsep=period}
+%\captionsetup[subfloat]{labelfont=default}
+
+% Correct spacing between cells
+\usepackage{cellspace}
+\setlength\cellspacetoplimit{4pt}
+\setlength\cellspacebottomlimit{4pt}
+%\addparagraphcolumntypes{X} % required for tabularx
+% Align numbers in tables at decimal points
+%\usepackage{dcolumn}
+% Footnotes with tables
+\usepackage{threeparttable}
+%\let\TPTtagStyle=\emph
+% Nicer tables
+\usepackage{booktabs}
+% Use tabularx environment for equal-width columns - loaded AFTER hyperref and cellspace
+% Allow tables to split over pages
+%\usepackage{supertabular}
+
+% Multicolumn
+\usepackage{multirow}
+\let\mcol=\multicolumn
+\let\mrow=\multirow
+
+% No page numbers on blank pages (use KOMA-Script options instead)
+%\usepackage{emptypage}
+
+% Apply different page styles to full-page floats
+\usepackage{floatpag}
+\floatpagestyle{empty}
+\rotfloatpagestyle{empty}
+
+% Fix some stuff about floats in double column
+%\usepackage{fix2col}
+
+% Rotated floats
+% Hart's Rules, p. 301: 'Illustrations that have to be set landscape should always be placed with the head of the illustration turned to the left, whether on a recto or verso page.'
+%\usepackage[figuresright]{rotating}
+\usepackage[pdftex]{lscape} % prefer to rotating because this rotates the page in PDF. pdflscape is an equivalent alternative
+\usepackage{afterpage} % must be loaded after etoolbox; required to stop landscape breaking pages prematurely.
+
+% Double-page spreads (use begin\end{(left)fullpage} inside begin\end{figure}[p])
+\usepackage{dpfloat} % doesn't work for landscape floats; instead see http://tex.stackexchange.com/questions/55653/placing-figure-on-an-even-odd-page but omit all \clearpage (stops 'lost float' errors)
+% Hook into dpfloat functionality to allow multiple left-page floats; seems to work better than \afterpage solution above
+\makeatletter
+\newenvironment{leftpagefloat}{\bgroup}{\egroup\global\@LPtrue}
+\makeatother
+\usepackage{zref-savepos} % allows facing figures to be aligned with each other rather than centred on page, see http://tex.stackexchange.com/questions/75008/center-and-yet-align-figures-on-opposite-pages
+
+% Put floats at end of document
+%\usepackage{endfloat}
+% Alternative
+%\usepackage[printfigures,figmark]{figcaps}
+
+%>>>
+%<<< Code listings
+\usepackage{listings}
+\usepackage{scrhack} % disable warnings created by listings package
+\definecolor{statement}{rgb}{0.70980392,0.5372549,0.0}
+\definecolor{string}{rgb}{0.8627451,0.19607843,0.18431373}
+\definecolor{special}{rgb}{0.82745098,0.21176471,0.50980392}
+\definecolor{comment}{rgb}{0.14901961,0.54509804,0.82352941}
+\definecolor{type}{rgb}{0.52156863,0.6,0.0}
+\definecolor{function}{rgb}{0.16470588,0.63137255,0.59607843}
+\definecolor{subs}{rgb}{0.42352941,0.44313725,0.76862745}
+\definecolor{template}{rgb}{0.79607843,0.29411765,0.08627451}
+\definecolor{text}{rgb}{0.39607843,0.48235294,0.51372549}
+\definecolor{background}{rgb}{0.99215686,0.96470588,0.89019608}
+\definecolor{border}{rgb}{0.0,0.16862745,0.21176471}
+\usepackage{listings}
+\lstdefinelanguage{rxn}{morekeywords=[1]{exclude,include_only,initial_species,surface_region,surface_regions,volume_region,volume_regions},
+                        otherkeywords={+,->,<=>,\{,\},;},
+                        morestring=[d]{"},
+                        morecomment=[l]{\#}, % comment
+                        morecomment=[f][\color{special}]{!}, % header
+                        moredelim=[s][\color{special}]{/}{/}, % regexp
+                        moredelim=[is][\color{type}]{|}{|}, % aliases; delimiters invisible
+                        moredelim=[is][\color{special}]{\\@}{\\@}, % region names; delimiters invisible
+                        moredelim=[is][\color{function}]{\\<}{\\>}, % kinetic parameters; delimiters invisible
+                        moredelim=[is][\color{string}]{'}{'}, % number and units; delimiters invisible
+}
+\lstset{language=rxn,
+        columns=fullflexible,
+        keepspaces=true,
+        numbers=left,
+        numberstyle=\tiny\sffamily\color{border}\accsupp{},
+        numberblanklines=false,
+        showstringspaces=false,
+        mathescape=true,
+        frame=single,
+        backgroundcolor=\color{background},
+        rulecolor=\color{border},
+        basicstyle=\footnotesize\ttfamily\color{text},
+        keywordstyle=\color{statement},
+        stringstyle=\color{string},
+        commentstyle=\color{comment},
+}
+%% new algorithm environment
+%\DeclareNewTOC[float,type=algorithm,name=Algorithm,counterwithin=chapter]{loa}
+%\setuptoc{loa}{chapteratlist}
+%%\hypcapredef{algorithm} % put after hypcap package
+
+%>>>
+%%<<< Nomenclature
+%
+%\usepackage[intoc,noprefix]{biscombe_nomencl}
+%\setlength{\nomlabelwidth}{2cm} % separation between symbols and definitions
+%\makenomenclature
+%
+%% Use [ax], [gx], [sx], [ux], and [zx] as sort-keys to distinguish between Latin, Greek, superscript, subscript, and other x
+%% For Greek x, use Latin equivalent except for: gamma-c, zeta-f, eta-g, theta-h, xi-o, omicron-p, pi-q, phi-v, chi-x, omega-z
+%\renewcommand{\nomgroup}[1]{%
+%  \ifstrequal{#1}{A}{\item[\rule{0pt}{24pt}\textbf{Latin}]}{%
+%  \ifstrequal{#1}{G}{\item[\rule{0pt}{24pt}\textbf{Greek}]}{%
+%  \ifstrequal{#1}{S}{\item[\rule{0pt}{24pt}\textbf{Superscripts}]}{%
+%  \ifstrequal{#1}{U}{\item[\rule{0pt}{24pt}\textbf{Subscripts}]}{}}}}}
+%
+%% Improved nomenclature command including page reference and optional units. Starred variant omits page reference.
+%% #1 is label and sort-key
+%% #2 is symbol
+%% #3 is definition
+%% #4 (optional) is units
+%\makeatletter
+%\newif\ifnomen@star
+%\newcommand{\nomen}{\@ifstar{\nomen@startrue\nomen@i*}{\nomen@starfalse\nomen@i*}}
+%\def\nomen@i*#1#2#3{\@ifnextchar[{\nomen@ii*{#1}{#2}{#3,\ }}{\nomen@ii*{#1}{#2}{#3}[{}]}}
+%\def\nomen@ii*#1#2#3[#4]{%
+%  \ifnomen@star%
+%    \nomenclature[#1]{#2}{#3\sci{}[#4]}%
+%  \else%
+%    \phantomsection\label{nomen:#1}\nomenclature[#1]{#2}{#3\sci{}[#4]\ (p.~\pageref{nomen:#1})}%
+%  \fi%
+%}
+%\makeatother
+%
+%%>>>
+%<<< Miscellaneous
+
+% Warn about split footnotes
+% Increasing \interfootnotelinepenalty (default 100) may help
+\usepackage{fnbreak}
+
+% Check auxiliary files for changes between LaTeX runs
+\usepackage[mainaux]{rerunfilecheck}
+
+% Show \label names 
+%\usepackage[notcite]{showkeys}
+
+% Highlight TODOs
+%\usepackage{todonotes}
+
+% Check for unreferenced floats and labelled equations
+%\usepackage{refcheck}
+
+% Put version number in footer
+%\usepackage{prelim2e}
+
+% Show more context for error messages
+%\setcounter{errorcontextlines}{999}
+% Trace in log file
+%\usepackage[logonly]{trace}
+%\traceon
+
+% List packages in use and their versions
+%\listfiles
+
+% Enable hyphenation checking with findhyph
+%\tracingparagraphs=1
+
+% Mark overfull hboxes in output
+\overfullrule=1000pt
+
+% Show margins on page
+%\usepackage[pass,showframe]{geometry}
+% patch for landscape pages, modified from http://tex.stackexchange.com/questions/115908/geometry-showframe-landscape
+\makeatletter
+\newcommand*{\gmshow@textheight}{\textheight}
+\apptocmd{\landscape}{\renewcommand*{\gmshow@textheight}{\hsize}}{}{}
+\patchcmd{\Gm@vrule}{\textheight}{\gmshow@textheight}{}{}
+\makeatother
+% Older alternative (in acroread, enable 'Show art, trim, & bleed boxes' under Edit > Preferences > Page Display)
+%\pdfpageattr{/ArtBox[75.591 128.31496 500.788 771.733]/TrimBox[94.488189 128.31496 519.685 771.733]}
+
+% Latexdiff commands
+%\RequirePackage[normalem]{ulem}
+%\RequirePackage{xcolor}\definecolor{DIFadd}{rgb}{0,1,0}\definecolor{DIFdel}{rgb}{1,0,0}
+%\providecommand{\DIFadd}[1]{{\protect\textcolor{DIFadd}{\texorpdfstring{\uwave{#1}}{#1}}}}
+%\providecommand{\DIFdel}[1]{{\protect\textcolor{DIFdel}{\texorpdfstring{\sout{#1}}{#1}}}}
+%\providecommand{\DIFaddbegin}{}
+%\providecommand{\DIFaddend}{}
+%\providecommand{\DIFdelbegin}{}
+%\providecommand{\DIFdelend}{}
+%\providecommand{\DIFaddFL}[1]{\DIFadd{#1}}
+%\providecommand{\DIFdelFL}[1]{\DIFdel{#1}}
+%\providecommand{\DIFaddbeginFL}{}
+%\providecommand{\DIFaddendFL}{}
+%\providecommand{\DIFdelbeginFL}{}
+%\providecommand{\DIFdelendFL}{}
+
+%>>>
+%<<< Accents and special characters
+
+% Use Latin Modern fonts for accented characters (only) - allows search and copy & paste in PDF
+% Thanks to http://www.forkosh.com/pstex/latexcommands.htm
+% For some reason, footnotes still use the original accent definitions unless \lmr is used explicitly
+\usepackage[LGR,TS1,T1,OT1]{fontenc}
+%\usepackage{lmodern}
+\DeclareRobustCommand{\lmr}[2][T1]{{\fontencoding{#1}\fontfamily{lmr}\selectfont#2}}
+
+\renewcommand{\copyright}{\lmr[TS1]{\textcopyright}}
+\newcommand{\registered}{\lmr[TS1]{\textregistered}}
+\newcommand{\trademark}{\lmr[TS1]{\texttrademark}}
+
+%>>>
+%<<< PDF Setup
+
+% Line spacing
+%\usepackage{setspace}
+%\onehalfspacing
+%\recalctypearea
+
+% No extra space at sentence ends
+\AtBeginDocument{\frenchspacing}
+
+% Micro-typographical enhancements
+\usepackage[babel]{microtype}
+
+% Load hyperref last, with few exceptions: http://tex.stackexchange.com/questions/1863/which-packages-should-be-loaded-after-hyperref-instead-of-before
+\usepackage[pdftex,
+            colorlinks=true,
+            allcolors=darkblue,
+            pdfauthor={Christian Biscombe},
+            pdfsubject={},
+            pdfkeywords={},
+            pdflang={en},
+            pdfborder={0 0 0},              % remove border from links
+            bookmarks,
+            bookmarksnumbered,
+            bookmarksdepth=3,
+            raiselinks,
+            breaklinks,
+            linktocpage,                    % hyperlink page numbers in TOC instead of section names
+            pdfstartpage=1,
+            pdfstartview={XYZ 0 841.89 1},  % 100% zoom
+            pdfpagelayout=OneColumn         % single page continuous
+           ]{hyperref}
+\hypersetup{pdftitle={convert\_units v. 1.8 and later}}
+% anchor hyperlinks to top of floats
+\usepackage[all]{hypcap}
+%\hypcapredef{algorithm}
+
+% Use tabularx environment for equal-width columns
+% Must be loaded after hyperref or else hyperlinks to footnotes are disabled
+% Is tabulary better?
+%\usepackage{tabularx}
+%\newcolumntype{C}{>{\centering\arraybackslash}X}
+%\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+%\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+
+% hyperlink footnotes back to reference in text - requires newer version of LaTeX
+%\usepackage{footnotebackref}
+
+%>>>
+%<<< New commands
+%<<< Abbreviations
+
+% Latin abbreviations
+% Use empty optional argument when punctuation mark follows
+\newcommand{\eg}[1][\ ]{e.g.#1}
+\newcommand{\ie}[1][\ ]{i.e.#1}
+% Use empty optional argument when punctuation mark follows or at end of sentence
+\newcommand{\etal}[1][.\ ]{et~al#1}
+\newcommand{\etc}[1][.\ ]{etc#1}
+
+% Correct spacing around ellipses in text
+% Hart's Rules, p. 75: 'An ellipsis at the end of an incomplete sentence is not followed by a fourth full point. ... A comma immediately before or after an ellipsis can generally be suppressed, unless it is helpful to the sense. If the sentence before an ellipsis ends with a full point [or other sentence-ending punctuation mark] it is Oxford practice to retain the point before the ellipsis, closed up with the preceding text.'
+\newcommand{\ellipsis}{~.~.~.\ }
+
+%>>>
+%<<< Hyperlinks for references 
+\newcommand{\App}[1]{\hyperref[a:#1]{\mbox{Appendix~\ref{a:#1}}}}
+\newcommand{\app}[1]{\hyperref[a:#1]{\mbox{Appendix~\ref{a:#1}}}}
+\newcommand{\Apps}[1]{\hyperref[a:#1]{\mbox{Appendices~\ref{a:#1}}}}
+\newcommand{\apps}[1]{\hyperref[a:#1]{\mbox{Appendices~\ref{a:#1}}}}
+\newcommand{\Eq}[1]{\hyperref[#1]{Eq.~\eqref{#1}}}
+\newcommand{\eq}[1]{\hyperref[#1]{Eq.~\eqref{#1}}}
+\newcommand{\Eqs}[1]{\hyperref[#1]{Eqs~\eqref{#1}}}
+\newcommand{\eqs}[1]{\hyperref[#1]{Eqs~\eqref{#1}}}
+%<<< \DeclareRobustCommand{\Fig}[1]{\hyperref[fig:#1]{Fig.~\ref{fig:#1}(#2)}}
+\usepackage{xspace}
+\makeatletter
+\DeclareRobustCommand{\Fig}[1]{\@ifnextchar[{\Fig@i{#1}}{\Fig@i{#1}[]}}
+\def\Fig@i#1[#2]{\hyperref[f:#1]{Fig.~\ref{f:#1}#2}\xspace}
+%>>>
+%<<< \DeclareRobustCommand{\fig}[1]{\hyperref[fig:#1]{Fig.~\ref{fig:#1}(#2)}}
+\DeclareRobustCommand{\fig}[1]{\@ifnextchar[{\fig@i{#1}}{\fig@i{#1}[]}}
+\def\fig@i#1[#2]{\hyperref[f:#1]{Fig.~\ref{f:#1}#2}\xspace}
+%>>>
+%<<< \DeclareRobustCommand{\Figs}[1]{\hyperref[fig:#1]{Figs.~\ref{fig:#1}(#2)}}
+\DeclareRobustCommand{\Figs}[1]{\@ifnextchar[{\Figs@i{#1}}{\Figs@i{#1}[]}}
+\def\Figs@i#1[#2]{\hyperref[f:#1]{Figs~\ref{f:#1}#2}\xspace}
+%>>>
+%<<< \DeclareRobustCommand{\figs}[1]{\hyperref[fig:#1]{Figs.~\ref{fig:#1}(#2)}}
+\DeclareRobustCommand{\figs}[1]{\@ifnextchar[{\figs@i{#1}}{\figs@i{#1}[]}}
+\def\figs@i#1[#2]{\hyperref[f:#1]{Figs~\ref{f:#1}#2}\xspace}
+\makeatother
+%>>>
+\newcommand{\listing}[1]{\hyperref[l:#1]{Listing~\ref{l:#1}}}
+\newcommand{\Sect}[1]{\hyperref[s:#1]{\S~\ref{s:#1}}}
+\newcommand{\sect}[1]{\hyperref[s:#1]{\S~\ref{s:#1}}}
+\newcommand{\Sects}[1]{\hyperref[s:#1]{\S\S~\ref{s:#1}}}
+\newcommand{\sects}[1]{\hyperref[s:#1]{\S\S~\ref{s:#1}}}
+\newcommand{\Tab}[1]{\hyperref[t:#1]{Table~\ref{t:#1}}}
+\newcommand{\tab}[1]{\hyperref[t:#1]{Table~\ref{t:#1}}}
+\newcommand{\Tabs}[1]{\hyperref[t:#1]{Tables~\ref{t:#1}}}
+\newcommand{\tabs}[1]{\hyperref[t:#1]{Tables~\ref{t:#1}}}
+
+%>>>
+% <<< Maths
+%<<< General
+
+% Use displaystyle for all equations unless explicitly specified otherwise
+%\everymath{\displaystyle}
+% \dfrac analogue for sums
+\newcommand{\dsum}{\displaystyle\sum}
+
+% Euler's number
+\DeclareMathOperator{\e}{e}
+
+% Logarithms - use optional argument to specify base
+\let\originallog\log
+\renewcommand{\log}[1][\e]{\originallog_{#1}}
+
+% Modulus function (spacing can be inconsistent with |)
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+
+% Signum function
+\DeclareMathOperator{\sgn}{sgn}
+
+% Create a hyphen for use in maths mode (mathrm{-} produces minus sign)
+\mathchardef\mhyphen="2D
+
+% Fix spacing around \left and \right
+\let\originalleft\left
+\let\originalright\right
+\renewcommand{\left}{\mathopen{}\mathclose\bgroup\originalleft}
+\renewcommand{\right}{\aftergroup\egroup\originalright}
+
+% Fix arrows for 12pt font (courtesy http://tex.stackexchange.com/questions/4684/longrightarrow-doesnt-look-good-in-12pt, http://www.tug.org/applications/fontinst/mail/tex-fonts/1993/msg00005.html)
+\DeclareFontFamily{OT1}{cmrx}{}
+\DeclareFontShape{OT1}{cmrx}{m}{n}{<->cmr10}{}
+\renewcommand{\Longrightarrow}{\mathrel{\mbox{\fontfamily{cmrx}\fontencoding{OT1}\selectfont=}}\joinrel\Rightarrow}
+
+% 'Evaluated at' command
+\newcommand{\eval}[2]{\left.#1\right\rvert_{#2}}
+
+% Maths accents
+% Wider hat and tilde accents, see http://tex.stackexchange.com/questions/20473/how-can-i-manually-choose-the-size-of-a-wide-accent-math-mode
+%   these look nice but significantly increase compile time. they can also overlap dividing line in fractions.
+%\renewcommand{\bar}[3]{\mkern#1\overline{\mkern-#1#3\mkern-#2}\mkern#2} % modified from http://tex.stackexchange.com/questions/22100/the-bar-and-overline-commands
+% Automated alternative thanks to http://tex.stackexchange.com/questions/16337/can-i-get-a-widebar-without-using-the-mathabx-package
+% \sqrt doesn't always allow for width of the bar, requiring manual adjustments
+%<<< \newcommand{\bar}[1]{\bar{#1}}
+\makeatletter
+\newcommand*\if@single[3]{%
+  \setbox0\hbox{${\mathaccent"0362{#1}}^H$}%
+  \setbox2\hbox{${\mathaccent"0362{\kern0pt#1}}^H$}%
+  \ifdim\ht0=\ht2 #3\else #2\fi
+  }
+%The bar will be moved to the right by a half of \macc@kerna, which is computed by amsmath:
+\newcommand*\rel@kern[1]{\kern#1\dimexpr\macc@kerna}
+%If there's a superscript following the bar, then no negative kern may follow the bar; an additional {} makes sure that the superscript is high enough in this case:
+\DeclareRobustCommand\bar[1]{\@ifnextchar^{{\wide@bar{#1}{0}}}{\wide@bar{#1}{1}}}
+%Use a separate algorithm for single symbols:
+\newcommand*\wide@bar[2]{\if@single{#1}{\wide@bar@{#1}{#2}{1}}{\wide@bar@{#1}{#2}{2}}}
+\newcommand*\wide@bar@[3]{%
+  \begingroup
+  \def\mathaccent##1##2{%
+    %If there's more than a single symbol, use the first character instead (see below):
+    \if#32 \let\macc@nucleus\first@char \fi
+    %Determine the italic correction:
+    \setbox\z@\hbox{$\macc@style{\macc@nucleus}_{}$}%
+    \setbox\tw@\hbox{$\macc@style{\macc@nucleus}{}_{}$}%
+    \dimen@\wd\tw@
+    \advance\dimen@-\wd\z@
+    %Now \dimen@ is the italic correction of the symbol.
+    \divide\dimen@ 3
+    \@tempdima\wd\tw@
+    \advance\@tempdima-\scriptspace
+    %Now \@tempdima is the width of the symbol.
+    \divide\@tempdima 10
+    \advance\dimen@-\@tempdima
+    %Now \dimen@ = (italic correction / 3) - (Breite / 10)
+    \ifdim\dimen@>\z@ \dimen@0pt\fi
+    %The bar will be shortened in the case \dimen@<0 !
+    \rel@kern{0.6}\kern-\dimen@
+    \if#31
+      \overline{\rel@kern{-0.6}\kern\dimen@\macc@nucleus\rel@kern{0.4}\kern\dimen@}%
+      \advance\dimen@0.4\dimexpr\macc@kerna
+      %Place the combined final kern (-\dimen@) if it is >0 or if a superscript follows:
+      \let\final@kern#2%
+      \ifdim\dimen@<\z@ \let\final@kern1\fi
+      \if\final@kern1 \kern-\dimen@\fi
+    \else
+      \overline{\rel@kern{-0.6}\kern\dimen@#1}%
+    \fi
+  }%
+  \macc@depth\@ne
+  \let\math@bgroup\@empty \let\math@egroup\macc@set@skewchar
+  \mathsurround\z@ \frozen@everymath{\mathgroup\macc@group\relax}%
+  \macc@set@skewchar\relax
+  \let\mathaccentV\macc@nested@a
+  %The following initialises \macc@kerna and calls \mathaccent:
+  \if#31
+    \macc@nested@a\relax111{#1}%
+  \else
+    %If the argument consists of more than one symbol, and if the first token is a letter, use that letter for the computations:
+    \def\gobble@till@marker##1\endmarker{}%
+    \futurelet\first@char\gobble@till@marker#1\endmarker
+    \ifcat\noexpand\first@char A\else
+      \def\first@char{}%
+    \fi
+    \macc@nested@a\relax111{\first@char}%
+  \fi
+  \endgroup
+}
+\makeatother
+%>>>
+
+%>>>
+%<<< Changes for Greek letters
+
+% Allow font switching for Greek letters and default to italics for uppercase Greek (use \mathrm to switch)
+%\usepackage{fixmath}
+
+% Redefine epsilon and kappa
+\renewcommand{\epsilon}{\varepsilon}
+%\renewcommand{\kappa}{\varkappa}
+
+% Roman lowercase greek and calligraphic uppercase Greek alphabets
+\DeclareMathAlphabet{\greekrm}{LGR}{cmr}{m}{n}
+%\DeclareRobustCommand{\greekrm}[1]{{\fontencoding{LGR}\fontfamily{cmr}\selectfont\text{#1}}} % alternative definition if not enough maths fonts
+%\DeclareMathAlphabet{\greekcal}{LGR}{mak}{m}{cal} % compatible with \mathcal
+
+% Roman lowercase pi
+%\let\itpi=\pi % retain an italic version
+%\renewcommand{\pi}{\greekrm{p}}
+%\DeclareSymbolFont{lmmath}{T1}{LatinModernMath}{m}{n} % font metrics created using otftotfm. See man page for details.
+%\DeclareMicrotypeAlias{LatinModernMath}{lmr}
+%\DeclareMathSymbol{\pi}{\mathord}{lmmath}{"1D}
+
+% Golden ratio
+%\newcommand{\gr}{\greekrm{f}}
+
+%>>>
+%<<< Scientific notation and units
+
+% Command \sci for scientific notation in text or maths mode with optional units (modified from http://stud3.tuwien.ac.at/~e9825610/LaTeXmath.html).
+% Prefer tildes when entering spaces between units because this works inside other environments (e.g. caption), but literal spaces (which work elsewhere) do not.
+% Examples:
+% \sci{1.1e-10}[m~s^{-1}] produces  1.1*10^{-10} m s^{-1} with correct spacing for units
+% \sci{1e-10}[m~s^{-1}]   produces  10^{-10} m s^{-1}
+% \sci{}[m~s^{-1}]        produces  m s^{-1} (only units printed if no number)
+
+\let\unitsep=\,     % Space between units
+\let\numunitsep=\;  % Space between number and unit(s)
+\makeatletter
+\def\sci#1{\ifmmode \let\@shiftmath=\relax \else \let\@shiftmath=$\fi
+\@shiftmath \uppercase{\def\@sciarg{#1}}%
+\expandafter\@scinum\@sciarg E\@noexp\@end \futurelet\@nextchar\@sciunit}
+\def\@scinum#1E#2\@end{\def\@tmpa{#1}\def\@tmpb{\ifx-#1\else#1\fi}\def\@tmpc{1} \ifx\@tmpa\@empty \let\numunitsep=\relax \else \@scimant#1\@end \fi%
+\ifx\@noexp#2 \else \@sciexp#2\fi}
+\def\@scimant#1{\ifx#1\@end \let\@next=\relax \else
+\if,#1\mathord,\else #1\fi \let\@next=\@scimant \fi \@next}
+\def\@sciexp#1E\@noexp{\if\@tmpb\@tmpc \else \times 1\fi 0^{#1}}
+\def\@sciunit{\if[\@nextchar
+\def\@next[##1]{\numunitsep\mathrm{##1}\endgroup\@shiftmath}%
+\begingroup\@unitspace \else \let\@next=\@shiftmath \fi \@next}
+{\catcode`\ =\active\gdef\@unitspace{\catcode`\ =\active\let =\unitsep\let~=\unitsep}}
+\makeatother
+
+% Provide units and miscellaneous symbols
+%\usepackage{textcomp}
+%\usepackage{gensymb}
+% Use Latin Modern instead of cm-super
+\DeclareRobustCommand{\celsius}{\text{\lmr[TS1]{\textcelsius}}}
+\DeclareRobustCommand{\degrees}{\text{\lmr[TS1]{\textdegree}}}
+\DeclareRobustCommand{\micro}{\accsupp[hex,unicode]{00b5}{\text{\lmr[TS1]{\textmu}}}}
+\DeclareRobustCommand{\molar}{\accsupp{M}{\textsc{m}}}
+\DeclareRobustCommand{\ohm}{\ensuremath{\mathrm{\Omega}}}
+
+%>>>
+%<<< Scalars, vectors, and tensors
+
+% Scalar command \scal{}[] produces scalar #1 with optional roman subscript #2
+% Scalar command \scal{}() produces scalar #1 with optional italic subscript #3
+% <<< \DeclareRobustCommand{\scal}[3]{{#1}_{\mathrm{#2}#3}}
+\makeatletter
+\DeclareRobustCommand{\scal}[1]{\@ifnextchar[{\scal@i{#1}}{\scal@i{#1}[]}}
+\def\scal@i#1[#2]{\@ifnextchar({\scal@ii{#1}[#2]}{\scal@ii{#1}[#2]()}}
+\def\scal@ii#1[#2](#3){{#1}_{\mathrm{#2}#3}}
+\makeatother
+% >>>
+
+% Vector command \vect{}[] produces vector #1 with optional roman subscript #2
+% Vector command \vect{}() produces vector #1 with optional italic subscript #3
+% <<< \DeclareRobustCommand{\vect}[3]{\bm{#1}_{\mathrm{#2}#3}}
+\makeatletter
+\DeclareRobustCommand{\vect}[1]{\@ifnextchar[{\vect@i{#1}}{\vect@i{#1}[]}}
+\def\vect@i#1[#2]{\@ifnextchar({\vect@ii{#1}[#2]}{\vect@ii{#1}[#2]()}}
+\def\vect@ii#1[#2](#3){\bm{#1}_{\mathrm{#2}#3}}
+\makeatother
+% >>>
+
+% Tensor command \tens{}[] produces tensor #1 with optional roman subscript #2
+% Tensor command \tens{}() produces tensor #1 with optional italic subscript #3
+% <<< \DeclareRobustCommand{\tens}[3]{\mathsf{#1}_{\mathrm{#2}#3}}
+\DeclareMathAlphabet{\mathsf}{OML}{cmbrm}{m}{it} % use for components of tensors
+\SetMathAlphabet{\mathsf}{bold}{OML}{cmbrm}{b}{it}
+\makeatletter
+\DeclareRobustCommand{\tens}[1]{\@ifnextchar[{\tens@i{#1}}{\tens@i{#1}[]}}
+\def\tens@i#1[#2]{\@ifnextchar({\tens@ii{#1}[#2]}{\tens@ii{#1}[#2]()}}
+\def\tens@ii#1[#2](#3){\bm{\mathsf{#1}}_{\mathrm{#2}#3}}
+\makeatother
+% >>>
+
+% Vector operators
+\newcommand{\grad}{\vect{\nabla}\mspace{-2mu}}
+\newcommand{\divg}{\vect{\nabla}\!\cdot}
+\newcommand{\curl}{\vect{\nabla}\!\cross}
+\newcommand{\lapl}{\vect{\nabla}^2}
+\DeclareMathOperator{\dbldot}{:}
+
+% Matrices
+%\newcommand{\matrx}[1]{\bm{\mathrm{#1}}}
+\newcommand{\matrx}[1]{\bm{#1}}
+
+%>>>
+%<<< Derivatives, partial derivatives, and integrals
+
+% Roman \partial from Latin Modern Math font
+%\DeclareMathSymbol{\partial}{\mathord}{lmmath}{"1A}
+
+% Derivatives, partial derivatives, and material derivative
+% Prefix with t for in-line forms
+% <<< \newcommand{\dd}[3]{\frac{\mathrm{d}^{#3}#1}{\mathrm{d}{#2}^{#3}}}
+\makeatletter
+\newcommand{\dd}[2][]{\@ifnextchar[{\dd@ii[#1]{#2}}{\dd@ii[#1]{#2}[]}}
+\def\dd@ii[#1]#2[#3]{\frac{\mathrm{d}^{#3}#1}{\mathrm{d}{#2}^{#3}}}
+\makeatother
+
+\makeatletter
+\newcommand{\tdd}[2][]{\@ifnextchar[{\tdd@ii[#1]{#2}}{\tdd@ii[#1]{#2}[]}}
+\def\tdd@ii[#1]#2[#3]{\mathrm{d}^{#3}#1 / \mathrm{d}{#2}^{#3}}
+\makeatother
+
+% >>>
+% <<< \newcommand{\pdd}[3]{\frac{\partial^{#3}#1}{\partial{#2}^{#3}}}
+\makeatletter
+\newcommand{\pdd}[2][]{\@ifnextchar[{\pdd@ii[#1]{#2}}{\pdd@ii[#1]{#2}[]}}
+\def\pdd@ii[#1]#2[#3]{\frac{\partial^{#3}#1}{\partial{#2}^{#3}}}
+\makeatother
+
+\makeatletter
+\newcommand{\tpdd}[2][]{\@ifnextchar[{\tpdd@ii[#1]{#2}}{\tpdd@ii[#1]{#2}[]}}
+\def\tpdd@ii[#1]#2[#3]{\partial^{#3}#1 / \partial{#2}^{#3}}
+\makeatother
+
+% >>>
+% <<< \newcommand{\DD}[3]{\frac{\mathrm{D}^{#3}#1}{\mathrm{D}{#2}^{#3}}}
+\makeatletter
+\newcommand{\DD}[2][]{\@ifnextchar[{DDd@ii[#1]{#2}}{\DD@ii[#1]{#2}[]}}
+\def\DD@ii[#1]#2[#3]{\frac{\mathrm{D}^{#3}#1}{\mathrm{D}{#2}^{#3}}}
+\makeatother
+
+\makeatletter
+\newcommand{\tDD}[2][]{\@ifnextchar[{\tDD@ii[#1]{#2}}{\tDD@ii[#1]{#2}[]}}
+\def\tDD@ii[#1]#2[#3]{\mathrm{D}^{#3}#1 / \mathrm{D}{#2}^{#3}}
+\makeatother
+
+% >>>
+
+% Roman d with extra spacing for integrals
+% NB \d originally produced a double-dotted under-accent
+\renewcommand{\d}{\mathop{}\!\mathrm{d}}
+
+%>>>
+%<<< Miscellaneous variables
+
+% Diffusivity
+\newcommand{\D}{\mathscr{D}}
+
+% Dimensionless parameters 
+% \Re originally made R for real numbers
+\newcommand{\Pe}{\mathit{Pe}}
+\renewcommand{\Re}{\mathit{Re}}
+\newcommand{\Sc}{\mathit{Sc}}
+
+%>>>
+%>>>
+%<<< Chemistry
+%<<< General
+
+% Extensible reaction arrows (based on chemarr)
+% Versions of \xrightleftharpoons provided by packages (e.g. chemarr, mathtools) have the same issue as \Longrightarrow in 12pt font, so fix that here
+% Unlike \xrightleftharpoons, here both arguments are optional and first argument is set above the arrow
+%<<< \newcommand{\equil[2]}{\xrightleftharpoons[#1][#2]}
+\DeclareFontFamily{OML}{cmmix}{}
+\DeclareFontShape{OML}{cmmix}{m}{it}{<->cmmi10}{}
+\DeclareSymbolFont{cmmix}{OML}{cmmix}{m}{it}
+\DeclareMathSymbol{\xleftharpoondown}{\mathrel}{cmmix}{"29}
+\DeclareMathSymbol{\xrightharpoonup}{\mathrel}{cmmix}{"2A}
+\makeatletter
+\def\xleftharpoondownfill@{\arrowfill@\xleftharpoondown\relbar\relbar}
+\def\xrightharpoonupfill@{\arrowfill@\relbar\relbar\xrightharpoonup}
+\newcommand{\equil}[1][]{%
+  \@ifnextchar[{\equil@i[{#1}]}{\equil@i[{#1}][{}]}%
+}
+\def\equil@i[#1][#2]{%
+  \ensuremath{%
+    \mathrel{%
+      \settoheight{\dimen@}{\raise 2pt\hbox{$\xrightharpoonup$}}%
+      \setlength{\dimen@}{-\dimen@}%
+      \edef\CA@temp{\the\dimen@}%
+      \settoheight\dimen@{$\rightleftharpoons$}%
+      \addtolength{\dimen@}{\CA@temp}%
+      \raisebox{\dimen@}{%
+        \rlap{%
+          \raisebox{2pt}{%
+            $%
+            \ext@arrow 0359\xrightharpoonupfill@{\hphantom{#2}}{#1}%
+            $%
+          }%
+        }%
+        \hbox{%
+          $%
+          \ext@arrow 3095\xleftharpoondownfill@{#2}{\hphantom{#1}}%
+          $%
+        }%
+      }%
+    }%
+  }%
+}
+\makeatother
+%>>>
+
+% Command \chem{}[] produces chemical formulas in text or maths mode.
+% All numbers in first (mandatory) argument are typeset as subscripts. Spaces may be used in input for clarity; these are ignored on output.
+% Use optional second argument for valencies of ions.
+% Based on code from http://tex.stackexchange.com/questions/101604/parsing-strings-containing-diacritical-marks-macros and http://tex.stackexchange.com/questions/7180/testing-for-number
+%<<< \newcommand{\chem[2]}{\chem{#1}[#2]}
+\makeatletter
+\newtoks\chem@toks
+\newbool{chemnum} % requires etoolbox
+\DeclareRobustCommand{\chem}[1]{\@ifnextchar[{\chem@i{#1}}{\chem@i{#1}[]}}
+\def\chem@i#1[#2]{\ensuremath{{\chem@toks{}\chemparse@i#1\chemparse@stop}^{#2}}}
+\def\chemparse@stop{\chemparse@stop}
+\def\chemparse@stop@i\chemparse@stop{\chemformat}
+\def\chemparse@i{\futurelet\nexttok\chemparse@ii}
+\def\chemparse@ii{%
+  \ifx\nexttok\chemparse@stop
+    \let\next@action\chemparse@stop@i
+  \else
+    \let\next@action\chemtesttok
+  \fi
+  \next@action
+}
+\def\chemadd@tok#1{\chem@toks\expandafter{\the\chem@toks#1}}
+\def\chemtesttok#1{%
+  \if!\ifnum9<1#1!\fi%
+    \ifbool{chemnum}{\chemadd@tok{#1}}{\chemformat\chem@toks{}\chemadd@tok{#1}}%
+    \booltrue{chemnum}%
+  \else
+    \ifbool{chemnum}{\chemformat\chem@toks{}\chemadd@tok{#1}}{\chemadd@tok{#1}}%
+    \boolfalse{chemnum}%
+  \fi%
+  \chemparse@i%
+}
+\def\chemformat{\ifbool{chemnum}{_{\the\chem@toks}}{\text{\the\chem@toks}}}
+\makeatother
+%>>>
+
+% Acid-base chemistry
+% IUPAC (and others): 'The operator p shall be printed in Roman type.'
+% 'There already exists international agreement that pH should be written and printed on line in roman type.'
+\newcommand{\pH}{\ensuremath{\mathrm{pH}}}
+\newcommand{\pKa}{\ensuremath{\mathrm{p}\scal{K}[a]}}
+
+%>>>
+%<<< Blood
+
+% macros to typeset factor names, e.g. \Factor{10} produces 'FX', \Factor{10a} produces 'FXa'. \factor does the same but without the prefix.
+% based on http://tex.stackexchange.com/questions/79573/split-a-string-with-hyphens-into-separate-words/79578#79578 and http://tex.stackexchange.com/questions/23487/how-can-i-get-roman-numerals-in-text/23491#23491
+\makeatletter
+\newcommand{\Factor}[1]{\@Factor[#1a]}
+\def\@Factor[#1a#2]{\text{F\uppercase\expandafter{\romannumeral#1\relax}#2}}
+\newcommand{\factor}[1]{\@factor[#1a]}
+\def\@factor[#1a#2]{\text{\uppercase\expandafter{\romannumeral#1\relax}#2}}
+\makeatother
+
+% shortcuts for enzyme complexes
+\newcommand{\enz}[1]{\text{\ifstrequal{#1}{tf7a}{TF--\factor{7a}}{%
+                           \ifstrequal{#1}{8a9a}{\factor{8a}--\factor{9a}}{%
+                           \ifstrequal{#1}{5a10a}{\factor{5a}--\factor{10a}}{}}}}}
+
+% kinetic parameters
+\newcommand{\ka}[1][]{\scal{k}[a#1]}
+\newcommand{\kd}[1][]{\scal{k}[d#1]}
+\newcommand{\kcat}[1][]{\scal{k}[cat#1]}
+\newcommand{\KM}[1][]{\scal{K}[M#1]}
+
+%>>>
+%>>>
+%>>>
+%>>>
+\newcommand{\rxntoarb}{\texttt{\textbf{rxntoarb}}}
+\newcommand{\convertunits}{\texttt{\textbf{convert\_units}}}
+\newcommand{\syntax}[2]{\textcolor{#1}{\texttt{#2}}}
+\newcommand{\example}[3][]{\noindent\\\texttt{> \convertunits{}#1 #2\\\textcolor{darkblue}{#3}}}
+\pdfglyphtounicode{quoteleft}{0027}
+\pdfglyphtounicode{quoteright}{0027}
+%>>>
+
+\begin{document}
+\title{\convertunits}
+\subtitle{v. 1.8 and later}
+\author{Christian Biscombe}
+\date{\large\today}
+\maketitle
+
+\convertunits{} performs unit conversions, providing a command-line interface to the \texttt{Units} module that accompanies \rxntoarb{} (\texttt{lib\slash{}units.rb} in the \rxntoarb{} root directory). \convertunits{} requires Ruby~1.9.3 or later.
+
+\tableofcontents
+
+%<<< Invocation and command-line options
+\section{Invocation and command-line options}
+
+\convertunits{} is invoked as follows:
+%
+%<<< Eq: invocation
+\begin{equation*}
+\convertunits{} \texttt{ [options\_list] <input\_string> [output\_units]}.
+\end{equation*}
+%>>>
+%
+\texttt{input\_string} should consist of an optional numerical value (assumed to be \texttt{1.0} if not specified) and a list of unit abbreviations, all of which should be separated by spaces (or alternatively by the \texttt{.} or \texttt{*} characters). Any valid SI prefix (see \tab{prefixes}) may immediately precede the unit name. Note the difference between, \eg[], \texttt{ms-1} (per millisecond) and~\texttt{m~s-1} (metre per second). Exponents on units should immediately follow the unit name, optionally preceded by the \texttt{\^} character. Exponents may be integers, fractions, or decimals. Use of a solidus (\texttt{/}) to indicate reciprocal units is not supported; use negative exponents instead. Accepted unit abbreviations are listed by calling \convertunits{} with the \texttt{-l}~flag. 
+
+%<<< Table: prefixes
+\begin{table}
+\centering\tablesize
+\begin{threeparttable}
+\caption[]{\href{https://physics.nist.gov/cuu/Units/prefixes.html}{SI prefixes}.}
+\begin{tabular}{lcl@{\qquad}lcl}
+\toprule
+name & prefix & factor & name & prefix & factor \\
+\midrule
+yotta & Y   & \sci{1e24}  & deci  & d & \sci{1e-1} \\
+zetta & Z   & \sci{1e21}  & centi & c & \sci{1e-2} \\
+exa   & E   & \sci{1e18}  & milli & m & \sci{1e-3} \\
+peta  & P   & \sci{1e15}  & micro & \micro\tnote{$\ast$} & \sci{1e-6} \\
+tera  & T   & \sci{1e12}  & nano  & n & \sci{1e-9} \\
+giga  & G   & \sci{1e9}   & pico  & p & \sci{1e-12} \\
+mega  & M   & \sci{1e6}   & femto & f & \sci{1e-15} \\
+kilo  & k   & \sci{1e3}   & atto  & a & \sci{1e-18} \\
+hecto & h   & \sci{1e2}   & zepto & z & \sci{1e-21} \\
+deka  & da  & \sci{1e1}   & yocto & y & \sci{1e-24} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\item[$\ast$] \convertunits{} allows the ASCII character \texttt{u} as well as the Unicode symbols $\micro$ (U+00B5) and \accsupp[hex,unicode]{03bc}{$\greekrm{m}$} (U+03BC) to represent the micro prefix.
+\end{tablenotes}
+\label{t:prefixes}
+\end{threeparttable}
+\end{table}
+%>>>
+
+The optional \texttt{output\_units} should contain the units into which the input is to be converted, following the same conventions described above. If \texttt{output\_units} is present then it must have the same dimensions as \texttt{input\_string}. If \texttt{output\_units} is omitted (or an empty string) then conversion to SI base units will be performed.
+
+The optional \texttt{options\_list} may include any of the following:
+\begin{description}
+\item[\texttt{-a|--arb}] Output in \emph{arb} format, \ie with units in square brackets before the numerical value. Implies \texttt{-d}.
+\item[\texttt{-d|--double-precision}] Output is formatted using the letter \texttt{d} for exponents (Fortran double precision copy-and-paste mode). This option is applied automatically if \texttt{input\_string} contains a double precision numerical value.
+\item[\texttt{-f|--format <format>}] Output is formatted using the specified format string. Any format string recognised by Ruby's \texttt{Kernel\#sprintf} method is valid.
+\item[\texttt{-l|--list}] List all recognised units and their abbreviations.
+\item[\texttt{-M|--mol-wt <mol\_wt>}] Set molecular weight to be used for concentration conversions. See \sect{examples} for examples.
+\item[\texttt{-s|--sig-figs}] Output with the same number of significant figures as the input. Overrides \texttt{-f}.
+\item[\texttt{-t|--tdiff}] Specifies that input temperatures should be interpreted as temperature differences rather than references to absolute temperatures. See \sect{examples} for examples.
+\item[\texttt{-v|--version}] Print version information.
+\end{description}
+
+%>>>
+\clearpage
+%<<< Examples
+\section{Examples \label{s:examples}}
+
+\enlargethispage{\baselineskip}
+\example{`nM'}{1e-06 mol m-3}
+\example{`2.5e-3 V cm-1'}{0.25 kg m A-1 s-3}
+\example{`10 atm' `kPa'}{1013.25 kPa}
+\example{`11.893 mile h-1' `ft s-1'}{17.4431 ft s-1}
+\\
+\\
+\noindent\emph{Fractional and decimal exponents:}
+\example{`8.34e-8 cP Da1/3 K-1 cm2 s-1' `Pa s kDa1/3 K-1 m2 s-1'}{8.34e-16 Pa s kDa1/3 K-1 m2 s-1}
+\example{`1 M0.5'}{31.6228 mol0.5 m-1.5}
+\\
+\\
+\noindent\emph{\emph{arb} format:}
+\example[ -a]{`0.84 pmol cm-2 min-1'}{[mol m-2 s-1] 1.4d-10}
+\\
+\\
+\noindent\emph{Double precision mode:}
+\example{`2.5d-3 V cm-1'}{0.25d0 kg m A-1 s-3}
+\example[ -d]{`2.5e-3 V cm-1'}{0.25d0 kg m A-1 s-3}
+\\
+\\
+\noindent\emph{Custom output formats:}
+\example[ -f `\%.3e']{`1478.5 kJ kg-1 K-1' `BTU lb-1 \degrees{}F-1'}{3.531e+02 BTU lb-1 \degrees{}F-1}
+\example[ -f `\%.3f']{`1478.5 kJ kg-1 K-1' `BTU lb-1 \degrees{}F-1'}{353.132 BTU lb-1 \degrees{}F-1}
+\example[ -f `\%.3g']{`1478.5 kJ kg-1 K-1' `BTU lb-1 \degrees{}F-1'}{353 BTU lb-1 \degrees{}F-1}
+\\
+\\
+\noindent\emph{Significant figures mode:}
+\example[ -s]{`10 atm' `kPa'}{1.0e+03 kPa}
+\\
+\\
+\noindent\emph{Concentration conversions:}
+\example[ -M]{`80 kDa' `375 nM' `mg l-1'}{30 mg l-1}
+\example[ -M]{`80 kDa' `30 mg l-1' `nM'}{375 nM}
+\\
+\\
+\noindent\emph{Temperature conversions:}
+\example{`100 \degrees{}C'}{373.15 K}
+\example[ -t]{`100 \degrees{}C'}{100 K}
+\example[ --]{`-40 \degrees{}C' `\degrees{}F'}{-40 \degrees{}F}
+\example[ -t --]{`-40 \degrees{}C' `\degrees{}F'}{-72 \degrees{}F}
+
+%>>>
+%<<< Copyright and licence
+\section{Copyright and licence}
+
+\convertunits{} source code and documentation \copyright{} 2017--2019 Christian Biscombe.
+
+\convertunits{} is contributed to \emph{arb} finite volume solver (in which copyright is held by Dalton Harvie) under the same licence terms as that project. At the time of writing, \emph{arb} is released under the terms of the GNU General Public License (version 3) as published by the Free Software Foundation.
+
+%>>>
+
+\end{document}

@@ -63,7 +63,8 @@ module Rxntoarb
           # Include/exclude lines based on string/regexp match. Maximum of one include and one exclude statement allowed
           when /^\s*(include_only|exclude)\s+(\S+|\/.*?(?<!\\)\/i?)/i
             Rxntoarb.options[:keep] ||= {}
-            (Rxntoarb.options[:keep][$1.to_sym] ||= []) << regexpify($2)
+            keep = Rxntoarb.options[:keep][$1.to_sym] || Regexp.union
+            Rxntoarb.options[:keep][$1.to_sym] = Regexp.union(keep, regexpify($2))
 
           # Define surface or volume regions
           when /^\s*(surface|volume)_regions?\s+([^#]+)/i
@@ -148,16 +149,8 @@ module Rxntoarb
 
     def exclude?(string) #{{{
       return false unless Rxntoarb.options[:keep]
-      exclude = false
-      Rxntoarb.options[:keep].each do |keep, regexps|
-        exclude = case keep
-                  when :include_only
-                    regexps.map { |regexp| string !~ regexp }.any?
-                  else # :exclude
-                    regexps.map { |regexp| string =~ regexp }.any?
-                  end || exclude
-      end
-      exclude
+      exclude = (Rxntoarb.options[:keep][:exclude] && string =~ Rxntoarb.options[:keep][:exclude])
+      exclude || (Rxntoarb.options[:keep][:include_only] && string !~ Rxntoarb.options[:keep][:include_only])
     end #}}}
 
     def read_reaction(rline) #{{{

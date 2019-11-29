@@ -59,6 +59,8 @@ IF <<deviatoric_gamma>>
   VARIABLE <gamma_f_<<species>>[l=<<i>>,<<i>>]> "<gamma_f_<<species>>[l=<<i>>,<<i>>]>-<gamma_spherical_f_<<species>>>"
 END_IF
 
+# TODO: add aximuthal component to gamma here if there is one
+
 # cell centred same
 CELL_LOCAL <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_f_<<species>>[l=<<i>>,<<j>>]>" ON <allcells>
 

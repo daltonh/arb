@@ -1,6 +1,6 @@
 " Language:     rxn
 " Version:      2.27 and later
-" Modified:     2019/07/12
+" Modified:     2019/09/18
 " Maintainer:   Christian Biscombe
 
 " For version 5.x: Clear all syntax items
@@ -41,7 +41,7 @@ if version >= 508 || !exists("did_rxn_syn_inits")
   endif
   HiLink rxnCoeff Number
   HiLink rxnComment Comment
-  HiLink rxnHeader Special
+  HiLink rxnHeader PreProc
   HiLink rxnLabel Type
   HiLink rxnOperator Operator
   HiLink rxnParameter Function
