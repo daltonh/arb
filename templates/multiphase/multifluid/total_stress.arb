@@ -17,7 +17,7 @@ INCLUDE "species_gamma" # calculate the required strain rate tensor and magnitud
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
-    $return_string .= "FACE_LOCAL <tau_$species"."[l=<<i>>,<<j>>]> ON <allfaces>\n";
+    $return_string .= "FACE_LOCAL <tau_${species}[l=<<i>>,<<j>>]> '0.d0' ON <allfaces>\n";
   }
   return $return_string;
 }}
