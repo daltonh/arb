@@ -1169,7 +1169,9 @@ fileloop: do
   name = textline(1:cut) ! name includes <>
   textline=adjustl(textline(cut+1:len_trim(textline)))
   m = var_number_from_name(name)
-  if (m == 0.or.trim(var(m)%type) /= "constant") &
+  if (m == 0) &
+    call error_stop('the constant '//trim(name)//' in '//trim(input_file)//' is not known on line:'//trim(textline))
+  if (trim(var(m)%type) /= "constant") &
     call error_stop('the constant '//trim(name)//' in '//trim(input_file)//' is incorrectly specified on line:'//trim(textline))
 
 ! read in value, multiplying by multiplier
