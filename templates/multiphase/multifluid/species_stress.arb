@@ -1,0 +1,140 @@
+MARKDOWN
+Here we setup the viscous stresses for each phase, including the velocity gradients, possibly using the navier_stokes template file
+
+Choices of stress_method:
+* version1 = the gamma used in each phase is specific to that phase, but stress is not specific to phase (see conservation template)
+* version2 = the gamma used in each phase is based on mixture velocities
+* version3 = the gamma used in each phase is specific to that phase, but stress is specific to phase (see conservation template)
+* version4 = the gamma used in each phase is based on mixture velocities, but the solid viscosities are independent of the species combinations
+* version4_species = the gamma used in each phase is based on species velocities
+END_MARKDOWN
+
+INCLUDE "default_replacement_strings"
+
+INCLUDE "species_gamma" # calculate the required strain rate tensor and magnitudes, cognisant of <<stress_method>>
+
+# now define the tau for each phase as a local, so that other stresses added on to this can be evaluated later
+{{
+  my $return_string = '';
+  for my $species (string_eval('<<multifluid_species_list>>','list')) {
+    $return_string .= "FACE_LOCAL <tau_${species}[l=<<i>>,<<j>>]> '0.d0' ON <allfaces>\n";
+  }
+  return $return_string;
+}}
+
+#----------------------
+IF {{ return (string_test('<<stress_method>>','version1') || string_test('<<stress_method>>','version3') || string_test('<<stress_method>>','balls')) }}
+# version1, version3 and balls - these are based on phase velocities and phase viscosities
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_species_list>>','list')) {
+      $return_string .= "VARIABLE <tau_$species"."[l=<<i>>,<<j>>]> '-<mu_f_$species>*<gamma_f_$species"."[l=<<i>>,<<j>>]>'\n";
+    }
+    return $return_string;
+  }}
+#----------------------
+ELSE_IF {{ return (string_test('<<stress_method>>','version2') || string_test('<<stress_method>>','jackson98')) }}
+# version2 and jackson98
+# here equal to the fluid stress which is based on mixture averaged velocities and a mixture viscosity, version2 = jackson98
+# note, only species0 viscosity used
+  VARIABLE <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_species0[l=<<i>>,<<j>>]>" # note, maxima will simplify diagonal components
+  {{ my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <tau_$species"."[l=<<i>>,<<j>>]> '<tau_species0[l=<<i>>,<<j>>]>'\n";
+    }
+    return $return_string;
+  }}
+#----------------------
+ELSE_IF {{ return (string_test('<<stress_method>>','version4')) }}
+# version4 - based on the species viscosities and mixture velocities
+# calculate the fluid species0 viscous stress, which for all methods is now based on the mixture (volume) averaged velocity and mixture viscosity (and hence mixture stress)
+
+  VARIABLE <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_mixture[l=<<i>>,<<j>>]>" # note, maxima will simplify diagonal components
+  FACE_DERIVED <tau^^_mixture[l=<<i>>,<<j>>]> "<mu_species0>*( -<mu^_col_f_mixture>*<gamma_f_mixture[l=<<i>>,<<j>>]> + <mu^_sid1_f_mixture>*dot(<gamma_f_mixture[l=<<i>>,:]>,<gamma_f_mixture[l=:,<<j>>]>)/facemax(<gamma_magnitude_f_mixture>,<tinyish>) + <mu^_sid2_f_mixture>*<gamma_magnitude_f_mixture>*kronecker(<<i>>,<<j>>) )" ON <allfaces> output
+  FACE_DERIVED <p^^_f_mixture> "0.d0" ON <allfaces> output
+# calculate trace of stress tensor, accounting for the number of dimensions we are using
+# this variable will be used in the sid pressure calculation within single_species_sid_pressure
+  {{ my $return_string = ''; my $ndim = 0;
+    for my $ldim (string_eval('<<dimensions>>','list')) {
+      $return_string .= "VARIABLE <p^^_f_mixture> '<p^^_f_mixture>+<tau^^_mixture[l=$ldim,$ldim]>'\n";
+      $ndim = $ndim+1;
+    }
+    $return_string .= "VARIABLE <p^^_f_mixture> '(<p^^_f_mixture>)/$ndim'\n";
+    return $return_string;
+  }}
+
+# finally calculate the phase stress
+# right now volume fraction based on bounded_harmonic - needs testing
+  {{ my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <tau_$species"."[l=<<i>>,<<j>>]> '<phi_f_bounded_harmonic_$species>*(1.d0-<phi_f_bounded_harmonic_species0>)*(<tau^^_mixture[l=<<i>>,<<j>>]>-<p^^_f_mixture>*kronecker(<<i>>,<<j>>))'\n";
+    }
+    return $return_string;
+  }}
+
+#----------------------
+#ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
+ELSE_IF 0 # trying new method below
+# stress_method = version4_species
+# here all the strain rates are based on species velocities, and the viscosities on species viscosities
+
+  VARIABLE <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_species0[l=<<i>>,<<j>>]>" ON <allfaces> # note, maxima will simplify diagonal components
+  {{ my $return_string = '';
+
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+
+      $return_string .= "FACE_DERIVED <tau^^_$species"."[l=<<i>>,<<j>>]> '<mu_species0>*( -<mu^_col_f_mixture>*<gamma_f_$species"."[l=<<i>>,<<j>>]> + <mu^_sid1_f_mixture>*dot(<gamma_f_$species"."[l=<<i>>,:]>,<gamma_f_$species"."[l=:,<<j>>]>)/facemax(<gamma_magnitude_f_$species>,<tinyish>) + <mu^_sid2_f_mixture>*<gamma_magnitude_f_$species>*kronecker(<<i>>,<<j>>) )' ON <allfaces> output\n";
+      $return_string .= "FACE_DERIVED <p^^_f_$species> '0.d0' ON <allfaces> output\n";
+
+# calculate trace of stress tensor, accounting for the number of dimensions we are using
+# this variable will be used in the sid pressure calculation within single_species_sid_pressure
+      my $ndim = 0;
+      for my $ldim (string_eval('<<dimensions>>','list')) {
+        $return_string .= "VARIABLE <p^^_f_$species> '<p^^_f_$species>+<tau^^_$species"."[l=$ldim,$ldim]>'\n";
+        $ndim = $ndim+1;
+      }
+      $return_string .= "VARIABLE <p^^_f_$species> '(<p^^_f_$species>)/$ndim'\n";
+
+# finally calculate the phase stress
+# right now volume fraction based on bounded_harmonic - needs testing
+      $return_string .= "VARIABLE <tau_$species"."[l=<<i>>,<<j>>]> '<phi_f_bounded_harmonic_$species>*(1.d0-<phi_f_bounded_harmonic_species0>)*(<tau^^_$species"."[l=<<i>>,<<j>>]>-<p^^_f_$species>*kronecker(<<i>>,<<j>>))'\n";
+
+    }
+    return $return_string;
+  }}
+
+#----------------------
+ELSE_IF {{ return (string_test('<<stress_method>>','version4_species')) }}
+# stress_method = version4_species
+# here all the strain rates are based on species velocities, and the viscosities on species viscosities
+
+  VARIABLE <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_species0[l=<<i>>,<<j>>]>" # note, maxima will simplify diagonal components
+  {{ my $return_string = '';
+
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+# inner product of gamma, normalised by gamma_mag = inner product normalised = ipn, calculated together with magnitude
+      $return_string .= "INCLUDE 'single_species_gamma_ipn' R '<<species>>' W '$species'\n";
+      
+# this is the same as tau, but includes the isotropic part that will be removed and applied as p_sid
+      $return_string .= "FACE_DERIVED <tau+_$species"."[l=<<i>>,<<j>>]> '<mu_species0>*( -<mu_col_f_$species>*<gamma_f_$species"."[l=<<i>>,<<j>>]> + <mu_sid1_f_$species>*<gamma_ipn_f_$species"."[l=<<i>>,<<j>>]> + <mu_sid2_f_$species>*<gamma_magnitude_f_$species>*kronecker(<<i>>,<<j>>) )' ON <allfaces> output\n";
+
+      $return_string .= "FACE_DERIVED <p+_f_$species> '0.d0' ON <allfaces> output\n";
+# calculate trace of stress tensor, accounting for the number of dimensions we are using
+# this variable will be used in the sid pressure calculation within single_species_sid_pressure - not anymore
+      for my $ldim (string_eval('<<dimensions>>','list')) {
+        $return_string .= "VARIABLE <p+_f_$species> '<p+_f_$species>+<tau+_$species"."[l=$ldim,$ldim]>'\n";
+      }
+      $return_string .= "VARIABLE <p+_f_$species> '(<p+_f_$species>)/".string_eval('<<dimensions>>','count')."'\n";
+
+# finally calculate the phase stress
+# right now volume fraction based on bounded_harmonic - needs testing
+      $return_string .= "VARIABLE <tau_$species"."[l=<<i>>,<<i>>]> '<tau+_$species"."[l=<<i>>,<<i>>]>-<p+_f_$species>'\n";
+
+    }
+    return $return_string;
+  }}
+
+#----------------------
+ELSE
+  ERROR 'stress_method = <<stress_method>> not known in total_stress multifluid template'
+END_IF

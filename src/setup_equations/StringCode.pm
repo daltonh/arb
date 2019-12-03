@@ -151,6 +151,10 @@ sub string_delete {
 #  list = return the string as a list containing the string split at commas (useful for using within foreach loops etc)
 #  (no|)checkexists = whether to issue an error if the string doesn't exist (default nocheckexists, meaning that it the string doesn't exist we just return an empty string)
 #  text = rather than look for an individual string, just perform string replacements on the passed in text.  This will hence perform nested replacements
+#  commaseparatedcount|count = related to commaseparated|list, returns the number of items in the list
+#  spaceseparatedcount: count items in list separated by spaces
+#  variablelist|regionlist: list of these items, ie, delimited by < and > and spaces
+#  
 # options also passed to string_search so accepts local, global and noglobal
 # on output
 #  $_[0] = unchanged
@@ -176,7 +180,13 @@ sub string_eval {
       return ''; # return empty string if the variable doesn't exist
       
     } else {
-      if ($options =~ /(^|,)((commaseparated|spaceseparated|variable|region|)list)($|,)/i) {
+
+      if ($options =~ /(^|,)((commaseparated|spaceseparated|)count)($|,)/i) {
+# return the number of items in the list
+        my $option = $3."list";
+        return scalar(string_split($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"},$option));
+      } elsif ($options =~ /(^|,)((commaseparated|spaceseparated|variable|region|)list)($|,)/i) {
+# return as an array of items
         my $option = $2;
         return string_split($ReadInputFiles::code_blocks[$code_block_found]{"string_variables"}[$string_variable_found]{"value"},$option);
 

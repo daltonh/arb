@@ -47,19 +47,19 @@ IF <<deviatoric_gamma>>
   FACE_LOCAL <gamma_spherical_f_<<species>>> "0.d0" ON <allfaces> 
   {{ 
     my $return_string = '';
-    my $ndim = 0;
     for my $ldim (string_eval('<<dimensions>>','list')) {
       $return_string .= "VARIABLE <gamma_spherical_f_<<species>>> '<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=$ldim,$ldim]>'\n";
-      $ndim = $ndim+1;
     }
-    $return_string .= "VARIABLE <gamma_spherical_f_<<species>>> '(<gamma_spherical_f_<<species>>>)/$ndim'\n";
     return $return_string;
   }}
+# and normalise by the number of dimensions, which is the number of elements in the default dimensions
+  VARIABLE <gamma_spherical_f_<<species>>> "(<gamma_spherical_f_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
 # remove the spherical part from gamma to leave a deviatoric tensor
   VARIABLE <gamma_f_<<species>>[l=<<i>>,<<i>>]> "<gamma_f_<<species>>[l=<<i>>,<<i>>]>-<gamma_spherical_f_<<species>>>"
 END_IF
 
 # TODO: add aximuthal component to gamma here if there is one
+# TODO: gamma_total_magnitudes
 
 # cell centred same
 CELL_LOCAL <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_f_<<species>>[l=<<i>>,<<j>>]>" ON <allcells>
@@ -76,9 +76,17 @@ ELSE_IF <<cylindrical>>
   ELSE
     CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
   END_IF
+# TODO: gamma_total_magnitudes
 ELSE
 # FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>),<tinyish>))" ON <allfaces> output
 # or use inbuilt function which >0 always, and is entirely equivalent to the above for a tensor
   FACE_DERIVED <gamma_magnitude_f_<<species>>> "mag(<gamma_f_<<species>>[l=:,:]>)" ON <allfaces> output
   CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
+  IF <<deviatoric_gamma>>
+# if everything is based on deviatoric gamma, also calculate strain rate magnitude that includes the spherical component, known as the gamma_total_magnitude
+# <gamma_magnitude_f_...> is already >0 via cutoff in mag function
+# the perl evaluates as the number of dimensions, and is consistent with that used in the calculation of the spherical part of gamma
+    FACE_LOCAL <gamma_total_magnitude_f_<<species>>> "sqrt(<gamma_magnitude_f_<<species>>>^2+0.5d0*{{ return string_eval('<<dimensions>>','count') }}*<gamma_spherical_f_<<species>>>^2)" ON <allfaces> output
+    CELL_LOCAL <gamma_total_magnitude_<<species>>> "cellave(<gamma_total_magnitude_f_<<species>>>)" ON <allcells>
+  END_IF
 END_IF
