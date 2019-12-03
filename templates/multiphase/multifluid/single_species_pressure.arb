@@ -5,33 +5,37 @@ END_MARKDOWN
 # first define the two types of pressures as locals, and then add specific contributions to these as deriveds as needed
 CELL_LOCAL <p_<<species>>> "0.d0" ON <allcells> # for the fluid, this is the fluid pressure applied to all phases, while for the disperse phases this appears as a divergence in the full momentum equation
 CELL_LOCAL <p^_<<species>>> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
+FACE_LOCAL <p_f_<<species>>> "0.d0" ON <allfaces>
+FACE_LOCAL <p^_f_<<species>>> "0.d0" ON <allfaces>
 
 REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also add this force from the fluid phase
 # if including sid on the fluid phase too, then will need to calculate a p^ for each disperse and fluid species combinations
 IF <<shear_induced_diffusion_on_fluid>>
   CELL_LOCAL <p^_<<species>>_species0> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
   CELL_LOCAL <p_<<species>>_species0> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
+  FACE_LOCAL <p^_f_<<species>>_species0> "0.d0" ON <allfaces>
+  FACE_LOCAL <p_f_<<species>>_species0> "0.d0" ON <allfaces>
 END_IF
 
 REPLACEMENTS D "<<inertial_diffusion>>" W "0" # inertial diffusion requires an extra fluid and dispersed phase pressure to be calculated
 IF <<inertial_diffusion>>
   CELL_LOCAL <p_<<species>>_species0> "0.d0" ON <allcells>
+  FACE_LOCAL <p_f_<<species>>_species0> "0.d0" ON <allfaces>
 END_IF
 
-# osmotic pressure, adding to <p_<<species>>>
+# osmotic pressure, adding to <p_<<species>>> and <p_f_<<species>>>
 REPLACEMENTS D "<<osmotic_pressure>>" W "1"
 IF <<osmotic_pressure>>
   INCLUDE "single_species_osmotic_pressure"
-#  VARIABLE <p_<<species>>> "<p_<<species>>>+<p_osmotic_<<species>>>"
 END_IF
 
-# chemical potential, adding to <p^_<<species>>>
+# chemical potential, adding to <p^_<<species>>> and <p^_f_<<species>>
 REPLACEMENTS D "<<chemical_potential>>" W "0"
 IF <<chemical_potential>>
   INCLUDE "single_species_chemical_potential"
 END_IF
 
-# sid pressure, either adding to <p_<<species>>> or <p^_<<species>>> depending on the method
+# sid pressure, either adding to <p_<<species>>> or <p^_<<species>>> depending on the method, and corresponding face centred
 REPLACEMENTS D "<<shear_induced_diffusion>>" W "0"
 IF <<shear_induced_diffusion>>
   INCLUDE "single_species_sid_pressure"

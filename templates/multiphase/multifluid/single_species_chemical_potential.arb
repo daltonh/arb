@@ -70,3 +70,4 @@ VARIABLE <p^_excess_<<species>>> output
 
 # now add contribution onto specific species pressure
 VARIABLE <p^_<<species>>> "<p^_<<species>>>+(<p^_excess_<<species>>>)"
+VARIABLE <p^_f_<<species>>> "<p^_f_<<species>>>+faceave(<p^_excess_<<species>>>)"

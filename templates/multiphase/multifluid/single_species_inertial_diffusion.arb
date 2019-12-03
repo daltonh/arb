@@ -55,6 +55,7 @@ IF {{ return (!(string_test('<<inertial_diffusion_method>>','nonspecific')))}}
 
 # now add contribution onto fluid pressure that is associated with this species
   VARIABLE <p_<<species>>_species0> "<p_<<species>>_species0>+(<p_inertial_<<species>>>)"
+  VARIABLE <p_f_<<species>>_species0> "<p_f_<<species>>_species0>+faceave(<p_inertial_<<species>>>)" output
 
 # set region
   CELL_DERIVED <p_inertial_<<species>>> ON <allcells>
@@ -81,6 +82,8 @@ ELSE
 
 # now place the inertial contributions back on the nonspecific phase pressures
   VARIABLE <p_<<species>>_species0> "<p_<<species>>_species0>+(<p_inertial_<<species>>_species0>)"
+  VARIABLE <p_f_<<species>>_species0> "<p_f_<<species>>_species0>+faceave(<p_inertial_<<species>>_species0>)" output
   VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_inertial_<<species>>>)"
+  VARIABLE <p_f_<<species>>> "<p_f_<<species>>>+faceave(<p_inertial_<<species>>>)" output
 
 END_IF

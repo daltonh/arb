@@ -15,52 +15,56 @@ IF {{ return (!(arb_defined('<correctionfaces>'))) }} # only calculate the dynam
   FACE_REGION <correctionfaces> "all" ON <domainfaces>
 END_IF
 
-# face average both species pressures (phase specific <p^_species> and non-phase specific <p_species>)
-{{
-  my $return_string = '';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
-#     "R '<<pfadjacentcells>>' W '1' ". # use low order adjacentcell averaging just for this right now
-      "R '<p>' W '<p_$species>' ".
-      "R '<p_f_gradient_limiter>' W '<p_f_gradient_limiter_$species>' ".
-      "R '<p_f>' W '<p_f_$species>'\n";
-    $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
-      "R '<p>' W '<p^_$species>' ".
-      "R '<p_f_gradient_limiter>' W '<p^_f_gradient_limiter_$species>' ".
-      "R '<p_f>' W '<p^_f_$species>'\n";
-#   my $string_name = '<p^_'.$species.'_species0>';
-# print "CHECK: string_eval = ",string_eval($string_name,'text'),"\n";
-# print "CHECK: arb_defined = ",arb_defined(string_eval($string_name,'text')),"\n";
-#   if (arb_defined(string_eval($string_name,'text'))) {
-    if (arb_defined(string_eval('<p^_'.$species.'_species0>','text'))) {
+# instead of doing this, <p_f_<<species>>> and <p^_f_<<species>>> are calculated along with <p_<<species>>> and <p^_<<species>>> now
+IF 0
+  # face average both species pressures (phase specific <p^_species> and non-phase specific <p_species>)
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
       $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
-        "R '<p>' W '<p^_$species"."_species0>' ".
-        "R '<p_f_gradient_limiter>' W '<p^_f_gradient_limiter_$species"."_species0>' ".
-        "R '<p_f>' W '<p^_f_$species"."_species0>'\n";
-    }
-    if (arb_defined(string_eval('<p_'.$species.'_species0>','text'))) {
+  #     "R '<<pfadjacentcells>>' W '1' ". # use low order adjacentcell averaging just for this right now
+        "R '<p>' W '<p_$species>' ".
+        "R '<p_f_gradient_limiter>' W '<p_f_gradient_limiter_$species>' ".
+        "R '<p_f>' W '<p_f_$species>'\n";
       $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
-        "R '<p>' W '<p_$species"."_species0>' ".
-        "R '<p_f_gradient_limiter>' W '<p_f_gradient_limiter_$species"."_species0>' ".
-        "R '<p_f>' W '<p_f_$species"."_species0>'\n";
+        "R '<p>' W '<p^_$species>' ".
+        "R '<p_f_gradient_limiter>' W '<p^_f_gradient_limiter_$species>' ".
+        "R '<p_f>' W '<p^_f_$species>'\n";
+  #   my $string_name = '<p^_'.$species.'_species0>';
+  # print "CHECK: string_eval = ",string_eval($string_name,'text'),"\n";
+  # print "CHECK: arb_defined = ",arb_defined(string_eval($string_name,'text')),"\n";
+  #   if (arb_defined(string_eval($string_name,'text'))) {
+      if (arb_defined(string_eval('<p^_'.$species.'_species0>','text'))) {
+        $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
+          "R '<p>' W '<p^_$species"."_species0>' ".
+          "R '<p_f_gradient_limiter>' W '<p^_f_gradient_limiter_$species"."_species0>' ".
+          "R '<p_f>' W '<p^_f_$species"."_species0>'\n";
+      }
+      if (arb_defined(string_eval('<p_'.$species.'_species0>','text'))) {
+        $return_string .= "INCLUDE_TEMPLATE 'navier_stokes/p_f' ".
+          "R '<p>' W '<p_$species"."_species0>' ".
+          "R '<p_f_gradient_limiter>' W '<p_f_gradient_limiter_$species"."_species0>' ".
+          "R '<p_f>' W '<p_f_$species"."_species0>'\n";
+      }
     }
-  }
-  return $return_string;
-}}
+    return $return_string;
+  }}
 
-# TODO: code up <p_f_<<species>>> separately in each pressure subroutine
-REPLACEMENTS D "<<p_f_hack>>" W "1"
-IF <<p_f_hack>> # trialling using isotropic part from faces directly, which requires that osmotic pressure be defined
-{{
-  my $return_string = '';
-  for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-    $return_string .= "VARIABLE <p_f_$species> '<p+_f_$species>+faceave(<p_osmotic_$species>)'\n";
-  }
-  return $return_string;
-}}
+  # TODO: code up <p_f_<<species>>> separately in each pressure subroutine
+  REPLACEMENTS D "<<p_f_hack>>" W "1"
+  IF <<p_f_hack>> # trialling using isotropic part from faces directly, which requires that osmotic pressure be defined
+  {{
+    my $return_string = '';
+    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+      $return_string .= "VARIABLE <p_f_$species> '<p+_f_$species>+faceave(<p_osmotic_$species>)'\n";
+    }
+    return $return_string;
+  }}
+  END_IF
 END_IF
 
 # use the navier_stokes dynamic_force template to create the dynamic force variables, including the fluid phase pressure term (only) which is common to all phases
+# this is for fluid phase
 {{
   my $return_string = '';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {

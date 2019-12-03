@@ -111,3 +111,4 @@ END_IF
 
 # add on contribution to species pressure
 VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_osmotic_<<species>>>)"
+VARIABLE <p_f_<<species>>> "<p_f_<<species>>>+faceave(<p_osmotic_<<species>>>)"

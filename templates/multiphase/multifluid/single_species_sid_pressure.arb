@@ -16,6 +16,9 @@ IF {{ return (string_test('<<stress_method>>','version4_mixture')) }} # not used
 # finally add on contribution to species pressure
   VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_sid_<<species>>>)" output
 
+# TODO
+  ERROR "do not use version4_mixture"
+
 ELSE_IF {{ return (string_test('<<stress_method>>','version4') || string_test('<<stress_method>>','version4_species')) }}
 
   NONE_CONSTANT <p_sid_multiplier> 1.d0
@@ -30,6 +33,7 @@ ELSE_IF {{ return (string_test('<<stress_method>>','version4') || string_test('<
 
 # finally add on contribution to species pressure
   VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_sid_<<species>>>)" output
+  VARIABLE <p_f_<<species>>> "<p_f_<<species>>>+(<p+_f_<<species>>>)" output
 
 ELSE
 #---------------------------------
@@ -61,12 +65,14 @@ ELSE
 
   # add on contribution to species pressure
     VARIABLE <p^_<<species>>> "<p^_<<species>>>+(<p^_sid_<<species>>>)"
+    VARIABLE <p^_f_<<species>>> "<p^_f_<<species>>>+faceave(<p^_sid_<<species>>>)" output
 
   # and add to the fluid equivalent for later subtraction
     REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also subtract this force from the fluid phase
     IF <<shear_induced_diffusion_on_fluid>>
       NONE_CONSTANT <p_sid_relative_multiplier_species0> 1.d0 # this makes the force on the fluid a multiple of the forces on the disperse phases
       VARIABLE <p^_<<species>>_species0> "<p^_<<species>>_species0>+(<p_sid_relative_multiplier_species0>*<p^_sid_<<species>>>)"
+      VARIABLE <p^_f_<<species>>_species0> "<p^_f_<<species>>_species0>+faceave(<p_sid_relative_multiplier_species0>*<p^_sid_<<species>>>)" output
     END_IF
 
   ELSE_IF {{ return string_test('<<sid_pressure_method>>','nonspecific')}}
@@ -88,12 +94,14 @@ ELSE
 
   # add on contribution to species pressure
     VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_sid_<<species>>>)"
+    VARIABLE <p_f_<<species>>> "<p_f_<<species>>>+faceave(<p_sid_<<species>>>)" output
 
   # and add to the fluid equivalent for later subtraction
     REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also subtract this force from the fluid phase
     IF <<shear_induced_diffusion_on_fluid>>
       NONE_CONSTANT <p_sid_relative_multiplier_species0> 1.d0 # this makes the force on the fluid a multiple of the forces on the disperse phases
       VARIABLE <p_<<species>>_species0> "<p_<<species>>_species0>+(<p_sid_relative_multiplier_species0>*<p_sid_<<species>>>)"
+      VARIABLE <p_f_<<species>>_species0> "<p_f_<<species>>_species0>+faceave(<p_sid_relative_multiplier_species0>*<p_sid_<<species>>>)" output
     END_IF
 
   ELSE_IF {{ return string_test('<<sid_pressure_method>>','crazyspecific')}}
@@ -115,12 +123,14 @@ ELSE
 
   # add on contribution to species pressure
     VARIABLE <p^_<<species>>> "<p^_<<species>>>+(<p^_sid_<<species>>>)"
+    VARIABLE <p^_f_<<species>>> "<p^_f_<<species>>>+faceave(<p^_sid_<<species>>>)" output
 
   # and add to the fluid equivalent for later subtraction
     REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also subtract this force from the fluid phase
     IF <<shear_induced_diffusion_on_fluid>>
       NONE_CONSTANT <p_sid_relative_multiplier_species0> 1.d0 # this makes the force on the fluid a multiple of the forces on the disperse phases
       VARIABLE <p^_<<species>>_species0> "<p^_<<species>>_species0>+(<p_sid_relative_multiplier_species0>*<p^_sid_<<species>>>)"
+      VARIABLE <p^_f_<<species>>_species0> "<p^_f_<<species>>_species0>+faceave(<p_sid_relative_multiplier_species0>*<p^_sid_<<species>>>)" output
     END_IF
 
   ELSE
@@ -217,6 +227,7 @@ ELSE
 
   # add on contribution to species pressure
     VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_sid_<<species>>>)"
+    VARIABLE <p_f_<<species>>> "<p_f_<<species>>>+faceave(<p_sid_<<species>>>)" output
 
   END_IF
 
