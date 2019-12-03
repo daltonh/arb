@@ -5,8 +5,8 @@ END_MARKDOWN
 GLOBAL_REPLACEMENTS R "<<drag_method>>" W "version2" # drag method hasn't changed
 GLOBAL_REPLACEMENTS R "<<hindered_settling_function>>" W "richardsonzaki"
 
-#GLOBAL_REPLACEMENTS R "<<stress_method>>" W "version4"
-GLOBAL_REPLACEMENTS R "<<stress_method>>" W "version4_species"
+GLOBAL_REPLACEMENTS R "<<stress_method>>" W "version4"
+#GLOBAL_REPLACEMENTS R "<<stress_method>>" W "version4_species"
 
 # set default osmotic pressure terms, but do not turn them on here
 GLOBAL_REPLACEMENTS R "<<osmotic_pressure_method>>" W "dilute"

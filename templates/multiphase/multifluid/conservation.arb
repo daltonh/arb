@@ -10,9 +10,6 @@ INCLUDE "default_replacement_strings"
 # <<implicitadvection>> modifies both the advection of phi and u, making both implicit (ie, using r=0 values rather than r=1 values).  You need implicit advection to be able to push CFL over 1.
 #REPLACEMENTS D "<<implicitadvection>>" W "1" # default is now implicit advection
 
-#REPLACEMENTS D "<<stress_method>>" W "version1" # method, with phi inside viscous stress divergence
-#REPLACEMENTS D "<<stress_method>>" W "version2" # as per jackson98 and zhang97, have phi outside of stress divergence, version2 default = zhang97 = jackson98 = balls
-#REPLACEMENTS D "<<stress_method>>" W "version3" # same as version2 in terms of this template, different for viscosity calculation
 # now create conservation equations
 
 # mucking around with phi types to find low phi stability
