@@ -48,7 +48,7 @@ IF {{ return string_test('<<viscosity_method>>','roughness111119') }}
   CONSTANT <mu^_r_infty_n2> 1.0 # exponent of upper spike function
   CONSTANT <mu^_r_infty_phi_max_allsolids> "<phi_max_allsolids>"
 # function
-  CELL_DERIVED <mu^_r_infty> "cellmax(<mu^_r_infty_b>+(<mu^_r_infty_c1>/<mu^_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+(<mu^_r_infty_c2>/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>))^(<mu^_r_infty_n2>),2.d0)" ON <allcells> output
+  CELL_DERIVED <mu^_r_infty> "cellmax(<mu^_r_infty_b>+(<mu^_r_infty_c1>/<mu^_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+(<mu^_r_infty_c2>/cellmax(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>,<phi_tol>))^(<mu^_r_infty_n2>),2.d0)" ON <allcells> output
   CELL_LOCAL <mu^_r_infty_minus2> "<mu^_r_infty>-2.d0" ON <allcells> output
 
 # now use templates to calculate B^_1 and B^_2 from this
@@ -64,7 +64,7 @@ IF {{ return string_test('<<viscosity_method>>','roughness111119') }}
   CONSTANT <mu^_r_f_phi_multi> 0.075d0 # volume fraction at which multibody (high phi) function could start to affect r_f (actually, at which multibody high-phi function is 2)
   CONSTANT <mu^_r_f_c0> "2.d0-(<mu^_r_infty_c2>/(<mu^_r_infty_phi_max_allsolids>-<mu^_r_f_phi_multi>))^(<mu^_r_infty_n2>)"
 # construct r_f as maximum of roughness (at low phi) and multi-body (at high phi) anisotropic radii, with high phi behaviour being the same as r_infty
-  CELL_DERIVED <mu^_r_f> "cellmax(<mu^_r_f_b>,<mu^_r_f_c0>+(<mu^_r_infty_c2>/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>))^(<mu^_r_infty_n2>))" ON <allcells> output
+  CELL_DERIVED <mu^_r_f> "cellmax(<mu^_r_f_b>,<mu^_r_f_c0>+(<mu^_r_infty_c2>/cellmax(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>,<phi_tol>))^(<mu^_r_infty_n2>))" ON <allcells> output
   CELL_LOCAL <mu^_r_f_minus2> "<mu^_r_f>-2.d0" ON <allcells> output
 # now use templates to calculate B^_1 and B^_2 from this
   INCLUDE "single_species_collision_viscosity_version4_B_functions" R "<mu^_B^_" W "<mu^_B^_f_" R "<mu^_r_infty_minus2>" W "<mu^_r_f_minus2>"

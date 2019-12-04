@@ -34,7 +34,12 @@ ELSE_IF {{ return (string_test('<<stress_method>>','version4') || string_test('<
 # individual gamma functions are weighted by viscosities when averaged
     CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*faceave(<mu_sid1_f_<<species>>>*<gamma_ipn_ntr_f_<<species>>>+<mu_sid2_f_<<species>>>*<gamma_magnitude_f_<<species>>>)" ON <allcells> output # average trace of stress tensor to cell centres
   END_IF
-  CELL_DERIVED <p_sid_<<species>>> "<p+_c_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+  IF 1
+# don't use boundary value, use upcell instead
+    CELL_DERIVED <p_sid_<<species>>> "cellif(celldelta(<boundarycells>),cellave(faceave[downcell](<p+_c_<<species>>>)),<p+_c_<<species>>>)" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+  ELSE
+    CELL_DERIVED <p_sid_<<species>>> "<p+_c_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+  END_IF
 
 # FACE_LOCAL <p_sid_f_<<species>>> "<p+_f_<<species>>>" # previous idea, trying to use more local variables on face and hence dynamic_force_c
   FACE_LOCAL <p_sid_f_<<species>>> "faceave(<p_sid_<<species>>>)" # more conventional treatment for dynamic_force_c

@@ -4,10 +4,15 @@ Calculate gamma and related properties for a multifluid <<species>> = speciesN, 
 For each of <<species>>, the following are defined
 <u_<<species>>[l=:]> - CELL_DERIVED, only for mixture and allsolids
 <ugrad_f_<<species>>[l=:,:]> - FACE_DERIVED
+<ugrad_<<species>>[l=:,:]> - FACE_DERIVED
 <gamma_f_<<species>>[l=:,:]> - FACE_DERIVED
 <gamma_<<species>>[l=:,:]> - CELL_LOCAL
 <gamma_magnitude_f_<<species>>> - FACE_DERIVED
 <gamma_magnitude_<<species>>> - CELL_LOCAL
+<gamma_total_magnitude_f_<<species>>> - FACE_DERIVED
+<gamma_total_magnitude_<<species>>> - CELL_LOCAL
+<gamma_spherical_f_<<species>>> - FACE_DERIVED
+<gamma_spherical_<<species>>> - CELL_LOCAL
 
 Now option to remove isotropic part of strain rate tensor, meaning that gamma is deviatoric, determined by <<deviatoric_gamma>>
 END_MARKDOWN
@@ -44,18 +49,22 @@ FACE_DERIVED <gamma_f_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_f_<<species>>[l=<<i>>
 
 IF <<deviatoric_gamma>>
 # calculate the spherical part of gamma, which is the trace divided by the number of dimensions
-  FACE_LOCAL <gamma_spherical_f_<<species>>> "0.d0" ON <allfaces> 
-  {{ 
-    my $return_string = '';
-    for my $ldim (string_eval('<<dimensions>>','list')) {
-      $return_string .= "VARIABLE <gamma_spherical_f_<<species>>> '<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=$ldim,$ldim]>'\n";
-    }
-    return $return_string;
-  }}
+# using repeated summing of components into a scalar, which expands as a line for each <<i>> index
+  FACE_LOCAL <gamma_spherical_f_<<species>>> "<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=<<i>>,<<i>>]>" ON <allfaces> 
 # and normalise by the number of dimensions, which is the number of elements in the default dimensions
   VARIABLE <gamma_spherical_f_<<species>>> "(<gamma_spherical_f_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
 # remove the spherical part from gamma to leave a deviatoric tensor
   VARIABLE <gamma_f_<<species>>[l=<<i>>,<<i>>]> "<gamma_f_<<species>>[l=<<i>>,<<i>>]>-<gamma_spherical_f_<<species>>>"
+
+# old code
+#   FACE_LOCAL <gamma_spherical_f_<<species>>> "0.d0" ON <allfaces> 
+#   {{ 
+#     my $return_string = '';
+#     for my $ldim (string_eval('<<dimensions>>','list')) {
+#       $return_string .= "VARIABLE <gamma_spherical_f_<<species>>> '<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=$ldim,$ldim]>'\n";
+#     }
+#     return $return_string;
+#   }}
 END_IF
 
 # TODO: add aximuthal component to gamma here if there is one
@@ -89,4 +98,31 @@ ELSE
     FACE_LOCAL <gamma_total_magnitude_f_<<species>>> "sqrt(<gamma_magnitude_f_<<species>>>^2+0.5d0*{{ return string_eval('<<dimensions>>','count') }}*<gamma_spherical_f_<<species>>>^2)" ON <allfaces> output
     CELL_LOCAL <gamma_total_magnitude_<<species>>> "cellave(<gamma_total_magnitude_f_<<species>>>)" ON <allcells>
   END_IF
+END_IF
+
+
+IF 1
+# trial overwriting interpolated cell centred strain rates with those calculated form celldivgrad instead
+
+# in case we are dealing with mixture or allsolids, make sure that u_f_vect is defined
+  FACE_LOCAL <u_f_vect_<<species>>[l=<<i>>]> "faceave[<<reflect=<<i>>>>](<u_<<species>>[l=<<i>>]>)" ON <allfaces> output
+
+# velocity gradient
+  CELL_DERIVED <ugrad_<<species>>[l=<<i>>,<<j>>]> "celldivgrad[l=<<i>>](<u_f_vect_<<species>>[l=<<j>>]>)" ON <allcells> output
+
+# symmetric strain rate
+  CELL_LOCAL <gamma_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_<<species>>[l=<<i>>,<<j>>]>+<ugrad_<<species>>[l=<<j>>,<<i>>]>)" ON <allcells> output
+
+# calculate spherical component
+  CELL_LOCAL <gamma_spherical_<<species>>> "<gamma_spherical_<<species>>>+2.d0*<ugrad_<<species>>[l=<<i>>,<<i>>]>" ON <allcells> output
+# and normalise by the number of dimensions, which is the number of elements in the default dimensions
+  VARIABLE <gamma_spherical_<<species>>> "(<gamma_spherical_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
+# mixture does not have u_f_vect defined
+# CELL_LOCAL <gamma_2divu_<<species>>> "2.d0*celldiv(<u_f_{raw}_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}" ON <allcells> output
+  CELL_LOCAL <gamma_2divu_<<species>>> "2.d0*celldiv(dot(<u_f_vect_<<species>>[l=:]>,<facenorm[l=:]>))/{{ return string_eval('<<dimensions>>','count') }}" ON <allcells> output
+
+# but don't remove it from the tensor this time (actually, revisit gamma_f definition)
+# calculate magnitude of total strain rate
+  CELL_DERIVED <gamma_total_magnitude_<<species>>> "mag(<gamma_<<species>>[l=:,:]>)" ON <allcells> output
+
 END_IF

@@ -8,10 +8,10 @@ END_MARKDOWN
 INCLUDE_TEMPLATE "wall_normal_tensor.arb"
 
 # now calculate the laplacian of a velocity field, probably the fluid velocity makes most sense
-# note that <<species>> already has a value in this block, but u_laplacian requires a different value, so must be set when calling
+# note that <<species>> already has a value in this block, but single_species_laplacian requires a different value, so must be set when calling
 REPLACEMENTS D "<<velocity_species>>" W "<<species>>" # now based on own phase species, which should be stable
-#INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "species0"
-INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "<<velocity_species>>"
+#INCLUDE_TEMPLATE "single_species_laplacian" R "<<species>>" W "species0"
+INCLUDE_TEMPLATE "single_species_laplacian" R "<<species>>" W "<<velocity_species>>"
 
 #Coefficient - reworked to be a constant
 CONSTANT <sheargrad_unbounded_multiplier> 1.d0

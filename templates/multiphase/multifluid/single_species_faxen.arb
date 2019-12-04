@@ -8,7 +8,7 @@ REPLACEMENTS D "<<faxen_method>>" W "version2"
 REPLACEMENTS D "<<velocity_species>>" W "<<species>>" # now based on own phase species, which should be stable
 
 # all methods now use the laplacian of the fluid velocity field - not anymore!
-INCLUDE_TEMPLATE "u_laplacian" R "<<species>>" W "<<velocity_species>>"
+INCLUDE_TEMPLATE "single_species_laplacian" R "<<species>>" W "<<velocity_species>>"
 
 IF {{ return string_test('<<faxen_method>>','version1') }}
 
