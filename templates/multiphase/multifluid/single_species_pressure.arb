@@ -35,6 +35,12 @@ IF <<chemical_potential>>
   INCLUDE "single_species_chemical_potential"
 END_IF
 
+# steric potential, adding to <p^_<<species>>> and <p^_f_<<species>>
+REPLACEMENTS D "<<steric_potential>>" W "0"
+IF <<steric_potential>>
+  INCLUDE "single_species_steric_potential"
+END_IF
+
 # sid pressure, either adding to <p_<<species>>> or <p^_<<species>>> depending on the method, and corresponding face centred
 REPLACEMENTS D "<<shear_induced_diffusion>>" W "0"
 IF <<shear_induced_diffusion>>

@@ -1,0 +1,42 @@
+MARKDOWN
+Here we find the specific pressure for a disperse phase species <<species>> that represents steric hindrance of some sort
+All of these methods increment <p^_<<species>>> for just the disperse phases
+END_MARKDOWN
+
+REPLACEMENTS D "<<steric_potential_method>>" W "linearandpolynomial" # a shallow linear function that goes through zero, as well as the polynomial
+#REPLACEMENTS D "<<steric_potential_method>>" W "polynomial" # just the polynomial
+#REPLACEMENTS D "<<steric_potential_method>>" W "linear" # just the shallow linear function
+#REPLACEMENTS D "<<steric_potential_method>>" W "none" # none
+
+NONE_CONSTANT <p^_steric_dphi_max> [1] 0.1d0 # volume fraction below phi_max around which the curves are calibrated
+NONE_CONSTANT <p^_steric_phi_max> [1] "<phi_max_allsolids>-<p^_steric_dphi_max>" # this is actually a reference point for the curve, rather than a hard maximum
+
+# all methods need the total solids volume fraction normalised by the maximum phi
+# using the non-limited solids volume fraction
+CELL_LOCAL <p^_steric_phi_allsolids> "(1.d0-<phi_species0>)/<p^_steric_phi_max>" ON <allcells> nooutput
+
+CELL_DERIVED <p^_steric_<<species>>> "0.d0" ON <allcells>
+
+# add linear contribution
+IF {{ return (string_test('<<steric_potential_method>>','linear') || string_test('<<steric_potential_method>>','linearandpolynomial'))}}
+
+  NONE_CONSTANT <p^_steric_p_max_linear> [Pa] 1.d-6 # pressure at phi_max, used for linear function
+  VARIABLE <p^_steric_<<species>>> "(<p^_steric_<<species>>>)+<p^_steric_phi_allsolids>*<p^_steric_p_max_linear>"
+
+END_IF
+
+# add polynomial contribution
+IF {{ return (string_test('<<steric_potential_method>>','polynomial') || string_test('<<steric_potential_method>>','linearandpolynomial'))}}
+
+  NONE_CONSTANT <p^_steric_p_max_polynomial> [Pa] 1.d0 # pressure at phi_max, used for polynomial
+  NONE_CONSTANT <p^_steric_n_polynomial> [1] 5.d0 # exponent used for polynomial
+  VARIABLE <p^_steric_<<species>>> "(<p^_steric_<<species>>>)+<p^_steric_p_max_polynomial>*(cellmax(<p^_steric_phi_allsolids>,0.d0))^<p^_steric_n_polynomial>"
+
+END_IF
+
+# turn on output
+VARIABLE <p^_steric_<<species>>> output
+
+# now add contribution onto specific species pressure
+VARIABLE <p^_<<species>>> "<p^_<<species>>>+(<p^_steric_<<species>>>)"
+VARIABLE <p^_f_<<species>>> "<p^_f_<<species>>>+faceave(<p^_steric_<<species>>>)"
