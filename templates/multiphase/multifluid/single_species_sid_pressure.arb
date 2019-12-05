@@ -23,10 +23,13 @@ ELSE_IF {{ return (string_test('<<stress_method>>','version4') || string_test('<
 
   IF 0 # simplest - no no no
     CELL_LOCAL <p+_c_<<species>>> "<p+_f_<<species>>>" ON <allcells> output # average trace of stress tensor to cell centres
-  ELSE_IF 1 # yes
+  ELSE_IF 0 # yes, previously the best
 # calculate face centred trace of gamma_ipn, now done already in single_species_gamma_ipn, called within species_stress
 # face centred gamma variables are averaged implicitly
     CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*(<mu^_sid1_c_mixture>*<gamma_ipn_ntr_f_<<species>>>+<mu^_sid2_c_mixture>*<gamma_magnitude_f_<<species>>>)" ON <allcells> output # average trace of stress tensor to cell centres
+  ELSE_IF 1 # trialling gamma ipn etc from cell centred values
+# calculate face centred trace of gamma_ipn, now done already in single_species_gamma_ipn, called within species_stress
+    CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*(<mu^_sid1_c_mixture>*<gamma_ipn_ntr_<<species>>>+<mu^_sid2_c_mixture>*<gamma_magnitude_<<species>>>)" ON <allcells> output # average trace of stress tensor to cell centres
   ELSE_IF 0 # complex
 # individual gamma functions are weighted by viscosities when averaged
     CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*(<mu^_sid1_c_mixture>*faceave(<mu_sid1_f_<<species>>>*<gamma_ipn_ntr_f_<<species>>>)/faceave(<mu_sid1_f_<<species>>>)+<mu^_sid2_c_mixture>*faceave(<mu_sid2_f_<<species>>>*<gamma_magnitude_f_<<species>>>)/faceave(<mu_sid2_f_<<species>>>))" ON <allcells> output # average trace of stress tensor to cell centres

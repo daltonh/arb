@@ -6,18 +6,29 @@ END_MARKDOWN
 FACE_DERIVED <gamma_ipn_f_<<species>>[l=<<i>>,<<j>>]> "dot(<gamma_f_<<species>>[l=<<i>>,:]>,<gamma_f_<<species>>[l=:,<<j>>]>)/<gamma_magnitude_f_<<species>>>" ON <allfaces>
 
 # calculate also the isotropic component of this tensor, which is the trace/ndimensions
-{{ my $return_string = '';
-  $return_string .= "FACE_DERIVED <gamma_ipn_ntr_f_<<species>>> '0.d0' ON <allfaces>\n";
-# calculate trace of stress tensor, accounting for the number of dimensions we are using
-# this variable will be used in the sid pressure calculation within single_species_sid_pressure - not anymore
-  for my $ldim (string_eval('<<dimensions>>','list')) {
-    $return_string .= "VARIABLE <gamma_ipn_ntr_f_<<species>>> '<gamma_ipn_ntr_f_<<species>>>+<gamma_ipn_f_<<species>>"."[l=$ldim,$ldim]>'\n";
-  }
-  return $return_string;
-}}
+# following line repeated for each dimension to accomplish sum
+FACE_DERIVED <gamma_ipn_ntr_f_<<species>>> "<gamma_ipn_ntr_f_<<species>>>+<gamma_ipn_f_<<species>>[l=<<i>>,<<i>>]>" ON <allfaces>
 # and normalise by the number of dimensions, which is the number of elements in <<dimensions>>
 VARIABLE <gamma_ipn_ntr_f_<<species>>> "(<gamma_ipn_ntr_f_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
 
+# do same for cell centred now, based on specifically deviatoric strain rate
+REPLACEMENTS D "<<gammaipncell>>" W "1"
+IF <<gammaipncell>>
+  CELL_DERIVED <gamma_ipn_<<species>>[l=<<i>>,<<j>>]> "dot(<gamma_<<species>>[l=<<i>>,:]>,<gamma_<<species>>[l=:,<<j>>]>)/<gamma_magnitude_<<species>>>" ON <allcells>
+  CELL_DERIVED <gamma_ipn_ntr_<<species>>> "<gamma_ipn_ntr_<<species>>>+<gamma_ipn_<<species>>[l=<<i>>,<<i>>]>" ON <allcells>
+  VARIABLE <gamma_ipn_ntr_<<species>>> "(<gamma_ipn_ntr_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
+END_IF
+
+# old code
+#{{ my $return_string = '';
+#  $return_string .= "FACE_DERIVED <gamma_ipn_ntr_f_<<species>>> '0.d0' ON <allfaces>\n";
+## calculate trace of stress tensor, accounting for the number of dimensions we are using
+## this variable will be used in the sid pressure calculation within single_species_sid_pressure - not anymore
+#  for my $ldim (string_eval('<<dimensions>>','list')) {
+#    $return_string .= "VARIABLE <gamma_ipn_ntr_f_<<species>>> '<gamma_ipn_ntr_f_<<species>>>+<gamma_ipn_f_<<species>>"."[l=$ldim,$ldim]>'\n";
+#  }
+#  return $return_string;
+#}}
 # note that the previously calculated <gamma_ntr_f_<<species>>> is zero when gamma is deviatoric (it is for version4), so no longer calculated
 
 # TODO: cylindrical and azimuthal
@@ -25,3 +36,5 @@ VARIABLE <gamma_ipn_ntr_f_<<species>>> "(<gamma_ipn_ntr_f_<<species>>>)/{{ retur
 # control outputs
 VARIABLE <gamma_ipn_f_<<species>>[l=<<i>>,<<j>>]> output
 VARIABLE <gamma_ipn_ntr_f_<<species>>> output
+VARIABLE <gamma_ipn_<<species>>[l=<<i>>,<<j>>]> output
+VARIABLE <gamma_ipn_ntr_<<species>>> output
