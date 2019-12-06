@@ -17,9 +17,6 @@ For each of <<species>>, the following are defined
 Now option to remove isotropic part of strain rate tensor, meaning that gamma is deviatoric, determined by <<deviatoric_gamma>>
 END_MARKDOWN
 
-# given that all of the stress closure models tend to assume this on the microscopic scale, should be best to present to them a deviatoric gamma on the macroscopic scale
-REPLACEMENTS D "<<deviatoric_gamma>>" W "1"
-
 # if this is for the 'mixture' or 'allsolids' species, then appropriate velocities have to be defined first
 IF {{ return (string_test('<<species>>','mixture')) }}
   {{
@@ -44,28 +41,30 @@ END_IF
 # velocity gradient
 FACE_DERIVED <ugrad_f_<<species>>[l=<<i>>,<<j>>]> "facegrad[l=<<i>>,<<reflect=<<j>>>>](<u_<<species>>[l=<<j>>]>)" ON <allfaces>
 
-# symmetric strain rate
-FACE_DERIVED <gamma_f_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_f_<<species>>[l=<<i>>,<<j>>]>+<ugrad_f_<<species>>[l=<<j>>,<<i>>]>)" ON <allfaces>
+IF 0
+# given that all of the stress closure models tend to assume this on the microscopic scale, should be best to present to them a deviatoric gamma on the macroscopic scale
+  REPLACEMENTS D "<<deviatoric_gamma>>" W "1"
 
-# need to redo labels so that gamma_f is deviatoric, gamma_total_f is the full one
-IF <<deviatoric_gamma>>
-# calculate the spherical part of gamma, which is the trace divided by the number of dimensions
-# using repeated summing of components into a scalar, which expands as a line for each <<i>> index
-  FACE_LOCAL <gamma_spherical_f_<<species>>> "<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=<<i>>,<<i>>]>" ON <allfaces> output
-# and normalise by the number of dimensions, which is the number of elements in the default dimensions
+  # symmetric strain rate
+  FACE_DERIVED <gamma_f_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_f_<<species>>[l=<<i>>,<<j>>]>+<ugrad_f_<<species>>[l=<<j>>,<<i>>]>)" ON <allfaces>
+
+  # need to redo labels so that gamma_f is deviatoric, gamma_total_f is the full one
+  IF <<deviatoric_gamma>>
+  # calculate the spherical part of gamma, which is the trace divided by the number of dimensions
+  # using repeated summing of components into a scalar, which expands as a line for each <<i>> index
+    FACE_LOCAL <gamma_spherical_f_<<species>>> "<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=<<i>>,<<i>>]>" ON <allfaces> output
+  # and normalise by the number of dimensions, which is the number of elements in the default dimensions
+    VARIABLE <gamma_spherical_f_<<species>>> "(<gamma_spherical_f_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
+  # remove the spherical part from gamma to leave a deviatoric tensor
+    VARIABLE <gamma_f_<<species>>[l=<<i>>,<<i>>]> "<gamma_f_<<species>>[l=<<i>>,<<i>>]>-<gamma_spherical_f_<<species>>>"
+  END_IF
+ELSE
+  # symmetric total strain rate
+  FACE_LOCAL <gamma_total_f_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_f_<<species>>[l=<<i>>,<<j>>]>+<ugrad_f_<<species>>[l=<<j>>,<<i>>]>)" ON <allfaces>
+  FACE_LOCAL <gamma_spherical_f_<<species>>> "<gamma_spherical_f_<<species>>>+<gamma_total_f_<<species>>[l=<<i>>,<<i>>]>" ON <allfaces> output
   VARIABLE <gamma_spherical_f_<<species>>> "(<gamma_spherical_f_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
-# remove the spherical part from gamma to leave a deviatoric tensor
-  VARIABLE <gamma_f_<<species>>[l=<<i>>,<<i>>]> "<gamma_f_<<species>>[l=<<i>>,<<i>>]>-<gamma_spherical_f_<<species>>>"
+  FACE_DERIVED <gamma_f_<<species>>[l=<<i>>,<<j>>]> "<gamma_total_f_<<species>>[l=<<i>>,<<j>>]>-<gamma_spherical_f_<<species>>>*kronecker(<<i>>,<<j>>)"
 
-# old code
-#   FACE_LOCAL <gamma_spherical_f_<<species>>> "0.d0" ON <allfaces> 
-#   {{ 
-#     my $return_string = '';
-#     for my $ldim (string_eval('<<dimensions>>','list')) {
-#       $return_string .= "VARIABLE <gamma_spherical_f_<<species>>> '<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=$ldim,$ldim]>'\n";
-#     }
-#     return $return_string;
-#   }}
 END_IF
 
 # TODO: add aximuthal component to gamma here if there is one
@@ -92,12 +91,14 @@ ELSE
 # or use inbuilt function which >0 always, and is entirely equivalent to the above for a tensor
   FACE_DERIVED <gamma_magnitude_f_<<species>>> "mag(<gamma_f_<<species>>[l=:,:]>)" ON <allfaces> output
   CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
-  IF <<deviatoric_gamma>>
+  IF 0
 # if everything is based on deviatoric gamma, also calculate strain rate magnitude that includes the spherical component, known as the gamma_total_magnitude
 # <gamma_magnitude_f_...> is already >0 via cutoff in mag function
 # the perl evaluates as the number of dimensions, and is consistent with that used in the calculation of the spherical part of gamma
     FACE_LOCAL <gamma_total_magnitude_f_<<species>>> "sqrt(<gamma_magnitude_f_<<species>>>^2+0.5d0*{{ return string_eval('<<dimensions>>','count') }}*<gamma_spherical_f_<<species>>>^2)" ON <allfaces> output
     CELL_LOCAL <gamma_total_magnitude_<<species>>> "cellave(<gamma_total_magnitude_f_<<species>>>)" ON <allcells>
+  ELSE
+    FACE_LOCAL <gamma_total_magnitude_f_<<species>>> "mag(<gamma_total_f_<<species>>[l=:,:]>)" ON <allfaces> output
   END_IF
 END_IF
 
