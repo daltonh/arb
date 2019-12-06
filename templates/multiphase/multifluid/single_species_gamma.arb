@@ -70,9 +70,6 @@ END_IF
 # TODO: add aximuthal component to gamma here if there is one
 # TODO: gamma_total_magnitudes
 
-# cell centred same
-CELL_LOCAL <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_f_<<species>>[l=<<i>>,<<j>>]>" ON <allcells>
-
 # magnitude of the strain rate, on the faces (checked consistency with BSL, p241, where gamma is the sum of the velocity gradient + transpose)
 IF <<azimuthal>>
   FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*faceave(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u_<<species>>[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>))" ON <allfaces> output
@@ -121,7 +118,7 @@ IF 1
   VARIABLE <gamma_spherical_<<species>>> "(<gamma_spherical_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
 # mixture does not have u_f_vect defined
 # CELL_LOCAL <gamma_2divu_<<species>>> "2.d0*celldiv(<u_f_{raw}_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}" ON <allcells> output
-  CELL_LOCAL <gamma_2divu_<<species>>> "2.d0*celldiv(dot(<u_f_vect_<<species>>[l=:]>,<facenorm[l=:]>))/{{ return string_eval('<<dimensions>>','count') }}" ON <allcells> output
+# CELL_LOCAL <gamma_2divu_<<species>>> "2.d0*celldiv(dot(<u_f_vect_<<species>>[l=:]>,<facenorm[l=:]>))/{{ return string_eval('<<dimensions>>','count') }}" ON <allcells> output
 
 # calculate magnitude of total strain rate
   CELL_DERIVED <gamma_total_magnitude_<<species>>> "mag(<gamma_total_<<species>>[l=:,:]>)" ON <allcells> output
@@ -130,4 +127,7 @@ IF 1
   CELL_DERIVED <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_total_<<species>>[l=<<i>>,<<j>>]>-kronecker(<<i>>,<<j>>)*<gamma_spherical_<<species>>>" ON <allcells> output
   CELL_DERIVED <gamma_magnitude_<<species>>> "mag(<gamma_<<species>>[l=:,:]>)" ON <allcells> output
 
+ELSE
+# cell centred same
+  CELL_LOCAL <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_total_<<species>>[l=<<i>>,<<j>>]>-<gamma_spherical_<<species>>>*kronecker(<<i>>,<<j>>)" ON <allcells>
 END_IF

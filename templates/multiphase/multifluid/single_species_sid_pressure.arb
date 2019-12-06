@@ -21,31 +21,42 @@ IF {{ return (string_test('<<stress_method>>','version4_mixture')) }} # not used
 
 ELSE_IF {{ return (string_test('<<stress_method>>','version4') || string_test('<<stress_method>>','version4_species')) }}
 
-  IF 0 # simplest - no no no
-    CELL_LOCAL <p+_c_<<species>>> "<p+_f_<<species>>>" ON <allcells> output # average trace of stress tensor to cell centres
-  ELSE_IF 0 # yes, previously the best
-# calculate face centred trace of gamma_ipn, now done already in single_species_gamma_ipn, called within species_stress
-# face centred gamma variables are averaged implicitly
-    CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*(<mu^_sid1_c_mixture>*<gamma_ipn_ntr_f_<<species>>>+<mu^_sid2_c_mixture>*<gamma_magnitude_f_<<species>>>)" ON <allcells> output # average trace of stress tensor to cell centres
-  ELSE_IF 1 # trialling gamma ipn etc from cell centred values
-# calculate face centred trace of gamma_ipn, now done already in single_species_gamma_ipn, called within species_stress
-    CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*(<mu^_sid1_c_mixture>*<gamma_ipn_ntr_<<species>>>+<mu^_sid2_c_mixture>*<gamma_magnitude_<<species>>>)" ON <allcells> output # average trace of stress tensor to cell centres
-  ELSE_IF 0 # complex
-# individual gamma functions are weighted by viscosities when averaged
-    CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*(<mu^_sid1_c_mixture>*faceave(<mu_sid1_f_<<species>>>*<gamma_ipn_ntr_f_<<species>>>)/faceave(<mu_sid1_f_<<species>>>)+<mu^_sid2_c_mixture>*faceave(<mu_sid2_f_<<species>>>*<gamma_magnitude_f_<<species>>>)/faceave(<mu_sid2_f_<<species>>>))" ON <allcells> output # average trace of stress tensor to cell centres
-  ELSE # not very local
-# individual gamma functions are weighted by viscosities when averaged
-    CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*faceave(<mu_sid1_f_<<species>>>*<gamma_ipn_ntr_f_<<species>>>+<mu_sid2_f_<<species>>>*<gamma_magnitude_f_<<species>>>)" ON <allcells> output # average trace of stress tensor to cell centres
-  END_IF
-  IF 1
-# don't use boundary value, use upcell instead
-    CELL_DERIVED <p_sid_<<species>>> "cellif(celldelta(<boundarycells>),cellave(faceave[downcell](<p+_c_<<species>>>)),<p+_c_<<species>>>)" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
-  ELSE
-    CELL_DERIVED <p_sid_<<species>>> "<p+_c_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
-  END_IF
+  IF 0
+    IF 0 # simplest - no no no
+      CELL_LOCAL <p+_c_<<species>>> "<p+_f_<<species>>>" ON <allcells> output # average trace of stress tensor to cell centres
+    ELSE_IF 0 # yes, previously the best
+  # calculate face centred trace of gamma_ipn, now done already in single_species_gamma_ipn, called within species_stress
+  # face centred gamma variables are averaged implicitly
+      CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*(<mu^_sid1_c_mixture>*<gamma_ipn_ntr_f_<<species>>>+<mu^_sid2_c_mixture>*<gamma_magnitude_f_<<species>>>)" ON <allcells> output # average trace of stress tensor to cell centres
+    ELSE_IF 1 # trialling gamma ipn etc from cell centred values
+  # calculate face centred trace of gamma_ipn, now done already in single_species_gamma_ipn, called within species_stress
+      CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*(<mu^_sid1_c_mixture>*<gamma_ipn_ntr_<<species>>>+<mu^_sid2_c_mixture>*<gamma_magnitude_<<species>>>)" ON <allcells> output # average trace of stress tensor to cell centres
+    ELSE_IF 0 # complex
+  # individual gamma functions are weighted by viscosities when averaged
+      CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*<phi_pos_<<species>>>*(1.d0-<phi_pos_species0>)*(<mu^_sid1_c_mixture>*faceave(<mu_sid1_f_<<species>>>*<gamma_ipn_ntr_f_<<species>>>)/faceave(<mu_sid1_f_<<species>>>)+<mu^_sid2_c_mixture>*faceave(<mu_sid2_f_<<species>>>*<gamma_magnitude_f_<<species>>>)/faceave(<mu_sid2_f_<<species>>>))" ON <allcells> output # average trace of stress tensor to cell centres
+    ELSE # not very local
+  # individual gamma functions are weighted by viscosities when averaged
+      CELL_LOCAL <p+_c_<<species>>> "<mu_species0>*faceave(<mu_sid1_f_<<species>>>*<gamma_ipn_ntr_f_<<species>>>+<mu_sid2_f_<<species>>>*<gamma_magnitude_f_<<species>>>)" ON <allcells> output # average trace of stress tensor to cell centres
+    END_IF
+    IF 1
+  # don't use boundary value, use upcell instead
+      CELL_DERIVED <p_sid_<<species>>> "cellif(celldelta(<boundarycells>),cellave(faceave[downcell](<p+_c_<<species>>>)),<p+_c_<<species>>>)" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+    ELSE
+      CELL_DERIVED <p_sid_<<species>>> "<p+_c_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+    END_IF
 
-# FACE_LOCAL <p_sid_f_<<species>>> "<p+_f_<<species>>>" # previous idea, trying to use more local variables on face and hence dynamic_force_c
-  FACE_LOCAL <p_sid_f_<<species>>> "faceave(<p_sid_<<species>>>)" # more conventional treatment for dynamic_force_c
+  # FACE_LOCAL <p_sid_f_<<species>>> "<p+_f_<<species>>>" # previous idea, trying to use more local variables on face and hence dynamic_force_c
+    FACE_LOCAL <p_sid_f_<<species>>> "faceave(<p_sid_<<species>>>)" # more conventional treatment for dynamic_force_c
+  ELSE
+# hopefully the best bits of the above, but now averaging phi dependent function to face via harmonic
+# may also have to think about harmonic averaging <mu^_sid1_c etc, but for now these will be largely constant anyway, esp in the dilute limit
+    CELL_LOCAL <p^_sid_c_<<species>>> "<mu_species0>*(<mu^_sid1_c_mixture>*<gamma_ipn_ntr_<<species>>>+<mu^_sid2_c_mixture>*<gamma_magnitude_<<species>>>)" ON <allcells> output
+    CELL_LOCAL <p^+_sid_c_<<species>>> "cellif(celldelta(<boundarycells>),cellave(faceave[downcell](<p^_sid_c_<<species>>>)),<p^_sid_c_<<species>>>)" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+    CELL_LOCAL <p_sid_Phi_<<species>>> "<phi_bounded_<<species>>>*(1.d0-<phi_bounded_species0>)" ON <allcells> # now basing this on phi_bounded, not sure, but this force will go to zero as based on gradient
+    FACE_LOCAL <p_sid_Phi_f_<<species>>> "faceave[harmonic](<p_sid_Phi_<<species>>>)" ON <allfaces>
+    CELL_LOCAL <p_sid_<<species>>> "<p_sid_Phi_<<species>>>*<p^+_sid_c_<<species>>>" ON <allcells> output # average trace of stress tensor to cell centres
+    FACE_LOCAL <p_sid_f_<<species>>> "<p_sid_Phi_f_<<species>>>*faceave(<p^+_sid_c_<<species>>>)" # more conventional treatment for dynamic_force_c
+  END_IF
 
 # finally add on contribution to species pressure
   NONE_CONSTANT <p_sid_multiplier> 1.d0 # include multiplier for debugging
