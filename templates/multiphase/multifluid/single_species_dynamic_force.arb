@@ -2,15 +2,22 @@ MARKDOWN
 Here we add contributions to the dynamic force due to the already calculated <p_species> and <p^_species> for each disperse phase
 END_MARKDOWN
 
-VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/(<phi_bounded_<<species>>>)-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
+IF 0
+# use wide span phi on base
+  VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/(cellave(<phi_f_bounded_harmonic_<<species>>>))-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
+ELSE_IF
+  VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/cellmax(<phi_fc_bounded_<<species>>>,<phi_tol>)-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
+ELSE
+  VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/(<phi_bounded_<<species>>>)-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
+END_IF
 
 # trying different phi variables for the osmotic pressure term
 REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_harmonic_<<species>>>" R "<<dynamic_force_f_phi_variable_species0>>" W "<phi_f_bounded_harmonic_species0>"
-#REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_nob_<<species>>>" # version1, unstable in presence of large phi gradients
+#REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_nob_<<species>>>" R "<<dynamic_force_f_phi_variable_species0>>" W "<phi_f_bounded_adjacent_nob_species0>" # version1, unstable in presence of large phi gradients
 #REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_adjacent_<<species>>>"
 
 # now deal with dynamic_force_f
-REPLACEMENTS D "<<facegrad_method>>" W "" # define scope of averaging variable, and default which is for 
+REPLACEMENTS D "<<facegrad_method>>" W "" # define scope of averaging variable, and default of blank which is facegrad
 IF {{ return string_test('<<dynamic_force_f_method>>','dxunit'); }}
   REPLACEMENTS S "<<facegrad_method>>" W "dxunit"
 ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegrad'); }}
