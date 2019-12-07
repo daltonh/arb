@@ -51,7 +51,9 @@ IF {{ return ( string_test('<<stress_method>>','version4') || string_test('<<str
       FACE_DERIVED <mu_sid2_f_<<species>>> "faceave[harmonic](<mu^_sid2_c_mixture>*<phi_bounded_<<species>>>*(1.d0-<phi_bounded_species0>))" ON <allfaces> output # used in stress
 #     FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*(<mu_col_f_<<species>>>+<mu_sid1_f_<<species>>>+<mu_sid2_f_<<species>>>)/<phi_f_bounded_<<species>>>" ON <allfaces> # used in rhie-chow
 #     FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*(<mu_col_f_<<species>>>+<mu_sid1_f_<<species>>>+<mu_sid2_f_<<species>>>)/<phi_f_bounded_harmonic_<<species>>>" ON <allfaces> # used in rhie-chow
-      FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*faceave[adjacentcells]((<mu^_col_c_mixture>+<mu^_sid1_c_mixture>+<mu^_sid2_c_mixture>)*<phi_bounded_<<species>>>)" ON <allfaces> # used in rhie-chow
+#     FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*faceave[adjacentcells]((<mu^_col_c_mixture>+<mu^_sid1_c_mixture>+<mu^_sid2_c_mixture>)*<phi_bounded_<<species>>>)" ON <allfaces> # used in rhie-chow
+# correction viscosity should only be from col
+      FACE_LOCAL <mu_f_correction_<<species>>> "<mu_species0>*faceave[adjacentcells](<mu^_col_c_mixture>*<phi_bounded_<<species>>>)" ON <allfaces> # used in rhie-chow
     END_IF
 # ELSE
 #   ERROR "single_species_viscosity cannot handle stress_method = version4_species yet"
