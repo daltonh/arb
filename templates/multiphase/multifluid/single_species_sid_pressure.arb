@@ -21,7 +21,7 @@ IF {{ return (string_test('<<stress_method>>','version4_mixture')) }} # not used
 
 ELSE_IF {{ return (string_test('<<stress_method>>','version4') || string_test('<<stress_method>>','version4_species')) }}
 
-  IF 0
+  IF 1
     IF 0 # simplest - no no no
       CELL_LOCAL <p+_c_<<species>>> "<p+_f_<<species>>>" ON <allcells> output # average trace of stress tensor to cell centres
     ELSE_IF 0 # yes, previously the best

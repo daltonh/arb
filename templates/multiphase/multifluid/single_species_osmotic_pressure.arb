@@ -77,12 +77,15 @@ ELSE
 
 END_IF
 
-#CELL_DERIVED <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
-
+IF 1
+  CELL_DERIVED <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+  FACE_LOCAL <p_osmotic_f_<<species>>> "faceave(<p_osmotic_<<species>>>)" ON <allfaces> output
+ELSE
+# no
 # now allowing effect of this force to be zero by limiting pressure above phi_bounded on both face (for <dynamic_force_c>) and cell (for <dynamic_force_f>)
-CELL_DERIVED <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_bounded_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
-
-FACE_LOCAL <p_osmotic_f_<<species>>> "faceave(<p_osmotic_multiplier_<<species>>>)*faceave[harmonic](<phi_bounded_<<species>>>)" ON <allfaces> output
+  CELL_DERIVED <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_bounded_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
+  FACE_LOCAL <p_osmotic_f_<<species>>> "faceave(<p_osmotic_multiplier_<<species>>>)*faceave[harmonic](<phi_bounded_<<species>>>)" ON <allfaces> output
+END_IF
 
 # add on contribution to species pressure
 VARIABLE <p_<<species>>> "<p_<<species>>>+(<p_osmotic_<<species>>>)"
