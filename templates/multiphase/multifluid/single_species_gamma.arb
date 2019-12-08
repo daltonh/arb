@@ -32,6 +32,8 @@ REPLACEMENTS D "<<gammabinding>>" W "0" # whether to calculate bits necessary fo
 
 DEFAULT_OPTIONS nooutput # everything is off by default, unless turned on
 
+CONSTANT <gamma_min> 1.d-40 # minimum gamma to avoid divide through errors - actually, there are ratios that need to be bounded as gamma -> 0
+
 # if this is for the 'mixture' or 'allsolids' species, then appropriate velocities have to be defined first
 IF {{ return (string_test('<<species>>','mixture')) }}
   {{
@@ -134,7 +136,7 @@ END_IF
 IF {{ return (string_test('<<stress_method>>','version4') || string_test('<<stress_method>>','version4_species')) }}
 
   # inner product of gamma, normalised by gamma_mag = inner product normalised = ipn, calculated together with magnitude
-  FACE_DERIVED <gamma_ipn_f_<<species>>[l=<<i>>,<<j>>]> "dot(<gamma_f_<<species>>[l=<<i>>,:]>,<gamma_f_<<species>>[l=:,<<j>>]>)/<gamma_magnitude_f_<<species>>>" ON <allfaces>
+  FACE_DERIVED <gamma_ipn_f_<<species>>[l=<<i>>,<<j>>]> "dot(<gamma_f_<<species>>[l=<<i>>,:]>,<gamma_f_<<species>>[l=:,<<j>>]>)/facemax(<gamma_magnitude_f_<<species>>>,<gamma_min>)" ON <allfaces>
 
   IF <<gammacellfromface>>
 
@@ -165,9 +167,9 @@ END_IF
 IF <<gammabinding>>
 
   IF <<gammacellfromface>>
-    CELL_LOCAL <gamma_sphericaln_<<species>>> "cellave(<gamma_spherical_f_<<species>>>/<gamma_total_magnitude_f_<<species>>>)" ON <allcells> output
+    CELL_LOCAL <gamma_sphericaln_<<species>>> "cellave(<gamma_spherical_f_<<species>>>/facemax(<gamma_total_magnitude_f_<<species>>>,<gamma_min>))" ON <allcells> output
   ELSE
-    CELL_LOCAL <gamma_sphericaln_<<species>>> "<gamma_spherical_<<species>>>/<gamma_total_magnitude_<<species>>>" ON <allcells> output
+    CELL_LOCAL <gamma_sphericaln_<<species>>> "<gamma_spherical_<<species>>>/facemax(<gamma_total_magnitude_<<species>>>,<gamma_min>)" ON <allcells> output
   END_IF
 
 END_IF
