@@ -79,7 +79,8 @@ END_IF
 
 IF 1
   CELL_DERIVED <p_osmotic_<<species>>> "<p_osmotic_multiplier_<<species>>>*<phi_<<species>>>" ON <allcells> output # note that phi here isn't limited so that negative osmotic pressures could be generated at boundaries where phi goes negative
-  FACE_LOCAL <p_osmotic_f_<<species>>> "faceave(<p_osmotic_<<species>>>)" ON <allfaces> output
+# FACE_LOCAL <p_osmotic_f_<<species>>> "faceave(<p_osmotic_<<species>>>)" ON <allfaces> output
+  FACE_LOCAL <p_osmotic_f_<<species>>> "<dynamic_face_interpolation>*faceave(<p_osmotic_<<species>>>)+(1.d0-<dynamic_face_interpolation>)*faceave[adjacentcells](<p_osmotic_<<species>>>)" ON <allfaces> output # more conventional treatment for dynamic_force_c
 ELSE
 # no
 # now allowing effect of this force to be zero by limiting pressure above phi_bounded on both face (for <dynamic_force_c>) and cell (for <dynamic_force_f>)
