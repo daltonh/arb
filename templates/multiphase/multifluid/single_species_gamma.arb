@@ -178,8 +178,8 @@ END_IF
 DEFAULT_OPTIONS # clear the default options and add some real ones
 
 # turn some selected outputs on
-VARIABLE <gamma_spherical_<<species>>> output
-VARIABLE <gamma_spherical_f_<<species>>> output
+#VARIABLE <gamma_spherical_<<species>>> output
+#VARIABLE <gamma_spherical_f_<<species>>> output
 VARIABLE <gamma_magnitude_<<species>>> output
 VARIABLE <gamma_magnitude_f_<<species>>> output
 VARIABLE <gamma_total_magnitude_<<species>>> output

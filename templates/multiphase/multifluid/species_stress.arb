@@ -83,8 +83,10 @@ ELSE_IF {{ return (string_test('<<stress_method>>','version4') || string_test('<
   {{ my $return_string = '';
 
     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+
 # inner product of gamma, normalised by gamma_mag = inner product normalised = ipn, calculated together with magnitude
-      $return_string .= "INCLUDE 'single_species_gamma_ipn' R '<<species>>' W '$species'\n";
+# now calculated within single_species_gamma
+#     $return_string .= "INCLUDE 'single_species_gamma_ipn' R '<<species>>' W '$species'\n";
       
 # this is the same as tau, but includes the isotropic part that will be removed
       $return_string .= "FACE_DERIVED <tau+_$species"."[l=<<i>>,<<j>>]> '<mu_species0>*( -<mu_col_f_$species>*<gamma_f_$species"."[l=<<i>>,<<j>>]> + <mu_sid1_f_$species>*<gamma_ipn_f_$species"."[l=<<i>>,<<j>>]> + <mu_sid2_f_$species>*<gamma_magnitude_f_$species>*kronecker(<<i>>,<<j>>) )' ON <allfaces> output\n";
