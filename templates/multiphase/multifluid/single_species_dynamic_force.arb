@@ -8,9 +8,11 @@ IF 0
 ELSE_IF 1
 # cell centred from face centred, and variable interpolation of face centred
 
+# set up a constant weighting factor that determines how local variables are going to be when calculating the non-specific gradient dynamic force terms
+# also used in calculating p_f_<<species>> and/or components
   NONE_CONSTANT <dynamic_face_interpolation> 0.d0 # this is a constant that controls whether interpolation to face is via adjacentcells (0) or normal faceave (1)
-  FACE_LOCAL <phi_dynamic_f_<<species>>> "facemax(facemin(<dynamic_face_interpolation>*faceave(<phi_bounded_<<species>>>)+(1.d0-<dynamic_face_interpolation>)*faceave[adjacentcells](<phi_bounded_<<species>>>),1.d0-<phi_tol>),<phi_tol>)" ON <allfaces> output
-  CELL_LOCAL <phi_dynamic_c_<<species>>> "cellmax(cellmin(<phi_dynamic_f_<<species>>>,1.d0-<phi_tol>),<phi_tol>)" ON <allcells> output
+  FACE_DERIVED <phi_dynamic_f_<<species>>> "facemax(facemin(<dynamic_face_interpolation>*faceave(<phi_bounded_<<species>>>)+(1.d0-<dynamic_face_interpolation>)*faceave[adjacentcells](<phi_bounded_<<species>>>),1.d0-<phi_tol>),<phi_tol>)" ON <allfaces> output
+  CELL_DERIVED <phi_dynamic_c_<<species>>> "cellmax(cellmin(<phi_dynamic_f_<<species>>>,1.d0-<phi_tol>),<phi_tol>)" ON <allcells> output
 
   VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/<phi_dynamic_c_<<species>>>-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
 ELSE
@@ -33,7 +35,10 @@ ELSE_IF {{ return string_test('<<dynamic_force_f_method>>','facegradadjacentcell
   REPLACEMENTS S "<<facegrad_method>>" W "adjacentcells"
 END_IF
 
-VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[<<facegrad_method>>](<p_<<species>>>)/(<<dynamic_force_f_phi_variable>>)-facegrad[<<facegrad_method>>](<p^_<<species>>>)"
+VARIABLE <dynamic_force_f_<<species>>> "<dynamic_force_f_<<species>>>-facegrad[<<facegrad_method>>](<p_<<species>>>)/(<<dynamic_force_f_phi_variable>>)-facegrad[<<facegrad_method>>](<p^_<<species>>>)" output
+
+# for visualisation
+FACE_OUTPUT <dynamic_force_f_vect_<<species>>[l=<<i>>]> "<dynamic_force_f_<<species>>>*<facenorm[l=<<i>>]>" ON <allfaces>
 
 IF {{ return (arb_defined(string_eval('<p^_<<species>>_species0>','text'))) }}
   IF {{ return (!(arb_defined(string_eval('<p^_f_<<species>>_species0>','text')))) }}

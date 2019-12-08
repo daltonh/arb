@@ -53,3 +53,13 @@ IF <<inertial_diffusion>>
 END_IF
 
 # note that face values for both pressure types are calculated when calculating the dynamic forces
+
+# no, overwriting with averaging only combined pressures
+FACE_DERIVED <p_f_<<species>>> "<dynamic_face_interpolation>*faceave(<p_<<species>>>)+(1.d0-<dynamic_face_interpolation>)*faceave[adjacentcells](<p_<<species>>>)" ON <allfaces> output # more conventional treatment for dynamic_force_c
+# not sure if this is a good idea, but only used for excess right now
+# possibly just keeping this as face averaged would be a good idea
+#FACE_DERIVED <p^_f_<<species>>> "<dynamic_face_interpolation>*faceave(<p^_<<species>>>)+(1.d0-<dynamic_face_interpolation>)*faceave[adjacentcells](<p^_<<species>>>)" ON <allfaces> output # more conventional treatment for dynamic_force_c
+FACE_DERIVED <p^_f_<<species>>> "faceave(<p^_<<species>>>)" ON <allfaces> output # more conventional treatment for dynamic_force_c
+# should do these too
+# FACE_LOCAL <p^_f_<<species>>_species0> "0.d0" ON <allfaces>
+# FACE_LOCAL <p_f_<<species>>_species0> "0.d0" ON <allfaces>
