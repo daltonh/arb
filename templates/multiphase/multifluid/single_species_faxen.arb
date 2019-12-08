@@ -21,6 +21,10 @@ IF {{ return string_test('<<faxen_method>>','version1') }}
 # CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "-<particle_force_alpha4>*<laplacian_<<velocity_species>>[l=<<i>>]>" ON <domain> output # right sign??
   CELL_DERIVED <particle_force_faxen_<<species>>[l=<<i>>]> "<particle_force_alpha4>*<laplacian_<<velocity_species>>[l=<<i>>]>" ON <domain> output # right sign??
 
+# add on contribution to mu_f_{correction} just for the disperse phase
+# actually, fluid phase one should be reduced, but will be small effect and difficult numerically
+  VARIABLE <mu_f_correction_<<species>>> "(<mu_f_correction_<<species>>>)+<particle_force_alpha4>"
+
 ELSE_IF {{ return string_test('<<faxen_method>>','version2') }}
 # include the influence of hindered settling function etc
 

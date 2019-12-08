@@ -26,5 +26,8 @@ END_IF
   return $return_string;
 }}
 
+REPLACEMENTS D "<<calcmixturegamma>>" W "0" # by default don't bother calculating mixture gamma
 # now for mixture, after defining mixture velocity
-INCLUDE 'single_species_gamma' R '<<species>>' W 'mixture' R 'DERIVED' W '<<mixture_type>>'
+IF <<calcmixturegamma>>
+  INCLUDE 'single_species_gamma' R '<<species>>' W 'mixture' R 'DERIVED' W '<<mixture_type>>'
+END_IF

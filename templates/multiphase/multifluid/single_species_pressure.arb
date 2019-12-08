@@ -5,22 +5,29 @@ END_MARKDOWN
 # first define the two types of pressures as locals, and then add specific contributions to these as deriveds as needed
 CELL_LOCAL <p_<<species>>> "0.d0" ON <allcells> # for the fluid, this is the fluid pressure applied to all phases, while for the disperse phases this appears as a divergence in the full momentum equation
 CELL_LOCAL <p^_<<species>>> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
-FACE_LOCAL <p_f_<<species>>> "0.d0" ON <allfaces>
-FACE_LOCAL <p^_f_<<species>>> "0.d0" ON <allfaces>
+
+GENERAL_REPLACEMENTS R "<<dynamic_face_interpolation>>" W "0" # for greater efficiency, use a string to specify this value
+FACE_DERIVED <phi_dynamic_f_<<species>>> "facemax(facemin(<<dynamic_face_interpolation>>*faceave(<phi_bounded_<<species>>>)+(1.d0-<<dynamic_face_interpolation>>)*faceave[adjacentcells](<phi_bounded_<<species>>>),1.d0-<phi_tol>),<phi_tol>)" ON <allfaces> output
+CELL_DERIVED <phi_dynamic_c_<<species>>> "cellmax(cellmin(<phi_dynamic_f_<<species>>>,1.d0-<phi_tol>),<phi_tol>)" ON <allcells> output
+# the following are locals, so that we can build them up
+FACE_LOCAL <p_f_<<species>>> "<<dynamic_face_interpolation>>*faceave(<p_<<species>>>)+(1.d0-<<dynamic_face_interpolation>>)*faceave[adjacentcells](<p_<<species>>>)" ON <allfaces> output # more conventional treatment for dynamic_force_c
+FACE_LOCAL <p^_f_<<species>>> "faceave(<p^_<<species>>>)" ON <allfaces> output # more conventional treatment for dynamic_force_c
+# should do these too if they are defined
+# FACE_LOCAL <p^_f_<<species>>_species0> "0.d0" ON <allfaces>
+# FACE_LOCAL <p_f_<<species>>_species0> "0.d0" ON <allfaces>
 
 REPLACEMENTS D "<<shear_induced_diffusion_on_fluid>>" W "0" # whether to also add this force from the fluid phase
 # if including sid on the fluid phase too, then will need to calculate a p^ for each disperse and fluid species combinations
 IF <<shear_induced_diffusion_on_fluid>>
   CELL_LOCAL <p^_<<species>>_species0> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
   CELL_LOCAL <p_<<species>>_species0> "0.d0" ON <allcells> # this is multiplied by the phase volume fraction before taking the divergence in the full momentum equation, hence, is referred to as a phase specific (^) species pressure
-  FACE_LOCAL <p^_f_<<species>>_species0> "0.d0" ON <allfaces>
-  FACE_LOCAL <p_f_<<species>>_species0> "0.d0" ON <allfaces>
+  ERROR "need to deal with face averaging"
 END_IF
 
 REPLACEMENTS D "<<inertial_diffusion>>" W "0" # inertial diffusion requires an extra fluid and dispersed phase pressure to be calculated
 IF <<inertial_diffusion>>
   CELL_LOCAL <p_<<species>>_species0> "0.d0" ON <allcells>
-  FACE_LOCAL <p_f_<<species>>_species0> "0.d0" ON <allfaces>
+  ERROR "need to deal with face averaging"
 END_IF
 
 # osmotic pressure, adding to <p_<<species>>> and <p_f_<<species>>>
@@ -51,15 +58,3 @@ END_IF
 IF <<inertial_diffusion>>
   INCLUDE "single_species_inertial_diffusion"
 END_IF
-
-# note that face values for both pressure types are calculated when calculating the dynamic forces
-
-# no, overwriting with averaging only combined pressures
-FACE_DERIVED <p_f_<<species>>> "<dynamic_face_interpolation>*faceave(<p_<<species>>>)+(1.d0-<dynamic_face_interpolation>)*faceave[adjacentcells](<p_<<species>>>)" ON <allfaces> output # more conventional treatment for dynamic_force_c
-# not sure if this is a good idea, but only used for excess right now
-# possibly just keeping this as face averaged would be a good idea
-#FACE_DERIVED <p^_f_<<species>>> "<dynamic_face_interpolation>*faceave(<p^_<<species>>>)+(1.d0-<dynamic_face_interpolation>)*faceave[adjacentcells](<p^_<<species>>>)" ON <allfaces> output # more conventional treatment for dynamic_force_c
-FACE_DERIVED <p^_f_<<species>>> "faceave(<p^_<<species>>>)" ON <allfaces> output # more conventional treatment for dynamic_force_c
-# should do these too
-# FACE_LOCAL <p^_f_<<species>>_species0> "0.d0" ON <allfaces>
-# FACE_LOCAL <p_f_<<species>>_species0> "0.d0" ON <allfaces>

@@ -45,32 +45,34 @@ ELSE_IF {{ return (string_test('<<stress_method>>','version2') || string_test('<
     return $return_string;
   }}
 #----------------------
-ELSE_IF {{ return (string_test('<<stress_method>>','version4_mixture')) }} # not used, left for code spare parts
-# version4 - based on the species viscosities and mixture velocities
-# calculate the fluid species0 viscous stress, which for all methods is now based on the mixture (volume) averaged velocity and mixture viscosity (and hence mixture stress)
+# ELSE_IF {{ return (string_test('<<stress_method>>','version4_mixture')) }} # not used, left for code spare parts
+# # version4 - based on the species viscosities and mixture velocities
+# # calculate the fluid species0 viscous stress, which for all methods is now based on the mixture (volume) averaged velocity and mixture viscosity (and hence mixture stress)
 
-  VARIABLE <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_mixture[l=<<i>>,<<j>>]>" # note, maxima will simplify diagonal components
-  FACE_DERIVED <tau^^_mixture[l=<<i>>,<<j>>]> "<mu_species0>*( -<mu^_col_f_mixture>*<gamma_f_mixture[l=<<i>>,<<j>>]> + <mu^_sid1_f_mixture>*dot(<gamma_f_mixture[l=<<i>>,:]>,<gamma_f_mixture[l=:,<<j>>]>)/facemax(<gamma_magnitude_f_mixture>,<tinyish>) + <mu^_sid2_f_mixture>*<gamma_magnitude_f_mixture>*kronecker(<<i>>,<<j>>) )" ON <allfaces> output
-  FACE_DERIVED <p^^_f_mixture> "0.d0" ON <allfaces> output
-# calculate trace of stress tensor, accounting for the number of dimensions we are using
-# this variable will be used in the sid pressure calculation within single_species_sid_pressure
-  {{ my $return_string = ''; my $ndim = 0;
-    for my $ldim (string_eval('<<dimensions>>','list')) {
-      $return_string .= "VARIABLE <p^^_f_mixture> '<p^^_f_mixture>+<tau^^_mixture[l=$ldim,$ldim]>'\n";
-      $ndim = $ndim+1;
-    }
-    $return_string .= "VARIABLE <p^^_f_mixture> '(<p^^_f_mixture>)/$ndim'\n";
-    return $return_string;
-  }}
+# # SPARE PARTS ONLY
+# # TODO: need to tell gamma to calc mixture velocities
+#   VARIABLE <tau_species0[l=<<i>>,<<j>>]> "-<mu_f_species0>*<gamma_f_mixture[l=<<i>>,<<j>>]>" # note, maxima will simplify diagonal components
+#   FACE_DERIVED <tau^^_mixture[l=<<i>>,<<j>>]> "<mu_species0>*( -<mu^_col_f_mixture>*<gamma_f_mixture[l=<<i>>,<<j>>]> + <mu^_sid1_f_mixture>*dot(<gamma_f_mixture[l=<<i>>,:]>,<gamma_f_mixture[l=:,<<j>>]>)/facemax(<gamma_magnitude_f_mixture>,<tinyish>) + <mu^_sid2_f_mixture>*<gamma_magnitude_f_mixture>*kronecker(<<i>>,<<j>>) )" ON <allfaces> output
+#   FACE_DERIVED <p^^_f_mixture> "0.d0" ON <allfaces> output
+# # calculate trace of stress tensor, accounting for the number of dimensions we are using
+# # this variable will be used in the sid pressure calculation within single_species_sid_pressure
+#   {{ my $return_string = ''; my $ndim = 0;
+#     for my $ldim (string_eval('<<dimensions>>','list')) {
+#       $return_string .= "VARIABLE <p^^_f_mixture> '<p^^_f_mixture>+<tau^^_mixture[l=$ldim,$ldim]>'\n";
+#       $ndim = $ndim+1;
+#     }
+#     $return_string .= "VARIABLE <p^^_f_mixture> '(<p^^_f_mixture>)/$ndim'\n";
+#     return $return_string;
+#   }}
 
-# finally calculate the phase stress
-# right now volume fraction based on bounded_harmonic - needs testing
-  {{ my $return_string = '';
-    for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
-      $return_string .= "VARIABLE <tau_$species"."[l=<<i>>,<<j>>]> '<phi_f_bounded_harmonic_$species>*(1.d0-<phi_f_bounded_harmonic_species0>)*(<tau^^_mixture[l=<<i>>,<<j>>]>-<p^^_f_mixture>*kronecker(<<i>>,<<j>>))'\n";
-    }
-    return $return_string;
-  }}
+# # finally calculate the phase stress
+# # right now volume fraction based on bounded_harmonic - needs testing
+#   {{ my $return_string = '';
+#     for my $species (string_eval('<<multifluid_disperse_species_list>>','list')) {
+#       $return_string .= "VARIABLE <tau_$species"."[l=<<i>>,<<j>>]> '<phi_f_bounded_harmonic_$species>*(1.d0-<phi_f_bounded_harmonic_species0>)*(<tau^^_mixture[l=<<i>>,<<j>>]>-<p^^_f_mixture>*kronecker(<<i>>,<<j>>))'\n";
+#     }
+#     return $return_string;
+#   }}
 
 #----------------------
 ELSE_IF {{ return (string_test('<<stress_method>>','version4') || string_test('<<stress_method>>','version4_species')) }}

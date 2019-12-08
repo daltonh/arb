@@ -48,7 +48,7 @@ IF {{ return string_test('<<viscosity_method>>','roughness111119') }}
   CONSTANT <mu^_r_infty_n2> 1.0 # exponent of upper spike function
   CONSTANT <mu^_r_infty_phi_max_allsolids> "<phi_max_allsolids>"
 # function
-  CELL_DERIVED <mu^_r_infty> "cellmax(<mu^_r_infty_b>+(<mu^_r_infty_c1>/<mu^_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+(<mu^_r_infty_c2>/cellmax(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>,<phi_tol>))^(<mu^_r_infty_n2>),2.d0)" ON <allcells> output
+  CELL_DERIVED <mu^_r_infty> "cellmax(<mu^_r_infty_b>+(<mu^_r_infty_c1>/<mu^_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+(<mu^_r_infty_c2>/cellmax(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>,<phi_tol>))^(<mu^_r_infty_n2>),2.d0)" ON <allcells>
   CELL_LOCAL <mu^_r_infty_minus2> "<mu^_r_infty>-2.d0" ON <allcells> output
 
 # now use templates to calculate B^_1 and B^_2 from this

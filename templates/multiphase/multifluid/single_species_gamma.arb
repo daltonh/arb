@@ -17,6 +17,8 @@ For each of <<species>>, the following are defined
 Now option to remove isotropic part of strain rate tensor, meaning that gamma is deviatoric, determined by <<deviatoric_gamma>>
 END_MARKDOWN
 
+DEFAULT_OPTIONS nooutput # everything is off by default, unless turned on
+
 # if this is for the 'mixture' or 'allsolids' species, then appropriate velocities have to be defined first
 IF {{ return (string_test('<<species>>','mixture')) }}
   {{
@@ -52,7 +54,7 @@ IF 0
   IF <<deviatoric_gamma>>
   # calculate the spherical part of gamma, which is the trace divided by the number of dimensions
   # using repeated summing of components into a scalar, which expands as a line for each <<i>> index
-    FACE_LOCAL <gamma_spherical_f_<<species>>> "<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=<<i>>,<<i>>]>" ON <allfaces> output
+    FACE_LOCAL <gamma_spherical_f_<<species>>> "<gamma_spherical_f_<<species>>>+2.d0*<ugrad_f_<<species>>[l=<<i>>,<<i>>]>" ON <allfaces>
   # and normalise by the number of dimensions, which is the number of elements in the default dimensions
     VARIABLE <gamma_spherical_f_<<species>>> "(<gamma_spherical_f_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
   # remove the spherical part from gamma to leave a deviatoric tensor
@@ -60,8 +62,8 @@ IF 0
   END_IF
 ELSE
   # symmetric total strain rate
-  FACE_LOCAL <gamma_total_f_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_f_<<species>>[l=<<i>>,<<j>>]>+<ugrad_f_<<species>>[l=<<j>>,<<i>>]>)" ON <allfaces>
-  FACE_LOCAL <gamma_spherical_f_<<species>>> "<gamma_spherical_f_<<species>>>+<gamma_total_f_<<species>>[l=<<i>>,<<i>>]>" ON <allfaces> output
+  FACE_DERIVED <gamma_total_f_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_f_<<species>>[l=<<i>>,<<j>>]>+<ugrad_f_<<species>>[l=<<j>>,<<i>>]>)" ON <allfaces>
+  FACE_DERIVED <gamma_spherical_f_<<species>>> "<gamma_spherical_f_<<species>>>+<gamma_total_f_<<species>>[l=<<i>>,<<i>>]>" ON <allfaces>
   VARIABLE <gamma_spherical_f_<<species>>> "(<gamma_spherical_f_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
   FACE_DERIVED <gamma_f_<<species>>[l=<<i>>,<<j>>]> "<gamma_total_f_<<species>>[l=<<i>>,<<j>>]>-<gamma_spherical_f_<<species>>>*kronecker(<<i>>,<<j>>)"
 
@@ -72,62 +74,95 @@ END_IF
 
 # magnitude of the strain rate, on the faces (checked consistency with BSL, p241, where gamma is the sum of the velocity gradient + transpose)
 IF <<azimuthal>>
-  FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*faceave(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u_<<species>>[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>))" ON <allfaces> output
-  CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
+  FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*faceave(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2- facegrad[l=<<radialdim>>,reflect=<<radialdim>>](<u_<<species>>[l=<<azimuthaldim>>]>**2/<cellx[l=<<radialdim>>]>),<tinyish>))" ON <allfaces>
 ELSE_IF <<cylindrical>>
-  FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*faceave(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2,<tinyish>))" ON <allfaces> output
-  IF 1
-# the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
-    CELL_LOCAL <gamma_magnitude_<<species>>> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2),<tinyish>))" ON <allcells>
-  ELSE
-    CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
-  END_IF
+  FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*faceave(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2,<tinyish>))" ON <allfaces>
 # TODO: gamma_total_magnitudes
 ELSE
-# FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>),<tinyish>))" ON <allfaces> output
+# FACE_DERIVED <gamma_magnitude_f_<<species>>> "sqrt(facemax(0.5d0*ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>),<tinyish>))" ON <allfaces>
 # or use inbuilt function which >0 always, and is entirely equivalent to the above for a tensor
-  FACE_DERIVED <gamma_magnitude_f_<<species>>> "mag(<gamma_f_<<species>>[l=:,:]>)" ON <allfaces> output
-  CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
-  IF 0
+  FACE_DERIVED <gamma_magnitude_f_<<species>>> "mag(<gamma_f_<<species>>[l=:,:]>)" ON <allfaces>
+  IF 1
 # if everything is based on deviatoric gamma, also calculate strain rate magnitude that includes the spherical component, known as the gamma_total_magnitude
 # <gamma_magnitude_f_...> is already >0 via cutoff in mag function
 # the perl evaluates as the number of dimensions, and is consistent with that used in the calculation of the spherical part of gamma
-    FACE_LOCAL <gamma_total_magnitude_f_<<species>>> "sqrt(<gamma_magnitude_f_<<species>>>^2+0.5d0*{{ return string_eval('<<dimensions>>','count') }}*<gamma_spherical_f_<<species>>>^2)" ON <allfaces> output
-    CELL_LOCAL <gamma_total_magnitude_<<species>>> "cellave(<gamma_total_magnitude_f_<<species>>>)" ON <allcells>
+    FACE_LOCAL <gamma_total_magnitude_f_<<species>>> "sqrt(<gamma_magnitude_f_<<species>>>^2+0.5d0*{{ return string_eval('<<dimensions>>','count') }}*<gamma_spherical_f_<<species>>>^2)" ON <allfaces>
   ELSE
-    FACE_LOCAL <gamma_total_magnitude_f_<<species>>> "mag(<gamma_total_f_<<species>>[l=:,:]>)" ON <allfaces> output
+    FACE_LOCAL <gamma_total_magnitude_f_<<species>>> "mag(<gamma_total_f_<<species>>[l=:,:]>)" ON <allfaces>
   END_IF
 END_IF
 
 
-IF 1
-# trial overwriting interpolated cell centred strain rates with those calculated form celldivgrad instead
+
+REPLACEMENTS D "<<gammacellfromface>>" W "0"
+IF <<gammacellfromface>>
+# IF <<azimuthal>>
+#   CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
+# ELSE_IF <<cylindrical>>
+#   IF 1
+# # the cylindrical version includes another component based on the radial dimension, which is calculated directly from cell centred variables
+#     CELL_LOCAL <gamma_magnitude_<<species>>> "sqrt(cellmax(0.5d0*cellave(ddot(<gamma_f_<<species>>[l=:,:]>,<gamma_f_<<species>>[l=:,:]>)+2.d0*(<u_<<species>>[l=<<radialdim>>]>/<cellx[l=<<radialdim>>]>)**2),<tinyish>))" ON <allcells>
+#   ELSE
+#     CELL_LOCAL <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
+#   END_IF
+# # TODO: gamma_total_magnitudes
+# ELSE
+#   IF 0
+# # if everything is based on deviatoric gamma, also calculate strain rate magnitude that includes the spherical component, known as the gamma_total_magnitude
+# # <gamma_magnitude_f_...> is already >0 via cutoff in mag function
+# # the perl evaluates as the number of dimensions, and is consistent with that used in the calculation of the spherical part of gamma
+#     FACE_LOCAL <gamma_total_magnitude_f_<<species>>> "sqrt(<gamma_magnitude_f_<<species>>>^2+0.5d0*{{ return string_eval('<<dimensions>>','count') }}*<gamma_spherical_f_<<species>>>^2)" ON <allfaces>
+#   ELSE
+#     FACE_LOCAL <gamma_total_magnitude_f_<<species>>> "mag(<gamma_total_f_<<species>>[l=:,:]>)" ON <allfaces>
+#     CELL_LOCAL <gamma_total_magnitude_<<species>>> "cellave(<gamma_total_magnitude_f_<<species>>>)" ON <allcells>
+#   END_IF
+  # calculate cell centred properties by averaging from face
+  CELL_DERIVED <gamma_total_magnitude_<<species>>> "cellave(<gamma_total_magnitude_f_<<species>>>)" ON <allcells>
+  CELL_DERIVED <gamma_magnitude_<<species>>> "cellave(<gamma_magnitude_f_<<species>>>)" ON <allcells>
+  CELL_DERIVED <gamma_<<species>>[l=<<i>>,<<j>>]> "cellave(<gamma_f_<<species>>[l=<<i>>,<<j>>]>)" ON <allcells>
+ELSE
+# cell centred properties calculated form celldivgrad instead
 
 # in case we are dealing with mixture or allsolids, make sure that u_f_vect is defined
-  FACE_LOCAL <u_f_vect_<<species>>[l=<<i>>]> "faceave[<<reflect=<<i>>>>](<u_<<species>>[l=<<i>>]>)" ON <allfaces> output
+  FACE_DERIVED <u_f_vect_<<species>>[l=<<i>>]> "faceave[<<reflect=<<i>>>>](<u_<<species>>[l=<<i>>]>)" ON <allfaces>
 
 # velocity gradient
-  CELL_DERIVED <ugrad_<<species>>[l=<<i>>,<<j>>]> "celldivgrad[l=<<i>>](<u_f_vect_<<species>>[l=<<j>>]>)" ON <allcells> output
+  CELL_DERIVED <ugrad_<<species>>[l=<<i>>,<<j>>]> "celldivgrad[l=<<i>>](<u_f_vect_<<species>>[l=<<j>>]>)" ON <allcells>
 
 # symmetric strain rate
-  CELL_LOCAL <gamma_total_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_<<species>>[l=<<i>>,<<j>>]>+<ugrad_<<species>>[l=<<j>>,<<i>>]>)" ON <allcells> output
+  CELL_DERIVED <gamma_total_<<species>>[l=<<i>>,<<j>>]> "(<ugrad_<<species>>[l=<<i>>,<<j>>]>+<ugrad_<<species>>[l=<<j>>,<<i>>]>)" ON <allcells>
 
 # calculate spherical component
-  CELL_LOCAL <gamma_spherical_<<species>>> "<gamma_spherical_<<species>>>+<gamma_total_<<species>>[l=<<i>>,<<i>>]>" ON <allcells> output
+  CELL_DERIVED <gamma_spherical_<<species>>> "<gamma_spherical_<<species>>>+<gamma_total_<<species>>[l=<<i>>,<<i>>]>" ON <allcells>
 # and normalise by the number of dimensions, which is the number of elements in the default dimensions
   VARIABLE <gamma_spherical_<<species>>> "(<gamma_spherical_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
 # mixture does not have u_f_vect defined
-# CELL_LOCAL <gamma_2divu_<<species>>> "2.d0*celldiv(<u_f_{raw}_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}" ON <allcells> output
-# CELL_LOCAL <gamma_2divu_<<species>>> "2.d0*celldiv(dot(<u_f_vect_<<species>>[l=:]>,<facenorm[l=:]>))/{{ return string_eval('<<dimensions>>','count') }}" ON <allcells> output
+# CELL_LOCAL <gamma_2divu_<<species>>> "2.d0*celldiv(<u_f_{raw}_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}" ON <allcells>
+# CELL_LOCAL <gamma_2divu_<<species>>> "2.d0*celldiv(dot(<u_f_vect_<<species>>[l=:]>,<facenorm[l=:]>))/{{ return string_eval('<<dimensions>>','count') }}" ON <allcells>
 
-# calculate magnitude of total strain rate
-  CELL_DERIVED <gamma_total_magnitude_<<species>>> "mag(<gamma_total_<<species>>[l=:,:]>)" ON <allcells> output
+  CELL_DERIVED <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_total_<<species>>[l=<<i>>,<<j>>]>-kronecker(<<i>>,<<j>>)*<gamma_spherical_<<species>>>" ON <allcells>
 
 # deviatoric strain rate and magnitude
-  CELL_DERIVED <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_total_<<species>>[l=<<i>>,<<j>>]>-kronecker(<<i>>,<<j>>)*<gamma_spherical_<<species>>>" ON <allcells> output
-  CELL_DERIVED <gamma_magnitude_<<species>>> "mag(<gamma_<<species>>[l=:,:]>)" ON <allcells> output
+  CELL_DERIVED <gamma_magnitude_<<species>>> "mag(<gamma_<<species>>[l=:,:]>)" ON <allcells>
 
-ELSE
-# cell centred same
-  CELL_LOCAL <gamma_<<species>>[l=<<i>>,<<j>>]> "<gamma_total_<<species>>[l=<<i>>,<<j>>]>-<gamma_spherical_<<species>>>*kronecker(<<i>>,<<j>>)" ON <allcells>
+# calculate magnitude of total strain rate
+  IF 1
+# if everything is based on deviatoric gamma, also calculate strain rate magnitude that includes the spherical component, known as the gamma_total_magnitude
+# <gamma_magnitude_f_...> is already >0 via cutoff in mag function
+# the perl evaluates as the number of dimensions, and is consistent with that used in the calculation of the spherical part of gamma
+    CELL_LOCAL <gamma_total_magnitude_<<species>>> "sqrt(<gamma_magnitude_<<species>>>^2+0.5d0*{{ return string_eval('<<dimensions>>','count') }}*<gamma_spherical_<<species>>>^2)" ON <allcells>
+  ELSE
+    CELL_LOCAL <gamma_total_magnitude_<<species>>> "mag(<gamma_total_<<species>>[l=:,:]>)" ON <allcells>
+  END_IF
+
 END_IF
+
+DEFAULT_OPTIONS # clear the default options and add some real ones
+
+# turn some selected outputs on
+VARIABLE <gamma_spherical_<<species>>> output
+VARIABLE <gamma_spherical_f_<<species>>> output
+VARIABLE <gamma_magnitude_<<species>>> output
+VARIABLE <gamma_magnitude_f_<<species>>> output
+VARIABLE <gamma_total_magnitude_<<species>>> output
+VARIABLE <gamma_total_magnitude_f_<<species>>> output

@@ -2,22 +2,25 @@ MARKDOWN
 Here we add contributions to the dynamic force due to the already calculated <p_species> and <p^_species> for each disperse phase
 END_MARKDOWN
 
-IF 0
-# use wide span phi on base
-  VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/(cellave(<phi_f_bounded_harmonic_<<species>>>))-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
-ELSE_IF 1
-# cell centred from face centred, and variable interpolation of face centred
+# now uses <phi_dynamic_c_<<species>>> which must be defined
+VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/<phi_dynamic_c_<<species>>>-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
 
-# set up a constant weighting factor that determines how local variables are going to be when calculating the non-specific gradient dynamic force terms
-# also used in calculating p_f_<<species>> and/or components
-  NONE_CONSTANT <dynamic_face_interpolation> 0.d0 # this is a constant that controls whether interpolation to face is via adjacentcells (0) or normal faceave (1)
-  FACE_DERIVED <phi_dynamic_f_<<species>>> "facemax(facemin(<dynamic_face_interpolation>*faceave(<phi_bounded_<<species>>>)+(1.d0-<dynamic_face_interpolation>)*faceave[adjacentcells](<phi_bounded_<<species>>>),1.d0-<phi_tol>),<phi_tol>)" ON <allfaces> output
-  CELL_DERIVED <phi_dynamic_c_<<species>>> "cellmax(cellmin(<phi_dynamic_f_<<species>>>,1.d0-<phi_tol>),<phi_tol>)" ON <allcells> output
+# IF 0
+# # use wide span phi on base
+#   VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/(cellave(<phi_f_bounded_harmonic_<<species>>>))-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
+# ELSE_IF 1
+# # cell centred from face centred, and variable interpolation of face centred
 
-  VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/<phi_dynamic_c_<<species>>>-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
-ELSE
-  VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/(<phi_bounded_<<species>>>)-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
-END_IF
+# # set up a constant weighting factor that determines how local variables are going to be when calculating the non-specific gradient dynamic force terms
+# # also used in calculating p_f_<<species>> and/or components
+# # NONE_CONSTANT <dynamic_face_interpolation> 0.d0 # this is a constant that controls whether interpolation to face is via adjacentcells (0) or normal faceave (1)
+# # now the string is set in single_species_pressure
+
+# # FACE_DERIVED <phi_dynamic_f_<<species>>> "facemax(facemin(<dynamic_face_interpolation>*faceave(<phi_bounded_<<species>>>)+(1.d0-<dynamic_face_interpolation>)*faceave[adjacentcells](<phi_bounded_<<species>>>),1.d0-<phi_tol>),<phi_tol>)" ON <allfaces> output
+
+# ELSE
+#   VARIABLE <dynamic_force_c_<<species>>[l=<<i>>]> '<dynamic_force_c_<<species>>[l=<<i>>]>-celldivgrad[l=<<i>>](<p_f_<<species>>>)/(<phi_bounded_<<species>>>)-celldivgrad[l=<<i>>](<p^_f_<<species>>>)'
+# END_IF
 
 # trying different phi variables for the osmotic pressure term
 #REPLACEMENTS R "<<dynamic_force_f_phi_variable>>" W "<phi_f_bounded_harmonic_<<species>>>" R "<<dynamic_force_f_phi_variable_species0>>" W "<phi_f_bounded_harmonic_species0>"
