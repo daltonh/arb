@@ -6,11 +6,9 @@ END_MARKDOWN
   my $return_string = '';
   my $phif = '1.d0';
   for my $species (string_eval('<<multifluid_species_list>>','list')) {
-    for my $l (string_eval('<<dimensions>>','list')) {
-      $return_string .= "CELL_UNKNOWN <u_$species"."[l=$l]> [] '0.d0' ON <allcells> magnitude=<u_av_$species>\n";
-      $return_string .= "FACE_LOCAL <u_f_vect_$species"."[l=<<i>>]> 'faceave[<<reflect=<<i>>>>](<u_$species"."[l=<<i>>]>)' ON <allfaces>\n"; # velocity vector interpolated to faces
-      $return_string .= "CELL_LOCAL <extra_force_$species"."[l=$l]> '0.d0' ON <domain>\n"; # this is a hook into the conservation equations to allow additional forces to be included - force needs to be expressed on a volume fraction specific basis (ie, divided by phi)
-    }
+    $return_string .= "CELL_UNKNOWN <u_${species}[l=<<i>>]> [] '0.d0' ON <allcells> magnitude=<u_av_${species}>\n";
+    $return_string .= "FACE_LOCAL <u_f_vect_${species}[l=<<i>>]> 'faceave[<<reflect=<<i>>>>](<u_${species}[l=<<i>>]>)' ON <allfaces>\n"; # velocity vector interpolated to faces
+    $return_string .= "CELL_LOCAL <extra_force_${species}[l=<<i>>]> '0.d0' ON <domain>\n"; # this is a hook into the conservation equations to allow additional forces to be included - force needs to be expressed on a volume fraction specific basis (ie, divided by phi)
     if ($species eq "species0") {
       $return_string .= "CELL_UNKNOWN <p_$species> [] '<p_initial>' ON <allcells>\n";
     } else {

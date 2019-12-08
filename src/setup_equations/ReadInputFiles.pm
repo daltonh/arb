@@ -254,7 +254,9 @@ sub read_input_files {
         }
         perform_index_replacements($buffer);
         perform_string_replacements($buffer);
-        perform_index_replacements($buffer); # one last time incase string replacements have produced more index replacements
+# now perform_index_replacements does its own perform_string_replacements to better identify index replacements, so second call to perform_index_replacements should not be necessary
+#       perform_index_replacements($buffer); # one last time incase string replacements have produced more index replacements
+#       perform_string_replacements($buffer); # and another time to pick up things like reflect statements 
         if ($debug) { print ::DEBUG "  INFO: after performing replacements: buffer = $buffer\n"; }
         $solver_code .= $buffer; # add the result of the string replacements onto the solver code
         $buffer = $match.$after; # and save the remainder as the buffer
@@ -301,8 +303,12 @@ sub read_input_files {
         if ($debug) { print ::DEBUG "  INFO: after performing index replacements: buffer = $buffer\n"; }
         perform_string_replacements($buffer);
         if ($debug) { print ::DEBUG "  INFO: after performing string replacements: buffer = $buffer\n"; }
-        perform_index_replacements($buffer);
-        if ($debug) { print ::DEBUG "  INFO: after performing index replacements again: buffer = $buffer\n"; }
+# these calls shouldn't be necessary anymore
+#       perform_index_replacements($buffer);
+#       if ($debug) { print ::DEBUG "  INFO: after performing index replacements again: buffer = $buffer\n"; }
+# looks like performing string replacements twice is a bad idea
+#       perform_string_replacements($buffer);
+#       if ($debug) { print ::DEBUG "  INFO: after performing string replacements again: buffer = $buffer\n"; }
         $solver_code .= $buffer.$comments; # add the result of the string replacements onto the solver code
         if ($debug) { print ::DEBUG "  INFO: solver code ready to process: solver_code = $solver_code\n"; }
 # this shouldn't be necessary now, unless string replacements have introduced a line feed
@@ -1530,6 +1536,8 @@ sub perform_index_replacements {
 # do not have to replace here, just identify, and then perform replacements in a nested loop later
     my %index=(); # make a hash that contains info about the found strings, with the key being the found index string
     my $string_line_search = $string_line; # copy the string line as we will destroy it during the search
+# just to identify index strings, first perform string replacements on line to remove any replacement strings from the names, noting that index replacements will use the saved line
+    perform_string_replacements($string_line_search);
     while ($string_line_search =~ /(<([^>]+?)\[([^\]]*?<<[^\]]+?>>[^\]]*?)\]>)/ ) { # matches if at least one index string is found in a variable or region name, now being more careful to check that `guts' is contained solely within the one variable/region name
       my $guts = $3;
       my $name = $1;
