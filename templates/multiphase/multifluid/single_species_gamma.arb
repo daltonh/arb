@@ -169,7 +169,7 @@ IF <<gammabinding>>
   IF <<gammacellfromface>>
     CELL_LOCAL <gamma_sphericaln_<<species>>> "cellave(<gamma_spherical_f_<<species>>>/facemax(<gamma_total_magnitude_f_<<species>>>,<gamma_min>))" ON <allcells> output
   ELSE
-    CELL_LOCAL <gamma_sphericaln_<<species>>> "<gamma_spherical_<<species>>>/facemax(<gamma_total_magnitude_<<species>>>,<gamma_min>)" ON <allcells> output
+    CELL_LOCAL <gamma_sphericaln_<<species>>> "<gamma_spherical_<<species>>>/cellmax(<gamma_total_magnitude_<<species>>>,<gamma_min>)" ON <allcells> output
   END_IF
 
 END_IF
