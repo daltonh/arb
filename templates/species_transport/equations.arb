@@ -71,6 +71,7 @@ CELL_DERIVED <c_source_/species/> [mol/(m^3.s)] "0.d0" ON <domain> # this is a s
 {{
   my $return_string = '';
   for my $port (string_eval('<<listofboundaryregions>>','list')) { # this is now a comma separated list, but individual items can be quoted
+    $return_string .= "# for debugging perl, port = $port\n";
     if ( $port eq 'inlet' ) {
       $return_string .= "FACE_EQUATION <c_$port"."_equation_/species/> '<c_/species/>-<c_inlet_conc_/species/>' ON <$port>\n";
     } elsif ( $port eq 'outlet' ) {
