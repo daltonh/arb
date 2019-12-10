@@ -171,11 +171,20 @@ END_IF
 # gamma parts necessary for binding
 IF <<gammabinding>>
 
-  IF <<gammacellfromface>>
-    CELL_LOCAL <gamma_sphericaln_<<species>>> "cellave(<gamma_spherical_f_<<species>>>/facemax(<gamma_total_magnitude_f_<<species>>>,<gamma_min>))" ON <allcells> output
-  ELSE
-    CELL_LOCAL <gamma_sphericaln_<<species>>> "<gamma_spherical_<<species>>>/cellmax(<gamma_total_magnitude_<<species>>>,<gamma_min>)" ON <allcells> output
-  END_IF
+# IF <<gammacellfromface>>
+#   CELL_LOCAL <gamma_sphericaln_<<species>>> "cellave(<gamma_spherical_f_<<species>>>/facemax(<gamma_total_magnitude_f_<<species>>>,<gamma_min>))" ON <allcells> output
+# ELSE
+#   CELL_LOCAL <gamma_sphericaln_<<species>>> "<gamma_spherical_<<species>>>/cellmax(<gamma_total_magnitude_<<species>>>,<gamma_min>)" ON <allcells> output
+# END_IF
+
+  FACE_DERIVED <gamma_phi_f_<<species>>> "facemax(facemin(faceave[adjacentcells](<phi_bounded_<<species>>>),1.d0-<phi_tol>),<phi_tol>)" ON <allfaces> output
+  CELL_DERIVED <gamma_phi_c_<<species>>> "cellmax(cellmin(<gamma_phi_f_<<species>>>,1.d0-<phi_tol>),<phi_tol>)" ON <allcells> output
+  CELL_LOCAL <gamma_phigrad_<<species>>[l=<<i>>]> "celldivgrad[l=<<i>>](<gamma_phi_f_<<species>>>)" ON <allcells> output
+# first calculate the divergence of the species velocity, accounting for the correction velocities
+  CELL_DERIVED <gamma_spherical_alt_<<species>>> "-(dot(<u_<<species>>[l=:]>,<gamma_phigrad_<<species>>[l=:]>)+(<phi_bounded_<<species>>>-<phi_bounded_<<species>>[r=1]>)/<dt>)/<gamma_phi_c_<<species>>>" ON <allcells> output
+# normalise to become the equivalent spherical component of the total gamma
+  VARIABLE <gamma_spherical_alt_<<species>>> "2.d0*(<gamma_spherical_alt_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
+  CELL_OUTPUT <gamma_spherical_diff_<<species>>> "<gamma_spherical_alt_<<species>>>-<gamma_spherical_<<species>>>" ON <allcells>
 
 END_IF
 ######################################################
@@ -183,8 +192,8 @@ END_IF
 DEFAULT_OPTIONS # clear the default options and add some real ones
 
 # turn some selected outputs on
-#VARIABLE <gamma_spherical_<<species>>> output
-#VARIABLE <gamma_spherical_f_<<species>>> output
+VARIABLE <gamma_spherical_<<species>>> output
+VARIABLE <gamma_spherical_f_<<species>>> output
 VARIABLE <gamma_magnitude_<<species>>> output
 VARIABLE <gamma_magnitude_f_<<species>>> output
 VARIABLE <gamma_total_magnitude_<<species>>> output
