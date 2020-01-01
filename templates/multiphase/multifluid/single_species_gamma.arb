@@ -29,6 +29,7 @@ END_MARKDOWN
 # this also is cognisant of <<stress_method>>
 REPLACEMENTS D "<<gammacellfromface>>" W "0"
 REPLACEMENTS D "<<gammabinding>>" W "0" # whether to calculate bits necessary for binding
+REPLACEMENTS D "<<debug>>" W "1" # calculate a few extra variables for output/debugging purposes
 
 DEFAULT_OPTIONS nooutput # everything is off by default, unless turned on
 
@@ -181,10 +182,21 @@ IF <<gammabinding>>
   CELL_DERIVED <gamma_phi_c_<<species>>> "cellmax(cellmin(<gamma_phi_f_<<species>>>,1.d0-<phi_tol>),<phi_tol>)" ON <allcells> output
   CELL_LOCAL <gamma_phigrad_<<species>>[l=<<i>>]> "celldivgrad[l=<<i>>](<gamma_phi_f_<<species>>>)" ON <allcells> output
 # first calculate the divergence of the species velocity, accounting for the correction velocities
-  CELL_DERIVED <gamma_spherical_alt_<<species>>> "-(dot(<u_<<species>>[l=:]>,<gamma_phigrad_<<species>>[l=:]>)+(<phi_bounded_<<species>>>-<phi_bounded_<<species>>[r=1]>)/<dt>)/<gamma_phi_c_<<species>>>" ON <allcells> output
+# trying velocity that is averaged from face values, looking for more stability of gamma_spherical
+  CELL_DERIVED <gamma_spherical_alt_<<species>>> "-(dot(cellave(<u_f_vect_<<species>>[l=:]>),<gamma_phigrad_<<species>>[l=:]>)+(<phi_bounded_<<species>>>-<phi_bounded_<<species>>[r=1]>)/<dt>)/<gamma_phi_c_<<species>>>" ON <allcells> output
+#  CELL_DERIVED <gamma_spherical_alt_<<species>>> "-(dot(<u_<<species>>[l=:]>,<gamma_phigrad_<<species>>[l=:]>)+(<phi_bounded_<<species>>>-<phi_bounded_<<species>>[r=1]>)/<dt>)/<gamma_phi_c_<<species>>>" ON <allcells> output
 # normalise to become the equivalent spherical component of the total gamma
   VARIABLE <gamma_spherical_alt_<<species>>> "2.d0*(<gamma_spherical_alt_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
   CELL_OUTPUT <gamma_spherical_diff_<<species>>> "<gamma_spherical_alt_<<species>>>-<gamma_spherical_<<species>>>" ON <allcells>
+
+  IF <<debug>>
+    CELL_OUTPUT <dphidt_<<species>>> "(<phi_<<species>>>-<phi_<<species>>[r=1]>)/<dt>" ON <allcells>
+    CELL_TRANSIENT <gamma_phi_c_<<species>>[r=1]> "<gamma_phi_c_<<species>>>" "<gamma_phi_c_<<species>>>" ON <allcells> output
+    CELL_DERIVED <gamma_spherical_alt2_<<species>>> "-(dot(cellave(<u_f_vect_<<species>>[l=:]>),<gamma_phigrad_<<species>>[l=:]>)+(<gamma_phi_c_<<species>>>-<gamma_phi_c_<<species>>[r=1]>)/<dt>)/<gamma_phi_c_<<species>>>" ON <allcells> output
+    VARIABLE <gamma_spherical_alt2_<<species>>> "2.d0*(<gamma_spherical_alt2_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
+    CELL_OUTPUT <gamma_spherical_alt3_<<species>>> "celldiv(<u_f_<<species>>>)" ON <allcells> output
+    VARIABLE <gamma_spherical_alt3_<<species>>> "2.d0*(<gamma_spherical_alt3_<<species>>>)/{{ return string_eval('<<dimensions>>','count') }}"
+  END_IF
 
 END_IF
 ######################################################
