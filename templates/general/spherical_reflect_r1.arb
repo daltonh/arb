@@ -1,10 +1,9 @@
 # sets general replacements for spherical 1D coordinates with the 1-axis being radius (r)
-GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#"  REPLACE "<<dim2comment>>" WITH "#" # comment out any references to the third dimension in any included files
+GENERAL_REPLACEMENTS REPLACE "<<dim3comment>>" WITH "#" REPLACE "<<dim2comment>>" WITH "#" # comment out any references to the third dimension in any included files
 GENERAL_REPLACEMENTS REPLACE "<<reflect=1>>" WITH "reflect=1" # centreline is normal to the 1 axis
 
 # caution, the templates will mainly assume cylindrical coordinate with these flags
 GENERAL_REPLACEMENTS REPLACE "<<cartesiancomment>>" WITH "#" REPLACE "<<cylindricalcomment>>" WITH "" REPLACE "<<cylindrical>>" WITH "1" # activate cylindrical specific definitions
-GENERAL_REPLACEMENTS REPLACE "<<cartesianflag>>" WITH "0" REPLACE "<<cylindricalflag>>" WITH "1" # try not to use these in the future
-GENERAL_REPLACEMENTS REPLACE "<<radius_f>>" WITH "(<facex[l=1]>**2)" REPLACE "<<radius_c>>" WITH "(<cellx[l=1]>**2)" REPLACE "<<radiusdim1flag>>" WITH "1"
+GENERAL_REPLACEMENTS REPLACE "<<radius_f>>" WITH "(<facex[l=1]>**2)" REPLACE "<<radius_c>>" WITH "(<cellx[l=1]>**2)" REPLACE "<<radius_n>>" WITH "(<nodex[l=1]>**2)"
 GENERAL_REPLACEMENTS REPLACE "<<radialdim>>" WITH "1"
 GENERAL_REPLACEMENTS R "<<dimensions>>" W "1"

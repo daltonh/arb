@@ -1,0 +1,8 @@
+MARKDOWN
+Call this once the dimensions have been set to set the generic cylindrical reflection flags
+END_MARKDOWN
+
+GENERAL_REPLACEMENTS REPLACE "<<cartesiancomment>>" WITH "#" REPLACE "<<cylindricalcomment>>" WITH ""
+GENERAL_REPLACEMENTS REPLACE "<<cylindrical>>" WITH "1" # activate cylindrical specific definitions
+# the following uses nested replacement strings, so (eg) <<radialdim>> must be set before calling this file
+GENERAL_REPLACEMENTS REPLACE "<<radius_f>>" WITH "<facex[l=<<radialdim>>]>" REPLACE "<<radius_c>>" WITH "<cellx[l=<<radialdim>>]>" REPLACE "<<radius_n>>" WITH "<nodex[l=<<radialdim>>]>"

@@ -507,28 +507,27 @@ sub string_setup {
   string_set("<<batchercomment>>","#","global");
   string_set("<<nobatchercomment>>","","global");
 # geometry and equation related
-  string_set("<<cylindrical>>","0","global"); # default is for a non-cylindrical simulation, this is the preferrable variable to use
-  string_set("<<azimuthal>>","0","global"); # for a cylindrical simulation, default is that there is no variation in the azimuthal direction
-  string_set("<<cartesiancomment>>","","global"); # default is cartesian, try to use above <<cylindrical>> flag instead, hoping to eventually remove this
-  string_set("<<cylindricalcomment>>","#","global"); # again, preference is to use <<cylindrical>> variable instead, but this could remain as a automatically generated string based on <<cylindrical>>
-  string_set("<<cylindricalflag>>","0","global"); # legacy string, use <<cylindrical>> instead in new applications
-  string_set("<<cartesianflag>>","1","global"); # legacy string, use <<cylindrical>> instead in new applications
-# these two should be overwritten by the relevant radius in the input file if using cylindrical coordinates: eg R "<<radius_c>>" W "<cellx[l=1]>" R "<<radius_f>>" W "<facex[l=1]>"
+# choice of coordinate system
+  string_set("<<cylindrical>>","0","global"); # for a cylindrical simulation set this to one
+  string_set("<<azimuthal>>","0","global"); # for a cylindrical simulation that includes velocity in the azimuthal direction, set this (and <<cylindrical>>) to 1
+# choice of which axis corresponds to which direction, used for cylindrical and cylindrical+azimuthal
+  string_set("<<radialdim>>","0","global"); # for 2D cylindrical this is the radial coordinate direction
+  string_set("<<axialdim>>","0","global"); # for 2D cylindrical this is the axial coordinate direction
+  string_set("<<azimuthaldim>>","0","global"); # for 2D cylindrical this is the azimuthal coordinate direction, which should be set for any cylindrical simulation now
+# these three should be overwritten by the relevant radius in the input file if using cylindrical coordinates: eg R "<<radius_c>>" W "<cellx[l=1]>" R "<<radius_f>>" W "<facex[l=1]>"
   string_set("<<radius_c>>","1.d0","global");
   string_set("<<radius_f>>","1.d0","global");
   string_set("<<radius_n>>","1.d0","global");
-  string_set("<<radialdim>>","0","global"); # for 2D cylindrical this is the radial coordinate direction
-  string_set("<<axialdim>>","0","global"); # for 2D cylindrical this is the axial coordinate direction
-  string_set("<<azimuthaldim>>","0","global"); # for 2D cylindrical this is the azimuthal coordinate direction, only used if <<azimuthal>> is on
-  string_set("<<radiusdim1flag>>","0","global"); # legacy, use <<radialdim>> instead if at all possible: for 2D cylindrical coordinates, set the radius dimension flag to 1 to include (for example) the hoop stress in that dimension
-  string_set("<<radiusdim2flag>>","0","global");
-  string_set("<<radiusdim3flag>>","0","global");
+# legacy comments strings, do not use, use <<cylindrical>> instead
+  string_set("<<cartesiancomment>>","","global"); # default is cartesian, try to use above <<cylindrical>> flag instead, hoping to eventually remove this
+  string_set("<<cylindricalcomment>>","#","global"); # again, preference is to use <<cylindrical>> variable instead, but this could remain as a automatically generated string based on <<cylindrical>>
 # these strings should be overwritten by the normal coordinate directions of any reflection boundaries in the domain: eg R "<<reflect=1>>" W "reflect=1"
   string_set("<<reflect=1>>","","global");
   string_set("<<reflect=2>>","","global");
   string_set("<<reflect=3>>","","global");
 # dimensions that are being used
   string_set("<<dimensions>>","1,2,3","global"); # defaults to 3D, and should be accessed using the list form of string_eval('<<dimensions>>','list') to be used in (say) a foreach loop
+# legacy comment strings, do not use, use <<dimensions>> instead
   string_set("<<dim1comment>>","","global"); # try to use and set <<dimensions>> where possible, with the idea that eventually the comment strings may go
   string_set("<<dim2comment>>","","global");
   string_set("<<dim3comment>>","","global");
