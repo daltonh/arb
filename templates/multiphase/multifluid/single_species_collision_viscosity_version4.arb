@@ -16,7 +16,9 @@ END_MARKDOWN
 #REPLACEMENTS D "<<viscosity_method>>" W "joe081119" # joe's fitting from 8/10/19
 #REPLACEMENTS D "<<viscosity_method>>" W "joe081119quadraticcol" # joe's fitting from 8/10/19, but mu^_col based on quadratic
 #REPLACEMENTS D "<<viscosity_method>>" W "daltonh101119" # initial rough fitting, but now using r_f function to calculate low phi mu_sids
-REPLACEMENTS D "<<viscosity_method>>" W "roughness111119" # mu^_col based on r_infty function, and mu^_sid based on r_f function which has low phi limit of non-dimensional roughness
+#REPLACEMENTS D "<<viscosity_method>>" W "roughness111119" # mu^_col based on r_infty function, and mu^_sid based on r_f function which has low phi limit of non-dimensional roughness
+#REPLACEMENTS D "<<viscosity_method>>" W "morrisboulay99" # mu^_col,mu^_sid based on Morris & Boulay 1999 formulation
+REPLACEMENTS D "<<viscosity_method>>" W "joe171219" # mu^_col based on r_infty function tuned to match Boyer etc. at concentrated limit, and mu^_sid based on r_f function which has low phi limit of non-dimensional roughness 
 
 #IF {{ return string_test('<<stress_method>>','version4_species')}}
 #  ERROR "single_species_collision_viscosity_version4 cannot handle stress_method = version4_species yet"
@@ -30,7 +32,74 @@ CELL_DERIVED <mu^_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allce
 #  CELL_DERIVED <mu^_col_phi_bounded_allsolids> "cellmax(<mu^_phi_bounded_allsolids>,<mu^_phi_lower_limit>)" ON <allcells>
 #END_IF
 
-IF {{ return string_test('<<viscosity_method>>','roughness111119') }}
+IF {{ return string_test('<<viscosity_method>>','joe171219') }}
+# for mu^_col, create an r_infty that has a peak at low phi and at high phi
+
+# r_infty from phi
+
+# constants
+CONSTANT <mu^_boyer_1> 0.32d0
+CONSTANT <mu^_boyer_2> 0.7d0
+CONSTANT <mu^_boyer_I0> 0.005d0
+CONSTANT <mu^_r_infty_c1> 0.2d0 
+CONSTANT <mu^_r_infty_n1> "1.d0/3.d0" 
+CONSTANT <mu^_r_infty_c2> 1.125d0 
+CONSTANT <mu^_r_infty_n2> "2.d0" 
+CONSTANT <mu^_phi_max_allsolids> "<phi_max_allsolids>"
+
+# Boyer function
+CELL_DERIVED <mu^_boyer_function> "<mu^_boyer_1> + (<mu^_boyer_2>-<mu^_boyer_1>)/(1.+<mu^_boyer_I0>*<mu^_phi_bounded_allsolids>^2/(<mu^_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)^2)" ON <allcells>
+
+
+# function
+  CELL_DERIVED <mu^_r_infty> "(<mu^_r_infty_c1>/<mu^_phi_bounded_allsolids>)^(<mu^_r_infty_n1>)+sqrt((<mu^_boyer_function>/(<mu^_r_infty_c2>*cellmax(<mu^_phi_max_allsolids>-<mu^_phi_bounded_allsolids>,<phi_tol>))^(<mu^_r_infty_n2>)))" ON <allcells>
+  CELL_LOCAL <mu^_r_infty_minus2> "<mu^_r_infty>-2.d0" ON <allcells> output
+
+# now use templates to calculate B^_1 and B^_2 from this
+  INCLUDE "single_species_collision_viscosity_version4_B_functions"
+# and then calculate mu^_col
+  CELL_DERIVED <mu^_col_c_mixture> "<mu^_B^_1>+<mu^_B^_2>" ON <allcells> output
+
+# for mu^_sid, construct r_f that becomes the non-dimensional roughness at low phi, but behaves appropriately at high phi 
+# adjust this....
+  CONSTANT <mu^_epsilon> [m] 1.d-7 # 100nm particle roughness
+# TODO: generalise this to more than one particle species
+  CONSTANT <mu^_r_f_b> "<mu^_epsilon>/<a_species1>+2.d0" # nondimensional radius outside of particle roughness
+  CONSTANT <mu^_r_f_low_p1>  -1.667261201664976d6
+  CONSTANT <mu^_r_f_low_p2>   3.701376168482119d6
+  CONSTANT <mu^_r_f_low_p3>  -3.429702133425398d6
+  CONSTANT <mu^_r_f_low_p4>   1.726633367446967d6
+  CONSTANT <mu^_r_f_low_p5>  -0.516247117980368d6
+  CONSTANT <mu^_r_f_low_p6>   0.094230709712222d6
+  CONSTANT <mu^_r_f_low_p7>  -0.010374390274031d6
+  CONSTANT <mu^_r_f_low_p8>   0.000687170004859d6
+  CONSTANT <mu^_r_f_low_p9>  -0.000034464753788d6
+
+  CONSTANT <mu^_r_f_high_p1> "7.d0/(6.75d0*<mu^_phi_max_allsolids>)"
+
+  CONSTANT <mu^_r_f_al> 100.d0
+  CONSTANT <mu^_r_f_x0> 0.45d0
+
+#weighting function
+  CELL_DERIVED <mu^_r_f_weighting> "1.d0/(1.d0+exp(-<mu^_r_f_al>*(<mu^_phi_bounded_allsolids>-<mu^_r_f_x0>)))" ON <allcells> 
+
+#low phi r_f fit
+  CELL_DERIVED <mu^_r_f_low> "exp(<mu^_r_f_low_p1>*<mu^_phi_bounded_allsolids>**8d0+<mu^_r_f_low_p2>*<mu^_phi_bounded_allsolids>**7.d0+<mu^_r_f_low_p3>*<mu^_phi_bounded_allsolids>**6.d0+<mu^_r_f_low_p4>*<mu^_phi_bounded_allsolids>**5.d0+<mu^_r_f_low_p5>*<mu^_phi_bounded_allsolids>**4.d0+<mu^_r_f_low_p6>*<mu^_phi_bounded_allsolids>**3.d0+<mu^_r_f_low_p7>*<mu^_phi_bounded_allsolids>**2.d0+<mu^_r_f_low_p8>*<mu^_phi_bounded_allsolids>+<mu^_r_f_low_p9>)+2.d0" ON <allcells> 
+
+#high phi r_f fit
+ CELL_DERIVED <mu^_r_f_high> "sqrt(<mu^_r_f_high_p1>/(<mu^_f_bar_c>*cellmax(<mu^_phi_max_allsolids>-<mu^_phi_bounded_allsolids>,<phi_tol>)))" ON <allcells> 
+
+# construct r_f as maximum of roughness (at low phi) and multi-body (at high phi) anisotropic radii, with high phi behaviour being the same as r_infty
+  CELL_DERIVED <mu^_r_f> "cellmax(<mu^_r_f_b>,(1.d0-<mu^_r_f_weighting>)*<mu^_r_f_low> + <mu^_r_f_weighting>*<mu^_r_f_high>)" ON <allcells> output
+  CELL_LOCAL <mu^_r_f_minus2> "<mu^_r_f>-2.d0" ON <allcells> output
+# now use templates to calculate B^_1 and B^_2 from this
+  INCLUDE "single_species_collision_viscosity_version4_B_functions" R "<mu^_B^_" W "<mu^_B^_f_" R "<mu^_r_infty_minus2>" W "<mu^_r_f_minus2>"
+# and finally calculate sid viscosities from this and f_bar at max
+  CONSTANT <mu^_f_bar_c> 3.14159d0 # this sets ratio of mu^_col and mu^_sid at high phi, but for now, applied across phi range
+  CELL_DERIVED <mu^_sid1_c_mixture> "(4.d0*<mu^_B^_f_1>/7.d0+2.d0*<mu^_B^_f_2>/5.d0)*<mu^_f_bar_c>" ON <allcells> output
+  CELL_DERIVED <mu^_sid2_c_mixture> "(2.d0*<mu^_B^_f_1>/7.d0)*<mu^_f_bar_c>" ON <allcells> output
+
+ELSE_IF {{ return string_test('<<viscosity_method>>','roughness111119') }}
 # for mu^_col, create an r_infty that has a peak at low phi and at high phi
 
 # r_infty from phi
@@ -72,6 +141,19 @@ IF {{ return string_test('<<viscosity_method>>','roughness111119') }}
   CONSTANT <mu^_f_bar_c> 3.65d0 # this sets ratio of mu^_col and mu^_sid at high phi, but for now, applied across phi range
   CELL_DERIVED <mu^_sid1_c_mixture> "(4.d0*<mu^_B^_f_1>/7.d0+2.d0*<mu^_B^_f_2>/5.d0)*<mu^_f_bar_c>" ON <allcells> output
   CELL_DERIVED <mu^_sid2_c_mixture> "(2.d0*<mu^_B^_f_1>/7.d0)*<mu^_f_bar_c>" ON <allcells> output
+
+ELSE_IF {{ return (string_test('<<viscosity_method>>','morrisboulay99')) }}
+  CELL_DERIVED <mu^_phi_bounded_allsolids> "1.d0-<phi_bounded_species0>" ON <allcells>
+  CONSTANT <mu^_r_infty_phi_max_allsolids> "<phi_max_allsolids>"
+
+  NONE_CONSTANT <mu_K_s> 0.1d0
+  NONE_CONSTANT <mu_K_n> 0.75d0
+
+  CELL_DERIVED <mu^_col_c_mixture> "2.5d0/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)+<mu_K_s>/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)**2" ON <allcells> output
+  CELL_DERIVED <mu^_sid1_c_mixture> "<phi_tol>" ON <allcells> output
+  CELL_DERIVED <mu^_sid2_c_mixture> "<mu_K_n>/(<mu^_r_infty_phi_max_allsolids>-<mu^_phi_bounded_allsolids>)**2" ON <allcells> output
+
+
 
 ELSE_IF {{ return (string_test('<<viscosity_method>>','daltonhold') || string_test('<<viscosity_method>>','daltonh101119')) }}
 
