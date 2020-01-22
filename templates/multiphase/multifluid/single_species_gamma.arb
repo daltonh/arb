@@ -31,6 +31,8 @@ REPLACEMENTS D "<<gammacellfromface>>" W "0"
 REPLACEMENTS D "<<gammabinding>>" W "0" # whether to calculate bits necessary for binding
 REPLACEMENTS D "<<debug>>" W "1" # calculate a few extra variables for output/debugging purposes
 
+#REPLACEMENTS R "_LOCAL" W "_DERIVED" # stop using locals altogether in these calculations for now, as an efficiency/speed test - conclusion, no difference to speed, have not checked memory
+
 DEFAULT_OPTIONS nooutput # everything is off by default, unless turned on
 
 CONSTANT <gamma_min> 1.d-40 # minimum gamma to avoid divide through errors - actually, there are ratios that need to be bounded as gamma -> 0
