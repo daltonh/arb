@@ -32,10 +32,6 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       # comment out any references to the third dimension in any included files
       # centreline is normal to the 1 axis
       
-      # activate cylindrical specific definitions
-      # try not to use these in the future
-      
-      
       
    # or, setup basic cartesian reflect general replacements
    #INCLUDE_TEMPLATE "general/cartesian_x1y2"
@@ -256,7 +252,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       FACE_LOCAL <u_f_vect[l=1]> "faceave[reflect=1](<u[l=1]>)" ON <allfaces> 
       FACE_LOCAL <u_f_vect[l=2]> "faceave[](<u[l=2]>)" ON <allfaces> # velocity vector interpolated to faces
       CELL_UNKNOWN <p> [] "1.d0" ON <allcells> # pressure
-   CELL_UNKNOWN <p> [] "(2.d0^1)*<ls_phi_fluid>/<We>" ON <fluid all cells> elementdata # pressure
+   CELL_UNKNOWN <p> [] "(2.d0^0)*<ls_phi_fluid>/<We>" ON <fluid all cells> elementdata # pressure
    CELL_UNKNOWN <u[l=1]> [] "0.d0" ON <fluid all cells> magnitude=1.d0 # velocity component
    CELL_UNKNOWN <u[l=2]> [] "0.d0" ON <fluid all cells> magnitude=1.d0 # velocity component
    
@@ -416,8 +412,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       #FACE_LOCAL <ls_n_f[l=3]> "facegrad[l=3](<ls>)"
       FACE_LOCAL <ls_n_f mag> "sqrt(dot(<ls_n_f[l=:]>,<ls_n_f[l=:]>))" elementdata
       FACE_DERIVED <ls_n_f_scalar> "facegrad(<ls>)/<ls_n_f mag>" ON <level set all faces> nooutput
-      CELL_DERIVED <ls_kappa_c2> "-celldiv(<facex[l=1]>*<ls_n_f_scalar>/faceave[lastcell](<cellx[l=1]>))" ON <level set all cells> nooutput,elementdata
-      #CELL_DERIVED <ls_kappa_c2> "-celldiv(<ls_n_f_scalar>)" ON <level set all cells> nooutput,elementdata
+      #CELL_DERIVED <ls_kappa_c2> "-celldiv(1.d0*<ls_n_f_scalar>/faceave[lastcell](1.d0))" ON <level set all cells> nooutput,elementdata
+      CELL_DERIVED <ls_kappa_c2> "-celldiv(<ls_n_f_scalar>)" ON <level set all cells> nooutput,elementdata
       FACE_DERIVED <ls_kappa_f> "<ls_kappa_c2>" ON <level set all faces>
       CELL_DERIVED <ls_kappa_c> "<ls_kappa_f>" ON <level set all cells> output,elementdata
       #CELL_DERIVED <ls_kappa_c> "<ls_kappa_c2>" ON <allcells> output,elementdata
@@ -556,14 +552,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          #(hash inserted during unwrap)IF 0#<<azimuthal>>
             #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
             #(hash inserted during unwrap)IF 0
-            #(hash inserted during unwrap)VARIABLE <tau[l=1,0]> "<tau[l=1,0]>+<mu>*<u_f_vect[l=0]>/<facex[l=1]>"
-            #(hash inserted during unwrap)VARIABLE <tau[l=0,1]> "<tau[l=1,0]>"
+            #(hash inserted during unwrap)VARIABLE <tau[l=1,3]> "<tau[l=1,3]>+<mu>*<u_f_vect[l=3]>/<facex[l=1]>"
+            #(hash inserted during unwrap)VARIABLE <tau[l=3,1]> "<tau[l=1,3]>"
             #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
             #(hash inserted during unwrap)ELSE
-            #(hash inserted during unwrap)VARIABLE <tau[l=1,0]> "-<mu>*<facex[l=1]>*facegrad[l=1,reflect=1](<u[l=0]>/<cellx[l=1]>)" OUTPUT
-            #(hash inserted during unwrap)VARIABLE <tau[l=0,1]> "<tau[l=1,0]>"  OUTPUT
+            #(hash inserted during unwrap)VARIABLE <tau[l=1,3]> "-<mu>*<facex[l=1]>*facegrad[l=1,reflect=1](<u[l=3]>/<cellx[l=1]>)" OUTPUT
+            #(hash inserted during unwrap)VARIABLE <tau[l=3,1]> "<tau[l=1,3]>"  OUTPUT
             #(hash inserted during unwrap)END_IF
-         #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "-<mu>*2.d0*<u_f_vect[l=1]>/<facex[l=1]>"
+         #(hash inserted during unwrap)VARIABLE <tau[l=3,3]> "-<mu>*2.d0*<u_f_vect[l=1]>/<facex[l=1]>"
          #(hash inserted during unwrap)END_IF
       
       
@@ -1027,21 +1023,21 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          
       
       # now create equations
-      CELL_EQUATION <continuity> "celldiv(<facex[l=1]>*<u_f>)/<cellx[l=1]>" ON <fluid domain> # continuity
+      CELL_EQUATION <continuity> "celldiv(1.d0*<u_f>)/1.d0" ON <fluid domain> # continuity
       # performing index string loops on the following index list pairs:
       #  <<i>> 1,2
-      CELL_EQUATION <momentum[l=1]> "celldiv(<facex[l=1]>*<J_f[l=1]>)/<cellx[l=1]>-<dynamic_force_c[l=1]>" ON <fluid domain> 
-      CELL_EQUATION <momentum[l=2]> "celldiv(<facex[l=1]>*<J_f[l=2]>)/<cellx[l=1]>-<dynamic_force_c[l=2]>" ON <fluid domain> # momentum component'
+      CELL_EQUATION <momentum[l=1]> "celldiv(1.d0*<J_f[l=1]>)/1.d0-<dynamic_force_c[l=1]>" ON <fluid domain> 
+      CELL_EQUATION <momentum[l=2]> "celldiv(1.d0*<J_f[l=2]>)/1.d0-<dynamic_force_c[l=2]>" ON <fluid domain> # momentum component'
       
       # add on hoop stress term separately for cylindrical coordinates
          #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 1
-         #(hash inserted during unwrap)IF 1
-         # perform a check that <<radialdim>> has been correctly defined
+         #(hash inserted during unwrap)IF 0
+         #(hash inserted during unwrap)# perform a check that <<radialdim>> has been correctly defined
             #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
             #(hash inserted during unwrap)IF 
             #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation however the string 1 has not been correctly defined'
             #(hash inserted during unwrap)END_IF
-         VARIABLE <momentum[l=1]> "<momentum[l=1]>+2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)"
+         #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "<momentum[l=1]>+2.d0*<u[l=1]>*<mu>/(<cellx[l=1]>**2)"
          #(hash inserted during unwrap)END_IF
       
       #define momentum eqn for azimuthal component
@@ -1050,10 +1046,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          #(hash inserted during unwrap)# perform a check that <<azimuthaldim>> has been correctly defined
             #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
             #(hash inserted during unwrap)IF 
-            #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 0 has not been correctly defined'
+            #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 3 has not been correctly defined'
             #(hash inserted during unwrap)END_IF
-         #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv((<facex[l=1]>**2)*<J_f[l=0]>)/(<cellx[l=1]>**2)+<rho>*<u[l=1]>*<u[l=0]>/<cellx[l=1]>" ON <fluid domain> # momentum component'
-         #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "<momentum[l=1]>-<rho>*<u[l=0]>**2/<cellx[l=1]>"
+         #(hash inserted during unwrap)VARIABLE <momentum[l=3]> "celldiv((1.d0**2)*<J_f[l=3]>)/(1.d0**2)+<rho>*<u[l=1]>*<u[l=3]>/<cellx[l=1]>" ON <fluid domain> # momentum component'
+         #(hash inserted during unwrap)VARIABLE <momentum[l=1]> "<momentum[l=1]>-<rho>*<u[l=3]>**2/<cellx[l=1]>"
          #(hash inserted during unwrap)END_IF
       
       # add transient term which is independent of cartesian or cylindrical coordinates
@@ -1382,8 +1378,8 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
                      #(hash inserted during unwrap)IF 
                      #(hash inserted during unwrap)# for a specified flowrate, set some function of pressure to give the required average velocity (ie, a flowrate)
                      #(hash inserted during unwrap)# to do this we need to calculate what the average velocity through the boundary is (positive into the domain here)
-                     #(hash inserted during unwrap)#NONE_DERIVED <walls u_av_calc> "facesum(-<u_f>*<facearea>,<fluid walls>)/facesum(<facearea>,<fluid walls>)" # calculate average velocity directed into the domain
-                     #(hash inserted during unwrap)NONE_DERIVED <walls u_av_calc> "facesum(-<u_f>*<facearea>*<facex[l=1]>,<fluid walls>)/facesum(<facearea>*<facex[l=1]>,<fluid walls>)" # calculate average velocity directed into the domain
+                     #(hash inserted during unwrap)NONE_DERIVED <walls u_av_calc> "facesum(-<u_f>*<facearea>,<fluid walls>)/facesum(<facearea>,<fluid walls>)" # calculate average velocity directed into the domain
+                     #(hash inserted during unwrap)#NONE_DERIVED <walls u_av_calc> "facesum(-<u_f>*<facearea>*1.d0,<fluid walls>)/facesum(<facearea>*1.d0,<fluid walls>)" # calculate average velocity directed into the domain
                      #(hash inserted during unwrap)
                      #(hash inserted during unwrap)# this is the single equation that needs to be satisfied to set the average velocity of centreline pressure
                      #(hash inserted during unwrap)NONE_EQUATION <walls oneface flowrate equation> "<walls u_av_calc>-<walls u>" # set flowrate through region to give required average velocity
@@ -1450,7 +1446,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
    
    CELL_LOCAL <central flag> "cellif(celltocelllink(expression=<ls_normalised>-<ls_phi_max>,localregion=<fluid domain>,remoteregion=<level set domain>),1.d0,0.d0)"
    NONE_OUTPUT <p central> "cellsum(<central flag>*<cellvol>*<p>,region=<fluid domain>)/cellsum(<central flag>*<cellvol>,region=<fluid domain>)"
-   NONE_OUTPUT <p central We> "<p central>*<We>*(2.d0^1)"
+   NONE_OUTPUT <p central We> "<p central>*<We>*(2.d0^0)"
    NONE_OUTPUT <p central We err> "abs(<p central>*<We>-1.d0)"
    NONE_OUTPUT <u rms> "sqrt(cellsum(<cellvol>*<u_mag>^2,region=<fluid domain>)/cellsum(<cellvol>,region=<fluid domain>))"
    NONE_OUTPUT <minimum boundary ls> "facemin(-<ls>,region=<level set boundaries>)/<ls_celldxmax>"

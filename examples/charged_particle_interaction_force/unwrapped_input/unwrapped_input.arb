@@ -30,10 +30,6 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       # comment out any references to the third dimension in any included files
       # centreline is normal to the 1 axis
       
-      # activate cylindrical specific definitions
-      # try not to use these in the future
-      
-      
       
    # add centreline symmetry
    GLUE_FACES <centreline> reflect=1
@@ -216,9 +212,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          
          # conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
          # cartesian only
-         #CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "celldiv(<ion+ J_f>)" ON <domain>
+         CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "celldiv(<ion+ J_f>)" ON <domain>
          # cylindrical and cartesian
-         CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "celldiv(<facex[l=1]>*(<ion+ J_f>))/<cellx[l=1]>" ON <domain>
+         #CELL_EQUATION <ion+ continuity> [molecules/(m^3.s)] "celldiv(1.d0*(<ion+ J_f>))/1.d0" ON <domain>
          #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_walls.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "ion_walls"
          # ion wall boundary conditions for one specific ion species
@@ -250,9 +246,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          
          # conservation equations, which now include (v0.5) a divergence term to help with enroute to convergence
          # cartesian only
-         #CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "celldiv(<ion- J_f>)" ON <domain>
+         CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "celldiv(<ion- J_f>)" ON <domain>
          # cylindrical and cartesian
-         CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "celldiv(<facex[l=1]>*(<ion- J_f>))/<cellx[l=1]>" ON <domain>
+         #CELL_EQUATION <ion- continuity> [molecules/(m^3.s)] "celldiv(1.d0*(<ion- J_f>))/1.d0" ON <domain>
          #(comment created during unwrap): new block = ../../templates/electrokinetics/ion_walls.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "ion_walls"
          # ion wall boundary conditions for one specific ion species
@@ -279,9 +275,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          # potential equations
          CELL_UNKNOWN <U> "1.d0" ON <allcells> # electrical potential
          # cartesian only
-         #CELL_EQUATION <U poisson equation> "<eps_0>*celldiv(<eps_fluid>*facegrad(<U>))+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
+         CELL_EQUATION <U poisson equation> "<eps_0>*celldiv(<eps_fluid>*facegrad(<U>))+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
          # cylindrical and cartesian
-         CELL_EQUATION <U poisson equation> "<eps_0>*celldiv(<facex[l=1]>*<eps_fluid>*facegrad(<U>))/<cellx[l=1]>+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
+         #CELL_EQUATION <U poisson equation> "<eps_0>*celldiv(1.d0*<eps_fluid>*facegrad(<U>))/1.d0+<K^2/2>*<rho_e>" ON <domain> # Poisson potential equation
          #(comment created during unwrap): new block = ../../templates/electrokinetics/potential_charged_walls.arb: sub_block = 0
          #(hash inserted during unwrap)INCLUDE "potential_charged_walls"
          FACE_EQUATION <U charged particle> "<eps_0>*<eps_fluid>*facegrad(<U>)-<wall charge>" ON <particle>

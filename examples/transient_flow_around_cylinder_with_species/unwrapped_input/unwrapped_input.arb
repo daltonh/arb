@@ -1714,7 +1714,7 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)
             #(hash inserted during unwrap)If the replacement strings <<W_f>> and <<W_c>> are set on entry, they must refer to variables that give the face and cell centred width of the domain for nonuniform width domain simulations.  If not set then internally these strings are set to either 1 and 1 for cartesian coordinates, or 1.d0 and 1.d0 for cylindrical coordinates, respectively.
             #(hash inserted during unwrap)
-            #(hash inserted during unwrap)Also you can specify the <<listofports>> variable, which is a space separated list of surrounding region names that you want boundary condition equations for, with the names not delimited by <> - EG: <<listofports>> = "inlet outlet walls"
+            #(hash inserted during unwrap)Also you can specify the <<listofboundaryregions>> variable, which is a space separated list of surrounding region names that you want boundary condition equations for, with the names not delimited by <> - EG: <<listofboundaryregions>> = "inlet outlet walls"
             #(hash inserted during unwrap)END_MARKDOWN
             
             # default species name, overwrite with another name on entry
@@ -1723,7 +1723,9 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             # default is that high order advection is used unless this string is overwritten by 0, which then becomes unlimited advection with order dependent on <c_advection_limiter_/species/>, which is set to 0 by default (ie, becomes first order upwinding)
             
             
-            # these are all of the ports used in the domain, used for boundary conditions and reported variables
+            # these are all of the boundaryregions used in the domain, used for boundary conditions and reported variables
+            
+            # by default domain contains no chemical species, but turning this off will use inlet concentrations within domain
             
             # deal with either non-uniform width, cartesian or cylindrical domain
             # set the scope for these variables, and give them the default cartesian value, if not already set
@@ -1745,7 +1747,11 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             CONSTANT <c_D_species0> [m^2/s] 1.d0 # diffusivity of species
             CONSTANT <c_inlet_conc_species0> [mol/m^3] 1.d0 # inlet concentration of species
             
-            CELL_UNKNOWN <c_species0> [mol/m^3] "0.d0" ON <allcells> magnitude=1.d0 # remember to put in characteristic magnitude later in the file if it isn't 1
+            CELL_UNKNOWN <c_species0> [mol/m^3] "<c_inlet_conc_species0>" ON <allcells> magnitude=1.d0 # remember to put in characteristic magnitude later in the file if it isn't 1
+               #(comment created during unwrap): new block = ../../templates/species_transport/equations.arb: sub_block = 1
+               #(hash inserted during unwrap)IF 1
+               VARIABLE <c_species0> "0.d0"
+               #(hash inserted during unwrap)END_IF
             CELL_LOCAL <c_pos_species0> [mol/m^3] "cellmax(<c_species0>,default=0.d0)" ON <allcells> # may be needed for reactions
             CELL_TRANSIENT <c_species0[r=1]> [mol/m^3] "<c_species0>" "<c_species0>" ON <allcells> # the previous timestep concentration field
             
@@ -1882,39 +1888,34 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #CELL_EQUATION <c_equation_species0> [mol/(m^3.s)] "celldiv(1*<c_j_f_species0>)/1 - <c_source_species0>" ON <domain>
             CELL_EQUATION <c_equation_species0> [mol/(m^3.s)] "(<c_species0>-<c_species0[r=1]>)/<dt> + celldiv(1*<c_j_f_species0>)/1 - <c_source_species0>" ON <domain>
             
-            # boundary conditions now
-            # walls
-            FACE_EQUATION <c_walls_species0> "<c_j_f_species0>" ON <walls> # on the walls we set the flux of species c1 into the wall equal to zero
-            
-            # ports
-            # first setup equations for all of the ports being no-flow, and then overwrite specific ones either here or later
-            FACE_EQUATION <c_inlet_equation_species0> '<c_j_f_species0>' ON <inlet>
+            # boundaryregions
+            # loop through all of the given boundaryregions, specifying equations, and producing some output variables too
+            # other additional boundaryregions will generally need their own equations given after this file is called
+            # here are some ideas re how to change the inlet concentration with time
+            #NONE_TRANSIENT <c_inlet_equation_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
+            #NONE_TRANSIENT <c_inlet_equation_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
+            # for debugging perl, port = inlet
+            FACE_EQUATION <c_inlet_equation_species0> '<c_species0>-<c_inlet_conc_species0>' ON <inlet>
             NONE_OUTPUT <inlet_area> 'facesum(<facearea>*1,region=<inlet>)'
             NONE_OUTPUT <inlet_flowrate> 'facesum(<facearea>*1*<u_f>,region=<inlet>)'
             NONE_OUTPUT <c_ave inlet_species0> 'facesum(<c_species0>*<facearea>*1,region=<inlet>)/nonemax(<inlet_area>,<tinyish>)'
             NONE_OUTPUT <c_flux inlet_species0> 'facesum(<c_species0>*<facearea>*1*<u_f>,region=<inlet>)'
             NONE_OUTPUT <c_bulk ave inlet_species0> '<c_flux inlet_species0>/nonemax(<inlet_flowrate>,<tinyish>)'
-            FACE_EQUATION <c_outlet_equation_species0> '<c_j_f_species0>' ON <outlet>
+            # for debugging perl, port = outlet
+            FACE_EQUATION <c_outlet_equation_species0> 'faceif(<u_f>,facegrad(<c_species0>),<c_species0>)' ON <outlet>
             NONE_OUTPUT <outlet_area> 'facesum(<facearea>*1,region=<outlet>)'
             NONE_OUTPUT <outlet_flowrate> 'facesum(<facearea>*1*<u_f>,region=<outlet>)'
             NONE_OUTPUT <c_ave outlet_species0> 'facesum(<c_species0>*<facearea>*1,region=<outlet>)/nonemax(<outlet_area>,<tinyish>)'
             NONE_OUTPUT <c_flux outlet_species0> 'facesum(<c_species0>*<facearea>*1*<u_f>,region=<outlet>)'
             NONE_OUTPUT <c_bulk ave outlet_species0> '<c_flux outlet_species0>/nonemax(<outlet_flowrate>,<tinyish>)'
+            # for debugging perl, port = walls
+            FACE_EQUATION <c_walls_equation_species0> '<c_j_f_species0>' ON <walls>
+            NONE_OUTPUT <walls_area> 'facesum(<facearea>*1,region=<walls>)'
+            NONE_OUTPUT <walls_flowrate> 'facesum(<facearea>*1*<u_f>,region=<walls>)'
+            NONE_OUTPUT <c_ave walls_species0> 'facesum(<c_species0>*<facearea>*1,region=<walls>)/nonemax(<walls_area>,<tinyish>)'
+            NONE_OUTPUT <c_flux walls_species0> 'facesum(<c_species0>*<facearea>*1*<u_f>,region=<walls>)'
+            NONE_OUTPUT <c_bulk ave walls_species0> '<c_flux walls_species0>/nonemax(<walls_flowrate>,<tinyish>)'
             
-            
-            # overwrite the equations used for the inlet and outlet ports
-            # other additional ports will generally need their own equations given after this file is called
-            # here are some ideas re how to change the inlet concentration with time
-            #NONE_TRANSIENT <c_inlet_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
-            #NONE_TRANSIENT <c_inlet_/species/> [mol/m^3] "0.d+0" "noneif(-<t>-<t_injection_start>,0.d0,noneif(-<t>+<t_injection_stop>,<c_inlet_conc_/species/>,0.d0))" # injection of species
-               #(comment created during unwrap): new block = ../../templates/species_transport/equations.arb: sub_block = 1
-               #(hash inserted during unwrap)IF 1 # if <<listofports>> contains the string inlet
-               FACE_EQUATION <c_inlet_equation_species0> "<c_species0>-<c_inlet_conc_species0>" ON <inlet>
-               #(hash inserted during unwrap)END_IF
-               #(comment created during unwrap): new block = ../../templates/species_transport/equations.arb: sub_block = 1
-               #(hash inserted during unwrap)IF 1 # if <<listofports>> contains the string outlet
-               FACE_EQUATION <c_outlet_equation_species0> "faceif(<u_f>,facegrad(<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
-               #(hash inserted during unwrap)END_IF
             
             # report some averaged and extreme variables
             NONE_OUTPUT <c_maximum_species0> [mol/m^3] "cellmax(<c_species0>,region=<allcells>)"
@@ -1936,14 +1937,15 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
          #(hash inserted during unwrap)END_IF
       
       # overwrite some species boundary conditions etc
-      FACE_EQUATION <c_walls_species0> "<c_species0>-1.d0" ON <walls> # <walls> is the cylinder surface, which has the set concentration
-      FACE_EQUATION <c_slip_walls_species0> "<c_j_f_species0>" ON <slip_walls> # whereas on the <slip_walls> we use a zero flux condition
+      FACE_EQUATION <c_walls_equation_species0> "<c_species0>-1.d0" ON <walls> # <walls> is the cylinder surface, which has the set concentration
+      FACE_EQUATION <c_slip_walls_equation_species0> "<c_j_f_species0>" ON <slip_walls> # whereas on the <slip_walls> we use a zero flux condition
       CONSTANT <c_inlet_conc_species0> 0.d0 # nothing coming in
       CONSTANT <c_D_species0> 1.d-2 # small, nonzero diffusivities are the hardest to compute accurately using these boundary conditions, as mesh resolution in the concentration boundary layer becomes critical
       
       # various outlet conditions:
+      # now using default from species_transport/equations template
       #FACE_EQUATION <c_outlet_equation_species0> "faceif(<u_f>,facegrad[adjacentcells](<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
-      FACE_EQUATION <c_outlet_equation_species0> "facegrad[adjacentcells](<c_species0>)" ON <outlet> # the most stable type of outlet boundary condition
+      #FACE_EQUATION <c_outlet_equation_species0> "facegrad[adjacentcells](<c_species0>)" ON <outlet> # the most stable type of outlet boundary condition
       #FACE_EQUATION <c_outlet_equation_species0> "faceif(<u_f>,facegrad(<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
       
       # the following can be used as a destruction term

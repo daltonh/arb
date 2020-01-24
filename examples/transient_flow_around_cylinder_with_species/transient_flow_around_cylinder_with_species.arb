@@ -165,14 +165,15 @@ IF 1
   END_IF
 
 # overwrite some species boundary conditions etc
-  FACE_EQUATION <c_walls_species0> "<c_species0>-1.d0" ON <walls> # <walls> is the cylinder surface, which has the set concentration
-  FACE_EQUATION <c_slip_walls_species0> "<c_j_f_species0>" ON <slip_walls> # whereas on the <slip_walls> we use a zero flux condition
+  FACE_EQUATION <c_walls_equation_species0> "<c_species0>-1.d0" ON <walls> # <walls> is the cylinder surface, which has the set concentration
+  FACE_EQUATION <c_slip_walls_equation_species0> "<c_j_f_species0>" ON <slip_walls> # whereas on the <slip_walls> we use a zero flux condition
   CONSTANT <c_inlet_conc_species0> 0.d0 # nothing coming in
   CONSTANT <c_D_species0> 1.d-2 # small, nonzero diffusivities are the hardest to compute accurately using these boundary conditions, as mesh resolution in the concentration boundary layer becomes critical
 
 # various outlet conditions:
+# now using default from species_transport/equations template
   #FACE_EQUATION <c_outlet_equation_species0> "faceif(<u_f>,facegrad[adjacentcells](<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
-  FACE_EQUATION <c_outlet_equation_species0> "facegrad[adjacentcells](<c_species0>)" ON <outlet> # the most stable type of outlet boundary condition
+  #FACE_EQUATION <c_outlet_equation_species0> "facegrad[adjacentcells](<c_species0>)" ON <outlet> # the most stable type of outlet boundary condition
   #FACE_EQUATION <c_outlet_equation_species0> "faceif(<u_f>,facegrad(<c_species0>),<c_species0>)" ON <outlet> # boundary condition is zero gradient for outflow, and zero concentration for inflow
 
 # the following can be used as a destruction term

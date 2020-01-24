@@ -129,7 +129,7 @@ IF {{ return string_test('<<problem_type>>','shear'); }}
   FACE_LOCAL <u_f_analytical[l=1]> "<facex[l=2]>-0.5d0" ON <allfaces>
 END_IF
 
-CELL_UNKNOWN <p> [] "(2.d0^<<cylindricalflag>>)*<vof_phi>/<We>" ON <allcells> elementdata # pressure
+CELL_UNKNOWN <p> [] "(2.d0^<<cylindrical>>)*<vof_phi>/<We>" ON <allcells> elementdata # pressure
 CELL_UNKNOWN <u[l=1]> [] "<u_analytical[l=1]>" ON <allcells> magnitude=1.d0 # velocity component
 CELL_UNKNOWN <u[l=2]> [] "<u_analytical[l=2]>" ON <allcells> magnitude=1.d0 # velocity component
 

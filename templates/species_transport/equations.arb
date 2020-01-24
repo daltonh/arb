@@ -79,7 +79,7 @@ CELL_DERIVED <c_source_/species/> [mol/(m^3.s)] "0.d0" ON <domain> # this is a s
     } else {
       $return_string .= "FACE_EQUATION <c_$port"."_equation_/species/> '<c_j_f_/species/>' ON <$port>\n";
     }
-    $return_string .= "FACE_EQUATION <c_$port"."_equation_/species/> '<c_j_f_/species/>' ON <$port>\n";
+#   $return_string .= "FACE_EQUATION <c_$port"."_equation_/species/> '<c_j_f_/species/>' ON <$port>\n";
     $return_string .= "NONE_OUTPUT <$port"."_area> 'facesum(<facearea>*<<W_f>>,region=<$port>)'\n";
     $return_string .= "NONE_OUTPUT <$port"."_flowrate> 'facesum(<facearea>*<<W_f>>*<u_f>,region=<$port>)'\n";
     $return_string .= "NONE_OUTPUT <c_ave $port"."_/species/> 'facesum(<c_/species/>*<facearea>*<<W_f>>,region=<$port>)/nonemax(<$port"."_area>,<tinyish>)'\n";

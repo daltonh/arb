@@ -63,11 +63,18 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
       # comment out any references to the third dimension in any included files
       # centreline is normal to the 2 axis
       
-      # activate cylindrical specific definitions
-      # try not to use these in the future
       
       
-      
+         #(comment created during unwrap): new block = ../../templates/general/cylindrical_reflect_setup.arb: sub_block = 0
+         #(hash inserted during unwrap)INCLUDE "cylindrical_reflect_setup"
+         #(hash inserted during unwrap)MARKDOWN
+         #(hash inserted during unwrap)Call this once the dimensions have been set to set the generic cylindrical reflection flags
+         #(hash inserted during unwrap)END_MARKDOWN
+         
+         
+         # activate cylindrical specific definitions
+         # the following uses nested replacement strings, so (eg) <<radialdim>> must be set before calling this file
+         
    #(hash inserted during unwrap)INCLUDE
    
    # variables etc
@@ -226,14 +233,14 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)IF 0#<<azimuthal>>
                #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
                #(hash inserted during unwrap)IF 0
-               #(hash inserted during unwrap)VARIABLE <tau[l=2,0]> "<tau[l=2,0]>+<mu>*<u_f_vect[l=0]>/<facex[l=2]>"
-               #(hash inserted during unwrap)VARIABLE <tau[l=0,2]> "<tau[l=2,0]>"
+               #(hash inserted during unwrap)VARIABLE <tau[l=2,3]> "<tau[l=2,3]>+<mu>*<u_f_vect[l=3]>/<facex[l=2]>"
+               #(hash inserted during unwrap)VARIABLE <tau[l=3,2]> "<tau[l=2,3]>"
                #(comment created during unwrap): new block = ../../templates/navier_stokes/total_stress.arb: sub_block = 2
                #(hash inserted during unwrap)ELSE
-               #(hash inserted during unwrap)VARIABLE <tau[l=2,0]> "-<mu>*<facex[l=2]>*facegrad[l=2,](<u[l=0]>/<cellx[l=2]>)" OUTPUT
-               #(hash inserted during unwrap)VARIABLE <tau[l=0,2]> "<tau[l=2,0]>"  OUTPUT
+               #(hash inserted during unwrap)VARIABLE <tau[l=2,3]> "-<mu>*<facex[l=2]>*facegrad[l=2,](<u[l=3]>/<cellx[l=2]>)" OUTPUT
+               #(hash inserted during unwrap)VARIABLE <tau[l=3,2]> "<tau[l=2,3]>"  OUTPUT
                #(hash inserted during unwrap)END_IF
-            #(hash inserted during unwrap)VARIABLE <tau[l=0,0]> "-<mu>*2.d0*<u_f_vect[l=2]>/<facex[l=2]>"
+            #(hash inserted during unwrap)VARIABLE <tau[l=3,3]> "-<mu>*2.d0*<u_f_vect[l=2]>/<facex[l=2]>"
             #(hash inserted during unwrap)END_IF
          
          
@@ -715,10 +722,10 @@ EXTERNALS "/home/daltonh/fortran/arb/testsuite/arb_develop/src/free_surface_func
             #(hash inserted during unwrap)# perform a check that <<azimuthaldim>> has been correctly defined
                #(comment created during unwrap): new block = ../../templates/navier_stokes/conservation.arb: sub_block = 2
                #(hash inserted during unwrap)IF 
-               #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 0 has not been correctly defined'
+               #(hash inserted during unwrap)ERROR 'This is a cylindrical coordinate simulation with azimuthal flow however the string 3 has not been correctly defined'
                #(hash inserted during unwrap)END_IF
-            #(hash inserted during unwrap)VARIABLE <momentum[l=0]> "celldiv((<facex[l=2]>**2)*<J_f[l=0]>)/(<cellx[l=2]>**2)+<rho>*<u[l=2]>*<u[l=0]>/<cellx[l=2]>" ON <domain> # momentum component'
-            #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "<momentum[l=2]>-<rho>*<u[l=0]>**2/<cellx[l=2]>"
+            #(hash inserted during unwrap)VARIABLE <momentum[l=3]> "celldiv((<facex[l=2]>**2)*<J_f[l=3]>)/(<cellx[l=2]>**2)+<rho>*<u[l=2]>*<u[l=3]>/<cellx[l=2]>" ON <domain> # momentum component'
+            #(hash inserted during unwrap)VARIABLE <momentum[l=2]> "<momentum[l=2]>-<rho>*<u[l=3]>**2/<cellx[l=2]>"
             #(hash inserted during unwrap)END_IF
          
          # add transient term which is independent of cartesian or cylindrical coordinates
