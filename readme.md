@@ -53,6 +53,10 @@ Further details about how to install and run arb are given in [the Getting Start
 
 arb was originally devised by Dalton Harvie, but is now a open-source collaborative project.  In addition to the public master branch housed on the github, development of arb is mainly conducted using a private git repository.  Please contact @daltonh for access if you want to contribute to the development of arb.
 
+## Citing
+
+If you use arb to conduct research, please cite it using the publication, ['An implicit finite volume method for arbitrary transport equations' (Harvie, Dalton J. E.), In ANZIAM J. (CTAC2010), volume 52, 2012](http://journal.austms.org.au/ojs/index.php/ANZIAMJ/article/view/3949).
+
 ## Licence
 
 arb is released under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).  Full details of the licence are in the [arb licence file](http://bunyip.chemeng.unimelb.edu.au:8000/arb_files/licence/arb_licence.txt).
