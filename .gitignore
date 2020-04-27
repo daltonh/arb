@@ -41,3 +41,5 @@ recent
 # include any readme and todo files
 !readme
 !example_readme
+!readme.md
+!example_readme.md
