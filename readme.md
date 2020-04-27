@@ -1,7 +1,5 @@
 # arb: an open-source multiphysics finite volume solver
 
-Valuable contribution
-
 ## What is arb?
 
 arb solves arbitrary partial differential equations on unstructured meshes using (principally) the finite volume method.  The code is written in fortran, with some meta-programming done in perl with help from the symbolic algebra package maxima.
