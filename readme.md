@@ -1,5 +1,7 @@
 # arb: an open-source multiphysics finite volume solver
 
+## What os arb?
+
 arb solves arbitrary partial differential equations on unstructured meshes using (principally) the finite volume method.  The code is written in fortran, with some meta-programming done in perl with help from the symbolic algebra package maxima.
 
 The primary strengths of arb are:
@@ -22,7 +24,7 @@ Compared to other partial differential equation solvers the disadvantages of arb
 
 * There are some more efficient (either faster or less memory intensive) algorithms out there for specific problems.
 
-# What is needed to run arb?
+## What is needed to run arb?
 
 arb requires a UNIX type environment to run, and is tested on the Apple OsX and ubuntu and red hat linux platforms. Certain third party programs are used by arb:
 
@@ -43,9 +45,15 @@ arb requires a UNIX type environment to run, and is tested on the Apple OsX and 
 
 By combining gfortran with the UMFPACK sparse linear solver, arb can be run using freely available GPL licensed software.  Installation utilises the package manager for each operating system, using macports on OsX.
 
-Further details about how to install and run arb are given in [the online manual](http://bunyip.chemeng.unimelb.edu.au:8000/introduction/index.html).
+## Getting started
 
-# Licence
+Further details about how to install and run arb are given in [the Getting Started section in the online manual](http://bunyip.chemeng.unimelb.edu.au:8000/getting_started/index.html).
 
-arb is released under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).  Full details of the licence are in the [arb licence file](<<<arbroot>>>/licence/arb_licence.txt).
+## Contributors
+
+arb was originally devised by Dalton Harvie, but is now a open-source collaborative project.  In addition to the public master branch housed on the github, development of arb is mainly conducted using a private git repository.  Please contact for access if you want to contribute to the development of arb.
+
+## Licence
+
+arb is released under the [GNU General Public License](http://www.gnu.org/licenses/gpl.html).  Full details of the licence are in the [arb licence file](http://bunyip.chemeng.unimelb.edu.au:8000/arb_files/licence/arb_licence.txt).
 
